@@ -69,7 +69,7 @@
                            :alignv 1.0
                            :slope-up-traction 1.0
                            :align-speed 1.0
-                           :flags #x8
+                           :flags (surface-flags surf03)
                            )
         )
 
@@ -98,7 +98,7 @@
                            :slope-up-traction 1.0
                            :align-speed 1.0
                            :mode 'air
-                           :flags #x800
+                           :flags (surface-flags surf11)
                            )
         )
 
@@ -127,7 +127,7 @@
                                   :slope-up-traction 1.0
                                   :align-speed 1.0
                                   :mode 'air
-                                  :flags #x800
+                                  :flags (surface-flags surf11)
                                   )
         )
 
@@ -151,7 +151,7 @@
                                  :slope-up-traction 1.0
                                  :align-speed 1.0
                                  :mode 'attack
-                                 :flags #x1018
+                                 :flags (surface-flags surf03 surf04 surf12)
                                  )
         )
 
@@ -176,7 +176,7 @@
                                  :slope-up-traction 1.0
                                  :align-speed 1.0
                                  :mode 'attack
-                                 :flags #x1800
+                                 :flags (surface-flags surf11 surf12)
                                  )
         )
 
@@ -218,12 +218,13 @@
   (b! #t cfg-23 :delay (nop!))
   (label cfg-7)
   (cond
-    ((and (logtest? (-> self control status) 1) (not (= (if (> (-> self skel active-channels) 0)
-                                                            (-> self skel root-channel 0 frame-group)
-                                                            )
-                                                        (-> self draw art-group data 145)
-                                                        )
-                                                     )
+    ((and (logtest? (-> self control status) (cshape-moving-flags onsurf))
+          (not (= (if (> (-> self skel active-channels) 0)
+                      (-> self skel root-channel 0 frame-group)
+                      )
+                  (-> self draw art-group data 145)
+                  )
+               )
           )
      (ja-channel-push! 1 6)
      (let ((v1-21 (-> self skel root-channel 0)))
@@ -505,7 +506,7 @@
         )
       (logclear! (-> self control root-prim prim-core action) (collide-action ca-14))
       (set! (-> self control unknown-surface00) *walk-mods*)
-      (set! (-> self state-flags) (logand -1025 (-> self state-flags)))
+      (logclear! (-> self state-flags) (state-flags sf10))
       (set! (-> self control dynam gravity-max) (-> self control unknown-dynamics00 gravity-max))
       (set! (-> self control dynam gravity-length) (-> self control unknown-dynamics00 gravity-length))
       (target-collide-set! 'normal (the-as float 0.0))
@@ -648,7 +649,7 @@
     (if (can-hands? #t)
         (go target-flut-running-attack)
         )
-    (if (and (zero? (logand (-> self control status) 1))
+    (if (and (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
              (and (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (-> *FLUT-bank* ground-timeout))
                   (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                   (let ((v1-37 (if (> (-> self skel active-channels) 0)
@@ -807,7 +808,7 @@
     (if (can-hands? #t)
         (go target-flut-running-attack)
         )
-    (if (and (zero? (logand (-> self control status) 1))
+    (if (and (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
              (and (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (-> *FLUT-bank* ground-timeout))
                   (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                   (let ((v1-37 (if (> (-> self skel active-channels) 0)
@@ -1024,7 +1025,7 @@
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (sound-play-by-name (static-sound-name "jump") (new-sound-id) 1024 -762 0 1 #t)
     (init-var-jump arg0 arg1 (the-as vector #t) (the-as vector #t) (-> self control transv))
-    (set! (-> self control status) (logand -8 (-> self control status)))
+    (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     (set! (-> self control unknown-surface00) *flut-jump-mods*)
     (set! (-> self control unknown-float123)
           (fmax 0.0 (fmin 1.0 (* 0.00004359654 (+ -11468.8 (-> self control unknown-float01)))))
@@ -1048,13 +1049,13 @@
             (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 6)))
             )
           )
-    (if (logtest? (-> self control status) 1)
+    (if (logtest? (-> self control status) (cshape-moving-flags onsurf))
         (go target-flut-hit-ground)
         )
     (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
              (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 40960.0)
-             (and (zero? (logand (-> self water flags) 512))
-                  (zero? (logand (-> self state-flags) 2048))
+             (and (zero? (logand (-> self water flags) (water-flags wt09)))
+                  (zero? (logand (-> self state-flags) (state-flags sf11)))
                   (< 4096.0 (target-height-above-ground))
                   )
              )
@@ -1066,8 +1067,8 @@
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
                       (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
-                  (zero? (logand (-> self state-flags) 4096))
-                  (zero? (logand (-> self control unknown-surface01 flags) 384))
+                  (zero? (logand (-> self state-flags) (state-flags sf12)))
+                  (zero? (logand (-> self control unknown-surface01 flags) (surface-flags surf07 surf08)))
                   )
              )
         (go target-flut-air-attack (-> *FLUT-bank* air-attack-speed))
@@ -1079,7 +1080,7 @@
                    )
               #t
               )
-      (logior! (-> self control status) 1)
+      (logior! (-> self control status) (cshape-moving-flags onsurf))
       enter-state
       'stuck
       (go target-flut-hit-ground)
@@ -1209,7 +1210,7 @@
     (init-var-jump arg0 arg1 (the-as vector #t) (the-as vector #t) (-> self control transv))
     (set! (-> self control dynam gravity-max) 40960.0)
     (set! (-> self control dynam gravity-length) 245760.0)
-    (set! (-> self control status) (logand -8 (-> self control status)))
+    (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     (set! (-> self control unknown-surface00) *flut-double-jump-mods*)
     (none)
     )
@@ -1223,7 +1224,7 @@
     )
   :trans
   (behavior ()
-    (if (logtest? (-> self control status) 1)
+    (if (logtest? (-> self control status) (cshape-moving-flags onsurf))
         (go target-flut-hit-ground)
         )
     (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
@@ -1233,8 +1234,8 @@
                                )
                        (pad-buttons square)
                        )
-             (and (zero? (logand (-> self state-flags) 4096))
-                  (zero? (logand (-> self control unknown-surface01 flags) 384))
+             (and (zero? (logand (-> self state-flags) (state-flags sf12)))
+                  (zero? (logand (-> self control unknown-surface01 flags) (surface-flags surf07 surf08)))
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
                       (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
@@ -1403,7 +1404,7 @@
     (if (move-legs?)
         (go target-flut-walk)
         )
-    (if (and (zero? (logand (-> self control status) 1))
+    (if (and (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
              (and (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (-> *FLUT-bank* ground-timeout))
                   (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                   (let ((v1-34 (if (> (-> self skel active-channels) 0)
@@ -1450,7 +1451,7 @@
   (-> target-flut-start exit)
   :trans
   (behavior ()
-    (when (or (logtest? (-> self control status) 1)
+    (when (or (logtest? (-> self control status) (cshape-moving-flags onsurf))
               (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
                        (and (>= (- (-> *display* base-frame-counter) (-> self state-time))
                                 (/ (the-as int (-> *TARGET-bank* stuck-time)) 2)
@@ -1461,7 +1462,7 @@
                   #t
                   )
               )
-      (logior! (-> self control status) 1)
+      (logior! (-> self control status) (cshape-moving-flags onsurf))
       (go target-flut-hit-ground)
       )
     (seek!
@@ -1648,7 +1649,9 @@
   (behavior ()
     (when (!= (-> self state-time) (-> *display* base-frame-counter))
       (if (and (or (smack-surface? #t)
-                   (and (>= (-> self control unknown-float63) 0.7) (zero? (logand (-> self control status) 32)))
+                   (and (>= (-> self control unknown-float63) 0.7)
+                        (zero? (logand (-> self control status) (cshape-moving-flags t-act)))
+                        )
                    )
                (begin
                  (set! (-> self control unknown-int21) (the-as int (-> *display* base-frame-counter)))
@@ -1680,7 +1683,7 @@
                )
           (target-shoved (meters 2.0) (-> *TARGET-bank* smack-surface-height) (the-as process #f) target-flut-hit)
           )
-      (if (and (logtest? (-> self water flags) 512)
+      (if (and (logtest? (-> self water flags) (water-flags wt09))
                (zero? (mod (- (-> *display* base-frame-counter) (-> self state-time)) 21))
                )
           (dummy-13
@@ -1721,7 +1724,7 @@
         (when (not (ja-min? 0))
           (cond
             ((and (>= (ja-aframe-num 0) 20.0)
-                  (and (and (zero? (logand (-> self control status) 1))
+                  (and (and (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
                             (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (-> *FLUT-bank* ground-timeout))
                             (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                             (let ((v1-39 (if (> (-> self skel active-channels) 0)
@@ -1729,12 +1732,11 @@
                                              )
                                          )
                                   )
-                              (or (not
-                                    (or (= v1-39 (-> self draw art-group data 59))
-                                        (= v1-39 (-> self draw art-group data 60))
-                                        (= v1-39 (-> self draw art-group data 61))
-                                        )
-                                    )
+                              (or (not (or (= v1-39 (-> self draw art-group data 59))
+                                           (= v1-39 (-> self draw art-group data 60))
+                                           (= v1-39 (-> self draw art-group data 61))
+                                           )
+                                       )
                                   (< 4096.0 (target-height-above-ground))
                                   )
                               )
@@ -1783,7 +1785,7 @@
             (set! f30-0 (* f30-0 (the-as float (fmin 1.0 (the-as float (-> self control unknown-float140))))))
             )
         )
-      (if (and (zero? (logand (-> self control status) 1))
+      (if (and (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
                (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (-> *FLUT-bank* ground-timeout))
                (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                (let ((v1-105 (if (> (-> self skel active-channels) 0)
@@ -1866,7 +1868,7 @@
   (behavior ((arg0 float))
     (set-forward-vel arg0)
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (set! (-> self control status) (logand -8 (-> self control status)))
+    (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     (set! (-> self control unknown-surface00) *flut-air-attack-mods*)
     (target-start-attack)
     (target-danger-set! 'flut-attack #f)
@@ -1919,8 +1921,8 @@
           )
         )
       )
-    (when (logtest? (-> self control status) 1)
-      (logior! (-> self control status) 1)
+    (when (logtest? (-> self control status) (cshape-moving-flags onsurf))
+      (logior! (-> self control status) (cshape-moving-flags onsurf))
       (remove-exit)
       (go target-flut-air-attack-hit-ground)
       )
@@ -1931,7 +1933,7 @@
                    )
               #t
               )
-      (logior! (-> self control status) 1)
+      (logior! (-> self control status) (cshape-moving-flags onsurf))
       (go target-flut-hit-ground)
       )
     (none)
@@ -2087,7 +2089,7 @@
   :exit
   (behavior ()
     (if (!= (-> self next-state name) 'target-flut-death)
-        (set! (-> self state-flags) (logand -32777 (-> self state-flags)))
+        (logclear! (-> self state-flags) (state-flags sf03 sf15))
         )
     (target-exit)
     ((-> target-flut-start exit))
@@ -2149,7 +2151,7 @@
               )
           )
         (when (= arg0 'attack)
-          (logior! (-> self state-flags) 8)
+          (logior! (-> self state-flags) (state-flags sf03))
           (set! (-> self game hit-time) (-> *display* base-frame-counter))
           (case (-> gp-0 mode)
             (('endlessfall)
@@ -2272,7 +2274,7 @@
   (-> target-death event)
   :exit
   (behavior ()
-    (set! (-> self state-flags) (logand -32777 (-> self state-flags)))
+    (logclear! (-> self state-flags) (state-flags sf03 sf15))
     (target-exit)
     (clear-pending-settings-from-process *setting-control* self 'process-mask)
     (copy-settings-from-target! *setting-control*)
@@ -2283,7 +2285,7 @@
   :code
   (behavior ((arg0 symbol))
     (local-vars (v1-104 symbol))
-    (logior! (-> self state-flags) #x8000)
+    (logior! (-> self state-flags) (state-flags sf15))
     (set! (-> self neck flex-blend) 0.0)
     (target-timed-invulnerable-off self)
     (push-setting! *setting-control* self 'process-mask 'set 0.0 #x14a0000)
@@ -2297,7 +2299,7 @@
        (sound-play-by-name (static-sound-name "flut-hit") (new-sound-id) 716 -2133 0 1 #t)
        (camera-change-to (the-as string cam-endlessfall) 30 #f)
        (set! (-> self control pat-ignore-mask unknown-bit) 1)
-       (set! (-> self water flags) (logand -17 (-> self water flags)))
+       (logclear! (-> self water flags) (water-flags wt04))
        (let ((f30-0 (fmin -4096.0 (- (-> self control ground-impact-vel)))))
          (set! (-> self control unknown-uint20) (the-as uint f30-0))
          (let ((gp-3 (new-stack-vector0)))
@@ -2363,7 +2365,7 @@
         (until (ja-done? 0)
           (TODO-RENAME-9 (-> self align))
           (let ((gp-5 (new 'stack-no-clear 'vector)))
-            (when (zero? (logand (-> self align flags) 1))
+            (when (zero? (logand (-> self align flags) (align-flags algf00)))
               (vector-matrix*! gp-5 (the-as vector (-> self align delta)) (-> self control unknown-matrix01))
               (vector-float*! (-> self control transv) gp-5 (-> *display* frames-per-second))
               )
@@ -2400,7 +2402,7 @@
   (behavior ((arg0 handle))
     (set! (-> self control transv quad) (the-as uint128 0))
     (set! (-> self alt-cam-pos quad) (-> (&-> (-> self control) unknown-qword00) 0))
-    (logior! (-> self state-flags) 1024)
+    (logior! (-> self state-flags) (state-flags sf10))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (set! (-> gp-0 quad) (-> self control trans quad))
@@ -2453,7 +2455,7 @@
         )
       )
     (sound-play-by-name (static-sound-name "flut-coo") (new-sound-id) 1024 0 0 1 #t)
-    (set! (-> self state-flags) (logand -1025 (-> self state-flags)))
+    (logclear! (-> self state-flags) (state-flags sf10))
     (set! (-> self control transv quad) (the-as uint128 0))
     (quaternion-copy! (-> self control quat) (-> self control unknown-quaternion00))
     (rot->dir-targ! (-> self control))
@@ -2501,7 +2503,7 @@
   (behavior ((arg0 handle))
     (set-forward-vel (the-as float 0.0))
     (let ((s5-0 0))
-      (while (zero? (logand (-> self control status) 1))
+      (while (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
         (target-flut-falling-anim-trans)
         (+! s5-0 (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter)))
         (suspend)
@@ -2636,7 +2638,7 @@
   (-> target-hit-ground enter)
   :trans
   (behavior ()
-    (logior! (-> self control status) 7)
+    (logior! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     ((-> target-hit-ground trans))
     (none)
     )
@@ -2693,12 +2695,12 @@
   (behavior ()
     (set! (-> self control unknown-surface00) *grab-mods*)
     (set! (-> self neck flex-blend) 0.0)
-    (logior! (-> self state-flags) 272)
+    (logior! (-> self state-flags) (state-flags sf04 sf08))
     (none)
     )
   :exit
   (behavior ()
-    (set! (-> self state-flags) (logand -273 (-> self state-flags)))
+    (logclear! (-> self state-flags) (state-flags sf04 sf08))
     (target-exit)
     ((-> target-flut-start exit))
     (none)

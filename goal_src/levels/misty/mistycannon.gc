@@ -731,7 +731,7 @@
       )
     (restore-collide-with-as (-> self root-override))
     (set-vector! (-> self root-override scale) 0.6 0.6 0.6 1.0)
-    (while (zero? (logand (-> self root-override status) 1))
+    (while (zero? (logand (-> self root-override status) (cshape-moving-flags onsurf)))
       (if (and (zero? (-> self sfx))
                (< (if *target*
                       (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
@@ -770,7 +770,7 @@
               )
             (sound-trans-convert (-> gp-1 parms trans) a1-3)
             )
-          (set! (-> gp-1 parms mask) (the-as uint 32))
+          (set! (-> gp-1 parms mask) (sound-mask trans))
           (-> gp-1 id)
           )
         )
@@ -846,7 +846,7 @@
     (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
     (spawn-part self)
     (when (and (zero? (-> self draw cur-lod)) (logtest? (-> self draw status) (draw-status was-drawn)))
-      (if (logtest? (-> self root-override status) 1)
+      (if (logtest? (-> self root-override status) (cshape-moving-flags onsurf))
           (draw-shadow
             (-> self root-override shadow-pos)
             (-> self root-override shadow-pos)
@@ -984,24 +984,8 @@
   :code
   (behavior ()
     (if (and *target* (= (-> *target* next-state name) 'target-periscope))
-        (sound-play-by-spec
-          (new 'static 'sound-spec
-            :mask #xc0
-            :num 1.0
-            :group #x1
-            :sound-name (static-sound-name "explosion")
-            :volume #x400
-            :fo-min #xc8
-            :fo-max #x190
-            )
-          (new-sound-id)
-          (the-as vector #t)
-          )
-        (sound-play-by-spec
-          (new 'static 'sound-spec :num 1.0 :group #x1 :sound-name (static-sound-name "explosion") :volume #x400)
-          (new-sound-id)
-          (the-as vector #t)
-          )
+        (sound-play-by-spec (static-sound-spec "explosion" :fo-min 200 :fo-max 400) (new-sound-id) (the-as vector #t))
+        (sound-play-by-spec (static-sound-spec "explosion") (new-sound-id) (the-as vector #t))
         )
     (spawn (-> self part2) (-> self root-override trans))
     (ja-channel-set! 0)
@@ -1048,7 +1032,7 @@
     (vector-float*! (-> arg0 transv) (-> arg0 transv) 0.15)
     (let ((v0-1 (logior s5-0 7)))
       (logior! (-> arg0 status) v0-1)
-      (the-as uint v0-1)
+      (the-as cshape-moving-flags v0-1)
       )
     )
   )

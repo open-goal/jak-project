@@ -94,7 +94,7 @@ swamp-rat-default-event-handler
 ;; definition for method 39 of type swamp-rat
 ;; Used lq/sq
 (defmethod common-post swamp-rat ((obj swamp-rat))
-  (when (logtest? (-> obj collide-info status) 1)
+  (when (logtest? (-> obj collide-info status) (cshape-moving-flags onsurf))
     (vector-deg-seek (-> obj up-vector) (-> obj up-vector) (-> obj collide-info surface-normal) 910.2222)
     (vector-normalize! (-> obj up-vector) 1.0)
     )
@@ -497,7 +497,7 @@ swamp-rat-default-event-handler
             #f
             #f
             )
-          (when (or (logtest? (-> self collide-info status) 4)
+          (when (or (logtest? (-> self collide-info status) (cshape-moving-flags tsurf))
                     (or (< (-> self collide-info trans y) (-> self min-height))
                         (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
                         )
@@ -642,7 +642,7 @@ swamp-rat-default-event-handler
   (set! (-> obj reaction-time) (rand-vu-int-range (seconds 0.1) (seconds 0.8)))
   (set! (-> obj chase-rest-time) (seconds 1))
   (set! (-> obj water) (new 'process 'water-control obj 7 0.0 8192.0 2048.0))
-  (set! (-> obj water flags) (the-as uint 2))
+  (set! (-> obj water flags) (water-flags wt01))
   (set! (-> obj water height) (res-lump-float (-> obj entity) 'water-height))
   (set! (-> obj water ripple-size) 12288.0)
   (set! (-> obj min-height) (+ -2048.0 (-> obj water height)))

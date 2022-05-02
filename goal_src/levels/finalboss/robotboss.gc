@@ -37,7 +37,7 @@
 
 (defbehavior robotboss-cut-cam-exit robotboss ()
   (set! (-> self valid-frames) 0)
-  (if (and *target* (logtest? (-> *target* state-flags) 256))
+  (if (and *target* (logtest? (-> *target* state-flags) (state-flags sf08)))
       (process-release? *target*)
       )
   (logclear! (-> self skel status) (janim-status inited))
@@ -59,8 +59,8 @@
            )
        (robotboss-cut-cam-exit)
        )
-      ((or (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                (zero? (logand (-> *target* control status) 1))
+      ((or (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+                (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
                 )
            (-> self skip-cut)
            )
@@ -165,15 +165,14 @@
   (b! #t cfg-66 :delay (nop!))
   (label cfg-19)
   (b!
-    (not
-      (and (-> self des-cam-entity)
-           (or (< (vector-vector-xz-distance (-> self entity extra trans) (target-pos 0)) 188416.0)
-               (and *target*
-                    (>= 290816.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
-                    )
-               )
-           )
-      )
+    (not (and (-> self des-cam-entity)
+              (or (< (vector-vector-xz-distance (-> self entity extra trans) (target-pos 0)) 188416.0)
+                  (and *target*
+                       (>= 290816.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
+                       )
+                  )
+              )
+         )
     cfg-37
     :delay
     (empty-form)
@@ -190,13 +189,12 @@
   (b! #t cfg-66 :delay (nop!))
   (label cfg-37)
   (b!
-    (not
-      (or (< (vector-vector-xz-distance (-> self entity extra trans) (target-pos 0)) 73728.0)
-          (and *target*
-               (>= 290816.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
-               )
-          )
-      )
+    (not (or (< (vector-vector-xz-distance (-> self entity extra trans) (target-pos 0)) 73728.0)
+             (and *target*
+                  (>= 290816.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
+                  )
+             )
+         )
     cfg-49
     :delay
     (empty-form)
@@ -3826,7 +3824,7 @@
        (spawn (-> self particle 0) s4-0)
        (when (and arg1 (nonzero? (-> self looping-sound 0)))
          (update! (-> self looping-sound 0))
-         (when (and *target* (zero? (logand (-> *target* state-flags) #x80f8)))
+         (when (and *target* (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15))))
            (let ((t2-0 (new 'stack-no-clear 'collide-tri-result))
                  (a2-0 (new 'stack-no-clear 'vector))
                  )
@@ -3877,7 +3875,7 @@
        (when (and arg1 (nonzero? (-> self looping-sound 1)))
          (update! (-> self looping-sound 1))
          (when (and *target*
-                    (zero? (logand (-> *target* state-flags) #x80f8))
+                    (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
                     (>= 8192.0 (vector-vector-distance gp-0 (target-pos 0)))
                     )
            (let ((a1-16 (new 'stack-no-clear 'event-message-block)))
@@ -4533,61 +4531,17 @@
   (set! (-> obj particle 4) (create-launch-control (-> *part-group-id-table* 654) obj))
   (set! (-> obj particle 5) (create-launch-control (-> *part-group-id-table* 646) obj))
   (set! (-> obj particle 6) (create-launch-control (-> *part-group-id-table* 651) obj))
-  (set! (-> obj looping-sound 0) (new
-                                   'process
-                                   'ambient-sound
-                                   (new 'static 'sound-spec
-                                     :mask #x80
-                                     :num 1.0
-                                     :group #x1
-                                     :sound-name (static-sound-name "robo-blue-lp")
-                                     :volume #x400
-                                     :fo-max 80
-                                     )
-                                   (-> obj root-override trans)
-                                   )
+  (set! (-> obj looping-sound 0)
+        (new 'process 'ambient-sound (static-sound-spec "robo-blue-lp" :fo-max 80) (-> obj root-override trans))
         )
-  (set! (-> obj looping-sound 1) (new
-                                   'process
-                                   'ambient-sound
-                                   (new 'static 'sound-spec
-                                     :mask #x80
-                                     :num 1.0
-                                     :group #x1
-                                     :sound-name (static-sound-name "eco-torch")
-                                     :volume #x400
-                                     :fo-max 80
-                                     )
-                                   (-> obj root-override trans)
-                                   )
+  (set! (-> obj looping-sound 1)
+        (new 'process 'ambient-sound (static-sound-spec "eco-torch" :fo-max 80) (-> obj root-override trans))
         )
-  (set! (-> obj looping-sound 2) (new
-                                   'process
-                                   'ambient-sound
-                                   (new 'static 'sound-spec
-                                     :mask #x80
-                                     :num 1.0
-                                     :group #x1
-                                     :sound-name (static-sound-name "red-buzz")
-                                     :volume #x400
-                                     :fo-max 80
-                                     )
-                                   (-> obj root-override trans)
-                                   )
+  (set! (-> obj looping-sound 2)
+        (new 'process 'ambient-sound (static-sound-spec "red-buzz" :fo-max 80) (-> obj root-override trans))
         )
-  (set! (-> obj looping-sound 3) (new
-                                   'process
-                                   'ambient-sound
-                                   (new 'static 'sound-spec
-                                     :mask #x80
-                                     :num 1.0
-                                     :group #x1
-                                     :sound-name (static-sound-name "bfg-buzz")
-                                     :volume #x400
-                                     :fo-max 80
-                                     )
-                                   (-> obj root-override trans)
-                                   )
+  (set! (-> obj looping-sound 3)
+        (new 'process 'ambient-sound (static-sound-spec "bfg-buzz" :fo-max 80) (-> obj root-override trans))
         )
   (set! (-> obj blue-smoke) #f)
   (set! (-> obj red-smoke) #f)

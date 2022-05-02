@@ -593,7 +593,7 @@
                            :slope-up-traction 1.0
                            :align-speed 1.0
                            :mode 'air
-                           :flags #x20
+                           :flags (surface-flags surf05)
                            )
         )
 
@@ -615,20 +615,20 @@
   :enter
   (behavior ((arg0 vector) (arg1 vector))
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (set! (-> self control status) (logand -8 (-> self control status)))
+    (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     (set! (-> self control unknown-surface00) *warp-jump-mods*)
     (set! (-> self control unknown-vector102 quad) (-> arg0 quad))
     (set! (-> self control unknown-vector103 quad) (-> arg1 quad))
     (set! (-> self control unknown-vector102 y) (+ -4096.0 (-> self control unknown-vector102 y)))
     (set! (-> self control unknown-uint20) (the-as uint #f))
     (vector-reset! (-> self control transv))
-    (logior! (-> self state-flags) 1024)
+    (logior! (-> self state-flags) (state-flags sf10))
     (set! (-> self alt-cam-pos quad) (-> arg1 quad))
     (none)
     )
   :exit
   (behavior ()
-    (set! (-> self state-flags) (logand -1025 (-> self state-flags)))
+    (logclear! (-> self state-flags) (state-flags sf10))
     (none)
     )
   :code

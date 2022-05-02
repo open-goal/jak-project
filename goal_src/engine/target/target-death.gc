@@ -111,11 +111,10 @@
     (set! (-> *load-state* want 1 force-vis?) #f)
     (set! (-> *load-state* want 1 force-inside?) #f)
     (when (not (string= (-> arg0 name) "default"))
-      (while (not
-               (and (or (not (-> arg0 lev0)) (not (-> arg0 disp0)) (= (level-status *level* (-> arg0 lev0)) 'active))
-                    (or (not (-> arg0 lev1)) (not (-> arg0 disp1)) (= (level-status *level* (-> arg0 lev1)) 'active))
-                    )
-               )
+      (while (not (and (or (not (-> arg0 lev0)) (not (-> arg0 disp0)) (= (level-status *level* (-> arg0 lev0)) 'active))
+                       (or (not (-> arg0 lev1)) (not (-> arg0 disp1)) (= (level-status *level* (-> arg0 lev1)) 'active))
+                       )
+                  )
         (let ((v1-52 (lookup-level-info (-> arg0 level))))
           (if (and v1-52
                    (= (-> *setting-control* current music) (-> v1-52 music-bank))
@@ -272,7 +271,7 @@
                  )
                (until (not v1-10)
                  (suspend)
-                 (set! v1-10 (and *target* (logtest? (-> *target* state-flags) 256)))
+                 (set! v1-10 (and *target* (logtest? (-> *target* state-flags) (state-flags sf08))))
                  )
                (set! (-> *cpad-list* cpads 0 change-time) (-> *display* base-frame-counter))
                (reset-actors 'dead)
@@ -474,7 +473,7 @@
       (set! (-> v1-264 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
       )
     (suspend)
-    (logior! (-> self control status) 7)
+    (logior! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     (go target-stance)
     (none)
     )
@@ -521,7 +520,7 @@
                          (none)
                          )
                        :mode 'air
-                       :flags #x800
+                       :flags (surface-flags surf11)
                        )
         )
 
@@ -567,7 +566,7 @@
       (none)
       )
     :mode 'air
-    :flags #x818
+    :flags (surface-flags surf03 surf04 surf11)
     )
   )
 
@@ -660,8 +659,8 @@
                      (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
                          (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                          )
-                     (zero? (logand (-> self state-flags) 4096))
-                     (zero? (logand (-> self control unknown-surface01 flags) 384))
+                     (zero? (logand (-> self state-flags) (state-flags sf12)))
+                     (zero? (logand (-> self control unknown-surface01 flags) (surface-flags surf07 surf08)))
                      )
                 )
            (go
@@ -687,7 +686,7 @@
                  )
             #t
             )
-    (logior! (-> self control status) 1)
+    (logior! (-> self control status) (cshape-moving-flags onsurf))
     (return (the-as object 'stuck))
     )
   (let ((s1-0 (new-stack-vector0)))
@@ -892,14 +891,14 @@
             (set! (-> a0-14 param 1) 1.0)
             (joint-control-channel-group-eval! a0-14 (the-as art-joint-anim #f) num-func-seek!)
             )
-          (set! v1-40 (or (ja-done? 0) (and arg1 (logtest? (-> self control status) 1))))
+          (set! v1-40 (or (ja-done? 0) (and arg1 (logtest? (-> self control status) (cshape-moving-flags onsurf)))))
           )
-        (while (and (or (zero? (logand (-> self control status) 1)) s2-1) (!= s2-1 'stuck))
+        (while (and (or (zero? (logand (-> self control status) (cshape-moving-flags onsurf))) s2-1) (!= s2-1 'stuck))
           (arg2)
           (+! f30-1 (* (-> arg0 shove-back) f28-1 (-> *display* seconds-per-frame)))
           (set! s2-1 (target-hit-push s3-1 s1-1 f30-1 (* (-> arg0 shove-back) f28-1) arg0))
           (if (not s2-1)
-              (set! (-> self state-flags) (logand -9 (-> self state-flags)))
+              (logclear! (-> self state-flags) (state-flags sf03))
               )
           (suspend)
           )
@@ -934,7 +933,7 @@
         )
       )
     (if (!= (-> self next-state name) 'target-death)
-        (set! (-> self state-flags) (logand -32777 (-> self state-flags)))
+        (logclear! (-> self state-flags) (state-flags sf03 sf15))
         )
     (target-exit)
     (none)
@@ -951,7 +950,7 @@
     )
   :code
   (behavior ((arg0 symbol) (arg1 attack-info))
-    (set! (-> self water flags) (logand -65537 (-> self water flags)))
+    (logclear! (-> self water flags) (water-flags wt16))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((gp-0 (-> self attack-info)))
       (let ((s5-0 (new 'stack-no-clear 'vector)))
@@ -996,7 +995,7 @@
               )
           )
         (when (= arg0 'attack)
-          (logior! (-> self state-flags) 8)
+          (logior! (-> self state-flags) (state-flags sf03))
           (set! (-> self game hit-time) (-> *display* base-frame-counter))
           (case (-> gp-0 mode)
             (('endlessfall)
@@ -1080,7 +1079,7 @@
     (none)
     )
   :post
-  (the-as (function none :behavior target) target-post)
+  target-post
   )
 
 (define *death-spool-array*
@@ -1139,7 +1138,7 @@
     (send-event *camera* 'joystick 0.0 -1.0)
     (TODO-RENAME-9 (-> self align))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
-      (when (zero? (logand (-> self align flags) 1))
+      (when (zero? (logand (-> self align flags) (align-flags algf00)))
         (vector-matrix*! s5-0 (the-as vector (-> self align delta)) (-> self control unknown-matrix01))
         (vector-float*! (-> self control transv) s5-0 (-> *display* frames-per-second))
         )
@@ -1195,7 +1194,7 @@
     )
   :exit
   (behavior ()
-    (set! (-> self state-flags) (logand -32777 (-> self state-flags)))
+    (logclear! (-> self state-flags) (state-flags sf03 sf15))
     (target-exit)
     (clear-pending-settings-from-process *setting-control* self 'process-mask)
     (clear-pending-settings-from-process *setting-control* self 'allow-progress)
@@ -1225,7 +1224,7 @@
     (set-setting! *setting-control* self 'process-mask 'set (the-as float 0.0) #x14a0000)
     (copy-settings-from-target! *setting-control*)
     (set! (-> self control transv quad) (the-as uint128 0))
-    (logior! (-> self state-flags) #x8000)
+    (logior! (-> self state-flags) (state-flags sf15))
     (case arg0
       (('none 'instant-death)
        )
@@ -1242,7 +1241,7 @@
        )
       (('drown 'drown-death)
        (sound-play-by-name (static-sound-name "death-drown") (new-sound-id) 1024 0 0 1 #t)
-       (set! (-> self water flags) (logand -17 (-> self water flags)))
+       (logclear! (-> self water flags) (water-flags wt04))
        (clear-collide-with-as (-> self control))
        (set! (-> self control unknown-surface00) *dive-mods*)
        (set! (-> self control dynam gravity-max) 6144.0)
@@ -1274,7 +1273,7 @@
          (when (if (and (nonzero? s5-1) (type-type? (-> s5-1 type) water-vol))
                    s5-1
                    )
-           (set! (-> self state-flags) (logior #x80000 (-> self state-flags)))
+           (set! (-> self state-flags) (logior (state-flags sf19) (-> self state-flags)))
            (set! (-> self alt-cam-pos y) (+ 4096.0 (-> self water height)))
            )
          )
@@ -1318,7 +1317,7 @@
        (sound-play-by-name (static-sound-name "death-fall") (new-sound-id) 1024 0 0 1 #t)
        (camera-change-to (the-as string cam-endlessfall) 30 #f)
        (set! (-> self control pat-ignore-mask unknown-bit) 1)
-       (set! (-> self water flags) (logand -17 (-> self water flags)))
+       (logclear! (-> self water flags) (water-flags wt04))
        (let ((f30-2 (fmin -4096.0 (- (-> self control ground-impact-vel)))))
          (set! (-> self control unknown-uint20) (the-as uint f30-2))
          (let ((gp-11 (new-stack-vector0)))
@@ -1500,7 +1499,7 @@
           (set-setting! *setting-control* self 'allow-progress #f (the-as float 0.0) 0)
           (target-death-anim gp-18)
           (when (and (< (rand-vu-int-count (-> *game-info* death-movie-tick)) (* (-> *death-spool-array* length) 2))
-                     (zero? (logand (-> self water flags) 512))
+                     (zero? (logand (-> self water flags) (water-flags wt09)))
                      (!= (-> self control ground-pat material) 9)
                      (!= (-> self control ground-pat material) 10)
                      )

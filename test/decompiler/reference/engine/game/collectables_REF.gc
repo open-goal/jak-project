@@ -200,60 +200,28 @@
      (set! (-> obj collect-effect) (-> *part-group-id-table* 68))
      (set! (-> obj collect-effect2) (-> *part-group-id-table* 57))
      (set! (-> obj collect-effect-time) (seconds 0.5))
-     (set! (-> obj sound-name) (new 'static 'sound-spec
-                                 :mask #x80
-                                 :num 1.0
-                                 :group #x1
-                                 :sound-name (static-sound-name "yel-eco-idle")
-                                 :volume #x400
-                                 :fo-max 15
-                                 )
-           )
+     (set! (-> obj sound-name) (static-sound-spec "yel-eco-idle" :fo-max 15))
      )
     (((pickup-type eco-red))
      (set! (-> obj eco-effect) (-> *part-group-id-table* 48))
      (set! (-> obj collect-effect) (-> *part-group-id-table* 69))
      (set! (-> obj collect-effect2) (-> *part-group-id-table* 49))
      (set! (-> obj collect-effect-time) (seconds 0.5))
-     (set! (-> obj sound-name) (new 'static 'sound-spec
-                                 :mask #x80
-                                 :num 1.0
-                                 :group #x1
-                                 :sound-name (static-sound-name "red-eco-idle")
-                                 :volume #x400
-                                 :fo-max 15
-                                 )
-           )
+     (set! (-> obj sound-name) (static-sound-spec "red-eco-idle" :fo-max 15))
      )
     (((pickup-type eco-blue))
      (set! (-> obj eco-effect) (-> *part-group-id-table* 42))
      (set! (-> obj collect-effect) (-> *part-group-id-table* 67))
      (set! (-> obj collect-effect2) (-> *part-group-id-table* 43))
      (set! (-> obj collect-effect-time) (seconds 0.5))
-     (set! (-> obj sound-name) (new 'static 'sound-spec
-                                 :mask #x80
-                                 :num 1.0
-                                 :group #x1
-                                 :sound-name (static-sound-name "blue-eco-idle")
-                                 :volume #x400
-                                 :fo-max 15
-                                 )
-           )
+     (set! (-> obj sound-name) (static-sound-spec "blue-eco-idle" :fo-max 15))
      )
     (((pickup-type eco-green))
      (set! (-> obj eco-effect) (-> *part-group-id-table* 58))
      (set! (-> obj collect-effect) (-> *part-group-id-table* 66))
      (set! (-> obj collect-effect2) (-> *part-group-id-table* 61))
      (set! (-> obj collect-effect-time) (seconds 0.5))
-     (set! (-> obj sound-name) (new 'static 'sound-spec
-                                 :mask #x80
-                                 :num 1.0
-                                 :group #x1
-                                 :sound-name (static-sound-name "green-eco-idle")
-                                 :volume #x400
-                                 :fo-max 15
-                                 )
-           )
+     (set! (-> obj sound-name) (static-sound-spec "green-eco-idle" :fo-max 15))
      )
     (((pickup-type eco-pill))
      (set! (-> obj eco-effect) (-> *part-group-id-table* 59))
@@ -681,7 +649,7 @@
                 (logclear! (-> self mask) (process-mask actor-pause))
                 (set! (-> self actor-pause) #f)
                 (logior! (-> self flags) (collectable-flags fading))
-                (logior! (-> self state-flags) 1)
+                (logior! (-> self state-flags) (state-flags sf00))
                 (set! (-> gp-0 fade) (* 0.0033333334 (the float v1-10)))
                 )
               )
@@ -1664,7 +1632,7 @@
                          (not *progress-process*)
                          (!= (-> self next-state name) 'pickup)
                          *target*
-                         (zero? (logand (-> *target* state-flags) #x8100))
+                         (zero? (logand (-> *target* state-flags) (state-flags sf08 sf15)))
                          )
                     )
                )
@@ -1810,13 +1778,12 @@
         (set! (-> self state-object) #f)
         (kill-and-free-particles (-> self part))
         (logior! (-> self draw status) (draw-status skip-bones))
-        (if (not
-              (or (logtest? (the-as int (res-lump-value (-> self entity) 'options uint128 :time (the-as float -1000000000.0)))
-                            4096
-                            )
-                  (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-9)))
-                  )
-              )
+        (if (not (or (logtest? (res-lump-value (-> self entity) 'options fact-options :time (the-as float -1000000000.0))
+                               (fact-options powerup)
+                               )
+                     (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-9)))
+                     )
+                 )
             (send-event *camera* 'teleport-to-other-start-string)
             )
         )
@@ -2257,19 +2224,8 @@
   (set! (-> obj base quad) (-> obj root-override trans quad))
   (set! (-> obj old-base quad) (-> obj root-override trans quad))
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 63) obj))
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "powercell-idle")
-                           :volume #x400
-                           :fo-max 40
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "powercell-idle" :fo-max 40) (-> obj root-override trans))
         )
   (set! (-> obj victory-anim) (fuel-cell-pick-anim obj))
   obj
@@ -2318,11 +2274,10 @@
        (go-virtual jump)
        )
       ((and gp-1
-            (zero?
-              (logand (the-as int (res-lump-value (-> self entity) 'options uint128 :time (the-as float -1000000000.0)))
-                      128
-                      )
-              )
+            (zero? (logand (res-lump-value (-> self entity) 'options fact-options :time (the-as float -1000000000.0))
+                           (fact-options fop7)
+                           )
+                   )
             (zero? (logand (-> self fact options) (fact-options fop7)))
             )
        (set! (-> self jump-pos quad) (-> (the-as vector gp-1) quad))
@@ -2636,19 +2591,8 @@
   (set! (-> obj fact) (new 'process 'fact-info obj (pickup-type buzzer) (the-as float 0.0)))
   (initialize-skeleton obj *buzzer-sg* '())
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 65) obj))
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "buzzer")
-                           :volume #x400
-                           :fo-max 40
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "buzzer" :fo-max 40) (-> obj root-override trans))
         )
   (set! (-> obj victory-anim) (fuel-cell-pick-anim obj))
   obj

@@ -80,9 +80,10 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod common-post nav-enemy ((obj nav-enemy))
   (when (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf8))
-             (or (not *target*) (and (zero? (logand (-> *target* state-flags) #x80f8))
-                                     (>= (- (-> *display* base-frame-counter) (-> obj touch-time)) (seconds 0.05))
-                                     )
+             (or (not *target*)
+                 (and (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+                      (>= (- (-> *display* base-frame-counter) (-> obj touch-time)) (seconds 0.05))
+                      )
                  )
              )
     (set-collide-offense (-> obj collide-info) 2 (collide-offense touch))
@@ -536,13 +537,16 @@ nav-enemy-default-event-handler
 ;; definition for function nav-enemy-player-vulnerable?
 ;; INFO: Return type mismatch basic vs symbol.
 (defun nav-enemy-player-vulnerable? ()
-  (the-as symbol (and *target* (zero? (logand (-> *target* state-flags) #x80f8))))
+  (the-as
+    symbol
+    (and *target* (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15))))
+    )
   )
 
 ;; definition for method 46 of type nav-enemy
 (defmethod TODO-RENAME-46 nav-enemy ((obj nav-enemy) (arg0 float))
   (and *target*
-       (zero? (logand (-> *target* state-flags) #x80f8))
+       (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
        (and (or (zero? (logand (-> obj nav-enemy-flags) (nav-enemy-flags navenmf12)))
                 (< (vector-vector-distance (target-pos 0) (-> obj collide-info trans)) arg0)
                 )
@@ -725,14 +729,14 @@ nav-enemy-default-event-handler
         (set! (-> v1-14 frame-num) 0.0)
         )
       (set! (-> self state-time) (-> *display* base-frame-counter))
-      (set! (-> self collide-info status) (logand -8 (-> self collide-info status)))
+      (logclear! (-> self collide-info status) (cshape-moving-flags onsurf onground tsurf))
       (until (ja-done? 0)
         (cond
           ((nonzero? (-> self align))
            (when (not s4-1)
              (TODO-RENAME-9 (-> self align))
              (TODO-RENAME-10 (-> self align) 4098 1.0 arg1 1.0)
-             (when (zero? (logand (-> self align flags) 1))
+             (when (zero? (logand (-> self align flags) (align-flags algf00)))
                (let ((f0-6 (* (- (-> self align delta trans z)) (-> *display* frames-per-second))))
                  (set! (-> self collide-info transv x) (* (-> self hit-from-dir x) f0-6))
                  (set! (-> self collide-info transv z) (* (-> self hit-from-dir z) f0-6))
@@ -1306,7 +1310,7 @@ nav-enemy-default-event-handler
     )
   :trans
   (behavior ()
-    (if (logtest? (-> *target* state-flags) 128)
+    (if (logtest? (-> *target* state-flags) (state-flags sf07))
         (go-virtual nav-enemy-patrol)
         )
     (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
@@ -1396,7 +1400,7 @@ nav-enemy-default-event-handler
   :trans
   (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
-      (if (logtest? (-> *target* state-flags) 128)
+      (if (logtest? (-> *target* state-flags) (state-flags sf07))
           (go-virtual nav-enemy-patrol)
           )
       (if (and (TODO-RENAME-46 self (-> self nav-info notice-distance)) (not (nav-enemy-frustrated?)))
@@ -1474,7 +1478,7 @@ nav-enemy-default-event-handler
   :trans
   (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
-      (if (logtest? (-> *target* state-flags) 128)
+      (if (logtest? (-> *target* state-flags) (state-flags sf07))
           (go-virtual nav-enemy-patrol)
           )
       (cond
@@ -1489,16 +1493,15 @@ nav-enemy-default-event-handler
           (set! (-> self notice-time) (-> *display* base-frame-counter))
           )
         )
-      (when (not
-              (or (and *target* (>= 40960.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
-                  (and (-> self nav-info use-proximity-notice)
-                       *target*
-                       (>= (-> self nav-info proximity-notice-distance)
-                           (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
-                           )
-                       )
-                  )
-              )
+      (when (not (or (and *target* (>= 40960.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
+                     (and (-> self nav-info use-proximity-notice)
+                          *target*
+                          (>= (-> self nav-info proximity-notice-distance)
+                              (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                              )
+                          )
+                     )
+                 )
         (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
         (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
             (go-virtual nav-enemy-give-up)
@@ -1808,7 +1811,7 @@ nav-enemy-default-event-handler
         )
       )
     )
-  (set! (-> self collide-info status) (logand -8 (-> self collide-info status)))
+  (logclear! (-> self collide-info status) (cshape-moving-flags onsurf onground tsurf))
   (set! (-> self jump-time) (-> *display* base-frame-counter))
   (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
   (cond

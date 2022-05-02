@@ -198,8 +198,9 @@ void break_list(Node* node) {
   node->top_line_count = 1;
 
   const std::unordered_set<std::string> sameline_splitters = {
-      "if", "<",   ">",  "<=",  ">=", "set!",   "=",      "!=",     "+",  "-",  "*",
-      "/",  "the", "->", "and", "or", "logand", "logior", "logxor", "+!", "*!", "logtest?"};
+      "if",     "<",  ">",  "<=",       ">=",  "set!",  "=",       "!=",     "+",
+      "-",      "*",  "/",  "the",      "->",  "and",   "or",      "logand", "logior",
+      "logxor", "+!", "*!", "logtest?", "not", "zero?", "nonzero?"};
 
   if (node->child_nodes.at(0).kind == Node::Kind::LIST) {
     // ((foo

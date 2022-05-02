@@ -416,8 +416,8 @@
 
 ;; definition for method 31 of type mother-spider
 (defmethod is-player-stuck? mother-spider ((obj mother-spider))
-  (when (and *target* (not (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                                (zero? (logand (-> *target* control status) 1))
+  (when (and *target* (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+                                (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
                                 )
                            )
              )
@@ -467,7 +467,7 @@
               0.0
               )
           (let ((v1-11 (-> obj draw shadow-ctrl)))
-            (set! (-> v1-11 settings flags) (logand -33 (-> v1-11 settings flags)))
+            (logclear! (-> v1-11 settings flags) (shadow-flags shdf05))
             )
           0
           (let ((v1-14 (-> obj draw shadow-ctrl)))
@@ -488,7 +488,7 @@
           )
          (else
            (let ((v1-23 (-> obj draw shadow-ctrl)))
-             (logior! (-> v1-23 settings flags) 32)
+             (logior! (-> v1-23 settings flags) (shadow-flags shdf05))
              )
            0
            )
@@ -497,7 +497,7 @@
      )
     (else
       (let ((v1-25 (-> obj draw shadow-ctrl)))
-        (logior! (-> v1-25 settings flags) 32)
+        (logior! (-> v1-25 settings flags) (shadow-flags shdf05))
         )
       0
       )
@@ -875,7 +875,7 @@
   :enter
   (behavior ()
     (let ((v1-1 (-> self draw shadow-ctrl)))
-      (logior! (-> v1-1 settings flags) 32)
+      (logior! (-> v1-1 settings flags) (shadow-flags shdf05))
       )
     0
     (set! (-> self mode) (the-as uint 0))
@@ -1149,7 +1149,9 @@
         )
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (vector<-cspace! gp-0 (-> self node-list data 6))
-      (if (or (logtest? (-> *target* state-flags) #x80f8) (< (vector-vector-distance gp-0 (camera-pos)) 8192.0))
+      (if (or (logtest? (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15))
+              (< (vector-vector-distance gp-0 (camera-pos)) 8192.0)
+              )
           (go mother-spider-traveling (the-as uint 2))
           )
       )
@@ -1165,8 +1167,8 @@
             )
         )
       )
-    (if (or (not *target*) (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                                (zero? (logand (-> *target* control status) 1))
+    (if (or (not *target*) (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+                                (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
                                 )
             )
         (set! (-> self last-player-in-air-time) (-> *display* base-frame-counter))
@@ -1428,14 +1430,14 @@
         (go mother-spider-traveling (the-as uint 0))
         )
     (if (and (>= (- (-> *display* base-frame-counter) (-> self started-birthing-time)) (seconds 6))
-             (zero? (logand (-> *target* state-flags) #x80f8))
+             (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
              )
         (go mother-spider-traveling (the-as uint 1))
         )
     (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.25))
              (> (-> self birthing-counter) 0)
              (and (>= 49152.0 (- (-> self max-dist-from-anchor) (-> self dist-from-anchor)))
-                  (zero? (logand (-> *target* state-flags) #x80f8))
+                  (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
                   (TODO-RENAME-21 (-> self nav) (-> self root-override trans))
                   )
              )

@@ -228,19 +228,8 @@
     )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *cavecrusher-sg* '())
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "crush-click")
-                           :volume #x400
-                           :fo-max 30
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "crush-click" :fo-max 30) (-> obj root-override trans))
         )
   (ja-channel-push! 1 0)
   (let ((s5-1 (-> obj skel root-channel 0)))
@@ -388,8 +377,8 @@
     (until (or (or (not *target*)
                    (< 28672.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
                    )
-               (and (not (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                              (zero? (logand (-> *target* control status) 1))
+               (and (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+                              (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
                               )
                          )
                     (zero? (logand (-> *target* control root-prim prim-core action) (collide-action ca-7)))
@@ -425,8 +414,8 @@
       )
     (until (ja-done? 0)
       (when (and (and *target* (>= 28672.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
-                 (or (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                          (zero? (logand (-> *target* control status) 1))
+                 (or (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+                          (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
                           )
                      (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-7))
                      )
@@ -944,20 +933,7 @@
     )
   (process-drawable-from-entity! obj arg0)
   (set! (-> obj sound)
-        (new
-          'process
-          'ambient-sound
-          (new 'static 'sound-spec
-            :mask #xc0
-            :num 1.0
-            :group #x1
-            :sound-name (static-sound-name "spatula")
-            :volume #x400
-            :fo-min 25
-            :fo-max 50
-            )
-          (-> obj root-override trans)
-          )
+        (new 'process 'ambient-sound (static-sound-spec "spatula" :fo-min 25 :fo-max 50) (-> obj root-override trans))
         )
   (case (-> (if (-> obj entity)
                 (-> obj entity extra level)
@@ -1100,20 +1076,8 @@
     (set! (-> s5-1 frame-num) 0.0)
     )
   (transform-post)
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #xc0
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "spatula")
-                           :volume #x400
-                           :fo-min 25
-                           :fo-max 50
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "spatula" :fo-min 25 :fo-max 50) (-> obj root-override trans))
         )
   (go cavespatulatwo-idle)
   (none)
