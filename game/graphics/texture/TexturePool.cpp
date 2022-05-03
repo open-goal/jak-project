@@ -54,10 +54,7 @@ GpuTexture* TexturePool::give_texture(const TextureInput& in) {
   const auto existing = m_loaded_textures.lookup_or_insert(in.id);
   if (!existing.second) {
     // nothing references this texture yet.
-    // GpuTexture gtex(in.id);
     existing.first->tex_id = in.id;
-    //    existing.first->page_name = in.page_name;
-    //    existing.first->name = in.name;
     existing.first->w = in.w;
     existing.first->h = in.h;
     existing.first->is_common = in.common;
@@ -68,20 +65,12 @@ GpuTexture* TexturePool::give_texture(const TextureInput& in) {
     return existing.first;
   } else {
     if (!existing.first->is_placeholder) {
-      fmt::print("double tex\n");
-      //      fmt::print(
-      //          "[tex2] loader providing {}, but we already have an entry for it {} common? {}
-      //          mine "
-      //          "{}x{} 0x{:x} new {}x{} 0x{:x}.\n",
-      //          in.name, it->second.name, it->second.is_common, in.w, in.h, in.combo_id,
-      //          it->second.w, it->second.h, it->second.combo_id);
+      // two sources for texture. this is fine.
       ASSERT(!existing.first->gpu_textures.empty());
     } else {
       ASSERT(existing.first->gpu_textures.empty());
     }
     existing.first->is_placeholder = false;
-    //    existing.first->page_name = in.page_name;
-    //    existing.first->name = in.name;
     existing.first->w = in.w;
     existing.first->h = in.h;
     existing.first->gpu_textures.push_back({in.gpu_texture, in.src_data});
