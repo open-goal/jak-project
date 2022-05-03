@@ -78,12 +78,6 @@ struct PcTextureId {
   static PcTextureId from_combo_id(u32 val) { return PcTextureId(val >> 16, val & 0xffff); }
 
   bool operator==(const PcTextureId& other) const { return page == other.page && tex == other.tex; }
-
-  //  static PcTextureId from_goal_tex_id(u32 val) {
-  //    // (index  uint16 :offset 8  :size 12) ;; index of texture in its tpage
-  //    // (page   uint16 :offset 20 :size 12) ;; tpage number
-  //    return PcTextureId((val >> 20) & 0xfff, (val >> 8) & 0xfff);
-  //  }
 };
 
 template <typename T>
@@ -375,7 +369,6 @@ class TexturePool {
   std::vector<u32> m_placeholder_data;
   u64 m_placeholder_texture_id = 0;
 
-  // std::unordered_map<std::string, GpuTexture> m_loaded_textures;
   TextureMap<GpuTexture> m_loaded_textures;
 
   // we maintain a mapping of all textures/ids we've seen so far.
