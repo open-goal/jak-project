@@ -24,8 +24,9 @@ void EyeRenderer::init_textures(TexturePool& texture_pool) {
         in.gpu_texture = gl_tex;
         in.w = 32;
         in.h = 32;
-        in.page_name = "PC-EYES";
-        in.name = fmt::format("{}-eye-cpu-{}", lr ? "left" : "right", pair_idx);
+        in.debug_page_name = "PC-EYES";
+        in.debug_name = fmt::format("{}-eye-cpu-{}", lr ? "left" : "right", pair_idx);
+        in.id = texture_pool.allocate_pc_port_texture();
         auto* gpu_tex = texture_pool.give_texture_and_load_to_vram(in, tbp);
         m_cpu_eye_textures[tidx] = {gl_tex, gpu_tex, tbp};
       }
@@ -37,8 +38,9 @@ void EyeRenderer::init_textures(TexturePool& texture_pool) {
         in.gpu_texture = m_gpu_eye_textures[tidx].fb.texture();
         in.w = 32;
         in.h = 32;
-        in.page_name = "PC-EYES";
-        in.name = fmt::format("{}-eye-gpu-{}", lr ? "left" : "right", pair_idx);
+        in.debug_page_name = "PC-EYES";
+        in.debug_name = fmt::format("{}-eye-gpu-{}", lr ? "left" : "right", pair_idx);
+        in.id = texture_pool.allocate_pc_port_texture();
         m_gpu_eye_textures[tidx].gpu_tex = texture_pool.give_texture_and_load_to_vram(in, tbp);
         m_gpu_eye_textures[tidx].tbp = tbp;
       }

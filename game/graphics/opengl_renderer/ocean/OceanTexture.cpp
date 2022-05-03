@@ -56,8 +56,9 @@ void OceanTexture::init_textures(TexturePool& pool) {
   in.gpu_texture = m_result_texture.texture();
   in.w = TEX0_SIZE;
   in.h = TEX0_SIZE;
-  in.page_name = "PC-OCEAN";
-  in.name = fmt::format("pc-ocean-mip-{}", m_generate_mipmaps);
+  in.debug_page_name = "PC-OCEAN";
+  in.debug_name = fmt::format("pc-ocean-mip-{}", m_generate_mipmaps);
+  in.id = pool.allocate_pc_port_texture();
   m_tex0_gpu = pool.give_texture_and_load_to_vram(in, OCEAN_TEX_TBP);
 }
 

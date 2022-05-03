@@ -37,12 +37,10 @@ struct SharedRenderState {
   bool use_sky_cpu = true;
   bool use_occlusion_culling = true;
   bool enable_merc_xgkick = true;
-  bool enable_generic_xgkick = true;
   bool use_direct2 = true;
   math::Vector<u8, 4> fog_color;
   float fog_intensity = 1.f;
   bool no_multidraw = true;
-  bool render_collision_mesh = true;
 
   void reset();
   bool has_pc_data = false;

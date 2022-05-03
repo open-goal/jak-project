@@ -123,8 +123,10 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::EndMenu();
     }
 
-    if (ImGui::BeginMenu("Reboot in Debug Mode")) {
-      want_reboot_in_debug = true;
+    if (ImGui::BeginMenu("Debug Mode")) {
+      if (ImGui::MenuItem("Reboot now!")) {
+        want_reboot_in_debug = true;
+      }
       ImGui::EndMenu();
     }
   }

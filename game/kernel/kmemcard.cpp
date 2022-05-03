@@ -344,12 +344,12 @@ void pc_game_load_open_file(FILE* fd) {
       mc_print("closing save file..");
       if (fclose(fd) == 0) {
         // cb_closedload //
-        p2++;
         // added : check if aux bank exists
-        auto new_bankname = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p2];
-        bool aux_exists = std::filesystem::exists(new_bankname);
-        if (p2 < 2 && aux_exists) {
+        if (p2 < 1 && std::filesystem::exists(file_util::get_user_memcard_dir() /
+                                              filename[op.param2 * 2 + 4 + p2 + 1])) {
+          p2++;
           mc_print("reading next save bank {}", filename[op.param2 * 2 + 4 + p2]);
+          auto new_bankname = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p2];
           auto new_fd = fopen(new_bankname.string().c_str(), "rb");
           pc_game_load_open_file(new_fd);
         } else {
@@ -365,7 +365,7 @@ void pc_game_load_open_file(FILE* fd) {
               (McHeader*)(op.data_ptr.c() + BANK_TOTAL_SIZE + sizeof(McHeader) + BANK_SIZE);
           static_assert(BANK_TOTAL_SIZE * 2 == 0x21000, "save layout");
           ok[0] = true;
-          ok[1] = aux_exists;
+          ok[1] = p2 == 1;
 
           for (int idx = 0; idx < 2; idx++) {
             u32 expected_save_count = headers[idx]->save_count;
