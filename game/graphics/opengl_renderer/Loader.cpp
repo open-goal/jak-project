@@ -192,13 +192,13 @@ u64 Loader::add_texture(TexturePool& pool, const tfrag3::Texture& tex, bool is_c
   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
   if (tex.load_to_pool) {
     TextureInput in;
-    in.page_name = tex.debug_tpage_name;
-    in.name = tex.debug_name;
+    in.debug_page_name = tex.debug_tpage_name;
+    in.debug_name = tex.debug_name;
     in.w = tex.w;
     in.h = tex.h;
     in.gpu_texture = gl_tex;
     in.common = is_common;
-    in.combo_id = tex.combo_id;
+    in.id = PcTextureId::from_combo_id(tex.combo_id);
     in.src_data = (const u8*)tex.data.data();
     pool.give_texture(in);
   }
@@ -632,7 +632,8 @@ void Loader::update(TexturePool& texture_pool) {
           for (size_t i = 0; i < lev.second.data.level->textures.size(); i++) {
             auto& tex = lev.second.data.level->textures[i];
             if (tex.load_to_pool) {
-              texture_pool.unload_texture(tex.debug_name, lev.second.data.textures.at(i));
+              texture_pool.unload_texture(PcTextureId::from_combo_id(tex.combo_id),
+                                          lev.second.data.textures.at(i));
             }
           }
           lk.unlock();

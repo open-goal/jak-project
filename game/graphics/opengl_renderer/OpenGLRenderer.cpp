@@ -110,7 +110,7 @@ void OpenGLRenderer::init_bucket_renderers() {
                                      BucketId::MERC_TFRAG_TEX_LEVEL0);
   // 11 : GMERC_TFRAG_TEX_LEVEL0
   init_bucket_renderer<Generic2>("l0-tfrag-generic", BucketCategory::GENERIC,
-                                 BucketId::GENERIC_TFRAG_TEX_LEVEL0);
+                                 BucketId::GENERIC_TFRAG_TEX_LEVEL0, 1500000, 10000, 10000, 800);
 
   //-----------------------
   // LEVEL 1 tfrag texture
@@ -130,7 +130,7 @@ void OpenGLRenderer::init_bucket_renderers() {
                                      BucketId::MERC_TFRAG_TEX_LEVEL1);
   // 18 : GMERC_TFRAG_TEX_LEVEL1
   init_bucket_renderer<Generic2>("l1-tfrag-generic", BucketCategory::GENERIC,
-                                 BucketId::GENERIC_TFRAG_TEX_LEVEL1);
+                                 BucketId::GENERIC_TFRAG_TEX_LEVEL1, 1500000, 10000, 10000, 800);
 
   //-----------------------
   // LEVEL 0 shrub texture
@@ -366,12 +366,10 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Begin("Renderer Debug");
 
   ImGui::Checkbox("Use old single-draw", &m_render_state.no_multidraw);
-  ImGui::Checkbox("Render collision mesh", &m_render_state.render_collision_mesh);
   ImGui::SliderFloat("Fog Adjust", &m_render_state.fog_intensity, 0, 10);
   ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
   ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);
   ImGui::Checkbox("Merc XGKICK", &m_render_state.enable_merc_xgkick);
-  ImGui::Checkbox("Generic XGKICK", &m_render_state.enable_generic_xgkick);
   ImGui::Checkbox("Blackout Loads", &m_enable_fast_blackout_loads);
   ImGui::Checkbox("Direct 2", &m_render_state.use_direct2);
 
@@ -458,7 +456,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
 
     // hack to draw the collision mesh in the middle the drawing
-    if (bucket_id == (int)BucketId::ALPHA_TEX_LEVEL0 - 1 && m_render_state.render_collision_mesh &&
+    if (bucket_id == (int)BucketId::ALPHA_TEX_LEVEL0 - 1 &&
         Gfx::g_global_settings.collision_enable) {
       auto p = prof.make_scoped_child("collision-draw");
       m_collide_renderer.render(&m_render_state, p);

@@ -194,7 +194,8 @@ void SkyBlendCPU::init_textures(TexturePool& tex_pool) {
     in.gpu_texture = m_textures[i].gl;
     in.w = m_sizes[i];
     in.h = m_sizes[i];
-    in.name = fmt::format("PC-SKY-CPU-{}", i);
+    in.debug_name = fmt::format("PC-SKY-CPU-{}", i);
+    in.id = tex_pool.allocate_pc_port_texture();
     u32 tbp = SKY_TEXTURE_VRAM_ADDRS[i];
     m_textures[i].tex = tex_pool.give_texture_and_load_to_vram(in, tbp);
     m_textures[i].tbp = tbp;
