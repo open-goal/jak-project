@@ -59,6 +59,8 @@ class ObjectFileDB {
   void process_labels();
   void find_code(const Config& config);
   void find_and_write_scripts(const std::string& output_dir);
+  void extract_art_info();
+  void dump_art_info(const std::string& output_dir);
   void dump_raw_objects(const std::string& output_dir);
 
   void write_object_file_words(const std::string& output_dir, bool dump_data, bool dump_code);
@@ -67,7 +69,6 @@ class ObjectFileDB {
                          bool disassemble_code,
                          bool print_hex);
 
-  void analyze_functions_ir1(const Config& config);
   void analyze_functions_ir2(
       const std::string& output_dir,
       const Config& config,
@@ -205,6 +206,8 @@ class ObjectFileDB {
 
   std::vector<std::string> obj_file_order;
   std::unordered_map<std::string, std::unordered_map<std::string, std::string>> dgo_obj_name_map;
+
+  std::unordered_map<std::string, std::unordered_map<int, std::string>> art_group_info;
 
   SymbolMapBuilder map_builder;
 

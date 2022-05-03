@@ -99,6 +99,7 @@ struct Config {
   bool process_tpages = false;
   bool process_game_text = false;
   bool process_game_count = false;
+  bool process_art_groups = false;
   bool rip_levels = false;
   bool extract_collision = false;
 
