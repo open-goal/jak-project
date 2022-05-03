@@ -860,7 +860,7 @@ nav-enemy-default-event-handler
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 22)
+    (ja-channel-push! 1 (seconds 0.07333333))
     (let ((v1-2 (-> self skel root-channel 0)))
       (set! (-> v1-2 frame-group)
             (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim)))
@@ -987,7 +987,7 @@ nav-enemy-default-event-handler
             (set! (-> a0-5 param 0) 1.0)
             (joint-control-channel-group! a0-5 (the-as art-joint-anim #f) num-func-loop!)
             )
-          (ja-channel-push! 1 180)
+          (ja-channel-push! 1 (seconds 0.6))
           (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
           (let ((a0-8 (-> self skel root-channel 0)))
             (set! (-> a0-8 frame-group)
@@ -1047,7 +1047,7 @@ nav-enemy-default-event-handler
             (set! (-> a0-15 param 0) 1.0)
             (joint-control-channel-group! a0-15 (the-as art-joint-anim #f) num-func-loop!)
             )
-          (ja-channel-push! 1 180)
+          (ja-channel-push! 1 (seconds 0.6))
           (let ((a0-17 (-> self skel root-channel 0)))
             (set! (-> a0-17 frame-group)
                   (the-as art-joint-anim (-> self draw art-group data (-> self nav-info walk-anim)))
@@ -1111,7 +1111,7 @@ nav-enemy-default-event-handler
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 22)
+    (ja-channel-push! 1 (seconds 0.07333333))
     (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
       (let ((a0-2 (-> self skel root-channel 0)))
         (set! (-> a0-2 frame-group)
@@ -1154,11 +1154,7 @@ nav-enemy-default-event-handler
 
 ;; definition for function ja-group-index?
 (defbehavior ja-group-index? nav-enemy ((arg0 int))
-  (= (if (> (-> self skel active-channels) 0)
-         (-> self skel root-channel 0 frame-group)
-         )
-     (-> self draw art-group data arg0)
-     )
+  (ja-group? arg0)
   )
 
 ;; failed to figure out what this is:
@@ -1199,7 +1195,7 @@ nav-enemy-default-event-handler
   :code
   (behavior ()
     (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
-      (ja-channel-push! 1 60)
+      (ja-channel-push! 1 (seconds 0.2))
       (let ((a0-2 (-> self skel root-channel 0)))
         (set! (-> a0-2 frame-group)
               (the-as art-joint-anim (-> self draw art-group data (-> self nav-info notice-anim)))
@@ -1225,7 +1221,7 @@ nav-enemy-default-event-handler
           (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
           )
         )
-      (ja-channel-push! 1 60)
+      (ja-channel-push! 1 (seconds 0.2))
       (while #t
         (let ((a0-6 (-> self skel root-channel 0)))
           (set! (-> a0-6 frame-group)
@@ -1349,7 +1345,7 @@ nav-enemy-default-event-handler
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 60)
+    (ja-channel-push! 1 (seconds 0.2))
     (let ((v1-2 (-> self skel root-channel 0)))
       (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data (-> self nav-info run-anim))))
       )
@@ -1420,7 +1416,7 @@ nav-enemy-default-event-handler
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 30)
+    (ja-channel-push! 1 (seconds 0.1))
     (let ((v1-2 (-> self skel root-channel 0)))
       (set! (-> v1-2 frame-group)
             (the-as art-joint-anim (-> self draw art-group data (-> self nav-info walk-anim)))
@@ -1592,7 +1588,7 @@ nav-enemy-default-event-handler
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 22)
+    (ja-channel-push! 1 (seconds 0.07333333))
     (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
       (let ((a0-2 (-> self skel root-channel 0)))
         (set! (-> a0-2 frame-group)
@@ -1644,7 +1640,7 @@ nav-enemy-default-event-handler
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 22)
+    (ja-channel-push! 1 (seconds 0.07333333))
     (clear-collide-with-as (-> self collide-info))
     (nav-enemy-fall-and-play-death-anim
       (the-as art-joint-anim (-> self draw art-group data (-> self nav-info die-anim)))
@@ -1792,7 +1788,7 @@ nav-enemy-default-event-handler
       (set! (-> a0-1 param 0) 1.0)
       (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
       )
-    (ja-channel-push! 1 30)
+    (ja-channel-push! 1 (seconds 0.1))
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
     (let ((s3-0 (-> self skel root-channel 0)))
       (set! (-> s3-0 frame-group) (the-as art-joint-anim (-> self draw art-group data arg0)))
@@ -1817,18 +1813,14 @@ nav-enemy-default-event-handler
   (cond
     ((logtest? (-> self nav-enemy-flags) (nav-enemy-flags drop-jump))
      (cond
-       ((= (if (> (-> self skel active-channels) 0)
-               (-> self skel root-channel 0 frame-group)
-               )
-           (-> self draw art-group data (-> self nav-info run-anim))
-           )
+       ((ja-group? (-> self nav-info run-anim))
         )
        (else
          (let ((a0-22 (-> self skel root-channel 0)))
            (set! (-> a0-22 param 0) 1.0)
            (joint-control-channel-group! a0-22 (the-as art-joint-anim #f) num-func-loop!)
            )
-         (ja-channel-push! 1 30)
+         (ja-channel-push! 1 (seconds 0.1))
          (let ((v1-39 (-> self skel root-channel 0)))
            (set! (-> v1-39 frame-group)
                  (the-as art-joint-anim (-> self draw art-group data (-> self nav-info run-anim)))
@@ -1846,7 +1838,7 @@ nav-enemy-default-event-handler
         (set! (-> a0-30 param 0) 1.0)
         (joint-control-channel-group! a0-30 (the-as art-joint-anim #f) num-func-loop!)
         )
-      (ja-channel-push! 1 30)
+      (ja-channel-push! 1 (seconds 0.1))
       (let ((v1-49 (-> self skel root-channel 0)))
         (set! (-> v1-49 frame-group) (the-as art-joint-anim (-> self draw art-group data arg0)))
         )
@@ -1892,7 +1884,7 @@ nav-enemy-default-event-handler
     (set! (-> a0-0 param 1) 1.0)
     (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
     )
-  (ja-channel-push! 1 22)
+  (ja-channel-push! 1 (seconds 0.07333333))
   (let ((a0-2 (-> self skel root-channel 0)))
     (set! (-> a0-2 frame-group)
           (the-as art-joint-anim (-> self draw art-group data (-> self nav-info jump-land-anim)))
@@ -2076,13 +2068,8 @@ nav-enemy-default-event-handler
     )
   :code
   (behavior ()
-    (when (not (= (if (> (-> self skel active-channels) 0)
-                      (-> self skel root-channel 0 frame-group)
-                      )
-                  (-> self draw art-group data (-> self nav-info idle-anim))
-                  )
-               )
-      (ja-channel-push! 1 60)
+    (when (not (ja-group? (-> self nav-info idle-anim)))
+      (ja-channel-push! 1 (seconds 0.2))
       (let ((gp-0 (-> self skel root-channel 0)))
         (joint-control-channel-group-eval!
           gp-0
@@ -2131,7 +2118,7 @@ nav-enemy-default-event-handler
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf11))
-    (ja-channel-push! 1 30)
+    (ja-channel-push! 1 (seconds 0.1))
     (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
       (let ((v1-6 (-> self skel root-channel 0)))
         (set! (-> v1-6 frame-group)
@@ -2149,7 +2136,7 @@ nav-enemy-default-event-handler
           (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-loop!)
           )
         )
-      (ja-channel-push! 1 30)
+      (ja-channel-push! 1 (seconds 0.1))
       (nav-enemy-turn-to-face-point (-> self event-param-point) 910.2222)
       (let ((gp-0 (nav-enemy-rnd-int-range 0 150))
             (s5-0 (-> *display* base-frame-counter))
@@ -2193,7 +2180,7 @@ nav-enemy-default-event-handler
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
     (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
-      (ja-channel-push! 1 60)
+      (ja-channel-push! 1 (seconds 0.2))
       (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
       )
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
