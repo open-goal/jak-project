@@ -54,8 +54,11 @@ std::optional<std::string> ReplServer::get_msg() {
     }
   }
 
-  // Wait for activity on _something_
-  auto activity = select(max_sd + 1, &read_sockets, NULL, NULL, NULL);
+  // Wait for activity on _something_, with a timeout so we don't get stuck here on exit.
+  struct timeval timeout;
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 100000;
+  auto activity = select(max_sd + 1, &read_sockets, NULL, NULL, &timeout);
 
   if (activity < 0) {  // TODO - || error!
     return std::nullopt;

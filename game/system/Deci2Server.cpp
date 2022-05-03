@@ -29,6 +29,7 @@ Deci2Server::~Deci2Server() {
     accept_thread.join();
     accept_thread_running = false;
   }
+
   close_socket(accepted_socket);
 }
 
@@ -42,15 +43,14 @@ void Deci2Server::post_init() {
 void Deci2Server::accept_thread_func() {
   socklen_t addr_len = sizeof(addr);
   while (!kill_accept_thread) {
-    if (accepted_socket == -1) {
-      accepted_socket = accept_socket(listening_socket, (sockaddr*)&addr, &addr_len);
+    accepted_socket = accept_socket(listening_socket, (sockaddr*)&addr, &addr_len);
+    if (accepted_socket >= 0) {
       set_socket_timeout(accepted_socket, 100000);
       u32 versions[2] = {versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR};
-      write_to_socket(accepted_socket, (char*)&versions, 8);
+      write_to_socket(accepted_socket, (char*)&versions, 8);  // todo, check result?
       client_connected = true;
-      return;  // stop accepting connections
+      return;
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(50000));
   }
 }
 

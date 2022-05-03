@@ -33,7 +33,6 @@ class XSocketServer {
   std::vector<char> buffer;
 
   bool server_initialized = false;
-  bool client_connected = false;
 
   std::function<bool()> want_exit_callback;
 };

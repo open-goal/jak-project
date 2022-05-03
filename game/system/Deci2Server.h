@@ -37,5 +37,7 @@ class Deci2Server : public XSocketServer {
   std::thread accept_thread;
   std::mutex server_mutex;
 
+  bool client_connected = false;
+
   void accept_thread_func();
 };
