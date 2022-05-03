@@ -673,10 +673,10 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
     const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
     if (words.at(0).kind() == LinkedWord::Kind::TYPE_PTR &&
         words.at(0).symbol_name() == "art-group") {
-      fmt::print("art-group {}:\n", obj.to_unique_name());
+      // fmt::print("art-group {}:\n", obj.to_unique_name());
       auto name = obj.linked_data.get_goal_string_by_label(words.at(2).label_id());
       int length = words.at(3).data;
-      fmt::print("  length: {}\n", length);
+      // fmt::print("  length: {}\n", length);
       std::unordered_map<int, std::string> art_group_elts;
       for (int i = 0; i < length; ++i) {
         const auto& word = words.at(8 + i);
@@ -704,9 +704,9 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
               fmt::format("unknown art elt type {} in {}", elt_type, obj.to_unique_name()));
         }
         art_group_elts[i] = unique_name;
-        fmt::print("  {}: {} ({}) -> {}\n", i, elt_name, elt_type, unique_name);
+        // fmt::print("  {}: {} ({}) -> {}\n", i, elt_name, elt_type, unique_name);
       }
-      db.art_group_info[obj.to_unique_name()] = art_group_elts;
+      db.dts.art_group_info[obj.to_unique_name()] = art_group_elts;
     }
   }
 }
@@ -737,10 +737,10 @@ void ObjectFileDB::dump_art_info(const std::string& output_dir) {
   lg::info("Writing art group info...");
   Timer timer;
 
-  if (!art_group_info.empty()) {
+  if (!dts.art_group_info.empty()) {
     file_util::create_dir_if_needed(file_util::combine_path(output_dir, "import"));
   }
-  for (const auto& [ag_name, info] : art_group_info) {
+  for (const auto& [ag_name, info] : dts.art_group_info) {
     auto ag_fname = ag_name + ".gc";
     auto filename = file_util::get_file_path({output_dir, "import", ag_fname});
     std::string result = ";;-*-Lisp-*-\n";

@@ -226,6 +226,12 @@ Config read_config_file(const std::string& path_to_config_file,
   config.levels_to_extract = inputs_json.at("levels_to_extract").get<std::vector<std::string>>();
   config.levels_extract = cfg.at("levels_extract").get<bool>();
 
+  auto art_info_json = read_json_file_from_config(cfg, "art_info_file");
+  config.art_groups_by_file =
+      art_info_json.at("files").get<std::unordered_map<std::string, std::string>>();
+  config.art_groups_by_function =
+      art_info_json.at("functions").get<std::unordered_map<std::string, std::string>>();
+
   return config;
 }
 

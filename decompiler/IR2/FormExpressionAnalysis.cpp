@@ -2442,11 +2442,9 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
               GenericElement* inplace_call = nullptr;
 
               if (funcname == "seek" || funcname == "seekl") {
-                inplace_call =
-                    pool.form<GenericElement>(
-                            new_func_op, std::vector<Form*>{m_dst, src_as_generic->elts().at(1),
-                                                            src_as_generic->elts().at(2)})
-                        ->try_as_element<GenericElement>();
+                inplace_call = pool.alloc_element<GenericElement>(
+                    new_func_op, std::vector<Form*>{m_dst, src_as_generic->elts().at(1),
+                                                    src_as_generic->elts().at(2)});
               }
               ASSERT_MSG(
                   inplace_call,
@@ -4112,17 +4110,24 @@ FormElement* ConditionElement::make_equal_check_generic(const Env& env,
             if (channel_arg->to_form(env) ==
                 matcher_int_or_form_to_form(pool, mr1, 3)->to_form(env)) {
               // everything is good! check for default args, make the macro and get out.
+              auto group = matcher_int_or_form_to_form(pool, mr2, 1);
+              if (env.dts->art_group_info.find(env.art_group()) != env.dts->art_group_info.end() &&
+                  group->to_form(env).is_int()) {
+                const auto& art_info = env.dts->art_group_info.at(env.art_group());
+                auto group_int = group->to_form(env).as_int();
+                if (art_info.find(group_int) != art_info.end()) {
+                  group = pool.form<ConstantTokenElement>(art_info.at(group_int));
+                }
+              }
               std::vector<Form*> macro_args;
-              macro_args.push_back(matcher_int_or_form_to_form(pool, mr2, 1));
+              macro_args.push_back(group);
               if (channel_arg->to_form(env) != goos::Object::make_integer(0)) {
                 macro_args.push_back(pool.form<ConstantTokenElement>(":channel"));
                 macro_args.push_back(channel_arg);
               }
-              return pool
-                  .form<GenericElement>(
-                      GenericOperator::make_function(pool.form<ConstantTokenElement>("ja-group?")),
-                      macro_args)
-                  ->try_as_element<GenericElement>();
+              return pool.alloc_element<GenericElement>(
+                  GenericOperator::make_function(pool.form<ConstantTokenElement>("ja-group?")),
+                  macro_args);
             }
           }
         }

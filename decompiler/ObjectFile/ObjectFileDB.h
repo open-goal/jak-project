@@ -207,8 +207,6 @@ class ObjectFileDB {
   std::vector<std::string> obj_file_order;
   std::unordered_map<std::string, std::unordered_map<std::string, std::string>> dgo_obj_name_map;
 
-  std::unordered_map<std::string, std::unordered_map<int, std::string>> art_group_info;
-
   SymbolMapBuilder map_builder;
 
   struct {
