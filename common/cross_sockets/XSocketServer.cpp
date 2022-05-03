@@ -3,6 +3,7 @@
 #include "third-party/fmt/core.h"
 
 #include "common/cross_sockets/XSocket.h"
+#include "common/util/Assert.h"
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -21,7 +22,9 @@ XSocketServer::XSocketServer(std::function<bool()> shutdown_callback,
 }
 
 XSocketServer::~XSocketServer() {
-  shutdown_server();
+  if (listening_socket >= 0) {
+    close_server_socket();
+  }
 }
 
 void XSocketServer::shutdown_server() {
@@ -81,6 +84,7 @@ bool XSocketServer::init_server() {
 }
 
 void XSocketServer::close_server_socket() {
+  ASSERT(listening_socket >= 0);
   close_socket(listening_socket);
   listening_socket = -1;
 }
