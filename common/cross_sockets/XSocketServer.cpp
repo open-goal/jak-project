@@ -84,7 +84,7 @@ bool XSocketServer::init_server() {
 }
 
 void XSocketServer::close_server_socket() {
-  ASSERT(listening_socket >= 0);
+  // ASSERT(listening_socket >= 0);
   close_socket(listening_socket);
   listening_socket = -1;
 }
