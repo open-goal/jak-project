@@ -337,7 +337,6 @@ int main(int argc, char** argv) {
   app.add_flag("-p,--play", flag_play, "Play the game");
   app.add_flag("-f,--folder", flag_folder, "Extract from folder");
   app.validate_positionals();
-
   CLI11_PARSE(app, argc, argv);
 
   fmt::print("Working Directory - {}\n", std::filesystem::current_path().string());

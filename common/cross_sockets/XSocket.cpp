@@ -16,6 +16,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "third-party/fmt/core.h"
+
 int open_socket(int af, int type, int protocol) {
 #ifdef __linux
   return socket(af, type, protocol);
@@ -31,6 +33,26 @@ int open_socket(int af, int type, int protocol) {
   return socket(af, type, protocol);
 #endif
 }
+
+#ifdef __linux
+int accept_socket(int socket, sockaddr* addr, socklen_t* addrLen) {
+  return accept(socket, addr, addrLen);
+}
+#endif
+
+#ifdef _WIN32
+int accept_socket(int socket, sockaddr* addr, int* addrLen) {
+  WSADATA wsaData = {0};
+  int iResult = 0;
+  // Initialize Winsock
+  iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (iResult != 0) {
+    printf("WSAStartup failed: %d\n", iResult);
+    return 1;
+  }
+  return accept(socket, addr, addrLen);
+}
+#endif
 
 void close_socket(int sock) {
   if (sock < 0) {
@@ -77,11 +99,16 @@ int set_socket_timeout(int socket, long microSeconds) {
 }
 
 int write_to_socket(int socket, const char* buf, int len) {
+  int bytes_wrote = 0;
 #ifdef __linux
-  return write(socket, buf, len);
+  bytes_wrote = write(socket, buf, len);
 #elif _WIN32
-  return send(socket, buf, len, 0);
+  bytes_wrote = send(socket, buf, len, 0);
 #endif
+  if (bytes_wrote < 0) {
+    fmt::print(stderr, "[XSocket:{}] Error writing to socket\n", socket);
+  }
+  return bytes_wrote;
 }
 
 int read_from_socket(int socket, char* buf, int len) {

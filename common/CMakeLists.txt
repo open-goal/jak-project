@@ -1,7 +1,8 @@
 add_library(common
         audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
-        cross_sockets/xsocket.cpp
+        cross_sockets/XSocket.cpp
+        cross_sockets/XSocketServer.cpp
         custom_data/TFrag3Data.cpp
         dma/dma.cpp
         dma/dma_copy.cpp
@@ -44,8 +45,7 @@ add_library(common
         util/FrameLimiter.cpp
         util/image_loading.cpp
         goos/Printer.cpp
-        goos/PrettyPrinter2.cpp
-        )
+        goos/PrettyPrinter2.cpp)
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 
