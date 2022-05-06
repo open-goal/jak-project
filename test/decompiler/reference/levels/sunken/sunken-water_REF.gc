@@ -152,7 +152,7 @@
                 )
               (set! (-> self draw color-mult w) 0.5)
               (if (= f30-0 1.0)
-                  (set! (-> self flags) (logior #x80000 (-> self flags)))
+                  (set! (-> self flags) (logior (water-flags wt19) (-> self flags)))
                   )
               )
             )
@@ -164,7 +164,7 @@
           (update! (-> self sound))
           )
          (else
-           (set! (-> self flags) (logand -524289 (-> self flags)))
+           (logclear! (-> self flags) (water-flags wt19))
            (when (!= (-> self deadly-fade) 0.0)
              (seek! (-> self deadly-fade) 0.0 (* 8.0 (-> *display* seconds-per-frame)))
              (let ((f30-1 (-> self deadly-fade)))
@@ -177,7 +177,7 @@
                  )
                (set! (-> self draw color-mult w) 0.5)
                (if (= f30-1 0.0)
-                   (set! (-> self flags) (logand -524289 (-> self flags)))
+                   (logclear! (-> self flags) (water-flags wt19))
                    )
                )
              )
@@ -197,7 +197,7 @@
          )
        )
       (else
-        (when (logtest? #x80000 (-> self flags))
+        (when (logtest? (water-flags wt19) (-> self flags))
           (draw-ripple self)
           (update! (-> self sound))
           (set! (-> self playing-deadly-sound?) #t)
@@ -211,9 +211,8 @@
   )
 
 ;; definition for method 25 of type sunken-water
-;; INFO: Return type mismatch uint vs object.
+;; INFO: Return type mismatch uint vs none.
 (defmethod TODO-RENAME-25 sunken-water ((obj sunken-water))
-  (local-vars (v0-3 uint))
   (let ((t9-0 (method-of-type water-anim TODO-RENAME-25)))
     (t9-0 obj)
     )
@@ -229,7 +228,7 @@
                         (s5-0
                           0.5
                           )
-                        ((logtest? #x80000 (-> obj flags))
+                        ((logtest? (water-flags wt19) (-> obj flags))
                          1.0
                          )
                         (else
@@ -241,28 +240,21 @@
       (when (and s5-0 (or (= f0-16 0.0) (= f0-16 1.0)))
         (set! s5-0 #f)
         (if (= f0-16 0.0)
-            (set! (-> obj flags) (logior #x80000 (-> obj flags)))
-            (set! (-> obj flags) (logand -524289 (-> obj flags)))
+            (set! (-> obj flags) (logior (water-flags wt19) (-> obj flags)))
+            (logclear! (-> obj flags) (water-flags wt19))
             )
         )
       (set! (-> obj use-sync?) s5-0)
       (set! (-> obj deadly-time) f0-16)
       )
-    (the-as object (when s5-0
-                     (cond
-                       ((< (get-current-phase (-> obj sync)) (-> obj deadly-time))
-                        (set! v0-3 (logior (the-as uint #x80000) (-> obj flags)))
-                        (set! (-> obj flags) v0-3)
-                        )
-                       (else
-                         (set! v0-3 (logand (the-as uint -524289) (-> obj flags)))
-                         (set! (-> obj flags) v0-3)
-                         )
-                       )
-                     v0-3
-                     )
-            )
+    (when s5-0
+      (if (< (get-current-phase (-> obj sync)) (-> obj deadly-time))
+          (set! (-> obj flags) (the-as water-flags (logior (water-flags wt19) (-> obj flags))))
+          (set! (-> obj flags) (the-as water-flags (logclear (-> obj flags) (water-flags wt19))))
+          )
+      )
     )
+  (none)
   )
 
 ;; definition for method 22 of type sunken-water
@@ -274,7 +266,7 @@
     )
   (set! (-> obj play-ambient-sound?) #f)
   (cond
-    ((logtest? #x80000 (-> obj flags))
+    ((logtest? (water-flags wt19) (-> obj flags))
      (set! (-> obj draw color-mult quad) (-> obj deadly-color-mult quad))
      (set! (-> obj draw color-emissive quad) (-> obj deadly-color-emissive quad))
      (set! (-> obj deadly-fade) 1.0)

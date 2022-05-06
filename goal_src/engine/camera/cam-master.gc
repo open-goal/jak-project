@@ -65,10 +65,11 @@
   (set! (-> self foot-offset) (-> *CAMERA_MASTER-bank* onscreen-foot-height))
   (set! (-> self head-offset) (-> *CAMERA_MASTER-bank* onscreen-head-height))
   (set! (-> self target-height) (-> *CAMERA_MASTER-bank* target-height))
-  (set! (-> self on-ground) (not (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                                      (zero? (logand (-> *target* control status) 1))
-                                      )
-                                 )
+  (set! (-> self on-ground)
+        (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+                  (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                  )
+             )
         )
   (set! (-> self on-pole) #f)
   (set! (-> self ease-t) 1.0)
@@ -99,7 +100,9 @@
       )
     )
   (cond
-    ((and (logtest? (-> *target* water flags) 4096) (zero? (logand (-> *target* water flags) 16)))
+    ((and (logtest? (-> *target* water flags) (water-flags wt12))
+          (zero? (logand (-> *target* water flags) (water-flags wt04)))
+          )
      (set! (-> self under-water) 2)
      )
     (else
@@ -322,7 +325,9 @@
            )
          )
        (cond
-         ((and (logtest? (-> *target* water flags) 4096) (zero? (logand (-> *target* water flags) 16)))
+         ((and (logtest? (-> *target* water flags) (water-flags wt12))
+               (zero? (logand (-> *target* water flags) (water-flags wt04)))
+               )
           (set! (-> self under-water) 2)
           )
          ((> (-> self under-water) 0)
@@ -372,17 +377,18 @@
            (vector--float*! s5-2 (-> self tpos-curr) (-> self local-down) (-> self target-height))
            (vector-float*! gp-5 (-> self tgt-rot-mat vector 2) 4915.2)
            (vector-! s5-2 s5-2 gp-5)
-           (let ((f0-20 (fill-and-probe-using-line-sphere
-                          *collide-cache*
-                          s5-2
-                          gp-5
-                          4300.8
-                          (collide-kind background)
-                          (the-as process #f)
-                          s4-2
-                          4098
-                          )
-                        )
+           (let ((f0-20
+                   (fill-and-probe-using-line-sphere
+                     *collide-cache*
+                     s5-2
+                     gp-5
+                     4300.8
+                     (collide-kind background)
+                     (the-as process #f)
+                     s4-2
+                     4098
+                     )
+                   )
                  )
              (if (and (< 0.0 f0-20) (< f0-20 1.0))
                  (vector+float*! (-> self tpos-curr) (-> self tpos-curr) gp-5 (+ -1.0 f0-20))
@@ -390,16 +396,17 @@
              )
            )
          )
-       (set! (-> self on-ground) (not (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                                           (zero? (logand (-> *target* control status) 1))
-                                           )
-                                      )
+       (set! (-> self on-ground)
+             (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+                       (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                       )
+                  )
              )
        (let ((gp-6 (new-stack-vector0)))
          0.0
          (cond
-           ((and (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                      (zero? (logand (-> *target* control status) 1))
+           ((and (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+                      (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
                       )
                  (!= (-> *target* control unknown-surface00 name) 'launch-jump)
                  )
@@ -445,7 +452,7 @@
              (vector-! gp-6 (-> self tpos-curr) (-> self tpos-old))
              (let ((f0-38 (vector-dot gp-6 (-> self local-down))))
                (cond
-                 ((logtest? (-> *target* water flags) 512)
+                 ((logtest? (-> *target* water flags) (water-flags wt09))
                   (set! (-> self upspeed) 0.0)
                   )
                  ((< 0.0 f0-38)
@@ -474,7 +481,7 @@
            (reset-follow)
            )
        (let ((v1-196 (-> *target* water flags)))
-         (when (and (logtest? v1-196 512) (logtest? v1-196 6144))
+         (when (and (logtest? v1-196 (water-flags wt09)) (logtest? v1-196 (water-flags wt11 wt12)))
            (let ((f0-45 (- (-> *target* water base-height) (-> self target-height))))
              (if (< (-> self tpos-curr-adj y) f0-45)
                  (set! (-> self tpos-curr-adj y) f0-45)

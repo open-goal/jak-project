@@ -475,6 +475,15 @@ struct ExecutionContext {
     }
   }
 
+  void ppacw(int rd, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    gprs[rd].du32[0] = t.du32[0];
+    gprs[rd].du32[1] = t.du32[2];
+    gprs[rd].du32[2] = s.du32[0];
+    gprs[rd].du32[3] = s.du32[2];
+  }
+
   void ppach(int rd, int rs, int rt) {
     auto s = gpr_src(rs);
     auto t = gpr_src(rt);
@@ -713,6 +722,20 @@ struct ExecutionContext {
     gprs[dest].du16[7] = hi.du16[6];
   }
 
+  void pmfhl_uw(int dest) {
+    gprs[dest].du32[0] = lo.du32[1];
+    gprs[dest].du32[1] = hi.du32[1];
+    gprs[dest].du32[2] = lo.du32[3];
+    gprs[dest].du32[3] = hi.du32[3];
+  }
+
+  void pmfhl_lw(int dest) {
+    gprs[dest].du32[0] = lo.du32[0];
+    gprs[dest].du32[1] = hi.du32[0];
+    gprs[dest].du32[2] = lo.du32[2];
+    gprs[dest].du32[3] = hi.du32[2];
+  }
+
   void vsub_bc(DEST mask, BC bc, int dest, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);
@@ -801,6 +824,17 @@ struct ExecutionContext {
     }
   }
 
+  void vmula(DEST mask, int src0, int src1) {
+    auto s0 = vf_src(src0);
+    auto s1 = vf_src(src1);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        acc.f[i] = s0.f[i] * s1.f[i];
+      }
+    }
+  }
+
   void vadda_bc(DEST mask, BC bc, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);
@@ -874,6 +908,27 @@ struct ExecutionContext {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         vfs[dst].f[i] = acc.f[i] - s0.f[i] * s1.f[(int)bc];
+      }
+    }
+  }
+
+  void vmsub(DEST mask, int dst, int src0, int src1) {
+    auto s0 = vf_src(src0);
+    auto s1 = vf_src(src1);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].f[i] = acc.f[i] - s0.f[i] * s1.f[i];
+      }
+    }
+  }
+
+  void vmsubq(DEST mask, int dst, int src0) {
+    auto s0 = vf_src(src0);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].f[i] = acc.f[i] - s0.f[i] * Q;
       }
     }
   }

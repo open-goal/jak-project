@@ -9,6 +9,7 @@
 #include "common/common_types.h"
 #include "game/graphics/texture/TextureConverter.h"
 #include "common/util/Serializer.h"
+#include "common/util/SmallVector.h"
 
 // verify all texture lookups.
 // will make texture lookups slower and likely caused dropped frames when loading
@@ -67,6 +68,71 @@ constexpr int SKY_TEXTURE_VRAM_ADDRS[2] = {8064, 8096};
  * The game will inform us when it uploads to VRAM
  */
 
+struct PcTextureId {
+  u16 page = -1;
+  u16 tex = -1;
+
+  PcTextureId(u16 p, u16 t) : page(p), tex(t) {}
+  PcTextureId() = default;
+
+  static PcTextureId from_combo_id(u32 val) { return PcTextureId(val >> 16, val & 0xffff); }
+
+  bool operator==(const PcTextureId& other) const { return page == other.page && tex == other.tex; }
+};
+
+template <typename T>
+class TextureMap {
+ public:
+  TextureMap(const std::vector<u32>& tpage_dir) {
+    u32 off = 0;
+    for (auto& x : tpage_dir) {
+      m_dir.push_back(off);
+      off += x;
+    }
+    m_data.resize(off);
+  }
+
+  T* lookup_existing(PcTextureId id) {
+    auto& elt = m_data[m_dir[id.page] + id.tex];
+    if (elt.present) {
+      return &elt.val;
+    } else {
+      return nullptr;
+    }
+  }
+
+  T& at(PcTextureId id) {
+    auto& elt = m_data[m_dir[id.page] + id.tex];
+    if (elt.present) {
+      return elt.val;
+    }
+    ASSERT(false);
+  }
+
+  std::pair<T*, bool> lookup_or_insert(PcTextureId id) {
+    auto& elt = m_data[m_dir[id.page] + id.tex];
+    if (elt.present) {
+      return std::make_pair(&elt.val, true);
+    } else {
+      elt.present = true;
+      return std::make_pair(&elt.val, false);
+    }
+  }
+
+  void erase(PcTextureId id) {
+    auto& elt = m_data[m_dir[id.page] + id.tex];
+    elt.present = false;
+  }
+
+ private:
+  std::vector<u32> m_dir;
+  struct Element {
+    T val;
+    bool present = false;
+  };
+  std::vector<Element> m_data;
+};
+
 /*!
  * The lowest level reference to texture data.
  */
@@ -80,8 +146,9 @@ struct TextureData {
  * It's possible for there to be 0 instances of the texture loaded yet.
  */
 struct GpuTexture {
-  std::string page_name;
-  std::string name;
+  GpuTexture(PcTextureId id) : tex_id(id) {}
+  GpuTexture() = default;
+  PcTextureId tex_id;
 
   // all the currently loaded copies of this texture
   std::vector<TextureData> gpu_textures;
@@ -91,9 +158,6 @@ struct GpuTexture {
 
   // the vram address that contain this texture, stored in mt4hh format
   std::vector<u32> mt4hh_slots;
-
-  // our "combo id", containing the tpage and texture ID
-  u32 combo_id = -1;
 
   // texture dimensions
   u16 w, h;
@@ -137,11 +201,13 @@ struct TextureVRAMReference {
  * A texture provided by the loader.
  */
 struct TextureInput {
-  std::string page_name;
-  std::string name;
+  std::string debug_page_name;
+  std::string debug_name;
+
+  PcTextureId id;
+
   u64 gpu_texture = -1;
   bool common = false;
-  u32 combo_id = -1;
   const u8* src_data;
   u16 w, h;
 };
@@ -236,7 +302,7 @@ class TexturePool {
   void handle_upload_now(const u8* tpage, int mode, const u8* memory_base, u32 s7_ptr);
   GpuTexture* give_texture(const TextureInput& in);
   GpuTexture* give_texture_and_load_to_vram(const TextureInput& in, u32 vram_slot);
-  void unload_texture(const std::string& name, u64 id);
+  void unload_texture(PcTextureId tex_id, u64 gpu_id);
 
   /*!
    * Look up an OpenGL texture by vram address. Return std::nullopt if the game hasn't loaded
@@ -284,10 +350,13 @@ class TexturePool {
   void move_existing_to_vram(GpuTexture* tex, u32 slot_addr);
 
   std::mutex& mutex() { return m_mutex; }
+  PcTextureId allocate_pc_port_texture();
+
+  std::string get_debug_texture_name(PcTextureId id);
 
  private:
   void refresh_links(GpuTexture& texture);
-  GpuTexture* get_gpu_texture_for_slot(const std::string& name, u32 slot);
+  GpuTexture* get_gpu_texture_for_slot(PcTextureId id, u32 slot);
 
   char m_regex_input[256] = "";
   std::array<TextureVRAMReference, 1024 * 1024 * 4 / 256> m_textures;
@@ -300,7 +369,14 @@ class TexturePool {
   std::vector<u32> m_placeholder_data;
   u64 m_placeholder_texture_id = 0;
 
-  std::unordered_map<std::string, GpuTexture> m_loaded_textures;
+  TextureMap<GpuTexture> m_loaded_textures;
+
+  // we maintain a mapping of all textures/ids we've seen so far.
+  // this is only used for debug.
+  TextureMap<std::string> m_id_to_name;
+  std::unordered_map<std::string, PcTextureId> m_name_to_id;
+
+  u32 m_next_pc_texture_to_allocate = 0;
 
   std::mutex m_mutex;
 };

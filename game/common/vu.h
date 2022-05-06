@@ -528,6 +528,14 @@ struct alignas(16) Accumulator {
     }
   }
 
+  void msuba(Mask mask, const Vf& a, float b) {
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        data[i] -= a[i] * b;
+      }
+    }
+  }
+
   u16 madd_flag(Mask mask, Vf& dest, const Vf& a, float b) {
     u16 result = 0;
     for (int i = 0; i < 4; i++) {

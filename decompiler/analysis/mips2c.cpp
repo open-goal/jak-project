@@ -1058,6 +1058,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::DSLLV:
     case InstructionKind::PAND:
     case InstructionKind::PCEQB:
+    case InstructionKind::PPACW:
       return handle_generic_op3(i0, instr_str, {});
     case InstructionKind::MULS:
       return handle_generic_op3(i0, instr_str, "muls");

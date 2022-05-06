@@ -1103,7 +1103,7 @@
       )
     )
   (logior! (-> arg0 status) sv-80)
-  (the-as uint sv-80)
+  (the-as cshape-moving-flags sv-80)
   )
 
 (defun simple-collision-reaction ((arg0 collide-shape-moving) (arg1 collide-shape-intersect) (arg2 vector) (arg3 vector))
@@ -1123,7 +1123,7 @@
       )
     (let ((v0-1 (logior s5-0 7)))
       (logior! (-> arg0 status) v0-1)
-      (the-as uint v0-1)
+      (the-as cshape-moving-flags v0-1)
       )
     )
   )
@@ -1176,7 +1176,7 @@
                )
            
            ;; do the collision reaction! this function should move the collide shape.
-           (set! (-> obj prev-status) (the-as uint ((-> obj reaction) obj s5-0 arg0 arg1)))
+           (set! (-> obj prev-status) (the-as cshape-moving-flags ((-> obj reaction) obj s5-0 arg0 arg1)))
            
            ;; debug draw collision marks.
            (when *display-collision-marks*
@@ -1224,9 +1224,9 @@
          )
         (else
           ;; didn't hit anything! call the no-reaction function.
-          (set! (-> obj reaction-flag) (the-as uint 0))
+          (set! (-> obj reaction-flag) (cshape-reaction-flags))
           ((-> obj no-reaction) obj s5-0 arg0 arg1)
-          (set! (-> obj prev-status) (the-as uint 0))
+          (set! (-> obj prev-status) (cshape-moving-flags))
           ;; and do the move ourself
           (move-by-vector! obj s2-0)
           ;; velocity is unchanged
@@ -1282,7 +1282,22 @@
   (set! (-> obj prev-status) (-> obj status))
   
   ;; setup
-  (set! (-> obj status) (logand -16128 (-> obj status)))
+  (logclear! (-> obj status) (cshape-moving-flags
+                               onsurf
+                               onground
+                               tsurf
+                               twall
+                               t-ciel
+                               t-act
+                               csmf06
+                               csmf07
+                               csmf09
+                               on-water
+                               csmf11
+                               csmf12
+                               csmf13
+                               )
+             )
   (set! (-> obj local-normal quad) (-> obj dynam gravity-normal quad))
   (set! (-> obj surface-normal quad) (-> obj dynam gravity-normal quad))
   (set! (-> obj poly-normal quad) (-> obj dynam gravity-normal quad))
@@ -1461,7 +1476,22 @@
     (set! (-> obj trans-old 1 quad) (-> obj trans-old 0 quad))
     (set! (-> obj trans-old 0 quad) (-> obj trans quad))
     (set! (-> obj prev-status) (-> obj status))
-    (set! (-> obj status) (logand -16128 (-> obj status)))
+    (logclear! (-> obj status) (cshape-moving-flags
+                                 onsurf
+                                 onground
+                                 tsurf
+                                 twall
+                                 t-ciel
+                                 t-act
+                                 csmf06
+                                 csmf07
+                                 csmf09
+                                 on-water
+                                 csmf11
+                                 csmf12
+                                 csmf13
+                                 )
+               )
     (set! (-> obj local-normal quad) (-> obj dynam gravity-normal quad))
     (set! (-> obj surface-normal quad) (-> obj dynam gravity-normal quad))
     (set! (-> obj poly-normal quad) (-> obj dynam gravity-normal quad))

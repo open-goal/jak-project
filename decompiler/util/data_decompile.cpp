@@ -288,6 +288,18 @@ goos::Object decompile_value_array(const TypeSpec& elt_type,
 }
 
 namespace {
+float word_as_float(const LinkedWord& w) {
+  ASSERT(w.kind() == LinkedWord::PLAIN_DATA);
+  float v;
+  memcpy(&v, &w.data, 4);
+  return v;
+}
+
+s32 word_as_s32(const LinkedWord& w) {
+  ASSERT(w.kind() == LinkedWord::PLAIN_DATA);
+  return w.data;
+}
+
 std::string print_def(const goos::Object& obj) {
   if (obj.is_pair() && obj.as_pair()->car.is_symbol() &&
       obj.as_pair()->car.as_symbol()->name == "quote") {
@@ -578,6 +590,147 @@ goos::Object sp_launch_grp_launcher_decompile(const std::vector<LinkedWord>& wor
                                                file, TypeSpec("sparticle-group-item"), 32);
 }
 
+goos::Object decompile_sound_spec(const TypeSpec& type,
+                                  const DecompilerLabel& label,
+                                  const std::vector<DecompilerLabel>& labels,
+                                  const std::vector<std::vector<LinkedWord>>& words,
+                                  const TypeSystem& ts,
+                                  const LinkedObjectFile* file) {
+  // auto normal = decompile_structure(type, label, labels, words, ts, file, false);
+  // fmt::print("Doing: {}\n", normal.print());
+  auto uncast_type_info = ts.lookup_type(type);
+  auto type_info = dynamic_cast<StructureType*>(uncast_type_info);
+  if (!type_info) {
+    throw std::runtime_error(fmt::format("Type {} wasn't a structure type.", type.print()));
+  }
+  ASSERT(type_info->get_size_in_memory() == 0x4c);
+
+  // get words for real
+  auto offset_location = label.offset - type_info->get_offset();
+  int word_count = (type_info->get_size_in_memory() + 3) / 4;
+  std::vector<LinkedWord> obj_words;
+  obj_words.insert(obj_words.begin(),
+                   words.at(label.target_segment).begin() + (offset_location / 4) + 1,
+                   words.at(label.target_segment).begin() + (offset_location / 4) + word_count);
+
+  for (int i = 0; i < word_count - 1; ++i) {
+    if (i == word_count - 2 && !obj_words.at(i).data) {
+      // just some default initialized sound spec, don't attempt anything fancy.
+      return decompile_structure(type, label, labels, words, ts, file, false);
+    }
+    if (obj_words.at(i).data)
+      break;
+  }
+
+  u16 implicit_mask = 0;
+  u16 mask = obj_words.at(0).data;
+  float num = word_as_float(obj_words.at(1));
+  u8 group = obj_words.at(2).data;
+  char sound_name[17];
+  sound_name[16] = 0;
+  memcpy(&sound_name[0], &obj_words.at(3).data, sizeof(u32));
+  memcpy(&sound_name[4], &obj_words.at(4).data, sizeof(u32));
+  memcpy(&sound_name[8], &obj_words.at(5).data, sizeof(u32));
+  memcpy(&sound_name[12], &obj_words.at(6).data, sizeof(u32));
+  std::string name(sound_name);
+
+  for (int i = 0; i < 4; ++i) {
+    if (obj_words.at(7 + i).data) {
+      throw std::runtime_error("static sound-spec trans was not zero.");
+    }
+  }
+
+  s32 volume = word_as_s32(obj_words.at(11));
+  s32 pitch = word_as_s32(obj_words.at(12));
+  s32 bend = word_as_s32(obj_words.at(13));
+  s16 fo_min = word_as_s32(obj_words.at(14));
+  s16 fo_max = word_as_s32(obj_words.at(14)) >> 16;
+  s8 fo_curve = word_as_s32(obj_words.at(15));
+  s8 priority = word_as_s32(obj_words.at(15)) >> 8;
+  s32 auto_time = word_as_s32(obj_words.at(16));
+  s32 auto_from = word_as_s32(obj_words.at(17));
+
+  if (bend) {
+    throw std::runtime_error("static sound-spec bend was not zero.");
+  }
+  if (fo_curve) {
+    throw std::runtime_error("static sound-spec fo_curve was not zero.");
+  }
+  if (priority) {
+    throw std::runtime_error("static sound-spec priority was not zero.");
+  }
+  if (auto_time) {
+    throw std::runtime_error("static sound-spec auto_time was not zero.");
+  }
+  if (auto_from) {
+    throw std::runtime_error("static sound-spec auto_from was not zero.");
+  }
+
+  std::vector<goos::Object> the_macro;
+
+  the_macro.push_back(pretty_print::to_symbol("static-sound-spec"));
+  the_macro.push_back(goos::StringObject::make_new(name));
+  if (num != 1) {
+    the_macro.push_back(pretty_print::to_symbol(fmt::format(":num {}", num)));
+  }
+  if (group != 1) {
+    the_macro.push_back(pretty_print::to_symbol(fmt::format(":group {}", num)));
+  }
+  if ((mask & 1) || volume != 1024) {
+    implicit_mask |= 1 << 0;
+    float volf = volume / 10.24f;
+    // volume is fixed point, and floats should round towards zero, so we convert specific ints
+    // to better-looking floats that end up being the same value.
+    // there should be a more automated way to do this, but i am a bit lazy.
+    switch (volume) {
+      case 0x2cc:
+        volf = 70;
+        break;
+      case 0x333:
+        volf = 80;
+        break;
+    }
+    the_macro.push_back(pretty_print::to_symbol(fmt::format(":volume {}", float_to_string(volf))));
+  }
+  if (pitch != 0) {
+    implicit_mask |= 1 << 1;
+    the_macro.push_back(pretty_print::to_symbol(fmt::format(":pitch-mod {}", pitch)));
+  }
+  if (fo_min != 0) {
+    implicit_mask |= 1 << 6;
+    the_macro.push_back(pretty_print::to_symbol(fmt::format(":fo-min {}", fo_min)));
+  }
+  if (fo_max != 0) {
+    implicit_mask |= 1 << 7;
+    the_macro.push_back(pretty_print::to_symbol(fmt::format(":fo-max {}", fo_max)));
+  }
+
+  if (mask < implicit_mask) {
+    throw std::runtime_error(
+        fmt::format("static sound-spec too many implicit masks: #x{:x}", implicit_mask ^ mask));
+  }
+  u16 final_mask = mask ^ implicit_mask;
+  if (final_mask) {
+    lg::error(
+        "final_mask in static sound-spec decomp: #x{:x}. This is fine, but should be reported.",
+        final_mask);
+    std::string mask_list = ":mask (";
+    bool first = true;
+    for (const auto& m : decompile_bitfield_enum_from_int(TypeSpec("sound-mask"), ts, final_mask)) {
+      if (!first) {
+        mask_list += " ";
+      }
+      mask_list += m;
+      first = false;
+    }
+    mask_list += ")";
+
+    the_macro.push_back(pretty_print::to_symbol(mask_list));
+  }
+
+  return pretty_print::build_list(the_macro);
+}
+
 }  // namespace
 
 goos::Object decompile_structure(const TypeSpec& type,
@@ -587,13 +740,19 @@ goos::Object decompile_structure(const TypeSpec& type,
                                  const TypeSystem& ts,
                                  const LinkedObjectFile* file,
                                  bool use_fancy_macros) {
-  if (use_fancy_macros && type == TypeSpec("sp-field-init-spec")) {
-    return decompile_sparticle_field_init(type, label, labels, words, ts, file);
+  // some structures we want to decompile to fancy macros instead of a raw static definiton
+  if (use_fancy_macros) {
+    if (type == TypeSpec("sp-field-init-spec")) {
+      return decompile_sparticle_field_init(type, label, labels, words, ts, file);
+    }
+    if (type == TypeSpec("sparticle-group-item")) {
+      return decompile_sparticle_group_item(type, label, labels, words, ts, file);
+    }
+    if (type == TypeSpec("sound-spec")) {
+      return decompile_sound_spec(type, label, labels, words, ts, file);
+    }
   }
 
-  if (use_fancy_macros && type == TypeSpec("sparticle-group-item")) {
-    return decompile_sparticle_group_item(type, label, labels, words, ts, file);
-  }
   // first step, get type info and words
   TypeSpec actual_type = type;
   auto uncast_type_info = ts.lookup_type(actual_type);

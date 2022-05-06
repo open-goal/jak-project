@@ -14,7 +14,7 @@
   :size-assert         #xcc
   :flag-assert         #x15006000cc
   (:methods
-    (dummy-20 (_type_ float) uint 20)
+    (dummy-20 (_type_ float) cshape-moving-flags 20)
     )
   (:states
     whirlpool-idle
@@ -354,7 +354,7 @@
         )
       (+! (-> self spin-ry) (* f30-0 (-> *display* seconds-per-frame)))
       (quaternion-axis-angle! (-> self root-override quat) 0.0 1.0 0.0 (-> self spin-ry))
-      (if (and *target* (logtest? (-> *target* water flags) 512))
+      (if (and *target* (logtest? (-> *target* water flags) (water-flags wt09)))
           (dummy-20 self f30-0)
           )
       (update! (-> self sound))
@@ -415,19 +415,8 @@
     (set! (-> obj spin-speed-delta) (- f28-0 f30-0))
     )
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 447) obj))
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "whirlpool")
-                           :volume #x400
-                           :fo-max 55
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "whirlpool" :fo-max 55) (-> obj root-override trans))
         )
   (ja-channel-set! 1)
   (let ((s5-1 (-> obj skel root-channel 0)))

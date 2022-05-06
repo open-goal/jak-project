@@ -2460,7 +2460,6 @@ void DecompiledDataElement::do_decomp(const Env& env, const LinkedObjectFile* fi
   if (m_label_info) {
     m_description = decompile_at_label_with_hint(*m_label_info, m_label, env.file->labels,
                                                  env.file->words_by_seg, *env.dts, file);
-
   } else {
     m_description = decompile_at_label_guess_type(m_label, env.file->labels, env.file->words_by_seg,
                                                   env.dts->ts, file);

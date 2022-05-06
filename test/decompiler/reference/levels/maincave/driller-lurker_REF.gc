@@ -554,9 +554,10 @@
       )
     )
   (when (and (-> obj hit-player?)
-             (or (not *target*) (and (zero? (logand (-> *target* state-flags) #x80f8))
-                                     (>= (- (-> *display* base-frame-counter) (-> obj hit-player-time)) (seconds 0.05))
-                                     )
+             (or (not *target*)
+                 (and (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+                      (>= (- (-> *display* base-frame-counter) (-> obj hit-player-time)) (seconds 0.05))
+                      )
                  )
              )
     (set-collide-offense (-> obj root-overeride) 2 (collide-offense touch))
@@ -1363,34 +1364,10 @@
         )
   (set! (-> obj draw shadow-ctrl) *driller-lurker-shadow-control*)
   (set! (-> obj sound)
-        (new
-          'process
-          'ambient-sound
-          (new 'static 'sound-spec
-            :mask #x80
-            :num 1.0
-            :group #x1
-            :sound-name (static-sound-name "drill-idle")
-            :volume #x400
-            :fo-max 40
-            )
-          (-> obj root-overeride trans)
-          )
+        (new 'process 'ambient-sound (static-sound-spec "drill-idle" :fo-max 40) (-> obj root-overeride trans))
         )
   (set! (-> obj sound2)
-        (new
-          'process
-          'ambient-sound
-          (new 'static 'sound-spec
-            :mask #x80
-            :num 1.0
-            :group #x1
-            :sound-name (static-sound-name "drill-idle2")
-            :volume #x400
-            :fo-max 60
-            )
-          (-> obj root-overeride trans)
-          )
+        (new 'process 'ambient-sound (static-sound-spec "drill-idle2" :fo-max 60) (-> obj root-overeride trans))
         )
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 331) obj))
   (let ((f0-34 (path-distance (-> obj path))))

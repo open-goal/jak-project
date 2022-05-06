@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <array>
 
 #include "common/common_types.h"
 #include "game/kernel/kboot.h"
@@ -65,6 +66,9 @@ struct GfxSettings {
 };
 
 // runtime settings
+static constexpr int PAT_MOD_COUNT = 3;
+static constexpr int PAT_EVT_COUNT = 7;
+static constexpr int PAT_MAT_COUNT = 23;
 struct GfxGlobalSettings {
   // note: this is actually the size of the display that ISN'T letterboxed
   // the excess space is what will be letterboxed away.
@@ -77,6 +81,17 @@ struct GfxGlobalSettings {
   // lod settings, used by bucket renderers
   int lod_tfrag = 0;
   int lod_tie = 0;
+
+  // collision renderer settings
+  bool collision_enable = false;
+  bool collision_wireframe = true;
+
+  // matching enum in kernel-defs.gc !!
+  enum CollisionRendererMode { None, Mode, Event, Material, Skip } collision_mode = Mode;
+  std::array<u32, (PAT_MOD_COUNT + 31) / 32> collision_mode_mask = {UINT32_MAX};
+  std::array<u32, (PAT_EVT_COUNT + 31) / 32> collision_event_mask = {UINT32_MAX};
+  std::array<u32, (PAT_MAT_COUNT + 31) / 32> collision_material_mask = {UINT32_MAX};
+  u32 collision_skip_mask = UINT32_MAX;
 };
 
 namespace Gfx {
@@ -119,5 +134,9 @@ int PadAnalogValue(Pad::Analog analog, int port);
 // matching enum in kernel-defs.gc !!
 enum class RendererTreeType { NONE = 0, TFRAG3 = 1, TIE3 = 2, INVALID };
 void SetLod(RendererTreeType tree, int lod);
+bool CollisionRendererGetMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);
+void CollisionRendererSetMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);
+void CollisionRendererClearMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);
+void CollisionRendererSetMode(GfxGlobalSettings::CollisionRendererMode mode);
 
 }  // namespace Gfx

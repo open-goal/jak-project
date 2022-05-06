@@ -1,4 +1,5 @@
 #include "ParseHelpers.h"
+#include "third-party/fmt/core.h"
 
 namespace goos {
 
@@ -44,16 +45,16 @@ bool va_check(
     std::string* err_string) {
   ASSERT(args.rest.empty());
   if (unnamed.size() != args.unnamed.size()) {
-    *err_string = "Got " + std::to_string(args.unnamed.size()) + " arguments, but expected " +
-                  std::to_string(unnamed.size());
+    *err_string = fmt::format("Got {} arguments, but expected {}",
+                              std::to_string(args.unnamed.size()), std::to_string(unnamed.size()));
     return false;
   }
 
   for (size_t i = 0; i < unnamed.size(); i++) {
     if (unnamed[i].has_value() && unnamed[i] != args.unnamed[i].type) {
-      *err_string = "Argument " + std::to_string(i) + " has type " +
-                    object_type_to_string(args.unnamed[i].type) + " but " +
-                    object_type_to_string(unnamed[i].value()) + " was expected";
+      *err_string = fmt::format("Argument {} has type {} but {} was expected\nArgument is: {}", i,
+                                object_type_to_string(args.unnamed[i].type),
+                                object_type_to_string(unnamed[i].value()), args.unnamed[i].print());
       return false;
     }
   }

@@ -53,7 +53,7 @@
     (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
     (logclear! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status bit-3) #t)
-    (while (or (not *target*) (logtest? (-> *target* state-flags) #x8008))
+    (while (or (not *target*) (logtest? (-> *target* state-flags) (state-flags sf03 sf15)))
       (suspend)
       )
     (while (not (process-grab? *target*))
@@ -498,7 +498,7 @@
                          )
                 (set! s4-0 #t)
                 (let ((v1-17 s5-0))
-                  (set! (-> v1-17 settings flags) (logand -33 (-> v1-17 settings flags)))
+                  (logclear! (-> v1-17 settings flags) (shadow-flags shdf05))
                   )
                 0
                 (let ((v1-19 s5-0))
@@ -536,7 +536,7 @@
           )
         )
       (when (not s4-0)
-        (logior! (-> s5-0 settings flags) 32)
+        (logior! (-> s5-0 settings flags) (shadow-flags shdf05))
         0
         (set! (-> obj draw bounds quad) (-> obj default-bounds quad))
         (set! (-> obj draw origin-joint-index) (the-as uint 4))
@@ -1015,8 +1015,8 @@
   (logclear! (-> self mask) (process-mask actor-pause))
   (close-specific-task! (game-task plunger-lurker-hit) (task-status unknown))
   (while (and *target*
-              (logtest? (-> *target* control unknown-surface00 flags) 2048)
-              (zero? (logand (-> *target* control status) 1))
+              (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+              (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
               )
     (suspend)
     )
@@ -1467,7 +1467,7 @@
         (new 'process 'shadow-control 131072.0 151552.0 614400.0 (the-as float 60) 409600.0)
         )
   (let ((v1-27 (-> obj draw shadow-ctrl)))
-    (set! (-> v1-27 settings flags) (logand -33 (-> v1-27 settings flags)))
+    (logclear! (-> v1-27 settings flags) (shadow-flags shdf05))
     )
   0
   (set! (-> obj alt-actor) (entity-actor-lookup arg0 'alt-actor 0))

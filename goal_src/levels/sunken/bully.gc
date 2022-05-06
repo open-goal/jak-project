@@ -429,9 +429,10 @@
 
 (defbehavior bully-post bully ()
   (when (and (-> self hit-player?)
-             (or (not *target*) (and (zero? (logand (-> *target* state-flags) #x80f8))
-                                     (>= (- (-> *display* base-frame-counter) (-> self hit-player-time)) (seconds 0.05))
-                                     )
+             (or (not *target*)
+                 (and (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+                      (>= (- (-> *display* base-frame-counter) (-> self hit-player-time)) (seconds 0.05))
+                      )
                  )
              )
     (set-collide-offense (-> self root-override) 2 (collide-offense normal-attack))
@@ -525,7 +526,7 @@
     (set! (-> self travel-speed) 0.0)
     (shut-down! (-> self neck))
     (let ((v1-5 (-> self draw shadow-ctrl)))
-      (logior! (-> v1-5 settings flags) 32)
+      (logior! (-> v1-5 settings flags) (shadow-flags shdf05))
       )
     0
     (none)
@@ -533,7 +534,7 @@
   :exit
   (behavior ()
     (let ((v1-1 (-> self draw shadow-ctrl)))
-      (set! (-> v1-1 settings flags) (logand -33 (-> v1-1 settings flags)))
+      (logclear! (-> v1-1 settings flags) (shadow-flags shdf05))
       )
     0
     (none)
@@ -639,7 +640,7 @@
         (joint-control-channel-group-eval! gp-2 (the-as art-joint-anim #f) num-func-seek!)
         )
       )
-    (until (logtest? (-> self root-override status) 1)
+    (until (logtest? (-> self root-override status) (cshape-moving-flags onsurf))
       (let ((a0-7 (-> self skel root-channel 0)))
         (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
         (set! (-> a0-7 param 1) 1.0)

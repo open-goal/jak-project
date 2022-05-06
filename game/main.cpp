@@ -94,12 +94,35 @@ int main(int argc, char** argv) {
 
   setup_logging(verbose);
 
+  bool force_debug_next_time = false;
   while (true) {
+    std::vector<std::string> args;
+    for (int i = 0; i < argc; i++) {
+      args.push_back(argv[i]);
+    }
+    if (force_debug_next_time) {
+      args.push_back("-boot");
+      args.push_back("-debug");
+      force_debug_next_time = false;
+    }
+    std::vector<char*> ptrs;
+    for (auto& str : args) {
+      ptrs.push_back(str.data());
+    }
+
     // run the runtime in a loop so we can reset the game and have it restart cleanly
     lg::info("OpenGOAL Runtime {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
+    auto exit_status = exec_runtime(ptrs.size(), ptrs.data());
 
-    if (exec_runtime(argc, argv) == 2) {
-      return 0;
+    switch (exit_status) {
+      case RuntimeExitStatus::EXIT:
+        return 0;
+      case RuntimeExitStatus::RESTART_RUNTIME:
+      case RuntimeExitStatus::RUNNING:
+        break;
+      case RuntimeExitStatus::RESTART_IN_DEBUG:
+        force_debug_next_time = true;
+        break;
     }
   }
   return 0;
