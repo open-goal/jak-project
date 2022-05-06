@@ -87,7 +87,7 @@ void deci2_runner(SystemThreadInterface& iface) {
   server.wait_for_protos_ready();
   // then allow the server to accept connections
   if (!server.init_server()) {
-    ASSERT(false);
+    ASSERT_MSG(false, "[DECI2] Server not initialized even if protocols are ready, aborting");
   }
 
   lg::debug("[DECI2] Waiting for listener...");
@@ -316,8 +316,8 @@ u32 exec_runtime(int argc, char** argv) {
 
   // step 3: start the EE!
   iop_thread.start(iop_runner);
-  ee_thread.start(ee_runner);
   deci_thread.start(deci2_runner);
+  ee_thread.start(ee_runner);
   if (VM::use) {
     vm_dmac_thread.start(dmac_runner);
   } else {

@@ -24,6 +24,9 @@ class Deci2Server : public XSocketServer {
   void lock();
   void unlock();
 
+ protected:
+  void accept_thread_func();
+
  private:
   bool protocols_ready = false;
   std::condition_variable cv;
@@ -38,6 +41,4 @@ class Deci2Server : public XSocketServer {
   std::mutex server_mutex;
 
   bool client_connected = false;
-
-  void accept_thread_func();
 };
