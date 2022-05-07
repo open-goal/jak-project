@@ -129,7 +129,7 @@ std::pair<s16, s16> pitchbend(Tone& tone,
                               int current_pm,
                               int start_note,
                               int start_fine) {
-  auto v9 = (start_note << 7) + start_fine * current_pm;
+  auto v9 = (start_note << 7) + start_fine + current_pm;
   u32 v7;
   if (current_pb >= 0)
     v7 = tone.PBHigh * (current_pb << 7) / 0x7fff + v9;
