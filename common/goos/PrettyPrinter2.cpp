@@ -211,6 +211,10 @@ void break_list(Node* node) {
     if (name == "defun" || name == "defun-debug" || name == "defbehavior" || name == "defstate") {
       // things with three things in the top line: (defun <name> <args>
       node->top_line_count = 3;
+    } else if (name == "defskelgroup") {
+      // things with 5 things in the top line: (defskelgroup <name> <art> jgeo janim
+      node->top_line_count = 5;
+      node->sub_elt_indent += name.size();
     } else if (name == "defmethod") {
       // things with 4 things in the top line: (defmethod <method> <type> <args>
       node->top_line_count = 4;

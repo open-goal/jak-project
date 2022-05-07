@@ -2,14 +2,11 @@
 (in-package goal)
 
 ;; failed to figure out what this is:
-(defskelgroup *deathcam-sg* deathcam
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *deathcam-sg* deathcam deathcam-lod0-jg deathcam-idle-ja
+              ((deathcam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :texture-level 2
+              )
 
 ;; definition for symbol *auto-continue*, type symbol
 (define *auto-continue* #f)
@@ -755,7 +752,7 @@
 (defbehavior target-hit-setup-anim target ((arg0 attack-info))
   (case (-> arg0 angle)
     (('back)
-     (when (not (ja-group? 74))
+     (when (not (ja-group? eichar-hit-from-back-ja))
        (ja-channel-push! 1 (seconds 0.07333333))
        (let ((gp-1 (-> self skel root-channel 0)))
          (joint-control-channel-group-eval!
@@ -771,7 +768,7 @@
        )
      )
     (('up 'up-forward)
-     (when (not (ja-group? 75))
+     (when (not (ja-group? eichar-hit-up-ja))
        (ja-channel-push! 1 (seconds 0.07333333))
        (let ((gp-2 (-> self skel root-channel 0)))
          (joint-control-channel-group-eval!
@@ -788,7 +785,7 @@
      )
     (('air 'jump)
      (ja-channel-push! 1 (seconds 0.05))
-     (ja-group! 34 :num! seek!)
+     (ja-group! eichar-jump-ja :num! seek!)
      (when (= (-> arg0 angle) 'air)
        (sound-play-by-name (static-sound-name "smack-surface") (new-sound-id) 1024 0 0 1 #t)
        (dummy-10 (-> self skel effect) 'group-smack-surface (the-as float 0.0) 5)
@@ -797,11 +794,11 @@
      )
     (('shove)
      (ja-channel-push! 1 (seconds 0.05))
-     (ja-group! 78 :num! seek!)
+     (ja-group! eichar-smack-surface-ja :num! seek!)
      (sound-play-by-name (static-sound-name "smack-surface") (new-sound-id) 1024 0 0 1 #t)
      )
     (else
-      (when (not (ja-group? 73))
+      (when (not (ja-group? eichar-hit-from-front-ja))
         (ja-channel-push! 1 (seconds 0.07333333))
         (let ((gp-5 (-> self skel root-channel 0)))
           (joint-control-channel-group-eval!
@@ -1110,7 +1107,7 @@
 (defbehavior target-death-anim target ((arg0 spool-anim))
   (set! (-> self control unknown-surface00) *neutral-mods*)
   (ja-channel-push! 1 (seconds 0.1))
-  (ja-group! 76 :num! seek!)
+  (ja-group! eichar-deatha-ja :num! seek!)
   (until (ja-done? 0)
     (if arg0
         (spool-push *art-control* (-> arg0 name) 0 self (the-as float -99.0))
@@ -1337,7 +1334,7 @@
       (('target-hit-ground-hard)
        (set! (-> self control unknown-surface00) *neutral-mods*)
        (ja-channel-push! 1 (seconds 0.1))
-       (ja-group! 77 :num! seek!)
+       (ja-group! eichar-death-painful-land-ja :num! seek!)
        (until (ja-done? 0)
          (suspend)
          (let ((a0-82 (-> self skel root-channel 0)))
