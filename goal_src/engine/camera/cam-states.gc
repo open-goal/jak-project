@@ -433,6 +433,7 @@
   (new 'static 'cam-eye-bank :rot-speed 364.0889 :max-degrees 12743.111 :max-fov 11650.845 :min-fov 6189.511)
   )
 
+;; first-person camera
 (defstate cam-eye (camera-slave)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -484,22 +485,26 @@
                 (s5-0 (new-stack-matrix0))
                 )
             (when *camera-read-analog*
-              (let ((f30-0 (analog-input
-                             (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
-                             (the-as float 0.0)
-                             (the-as float 48.0)
-                             (the-as float 110.0)
-                             (the-as float -1.0)
-                             )
-                           )
-                    (f0-0 (analog-input
+              (let ((f30-0 (* (if (and PC_PORT (-> *pc-settings* first-camera-hflip?)) 1.0 -1.0)
+                          (analog-input
+                            (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
+                            (the-as float 0.0)
+                            (the-as float 48.0)
+                            (the-as float 110.0)
+                            (the-as float -1.0)
+                          )
+                        )
+                      )
+                    (f0-0 (* (if (and PC_PORT (-> *pc-settings* first-camera-vflip?)) 1.0 -1.0)
+                          (analog-input
                             (the-as int (+ (-> *cpad-list* cpads 0 righty) -256 (-> *cpad-list* cpads 0 lefty)))
                             (the-as float 0.0)
                             (the-as float 48.0)
                             (the-as float 110.0)
                             (the-as float -1.0)
-                            )
                           )
+                        )
+                      )
                     )
                 (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) (-> *CAM_EYE-bank* rot-speed))))
                 (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) (-> *CAM_EYE-bank* rot-speed))))
@@ -2329,9 +2334,10 @@
     )
   )
 
+;; main third-person camera
 (defbehavior cam-string-joystick camera-slave ()
   (set! (-> self options) (logand -257 (-> self options)))
-  (let ((f28-0 (cam-dist-analog-input (the-as int (-> *cpad-list* cpads 0 righty)) (the-as float 0.05)))
+  (let ((f28-0 (* (if (and PC_PORT (-> *pc-settings* third-camera-vflip?)) 1.0 -1.0) (cam-dist-analog-input (the-as int (-> *cpad-list* cpads 0 righty)) (the-as float 0.05))))
         (f0-2 (/ (- (vector-length (-> self view-flat)) (-> self string-min-val z))
                  (- (-> self string-max-val z) (-> self string-min-val z))
                  )
@@ -2419,13 +2425,15 @@
         )
     )
   (when *camera-read-analog*
-    (let ((f0-29 (analog-input
-                   (the-as int (-> *cpad-list* cpads 0 rightx))
-                   (the-as float 128.0)
-                   (the-as float 32.0)
-                   (the-as float 110.0)
-                   (* 21845.334 (-> *display* seconds-per-frame))
-                   )
+    (let ((f0-29 (* (if (and PC_PORT (-> *pc-settings* third-camera-hflip?)) 1.0 -1.0)
+                    (analog-input
+                     (the-as int (-> *cpad-list* cpads 0 rightx))
+                     (the-as float 128.0)
+                     (the-as float 32.0)
+                     (the-as float 110.0)
+                     (* 21845.334 (-> *display* seconds-per-frame))
+                     )
+                    )
                  )
           (s4-0 (new-stack-matrix0))
           (gp-2 (new-stack-vector0))
