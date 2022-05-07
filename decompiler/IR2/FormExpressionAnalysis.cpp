@@ -3946,14 +3946,6 @@ FormElement* try_make_nonzero_logtest(Form* in, FormPool& pool) {
   return nullptr;
 }
 
-Form* matcher_int_or_form_to_form(FormPool& pool, MatchResult& mr, int key_idx) {
-  if (mr.maps.forms.find(key_idx) != mr.maps.forms.end()) {
-    return mr.maps.forms.at(key_idx);
-  } else {
-    return pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(mr.maps.ints.at(key_idx)));
-  }
-}
-
 FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
   /*
 (defmacro cpad-pressed (pad-idx)
@@ -3992,7 +3984,7 @@ FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
       if (logtest_elt != nullptr) {
         auto buttons_form = logtest_elt->elts().at(1);
         std::vector<Form*> v;
-        v.push_back(matcher_int_or_form_to_form(pool, mr, 0));
+        v.push_back(mr.int_or_form_to_form(pool, 0));
         GenericElement* butts =
             dynamic_cast<GenericElement*>(buttons_form->at(0));  // the form with the buttons itself
         if (butts) {
@@ -4078,57 +4070,42 @@ FormElement* ConditionElement::make_equal_check_generic(const Env& env,
         //    (-> self draw art-group data 7)
         //    )
         // actually (ja-group? group :channel channel)
-        auto whatever1 = source_forms.at(0)->to_string(env);
-        auto whatever2 = source_forms.at(1)->to_string(env);
         auto mr1 = match(
             Matcher::if_no_else(
                 Matcher::fixed_op(FixedOperatorKind::GT,
-                                  {Matcher::deref(Matcher::any_reg(0), false,
+                                  {Matcher::deref(Matcher::s6(), false,
                                                   {DerefTokenMatcher::string("skel"),
                                                    DerefTokenMatcher::string("active-channels")}),
-                                   Matcher::any(1)}),
+                                   Matcher::any(0)}),
                 Matcher::deref(
-                    Matcher::any_reg(2), false,
+                    Matcher::s6(), false,
                     {DerefTokenMatcher::string("skel"), DerefTokenMatcher::string("root-channel"),
-                     DerefTokenMatcher::any_expr_or_int(3),
+                     DerefTokenMatcher::any_expr_or_int(1),
                      DerefTokenMatcher::string("frame-group")})),
             source_forms.at(0));
         auto mr2 =
             match(Matcher::deref(
-                      Matcher::any_reg(0), false,
+                      Matcher::s6(), false,
                       {DerefTokenMatcher::string("draw"), DerefTokenMatcher::string("art-group"),
-                       DerefTokenMatcher::string("data"), DerefTokenMatcher::any_expr_or_int(1)}),
+                       DerefTokenMatcher::string("data"), DerefTokenMatcher::any_expr_or_int(0)}),
                   source_forms.at(1));
         // check if both args matched
         if (mr1.matched && mr2.matched) {
           // check if we actually got a `self`
-          if (mr1.maps.regs.at(0)->reg() == Register(Reg::GPR, Reg::S6) &&
-              mr1.maps.regs.at(2)->reg() == Register(Reg::GPR, Reg::S6) &&
-              mr2.maps.regs.at(0)->reg() == Register(Reg::GPR, Reg::S6)) {
-            // grab channel arg and see if it's correct
-            auto channel_arg = mr1.maps.forms.at(1);
-            if (channel_arg->to_form(env) ==
-                matcher_int_or_form_to_form(pool, mr1, 3)->to_form(env)) {
-              // everything is good! check for default args, make the macro and get out.
-              auto group = matcher_int_or_form_to_form(pool, mr2, 1);
-              if (env.dts->art_group_info.find(env.art_group()) != env.dts->art_group_info.end() &&
-                  group->to_form(env).is_int()) {
-                const auto& art_info = env.dts->art_group_info.at(env.art_group());
-                auto group_int = group->to_form(env).as_int();
-                if (art_info.find(group_int) != art_info.end()) {
-                  group = pool.form<ConstantTokenElement>(art_info.at(group_int));
-                }
-              }
-              std::vector<Form*> macro_args;
-              macro_args.push_back(group);
-              if (channel_arg->to_form(env) != goos::Object::make_integer(0)) {
-                macro_args.push_back(pool.form<ConstantTokenElement>(":channel"));
-                macro_args.push_back(channel_arg);
-              }
-              return pool.alloc_element<GenericElement>(
-                  GenericOperator::make_function(pool.form<ConstantTokenElement>("ja-group?")),
-                  macro_args);
+          // grab channel arg and see if it's correct
+          auto channel_arg = mr1.maps.forms.at(0);
+          if (channel_arg->to_form(env) == mr1.int_or_form_to_form(pool, 1)->to_form(env)) {
+            // everything is good! check for default args, make the macro and get out.
+            std::vector<Form*> macro_args;
+            macro_args.push_back(
+                get_converted_art_group_form(env, pool, mr2.int_or_form_to_form(pool, 0)));
+            if (channel_arg->to_form(env) != goos::Object::make_integer(0)) {
+              macro_args.push_back(pool.form<ConstantTokenElement>(":channel"));
+              macro_args.push_back(channel_arg);
             }
+            return pool.alloc_element<GenericElement>(
+                GenericOperator::make_function(pool.form<ConstantTokenElement>("ja-group?")),
+                macro_args);
           }
         }
       }

@@ -1345,7 +1345,7 @@ Object Interpreter::eval_numequals(const Object& form,
     } break;
 
     default:
-      throw_eval_error(form, "+ must have a numeric argument");
+      throw_eval_error(form, "= must have a numeric argument");
       return Object::make_empty_list();
   }
 

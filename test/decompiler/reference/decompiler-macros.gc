@@ -978,5 +978,60 @@
       (-> self draw art-group data ,group))
   )
 
+(defmacro ja-group! (group
+                     &key (channel 0)
+                     &key (num! none)
+                     &key (param0 #f)
+                     &key (param1 #f)
+                     &key (frame-num 0.0)
+                     )
+  "set a new frame group for self on a specific channel.
+   
+   group   = required. the name of the frame group.
+   channel = the channel to modify. defaults to 0 (base channel).
+   num!    = set the frame playback function. you can use functions like loop!, min, max, seek!, etc.
+   param0, param1 = parameters for the playback function. the defaults depend on num!
+   frame-num = the frame number to set.
+   "
+  
+  (let ((num-func (cond
+                    ((or (eq? num! 'identity)
+                         (eq? num! 'min)
+                         (eq? num! 'max)
+                         )
+                         'num-func-identity)
+                    ((eq? num! 'none) 'num-func-none)
+                    ((eq? num! '+!) 'num-func-+!)
+                    ((eq? num! '-!) 'num-func--!)
+                    ((eq? num! 'seek!) 'num-func-seek!)
+                    ((eq? num! 'loop!) 'num-func-loop!)
+                    ((eq? num! 'blend-in!) 'num-func-blend-in!)
+                    ))
+        (p0 (if param0 param0
+                (cond
+                  ((eq? num! 'loop!) 1.0)
+                  ((eq? num! 'seek!) `(1- (-> (the art-joint-anim (-> self draw art-group data ,group)) data 0 length)))
+                  (#t #f))))
+        (p1 (if param1 param1
+                (cond
+                  ((eq? num! 'seek!) 1.0)
+                  (#t #f))))
+      )
+  `(let ((ja-ch (-> self skel root-channel ,channel)))
+      (set! (-> ja-ch frame-group) (the art-joint-anim (-> self draw art-group data ,group)))
+      ,(if p0 `(set! (-> ja-ch param 0) ,p0) `(none))
+      ,(if p1 `(set! (-> ja-ch param 0) ,p1) `(none))
+      ,(cond
+        ((eq? num! 'max) `(set! (-> ja-ch frame-num) (1- (-> (the art-joint-anim (-> self draw art-group data ,group)) data 0 length))))
+        (#t `(set! (-> ja-ch frame-num) 0.0))
+        )
+      (joint-control-channel-group!
+          ja-ch
+          (the art-joint-anim `(-> self draw art-group data ,group))
+          ,num-func
+          )
+      ))
+  )
+
 
 

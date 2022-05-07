@@ -174,6 +174,8 @@ class Register {
   uint32_t get_special() const;
   bool allowed_local_gpr() const;
 
+  bool is_s6() const { return *this == Register(Reg::GPR, Reg::S6); }
+
   bool operator==(const Register& other) const;
   bool operator!=(const Register& other) const;
   bool operator<(const Register& other) const { return id < other.id; }

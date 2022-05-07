@@ -792,6 +792,243 @@ FormElement* rewrite_as_case_with_else(LetElement* in, const Env& env, FormPool&
   return nullptr;
 }
 
+bool var_name_equal(const Env& env, const std::string& a, std::optional<RegisterAccess> b) {
+  ASSERT(b);
+  return env.get_variable_name(*b) == a;
+}
+
+FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool) {
+  // this function actually checks for multiple macros. we start with ja-group!
+
+  // should have this anyway, but double check so we don't throw this away.
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  auto test = in->to_form(env).print();
+
+  // look for setting a var to (-> self skel root-channel ,channel).
+  // this is the same regardless of macro.
+  auto ra = in->entries().at(0).dest;
+  auto var = env.get_variable_name(ra);
+  auto mr_dr_var = match(
+      Matcher::deref(Matcher::s6(), false,
+                     {DerefTokenMatcher::string("skel"), DerefTokenMatcher::string("root-channel"),
+                      DerefTokenMatcher::any_expr_or_int(0)}),
+      in->entries().at(0).src);
+  if (!mr_dr_var.matched) {
+    return nullptr;
+  }
+  auto channel_form = mr_dr_var.int_or_form_to_form(pool, 0);
+
+  // (set! (-> a0-15 frame-group) (the-as art-joint-anim (-> self draw art-group data 10)))
+  // this means it's a ja-group!
+  auto mr_dr_frame_group = match(
+      Matcher::set(
+          Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("frame-group")}),
+          Matcher::cast("art-joint-anim", Matcher::deref(Matcher::s6(), false,
+                                                         {DerefTokenMatcher::string("draw"),
+                                                          DerefTokenMatcher::string("art-group"),
+                                                          DerefTokenMatcher::string("data"),
+                                                          DerefTokenMatcher::any_expr_or_int(1)}))),
+      in->body()->at(0));
+  if (!mr_dr_frame_group.matched) {
+    // NOT a ja-group! so lets do something else
+    // TODO lol
+    return nullptr;
+  }
+  if (!var_name_equal(env, var, mr_dr_frame_group.maps.regs.at(0))) {
+    return nullptr;
+  }
+  if (in->body()->size() <= 1) {
+    return nullptr;
+  }
+
+  // now we check the rest of the body for sets
+  Form* set_param0 = nullptr;
+  Form* set_param1 = nullptr;
+  Form* set_frame_num = nullptr;
+
+  // there might be more or less sets
+  int idx = 1;
+
+  // match a set for param0, param1 and frame-num
+  auto mr_set_p0 =
+      match(Matcher::set(
+                Matcher::deref(Matcher::any_reg(0), false,
+                               {DerefTokenMatcher::string("param"), DerefTokenMatcher::integer(0)}),
+                Matcher::any(1)),
+            in->body()->at(idx));
+  if (mr_set_p0.matched) {
+    if (!var_name_equal(env, var, mr_set_p0.maps.regs.at(0))) {
+      return nullptr;
+    }
+    idx++;
+    set_param0 = mr_set_p0.maps.forms.at(1);
+  }
+
+  auto mr_set_p1 =
+      match(Matcher::set(
+                Matcher::deref(Matcher::any_reg(0), false,
+                               {DerefTokenMatcher::string("param"), DerefTokenMatcher::integer(1)}),
+                Matcher::any(1)),
+            in->body()->at(idx));
+  if (mr_set_p1.matched) {
+    if (!var_name_equal(env, var, mr_set_p1.maps.regs.at(0))) {
+      return nullptr;
+    }
+    idx++;
+    set_param1 = mr_set_p1.maps.forms.at(1);
+  }
+
+  auto mr_set_fn = match(Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
+                                                     {DerefTokenMatcher::string("frame-num")}),
+                                      Matcher::any(1)),
+                         in->body()->at(idx));
+  if (mr_set_fn.matched) {
+    if (!var_name_equal(env, var, mr_set_fn.maps.regs.at(0))) {
+      return nullptr;
+    }
+    idx++;
+    set_frame_num = mr_set_fn.maps.forms.at(1);
+  }
+
+  // lastly, match the function call.
+  auto mr_func = match(
+      Matcher::op(
+          GenericOpMatcher::func(Matcher::symbol("joint-control-channel-group!")),
+          {Matcher::any_reg(0),
+           Matcher::cast("art-joint-anim", Matcher::deref(Matcher::s6(), false,
+                                                          {DerefTokenMatcher::string("draw"),
+                                                           DerefTokenMatcher::string("art-group"),
+                                                           DerefTokenMatcher::string("data"),
+                                                           DerefTokenMatcher::any_expr_or_int(1)})),
+           Matcher::any_symbol(2)}),
+      in->body()->at(idx));
+  if (!mr_func.matched) {
+    return nullptr;
+  }
+  if (!var_name_equal(env, var, mr_func.maps.regs.at(0))) {
+    return nullptr;
+  }
+
+  // check that we have nothing more
+  if (in->body()->size() != idx + 1) {
+    lg::error("ja-group! failed with {} elts in: {}", in->body()->size(), test);
+  }
+
+  // check the frame group argument now
+  auto group_form = mr_dr_frame_group.int_or_form_to_form(pool, 1);
+  if (group_form->to_form(env) != mr_func.int_or_form_to_form(pool, 1)->to_form(env)) {
+    return nullptr;
+  }
+
+  // check the channel arg
+  auto channel_arg = channel_form->to_form(env);
+  if (channel_arg.is_int() && channel_arg.as_int() == 0) {
+    channel_form = nullptr;
+  }
+
+  // check the num func argument now
+  std::string num_func_arg = "none";
+  const auto& num_func = mr_func.maps.strings.at(2);
+  if (num_func == "num-func-none") {
+    num_func_arg = "none";
+  } else if (num_func == "num-func-identity") {
+    num_func_arg = "identity";
+  } else if (num_func == "num-func-+!") {
+    num_func_arg = "+!";
+  } else if (num_func == "num-func--!") {
+    num_func_arg = "-!";
+  } else if (num_func == "num-func-seek!") {
+    num_func_arg = "seek!";
+  } else if (num_func == "num-func-loop!") {
+    num_func_arg = "loop!";
+  } else if (num_func == "num-func-blend-in!") {
+    num_func_arg = "blend-in!";
+  } else {
+    lg::error("unknown num-func {}!!", num_func_arg);
+    return nullptr;
+  }
+
+  // first argument check - make sure the expected fields have been set at all
+  if (num_func_arg == "seek!" && !(set_param0 && set_param1 && set_frame_num)) {
+    return nullptr;
+  } else if (!(set_param0 && set_param1 && set_frame_num)) {
+    // there's totally workarounds for this but i want to actually catch these
+    if (!set_param0) {
+      lg::error("ja-group! set_param0 not set for func {}", num_func_arg);
+    }
+    if (!set_param1) {
+      lg::error("ja-group! set_param1 not set for func {}", num_func_arg);
+    }
+    if (!set_frame_num) {
+      lg::error("ja-group! set_frame_num not set for func {}", num_func_arg);
+    }
+    return nullptr;
+  }
+
+  // check default args for a bunch of crap
+  if (num_func_arg == "seek!") {
+    if (set_param0) {
+      auto mr =
+          match(Matcher::cast(
+                    "float",
+                    Matcher::fixed_op(
+                        FixedOperatorKind::ADDITION,
+                        {Matcher::deref(
+                             Matcher::cast("art-joint-anim",
+                                           Matcher::deref(Matcher::s6(), false,
+                                                          {DerefTokenMatcher::string("draw"),
+                                                           DerefTokenMatcher::string("art-group"),
+                                                           DerefTokenMatcher::string("data"),
+                                                           DerefTokenMatcher::any_expr_or_int(0)})),
+                             false,
+                             {DerefTokenMatcher::string("data"), DerefTokenMatcher::integer(0),
+                              DerefTokenMatcher::string("length")}),
+                         Matcher::integer(-1)})),
+                set_param0);
+      if (mr.matched) {
+        if (group_form->to_form(env) == mr.int_or_form_to_form(pool, 0)->to_form(env)) {
+          set_param0 = nullptr;
+        }
+      }
+    }
+    if (set_param1 && set_param1->to_form(env).is_float() &&
+        set_param1->to_form(env).as_float() == 1.0) {
+      set_param1 = nullptr;
+    }
+    if (set_frame_num && set_frame_num->to_form(env).is_float() &&
+        set_frame_num->to_form(env).as_float() == 0.0) {
+      set_frame_num = nullptr;
+    }
+  }
+
+  // make the final form which is a macro call. i am lazy though.
+  std::vector<Form*> args;
+  args.push_back(get_converted_art_group_form(env, pool, group_form));
+  if (channel_form) {
+    args.push_back(
+        pool.form<ConstantTokenElement>(fmt::format(":channel {}", channel_arg.print())));
+  }
+  if (set_param0) {
+    args.push_back(pool.form<ConstantTokenElement>(
+        fmt::format(":param0 {}", set_param0->to_form(env).print())));
+  }
+  if (set_param1) {
+    args.push_back(pool.form<ConstantTokenElement>(
+        fmt::format(":param1 {}", set_param1->to_form(env).print())));
+  }
+  if (set_frame_num) {
+    args.push_back(pool.form<ConstantTokenElement>(
+        fmt::format(":frame-num {}", set_frame_num->to_form(env).print())));
+  }
+  args.push_back(pool.form<ConstantTokenElement>(fmt::format(":num! {}", num_func_arg)));
+
+  return pool.alloc_element<GenericElement>(
+      GenericOperator::make_function(pool.form<ConstantTokenElement>("ja-group!")), args);
+}
+
 /*!
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
@@ -819,6 +1056,11 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
   auto as_unused = rewrite_empty_let(in, env, pool);
   if (as_unused) {
     return as_unused;
+  }
+
+  auto as_joint_macro = rewrite_joint_macro(in, env, pool);
+  if (as_joint_macro) {
+    return as_joint_macro;
   }
 
   auto as_case_no_else = rewrite_as_case_no_else(in, env, pool);

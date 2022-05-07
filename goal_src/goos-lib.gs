@@ -290,6 +290,8 @@
   `(or (float? ,x) (integer? ,x))
   )
 
+(defsmacro neq? (a b) `(not (eq? ,a ,b)))
+
 (defsmacro != (a b) `(not (= ,a ,b)))
 (defsmacro zero? (x) `(= ,x 0))
 (defsmacro nonzero? (x) `(!= ,x 0))

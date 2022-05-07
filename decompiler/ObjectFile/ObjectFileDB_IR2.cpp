@@ -461,7 +461,7 @@ void ObjectFileDB::ir2_register_usage_pass(int seg, ObjectFileData& data) {
     if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
       func.ir2.env.set_reg_use(analyze_ir2_register_usage(func));
 
-      auto block_0_start = func.ir2.env.reg_use().block.at(0).input;
+      auto& block_0_start = func.ir2.env.reg_use().block.at(0).input;
       std::vector<Register> dep_regs;
       for (auto x : block_0_start) {
         dep_regs.push_back(x);
@@ -589,10 +589,12 @@ void ObjectFileDB::ir2_insert_lets(int seg, ObjectFileData& data) {
       try {
         insert_lets(func, func.ir2.env, *func.ir2.form_pool, func.ir2.top_form);
       } catch (const std::exception& e) {
-        func.warnings.general_warning(
-            fmt::format("Error while inserting lets: {}. Make sure that the return type is not "
-                        "none if something is actually returned.",
-                        e.what()));
+        const auto err = fmt::format(
+            "Error while inserting lets: {}. Make sure that the return type is not "
+            "none if something is actually returned.",
+            e.what());
+        lg::warn(err);
+        func.warnings.general_warning(err);
       }
     }
   });
