@@ -954,16 +954,19 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   // first argument check - make sure the expected fields have been set at all
   if (num_func_arg == "seek!" && !(set_param0 && set_param1 && set_frame_num)) {
     return nullptr;
-  } else if (!(set_param0 && set_param1 && set_frame_num)) {
+  } else if (num_func_arg == "loop!" && !(set_param0 && !set_param1 && set_frame_num)) {
+    return nullptr;
+  } else if (num_func_arg != "seek!" && num_func_arg != "loop!" &&
+             !(set_param0 && set_param1 && set_frame_num)) {
     // there's totally workarounds for this but i want to actually catch these
     if (!set_param0) {
-      lg::error("ja-group! set_param0 not set for func {}", num_func_arg);
+      lg::error("in {}: ja-group! param0 not set for func {}", env.func->name(), num_func_arg);
     }
     if (!set_param1) {
-      lg::error("ja-group! set_param1 not set for func {}", num_func_arg);
+      lg::error("in {}: ja-group! param1 not set for func {}", env.func->name(), num_func_arg);
     }
     if (!set_frame_num) {
-      lg::error("ja-group! set_frame_num not set for func {}", num_func_arg);
+      lg::error("in {}: ja-group! frame-num not set for func {}", env.func->name(), num_func_arg);
     }
     return nullptr;
   }
@@ -997,6 +1000,15 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
     if (set_param1 && set_param1->to_form(env).is_float() &&
         set_param1->to_form(env).as_float() == 1.0) {
       set_param1 = nullptr;
+    }
+    if (set_frame_num && set_frame_num->to_form(env).is_float() &&
+        set_frame_num->to_form(env).as_float() == 0.0) {
+      set_frame_num = nullptr;
+    }
+  } else if (num_func_arg == "loop!") {
+    if (set_param0 && set_param0->to_form(env).is_float() &&
+        set_param0->to_form(env).as_float() == 1.0) {
+      set_param0 = nullptr;
     }
     if (set_frame_num && set_frame_num->to_form(env).is_float() &&
         set_frame_num->to_form(env).as_float() == 0.0) {

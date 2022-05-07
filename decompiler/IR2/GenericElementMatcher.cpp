@@ -14,6 +14,7 @@ Matcher Matcher::any_label(int match_id) {
   m.m_label_out_id = match_id;
   return m;
 }
+
 Matcher Matcher::reg(Register reg) {
   Matcher m;
   m.m_kind = Kind::REG;

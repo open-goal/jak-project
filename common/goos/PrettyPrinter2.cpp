@@ -220,7 +220,7 @@ void break_list(Node* node) {
       node->top_line_count = 4;
     } else if (name == "until" || name == "while" || name == "dotimes" || name == "countdown" ||
                name == "when" || name == "behavior" || name == "lambda" || name == "defpart" ||
-               name == "define") {
+               name == "define" || name == "ja-group!") {
       node->top_line_count = 2;
     } else if (name == "let" || name == "let*" || name == "rlet") {
       // special case for things like let.
