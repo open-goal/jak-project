@@ -9,6 +9,7 @@ set(SOUND_SOURCES
   989snd/sfxblock.cpp
   989snd/loader.cpp
   989snd/vagvoice.cpp
+  989snd/util.cpp
   common/synth.cpp
   common/voice.cpp
   common/envelope.cpp
