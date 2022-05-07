@@ -158,7 +158,7 @@ void player::set_midi_reg(u32 sound_id, u8 reg, u8 value) {
     return;
   }
 
-  auto* handler = (ame_handler*)m_handlers.at(sound_id).get();
+  auto* handler = m_handlers.at(sound_id).get();
   handler->set_register(reg, value);
 }
 
