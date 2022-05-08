@@ -485,28 +485,28 @@ u32 ISOThread() {
                 StopVAG(in_progress_vag_command);
                 ReleaseMessage(in_progress_vag_command);
               }
-            }
-            in_progress_vag_command = &vag_cmd;
-            memcpy(&vag_cmd, cmd, sizeof(vag_cmd));
-            if (vag_paused) {
-              InitVAGCmd(&vag_cmd, 1);
-              unk = 1;
-            } else {
-              InitVAGCmd(&vag_cmd, 0);
-            }
-            vag_cmd.messagebox_to_reply = 0;
-            vag_cmd.thread_id = 0;
-            if (QueueMessage(&vag_cmd, 3, "PlayVag")) {
-              if (vag_cmd.vag) {
-                vag_cmd.fd = isofs->open_wad(vag_cmd.file, vag_cmd.vag->offset);
+              in_progress_vag_command = &vag_cmd;
+              memcpy(&vag_cmd, cmd, sizeof(vag_cmd));
+              if (vag_paused) {
+                InitVAGCmd(&vag_cmd, 1);
+                unk = 1;
               } else {
-                vag_cmd.fd = nullptr;
+                InitVAGCmd(&vag_cmd, 0);
               }
-              vag_cmd.status = -1;
-              vag_cmd.callback_function = ProcessVAGData;
-              gVAGCMD = &vag_cmd;
-            } else {
-              in_progress_vag_command = nullptr;
+              vag_cmd.messagebox_to_reply = 0;
+              vag_cmd.thread_id = 0;
+              if (QueueMessage(&vag_cmd, 3, "PlayVag")) {
+                if (vag_cmd.vag) {
+                  vag_cmd.fd = isofs->open_wad(vag_cmd.file, vag_cmd.vag->offset);
+                } else {
+                  vag_cmd.fd = nullptr;
+                }
+                vag_cmd.status = -1;
+                vag_cmd.callback_function = ProcessVAGData;
+                gVAGCMD = &vag_cmd;
+              } else {
+                in_progress_vag_command = nullptr;
+              }
             }
           }
           if (thing) {
