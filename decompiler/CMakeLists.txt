@@ -54,9 +54,11 @@ add_library(
         level_extractor/BspHeader.cpp
         level_extractor/extract_collide_frags.cpp
         level_extractor/extract_level.cpp
+        level_extractor/extract_merc.cpp
         level_extractor/extract_tfrag.cpp
         level_extractor/extract_tie.cpp
         level_extractor/extract_shrub.cpp
+        level_extractor/MercData.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp

@@ -1,10 +1,10 @@
-Loop over effect
+Loop over effect (skip those flagged with use-mercneric)
 
-Loop over fragments 
+Loop over fragments
 
 First thing is the "row" data.
 row.x/y is st-vif-add from the merc-ctrl-header.
-TODO: what's zw??
+row.z = 0x47800000, row.w = 0x4b010000
 
 
 Next is the unsigned-four.
@@ -40,3 +40,8 @@ Increment effect info
 Decrement effect count
 
 update some next-merc thing in the scratchpad
+
+
+# Merc Renderer
+
+

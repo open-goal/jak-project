@@ -15,8 +15,6 @@ class DecompilerTypeSystem;
 
 namespace level_tools {
 
-u32 deref_u32(const Ref& ref, int word_offset);
-
 struct PrintSettings {
   bool print_tfrag = false;
   bool expand_draw_node = false;
