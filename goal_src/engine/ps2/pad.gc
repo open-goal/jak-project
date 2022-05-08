@@ -172,6 +172,34 @@
     )
   )
 
+(defun analog-input ((in int) (offset float) (center-val float) (max-val float) (out-range float))
+  "Convert integer input from pad into a float between -out-range and +out-range.
+   The offset is applied directly to the input.
+   The center val is the expected value for 0, after applying offset.
+   The max val is the expected value with the stick pushed all the way"
+  (let* ((offset-in (- (the float in) offset)) ;; apply offset to in
+         (magnitude (- (fabs offset-in) center-val)) ;; determine our magnitude
+         (max-magnitude (- max-val center-val)) ;; maximum expected magnitude.
+         )
+    ;; flip the output if negative
+    (if (< offset-in 0.0)
+        (set! out-range (- out-range))
+        )
+    ;; scale and return value.
+    (cond
+      ((>= 0.0 magnitude)
+       0.0
+       )
+      ((>= magnitude max-magnitude)
+       out-range
+       )
+      (else
+       (/ (* magnitude out-range) max-magnitude)
+       )
+      )
+    )
+  )
+
 (defun v1-analog-input ((in int) (offset float) (center-val float) (max-val float) (out-range float))
   "Same as analog-input but respects First-Person Vertical camera control setting."
   (*
@@ -203,34 +231,6 @@
     (analog-input in offset center-val max-val out-range)
   )
 )
-
-(defun analog-input ((in int) (offset float) (center-val float) (max-val float) (out-range float))
-  "Convert integer input from pad into a float between -out-range and +out-range.
-   The offset is applied directly to the input.
-   The center val is the expected value for 0, after applying offset.
-   The max val is the expected value with the stick pushed all the way"
-  (let* ((offset-in (- (the float in) offset)) ;; apply offset to in
-         (magnitude (- (fabs offset-in) center-val)) ;; determine our magnitude
-         (max-magnitude (- max-val center-val)) ;; maximum expected magnitude.
-         )
-    ;; flip the output if negative
-    (if (< offset-in 0.0)
-        (set! out-range (- out-range))
-        )
-    ;; scale and return value.
-    (cond
-      ((>= 0.0 magnitude)
-       0.0
-       )
-      ((>= magnitude max-magnitude)
-       out-range
-       )
-      (else
-       (/ (* magnitude out-range) max-magnitude)
-       )
-      )
-    )
-  )
 
 (defun cpad-set-buzz! ((pad cpad-info) (buzz-idx int) (buzz-amount int) (duration time-frame))
   "Turn on vibration motor 'buzz-idx' for duration, at magnitude buzz-amount."
