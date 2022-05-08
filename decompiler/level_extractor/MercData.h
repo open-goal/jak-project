@@ -105,6 +105,7 @@ struct MercShader {
   GsAlpha alpha;
   u16 output_offset;
   u16 next_strip_nloop;
+  u32 original_tex;
   std::string print() const;
 };
 

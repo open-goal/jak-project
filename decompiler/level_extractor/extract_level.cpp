@@ -137,6 +137,7 @@ void confirm_textures_identical(const TextureDB& tex_db) {
 
 void extract_art_groups_from_level(const ObjectFileDB& db,
                                    const TextureDB& tex_db,
+                                   const std::vector<level_tools::TextureRemap>& tex_remap,
                                    const std::string& dgo_name,
                                    tfrag3::Level& level_data,
                                    bool dump_level) {
@@ -144,22 +145,22 @@ void extract_art_groups_from_level(const ObjectFileDB& db,
   for (const auto& file : files) {
     if (file.name.length() > 3 && !file.name.compare(file.name.length() - 3, 3, "-ag")) {
       const auto& ag_file = db.lookup_record(file);
-      extract_merc(ag_file, tex_db, db.dts, level_data, dump_level);
+      extract_merc(ag_file, tex_db, db.dts, tex_remap, level_data, dump_level);
     }
   }
 }
 
-void extract_bsp_from_level(const ObjectFileDB& db,
-                            const TextureDB& tex_db,
-                            const std::string& dgo_name,
-                            const DecompileHacks& hacks,
-                            bool dump_level,
-                            bool extract_collision,
-                            tfrag3::Level& level_data) {
+std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB& db,
+                                                              const TextureDB& tex_db,
+                                                              const std::string& dgo_name,
+                                                              const DecompileHacks& hacks,
+                                                              bool dump_level,
+                                                              bool extract_collision,
+                                                              tfrag3::Level& level_data) {
   auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name));
   if (!bsp_rec) {
     lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
-    return;
+    return {};
   }
   std::string level_name = bsp_rec->name.substr(0, bsp_rec->name.length() - 4);
 
@@ -230,6 +231,8 @@ void extract_bsp_from_level(const ObjectFileDB& db,
     }
   }
   level_data.level_name = level_name;
+
+  return bsp_header.texture_remap_table;
 }
 
 /*!
@@ -255,7 +258,7 @@ void extract_common(const ObjectFileDB& db,
 
   tfrag3::Level tfrag_level;
   add_all_textures_from_level(tfrag_level, dgo_name, tex_db);
-  extract_art_groups_from_level(db, tex_db, dgo_name, tfrag_level, dump_levels);
+  extract_art_groups_from_level(db, tex_db, {}, dgo_name, tfrag_level, dump_levels);
   Serializer ser;
   tfrag_level.serialize(ser);
   auto compressed =
@@ -282,8 +285,9 @@ void extract_from_level(const ObjectFileDB& db,
   add_all_textures_from_level(level_data, dgo_name, tex_db);
 
   // the bsp header file data
-  extract_bsp_from_level(db, tex_db, dgo_name, hacks, dump_level, extract_collision, level_data);
-  extract_art_groups_from_level(db, tex_db, dgo_name, level_data, dump_level);
+  auto tex_remap = extract_bsp_from_level(db, tex_db, dgo_name, hacks, dump_level,
+                                          extract_collision, level_data);
+  extract_art_groups_from_level(db, tex_db, tex_remap, dgo_name, level_data, dump_level);
 
   Serializer ser;
   level_data.serialize(ser);

@@ -88,6 +88,7 @@ TypedRef MercFragmentControl::from_ref(TypedRef tr, const DecompilerTypeSystem& 
   lump_four_count = read_plain_data_field<u8>(tr, "lump-four-count", dts);
   fp_qwc = read_plain_data_field<u8>(tr, "fp-qwc", dts);
   mat_xfer_count = read_plain_data_field<u8>(tr, "mat-xfer-count", dts);
+  ASSERT(mat_xfer_count < 10);
   Ref dest_data_ref = get_field_ref(tr, "mat-dest-data", dts);
   for (u8 i = 0; i < mat_xfer_count; i++) {
     auto& entry = mat_dest_data.emplace_back();
@@ -147,7 +148,7 @@ void MercByteHeader::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
     } else {
       // ASSERT(!got_end);
       if (got_end) {
-        fmt::print("got something after the end\n");  // todo, should investigate more
+        // fmt::print("got something after the end\n");  // todo, should investigate more
       }
     }
   }
@@ -273,6 +274,7 @@ TypedRef MercFragment::from_ref(TypedRef tr,
     ASSERT(adgif1_addr == (u8)GsRegisterAddress::TEX1_1);
     shader.tex1 = GsTex1(deref_u64(fp_ref, 0));
     u16 stash = deref_u32(fp_ref, 3);
+    shader.original_tex = deref_u32(fp_ref, 2);
     shader.next_strip_nloop = stash & 0x7fff;
     ASSERT((!!(stash & 0x8000)) == (i == fp_header.shader_cnt - 1));  // set eop on last
     fp_ref.byte_offset += 16;

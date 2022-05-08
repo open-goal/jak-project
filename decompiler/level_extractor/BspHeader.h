@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "decompiler/util/goal_data_reader.h"
+#include "decompiler/level_extractor/common_formats.h"
 
 namespace decompiler {
 class LinkedObjectFile;
@@ -722,12 +723,6 @@ struct DrawableTreeArray {
   std::string print(const PrintSettings& settings, int indent) const;
 
   std::vector<std::unique_ptr<DrawableTree>> trees;
-};
-
-// levels may remap textures if they provide one that should be shared
-struct TextureRemap {
-  u32 original_texid;
-  u32 new_texid;
 };
 
 // The "file info"
