@@ -3109,6 +3109,7 @@
   (none)
   )
 
+;; third person camera (in debug menu, and fishermans-boat-player-control w/o autopilot?)
 (defstate cam-stick (camera-slave)
   :event
   cam-standard-event-handler
@@ -3145,12 +3146,14 @@
     (when (not (paused?))
       (when *camera-read-analog*
         (let ((f0-0
-                (analog-input
-                  (the-as int (-> *cpad-list* cpads 0 righty))
-                  (the-as float 128.0)
-                  (the-as float 32.0)
-                  (the-as float 110.0)
-                  (the-as float 0.05)
+                (* (if (and PC_PORT (-> *pc-settings* third-camera-vflip?)) 1.0 -1.0)
+                  (analog-input
+                    (the-as int (-> *cpad-list* cpads 0 righty))
+                    (the-as float 128.0)
+                    (the-as float 32.0)
+                    (the-as float 110.0)
+                    (the-as float 0.05)
+                    )
                   )
                 )
               )
@@ -3174,12 +3177,14 @@
             (lerp (-> *CAM_STICK-bank* min-z) (-> *CAM_STICK-bank* max-z) (-> self view-off-param))
             )
       (when *camera-read-analog*
-        (let ((f0-16 (analog-input
-                       (the-as int (-> *cpad-list* cpads 0 rightx))
-                       (the-as float 128.0)
-                       (the-as float 32.0)
-                       (the-as float 110.0)
-                       (* 21845.334 (-> *display* seconds-per-frame))
+        (let ((f0-16 (* (if (and PC_PORT (-> *pc-settings* third-camera-hflip?)) 1.0 -1.0)
+                        (analog-input
+                         (the-as int (-> *cpad-list* cpads 0 rightx))
+                         (the-as float 128.0)
+                         (the-as float 32.0)
+                         (the-as float 110.0)
+                         (* 21845.334 (-> *display* seconds-per-frame))
+                         )
                        )
                      )
               (gp-0 (new-stack-matrix0))
