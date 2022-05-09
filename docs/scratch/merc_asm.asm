@@ -130,7 +130,7 @@ L7:
   iand vi09, vi09, vi05      |  nop   ;; mask to get vi09 = shader-cnt
   ilw.y vi06, 1(vi12)        |  miniz.w vf19, vf00, vf27 ;; set add, vi06 = mat2-cnt
   ibeq vi00, vi02, L9        |  miniy.w vf18, vf00, vf27 ;; skip to L9 if strip-len is 0
-  ilwr.z vi01, vi12          |  minix.w vf17, vf00, vf27 ;; vi01 = mat3-cnt
+  ilwr.z vi01, vi12          |  minix.w vf17, vf00, vf27 ;; vi01 = lump-off
 
 ;; we have strip
   ibne vi00, vi09, L8        |  nop  ;; goto L8 if we have nonzero shader-cnt
@@ -252,90 +252,110 @@ L13:
   ilwr.z vi09, vi13          |  maddz.xyzw vf13, vf16, vf12
 ;; end matrix setup
 
+;; the L14 -> L26 area handles mat1s.
+;; it appears to set vi03 as the rgba reading pointer
+;; and vi04 as the end of mat1's rgba (poniter to last, not one past the end)
+;; and vi06 as the end of mat2's rgba
+;; and vi07 as the end of mat3's rgba
+
 L14:
-  ilw.x vi02, 3(vi12)        |  nop
-  ibeq vi00, vi04, L26       |  nop
-  iadd vi01, vi01, vi12      |  nop
-  ilwr.x vi08, vi01          |  nop
-  lqi.xyzw vf08, vi01        |  nop
-  lqi.xyzw vf11, vi01        |  nop
-  lqi.xyzw vf14, vi01        |  nop
-  lq.xyz vf29, 4(vi08)       |  nop
-  lq.xyz vf30, 5(vi08)       |  add.zw vf08, vf08, vf17
-  lq.xyzw vf31, 6(vi08)      |  add.xyzw vf11, vf11, vf18
-  iaddi vi04, vi04, -0x1     |  add.xyzw vf14, vf14, vf19
-  iadd vi02, vi02, vi12      |  nop
+  ilw.x vi02, 3(vi12)        |  nop   ;; vi02 = perc-off
+  ibeq vi00, vi04, L26       |  nop   ;; goto L26 if mat1 count is 0
+  iadd vi01, vi01, vi12      |  nop   ;; vi01 = lump.
+  ilwr.x vi08, vi01          |  nop   ;; vi08 = lump[0].x = mat-0?
+  lqi.xyzw vf08, vi01        |  nop   ;; vf08 = lump[0] = [mat0, mat1, nrmx, posx]?
+  lqi.xyzw vf11, vi01        |  nop   ;; vf11 = lump[1] = [dst0, dst1, nrmy, posy]?
+  lqi.xyzw vf14, vi01        |  nop   ;; vf14 = lump[2] = [texs, text, nrmz, posz]?
+  lq.xyz vf29, 4(vi08)       |  nop   ;; vf29 = [nmat0x, nmat0y, nmat0z, 0.003921569]
+  lq.xyz vf30, 5(vi08)       |  add.zw vf08, vf08, vf17   ;; add to nrm and pos, keep loading nmat (w is ? here)
+  lq.xyzw vf31, 6(vi08)      |  add.xyzw vf11, vf11, vf18 ;; lump unpack and add
+  iaddi vi04, vi04, -0x1     |  add.xyzw vf14, vf14, vf19 ;; lump unpack and add, subtract 1 from mat1 count
+  iadd vi02, vi02, vi12      |  nop                       ;; vi02 = perc
+
+  ;; right does matrix mul with nmat and the vertex.
+  ;; it rotates the normal
+  ;; left lqi's from perc, unpacks dst0, dst1 to vi10 and vi13
   lqi.xyzw vf24, vi02        |  mulaz.xyzw ACC, vf29, vf08
   mtir vi10, vf11.x          |  maddaz.xyzw ACC, vf30, vf11
   mtir vi13, vf11.y          |  maddz.xyz vf11, vf31, vf14
+
+  ;; vf25, vf26, vf27, vf28 is the tmat
   lq.xyzw vf25, 0(vi08)      |  nop
-  lq.xyzw vf26, 1(vi08)      |  itof0.xyzw vf24, vf24
+  lq.xyzw vf26, 1(vi08)      |  itof0.xyzw vf24, vf24 ;; perc to floats: no idea what this is yet.
   lq.xyzw vf27, 2(vi08)      |  nop
-  erleng.xyz P, vf11         |  nop
-  lq.xyzw vf28, 3(vi08)      |  mulaw.xyzw ACC, vf25, vf08
-  ior vi15, vi07, vi00       |  maddaw.xyzw ACC, vf26, vf11
-  mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-  lqi.xyzw vf09, vi01        |  nop
-  ilwr.y vi03, vi12          |  nop
-  ilw.z vi07, 1(vi12)        |  nop
-  lqi.xyzw vf12, vi01        |  add.xyzw vf08, vf08, vf28
-  lqi.xyzw vf15, vi01        |  nop
-  mtir vi08, vf09.x          |  nop
+  erleng.xyz P, vf11         |  nop ;; p = normal length.
+  lq.xyzw vf28, 3(vi08)      |  mulaw.xyzw ACC, vf25, vf08 ;; transform point, keep loading tmat
+  ior vi15, vi07, vi00       |  maddaw.xyzw ACC, vf26, vf11 ;; vi15 = using mercprime
+  mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14 ;; vf14.z = 1. (clears nrmz)
+  lqi.xyzw vf09, vi01        |  nop ;; vf09 = [mat0, mat1, nrmx, posx]? (P1)
+  ilwr.y vi03, vi12          |  nop ;; vi03 = rgba-off
+  ilw.z vi07, 1(vi12)        |  nop ;; vi07 = mat3-cnt (why.....)
+  lqi.xyzw vf12, vi01        |  add.xyzw vf08, vf08, vf28 ;; P1 vert load | finish xf pt
+  lqi.xyzw vf15, vi01        |  nop ;; P1 vert load
+  mtir vi08, vf09.x          |  nop ;; P1 mat0
   ibeq vi00, vi15, L15       |  nop
-  iadd vi03, vi03, vi12      |  nop
+  iadd vi03, vi03, vi12      |  nop ;; vi03 = rgba
+
+  ;; only if merc-prime
   nop                        |  miniw.w vf08, vf08, vf01
+
 L15:
-  div Q, vf01.w, vf08.w      |  add.zw vf09, vf09, vf17
-  iadd vi04, vi04, vi03      |  add.xyzw vf12, vf12, vf18
-  lq.xyz vf29, 4(vi08)       |  add.xyzw vf15, vf15, vf19
-  lq.xyz vf30, 5(vi08)       |  nop
-  iadd vi06, vi06, vi04      |  nop
-  lq.xyzw vf31, 6(vi08)      |  nop
-  lq.xyzw vf25, 0(vi08)      |  nop
-  lq.xyzw vf26, 1(vi08)      |  mul.xyz vf08, vf08, Q
-  mtir vi11, vf12.x          |  mul.xyzw vf14, vf14, Q
-  mtir vi14, vf12.y          |  nop
-  lq.xyzw vf27, 2(vi08)      |  nop
-  lqi.xyzw vf23, vi03        |  add.xyzw vf08, vf08, vf22
-  iadd vi07, vi07, vi06      |  mulaz.xyzw ACC, vf29, vf09
-  lq.xyzw vf28, 3(vi08)      |  maddaz.xyzw ACC, vf30, vf12
-  mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15
+;; rhs is lump adding
+  div Q, vf01.w, vf08.w      |  add.zw vf09, vf09, vf17    ;; perspective divide!
+  iadd vi04, vi04, vi03      |  add.xyzw vf12, vf12, vf18  ;; vi04 = rgba + mat1-cnt - 1 (??)
+  lq.xyz vf29, 4(vi08)       |  add.xyzw vf15, vf15, vf19  ;; P1 load nmat | P1 lump add v2
+
+  lq.xyz vf30, 5(vi08)       |  nop ;; P1 load nmat
+  iadd vi06, vi06, vi04      |  nop ;; vi06 = rgba + mat1-cnt + mat2-cnt - 1
+  lq.xyzw vf31, 6(vi08)      |  nop ;; p1 load mat
+  lq.xyzw vf25, 0(vi08)      |  nop ;; p1 load mat
+  lq.xyzw vf26, 1(vi08)      |  mul.xyz vf08, vf08, Q  ;; p1 load mat | perspective multiply
+  mtir vi11, vf12.x          |  mul.xyzw vf14, vf14, Q ;; p1 get dst | vf14 = [s*Q, t*Q, Q, posz*Q]
+  mtir vi14, vf12.y          |  nop ;; p1 get dst
+  lq.xyzw vf27, 2(vi08)      |  nop ;; p1 load mat
+  lqi.xyzw vf23, vi03        |  add.xyzw vf08, vf08, vf22 ;; load rgba, hvdf offset
+  ;; rhs is p1's normal xform
+  iadd vi07, vi07, vi06      |  mulaz.xyzw ACC, vf29, vf09  ;; vi07 = rgba + mat1-cnt + mat2-cnt + mat3-cnt - 1
+  lq.xyzw vf28, 3(vi08)      |  maddaz.xyzw ACC, vf30, vf12 ;;
+  mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15   ;; vf20.w = normal length
   nop                        |  nop
-  1024.0                     |  miniw.w vf08, vf08, vf03 :i
-  ibne vi00, vi15, L82       |  mulaw.xyzw ACC, vf25, vf09
-  ilw.y vi09, -6(vi01)       |  mulw.xyzw vf11, vf11, vf20
-  erleng.xyz P, vf12         |  nop
-  nop                        |  maddaw.xyzw ACC, vf26, vf12
-  mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11
-  ibne vi04, vi03, L17       |  madday.xyzw ACC, vf02, vf11
+  1024.0                     |  miniw.w vf08, vf08, vf03 :i  ;; fog max
+  ibne vi00, vi15, L82       |  mulaw.xyzw ACC, vf25, vf09 ;; if mercprime, goto L82 | rhs is p1
+  ilw.y vi09, -6(vi01)       |  mulw.xyzw vf11, vf11, vf20 ;; vi09 = p0 vtx's mat1 | normalization of normal
+  erleng.xyz P, vf12         |  nop                        ;; p1's nrm length
+  nop                        |  maddaw.xyzw ACC, vf26, vf12 ;; p1 nrm xf
+  mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15 ;; p1
+  lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11  ;; dot with light dir
+  ibne vi04, vi03, L17       |  madday.xyzw ACC, vf02, vf11 ;; branch to L17 if not done
   nop                        |  maddz.xyzw vf11, vf03, vf11
-  ibne vi06, vi03, L31       |  nop
+  ibne vi06, vi03, L31       |  nop ;; branch to L31 if mat2's can be done
   nop                        |  nop
-  b L67                      |  nop
+  b L67                      |  nop ;; go to mat3
   nop                        |  nop
+
+;; pipelined mat1 loop here
 L16:
   lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11
   sq.xyzw vf13, 1(vi12)      |  madday.xyzw ACC, vf02, vf11
   sq.xyzw vf13, 1(vi15)      |  maddz.xyzw vf11, vf03, vf11
-L17:
-  lqi.xyzw vf13, vi01        |  add.xyzw vf09, vf09, vf28
-  lqi.xyzw vf16, vi01        |  maxw.w vf08, vf08, vf02
-  mtir vi08, vf10.x          |  itof0.xyzw vf23, vf23
-  ilw.y vi09, -9(vi01)       |  maxx.xyzw vf11, vf11, vf00
-  div Q, vf01.w, vf09.w      |  add.zw vf10, vf10, vf17
-  move.xyzw vf21, vf08       |  add.xyzw vf13, vf13, vf18
-  lq.xyz vf29, 4(vi08)       |  add.xyzw vf16, vf16, vf19
-  lq.xyz vf30, 5(vi08)       |  mulax.xyzw ACC, vf04, vf11
+L17: ;; entry from above.
+  lqi.xyzw vf13, vi01        |  add.xyzw vf09, vf09, vf28 ;; all p1
+  lqi.xyzw vf16, vi01        |  maxw.w vf08, vf08, vf02 ;; p1 | fog min
+  mtir vi08, vf10.x          |  itof0.xyzw vf23, vf23   ;; rgba to float
+  ilw.y vi09, -9(vi01)       |  maxx.xyzw vf11, vf11, vf00 ;; vi09 = mat1 | light clamp
+  div Q, vf01.w, vf09.w      |  add.zw vf10, vf10, vf17     ;; pipe 1
+  move.xyzw vf21, vf08       |  add.xyzw vf13, vf13, vf18   ;; move | pipe1
+  lq.xyz vf29, 4(vi08)       |  add.xyzw vf16, vf16, vf19   ;; pipe | pipe
+  lq.xyz vf30, 5(vi08)       |  mulax.xyzw ACC, vf04, vf11  ;; more lights
   ibgtz vi09, L18            |  madday.xyzw ACC, vf05, vf11
   lq.xyzw vf31, 6(vi08)      |  maddaz.xyzw ACC, vf06, vf11
   nop                        |  addx.w vf21, vf21, vf17
 L18:
-  lq.xyzw vf25, 0(vi08)      |  maddw.xyzw vf11, vf07, vf00
-  lq.xyzw vf26, 1(vi08)      |  mul.xyz vf09, vf09, Q
-  mtir vi12, vf13.x          |  mul.xyzw vf15, vf15, Q
-  mtir vi15, vf13.y          |  ftoi4.xyzw vf21, vf21
-  lq.xyzw vf27, 2(vi08)      |  mul.xyzw vf11, vf11, vf23
+  lq.xyzw vf25, 0(vi08)      |  maddw.xyzw vf11, vf07, vf00 ;; p1 | add ambient
+  lq.xyzw vf26, 1(vi08)      |  mul.xyz vf09, vf09, Q ;; p | p
+  mtir vi12, vf13.x          |  mul.xyzw vf15, vf15, Q ;; p | p
+  mtir vi15, vf13.y          |  ftoi4.xyzw vf21, vf21  ;; p | position ftoi
+  lq.xyzw vf27, 2(vi08)      |  mul.xyzw vf11, vf11, vf23 ;; p | vertex coloring
   lqi.xyzw vf23, vi03        |  add.xyzw vf09, vf09, vf22
   ibne vi00, vi09, L19       |  mulaz.xyzw ACC, vf29, vf10
   sq.xyzw vf21, 2(vi10)      |  maddaz.xyzw ACC, vf30, vf13
@@ -435,7 +455,8 @@ L25:
   nop                        |  nop
   b L163                     |  nop
   nop                        |  nop
-L26:
+
+L26: ;; after mat1's??
   ibeq vi00, vi06, L61       |  nop
   iadd vi02, vi02, vi12      |  nop
   lqi.xyzw vf08, vi01        |  nop
@@ -890,6 +911,8 @@ L60:
   nop                        |  nop
   b L163                     |  nop
   nop                        |  nop
+
+;; maybe mat3s
 L61:
   lqi.xyzw vf08, vi01        |  nop
   lqi.xyzw vf24, vi02        |  nop
@@ -1195,6 +1218,8 @@ L81:
   mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
   b L163                     |  nop
   nop                        |  nop
+
+;; merc prime, or other weird things.
 L82:
   erleng.xyz P, vf12         |  maxi.xy vf08, vf08, I
   3072.0                     |  nop :i
