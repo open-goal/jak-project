@@ -6,15 +6,16 @@
 namespace decompiler {
 
 // merc
-// - mat1 extraction is partially working
-// - if we clear merc memory in between fragments (and skip missing verts) it looks right
-// - some vertices are missing that shouldn't be, like parts of the boat
-// - maybe it's the samecopy/crosscopy stuff that's not implemented
-// - texture info seems right
+// - mat1 extraction is working
+// - still need mat2/mat3 code, otherwise those models are garbage.
 
+// number of slots on VU1 data memory to store matrices
 constexpr int MERC_VU1_MATRIX_SLOTS = 18;
+// the size of each "matrix". Includes a transformation and rotation matrix (for normals)
 constexpr int MERC_MATRIX_STRIDE = 7;
 
+// converts a vu1 address to an index of a matrix slot.
+// as far as I can tell, nothing in the game uses indices, they are always addresses already
 u32 vu1_addr_to_matrix_slot(u32 addr) {
   ASSERT(addr >= 6);
   ASSERT(addr < (6 + MERC_MATRIX_STRIDE * MERC_VU1_MATRIX_SLOTS));
@@ -29,7 +30,7 @@ u32 matrix_slot_to_vu1_addr(u32 slot) {
 }
 
 /*!
- * The GS settings of a merc draw
+ * The GS settings of a merc draw (shader + tex)
  */
 struct MercGsState {
   // the blending, clamp, etc settings. from adgif shaders
@@ -40,9 +41,10 @@ struct MercGsState {
 };
 
 /*!
- * The state of the merc renderer, including both the GS state, and stuff left behind in VU
- * memory.  The matrix slots are matrix indices (not memory location). A slot of -1 indicates
- * that there is no known matrix in this slot.
+ * This is all the state that's required to understand how to draw a vertex. including both the GS
+ * state, and stuff (matrices) left behind in VU memory.  The matrix slots are matrix indices into
+ * the original bones matrices (all the matrices in the skeleton). An index of -1 indicates that
+ * there is no known matrix in this slot.
  */
 struct MercState {
   MercGsState merc_draw_mode;
@@ -52,25 +54,70 @@ struct MercState {
   MercState() { vu1_matrix_slots.fill(-1); }
 };
 
+/*!
+ * Required information for a "draw", consisting of a strip of triangles (represented as indices for
+ * OpenGL triangle strip) and the draw settings.
+ */
 struct MercDraw {
-  size_t ctrl_idx;
-  size_t effect_idx;
-  size_t frag_idx;
+  size_t ctrl_idx;    // which merc ctrl in the level we correspond to
+  size_t effect_idx;  // which effect within that control
+  size_t frag_idx;    // which frag within that effect
+  // note that the above triple isn't enough to uniquely identify a draw - there can be multiple
+  // draws within a fragment.
+
+  // draw settings
   MercState state;
 
-  u32 vtx_offset;
-  u32 vtx_nloop;
+  // opengl indices. currently into a per-effect vertex list (likely to merge into a giant buffer
+  // eventually)
   std::vector<u32> indices;
-  // data
+
+  // where we would be in VU1 data memory (used in construction)
+  u32 vtx_offset;  // relative to writing output zone
+  u32 vtx_nloop;   // nloop that goes in the gif tag drawing us.
 };
 
+/*!
+ * Merc Vertex. Not the format we'll want in the game data files, but most useful as an intermediate
+ * when building up draws.
+ */
+struct MercUnpackedVtx {
+  int kind = 0;        // 1, 2, or 3 matrix
+  math::Vector3f pos;  // position
+  math::Vector3f nrm;  // normal (as input to the merc math, pretty sure legnth is bogus)
+  math::Vector2f st;   // texture coordinates
+  math::Vector<u8, 4> rgba;
+
+  // useful accessors for merc flags
+
+  // get the matrix index (vu1 slot, not skeleton) if it's influenced by a single bone.
+  u8 get_mat1_matrix() const { return mat1; }
+
+  // flags/indices that have mode-specific meaning.
+
+  u8 mat0;
+  u8 mat1;
+  u16 dst0;
+  u16 dst1;
+};
+
+/*!
+ * An entire merc-effect, split into draws.
+ * Note that copied or multiply-placed vertices will be de-deduplicated, but not identical vertices
+ * that actually appear in the input to merc.
+ */
 struct ConvertedMercEffect {
   size_t ctrl_idx;
   size_t effect_idx;
   // draws from all fragments.
   std::vector<MercDraw> draws;
+  std::vector<MercUnpackedVtx> vertices;
 };
 
+/*!
+ * Extract a merc-ctrl data structure. This is mostly just copying the GOAL data to C++ classes,
+ * but does include the effect of processing the DMA data through VIF.
+ */
 MercCtrl extract_merc_ctrl(const LinkedObjectFile& file,
                            const DecompilerTypeSystem& dts,
                            int word_idx) {
@@ -82,8 +129,7 @@ MercCtrl extract_merc_ctrl(const LinkedObjectFile& file,
   auto tr = typed_ref_from_basic(ref, dts);
 
   MercCtrl ctrl;
-  ctrl.from_ref(tr, dts);
-  // fmt::print("{}\n", ctrl.print());
+  ctrl.from_ref(tr, dts);  // the merc data import
   return ctrl;
 }
 
@@ -102,7 +148,11 @@ std::vector<int> find_merc_ctrls(const LinkedObjectFile& file) {
 }
 
 namespace {
-// todo move to common
+/*!
+ * Merc models tend to have strange texture ids. I don't really understand why.
+ * On login, the texture is checked against a list of textures in the bsp, and replaced with this.
+ * It doesn't seem to be related to sharing textures between levels - the yakow texture uses this.
+ */
 u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& map) {
   auto masked = original & 0xffffff00;
   for (auto& t : map) {
@@ -113,6 +163,9 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
   return original;
 }
 
+/*!
+ * Set the alpha fields of a DrawMode (for PC renderers) based on gs alpha register
+ */
 void update_mode_from_alpha1(GsAlpha reg, DrawMode& mode) {
   if (reg.a_mode() == GsAlpha::BlendMode::SOURCE && reg.b_mode() == GsAlpha::BlendMode::DEST &&
       reg.c_mode() == GsAlpha::BlendMode::SOURCE && reg.d_mode() == GsAlpha::BlendMode::DEST) {
@@ -158,6 +211,9 @@ void update_mode_from_alpha1(GsAlpha reg, DrawMode& mode) {
   }
 }
 
+/*!
+ * Convert merc shader to PC draw mode
+ */
 DrawMode process_draw_mode(const MercShader& info) {
   DrawMode mode;
   /*
@@ -209,63 +265,54 @@ u32 float_as_u32(float in) {
 }
 }  // namespace
 
-struct MercUnpackedVtx {
-  int kind = 0;  // 1, 2, or 3 matrix
-  math::Vector3f pos;
-  math::Vector3f nrm;
-  math::Vector2f st;
-
-  u8 mat0;
-  u8 mat1;
-  u16 dst0;
-  u16 dst1;
-
-  bool dst0_adc = false;
-  bool dst1_adc = false;
-};
-
-std::string debug_dump_verts_only_to_obj(const std::vector<MercUnpackedVtx>& verts) {
-  std::string result;
-  for (auto& vert : verts) {
-    result += fmt::format("v {} {} {}\n", vert.pos.x(), vert.pos.y(), vert.pos.z());
-  }
-
-  return result;
-}
-
+/*!
+ * Representing something that can be written to the merc output buffer. 1 qw
+ */
 struct MercOutputQuadword {
-  enum class Kind { INVALID, VTX_START, SHADER_START, PRIM_START } kind = Kind::INVALID;
+  enum class Kind {
+    INVALID,       // uninitialized, or in the middle of another thing
+    VTX_START,     // the first qw of a vertex
+    SHADER_START,  // the first qw of a shader (the giftag)
+    PRIM_START     // the giftag for a list of vertices
+  } kind = Kind::INVALID;
 
   // if we're a vertex
-  // MercUnpackedVtx vtx;  // the actual vertex
-  u32 vtx_idx = -1;     // index in the effect's vertex list.
-  u8 vtx_dst_idx = -1;  // which of dst0/dst1 placed us here
-  bool adc = false;
+  u32 vtx_idx = -1;  // index in the effect's vertex list.
+  bool adc = false;  // if our adc flag is set. this differs between copies, so put it here.
 
-  // if we're a prim start
+  // if we're a primitive giftag, the number of vertices that come after us.
   u32 nloop_count = 0;
-  u32 prim_draw_idx = 0;
 };
 
 struct MercMemory {
   std::array<MercOutputQuadword, 1024> memory;
 };
 
+/*!
+ * Add vertices from a fragment to memory. Emulates the unpacking.
+ */
 void handle_frag(const std::string& debug_name,
                  const MercCtrlHeader& ctrl_header,
                  const MercFragment& frag,
                  const MercFragmentControl& frag_ctrl,
                  std::vector<MercUnpackedVtx>& effect_vertices,
                  MercMemory& memory) {
-  fmt::print("handling frag: {}\n", debug_name);
-  fmt::print("{}\n", frag.print());
-  int lump_ptr = 0;
+  (void)frag_ctrl;
+  (void)debug_name;
+  // fmt::print("handling frag: {}\n", debug_name);
+  // fmt::print("{}\n", frag.print());
 
+  // we'll iterate through the lump and rgba data
+  int lump_ptr = 0;                     // vertex data starts at the beginning of "lump"
+  int rgba_ptr = frag.header.rgba_off;  // rgba is in u4's
+
+  // loop through mat1 vertices.
   for (size_t i = 0; i < frag.header.mat1_cnt; i++) {
-    u32 current_vtx_idx = effect_vertices.size();
+    u32 current_vtx_idx = effect_vertices.size();  // idx in effect vertex list.
     auto& vtx = effect_vertices.emplace_back();
-    vtx.kind = 1;
+    vtx.kind = 1;  // 1 matrix
 
+    // the three quadwords in the source data
     auto v0 = frag.lump4_unpacked.at(lump_ptr);
     auto v1 = frag.lump4_unpacked.at(lump_ptr + 1);
     auto v2 = frag.lump4_unpacked.at(lump_ptr + 2);
@@ -301,168 +348,112 @@ void handle_frag(const std::string& debug_name,
     vtx.mat1 = 0;                           // not used like this
     vtx.dst0 = float_as_u32(v1.x()) - 371;  // xtop to output buffer offset
     vtx.dst1 = float_as_u32(v1.y()) - 371;
+    vtx.rgba = frag.unsigned_four_including_header.at(rgba_ptr);
 
+    // crazy flag logic to set adc
     s16 mat1_flag = mat1;
     ASSERT(mat1_flag == -1 || mat1_flag == 0 || mat1_flag == 1);
-    vtx.dst0_adc = mat1_flag <= 0;
-    vtx.dst1_adc = vtx.dst0_adc && (mat1_flag != 0);
-    vtx.dst0_adc = !vtx.dst0_adc;
-    vtx.dst1_adc = !vtx.dst1_adc;
+    bool dst0_adc = mat1_flag <= 0;
+    bool dst1_adc = dst0_adc && (mat1_flag != 0);
+    dst0_adc = !dst0_adc;
+    dst1_adc = !dst1_adc;
 
+    // write to two spots in memory
     auto& dst0_mem = memory.memory.at(vtx.dst0);
     auto& dst1_mem = memory.memory.at(vtx.dst1);
 
     dst0_mem.kind = MercOutputQuadword::Kind::VTX_START;
     dst0_mem.vtx_idx = current_vtx_idx;
-    dst0_mem.vtx_dst_idx = 0;
-    dst0_mem.adc = vtx.dst0_adc;
+    dst0_mem.adc = dst0_adc;
     memory.memory.at(vtx.dst0 + 1).kind = MercOutputQuadword::Kind::INVALID;
     memory.memory.at(vtx.dst0 + 2).kind = MercOutputQuadword::Kind::INVALID;
 
     dst1_mem.kind = MercOutputQuadword::Kind::VTX_START;
     dst1_mem.vtx_idx = current_vtx_idx;
-    dst1_mem.vtx_dst_idx = 1;
-    dst1_mem.adc = vtx.dst1_adc;
+    dst1_mem.adc = dst1_adc;
     memory.memory.at(vtx.dst1 + 1).kind = MercOutputQuadword::Kind::INVALID;
     memory.memory.at(vtx.dst1 + 2).kind = MercOutputQuadword::Kind::INVALID;
 
+    /*
     fmt::print("place vertex {} @ {} {}: {} (adc {} {}) {}\n", current_vtx_idx, vtx.dst0, vtx.dst1,
-               vtx.pos.to_string_aligned(), vtx.dst0_adc, vtx.dst1_adc, mat1_flag);
+               vtx.pos.to_string_aligned(), dst0_adc, dst1_adc, mat1_flag);
+               */
 
     lump_ptr += 3;  // advance 3 qw
+    rgba_ptr++;
   }
-  fmt::print("lump_ptr is {}\n", lump_ptr);
-
-  //  if (frag.header.mat1_cnt) {
-  //
-  //    // lump unpack is:
-  //    // add.zw vf09, vf09, vf17
-  //    // add.xyzw vf12, vf12, vf18
-  //    // add.xyzw vf15, vf15, vf19
-  //    // with
-  //    // vf17 = [2048, 255, -65537, xyz-add.x] (the ?? is set per fragment)
-  //    // vf18 = [st-out-X, st-out-X, -65537, xyz-add.y] (X = a if xtop = 0, X = b otherwise)
-  //    // vf19 = [st-magic, st-magic, -65537, xyz-add.z]
-  //    fmt::print("MAT1: {}\n", get_mat1_matrix_slot(frag, 0));
-  //  }
 }
 
+/*!
+ * Build OpenGL index list from a single GIF packet.
+ * TODO: should check we aren't putting in x x R x x R
+ */
 std::vector<u32> index_list_from_packet(u32 vtx_ptr,
                                         u32 nloop,
                                         const MercMemory& memory,
                                         const std::vector<MercUnpackedVtx>& vertices) {
   std::vector<u32> result;
-  // u32 prev_vtx = UINT32_MAX;
+  u32 prev_vtx = UINT32_MAX;
 
-  //  result.push_back(UINT32_MAX);
-  //  while (nloop) {
-  //    auto& vtx_mem = memory.memory.at(vtx_ptr);
-  //    if (vtx_mem.kind == MercOutputQuadword::Kind::VTX_START) {
-  //      // fmt::print("found vtx: {}\n", vtx_ptr);
-  //      auto& src_vtx = vertices.at(vtx_mem.vtx_idx);
-  //      bool adc = vtx_mem.vtx_dst_idx == 0 ? src_vtx.dst0_adc : src_vtx.dst1_adc;
-  //      // fmt::print("adc: {} (from {} {})\n", adc, src_vtx.dst0_adc, src_vtx.dst1_adc);
-  //      if (adc) {
-  //        fmt::print(" doing add case {}\n", vtx_mem.vtx_idx);
-  //        result.push_back(vtx_mem.vtx_idx);
-  //      } else {
-  //        fmt::print(" doing restart case: {} {}\n", prev_vtx, vtx_mem.vtx_idx);
-  //        result.push_back(UINT32_MAX);
-  //        result.push_back(prev_vtx);
-  //        result.push_back(vtx_mem.vtx_idx);
-  //      }
-  //      prev_vtx = vtx_mem.vtx_idx;
-  //    } else {
-  //      // missing vertex!
-  //      fmt::print("MISSING VERTEX at {}\n", vtx_ptr);
-  //      result.push_back(UINT32_MAX);
-  //    }
-  //
-  //    vtx_ptr += 3;
-  //    nloop--;
-  //  }
-
-  //  result.push_back(UINT32_MAX);
-
-  struct Temp {
-    u32 idx = UINT32_MAX;
-    bool adc = false;
-  };
-  std::vector<Temp> temp_indices;
+  result.push_back(UINT32_MAX);
   while (nloop) {
     auto& vtx_mem = memory.memory.at(vtx_ptr);
-    auto& next = temp_indices.emplace_back();
-
     if (vtx_mem.kind == MercOutputQuadword::Kind::VTX_START) {
       auto& src_vtx = vertices.at(vtx_mem.vtx_idx);
-      // bool adc = vtx_mem.vtx_dst_idx == 0 ? src_vtx.dst0_adc : src_vtx.dst1_adc;
-      next.adc = vtx_mem.adc;
-      next.idx = vtx_mem.vtx_idx;
-      // ASSERT(adc == vtx_mem.adc);
-      fmt::print("read @ {}, {}: adc: {}\n", vtx_ptr, vtx_mem.vtx_idx, next.adc);
+      bool adc = vtx_mem.adc;
+      if (adc) {
+        result.push_back(vtx_mem.vtx_idx);
+      } else {
+        result.push_back(UINT32_MAX);
+        result.push_back(prev_vtx);
+        result.push_back(vtx_mem.vtx_idx);
+      }
+      prev_vtx = vtx_mem.vtx_idx;
     } else {
       // missing vertex!
       fmt::print("MISSING VERTEX at {}\n", vtx_ptr);
+      result.push_back(UINT32_MAX);
     }
 
     vtx_ptr += 3;
     nloop--;
   }
 
-  u32 queue[3] = {0, 0, 0};
-  int q_idx = 0;
-  for (auto ti : temp_indices) {
-    // push vertex to queue
-    queue[(q_idx++) % 3] = ti.idx;
-    if (q_idx > 2 && ti.adc && queue[0] != UINT32_MAX && queue[1] != UINT32_MAX &&
-        queue[2] != UINT32_MAX) {
-      result.push_back(queue[q_idx % 3]);
-      result.push_back(queue[(q_idx - 1) % 3]);
-      result.push_back(queue[(q_idx - 2) % 3]);
-    }
-  }
-
+  result.push_back(UINT32_MAX);
   return result;
 }
 
+/*!
+ * Dump draws to obj file.
+ */
 std::string debug_dump_to_obj(const std::vector<MercDraw>& draws,
                               const std::vector<MercUnpackedVtx>& vertices) {
   std::string result;
   std::vector<math::Vector4f> verts;
-  // std::vector<math::Vector<float, 2>> tcs;
   std::vector<math::Vector<int, 3>> faces;
 
   for (auto& draw : draws) {
     // add verts...
     int queue[2];
     int q_idx = 0;
-    for (size_t i = 0; i < draw.indices.size(); i += 3) {
-      faces.emplace_back(draw.indices[i] + 1, draw.indices[i + 1] + 1, draw.indices[i + 2] + 1);
+    for (size_t ii = 2; ii < draw.indices.size(); ii++) {
+      u32 v0 = draw.indices[ii - 2];
+      u32 v1 = draw.indices[ii - 1];
+      u32 v2 = draw.indices[ii - 0];
+      if (v0 != UINT32_MAX && v1 != UINT32_MAX && v2 != UINT32_MAX) {
+        faces.emplace_back(v0 + 1, v1 + 1, v2 + 1);
+      }
     }
-    //    for (size_t ii = 2; ii < draw.indices.size(); ii++) {
-    //      u32 v0 = draw.indices[ii - 2];
-    //      u32 v1 = draw.indices[ii - 1];
-    //      u32 v2 = draw.indices[ii - 0];
-    //      if (v0 != UINT32_MAX && v1 != UINT32_MAX && v2 != UINT32_MAX) {
-    //        faces.emplace_back(v0 + 1, v1 + 1, v2 + 1);
-    //        fmt::print("add {} {} {}\n", v0, v1, v2);
-    //      } else {
-    //        fmt::print("SKIP {} {} {}\n", v0, v1, v2);
-    //      }
-    //    }
-    //    for (auto& idx : draw.indices) {
-    //      if (idx == UINT32_MAX) {
-    //        q_idx = 0;
-    //      } else {
-    //
-    //        if (q_idx >= 2) {
-    //          fmt::print("[{}] output: {} {} {}\n", q_idx, queue[0], queue[1], idx);
-    //          faces.emplace_back(queue[0] + 1, queue[1] + 1, idx + 1);
-    //        }
-    //        queue[(q_idx++) % 2] = idx;
-    //        fmt::print("push q[{}] = {}\n", q_idx % 2, idx);
-    //      }
-    //    }
+    for (auto& idx : draw.indices) {
+      if (idx == UINT32_MAX) {
+        q_idx = 0;
+      } else {
+        if (q_idx >= 2) {
+          faces.emplace_back(queue[0] + 1, queue[1] + 1, idx + 1);
+        }
+        queue[(q_idx++) % 2] = idx;
+      }
+    }
   }
 
   for (auto& vtx : vertices) {
@@ -491,11 +482,10 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   // full reset of state per effect.
   // we have no idea what the previous effect draw will be - it might be given to
   // mercneric.
-  bool shader_set = false;
-  MercState merc_state;
-  std::vector<MercUnpackedVtx> effect_vertices;
-  MercMemory merc_memories[2];
-  int memory_buffer_toggle = 0;
+  bool shader_set = false;       // no previous shader can reliably be known
+  MercState merc_state;          // current gs settings/matrix slots
+  MercMemory merc_memories[2];   // double buffered output
+  int memory_buffer_toggle = 0;  // which output we're in
 
   for (size_t fi = 0; fi < input_effect.frag_ctrl.size(); fi++) {
     const auto& frag = input_effect.frag_geo[fi];
@@ -519,12 +509,14 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     // this will add vertices to the per-effect vertex lists and also update the merc memory
     // to point to these.
 
-    handle_frag(debug_name, ctrl_header, frag, frag_ctrl, effect_vertices,
+    handle_frag(debug_name, ctrl_header, frag, frag_ctrl, result.vertices,
                 merc_memories[memory_buffer_toggle]);
 
+    // we'll add draws after this draw, but wait to actually populate the index lists until
+    // we've processed all the vertices.
     size_t first_draw_to_update = result.draws.size();
 
-    // continuation
+    // continuation of a previous shader
     if (frag.header.strip_len) {
       // add the continued draw
       auto& new_draw = result.draws.emplace_back();
@@ -532,20 +524,17 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       new_draw.effect_idx = effect_idx;
       new_draw.frag_idx = fi;
       new_draw.state = merc_state;
-      // todo fill out draw data
       new_draw.vtx_offset = 1;
+      // just remember where it started. we might copy some vertices from a later draw in this
+      // fragment back to this draw, and at this point we don't know what the adc flags would be.
+      // (or their index, because we are deduplicated)
       new_draw.vtx_nloop = frag.header.strip_len;
-      //      new_draw.indices = index_list_from_packet(
-      //          1, frag.header.strip_len, merc_memories[memory_buffer_toggle], effect_vertices);
-      //      file_util::write_text_file(
-      //          file_util::get_file_path(
-      //              {"debug_out/merc", fmt::format("{}_{}_{}s.obj", debug_name, effect_idx, fi)}),
-      //          debug_dump_to_obj(result.draws, effect_vertices));
     }
 
+    // loop over fresh shaders
     for (size_t i = 0; i < frag.fp_header.shader_cnt; i++) {
       const auto& shader = frag.shaders.at(i);
-      // update merc state from shader
+      // update merc state from shader (will hold over to next fragment, if needed)
       merc_state.merc_draw_mode.mode = process_draw_mode(shader);
       u32 new_tex = remap_texture(shader.original_tex, map);
 
@@ -556,58 +545,44 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       // look up the texture to make sure it's valid
       auto tex = tdb.textures.find(tex_combo);
       ASSERT(tex != tdb.textures.end());
-      if (false && shader.original_tex != new_tex) {
-        fmt::print("map from 0x{:x} to 0x{:x} ({})\n", shader.original_tex, new_tex,
-                   tex->second.name);
-      }
       // remember the texture id
       merc_state.merc_draw_mode.pc_combo_tex_id = tex_combo;
 
       // add the draw
-      size_t draw_idx = result.draws.size();
       auto& new_draw = result.draws.emplace_back();
       new_draw.ctrl_idx = ctrl_idx;
       new_draw.effect_idx = effect_idx;
       new_draw.frag_idx = fi;
       new_draw.state = merc_state;
-      // write the shader
-      fmt::print("place shader: {}\n", shader.output_offset);
+      // write the shader to memory
       merc_memories[memory_buffer_toggle].memory.at(shader.output_offset).kind =
           MercOutputQuadword::Kind::SHADER_START;
       for (int mi = 1; mi < 6; mi++) {
+        // fill 5qw of adgif data with invalid. make sure we don't read verts from here
         merc_memories[memory_buffer_toggle].memory.at(shader.output_offset + mi).kind =
             MercOutputQuadword::Kind::INVALID;
       }
-      // write the loop
-      fmt::print("place prim: {}\n", shader.output_offset + 6);
+      // write the giftag for primitives
       auto& prim_packet = merc_memories[memory_buffer_toggle].memory.at(shader.output_offset + 6);
       prim_packet.kind = MercOutputQuadword::Kind::PRIM_START;
       prim_packet.nloop_count = shader.next_strip_nloop;
 
-      // todo fill out draw data
-      fmt::print("shader dest is {}, nloop = {}\n", shader.output_offset, shader.next_strip_nloop);
+      // update draw from hidden fields in adgif.
       new_draw.vtx_offset = shader.output_offset + 7;
       new_draw.vtx_nloop = shader.next_strip_nloop;
-      //      new_draw.indices =
-      //          index_list_from_packet(shader.output_offset + 7, shader.next_strip_nloop,
-      //                                 merc_memories[memory_buffer_toggle], effect_vertices);
-      //      for (auto& vert : unpacked_frag.vertices) {
-      //        fmt::print(" v: {} {}\n", vert.dst0, vert.dst1);
-      //      }
     }
 
-    // copy
+    // copy from other places inside this output buffer
     u32 srcdst_ptr = frag.header.srcdest_off;
     for (u32 sci = 0; sci < frag.header.samecopy_cnt; sci++) {
       auto& cpy = frag.unsigned_four_including_header[srcdst_ptr];
-      fmt::print("sci: {}\n", cpy.to_string_hex_byte());
+      // fmt::print("sci: {}\n", cpy.to_string_hex_byte());
       u32 src = cpy[0];
       auto& vert = merc_memories[memory_buffer_toggle].memory.at(src);
       u32 dst = cpy[1];
       auto& dvert = merc_memories[memory_buffer_toggle].memory.at(dst);
       if (vert.kind == MercOutputQuadword::Kind::VTX_START) {
         dvert = vert;
-        fmt::print(" src has adc: {}\n", vert.adc);
         if (cpy[3]) {
           // dvert.adc = true;
           dvert.adc = !dvert.adc;
@@ -620,17 +595,16 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       srcdst_ptr++;
     }
 
+    // "cross" copy from the other output buffer
     for (u32 cci = 0; cci < frag.header.crosscopy_cnt; cci++) {
       auto& cpy = frag.unsigned_four_including_header[srcdst_ptr];
-      fmt::print("cci: {}\n", cpy.to_string_hex_byte());
+      // fmt::print("cci: {}\n", cpy.to_string_hex_byte());
       u32 src = cpy[0];
       auto& vert = merc_memories[memory_buffer_toggle ^ 1].memory.at(src);
-      // ASSERT(vert.kind == MercOutputQuadword::Kind::VTX_START);
       u32 dst = cpy[1];
       auto& dvert = merc_memories[memory_buffer_toggle].memory.at(dst);
       if (vert.kind == MercOutputQuadword::Kind::VTX_START) {
         dvert = vert;
-        fmt::print(" src has adc: {}\n", vert.adc);
         if (cpy[3]) {
           // dvert.adc = true;
           dvert.adc = !dvert.adc;
@@ -642,10 +616,11 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       srcdst_ptr++;
     }
 
+    // now that we've copied all vertices, create index lists.
     for (size_t i = first_draw_to_update; i < result.draws.size(); i++) {
       auto& draw = result.draws[i];
       draw.indices = index_list_from_packet(draw.vtx_offset, draw.vtx_nloop,
-                                            merc_memories[memory_buffer_toggle], effect_vertices);
+                                            merc_memories[memory_buffer_toggle], result.vertices);
     }
 
     memory_buffer_toggle ^= 1;
@@ -654,7 +629,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   file_util::write_text_file(
       file_util::get_file_path(
           {"debug_out/merc", fmt::format("{}_{}.obj", debug_name, effect_idx)}),
-      debug_dump_to_obj(result.draws, effect_vertices));
+      debug_dump_to_obj(result.draws, result.vertices));
   // ASSERT(false);
 
   return result;
@@ -681,7 +656,8 @@ void extract_merc(const ObjectFileData& ag_data,
     auto ctrl = extract_merc_ctrl(ag_data.linked_data, dts, location);
     if (ctrl.header.two_mat_count || ctrl.header.two_mat_reuse_count ||
         ctrl.header.three_mat_count || ctrl.header.three_mat_reuse_count) {
-      continue; // hack
+      fmt::print("skipping {} because it has mat2/mat3\n", ctrl.name);
+      continue;  // hack
     }
     ctrls.push_back(ctrl);
   }
