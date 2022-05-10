@@ -303,6 +303,7 @@ L15:
 ;; rhs is lump adding
   div Q, vf01.w, vf08.w      |  add.zw vf09, vf09, vf17    ;; perspective divide!
   iadd vi04, vi04, vi03      |  add.xyzw vf12, vf12, vf18  ;; vi04 = rgba + mat1-cnt - 1 (??)
+    ;; note: the -1 is because the last vertex is handled
   lq.xyz vf29, 4(vi08)       |  add.xyzw vf15, vf15, vf19  ;; P1 load nmat | P1 lump add v2
 
   lq.xyz vf30, 5(vi08)       |  nop ;; P1 load nmat
@@ -367,46 +368,47 @@ L19:
   sq.xyzw vf21, 2(vi13)      |  mulaw.xyzw ACC, vf25, vf10
   lq.xyzw vf28, 3(vi08)      |  mulw.xyzw vf12, vf12, vf20
   erleng.xyz P, vf13         |  ftoi0.xyzw vf11, vf11
+  ;; branch to end (first version in this loop)
   ibne vi04, vi03, L20       |  maddaw.xyzw ACC, vf26, vf13
   mr32.z vf16, vf00          |  maddw.xyzw vf10, vf27, vf16
-  ibne vi06, vi03, L36       |  nop
-  ilw.y vi09, -6(vi01)       |  nop
+  ibne vi06, vi03, L36       |  nop ;; branch if there's mat2's to do
+  ilw.y vi09, -6(vi01)       |  nop ;; pipeline "exiting"
   ibne vi07, vi03, L72       |  nop
   nop                        |  nop
   b L143                     |  nop
   nop                        |  nop
 L20:
-  lqi.xyzw vf08, vi01        |  mulax.xyzw ACC, vf01, vf12
-  sq.xyzw vf11, 1(vi10)      |  madday.xyzw ACC, vf02, vf12
-  sq.xyzw vf11, 1(vi13)      |  maddz.xyzw vf12, vf03, vf12
-  lqi.xyzw vf11, vi01        |  add.xyzw vf10, vf10, vf28
-  lqi.xyzw vf14, vi01        |  maxw.w vf09, vf09, vf02
-  mtir vi08, vf08.x          |  itof0.xyzw vf23, vf23
-  ilw.y vi09, -9(vi01)       |  maxx.xyzw vf12, vf12, vf00
-  div Q, vf01.w, vf10.w      |  add.zw vf08, vf08, vf17
-  move.xyzw vf21, vf09       |  add.xyzw vf11, vf11, vf18
+  lqi.xyzw vf08, vi01        |  mulax.xyzw ACC, vf01, vf12   ;;
+  sq.xyzw vf11, 1(vi10)      |  madday.xyzw ACC, vf02, vf12  ;;
+  sq.xyzw vf11, 1(vi13)      |  maddz.xyzw vf12, vf03, vf12  ;;
+  lqi.xyzw vf11, vi01        |  add.xyzw vf10, vf10, vf28    ;;
+  lqi.xyzw vf14, vi01        |  maxw.w vf09, vf09, vf02      ;;
+  mtir vi08, vf08.x          |  itof0.xyzw vf23, vf23        ;;
+  ilw.y vi09, -9(vi01)       |  maxx.xyzw vf12, vf12, vf00   ;;
+  div Q, vf01.w, vf10.w      |  add.zw vf08, vf08, vf17      ;;
+  move.xyzw vf21, vf09       |  add.xyzw vf11, vf11, vf18    ;;
   lq.xyz vf29, 4(vi08)       |  add.xyzw vf14, vf14, vf19
-  lq.xyz vf30, 5(vi08)       |  mulax.xyzw ACC, vf04, vf12
-  ibgtz vi09, L21            |  madday.xyzw ACC, vf05, vf12
-  lq.xyzw vf31, 6(vi08)      |  maddaz.xyzw ACC, vf06, vf12
-  nop                        |  addx.w vf21, vf21, vf17
+  lq.xyz vf30, 5(vi08)       |  mulax.xyzw ACC, vf04, vf12  ;;
+  ibgtz vi09, L21            |  madday.xyzw ACC, vf05, vf12 ;;
+  lq.xyzw vf31, 6(vi08)      |  maddaz.xyzw ACC, vf06, vf12 ;;
+  nop                        |  addx.w vf21, vf21, vf17     ;;
 L21:
-  lq.xyzw vf25, 0(vi08)      |  maddw.xyzw vf12, vf07, vf00
-  lq.xyzw vf26, 1(vi08)      |  mul.xyz vf10, vf10, Q
-  mtir vi10, vf11.x          |  mul.xyzw vf16, vf16, Q
-  mtir vi13, vf11.y          |  ftoi4.xyzw vf21, vf21
+  lq.xyzw vf25, 0(vi08)      |  maddw.xyzw vf12, vf07, vf00 ;;
+  lq.xyzw vf26, 1(vi08)      |  mul.xyz vf10, vf10, Q       ;;
+  mtir vi10, vf11.x          |  mul.xyzw vf16, vf16, Q      ;;
+  mtir vi13, vf11.y          |  ftoi4.xyzw vf21, vf21       ;;
   lq.xyzw vf27, 2(vi08)      |  mul.xyzw vf12, vf12, vf23
   lqi.xyzw vf23, vi03        |  add.xyzw vf10, vf10, vf22
   ibne vi00, vi09, L22       |  mulaz.xyzw ACC, vf29, vf08
-  sq.xyzw vf21, 2(vi11)      |  maddaz.xyzw ACC, vf30, vf11
+  sq.xyzw vf21, 2(vi11)      |  maddaz.xyzw ACC, vf30, vf11 ;;
   nop                        |  ftoi4.xyzw vf21, vf09
 L22:
-  mfp.w vf20, P              |  maddz.xyz vf11, vf31, vf14
-  sq.xyzw vf15, 0(vi11)      |  miniy.xyzw vf12, vf12, vf17
-  sq.xyzw vf15, 0(vi14)      |  miniw.w vf10, vf10, vf03
-  sq.xyzw vf21, 2(vi14)      |  mulaw.xyzw ACC, vf25, vf08
-  lq.xyzw vf28, 3(vi08)      |  mulw.xyzw vf13, vf13, vf20
-  erleng.xyz P, vf11         |  ftoi0.xyzw vf12, vf12
+  mfp.w vf20, P              |  maddz.xyz vf11, vf31, vf14  ;;
+  sq.xyzw vf15, 0(vi11)      |  miniy.xyzw vf12, vf12, vf17 ;;
+  sq.xyzw vf15, 0(vi14)      |  miniw.w vf10, vf10, vf03    ;;
+  sq.xyzw vf21, 2(vi14)      |  mulaw.xyzw ACC, vf25, vf08  ;;
+  lq.xyzw vf28, 3(vi08)      |  mulw.xyzw vf13, vf13, vf20  ;;
+  erleng.xyz P, vf11         |  ftoi0.xyzw vf12, vf12       ;;
   ibne vi04, vi03, L23       |  maddaw.xyzw ACC, vf26, vf11
   mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
   ibne vi06, vi03, L41       |  nop
@@ -416,25 +418,25 @@ L22:
   b L153                     |  nop
   nop                        |  nop
 L23:
-  lqi.xyzw vf09, vi01        |  mulax.xyzw ACC, vf01, vf13
-  sq.xyzw vf12, 1(vi11)      |  madday.xyzw ACC, vf02, vf13
-  sq.xyzw vf12, 1(vi14)      |  maddz.xyzw vf13, vf03, vf13
+  lqi.xyzw vf09, vi01        |  mulax.xyzw ACC, vf01, vf13   ;;
+  sq.xyzw vf12, 1(vi11)      |  madday.xyzw ACC, vf02, vf13  ;;
+  sq.xyzw vf12, 1(vi14)      |  maddz.xyzw vf13, vf03, vf13  ;;
   lqi.xyzw vf12, vi01        |  add.xyzw vf08, vf08, vf28
-  lqi.xyzw vf15, vi01        |  maxw.w vf10, vf10, vf02
-  mtir vi08, vf09.x          |  itof0.xyzw vf23, vf23
+  lqi.xyzw vf15, vi01        |  maxw.w vf10, vf10, vf02      ;;
+  mtir vi08, vf09.x          |  itof0.xyzw vf23, vf23        ;;
   ilw.y vi09, -9(vi01)       |  maxx.xyzw vf13, vf13, vf00
   div Q, vf01.w, vf08.w      |  add.zw vf09, vf09, vf17
-  move.xyzw vf21, vf10       |  add.xyzw vf12, vf12, vf18
+  move.xyzw vf21, vf10       |  add.xyzw vf12, vf12, vf18    ;;
   lq.xyz vf29, 4(vi08)       |  add.xyzw vf15, vf15, vf19
-  lq.xyz vf30, 5(vi08)       |  mulax.xyzw ACC, vf04, vf13
-  ibgtz vi09, L24            |  madday.xyzw ACC, vf05, vf13
-  lq.xyzw vf31, 6(vi08)      |  maddaz.xyzw ACC, vf06, vf13
-  nop                        |  addx.w vf21, vf21, vf17
+  lq.xyz vf30, 5(vi08)       |  mulax.xyzw ACC, vf04, vf13   ;;
+  ibgtz vi09, L24            |  madday.xyzw ACC, vf05, vf13  ;;
+  lq.xyzw vf31, 6(vi08)      |  maddaz.xyzw ACC, vf06, vf13  ;;
+  nop                        |  addx.w vf21, vf21, vf17      ;;
 L24:
   lq.xyzw vf25, 0(vi08)      |  maddw.xyzw vf13, vf07, vf00
   lq.xyzw vf26, 1(vi08)      |  mul.xyz vf08, vf08, Q
   mtir vi11, vf12.x          |  mul.xyzw vf14, vf14, Q
-  mtir vi14, vf12.y          |  ftoi4.xyzw vf21, vf21
+  mtir vi14, vf12.y          |  ftoi4.xyzw vf21, vf21        ;;
   lq.xyzw vf27, 2(vi08)      |  mul.xyzw vf13, vf13, vf23
   lqi.xyzw vf23, vi03        |  add.xyzw vf08, vf08, vf22
   ibne vi00, vi09, L25       |  mulaz.xyzw ACC, vf29, vf09
@@ -556,7 +558,7 @@ L29:
   lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11
   jr vi08                    |  madday.xyzw ACC, vf02, vf11
   nop                        |  maddz.xyzw vf11, vf03, vf11
-L30:
+L30: ;; mat2 cross entry 3
   lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11
   sq.xyzw vf13, 1(vi12)      |  madday.xyzw ACC, vf02, vf11
   sq.xyzw vf13, 1(vi15)      |  maddz.xyzw vf11, vf03, vf11
@@ -616,7 +618,7 @@ L35:
   nop                        |  nop
   b L143                     |  nop
   nop                        |  nop
-L36:
+L36: ;; mat2 cross entry 1
   lqi.xyzw vf08, vi01        |  mulax.xyzw ACC, vf01, vf12
   sq.xyzw vf11, 1(vi10)      |  madday.xyzw ACC, vf02, vf12
   sq.xyzw vf11, 1(vi13)      |  maddz.xyzw vf12, vf03, vf12
@@ -675,7 +677,7 @@ L40:
   nop                        |  nop
   b L153                     |  nop
   nop                        |  nop
-L41:
+L41: ;; mat2 cross entry 2
   lqi.xyzw vf09, vi01        |  mulax.xyzw ACC, vf01, vf13
   sq.xyzw vf12, 1(vi11)      |  madday.xyzw ACC, vf02, vf13
   sq.xyzw vf12, 1(vi14)      |  maddz.xyzw vf13, vf03, vf13
@@ -1026,7 +1028,7 @@ L65:
   lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11
   b L67                      |  madday.xyzw ACC, vf02, vf11
   nop                        |  maddz.xyzw vf11, vf03, vf11
-L66:
+L66: ;; mat3 cross entry
   lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11
   sq.xyzw vf13, 1(vi12)      |  madday.xyzw ACC, vf02, vf11
   sq.xyzw vf13, 1(vi15)      |  maddz.xyzw vf11, vf03, vf11
@@ -1090,7 +1092,7 @@ L71:
   erleng.xyz P, vf13         |  ftoi0.xyzw vf11, vf11
   ibeq vi07, vi03, L143      |  maddaw.xyzw ACC, vf26, vf13
   mr32.z vf16, vf00          |  maddw.xyzw vf10, vf27, vf16
-L72:
+L72: ;; mat3 cross entry
   lqi.xyzw vf08, vi01        |  mulax.xyzw ACC, vf01, vf12
   sq.xyzw vf11, 1(vi10)      |  madday.xyzw ACC, vf02, vf12
   sq.xyzw vf11, 1(vi13)      |  maddz.xyzw vf12, vf03, vf12
@@ -1153,7 +1155,7 @@ L76:
   erleng.xyz P, vf11         |  ftoi0.xyzw vf12, vf12
   ibeq vi07, vi03, L153      |  maddaw.xyzw ACC, vf26, vf11
   mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-L77:
+L77: ;; mat3 cross entry
   lqi.xyzw vf09, vi01        |  mulax.xyzw ACC, vf01, vf13
   sq.xyzw vf12, 1(vi11)      |  madday.xyzw ACC, vf02, vf13
   sq.xyzw vf12, 1(vi14)      |  maddz.xyzw vf13, vf03, vf13
@@ -1956,84 +1958,84 @@ L142:
   mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
   b L163                     |  nop
   nop                        |  nop
-L143:
-  ilw.w vi08, 1(vi00)        |  nop
-  xtop vi02                  |  mulax.xyzw ACC, vf01, vf12
-  sq.xyzw vf11, 1(vi10)      |  madday.xyzw ACC, vf02, vf12
-  sq.xyzw vf11, 1(vi13)      |  maddz.xyzw vf12, vf03, vf12
-  iaddiu vi04, vi02, 0x8c    |  add.xyzw vf10, vf10, vf28
-  ilwr.x vi05, vi04          |  maxw.w vf09, vf09, vf02
-  ilw.w vi06, 1(vi04)        |  itof0.xyzw vf23, vf23
-  ibne vi00, vi08, L151      |  nop
-  ilw.x vi07, 2(vi04)        |  maxx.xyzw vf12, vf12, vf00
+L143: ;; exit cross 1
+  ilw.w vi08, 1(vi00)        |  nop                            ;; vi08 = mercprime flag
+  xtop vi02                  |  mulax.xyzw ACC, vf01, vf12     ;; vi02 = out (0) | pipe
+  sq.xyzw vf11, 1(vi10)      |  madday.xyzw ACC, vf02, vf12    ;; pipe | pipe
+  sq.xyzw vf11, 1(vi13)      |  maddz.xyzw vf12, vf03, vf12    ;; pipe | pipe
+  iaddiu vi04, vi02, 0x8c    |  add.xyzw vf10, vf10, vf28      ;; vi04 = 140 (byte header) | pipe
+  ilwr.x vi05, vi04          |  maxw.w vf09, vf09, vf02        ;; vi05 = srcdest-off       | pipe
+  ilw.w vi06, 1(vi04)        |  itof0.xyzw vf23, vf23          ;; vi06 = samecopy-cnt      | pipe
+  ibne vi00, vi08, L151      |  nop                            ;; goto L151 if merc prime (just a detour to set constants).
+  ilw.x vi07, 2(vi04)        |  maxx.xyzw vf12, vf12, vf00     ;; vi07 = crosscopy-cnt | pipe
 L144:
-  div Q, vf01.w, vf10.w      |  minix.xyzw vf25, vf00, vf00
-  move.xyzw vf21, vf09       |  minix.xyzw vf26, vf00, vf00
-  iadd vi05, vi05, vi04      |  nop
-  iaddiu vi04, vi02, 0x173   |  mulax.xyzw ACC, vf04, vf12
-  ibgtz vi09, L145           |  madday.xyzw ACC, vf05, vf12
-  iadd vi06, vi06, vi05      |  maddaz.xyzw ACC, vf06, vf12
-  nop                        |  addx.w vf21, vf21, vf17
+  div Q, vf01.w, vf10.w      |  minix.xyzw vf25, vf00, vf00    ;; pipe  | vf25 = 0
+  move.xyzw vf21, vf09       |  minix.xyzw vf26, vf00, vf00    ;; pipe  | vf26 = 0
+  iadd vi05, vi05, vi04      |  nop                            ;; vi05 = srcdest table addr
+  iaddiu vi04, vi02, 0x173   |  mulax.xyzw ACC, vf04, vf12     ;; vi04 = "output zone" | pipe
+  ibgtz vi09, L145           |  madday.xyzw ACC, vf05, vf12    ;; pipe | pipe
+  iadd vi06, vi06, vi05      |  maddaz.xyzw ACC, vf06, vf12    ;; vi06 = cross copy table | pipe
+  nop                        |  addx.w vf21, vf21, vf17        ;; pipe | pipe
 L145:
-  iadd vi07, vi07, vi06      |  maddw.xyzw vf12, vf07, vf00
-  ilw.x vi09, -6(vi01)       |  mul.xyz vf10, vf10, Q
-  iaddiu vi08, vi00, 0x1ba   |  mul.xyzw vf16, vf16, Q
-  isub vi08, vi08, vi02      |  ftoi4.xyzw vf21, vf21
-  iaddiu vi08, vi08, 0x173   |  mul.xyzw vf12, vf12, vf23
-  lqi.xyzw vf23, vi03        |  add.xyzw vf10, vf10, vf22
-  ibgez vi09, L146           |  nop
-  sq.xyzw vf21, 2(vi11)      |  nop
-  nop                        |  ftoi4.xyzw vf21, vf09
+  iadd vi07, vi07, vi06      |  maddw.xyzw vf12, vf07, vf00    ;; vi07 = end cross copy table | pipe
+  ilw.x vi09, -6(vi01)       |  mul.xyz vf10, vf10, Q          ;; ?????? | pipe
+  iaddiu vi08, vi00, 0x1ba   |  mul.xyzw vf16, vf16, Q         ;; vi08 = 442 | pipe
+  isub vi08, vi08, vi02      |  ftoi4.xyzw vf21, vf21          ;; vi08 is the other buffer | pipe
+  iaddiu vi08, vi08, 0x173   |  mul.xyzw vf12, vf12, vf23      ;; vi08 is the other buffer | pipe
+  lqi.xyzw vf23, vi03        |  add.xyzw vf10, vf10, vf22      ;; pipe | pipe
+  ibgez vi09, L146           |  nop                            ;; pipe (but weird, not applicable for mat1, but still works)
+  sq.xyzw vf21, 2(vi11)      |  nop                            ;; pipe
+  nop                        |  ftoi4.xyzw vf21, vf09          ;; pipe (slightly wrong for mat1, but might not matter?)
 L146:
-  mfp.w vf20, P              |  nop
-  sq.xyzw vf15, 0(vi11)      |  miniy.xyzw vf12, vf12, vf17
-  sq.xyzw vf15, 0(vi14)      |  miniw.w vf10, vf10, vf03
-  sq.xyzw vf21, 2(vi14)      |  nop
-  ilw.y vi09, -3(vi01)       |  mulw.xyzw vf13, vf13, vf20
-  mfir.x vf25, vi04          |  ftoi0.xyzw vf12, vf12
-  mfir.y vf25, vi04          |  nop
-  mfir.x vf26, vi08          |  nop
-  ilw.w vi02, 1(vi00)        |  nop
-  mfir.y vf26, vi04          |  mulax.xyzw ACC, vf01, vf13
-  sq.xyzw vf12, 1(vi11)      |  madday.xyzw ACC, vf02, vf13
-  sq.xyzw vf12, 1(vi14)      |  maddz.xyzw vf13, vf03, vf13
-  nop                        |  nop
-  ibne vi00, vi02, L152      |  maxw.w vf10, vf10, vf02
-  nop                        |  itof0.xyzw vf23, vf23
+  mfp.w vf20, P              |  nop                            ;; pipe
+  sq.xyzw vf15, 0(vi11)      |  miniy.xyzw vf12, vf12, vf17    ;; pipe
+  sq.xyzw vf15, 0(vi14)      |  miniw.w vf10, vf10, vf03       ;; pipe
+  sq.xyzw vf21, 2(vi14)      |  nop                            ;; pipe
+  ilw.y vi09, -3(vi01)       |  mulw.xyzw vf13, vf13, vf20     ;; werid pipe | pipe
+  mfir.x vf25, vi04          |  ftoi0.xyzw vf12, vf12          ;; vf25.x = output zone | pipe
+  mfir.y vf25, vi04          |  nop                            ;; vf25.y = output zone
+  mfir.x vf26, vi08          |  nop                            ;; vf26.x = old output zone
+  ilw.w vi02, 1(vi00)        |  nop                            ;; vi02 = mercprime flag
+  mfir.y vf26, vi04          |  mulax.xyzw ACC, vf01, vf13     ;; vf26.y = output zone | pipe
+  sq.xyzw vf12, 1(vi11)      |  madday.xyzw ACC, vf02, vf13    ;; pipe | pipe
+  sq.xyzw vf12, 1(vi14)      |  maddz.xyzw vf13, vf03, vf13    ;; pipe | pipe
+  nop                        |  nop                            ;; ? why the nop ?
+  ibne vi00, vi02, L152      |  maxw.w vf10, vf10, vf02        ;; mercprime detour | pipe
+  nop                        |  itof0.xyzw vf23, vf23          ;; pipe
 L147:
-  8388608.0                  |  maxx.xyzw vf13, vf13, vf00 :i
-  256.0                      |  maxi.xy vf27, vf00, I :i
-  move.xyzw vf21, vf10       |  maxi.w vf27, vf00, I
-  nop                        |  nop
-  nop                        |  mulax.xyzw ACC, vf04, vf13
-  ibgtz vi09, L148           |  madday.xyzw ACC, vf05, vf13
-  nop                        |  maddaz.xyzw ACC, vf06, vf13
-  nop                        |  addx.w vf21, vf21, vf17
+  8388608.0                  |  maxx.xyzw vf13, vf13, vf00 :i  ;; vf13 = 0
+  256.0                      |  maxi.xy vf27, vf00, I :i       ;; vf27.xy = 8388608.0
+  move.xyzw vf21, vf10       |  maxi.w vf27, vf00, I           ;; pipe | vf27.w = 256.0
+  nop                        |  nop                            ;; ??
+  nop                        |  mulax.xyzw ACC, vf04, vf13     ;; pipe
+  ibgtz vi09, L148           |  madday.xyzw ACC, vf05, vf13    ;; pipe | pipe
+  nop                        |  maddaz.xyzw ACC, vf06, vf13    ;; pipe
+  nop                        |  addx.w vf21, vf21, vf17        ;; pipe
 L148:
-  nop                        |  maddw.xyzw vf13, vf07, vf00
-  ilw.x vi09, -3(vi01)       |  itof0.xyzw vf25, vf25
-  nop                        |  itof0.xyzw vf26, vf26
-  nop                        |  ftoi4.xyzw vf21, vf21
-  nop                        |  mul.xyzw vf13, vf13, vf23
-  ior vi02, vi05, vi00       |  add.xyzw vf25, vf25, vf27
-  ibgez vi09, L149           |  add.xyzw vf26, vf26, vf27
-  sq.xyzw vf21, 2(vi12)      |  nop
-  nop                        |  ftoi4.xyzw vf21, vf10
+  nop                        |  maddw.xyzw vf13, vf07, vf00    ;; pipe
+  ilw.x vi09, -3(vi01)       |  itof0.xyzw vf25, vf25          ;; pipe | zone addrs to float
+  nop                        |  itof0.xyzw vf26, vf26          ;; zone addrs to float
+  nop                        |  ftoi4.xyzw vf21, vf21          ;; pipe
+  nop                        |  mul.xyzw vf13, vf13, vf23      ;; pipe
+  ior vi02, vi05, vi00       |  add.xyzw vf25, vf25, vf27      ;; vi02 = srcdst table | float trick
+  ibgez vi09, L149           |  add.xyzw vf26, vf26, vf27      ;; pipe | float trick
+  sq.xyzw vf21, 2(vi12)      |  nop                            ;; pipe
+  nop                        |  ftoi4.xyzw vf21, vf10          ;; pipe
 L149:
   ibne vi06, vi05, L150      |  nop
   sq.xyzw vf16, 0(vi12)      |  miniy.xyzw vf13, vf13, vf17
   ior vi06, vi07, vi00       |  max.xyzw vf25, vf26, vf26
 L150:
-  sq.xyzw vf16, 0(vi15)      |  nop
-  sq.xyzw vf21, 2(vi15)      |  nop
+  sq.xyzw vf16, 0(vi15)      |  nop   ;; pipe
+  sq.xyzw vf21, 2(vi15)      |  nop   ;; pipe
   lqi.xyzw vf27, vi05        |  nop
-  nop                        |  ftoi0.xyzw vf13, vf13
+  nop                        |  ftoi0.xyzw vf13, vf13 ;; pipe
   nop                        |  nop
   nop                        |  nop
   nop                        |  itof0.xyzw vf27, vf27
-  sq.xyzw vf13, 1(vi12)      |  nop
+  sq.xyzw vf13, 1(vi12)      |  nop ;; pipe
   b L173                     |  nop
-  sq.xyzw vf13, 1(vi15)      |  nop
+  sq.xyzw vf13, 1(vi15)      |  nop ;; pipe
 L151:
   3072.0                     |  miniw.w vf10, vf10, vf01 :i
   b L144                     |  minii.xy vf09, vf09, I
@@ -2043,7 +2045,8 @@ L152:
   3072.0                     |  maxi.xy vf10, vf10, I :i
   b L147                     |  minii.xy vf10, vf10, I
   isw.w vi00, 1(vi00)        |  nop
-L153:
+
+L153: ;; exit cross 2
   ilw.w vi08, 1(vi00)        |  nop
   xtop vi02                  |  mulax.xyzw ACC, vf01, vf13
   sq.xyzw vf12, 1(vi11)      |  madday.xyzw ACC, vf02, vf13
@@ -2130,7 +2133,7 @@ L162:
   3072.0                     |  maxi.xy vf08, vf08, I :i
   b L157                     |  minii.xy vf08, vf08, I
   isw.w vi00, 1(vi00)        |  nop
-L163:
+L163: ;; exit cross 3
   ilw.w vi08, 1(vi00)        |  nop
   xtop vi02                  |  mulax.xyzw ACC, vf01, vf11
   sq.xyzw vf13, 1(vi12)      |  madday.xyzw ACC, vf02, vf11
@@ -2217,6 +2220,8 @@ L172:
   3072.0                     |  maxi.xy vf09, vf09, I :i
   b L167                     |  minii.xy vf09, vf09, I
   isw.w vi00, 1(vi00)        |  nop
+
+;; end routine.
 L173:
   ibeq vi07, vi02, L179      |  nop
   ilw.w vi15, 132(vi00)      |  nop

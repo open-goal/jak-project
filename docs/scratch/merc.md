@@ -205,4 +205,68 @@ sq.xyzw vf11, 1(vi10)
 sq.xyzw vf11, 1(vi13)
 
 ```
+Note: it might be that the last vertex can't change its adc flag for dst2. Maybe only in some cases. Worth checking more if there are stripping issues.
 
+## Final Copies
+assuming no mercprime, leaving out pipe flush (which is a tangled mess to flush the pipes of whatever of the 3 different loops were)
+```
+;; vi08 = mercprime flag
+ilw.w vi08, 1(vi00)
+
+;; find the byte header again
+xtop vi02
+iaddiu vi04, vi02, 0x8c
+
+;; srcdest-off
+ilwr.x vi05, vi04
+
+;; samecopy-cnt
+ilw.w vi06, 1(vi04)
+
+;; crosscopy-cnt
+ilw.x vi07, 2(vi04)
+
+;; zero out vf25, vf26
+minix.xyzw vf25, vf00, vf00
+minix.xyzw vf26, vf00, vf00
+
+;; compute srcdest table address
+iadd vi05, vi05, vi04
+
+;; compute output zone
+iaddiu vi04, vi02, 0x173
+
+;; compute srcdest cross copy table address
+iadd vi06, vi06, vi05
+
+;; compute end of cross copy
+iadd vi07, vi07, vi06
+
+;; compute address of the _old_ output buffer
+iaddiu vi08, vi00, 0x1ba
+isub vi08, vi08, vi02
+iaddiu vi08, vi08, 0x173
+
+;; move addrs to vf
+mfir.x vf25, vi04 ;; vf25.x = output zone
+mfir.y vf25, vi04 ;; vf25.y = output zone
+mfir.x vf26, vi08 ;; vf26.x = old output zone
+mfir.y vf26, vi04 ;; vf26.y = output zone
+
+;; set up
+maxx.xyzw vf13, vf13, vf00 ;; vf13 = 0
+maxi.xy vf27, vf00, I, I = 8388608.0 ;; vf27.xy = [8388608.0 8388608.0]
+maxi.w vf27, vf00, I, I = 256        ;; vf27.w = 256
+
+itof0.xyzw vf25, vf25
+itof0.xyzw vf26, vf26
+
+ior vi02, vi05, vi00 ;; vi02 = srcdst table
+
+add.xyzw vf25, vf25, vf27    ;; hack float add trick
+add.xyzw vf26, vf26, vf27
+
+miniy.xyzw vf13, vf13, vf17 ;; float tricks
+ibne vi06, vi05, L150 ;; branch if there are samecopys
+
+```
