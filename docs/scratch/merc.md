@@ -160,7 +160,7 @@ maddz.xyzw vf11, vf03, vf11
 ;; fog min
 maxw.w vf08, vf08, vf02
 
-;; light itof
+;; rgba itof
 itof0.xyzw vf23, vf23
 
 ;; light clamp
@@ -206,6 +206,145 @@ sq.xyzw vf11, 1(vi13)
 
 ```
 Note: it might be that the last vertex can't change its adc flag for dst2. Maybe only in some cases. Worth checking more if there are stripping issues.
+
+## Mat2 Loop
+
+NOTE: we might need to advance perc by 1 at the beginning if there are any mat0's.
+```asm
+;; compute perc ptr
+ilw.x vi02, 3(vi12)
+iadd vi02, vi02, vi12
+
+;; load vertex
+lqi.xyzw vf08, vi01
+lqi.xyzw vf11, vi01
+lqi.xyzw vf14, vi01
+
+;; and perc
+lqi.xyzw vf24, vi02
+
+;; extract mat idx
+mtir vi10, vf08.x
+mtir vi13, vf08.y
+
+;; convert perc
+itof0.xyzw vf24, vf24
+
+;; lump offset
+add.zw vf08, vf08, vf17
+add.xyzw vf11, vf11, vf18
+add.xyzw vf14, vf14, vf19
+
+;; mask off sign bit of mat0 and mat1
+iand vi10, vi10, vi05 (vi05 = 0x7f)  <- looks like a 0 here means "reuse prev mat"
+iand vi13, vi13, vi05
+
+;; scale perc
+mulw.xyzw vf24, vf24, vf29  ;; vf29.w = 0.003921569
+
+;; load matrices
+lq.xyzw vf20, 0(vi10) ;; tmat0.0
+lq.xyzw vf25, 0(vi13) ;; tmat1.0
+lq.xyzw vf23, 1(vi10) ;; tmat0.1
+lq.xyzw vf26, 1(vi13) ;; tmat1.1
+lq.xyzw vf20, 2(vi10) ;; tmat0.2
+lq.xyzw vf27, 2(vi13) ;; tmat1.2
+lq.xyzw vf23, 3(vi10) ;; tmat0.3
+lq.xyzw vf28, 3(vi13) ;; tmat1.3
+lq.xyzw vf20, 4(vi10) ;; nmat0.0
+lq.xyz vf29,  4(vi13) ;; nmat1.0
+lq.xyzw vf23, 5(vi10) ;; nmat0.1
+lq.xyz vf30, 5(vi13)  ;; nmat1.1
+lq.xyzw vf20, 6(vi10) ;; nmat0.2
+lq.xyzw vf31, 6(vi13) ;; nmat1.2
+
+;; multiply rows by perc.
+;; mat0 uses perc.x, mat0 uses perc.y. Matrices are added.
+;; ex: tmat2 = tmat0.2 * perc.x + tmat1.2 * perc.y
+Results are
+
+vf25 = tmat0
+vf26 = tmat1
+vf27 = tmat2
+vf28 = tmat3
+
+vf29 = nmat0
+vf30 = nmat1
+vf31 = nmat2
+
+;; rotate normal
+mulaz.xyzw ACC, vf29, vf08
+maddaz.xyzw ACC, vf30, vf11
+maddz.xyz vf11, vf31, vf14
+
+;; transform point
+mulaw.xyzw ACC, vf25, vf08
+maddaw.xyzw ACC, vf26, vf11
+maddw.xyzw vf08, vf27, vf14
+add.xyzw vf08, vf08, vf28
+
+;; length of normal
+erleng.xyz P, vf11
+
+;; rgba offset
+ilwr.y vi03, vi12
+iadd vi03, vi03, vi12
+
+;; persepctive divide
+div Q, vf01.w, vf08.w
+mul.xyz vf08, vf08, Q
+mul.xyzw vf14, vf14, Q
+
+;; load rgba
+lqi.xyzw vf23, vi03
+
+;; hvdf offset
+add.xyzw vf08, vf08, vf22
+
+;; normalize normal
+mfp.w vf20, P
+mulw.xyzw vf11, vf11, vf20
+
+;; fog
+miniw.w vf08, vf08, vf03
+maxw.w vf08, vf08, vf02
+
+;; go get mat1 again
+ilw.y vi09, -6(vi01)
+
+;; light dot product
+mulax.xyzw ACC, vf01, vf11
+madday.xyzw ACC, vf02, vf11
+maddz.xyzw vf11, vf03, vf11
+
+;; vertex color convert
+itof0.xyzw vf23, vf23
+
+;; light clamp
+maxx.xyzw vf11, vf11, vf00
+
+
+;; adc logic
+ilw.y vi09, -6(vi01)
+move.xyzw vf21, vf08
+ibgtz vi09, L47
+
+addx.w vf21, vf21, vf17
+
+L47:
+ilw.x vi09, -9(vi01)
+ftoi4.xyzw vf21, vf21
+ilw.x vi09, -9(vi01)
+
+sq.xyzw vf21, 2(vi10)
+ibgez vi09, L50
+
+ftoi4.xyzw vf21, vf08
+
+L50:
+sq.xyzw vf21, 2(vi13)
+```
+
 
 ## Final Copies
 assuming no mercprime, leaving out pipe flush (which is a tangled mess to flush the pipes of whatever of the 3 different loops were)
@@ -268,5 +407,14 @@ add.xyzw vf26, vf26, vf27
 
 miniy.xyzw vf13, vf13, vf17 ;; float tricks
 ibne vi06, vi05, L150 ;; branch if there are samecopys
+
+ior vi06, vi07, vi00       |  max.xyzw vf25, vf26, vf26
+
+L150:
+
+;; load from copy table
+lqi.xyzw vf27, vi05
+;; table to float
+itof0.xyzw vf27, vf27
 
 ```

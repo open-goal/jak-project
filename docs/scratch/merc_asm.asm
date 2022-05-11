@@ -458,20 +458,22 @@ L25:
   b L163                     |  nop
   nop                        |  nop
 
-L26: ;; after mat1's??
-  ibeq vi00, vi06, L61       |  nop
-  iadd vi02, vi02, vi12      |  nop
-  lqi.xyzw vf08, vi01        |  nop
-  lqi.xyzw vf24, vi02        |  nop
-  lqi.xyzw vf11, vi01        |  nop
-  lqi.xyzw vf14, vi01        |  nop
-  mtir vi10, vf08.x          |  nop
-  mtir vi13, vf08.y          |  itof0.xyzw vf24, vf24
-  iaddi vi06, vi06, -0x1     |  add.zw vf08, vf08, vf17
-  nop                        |  add.xyzw vf11, vf11, vf18
-  iand vi10, vi10, vi05      |  add.xyzw vf14, vf14, vf19
-  nop                        |  mulw.xyzw vf24, vf24, vf29
-  iand vi13, vi13, vi05      |  nop
+L26: ;; pipeline startup for mat2's (assuming you had no mat1's to get things started)
+  ibeq vi00, vi06, L61       |  nop ;; goto L61 if no mat2's
+  iadd vi02, vi02, vi12      |  nop ;; compute perc offset
+  lqi.xyzw vf08, vi01        |  nop ;; vf08 = vtx0 = [mat0, mat1, nrmx, posx]
+  lqi.xyzw vf24, vi02        |  nop ;; vf24 = perc
+  lqi.xyzw vf11, vi01        |  nop ;; vf11 = vtx1 = [dst0, dst1, nrmy, posy]
+  lqi.xyzw vf14, vi01        |  nop ;; vf14 = vtx2 = [texs, text, nrmz, posz]
+  mtir vi10, vf08.x          |  nop                           ;; vi10 = mat0
+  mtir vi13, vf08.y          |  itof0.xyzw vf24, vf24         ;; vi13 = mat1 | vf24 = itof0(perc)
+  iaddi vi06, vi06, -0x1     |  add.zw vf08, vf08, vf17       ;; dec count | lump offset
+  nop                        |  add.xyzw vf11, vf11, vf18     ;; lump offset
+  iand vi10, vi10, vi05      |  add.xyzw vf14, vf14, vf19     ;; vi10 = mat0 & 0x7f | lump offset
+  nop                        |  mulw.xyzw vf24, vf24, vf29    ;; scale perc
+  iand vi13, vi13, vi05      |  nop                           ;; vi13 = mat1 & 0x7f
+
+  ;; left col is loading matrices, right col is multiplication by perc.
   lq.xyzw vf20, 0(vi10)      |  nop
   lq.xyzw vf25, 0(vi13)      |  nop
   lq.xyzw vf23, 1(vi10)      |  nop
@@ -489,39 +491,39 @@ L26: ;; after mat1's??
   mtir vi10, vf11.x          |  mulax.xyzw ACC, vf23, vf24
   mtir vi13, vf11.y          |  maddy.xyz vf30, vf30, vf24
   nop                        |  mulax.xyzw ACC, vf20, vf24
-  nop                        |  maddy.xyzw vf31, vf31, vf24
-  nop                        |  mulaz.xyzw ACC, vf29, vf08
+  nop                        |  maddy.xyzw vf31, vf31, vf24  ;; last perc multiply
+  nop                        |  mulaz.xyzw ACC, vf29, vf08   ;; rotate normal
   nop                        |  maddaz.xyzw ACC, vf30, vf11
   nop                        |  maddz.xyz vf11, vf31, vf14
   nop                        |  nop
   nop                        |  nop
-  nop                        |  mulaw.xyzw ACC, vf25, vf08
-  iaddiu vi08, vi00, 0x243   |  nop
-  erleng.xyz P, vf11         |  nop
-  ior vi15, vi07, vi00       |  maddaw.xyzw ACC, vf26, vf11
-  mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14
-  lqi.xyzw vf09, vi01        |  nop
-  ilwr.y vi03, vi12          |  nop
-  ilw.z vi07, 1(vi12)        |  nop
-  lqi.xyzw vf12, vi01        |  add.xyzw vf08, vf08, vf28
-  lqi.xyzw vf15, vi01        |  nop
-  mtir vi11, vf09.x          |  nop
-  ibeq vi00, vi15, L27       |  nop
-  mtir vi14, vf09.y          |  nop
-  iaddiu vi08, vi00, 0x539   |  miniw.w vf08, vf08, vf01
+  nop                        |  mulaw.xyzw ACC, vf25, vf08   ;; xf point
+  iaddiu vi08, vi00, 0x243   |  nop                          ;; vi08 = 0x243 = 579
+  erleng.xyz P, vf11         |  nop                          ;; length of normal
+  ior vi15, vi07, vi00       |  maddaw.xyzw ACC, vf26, vf11  ;; vi15 = mercprimt | xf point
+  mr32.z vf14, vf00          |  maddw.xyzw vf08, vf27, vf14  ;; set vf14.z = 1.0 | xf point
+  lqi.xyzw vf09, vi01        |  nop                          ;; pipe |
+  ilwr.y vi03, vi12          |  nop                          ;; vi03 = rgba-off
+  ilw.z vi07, 1(vi12)        |  nop                          ;; vi07 = mat3-cnt
+  lqi.xyzw vf12, vi01        |  add.xyzw vf08, vf08, vf28    ;; pipe | xf point
+  lqi.xyzw vf15, vi01        |  nop                          ;; pipe
+  mtir vi11, vf09.x          |  nop                          ;; pipe
+  ibeq vi00, vi15, L27       |  nop                          ;; goto L27 if no merc-prim
+  mtir vi14, vf09.y          |  nop                          ;; pipe
+  iaddiu vi08, vi00, 0x539   |  miniw.w vf08, vf08, vf01     ;; ONLY RUN IF MERCPRIME
 L27:
-  div Q, vf01.w, vf08.w      |  add.zw vf09, vf09, vf17
-  iadd vi03, vi03, vi12      |  add.xyzw vf12, vf12, vf18
-  iand vi11, vi11, vi05      |  add.xyzw vf15, vf15, vf19
-  iadd vi06, vi06, vi03      |  nop
-  iadd vi07, vi07, vi06      |  nop
-  iand vi14, vi14, vi05      |  nop
-  ibne vi05, vi11, L28       |  nop
-  nop                        |  mul.xyz vf08, vf08, Q
+  div Q, vf01.w, vf08.w      |  add.zw vf09, vf09, vf17      ;; perspective divide | pipe
+  iadd vi03, vi03, vi12      |  add.xyzw vf12, vf12, vf18    ;; rgba off | pipe
+  iand vi11, vi11, vi05      |  add.xyzw vf15, vf15, vf19    ;; pipe | pipe
+  iadd vi06, vi06, vi03      |  nop                          ;; end addr calc1
+  iadd vi07, vi07, vi06      |  nop                          ;; end addr calc2
+  iand vi14, vi14, vi05      |  nop                          ;; pipe
+  ibne vi05, vi11, L28       |  nop                          ;; branch on next(?) vertex mat0 sign bit
+  nop                        |  mul.xyz vf08, vf08, Q        ;; perspective
   mtir vi11, vf12.x          |  mul.xyzw vf14, vf14, Q
   mtir vi14, vf12.y          |  nop
-  b L29                      |  nop
-  lqi.xyzw vf23, vi03        |  add.xyzw vf08, vf08, vf22
+  b L29                      |  nop                         ;; branch to skip matrix load, if possible
+  lqi.xyzw vf23, vi03        |  add.xyzw vf08, vf08, vf22   ;; load rgba | hvdf offset
 L28:
   lq.xyzw vf20, 0(vi11)      |  mul.xyzw vf14, vf14, Q
   lq.xyzw vf25, 0(vi14)      |  nop
@@ -545,17 +547,17 @@ L28:
   lqi.xyzw vf23, vi03        |  itof0.xyzw vf24, vf23
   iaddiu vi08, vi00, 0x48e   |  nop
 L29:
-  nop                        |  mulaz.xyzw ACC, vf29, vf09
-  nop                        |  maddaz.xyzw ACC, vf30, vf12
-  mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15
+  nop                        |  mulaz.xyzw ACC, vf29, vf09   ;; pipe
+  nop                        |  maddaz.xyzw ACC, vf30, vf12  ;; pipe
+  mfp.w vf20, P              |  maddz.xyz vf12, vf31, vf15   ;; normal length | pipe
   nop                        |  nop
-  1024.0                     |  miniw.w vf08, vf08, vf03 :i
-  ibne vi00, vi15, L93       |  mulaw.xyzw ACC, vf25, vf09
-  ilw.y vi09, -6(vi01)       |  mulw.xyzw vf11, vf11, vf20
-  erleng.xyz P, vf12         |  nop
-  ibeq vi06, vi03, L65       |  maddaw.xyzw ACC, vf26, vf12
-  mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15
-  lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11
+  1024.0                     |  miniw.w vf08, vf08, vf03 :i  ;; fog max
+  ibne vi00, vi15, L93       |  mulaw.xyzw ACC, vf25, vf09   ;; mercprime | pipe
+  ilw.y vi09, -6(vi01)       |  mulw.xyzw vf11, vf11, vf20   ;; vi09 = mat1 | normalize
+  erleng.xyz P, vf12         |  nop                          ;; pipe
+  ibeq vi06, vi03, L65       |  maddaw.xyzw ACC, vf26, vf12  ;; check done | pipe
+  mr32.z vf15, vf00          |  maddw.xyzw vf09, vf27, vf15  ;; pipe | pipe
+  lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11   ;; pipe | dot product with light
   jr vi08                    |  madday.xyzw ACC, vf02, vf11
   nop                        |  maddz.xyzw vf11, vf03, vf11
 L30: ;; mat2 cross entry 3
@@ -622,6 +624,7 @@ L36: ;; mat2 cross entry 1
   lqi.xyzw vf08, vi01        |  mulax.xyzw ACC, vf01, vf12
   sq.xyzw vf11, 1(vi10)      |  madday.xyzw ACC, vf02, vf12
   sq.xyzw vf11, 1(vi13)      |  maddz.xyzw vf12, vf03, vf12
+  ;; END of first vertex....
   lqi.xyzw vf11, vi01        |  add.xyzw vf10, vf10, vf28
   lqi.xyzw vf14, vi01        |  maxw.w vf09, vf09, vf02
   mtir vi10, vf08.x          |  itof0.xyzw vf23, vf23
@@ -740,10 +743,11 @@ L46:
   lqi.xyzw vf10, vi01        |  mulax.xyzw ACC, vf01, vf11
   sq.xyzw vf13, 1(vi12)      |  madday.xyzw ACC, vf02, vf11
   sq.xyzw vf13, 1(vi15)      |  maddz.xyzw vf11, vf03, vf11
-  lqi.xyzw vf13, vi01        |  add.xyzw vf09, vf09, vf28
-  lqi.xyzw vf16, vi01        |  maxw.w vf08, vf08, vf02
-  mtir vi12, vf10.x          |  itof0.xyzw vf23, vf23
-  mtir vi15, vf10.y          |  maxx.xyzw vf11, vf11, vf00
+  ;; ugh, I think we jump here.
+  lqi.xyzw vf13, vi01        |  add.xyzw vf09, vf09, vf28 ;; pipe | pipe
+  lqi.xyzw vf16, vi01        |  maxw.w vf08, vf08, vf02   ;; pipe | fogmin
+  mtir vi12, vf10.x          |  itof0.xyzw vf23, vf23     ;; pipe | vtx color convert
+  mtir vi15, vf10.y          |  maxx.xyzw vf11, vf11, vf00 ;; pipe | light clamp
   div Q, vf01.w, vf09.w      |  add.zw vf10, vf10, vf17
   move.xyzw vf21, vf08       |  add.xyzw vf13, vf13, vf18
   iand vi12, vi12, vi05      |  add.xyzw vf16, vf16, vf19
@@ -780,13 +784,13 @@ L48:
   lqi.xyzw vf23, vi03        |  itof0.xyzw vf24, vf23
 L49:
   ibgez vi09, L50            |  mulaz.xyzw ACC, vf29, vf10
-  sq.xyzw vf21, 2(vi10)      |  maddaz.xyzw ACC, vf30, vf13
+  sq.xyzw vf21, 2(vi10)      |  maddaz.xyzw ACC, vf30, vf13  ;; first store
   nop                        |  ftoi4.xyzw vf21, vf08
 L50:
   mfp.w vf20, P              |  maddz.xyz vf13, vf31, vf16
   sq.xyzw vf14, 0(vi10)      |  miniy.xyzw vf11, vf11, vf17
   sq.xyzw vf14, 0(vi13)      |  miniw.w vf09, vf09, vf03
-  sq.xyzw vf21, 2(vi13)      |  mulaw.xyzw ACC, vf25, vf10
+  sq.xyzw vf21, 2(vi13)      |  mulaw.xyzw ACC, vf25, vf10   ;; second store
   ilw.y vi09, -6(vi01)       |  mulw.xyzw vf12, vf12, vf20
   erleng.xyz P, vf13         |  ftoi0.xyzw vf11, vf11
   ibne vi06, vi03, L51       |  maddaw.xyzw ACC, vf26, vf13
@@ -799,6 +803,7 @@ L51:
   lqi.xyzw vf08, vi01        |  mulax.xyzw ACC, vf01, vf12
   sq.xyzw vf11, 1(vi10)      |  madday.xyzw ACC, vf02, vf12
   sq.xyzw vf11, 1(vi13)      |  maddz.xyzw vf12, vf03, vf12
+  ;; end, for real this time.
   lqi.xyzw vf11, vi01        |  add.xyzw vf10, vf10, vf28
   lqi.xyzw vf14, vi01        |  maxw.w vf09, vf09, vf02
   mtir vi10, vf08.x          |  itof0.xyzw vf23, vf23

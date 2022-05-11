@@ -6,8 +6,9 @@
 namespace decompiler {
 
 // merc
-// - mat1 extraction is working
-// - still need mat2/mat3 code, otherwise those models are garbage.
+// - rgb/normals seem right.
+// - still missing perc for mat2, but I think I know how
+// - need to add perc for mat3
 
 // number of slots on VU1 data memory to store matrices
 constexpr int MERC_VU1_MATRIX_SLOTS = 18;
@@ -88,15 +89,18 @@ struct MercUnpackedVtx {
   math::Vector2f st;   // texture coordinates
   math::Vector<u8, 4> rgba;
 
+  int skel_mats[3];
+  float mat_weights[3];
+
   // useful accessors for merc flags
 
   // get the matrix index (vu1 slot, not skeleton) if it's influenced by a single bone.
-  u8 get_mat1_matrix() const { return mat1; }
+  //  u8 get_mat1_matrix() const { return mat1; }
 
   // flags/indices that have mode-specific meaning.
 
-  u8 mat0;
-  u8 mat1;
+  //  u8 mat0;
+  //  u8 mat1;
   u16 dst0;
   u16 dst1;
 };
@@ -295,6 +299,7 @@ void handle_frag(const std::string& debug_name,
                  const MercCtrlHeader& ctrl_header,
                  const MercFragment& frag,
                  const MercFragmentControl& frag_ctrl,
+                 const MercState& state,
                  std::vector<MercUnpackedVtx>& effect_vertices,
                  MercMemory& memory) {
   (void)frag_ctrl;
@@ -305,12 +310,26 @@ void handle_frag(const std::string& debug_name,
   // we'll iterate through the lump and rgba data
   int lump_ptr = 0;                     // vertex data starts at the beginning of "lump"
   int rgba_ptr = frag.header.rgba_off;  // rgba is in u4's
+  int perc_ptr = frag.header.perc_off;
 
-  // loop through mat1 vertices.
-  for (size_t i = 0; i < frag.header.mat1_cnt; i++) {
+  u32 mat1_cnt = frag.header.mat1_cnt;
+  u32 mat12_cnt = frag.header.mat2_cnt + mat1_cnt;
+  u32 mat123_cnt = frag.header.mat3_cnt + mat12_cnt;
+
+  // loop through vertices.
+  int prev_mat2_mat0 = -1;
+  int prev_mat2_mat1 = -1;
+  for (size_t i = 0; i < mat123_cnt; i++) {
     u32 current_vtx_idx = effect_vertices.size();  // idx in effect vertex list.
     auto& vtx = effect_vertices.emplace_back();
-    vtx.kind = 1;  // 1 matrix
+
+    if (i < mat1_cnt) {
+      vtx.kind = 1;  // 1 matrix
+    } else if (i < mat12_cnt) {
+      vtx.kind = 2;  // 2 matrix
+    } else {
+      vtx.kind = 3;
+    }
 
     // the three quadwords in the source data
     auto v0 = frag.lump4_unpacked.at(lump_ptr);
@@ -320,9 +339,40 @@ void handle_frag(const std::string& debug_name,
     // ilwr.x vi08, vi01    ;; load mat0 from vertex
     u16 mat0_addr;
     memcpy(&mat0_addr, &v0.x(), 2);
-    vtx.mat0 = vu1_addr_to_matrix_slot(mat0_addr);
+    u16 mat1_addr;
+    memcpy(&mat1_addr, &v0.y(), 2);
+
+    if (vtx.kind == 1) {
+      vtx.skel_mats[0] = state.vu1_matrix_slots.at(vu1_addr_to_matrix_slot(mat0_addr));
+      vtx.skel_mats[1] = -1;
+      vtx.skel_mats[2] = -1;
+      vtx.mat_weights[0] = 1.f;
+      vtx.mat_weights[1] = 0.f;
+      vtx.mat_weights[2] = 0.f;
+      ASSERT(vtx.skel_mats[0] >= 0);
+    } else if (vtx.kind == 2) {
+      u8 m0 = mat0_addr & 0x7f;
+      u8 m1 = mat1_addr & 0x7f;
+      if (m0 == 0x7f) {
+        ASSERT(prev_mat2_mat0 != -1);
+      } else {
+        prev_mat2_mat0 = vu1_addr_to_matrix_slot(m0);
+        prev_mat2_mat1 = vu1_addr_to_matrix_slot(m1);
+      }
+      vtx.skel_mats[0] = state.vu1_matrix_slots.at(prev_mat2_mat0);
+      vtx.skel_mats[1] = state.vu1_matrix_slots.at(prev_mat2_mat1);
+      vtx.skel_mats[2] = -1;
+
+      // todo: deal with perc.
+    } else if (vtx.kind == 3) {
+    } else {
+      ASSERT(false);
+    }
+
     u16 mat1;
     memcpy(&mat1, &v0.y(), 2);
+    u16 mat0;
+    memcpy(&mat0, &v0.x(), 2);
 
     // add.zw vf08, vf08, vf17    ;; lump offset
     // vf17 = [2048, 255, -65537, xyz-add.x] (the ?? is set per fragment)
@@ -344,19 +394,61 @@ void handle_frag(const std::string& debug_name,
     v2.w() += frag.fp_header.z_add;
 
     vtx.pos = math::Vector3f(v0.w(), v1.w(), v2.w());
-    vtx.nrm = math::Vector3f(v0.y(), v1.y(), v1.y());
-    vtx.mat1 = 0;                           // not used like this
+    vtx.nrm = math::Vector3f(v0.z(), v1.z(), v2.z());
+
+    // vtx.mat1 = 0;                           // not used like this
     vtx.dst0 = float_as_u32(v1.x()) - 371;  // xtop to output buffer offset
     vtx.dst1 = float_as_u32(v1.y()) - 371;
     vtx.rgba = frag.unsigned_four_including_header.at(rgba_ptr);
 
     // crazy flag logic to set adc
     s16 mat1_flag = mat1;
-    ASSERT(mat1_flag == -1 || mat1_flag == 0 || mat1_flag == 1);
-    bool dst0_adc = mat1_flag <= 0;
-    bool dst1_adc = dst0_adc && (mat1_flag != 0);
-    dst0_adc = !dst0_adc;
-    dst1_adc = !dst1_adc;
+    s16 mat0_flag = mat0;
+    bool dst0_adc, dst1_adc;
+    if (vtx.kind == 1) {
+      ASSERT(mat1_flag == -1 || mat1_flag == 0 || mat1_flag == 1);
+      dst0_adc = mat1_flag <= 0;
+      dst1_adc = dst0_adc && (mat1_flag != 0);
+      dst0_adc = !dst0_adc;
+      dst1_adc = !dst1_adc;
+    } else {
+      // adc logic
+      //   ilw.y vi09, -6(vi01)
+      s16 vi09 = mat1_flag;
+      //   move.xyzw vf21, vf08
+      bool vf21_has_adc = false;
+      bool vf08_has_adc = false;
+      if (!(vi09 > 0)) {
+        vf21_has_adc = true;
+      }
+      //   ibgtz vi09, L47
+      //
+      //   addx.w vf21, vf21, vf17
+      //
+      // L47:
+      //   ilw.x vi09, -9(vi01)
+      vi09 = mat0_flag;
+      //   ftoi4.xyzw vf21, vf21
+      //
+      //   sq.xyzw vf21, 2(vi10)
+      dst0_adc = !vf21_has_adc;
+      if (!(vi09 >= 0)) {
+        vf21_has_adc = vf08_has_adc;
+      }
+      dst1_adc = !vf21_has_adc;
+      //   ibgez vi09, L50
+      //
+      //   ftoi4.xyzw vf21, vf08
+      //
+      // L50:
+      //   sq.xyzw vf21, 2(vi13)
+
+      //      dst0_adc = mat1_flag <= 0;
+      //      dst1_adc = dst0_adc && (mat0_flag >= 0);
+      //      dst0_adc = !dst0_adc;
+      //      dst1_adc = !dst1_adc;
+      //      fmt::print("{}\n", dst1_adc);
+    }
 
     // write to two spots in memory
     auto& dst0_mem = memory.memory.at(vtx.dst0);
@@ -469,6 +561,53 @@ std::string debug_dump_to_obj(const std::vector<MercDraw>& draws,
   return result;
 }
 
+std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
+                              const std::vector<MercUnpackedVtx>& vertices) {
+  std::vector<math::Vector4f> verts;
+  std::vector<math::Vector<int, 3>> faces;
+
+  for (auto& draw : draws) {
+    // add verts...
+    int queue[2];
+    int q_idx = 0;
+    for (size_t ii = 2; ii < draw.indices.size(); ii++) {
+      u32 v0 = draw.indices[ii - 2];
+      u32 v1 = draw.indices[ii - 1];
+      u32 v2 = draw.indices[ii - 0];
+      if (v0 != UINT32_MAX && v1 != UINT32_MAX && v2 != UINT32_MAX) {
+        faces.emplace_back(v0, v1, v2);
+      }
+    }
+    //    for (auto& idx : draw.indices) {
+    //      if (idx == UINT32_MAX) {
+    //        q_idx = 0;
+    //      } else {
+    //        if (q_idx >= 2) {
+    //          faces.emplace_back(queue[(q_idx + 1) % 2], queue[q_idx % 2], idx);
+    //        }
+    //        queue[(q_idx++) % 2] = idx;
+    //      }
+    //    }
+  }
+
+  std::string result = fmt::format(
+      "ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty "
+      "float z\nproperty uchar red\nproperty uchar green\nproperty uchar blue\nelement face "
+      "{}\nproperty list uchar int vertex_index\nend_header\n",
+      vertices.size(), faces.size());
+
+  for (auto& vtx : vertices) {
+    result += fmt::format("{} {} {} {} {} {}\n", vtx.pos.x() / 1024.f, vtx.pos.y() / 1024.f,
+                          vtx.pos.z() / 1024.f, vtx.rgba[0], vtx.rgba[1], vtx.rgba[2]);
+  }
+
+  for (auto& face : faces) {
+    result += fmt::format("3 {} {} {}\n", face.x(), face.y(), face.z());
+  }
+
+  return result;
+}
+
 ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
                                         const MercCtrlHeader& ctrl_header,
                                         const TextureDB& tdb,
@@ -509,7 +648,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     // this will add vertices to the per-effect vertex lists and also update the merc memory
     // to point to these.
 
-    handle_frag(debug_name, ctrl_header, frag, frag_ctrl, result.vertices,
+    handle_frag(debug_name, ctrl_header, frag, frag_ctrl, merc_state, result.vertices,
                 merc_memories[memory_buffer_toggle]);
 
     // we'll add draws after this draw, but wait to actually populate the index lists until
@@ -628,8 +767,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
 
   file_util::write_text_file(
       file_util::get_file_path(
-          {"debug_out/merc", fmt::format("{}_{}.obj", debug_name, effect_idx)}),
-      debug_dump_to_obj(result.draws, result.vertices));
+          {"debug_out/merc", fmt::format("{}_{}.ply", debug_name, effect_idx)}),
+      debug_dump_to_ply(result.draws, result.vertices));
   // ASSERT(false);
 
   return result;
@@ -644,20 +783,24 @@ void extract_merc(const ObjectFileData& ag_data,
                   const std::vector<level_tools::TextureRemap>& map,
                   tfrag3::Level& out,
                   bool dump_level) {
-  fmt::print("MERC extract for: {}\n", ag_data.name_in_dgo);
+  // fmt::print("MERC extract for: {}\n", ag_data.name_in_dgo);
 
   // find all merc-ctrls in the object file
   auto ctrl_locations = find_merc_ctrls(ag_data.linked_data);
-  fmt::print(" found {} merc ctrls\n", ctrl_locations.size());
+  // fmt::print(" found {} merc ctrls\n", ctrl_locations.size());
 
   // extract them. this does very basic unpacking of data, as done by the VIF/DMA on PS2.
   std::vector<MercCtrl> ctrls;
   for (auto location : ctrl_locations) {
     auto ctrl = extract_merc_ctrl(ag_data.linked_data, dts, location);
-    if (ctrl.header.two_mat_count || ctrl.header.two_mat_reuse_count ||
-        ctrl.header.three_mat_count || ctrl.header.three_mat_reuse_count) {
-      fmt::print("skipping {} because it has mat2/mat3\n", ctrl.name);
-      continue;  // hack
+    if (ctrl.header.three_mat_count || ctrl.header.three_mat_reuse_count) {
+      // fmt::print("skipping {} because it has mat3\n", ctrl.name);
+      // continue;  // hack
+    }
+
+    if (ctrl.header.two_mat_count || ctrl.header.two_mat_reuse_count) {
+      // fmt::print("FOUND good test: {}\n", ctrl.name);
+      // ASSERT(false);
     }
     ctrls.push_back(ctrl);
   }
