@@ -217,7 +217,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (format *stdcon* "debug trajectory~%")
       (suspend)
       )
@@ -244,13 +244,10 @@
   )
 
 
-(defskelgroup *darkecobomb-sg* darkecobomb
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 3.5 0 6)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *darkecobomb-sg* darkecobomb darkecobomb-lod0-jg darkecobomb-idle-ja
+              ((darkecobomb-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3.5 0 6)
+              )
 
 (defstate darkecobomb-explode (darkecobomb)
   :code
@@ -388,11 +385,7 @@
     (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (the int (-> self countdown-time)))
         (go darkecobomb-explode #f)
         )
-    (when (= (if (> (-> self skel active-channels) 0)
-                 (-> self skel root-channel 0 frame-group)
-                 )
-             (-> self draw art-group data 5)
-             )
+    (when (ja-group? (-> self draw art-group data 5))
       (let ((gp-2 (new 'stack-no-clear 'vector)))
         (vector<-cspace! gp-2 (-> self node-list data 5))
         (spawn (-> self part) gp-2)
@@ -403,41 +396,17 @@
   :code
   (behavior ()
     (sound-play-by-name (static-sound-name "bomb-open") (new-sound-id) 1024 0 0 1 #t)
-    (let ((a0-2 (-> self skel root-channel 0)))
-      (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-      (set! (-> a0-2 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-            )
-      (set! (-> a0-2 param 1) 1.0)
-      (set! (-> a0-2 frame-num) 0.0)
-      (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-        (set! (-> a0-3 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (while #t
-      (let ((a0-5 (-> self skel root-channel 0)))
-        (set! (-> a0-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-        (set! (-> a0-5 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-              )
-        (set! (-> a0-5 param 1) (-> self anim-speed))
-        (set! (-> a0-5 frame-num) 0.0)
-        (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek! max (-> self anim-speed)) :frame-num 0.0)
       (until (ja-done? 0)
         (update! (-> self sound))
         (suspend)
-        (let ((a0-7 (-> self skel root-channel 0)))
-          (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-          (set! (-> a0-7 param 1) (-> self anim-speed))
-          (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max (-> self anim-speed)))
         )
       )
     (none)
@@ -465,32 +434,16 @@
     )
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) (the float (+ (-> a0-0 frame-group data 0 length) -1)))
-      (set! (-> a0-0 param 1) 1.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
       (ja-eval)
       )
-    (while #t
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-        (set! (-> a0-2 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
-              )
-        (set! (-> a0-2 param 1) 1.0)
-        (set! (-> a0-2 frame-num) 0.0)
-        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-          (set! (-> a0-3 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -518,40 +471,16 @@
     )
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      (set! (-> a0-0 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-            )
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (while #t
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-        (set! (-> a0-3 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
-              )
-        (set! (-> a0-3 param 1) 1.0)
-        (set! (-> a0-3 frame-num) 0.0)
-        (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-4 (-> self skel root-channel 0)))
-          (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
-          (set! (-> a0-4 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -605,13 +534,10 @@
   )
 
 
-(defskelgroup *greenshot-sg* greenshot
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *greenshot-sg* greenshot greenshot-lod0-jg greenshot-idle-ja
+              ((greenshot-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 (defstate greenshot-idle (greenshot)
   :enter
@@ -633,40 +559,11 @@
     )
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -756,13 +653,10 @@
   (none)
   )
 
-(defskelgroup *redring-sg* redring
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 40)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *redring-sg* redring redring-lod0-jg redring-idle-ja
+              ((redring-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              )
 
 (defbehavior redshot-trans redshot ((arg0 time-frame))
   (let ((s5-0 (new 'stack-no-clear 'matrix)))
@@ -859,11 +753,8 @@
     )
   :code
   (behavior ()
-    (while #t
-      (let ((v1-2 (-> self skel root-channel 0)))
-        (set! (-> v1-2 num-func) num-func-identity)
-        (set! (-> v1-2 frame-num) (* 0.000016276043 (-> self ring radius-primary)))
-        )
+    (loop
+      (ja :num-func num-func-identity :frame-num (* 0.000016276043 (-> self ring radius-primary)))
       (suspend)
       )
     (none)
@@ -899,7 +790,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -931,7 +822,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1033,7 +924,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)

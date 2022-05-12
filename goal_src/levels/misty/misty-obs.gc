@@ -1060,19 +1060,16 @@
   )
 
 
-(defskelgroup *boatpaddle-sg* boatpaddle
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 18)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *boatpaddle-sg* boatpaddle boatpaddle-lod0-jg boatpaddle-idle-ja
+              ((boatpaddle-lod0-mg (meters 20)) (boatpaddle-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 18)
+              )
 
 (defstate boatpaddle-idle (boatpaddle)
   :code
   (behavior ()
     (local-vars (s4-0 int))
-    (while #t
+    (loop
       (quaternion-rotate-local-x!
         (-> self root quat)
         (-> self root quat)
@@ -1084,18 +1081,7 @@
         (let ((f30-0 1274.3112)
               (f28-0 (the float s4-0))
               )
-              ;; changed for divide by zero
-          (set! s4-0 (/-0-guard (the int (* 65536.0 (ja-frame-num 0))) (+ (-> (if (> (-> self skel active-channels) 0)
-                                                                          (-> self skel root-channel 0 frame-group)
-                                                                          )
-                                                                      data
-                                                                      0
-                                                                      length
-                                                                      )
-                                                                  -1
-                                                                  )
-                        )
-                )
+          (set! s4-0 (/-0-guard (the int (* 65536.0 (ja-frame-num 0))) (+ (-> (ja-group) data 0 length) -1)))
           (set! (-> *part-id-table* 943 init-specs 17 initial-valuef)
                 (+ f30-0 (- f28-0 (* (the float (the int (/ (the float s4-0) 8192.0))) 8192.0)))
                 )
@@ -1135,18 +1121,15 @@
   )
 
 
-(defskelgroup *windturbine-sg* windturbine
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 3 0 7)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *windturbine-sg* windturbine windturbine-lod0-jg windturbine-idle-ja
+              ((windturbine-lod0-mg (meters 20)) (windturbine-lod1-mg (meters 40)) (windturbine-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 7)
+              )
 
 (defstate windturbine-idle (windturbine)
   :code
   (behavior ()
-    (while #t
+    (loop
       (let* ((a0-0 (-> self root trans))
              (f2-0
                (-> *wind-work*
@@ -1208,13 +1191,10 @@
   )
 
 
-(defskelgroup *mis-bone-bridge-sg* mis-bone-bridge
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 1 0 20)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *mis-bone-bridge-sg* mis-bone-bridge mis-bone-bridge-lod0-jg mis-bone-bridge-idle-ja
+              ((mis-bone-bridge-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 20)
+              )
 
 (defbehavior mis-bone-bridge-event-handler mis-bone-bridge ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
@@ -1262,11 +1242,8 @@
   mis-bone-bridge-event-handler
   :code
   (behavior ()
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 num-func) num-func-identity)
-      (set! (-> v1-2 frame-num) 0.0)
-      )
-    (while #t
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (loop
       (if (and *target* (>= 32768.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
           (level-hint-spawn
             (game-text-id misty-bone-bridge-hint)
@@ -1291,22 +1268,10 @@
   (the-as (function none :behavior mis-bone-bridge) rider-trans)
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-      (set! (-> a0-0 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
-            )
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go mis-bone-bridge-idle)
     (none)
@@ -1326,22 +1291,10 @@
     (if (zero? (-> self hit-points))
         (go mis-bone-bridge-fall #f)
         )
-    (let ((a0-1 (-> self skel root-channel 0)))
-      (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-      (set! (-> a0-1 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-            )
-      (set! (-> a0-1 param 1) 1.0)
-      (set! (-> a0-1 frame-num) 0.0)
-      (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-        (set! (-> a0-2 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go mis-bone-bridge-idle)
     (none)
@@ -1366,49 +1319,18 @@
           (-> gp-1 ppointer)
           )
         )
-      (let ((a0-5 (-> self skel root-channel 0)))
-        (set! (-> a0-5 frame-group) (the-as art-joint-anim (-> self draw art-group data (-> self fall-anim-index))))
-        (set! (-> a0-5 param 0)
-              (the float
-                   (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self fall-anim-index))) data 0 length) -1)
-                   )
-              )
-        (set! (-> a0-5 param 1) 1.0)
-        (set! (-> a0-5 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-5
-          (the-as art-joint-anim (-> self draw art-group data (-> self fall-anim-index)))
-          num-func-seek!
-          )
-        )
+      (ja-no-eval :group! (-> self draw art-group data (-> self fall-anim-index)) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-6 (-> self skel root-channel 0)))
-          (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-          (set! (-> a0-6 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
-    (let ((gp-2 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-2
-        (the-as art-joint-anim (-> self draw art-group data (-> self fall-anim-index)))
-        num-func-identity
+    (ja :group!
+        (-> self draw art-group data (-> self fall-anim-index))
+        :num!
+        (identity (the float (+ (-> (ja-group) data 0 length) -1)))
         )
-      (set! (-> gp-2 frame-num) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-            )
-      )
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1550,23 +1472,8 @@
     (let ((gp-1 #f)
           (s5-1 (-> *display* base-frame-counter))
           )
-      (while #t
-        (let ((s4-0 (-> self skel root-channel 0)))
-          (set! (-> s4-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                          (-> self skel root-channel 0 frame-group)
-                                          )
-                )
-          (set! (-> s4-0 param 0) (ja-aframe 15.0 0))
-          (set! (-> s4-0 param 1) 1.0)
-          (set! (-> s4-0 frame-num) (ja-aframe 1.0 0))
-          (joint-control-channel-group!
-            s4-0
-            (if (> (-> self skel active-channels) 0)
-                (-> self skel root-channel 0 frame-group)
-                )
-            num-func-seek!
-            )
-          )
+      (loop
+        (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 15.0 0)) :frame-num (ja-aframe 1.0 0))
         (until (ja-done? 0)
           (when (and (not gp-1) (>= (- (-> *display* base-frame-counter) s5-1) (seconds 0.15)))
             (set! gp-1 #t)
@@ -1576,11 +1483,7 @@
               (go breakaway-fall)
               )
           (suspend)
-          (let ((s4-1 (-> self skel root-channel 0)))
-            (set! (-> s4-1 param 0) (ja-aframe 15.0 0))
-            (set! (-> s4-1 param 1) 1.0)
-            (joint-control-channel-group-eval! s4-1 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek! (ja-aframe 15.0 0)))
           )
         )
       )
@@ -1597,32 +1500,13 @@
           (f28-0 0.0)
           (f26-0 (* 0.1 (- (-> *standard-dynamics* gravity-length))))
           )
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> gp-0 param 0) (ja-aframe 32.0 0))
-        (set! (-> gp-0 param 1) 0.4)
-        (set! (-> gp-0 frame-num) (ja-aframe 16.0 0))
-        (joint-control-channel-group!
-          gp-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+      (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 32.0 0) 0.4) :frame-num (ja-aframe 16.0 0))
       (until (ja-done? 0)
         (+! f30-0 (* f28-0 (-> *display* seconds-per-frame)))
         (+! f28-0 (* f26-0 (-> *display* seconds-per-frame)))
         (+! (-> self root-override trans y) f30-0)
         (suspend)
-        (let ((gp-1 (-> self skel root-channel 0)))
-          (set! (-> gp-1 param 0) (ja-aframe 32.0 0))
-          (set! (-> gp-1 param 1) 0.4)
-          (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! (ja-aframe 32.0 0) 0.4))
         )
       )
     (cleanup-for-death self)
@@ -1691,29 +1575,20 @@
   )
 
 
-(defskelgroup *breakaway-right-sg* breakaway-right
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 7)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *breakaway-right-sg* breakaway-right breakaway-right-lod0-jg breakaway-right-idle-ja
+              ((breakaway-right-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 7)
+              )
 
-(defskelgroup *breakaway-mid-sg* breakaway-mid
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 7)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *breakaway-mid-sg* breakaway-mid breakaway-mid-lod0-jg breakaway-mid-idle-ja
+              ((breakaway-mid-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 7)
+              )
 
-(defskelgroup *breakaway-left-sg* breakaway-left
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 7)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *breakaway-left-sg* breakaway-left breakaway-left-lod0-jg breakaway-left-idle-ja
+              ((breakaway-left-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 7)
+              )
 
 (defmethod init-from-entity! breakaway-right ((obj breakaway-right) (arg0 entity-actor))
   (init! obj arg0 3)
@@ -1773,13 +1648,10 @@
   )
 
 
-(defskelgroup *mis-bone-platform-sg* mis-bone-platform
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *mis-bone-platform-sg* mis-bone-platform mis-bone-platform-lod0-jg mis-bone-platform-idle-ja
+              ((mis-bone-platform-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 (defmethod TODO-RENAME-27 bone-platform ((obj bone-platform) (arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -1817,7 +1689,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1856,15 +1728,10 @@
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 30)
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-      )
-    (let ((v1-5 (-> self skel root-channel 0)))
-      (set! (-> v1-5 num-func) num-func-identity)
-      (set! (-> v1-5 frame-num) 0.0)
-      )
-    (while #t
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja :group! (-> self draw art-group data 2))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (loop
       (suspend)
       )
     (none)
@@ -1930,13 +1797,10 @@
   )
 
 
-(defskelgroup *mistycam-sg* mistycam
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 20)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *mistycam-sg* mistycam mistycam-lod0-jg mistycam-anim-ja
+              ((mistycam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 20)
+              )
 
 (defun mistycam-spawn ()
   (with-pp

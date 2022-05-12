@@ -23,37 +23,31 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup *plat-citb-sg* plat-citb
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plat-citb-sg* plat-citb plat-citb-lod0-jg plat-citb-idle-ja
+              ((plat-citb-lod0-mg (meters 20)) (plat-citb-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
-(defskelgroup *plat-eco-citb-unlit-sg* plat-eco-citb
-  0
-  8
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plat-eco-citb-unlit-sg* plat-eco-citb plat-eco-citb-lod0-jg plat-eco-citb-idle-ja
+              ((plat-eco-citb-lod0-mg (meters 20))
+               (plat-eco-citb-lod1-mg (meters 40))
+               (plat-eco-citb-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 0 0 3)
+              )
 
-(defskelgroup *plat-eco-citb-lit-sg* plat-eco-citb
-  4
-  8
-  ((5 (meters 20)) (6 (meters 40)) (7 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plat-eco-citb-lit-sg* plat-eco-citb plat-eco-citb-lit-lod0-jg plat-eco-citb-idle-ja
+              ((plat-eco-citb-lit-lod0-mg (meters 20))
+               (plat-eco-citb-lit-lod1-mg (meters 40))
+               (plat-eco-citb-lit-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 0 0 3)
+              )
 
-(defskelgroup *citb-chain-plat-sg* citb-chain-plat
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-chain-plat-sg* citb-chain-plat citb-chain-plat-lod0-jg citb-chain-plat-idle-ja
+              ((citb-chain-plat-lod0-mg (meters 20)) (citb-chain-plat-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
 
 (deftype citb-base-plat (process-drawable)
   ((root-override collide-shape-moving  :offset        112)
@@ -341,7 +335,7 @@
       (suspend)
       )
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (let ((f30-0 (- 1.0 (* 0.0011111111 (the float (- (-> *display* base-frame-counter) (-> self state-time)))))))
         (when (< f30-0 0.0)
           (set! (-> self root-override trans y) (-> self rise-height))
@@ -661,13 +655,10 @@
   (none)
   )
 
-(defskelgroup *citb-rotatebox-sg* citb-rotatebox
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -5 0 10)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-rotatebox-sg* citb-rotatebox citb-rotatebox-lod0-jg citb-rotatebox-idle-ja
+              ((citb-rotatebox-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -5 0 10)
+              )
 
 (deftype citb-rotatebox (citb-base-plat)
   ()
@@ -684,40 +675,11 @@
   (the-as (function none :behavior citb-rotatebox) rider-trans)
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       (if (or (not *target*) (< (+ 8192.0 (-> self idle-distance))
                                 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
@@ -761,13 +723,10 @@
   (none)
   )
 
-(defskelgroup *citb-donut-sg* citb-donut
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 10)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-donut-sg* citb-donut citb-donut-lod0-jg citb-donut-idle-ja
+              ((citb-donut-lod0-mg (meters 20)) (citb-donut-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              )
 
 (deftype citb-donut (citb-base-plat)
   ((sync sync-info :inline :offset-assert 180)
@@ -832,13 +791,10 @@
   (none)
   )
 
-(defskelgroup *citb-stopbox-sg* citb-stopbox
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 -2 0 5.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-stopbox-sg* citb-stopbox citb-stopbox-lod0-jg citb-stopbox-idle-ja
+              ((citb-stopbox-lod0-mg (meters 20)) (citb-stopbox-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 -2 0 5.5)
+              )
 
 (deftype citb-stopbox (plat)
   ()
@@ -926,13 +882,10 @@
   )
 
 
-(defskelgroup *citb-firehose-sg* citb-firehose
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 3 0 15)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-firehose-sg* citb-firehose citb-firehose-lod0-jg citb-firehose-idle-ja
+              ((citb-firehose-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 15)
+              )
 
 (defstate citb-firehose-idle (citb-firehose)
   :trans
@@ -947,7 +900,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -977,7 +930,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1029,24 +982,12 @@
     )
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      (set! (-> a0-0 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-            )
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (ja-channel-push! 1 30)
+    (ja-channel-push! 1 (seconds 0.1))
     (restore-collide-with-as (-> self root-override))
     (sound-play-by-name
       (static-sound-name "eco-torch")
@@ -1058,44 +999,20 @@
       (the-as symbol (-> self blast-pos))
       )
     (dotimes (gp-1 2)
-      (let ((a0-7 (-> self skel root-channel 0)))
-        (set! (-> a0-7 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-        (set! (-> a0-7 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-              )
-        (set! (-> a0-7 param 1) 1.0)
-        (set! (-> a0-7 frame-num) 0.0)
-        (joint-control-channel-group! a0-7 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-        )
+      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (set! (-> self blast-pos quad) (-> self node-list data 5 bone transform vector 3 quad))
         (citb-firehose-blast-particles)
         (suspend)
-        (let ((a0-12 (-> self skel root-channel 0)))
-          (set! (-> a0-12 param 0) (the float (+ (-> a0-12 frame-group data 0 length) -1)))
-          (set! (-> a0-12 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (clear-collide-with-as (-> self root-override))
-    (ja-channel-push! 1 30)
-    (let ((a0-16 (-> self skel root-channel 0)))
-      (set! (-> a0-16 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-      (set! (-> a0-16 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-            )
-      (set! (-> a0-16 param 1) 1.0)
-      (set! (-> a0-16 frame-num) 0.0)
-      (joint-control-channel-group! a0-16 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-      )
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-17 (-> self skel root-channel 0)))
-        (set! (-> a0-17 param 0) (the float (+ (-> a0-17 frame-group data 0 length) -1)))
-        (set! (-> a0-17 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-17 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go citb-firehose-active)
     (none)
@@ -1148,13 +1065,10 @@
   (none)
   )
 
-(defskelgroup *citb-exit-plat-sg* citb-exit-plat
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 30)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-exit-plat-sg* citb-exit-plat citb-exit-plat-lod0-jg citb-exit-plat-idle-ja
+              ((citb-exit-plat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 30)
+              )
 
 (deftype citb-exit-plat (plat-button)
   ((idle-height float   :offset-assert 240)
@@ -1189,7 +1103,7 @@
   (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (clear-collide-with-as (-> self root-override))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1204,7 +1118,7 @@
     (logclear! (-> self draw status) (draw-status hidden))
     (restore-collide-with-as (-> self root-override))
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (let ((f30-0 (- 1.0 (* 0.0016666667 (the float (- (-> *display* base-frame-counter) (-> self state-time)))))))
         (when (< f30-0 0.0)
           (set! (-> self root-override trans y) (-> self rise-height))

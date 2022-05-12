@@ -19,13 +19,10 @@
   )
 
 
-(defskelgroup *qbert-plat-on-sg* qbert-plat-on
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -2 0 4.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *qbert-plat-on-sg* qbert-plat-on qbert-plat-on-lod0-jg qbert-plat-on-idle-ja
+              ((qbert-plat-on-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -2 0 4.5)
+              )
 
 (deftype qbert-plat (rigid-body-platform)
   ((anchor-point      vector       :inline :offset-assert 736)
@@ -46,13 +43,10 @@
   )
 
 
-(defskelgroup *qbert-plat-sg* qbert-plat
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -2 0 4.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *qbert-plat-sg* qbert-plat qbert-plat-lod0-jg qbert-plat-idle-ja
+              ((qbert-plat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -2 0 4.5)
+              )
 
 (define *qbert-plat-constants* (new 'static 'rigid-body-platform-constants
                                  :drag-factor 2.0
@@ -120,7 +114,7 @@
   :code
   (behavior ()
     (set-vector! (-> self draw color-emissive) 0.0 0.0 1.0 0.0)
-    (while #t
+    (loop
       (let ((gp-0 (-> self parent)))
         (set! (-> self root-overlay trans quad)
               (-> (the-as (pointer rigid-body-platform) gp-0) 0 root-overlay trans quad)
@@ -159,14 +153,7 @@
   (initialize-skeleton self *qbert-plat-on-sg* '())
   (logior! (-> self skel status) (janim-status inited))
   (ja-channel-set! 1)
-  (let ((gp-1 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-      gp-1
-      (the-as art-joint-anim (-> self draw art-group data 2))
-      num-func-identity
-      )
-    (set! (-> gp-1 frame-num) 0.0)
-    )
+  (ja :group! qbert-plat-idle-ja :num! min)
   (go qbert-plat-on-mimic)
   (none)
   )
@@ -238,7 +225,7 @@
 (defstate qbert-plat-wait-for-master (qbert-plat)
   :code
   (behavior ()
-    (while #t
+    (loop
       (let ((v1-0 (-> self master)))
         (when (if v1-0
                   (-> v1-0 extra process)
@@ -263,7 +250,7 @@
   qbert-plat-event-handler
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -444,7 +431,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (when (not (-> self puzzle-beaten?))
         (when (task-complete? *game-info* (game-task sunken-platforms))
           (set! (-> self puzzle-beaten?) #t)
@@ -766,7 +753,7 @@
 (defstate qbert-plat-master-wait-for-door (qbert-plat-master)
   :code
   (behavior ()
-    (while #t
+    (loop
       (let* ((v1-0 (-> self door))
              (gp-0 (if v1-0
                        (-> v1-0 extra process)
