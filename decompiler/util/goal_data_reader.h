@@ -20,6 +20,9 @@ struct Ref {
 struct TypedRef {
   Ref ref;
   Type* type = nullptr;
+
+  TypedRef() = default;
+  TypedRef(const Ref& r, Type* t) : ref(r), type(t) {}
 };
 
 void read_plain_data_field(const TypedRef& object,
@@ -34,7 +37,6 @@ T read_plain_data_field(const TypedRef& object,
                         const decompiler::DecompilerTypeSystem& dts) {
   u8 data[sizeof(T)];
   read_plain_data_field(object, field_name, dts, sizeof(T), data);
-
   T result;
   memcpy(&result, data, sizeof(T));
   return result;
@@ -68,5 +70,9 @@ std::string get_type_of_basic(const Ref& object);
 TypedRef typed_ref_from_basic(const Ref& object, const decompiler::DecompilerTypeSystem& dts);
 
 Ref deref_label(const Ref& object);
-
+u32 deref_u32(const Ref& ref, int word_offset);
+u16 deref_u16(const Ref& ref, int array_idx);
+s8 deref_s8(const Ref& ref, int byte);
+u8 deref_u8(const Ref& ref, int byte);
+u64 deref_u64(const Ref& ref, int dw_offset);
 std::string inspect_ref(const Ref& ref);

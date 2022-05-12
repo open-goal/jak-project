@@ -77,7 +77,7 @@ std::optional<std::string> ReplServer::get_msg() {
       // Say hello
       ping_response(new_socket);
       // Track the new socket
-      if (client_sockets.size() < max_clients) {
+      if ((int)client_sockets.size() < max_clients) {
         client_sockets.insert(new_socket);
       } else {
         // TODO - Respond with NO
@@ -114,7 +114,7 @@ std::optional<std::string> ReplServer::get_msg() {
         int expected_size = header->length;
         int got = 0;
         while (got < expected_size) {
-          if (got + expected_size > buffer.size()) {
+          if (got + expected_size > (int)buffer.size()) {
             fmt::print(stderr,
                        "[nREPL:{}]: Bad message, aborting the read.  Got :{}, Expected: {}, Buffer "
                        "Size: {}",

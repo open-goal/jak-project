@@ -206,17 +206,6 @@ std::string TFragmentDebugData::print(int indent) const {
   return result;
 }
 
-u32 deref_u32(const Ref& ref, int word_offset) {
-  if ((ref.byte_offset % 4) != 0) {
-    throw Error("deref_u32 bad alignment");
-  }
-  const auto& word = ref.data->words_by_seg.at(ref.seg).at(word_offset + (ref.byte_offset / 4));
-  if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
-    throw Error("deref_u32 bad kind: {}", (int)word.kind());
-  }
-  return word.data;
-}
-
 void tfrag_debug_print_unpack(Ref start, int qwc_total) {
   int word_offset = 0;
 

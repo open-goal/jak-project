@@ -93,7 +93,7 @@ void Deci2Server::read_data() {
   int got = 0;
 
   while (got < desired_size) {
-    ASSERT(got + desired_size < buffer.size());
+    ASSERT(got + desired_size < (int)buffer.size());
     auto x = read_from_socket(accepted_socket, buffer.data() + got, desired_size - got);
     if (want_exit_callback()) {
       return;

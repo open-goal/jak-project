@@ -8281,19 +8281,19 @@
   )
 
 (deftype merc-byte-header (structure)
-  ((srcdest-off        uint8      :offset-assert 0)
-   (rgba-off           uint8      :offset-assert 1)
-   (lump-off           uint8      :offset-assert 2)
-   (fp-off             uint8      :offset-assert 3)
-   (mat1-cnt           uint8      :offset-assert 4)
-   (mat2-cnt           uint8      :offset-assert 5)
-   (mat3-cnt           uint8      :offset-assert 6)
-   (samecopy-cnt       uint8      :offset-assert 7)
-   (crosscopy-cnt      uint8      :offset-assert 8)
-   (strip-len          uint8      :offset-assert 9)
-   (mm-quadword-fp-off uint8      :offset-assert 10)
-   (mm-quadword-size   uint8      :offset-assert 11)
-   (perc-off           uint8      :offset-assert 12)
+  ((srcdest-off        uint8      :offset-assert 0)  ; 0x
+   (rgba-off           uint8      :offset-assert 1)  ; 0y
+   (lump-off           uint8      :offset-assert 2)  ; 0z
+   (fp-off             uint8      :offset-assert 3)  ; 0w
+   (mat1-cnt           uint8      :offset-assert 4)  ; 1x
+   (mat2-cnt           uint8      :offset-assert 5)  ; 1y
+   (mat3-cnt           uint8      :offset-assert 6)  ; 1z
+   (samecopy-cnt       uint8      :offset-assert 7)  ; 1w
+   (crosscopy-cnt      uint8      :offset-assert 8)  ; 2x
+   (strip-len          uint8      :offset-assert 9)  ; 2y
+   (mm-quadword-fp-off uint8      :offset-assert 10) ; 2z
+   (mm-quadword-size   uint8      :offset-assert 11) ; 2w
+   (perc-off           uint8      :offset-assert 12) ; 3x
    (mat-slot           uint8 10 :offset-assert 13)
    )
   :method-count-assert 9
@@ -8336,7 +8336,7 @@
   ((x-add            float  :offset-assert 0)
    (y-add            float  :offset-assert 4)
    (z-add            float  :offset-assert 8)
-   (shader-cnt       uint8  :offset-assert 12)
+   (shader-cnt       uint8  :offset-assert 12) ;; only 7 bits used? maybe flag in top bit?
    (kick-info-offset uint8  :offset-assert 13)
    (kick-info-step   uint8  :offset-assert 14)
    (hword-cnt        uint8  :offset-assert 15)
@@ -8357,7 +8357,7 @@
   )
 
 (deftype merc-fragment-control (structure)
-  ((unsigned-four-count uint8            :offset-assert 0)
+  ((unsigned-four-count uint8            :offset-assert 0) ;; (in 32-bit words, not qw)
    (lump-four-count     uint8            :offset-assert 1) ;; merc-vtx
    (fp-qwc              uint8            :offset-assert 2) ;; merc-fp-header
    (mat-xfer-count      uint8            :offset-assert 3)
@@ -8557,11 +8557,11 @@
   )
 
 (deftype merc-vu1-low-mem (structure)
-  ((tri-strip-gif gs-gif-tag   :inline :offset-assert 0) ;; was qword
-   (ad-gif        gs-gif-tag   :inline :offset-assert 16) ;; was qword
-   (hvdf-offset   vector  :inline :offset-assert 32)
-   (perspective   uint128 4       :offset-assert 48)
-   (fog           vector  :inline :offset-assert 112)
+  ((tri-strip-gif gs-gif-tag   :inline :offset-assert 0) ;; was qword   0
+   (ad-gif        gs-gif-tag   :inline :offset-assert 16) ;; was qword  1
+   (hvdf-offset   vector  :inline :offset-assert 32)                 ;; 2
+   (perspective   uint128 4       :offset-assert 48)                 ;; 3, 4, 5, 6
+   (fog           vector  :inline :offset-assert 112)                ;; 7
    )
   :method-count-assert 9
   :size-assert         #x80
