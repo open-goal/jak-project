@@ -57,7 +57,6 @@ float u32_to_float(u32 in) {
   return r;
 }
 
-
 void unpack_part1_collide_list_item(CollideListItem& item) {
   int in_idx = 0;
   int out_idx = 0;

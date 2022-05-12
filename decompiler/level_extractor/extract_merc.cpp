@@ -2,13 +2,9 @@
 #include "decompiler/util/goal_data_reader.h"
 #include "decompiler/level_extractor/MercData.h"
 #include "common/util/FileUtil.h"
+#include "common/util/colors.h"
 
 namespace decompiler {
-
-// merc
-// - rgb/normals seem right.
-// - still missing perc for mat2, but I think I know how
-// - need to add perc for mat3
 
 // number of slots on VU1 data memory to store matrices
 constexpr int MERC_VU1_MATRIX_SLOTS = 18;
@@ -92,15 +88,6 @@ struct MercUnpackedVtx {
   int skel_mats[3];
   float mat_weights[3];
 
-  // useful accessors for merc flags
-
-  // get the matrix index (vu1 slot, not skeleton) if it's influenced by a single bone.
-  //  u8 get_mat1_matrix() const { return mat1; }
-
-  // flags/indices that have mode-specific meaning.
-
-  //  u8 mat0;
-  //  u8 mat1;
   u16 dst0;
   u16 dst1;
 };
@@ -311,14 +298,17 @@ void handle_frag(const std::string& debug_name,
   int lump_ptr = 0;                     // vertex data starts at the beginning of "lump"
   int rgba_ptr = frag.header.rgba_off;  // rgba is in u4's
   int perc_ptr = frag.header.perc_off;
+  int last_mat2_perc = perc_ptr - 1;
+  int perc_toggle = 0;
 
   u32 mat1_cnt = frag.header.mat1_cnt;
   u32 mat12_cnt = frag.header.mat2_cnt + mat1_cnt;
   u32 mat123_cnt = frag.header.mat3_cnt + mat12_cnt;
 
   // loop through vertices.
-  int prev_mat2_mat0 = -1;
-  int prev_mat2_mat1 = -1;
+  int prev_mat0 = -1;
+  int prev_mat1 = -1;
+  int prev_mat2 = -1;
   for (size_t i = 0; i < mat123_cnt; i++) {
     u32 current_vtx_idx = effect_vertices.size();  // idx in effect vertex list.
     auto& vtx = effect_vertices.emplace_back();
@@ -354,17 +344,63 @@ void handle_frag(const std::string& debug_name,
       u8 m0 = mat0_addr & 0x7f;
       u8 m1 = mat1_addr & 0x7f;
       if (m0 == 0x7f) {
-        ASSERT(prev_mat2_mat0 != -1);
+        ASSERT(prev_mat0 != -1);
       } else {
-        prev_mat2_mat0 = vu1_addr_to_matrix_slot(m0);
-        prev_mat2_mat1 = vu1_addr_to_matrix_slot(m1);
+        prev_mat0 = vu1_addr_to_matrix_slot(m0);
+        prev_mat1 = vu1_addr_to_matrix_slot(m1);
       }
-      vtx.skel_mats[0] = state.vu1_matrix_slots.at(prev_mat2_mat0);
-      vtx.skel_mats[1] = state.vu1_matrix_slots.at(prev_mat2_mat1);
+      vtx.skel_mats[0] = state.vu1_matrix_slots.at(prev_mat0);
+      vtx.skel_mats[1] = state.vu1_matrix_slots.at(prev_mat1);
       vtx.skel_mats[2] = -1;
 
-      // todo: deal with perc.
+      if (m0 != 0x7f && i != mat1_cnt) {
+        if (perc_toggle) {
+          perc_ptr++;
+        }
+        perc_toggle = !perc_toggle;
+      }
+
+      auto perc = frag.unsigned_four_including_header.at(perc_ptr);
+      last_mat2_perc = perc_ptr;
+
+      if (!perc_toggle) {
+        vtx.mat_weights[0] = perc.x() / 255.f;
+        vtx.mat_weights[1] = perc.y() / 255.f;
+      } else {
+        vtx.mat_weights[0] = perc.z() / 255.f;
+        vtx.mat_weights[1] = perc.w() / 255.f;
+      }
+      vtx.mat_weights[2] = 0.f;
+
+      float sum = vtx.mat_weights[0] + vtx.mat_weights[1];
+      ASSERT(std::abs(1.f - sum) < 1e-6);
     } else if (vtx.kind == 3) {
+      u8 m0 = mat0_addr & 0x7f;
+      u8 m1 = mat1_addr & 0x7f;
+
+      if (i == mat12_cnt) {
+        perc_ptr = last_mat2_perc;
+      }
+
+      if (m0 == 0x7f) {
+        ASSERT(prev_mat0 != -1);
+      } else {
+        perc_ptr++;
+        prev_mat0 = vu1_addr_to_matrix_slot(m0);
+        prev_mat1 = vu1_addr_to_matrix_slot(m1);
+        prev_mat2 = vu1_addr_to_matrix_slot(frag.unsigned_four_including_header.at(perc_ptr).w());
+      }
+      vtx.skel_mats[0] = state.vu1_matrix_slots.at(prev_mat0);
+      vtx.skel_mats[1] = state.vu1_matrix_slots.at(prev_mat1);
+      vtx.skel_mats[2] = state.vu1_matrix_slots.at(prev_mat2);
+
+      auto perc = frag.unsigned_four_including_header.at(perc_ptr);
+      vtx.mat_weights[0] = perc.x() / 255.f;
+      vtx.mat_weights[1] = perc.y() / 255.f;
+      vtx.mat_weights[2] = perc.z() / 255.f;
+
+      float sum = vtx.mat_weights[0] + vtx.mat_weights[1] + vtx.mat_weights[2];
+      ASSERT(std::abs(1.f - sum) < 1e-6);
     } else {
       ASSERT(false);
     }
@@ -491,7 +527,6 @@ std::vector<u32> index_list_from_packet(u32 vtx_ptr,
   while (nloop) {
     auto& vtx_mem = memory.memory.at(vtx_ptr);
     if (vtx_mem.kind == MercOutputQuadword::Kind::VTX_START) {
-      auto& src_vtx = vertices.at(vtx_mem.vtx_idx);
       bool adc = vtx_mem.adc;
       if (adc) {
         result.push_back(vtx_mem.vtx_idx);
@@ -561,6 +596,21 @@ std::string debug_dump_to_obj(const std::vector<MercDraw>& draws,
   return result;
 }
 
+math::Vector4<u16> vtx_to_rgba_bone_debug(const MercUnpackedVtx& vtx) {
+  math::Vector4<u16> result;
+  result.fill(0);
+  for (int i = 0; i < 3; i++) {
+    if (vtx.skel_mats[i] == -1 || vtx.mat_weights[i] == 0) {
+      continue;
+    }
+    u32 rgba_packed = colors::common_colors[vtx.skel_mats[i] % colors::COLOR_COUNT];
+    result.x() += ((rgba_packed >> 16) & 0xff) * vtx.mat_weights[i];
+    result.y() += ((rgba_packed >> 8) & 0xff) * vtx.mat_weights[i];
+    result.z() += ((rgba_packed >> 0) & 0xff) * vtx.mat_weights[i];
+  }
+  return result;
+}
+
 std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
                               const std::vector<MercUnpackedVtx>& vertices) {
   std::vector<math::Vector4f> verts;
@@ -568,8 +618,6 @@ std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
 
   for (auto& draw : draws) {
     // add verts...
-    int queue[2];
-    int q_idx = 0;
     for (size_t ii = 2; ii < draw.indices.size(); ii++) {
       u32 v0 = draw.indices[ii - 2];
       u32 v1 = draw.indices[ii - 1];
@@ -578,16 +626,6 @@ std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
         faces.emplace_back(v0, v1, v2);
       }
     }
-    //    for (auto& idx : draw.indices) {
-    //      if (idx == UINT32_MAX) {
-    //        q_idx = 0;
-    //      } else {
-    //        if (q_idx >= 2) {
-    //          faces.emplace_back(queue[(q_idx + 1) % 2], queue[q_idx % 2], idx);
-    //        }
-    //        queue[(q_idx++) % 2] = idx;
-    //      }
-    //    }
   }
 
   std::string result = fmt::format(
@@ -597,8 +635,9 @@ std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
       vertices.size(), faces.size());
 
   for (auto& vtx : vertices) {
+    auto rgba = vtx_to_rgba_bone_debug(vtx);
     result += fmt::format("{} {} {} {} {} {}\n", vtx.pos.x() / 1024.f, vtx.pos.y() / 1024.f,
-                          vtx.pos.z() / 1024.f, vtx.rgba[0], vtx.rgba[1], vtx.rgba[2]);
+                          vtx.pos.z() / 1024.f, rgba[0], rgba[1], rgba[2]);
   }
 
   for (auto& face : faces) {
@@ -614,7 +653,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
                                         const std::vector<level_tools::TextureRemap>& map,
                                         const std::string& debug_name,
                                         size_t ctrl_idx,
-                                        size_t effect_idx) {
+                                        size_t effect_idx,
+                                        bool dump) {
   ConvertedMercEffect result;
   result.ctrl_idx = ctrl_idx;
   result.effect_idx = effect_idx;
@@ -765,11 +805,12 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     memory_buffer_toggle ^= 1;
   }
 
-  file_util::write_text_file(
-      file_util::get_file_path(
-          {"debug_out/merc", fmt::format("{}_{}.ply", debug_name, effect_idx)}),
-      debug_dump_to_ply(result.draws, result.vertices));
-  // ASSERT(false);
+  if (dump) {
+    file_util::write_text_file(
+        file_util::get_file_path(
+            {"debug_out/merc", fmt::format("{}_{}.ply", debug_name, effect_idx)}),
+        debug_dump_to_ply(result.draws, result.vertices));
+  }
 
   return result;
 }
@@ -781,27 +822,18 @@ void extract_merc(const ObjectFileData& ag_data,
                   const TextureDB& tex_db,
                   const DecompilerTypeSystem& dts,
                   const std::vector<level_tools::TextureRemap>& map,
-                  tfrag3::Level& out,
+                  tfrag3::Level& /*out*/,
                   bool dump_level) {
-  // fmt::print("MERC extract for: {}\n", ag_data.name_in_dgo);
-
+  if (dump_level) {
+    file_util::create_dir_if_needed(file_util::get_file_path({"debug_out/merc"}));
+  }
   // find all merc-ctrls in the object file
   auto ctrl_locations = find_merc_ctrls(ag_data.linked_data);
-  // fmt::print(" found {} merc ctrls\n", ctrl_locations.size());
 
   // extract them. this does very basic unpacking of data, as done by the VIF/DMA on PS2.
   std::vector<MercCtrl> ctrls;
   for (auto location : ctrl_locations) {
     auto ctrl = extract_merc_ctrl(ag_data.linked_data, dts, location);
-    if (ctrl.header.three_mat_count || ctrl.header.three_mat_reuse_count) {
-      // fmt::print("skipping {} because it has mat3\n", ctrl.name);
-      // continue;  // hack
-    }
-
-    if (ctrl.header.two_mat_count || ctrl.header.two_mat_reuse_count) {
-      // fmt::print("FOUND good test: {}\n", ctrl.name);
-      // ASSERT(false);
-    }
     ctrls.push_back(ctrl);
   }
 
@@ -810,7 +842,7 @@ void extract_merc(const ObjectFileData& ag_data,
   for (size_t ci = 0; ci < ctrls.size(); ci++) {
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
       all_effects.push_back(convert_merc_effect(ctrls[ci].effects[ei], ctrls[ci].header, tex_db,
-                                                map, ctrls[ci].name, ci, ei));
+                                                map, ctrls[ci].name, ci, ei, dump_level));
     }
   }
 }

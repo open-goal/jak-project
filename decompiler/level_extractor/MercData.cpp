@@ -222,7 +222,7 @@ TypedRef MercFragment::from_ref(TypedRef tr,
   // daddu t3, t2, s0
   u32 my_u4_count = ((control.unsigned_four_count + 3) / 4) * 16;
   // fmt::print("my u4: {} ({} qwc)\n", my_u4_count, my_u4_count / 16);
-  for (int w = 0; w < my_u4_count / 4; w++) {
+  for (u32 w = 0; w < my_u4_count / 4; w++) {
     u32 val = deref_u32(tr.ref, w);
     memcpy(unsigned_four_including_header.emplace_back().data(), &val, 4);
   }
@@ -242,7 +242,7 @@ TypedRef MercFragment::from_ref(TypedRef tr,
   // row.z = 0x47800000, row.w = 0x4b010000
   math::Vector<u32, 4> row(main_control.st_vif_add, main_control.st_vif_add, 0x47800000,
                            0x4b010000);
-  for (int w = my_u4_count / 4; w < my_l4_count / 4; w++) {
+  for (u32 w = my_u4_count / 4; w < my_l4_count / 4; w++) {
     ASSERT((w * 4) < header.mm_quadword_fp_off * 16);
     u32 val = deref_u32(tr.ref, w);
 

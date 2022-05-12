@@ -853,7 +853,7 @@ u32 MC_check_result() {
  * You can call this at any time.
  * The slot includes the four save slots (8 banks), and a few other files.
  */
-void MC_get_status(s32 slot, Ptr<mc_slot_info> info) {
+void MC_get_status(s32 /*slot*/, Ptr<mc_slot_info> info) {
   // slot is ignored, so you'll get the same thing regardless of what slot you pick
 
   info->handle = 0;

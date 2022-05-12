@@ -145,7 +145,7 @@ struct MercFragment {
       unsigned_four_including_header;  // repeats the data above. always 0 in vu.
 
   // part2: lump4. it is converted to floats by VIF.
-  std::vector<math::Vector<float, 4>> lump4_unpacked; // at lump_off qw in VU.
+  std::vector<math::Vector<float, 4>> lump4_unpacked;  // at lump_off qw in VU.
 
   // part3: fp. it contains the fp header, shaders, and ??
   MercFpHeader fp_header;
@@ -157,7 +157,6 @@ struct MercFragment {
                     const MercFragmentControl& control,
                     const MercCtrlHeader& main_control);
   std::string print() const;
-
 };
 
 struct MercEffect {
