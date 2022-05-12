@@ -1011,9 +1011,16 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
         if (obj_fn2.is_float(0.0)) {
           num_form = pool.form<ConstantTokenElement>("min");
         } else {
-          num_form = pool.form<GenericElement>(
-              GenericOperator::make_function(pool.form<ConstantTokenElement>("identity")),
-              set_fn2);
+          auto mr = match(matcher_max_num, set_fn2);
+          if (mr.matched &&
+              ((form_fg && mr.maps.forms.at(1)->to_form(env) == form_fg->to_form(env)) ||
+               (!form_fg && var_name_equal(env, var, mr.maps.regs.at(0))))) {
+            num_form = pool.form<ConstantTokenElement>("max");
+          } else {
+            num_form = pool.form<GenericElement>(
+                GenericOperator::make_function(pool.form<ConstantTokenElement>(prelim_num)),
+                set_fn2);
+          }
         }
         set_fn2 = nullptr;
       }

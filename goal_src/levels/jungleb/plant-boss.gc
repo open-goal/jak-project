@@ -337,16 +337,10 @@
       )
     (case (-> self side)
       ((1)
-       (ja :group! plant-boss-arms-die-right-ja
-           :num!
-           (identity (the float (+ (-> (the-as art-joint-anim plant-boss-arms-die-right-ja) data 0 length) -1)))
-           )
+       (ja :group! plant-boss-arms-die-right-ja :num! max)
        )
       (else
-        (ja :group! plant-boss-arms-die-ja
-            :num!
-            (identity (the float (+ (-> (the-as art-joint-anim plant-boss-arms-die-ja) data 0 length) -1)))
-            )
+        (ja :group! plant-boss-arms-die-ja :num! max)
         )
       )
     (set! (-> (find-prim-by-id (-> self root-override) (the-as uint 1)) prim-core action) (collide-action))
@@ -454,10 +448,7 @@
         )
       )
     (clear-collide-with-as (-> self root-override))
-    (ja :group! plant-boss-back-arms-die-ja
-        :num!
-        (identity (the float (+ (-> (the-as art-joint-anim plant-boss-back-arms-die-ja) data 0 length) -1)))
-        )
+    (ja :group! plant-boss-back-arms-die-ja :num! max)
     (loop
       (suspend)
       )
@@ -1734,10 +1725,7 @@
     (cond
       (arg0
         (ja-channel-set! 1)
-        (ja :group! plant-boss-main-die-ja
-            :num!
-            (identity (the float (+ (-> (the-as art-joint-anim plant-boss-main-die-ja) data 0 length) -1)))
-            )
+        (ja :group! plant-boss-main-die-ja :num! max)
         (suspend)
         (if (not (task-complete? *game-info* (-> self entity extra perm task)))
             (birth-pickup-at-point
@@ -1845,10 +1833,7 @@
   :code
   (behavior ()
     (ja-channel-set! 1)
-    (ja :group! plant-boss-main-die-ja
-        :num!
-        (identity (the float (+ (-> (the-as art-joint-anim plant-boss-main-die-ja) data 0 length) -1)))
-        )
+    (ja :group! plant-boss-main-die-ja :num! max)
     (let ((gp-1 (-> *display* base-frame-counter)))
       (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 5))
         (transform-post)
@@ -1873,28 +1858,21 @@
   (behavior ((arg0 float))
     (let ((v1-2 (-> self entity extra perm)))
       (if (and (< 0.3 arg0) (and (not (handle->process (-> self money))) (< (-> v1-2 user-int8 1) 5)))
-          (set! (-> self money)
-                (ppointer->handle
-                  (birth-pickup-at-point
-                    (-> self node-list data 42 bone transform vector 3)
-                    (pickup-type money)
-                    (the-as float 1.0)
-                    #t
-                    self
-                    (the-as fact-info #f)
-                    )
-                  )
+          (set! (-> self money) (ppointer->handle (birth-pickup-at-point
+                                                    (-> self node-list data 42 bone transform vector 3)
+                                                    (pickup-type money)
+                                                    (the-as float 1.0)
+                                                    #t
+                                                    self
+                                                    (the-as fact-info #f)
+                                                    )
+                                                  )
                 )
           )
       )
     (ja-channel-set! 2)
     (ja :group! plant-boss-main-bounce-ja :num! min)
-    (ja :chan 1
-        :group! plant-boss-main-die-ja
-        :num!
-        (identity (the float (+ (-> (the-as art-joint-anim plant-boss-main-die-ja) data 0 length) -1)))
-        :frame-interp (- 1.0 arg0)
-        )
+    (ja :chan 1 :group! plant-boss-main-die-ja :num! max :frame-interp (- 1.0 arg0))
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
