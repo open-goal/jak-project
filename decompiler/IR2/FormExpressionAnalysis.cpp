@@ -141,16 +141,8 @@ Form* try_cast_simplify(Form* in,
         return pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(value));
       }
 
-      // only rewrite if exact.
-      s64 seconds_int = value / (s64)TICKS_PER_SECOND;
-      if (seconds_int * (s64)TICKS_PER_SECOND == value) {
-        return pool.form<ConstantTokenElement>(fmt::format("(seconds {})", seconds_int));
-      }
-      double seconds = (double)value / TICKS_PER_SECOND;
-      if (seconds * TICKS_PER_SECOND == value) {
-        return pool.form<ConstantTokenElement>(
-            fmt::format("(seconds {})", float_to_string(seconds, false)));
-      }
+      return pool.form<ConstantTokenElement>(
+          fmt::format("(seconds {})", fixed_point_to_string(value, TICKS_PER_SECOND)));
     } else {
       // not a constant like (seconds 2), probably an expression or function call. we pretend that a
       // cast to int happened instead.
