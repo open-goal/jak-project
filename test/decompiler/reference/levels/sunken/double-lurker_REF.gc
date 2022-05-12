@@ -283,7 +283,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (clone-anim-once
         (ppointer->handle (-> self parent-process))
         (the-as int (-> self draw origin-joint-index))
@@ -303,14 +303,10 @@
   (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-group! double-lurker-bottom-take-hit-ja :num! seek!)
+    (ja-no-eval :group! double-lurker-bottom-take-hit-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-        (set! (-> a0-3 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (none)
     )
@@ -353,7 +349,7 @@
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (set! (-> gp-0 quad) (-> self collide-info trans quad))
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-group! double-lurker-both-break-apart-ja :num! seek!)
+      (ja-no-eval :group! double-lurker-both-break-apart-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (vector-lerp!
           (-> self collide-info trans)
@@ -362,11 +358,7 @@
           (fmin 1.0 (/ (ja-frame-num 0) (ja-aframe 44.0 0)))
           )
         (suspend)
-        (let ((a0-18 (-> self skel root-channel 0)))
-          (set! (-> a0-18 param 0) (the float (+ (-> a0-18 frame-group data 0 length) -1)))
-          (set! (-> a0-18 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-18 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (logior! (-> self collide-info nav-flags) (nav-flags navf0))
@@ -412,15 +404,8 @@
   :code
   (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group)
-            (the-as art-joint-anim (-> self draw art-group data (-> self nav-info walk-anim)))
-            )
-      )
-    (let ((v1-5 (-> self skel root-channel 0)))
-      (set! (-> v1-5 num-func) num-func-identity)
-      (set! (-> v1-5 frame-num) 0.0)
-      )
+    (ja :group! (-> self draw art-group data (-> self nav-info walk-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
     (let ((t9-1 (-> (method-of-type nav-enemy nav-enemy-patrol) code)))
       (if t9-1
           ((the-as (function none) t9-1))
@@ -555,14 +540,7 @@
   (cond
     (arg2
       (ja-channel-set! 1)
-      (let ((gp-1 (-> self skel root-channel 0)))
-        (joint-control-channel-group-eval!
-          gp-1
-          (the-as art-joint-anim (-> self draw art-group data 5))
-          num-func-identity
-          )
-        (set! (-> gp-1 frame-num) 0.0)
-        )
+      (ja :group! double-lurker-both-idle-ja :num! min)
       (transform-post)
       (let ((v1-13 (-> self draw shadow-ctrl)))
         (logior! (-> v1-13 settings flags) (shadow-flags shdf05))
@@ -572,14 +550,7 @@
       )
     (else
       (ja-channel-set! 1)
-      (let ((gp-2 (-> self skel root-channel 0)))
-        (joint-control-channel-group-eval!
-          gp-2
-          (the-as art-joint-anim (-> self draw art-group data 12))
-          num-func-identity
-          )
-        (set! (-> gp-2 frame-num) 0.0)
-        )
+      (ja :group! double-lurker-idle-ja :num! min)
       (transform-post)
       (move-to-ground (-> self collide-info) 40960.0 40960.0 #t (collide-kind background))
       (dummy-51 self)
@@ -731,15 +702,8 @@
   :code
   (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group)
-            (the-as art-joint-anim (-> self draw art-group data (-> self nav-info walk-anim)))
-            )
-      )
-    (let ((v1-5 (-> self skel root-channel 0)))
-      (set! (-> v1-5 num-func) num-func-identity)
-      (set! (-> v1-5 frame-num) 0.0)
-      )
+    (ja :group! (-> self draw art-group data (-> self nav-info walk-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
     (let ((t9-1 (-> (method-of-type nav-enemy nav-enemy-patrol) code)))
       (if t9-1
           ((the-as (function none) t9-1))
@@ -953,14 +917,10 @@
   :code
   (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-group! double-lurker-both-take-hit-ja :num! seek!)
+    (ja-no-eval :group! double-lurker-both-take-hit-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-        (set! (-> a0-2 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go double-lurker-resume)
     (none)
@@ -1099,14 +1059,10 @@
   double-lurker-default-event-handler
   :code
   (behavior ()
-    (ja-group! double-lurker-both-break-apart-ja :num! seek!)
+    (ja-no-eval :group! double-lurker-both-break-apart-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go double-lurker-resume)
     (none)
@@ -1255,14 +1211,10 @@
   :code
   (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-group! double-lurker-bottom-take-hit-ja :num! seek!)
+    (ja-no-eval :group! double-lurker-bottom-take-hit-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-        (set! (-> a0-2 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go double-lurker-resume)
     (none)

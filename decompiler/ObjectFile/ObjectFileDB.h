@@ -10,9 +10,10 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "LinkedObjectFile.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/common_types.h"
+#include "LinkedObjectFile.h"
+#include "third-party/fmt/core.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/data/TextureDB.h"
 #include "decompiler/analysis/symbol_def_map.h"
 #include "common/util/Assert.h"
@@ -216,4 +217,6 @@ class ObjectFileDB {
     uint32_t unique_obj_bytes = 0;
   } stats;
 };
+
+std::string print_art_elt_for_dump(const std::string& group_name, const std::string& name, int idx);
 }  // namespace decompiler

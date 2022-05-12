@@ -566,21 +566,11 @@
 (defstate mayorgears-idle (mayorgears)
   :code
   (behavior ()
-    (while #t
-      (cond
-        ((task-closed? (game-task jungle-lurkerm) (task-status need-reminder))
-         (let ((a0-1 (-> self skel root-channel 0)))
-           (set! (-> a0-1 param 0) 1.0)
-           (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-loop!)
-           )
-         )
-        (else
-          (let ((a0-2 (-> self skel root-channel 0)))
-            (set! (-> a0-2 param 0) 0.0)
-            (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-loop!)
-            )
+    (loop
+      (if (task-closed? (game-task jungle-lurkerm) (task-status need-reminder))
+          (ja :num! (loop!))
+          (ja :num! (loop! 0.0))
           )
-        )
       (suspend)
       )
     (none)
@@ -776,7 +766,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -809,15 +799,11 @@
     (set! (-> self target-speed) 4096.0)
     (set! (-> self rotate-speed) 12743.111)
     (set! (-> self turn-time) (seconds 0.5))
-    (while #t
-      (ja-group! 2 :num! seek!)
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -965,7 +951,7 @@
   :code
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
         (set! (-> self state-time) (-> *display* base-frame-counter))
         (if (and (and *target* (>= 204800.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
@@ -1022,7 +1008,7 @@
   :code
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1156,7 +1142,7 @@
 (defstate hutlamp-idle (hutlamp)
   :code
   (behavior ()
-    (while #t
+    (loop
       (let ((f0-3 (* 1820.4445 (sin (* 65536.0 (update-clock (-> self clock)))))))
         (quaternion-vector-angle! (-> self pivot transform quat) *x-vector* f0-3)
         )

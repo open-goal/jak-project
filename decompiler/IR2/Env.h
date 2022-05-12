@@ -152,6 +152,7 @@ class Env {
 
   void set_art_group(const std::string& art_group) { m_art_group = art_group; }
   const std::string& art_group() const { return m_art_group; }
+  std::optional<std::string> get_art_elt_name(int idx) const;
 
   void set_remap_for_function(const TypeSpec& ts);
   void set_remap_for_method(const TypeSpec& ts);

@@ -378,7 +378,7 @@
       (suspend)
       )
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (let ((f30-0 (- 1.0 (* 0.0011111111 (the float (- (-> *display* base-frame-counter) (-> self state-time)))))))
         (when (< f30-0 0.0)
           (set! (-> self root-override trans y) (-> self rise-height))
@@ -760,40 +760,11 @@
   (the-as (function none :behavior citb-rotatebox) rider-trans)
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       (if (or (not *target*) (< (+ 8192.0 (-> self idle-distance))
                                 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
@@ -1062,7 +1033,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1093,7 +1064,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1147,14 +1118,10 @@
     )
   :code
   (behavior ()
-    (ja-group! 3 :num! seek!)
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (ja-channel-push! 1 (seconds 0.1))
     (restore-collide-with-as (-> self root-override))
@@ -1168,28 +1135,20 @@
       (the-as symbol (-> self blast-pos))
       )
     (dotimes (gp-1 2)
-      (ja-group! 4 :num! seek!)
+      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (set! (-> self blast-pos quad) (-> self node-list data 5 bone transform vector 3 quad))
         (citb-firehose-blast-particles)
         (suspend)
-        (let ((a0-12 (-> self skel root-channel 0)))
-          (set! (-> a0-12 param 0) (the float (+ (-> a0-12 frame-group data 0 length) -1)))
-          (set! (-> a0-12 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (clear-collide-with-as (-> self root-override))
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-group! 5 :num! seek!)
+    (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-17 (-> self skel root-channel 0)))
-        (set! (-> a0-17 param 0) (the float (+ (-> a0-17 frame-group data 0 length) -1)))
-        (set! (-> a0-17 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-17 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go citb-firehose-active)
     (none)
@@ -1295,7 +1254,7 @@
   (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (clear-collide-with-as (-> self root-override))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1311,7 +1270,7 @@
     (logclear! (-> self draw status) (draw-status hidden))
     (restore-collide-with-as (-> self root-override))
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (let ((f30-0 (- 1.0 (* 0.0016666667 (the float (- (-> *display* base-frame-counter) (-> self state-time)))))))
         (when (< f30-0 0.0)
           (set! (-> self root-override trans y) (-> self rise-height))

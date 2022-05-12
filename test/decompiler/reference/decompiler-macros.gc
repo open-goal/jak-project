@@ -862,6 +862,48 @@
   )
 
 ;; art-h
+(seval (define *art-info* '()))
+(defmacro def-art-elt (group name idx)
+  "define a new art element. adds it to a global map stored in goos."
+
+  ;; grab data about the art group
+  (let ((ag-info (assoc group *art-info*)))
+      ;; no art group was found, make a new one and add it.
+      (when (null? ag-info)
+            (set! ag-info (cons group '()))
+            (cons! *art-info* ag-info)
+            )
+      ;; lookup art element in our art group
+      (let ((elt-info (assoc name (cdr ag-info)))
+            (elt-new (list name idx))) ;; this is the format of the individual entries
+          ;; found, check if valid
+          (if (and (not (null? elt-info)) (not (eq? elt-info elt-new)))
+              (fmt #t "error redefining art element. data mismatch: {}" elt-info elt-new)
+              #f)
+          ;; not found. add to the art-group.
+          (when (null? elt-info)
+                (set! elt-info elt-new)
+                (set-cdr! ag-info (cons elt-info (cdr ag-info)))
+                )
+          )
+      )
+  ;; define a constant for it!
+  `(defconstant ,name (-> self draw art-group data ,idx))
+  )
+
+(defmacro art-elt->index (ag-name elt-name)
+  (let ((ag-info (assoc ag-name *art-info*)))
+      (if (null? ag-info)
+          -1
+          (let ((elt-info (assoc elt-name (cdr ag-info))))
+              (if (null? elt-info)
+                  -1
+                  (cadr elt-info))
+              )
+          )
+      )
+  )
+
 (defmacro defskelgroup (name art-name joint-geom joint-anim lods
                         &key (shadow 0)
                         &key bounds
@@ -879,18 +921,18 @@
                         :longest-edge ,longest-edge
                         :version ,version
                         :max-lod ,(- (length lods) 1)
-                        :shadow ,shadow
+                        :shadow (art-elt->index ,art-name ,shadow)
                         :texture-level ,texture-level
                         :sort ,sort
                         )))
         ;; set joint geometry and joint bones
-        (set! (-> skel jgeo) ,joint-geom)
-        (set! (-> skel janim) ,joint-anim)
+        (set! (-> skel jgeo) (art-elt->index ,art-name ,joint-geom))
+        (set! (-> skel janim) (art-elt->index ,art-name ,joint-anim))
         
         ;; set lods
         ,@(apply-i (lambda (x i)
                       `(begin
-                          (set! (-> skel mgeo ,i) ,(car x))
+                          (set! (-> skel mgeo ,i) (art-elt->index ,art-name ,(car x)))
                           (set! (-> skel lod-dist ,i) ,(cadr x))
                           )
                       ) lods)
@@ -970,67 +1012,115 @@
   )
 
 ;; process-drawable
-(defmacro ja-group? (group &key (channel 0))
-  "is self in this frame group on this channel? default is channel 0, which is the base channel."
-  `(= (if (> (-> self skel active-channels) ,channel)
-          (-> self skel root-channel ,channel frame-group)
-          )
-      (-> self draw art-group data ,group))
+(defmacro ja-group (&key (chan 0))
+  "get the frame group for self. default channel is 0, the base channel. returns #f if no frame group."
+  `(if (> (-> self skel active-channels) ,chan)
+       (-> self skel root-channel ,chan frame-group))
   )
 
-(defmacro ja-group! (group
-                     &key (channel 0)
-                     &key (num! none)
-                     &key (param0 #f)
-                     &key (param1 #f)
-                     &key (frame-num 0.0)
-                     )
-  "set a new frame group for self on a specific channel.
+(defmacro ja-group? (group &key (chan 0))
+  "is self in this frame group on this channel? default is channel 0, which is the base channel."
+  `(= (ja-group) ,group)
+  )
+
+(defmacro ja (&key (chan 0)
+              &key (group! #f)
+              &key (num! #f)
+              &key (param0 #f)
+              &key (param1 #f)
+              &key (num-func #f)
+              &key (frame-num #f)
+              &key (frame-interp #f)
+              &key (dist #f)
+              &key (eval? #t)
+              )
+  "set various joint anim parameters for self and eval them.
+   you can use this for playing animations!
    
-   group   = required. the name of the frame group.
    channel = the channel to modify. defaults to 0 (base channel).
+   group!  = when not #f, set this as the new frame-group. defaults to #f
    num!    = set the frame playback function. you can use functions like loop!, min, max, seek!, etc.
    param0, param1 = parameters for the playback function. the defaults depend on num!
-   frame-num = the frame number to set.
    "
   
-  (let ((num-func (cond
-                    ((or (eq? num! 'identity)
-                         (eq? num! 'min)
-                         (eq? num! 'max)
-                         )
-                         'num-func-identity)
-                    ((eq? num! 'none) 'num-func-none)
-                    ((eq? num! '+!) 'num-func-+!)
-                    ((eq? num! '-!) 'num-func--!)
-                    ((eq? num! 'seek!) 'num-func-seek!)
-                    ((eq? num! 'loop!) 'num-func-loop!)
-                    ((eq? num! 'blend-in!) 'num-func-blend-in!)
-                    ))
+  (let* ((num-args (if (pair? num!) (cdr num!) '()))
+        (num! (if (pair? num!) (car num!) num!))
+        (nf (cond
+              ((not num!) #f)
+              ((or (eq? num! 'identity)
+                   (eq? num! 'min)
+                   (eq? num! 'max)
+                   )
+                   'num-func-identity)
+              ((eq? num! 'none) 'num-func-none)
+              ((eq? num! '+!) 'num-func-+!)
+              ((eq? num! '-!) 'num-func--!)
+              ((eq? num! 'seek!) 'num-func-seek!)
+              ((eq? num! 'loop!) 'num-func-loop!)
+              ((eq? num! 'blend-in!) 'num-func-blend-in!)
+              ((eq? num! 'chan) 'num-func-chan)
+              ))
         (p0 (if param0 param0
                 (cond
-                  ((eq? num! 'loop!) 1.0)
-                  ((eq? num! 'seek!) `(the float (1- (-> (the art-joint-anim (-> self draw art-group data ,group)) data 0 length))))
+                  ((eq? num! 'chan) `(the float ,(car num-args)))
+                  ((eq? num! '+!)    (if (null? num-args) 1.0 (car num-args)))
+                  ((eq? num! '-!)    (if (null? num-args) 1.0 (car num-args)))
+                  ((eq? num! 'loop!) (if (null? num-args) 1.0 (if (eq? 'max (car num-args))
+                                                                  (if group!
+                                                                      `(the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
+                                                                      `(the float (1- (-> ja-ch frame-group data 0 length)))
+                                                                      )
+                                                                  (car num-args))))
+                  ((eq? num! 'seek!) (if (or (null? num-args) (eq? (car num-args) 'max))
+                                         (if group!
+                                             `(the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
+                                             `(the float (1- (-> ja-ch frame-group data 0 length)))
+                                             )
+                                         (car num-args)))
                   (#t #f))))
         (p1 (if param1 param1
                 (cond
                   ((eq? num! 'seek!) 1.0)
                   (#t #f))))
+        (frame-num (if (eq? 'max frame-num) (if group!
+                                                `(the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
+                                                `(the float (1- (-> ja-ch frame-group data 0 length)))
+                                                )
+                                            frame-num))
+        (frame-group (if (or p0 p1 frame-num (not nf)) group! #f))
       )
-  `(let ((ja-ch (-> self skel root-channel ,channel)))
-      (set! (-> ja-ch frame-group) (the art-joint-anim (-> self draw art-group data ,group)))
+  `(let ((ja-ch (-> self skel root-channel ,chan)))
+      ,(if frame-interp `(set! (-> ja-ch frame-interp) ,frame-interp) `(none))
+      ,(if dist `(set! (-> ja-ch dist) ,dist) `(none))
+      ,(if frame-group `(set! (-> ja-ch frame-group) (the art-joint-anim ,frame-group)) `(none))
       ,(if p0 `(set! (-> ja-ch param 0) ,p0) `(none))
-      ,(if p1 `(set! (-> ja-ch param 0) ,p1) `(none))
+      ,(if p1 `(set! (-> ja-ch param 1) ,p1) `(none))
+      ,(if num-func `(set! (-> ja-ch num-func) ,num-func) `(none))
+      ,(if frame-num `(set! (-> ja-ch frame-num) ,frame-num) `(none))
+      ,(if nf
+          `(,(if eval? 'joint-control-channel-group-eval! 'joint-control-channel-group!)
+              ja-ch (the art-joint-anim ,group!) ,nf)
+          `(none))
       ,(cond
-        ((eq? num! 'max) `(set! (-> ja-ch frame-num) (the float (1- (-> (the art-joint-anim (-> self draw art-group data ,group)) data 0 length)))))
-        (#t `(set! (-> ja-ch frame-num) 0.0))
+        ((not group!) `(none))
+        ((eq? num! 'min) `(set! (-> ja-ch frame-num) 0.0))
+        ((eq? num! 'identity) `(set! (-> ja-ch frame-num) ,(car num-args)))
+        (#t `(none))
         )
-      (joint-control-channel-group!
-          ja-ch
-          (the art-joint-anim (-> self draw art-group data ,group))
-          ,num-func
-          )
       ))
+  )
+
+(defmacro ja-no-eval (&key (chan 0)
+                      &key (group! #f)
+                      &key (num! #f)
+                      &key (param0 #f)
+                      &key (param1 #f)
+                      &key (num-func #f)
+                      &key (frame-num #f)
+                      &key (frame-interp #f)
+                      &key (dist #f)
+                      )
+  `(ja :eval? #f :chan ,chan :group! ,group! :num! ,num! :param0 ,param0 :param1 ,param1 :num-func ,num-func :frame-num ,frame-num :frame-interp ,frame-interp :dist ,dist)
   )
 
 

@@ -83,7 +83,7 @@
     (let ((gp-0 (new 'stack-no-clear 'vector))
           (s5-0 (new 'stack-no-clear 'vector))
           )
-      (while #t
+      (loop
         (cond
           ((< (- (-> (target-pos 0) y) (-> self root trans y)) -122880.0)
            (set! (-> self draw force-lod) 1)
@@ -488,7 +488,7 @@
   (the-as (function none :behavior citb-disc) rider-trans)
   :code
   (behavior ()
-    (while #t
+    (loop
       (update! (-> self sound))
       (quaternion-axis-angle!
         (-> self root-override quat)
@@ -1188,7 +1188,7 @@
       (send-event (ppointer->process gp-7) 'draw #t)
       )
     (update-transforms! (-> self root-override))
-    (while #t
+    (loop
       (when (-> self shield-on)
         (update! (-> self sound))
         (spawn (-> self part) (-> self root-override trans))
@@ -1304,40 +1304,11 @@
     )
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -1356,14 +1327,10 @@
   (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-group! 4 :num! seek!)
+    (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-        (set! (-> a0-3 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go citb-coil-broken)
     (none)
@@ -1376,16 +1343,12 @@
 (defstate citb-coil-broken (citb-coil)
   :code
   (behavior ()
-    (ja-group! 5 :num! seek!)
+    (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (while #t
+    (loop
       (spawn (-> self part-off) (-> self root trans))
       (suspend)
       )
@@ -1461,15 +1424,11 @@
   citb-hose-event-handler
   :code
   (behavior ()
-    (while #t
-      (ja-group! 3 :num! seek!)
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -1485,14 +1444,10 @@
   :code
   (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-group! 4 :num! seek!)
+    (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-        (set! (-> a0-2 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go citb-hose-idle)
     (none)
@@ -1509,14 +1464,10 @@
   (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-group! 5 :num! seek!)
+    (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-        (set! (-> a0-3 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (anim-loop)
     (none)
@@ -1765,7 +1716,7 @@
   (behavior ()
     (lods-assign! (-> self draw) (-> self normal-look))
     (update-transforms! (-> self root-override))
-    (while #t
+    (loop
       (spawn (-> self part) (-> self root-override trans))
       (update! (-> self sound))
       (if (-> self mushroom)

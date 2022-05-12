@@ -189,7 +189,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -200,14 +200,10 @@
 (defstate helix-slide-door-close (helix-slide-door)
   :code
   (behavior ()
-    (ja-group! 2 :num! seek!)
+    (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (transform-post)
     (go helix-slide-door-idle-closed)
@@ -221,7 +217,7 @@
 (defstate helix-slide-door-idle-closed (helix-slide-door)
   :code
   (behavior ()
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -321,7 +317,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -582,7 +578,7 @@
 (defstate helix-button-idle-down (helix-button)
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -706,7 +702,7 @@
     (set! (-> self transv-y) 9216.0)
     (suspend)
     (send-event (ppointer->process (-> self dark-eco)) 'move-to (-> self root trans))
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -763,7 +759,7 @@
   :code
   (behavior ()
     (send-event (ppointer->process (-> self dark-eco)) 'trigger)
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )

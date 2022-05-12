@@ -176,7 +176,7 @@
   (the-as (function none :behavior pusher) rider-trans)
   :code
   (behavior ()
-    (while #t
+    (loop
       (let ((f0-0 -1.0))
         (when (and *target* *camera*)
           (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -184,22 +184,10 @@
             (set! f0-0 (ray-capsule-intersect (-> self cyl) (camera-pos) gp-0))
             )
           )
-        (cond
-          ((< f0-0 0.0)
-           (let ((gp-1 (-> self skel root-channel 0)))
-             (set! (-> gp-1 param 0) (get-current-value-with-mirror (-> self sync) (-> self max-frame)))
-             (set! (-> gp-1 param 1) 1.0)
-             (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
-             )
-           )
-          (else
-            (let ((a0-4 (-> self skel root-channel 0)))
-              (set! (-> a0-4 param 0) 0.0)
-              (set! (-> a0-4 param 1) 1.0)
-              (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-              )
+        (if (< f0-0 0.0)
+            (ja :num! (seek! (get-current-value-with-mirror (-> self sync) (-> self max-frame))))
+            (ja :num! (seek! 0.0))
             )
-          )
         )
       (suspend)
       )
@@ -233,23 +221,11 @@
   (the-as (function none :behavior gorge-pusher) rider-trans)
   :code
   (behavior ()
-    (while #t
-      (cond
-        ((task-closed? (game-task rolling-race) (task-status need-introduction))
-         (let ((a0-1 (-> self skel root-channel 0)))
-           (set! (-> a0-1 param 0) (-> self min-frame))
-           (set! (-> a0-1 param 1) 1.0)
-           (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-           )
-         )
-        (else
-          (let ((a0-2 (-> self skel root-channel 0)))
-            (set! (-> a0-2 param 0) (-> self max-frame))
-            (set! (-> a0-2 param 1) 1.0)
-            (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-            )
+    (loop
+      (if (task-closed? (game-task rolling-race) (task-status need-introduction))
+          (ja :num! (seek! (-> self min-frame)))
+          (ja :num! (seek! (-> self max-frame)))
           )
-        )
       (suspend)
       )
     (none)
@@ -341,7 +317,7 @@
 
 ;; definition for function dark-plants-all-done
 (defun dark-plants-all-done ((arg0 dark-plant))
-  (while #t
+  (loop
     (if (!= (-> arg0 state) dark-plant-gone)
         (return #f)
         )
@@ -391,14 +367,10 @@
     (dark-plant-randomize self)
     (logclear! (-> self draw status) (draw-status hidden))
     (sound-play-by-name (static-sound-name "darkvine-grow") (new-sound-id) 1024 0 0 1 #t)
-    (ja-group! 4 :num! seek!)
+    (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-7 (-> self skel root-channel 0)))
-        (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-        (set! (-> a0-7 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go dark-plant-idle)
     (none)
@@ -418,7 +390,7 @@
            (gp-0 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-5)))) 3000))
            )
       (set! (-> self state-time) (-> *display* base-frame-counter))
-      (while #t
+      (loop
         (when (and (!= (get-task-status (game-task rolling-plants)) (task-status invalid))
                    (!= (get-task-status (game-task rolling-plants)) 7)
                    )
@@ -452,14 +424,10 @@
     (spawn (-> self part) (-> self root trans))
     (ja-channel-push! 1 (seconds 0.2))
     (sound-play-by-name (static-sound-name "darkvine-kill") (new-sound-id) 1024 0 0 1 #t)
-    (ja-group! 3 :num! seek!)
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-5 (-> self skel root-channel 0)))
-        (set! (-> a0-5 param 0) (the float (+ (-> a0-5 frame-group data 0 length) -1)))
-        (set! (-> a0-5 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go dark-plant-gone)
     (none)
@@ -474,7 +442,7 @@
   dark-plant-trans
   :code
   (behavior ()
-    (while #t
+    (loop
       (when (and (logtest? (-> self draw status) (draw-status was-drawn))
                  *target*
                  (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
@@ -565,11 +533,7 @@
       )
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-4 (-> self skel root-channel 0)))
-        (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
-        (set! (-> a0-4 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go dark-plant-idle)
     (none)
@@ -695,15 +659,11 @@
 (defstate happy-plant-opened (happy-plant)
   :code
   (behavior ()
-    (while #t
-      (ja-group! 4 :num! seek!)
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -782,9 +742,7 @@
           (the-as (function process-drawable symbol) false-func)
           )
         (ja-channel-set! 1)
-        (let ((v1-39 (-> self skel root-channel 0)))
-          (set! (-> v1-39 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-          )
+        (ja :group! (-> self draw art-group data 4))
         (if (handle->process (the-as int gp-2))
             (deactivate (-> gp-2 process 0))
             )
@@ -831,40 +789,11 @@
   :code
   (behavior ()
     (clear-collide-with-as (-> self root-override))
-    (while #t
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-1 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-1 param 1) 1.0)
-        (set! (-> a0-1 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-1
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -1070,34 +999,22 @@
     )
   :code
   (behavior ((arg0 symbol))
-    (ja-group! 5 :num! seek!)
+    (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-        (set! (-> a0-2 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (lods-assign! (-> self draw) (-> self broken-look))
-    (ja-group! 6 :num! seek!)
+    (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-6 (-> self skel root-channel 0)))
-        (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-        (set! (-> a0-6 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (while #t
-      (ja-group! 7 :num! seek!)
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-9 (-> self skel root-channel 0)))
-          (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group data 0 length) -1)))
-          (set! (-> a0-9 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       (if arg0
           (deactivate self)
@@ -1126,15 +1043,11 @@
   :code
   (behavior ()
     (lods-assign! (-> self draw) (-> self whole-look))
-    (while #t
-      (ja-group! 4 :num! seek!)
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -1325,7 +1238,7 @@
   (the-as (function none :behavior gorge-abort) gorge-trans)
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       (if (gorge-behind self)
           (send-event (ppointer->process (-> self parent)) 'aborted)
@@ -1352,7 +1265,7 @@
   (the-as (function none :behavior gorge-finish) gorge-trans)
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       (if (gorge-in-front self)
           (send-event (ppointer->process (-> self parent)) 'finished)
@@ -1767,7 +1680,7 @@
   :code
   (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
-    (while #t
+    (loop
       (seconds->race-time (-> self this-time) (- (-> *display* game-frame-counter) (-> self state-time)))
       (seekl! (-> self timer-pos-offset) 0 (the int (* 5.0 (-> *display* time-adjust-ratio))))
       (completed? (-> self ticker))
@@ -1787,7 +1700,7 @@
   (the-as (function none :behavior gorge-start) gorge-trans)
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       (seekl! (-> self timer-pos-offset) 100 (the int (* 5.0 (-> *display* time-adjust-ratio))))
       (when (= (-> self timer-pos-offset) 100)
@@ -1832,7 +1745,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       (seekl! (-> self timer-pos-offset) 100 (the int (* 5.0 (-> *display* time-adjust-ratio))))
       (when (= (-> self timer-pos-offset) 100)

@@ -48,16 +48,9 @@
     )
   :code
   (behavior ()
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) 0.0)
-      )
+    (ja :group! (-> self draw art-group data 2) :num! min)
     (transform-post)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -135,28 +128,17 @@
   (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status complete) #t)
     (when (not arg0)
-      (ja-group! 2 :param0 (-> self anim-limit) :num! seek!)
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! (-> self anim-limit)) :frame-num 0.0)
       (until (ja-done? 0)
         (rider-trans)
         (rider-post)
         (suspend)
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 param 0) (-> self anim-limit))
-          (set! (-> a0-3 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! (-> self anim-limit)))
         )
       )
-    (let ((gp-1 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-1
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        num-func-identity
-        )
-      (set! (-> gp-1 frame-num) (-> self anim-limit))
-      )
+    (ja :group! (-> self draw art-group data 2) :num! (identity (-> self anim-limit)))
     (rider-post)
-    (while #t
+    (loop
       (ja-post)
       (suspend)
       )

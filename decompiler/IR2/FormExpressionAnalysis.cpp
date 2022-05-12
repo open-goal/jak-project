@@ -3233,6 +3233,23 @@ void FunctionCallElement::push_to_stack(const Env& env, FormPool& pool, FormStac
 ///////////////////
 // DerefElement
 ///////////////////
+ConstantTokenElement* DerefElement::try_as_art_const(const Env& env, FormPool& pool) {
+  auto mr = match(
+      Matcher::deref(Matcher::s6(), false,
+                     {DerefTokenMatcher::string("draw"), DerefTokenMatcher::string("art-group"),
+                      DerefTokenMatcher::string("data"), DerefTokenMatcher::any_integer(0)}),
+      this);
+
+  if (mr.matched) {
+    auto elt_name = env.get_art_elt_name(mr.maps.ints.at(0));
+    if (elt_name) {
+      return pool.alloc_element<ConstantTokenElement>(*elt_name);
+    }
+  }
+
+  return nullptr;
+}
+
 void DerefElement::update_from_stack(const Env& env,
                                      FormPool& pool,
                                      FormStack& stack,
@@ -3252,6 +3269,12 @@ void DerefElement::update_from_stack(const Env& env,
 
   // merge nested ->'s
   inline_nested();
+
+  auto as_art = try_as_art_const(env, pool);
+  if (as_art) {
+    result->push_back(as_art);
+    return;
+  }
 
   result->push_back(this);
 }
@@ -3443,6 +3466,57 @@ Form* try_rewrite_as_pppointer_to_process(CondNoElseElement* value,
   return pool.form<GenericElement>(
       GenericOperator::make_fixed(FixedOperatorKind::PPOINTER_TO_PROCESS), repopped);
 }
+
+// (if (> (-> self skel active-channels) 0)
+//   (-> self skel root-channel 0 frame-group)
+//   )
+// (ja-group :chan 0)
+Form* try_rewrite_as_ja_group(CondNoElseElement* value,
+                              FormStack& stack,
+                              FormPool& pool,
+                              const Env& env) {
+  if (value->entries.size() != 1) {
+    return nullptr;
+  }
+
+  auto condition = value->entries.at(0).condition;
+  auto body = value->entries[0].body;
+
+  // safe to look for a reg directly here.
+  auto condition_matcher = Matcher::fixed_op(
+      FixedOperatorKind::GT, {Matcher::deref(Matcher::s6(), false,
+                                             {DerefTokenMatcher::string("skel"),
+                                              DerefTokenMatcher::string("active-channels")}),
+                              Matcher::any(0)});
+  auto condition_mr = match(condition_matcher, condition);
+  if (!condition_mr.matched) {
+    return nullptr;
+  }
+
+  auto body_matcher = Matcher::deref(
+      Matcher::s6(), false,
+      {DerefTokenMatcher::string("skel"), DerefTokenMatcher::string("root-channel"),
+       DerefTokenMatcher::any_expr_or_int(0), DerefTokenMatcher::string("frame-group")});
+  auto body_mr = match(body_matcher, body);
+
+  if (!body_mr.matched) {
+    return nullptr;
+  }
+
+  auto chan = body_mr.int_or_form_to_form(pool, 0);
+  auto obj_chan = chan->to_form(env);
+  if (condition_mr.maps.forms.at(0)->to_form(env) == obj_chan) {
+    auto func = GenericOperator::make_function(pool.form<ConstantTokenElement>("ja-group"));
+    if (obj_chan.is_int(0)) {
+      return pool.form<GenericElement>(func);
+    } else {
+      return pool.form<GenericElement>(func, pool.form<ConstantTokenElement>(":chan"),
+                                       condition_mr.maps.forms.at(0));
+    }
+  }
+
+  return nullptr;
+}
 }  // namespace
 
 ///////////////////
@@ -3510,11 +3584,17 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
         stack.push_value_to_reg(write_as_value, as_ppointer_to_process, true,
                                 env.get_variable_type(final_destination, false));
       } else {
-        //        fmt::print("func {} final destination {} type {}\n", env.func->name(),
-        //                   final_destination.to_string(env),
-        //                   env.get_variable_type(final_destination, false).print());
-        stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
-                                env.get_variable_type(final_destination, false));
+        auto as_ja_group = try_rewrite_as_ja_group(this, stack, pool, env);
+        if (as_ja_group) {
+          stack.push_value_to_reg(write_as_value, as_ja_group, true,
+                                  env.get_variable_type(final_destination, false));
+        } else {
+          //        fmt::print("func {} final destination {} type {}\n", env.func->name(),
+          //                   final_destination.to_string(env),
+          //                   env.get_variable_type(final_destination, false).print());
+          stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
+                                  env.get_variable_type(final_destination, false));
+        }
       }
     }
 
@@ -4064,49 +4144,26 @@ FormElement* ConditionElement::make_equal_check_generic(const Env& env,
                                                 forms_with_cast);
     } else {
       {
-        // (= (if (> (-> self skel active-channels) 0)
-        //        (-> self skel root-channel 0 frame-group)
-        //        )
+        // (= (ja-group)
         //    (-> self draw art-group data 7)
         //    )
-        // actually (ja-group? group :channel channel)
-        auto mr1 = match(
-            Matcher::if_no_else(
-                Matcher::fixed_op(FixedOperatorKind::GT,
-                                  {Matcher::deref(Matcher::s6(), false,
-                                                  {DerefTokenMatcher::string("skel"),
-                                                   DerefTokenMatcher::string("active-channels")}),
-                                   Matcher::any(0)}),
-                Matcher::deref(
-                    Matcher::s6(), false,
-                    {DerefTokenMatcher::string("skel"), DerefTokenMatcher::string("root-channel"),
-                     DerefTokenMatcher::any_expr_or_int(1),
-                     DerefTokenMatcher::string("frame-group")})),
-            source_forms.at(0));
-        auto mr2 =
-            match(Matcher::deref(
-                      Matcher::s6(), false,
-                      {DerefTokenMatcher::string("draw"), DerefTokenMatcher::string("art-group"),
-                       DerefTokenMatcher::string("data"), DerefTokenMatcher::any_expr_or_int(0)}),
-                  source_forms.at(1));
-        // check if both args matched
-        if (mr1.matched && mr2.matched) {
-          // check if we actually got a `self`
-          // grab channel arg and see if it's correct
-          auto channel_arg = mr1.maps.forms.at(0);
-          if (channel_arg->to_form(env) == mr1.int_or_form_to_form(pool, 1)->to_form(env)) {
-            // everything is good! check for default args, make the macro and get out.
-            std::vector<Form*> macro_args;
-            macro_args.push_back(
-                get_converted_art_group_form(env, pool, mr2.int_or_form_to_form(pool, 0)));
-            if (channel_arg->to_form(env) != goos::Object::make_integer(0)) {
-              macro_args.push_back(pool.form<ConstantTokenElement>(":channel"));
-              macro_args.push_back(channel_arg);
-            }
-            return pool.alloc_element<GenericElement>(
-                GenericOperator::make_function(pool.form<ConstantTokenElement>("ja-group?")),
-                macro_args);
+        // actually (ja-group? (-> self draw art-group data 7) :channel channel)
+        auto mr =
+            match(Matcher::op(GenericOpMatcher::func(Matcher::constant_token("ja-group")), {}),
+                  source_forms.at(0));
+        // check if both things matched
+        if (mr.matched) {
+          // grab args from the ja-group and pass them on
+          std::vector<Form*> macro_args;
+          macro_args.push_back(source_forms.at(1));
+
+          auto jagroup = source_forms.at(0)->try_as_element<GenericElement>();
+          for (int i = 1; i < jagroup->elts().size(); ++i) {
+            macro_args.push_back(jagroup->elts().at(i));
           }
+          return pool.alloc_element<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("ja-group?")),
+              macro_args);
         }
       }
       return pool.alloc_element<GenericElement>(

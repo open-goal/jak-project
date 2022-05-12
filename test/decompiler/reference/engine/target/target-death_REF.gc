@@ -465,9 +465,7 @@
         )
       )
     (ja-channel-set! 1)
-    (let ((v1-264 (-> self skel root-channel 0)))
-      (set! (-> v1-264 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-      )
+    (ja :group! eichar-stance-loop-ja)
     (suspend)
     (logior! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     (go target-stance)
@@ -755,11 +753,7 @@
      (when (not (ja-group? eichar-hit-from-back-ja))
        (ja-channel-push! 1 (seconds 0.07333333))
        (let ((gp-1 (-> self skel root-channel 0)))
-         (joint-control-channel-group-eval!
-           gp-1
-           (the-as art-joint-anim (-> self draw art-group data 74))
-           num-func-identity
-           )
+         (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim eichar-hit-from-back-ja) num-func-identity)
          (let ((f0-0 0.0))
            (set! (-> gp-1 frame-num) f0-0)
            f0-0
@@ -771,11 +765,7 @@
      (when (not (ja-group? eichar-hit-up-ja))
        (ja-channel-push! 1 (seconds 0.07333333))
        (let ((gp-2 (-> self skel root-channel 0)))
-         (joint-control-channel-group-eval!
-           gp-2
-           (the-as art-joint-anim (-> self draw art-group data 75))
-           num-func-identity
-           )
+         (joint-control-channel-group-eval! gp-2 (the-as art-joint-anim eichar-hit-up-ja) num-func-identity)
          (let ((f0-1 0.0))
            (set! (-> gp-2 frame-num) f0-1)
            f0-1
@@ -785,7 +775,7 @@
      )
     (('air 'jump)
      (ja-channel-push! 1 (seconds 0.05))
-     (ja-group! eichar-jump-ja :num! seek!)
+     (ja-no-eval :group! eichar-jump-ja :num! (seek!) :frame-num 0.0)
      (when (= (-> arg0 angle) 'air)
        (sound-play-by-name (static-sound-name "smack-surface") (new-sound-id) 1024 0 0 1 #t)
        (dummy-10 (-> self skel effect) 'group-smack-surface (the-as float 0.0) 5)
@@ -794,18 +784,14 @@
      )
     (('shove)
      (ja-channel-push! 1 (seconds 0.05))
-     (ja-group! eichar-smack-surface-ja :num! seek!)
+     (ja-no-eval :group! eichar-smack-surface-ja :num! (seek!) :frame-num 0.0)
      (sound-play-by-name (static-sound-name "smack-surface") (new-sound-id) 1024 0 0 1 #t)
      )
     (else
       (when (not (ja-group? eichar-hit-from-front-ja))
         (ja-channel-push! 1 (seconds 0.07333333))
         (let ((gp-5 (-> self skel root-channel 0)))
-          (joint-control-channel-group-eval!
-            gp-5
-            (the-as art-joint-anim (-> self draw art-group data 73))
-            num-func-identity
-            )
+          (joint-control-channel-group-eval! gp-5 (the-as art-joint-anim eichar-hit-from-front-ja) num-func-identity)
           (let ((f0-10 0.0))
             (set! (-> gp-5 frame-num) f0-10)
             f0-10
@@ -845,31 +831,12 @@
           )
       (set-quaternion! (-> self control) (-> self control dir-targ))
       #t
-      (let ((f28-1 (* 1.05 (/ (* -60.0 arg3) (* (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                                      (-> self skel root-channel 0 frame-group)
-                                                                      )
-                                                                  data
-                                                                  0
-                                                                  length
-                                                                  )
-                                                              -1
-                                                              )
-                                                     )
-                                                (ja-step 0)
-                                                )
-                              )
-                      )
-                   )
-            )
+      (let ((f28-1 (* 1.05 (/ (* -60.0 arg3) (* (the float (+ (-> (ja-group) data 0 length) -1)) (ja-step 0))))))
         (until v1-40
           (+! f30-1 (* (-> arg0 shove-back) f28-1 (-> *display* seconds-per-frame)))
           (set! s2-1 (target-hit-push s3-1 s1-1 f30-1 (* (-> arg0 shove-back) f28-1) arg0))
           (suspend)
-          (let ((a0-14 (-> self skel root-channel 0)))
-            (set! (-> a0-14 param 0) (the float (+ (-> a0-14 frame-group data 0 length) -1)))
-            (set! (-> a0-14 param 1) 1.0)
-            (joint-control-channel-group-eval! a0-14 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           (set! v1-40 (or (ja-done? 0) (and arg1 (logtest? (-> self control status) (cshape-moving-flags onsurf)))))
           )
         (while (and (or (zero? (logand (-> self control status) (cshape-moving-flags onsurf))) s2-1) (!= s2-1 'stuck))
@@ -1107,7 +1074,7 @@
 (defbehavior target-death-anim target ((arg0 spool-anim))
   (set! (-> self control unknown-surface00) *neutral-mods*)
   (ja-channel-push! 1 (seconds 0.1))
-  (ja-group! eichar-deatha-ja :num! seek!)
+  (ja-no-eval :group! eichar-deatha-ja :num! (seek!) :frame-num 0.0)
   (until (ja-done? 0)
     (if arg0
         (spool-push *art-control* (-> arg0 name) 0 self (the-as float -99.0))
@@ -1121,11 +1088,7 @@
         )
       )
     (suspend)
-    (let ((a0-9 (-> self skel root-channel 0)))
-      (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group data 0 length) -1)))
-      (set! (-> a0-9 param 1) 1.0)
-      (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja :num! (seek!))
     )
   0
   (none)
@@ -1191,12 +1154,12 @@
        (let ((f30-0 0.7)
              (gp-3 (-> self skel root-channel 0))
              )
-         (set! (-> gp-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 93)))
+         (set! (-> gp-3 frame-group) (the-as art-joint-anim eichar-swim-walk-to-down-ja))
          (set! (-> gp-3 param 0) (ja-aframe (the-as float 73.0) 0))
          (let ((f30-1 (seek f30-0 (the-as float 0.05) (* 1.5 (-> *display* seconds-per-frame)))))
            (set! (-> gp-3 param 1) f30-1)
            (set! (-> gp-3 frame-num) 0.0)
-           (joint-control-channel-group! gp-3 (the-as art-joint-anim (-> self draw art-group data 93)) num-func-seek!)
+           (joint-control-channel-group! gp-3 (the-as art-joint-anim eichar-swim-walk-to-down-ja) num-func-seek!)
            (until (ja-done? 0)
              (suspend)
              (let ((gp-4 (-> self skel root-channel 0)))
@@ -1307,20 +1270,12 @@
                (none)
                )
              )
-       (target-falling-anim (seconds 0.1) 99)
+       (target-falling-anim (seconds 0.1) (seconds 0.33))
        (ja-channel-push! 1 (seconds 0.3))
-       (ja-group! eichar-launch-jump-loop-ja :param0 0.5 :num! loop!)
+       (ja-no-eval :group! eichar-launch-jump-loop-ja :num! (loop! 0.5) :frame-num 0.0)
        (let ((gp-12 (-> *display* base-frame-counter)))
          (until (>= (- (-> *display* base-frame-counter) gp-12) (seconds 0.8))
-           (let ((a0-76 (-> self skel root-channel 0)))
-             (set! (-> a0-76 frame-group) (the-as art-joint-anim (-> self draw art-group data 43)))
-             (set! (-> a0-76 param 0) 0.5)
-             (joint-control-channel-group-eval!
-               a0-76
-               (the-as art-joint-anim (-> self draw art-group data 43))
-               num-func-loop!
-               )
-             )
+           (ja :group! eichar-launch-jump-loop-ja :num! (loop! 0.5))
            (suspend)
            )
          )
@@ -1329,14 +1284,10 @@
       (('target-hit-ground-hard)
        (set! (-> self control unknown-surface00) *neutral-mods*)
        (ja-channel-push! 1 (seconds 0.1))
-       (ja-group! eichar-death-painful-land-ja :num! seek!)
+       (ja-no-eval :group! eichar-death-painful-land-ja :num! (seek!) :frame-num 0.0)
        (until (ja-done? 0)
          (suspend)
-         (let ((a0-82 (-> self skel root-channel 0)))
-           (set! (-> a0-82 param 0) (the float (+ (-> a0-82 frame-group data 0 length) -1)))
-           (set! (-> a0-82 param 1) 1.0)
-           (joint-control-channel-group-eval! a0-82 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek!))
          )
        )
       (('sharkey)

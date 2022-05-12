@@ -388,7 +388,7 @@ bool compile(Decompiler& dc,
   // define constants for art info! since we dont use import files here (obviously)
   for (const auto& [agname, info] : dc.db->dts.art_group_info) {
     for (const auto& [idx, name] : info) {
-      compiler.run_front_end_on_string(fmt::format("(defconstant {} {})", name, idx));
+      compiler.run_front_end_on_string(decompiler::print_art_elt_for_dump(agname, name, idx));
     }
   }
 

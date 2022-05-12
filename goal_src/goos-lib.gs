@@ -35,6 +35,17 @@
   `(if (not ,clause) (begin ,@body) #f)
   )
 
+(defsmacro aif (condition true false)
+  "Anaphoric if, similar to Common Lisp"
+
+  `(let ((it ,condition))
+      (if it
+          ,true
+          ,false
+          )
+      )
+  )
+
 (desfun factorial (x)
 	(if (= x 1)
 	    1

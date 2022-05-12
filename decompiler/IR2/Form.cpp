@@ -1180,8 +1180,13 @@ void WhileElement::apply(const std::function<void(FormElement*)>& f) {
 
 goos::Object WhileElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> list;
-  list.push_back(pretty_print::to_symbol("while"));
-  list.push_back(condition->to_form_as_condition(env));
+  auto cond = condition->to_form_as_condition(env);
+  if (cond == pretty_print::to_symbol("#t")) {
+    list.push_back(pretty_print::to_symbol("loop"));
+  } else {
+    list.push_back(pretty_print::to_symbol("while"));
+    list.push_back(condition->to_form_as_condition(env));
+  }
   body->inline_forms(list, env);
   return pretty_print::build_list(list);
 }
