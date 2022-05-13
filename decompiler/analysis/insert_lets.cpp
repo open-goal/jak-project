@@ -1139,30 +1139,6 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
 FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats) {
-  auto as_dotimes = rewrite_as_dotimes(in, env, pool);
-  if (as_dotimes) {
-    stats.dotimes++;
-    return as_dotimes;
-  }
-
-  auto as_countdown = rewrite_as_countdown(in, env, pool);
-  if (as_countdown) {
-    stats.countdown++;
-    return as_countdown;
-  }
-
-  auto as_abs = fix_up_abs(in, env, pool);
-  if (as_abs) {
-    stats.abs++;
-    return as_abs;
-  }
-
-  auto as_abs_2 = fix_up_abs_2(in, env, pool);
-  if (as_abs_2) {
-    stats.abs2++;
-    return as_abs_2;
-  }
-
   auto as_unused = rewrite_empty_let(in, env, pool);
   if (as_unused) {
     stats.unused++;
@@ -1173,6 +1149,30 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
   if (as_joint_macro) {
     stats.ja++;
     return as_joint_macro;
+  }
+
+  auto as_set_vector = rewrite_set_vector(in, env, pool);
+  if (as_set_vector) {
+    stats.set_vector++;
+    return as_set_vector;
+  }
+
+  auto as_dotimes = rewrite_as_dotimes(in, env, pool);
+  if (as_dotimes) {
+    stats.dotimes++;
+    return as_dotimes;
+  }
+
+  auto as_send_event = rewrite_as_send_event(in, env, pool);
+  if (as_send_event) {
+    stats.send_event++;
+    return as_send_event;
+  }
+
+  auto as_countdown = rewrite_as_countdown(in, env, pool);
+  if (as_countdown) {
+    stats.countdown++;
+    return as_countdown;
   }
 
   auto as_case_no_else = rewrite_as_case_no_else(in, env, pool);
@@ -1187,22 +1187,22 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
     return as_case_with_else;
   }
 
-  auto as_set_vector = rewrite_set_vector(in, env, pool);
-  if (as_set_vector) {
-    stats.set_vector++;
-    return as_set_vector;
-  }
-
   auto as_set_vector2 = rewrite_set_vector_2(in, env, pool);
   if (as_set_vector2) {
     stats.set_vector2++;
     return as_set_vector2;
   }
 
-  auto as_send_event = rewrite_as_send_event(in, env, pool);
-  if (as_send_event) {
-    stats.send_event++;
-    return as_send_event;
+  auto as_abs_2 = fix_up_abs_2(in, env, pool);
+  if (as_abs_2) {
+    stats.abs2++;
+    return as_abs_2;
+  }
+
+  auto as_abs = fix_up_abs(in, env, pool);
+  if (as_abs) {
+    stats.abs++;
+    return as_abs;
   }
 
   // nothing matched.
