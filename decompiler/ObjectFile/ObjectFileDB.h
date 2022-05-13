@@ -47,6 +47,28 @@ struct ObjectFileData {
   std::string output_with_skips;
 };
 
+/*!
+ * Stats structure for let rewriting.
+ */
+struct LetRewriteStats {
+  int dotimes;
+  int countdown;
+  int abs;
+  int abs2;
+  int unused;
+  int ja;
+  int case_no_else;
+  int case_with_else;
+  int set_vector;
+  int set_vector2;
+  int send_event;
+
+  int total() const {
+    return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
+           set_vector + set_vector2 + send_event;
+  }
+};
+
 class ObjectFileDB {
  public:
   ObjectFileDB(const std::vector<std::string>& _dgos,
@@ -211,6 +233,7 @@ class ObjectFileDB {
   SymbolMapBuilder map_builder;
 
   struct {
+    LetRewriteStats let;
     uint32_t total_dgo_bytes = 0;
     uint32_t total_obj_files = 0;
     uint32_t unique_obj_files = 0;

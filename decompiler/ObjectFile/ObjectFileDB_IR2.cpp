@@ -106,6 +106,20 @@ void ObjectFileDB::analyze_functions_ir2(
     fmt::print("Done in {:.2f}ms\n", file_timer.getMs());
   });
 
+  int total = stats.let.total();
+  lg::info("LET REWRITE STATS: {} total", total);
+  lg::info("  dotimes: {}", stats.let.dotimes);
+  lg::info("  countdown: {}", stats.let.countdown);
+  lg::info("  abs: {}", stats.let.abs);
+  lg::info("  abs2: {}", stats.let.abs2);
+  lg::info("  ja: {}", stats.let.ja);
+  lg::info("  set_vector: {}", stats.let.set_vector);
+  lg::info("  set_vector2: {}", stats.let.set_vector2);
+  lg::info("  case_no_else: {}", stats.let.case_no_else);
+  lg::info("  case_with_else: {}", stats.let.case_with_else);
+  lg::info("  unused: {}", stats.let.unused);
+  lg::info("  send_event: {}", stats.let.send_event);
+
   if (config.generate_symbol_definition_map) {
     lg::info("Generating symbol definition map...");
     map_builder.build_map();
@@ -587,7 +601,7 @@ void ObjectFileDB::ir2_insert_lets(int seg, ObjectFileData& data) {
   for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     if (func.ir2.expressions_succeeded) {
       try {
-        insert_lets(func, func.ir2.env, *func.ir2.form_pool, func.ir2.top_form);
+        insert_lets(func, func.ir2.env, *func.ir2.form_pool, func.ir2.top_form, stats.let);
       } catch (const std::exception& e) {
         const auto err = fmt::format(
             "Error while inserting lets: {}. Make sure that the return type is not "

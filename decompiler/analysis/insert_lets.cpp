@@ -1138,59 +1138,70 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
 /*!
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
-FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
+FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats) {
   auto as_dotimes = rewrite_as_dotimes(in, env, pool);
   if (as_dotimes) {
+    stats.dotimes++;
     return as_dotimes;
   }
 
   auto as_countdown = rewrite_as_countdown(in, env, pool);
   if (as_countdown) {
+    stats.countdown++;
     return as_countdown;
   }
 
   auto as_abs = fix_up_abs(in, env, pool);
   if (as_abs) {
+    stats.abs++;
     return as_abs;
   }
 
   auto as_abs_2 = fix_up_abs_2(in, env, pool);
   if (as_abs_2) {
+    stats.abs2++;
     return as_abs_2;
   }
 
   auto as_unused = rewrite_empty_let(in, env, pool);
   if (as_unused) {
+    stats.unused++;
     return as_unused;
   }
 
   auto as_joint_macro = rewrite_joint_macro(in, env, pool);
   if (as_joint_macro) {
+    stats.ja++;
     return as_joint_macro;
   }
 
   auto as_case_no_else = rewrite_as_case_no_else(in, env, pool);
   if (as_case_no_else) {
+    stats.case_no_else++;
     return as_case_no_else;
   }
 
   auto as_case_with_else = rewrite_as_case_with_else(in, env, pool);
   if (as_case_with_else) {
+    stats.case_with_else++;
     return as_case_with_else;
   }
 
   auto as_set_vector = rewrite_set_vector(in, env, pool);
   if (as_set_vector) {
+    stats.set_vector++;
     return as_set_vector;
   }
 
   auto as_set_vector2 = rewrite_set_vector_2(in, env, pool);
   if (as_set_vector2) {
+    stats.set_vector2++;
     return as_set_vector2;
   }
 
   auto as_send_event = rewrite_as_send_event(in, env, pool);
   if (as_send_event) {
+    stats.send_event++;
     return as_send_event;
   }
 
@@ -1331,7 +1342,11 @@ bool register_can_hold_var(const Register& reg) {
 }
 }  // namespace
 
-LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_level_form) {
+LetStats insert_lets(const Function& func,
+                     Env& env,
+                     FormPool& pool,
+                     Form* top_level_form,
+                     LetRewriteStats& let_rewrite_stats) {
   (void)func;
   //    if (func.name() != "(method 4 pair)") {
   //      return {};
@@ -1583,7 +1598,7 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
     for (auto& elt : f->elts()) {
       auto as_let = dynamic_cast<LetElement*>(elt);
       if (as_let) {
-        auto rewritten = rewrite_let(as_let, env, pool);
+        auto rewritten = rewrite_let(as_let, env, pool, let_rewrite_stats);
         if (rewritten) {
           rewritten->parent_form = f;
           elt = rewritten;

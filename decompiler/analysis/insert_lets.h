@@ -3,6 +3,7 @@
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Env.h"
 #include "decompiler/IR2/Form.h"
+#include "decompiler/ObjectFile/ObjectFileDB.h"
 
 namespace decompiler {
 
@@ -16,6 +17,10 @@ struct LetStats {
   }
 };
 
-LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_level_form);
+LetStats insert_lets(const Function& func,
+                     Env& env,
+                     FormPool& pool,
+                     Form* top_level_form,
+                     LetRewriteStats& let_stats);
 
 }  // namespace decompiler
