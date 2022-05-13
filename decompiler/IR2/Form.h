@@ -2016,5 +2016,4 @@ Form* try_cast_simplify(Form* in,
                         FormPool& pool,
                         const Env& env,
                         bool tc_pass = false);
-Form* get_converted_art_group_form(const Env& env, FormPool& pool, Form* group);
 }  // namespace decompiler

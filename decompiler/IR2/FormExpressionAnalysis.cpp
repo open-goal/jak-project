@@ -3235,6 +3235,9 @@ ConstantTokenElement* DerefElement::try_as_art_const(const Env& env, FormPool& p
     auto elt_name = env.get_art_elt_name(mr.maps.ints.at(0));
     if (elt_name) {
       return pool.alloc_element<ConstantTokenElement>(*elt_name);
+    } else {
+      lg::error("function {}: did not find art element {} in {}", env.func->name(),
+                mr.maps.ints.at(0), env.art_group());
     }
   }
 

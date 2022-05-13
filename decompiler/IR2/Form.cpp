@@ -3372,21 +3372,4 @@ Form* alloc_var_form(const RegisterAccess& var, FormPool& pool) {
   return pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(var));
 }
 
-Form* get_converted_art_group_form(const Env& env, FormPool& pool, Form* group) {
-  if (!group->to_form(env).is_int()) {
-    return group;
-  }
-  auto group_int = group->to_form(env).as_int();
-  auto it = env.dts->art_group_info.find(env.art_group());
-  if (it != env.dts->art_group_info.end()) {
-    const auto& art_info = it->second;
-    if (art_info.find(group_int) != art_info.end()) {
-      return pool.form<ConstantTokenElement>(art_info.at(group_int));
-    }
-  }
-  lg::error("function {}: did not find art element {} in {}", env.func->guessed_name.to_string(),
-            group_int, env.art_group());
-  return group;
-}
-
 }  // namespace decompiler
