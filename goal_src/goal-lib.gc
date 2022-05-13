@@ -6,6 +6,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; get list of all goal files
+(asm-file "goal_src/build/all_imports.gc")
 (asm-file "goal_src/build/all_files.gc")
 
 ;; tell compiler about stuff defined/implemented in the runtime.
@@ -37,9 +38,19 @@
   `(asm-file ,file :color :write)
   )
 
+(desfun run-frontend-command (file)
+  `(asm-file ,file :no-code)
+  )
+
 
 (defmacro load-art-import (name)
   `(asm-file ,(string-append "goal_src/import/" (symbol->string name) "-ag.gc") :no-code :no-throw))
+
+(defmacro load-imports ()
+  `(begin
+     ,@(apply run-frontend-command all-import-files)
+     )
+  )
 
 (defmacro build-kernel ()
   "Build kernel and create the KERNEL CGO"
@@ -1034,5 +1045,7 @@
 
 ;; load the default project
 (load-project "goal_src/game.gp")
+(seval (fmt #t "Loading imports...\n"))
+(load-imports)
 
 

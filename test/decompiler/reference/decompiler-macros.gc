@@ -862,14 +862,17 @@
   )
 
 ;; art-h
-(defmacro art-elt->index (ag-name elt-name)
-  (let ((ag-info (assoc ag-name *art-info*)))
-      (if (null? ag-info)
-          -1
-          (let ((elt-info (assoc elt-name (cdr ag-info))))
-              (if (null? elt-info)
-                  -1
-                  (cadr elt-info))
+(desfun art-elt->index (ag-name elt-name)
+  (if (number? elt-name)
+      elt-name
+      (let ((ag-info (assoc ag-name *art-info*)))
+          (if (null? ag-info)
+              -1
+              (let ((elt-info (assoc elt-name (cdr ag-info))))
+                  (if (null? elt-info)
+                      -1
+                      (cadr elt-info))
+                  )
               )
           )
       )
@@ -885,32 +888,32 @@
                         )
 
   "define a new static skeleton group"
-  `(begin (load-art-import ,art-name)
-  (let ((skel (new 'static 'skeleton-group
+
+  `(let ((skel (new 'static 'skeleton-group
                         :art-group-name ,(symbol->string art-name)
                         :bounds ,bounds
                         :longest-edge ,longest-edge
                         :version ,version
                         :max-lod ,(- (length lods) 1)
-                        :shadow (art-elt->index ,art-name ,shadow)
+                        :shadow ,(art-elt->index (string->symbol-format "{}-ag" art-name) shadow)
                         :texture-level ,texture-level
                         :sort ,sort
                         )))
         ;; set joint geometry and joint bones
-        (set! (-> skel jgeo) (art-elt->index ,art-name ,joint-geom))
-        (set! (-> skel janim) (art-elt->index ,art-name ,joint-anim))
+        (set! (-> skel jgeo) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-geom))
+        (set! (-> skel janim) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-anim))
         
         ;; set lods
         ,@(apply-i (lambda (x i)
                       `(begin
-                          (set! (-> skel mgeo ,i) (art-elt->index ,art-name ,(car x)))
+                          (set! (-> skel mgeo ,i) ,(art-elt->index (string->symbol-format "{}-ag" art-name) (car x)))
                           (set! (-> skel lod-dist ,i) ,(cadr x))
                           )
                       ) lods)
 
         ;; define skel group
         (define ,name skel)
-        ))
+        )
   )
 
 ;; pad
