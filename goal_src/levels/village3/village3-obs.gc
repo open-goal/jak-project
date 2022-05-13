@@ -427,7 +427,7 @@
   :flag-assert         #x16004000b0
   (:methods
     (idle () _type_ :state 20)
-    (active (basic symbol) _type_ :state 21)
+    (active (handle symbol) _type_ :state 21)
     )
   )
 
@@ -443,7 +443,7 @@
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('update)
-       (go-virtual active (the-as basic (process->handle arg0)) #f)
+       (go-virtual active (process->handle arg0) #f)
        )
       )
     )
@@ -460,7 +460,7 @@
 (defstate active (pistons)
   :virtual #t
   :code
-  (behavior ((arg0 basic) (arg1 symbol))
+  (behavior ((arg0 handle) (arg1 symbol))
     (process-entity-status! self (entity-perm-status complete) #t)
     (if (not arg1)
         (sound-play-by-name (static-sound-name "gdl-start-up") (new-sound-id) 1024 0 0 1 #t)
@@ -479,14 +479,8 @@
         (suspend)
         )
       )
-    (the-as none enter-state)
-    (let ((t9-7 (the-as none 0)))
-      (let ((v1-13 (the-as none (l.wu (+ (the-as uint (l.wu (+ (the-as uint self) -4))) 96)))))
-        (s.w! (+ (the-as none self) 72) v1-13)
-        )
-      (t9-7)
-      )
-    (none)
+    ;; decompiler never gets here and fails hard
+    (go-virtual idle)
     )
   )
 
@@ -498,7 +492,7 @@
         (new 'process 'ambient-sound (static-sound-spec "gdl-gen-loop" :fo-max 100) (-> obj root trans))
         )
   (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-      (go (method-of-object obj active) #f #t)
+      (go (method-of-object obj active) (the-as handle #f) #t)
       (go (method-of-object obj idle))
       )
   (none)

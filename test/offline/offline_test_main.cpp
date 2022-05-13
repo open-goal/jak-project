@@ -385,13 +385,6 @@ bool compile(Decompiler& dc,
   compiler.run_front_end_on_file({"decompiler", "config", "all-types.gc"});
   compiler.run_front_end_on_file({"test", "decompiler", "reference", "decompiler-macros.gc"});
 
-  // define constants for art info! since we dont use import files here (obviously)
-  for (const auto& [agname, info] : dc.db->dts.art_group_info) {
-    for (const auto& [idx, name] : info) {
-      compiler.run_front_end_on_string(decompiler::print_art_elt_for_dump(agname, name, idx));
-    }
-  }
-
   Timer timer;
   int total_lines = 0;
   for (const auto& file : refs) {

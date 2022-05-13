@@ -384,35 +384,6 @@
   (-> obj skeleton bones 0 position)
   )
 
-(seval (define *art-info* '()))
-(defmacro def-art-elt (group name idx)
-  "define a new art element. adds it to a global map stored in goos."
-
-  ;; grab data about the art group
-  (let ((ag-info (assoc group *art-info*)))
-      ;; no art group was found, make a new one and add it.
-      (when (null? ag-info)
-            (set! ag-info (cons group '()))
-            (cons! *art-info* ag-info)
-            )
-      ;; lookup art element in our art group
-      (let ((elt-info (assoc name (cdr ag-info)))
-            (elt-new (list name idx))) ;; this is the format of the individual entries
-          ;; found, check if valid
-          (if (and (not (null? elt-info)) (not (eq? elt-info elt-new)))
-              (fmt #t "error redefining art element. data mismatch: {}" elt-info elt-new)
-              #f)
-          ;; not found. add to the art-group.
-          (when (null? elt-info)
-                (set! elt-info elt-new)
-                (set-cdr! ag-info (cons elt-info (cdr ag-info)))
-                )
-          )
-      )
-  ;; define a constant for it!
-  `(defconstant ,name (-> self draw art-group data ,idx))
-  )
-
 (defmacro art-elt->index (ag-name elt-name)
   (let ((ag-info (assoc ag-name *art-info*)))
       (if (null? ag-info)
@@ -436,8 +407,8 @@
                         )
 
   "define a new static skeleton group"
-
-  `(let ((skel (new 'static 'skeleton-group
+  `(begin (load-art-import ,art-name)
+  (let ((skel (new 'static 'skeleton-group
                         :art-group-name ,(symbol->string art-name)
                         :bounds ,bounds
                         :longest-edge ,longest-edge
@@ -461,7 +432,7 @@
 
         ;; define skel group
         (define ,name skel)
-        )
+        ))
   )
 
 

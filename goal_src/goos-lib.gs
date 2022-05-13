@@ -438,3 +438,11 @@
   )
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; GAME STUFF!!!      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; a map for art definitions used by art loading code.
+(define *art-info* '())
+
+

@@ -38,6 +38,9 @@
   )
 
 
+(defmacro load-art-import (name)
+  `(asm-file ,(string-append "goal_src/import/" (symbol->string name) "-ag.gc") :no-code :no-throw))
+
 (defmacro build-kernel ()
   "Build kernel and create the KERNEL CGO"
   `(begin
@@ -52,15 +55,6 @@
      (build-kernel)
      ,@(apply make-build-command all-goal-files)
      (build-dgos "goal_src/build/game_dgos.gc")
-     )
-  )
-
-(defmacro build-data ()
-  "Build all game data"
-  `(begin
-     (asm-data-file game-text "assets/game_text.txt")
-     (asm-data-file game-count "assets/game_count.txt")
-     (asm-data-file dir-tpages "assets/tpage-dir.txt")
      )
   )
 
@@ -984,9 +978,6 @@
   `(sqrtf-no-fabs (fabs ,x))
   )
 
-;; load the default project
-(load-project "goal_src/game.gp")
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; user stuf
@@ -1007,5 +998,41 @@
   )
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; art stuf
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro def-art-elt (group name idx)
+  "define a new art element. adds it to a global map stored in goos."
+
+  ;; grab data about the art group
+  (let ((ag-info (assoc group *art-info*)))
+      ;; no art group was found, make a new one and add it.
+      (when (null? ag-info)
+            (set! ag-info (cons group '()))
+            (cons! *art-info* ag-info)
+            )
+      ;; lookup art element in our art group
+      (let ((elt-info (assoc name (cdr ag-info)))
+            (elt-new (list name idx))) ;; this is the format of the individual entries
+          ;; found, check if valid
+          (if (and (not (null? elt-info)) (not (eq? elt-info elt-new)))
+              (fmt #t "error redefining art element. data mismatch: {}" elt-info elt-new)
+              #f)
+          ;; not found. add to the art-group.
+          (when (null? elt-info)
+                (set! elt-info elt-new)
+                (set-cdr! ag-info (cons elt-info (cdr ag-info)))
+                )
+          )
+      )
+  ;; define a constant for it!
+  `(defconstant ,name (-> self draw art-group data ,idx))
+  )
+
+
+
+;; load the default project
+(load-project "goal_src/game.gp")
 
 
