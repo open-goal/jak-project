@@ -1051,8 +1051,9 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
         auto obj_p0 = set_p0->to_form(env);
         if (obj_p0.is_float((goos::FloatType)((goos::IntType)obj_p0.as_float()))) {
           num_form = pool.form<GenericElement>(
-              GenericOperator::make_function(pool.form<ConstantTokenElement>(
-                  fmt::format("(chan {})", (goos::IntType)obj_p0.as_float()))));
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("chan")),
+              pool.form<SimpleAtomElement>(
+                  SimpleAtom::make_int_constant((goos::IntType)obj_p0.as_float())));
         } else {
           lg::error("[{}] JA MACRO ERROR bad chan arg: {}", env.func->name(), obj_p0.print());
           ASSERT_MSG(false, "chan case");
