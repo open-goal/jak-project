@@ -5,9 +5,6 @@
 ;; OTHER STUFF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; get list of all goal files
-(asm-file "goal_src/build/all_files.gc")
-
 ;; tell compiler about stuff defined/implemented in the runtime.
 (asm-file "goal_src/kernel-defs.gc")
 
@@ -40,19 +37,12 @@
 
 (defmacro build-kernel ()
   "Build kernel and create the KERNEL CGO"
-  `(begin
-     ,@(apply make-build-command all-kernel-goal-files)
-     (build-dgos "goal_src/build/kernel_dgos.gc")
-     )
+  `(make-cgo "KERNEL")
   )
 
 (defmacro build-game ()
   "Build all game code and all game CGOs"
-  `(begin
-     (build-kernel)
-     ,@(apply make-build-command all-goal-files)
-     (build-dgos "goal_src/build/game_dgos.gc")
-     )
+  `(make-group "all-code")
   )
 
 (defmacro build-data ()
@@ -952,7 +942,7 @@
   "run body while iterating through an enum.
    WARNING: enums are NOT A RUNTIME TYPE! There is an UNWOUND loop with body in it!! Use with caution."
   ;; (doenum (name-var val-var enum &rest result) &rest body)
-  
+
   `(begin ,@(apply (lambda (x)
                       ;; (fmt #t "{}\n" x)
                       `(let (
@@ -961,7 +951,7 @@
                             )
                         ,@body
                         )) (get-enum-vals (third bindings))))
-  
+
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
