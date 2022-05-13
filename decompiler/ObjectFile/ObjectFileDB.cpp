@@ -767,7 +767,9 @@ void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {
   });
 }
 
-std::string print_art_elt_for_dump(const std::string& group_name, const std::string& name, int idx) {
+std::string print_art_elt_for_dump(const std::string& group_name,
+                                   const std::string& name,
+                                   int idx) {
   return fmt::format("(def-art-elt {} {} {})\n", group_name, name, idx);
 }
 }  // namespace decompiler

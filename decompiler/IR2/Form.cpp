@@ -2996,8 +2996,7 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
   bool has_art = art != env.dts->art_group_info.end();
   auto jg = m_info.jgeo->to_form(env);
   if (jg.is_int() && has_art && art->second.count(jg.as_int())) {
-    forms.push_back(
-        pretty_print::to_symbol(art->second.at(jg.as_int())));
+    forms.push_back(pretty_print::to_symbol(art->second.at(jg.as_int())));
   } else {
     forms.push_back(jg);
   }

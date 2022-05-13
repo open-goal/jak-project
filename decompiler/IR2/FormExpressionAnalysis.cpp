@@ -1490,8 +1490,7 @@ void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
       if (bti) {
         auto new_form = pool.alloc_element<GenericElement>(
             GenericOperator::make_fixed(kind), args.at(0),
-            cast_form(pool.form<SimpleAtomElement>(m_expr.get_arg(1)),
-                      arg0_type, pool, env));
+            cast_form(pool.form<SimpleAtomElement>(m_expr.get_arg(1)), arg0_type, pool, env));
         result->push_back(new_form);
       } else {
         auto new_form = pool.alloc_element<GenericElement>(
@@ -1500,8 +1499,8 @@ void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
         result->push_back(new_form);
       }
     } else {
-      auto new_form = pool.alloc_element<GenericElement>(
-          GenericOperator::make_fixed(kind), args.at(0),
+      auto new_form =
+          pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind), args.at(0),
                                              pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
       result->push_back(new_form);
     }
@@ -4247,9 +4246,8 @@ FormElement* ConditionElement::make_geq_zero_signed_check_generic(
   if (shift_match.matched) {
     return pool.alloc_element<GenericElement>(
         GenericOperator::make_compare(IR2_Condition::Kind::FALSE),
-        pool.form<GenericElement>(
-            GenericOperator::make_fixed(FixedOperatorKind::PAIRP),
-            shift_match.maps.forms.at(0)));
+        pool.form<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::PAIRP),
+                                  shift_match.maps.forms.at(0)));
   } else {
     auto casted = make_casts_if_needed(source_forms, types, TypeSpec("int"), pool, env);
     auto zero = pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(0));
