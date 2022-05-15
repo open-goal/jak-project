@@ -910,7 +910,6 @@
   (let* ((num-args (if (pair? num!) (cdr num!) '()))
         (num! (if (pair? num!) (car num!) num!))
         (nf (cond
-              ((not num!) #f)
               ((or (eq? num! 'identity)
                    (eq? num! 'min)
                    (eq? num! 'max)
@@ -941,11 +940,11 @@
                                              `(the float (1- (-> ja-ch frame-group data 0 length)))
                                              )
                                          (car num-args)))
-                  (#t #f))))
+                  )))
         (p1 (if param1 param1
                 (cond
                   ((eq? num! 'seek!) (if (or (null? num-args) (null? (cdr num-args))) 1.0 (cadr num-args)))
-                  (#t #f))))
+                  )))
         (frame-num (if (eq? 'max frame-num) (if group!
                                                 `(the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
                                                 `(the float (1- (-> ja-ch frame-group data 0 length)))
@@ -966,11 +965,10 @@
               ja-ch (the art-joint-anim ,group!) ,nf)
           `(none))
       ,(cond
-        ((not group!) `(none))
         ((eq? num! 'min) `(set! (-> ja-ch frame-num) 0.0))
         ((eq? num! 'max) (if group!
-                             `(the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
-                             `(the float (1- (-> ja-ch frame-group data 0 length)))
+                             `(set! (-> ja-ch frame-num) (the float (1- (-> (the art-joint-anim ,group!) data 0 length))))
+                             `(set! (-> ja-ch frame-num) (the float (1- (-> ja-ch frame-group data 0 length))))
                              ))
         ((eq? num! 'identity) `(set! (-> ja-ch frame-num) ,(car num-args)))
         (#t `(none))
