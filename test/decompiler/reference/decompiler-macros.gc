@@ -1011,16 +1011,35 @@
   "set various joint anim parameters for self and eval them.
    you can use this for playing animations!
    
-   channel = the channel to modify. defaults to 0 (base channel).
-   group!  = when not #f, set this as the new frame-group. defaults to #f
-   num!    = set the frame playback function. you can use functions like loop!, min, max, seek!, etc.
-   param0, param1 = parameters for the playback function. the defaults depend on num!
+   chan         = the channel to modify. defaults to 0 (base channel). this is usually what you want.
+   group!       = when not #f, set this as the new frame-group. defaults to #f
+   num!         = set the frame playback function. this is what determines what frame an animation is at. funcs below.
+                  #f = no func will be set, and there wont be a frame eval.
+   num-func     = sets the num-func field for the channel. this lets you change the function with eval'ing.
+   param0       = 1st parameter for the playback function. ONLY USE THESE WITH num-func !!
+   param1       = 2nd parameter for the playback function. ONLY USE THESE WITH num-func !!
+   frame-num    = set the frame-num field.
+   frame-interp = set the frame-interp field.
+   dist         = set the dist field.
+   
+   available num! functions:
+   - (+!)       = advance anim.
+   - (-!)       = reverse anim.
+   - (identity num) = play 'num' frame.
+   - (seek! target speed) = animate towards frame target at a speed.
+                            speed is optional and defaults to 1.0 when not provided.
+                            target is optional and defaults to the last frame of the animation.
+                            if you want to set the speed, you therefore must also set the target.
+                            target can be max (no quote), which is just the same as the default value.
+   - (loop! speed)  = loop animation at a speed. default speed is 1.0 when not provided.
+   - (chan channel) = copy frame from another channel.
+   - min = the start of the animation.
+   - max = the end of the animation.
    "
   
   (let* ((num-args (if (pair? num!) (cdr num!) '()))
         (num! (if (pair? num!) (car num!) num!))
         (nf (cond
-              ((not num!) #f)
               ((or (eq? num! 'identity)
                    (eq? num! 'min)
                    (eq? num! 'max)
@@ -1051,11 +1070,11 @@
                                              `(the float (1- (-> ja-ch frame-group data 0 length)))
                                              )
                                          (car num-args)))
-                  (#t #f))))
+                  )))
         (p1 (if param1 param1
                 (cond
                   ((eq? num! 'seek!) (if (or (null? num-args) (null? (cdr num-args))) 1.0 (cadr num-args)))
-                  (#t #f))))
+                  )))
         (frame-num (if (eq? 'max frame-num) (if group!
                                                 `(the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
                                                 `(the float (1- (-> ja-ch frame-group data 0 length)))
@@ -1076,11 +1095,10 @@
               ja-ch (the art-joint-anim ,group!) ,nf)
           `(none))
       ,(cond
-        ((not group!) `(none))
         ((eq? num! 'min) `(set! (-> ja-ch frame-num) 0.0))
         ((eq? num! 'max) (if group!
-                             `(the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
-                             `(the float (1- (-> ja-ch frame-group data 0 length)))
+                             `(set! (-> ja-ch frame-num) (the float (1- (-> (the art-joint-anim ,group!) data 0 length))))
+                             `(set! (-> ja-ch frame-num) (the float (1- (-> ja-ch frame-group data 0 length))))
                              ))
         ((eq? num! 'identity) `(set! (-> ja-ch frame-num) ,(car num-args)))
         (#t `(none))
