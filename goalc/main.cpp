@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
       ts.seek_past_whitespace_and_comments();
       std::string found_username;
       while (ts.text_remains()) {
-        auto character = std::string(1, ts.read());
+        auto character = std::string(1, ts.peek());
         if (!std::regex_match(character, allowed_chars)) {
           break;
         }
