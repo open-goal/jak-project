@@ -34,7 +34,7 @@ std::string meters_to_string(float value, bool append_trailing_decimal) {
  */
 std::string fixed_point_to_string(s64 value, s64 scale, bool append_trailing_decimal) {
   float sign = value < 0 ? -1 : 1;
-  value = abs(value);
+  value = std::abs(value);
   double naive = (double)value / scale;
 
   double flt_scale = 1;
