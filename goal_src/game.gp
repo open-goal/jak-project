@@ -26,6 +26,18 @@
 ;; It is an error to have a circular dependency and this will crash the compiler due to stack overflow.
 
 ;;;;;;;;;;;;;;;;;;;;;;;
+;; Build Groups
+;;;;;;;;;;;;;;;;;;;;;;;
+(define *all-cgos* '())
+(define *all-str* '())
+(define *all-vis* '())
+(define *all-mus* '())
+(define *all-sbk* '())
+(define *all-vag* '())
+(define *all-gc* '())
+
+
+;;;;;;;;;;;;;;;;;;;;;;;
 ;; Build system macros
 ;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -40,24 +52,29 @@
 
 (defmacro goal-src (src-file &rest deps)
   "Add a GOAL source file with the given dependencies"
-  `(defstep :in ,(string-append "goal_src/" src-file)
+  `(let ((output-file ,(gc-file->o-file src-file)))
+    (set! *all-gc* (cons output-file *all-gc*))
+    (defstep :in ,(string-append "goal_src/" src-file)
      ;; use goal compiler
      :tool 'goalc
      ;; will output the obj file
-     :out '(,(gc-file->o-file src-file))
+     :out (list output-file)
      ;; dependencies are the obj files
      :dep '(,@(apply gc-file->o-file deps))
      )
+    )
   )
 
 (defun make-src-sequence-elt (current previous prefix)
   "Helper for goal-src-sequence"
-  `(defstep :in ,(string-append "goal_src/" prefix current)
+  `(let ((output-file ,(gc-file->o-file current)))
+    (set! *all-gc* (cons output-file *all-gc*))
+    (defstep :in ,(string-append "goal_src/" prefix current)
      :tool 'goalc
-     :out '(,(gc-file->o-file current))
-     :dep '(#|"iso/KERNEL.CGO"|#
-           ,(gc-file->o-file previous))
+     :out (list output-file)
+     :dep '(,(gc-file->o-file previous))
      )
+    )
   )
 
 (defmacro goal-src-sequence (prefix &key (deps '()) &rest sequence)
@@ -86,7 +103,6 @@
     )
   )
 
-(define *all-cgos* '())
 (defun cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
   (let ((out-name (string-append "out/iso/" output-name)))
@@ -146,24 +162,20 @@
              :out `(,out-name))
     out-name))
 
-(define *all-str* '())
 (defmacro copy-strs (&rest strs)
   `(begin ,@(apply (lambda (x) `(set! *all-str* (cons (copy-iso-file ,x "STR/" ".STR") *all-str*))) strs)))
 
-(define *all-vis* '())
 (defmacro copy-vis-files (&rest files)
   `(begin ,@(apply (lambda (x) `(set! *all-vis* (cons (copy-iso-file ,x "VIS/" ".VIS") *all-vis*))) files)))
 
 ;; Files not yet added in here:
 ;; - TESTTONE.SBK
-(define *all-sbk* '())
 (defmacro copy-sbk-files (&rest files)
   `(begin ,@(apply (lambda (x) `(set! *all-sbk* (cons (copy-iso-file ,x "SBK/" ".SBK") *all-sbk*))) files)))
 
-(define *all-mus* '())
 (defmacro copy-mus-files (&rest files)
   `(begin ,@(apply (lambda (x) `(set! *all-mus* (cons (copy-iso-file ,x "MUS/" ".MUS") *all-mus*))) files)))
-(define *all-vag* '())
+
 (defmacro copy-vag-files (&rest files)
   `(begin ,@(apply (lambda (x) `(set! *all-vag* (cons (copy-iso-file "VAGWAD" "VAG/" (string-append "." ,x)) *all-vag*))) files)))
 
@@ -294,7 +306,7 @@
   "EIPOLE"
   "EIRACER"
   "EITUBE"
-  
+
   ;; intro camera
   "NDINTRO"
   "LOINTRO"
@@ -1599,7 +1611,17 @@
  "dma/dma-buffer.gc"
  "dma/dma-bucket.gc"
  "dma/dma-disasm.gc"
- "ps2/pad.gc"
+ )
+
+
+ (goal-src "engine/ps2/pad.gc" "pckernel-h")
+
+(goal-src-sequence
+ ;; prefix
+ "engine/"
+
+ :deps
+ ("out/ps2/pad.o")
  "gfx/hw/gs.gc"
  "gfx/hw/display-h.gc"
  "math/vector.gc"
@@ -1817,7 +1839,17 @@
  "gfx/tie/prototype.gc"
  "collide/main-collide.gc"
  "game/video.gc"
- "game/main.gc"
+ )
+
+ (goal-src "engine/game/main.gc" "pckernel" "video")
+
+ (goal-src-sequence
+ ;; prefix
+ "engine/"
+
+ :deps
+ ("out/main.o")
+
  "collide/collide-cache.gc"
  "entity/relocate.gc"
  "debug/memory-usage.gc"
@@ -1916,11 +1948,12 @@
    )
  )
 
-
 ;; Custom or Modified Code
 (goal-src "pc/pckernel-h.gc" "dma-disasm")
 (goal-src "pc/pckernel.gc" "settings")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
 
-
+(group-list "all-code"
+  `(,@(reverse *all-gc*))
+  )
