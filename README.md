@@ -53,9 +53,9 @@ Our objectives are:
 
 We support both Linux and Windows on x86-64.
 
-We have a Discord server where we discuss development. https://discord.gg/VZbXMHXzWv
+### **[Please read the FAQ by clicking here if you have any questions.](FAQ.md)**
 
-**[If you have any questions, please read the FAQ here beforehand.](FAQ.md)**
+We have a Discord server where we discuss development: https://discord.gg/VZbXMHXzWv
 
 ## Current Status
 
@@ -74,10 +74,9 @@ We don't save any assets from the game - you must bring your own copy of the gam
 
 ## What's Next
 
-- Continue decompilation of GOAL code. We've made huge progress recently in decompiling gameplay code. We're finishing that up and also working on the some of the rendering code. Here's our decompilation progress over the past year: ![](./docs/img/code_progress.png)
-- Bug testing! The game can be beaten 100%, but it's possible a few things do not work correctly.
-- Improve the decompiler. We are always finding new features and macros in the GOAL language.
-- Investigate more complicated renderers. We have an in-progress port of the "merc" foreground renderer, shown in the screenshots above.
+- Bug testing! The game can be beaten 100% from start to finish, but it's possible a few things do not work correctly.
+- Improve the decompiler and clean up decompilation of GOAL code. We are always finding new features and macros in the GOAL language.
+- Investigate and rewrite the more complicated renderers.
 
 ## Getting Started - Linux
 
@@ -280,7 +279,7 @@ gc>
 
 In the graphics window, you can use the period key to bring up the debug menu. Controllers also work, using the same mapping as the original game.
 
-Check out the `pc_debug`, `examples` and `engine/pc/` folders under `goal_src` for some examples of GOAL code we wrote. The debug files that are not loaded automatically by the engine have instructions for how to run them.
+Check out the `pc_debug`, `examples` and `pc` folders under `goal_src` for some examples of GOAL code we wrote. The debug files that are not loaded automatically by the engine have instructions for how to run them.
 
 ## Project Layout
 
@@ -347,6 +346,7 @@ The final component is the "runtime", located in `game`. This is the part of the
     - `examples`: Example GOAL code we have written.
     - `test`: Test code we have written.
     - `pc_debug`: GOAL code for PC-specific debugging. Also written by us.
+    - `pc`: GOAL code for PC-specific features. Also written by us.
     - `user`: User sandboxes. Written by you! And anyone else that wishes to share their user code.
 - `goalc`: The OpenGOAL compiler.
     - `compiler`: The implementation of the OpenGOAL language.
