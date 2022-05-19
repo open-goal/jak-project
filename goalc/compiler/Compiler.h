@@ -20,6 +20,8 @@
 #include "goalc/make/MakeSystem.h"
 #include "goalc/data_compiler/game_text_common.h"
 
+#include <mutex>
+
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
 enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
@@ -27,7 +29,12 @@ enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
 class Compiler {
  public:
   Compiler(const std::string& user_profile = "#f", std::unique_ptr<ReplWrapper> repl = nullptr);
-  ReplStatus execute_repl(bool auto_listen = false, bool auto_debug = false);
+  ~Compiler();
+  void save_repl_history();
+  void print_to_repl(const std::string_view& str);
+  std::string get_prompt();
+  std::string get_repl_input();
+  ReplStatus handle_repl_string(const std::string& input);
   goos::Interpreter& get_goos() { return m_goos; }
   FileEnv* compile_object_file(const std::string& name, goos::Object code, bool allow_emit);
   std::unique_ptr<FunctionEnv> compile_top_level_function(const std::string& name,

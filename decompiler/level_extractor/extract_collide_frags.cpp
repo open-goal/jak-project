@@ -57,32 +57,6 @@ float u32_to_float(u32 in) {
   return r;
 }
 
-u16 deref_u16(const Ref& ref, int array_idx) {
-  u32 u32_offset = array_idx / 2;
-  u32 u32_val = level_tools::deref_u32(ref, u32_offset);
-  if (array_idx & 1) {
-    return u32_val >> 16;
-  } else {
-    return (u16)u32_val;
-  }
-}
-
-s8 deref_s8(const Ref& ref, int byte) {
-  u32 u32_offset = byte / 4;
-  u32 u32_val = level_tools::deref_u32(ref, u32_offset);
-  s8 vals[4];
-  memcpy(vals, &u32_val, 4);
-  return vals[byte & 3];
-}
-
-u8 deref_u8(const Ref& ref, int byte) {
-  u32 u32_offset = byte / 4;
-  u32 u32_val = level_tools::deref_u32(ref, u32_offset);
-  u8 vals[4];
-  memcpy(vals, &u32_val, 4);
-  return vals[byte & 3];
-}
-
 void unpack_part1_collide_list_item(CollideListItem& item) {
   int in_idx = 0;
   int out_idx = 0;
@@ -204,7 +178,7 @@ void extract_pats(CollideListItem& item) {
   for (auto& f : item.unpacked.faces) {
     auto pat_idx = deref_u8(item.mesh->packed_data, byte_offset++);
 
-    u32 pat = level_tools::deref_u32(item.mesh->pat_array, pat_idx);
+    u32 pat = deref_u32(item.mesh->pat_array, pat_idx);
     // fmt::print("pat @ {} is 0x{:x}\n", pat_idx, pat);
     f.pat = pat;
   }

@@ -7,6 +7,8 @@
 #include "common/log/log.h"
 #include <cstring>
 #include <cstdio>
+#include "game/overlord/srpc.h"
+#include "game/sound/sndshim.h"
 #include "iso.h"
 #include "iso_cd.h"
 #include "iso_queue.h"
@@ -17,20 +19,43 @@
 #include "fake_iso.h"
 #include "game/common/dgo_rpc_types.h"
 #include "common/util/Assert.h"
+#include "game/sound/sdshim.h"
 
 using namespace iop;
 
 u32 ISOThread();
 u32 DGOThread();
-u32 ProcessVAGData(IsoMessage* _cmd, IsoBufferHeader* buffer_header);
 u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer_header);
 u32 CopyDataToEE(IsoMessage* _cmd, IsoBufferHeader* buffer_header);
 u32 CopyDataToIOP(IsoMessage* _cmd, IsoBufferHeader* buffer_header);
 u32 NullCallback(IsoMessage* _cmd, IsoBufferHeader* buffer_header);
 
-constexpr int VAGDIR_SIZE = 0x28b4;
+static void InitVAGCmd(VagCommand* cmd, u32 x);
+static u32 ProcessVAGData(IsoMessage* _cmd, IsoBufferHeader* buffer_header);
+static s32 CheckVAGStreamProgress(VagCommand* vag);
+static void StopVAG(VagCommand* vag);
+static void PauseVAG(VagCommand* vag);
+static void UnpauseVAG(VagCommand* vag);
+static void SetVAGVol();
+static s32 GetPlayPos();
+static void UpdatePlayPos();
+static void VAG_MarkLoopEnd(void* data, u32 size);
+
 constexpr int LOADING_SCREEN_SIZE = 0x800000;
 constexpr u32 LOADING_SCREEN_DEST_ADDR = 0x1000000;
+
+static constexpr s32 LOOP_END = 1;
+static constexpr s32 LOOP_REPEAT = 2;
+static constexpr s32 LOOP_START = 4;
+
+// Empty ADPCM block with loop flags
+// clang-format off
+static u8 VAG_SilentLoop[0x60] = {
+    0x0, LOOP_START | LOOP_REPEAT, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, LOOP_REPEAT,              0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, LOOP_END | LOOP_REPEAT,   0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+};
+// clang-format on
 
 IsoFs* isofs;
 u32 iso_init_flag;
@@ -41,10 +66,23 @@ s32 iso_thread;
 s32 dgo_thread;
 s32 str_thread;
 s32 play_thread;
-u8 gVagDir[VAGDIR_SIZE];
+VagDir gVagDir;
 u32 gPlayPos;
 static RPC_Dgo_Cmd sRPCBuff[1];  // todo move...
 DgoCommand scmd;
+static VagCommand vag_cmd;
+VagCommand* gVAGCMD = nullptr;
+s32 gDialogVolume = 0;
+s32 gFakeVAGClockPaused = 0;
+s32 gFakeVAGClockRunning = 0;
+s32 gFakeVAGClock = 0;
+s32 gRealVAGClockRunning = 0;
+s32 gRealVAGClock = 0;
+s32 gRealVAGClockS = 0;
+s32 gPlaying = 0;
+s32 gSampleRate = 0;
+bool gLastVagHalf = false;
+s32 gVoice;
 
 void iso_init_globals() {
   isofs = nullptr;
@@ -56,7 +94,7 @@ void iso_init_globals() {
   dgo_thread = 0;
   str_thread = 0;
   play_thread = 0;
-  memset(gVagDir, 0, sizeof(gVagDir));
+  memset(&gVagDir, 0, sizeof(gVagDir));
   gPlayPos = 0;
   memset(sRPCBuff, 0, sizeof(sRPCBuff));
   memset(&scmd, 0, sizeof(DgoCommand));
@@ -119,10 +157,9 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   // mark us as NOT initialized.
   iso_init_flag = 1;
 
-  // TODO ADD
-  //  while(!DMA_SendToSPUAndSync(&VAG_SilentLoop, 0x30, gTrapSRAM)) {
-  //    DelayThread(1000);
-  //  }
+  while (!DMA_SendToSPUAndSync(&VAG_SilentLoop, 0x30, gTrapSRAM)) {
+    DelayThread(1000);
+  }
 
   // INITIALIZE MESSAGE BOXES
   MbxParam mbx_param;
@@ -205,7 +242,7 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   // LOAD VAGDIR file
   FileRecord* vagdir_file = FindISOFile("VAGDIR.AYB");
   if (vagdir_file) {
-    LoadISOFileToIOP(vagdir_file, gVagDir, VAGDIR_SIZE);
+    LoadISOFileToIOP(vagdir_file, &gVagDir, sizeof(gVagDir));
   }
   FileRecord* loading_screen_file = FindISOFile(loading_screen);
   if (loading_screen_file) {
@@ -230,29 +267,15 @@ u32 GetISOFileLength(FileRecord* f) {
   return isofs->get_length(f);
 }
 
-struct VagDirEntry {
-  union {
-    char name[8];
-    s32 name_as_s32s[2];
-  };
-
-  u32 unknown;
-};
-static_assert(sizeof(VagDirEntry) == 12, "bad size of VagDirEntry");
-
 /*!
  * Find VAG file by "name", where name is 8 bytes (chars with spaces at the end, treated as two
  * s32's). Returns pointer to name in the VAGDIR file data.
  */
-VagDirEntry* FindVAGFile(s32* name) {
-  // First 4 bytes of VAGDIR file are the number of entries.
-  // Next is a list of entries.
-  VagDirEntry* entry = (VagDirEntry*)(gVagDir + 4);
-
-  // loop over entries
-  for (s32 idx = 0; idx < *(s32*)gVagDir; idx++) {
+VagDirEntry* FindVAGFile(const char* name) {
+  VagDirEntry* entry = gVagDir.vag;
+  for (s32 idx = 0; idx < gVagDir.count; idx++) {
     // check if matching name
-    if (entry->name_as_s32s[0] == name[0] && entry->name_as_s32s[1] == name[1]) {
+    if (memcmp(entry->name, name, 8) == 0) {
       return entry;
     }
     entry++;
@@ -271,6 +294,8 @@ u32 ISOThread() {
   FreeBuffer(temp_buffer);
 
   VagCommand* in_progress_vag_command = nullptr;
+  s32 vag_paused = 0;
+  s32 unk = 0;
 
   // main CD/DVD read loop
   for (;;) {
@@ -280,23 +305,27 @@ u32 ISOThread() {
 
     // receive a message
     IsoMessage* msg_from_mbx;
-    IsoCommandLoadSingle* load_single_cmd;
     s32 mbx_status = PollMbx((MsgPacket**)(&msg_from_mbx), iso_mbx);
-    load_single_cmd = (IsoCommandLoadSingle*)msg_from_mbx;
 
-    if (mbx_status == 0) {
+    if (mbx_status == KE_OK) {
       // we got a new message!
-
       // initialize fields of the message
       msg_from_mbx->callback_buffer = nullptr;
       msg_from_mbx->ready_for_data = 1;
       msg_from_mbx->callback_function = NullCallback;
       msg_from_mbx->fd = nullptr;
 
-      if (msg_from_mbx->cmd_id == LOAD_TO_EE_CMD_ID || msg_from_mbx->cmd_id == LOAD_TO_IOP_CMD_ID ||
-          msg_from_mbx->cmd_id == LOAD_TO_EE_OFFSET_CMD_ID) {
-        // A Simple File Load, add it to the queue
-        if (QueueMessage(msg_from_mbx, 2, "LoadSingle")) {
+      switch (msg_from_mbx->cmd_id) {
+        case LOAD_TO_EE_CMD_ID:
+        case LOAD_TO_IOP_CMD_ID:
+        case LOAD_TO_EE_OFFSET_CMD_ID: {
+          // A Simple File Load, add it to the queue
+          if (!QueueMessage(msg_from_mbx, 2, "LoadSingle")) {
+            break;
+          }
+
+          auto* load_single_cmd = (IsoCommandLoadSingle*)msg_from_mbx;
+
           // if queued successfully, start by opening the file:
           if (load_single_cmd->cmd_id == LOAD_TO_EE_OFFSET_CMD_ID) {
             load_single_cmd->fd =
@@ -314,39 +343,41 @@ u32 ISOThread() {
             UnqueueMessage(load_single_cmd);
             // and wake up whoever requested this.
             ReturnMessage(load_single_cmd);
-          } else {
-            // yep, opened correctly. Set up the pointers/sizes
-            load_single_cmd->dst_ptr = load_single_cmd->dest_addr;
-            load_single_cmd->bytes_done = 0;
-            // by default, copy size is the full file.
-            load_single_cmd->length_to_copy = isofs->get_length(load_single_cmd->file_record);
-
-            if (load_single_cmd->length_to_copy == 0) {
-              // if we get zero for some reason, use the commanded length.
-              ASSERT(false);
-              load_single_cmd->length_to_copy = load_single_cmd->length;
-            } else if (load_single_cmd->length < load_single_cmd->length_to_copy) {
-              // if we ask for less than the full length, use the smaller value.
-              load_single_cmd->length_to_copy = load_single_cmd->length;
-            }
-
-            // set status and callback function.
-            load_single_cmd->status = CMD_STATUS_IN_PROGRESS;
-            switch (msg_from_mbx->cmd_id) {
-              case LOAD_TO_EE_CMD_ID:
-              case LOAD_TO_EE_OFFSET_CMD_ID:
-                msg_from_mbx->callback_function = CopyDataToEE;
-                break;
-              case LOAD_TO_IOP_CMD_ID:
-                msg_from_mbx->callback_function = CopyDataToIOP;
-                break;
-            }
+            break;
           }
-        }
-      } else if (msg_from_mbx->cmd_id == LOAD_DGO_CMD_ID) {
-        // Got a DGO command. There is one LoadDGO command for the entire DGO.
-        if (QueueMessage(msg_from_mbx, 0, "LoadDGO")) {
+
+          // yep, opened correctly. Set up the pointers/sizes
+          load_single_cmd->dst_ptr = load_single_cmd->dest_addr;
+          load_single_cmd->bytes_done = 0;
+          // by default, copy size is the full file.
+          load_single_cmd->length_to_copy = isofs->get_length(load_single_cmd->file_record);
+
+          if (load_single_cmd->length_to_copy == 0) {
+            // if we get zero for some reason, use the commanded length.
+            ASSERT(false);
+            load_single_cmd->length_to_copy = load_single_cmd->length;
+          } else if (load_single_cmd->length < load_single_cmd->length_to_copy) {
+            // if we ask for less than the full length, use the smaller value.
+            load_single_cmd->length_to_copy = load_single_cmd->length;
+          }
+
+          // set status and callback function.
+          load_single_cmd->status = CMD_STATUS_IN_PROGRESS;
+          u32 cmd_id = msg_from_mbx->cmd_id;
+          if (cmd_id == LOAD_TO_EE_CMD_ID || cmd_id == LOAD_TO_EE_OFFSET_CMD_ID) {
+            msg_from_mbx->callback_function = CopyDataToEE;
+          } else if (cmd_id == LOAD_TO_IOP_CMD_ID) {
+            msg_from_mbx->callback_function = CopyDataToIOP;
+          }
+
+        } break;
+        case LOAD_DGO_CMD_ID: {
+          if (!QueueMessage(msg_from_mbx, 0, "LoadDGO")) {
+            break;
+          }
+          // Got a DGO command. There is one LoadDGO command for the entire DGO.
           // queued successfully, open the file.
+          auto* load_single_cmd = (IsoCommandLoadSingle*)msg_from_mbx;
           load_single_cmd->fd = isofs->open(load_single_cmd->file_record, -1);
           if (!load_single_cmd->fd) {
             // failed to open, return error
@@ -359,55 +390,210 @@ u32 ISOThread() {
             ((DgoCommand*)load_single_cmd)->dgo_state = DgoState::Init;
             load_single_cmd->callback_function = RunDGOStateMachine;
           }
-        }
-      } else if (msg_from_mbx->cmd_id == LOAD_SOUND_BANK) {
-        // if there's an in progress vag command, try again.
-        if (!in_progress_vag_command || !in_progress_vag_command->field_0x3c) {
+
+        } break;
+        case LOAD_SOUND_BANK: {
+          // if there's an in progress vag command, try again.
+          if (in_progress_vag_command && !in_progress_vag_command->paused) {
+            SendMbx(iso_mbx, msg_from_mbx);
+            break;
+          }
+
           auto buff = TryAllocateBuffer(BUFFER_PAGE_SIZE);
           if (!buff) {
             // no buffers, try again.
             SendMbx(iso_mbx, msg_from_mbx);
-          } else {
-            auto* cmd = (SoundBankLoadCommand*)msg_from_mbx;
-            isofs->load_sound_bank(cmd->bank_name, cmd->bank);
-            FreeBuffer(buff);
-            ReturnMessage(msg_from_mbx);
+            break;
           }
-        } else {
-          // just try again...
-          SendMbx(iso_mbx, msg_from_mbx);
-        }
-      } else if (msg_from_mbx->cmd_id == LOAD_MUSIC) {
-        // if there's an in progress vag command, try again.
-        if (!in_progress_vag_command || !in_progress_vag_command->field_0x3c) {
+
+          auto* cmd = (SoundBankLoadCommand*)msg_from_mbx;
+          isofs->load_sound_bank(cmd->bank_name, cmd->bank);
+          FreeBuffer(buff);
+          ReturnMessage(msg_from_mbx);
+        } break;
+        case LOAD_MUSIC: {
+          // if there's an in progress vag command, try again.
+          if (in_progress_vag_command && !in_progress_vag_command->paused) {
+            SendMbx(iso_mbx, msg_from_mbx);
+            break;
+          }
+
           auto buff = TryAllocateBuffer(BUFFER_PAGE_SIZE);
           if (!buff) {
             // no buffers, try again.
             SendMbx(iso_mbx, msg_from_mbx);
-          } else {
-            auto* cmd = (MusicLoadCommand*)msg_from_mbx;
-            isofs->load_music(cmd->music_name, cmd->music_handle);
-            FreeBuffer(buff);
-            ReturnMessage(msg_from_mbx);
+            break;
           }
-        } else {
-          // just try again...
-          SendMbx(iso_mbx, msg_from_mbx);
-        }
-      }
 
-      else {
-        printf("[OVERLORD] Unknown ISOThread message id 0x%x\n", msg_from_mbx->cmd_id);
-      }
+          auto* cmd = (MusicLoadCommand*)msg_from_mbx;
+          isofs->load_music(cmd->music_name, cmd->music_handle);
+          FreeBuffer(buff);
+          ReturnMessage(msg_from_mbx);
 
-      // TODO magic number
-    } else if (mbx_status == -0x1a9) {
+        } break;
+        case QUEUE_VAG_STREAM: {
+          auto* cmd = (VagCommand*)msg_from_mbx;
+          if (cmd->vag &&
+              (!in_progress_vag_command || in_progress_vag_command->vag != cmd->vag ||
+               in_progress_vag_command->file != cmd->file) &&
+              (!in_progress_vag_command || (!vag_paused && in_progress_vag_command->paused))) {
+            if (in_progress_vag_command) {
+              gVAGCMD = nullptr;
+              StopVAG(in_progress_vag_command);
+              ReleaseMessage(in_progress_vag_command);
+            }
+            in_progress_vag_command = &vag_cmd;
+            memcpy(&vag_cmd, cmd, sizeof(vag_cmd));
+            InitVAGCmd(&vag_cmd, 1);
+            LoadStackEntry* file = nullptr;
+            if (QueueMessage(&vag_cmd, 3, "QueueVAG")) {
+              if (vag_cmd.vag) {
+                file = isofs->open_wad(vag_cmd.file, vag_cmd.vag->offset);
+              }
+              vag_cmd.fd = file;
+              vag_cmd.status = -1;
+              vag_cmd.callback_function = ProcessVAGData;
+              gVAGCMD = &vag_cmd;
+            } else {
+              in_progress_vag_command = nullptr;
+            }
+          }
+          ReturnMessage(cmd);
+        } break;
+        case PLAY_VAG_STREAM: {
+          auto* cmd = (VagCommand*)msg_from_mbx;
+          bool thing = true;
+          if (in_progress_vag_command && in_progress_vag_command->vag == cmd->vag &&
+              in_progress_vag_command->file == cmd->file) {
+            in_progress_vag_command->volume = cmd->volume;
+            in_progress_vag_command->sound_id = cmd->sound_id;
+            if (in_progress_vag_command->paused) {
+              if (vag_paused) {
+                unk = 1;
+              } else {
+                UnpauseVAG(in_progress_vag_command);
+              }
+            }
+          } else {
+            if (in_progress_vag_command && !in_progress_vag_command->paused &&
+                cmd->priority < in_progress_vag_command->priority) {
+              thing = false;
+            }
+            if (thing) {
+              if (in_progress_vag_command) {
+                gVAGCMD = nullptr;
+                StopVAG(in_progress_vag_command);
+                ReleaseMessage(in_progress_vag_command);
+              }
+              in_progress_vag_command = &vag_cmd;
+              memcpy(&vag_cmd, cmd, sizeof(vag_cmd));
+              if (vag_paused) {
+                InitVAGCmd(&vag_cmd, 1);
+                unk = 1;
+              } else {
+                InitVAGCmd(&vag_cmd, 0);
+              }
+              vag_cmd.messagebox_to_reply = 0;
+              vag_cmd.thread_id = 0;
+              if (QueueMessage(&vag_cmd, 3, "PlayVag")) {
+                if (vag_cmd.vag) {
+                  vag_cmd.fd = isofs->open_wad(vag_cmd.file, vag_cmd.vag->offset);
+                } else {
+                  vag_cmd.fd = nullptr;
+                }
+                vag_cmd.status = -1;
+                vag_cmd.callback_function = ProcessVAGData;
+                gVAGCMD = &vag_cmd;
+              } else {
+                in_progress_vag_command = nullptr;
+              }
+            }
+          }
+          if (thing) {
+            if (!in_progress_vag_command || in_progress_vag_command->fd) {
+              gRealVAGClock = 0;
+              gRealVAGClockS = 0;
+              gRealVAGClockRunning = true;
+            } else {
+              gFakeVAGClock = 0;
+              gFakeVAGClockRunning = true;
+              gFakeVAGClockPaused = 0;
+            }
+            gVAG_Id = in_progress_vag_command->sound_id;
+          }
+          ReturnMessage(cmd);
+        } break;
+        case STOP_VAG_STREAM: {
+          auto* cmd = (VagCommand*)msg_from_mbx;
+          if (in_progress_vag_command && (!cmd->vag || in_progress_vag_command->vag == cmd->vag) &&
+              (cmd->priority >= in_progress_vag_command->priority)) {
+            gVAGCMD = nullptr;
+            StopVAG(in_progress_vag_command);
+            ReleaseMessage(in_progress_vag_command);
+            in_progress_vag_command = nullptr;
+          }
+          vag_paused = 0;
+          unk = 0;
+          ReturnMessage(cmd);
+        } break;
+        case PAUSE_VAG_STREAM: {
+          auto* cmd = (VagCommand*)msg_from_mbx;
+          gFakeVAGClockPaused = 1;
+          if (!vag_paused) {
+            if (!in_progress_vag_command || in_progress_vag_command->paused) {
+              unk = 0;
+            } else {
+              PauseVAG(in_progress_vag_command);
+              unk = 1;
+            }
+            vag_paused = 1;
+          }
+          ReturnMessage(cmd);
+        } break;
+        case CONTINUE_VAG_STREAM: {
+          auto* cmd = (VagCommand*)msg_from_mbx;
+          gFakeVAGClockPaused = 0;
+          if (vag_paused) {
+            if (unk) {
+              UnpauseVAG(in_progress_vag_command);
+            }
+            vag_paused = 0;
+            unk = 0;
+          }
+          ReturnMessage(cmd);
+        } break;
+        case SET_VAG_VOLUME: {
+          auto* cmd = (VagCommand*)msg_from_mbx;
+          if (in_progress_vag_command) {
+            in_progress_vag_command->volume = cmd->volume;
+            SetVAGVol();
+          }
+          ReturnMessage(cmd);
+        } break;
+        case SET_DIALOG_VOLUME: {
+          auto* cmd = (VagCommand*)msg_from_mbx;
+          gDialogVolume = cmd->volume;
+          if (in_progress_vag_command)
+            SetVAGVol();
+          ReturnMessage(cmd);
+        } break;
+        default:
+          printf("[OVERLORD] Unknown ISOThread message id 0x%x\n", msg_from_mbx->cmd_id);
+      }
+    } else if (mbx_status == KE_WAIT_DELETE) {
       return 0;
     }
 
     ////////////////////////////
-    // Handle Sound (TODO)
+    // Handle Sound
     ////////////////////////////
+
+    if (in_progress_vag_command && !CheckVAGStreamProgress(in_progress_vag_command)) {
+      gVAGCMD = nullptr;
+      StopVAG(in_progress_vag_command);
+      ReleaseMessage(in_progress_vag_command);
+      in_progress_vag_command = nullptr;
+    }
 
     ////////////////////////////
     // Begin a read
@@ -770,15 +956,16 @@ u32 NullCallback(IsoMessage* _cmd, IsoBufferHeader* buffer_header) {
 /*!
  * Initialize a VagCommand.
  */
-void InitVAGCmd(VagCommand* cmd, u32 x) {
-  cmd->field_0x30 = 0;
-  cmd->field_0x34 = 0;
-  cmd->field_0x38 = 0;
-  cmd->field_0x3c = x;
-  cmd->field_0x40 = 0;
-  cmd->field_0x44 = 0;
-  cmd->field_0x48 = 0xffffffff;
-  gPlayPos = 0x30;
+static void InitVAGCmd(VagCommand* cmd, u32 x) {
+  cmd->buffer_number = 0;
+  cmd->data_left = 0;
+  cmd->started = 0;
+  cmd->paused = x;
+  cmd->sample_rate = 0;
+  cmd->stop = 0;
+  cmd->end_point = -1;
+  cmd->unk2 = 0;
+  gPlayPos = 48;
   cmd->messagebox_to_reply = 0;
   cmd->thread_id = 0;
 }
@@ -790,24 +977,271 @@ u32 bswap(u32 in) {
   return ((in >> 0x18) & 0xff) | ((in >> 8) & 0xff00) | ((in & 0xff00) << 8) | (in << 0x18);
 }
 
-/*!
- * TODO - implement.
- */
-u32 ProcessVAGData(IsoMessage* _cmd, IsoBufferHeader* buffer_header) {
-  (void)_cmd;
-  (void)buffer_header;
-  ASSERT(false);
-  return 0;
+static u32 ProcessVAGData(IsoMessage* _cmd, IsoBufferHeader* buffer_header) {
+  auto* vag = (VagCommand*)_cmd;
+  if (vag->stop) {
+    buffer_header->data_size = 0;
+    return CMD_STATUS_IN_PROGRESS;
+  }
+
+  if (vag->buffer_number == 0) {
+    // first buffer, set stuff up
+    u32* data = (u32*)buffer_header->data;
+    if (data[0] != 0x70474156 /* 'pGAV' */ && data[0] != 0x56414770 /* 'VAGp' */) {
+      vag->stop = true;
+      buffer_header->data_size = 0;
+      return CMD_STATUS_IN_PROGRESS;
+    }
+
+    vag->sample_rate = data[4];
+    vag->data_left = data[3];
+    if (data[0] == 0x70474156 /* 'pGAV' */) {
+      vag->sample_rate = bswap(vag->sample_rate);
+      vag->data_left = bswap(vag->data_left);
+    }
+
+    gSampleRate = vag->sample_rate;
+    gLastVagHalf = false;
+    vag->data_left += 48;
+    if (buffer_header->data_size >= vag->data_left) {
+      vag->end_point = vag->data_left - 16;
+    }
+
+    if (!DMA_SendToSPUAndSync(buffer_header->data, buffer_header->data_size, gStreamSRAM)) {
+      return CMD_STATUS_IN_PROGRESS;
+    }
+
+    sceSdSetParam(gVoice | SD_VP_VOLL, 0);
+    sceSdSetParam(gVoice | SD_VP_VOLR, 0);
+    u32 vmix = sceSdGetSwitch((gVoice & 1) | SD_S_VMIXL);
+    sceSdSetSwitch((gVoice & 1) | SD_S_VMIXL, vmix | (1 << (gVoice >> 1)));
+    vmix = sceSdGetSwitch((gVoice & 1) | SD_S_VMIXR);
+    sceSdSetSwitch((gVoice & 1) | SD_S_VMIXR, vmix | (1 << (gVoice >> 1)));
+    sceSdSetParam(gVoice | SD_VP_PITCH, 0);
+    sceSdSetAddr(gVoice | SD_VA_SSA, gStreamSRAM + 0x30);
+    sceSdSetParam(gVoice | SD_VP_ADSR1, 0xf);
+    sceSdSetParam(gVoice | SD_VP_ADSR2, 0x1fc0);
+    if (vag->end_point == -1) {
+      sceSdSetAddr(gVoice | SD_VA_LSAX, gTrapSRAM);
+    }
+    snd_keyOnVoiceRaw(gVoice & 1, gVoice >> 1);
+    vag->started = 1;
+    vag->data_left -= buffer_header->data_size;
+    buffer_header->data_size = 0;
+  }
+
+  if (vag->buffer_number == 1) {
+    if (buffer_header->data_size < vag->data_left) {
+      VAG_MarkLoopEnd(buffer_header->data, buffer_header->data_size);
+      FlushDcache();
+    } else {
+      vag->end_point = vag->data_left + 0x5FF0;
+    }
+
+    if (!DMA_SendToSPUAndSync(buffer_header->data, buffer_header->data_size,
+                              gStreamSRAM + 0x6000)) {
+      return CMD_STATUS_IN_PROGRESS;
+    }
+
+    if (!vag->paused) {
+      vag->paused = 1;
+      UnpauseVAG(vag);
+    }
+
+    vag->ready_for_data = 0;
+    vag->data_left -= buffer_header->data_size;
+    buffer_header->data_size = 0;
+    gPlayPos = 48;
+    gPlaying = true;
+  }
+
+  if (vag->buffer_number > 1) {
+    if ((vag->buffer_number & 1) != 0) {
+      if (buffer_header->data_size < vag->data_left) {
+        VAG_MarkLoopEnd(buffer_header->data, buffer_header->data_size);
+        FlushDcache();
+      } else {
+        vag->end_point = vag->data_left + 0x5FF0;
+      }
+
+      if (!DMA_SendToSPUAndSync(buffer_header->data, buffer_header->data_size,
+                                gStreamSRAM + 0x6000)) {
+        return CMD_STATUS_IN_PROGRESS;
+      }
+
+      sceSdSetAddr(gVoice | SD_VA_LSAX, gStreamSRAM + 0x6000);
+    } else {
+      if (buffer_header->data_size < vag->data_left) {
+        VAG_MarkLoopEnd(buffer_header->data, buffer_header->data_size);
+        FlushDcache();
+      } else {
+        vag->end_point = vag->data_left - 16;
+      }
+
+      if (!DMA_SendToSPUAndSync(buffer_header->data, buffer_header->data_size, gStreamSRAM)) {
+        return CMD_STATUS_IN_PROGRESS;
+      }
+
+      sceSdSetAddr(gVoice | SD_VA_LSAX, gStreamSRAM);
+    }
+
+    vag->ready_for_data = 0;
+    vag->data_left -= buffer_header->data_size;
+    buffer_header->data_size = 0;
+  }
+
+  vag->buffer_number++;
+  return CMD_STATUS_IN_PROGRESS;
 }
 
-// TODO - StopVAG
-// TODO - PauseVAG
-// TODO - CalculateVAGVolumes
-// TODO - UnpauseVAG
-// TODO - SetVAGVol
-// TODO - GetPlayPos
-// TODO - UpdatePlayPos
-// TODO - CheckVAGStreamProgress
+static s32 CheckVAGStreamProgress(VagCommand* vag) {
+  if (vag->stop) {
+    return 0;
+  }
+
+  if (!vag->started) {
+    return 1;
+  }
+
+  if (vag->end_point != -1) {
+    if ((gPlayPos & 0xFFFFFFF0) == vag->end_point) {
+      return 0;
+    }
+
+    if (((gPlayPos < 0x6000) && (vag->end_point < 0x6000)) ||
+        ((0x5fff < gPlayPos && (0x5fff < vag->end_point)))) {
+      if ((vag->unk2 == 0) && (gPlayPos < vag->end_point)) {
+        sceSdSetAddr(gVoice | SD_VA_LSAX, gStreamSRAM + vag->end_point);
+        vag->unk2 = 1;
+      }
+
+      return 1;
+    }
+  }
+
+  if (gPlayPos < 0x6000) {
+    if ((vag->buffer_number & 1) != 0) {
+      vag->ready_for_data = 1;
+      sceSdSetAddr(gVoice | SD_VA_LSAX, gTrapSRAM);
+    }
+
+  } else {
+    if ((vag->buffer_number & 1) == 0) {
+      vag->ready_for_data = 1;
+      sceSdSetAddr(gVoice | SD_VA_LSAX, gTrapSRAM);
+    }
+  }
+
+  return 1;
+}
+
+static void StopVAG(VagCommand* vag) {
+  gPlaying = false;
+  PauseVAG(vag);
+  snd_keyOffVoiceRaw(gVoice & 1, gVoice >> 1);
+  gFakeVAGClockRunning = false;
+  gRealVAGClockRunning = false;
+  gVAG_Id = 1;
+}
+
+static void PauseVAG(VagCommand* vag) {
+  gFakeVAGClockPaused = true;
+  if (vag->paused) {
+    return;
+  }
+
+  vag->paused = true;
+  if (vag->started) {
+    sceSdSetParam(gVoice | SD_VP_VOLL, 0);
+    sceSdSetParam(gVoice | SD_VP_VOLR, 0);
+    sceSdSetParam(gVoice | SD_VP_PITCH, 0);
+  }
+}
+
+static void CalculateVAGVolumes(s32 volume, s32 positioned, Vec3w* trans, s32* left, s32* right) {
+  if (positioned) {
+    volume = CalculateFallofVolume(trans, (volume * gDialogVolume) >> 10, 1, 10, 50);
+    auto* pan = &gPanTable[(630 - CalculateAngle(trans)) % 360];
+    *left = (pan->left * volume) >> 10;
+    *right = (pan->right * volume) >> 10;
+    if (*left >= 0x4000) {
+      *left = 0x3FFF;
+    }
+    if (*right >= 0x4000) {
+      *right = 0x3FFF;
+    }
+  } else {
+    volume = (volume * gDialogVolume) >> 6;
+    if (volume >= 0x4000) {
+      volume = 0x3FFF;
+    }
+
+    *left = volume;
+    *right = volume;
+  }
+}
+
+static void UnpauseVAG(VagCommand* vag) {
+  gFakeVAGClockPaused = false;
+  if (vag->paused) {
+    if (vag->started) {
+      s32 left = 0, right = 0;
+      CalculateVAGVolumes(vag->volume, vag->positioned, &vag->trans, &left, &right);
+      sceSdSetParam(gVoice | SD_VP_VOLL, left);
+      sceSdSetParam(gVoice | SD_VP_VOLR, right);
+      sceSdSetParam(gVoice | SD_VP_PITCH, (vag->sample_rate << 12) / 48000);
+    }
+
+    vag->paused = false;
+  }
+}
+
+static void SetVAGVol() {
+  if (gVAGCMD && gVAGCMD->started && !gVAGCMD->paused) {
+    s32 left = 0, right = 0;
+    CalculateVAGVolumes(gVAGCMD->volume, gVAGCMD->positioned, &gVAGCMD->trans, &left, &right);
+    sceSdSetParam(gVoice | SD_VP_VOLL, left);
+    sceSdSetParam(gVoice | SD_VP_VOLR, right);
+  }
+}
+
+static s32 GetPlayPos() {
+  // This does the safe NAX read by reading NAX in a loop until it returns
+  // the same value 3 times in a row. We can skip this on pc.
+  u32 NAX = sceSdGetAddr(gVoice | SD_VA_NAX);
+  // We can also say our sample buffer always starts at 0 to simplify things.
+  if (NAX > 0xBFFF) {
+    return -1;
+  } else {
+    return NAX;
+  }
+}
+
+static void UpdatePlayPos() {
+  if (!gPlaying) {
+    return;
+  }
+
+  u32 pos = GetPlayPos();
+  if (pos == -1) {
+    if (gLastVagHalf) {
+      pos = 0xC000;
+    } else {
+      pos = 0x6000;
+    }
+  } else {
+    gLastVagHalf = pos >= 0x6000;
+  }
+
+  if (pos >= gPlayPos) {
+    gRealVAGClockS += pos - gPlayPos;
+  } else {
+    gRealVAGClockS += pos + 0xC000 - gPlayPos;
+  }
+
+  gRealVAGClock = 4 * (0x1C00 * (gRealVAGClockS / 16) / gSampleRate);
+  gPlayPos = pos;
+}
 
 void* RPC_DGO(unsigned int fno, void* _cmd, int y);
 void LoadDGO(RPC_Dgo_Cmd* cmd);
@@ -969,8 +1403,17 @@ void CancelDGO(RPC_Dgo_Cmd* cmd) {
   }
 }
 
-// TODO - GetVAGStreamPos
-// TODO - VAG_MarkLoopStart
-// TODO - VAG_MarkLoopEnd
-// TODO - VAG_MarkNonloopStart
-// TODO - VAG_MarkNonloopEnd
+s32 GetVAGStreamPos() {
+  UpdatePlayPos();
+  if (gFakeVAGClockRunning) {
+    return gFakeVAGClock;
+  }
+  if (gRealVAGClockRunning) {
+    return gRealVAGClock;
+  }
+  return -1;
+}
+
+static void VAG_MarkLoopEnd(void* data, u32 size) {
+  ((u8*)data)[size - 15] = 3;
+}

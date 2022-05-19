@@ -3,7 +3,7 @@
 #include "game/overlord/srpc.h"
 #include "ssound.h"
 #include "common/util/Assert.h"
-#include "sndshim.h"
+#include "game/sound/sndshim.h"
 
 using namespace iop;
 
@@ -19,8 +19,9 @@ s32 gMusicVol = 0x400;
 s32 gMusicFade = 0;
 s32 gMusicFadeDir = 0;
 
-u32 gVoice;
-u32 gStreamSRAM;
+u32 gStreamSRAM = 0;
+u32 gTrapSRAM = 0;
+
 s32 gSema;
 
 static u32 sLastTick;
@@ -87,10 +88,12 @@ void InitSound_Overlord() {
   // The voice allocator returns a number in the range 0-47 where voices
   // 0-23 are on SPU Core 0 and 24-47 are on core 2.
   // For some reason we convert it to this format where 0-47 alternate core every step.
-  gVoice = voice / 24 + ((voice % 24) * 2);
+  voice = voice / 24 + ((voice % 24) * 2);
 
   // Allocate SPU RAM for our streams.
+  // (Which we don't need on PC)
   gStreamSRAM = snd_SRAMMalloc(0xc030);
+  gTrapSRAM = gStreamSRAM + 0xC000;
 
   snd_SetMixerMode(0, 0);
 
@@ -100,9 +103,10 @@ void InitSound_Overlord() {
 
   snd_SetGroupVoiceRange(1, 0, 0xf);
   snd_SetGroupVoiceRange(2, 0, 0xf);
-  snd_SetReverbDepth(3, 0, 0);
-  snd_SetReverbType(1, 0);
-  snd_SetReverbType(2, 0);
+
+  snd_SetReverbDepth(SND_CORE_0 | SND_CORE_1, 0, 0);
+  snd_SetReverbType(SND_CORE_0, SD_REV_MODE_OFF);
+  snd_SetReverbType(SND_CORE_1, SD_REV_MODE_OFF);
 
   CatalogSRAM();
 
@@ -432,8 +436,8 @@ void UpdateVolume(Sound* sound) {
 }
 
 void SetEarTrans(Vec3w* ear_trans, Vec3w* cam_trans, s32 cam_angle) {
-  s32 tick = 0;  // snd_GetTick();
-  s32 delta = tick - sLastTick;
+  s32 tick = snd_GetTick();
+  u32 delta = tick - sLastTick;
   sLastTick = tick;
 
   gEarTrans = *ear_trans;

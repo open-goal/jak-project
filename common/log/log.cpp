@@ -4,6 +4,8 @@
 #include "third-party/fmt/color.h"
 #include "log.h"
 #ifdef _WIN32  // see lg::initialize
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #endif
 #include "common/util/Assert.h"

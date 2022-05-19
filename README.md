@@ -22,7 +22,6 @@
 - [Getting Started - Linux](#getting-started---linux)
   - [Ubuntu (20.04)](#ubuntu-2004)
   - [Arch](#arch)
-  - [With Nix](#with-nix)
 - [Getting Started - Windows](#getting-started---windows)
   - [Required Software](#required-software)
   - [Setting up and Opening the Project](#setting-up-and-opening-the-project)
@@ -136,26 +135,6 @@ Run tests:
 ./test.sh
 ```
 
-### With Nix
-
-If your Nix supports flakes:
-
-```sh
-nix develop # development environment
-nix build # package
-nix develop '.#jak-asan-dev' # development environment with Clang
-nix build '.#jak-asan' # package with Clang ASan build
-```
-
-Otherwise, with traditional Nix:
-
-```sh
-nix-shell # development environment
-nix-build # package
-nix-shell -A packages.x86_64-linux.jak-asan-dev # development environment with Clang
-nix-build -A packages.x86_64-linux.jak-asan # package with Clang ASan build
-```
-
 ## Getting Started - Windows
 
 ### Required Software
@@ -221,16 +200,16 @@ task repl
 You will be greeted with a prompt like so:
 
 ```sh
- _____             _____ _____ _____ __    
-|     |___ ___ ___|   __|     |  _  |  |   
-|  |  | . | -_|   |  |  |  |  |     |  |__ 
+ _____             _____ _____ _____ __
+|     |___ ___ ___|   __|     |  _  |  |
+|  |  | . | -_|   |  |  |  |  |     |  |__
 |_____|  _|___|_|_|_____|_____|__|__|_____|
       |_|
 Welcome to OpenGOAL 0.8!
 Run (repl-help) for help with common commands and REPL usage.
 Run (lt) to connect to the local target.
 
-g > 
+g >
 ```
 
 Run the following to build the game:

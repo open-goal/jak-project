@@ -281,3 +281,63 @@ std::string inspect_ref(const Ref& ref) {
       ASSERT(false);
   }
 }
+
+u32 deref_u32(const Ref& ref, int word_offset) {
+  if ((ref.byte_offset % 4) != 0) {
+    throw Error("deref_u32 bad alignment");
+  }
+  const auto& word = ref.data->words_by_seg.at(ref.seg).at(word_offset + (ref.byte_offset / 4));
+  if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
+    throw Error("deref_u32 bad kind: {}", (int)word.kind());
+  }
+  return word.data;
+}
+
+u64 deref_u64(const Ref& ref, int dw_offset) {
+  if ((ref.byte_offset % 8) != 0) {
+    throw Error("deref_u64 bad alignment");
+  }
+  const auto& word0 = ref.data->words_by_seg.at(ref.seg).at(ref.byte_offset / 4 + (dw_offset * 2));
+  const auto& word1 =
+      ref.data->words_by_seg.at(ref.seg).at(1 + (ref.byte_offset / 4) + (dw_offset * 2));
+
+  if (word0.kind() != decompiler::LinkedWord::PLAIN_DATA) {
+    throw Error("deref_u64 bad kind: {}", (int)word0.kind());
+  }
+  if (word1.kind() != decompiler::LinkedWord::PLAIN_DATA) {
+    throw Error("deref_u64 bad kind: {}", (int)word1.kind());
+  }
+  u64 result = word1.data;
+  result <<= 32;
+  result |= word0.data;
+  return result;
+}
+
+u16 deref_u16(const Ref& ref, int array_idx) {
+  u32 u32_offset = array_idx / 2;
+  u32 u32_val = deref_u32(ref, u32_offset);
+  if (array_idx & 1) {
+    return u32_val >> 16;
+  } else {
+    return (u16)u32_val;
+  }
+}
+
+s8 deref_s8(const Ref& ref, int byte) {
+  u32 u32_offset = byte / 4;
+  u32 u32_val = deref_u32(ref, u32_offset);
+  s8 vals[4];
+  memcpy(vals, &u32_val, 4);
+  return vals[byte & 3];
+}
+
+u8 deref_u8(const Ref& ref, int byte) {
+  u32 total_offset = ref.byte_offset + byte;
+  const auto& word = ref.data->words_by_seg.at(ref.seg).at(total_offset / 4);
+  if (word.kind() != decompiler::LinkedWord::PLAIN_DATA) {
+    throw Error("deref_u32 bad kind: {}", (int)word.kind());
+  }
+  u8 vals[4];
+  memcpy(vals, &word.data, 4);
+  return vals[total_offset & 3];
+}

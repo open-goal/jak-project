@@ -869,9 +869,6 @@
 (define-extern joint-control-channel-group! (function joint-control-channel art-joint-anim (function joint-control-channel float float float) int))
 (define-extern ja-aframe-num (function int float :behavior process-drawable))
 
-;; this function is modified to work without sound.
-(define *str-pos-hack* 0)
-(define *str-play-speed* 17)
 (define-extern ja-abort-spooled-anim (function spool-anim art-joint-anim int int :behavior process-drawable))
 (defbehavior ja-play-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 art-joint-anim) (arg3 (function process-drawable symbol)))
   (local-vars
@@ -886,7 +883,6 @@
     (spool-sound sound-id)
     (sv-72 int)
     )
-  (set! *str-pos-hack* 0)
   (set! spool-part 0)
   (set! sv-24 -17.0)
   (set! old-skel-status (-> self skel status))
@@ -993,21 +989,14 @@
             )
           (when (zero? spool-part)
             (str-play-async (-> arg0 name) spool-sound)
-            ;; hack!
-            ;;(set! *str-pos-hack* 0)
-            ;;
             (set! (-> *art-control* active-stream) (-> arg0 name))
             )
           (let* ((f30-0 (* 0.05859375 (-> s2-4 speed)))
                  (f28-0 (+ sv-24 (/ (the float (+ (-> s2-4 data 0 length) -1)) f30-0)))
                  )
-            ;;(set! sv-72 (current-str-pos spool-sound))
-            (set! sv-72 *str-pos-hack*)
-            
-            
+            (set! sv-72 (current-str-pos spool-sound))
             (set! sv-40 (-> *display* base-frame-counter))
             (until (>= (the float v0-39) f28-0)
-              (+! *str-pos-hack* *str-play-speed*)
               (if (= (-> self skel root-channel 0) (-> self skel channel))
                   (logior! (-> self skel status) (janim-status spool))
                   )
@@ -1024,7 +1013,7 @@
                   )
               (execute-commands-up-to *load-state* (ja-aframe-num 0))
               (cond
-                ((and (< sv-32 sv-72) #|(= (current-str-id) spool-sound)|#)
+                ((and (< sv-32 sv-72) (= (current-str-id) spool-sound))
                  (set! sv-56 (+ sv-56 (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))))
                  (set! sv-40 (-> *display* base-frame-counter))
                  )
@@ -1035,7 +1024,7 @@
               (set! sv-32 sv-72)
               (set! sv-48 (-> *display* base-frame-counter))
               (suspend)
-              (let ((f0-14 (* (- (the float *str-pos-hack* #|(current-str-pos spool-sound)|#) sv-24) f30-0))
+              (let ((f0-14 (* (- (the float (current-str-pos spool-sound)) sv-24) f30-0))
                     (a0-69 (-> self skel root-channel 0))
                     )
                 (set! (-> a0-69 param 0) (the float (+ (-> a0-69 frame-group data 0 length) -1)))
@@ -1043,7 +1032,7 @@
                 (set! (-> a0-69 frame-num) f0-14)
                 (joint-control-channel-group! a0-69 (the-as art-joint-anim #f) num-func-seek!)
                 )
-              (set! v0-39 *str-pos-hack* #|(current-str-pos spool-sound)|#)
+              (set! v0-39 (current-str-pos spool-sound))
               (set! sv-72 v0-39)
               )
             (set! sv-24 f28-0)

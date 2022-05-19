@@ -433,6 +433,7 @@
   (new 'static 'cam-eye-bank :rot-speed 364.0889 :max-degrees 12743.111 :max-fov 11650.845 :min-fov 6189.511)
   )
 
+;; main first-person camera
 (defstate cam-eye (camera-slave)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -484,7 +485,7 @@
                 (s5-0 (new-stack-matrix0))
                 )
             (when *camera-read-analog*
-              (let ((f30-0 (analog-input
+              (let ((f30-0 (analog-input-horizontal-first   ;; changed for pc port
                              (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
                              (the-as float 0.0)
                              (the-as float 48.0)
@@ -492,7 +493,7 @@
                              (the-as float -1.0)
                              )
                            )
-                    (f0-0 (analog-input
+                    (f0-0 (analog-input-vertical-first   ;; changed for pc port
                             (the-as int (+ (-> *cpad-list* cpads 0 righty) -256 (-> *cpad-list* cpads 0 lefty)))
                             (the-as float 0.0)
                             (the-as float 48.0)
@@ -607,6 +608,7 @@
 
 (define *CAM_BILLY-bank* (new 'static 'cam-billy-bank :rot-speed 364.0889 :tilt-degrees -1820.4445))
 
+;; first person camera for rat game
 (defstate cam-billy (camera-slave)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -658,7 +660,7 @@
           0.0
           (when *camera-read-analog*
             (let ((f1-0
-                    (analog-input
+                    (analog-input-horizontal-first   ;; changed for pc port
                       (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
                       (the-as float 0.0)
                       (the-as float 48.0)
@@ -946,6 +948,7 @@
     )
   )
 
+;; third person cam used to focus on various entities
 (defbehavior cam-circular-position-into-max-angle camera-slave ((arg0 vector) (arg1 vector) (arg2 float))
   (let* ((f30-0 (vector-normalize-ret-len! arg0 (the-as float 1.0)))
          (f26-0 (vector-normalize-ret-len! arg1 (the-as float 1.0)))
@@ -954,7 +957,7 @@
          (s3-0 (new 'stack-no-clear 'matrix))
          )
     (when *camera-read-analog*
-      (let ((f24-0 (analog-input
+      (let ((f24-0 (analog-input-horizontal-third   ;; changed for pc port
                      (the-as int (-> *cpad-list* cpads 0 rightx))
                      (the-as float 128.0)
                      (the-as float 32.0)
@@ -962,7 +965,7 @@
                      (* 8192.0 (-> *display* seconds-per-frame))
                      )
                    )
-            (f1-2 (analog-input
+            (f1-2 (analog-input-vertical-third   ;; changed for pc port
                     (the-as int (-> *cpad-list* cpads 0 righty))
                     (the-as float 128.0)
                     (the-as float 32.0)
@@ -2324,11 +2327,16 @@
       ((< 160 arg0)
        (set! f0-0 (fmin arg1 (* 0.0125 (+ -160.0 (the float arg0)) arg1)))
        )
-      )
-    f0-0
+    )
+    ;; changed for pc port, only used for Third-Person Vertical camera
+    (*
+      (if (and PC_PORT (-> *pc-settings* third-camera-vflip?)) 1.0 -1.0)
+      f0-0
     )
   )
+)
 
+;; main third-person camera
 (defbehavior cam-string-joystick camera-slave ()
   (set! (-> self options) (logand -257 (-> self options)))
   (let ((f28-0 (cam-dist-analog-input (the-as int (-> *cpad-list* cpads 0 righty)) (the-as float 0.05)))
@@ -2419,7 +2427,7 @@
         )
     )
   (when *camera-read-analog*
-    (let ((f0-29 (analog-input
+    (let ((f0-29 (analog-input-horizontal-third   ;; changed for pc port
                    (the-as int (-> *cpad-list* cpads 0 rightx))
                    (the-as float 128.0)
                    (the-as float 32.0)
@@ -3098,6 +3106,7 @@
   (none)
   )
 
+;; third person camera (in debug menu, and fishermans-boat-player-control w/o autopilot?)
 (defstate cam-stick (camera-slave)
   :event
   cam-standard-event-handler
@@ -3134,7 +3143,7 @@
     (when (not (paused?))
       (when *camera-read-analog*
         (let ((f0-0
-                (analog-input
+                (analog-input-vertical-third   ;; changed for pc port
                   (the-as int (-> *cpad-list* cpads 0 righty))
                   (the-as float 128.0)
                   (the-as float 32.0)
@@ -3163,7 +3172,7 @@
             (lerp (-> *CAM_STICK-bank* min-z) (-> *CAM_STICK-bank* max-z) (-> self view-off-param))
             )
       (when *camera-read-analog*
-        (let ((f0-16 (analog-input
+        (let ((f0-16 (analog-input-horizontal-third   ;; changed for pc port
                        (the-as int (-> *cpad-list* cpads 0 rightx))
                        (the-as float 128.0)
                        (the-as float 32.0)
