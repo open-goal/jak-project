@@ -1,6 +1,6 @@
 #include <cstring>
 #include <cstdio>
-#include "game/overlord/sndshim.h"
+#include "game/sound/sndshim.h"
 #include "srpc.h"
 #include "game/sce/iop.h"
 #include "game/common/loader_rpc_types.h"
@@ -11,6 +11,8 @@
 #include "iso_api.h"
 #include "common/util/Assert.h"
 #include "third-party/fmt/core.h"
+#include "iso.h"
+#include "ramdisk.h"
 
 using namespace iop;
 
@@ -25,6 +27,9 @@ static s32 gMusic;
 s32 gMusicTweak = 0x80;
 s32 gMusicPause = 0;
 u32 gFreeMem = 0;
+u32 gFrameNum = 0;
+
+static SoundIopInfo info;
 
 s32 gVAG_Id = 0;  // TODO probably doesn't belong here.
 
@@ -125,8 +130,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
               }
             }
 
-            // TODO vagfile = FindVAGFile(namebuf);
-            void* vagfile = nullptr;
+            auto vagfile = FindVAGFile(namebuf);
 
             memcpy(namebuf, "VAGWAD  ", 8);
             strcpy(&namebuf[8], gLanguage);
@@ -134,10 +138,10 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             FileRecord* rec = isofs->find_in(namebuf);
             if (vagfile != nullptr) {
               if (cmd->play.parms.pitch_mod) {  // ??? TODO Verify what is being checked here
-                // PlayVagStream(rec, vagfile, cmd->play.sound_id, cmd->play.parms.volume, 0,
-                // cmd->play.parms.trans);
+                PlayVAGStream(rec, vagfile, cmd->play.sound_id, cmd->play.parms.volume, 0,
+                              &cmd->play.parms.trans);
               } else {
-                // PlayVagStream(rec, vagfile, cmd->play.sound_id, cmd->play.parms.volume, 0, 0);
+                PlayVAGStream(rec, vagfile, cmd->play.sound_id, cmd->play.parms.volume, 0, nullptr);
               }
             }
             break;
@@ -201,7 +205,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           if (sound != nullptr) {
             snd_PauseSound(sound->sound_handle);
           } else if (cmd->sound_id.sound_id == gVAG_Id) {
-            // TODO PauseVAGStream();
+            PauseVAGStream();
           }
         } break;
         case SoundCommand::STOP_SOUND: {
@@ -209,7 +213,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           if (sound != nullptr) {
             snd_StopSound(sound->sound_handle);
           } else if (cmd->sound_id.sound_id == gVAG_Id) {
-            // TODO StopVAGStream();
+            StopVAGStream(nullptr, 0);
           }
         } break;
         case SoundCommand::CONTINUE_SOUND: {
@@ -217,7 +221,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           if (sound != nullptr) {
             snd_ContinueSound(sound->sound_handle);
           } else if (cmd->sound_id.sound_id == gVAG_Id) {
-            // TODO UNpauseVAGStream();
+            UnpauseVAGStream();
           }
         } break;
         case SoundCommand::SET_PARAM: {
@@ -258,7 +262,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             }
 
           } else if (cmd->sound_id.sound_id == gVAG_Id) {
-            // TODO SetVAGStreamVolume();
+            SetVAGStreamVolume(cmd->param.parms.volume);
           }
         } break;
         case SoundCommand::SET_MASTER_VOLUME: {
@@ -268,7 +272,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
               if (i == 1) {
                 gMusicVol = cmd->master_volume.volume;
               } else if (i == 2) {
-                // TODO SetDialogVolume(cmd->master_volume.volume);
+                SetDialogVolume(cmd->master_volume.volume);
               } else {
                 snd_SetMasterVolume(i, cmd->master_volume.volume);
               }
@@ -278,7 +282,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
         case SoundCommand::PAUSE_GROUP: {
           snd_PauseAllSoundsInGroup(cmd->group.group);
           if ((cmd->group.group & 4) != 0) {
-            // TODO PauseVAGStream(0,0);
+            PauseVAGStream();
           }
           if (cmd->group.group & 2) {
             gMusicPause = 1;
@@ -288,13 +292,13 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           u8 group = cmd->group.group;
           KillSoundsInGroup(group);
           if ((group & 4) != 0) {
-            // TODO StopVAGStream(0,0);
+            StopVAGStream(nullptr, 0);
           }
         } break;
         case SoundCommand::CONTINUE_GROUP: {
           snd_ContinueAllSoundsInGroup(cmd->group.group);
           if (cmd->group.group & 4) {
-            //   UnpauseVAGStream();
+            UnpauseVAGStream();
           }
 
           if (cmd->group.group & 2) {
@@ -421,6 +425,8 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
   return nullptr;
 }
 
+static s32 dmaid = 0;
+
 s32 VBlank_Handler() {
   if (!gSoundEnable)
     return 1;
@@ -438,6 +444,52 @@ s32 VBlank_Handler() {
       gMusicFadeDir = 0;
     }
   }
+
+  if (!gInfoEE)
+    return 1;
+
+  gFrameNum++;
+
+  if (gFakeVAGClockRunning && !gFakeVAGClockPaused) {
+    gFakeVAGClock += 17;
+  }
+
+  // We don't need this, our DMA's are instant
+  // if (dmaid) {
+  //  if (sceSifDmaStat(dmaid) >= 0) {
+  //    return 1;
+  //  }
+  //  dmaid = 0;
+  //}
+
+  info.frame = gFrameNum;
+  info.strpos = GetVAGStreamPos();
+  info.std_id = gVAG_Id;
+  info.freemem = gFreeMem;
+  info.freemem2 = gMemFreeAtStart;
+  // info.nocd = gNoCD;
+  // info.dirtycd = gDirtyCD;
+  info.nocd = 0;
+  info.dirtycd = 0;
+  // info.diskspeed[0] = gDiskSpeed[0];
+  // info.diskspeed[1] = gDiskSpeed[1];
+  // info.lastspeed = gLastSpeed;
+  // info.dupseg = gDupSeg;
+
+  for (int i = 0; i < 48; i++) {
+    if (snd_GetVoiceStatus(i) == 1) {
+      info.chinfo[i] = -1;
+    } else {
+      info.chinfo[i] = 0;
+    }
+  }
+
+  sceSifDmaData dma;
+  dma.data = &info;
+  dma.addr = (void*)gInfoEE;
+  dma.size = 0x110;
+  dma.mode = 0;
+  dmaid = sceSifSetDma(&dma, 1);
 
   return 1;
 }

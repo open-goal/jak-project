@@ -9,6 +9,8 @@
 #include "dma.h"
 #include "common/common_types.h"
 #include "game/sce/iop.h"
+#include "game/sound/sdshim.h"
+#include "game/sound/sndshim.h"
 
 using namespace iop;
 
@@ -85,9 +87,24 @@ void DMA_SendToEE(void* data, u32 size, void* dest) {
  * SPU DMA interrupt handler.
 
  */
-u32 intr() {
+s32 intr(s32 channel, void* userdata) {
   strobe = 1;
   return 0;
 }
 
-// TODO DMA_SendToSPUAndSync()
+bool DMA_SendToSPUAndSync(void* src_addr, u32 size, u32 dst_addr) {
+  s32 channel = snd_GetFreeSPUDMA();
+  if (channel == -1)
+    return false;
+  strobe = 0;
+  sceSdSetTransIntrHandler(channel, intr, nullptr);
+  // Skip this, we end up memcpy's from OOB (which trips asan)
+  // u32 size_aligned = (size + 63) & 0xFFFFFFF0;
+  u32 size_aligned = size;
+  s32 transferred = sceSdVoiceTrans(channel, 0, src_addr, dst_addr, size_aligned);
+  while (!strobe)
+    ;
+  sceSdSetTransIntrHandler(channel, nullptr, nullptr);
+  snd_FreeSPUDMA(channel);
+  return transferred >= size_aligned;
+}

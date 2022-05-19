@@ -11,14 +11,20 @@
 #include "game/common/play_rpc_types.h"
 #include "game/overlord/isocommon.h"
 #include "game/overlord/iso_api.h"
+#include "game/overlord/iso.h"
+#include "game/overlord/srpc.h"
 #include "common/util/Assert.h"
 
 using namespace iop;
 
 static RPC_Str_Cmd sSTRBuf;
-static RPC_Play_Cmd sPLAYBuf;  // todo type
+static RPC_Play_Cmd sPLAYBuf[2];  // todo type
 void* RPC_STR(unsigned int fno, void* _cmd, int y);
 void* RPC_PLAY(unsigned int fno, void* _cmd, int y);
+
+static constexpr int PLAY_MSG_SIZE = 0x40;
+
+static u32 global_vag_count = 0;
 
 /*!
  * We cache the chunk file headers so we can avoid seeking to the chunk header each time we
@@ -65,7 +71,7 @@ u32 PLAYThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, PLAY_RPC_ID, RPC_PLAY, &sPLAYBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, PLAY_RPC_ID, RPC_PLAY, sPLAYBuf, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -148,12 +154,63 @@ void* RPC_STR(unsigned int fno, void* _cmd, int y) {
       }
     }
   }
+
   return cmd;
 }
 
-void* RPC_PLAY(unsigned int fno, void* _cmd, int y) {
-  (void)fno;
-  (void)y;
-  // printf("[RPC_PLAY] ignoring...\n");
+void* RPC_PLAY([[maybe_unused]] unsigned int fno, void* _cmd, int size) {
+  s32 n_messages = size / PLAY_MSG_SIZE;
+  char namebuf[16];
+
+  auto* cmd = (RPC_Play_Cmd*)(_cmd);
+  while (n_messages > 0) {
+    if (cmd->name[0] == '$') {
+      char* name_part = &cmd->name[1];
+      size_t name_len = strlen(name_part);
+
+      if (name_len < 9) {
+        memset(namebuf, ' ', 8);
+        memcpy(namebuf, name_part, name_len);
+      } else {
+        memcpy(namebuf, name_part, 8);
+      }
+
+      // ASCII toupper
+      for (int i = 0; i < 8; i++) {
+        if (namebuf[i] >= 0x61 && namebuf[i] < 0x7b) {
+          namebuf[i] -= 0x20;
+        }
+      }
+    } else {
+      ISONameFromAnimationName(namebuf, cmd->name);
+    }
+
+    auto vag = FindVAGFile(namebuf);
+    memcpy(namebuf, "VAGWAD  ", 8);
+    strcpy(&namebuf[8], gLanguage);
+
+    FileRecord* file = nullptr;
+
+    global_vag_count = (global_vag_count + 1) & 0x3f;
+    if (!cmd->result && global_vag_count == 0) {
+      namebuf[0] -= 3;
+      file = isofs->find_in(namebuf);
+      namebuf[0] += 3;
+    }
+
+    file = isofs->find_in(namebuf);
+
+    if (cmd->result == 0) {
+      PlayVAGStream(file, vag, cmd->address, 0x400, 1, nullptr);
+    } else if (cmd->result == 1) {
+      StopVAGStream(vag, 1);
+    } else {
+      QueueVAGStream(file, vag, 0, 1);
+    }
+
+    n_messages--;
+    cmd++;
+  }
+
   return _cmd;
 }

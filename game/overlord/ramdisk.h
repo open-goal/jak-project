@@ -11,6 +11,8 @@
 
 #include "common/common_types.h"
 
+extern u32 gMemFreeAtStart;
+
 void ramdisk_init_globals();
 void InitRamdisk();
 u32 Thread_Server();

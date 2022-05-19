@@ -127,6 +127,8 @@ add_subdirectory(common)
 # build decompiler
 add_subdirectory(decompiler)
 
+add_subdirectory(third-party/cubeb)
+
 # build glfw library
 add_subdirectory(third-party/glfw)
 add_subdirectory(third-party/zstd)
