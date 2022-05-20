@@ -626,31 +626,23 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *fishermans-boat-sg* fishermans-boat
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 3 0 15)
-  :longest-edge (meters 7.3)
-  )
+(defskelgroup *fishermans-boat-sg* fishermans-boat fishermans-boat-lod0-jg fishermans-boat-idle-ja
+              ((fishermans-boat-lod0-mg (meters 20)) (fishermans-boat-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 15)
+              :longest-edge (meters 7.3)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *fb-evilbro-sg* evilbro
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 1)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *fb-evilbro-sg* evilbro evilbro-lod0-jg evilbro-idle-ja
+              ((evilbro-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *fb-evilsis-sg* evilsis
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 1)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *fb-evilsis-sg* evilsis evilsis-lod0-jg evilsis-idle-ja
+              ((evilsis-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              )
 
 ;; definition for method 23 of type fishermans-boat
 ;; INFO: Return type mismatch int vs none.
@@ -1132,7 +1124,7 @@
     (send-event (handle->process (-> self cam-tracker)) 'mask #x20800)
     (fishermans-boat-set-path-point 0)
     (fishermans-boat-next-path-point)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1297,7 +1289,7 @@
     (send-event (handle->process (-> self cam-tracker)) 'mask #x20800)
     (fishermans-boat-set-path-point 4)
     (fishermans-boat-next-path-point)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1333,7 +1325,7 @@
     (set-continue! *game-info* "misty-start")
     (fishermans-boat-set-dock-point 4)
     (fishermans-boat-set-path-point 2)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1370,7 +1362,7 @@
     (send-event (handle->process (-> self cam-tracker)) 'message 'release)
     (suspend)
     (send-event *camera* 'change-state cam-stick 0)
-    (while #t
+    (loop
       (if (and (= *cheat-mode* 'debug) (cpad-pressed? 0 triangle))
           (set! (-> self auto-pilot) #f)
           )
@@ -1680,16 +1672,14 @@
         (set! (-> self draw force-lod) 0)
         (ja-play-spooled-anim
           (-> self anim)
-          (the-as art-joint-anim (-> self draw art-group data 3))
+          (the-as art-joint-anim fishermans-boat-idle-ja)
           (the-as art-joint-anim #f)
           (the-as (function process-drawable symbol) false-func)
           )
         (set! (-> self draw force-lod) -1)
         (send-event *target* 'blend-shape #f)
         (ja-channel-set! 1)
-        (let ((v1-33 (-> self skel root-channel 0)))
-          (set! (-> v1-33 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-          )
+        (ja :group! fishermans-boat-idle-ja)
         (vector<-cspace! (-> self root-overlay trans) (-> self node-list data 3))
         (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
         (fishermans-boat-reset-physics)
@@ -1857,16 +1847,14 @@
         (set! (-> self draw force-lod) 0)
         (ja-play-spooled-anim
           (-> self anim)
-          (the-as art-joint-anim (-> self draw art-group data 3))
+          (the-as art-joint-anim fishermans-boat-idle-ja)
           (the-as art-joint-anim #f)
           (the-as (function process-drawable symbol) false-func)
           )
         (set! (-> self draw force-lod) -1)
         (send-event *target* 'blend-shape #f)
         (ja-channel-set! 1)
-        (let ((v1-33 (-> self skel root-channel 0)))
-          (set! (-> v1-33 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-          )
+        (ja :group! fishermans-boat-idle-ja)
         (vector<-cspace! (-> self root-overlay trans) (-> self node-list data 3))
         (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
         (fishermans-boat-reset-physics)

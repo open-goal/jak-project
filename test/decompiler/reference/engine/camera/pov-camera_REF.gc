@@ -74,40 +74,16 @@
 ;; INFO: Return type mismatch int vs none.
 (defbehavior pov-camera-play-and-reposition pov-camera ((arg0 art-joint-anim) (arg1 vector) (arg2 float))
   (let ((s4-0 #f))
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) arg0)
-      (set! (-> v1-2 param 0) (the float (+ (-> arg0 data 0 length) -1)))
-      (set! (-> v1-2 param 1) arg2)
-      (set! (-> v1-2 frame-num) 0.0)
-      (joint-control-channel-group! v1-2 arg0 num-func-seek!)
-      )
+    (ja-no-eval :group! arg0 :num! (seek! max arg2) :frame-num 0.0)
     (until (ja-done? 0)
-      (let ((v1-4 (and (not s4-0) (< (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                           (-> self skel root-channel 0 frame-group)
-                                                           )
-                                                       data
-                                                       0
-                                                       length
-                                                       )
-                                                   -4
-                                                   )
-                                          )
-                                     (ja-frame-num 0)
-                                     )
-                       )
-                  )
-            )
+      (let ((v1-4 (and (not s4-0) (< (the float (+ (-> (ja-group) data 0 length) -4)) (ja-frame-num 0)))))
         (when v1-4
           (set! s4-0 #t)
           (send-event *camera* 'teleport-to-vector-start-string arg1)
           )
         )
       (suspend)
-      (let ((a0-4 (-> self skel root-channel 0)))
-        (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
-        (set! (-> a0-4 param 1) arg2)
-        (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! max arg2))
       )
     )
   0
@@ -153,40 +129,11 @@
     (push-setting! *setting-control* self 'sfx-volume 'rel (-> self sfx-volume-movie) 0)
     (cond
       ((= (-> self anim-name type) string)
-       (let ((a0-4 (-> self skel root-channel 0)))
-         (set! (-> a0-4 frame-group) (if (> (-> self skel active-channels) 0)
-                                         (-> self skel root-channel 0 frame-group)
-                                         )
-               )
-         (set! (-> a0-4 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                       (-> self skel root-channel 0 frame-group)
-                                                       )
-                                                   data
-                                                   0
-                                                   length
-                                                   )
-                                               -1
-                                               )
-                                      )
-               )
-         (set! (-> a0-4 param 1) 1.0)
-         (set! (-> a0-4 frame-num) 0.0)
-         (joint-control-channel-group!
-           a0-4
-           (if (> (-> self skel active-channels) 0)
-               (-> self skel root-channel 0 frame-group)
-               )
-           num-func-seek!
-           )
-         )
+       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
        (until (ja-done? 0)
          (check-for-abort self)
          (suspend)
-         (let ((a0-6 (-> self skel root-channel 0)))
-           (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-           (set! (-> a0-6 param 1) 1.0)
-           (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek!))
          )
        )
       ((= (-> self anim-name type) spool-anim)
@@ -221,7 +168,7 @@
     )
   :code
   (behavior ()
-    (set-blackout-frames (seconds 0.033333335))
+    (set-blackout-frames (seconds 0.035))
     (suspend)
     (suspend)
     (go-virtual pov-camera-done-playing)

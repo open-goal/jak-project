@@ -147,23 +147,17 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *snow-ball-sg* snow-ball
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *snow-ball-sg* snow-ball snow-ball-lod0-jg snow-ball-idle-ja
+              ((snow-ball-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *snow-ball-shadow-sg* snow-ball
-  3
-  -1
-  ((4 (meters 999999)))
-  :bounds (static-spherem 0 -1.5 0 2)
-  :longest-edge (meters 0)
-  :shadow 5
-  )
+(defskelgroup *snow-ball-shadow-sg* snow-ball snow-ball-shadow-lod0-jg -1
+              ((snow-ball-shadow-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -1.5 0 2)
+              :shadow snow-ball-shadow-shadow-mg
+              )
 
 ;; definition for symbol *snow-ball-shadow-control*, type shadow-control
 (define *snow-ball-shadow-control*
@@ -190,7 +184,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -212,14 +206,7 @@
   (vector-identity! (-> self root scale))
   (initialize-skeleton self *snow-ball-shadow-sg* '())
   (ja-channel-set! 1)
-  (let ((gp-0 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-      gp-0
-      (the-as art-joint-anim (-> self draw art-group data 6))
-      num-func-identity
-      )
-    (set! (-> gp-0 frame-num) 0.0)
-    )
+  (ja :group! snow-ball-shadow-idle-ja :num! min)
   (set! (-> self draw shadow-ctrl) *snow-ball-shadow-control*)
   (go snow-ball-shadow-idle)
   (none)
@@ -517,7 +504,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -665,7 +652,7 @@
       (let ((s4-0 0)
             (s5-0 (new 'stack-no-clear 'inline-array 'snow-ball-junction 4))
             )
-        (while #t
+        (loop
           (let ((s3-0 (/ (+ 98304.0 (rand-vu-float-range 0.0 32768.0)) (path-distance (-> self path gp-0)))))
             (dummy-14 self s5-0 s3-0 gp-0)
             (when (dummy-15 self s5-0 gp-0)

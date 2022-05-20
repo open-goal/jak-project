@@ -145,13 +145,11 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *swamp-spike-sg* swamp-spike
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 5 0 6)
-  :longest-edge (meters 2.5)
-  )
+(defskelgroup *swamp-spike-sg* swamp-spike swamp-spike-lod0-jg swamp-spike-up-ja
+              ((swamp-spike-lod0-mg (meters 20)) (swamp-spike-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 5 0 6)
+              :longest-edge (meters 2.5)
+              )
 
 ;; definition for function swamp-spike-default-event-handler
 (defbehavior swamp-spike-default-event-handler swamp-spike ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -209,16 +207,11 @@
       (new 'stack-no-clear 'vector)
       (vector-z-quaternion! gp-0 (-> self root-override quat))
       (set! (-> gp-0 w) (- (vector-dot gp-0 (-> self root-override trans))))
-      (while #t
+      (loop
         (set! (-> self state-time) (-> *display* base-frame-counter))
-        (let ((v1-10 (-> self skel root-channel 0)))
-          (set! (-> v1-10 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-          )
+        (ja :group! (-> self draw art-group data 3))
         (until (>= (get-current-phase (-> self sync)) 0.5)
-          (let ((v1-13 (-> self skel root-channel 0)))
-            (set! (-> v1-13 num-func) num-func-identity)
-            (set! (-> v1-13 frame-num) 0.0)
-            )
+          (ja :num-func num-func-identity :frame-num 0.0)
           (suspend)
           )
         (let ((s5-0 (or (not *target*)
@@ -238,22 +231,10 @@
                 )
               )
             (else
-              (let ((a0-11 (-> self skel root-channel 0)))
-                (set! (-> a0-11 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-                (set! (-> a0-11 param 0)
-                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-                      )
-                (set! (-> a0-11 param 1) 1.0)
-                (set! (-> a0-11 frame-num) 0.0)
-                (joint-control-channel-group! a0-11 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-                )
+              (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
-                (let ((a0-12 (-> self skel root-channel 0)))
-                  (set! (-> a0-12 param 0) (the float (+ (-> a0-12 frame-group data 0 length) -1)))
-                  (set! (-> a0-12 param 1) 1.0)
-                  (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-seek!)
-                  )
+                (ja :num! (seek!))
                 )
               (when (logtest? (-> self draw status) (draw-status was-drawn))
                 (let ((s5-3 (get-process *default-dead-pool* part-tracker #x4000)))
@@ -276,29 +257,14 @@
                   )
                 )
               (set! (-> self dangerous) #t)
-              (let ((a0-17 (-> self skel root-channel 0)))
-                (set! (-> a0-17 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-                (set! (-> a0-17 param 0)
-                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-                      )
-                (set! (-> a0-17 param 1) 1.0)
-                (set! (-> a0-17 frame-num) 0.0)
-                (joint-control-channel-group! a0-17 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-                )
+              (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
-                (let ((a0-18 (-> self skel root-channel 0)))
-                  (set! (-> a0-18 param 0) (the float (+ (-> a0-18 frame-group data 0 length) -1)))
-                  (set! (-> a0-18 param 1) 1.0)
-                  (joint-control-channel-group-eval! a0-18 (the-as art-joint-anim #f) num-func-seek!)
-                  )
+                (ja :num! (seek!))
                 )
               (set! (-> self dangerous) #f)
               (set! (-> self state-time) (-> *display* base-frame-counter))
-              (let ((v1-96 (-> self skel root-channel 0)))
-                (set! (-> v1-96 num-func) num-func-identity)
-                (set! (-> v1-96 frame-num) (the float (+ (-> v1-96 frame-group data 0 length) -1)))
-                )
+              (ja :num-func num-func-identity :frame-num max)
               (until (< (get-current-phase (-> self sync)) 0.5)
                 (suspend)
                 )
@@ -322,22 +288,10 @@
                     )
                   )
                 )
-              (let ((a0-29 (-> self skel root-channel 0)))
-                (set! (-> a0-29 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-                (set! (-> a0-29 param 0)
-                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-                      )
-                (set! (-> a0-29 param 1) 1.0)
-                (set! (-> a0-29 frame-num) 0.0)
-                (joint-control-channel-group! a0-29 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-                )
+              (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
-                (let ((a0-30 (-> self skel root-channel 0)))
-                  (set! (-> a0-30 param 0) (the float (+ (-> a0-30 frame-group data 0 length) -1)))
-                  (set! (-> a0-30 param 1) 1.0)
-                  (joint-control-channel-group-eval! a0-30 (the-as art-joint-anim #f) num-func-seek!)
-                  )
+                (ja :num! (seek!))
                 )
               )
             )
@@ -367,14 +321,9 @@
   :code
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (let ((v1-4 (-> self skel root-channel 0)))
-      (set! (-> v1-4 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-      )
+    (ja :group! (-> self draw art-group data 4))
     (until (-> self open-gate)
-      (let ((v1-7 (-> self skel root-channel 0)))
-        (set! (-> v1-7 num-func) num-func-identity)
-        (set! (-> v1-7 frame-num) 0.0)
-        )
+      (ja :num-func num-func-identity :frame-num 0.0)
       (suspend)
       )
     (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
@@ -395,22 +344,10 @@
         (-> gp-0 ppointer)
         )
       )
-    (let ((a0-7 (-> self skel root-channel 0)))
-      (set! (-> a0-7 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-      (set! (-> a0-7 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-            )
-      (set! (-> a0-7 param 1) 1.0)
-      (set! (-> a0-7 frame-num) 0.0)
-      (joint-control-channel-group! a0-7 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-8 (-> self skel root-channel 0)))
-        (set! (-> a0-8 param 0) (the float (+ (-> a0-8 frame-group data 0 length) -1)))
-        (set! (-> a0-8 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go swamp-spike-gate-down)
     (none)
@@ -546,13 +483,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *balance-plat-sg* balance-plat
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 10)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *balance-plat-sg* balance-plat balance-plat-lod0-jg balance-plat-idle-ja
+              ((balance-plat-lod0-mg (meters 20)) (balance-plat-lod1-mg (meters 40)) (balance-plat-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              )
 
 ;; failed to figure out what this is:
 (defstate balance-plat-idle (balance-plat)
@@ -572,7 +506,7 @@
   (the-as (function none :behavior balance-plat) rider-trans)
   :code
   (behavior ()
-    (while #t
+    (loop
       (let ((f30-0 (* -0.025 (+ (-> self y-offset) (-> self y-travel))))
             (f28-0 (* -0.025 (- (-> self y-offset) (-> self y-travel))))
             )
@@ -762,13 +696,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *swamp-rock-sg* swamp-rock
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *swamp-rock-sg* swamp-rock swamp-rock-lod0-jg swamp-rock-idle-ja
+              ((swamp-rock-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; failed to figure out what this is:
 (defstate swamp-rock-break (swamp-rock)
@@ -808,7 +739,7 @@
   :code
   (behavior ()
     (transform-post)
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
@@ -879,13 +810,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *tar-plat-sg* tar-plat
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *tar-plat-sg* tar-plat tar-plat-lod0-jg tar-plat-idle-ja
+              ((tar-plat-lod0-mg (meters 20)) (tar-plat-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; definition for symbol *tar-plat-constants*, type rigid-body-platform-constants
 (define *tar-plat-constants* (new 'static 'rigid-body-platform-constants
@@ -963,7 +891,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1002,15 +930,10 @@
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 30)
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      )
-    (let ((v1-5 (-> self skel root-channel 0)))
-      (set! (-> v1-5 num-func) num-func-identity)
-      (set! (-> v1-5 frame-num) 0.0)
-      )
-    (while #t
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja :group! (-> self draw art-group data 3))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (loop
       (suspend)
       )
     (none)
@@ -1133,13 +1056,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *swampcam-sg* swampcam
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 15)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *swampcam-sg* swampcam swampcam-lod0-jg swampcam-anim-ja
+              ((swampcam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 15)
+              )
 
 ;; definition of type swamp-battlecontroller
 (deftype swamp-battlecontroller (battlecontroller)

@@ -108,30 +108,21 @@
   )
 
 
-(defskelgroup *keg-conveyor-sg* keg-conveyor
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -6 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *keg-conveyor-sg* keg-conveyor keg-conveyor-lod0-jg keg-conveyor-idle-ja
+              ((keg-conveyor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -6 0 8)
+              )
 
-(defskelgroup *keg-conveyor-paddle-sg* keg-conveyor-paddle
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -6 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *keg-conveyor-paddle-sg* keg-conveyor-paddle keg-conveyor-paddle-lod0-jg keg-conveyor-paddle-idle-ja
+              ((keg-conveyor-paddle-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -6 0 8)
+              )
 
-(defskelgroup *keg-sg* keg
-  0
-  5
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :shadow 4
-  )
+(defskelgroup *keg-sg* keg keg-lod0-jg keg-idle-ja
+              ((keg-lod0-mg (meters 20)) (keg-lod1-mg (meters 40)) (keg-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow keg-shadow-mg
+              )
 
 (defun keg-update-smush ((arg0 keg) (arg1 float))
   (set! (-> arg0 root-override scale x) (+ 1.0 (* -1.0 arg1)))
@@ -214,11 +205,8 @@
   :code
   (behavior ()
     (set! (-> (the-as keg (-> self parent 0)) sync-offset) (the-as float (process->ppointer self)))
-    (let ((v1-3 (-> self skel root-channel 0)))
-      (set! (-> v1-3 num-func) num-func-identity)
-      (set! (-> v1-3 frame-num) 0.0)
-      )
-    (while #t
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (loop
       (let ((gp-0 (-> (the-as process-drawable (-> self parent 0)) node-list data 4)))
         (matrix->quaternion (-> self root-override quat) (-> gp-0 bone transform))
         (vector<-cspace! (-> self root-override trans) gp-0)
@@ -251,7 +239,7 @@
         0.0
         0.0
         (forward-up-nopitch->quaternion s3-0 a1-3 (new 'static 'vector :y 1.0 :w 1.0))
-        (while #t
+        (loop
           (if (>= (the float (- (-> *display* base-frame-counter) (-> self state-time))) f30-0)
               (go keg-on-path)
               )
@@ -260,10 +248,7 @@
             (set! (-> self path-position quad) (-> self root-override trans quad))
             (quaternion-slerp! (-> self root-override quat) s4-0 s3-0 f28-0)
             )
-          (let ((a0-11 (-> self skel root-channel 0)))
-            (set! (-> a0-11 param 0) 1.0)
-            (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-loop!)
-            )
+          (ja :num! (loop!))
           (suspend)
           )
         )
@@ -298,7 +283,7 @@
               (set! sv-48 0.0)
               (set! sv-64 0.0)
               (set! sv-80 (- (-> *standard-dynamics* gravity-length)))
-              (while #t
+              (loop
                 (let ((f0-13 (+ (get-current-phase (-> (the-as keg-conveyor-paddle (-> self parent 0)) sync)) f26-1)))
                   (set! sv-96 (- f0-13 (the float (the int f0-13))))
                   )
@@ -386,10 +371,7 @@
                   (set! (-> s5-0 y) 1.0)
                   (set! (-> s5-0 z) 0.0)
                   )
-                (let ((a0-21 (-> self skel root-channel 0)))
-                  (set! (-> a0-21 param 0) 1.0)
-                  (joint-control-channel-group-eval! a0-21 (the-as art-joint-anim #f) num-func-loop!)
-                  )
+                (ja :num! (loop!))
                 (suspend)
                 )
               )
@@ -426,7 +408,7 @@
       (clear-collide-with-as (-> self root-override))
       (vector-normalize! gp-0 1.0)
       (set! (-> self state-time) (-> *display* base-frame-counter))
-      (while #t
+      (loop
         (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
             (go keg-die)
             )
@@ -436,10 +418,7 @@
           (+! f28-0 (* f26-0 (-> *display* seconds-per-frame)))
           (vector+! v1-23 v1-23 s5-0)
           )
-        (let ((a0-11 (-> self skel root-channel 0)))
-          (set! (-> a0-11 param 0) 1.0)
-          (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-loop!)
-          )
+        (ja :num! (loop!))
         (suspend)
         )
       )
@@ -545,12 +524,9 @@
 (defstate keg-conveyor-idle (keg-conveyor)
   :code
   (behavior ()
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 num-func) num-func-identity)
-      (set! (-> v1-2 frame-num) 0.0)
-      )
+    (ja :num-func num-func-identity :frame-num 0.0)
     0.0
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -566,7 +542,7 @@
           (gp-0 0)
           (s5-0 (length *keg-conveyor-keg-spawn-table*))
           )
-      (while #t
+      (loop
         (let ((s4-0 #f))
           (when (or (not *target*)
                     (< 102400.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
@@ -592,32 +568,7 @@
           (if (>= gp-0 s5-0)
               (set! gp-0 0)
               )
-          (let ((a0-6 (-> self skel root-channel 0)))
-            (set! (-> a0-6 frame-group) (if (> (-> self skel active-channels) 0)
-                                            (-> self skel root-channel 0 frame-group)
-                                            )
-                  )
-            (set! (-> a0-6 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                          (-> self skel root-channel 0 frame-group)
-                                                          )
-                                                      data
-                                                      0
-                                                      length
-                                                      )
-                                                  -1
-                                                  )
-                                         )
-                  )
-            (set! (-> a0-6 param 1) 1.0)
-            (set! (-> a0-6 frame-num) 0.0)
-            (joint-control-channel-group!
-              a0-6
-              (if (> (-> self skel active-channels) 0)
-                  (-> self skel root-channel 0 frame-group)
-                  )
-              num-func-seek!
-              )
-            )
+          (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (when (and (not s4-0) (>= (ja-aframe-num 0) f30-0))
               (set! s4-0 #t)
@@ -641,11 +592,7 @@
                 )
               )
             (suspend)
-            (let ((a0-9 (-> self skel root-channel 0)))
-              (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group data 0 length) -1)))
-              (set! (-> a0-9 param 1) 1.0)
-              (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
-              )
+            (ja :num! (seek!))
             )
           )
         )

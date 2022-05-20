@@ -288,7 +288,9 @@ class Object {
   bool is_empty_list() const { return type == ObjectType::EMPTY_LIST; }
   bool is_list() const { return type == ObjectType::EMPTY_LIST || type == ObjectType::PAIR; }
   bool is_int() const { return type == ObjectType::INTEGER; }
+  bool is_int(int val) const { return type == ObjectType::INTEGER && val == as_int(); }
   bool is_float() const { return type == ObjectType::FLOAT; }
+  bool is_float(float val) const { return type == ObjectType::FLOAT && val == as_float(); }
   bool is_char() const { return type == ObjectType::CHAR; }
   bool is_symbol() const { return type == ObjectType::SYMBOL; }
   bool is_symbol(const std::string& name) const;

@@ -422,13 +422,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *energydoor-sg* energydoor
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 14 0 35)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *energydoor-sg* energydoor energydoor-lod0-jg energydoor-idle-ja
+              ((energydoor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 14 0 35)
+              )
 
 ;; definition for function energydoor-player-dist
 (defbehavior energydoor-player-dist energydoor ()
@@ -470,39 +467,10 @@
   energydoor-closed-handler
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                      (-> self skel root-channel 0 frame-group)
-                                      )
-            )
-      (set! (-> a0-0 param 0) 0.0)
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-            )
-      (joint-control-channel-group!
-        a0-0
-        (if (> (-> self skel active-channels) 0)
-            (-> self skel root-channel 0 frame-group)
-            )
-        num-func-seek!
-        )
-      )
+    (ja-no-eval :group! (ja-group) :num! (seek! 0.0) :frame-num max)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) 0.0)
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! 0.0))
       )
     (if (or (task-closed? (-> self entity extra perm task) (task-status need-resolution))
             (< (energydoor-player-dist) 0.0)
@@ -554,12 +522,9 @@
     )
   :code
   (behavior ()
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 num-func) num-func-identity)
-      (set! (-> v1-2 frame-num) (the float (+ (-> v1-2 frame-group data 0 length) -1)))
-      )
+    (ja :num-func num-func-identity :frame-num max)
     (transform-post)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -572,39 +537,10 @@
   energydoor-open-handler
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                      (-> self skel root-channel 0 frame-group)
-                                      )
-            )
-      (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                    (-> self skel root-channel 0 frame-group)
-                                                    )
-                                                data
-                                                0
-                                                length
-                                                )
-                                            -1
-                                            )
-                                   )
-            )
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group!
-        a0-0
-        (if (> (-> self skel active-channels) 0)
-            (-> self skel root-channel 0 frame-group)
-            )
-        num-func-seek!
-        )
-      )
+    (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go energydoor-opened)
     (none)
@@ -645,12 +581,9 @@
     )
   :code
   (behavior ()
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 num-func) num-func-identity)
-      (set! (-> v1-2 frame-num) 0.0)
-      )
+    (ja :num-func num-func-identity :frame-num 0.0)
     (transform-post)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -670,12 +603,9 @@
     )
   :code
   (behavior ()
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 num-func) num-func-identity)
-      (set! (-> v1-2 frame-num) 0.0)
-      )
+    (ja :num-func num-func-identity :frame-num 0.0)
     (transform-post)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -771,20 +701,17 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *energybase-sg* energybase
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 40 0 40)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *energybase-sg* energybase energybase-lod0-jg energybase-idle-ja
+              ((energybase-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 40 0 40)
+              )
 
 ;; failed to figure out what this is:
 (defstate energybase-stopped (energybase)
   :code
   (behavior ()
     (ja-post)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -796,44 +723,15 @@
   :code
   (behavior ()
     (let ((f30-0 1.0))
-      (while #t
-        (let ((a0-0 (-> self skel root-channel 0)))
-          (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                          (-> self skel root-channel 0 frame-group)
-                                          )
-                )
-          (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                        (-> self skel root-channel 0 frame-group)
-                                                        )
-                                                    data
-                                                    0
-                                                    length
-                                                    )
-                                                -1
-                                                )
-                                       )
-                )
-          (set! (-> a0-0 param 1) f30-0)
-          (set! (-> a0-0 frame-num) 0.0)
-          (joint-control-channel-group!
-            a0-0
-            (if (> (-> self skel active-channels) 0)
-                (-> self skel root-channel 0 frame-group)
-                )
-            num-func-seek!
-            )
-          )
+      (loop
+        (ja-no-eval :group! (ja-group) :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (set! f30-0 (- f30-0 (* 0.002 (-> *display* time-adjust-ratio))))
           (if (< f30-0 0.0)
               (go energybase-stopped)
               )
           (suspend)
-          (let ((a0-1 (-> self skel root-channel 0)))
-            (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-            (set! (-> a0-1 param 1) f30-0)
-            (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek! max f30-0))
           )
         )
       )
@@ -855,7 +753,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (if (and *target* (>= 307200.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
           (level-hint-spawn
             (game-text-id lavatube-shoot-the-spheres)
@@ -865,39 +763,10 @@
             (game-task none)
             )
           )
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-2 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-2 param 1) 1.0)
-        (set! (-> a0-2 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-2
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-          (set! (-> a0-3 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -1027,13 +896,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *energyball-sg* energyball
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 6)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *energyball-sg* energyball energyball-lod0-jg energyball-idle-ja
+              ((energyball-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              )
 
 ;; failed to figure out what this is:
 (defstate energyball-idle (energyball)
@@ -1102,40 +968,11 @@
     )
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -1181,13 +1018,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *energyarm-sg* energyarm
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 -20 17)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *energyarm-sg* energyarm energyarm-lod0-jg energyarm-idle-ja
+              ((energyarm-lod0-mg (meters 20)) (energyarm-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 -20 17)
+              )
 
 ;; definition for function energyarm-trans
 (defbehavior energyarm-trans energyarm ()
@@ -1244,40 +1078,11 @@
     )
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -1330,40 +1135,11 @@
     )
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -1395,40 +1171,11 @@
     )
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -1496,17 +1243,15 @@
         (set! (-> gp-0 frame-num) (* (+ -1.0 (the-as float v1-5)) (the float (ja-num-frames 0))))
         )
       )
-    (while #t
+    (loop
       (suspend)
       (let* ((f30-1 0.25)
              (f28-0 0.25)
              (v1-9 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
              (v1-10 (the-as number (logior #x3f800000 v1-9)))
              (f0-9 (+ f30-1 (* f28-0 (+ -1.0 (the-as float v1-10)))))
-             (a0-5 (-> self skel root-channel 0))
              )
-        (set! (-> a0-5 param 0) f0-9)
-        (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-loop!)
+        (ja :num! (loop! f0-9))
         )
       )
     (none)
@@ -1595,13 +1340,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *energyhub-sg* energyhub
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 2 0 10)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *energyhub-sg* energyhub energyhub-lod0-jg energyhub-idle-ja
+              ((energyhub-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 10)
+              )
 
 ;; definition for function energyhub-trans
 (defbehavior energyhub-trans energyhub ()
@@ -1683,17 +1425,15 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       (let* ((f30-0 1.0)
              (f28-0 0.25)
              (v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
              (v1-2 (the-as number (logior #x3f800000 v1-1)))
              (f0-4 (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-2)))))
-             (a0-2 (-> self skel root-channel 0))
              )
-        (set! (-> a0-2 param 0) f0-4)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-loop!)
+        (ja :num! (loop! f0-4))
         )
       )
     (none)
@@ -1775,17 +1515,15 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       (let* ((f30-0 1.0)
              (f28-0 0.25)
              (v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
              (v1-2 (the-as number (logior #x3f800000 v1-1)))
              (f0-4 (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-2)))))
-             (a0-2 (-> self skel root-channel 0))
              )
-        (set! (-> a0-2 param 0) f0-4)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-loop!)
+        (ja :num! (loop! f0-4))
         )
       )
     (none)
@@ -1860,17 +1598,15 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       (let* ((f30-0 1.0)
              (f28-0 0.25)
              (v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
              (v1-2 (the-as number (logior #x3f800000 v1-1)))
              (f0-4 (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-2)))))
-             (a0-2 (-> self skel root-channel 0))
              )
-        (set! (-> a0-2 param 0) f0-4)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-loop!)
+        (ja :num! (loop! f0-4))
         )
       )
     (none)
@@ -1954,52 +1690,17 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *energylava-sg* energylava
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 120)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *energylava-sg* energylava 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 120))
 
 ;; failed to figure out what this is:
 (defstate energylava-idle (energylava)
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)

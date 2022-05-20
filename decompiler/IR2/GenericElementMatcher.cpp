@@ -15,6 +15,13 @@ Matcher Matcher::any_label(int match_id) {
   return m;
 }
 
+Matcher Matcher::reg(Register reg) {
+  Matcher m;
+  m.m_kind = Kind::REG;
+  m.m_reg = reg;
+  return m;
+}
+
 Matcher Matcher::op(const GenericOpMatcher& op, const std::vector<Matcher>& args) {
   Matcher m;
   m.m_kind = Kind::GENERIC_OP;
@@ -184,7 +191,8 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         maps_out->forms[m_form_match] = input;
       }
       return true;
-    case Kind::ANY_REG: {
+    case Kind::ANY_REG:
+    case Kind::REG: {
       bool got = false;
       RegisterAccess result;
 
@@ -206,7 +214,9 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       }
 
       if (got) {
-        if (m_reg_out_id != -1) {
+        if (m_kind == Kind::REG) {
+          return result.reg() == *m_reg;
+        } else if (m_reg_out_id != -1) {
           maps_out->regs.resize(std::max(size_t(m_reg_out_id + 1), maps_out->regs.size()));
           maps_out->regs.at(m_reg_out_id) = result;
         }
@@ -607,6 +617,14 @@ Matcher Matcher::any_reg_cast_to_int_or_uint(int match_id) {
 MatchResult match(const Matcher& spec, Form* input) {
   MatchResult result;
   result.matched = spec.do_match(input, &result.maps);
+  return result;
+}
+
+MatchResult match(const Matcher& spec, FormElement* input) {
+  Form hack;
+  hack.elts().push_back(input);
+  MatchResult result;
+  result.matched = spec.do_match(&hack, &result.maps);
   return result;
 }
 

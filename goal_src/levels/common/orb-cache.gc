@@ -34,13 +34,10 @@
   )
 
 
-(defskelgroup *orb-cache-top-sg* orb-cache-top
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *orb-cache-top-sg* orb-cache-top orb-cache-top-lod0-jg orb-cache-top-idle-ja
+              ((orb-cache-top-lod0-mg (meters 20)) (orb-cache-top-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 (defstate orb-cache-top-idle (orb-cache-top)
   :event
@@ -94,14 +91,7 @@
         )
       )
     (process-entity-status! self (entity-perm-status complete) #f)
-    (let ((gp-2 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-2
-        (the-as art-joint-anim (-> self draw art-group data 3))
-        num-func-identity
-        )
-      (set! (-> gp-2 frame-num) (ja-aframe 0.0 0))
-      )
+    (ja :group! (-> self draw art-group data 3) :num! (identity (ja-aframe 0.0 0)))
     (transform-post)
     (anim-loop)
     (none)
@@ -249,7 +239,7 @@
           )
         )
       )
-    (while #t
+    (loop
       (calculate-pos self #t)
       (while (not (or (not *target*) (< (-> self inactive-distance)
                                         (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans))
@@ -311,14 +301,7 @@
     (if (not arg0)
         (sound-play-by-name (static-sound-name "close-orb-cash") (new-sound-id) 1024 0 0 1 #t)
         )
-    (let ((gp-1 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-1
-        (the-as art-joint-anim (-> self draw art-group data 3))
-        num-func-identity
-        )
-      (set! (-> gp-1 frame-num) (ja-aframe 0.0 0))
-      )
+    (ja :group! (-> self draw art-group data 3) :num! (identity (ja-aframe 0.0 0)))
     (new 'stack-no-clear 'vector)
     (set! (-> self basetrans y) (+ 2048.0 (-> self root-pos)))
     (anim-loop)

@@ -19,14 +19,11 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *assistant-village3-sg* assistant-village3
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *assistant-village3-sg* assistant-village3 assistant-village3-lod0-jg assistant-village3-idle-ja
+              ((assistant-village3-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow assistant-village3-shadow-mg
+              )
 
 ;; definition for method 52 of type assistant-villagec
 ;; INFO: Return type mismatch int vs none.
@@ -158,31 +155,15 @@
   :virtual #t
   :code
   (behavior ()
-    (if (!= (if (> (-> self skel active-channels) 0)
-                (-> self skel root-channel 0 frame-group)
-                )
-            (get-art-elem self)
-            )
-        (ja-channel-push! 1 15)
+    (if (!= (ja-group) (get-art-elem self))
+        (ja-channel-push! 1 (seconds 0.05))
         )
-    (while #t
+    (loop
       (TODO-RENAME-43 self)
-      (let ((a0-8 (-> self skel root-channel 0)))
-        (set! (-> a0-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-        (set! (-> a0-8 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-              )
-        (set! (-> a0-8 param 1) 1.0)
-        (set! (-> a0-8 frame-num) 0.0)
-        (joint-control-channel-group! a0-8 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-        )
+      (ja-no-eval :group! assistant-village3-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-9 (-> self skel root-channel 0)))
-          (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group data 0 length) -1)))
-          (set! (-> a0-9 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       (let ((gp-0 (-> *display* base-frame-counter)))
         (while (let* ((s5-0 (-> *display* base-frame-counter))
@@ -197,29 +178,10 @@
           (suspend)
           )
         )
-      (let ((gp-1 (-> self skel root-channel 0)))
-        (set! (-> gp-1 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> gp-1 param 0) (ja-aframe 0.0 0))
-        (set! (-> gp-1 param 1) 1.0)
-        (set! (-> gp-1 frame-num) (ja-aframe 16.0 0))
-        (joint-control-channel-group!
-          gp-1
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+      (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 0.0 0)) :frame-num (ja-aframe 16.0 0))
       (until (ja-done? 0)
         (suspend)
-        (let ((gp-2 (-> self skel root-channel 0)))
-          (set! (-> gp-2 param 0) (ja-aframe 0.0 0))
-          (set! (-> gp-2 param 1) 1.0)
-          (joint-control-channel-group-eval! gp-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! (ja-aframe 0.0 0)))
         )
       (let ((gp-3 (-> *display* base-frame-counter)))
         (while (let* ((s5-1 (-> *display* base-frame-counter))

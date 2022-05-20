@@ -10,9 +10,10 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "LinkedObjectFile.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/common_types.h"
+#include "LinkedObjectFile.h"
+#include "third-party/fmt/core.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/data/TextureDB.h"
 #include "decompiler/analysis/symbol_def_map.h"
 #include "common/util/Assert.h"
@@ -46,6 +47,28 @@ struct ObjectFileData {
   std::string output_with_skips;
 };
 
+/*!
+ * Stats structure for let rewriting.
+ */
+struct LetRewriteStats {
+  int dotimes;
+  int countdown;
+  int abs;
+  int abs2;
+  int unused;
+  int ja;
+  int case_no_else;
+  int case_with_else;
+  int set_vector;
+  int set_vector2;
+  int send_event;
+
+  int total() const {
+    return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
+           set_vector + set_vector2 + send_event;
+  }
+};
+
 class ObjectFileDB {
  public:
   ObjectFileDB(const std::vector<std::string>& _dgos,
@@ -59,6 +82,8 @@ class ObjectFileDB {
   void process_labels();
   void find_code(const Config& config);
   void find_and_write_scripts(const std::string& output_dir);
+  void extract_art_info();
+  void dump_art_info(const std::string& output_dir);
   void dump_raw_objects(const std::string& output_dir);
 
   void write_object_file_words(const std::string& output_dir, bool dump_data, bool dump_code);
@@ -67,7 +92,6 @@ class ObjectFileDB {
                          bool disassemble_code,
                          bool print_hex);
 
-  void analyze_functions_ir1(const Config& config);
   void analyze_functions_ir2(
       const std::string& output_dir,
       const Config& config,
@@ -209,10 +233,13 @@ class ObjectFileDB {
   SymbolMapBuilder map_builder;
 
   struct {
+    LetRewriteStats let;
     uint32_t total_dgo_bytes = 0;
     uint32_t total_obj_files = 0;
     uint32_t unique_obj_files = 0;
     uint32_t unique_obj_bytes = 0;
   } stats;
 };
+
+std::string print_art_elt_for_dump(const std::string& group_name, const std::string& name, int idx);
 }  // namespace decompiler

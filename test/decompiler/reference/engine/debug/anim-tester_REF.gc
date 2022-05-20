@@ -261,7 +261,7 @@
           (let ((v1-88 (-> arg0 the-node)))
             "is this node the start of the list. #t = start"
             (when (not (not (-> v1-88 prev)))
-              (while #t
+              (loop
                 (let ((v1-92 (-> arg0 the-node)))
                   "return the previous node in the list"
                   (let ((v1-93 (-> v1-92 prev)))
@@ -298,7 +298,7 @@
           (let ((v1-107 (-> arg0 the-node)))
             "is this node the end of the list. #t = end"
             (when (not (not (-> v1-107 next)))
-              (while #t
+              (loop
                 (let ((v1-111 (-> arg0 the-node)))
                   "return the next node in the list"
                   (let ((v1-112 (-> v1-111 next)))
@@ -1324,7 +1324,7 @@
             "is the list empty, #t = empty"
             (when (not (= (-> v1-15 tailpred) v1-15))
               (let ((v1-17 (glst-get-node-by-index (-> arg1 list) (-> arg1 highlight-index))))
-                (while #t
+                (loop
                   "return the previous node in the list"
                   (set! v1-17 (-> (the-as anim-test-obj v1-17) prev))
                   (let ((a0-23 (the-as anim-test-obj v1-17)))
@@ -1348,7 +1348,7 @@
             "is the list empty, #t = empty"
             (when (not (= (-> v1-21 tailpred) v1-21))
               (let ((v1-23 (glst-get-node-by-index (-> arg1 list) (-> arg1 highlight-index))))
-                (while #t
+                (loop
                   "return the next node in the list"
                   (set! v1-23 (-> (the-as anim-test-obj v1-23) next))
                   (let ((a0-40 (the-as anim-test-obj v1-23)))
@@ -1501,7 +1501,7 @@
             "is the list empty, #t = empty"
             (when (not (= (-> v1-17 tailpred) v1-17))
               (let ((v1-19 (glst-get-node-by-index (-> arg1 list) (-> arg1 highlight-index))))
-                (while #t
+                (loop
                   "return the previous node in the list"
                   (set! v1-19 (-> (the-as anim-test-sequence v1-19) prev))
                   (let ((a0-24 (the-as anim-test-sequence v1-19)))
@@ -1525,7 +1525,7 @@
             "is the list empty, #t = empty"
             (when (not (= (-> v1-23 tailpred) v1-23))
               (let ((v1-25 (glst-get-node-by-index (-> arg1 list) (-> arg1 highlight-index))))
-                (while #t
+                (loop
                   "return the next node in the list"
                   (set! v1-25 (-> (the-as anim-test-sequence v1-25) next))
                   (let ((a0-42 (the-as anim-test-sequence v1-25)))
@@ -2461,7 +2461,7 @@
           (s4-0 (-> arg0 playing-item))
           )
       (when (logtest? (-> v0-0 flags) 5)
-        (while #t
+        (loop
           (+! s4-0 1)
           (if (>= s4-0 (glst-num-elements (-> arg0 item-list)))
               (set! s4-0 0)
@@ -2509,7 +2509,7 @@
   :code
   (behavior ()
     (local-vars (s4-0 glst-node) (s5-1 anim-test-seq-item) (gp-2 anim-test-sequence))
-    (while #t
+    (loop
       (logclear! (-> self flags) (anim-tester-flags fanimt0))
       (let ((v1-2 (-> self obj-list)))
         "is the list empty, #t = empty"
@@ -2587,27 +2587,18 @@
                (s4-1
                  (logior! (-> self flags) (anim-tester-flags fanimt0))
                  (if (nonzero? (-> s5-1 blend))
-                     (ja-channel-push! 1 (the int (* (the float (-> s5-1 blend)) (-> self anim-gspeed))))
+                     (ja-channel-push! 1 (the-as time-frame (the int (* (the float (-> s5-1 blend)) (-> self anim-gspeed)))))
                      (ja-channel-set! 1)
                      )
                  (cond
                    ((= (-> self anim-first) -1.0)
-                    (let ((s3-0 (-> self skel root-channel 0)))
-                      (joint-control-channel-group-eval! s3-0 s4-1 num-func-identity)
-                      (set! (-> s3-0 frame-num) 0.0)
-                      )
+                    (ja :group! s4-1 :num! min)
                     )
                    ((= (-> self anim-first) -2.0)
-                    (let ((s3-1 (-> self skel root-channel 0)))
-                      (joint-control-channel-group-eval! s3-1 s4-1 num-func-identity)
-                      (set! (-> s3-1 frame-num) (the float (+ (-> s4-1 data 0 length) -1)))
-                      )
+                    (ja :group! s4-1 :num! max)
                     )
                    (else
-                     (let ((s3-2 (-> self skel root-channel 0)))
-                       (joint-control-channel-group-eval! s3-2 s4-1 num-func-identity)
-                       (set! (-> s3-2 frame-num) (-> self anim-first))
-                       )
+                     (ja :group! s4-1 :num! (identity (-> self anim-first)))
                      )
                    )
                  (when (nonzero? (-> s5-1 blend))
@@ -2629,36 +2620,16 @@
                    (let ((v1-73 (= (-> self anim-last) -2.0)))
                      (cond
                        ((or v1-73 (>= (-> self anim-last) (-> self anim-first)))
-                        (cond
-                          ((= (-> self anim-last) -2.0)
-                           (let ((a0-42 (-> self skel root-channel 0)))
-                             (set! (-> a0-42 param 0) (the float (+ (-> a0-42 frame-group data 0 length) -1)))
-                             (set! (-> a0-42 param 1) (-> self anim-speed))
-                             (joint-control-channel-group-eval! a0-42 (the-as art-joint-anim #f) num-func-seek!)
-                             )
-                           )
-                          (else
-                            (let ((a0-43 (-> self skel root-channel 0)))
-                              (set! (-> a0-43 param 0) (-> self anim-last))
-                              (set! (-> a0-43 param 1) (-> self anim-speed))
-                              (joint-control-channel-group-eval! a0-43 (the-as art-joint-anim #f) num-func-seek!)
-                              )
+                        (if (= (-> self anim-last) -2.0)
+                            (ja :num! (seek! max (-> self anim-speed)))
+                            (ja :num! (seek! (-> self anim-last) (-> self anim-speed)))
                             )
-                          )
                         )
                        ((= (-> self anim-last) -1.0)
-                        (let ((a0-44 (-> self skel root-channel 0)))
-                          (set! (-> a0-44 param 0) 0.0)
-                          (set! (-> a0-44 param 1) (-> self anim-speed))
-                          (joint-control-channel-group-eval! a0-44 (the-as art-joint-anim #f) num-func-seek!)
-                          )
+                        (ja :num! (seek! 0.0 (-> self anim-speed)))
                         )
                        (else
-                         (let ((a0-45 (-> self skel root-channel 0)))
-                           (set! (-> a0-45 param 0) (-> self anim-last))
-                           (set! (-> a0-45 param 1) (-> self anim-speed))
-                           (joint-control-channel-group-eval! a0-45 (the-as art-joint-anim #f) num-func-seek!)
-                           )
+                         (ja :num! (seek! (-> self anim-last) (-> self anim-speed)))
                          )
                        )
                      )

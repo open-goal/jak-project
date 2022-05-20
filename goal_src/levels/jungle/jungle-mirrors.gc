@@ -622,37 +622,27 @@
   )
 
 
-(defskelgroup *periscope-base-sg* periscope
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 23.5 0 24)
-  :longest-edge (meters 4.5)
-  )
+(defskelgroup *periscope-base-sg* periscope periscope-base-lod0-jg periscope-base-idle-ja
+              ((periscope-base-lod0-mg (meters 20)) (periscope-base-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 23.5 0 24)
+              :longest-edge (meters 4.5)
+              )
 
-(defskelgroup *periscope-mirror-sg* periscope
-  4
-  7
-  ((5 (meters 20)) (6 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *periscope-mirror-sg* periscope periscope-mirror-lod0-jg periscope-mirror-idle-ja
+              ((periscope-mirror-lod0-mg (meters 20)) (periscope-mirror-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
 
-(defskelgroup *reflector-mirror-sg* reflector-mirror
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 9 0 9)
-  :longest-edge (meters 3)
-  )
+(defskelgroup *reflector-mirror-sg* reflector-mirror reflector-mirror-lod0-jg reflector-mirror-idle-ja
+              ((reflector-mirror-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 9 0 9)
+              :longest-edge (meters 3)
+              )
 
-(defskelgroup *reflector-mirror-break-sg* reflector-mirror
-  4
-  6
-  ((5 (meters 999999)))
-  :bounds (static-spherem 0 9 0 9)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *reflector-mirror-break-sg* reflector-mirror reflector-mirror-break-lod0-jg reflector-mirror-break-break-ja
+              ((reflector-mirror-break-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 9 0 9)
+              )
 
 ;; jungle eco connector first-person cam
 (defstate cam-periscope (camera-slave)
@@ -691,7 +681,7 @@
            (f30-0 (the-as float (-> (the-as periscope (-> gp-0 0)) turn)))
            (s5-0 (new 'stack-no-clear 'vector))
            )
-      (while #t
+      (loop
         (when (not (or (paused?) (-> (the-as periscope (-> self change-event-from 0)) aligned?)))
           (vector-reset! s5-0)
           (when *camera-read-analog*
@@ -766,7 +756,7 @@
   :code
   (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (while #t
+      (loop
         (set! (-> gp-0 x) (-> self parent-override 0 tilt))
         (set! (-> gp-0 y) (-> self parent-override 0 turn))
         (set! (-> gp-0 z) 0.0)
@@ -1297,7 +1287,7 @@
     (suspend)
     (update-transforms! (-> self root-override))
     (logior! (-> self draw status) (draw-status hidden))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1373,7 +1363,7 @@
       )
     (update-transforms! (-> self root-override))
     (set! (-> self y-offset) (-> self height))
-    (while #t
+    (loop
       (if (periscope-has-power-input?)
           (go periscope-wait-for-player)
           )
@@ -1462,7 +1452,7 @@
           (s4-0 (new 'stack-no-clear 'vector))
           (s3-0 (new 'stack-no-clear 'vector))
           )
-      (while #t
+      (loop
         (set! (-> s5-0 quad) (-> self node-list data 4 bone transform vector 3 quad))
         (let ((a0-10 s5-0)
               (f30-1 81920.0)
@@ -1506,7 +1496,7 @@
                   )
                 (when (cpad-pressed? 0 circle)
                   (set! (-> self grips-moving?) #f)
-                  (while #t
+                  (loop
                     (send-event *target* 'change-mode 'periscope self)
                     (hide-hud)
                     (suspend)
@@ -1668,7 +1658,7 @@
     (send-event *camera* 'change-state cam-periscope 0)
     (logior! (-> self reflector 0 draw status) (draw-status hidden))
     (suspend)
-    (while #t
+    (loop
       (if (not (-> self aligned?))
           (set! (-> self lock-time) (-> *display* base-frame-counter))
           )
@@ -1680,7 +1670,7 @@
         (if (periscope-test-task-complete?)
             (close-specific-task! (game-task jungle-lurkerm) (task-status need-reminder))
             )
-        (while #t
+        (loop
           (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
             (set! (-> a1-6 from) self)
             (set! (-> a1-6 num-params) 0)
@@ -1813,7 +1803,7 @@
       )
     (sound-stop (-> self grips-sound-id))
     (ja-post)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1967,7 +1957,7 @@
       )
     (process-entity-status! self (entity-perm-status complete) #t)
     (reflector-origin-update (-> self link next))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -2010,7 +2000,7 @@
     (let ((gp-0 (new-stack-vector0)))
       (set! (-> gp-0 quad) (-> self root-override trans quad))
       (set! (-> gp-0 y) (+ 49152.0 (-> gp-0 y)))
-      (while #t
+      (loop
         (draw-power-beam gp-0 (-> self beam-end))
         (update! (-> self sound))
         (when (logtest? (-> self draw status) (draw-status was-drawn))
@@ -2109,7 +2099,7 @@
         )
       )
     (logior! (-> self mask) (process-mask actor-pause))
-    (while #t
+    (loop
       (suspend)
       )
     (none)

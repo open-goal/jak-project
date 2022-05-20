@@ -34,22 +34,16 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *launcherdoor-sg* launcherdoor
-  0
-  -1
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *launcherdoor-sg* launcherdoor launcherdoor-geo-jg -1
+              ((launcherdoor-geo-mg (meters 20)) (launcherdoor-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *launcherdoor-maincave-sg* launcherdoor-maincave
-  0
-  -1
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *launcherdoor-maincave-sg* launcherdoor-maincave launcherdoor-maincave-geo-jg -1
+              ((launcherdoor-maincave-geo-mg (meters 20)) (launcherdoor-maincave-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 ;; failed to figure out what this is:
 (defstate launcherdoor-closed (launcherdoor)
@@ -66,31 +60,20 @@
         )
       )
     (restore-collide-with-as (-> self root-override))
-    (let ((a0-7 (-> self skel root-channel 0)))
-      (set! (-> a0-7 param 0) 0.0)
-      (set! (-> a0-7 param 1) 1.0)
-      (joint-control-channel-group! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek! 0.0))
     (when arg0
-      (let ((v1-22 (-> self skel root-channel 0)))
-        (set! (-> v1-22 num-func) num-func-identity)
-        (set! (-> v1-22 frame-num) 0.0)
-        )
+      (ja :num-func num-func-identity :frame-num 0.0)
       (set! (-> self draw force-lod) 1)
       )
     (suspend)
-    (while #t
+    (loop
       (if (and *target*
                (= (-> *target* control unknown-surface00 name) 'launch-jump)
                (< (-> *target* control trans y) (-> self thresh-y))
                )
           (go launcherdoor-open #f)
           )
-      (let ((a0-13 (-> self skel root-channel 0)))
-        (set! (-> a0-13 param 0) 0.0)
-        (set! (-> a0-13 param 1) (-> self close-speed))
-        (joint-control-channel-group-eval! a0-13 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! 0.0 (-> self close-speed)))
       (suspend)
       (when (ja-done? 0)
         (set! (-> self draw force-lod) 1)
@@ -136,18 +119,11 @@
         )
     (set! (-> self draw force-lod) 0)
     (clear-collide-with-as (-> self root-override))
-    (let ((a0-4 (-> self skel root-channel 0)))
-      (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
-      (set! (-> a0-4 param 1) 1.0)
-      (joint-control-channel-group! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-      )
-    (when arg0
-      (let ((v1-16 (-> self skel root-channel 0)))
-        (set! (-> v1-16 num-func) num-func-identity)
-        (set! (-> v1-16 frame-num) (the float (+ (-> v1-16 frame-group data 0 length) -1)))
+    (ja-no-eval :num! (seek!))
+    (if arg0
+        (ja :num-func num-func-identity :frame-num max)
         )
-      )
-    (while #t
+    (loop
       (when (or (not *target*)
                 (!= (-> *target* control unknown-surface00 name) 'launch-jump)
                 (< (+ 4096.0 (-> self root-override trans y)) (-> *target* control trans y))
@@ -164,11 +140,7 @@
           )
         (go launcherdoor-closed #f)
         )
-      (let ((a0-16 (-> self skel root-channel 0)))
-        (set! (-> a0-16 param 0) (the float (+ (-> a0-16 frame-group data 0 length) -1)))
-        (set! (-> a0-16 param 1) (-> self open-speed))
-        (joint-control-channel-group-eval! a0-16 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! max (-> self open-speed)))
       (suspend)
       )
     (none)

@@ -7,13 +7,11 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup *lrocklrg-sg* lrocklrg
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5)
-  :longest-edge (meters 11)
-  )
+(defskelgroup *lrocklrg-sg* lrocklrg lrocklrg-lod0-jg lrocklrg-idle-ja
+              ((lrocklrg-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :longest-edge (meters 11)
+              )
 
 (defpartgroup group-beach-rocks-start
   :id 553
@@ -302,7 +300,7 @@
         )
     (ja-channel-set! 0)
     (ja-post)
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
@@ -316,7 +314,7 @@
   (-> (the-as state (method-of-type beach-rock idle)) event)
   :code
   (behavior ()
-    (while #t
+    (loop
       (spool-push *art-control* "lrocklrg-falling" 0 self -1.0)
       (suspend)
       )
@@ -368,14 +366,7 @@
       )
     (logclear! (-> self draw status) (draw-status hidden))
     (ja-channel-set! 1)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) 0.0)
-      )
+    (ja :group! (-> self draw art-group data 2) :num! min)
     (let* ((gp-1 (get-process *default-dead-pool* othercam #x4000))
            (gp-2 (ppointer->handle (when gp-1
                                      (let ((t9-5 (method-of-type othercam activate)))
@@ -451,9 +442,7 @@
       *entity-pool*
       (game-task none)
       )
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      )
+    (ja :group! (-> self draw art-group data 3))
     (TODO-RENAME-9 (-> self align))
     (let ((v1-6 (first-transform (-> self align))))
       (set! (-> self root-override trans quad) (-> self entity extra trans quad))
