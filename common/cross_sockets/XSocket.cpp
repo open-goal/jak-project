@@ -38,6 +38,20 @@ int open_socket(int af, int type, int protocol) {
 int accept_socket(int socket, sockaddr* addr, socklen_t* addrLen) {
   return accept(socket, addr, addrLen);
 }
+int select_and_accept_socket(int socket, sockaddr* addr, socklen_t* addrLen, int microSeconds) {
+  struct timeval timeout;
+  timeout.tv_sec = 0;
+  timeout.tv_usec = microSeconds;
+  // Use select so it can timeout, accept on the returned socket if it is correct
+  fd_set read_sockets;
+  FD_ZERO(&read_sockets);
+  FD_SET(socket, &read_sockets);
+  auto activity = select(socket + 1, &read_sockets, NULL, NULL, &timeout);
+  if (activity > 0) {
+    return accept(socket, addr, addrLen);
+  }
+  return -1;
+}
 #endif
 
 #ifdef _WIN32
@@ -51,6 +65,29 @@ int accept_socket(int socket, sockaddr* addr, int* addrLen) {
     return 1;
   }
   return accept(socket, addr, addrLen);
+}
+
+int select_and_accept_socket(int socket, sockaddr* addr, int* addrLen, int microSeconds) {
+  WSADATA wsaData = {0};
+  int iResult = 0;
+  // Initialize Winsock
+  iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (iResult != 0) {
+    printf("WSAStartup failed: %d\n", iResult);
+    return 1;
+  }
+  struct timeval timeout;
+  timeout.tv_sec = 0;
+  timeout.tv_usec = microSeconds;
+  // Use select so it can timeout, accept on the returned socket if it is correct
+  fd_set read_sockets;
+  FD_ZERO(&read_sockets);
+  FD_SET(socket, &read_sockets);
+  auto activity = select(socket + 1, &read_sockets, NULL, NULL, &timeout);
+  if (activity > 0) {
+    return accept(socket, addr, addrLen);
+  }
+  return -1;
 }
 #endif
 
