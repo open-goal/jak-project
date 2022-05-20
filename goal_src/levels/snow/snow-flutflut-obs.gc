@@ -66,37 +66,25 @@
   )
 
 
-(defskelgroup *flutflut-plat-small-sg* flutflut-plat-small
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -0.5 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *flutflut-plat-small-sg* flutflut-plat-small flutflut-plat-small-lod0-jg flutflut-plat-small-idle-ja
+              ((flutflut-plat-small-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -0.5 0 4)
+              )
 
-(defskelgroup *flutflut-plat-med-sg* flutflut-plat-med
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -1 0 6.75)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *flutflut-plat-med-sg* flutflut-plat-med flutflut-plat-med-lod0-jg flutflut-plat-med-idle-ja
+              ((flutflut-plat-med-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -1 0 6.75)
+              )
 
-(defskelgroup *flutflut-plat-large-sg* flutflut-plat-large
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 9)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *flutflut-plat-large-sg* flutflut-plat-large flutflut-plat-large-lod0-jg flutflut-plat-large-idle-ja
+              ((flutflut-plat-large-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 9)
+              )
 
-(defskelgroup *snow-button-sg* snow-button
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4.3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *snow-button-sg* snow-button snow-button-lod0-jg -1
+              ((snow-button-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4.3)
+              )
 
 (defpartgroup group-flutflut-plat-small
   :id 516
@@ -275,14 +263,7 @@
     )
   :code
   (behavior ()
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) 0.0)
-      )
+    (ja :group! (-> self draw art-group data 2) :num! min)
     (transform-post)
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
@@ -342,22 +323,10 @@
   :code
   (behavior ()
     (sound-play-by-name (static-sound-name "prec-button1") (new-sound-id) 1024 -1524 0 1 #t)
-    (let ((a0-2 (-> self skel root-channel 0)))
-      (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-      (set! (-> a0-2 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
-            )
-      (set! (-> a0-2 param 1) 1.0)
-      (set! (-> a0-2 frame-num) 0.0)
-      (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-        (set! (-> a0-3 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
@@ -394,22 +363,10 @@
     (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.6))
       (suspend)
       )
-    (let ((a0-2 (-> self skel root-channel 0)))
-      (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      (set! (-> a0-2 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-            )
-      (set! (-> a0-2 param 1) 1.0)
-      (set! (-> a0-2 frame-num) 0.0)
-      (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-        (set! (-> a0-3 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go snow-button-up-idle)
     (none)

@@ -13,7 +13,7 @@
 #include <filesystem>
 #include "fake_iso.h"
 #include "game/overlord/sbank.h"
-#include "game/overlord/sndshim.h"
+#include "game/sound/sndshim.h"
 #include "game/overlord/soundcommon.h"
 #include "game/overlord/srpc.h"
 #include "game/sce/iop.h"

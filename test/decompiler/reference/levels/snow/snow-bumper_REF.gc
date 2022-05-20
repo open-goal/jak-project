@@ -40,13 +40,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *snow-bumper-sg* snow-bumper
-  0
-  -1
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 2.2 0 3.4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *snow-bumper-sg* snow-bumper snow-bumper-lod0-jg -1
+              ((snow-bumper-lod0-mg (meters 20)) (snow-bumper-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 2.2 0 3.4)
+              )
 
 ;; failed to figure out what this is:
 (defpartgroup group-snow-bumper-idle
@@ -187,7 +184,7 @@
   (behavior ()
     (transform-post)
     (suspend)
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -250,7 +247,7 @@
   (behavior ()
     (transform-post)
     (suspend)
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -273,46 +270,22 @@
     (local-vars (sv-16 symbol))
     (logclear! (-> self mask) (process-mask actor-pause))
     (sound-play-by-name (static-sound-name "bumper-pwr-dwn") (new-sound-id) 1024 0 0 1 #t)
-    (let ((a0-3 (-> self skel root-channel 0)))
-      (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-      (set! (-> a0-3 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-            )
-      (set! (-> a0-3 param 1) 0.05)
-      (set! (-> a0-3 frame-num) 0.0)
-      (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-      )
+    (ja-no-eval :group! snow-bumper-button-ja :num! (seek! max 0.05) :frame-num 0.0)
     (until (ja-done? 0)
       (spawn (-> self part) (-> self root trans))
       (update! (-> self sound))
       (suspend)
-      (let ((a0-6 (-> self skel root-channel 0)))
-        (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-        (set! (-> a0-6 param 1) 0.05)
-        (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! max 0.05))
       )
     (stop! (-> self sound))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
       (suspend)
       )
-    (let ((a0-10 (-> self skel root-channel 0)))
-      (set! (-> a0-10 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-      (set! (-> a0-10 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-            )
-      (set! (-> a0-10 param 1) 0.02)
-      (set! (-> a0-10 frame-num) 0.0)
-      (joint-control-channel-group! a0-10 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-      )
+    (ja-no-eval :group! snow-bumper-collapse-ja :num! (seek! max 0.02) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-11 (-> self skel root-channel 0)))
-        (set! (-> a0-11 param 0) (the float (+ (-> a0-11 frame-group data 0 length) -1)))
-        (set! (-> a0-11 param 1) 0.02)
-        (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! max 0.02))
       )
     (process-entity-status! self (entity-perm-status complete) #t)
     (set! sv-16 (the-as symbol #f))
@@ -333,16 +306,7 @@
   :code
   (behavior ()
     (ja-channel-set! 1)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 5))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-            )
-      )
+    (ja :group! snow-bumper-collapse-ja :num! max)
     (transform-post)
     (if (not (task-complete? *game-info* (-> self entity extra perm task)))
         (birth-pickup-at-point
@@ -368,16 +332,7 @@
   (behavior ()
     (set! (-> self root nav-radius) 6963.2)
     (ja-channel-set! 1)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 5))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-            )
-      )
+    (ja :group! snow-bumper-collapse-ja :num! max)
     (transform-post)
     (suspend)
     (logior! (-> self mask) (process-mask sleep-code))

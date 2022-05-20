@@ -73,7 +73,6 @@ set(RUNTIME_SOURCE
         overlord/overlord.cpp
         overlord/ramdisk.cpp
         overlord/sbank.cpp
-        overlord/sndshim.cpp
         overlord/soundcommon.cpp
         overlord/srpc.cpp
         overlord/ssound.cpp
@@ -149,10 +148,12 @@ endfunction()
 
 write_svnrev_h()
 
+add_subdirectory(sound)
+
 # we build the runtime as a static library.
 add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
-target_link_libraries(runtime common fmt glfw imgui discord-rpc)
+target_link_libraries(runtime common fmt glfw imgui discord-rpc sound)
 if(WIN32)
     target_link_libraries(runtime mman)
 else()

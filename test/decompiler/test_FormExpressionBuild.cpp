@@ -2809,7 +2809,7 @@ TEST_F(FormRegressionTest, LoopingCode) {
   std::string type = "(function symbol)";
   std::string expected =
       "(begin\n"
-      "  (while #t\n"
+      "  (loop\n"
       "   (suspend)\n"
       "   )\n"
       "  (the-as symbol #f)\n"

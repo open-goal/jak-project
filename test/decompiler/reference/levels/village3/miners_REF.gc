@@ -3,22 +3,13 @@
 
 ;; definition for function miners-anim-loop
 (defbehavior miners-anim-loop minershort ()
-  (when (!= (if (> (-> self skel active-channels) 0)
-                (-> self skel root-channel 0 frame-group)
-                )
-            (get-art-elem self)
-            )
-    (ja-channel-push! 1 60)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (set! (-> gp-0 frame-group) (the-as art-joint-anim (get-art-elem self)))
-      )
+  (when (!= (ja-group) (get-art-elem self))
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja :group! (get-art-elem self))
     )
-  (while #t
+  (loop
     (suspend)
-    (let ((a0-8 (-> self skel root-channel 0)))
-      (set! (-> a0-8 param 0) 2.0)
-      (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-loop!)
-      )
+    (ja :num! (loop! 2.0))
     (if (= (-> self next-state name) 'idle)
         (TODO-RENAME-43 self)
         )
@@ -45,14 +36,11 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *minertall-sg* minertall
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 2.5)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *minertall-sg* minertall minertall-lod0-jg minertall-idle-ja
+              ((minertall-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :shadow minertall-shadow-mg
+              )
 
 ;; definition for method 52 of type minertall
 ;; INFO: Return type mismatch shadow-flags vs none.
@@ -162,14 +150,11 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *minershort-sg* minershort
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 2.5)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *minershort-sg* minershort minershort-lod0-jg minershort-idle-ja
+              ((minershort-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :shadow minershort-shadow-mg
+              )
 
 ;; failed to figure out what this is:
 (defpartgroup group-minershort-candle
@@ -681,53 +666,21 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *cavegem-sg* cavegem
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 9)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *cavegem-sg* cavegem cavegem-lod0-jg cavegem-idle-ja
+              ((cavegem-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 9)
+              )
 
 ;; failed to figure out what this is:
 (defstate idle (cavegem)
   :virtual #t
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)

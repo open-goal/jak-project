@@ -75,40 +75,21 @@
     (ja-channel-set! 1)
     (send-event self 'do-effect 'death-warp-in -1.0)
     (sound-play-by-name (static-sound-name "warpgate-tele") (new-sound-id) 1024 0 0 1 #t)
-    (let ((gp-3 (-> self skel root-channel 0)))
-      (set! (-> gp-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 41)))
-      (set! (-> gp-3 param 0) (ja-aframe 50.0 0))
-      (set! (-> gp-3 param 1) 1.0)
-      (set! (-> gp-3 frame-num) (ja-aframe 40.0 0))
-      (joint-control-channel-group! gp-3 (the-as art-joint-anim (-> self draw art-group data 41)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 41)
+                :num! (seek! (ja-aframe 50.0 0))
+                :frame-num (ja-aframe 40.0 0)
+                )
     (until (ja-done? 0)
       (suspend)
-      (let ((gp-4 (-> self skel root-channel 0)))
-        (set! (-> gp-4 param 0) (ja-aframe 50.0 0))
-        (set! (-> gp-4 param 1) 1.0)
-        (joint-control-channel-group-eval! gp-4 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe 50.0 0)))
       )
     (restore-collide-with-as (-> self control))
-    (let ((gp-5 (-> self skel root-channel 0)))
-      (set! (-> gp-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 41)))
-      (set! (-> gp-5 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 41)) data 0 length) -1))
-            )
-      (set! (-> gp-5 param 1) 1.0)
-      (set! (-> gp-5 frame-num) (ja-aframe 50.0 0))
-      (joint-control-channel-group! gp-5 (the-as art-joint-anim (-> self draw art-group data 41)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 41) :num! (seek!) :frame-num (ja-aframe 50.0 0))
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-26 (-> self skel root-channel 0)))
-        (set! (-> a0-26 param 0) (the float (+ (-> a0-26 frame-group data 0 length) -1)))
-        (set! (-> a0-26 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-26 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (target-falling-anim -1 99)
+    (target-falling-anim -1 (seconds 0.33))
     (none)
     )
   :post
@@ -129,7 +110,7 @@
   (behavior ()
     (clear-pending-settings-from-process *setting-control* self 'allow-progress)
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (when (and (and *target* (>= 20480.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
                  (and (>= (-> self level-slot) 0)
                       (not (movie?))
@@ -293,7 +274,7 @@
             (s4-0 #f)
             (s3-0 gp-0)
             )
-        (while #t
+        (loop
           (when (zero? s2-0)
             (cond
               ((cpad-pressed? 0 right)
@@ -491,13 +472,10 @@
   )
 
 
-(defskelgroup *warp-gate-switch-sg* warp-gate-switch
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 1.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *warp-gate-switch-sg* warp-gate-switch warp-gate-switch-lod0-jg warp-gate-switch-down-ja
+              ((warp-gate-switch-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.5)
+              )
 
 (defmethod TODO-RENAME-27 warp-gate-switch ((obj warp-gate-switch))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
@@ -910,13 +888,10 @@
     )
   )
 
-(defskelgroup *village-cam-sg* village-cam
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 80)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *village-cam-sg* village-cam village-cam-lod0-jg -1
+              ((village-cam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 80)
+              )
 
 (deftype village-cam (process)
   ((root-override trsq        :offset-assert 112)
@@ -946,7 +921,7 @@
   :code
   (behavior ()
     (local-vars (v1-18 symbol))
-    (while #t
+    (loop
       (let ((v1-5
               (and (and *target*
                         (>= (-> self range) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))

@@ -48,23 +48,17 @@
   (the-as racer ((method-of-type process-drawable relocate) obj arg0))
   )
 
-(defskelgroup *racer-sg* racer
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3.5)
-  :longest-edge (meters 0)
-  :shadow 2
-  :sort 1
-  )
+(defskelgroup *racer-sg* racer racer-geo-jg 3
+              ((racer-geo-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3.5)
+              :shadow racer-shadow-mg
+              :sort 1
+              )
 
-(defskelgroup *racer-explode-sg* racer
-  22
-  24
-  ((23 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *racer-explode-sg* racer racer-explode-lod0-jg racer-explode-idle-ja
+              ((racer-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3.5)
+              )
 
 (define *racer-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
@@ -141,9 +135,7 @@
          (case (current-status gp-0)
            (((task-status need-reward-speech))
             (ja-channel-set! 1)
-            (let ((v1-15 (-> self skel root-channel 0)))
-              (set! (-> v1-15 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-              )
+            (ja :group! (-> self draw art-group data 3))
             (set! (-> self root-override root-prim prim-core action) (collide-action solid ca-11))
             (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
             (ja-post)
@@ -234,9 +226,7 @@
   :code
   (behavior ()
     (ja-channel-set! 1)
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      )
+    (ja :group! (-> self draw art-group data 3))
     (set! (-> self root-override root-prim prim-core action) (collide-action solid ca-11))
     (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
     0.0
@@ -246,7 +236,7 @@
                      )
                  )
           )
-      (while #t
+      (loop
         (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-9)))
             (go-virtual wait-for-return)
             )
@@ -292,9 +282,7 @@
     (case arg2
       (('draw)
        (ja-channel-set! 1)
-       (let ((v1-3 (-> self skel root-channel 0)))
-         (set! (-> v1-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-         )
+       (ja :group! (-> self draw art-group data 3))
        (set! (-> self root-override root-prim prim-core action) (collide-action solid ca-11))
        (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
        (transform-post)
@@ -408,7 +396,7 @@
   (behavior ()
     (ja-channel-set! 0)
     (ja-post)
-    (while #t
+    (loop
       (if (not (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-9))))
           (go-virtual idle)
           )

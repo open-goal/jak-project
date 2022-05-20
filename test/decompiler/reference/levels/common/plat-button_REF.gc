@@ -53,13 +53,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *plat-button-sg* plat-button
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -1 0 6.6)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plat-button-sg* plat-button plat-button-geo-jg plat-button-pressed-ja
+              ((plat-button-geo-mg (meters 999999)))
+              :bounds (static-spherem 0 -1 0 6.6)
+              )
 
 ;; definition for method 30 of type plat-button
 (defmethod should-teleport? plat-button ((obj plat-button))
@@ -99,64 +96,28 @@
   :code
   (behavior ()
     (let ((gp-0 (can-activate? self)))
-      (cond
-        (gp-0
-          (let ((a0-1 (-> self skel root-channel 0)))
-            (set! (-> a0-1 param 0) 0.0)
-            (set! (-> a0-1 param 1) 1.0)
-            (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-            )
+      (if gp-0
+          (ja-no-eval :num! (seek! 0.0))
+          (ja-no-eval :num! (seek!))
           )
-        (else
-          (let ((a0-2 (-> self skel root-channel 0)))
-            (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-            (set! (-> a0-2 param 1) 1.0)
-            (joint-control-channel-group! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-            )
-          )
-        )
-      (while #t
+      (loop
         (if (should-teleport? self)
             (go-virtual plat-button-teleport-to-other-end)
             )
         (let ((s5-0 (can-activate? self)))
           (when (!= s5-0 gp-0)
             (set! gp-0 s5-0)
-            (cond
-              (s5-0
-                (let ((a0-5 (-> self skel root-channel 0)))
-                  (set! (-> a0-5 param 0) 0.0)
-                  (set! (-> a0-5 param 1) 1.0)
-                  (joint-control-channel-group! a0-5 (the-as art-joint-anim #f) num-func-seek!)
-                  )
+            (if s5-0
+                (ja-no-eval :num! (seek! 0.0))
+                (ja-no-eval :num! (seek!))
                 )
-              (else
-                (let ((a0-6 (-> self skel root-channel 0)))
-                  (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-                  (set! (-> a0-6 param 1) 1.0)
-                  (joint-control-channel-group! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-                  )
-                )
-              )
             )
           (when (not (ja-done? 0))
             (rider-trans)
-            (cond
-              (s5-0
-                (let ((a0-8 (-> self skel root-channel 0)))
-                  (set! (-> a0-8 param 0) 0.0)
-                  (set! (-> a0-8 param 1) 1.0)
-                  (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-seek!)
-                  )
+            (if s5-0
+                (ja :num! (seek! 0.0))
+                (ja :num! (seek!))
                 )
-              (else
-                (let ((a0-9 (-> self skel root-channel 0)))
-                  (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group data 0 length) -1)))
-                  (set! (-> a0-9 param 1) 1.0)
-                  (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
-                  )
-                )
-              )
             (rider-post)
             )
           )
@@ -196,18 +157,10 @@
   (the-as (function none :behavior plat-button) rider-trans)
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) (the float (+ (-> a0-0 frame-group data 0 length) -1)))
-      (set! (-> a0-0 param 1) 1.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek!))
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (set! (-> self go-back-if-lost-player?) #t)
     (process-entity-status! self (entity-perm-status complete) #t)
@@ -413,7 +366,7 @@
         )
     (sound-stop (-> self sound-id))
     (sound-play-by-name (static-sound-name "elev-land") (new-sound-id) 1024 0 0 1 #t)
-    (while #t
+    (loop
       (if (or (not *target*)
               (< 268435460.0 (vector-vector-xz-distance-squared (-> self root-override trans) (target-pos 0)))
               )

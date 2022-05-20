@@ -19,45 +19,32 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup *swamp-tetherrock-sg* swamp-tetherrock
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 4 0 6)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *swamp-tetherrock-sg* swamp-tetherrock swamp-tetherrock-lod0-jg swamp-tetherrock-idle-ja
+              ((swamp-tetherrock-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 4 0 6)
+              )
 
-(defskelgroup *swamp-tetherrock-explode-sg* swamp-tetherrock-explode
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 4 0 16)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *swamp-tetherrock-explode-sg* swamp-tetherrock-explode swamp-tetherrock-explode-lod0-jg swamp-tetherrock-explode-idle-ja
+              ((swamp-tetherrock-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 4 0 16)
+              )
 
-(defskelgroup *precursor-arm-sg* precursor-arm
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 15 0 15)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *precursor-arm-sg* precursor-arm precursor-arm-lod0-jg precursor-arm-idle-ja
+              ((precursor-arm-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 15 0 15)
+              )
 
-(defskelgroup *swamp-rope-sg* swamp-rope
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 300)
-  :longest-edge (meters 66)
-  )
+(defskelgroup *swamp-rope-sg* swamp-rope swamp-rope-lod0-jg swamp-rope-idle-ja
+              ((swamp-rope-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 300)
+              :longest-edge (meters 66)
+              )
 
-(defskelgroup *swamp-blimp-sg* swamp-blimp
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 10 60 0 95)
-  :longest-edge (meters 40)
-  )
+(defskelgroup *swamp-blimp-sg* swamp-blimp swamp-blimp-lod0-jg swamp-blimp-idle-ja
+              ((swamp-blimp-lod0-mg (meters 20)) (swamp-blimp-lod1-mg (meters 999999)))
+              :bounds (static-spherem 10 60 0 95)
+              :longest-edge (meters 40)
+              )
 
 (defpartgroup group-tetherrock-explode
   :id 285
@@ -639,7 +626,7 @@
   (behavior ()
     (clear-collide-with-as (-> self root-override))
     (logior! (-> self draw status) (draw-status hidden))
-    (while #t
+    (loop
       (when (= (get-task-status (-> self entity extra perm task)) (task-status invalid))
         (if (not (-> self child))
             (go swamp-tetherrock-die)
@@ -916,7 +903,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (let ((s4-0 (new 'static 'vector :y 1.0 :w 1.0))
             (s3-0 (new 'stack-no-clear 'vector))
             (s5-0 (new 'stack-no-clear 'vector))
@@ -1009,7 +996,7 @@
   (behavior ()
     (cleanup-for-death self)
     (deactivate self)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1027,7 +1014,7 @@
       )
     (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
     (close-specific-task! (-> self entity extra perm task) (task-status need-resolution))
-    (while #t
+    (loop
       (cond
         ((< -40960.0 (-> self y-offset))
          (set! (-> self y-offset) (- (-> self y-offset) (* 409.6 (-> *display* time-adjust-ratio))))
@@ -1111,7 +1098,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (set! (-> self tension) 1.5)
       (let* ((f26-0 (+ 225.0 (* 150.0 (sin (rand-vu-float-range 0.0 16384.0)))))
              (f0-5 (+ 4096.0 (* 8192.0 (sin (rand-vu-float-range 0.0 16384.0)))))
@@ -1300,31 +1287,19 @@
            )
       (set! (-> self state-time) (the-as time-frame (the int (* f30-1 (+ -1.0 (the-as float v1-6))))))
       )
-    (ja-channel-push! 1 150)
-    (while #t
+    (ja-channel-push! 1 (seconds 0.5))
+    (loop
       (let* ((f30-2 0.3)
              (f28-1 0.25)
              (v1-10 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
              (v1-11 (the-as number (logior #x3f800000 v1-10)))
              (f30-3 (+ f30-2 (* f28-1 (+ -1.0 (the-as float v1-11)))))
              )
-        (let ((a0-7 (-> self skel root-channel 0)))
-          (set! (-> a0-7 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-          (set! (-> a0-7 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-                )
-          (set! (-> a0-7 param 1) f30-3)
-          (set! (-> a0-7 frame-num) 0.0)
-          (joint-control-channel-group! a0-7 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-          )
+        (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max f30-3) :frame-num 0.0)
         (until (ja-done? 0)
           (swamp-rope-break-code)
           (suspend)
-          (let ((a0-8 (-> self skel root-channel 0)))
-            (set! (-> a0-8 param 0) (the float (+ (-> a0-8 frame-group data 0 length) -1)))
-            (set! (-> a0-8 param 1) f30-3)
-            (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek! max f30-3))
           )
         )
       )
@@ -1384,10 +1359,8 @@
   swamp-rope-trans
   :code
   (behavior ()
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      )
-    (while #t
+    (ja :group! swamp-blimp-idle-ja)
+    (loop
       (let* ((f0-1 (* 2000.0 (- (-> self old-scale) (-> self root scale y))))
              (f1-3 (+ 0.5 f0-1))
              )
@@ -1405,10 +1378,7 @@
           (set! (-> (the-as swamp-rope a0-4) frame vector-overlay quad) (-> self root trans quad))
           )
         )
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 num-func) num-func-identity)
-        (set! (-> gp-0 frame-num) (* (-> self frame value) (the float (ja-num-frames 0))))
-        )
+      (ja :num-func num-func-identity :frame-num (* (-> self frame value) (the float (ja-num-frames 0))))
       (suspend)
       )
     (none)
@@ -1422,10 +1392,8 @@
   swamp-rope-trans
   :code
   (behavior ()
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      )
-    (while #t
+    (ja :group! swamp-blimp-idle-ja)
+    (loop
       (let* ((a0-3 (-> self other-entity))
              (v1-3 (if a0-3
                        (-> a0-3 extra process)
@@ -1437,10 +1405,7 @@
             )
         )
       (TODO-RENAME-10 (-> self frame) 0.0)
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 num-func) num-func-identity)
-        (set! (-> gp-0 frame-num) (* (-> self frame value) (the float (ja-num-frames 0))))
-        )
+      (ja :num-func num-func-identity :frame-num (* (-> self frame value) (the float (ja-num-frames 0))))
       (suspend)
       )
     (none)
@@ -1556,7 +1521,7 @@
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((gp-0 (new 'stack-no-clear 'quaternion)))
       (quaternion-copy! gp-0 (-> self rot-at-init))
-      (while #t
+      (loop
         (quaternion-vector-angle!
           (-> self rot-at-init)
           (new 'static 'vector :y 1.0 :w 1.0)
@@ -1680,10 +1645,8 @@
   (the-as (function none :behavior swamp-blimp) blimp-trans)
   :code
   (behavior ()
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      )
-    (while #t
+    (ja :group! swamp-blimp-idle-ja)
+    (loop
       (when (< 300 (-> self arm-timer))
         (set! (-> self arm-timer) (- (the-as time-frame (-> self arm-timer))
                                      (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))
@@ -1712,10 +1675,7 @@
           (go swamp-blimp-bye-bye)
           )
         )
-      (let ((v1-28 (-> self skel root-channel 0)))
-        (set! (-> v1-28 num-func) num-func-identity)
-        (set! (-> v1-28 frame-num) 0.0)
-        )
+      (ja :num-func num-func-identity :frame-num 0.0)
       (suspend)
       )
     (none)

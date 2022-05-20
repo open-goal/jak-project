@@ -9,16 +9,14 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup *jchar-sg* eichar
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 2 0 3)
-  :longest-edge (meters 1)
-  :shadow 2
-  :texture-level 2
-  :sort 1
-  )
+(defskelgroup *jchar-sg* eichar eichar-lod0-jg -1
+              ((eichar-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 3)
+              :longest-edge (meters 1)
+              :shadow eichar-shadow-mg
+              :texture-level 2
+              :sort 1
+              )
 
 (define *target-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
@@ -768,11 +766,7 @@
   (when (and (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
              (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (-> *TARGET-bank* ground-timeout))
              (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-             (let ((v1-15 (if (> (-> self skel active-channels) 0)
-                              (-> self skel root-channel 0 frame-group)
-                              )
-                          )
-                   )
+             (let ((v1-15 (ja-group)))
                (or (not (or (= v1-15 (-> self draw art-group data 59))
                             (= v1-15 (-> self draw art-group data 60))
                             (= v1-15 (-> self draw art-group data 61))
@@ -1094,11 +1088,7 @@
   (set! (-> arg0 group 4) arg6)
   (dotimes (s3-0 3)
     (set! (-> arg0 chan s3-0) (+ arg1 s3-0))
-    (let ((s2-0 (-> self skel root-channel (-> arg0 chan s3-0))))
-      (set! (-> s2-0 frame-interp) (fabs (-> arg0 blend s3-0)))
-      (joint-control-channel-group-eval! s2-0 (the-as art-joint-anim arg2) num-func-identity)
-      (set! (-> s2-0 frame-num) 0.0)
-      )
+    (ja :chan (-> arg0 chan s3-0) :group! arg2 :num! min :frame-interp (fabs (-> arg0 blend s3-0)))
     )
   arg0
   )
@@ -1114,34 +1104,14 @@
       (set! (-> arg0 blend 2) (seek (the-as float (-> arg0 blend 2)) f30-0 (fmax 0.05 (fmin 0.2 (* 0.25 f0-7)))))
       )
     )
-  (cond
-    ((>= (-> arg0 blend 1) 0.0)
-     (let ((v1-4 (-> self skel root-channel (-> arg0 chan 1))))
-       (set! (-> v1-4 frame-interp) (fabs (-> arg0 blend 1)))
-       (set! (-> v1-4 frame-group) (the-as art-joint-anim (-> arg0 group 1)))
-       )
-     )
-    (else
-      (let ((v1-7 (-> self skel root-channel (-> arg0 chan 1))))
-        (set! (-> v1-7 frame-interp) (fabs (-> arg0 blend 1)))
-        (set! (-> v1-7 frame-group) (the-as art-joint-anim (-> arg0 group 2)))
-        )
+  (if (>= (-> arg0 blend 1) 0.0)
+      (ja :chan (-> arg0 chan 1) :group! (-> arg0 group 1) :frame-interp (fabs (-> arg0 blend 1)))
+      (ja :chan (-> arg0 chan 1) :group! (-> arg0 group 2) :frame-interp (fabs (-> arg0 blend 1)))
       )
-    )
-  (cond
-    ((>= (-> arg0 blend 2) 0.0)
-     (let ((v1-10 (-> self skel root-channel (-> arg0 chan 2))))
-       (set! (-> v1-10 frame-interp) (fabs (-> arg0 blend 2)))
-       (set! (-> v1-10 frame-group) (the-as art-joint-anim (-> arg0 group 4)))
-       )
-     )
-    (else
-      (let ((v1-13 (-> self skel root-channel (-> arg0 chan 2))))
-        (set! (-> v1-13 frame-interp) (fabs (-> arg0 blend 2)))
-        (set! (-> v1-13 frame-group) (the-as art-joint-anim (-> arg0 group 3)))
-        )
+  (if (>= (-> arg0 blend 2) 0.0)
+      (ja :chan (-> arg0 chan 2) :group! (-> arg0 group 4) :frame-interp (fabs (-> arg0 blend 2)))
+      (ja :chan (-> arg0 chan 2) :group! (-> arg0 group 3) :frame-interp (fabs (-> arg0 blend 2)))
       )
-    )
   0
   (none)
   )

@@ -12,6 +12,7 @@
 #include <atomic>
 #include "common/common_types.h"
 #include "common/util/Assert.h"
+#include "game/sce/iop.h"
 
 class IOP_Kernel;
 namespace iop {
@@ -124,7 +125,7 @@ class IOP_Kernel {
   s32 PollMbx(void** msg, s32 mbx) {
     if (_currentThread != -1 && threads.at(_currentThread).wantExit) {
       // total hack - returning this value causes the ISO thread to error out and quit.
-      return -0x1a9;
+      return KE_WAIT_DELETE;
     }
 
     ASSERT(mbx < (s32)mbxs.size());
@@ -139,7 +140,7 @@ class IOP_Kernel {
       mbxs[mbx].pop();
     }
 
-    return gotSomething ? 0 : -424;
+    return gotSomething ? KE_OK : KE_MBOX_NOMSG;
   }
 
   /*!

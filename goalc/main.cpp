@@ -142,6 +142,7 @@ int main(int argc, char** argv) {
     }
   } catch (std::exception& e) {
     fmt::print(stderr, "Compiler Fatal Error: {}\n", e.what());
+    status = ReplStatus::WANT_EXIT;
   }
 
   // Cleanup

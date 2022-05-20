@@ -7,37 +7,29 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup *med-res-ogre-sg* medres-ogre
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem -200 0 -450 350)
-  :longest-edge (meters 0.01)
-  )
+(defskelgroup *med-res-ogre-sg* medres-ogre medres-ogre-lod0-jg medres-ogre-idle-ja
+              ((medres-ogre-lod0-mg (meters 999999)))
+              :bounds (static-spherem -200 0 -450 350)
+              :longest-edge (meters 0.01)
+              )
 
-(defskelgroup *med-res-ogre2-sg* medres-ogre2
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem -200 0 -950 320)
-  :longest-edge (meters 0.01)
-  )
+(defskelgroup *med-res-ogre2-sg* medres-ogre2 medres-ogre2-lod0-jg medres-ogre2-idle-ja
+              ((medres-ogre2-lod0-mg (meters 999999)))
+              :bounds (static-spherem -200 0 -950 320)
+              :longest-edge (meters 0.01)
+              )
 
-(defskelgroup *med-res-ogre3-sg* medres-ogre3
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem -100 0 -1370 300)
-  :longest-edge (meters 0.01)
-  )
+(defskelgroup *med-res-ogre3-sg* medres-ogre3 medres-ogre3-lod0-jg medres-ogre3-idle-ja
+              ((medres-ogre3-lod0-mg (meters 999999)))
+              :bounds (static-spherem -100 0 -1370 300)
+              :longest-edge (meters 0.01)
+              )
 
-(defskelgroup *med-res-finalboss-sg* medres-finalboss
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 80 120 -150 470)
-  :longest-edge (meters 0.01)
-  )
+(defskelgroup *med-res-finalboss-sg* medres-finalboss medres-finalboss-lod0-jg medres-finalboss-idle-ja
+              ((medres-finalboss-lod0-mg (meters 999999)))
+              :bounds (static-spherem 80 120 -150 470)
+              :longest-edge (meters 0.01)
+              )
 
 (deftype villagec-lava (water-anim)
   ()
@@ -93,14 +85,11 @@
   )
 
 
-(defskelgroup *gondola-sg* gondola
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -5.5 0 6.5)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *gondola-sg* gondola gondola-lod0-jg gondola-idle-down-ja
+              ((gondola-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -5.5 0 6.5)
+              :shadow gondola-shadow-mg
+              )
 
 (defstate idle (gondola)
   :virtual #t
@@ -127,9 +116,7 @@
                                  )
                                )
               )
-        (let ((v1-5 (-> self skel root-channel 0)))
-          (set! (-> v1-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-          )
+        (ja :group! (-> self draw art-group data 4))
         )
       (else
         (set! (-> self anim) (new 'static 'spool-anim
@@ -147,13 +134,11 @@
                                  )
                                )
               )
-        (let ((v1-9 (-> self skel root-channel 0)))
-          (set! (-> v1-9 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-          )
+        (ja :group! (-> self draw art-group data 3))
         )
       )
     (transform-post)
-    (while #t
+    (loop
       (when (and *target* (and (< (vector-vector-distance
                                     (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3))
                                     (target-pos 0)
@@ -442,18 +427,15 @@
   :flag-assert         #x16004000b0
   (:methods
     (idle () _type_ :state 20)
-    (active (basic symbol) _type_ :state 21)
+    (active (handle symbol) _type_ :state 21)
     )
   )
 
 
-(defskelgroup *pistons-sg* pistons
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 6 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *pistons-sg* pistons pistons-lod0-jg pistons-idle-ja
+              ((pistons-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6 0 8)
+              )
 
 (defstate idle (pistons)
   :virtual #t
@@ -461,7 +443,7 @@
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('update)
-       (go-virtual active (the-as basic (process->handle arg0)) #f)
+       (go-virtual active (process->handle arg0) #f)
        )
       )
     )
@@ -478,7 +460,7 @@
 (defstate active (pistons)
   :virtual #t
   :code
-  (behavior ((arg0 basic) (arg1 symbol))
+  (behavior ((arg0 handle) (arg1 symbol))
     (process-entity-status! self (entity-perm-status complete) #t)
     (if (not arg1)
         (sound-play-by-name (static-sound-name "gdl-start-up") (new-sound-id) 1024 0 0 1 #t)
@@ -489,19 +471,16 @@
                      )
                  )
           )
-      (while #t
+      (loop
         (set! f30-0 (seek f30-0 1.0 (* 0.2 (-> *display* seconds-per-frame))))
-        (let ((a0-5 (-> self skel root-channel 0)))
-          (set! (-> a0-5 param 0) f30-0)
-          (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-loop!)
-          )
+        (ja :num! (loop! f30-0))
         (ja-post)
         (update! (-> self sound))
         (suspend)
         )
       )
-    ;; note : deleted some unused trash "code" here
-    (none)
+    ;; decompiler never gets here and fails hard
+    (go-virtual idle)
     )
   )
 
@@ -509,22 +488,11 @@
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *pistons-sg* '())
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "gdl-gen-loop")
-                           :volume #x400
-                           :fo-max 100
-                           )
-                         (-> obj root trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "gdl-gen-loop" :fo-max 100) (-> obj root trans))
         )
   (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-      (go (method-of-object obj active) #f #t)
+      (go (method-of-object obj active) (the-as handle #f) #t)
       (go (method-of-object obj idle))
       )
   (none)
@@ -542,13 +510,10 @@
   )
 
 
-(defskelgroup *gondolacables-sg* gondolacables
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 120)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *gondolacables-sg* gondolacables gondolacables-lod0-jg gondolacables-idle-ja
+              ((gondolacables-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 120)
+              )
 
 (defstate idle (gondolacables)
   :virtual #t
@@ -567,40 +532,11 @@
     )
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)

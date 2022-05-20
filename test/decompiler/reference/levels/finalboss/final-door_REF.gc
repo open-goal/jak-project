@@ -64,31 +64,22 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *power-left-sg* power-left
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 11 0 12)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *power-left-sg* power-left power-left-lod0-jg power-left-idle-ja
+              ((power-left-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 11 0 12)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *power-right-sg* power-right
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 11 0 12)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *power-right-sg* power-right power-right-lod0-jg power-right-idle-ja
+              ((power-right-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 11 0 12)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *powercellalt-sg* powercellalt
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 2)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *powercellalt-sg* powercellalt powercellalt-lod0-jg powercellalt-idle-ja
+              ((powercellalt-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              )
 
 ;; failed to figure out what this is:
 (defstate idle (final-door)
@@ -138,43 +129,19 @@
   (behavior ((arg0 symbol))
     (case (-> self type)
       ((power-left)
-       (let ((a0-2 (-> self skel root-channel 0)))
-         (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-         (set! (-> a0-2 param 0)
-               (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
-               )
-         (set! (-> a0-2 param 1) 0.353)
-         (set! (-> a0-2 frame-num) 0.0)
-         (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-         )
+       (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max 0.353) :frame-num 0.0)
        (until (ja-done? 0)
          (transform-post)
          (suspend)
-         (let ((a0-3 (-> self skel root-channel 0)))
-           (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-           (set! (-> a0-3 param 1) 0.353)
-           (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek! max 0.353))
          )
        )
       (else
-        (let ((a0-5 (-> self skel root-channel 0)))
-          (set! (-> a0-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-          (set! (-> a0-5 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
-                )
-          (set! (-> a0-5 param 1) 0.353)
-          (set! (-> a0-5 frame-num) 0.0)
-          (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-          )
+        (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max 0.353) :frame-num 0.0)
         (until (ja-done? 0)
           (transform-post)
           (suspend)
-          (let ((a0-6 (-> self skel root-channel 0)))
-            (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-            (set! (-> a0-6 param 1) 0.353)
-            (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek! max 0.353))
           )
         )
       )
@@ -254,7 +221,7 @@
   :code
   (behavior ()
     (ja-post)
-    (while #t
+    (loop
       (if (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
                (and (zero? (logand (-> *target* state-flags) (state-flags sf08)))
                     (and (>= (-> *game-info* fuel) 100.0)
@@ -340,12 +307,9 @@
         (transform-post)
         (spawn (-> self part) (the-as vector (-> self root-override root-prim prim-core)))
         (suspend)
-        (when (nonzero? (-> self skel))
-          (let ((a0-7 (-> self skel root-channel 0)))
-            (set! (-> a0-7 param 0) 0.5)
-            (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-loop!)
+        (if (nonzero? (-> self skel))
+            (ja :num! (loop! 0.5))
             )
-          )
         )
       )
     (set! (-> self root-override trans quad) (-> self jump-pos quad))
@@ -380,7 +344,7 @@
   :virtual #t
   :code
   (behavior ()
-    (while #t
+    (loop
       (vector<-cspace!
         (-> self root-override trans)
         (-> (the-as process-drawable (-> self parent 0)) node-list data (-> self index))
@@ -450,7 +414,7 @@
     )
   :trans
   (behavior ()
-    (set-letterbox-frames (seconds 0.016666668))
+    (set-letterbox-frames (seconds 0.017))
     (none)
     )
   :code
@@ -463,21 +427,11 @@
     (set-quaternion! (-> self control) (the-as quaternion (new 'static 'vector :y -0.8472 :w 0.5312)))
     (rot->dir-targ! (-> self control))
     (transform-post)
-    (ja-channel-push! 1 60)
-    (let ((s4-1 (-> self skel root-channel 0)))
-      (set! (-> s4-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 88)))
-      (set! (-> s4-1 param 0) (ja-aframe 18.0 0))
-      (set! (-> s4-1 param 1) 1.0)
-      (set! (-> s4-1 frame-num) 0.0)
-      (joint-control-channel-group! s4-1 (the-as art-joint-anim (-> self draw art-group data 88)) num-func-seek!)
-      )
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data 88) :num! (seek! (ja-aframe 18.0 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((s4-2 (-> self skel root-channel 0)))
-        (set! (-> s4-2 param 0) (ja-aframe 18.0 0))
-        (set! (-> s4-2 param 1) 1.0)
-        (joint-control-channel-group-eval! s4-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe 18.0 0)))
       )
     (let ((s4-3 (-> (handle->process (the-as handle arg0)) entity))
           (s3-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 7)))

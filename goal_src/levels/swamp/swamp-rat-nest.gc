@@ -746,11 +746,8 @@
   swamp-rat-nest-dummy-event-handler
   :code
   (behavior ()
-    (while #t
-      (let ((v1-2 (-> self skel root-channel 0)))
-        (set! (-> v1-2 num-func) num-func-identity)
-        (set! (-> v1-2 frame-num) (the float (+ (-> v1-2 frame-group data 0 length) -1)))
-        )
+    (loop
+      (ja :num-func num-func-identity :frame-num max)
       (suspend)
       )
     (none)
@@ -772,42 +769,13 @@
     )
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                      (-> self skel root-channel 0 frame-group)
-                                      )
-            )
-      (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                    (-> self skel root-channel 0 frame-group)
-                                                    )
-                                                data
-                                                0
-                                                length
-                                                )
-                                            -1
-                                            )
-                                   )
-            )
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group!
-        a0-0
-        (if (> (-> self skel active-channels) 0)
-            (-> self skel root-channel 0 frame-group)
-            )
-        num-func-seek!
-        )
-      )
+    (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (if (< (-> self parent-process 0 hit-points) 3)
           (spawn (-> self part) (-> self node-list data (-> self particle-spawn-joint) bone transform vector 3))
           )
       (suspend)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-        (set! (-> a0-2 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go swamp-rat-nest-dummy-idle)
     (none)
@@ -821,39 +789,10 @@
   swamp-rat-nest-dummy-event-handler
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                      (-> self skel root-channel 0 frame-group)
-                                      )
-            )
-      (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                    (-> self skel root-channel 0 frame-group)
-                                                    )
-                                                data
-                                                0
-                                                length
-                                                )
-                                            -1
-                                            )
-                                   )
-            )
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group!
-        a0-0
-        (if (> (-> self skel active-channels) 0)
-            (-> self skel root-channel 0 frame-group)
-            )
-        num-func-seek!
-        )
-      )
+    (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go swamp-rat-nest-dummy-idle)
     (none)
@@ -1077,7 +1016,7 @@ swamp-rat-nest-default-event-handler
   :code
   (behavior ()
     (swamp-rat-nest-check-dummy)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1118,7 +1057,7 @@ swamp-rat-nest-default-event-handler
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1149,7 +1088,7 @@ swamp-rat-nest-default-event-handler
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1232,29 +1171,20 @@ swamp-rat-nest-default-event-handler
   (none)
   )
 
-(defskelgroup *swamp-rat-nest-dummy-a-sg* swamp-rat-nest
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *swamp-rat-nest-dummy-a-sg* swamp-rat-nest swamp-rat-nest-a-lod0-jg swamp-rat-nest-a-idle-ja
+              ((swamp-rat-nest-a-lod0-mg (meters 20)) (swamp-rat-nest-a-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
 
-(defskelgroup *swamp-rat-nest-dummy-b-sg* swamp-rat-nest
-  4
-  7
-  ((5 (meters 20)) (6 (meters 999999)))
-  :bounds (static-spherem 0 0 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *swamp-rat-nest-dummy-b-sg* swamp-rat-nest swamp-rat-nest-b-lod0-jg swamp-rat-nest-b-idle-ja
+              ((swamp-rat-nest-b-lod0-mg (meters 20)) (swamp-rat-nest-b-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
 
-(defskelgroup *swamp-rat-nest-dummy-c-sg* swamp-rat-nest
-  8
-  11
-  ((9 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *swamp-rat-nest-dummy-c-sg* swamp-rat-nest swamp-rat-nest-c-lod0-jg swamp-rat-nest-c-idle-ja
+              ((swamp-rat-nest-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
 
 (defmethod dummy-20 swamp-rat-nest-dummy-a ((obj swamp-rat-nest-dummy-a))
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))

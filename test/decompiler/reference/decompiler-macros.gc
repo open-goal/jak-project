@@ -862,10 +862,26 @@
   )
 
 ;; art-h
+(desfun art-elt->index (ag-name elt-name)
+  (if (number? elt-name)
+      elt-name
+      (let ((ag-info (assoc ag-name *art-info*)))
+          (if (null? ag-info)
+              -1
+              (let ((elt-info (assoc elt-name (cdr ag-info))))
+                  (if (null? elt-info)
+                      -1
+                      (cadr elt-info))
+                  )
+              )
+          )
+      )
+  )
+
 (defmacro defskelgroup (name art-name joint-geom joint-anim lods
                         &key (shadow 0)
                         &key bounds
-                        &key longest-edge
+                        &key (longest-edge 0.0)
                         &key (texture-level 0)
                         &key (sort 0)
                         &key (version 6) ;; do NOT use this!
@@ -879,18 +895,18 @@
                         :longest-edge ,longest-edge
                         :version ,version
                         :max-lod ,(- (length lods) 1)
-                        :shadow ,shadow
+                        :shadow ,(art-elt->index (string->symbol-format "{}-ag" art-name) shadow)
                         :texture-level ,texture-level
                         :sort ,sort
                         )))
         ;; set joint geometry and joint bones
-        (set! (-> skel jgeo) ,joint-geom)
-        (set! (-> skel janim) ,joint-anim)
+        (set! (-> skel jgeo) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-geom))
+        (set! (-> skel janim) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-anim))
         
         ;; set lods
         ,@(apply-i (lambda (x i)
                       `(begin
-                          (set! (-> skel mgeo ,i) ,(car x))
+                          (set! (-> skel mgeo ,i) ,(art-elt->index (string->symbol-format "{}-ag" art-name) (car x)))
                           (set! (-> skel lod-dist ,i) ,(cadr x))
                           )
                       ) lods)
@@ -968,5 +984,140 @@
           :mask (sound-mask ,@snd-mask)
           ))
   )
+
+;; process-drawable
+(defmacro ja-group (&key (chan 0))
+  "get the frame group for self. default channel is 0, the base channel. returns #f if no frame group."
+  `(if (> (-> self skel active-channels) ,chan)
+       (-> self skel root-channel ,chan frame-group))
+  )
+
+(defmacro ja-group? (group &key (chan 0))
+  "is self in this frame group on this channel? default is channel 0, which is the base channel."
+  `(= (ja-group) ,group)
+  )
+
+(defmacro ja (&key (chan 0)
+              &key (group! #f)
+              &key (num! #f)
+              &key (param0 #f)
+              &key (param1 #f)
+              &key (num-func #f)
+              &key (frame-num #f)
+              &key (frame-interp #f)
+              &key (dist #f)
+              &key (eval? #t)
+              )
+  "set various joint anim parameters for self and eval them.
+   you can use this for playing animations!
+   
+   chan         = the channel to modify. defaults to 0 (base channel). this is usually what you want.
+   group!       = when not #f, set this as the new frame-group. defaults to #f
+   num!         = set the frame playback function. this is what determines what frame an animation is at. funcs below.
+                  #f = no func will be set, and there wont be a frame eval.
+   num-func     = sets the num-func field for the channel. this lets you change the function with eval'ing.
+   param0       = 1st parameter for the playback function. ONLY USE THESE WITH num-func !!
+   param1       = 2nd parameter for the playback function. ONLY USE THESE WITH num-func !!
+   frame-num    = set the frame-num field.
+   frame-interp = set the frame-interp field.
+   dist         = set the dist field.
+   
+   available num! functions:
+   - (+!)       = advance anim.
+   - (-!)       = reverse anim.
+   - (identity num) = play 'num' frame.
+   - (seek! target speed) = animate towards frame target at a speed.
+                            speed is optional and defaults to 1.0 when not provided.
+                            target is optional and defaults to the last frame of the animation.
+                            if you want to set the speed, you therefore must also set the target.
+                            target can be max (no quote), which is just the same as the default value.
+   - (loop! speed)  = loop animation at a speed. default speed is 1.0 when not provided.
+   - (chan channel) = copy frame from another channel.
+   - min = the start of the animation.
+   - max = the end of the animation.
+   "
+  
+  (let* ((num-args (if (pair? num!) (cdr num!) '()))
+        (num! (if (pair? num!) (car num!) num!))
+        (nf (cond
+              ((or (eq? num! 'identity)
+                   (eq? num! 'min)
+                   (eq? num! 'max)
+                   )
+                   'num-func-identity)
+              ((eq? num! 'none) 'num-func-none)
+              ((eq? num! '+!) 'num-func-+!)
+              ((eq? num! '-!) 'num-func--!)
+              ((eq? num! 'seek!) 'num-func-seek!)
+              ((eq? num! 'loop!) 'num-func-loop!)
+              ((eq? num! 'blend-in!) 'num-func-blend-in!)
+              ((eq? num! 'chan) 'num-func-chan)
+              ))
+        (p0 (if param0 param0
+                (cond
+                  ((eq? num! 'chan) `(the float ,(car num-args)))
+                  ((eq? num! '+!)    (if (null? num-args) 1.0 (car num-args)))
+                  ((eq? num! '-!)    (if (null? num-args) 1.0 (car num-args)))
+                  ((eq? num! 'loop!) (if (null? num-args) 1.0 (if (eq? 'max (car num-args))
+                                                                  (if group!
+                                                                      `(the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
+                                                                      `(the float (1- (-> ja-ch frame-group data 0 length)))
+                                                                      )
+                                                                  (car num-args))))
+                  ((eq? num! 'seek!) (if (or (null? num-args) (eq? (car num-args) 'max))
+                                         (if group!
+                                             `(the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
+                                             `(the float (1- (-> ja-ch frame-group data 0 length)))
+                                             )
+                                         (car num-args)))
+                  )))
+        (p1 (if param1 param1
+                (cond
+                  ((eq? num! 'seek!) (if (or (null? num-args) (null? (cdr num-args))) 1.0 (cadr num-args)))
+                  )))
+        (frame-num (if (eq? 'max frame-num) (if group!
+                                                `(the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
+                                                `(the float (1- (-> ja-ch frame-group data 0 length)))
+                                                )
+                                            frame-num))
+        (frame-group (if (or p0 p1 frame-num (not nf)) group! #f))
+      )
+  `(let ((ja-ch (-> self skel root-channel ,chan)))
+      ,(if frame-interp `(set! (-> ja-ch frame-interp) ,frame-interp) `(none))
+      ,(if dist `(set! (-> ja-ch dist) ,dist) `(none))
+      ,(if frame-group `(set! (-> ja-ch frame-group) (the art-joint-anim ,frame-group)) `(none))
+      ,(if p0 `(set! (-> ja-ch param 0) ,p0) `(none))
+      ,(if p1 `(set! (-> ja-ch param 1) ,p1) `(none))
+      ,(if num-func `(set! (-> ja-ch num-func) ,num-func) `(none))
+      ,(if frame-num `(set! (-> ja-ch frame-num) ,frame-num) `(none))
+      ,(if nf
+          `(,(if eval? 'joint-control-channel-group-eval! 'joint-control-channel-group!)
+              ja-ch (the art-joint-anim ,group!) ,nf)
+          `(none))
+      ,(cond
+        ((eq? num! 'min) `(set! (-> ja-ch frame-num) 0.0))
+        ((eq? num! 'max) (if group!
+                             `(set! (-> ja-ch frame-num) (the float (1- (-> (the art-joint-anim ,group!) data 0 length))))
+                             `(set! (-> ja-ch frame-num) (the float (1- (-> ja-ch frame-group data 0 length))))
+                             ))
+        ((eq? num! 'identity) `(set! (-> ja-ch frame-num) ,(car num-args)))
+        (#t `(none))
+        )
+      ))
+  )
+
+(defmacro ja-no-eval (&key (chan 0)
+                      &key (group! #f)
+                      &key (num! #f)
+                      &key (param0 #f)
+                      &key (param1 #f)
+                      &key (num-func #f)
+                      &key (frame-num #f)
+                      &key (frame-interp #f)
+                      &key (dist #f)
+                      )
+  `(ja :eval? #f :chan ,chan :group! ,group! :num! ,num! :param0 ,param0 :param1 ,param1 :num-func ,num-func :frame-num ,frame-num :frame-interp ,frame-interp :dist ,dist)
+  )
+
 
 

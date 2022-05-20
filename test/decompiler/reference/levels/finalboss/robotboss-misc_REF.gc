@@ -2,13 +2,11 @@
 (in-package goal)
 
 ;; failed to figure out what this is:
-(defskelgroup *med-res-snow1-sg* medres-snowback
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem -360 100 100 380)
-  :longest-edge (meters 0.01)
-  )
+(defskelgroup *med-res-snow1-sg* medres-snowback 0 2
+              ((1 (meters 999999)))
+              :bounds (static-spherem -360 100 100 380)
+              :longest-edge (meters 0.01)
+              )
 
 ;; failed to figure out what this is:
 (defstate cam-robotboss (camera-slave)
@@ -54,7 +52,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (when #t
         (let ((a2-0 (new-stack-vector0)))
           (vector-! a2-0 (-> *camera* tpos-curr-adj) (-> self pivot-pt))
@@ -130,13 +128,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *ecoclaw-sg* ecoclaw
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 2 0 9)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *ecoclaw-sg* ecoclaw ecoclaw-lod0-jg ecoclaw-idle-ja
+              ((ecoclaw-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 9)
+              )
 
 ;; definition for function ecoclaw-beam-particle-callback
 ;; INFO: Return type mismatch int vs none.
@@ -291,41 +286,12 @@
     )
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                      (-> self skel root-channel 0 frame-group)
-                                      )
-            )
-      (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                    (-> self skel root-channel 0 frame-group)
-                                                    )
-                                                data
-                                                0
-                                                length
-                                                )
-                                            -1
-                                            )
-                                   )
-            )
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group!
-        a0-0
-        (if (> (-> self skel active-channels) 0)
-            (-> self skel root-channel 0 frame-group)
-            )
-        num-func-seek!
-        )
-      )
+    (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -340,7 +306,7 @@
   ecoclaw-handler
   :code
   (behavior ()
-    (while #t
+    (loop
       (if (-> self particles 0 kind)
           (go ecoclaw-activate)
           )
@@ -391,13 +357,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *silodoor-sg* silodoor
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 25)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *silodoor-sg* silodoor silodoor-lod0-jg silodoor-idle-ja
+              ((silodoor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 25)
+              )
 
 ;; failed to figure out what this is:
 (defstate idle (silodoor)
@@ -420,13 +383,9 @@
   (the-as (function none :behavior silodoor) rider-trans)
   :code
   (behavior ()
-    (while #t
+    (loop
       (when (not (movie?))
-        (let ((gp-0 (-> self skel root-channel 0)))
-          (set! (-> gp-0 param 0) (* (-> self part-opened) (the float (ja-num-frames 0))))
-          (set! (-> gp-0 param 1) 0.01)
-          (joint-control-channel-group-eval! gp-0 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! (* (-> self part-opened) (the float (ja-num-frames 0))) 0.01))
         (cond
           ((< 0.01 (fabs (- (* (-> self part-opened) (the float (ja-num-frames 0))) (ja-aframe-num 0))))
            (if (nonzero? (-> self sound))
@@ -466,10 +425,7 @@
       (suspend)
       )
     (logclear! (-> self draw status) (draw-status hidden))
-    (let ((v1-12 (-> self skel root-channel 0)))
-      (set! (-> v1-12 num-func) num-func-identity)
-      (set! (-> v1-12 frame-num) 0.0)
-      )
+    (ja :num-func num-func-identity :frame-num 0.0)
     (set! (-> self part-opened) 0.0)
     (go-virtual idle)
     (none)
@@ -567,13 +523,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *finalbosscam-sg* finalbosscam
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *finalbosscam-sg* finalbosscam finalbosscam-lod0-jg finalbosscam-idle-ja
+              ((finalbosscam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 ;; definition for function robotboss-manipy-trans-hook
 ;; INFO: Return type mismatch int vs none.

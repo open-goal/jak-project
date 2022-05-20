@@ -28,13 +28,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *eggtop-sg* eggtop
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -4.5 0 4.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *eggtop-sg* eggtop eggtop-lod0-jg eggtop-idle-ja
+              ((eggtop-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -4.5 0 4.5)
+              )
 
 ;; failed to figure out what this is:
 (defpartgroup group-jungle-blue-eco-room-open
@@ -330,22 +327,10 @@
         )
       (save-reminder (get-task-control (-> self entity extra perm task)) 2 0)
       (sound-play-by-name (static-sound-name "jngb-eggtop-seq") (new-sound-id) 1024 0 0 1 #t)
-      (let ((a0-16 (-> self skel root-channel 0)))
-        (set! (-> a0-16 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-        (set! (-> a0-16 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
-              )
-        (set! (-> a0-16 param 1) 1.0)
-        (set! (-> a0-16 frame-num) 0.0)
-        (joint-control-channel-group! a0-16 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-        )
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-17 (-> self skel root-channel 0)))
-          (set! (-> a0-17 param 0) (the float (+ (-> a0-17 frame-group data 0 length) -1)))
-          (set! (-> a0-17 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-17 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (process-entity-status! self (entity-perm-status complete) #t)
@@ -354,16 +339,7 @@
           (entity-task-complete-on a0-20)
           )
       )
-    (let ((gp-4 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-4
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        num-func-identity
-        )
-      (set! (-> gp-4 frame-num)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
-            )
-      )
+    (ja :group! (-> self draw art-group data 2) :num! max)
     (suspend)
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
@@ -440,13 +416,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *jng-iris-door-sg* jng-iris-door
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *jng-iris-door-sg* jng-iris-door jng-iris-door-lod0-jg jng-iris-door-idle-ja
+              ((jng-iris-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
 
 ;; definition for method 24 of type jng-iris-door
 ;; INFO: Return type mismatch int vs none.

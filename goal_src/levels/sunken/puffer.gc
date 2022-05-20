@@ -71,23 +71,19 @@
   )
 
 
-(defskelgroup *puffer-sg* puffer
-  0
-  -1
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 1 0 5.25)
-  :longest-edge (meters 1.2)
-  :shadow 4
-  )
+(defskelgroup *puffer-sg* puffer puffer-main-lod0-jg -1
+              ((puffer-main-lod0-mg (meters 20)) (puffer-main-lod1-mg (meters 40)) (puffer-main-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 5.25)
+              :longest-edge (meters 1.2)
+              :shadow puffer-main-shadow-mg
+              )
 
-(defskelgroup *puffer-mean-sg* puffer
-  5
-  -1
-  ((6 (meters 20)) (7 (meters 40)) (8 (meters 999999)))
-  :bounds (static-spherem 0 1 0 5.25)
-  :longest-edge (meters 1.2)
-  :shadow 4
-  )
+(defskelgroup *puffer-mean-sg* puffer puffer-mean-lod0-jg -1
+              ((puffer-mean-lod0-mg (meters 20)) (puffer-mean-lod1-mg (meters 40)) (puffer-mean-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 5.25)
+              :longest-edge (meters 1.2)
+              :shadow puffer-main-shadow-mg
+              )
 
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 56]
 (defbehavior puffer-default-event-handler puffer ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -587,7 +583,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (if (and (and *target* (>= (-> self fact-info-override idle-distance)
                                  (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                                  )
@@ -673,7 +669,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (dummy-26 self)
       (suspend)
       )
@@ -727,7 +723,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (dummy-26 self)
       (suspend)
       )
@@ -762,24 +758,12 @@
     (cleanup-for-death self)
     (shut-down! (-> self neck))
     (logclear! (-> self mask) (process-mask actor-pause))
-    (ja-channel-push! 1 22)
+    (ja-channel-push! 1 (seconds 0.075))
     (clear-collide-with-as (-> self root-override))
-    (let ((a0-5 (-> self skel root-channel 0)))
-      (set! (-> a0-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 15)))
-      (set! (-> a0-5 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 15)) data 0 length) -1))
-            )
-      (set! (-> a0-5 param 1) 1.0)
-      (set! (-> a0-5 frame-num) 0.0)
-      (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> self draw art-group data 15)) num-func-seek!)
-      )
+    (ja-no-eval :group! puffer-die-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-6 (-> self skel root-channel 0)))
-        (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-        (set! (-> a0-6 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (none)
     )
@@ -892,7 +876,7 @@
              )
           (cond
             ((-> obj attacking?)
-             (ja-channel-push! 1 60)
+             (ja-channel-push! 1 (seconds 0.2))
              (let ((s5-0 (-> obj skel root-channel 0)))
                (joint-control-channel-group-eval!
                  s5-0
@@ -934,7 +918,7 @@
              )
           (cond
             ((not (-> obj attacking?))
-             (ja-channel-push! 1 60)
+             (ja-channel-push! 1 (seconds 0.2))
              (let ((s5-1 (-> obj skel root-channel 0)))
                (joint-control-channel-group-eval!
                  s5-1
@@ -976,7 +960,7 @@
              )
           (cond
             ((ja-done? 0)
-             (ja-channel-push! 1 60)
+             (ja-channel-push! 1 (seconds 0.2))
              (cond
                ((-> obj attacking?)
                 (let ((s5-2 (-> obj skel root-channel 0)))
@@ -1015,7 +999,7 @@
             )
           )
          (else
-           (ja-channel-push! 1 60)
+           (ja-channel-push! 1 (seconds 0.2))
            (let ((s5-4 (-> obj skel root-channel 0)))
              (joint-control-channel-group-eval!
                s5-4
@@ -1039,7 +1023,7 @@
           )
        (cond
          ((-> obj attacking?)
-          (ja-channel-push! 1 60)
+          (ja-channel-push! 1 (seconds 0.2))
           (let ((s5-5 (-> obj skel root-channel 0)))
             (joint-control-channel-group-eval!
               s5-5
@@ -1081,7 +1065,7 @@
           )
        (cond
          ((not (-> obj attacking?))
-          (ja-channel-push! 1 60)
+          (ja-channel-push! 1 (seconds 0.2))
           (let ((s5-6 (-> obj skel root-channel 0)))
             (joint-control-channel-group-eval!
               s5-6
@@ -1123,7 +1107,7 @@
           )
        (cond
          ((ja-done? 0)
-          (ja-channel-push! 1 60)
+          (ja-channel-push! 1 (seconds 0.2))
           (let ((s5-7 (-> obj skel root-channel 0)))
             (joint-control-channel-group-eval!
               s5-7
@@ -1148,7 +1132,7 @@
          )
        )
       (else
-        (ja-channel-push! 1 60)
+        (ja-channel-push! 1 (seconds 0.2))
         (let ((s5-8 (-> obj skel root-channel 0)))
           (joint-control-channel-group-eval!
             s5-8

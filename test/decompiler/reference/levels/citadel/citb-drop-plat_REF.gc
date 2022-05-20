@@ -2,49 +2,34 @@
 (in-package goal)
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-drop-plat-sg* citb-drop-plat
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-drop-plat-sg* citb-drop-plat citb-drop-plat-lod0-jg citb-drop-plat-idle-ja
+              ((citb-drop-plat-lod0-mg (meters 20)) (citb-drop-plat-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-drop-plat-red-sg* citb-drop-plat
-  4
-  7
-  ((5 (meters 20)) (6 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-drop-plat-red-sg* citb-drop-plat citb-drop-plat-red-lod0-jg citb-drop-plat-red-idle-ja
+              ((citb-drop-plat-red-lod0-mg (meters 20)) (citb-drop-plat-red-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-drop-plat-green-sg* citb-drop-plat
-  8
-  11
-  ((9 (meters 20)) (10 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-drop-plat-green-sg* citb-drop-plat citb-drop-plat-green-lod0-jg citb-drop-plat-green-idle-ja
+              ((citb-drop-plat-green-lod0-mg (meters 20)) (citb-drop-plat-green-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-drop-plat-blue-sg* citb-drop-plat
-  12
-  15
-  ((13 (meters 20)) (14 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-drop-plat-blue-sg* citb-drop-plat citb-drop-plat-blue-lod0-jg citb-drop-plat-blue-idle-ja
+              ((citb-drop-plat-blue-lod0-mg (meters 20)) (citb-drop-plat-blue-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-drop-plat-yellow-sg* citb-drop-plat
-  16
-  19
-  ((17 (meters 20)) (18 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-drop-plat-yellow-sg* citb-drop-plat citb-drop-plat-yellow-lod0-jg citb-drop-plat-yellow-idle-ja
+              ((citb-drop-plat-yellow-lod0-mg (meters 20)) (citb-drop-plat-yellow-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; definition of type drop-plat
 (deftype drop-plat (process-drawable)
@@ -111,7 +96,7 @@
     (update-transforms! (-> self root-override))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (logior! (-> self mask) (process-mask actor-pause))
-    (while #t
+    (loop
       (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self duration))
           (go drop-plat-drop)
           )
@@ -158,7 +143,7 @@
     (logior! (-> self draw status) (draw-status hidden))
     (ja-post)
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self delay))
         (let ((v1-14 (logclear (-> self draw status) (draw-status hidden)))
               (a0-5 (-> self draw))
@@ -196,7 +181,7 @@
           )
       (set! (-> gp-0 quad) (-> self root-override trans quad))
       (set! (-> gp-0 y) (-> (the-as process-drawable (-> self parent 0)) root trans y))
-      (while #t
+      (loop
         (let ((f0-6
                 (fmax 0.0 (- 1.0 (* 0.0033333334 (the float (- (-> *display* base-frame-counter) (-> self state-time))))))
                 )
@@ -248,7 +233,7 @@
           )
         )
       )
-    (while #t
+    (loop
       (vector-v++!
         (-> self root-override transv)
         (compute-acc-due-to-gravity (-> self root-override) (new-stack-vector0) 0.0)
@@ -562,7 +547,7 @@
   :code
   (behavior ()
     (citb-drop-plat-drop-all-children)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -592,7 +577,7 @@
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (citb-drop-plat-spawn-children)
-    (while #t
+    (loop
       (if (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) (+ (-> self duration) (seconds 2)))
               (or (not *target*)
                   (< (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))

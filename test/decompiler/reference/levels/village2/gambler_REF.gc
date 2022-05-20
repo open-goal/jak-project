@@ -19,14 +19,11 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *gambler-sg* gambler
-  0
-  5
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :shadow 4
-  )
+(defskelgroup *gambler-sg* gambler gambler-lod0-jg gambler-idle-tiptoe-ja
+              ((gambler-lod0-mg (meters 20)) (gambler-lod1-mg (meters 40)) (gambler-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow gambler-shadow-mg
+              )
 
 ;; definition for method 32 of type gambler
 (defmethod play-anim! gambler ((obj gambler) (arg0 symbol))
@@ -190,50 +187,15 @@
   :virtual #t
   :code
   (behavior ()
-    (when (!= (if (> (-> self skel active-channels) 0)
-                  (-> self skel root-channel 0 frame-group)
-                  )
-              (-> self draw art-group data 7)
-              )
-      (ja-channel-push! 1 60)
-      (let ((v1-6 (-> self skel root-channel 0)))
-        (set! (-> v1-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-        )
+    (when (!= (ja-group) gambler-idle-fidget-ja)
+      (ja-channel-push! 1 (seconds 0.2))
+      (ja :group! gambler-idle-fidget-ja)
       )
-    (while #t
-      (let ((a0-9 (-> self skel root-channel 0)))
-        (set! (-> a0-9 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-9 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-9 param 1) 1.0)
-        (set! (-> a0-9 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-9
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-10 (-> self skel root-channel 0)))
-          (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
-          (set! (-> a0-10 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       (TODO-RENAME-43 self)
       (let* ((v1-38 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -242,34 +204,22 @@
              )
         (cond
           ((< f0-9 0.16666667)
-           (let ((a0-15 (-> self skel root-channel 0)))
-             (set! (-> a0-15 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-             )
+           (ja :group! gambler-idle-tiptoe-ja)
            )
           ((< f0-9 0.33333334)
-           (let ((a0-16 (-> self skel root-channel 0)))
-             (set! (-> a0-16 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-             )
+           (ja :group! gambler-idle-look-1-ja)
            )
           ((< f0-9 0.5)
-           (let ((a0-17 (-> self skel root-channel 0)))
-             (set! (-> a0-17 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-             )
+           (ja :group! gambler-idle-fidget-ja)
            )
           ((< f0-9 0.6666667)
-           (let ((a0-18 (-> self skel root-channel 0)))
-             (set! (-> a0-18 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
-             )
+           (ja :group! gambler-idle-scratch-1-ja)
            )
           ((< f0-9 0.8333333)
-           (let ((a0-19 (-> self skel root-channel 0)))
-             (set! (-> a0-19 frame-group) (the-as art-joint-anim (-> self draw art-group data 9)))
-             )
+           (ja :group! gambler-idle-look-2-ja)
            )
           (else
-            (let ((a0-20 (-> self skel root-channel 0)))
-              (set! (-> a0-20 frame-group) (the-as art-joint-anim (-> self draw art-group data 10)))
-              )
+            (ja :group! gambler-idle-scratch-2-ja)
             )
           )
         )
