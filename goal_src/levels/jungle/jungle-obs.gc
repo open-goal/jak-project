@@ -5,49 +5,19 @@
 ;; name in dgo: jungle-obs
 ;; dgos: JUN, JUNGLE, L1
 
-(define-extern *jngpusher-sg* skeleton-group)
-(define-extern *sidedoor-sg* skeleton-group)
-(define-extern *maindoor-sg* skeleton-group)
-(define-extern *precurbridge-sg* skeleton-group)
-(define-extern *junglecam-sg* skeleton-group)
-(define-extern *accordian-sg* skeleton-group)
-(define-extern *lurkerm-piston-sg* skeleton-group)
-(define-extern *lurkerm-short-sail-sg* skeleton-group)
-(define-extern *lurkerm-tall-sail-sg* skeleton-group)
-(define-extern *towertop-sg* skeleton-group)
-(define-extern *logtrap-sg* skeleton-group)
-(define-extern *med-res-firecanyon-sg* skeleton-group)
-(define-extern *jungle-camera-sg* skeleton-group)
-
-(declare-type towertop process-drawable)
-(declare-type lurkerm-tall-sail process-drawable)
-(declare-type lurkerm-short-sail process-drawable)
-(declare-type lurkerm-piston process-drawable)
-(declare-type accordian process-drawable)
-(declare-type precurbridge process-drawable)
-(declare-type precurbridge process-drawable)
-(declare-type maindoor process-drawable)
-(declare-type jngpusher process-drawable)
-
-
 ;; DECOMP BEGINS
 
-(defskelgroup *med-res-firecanyon-sg* medres-firecanyon
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem -200 0 -440 530)
-  :longest-edge (meters 0.01)
-  )
+(defskelgroup *med-res-firecanyon-sg* medres-firecanyon medres-firecanyon-lod0-jg medres-firecanyon-idle-ja
+              ((medres-firecanyon-lod0-mg (meters 999999)))
+              :bounds (static-spherem -200 0 -440 530)
+              :longest-edge (meters 0.01)
+              )
 
-(defskelgroup *jungle-camera-sg* jungle-camera
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *jungle-camera-sg* jungle-camera 0 2
+              ((1 (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :texture-level 2
+              )
 
 (deftype logtrap (process-drawable)
   ((root-override collide-shape-moving  :offset 112)
@@ -62,14 +32,12 @@
   )
 
 
-(defskelgroup *logtrap-sg* logtrap
-  0
-  4
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 8 0 13)
-  :longest-edge (meters 6)
-  :shadow 3
-  )
+(defskelgroup *logtrap-sg* logtrap logtrap-lod0-jg logtrap-idle-ja
+              ((logtrap-lod0-mg (meters 20)) (logtrap-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 8 0 13)
+              :longest-edge (meters 6)
+              :shadow logtrap-shadow-mg
+              )
 
 (defstate idle (logtrap)
   :virtual #t
@@ -82,16 +50,8 @@
   :code
   (behavior ()
     (transform-post)
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (when (logtest? (-> self draw status) (draw-status was-drawn))
           (cond
@@ -107,11 +67,7 @@
             )
           )
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -159,34 +115,19 @@
   )
 
 
-(defskelgroup *towertop-sg* towertop
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 30)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *towertop-sg* towertop towertop-lod0-jg towertop-idle-ja
+              ((towertop-lod0-mg (meters 20)) (towertop-lod1-mg (meters 40)) (towertop-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 30)
+              )
 
 (defstate towertop-idle (towertop)
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) 0.4)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max 0.4) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 0.4)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max 0.4))
         )
       )
     (none)
@@ -220,13 +161,14 @@
   )
 
 
-(defskelgroup *lurkerm-tall-sail-sg* lurkerm-tall-sail
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 5 0 7)
-  :longest-edge (meters 4)
-  )
+(defskelgroup *lurkerm-tall-sail-sg* lurkerm-tall-sail lurkerm-tall-sail-lod0-jg lurkerm-tall-sail-idle-ja
+              ((lurkerm-tall-sail-lod0-mg (meters 20))
+               (lurkerm-tall-sail-lod1-mg (meters 40))
+               (lurkerm-tall-sail-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 5 0 7)
+              :longest-edge (meters 4)
+              )
 
 (defstate lurkerm-tall-sail-idle (lurkerm-tall-sail)
   :event
@@ -246,16 +188,8 @@
   (the-as (function none :behavior lurkerm-tall-sail) rider-trans)
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) (* 0.5 (-> self speed)))
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
       (until (ja-done? 0)
         (quaternion-rotate-local-y!
           (-> self root-override quat)
@@ -263,11 +197,7 @@
           (* 12743.111 (-> *display* seconds-per-frame) (-> self speed))
           )
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) (* 0.5 (-> self speed)))
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max (* 0.5 (-> self speed))))
         )
       )
     (none)
@@ -334,13 +264,10 @@
   )
 
 
-(defskelgroup *lurkerm-short-sail-sg* lurkerm-short-sail
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 5 0 9)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *lurkerm-short-sail-sg* lurkerm-short-sail 0 4
+              ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+              :bounds (static-spherem 0 5 0 9)
+              )
 
 (defstate lurkerm-short-sail-idle (lurkerm-short-sail)
   :event
@@ -360,16 +287,8 @@
   (the-as (function none :behavior lurkerm-short-sail) rider-trans)
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) (* 0.5 (-> self speed)))
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
       (until (ja-done? 0)
         (quaternion-rotate-local-y!
           (-> self root-override quat)
@@ -377,11 +296,7 @@
           (* -12743.111 (-> *display* seconds-per-frame) (-> self speed))
           )
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) (* 0.5 (-> self speed)))
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max (* 0.5 (-> self speed))))
         )
       )
     (none)
@@ -468,13 +383,10 @@
   )
 
 
-(defskelgroup *lurkerm-piston-sg* lurkerm-piston
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 6)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *lurkerm-piston-sg* lurkerm-piston lurkerm-piston-geo-jg lurkerm-piston-idle-ja
+              ((lurkerm-piston-geo-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              )
 
 (defstate lurkerm-piston-idle (lurkerm-piston)
   :event
@@ -494,16 +406,8 @@
   (the-as (function none :behavior lurkerm-piston) rider-trans)
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) (-> self speed))
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max (-> self speed)) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((gp-0 (new-stack-vector0)))
           (set! (-> gp-0 quad) (-> self base quad))
@@ -511,11 +415,7 @@
           (move-to-point! (-> self root-override) gp-0)
           )
         (suspend)
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-          (set! (-> a0-3 param 1) (-> self speed))
-          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max (-> self speed)))
         )
       )
     (none)
@@ -601,13 +501,11 @@
   )
 
 
-(defskelgroup *accordian-sg* accordian
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem -7 0 23 25)
-  :longest-edge (meters 4)
-  )
+(defskelgroup *accordian-sg* accordian accordian-lod0-jg accordian-idle-ja
+              ((accordian-lod0-mg (meters 20)) (accordian-lod1-mg (meters 999999)))
+              :bounds (static-spherem -7 0 23 25)
+              :longest-edge (meters 4)
+              )
 
 (defstate accordian-idle (accordian)
   :event
@@ -625,19 +523,12 @@
     )
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-loop!)
-      )
+    (ja-no-eval :num! (loop!) :frame-num 0.0)
     (ja-post)
-    (while #t
+    (loop
       (suspend)
       (when (logtest? (-> self draw status) (draw-status was-drawn))
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (-> self speed))
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-loop!)
-          )
+        (ja :num! (loop! (-> self speed)))
         (ja-post)
         )
       )
@@ -659,13 +550,10 @@
   (none)
   )
 
-(defskelgroup *junglecam-sg* junglecam
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 80)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *junglecam-sg* junglecam junglecam-lod0-jg junglecam-beamcam-ja
+              ((junglecam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 80)
+              )
 
 (deftype junglecam (process-hidden)
   ()
@@ -689,30 +577,14 @@
   :code
   (behavior ()
     (ambient-hint-spawn "gamcam30" (the-as vector #f) *entity-pool* 'camera)
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
-      )
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
-      (set! (-> gp-0 param 0) (ja-aframe 0.0 0))
-      (set! (-> gp-0 param 1) 1.0)
-      (set! (-> gp-0 frame-num) 0.0)
-      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
-      )
+    (ja :group! (-> self draw art-group data 8))
+    (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek! (ja-aframe 0.0 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((gp-1 (-> self skel root-channel 0)))
-        (set! (-> gp-1 param 0) (ja-aframe 0.0 0))
-        (set! (-> gp-1 param 1) 1.0)
-        (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe 0.0 0)))
       )
     (send-event (ppointer->process (-> self parent)) 'go)
-    (let ((a0-10 (-> self skel root-channel 0)))
-      (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
-      (set! (-> a0-10 param 1) 1.0)
-      (joint-control-channel-group! a0-10 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
       (ja-eval)
@@ -749,13 +621,11 @@
   )
 
 
-(defskelgroup *precurbridge-sg* precurbridge
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 40)
-  :longest-edge (meters 3.6)
-  )
+(defskelgroup *precurbridge-sg* precurbridge precurbridge-geo-jg precurbridge-idle-ja
+              ((precurbridge-geo-mg (meters 20)) (precurbridge-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              :longest-edge (meters 3.6)
+              )
 
 (defstate precurbridge-idle (precurbridge)
   :event
@@ -768,16 +638,9 @@
     )
   :code
   (behavior ()
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 3))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) 0.0)
-      )
+    (ja :group! (-> self draw art-group data 3) :num! min)
     (transform-post)
-    (while #t
+    (loop
       (when (and *target*
                  (< (vector-vector-xz-distance (-> self activation-point) (-> *target* control trans)) 49152.0)
                  (< (-> self activation-point y) (-> *target* control trans y))
@@ -863,25 +726,13 @@
       1
       (the-as symbol (-> self root-override trans))
       )
-    (let ((a0-3 (-> self skel root-channel 0)))
-      (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      (set! (-> a0-3 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-            )
-      (set! (-> a0-3 param 1) 0.25)
-      (set! (-> a0-3 frame-num) 0.0)
-      (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek! max 0.25) :frame-num 0.0)
     (until (ja-done? 0)
       (if (rand-vu-percent? 0.1)
           (spawn-projectile-blue *target*)
           )
       (suspend)
-      (let ((a0-6 (-> self skel root-channel 0)))
-        (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-        (set! (-> a0-6 param 1) 0.25)
-        (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! max 0.25))
       )
     (go precurbridge-active #f)
     (none)
@@ -916,65 +767,31 @@
     (set! (-> self draw bounds w) 81920.0)
     (when arg0
       (ja-channel-set! 1)
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (joint-control-channel-group-eval!
-          gp-0
-          (the-as art-joint-anim (-> self draw art-group data 4))
-          num-func-identity
-          )
-        (set! (-> gp-0 frame-num) 0.0)
-        )
+      (ja :group! (-> self draw art-group data 4) :num! min)
       )
     (ja-post)
     (update-transforms! (-> self root-override))
     (logior! (-> self mask) (process-mask actor-pause))
-    (while #t
+    (loop
       (if (not (movie?))
           (set! (-> self mask) (logior (process-mask platform) (-> self mask)))
           )
       (cond
         ((and *target* (>= 61440.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
-         (when (not (= (if (> (-> self skel active-channels) 0)
-                           (-> self skel root-channel 0 frame-group)
-                           )
-                       (-> self draw art-group data 5)
-                       )
-                    )
-           (ja-channel-push! 1 60)
-           (let ((gp-1 (-> self skel root-channel 0)))
-             (joint-control-channel-group-eval!
-               gp-1
-               (the-as art-joint-anim (-> self draw art-group data 5))
-               num-func-identity
-               )
-             (set! (-> gp-1 frame-num) 0.0)
-             )
+         (when (not (ja-group? (-> self draw art-group data 5)))
+           (ja-channel-push! 1 (seconds 0.2))
+           (ja :group! (-> self draw art-group data 5) :num! min)
            )
          )
         (else
-          (when (not (= (if (> (-> self skel active-channels) 0)
-                            (-> self skel root-channel 0 frame-group)
-                            )
-                        (-> self draw art-group data 4)
-                        )
-                     )
-            (ja-channel-push! 1 60)
-            (let ((gp-2 (-> self skel root-channel 0)))
-              (joint-control-channel-group-eval!
-                gp-2
-                (the-as art-joint-anim (-> self draw art-group data 4))
-                num-func-identity
-                )
-              (set! (-> gp-2 frame-num) 0.0)
-              )
+          (when (not (ja-group? (-> self draw art-group data 4)))
+            (ja-channel-push! 1 (seconds 0.2))
+            (ja :group! (-> self draw art-group data 4) :num! min)
             )
           )
         )
       (update! (-> self sound))
-      (let ((a0-19 (-> self skel root-channel 0)))
-        (set! (-> a0-19 param 0) 0.4)
-        (joint-control-channel-group-eval! a0-19 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop! 0.4))
       (suspend)
       )
     (none)
@@ -1184,28 +1001,22 @@
   )
 
 
-(defskelgroup *maindoor-sg* maindoor
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 7)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *maindoor-sg* maindoor maindoor-lod0-jg maindoor-idle-ja
+              ((maindoor-lod0-mg (meters 20)) (maindoor-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 7)
+              )
 
 (defstate maindoor-closed (maindoor)
   :code
   (behavior ((arg0 symbol))
     (set! (-> self draw force-lod) 1)
     (logclear! (-> self draw status) (draw-status hidden))
-    (when arg0
-      (let ((v1-6 (-> self skel root-channel 0)))
-        (set! (-> v1-6 num-func) num-func-identity)
-        (set! (-> v1-6 frame-num) 0.0)
+    (if arg0
+        (ja :num-func num-func-identity :frame-num 0.0)
         )
-      )
     (suspend)
     (update-transforms! (-> self root-override))
-    (while #t
+    (loop
       (when (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
                 (and (and *target*
                           (>= (-> self thresh w) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
@@ -1239,11 +1050,7 @@
         (set! (-> self root-override root-prim prim-core action) (collide-action solid))
         (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
         )
-      (let ((a0-19 (-> self skel root-channel 0)))
-        (set! (-> a0-19 param 0) 0.0)
-        (set! (-> a0-19 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-19 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! 0.0))
       (ja-post)
       (suspend)
       )
@@ -1257,27 +1064,20 @@
     (set! (-> self draw force-lod) 0)
     (logclear! (-> self draw status) (draw-status hidden))
     (process-entity-status! self (entity-perm-status complete) #t)
-    (when arg0
-      (let ((v1-6 (-> self skel root-channel 0)))
-        (set! (-> v1-6 num-func) num-func-identity)
-        (set! (-> v1-6 frame-num) (the float (+ (-> v1-6 frame-group data 0 length) -1)))
+    (if arg0
+        (ja :num-func num-func-identity :frame-num max)
         )
-      )
     (set! (-> self root-override root-prim prim-core action) (collide-action))
     (set! (-> self root-override root-prim prim-core offense) (collide-offense no-offense))
     (while (not (ja-max? 0))
-      (let ((a0-10 (-> self skel root-channel 0)))
-        (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
-        (set! (-> a0-10 param 1) 2.0)
-        (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! max 2.0))
       (if (and (not arg0) (rand-vu-percent? 0.2))
           (spawn-projectile-blue *target*)
           )
       (suspend)
       )
     (logior! (-> self draw status) (draw-status hidden))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1327,13 +1127,10 @@
   )
 
 
-(defskelgroup *sidedoor-sg* sidedoor
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *sidedoor-sg* sidedoor sidedoor-geo-jg sidedoor-idle-ja
+              ((sidedoor-geo-mg (meters 20)) (sidedoor-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
 
 (defmethod TODO-RENAME-24 sidedoor ((obj sidedoor))
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -1389,24 +1186,18 @@
     )
   )
 
-(defskelgroup *jngpusher-sg* jngpusher
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 10)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *jngpusher-sg* jngpusher 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 10))
 
 (defstate jngpusher-idle (jngpusher)
   :trans
   (the-as (function none :behavior jngpusher) rider-trans)
   :code
   (behavior ()
-    (while #t
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 num-func) num-func-identity)
-        (set! (-> gp-0 frame-num) (get-current-value-with-mirror (-> self sync) (the float (ja-num-frames 0))))
-        )
+    (loop
+      (ja :num-func num-func-identity
+          :frame-num
+          (get-current-value-with-mirror (-> self sync) (the float (ja-num-frames 0)))
+          )
       (cond
         ((< (ja-frame-num 0) (the float (/ (ja-num-frames 0) 3)))
          (set! (-> self back-prim prim-core collide-as) (collide-kind))

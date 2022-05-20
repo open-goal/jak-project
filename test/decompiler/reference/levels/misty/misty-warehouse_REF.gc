@@ -28,13 +28,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *silostep-sg* silostep
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 2 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *silostep-sg* silostep silostep-lod0-jg silostep-idle-ja
+              ((silostep-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 8)
+              )
 
 ;; failed to figure out what this is:
 (defstate silostep-idle (silostep)
@@ -51,16 +48,9 @@
     )
   :code
   (behavior ()
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) 0.0)
-      )
+    (ja :group! (-> self draw art-group data 2) :num! min)
     (transform-post)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -138,34 +128,17 @@
   (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status complete) #t)
     (when (not arg0)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-        (set! (-> a0-2 param 0) (-> self anim-limit))
-        (set! (-> a0-2 param 1) 1.0)
-        (set! (-> a0-2 frame-num) 0.0)
-        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-        )
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! (-> self anim-limit)) :frame-num 0.0)
       (until (ja-done? 0)
         (rider-trans)
         (rider-post)
         (suspend)
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 param 0) (-> self anim-limit))
-          (set! (-> a0-3 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! (-> self anim-limit)))
         )
       )
-    (let ((gp-1 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-1
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        num-func-identity
-        )
-      (set! (-> gp-1 frame-num) (-> self anim-limit))
-      )
+    (ja :group! (-> self draw art-group data 2) :num! (identity (-> self anim-limit)))
     (rider-post)
-    (while #t
+    (loop
       (ja-post)
       (suspend)
       )
@@ -215,13 +188,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *rounddoor-sg* rounddoor
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *rounddoor-sg* rounddoor rounddoor-lod0-jg rounddoor-idle-ja
+              ((rounddoor-lod0-mg (meters 20)) (rounddoor-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
 
 ;; definition of type rounddoor
 (deftype rounddoor (eco-door)

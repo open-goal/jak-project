@@ -199,13 +199,10 @@ swamp-bat-slave-event-handler
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *swamp-bat-slave-sg* swamp-bat
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 2.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *swamp-bat-slave-sg* swamp-bat swamp-bat-lod0-jg swamp-bat-idle-ja
+              ((swamp-bat-lod0-mg (meters 20)) (swamp-bat-lod1-mg (meters 40)) (swamp-bat-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              )
 
 ;; definition for function swamp-bat-slave-get-new-path
 ;; Used lq/sq
@@ -243,10 +240,8 @@ swamp-bat-slave-event-handler
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self launch-ready) #f)
-    (ja-channel-push! 1 49)
-    (let ((v1-4 (-> self skel root-channel 0)))
-      (set! (-> v1-4 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-      )
+    (ja-channel-push! 1 (seconds 0.165))
+    (ja :group! swamp-bat-idle-ja)
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       (set! (-> s5-0 quad) (-> self root-override trans quad))
       (let ((s4-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root-override quat)))
@@ -262,7 +257,7 @@ swamp-bat-slave-event-handler
                  (s3-0 (the int (* f0-0 (/ 1.0 f1-0) (vector-vector-distance s5-0 (-> self idle-position)))))
                  )
             (forward-up->quaternion gp-0 s2-0 (new 'static 'vector :y 1.0 :w 1.0))
-            (while #t
+            (loop
               (let ((v1-17 (- (-> *display* base-frame-counter) (-> self state-time))))
                 (when (>= v1-17 s3-0)
                   0
@@ -277,10 +272,7 @@ swamp-bat-slave-event-handler
                   (quaternion-slerp! (-> self root-override quat) s4-0 gp-0 f30-1)
                   )
                 )
-              (let ((a0-16 (-> self skel root-channel 0)))
-                (set! (-> a0-16 param 0) (-> self idle-anim-speed))
-                (joint-control-channel-group-eval! a0-16 (the-as art-joint-anim #f) num-func-loop!)
-                )
+              (ja :num! (loop! (-> self idle-anim-speed)))
               (suspend)
               0
               )
@@ -294,7 +286,7 @@ swamp-bat-slave-event-handler
     (set! (-> self launch-ready) #t)
     (logior! (-> self mask) (process-mask actor-pause))
     (let ((f30-2 0.0))
-      (while #t
+      (loop
         (let ((f26-0 (cos f30-2))
               (f28-0 (sin f30-2))
               )
@@ -302,10 +294,7 @@ swamp-bat-slave-event-handler
           (vector+*! (-> self root-override trans) (-> self root-override trans) (-> self idle-path x-axis) f26-0)
           (vector+*! (-> self root-override trans) (-> self root-override trans) (-> self idle-path y-axis) f28-0)
           )
-        (let ((a0-26 (-> self skel root-channel 0)))
-          (set! (-> a0-26 param 0) (-> self idle-anim-speed))
-          (joint-control-channel-group-eval! a0-26 (the-as art-joint-anim #f) num-func-loop!)
-          )
+        (ja :num! (loop! (-> self idle-anim-speed)))
         (suspend)
         (+! f30-2 (* 32768.0 (-> *display* seconds-per-frame) (-> self idle-anim-speed)))
         )
@@ -324,15 +313,13 @@ swamp-bat-slave-event-handler
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self launch-ready) #f)
-    (ja-channel-push! 1 30)
+    (ja-channel-push! 1 (seconds 0.1))
     (let ((gp-0 (new-stack-vector0)))
       (set! (-> gp-0 quad) (-> self root-override trans quad))
       (let ((s5-0 (new-stack-vector0)))
         (eval-path-curve-div! (-> self parent-process 0 path-list (-> self path-select)) s5-0 0.0 'interp)
-        (let ((v1-12 (-> self skel root-channel 0)))
-          (set! (-> v1-12 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-          )
-        (while #t
+        (ja :group! swamp-bat-idle-ja)
+        (loop
           (let ((s4-0 (- (-> *display* base-frame-counter) (-> self state-time))))
             (if (>= s4-0 (seconds 0.3))
                 (go swamp-bat-slave-swoop)
@@ -341,10 +328,7 @@ swamp-bat-slave-event-handler
               (vector-lerp! (-> self root-override trans) gp-0 s5-0 f0-1)
               )
             )
-          (let ((a0-9 (-> self skel root-channel 0)))
-            (set! (-> a0-9 param 0) (-> self idle-anim-speed))
-            (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-loop!)
-            )
+          (ja :num! (loop! (-> self idle-anim-speed)))
           (suspend)
           0
           )
@@ -363,39 +347,23 @@ swamp-bat-slave-event-handler
   :code
   (behavior ()
     (set! (-> self strafe-envelope) 0.0)
-    (ja-channel-push! 1 30)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 5))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) 0.0)
-      )
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja :group! swamp-bat-notice-ja :num! min)
     (until (ja-done? 0)
       (if (< (ja-aframe-num 0) 10.0)
           (sync-now! (-> self sync) 0.0)
           )
       (suspend)
-      (let ((a0-4 (-> self skel root-channel 0)))
-        (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
-        (set! (-> a0-4 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (set! (-> self strafe-envelope) 20480.0)
-    (ja-channel-push! 1 30)
-    (let ((v1-18 (-> self skel root-channel 0)))
-      (set! (-> v1-18 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-      )
-    (while #t
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja :group! swamp-bat-swoop-ja)
+    (loop
       (if (>= (dummy-20 self) 2.0)
           (go swamp-bat-slave-strafe)
           )
-      (let ((a0-11 (-> self skel root-channel 0)))
-        (set! (-> a0-11 param 0) 1.0)
-        (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop!))
       (suspend)
       )
     (none)
@@ -411,18 +379,13 @@ swamp-bat-slave-event-handler
   :code
   (behavior ()
     (set! (-> self strafe-envelope) 20480.0)
-    (ja-channel-push! 1 30)
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-      )
-    (while #t
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja :group! swamp-bat-strafe-ja)
+    (loop
       (if (>= (dummy-20 self) 6.0)
           (go swamp-bat-slave-return)
           )
-      (let ((a0-5 (-> self skel root-channel 0)))
-        (set! (-> a0-5 param 0) 1.0)
-        (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop!))
       (suspend)
       )
     (none)
@@ -438,14 +401,12 @@ swamp-bat-slave-event-handler
   :code
   (behavior ()
     (set! (-> self strafe-envelope) 0.0)
-    (ja-channel-push! 1 22)
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-      )
+    (ja-channel-push! 1 (seconds 0.075))
+    (ja :group! swamp-bat-strafe-ja)
     (let ((f30-0 (+ -1.0 (-> self path-point-count)))
           (gp-0 #t)
           )
-      (while #t
+      (loop
         (let ((f28-0 (dummy-20 self)))
           (if (>= f28-0 f30-0)
               (go swamp-bat-slave-idle)
@@ -458,10 +419,7 @@ swamp-bat-slave-event-handler
               )
             )
           )
-        (let ((a0-6 (-> self skel root-channel 0)))
-          (set! (-> a0-6 param 0) 1.0)
-          (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-loop!)
-          )
+        (ja :num! (loop!))
         (suspend)
         )
       )
@@ -480,7 +438,7 @@ swamp-bat-slave-event-handler
     )
   :code
   (behavior ((arg0 handle))
-    (ja-channel-push! 1 21)
+    (ja-channel-push! 1 (seconds 0.07))
     (let ((gp-0 (new-stack-vector0)))
       (let ((v1-1 (handle->process arg0)))
         (if v1-1
@@ -489,16 +447,10 @@ swamp-bat-slave-event-handler
         )
       (set! (-> gp-0 y) (+ -6144.0 (-> gp-0 y)))
       (vector-normalize! gp-0 98304.0)
-      (let ((v1-8 (-> self skel root-channel 0)))
-        (set! (-> v1-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
-        )
+      (ja :group! swamp-bat-die-ja)
       (until (ja-done? 0)
         (vector-v++! (-> self root-override trans) gp-0)
-        (let ((a0-12 (-> self skel root-channel 0)))
-          (set! (-> a0-12 param 0) (the float (+ (-> a0-12 frame-group data 0 length) -1)))
-          (set! (-> a0-12 param 1) 0.5)
-          (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max 0.5))
         (suspend)
         )
       )
@@ -649,7 +601,7 @@ swamp-bat-slave-event-handler
       (process-entity-status! self (entity-perm-status dead) #t)
       (deactivate self)
       )
-    (while #t
+    (loop
       (when (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
                  *target*
                  (>= (-> self fact-override idle-distance)
@@ -702,7 +654,7 @@ swamp-bat-slave-event-handler
   :code
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (swamp-bat-update-path)
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
         (set! (-> self state-time) (-> *display* base-frame-counter))

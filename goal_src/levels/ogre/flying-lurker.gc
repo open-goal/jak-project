@@ -9,13 +9,10 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup *ogrecam-sg* ogrecam
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 2 0 6)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *ogrecam-sg* ogrecam ogrecam-lod0-jg -1
+              ((ogrecam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 6)
+              )
 
 (deftype plunger-lurker (process-drawable)
   ((alt-actor entity-actor  :offset-assert 176)
@@ -34,13 +31,13 @@
   )
 
 
-(defskelgroup *plunger-lurker-sg* plunger-lurker
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 2 4 0 12)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plunger-lurker-sg* plunger-lurker plunger-lurker-lod0-jg plunger-lurker-idle-ja
+              ((plunger-lurker-lod0-mg (meters 20))
+               (plunger-lurker-lod1-mg (meters 40))
+               (plunger-lurker-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 2 4 0 12)
+              )
 
 (defstate plunger-lurker-plunge (plunger-lurker)
   :code
@@ -139,7 +136,7 @@
             )
           )
         (the-as art-joint-anim #f)
-        (the-as art-joint-anim (-> self draw art-group data 4))
+        (the-as art-joint-anim plunger-lurker-idle-ja)
         (the-as (function process-drawable symbol) false-func)
         )
       (if (handle->process gp-1)
@@ -169,44 +166,15 @@
       (set! (-> a1-15 num-params) 2)
       (set! (-> a1-15 message) 'attack-invinc)
       (set! (-> a1-15 param 0) (the-as uint #f))
-      (let ((a0-37 (new 'static 'array uint32 26
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x20
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     )
-                   )
-            )
-        (set! (-> a0-37 17) (the-as uint 'instant-death))
+      (let ((a0-37 (new 'static 'attack-info :mask #x20)))
+        (set! (-> a0-37 mode) 'instant-death)
         (set! (-> a1-15 param 1) (the-as uint a0-37))
         )
       (send-event-function *target* a1-15)
       )
     (cleanup-for-death self)
     (deactivate self)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -256,41 +224,17 @@
     )
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-      (set! (-> a0-0 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-            )
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-      )
+    (ja-no-eval :group! plunger-lurker-notice-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (let ((a0-3 (-> self skel root-channel 0)))
-      (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-      (set! (-> a0-3 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
-            )
-      (set! (-> a0-3 param 1) 1.0)
-      (set! (-> a0-3 frame-num) 0.0)
-      (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-      )
+    (ja-no-eval :group! plunger-lurker-death-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-4 (-> self skel root-channel 0)))
-        (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
-        (set! (-> a0-4 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -320,23 +264,11 @@
     )
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! plunger-lurker-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -423,14 +355,15 @@
   )
 
 
-(defskelgroup *flying-lurker-sg* flying-lurker
-  0
-  5
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 2 0 6)
-  :longest-edge (meters 2.3)
-  :shadow 4
-  )
+(defskelgroup *flying-lurker-sg* flying-lurker flying-lurker-lod0-jg flying-lurker-fly-ja
+              ((flying-lurker-lod0-mg (meters 20))
+               (flying-lurker-lod1-mg (meters 40))
+               (flying-lurker-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 2 0 6)
+              :longest-edge (meters 2.3)
+              :shadow flying-lurker-shadow-mg
+              )
 
 (defmethod dummy-20 flying-lurker ((obj flying-lurker))
   (with-pp
@@ -536,7 +469,7 @@
   (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (logior! (-> self draw status) (draw-status hidden))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -814,41 +747,19 @@
     )
   :code
   (behavior ()
-    (while #t
-      (when (not (= (if (> (-> self skel active-channels) 0)
-                        (-> self skel root-channel 0 frame-group)
-                        )
-                    (-> self draw art-group data 5)
-                    )
-                 )
-        (ja-channel-push! 1 60)
-        (let ((v1-8 (-> self skel root-channel 0)))
-          (set! (-> v1-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-          )
+    (loop
+      (when (not (ja-group? flying-lurker-fly-ja))
+        (ja-channel-push! 1 (seconds 0.2))
+        (ja :group! flying-lurker-fly-ja)
         )
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 param 0) (flying-lurker-calc-anim-speed))
-        (joint-control-channel-group-eval! gp-0 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop! (flying-lurker-calc-anim-speed)))
       (suspend)
       (when (>= (- (-> *display* base-frame-counter) (-> self last-look-time)) (-> self time-to-next-look))
-        (ja-channel-push! 1 60)
-        (let ((a0-12 (-> self skel root-channel 0)))
-          (set! (-> a0-12 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-          (set! (-> a0-12 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
-                )
-          (set! (-> a0-12 param 1) 1.0)
-          (set! (-> a0-12 frame-num) 0.0)
-          (joint-control-channel-group! a0-12 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-          )
+        (ja-channel-push! 1 (seconds 0.2))
+        (ja-no-eval :group! flying-lurker-look-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
-          (let ((a0-13 (-> self skel root-channel 0)))
-            (set! (-> a0-13 param 0) (the float (+ (-> a0-13 frame-group data 0 length) -1)))
-            (set! (-> a0-13 param 1) 1.0)
-            (joint-control-channel-group-eval! a0-13 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           )
         (set! (-> self last-look-time) (-> *display* base-frame-counter))
         (let* ((f30-0 300.0)
@@ -1082,9 +993,7 @@
       )
     (flying-lurker-inc-try-count)
     (ja-channel-set! 1)
-    (let ((v1-6 (-> self skel root-channel 0)))
-      (set! (-> v1-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-      )
+    (ja :group! flying-lurker-fly-ja)
     (let* ((v1-8 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
            (v1-9 (the-as float (logior #x3f800000 v1-8)))
            (f0-2 (+ -1.0 v1-9))
@@ -1315,7 +1224,7 @@
         (set! gp-0 11)
         )
       )
-    (while #t
+    (loop
       (cond
         ((play-movie?)
          (ja-channel-set! 0)
@@ -1336,28 +1245,14 @@
          0
          )
         (else
-          (let ((v1-27 (-> self skel root-channel 0)))
-            (set! (-> v1-27 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-            )
-          (let ((a0-9 (-> self skel root-channel 0)))
-            (set! (-> a0-9 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-            (set! (-> a0-9 param 0)
-                  (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-                  )
-            (set! (-> a0-9 param 1) f30-0)
-            (set! (-> a0-9 frame-num) (the float gp-0))
-            (joint-control-channel-group! a0-9 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-            )
+          (ja :group! flying-lurker-fly-ja)
+          (ja-no-eval :group! flying-lurker-fly-ja :num! (seek! max f30-0) :frame-num (the float gp-0))
           (until (ja-done? 0)
             (if (and *target* (>= 172032.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))))
                 (send-event self 'saw-player)
                 )
             (suspend)
-            (let ((a0-12 (-> self skel root-channel 0)))
-              (set! (-> a0-12 param 0) (the float (+ (-> a0-12 frame-group data 0 length) -1)))
-              (set! (-> a0-12 param 1) f30-0)
-              (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-seek!)
-              )
+            (ja :num! (seek! max f30-0))
             )
           (set! gp-0 0)
           )

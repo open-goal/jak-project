@@ -425,12 +425,9 @@
         (transform-post)
         (animate self)
         (suspend)
-        (when (nonzero? (-> self skel))
-          (let ((a0-10 (-> self skel root-channel 0)))
-            (set! (-> a0-10 param 0) 0.5)
-            (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-loop!)
+        (if (nonzero? (-> self skel))
+            (ja :num! (loop! 0.5))
             )
-          )
         )
       )
     (set! (-> self root-override trans quad) (-> self jump-pos quad))
@@ -587,7 +584,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (let ((gp-0 (-> self part))
             (s5-0 (-> self root-override root-prim prim-core))
             )
@@ -676,7 +673,7 @@
     )
   :code
   (behavior ((arg0 handle))
-    (while #t
+    (loop
       (set! (-> self root-override trans quad) (-> self base quad))
       (add-blue-motion #t #f #t #f)
       (update-transforms! (-> self root-override))
@@ -1109,23 +1106,17 @@
   obj
   )
 
-(defskelgroup *money-sg* money
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 0.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *money-sg* money money-lod0-jg money-idle-ja
+              ((money-lod0-mg (meters 20)) (money-lod1-mg (meters 40)) (money-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 0.6)
+              :texture-level 2
+              )
 
-(defskelgroup *fuel-cell-sg* fuel-cell
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 1 0 1.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *fuel-cell-sg* fuel-cell fuel-cell-lod0-jg fuel-cell-idle-ja
+              ((fuel-cell-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 2
+              )
 
 (deftype money (eco-collectable)
   ()
@@ -1165,7 +1156,7 @@
   :virtual #t
   :code
   (behavior ()
-    (while #t
+    (loop
       (quaternion-rotate-y!
         (-> self root-override quat)
         (-> self root-override quat)
@@ -1203,7 +1194,7 @@
   :virtual #t
   :code
   (behavior ((arg0 handle))
-    (while #t
+    (loop
       (quaternion-rotate-y!
         (-> self root-override quat)
         (-> self root-override quat)
@@ -1548,10 +1539,8 @@
   (behavior ()
     0.5
     (let ((f28-0 0.0))
-      (let ((v1-3 (-> self skel root-channel 0)))
-        (set! (-> v1-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-        )
-      (while #t
+      (ja :group! (-> self draw art-group data 2))
+      (loop
         (let ((f30-0 (vector-vector-distance (-> self base) (target-pos 0))))
           (set! f28-0
                 (if (and (< f30-0 (-> *FACT-bank* suck-suck-dist)) (zero? (logand (-> self flags) (collectable-flags anim))))
@@ -1567,10 +1556,7 @@
             (transform-post)
             (fuel-cell-animate)
             (suspend)
-            (let ((a0-11 (-> self skel root-channel 0)))
-              (set! (-> a0-11 param 0) f30-1)
-              (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-loop!)
-              )
+            (ja :num! (loop! f30-1))
             )
           )
         )
@@ -2166,9 +2152,7 @@
        (set! (-> self root-override trans quad) (-> self draw origin quad))
        (set! (-> self base quad) (-> self root-override trans quad))
        (ja-channel-set! 1)
-       (let ((v1-20 (-> self skel root-channel 0)))
-         (set! (-> v1-20 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-         )
+       (ja :group! (-> self draw art-group data 2))
        (logclear! (-> self draw status) (draw-status hidden))
        (vector-reset! (-> self draw origin))
        (go-virtual wait)
@@ -2211,14 +2195,11 @@
   (none)
   )
 
-(defskelgroup *buzzer-sg* buzzer
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 1 0 1.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *buzzer-sg* buzzer buzzer-lod0-jg buzzer-idle-ja
+              ((buzzer-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 2
+              )
 
 (deftype buzzer (eco-collectable)
   ((victory-anim spool-anim  :offset-assert 404)
@@ -2264,7 +2245,7 @@
        (go-virtual pickup #t (the-as handle #f))
        )
       )
-    (while #t
+    (loop
       (transform-post)
       (animate self)
       (suspend)
@@ -2806,14 +2787,11 @@
   )
 
 
-(defskelgroup *ecovalve-sg* ecovalve
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 1 0 1.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *ecovalve-sg* ecovalve ecovalve-geo-jg ecovalve-idle-ja
+              ((ecovalve-geo-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 2
+              )
 
 (defstate ecovalve-idle (ecovalve)
   :code
@@ -2821,7 +2799,7 @@
     (transform-post)
     (suspend)
     (transform-post)
-    (while #t
+    (loop
       (if (not ((-> self block-func) (the-as vent (ppointer->process (-> self parent)))))
           (set-vector! (-> self offset-target) 0.0 0.0 0.0 1.0)
           )
@@ -3034,7 +3012,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (let ((a0-0 (-> self part))
             (a1-0 (-> self root-override trans))
             (gp-0 (-> self sound))
@@ -3063,7 +3041,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (if (not ((-> self block-func) self))
           (go vent-wait-for-touch)
           )

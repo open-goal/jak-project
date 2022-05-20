@@ -25,13 +25,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *helix-slide-door-sg* helix-slide-door
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 12 0 18)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *helix-slide-door-sg* helix-slide-door helix-slide-door-lod0-jg helix-slide-door-idle-ja
+              ((helix-slide-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 12 0 18)
+              )
 
 ;; definition of type helix-button
 (deftype helix-button (process-drawable)
@@ -69,13 +66,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *helix-button-sg* helix-button
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 3.5 0 5.4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *helix-button-sg* helix-button helix-button-lod0-jg helix-button-idle-ja
+              ((helix-button-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3.5 0 5.4)
+              )
 
 ;; definition of type helix-dark-eco
 (deftype helix-dark-eco (dark-eco-pool)
@@ -195,7 +189,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -206,22 +200,10 @@
 (defstate helix-slide-door-close (helix-slide-door)
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-      (set! (-> a0-0 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
-            )
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (transform-post)
     (go helix-slide-door-idle-closed)
@@ -235,7 +217,7 @@
 (defstate helix-slide-door-idle-closed (helix-slide-door)
   :code
   (behavior ()
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -335,7 +317,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -596,7 +578,7 @@
 (defstate helix-button-idle-down (helix-button)
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -720,7 +702,7 @@
     (set! (-> self transv-y) 9216.0)
     (suspend)
     (send-event (ppointer->process (-> self dark-eco)) 'move-to (-> self root trans))
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -777,7 +759,7 @@
   :code
   (behavior ()
     (send-event (ppointer->process (-> self dark-eco)) 'trigger)
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )

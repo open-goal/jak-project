@@ -86,85 +86,58 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *logo-sg* logo
-  0
-  4
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 10)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *logo-sg* logo logo-english-lod0-jg logo-idle-ja
+              ((logo-english-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *logo-japan-sg* logo
-  2
-  4
-  ((3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *logo-japan-sg* logo logo-japan-lod0-jg logo-idle-ja
+              ((logo-japan-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *logo-volumes-sg* logo-volumes
-  0
-  4
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *logo-volumes-sg* logo-volumes logo-volumes-english-lod0-jg logo-volumes-idle-ja
+              ((logo-volumes-english-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5.5)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *logo-volumes-japan-sg* logo-volumes
-  2
-  4
-  ((3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *logo-volumes-japan-sg* logo-volumes logo-volumes-japan-lod0-jg logo-volumes-idle-ja
+              ((logo-volumes-japan-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5.5)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *logo-black-sg* logo-black
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *logo-black-sg* logo-black logo-black-lod0-jg logo-black-idle-ja
+              ((logo-black-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5.5)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *logo-cam-sg* logo-cam
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *logo-cam-sg* logo-cam logo-cam-lod0-jg logo-cam-idle-ja
+              ((logo-cam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5.5)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *ndi-sg* ndi
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 10 0 30)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *ndi-sg* ndi ndi-lod0-jg ndi-idle-ja
+              ((ndi-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 10 0 30)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *ndi-volumes-sg* ndi-volumes
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *ndi-volumes-sg* ndi-volumes ndi-volumes-lod0-jg ndi-volumes-idle-ja
+              ((ndi-volumes-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5.5)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *ndi-cam-sg* ndi-cam
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *ndi-cam-sg* ndi-cam ndi-cam-lod0-jg ndi-cam-idle-ja
+              ((ndi-cam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5.5)
+              )
 
 ;; failed to figure out what this is:
 (defstate idle (logo-slave)
@@ -199,7 +172,7 @@
   :code
   (behavior ()
     (ja-post)
-    (while #t
+    (loop
       (clone-anim-once
         (ppointer->handle (-> self parent-process))
         (the-as int (-> self draw origin-joint-index))
@@ -403,23 +376,11 @@
     (send-event (ppointer->process (-> self parent)) 'wait)
     (send-event self 'update)
     (ja-channel-set! 1)
-    (let ((a0-60 (-> self skel root-channel 0)))
-      (set! (-> a0-60 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-      (set! (-> a0-60 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
-            )
-      (set! (-> a0-60 param 1) 1.0)
-      (set! (-> a0-60 frame-num) 0.0)
-      (joint-control-channel-group! a0-60 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (logior! (-> self skel status) (janim-status spool))
       (suspend)
-      (let ((a0-62 (-> self skel root-channel 0)))
-        (set! (-> a0-62 param 0) (the float (+ (-> a0-62 frame-group data 0 length) -1)))
-        (set! (-> a0-62 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-62 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (set! (-> self anim) (-> self next-anim))
     (set! (-> self next-anim)
@@ -502,7 +463,7 @@
   (-> (method-of-type logo startup) trans)
   :code
   (behavior ()
-    (while #t
+    (loop
       (set! (-> self anim) (-> self next-anim))
       (when (not (handle->process (-> self camera)))
         (let ((gp-0 (get-process *default-dead-pool* othercam #x4000)))
@@ -521,23 +482,11 @@
         )
       (set! *spawn-actors* #f)
       (ja-channel-set! 1)
-      (let ((a0-11 (-> self skel root-channel 0)))
-        (set! (-> a0-11 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
-        (set! (-> a0-11 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) data 0 length) -1))
-              )
-        (set! (-> a0-11 param 1) 1.0)
-        (set! (-> a0-11 frame-num) 0.0)
-        (joint-control-channel-group! a0-11 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
-        )
+      (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (logior! (-> self skel status) (janim-status spool))
         (suspend)
-        (let ((a0-13 (-> self skel root-channel 0)))
-          (set! (-> a0-13 param 0) (the float (+ (-> a0-13 frame-group data 0 length) -1)))
-          (set! (-> a0-13 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-13 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       (set! *spawn-actors* #t)
       (ja-play-spooled-anim
@@ -572,7 +521,7 @@
       (clear-rec *art-control*)
       (set! *master-mode* gp-0)
       )
-    (while #t
+    (loop
       (when (and (none-reserved? *art-control*) (not (paused?)))
         (let ((gp-1 (-> *display* base-frame-counter)))
           (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 0.1))
@@ -615,7 +564,7 @@
   :exit
   (behavior ()
     ((-> (method-of-type logo startup) exit))
-    (set-blackout-frames (seconds 0.033333335))
+    (set-blackout-frames (seconds 0.035))
     (none)
     )
   :trans

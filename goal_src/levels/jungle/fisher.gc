@@ -298,7 +298,7 @@
                               :vel 0.6
                               :swing-min (seconds 0.5)
                               :swing-max (seconds 2)
-                              :period #x9e
+                              :period (seconds 0.527)
                               :fish-vel 1.6
                               :bad-percent 0.083
                               :powerup-percent 0.1
@@ -386,7 +386,7 @@
                               :vel 1.83
                               :swing-min (seconds 0.5)
                               :swing-max (seconds 2)
-                              :period #xa8
+                              :period (seconds 0.56)
                               :fish-vel 1.6
                               :bad-percent 0.066
                               :powerup-percent 0.1
@@ -408,7 +408,7 @@
                               :vel 0.8
                               :swing-min (seconds 0.5)
                               :swing-max (seconds 2)
-                              :period (seconds 0.5133333)
+                              :period (seconds 0.515)
                               :fish-vel 1.7
                               :bad-percent 0.066
                               :powerup-percent 0.1
@@ -528,7 +528,7 @@
                               :timeout (seconds 3)
                               :vel 0.6
                               :swing-min (seconds 333.33)
-                              :swing-max (seconds 0.33333334)
+                              :swing-max (seconds 0.335)
                               :period (seconds 0.5)
                               :fish-vel 1.3
                               :powerup-percent 0.5
@@ -547,7 +547,7 @@
                               :timeout (seconds 3)
                               :vel 0.6
                               :swing-min (seconds 333.33)
-                              :swing-max (seconds 0.33333334)
+                              :swing-max (seconds 0.335)
                               :period (seconds 0.5)
                               :fish-vel 1.3
                               :powerup-percent 0.5
@@ -577,7 +577,7 @@
                               :timeout (seconds 3)
                               :vel 0.6
                               :swing-min (seconds 333.33)
-                              :swing-max (seconds 0.33333334)
+                              :swing-max (seconds 0.335)
                               :period (seconds 0.5)
                               :fish-vel 1.3
                               :powerup-percent 0.5
@@ -596,7 +596,7 @@
                               :timeout (seconds 3)
                               :vel 0.6
                               :swing-min (seconds 333.33)
-                              :swing-max (seconds 0.33333334)
+                              :swing-max (seconds 0.335)
                               :period (seconds 0.5)
                               :fish-vel 1.3
                               :powerup-percent 0.5
@@ -783,46 +783,31 @@
   )
 
 
-(defskelgroup *catch-fisha-sg* catch-fisha
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *catch-fisha-sg* catch-fisha catch-fisha-lod0-jg catch-fisha-idle-ja
+              ((catch-fisha-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
-(defskelgroup *catch-fishb-sg* catch-fishb
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *catch-fishb-sg* catch-fishb catch-fishb-lod0-jg catch-fishb-idle-ja
+              ((catch-fishb-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
-(defskelgroup *catch-fishc-sg* catch-fishc
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *catch-fishc-sg* catch-fishc catch-fishc-lod0-jg catch-fishc-idle-ja
+              ((catch-fishc-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
-(defskelgroup *fish-net-sg* fish-net
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *fish-net-sg* fish-net fish-net-lod0-jg fish-net-fishing-ja
+              ((fish-net-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
-(defskelgroup *fisher-sg* fisher
-  0
-  6
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 -6 0 14)
-  :longest-edge (meters 0)
-  :shadow 4
-  )
+(defskelgroup *fisher-sg* fisher fisher-lod0-jg fisher-idle-more-often-ja
+              ((fisher-lod0-mg (meters 20)) (fisher-lod1-mg (meters 40)) (fisher-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 -6 0 14)
+              :shadow fisher-shadow-mg
+              )
 
 (defmethod dummy-52 fisher ((obj fisher))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
@@ -918,33 +903,8 @@
       (-> self root)
       (TODO-RENAME-12 (-> (the-as fisher (-> self parent 0)) path) (-> self dir) (-> self pos))
       )
-    (while #t
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-2 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-2 param 1) 1.0)
-        (set! (-> a0-2 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-2
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (fisher-fish-move)
         (if (< (vector-vector-xz-distance (-> self root trans) (-> (the-as fisher (-> self parent 0)) paddle-pos))
@@ -958,11 +918,7 @@
             (go fisher-fish-die)
             )
         (suspend)
-        (let ((a0-4 (-> self skel root-channel 0)))
-          (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
-          (set! (-> a0-4 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -1014,10 +970,7 @@
       (vector-float*! (-> self root scale) (-> self root scale) 0.93)
       (ja-post)
       (suspend)
-      (let ((a0-22 (-> self skel root-channel 0)))
-        (set! (-> a0-22 param 0) 1.0)
-        (joint-control-channel-group-eval! a0-22 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop!))
       )
     (none)
     )
@@ -1298,9 +1251,7 @@
       (lookup-text! *common-text* (game-text-id quit) #f)
       )
     (ja-channel-set! 1)
-    (let ((gp-1 (-> self skel root-channel 0)))
-      (set! (-> gp-1 frame-group) (the-as art-joint-anim (get-art-elem self)))
-      )
+    (ja :group! (get-art-elem self))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (while (-> self child)
       (deactivate (-> self child 0))
@@ -1648,7 +1599,7 @@
         (run-next-time-in-process gp-0 (lambda :behavior fisher-fish
                                          ()
                                          (logclear! (-> self mask) (process-mask pause))
-                                         (while #t
+                                         (loop
                                            (fisher-draw-display (the-as fisher (ppointer->process (-> self parent))))
                                            (suspend)
                                            )
@@ -1716,7 +1667,7 @@
     (set! (-> self ambient-steady) 0)
     (set! (-> self ambient-sagging) 0)
     (set! (-> self ambient-almost) 0)
-    (while #t
+    (loop
       (hide-hud-quick)
       (fisher-game-update)
       (if (or (zero? (-> self params timeout))
@@ -1740,7 +1691,7 @@
   :virtual #t
   :trans
   (behavior ()
-    (set-blackout-frames (seconds 0.016666668))
+    (set-blackout-frames (seconds 0.017))
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) self)
       (set! (-> a1-0 num-params) 2)
@@ -2032,81 +1983,30 @@
     )
   :code
   (behavior ()
-    (if (!= (if (> (-> self skel active-channels) 0)
-                (-> self skel root-channel 0 frame-group)
-                )
-            (get-art-elem self)
-            )
-        (ja-channel-push! 1 60)
+    (if (!= (ja-group) (get-art-elem self))
+        (ja-channel-push! 1 (seconds 0.2))
         )
-    (while #t
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 frame-group) (the-as art-joint-anim (get-art-elem self)))
-        )
+    (loop
+      (ja :group! (get-art-elem self))
       (let* ((f30-0 5.0)
              (v1-9 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
              (v1-10 (the-as number (logior #x3f800000 v1-9)))
              )
         (countdown (gp-1 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-10)))) 5))
-          (let ((a0-10 (-> self skel root-channel 0)))
-            (set! (-> a0-10 frame-group) (if (> (-> self skel active-channels) 0)
-                                             (-> self skel root-channel 0 frame-group)
-                                             )
-                  )
-            (set! (-> a0-10 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                           (-> self skel root-channel 0 frame-group)
-                                                           )
-                                                       data
-                                                       0
-                                                       length
-                                                       )
-                                                   -1
-                                                   )
-                                          )
-                  )
-            (set! (-> a0-10 param 1) 1.0)
-            (set! (-> a0-10 frame-num) 0.0)
-            (joint-control-channel-group!
-              a0-10
-              (if (> (-> self skel active-channels) 0)
-                  (-> self skel root-channel 0 frame-group)
-                  )
-              num-func-seek!
-              )
-            )
+          (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (TODO-RENAME-43 self)
             (suspend)
-            (let ((a0-12 (-> self skel root-channel 0)))
-              (set! (-> a0-12 param 0) (the float (+ (-> a0-12 frame-group data 0 length) -1)))
-              (set! (-> a0-12 param 1) 1.0)
-              (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-seek!)
-              )
+            (ja :num! (seek!))
             )
           )
         )
-      (when (= (if (> (-> self skel active-channels) 0)
-                   (-> self skel root-channel 0 frame-group)
-                   )
-               (-> self draw art-group data 6)
-               )
-        (let ((a0-19 (-> self skel root-channel 0)))
-          (set! (-> a0-19 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-          (set! (-> a0-19 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-                )
-          (set! (-> a0-19 param 1) 1.0)
-          (set! (-> a0-19 frame-num) 0.0)
-          (joint-control-channel-group! a0-19 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-          )
+      (when (ja-group? fisher-idle-more-often-ja)
+        (ja-no-eval :group! fisher-idle-less-often-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (TODO-RENAME-43 self)
           (suspend)
-          (let ((a0-21 (-> self skel root-channel 0)))
-            (set! (-> a0-21 param 0) (the float (+ (-> a0-21 frame-group data 0 length) -1)))
-            (set! (-> a0-21 param 1) 1.0)
-            (joint-control-channel-group-eval! a0-21 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           )
         )
       )
@@ -2270,35 +2170,16 @@
         (set! (-> v1-35 0 param2) (the-as basic (-> self control quat)))
         )
       )
-    (let ((s5-1 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        s5-1
-        (the-as art-joint-anim (-> self draw art-group data 99))
-        num-func-identity
-        )
-      (set! (-> s5-1 frame-num) (ja-aframe 15.0 0))
-      )
+    (ja :group! (-> self draw art-group data 99) :num! (identity (ja-aframe 15.0 0)))
     (let ((s5-2 (new 'stack-no-clear 'vector)))
       (until (-> self control unknown-spoolanim00)
         (let ((v1-42 (handle->process arg0)))
           (when v1-42
-            (let ((a0-28 (-> self skel root-channel 0)))
-              (set! (-> a0-28 param 0) (* (fmax 0.0 (- 1.0 (-> (the-as fisher v1-42) paddle)))
-                                          (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                                (-> self skel root-channel 0 frame-group)
-                                                                )
-                                                            data
-                                                            0
-                                                            length
-                                                            )
-                                                        -1
-                                                        )
-                                               )
-                                          )
-                    )
-              (set! (-> a0-28 param 1) 1.0)
-              (joint-control-channel-group-eval! a0-28 (the-as art-joint-anim #f) num-func-seek!)
-              )
+            (ja :num!
+                (seek!
+                  (* (fmax 0.0 (- 1.0 (-> (the-as fisher v1-42) paddle))) (the float (+ (-> (ja-group) data 0 length) -1)))
+                  )
+                )
             (when (-> self manipy)
               (let ((s2-0 (new-stack-vector0))
                     (s4-0 (new-stack-vector0))
@@ -2322,23 +2203,11 @@
       )
     (case (-> self control unknown-spoolanim00)
       (('lose)
-       (ja-channel-push! 1 30)
-       (let ((a0-38 (-> self skel root-channel 0)))
-         (set! (-> a0-38 frame-group) (the-as art-joint-anim (-> self draw art-group data 100)))
-         (set! (-> a0-38 param 0)
-               (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 100)) data 0 length) -1))
-               )
-         (set! (-> a0-38 param 1) 1.0)
-         (set! (-> a0-38 frame-num) 0.0)
-         (joint-control-channel-group! a0-38 (the-as art-joint-anim (-> self draw art-group data 100)) num-func-seek!)
-         )
+       (ja-channel-push! 1 (seconds 0.1))
+       (ja-no-eval :group! (-> self draw art-group data 100) :num! (seek!) :frame-num 0.0)
        (until (ja-done? 0)
          (suspend)
-         (let ((a0-39 (-> self skel root-channel 0)))
-           (set! (-> a0-39 param 0) (the float (+ (-> a0-39 frame-group data 0 length) -1)))
-           (set! (-> a0-39 param 1) 1.0)
-           (joint-control-channel-group-eval! a0-39 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek!))
          )
        (anim-loop)
        )

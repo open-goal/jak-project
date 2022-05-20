@@ -104,7 +104,7 @@
 (defstate swingpole-stance (swingpole)
   :code
   (behavior ()
-    (while #t
+    (loop
       (when (and *target*
                  (< (vector-vector-distance (-> self root trans) (-> *target* control unknown-vector90)) (-> self range))
                  (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-6))
@@ -369,17 +369,7 @@
              (('done)
               (case (-> self anim-mode)
                 (('play1 'play)
-                 (>= (ja-frame-num 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                            (-> self skel root-channel 0 frame-group)
-                                                            )
-                                                        data
-                                                        0
-                                                        length
-                                                        )
-                                                    -2
-                                                    )
-                                           )
-                     )
+                 (>= (ja-frame-num 0) (the float (+ (-> (ja-group) data 0 length) -2)))
                  )
                 )
               )
@@ -413,19 +403,10 @@
         )
     (when (and (-> self new-joint-anim)
                (nonzero? (-> self skel))
-               (and (!= (if (> (-> self skel active-channels) 0)
-                            (-> self skel root-channel 0 frame-group)
-                            )
-                        (-> self new-joint-anim)
-                        )
-                    (!= (-> self anim-mode) 'clone-anim)
-                    )
+               (and (!= (ja-group) (-> self new-joint-anim)) (!= (-> self anim-mode) 'clone-anim))
                )
-      (ja-channel-push! 1 (the-as int (-> self new-joint-anim-blend)))
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (joint-control-channel-group-eval! gp-0 (-> self new-joint-anim) num-func-identity)
-        (set! (-> gp-0 frame-num) 0.0)
-        )
+      (ja-channel-push! 1 (the-as time-frame (-> self new-joint-anim-blend)))
+      (ja :group! (-> self new-joint-anim) :num! min)
       )
     (let ((v1-20 (handle->process (-> self cur-grab-handle))))
       (when v1-20
@@ -451,7 +432,7 @@
   :code
   (behavior ()
     (logclear! (-> self mask) (process-mask heap-shrunk))
-    (while #t
+    (loop
       ((-> self cur-post-hook))
       (if (!= (-> self anim-mode) 'clone-anim)
           (ja-post)
@@ -459,25 +440,16 @@
       (suspend)
       (case (-> self anim-mode)
         (('loop)
-         (let ((a0-4 (-> self skel root-channel 0)))
-           (set! (-> a0-4 param 0) 1.0)
-           (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-loop!)
-           )
+         (ja :num! (loop!))
          )
         (('play)
-         (let ((a0-7 (-> self skel root-channel 0)))
-           (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-           (set! (-> a0-7 param 1) 1.0)
-           (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek!))
          )
         (('copy-parent)
-         (let ((v1-18 (-> self skel root-channel 0)))
-           (set! (-> v1-18 num-func) num-func-identity)
-           (set! (-> v1-18 frame-num)
-                 (-> (the-as process-drawable (ppointer->process (-> self parent))) skel root-channel 0 frame-num)
-                 )
-           )
+         (ja :num-func num-func-identity
+             :frame-num
+             (-> (the-as process-drawable (ppointer->process (-> self parent))) skel root-channel 0 frame-num)
+             )
          )
         (('clone-parent)
          (let ((gp-0 (ppointer->process (-> self parent))))
@@ -509,11 +481,7 @@
         (('still)
          )
         (('play1)
-         (let ((a0-33 (-> self skel root-channel 0)))
-           (set! (-> a0-33 param 0) (the float (+ (-> a0-33 frame-group data 0 length) -1)))
-           (set! (-> a0-33 param 1) 1.0)
-           (joint-control-channel-group-eval! a0-33 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek!))
          (if (ja-done? 0)
              (deactivate self)
              )
@@ -579,10 +547,7 @@
   (set! (-> self draw?) #t)
   (cond
     ((nonzero? (-> self skel))
-     (set! (-> self new-joint-anim) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-           )
+     (set! (-> self new-joint-anim) (ja-group))
      (set! (-> self anim-mode) 'loop)
      )
     (else
@@ -1267,19 +1232,16 @@
            (vf17 :class vf)
            )
       (init-vf0-vector)
-      (while #t
+      (loop
         (let ((a0-1 (level-get *level* (-> self level)))
               (v1-3 (-> *game-info* current-continue level))
               )
           (cond
             ((and a0-1 (or (= (-> a0-1 display?) 'special) (= (-> a0-1 display?) 'special-vis)))
              (logclear! (-> self draw status) (draw-status hidden))
-             (when (nonzero? (-> self skel))
-               (let ((a0-5 (-> self skel root-channel 0)))
-                 (set! (-> a0-5 param 0) 1.0)
-                 (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-loop!)
+             (if (nonzero? (-> self skel))
+                 (ja :num! (loop!))
                  )
-               )
              )
             ((or (and a0-1 (= (-> a0-1 status) 'active)) (= v1-3 'firecanyon))
              (logior! (-> self draw status) (draw-status hidden))
@@ -1292,12 +1254,9 @@
               (if (nonzero? (-> self part))
                   (spawn (-> self part) (-> self root trans))
                   )
-              (when (nonzero? (-> self skel))
-                (let ((a0-17 (-> self skel root-channel 0)))
-                  (set! (-> a0-17 param 0) 1.0)
-                  (joint-control-channel-group-eval! a0-17 (the-as art-joint-anim #f) num-func-loop!)
+              (if (nonzero? (-> self skel))
+                  (ja :num! (loop!))
                   )
-                )
               )
             )
           )
@@ -1417,7 +1376,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (when (-> self enable)
         (spawn (-> self part) (-> self root trans))
         (if (nonzero? (-> self sound))
@@ -1826,7 +1785,7 @@
   :code
   (behavior ()
     (let ((gp-0 (-> *display* base-frame-counter)))
-      (while #t
+      (loop
         (when (not (paused?))
           (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
           (send-event *camera* 'teleport)
@@ -1895,7 +1854,7 @@
   :code
   (behavior ()
     (let ((gp-0 (-> *display* base-frame-counter)))
-      (while #t
+      (loop
         (when (not (paused?))
           (let ((s4-0 (new 'stack-no-clear 'vector))
                 (s5-0 (new 'stack-no-clear 'vector))

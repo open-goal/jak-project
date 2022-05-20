@@ -157,6 +157,11 @@ int main(int argc, char** argv) {
                          config.write_hex_near_instructions);
   }
 
+  // process art groups (used in decompilation)
+  if (config.decompile_code || config.process_art_groups) {
+    db.extract_art_info();
+  }
+
   // main decompile.
   if (config.decompile_code) {
     db.analyze_functions_ir2(out_folder, config, {});
@@ -167,6 +172,11 @@ int main(int argc, char** argv) {
   // write out all symbols
   file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
                              db.dts.dump_symbol_types());
+
+  // write art groups
+  if (config.process_art_groups) {
+    db.dump_art_info(out_folder);
+  }
 
   if (config.hexdump_code || config.hexdump_data) {
     db.write_object_file_words(out_folder, config.hexdump_data, config.hexdump_code);

@@ -35,13 +35,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *blue-eco-charger-orb-sg* blue-eco-charger-orb
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 1.1)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *blue-eco-charger-orb-sg* blue-eco-charger-orb blue-eco-charger-orb-lod0-jg blue-eco-charger-orb-idle-ja
+              ((blue-eco-charger-orb-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.1)
+              )
 
 ;; definition of type blue-eco-charger
 (deftype blue-eco-charger (process-drawable)
@@ -78,13 +75,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *blue-eco-charger-sg* blue-eco-charger
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 1.9 0 2.7)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *blue-eco-charger-sg* blue-eco-charger blue-eco-charger-lod0-jg blue-eco-charger-open-ja
+              ((blue-eco-charger-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1.9 0 2.7)
+              )
 
 ;; definition of type exit-chamber-items
 (deftype exit-chamber-items (structure)
@@ -164,13 +158,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *exit-chamber-sg* exit-chamber
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 4 0 16.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *exit-chamber-sg* exit-chamber exit-chamber-lod0-jg exit-chamber-idle-ja
+              ((exit-chamber-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 4 0 16.5)
+              )
 
 ;; failed to figure out what this is:
 (defpartgroup group-exit-chamber-ripples
@@ -261,7 +252,7 @@
   :code
   (behavior ()
     (set! (-> self root trans quad) (-> self rest-pos quad))
-    (while #t
+    (loop
       (let ((f0-0 (-> self parent-process 0 open-level)))
         (if (< 0.0 f0-0)
             (go blue-eco-charger-orb-active)
@@ -287,7 +278,7 @@
       (init-vf0-vector)
       (dummy-20 self (-> self parent-process 0 open-level))
       (vector-reset! (-> self orbit-rotv))
-      (while #t
+      (loop
         (let ((f30-0 (-> self parent-process 0 open-level)))
           (if (>= 0.0 f30-0)
               (go blue-eco-charger-orb-idle)
@@ -373,14 +364,7 @@
   (set! (-> self rest-pos quad) (-> self root trans quad))
   (initialize-skeleton self *blue-eco-charger-orb-sg* '())
   (ja-channel-set! 1)
-  (let ((gp-1 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-      gp-1
-      (the-as art-joint-anim (-> self draw art-group data 2))
-      num-func-identity
-      )
-    (set! (-> gp-1 frame-num) 0.0)
-    )
+  (ja :group! (-> self draw art-group data 2) :num! min)
   (set-vector! (-> self orbit-rot) 0.0 0.0 0.0 1.0)
   (go blue-eco-charger-orb-idle)
   (none)
@@ -430,15 +414,8 @@
   (behavior ()
     (set! (-> self open-level) 0.0)
     (ja-channel-set! 1)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) 0.0)
-      )
-    (while #t
+    (ja :group! (-> self draw art-group data 2) :num! min)
+    (loop
       (when (logtest? (-> self draw status) (draw-status was-drawn))
         (if (and (and *target* (>= 16384.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
                  (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
@@ -495,33 +472,13 @@
     )
   :code
   (behavior ((arg0 symbol))
-    (let ((a0-1 (-> self skel root-channel 0)))
-      (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-      (set! (-> a0-1 param 1) 1.0)
-      (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-        (set! (-> a0-2 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
-      (set! (-> self open-level)
-            (/ (ja-frame-num 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-               )
-            )
+      (ja :num! (seek!))
+      (set! (-> self open-level) (/ (ja-frame-num 0) (the float (+ (-> (ja-group) data 0 length) -1))))
       )
-    (while #t
+    (loop
       (cond
         ((zero? (get-reminder (get-task-control (game-task sunken-room)) 0))
          (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 20))
@@ -556,7 +513,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -573,11 +530,7 @@
     )
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) 0.0)
-      (set! (-> a0-0 param 1) 1.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek! 0.0))
     (while (not (ja-done? 0))
       (when (dummy-20 self)
         (increment-success-for-hint (game-text-id sunken-blue-eco-charger-hint))
@@ -588,24 +541,8 @@
           )
       (update! (-> self sound))
       (suspend)
-      (let ((a0-8 (-> self skel root-channel 0)))
-        (set! (-> a0-8 param 0) 0.0)
-        (set! (-> a0-8 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-seek!)
-        )
-      (set! (-> self open-level)
-            (/ (ja-frame-num 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-               )
-            )
+      (ja :num! (seek! 0.0))
+      (set! (-> self open-level) (/ (ja-frame-num 0) (the float (+ (-> (ja-group) data 0 length) -1))))
       )
     (dummy-21 self #f)
     (go blue-eco-charger-idle)
@@ -859,7 +796,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (if (>= 214228270000.0 (vector-vector-distance-squared (camera-pos) (-> self root-override trans)))
           (logclear! (-> self draw status) (draw-status hidden))
           (logior! (-> self draw status) (draw-status hidden))
@@ -945,7 +882,7 @@
     (if (-> self button)
         (send-event (ppointer->process (-> self button)) 'untrigger)
         )
-    (while #t
+    (loop
       (if (>= 214228270000.0 (vector-vector-distance-squared (camera-pos) (-> self root-override trans)))
           (logclear! (-> self draw status) (draw-status hidden))
           (logior! (-> self draw status) (draw-status hidden))
@@ -1009,80 +946,36 @@
     (suspend)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((gp-1 #f))
-      (let ((a0-13 (-> self skel root-channel 0)))
-        (set! (-> a0-13 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-        (set! (-> a0-13 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-              )
-        (set! (-> a0-13 param 1) 1.0)
-        (set! (-> a0-13 frame-num) 0.0)
-        (joint-control-channel-group! a0-13 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-        )
+      (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (when (and (not gp-1) (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.75)) (-> self door))
           (set! gp-1 #t)
           (send-event (ppointer->process (-> self door)) 'untrigger)
           )
         (suspend)
-        (let ((a0-17 (-> self skel root-channel 0)))
-          (set! (-> a0-17 param 0) (the float (+ (-> a0-17 frame-group data 0 length) -1)))
-          (set! (-> a0-17 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-17 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (set! (-> self move-player?) #t)
-    (let ((a0-19 (-> self skel root-channel 0)))
-      (set! (-> a0-19 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-      (set! (-> a0-19 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-            )
-      (set! (-> a0-19 param 1) 1.0)
-      (set! (-> a0-19 frame-num) 0.0)
-      (joint-control-channel-group! a0-19 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-20 (-> self skel root-channel 0)))
-        (set! (-> a0-20 param 0) (the float (+ (-> a0-20 frame-group data 0 length) -1)))
-        (set! (-> a0-20 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-20 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (load-state-want-levels 'sunken 'village2)
-    (let ((a0-23 (-> self skel root-channel 0)))
-      (set! (-> a0-23 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-      (set! (-> a0-23 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-            )
-      (set! (-> a0-23 param 1) 1.0)
-      (set! (-> a0-23 frame-num) 0.0)
-      (joint-control-channel-group! a0-23 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (dummy-24 self 51200.0)
       (update-trans! (-> self sound) (-> self last-pos))
       (update! (-> self sound))
       (suspend)
-      (let ((a0-27 (-> self skel root-channel 0)))
-        (set! (-> a0-27 param 0) (the float (+ (-> a0-27 frame-group data 0 length) -1)))
-        (set! (-> a0-27 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-27 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (stop! (-> self sound))
     (load-state-want-display-level 'village2 'display)
     (load-state-want-display-level 'sunken 'special)
     (let ((gp-2 #f))
-      (let ((a0-32 (-> self skel root-channel 0)))
-        (set! (-> a0-32 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-        (set! (-> a0-32 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
-              )
-        (set! (-> a0-32 param 1) 1.0)
-        (set! (-> a0-32 frame-num) 0.0)
-        (joint-control-channel-group! a0-32 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-        )
+      (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (seek! (-> self wave-scale) 1.0 0.0016666667)
         (dummy-20 self (-> self wave-scale))
@@ -1102,11 +995,7 @@
             )
           )
         (suspend)
-        (let ((a0-40 (-> self skel root-channel 0)))
-          (set! (-> a0-40 param 0) (the float (+ (-> a0-40 frame-group data 0 length) -1)))
-          (set! (-> a0-40 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-40 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (kill-and-free-particles (-> self part))
@@ -1219,7 +1108,7 @@
       (suspend)
       (logclear! (-> self draw status) (draw-status skip-bones))
       )
-    (while #t
+    (loop
       (dummy-20 self 1.0)
       (suspend)
       )
@@ -1286,15 +1175,7 @@
     (let ((gp-1 #f)
           (s5-0 #f)
           )
-      (let ((a0-5 (-> self skel root-channel 0)))
-        (set! (-> a0-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-        (set! (-> a0-5 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) data 0 length) -1))
-              )
-        (set! (-> a0-5 param 1) 1.0)
-        (set! (-> a0-5 frame-num) 0.0)
-        (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> self draw art-group data 7)) num-func-seek!)
-        )
+      (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (when (and (not gp-1) (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.25)) (-> self door))
           (set! gp-1 #t)
@@ -1313,54 +1194,26 @@
           (spawn (-> self part) (-> self last-pos))
           )
         (suspend)
-        (let ((a0-11 (-> self skel root-channel 0)))
-          (set! (-> a0-11 param 0) (the float (+ (-> a0-11 frame-group data 0 length) -1)))
-          (set! (-> a0-11 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (load-state-want-levels 'sunken 'sunkenb)
     (kill-and-free-particles (-> self part))
-    (let ((a0-15 (-> self skel root-channel 0)))
-      (set! (-> a0-15 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
-      (set! (-> a0-15 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) data 0 length) -1))
-            )
-      (set! (-> a0-15 param 1) 1.0)
-      (set! (-> a0-15 frame-num) 0.0)
-      (joint-control-channel-group! a0-15 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (dummy-24 self 47104.0)
       (update-trans! (-> self sound) (-> self last-pos))
       (update! (-> self sound))
       (suspend)
-      (let ((a0-19 (-> self skel root-channel 0)))
-        (set! (-> a0-19 param 0) (the float (+ (-> a0-19 frame-group data 0 length) -1)))
-        (set! (-> a0-19 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-19 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (stop! (-> self sound))
     (load-state-want-display-level 'sunkenb 'display)
     (load-state-want-vis 'sub)
-    (let ((a0-24 (-> self skel root-channel 0)))
-      (set! (-> a0-24 frame-group) (the-as art-joint-anim (-> self draw art-group data 9)))
-      (set! (-> a0-24 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) data 0 length) -1))
-            )
-      (set! (-> a0-24 param 1) 1.0)
-      (set! (-> a0-24 frame-num) 0.0)
-      (joint-control-channel-group! a0-24 (the-as art-joint-anim (-> self draw art-group data 9)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 9) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-25 (-> self skel root-channel 0)))
-        (set! (-> a0-25 param 0) (the float (+ (-> a0-25 frame-group data 0 length) -1)))
-        (set! (-> a0-25 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-25 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (set! (-> self move-player?) #f)
     (if (-> self door)

@@ -29,13 +29,10 @@
   )
 
 
-(defskelgroup *plat-flip-sg* plat-flip
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plat-flip-sg* plat-flip plat-flip-geo-jg plat-flip-turn-down-ja
+              ((plat-flip-geo-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
 
 (defstate plat-flip-idle (plat-flip)
   :event
@@ -59,18 +56,11 @@
   (behavior ()
     (local-vars (f30-0 float) (f30-1 float))
     (let ((gp-0 #f))
-      (while #t
+      (loop
         (let ((f0-1 (get-current-value (-> self sync) (-> self total-time))))
           (cond
             ((< f0-1 (-> self before-turn-down-time))
-             (let ((gp-1 (-> self skel root-channel 0)))
-               (joint-control-channel-group-eval!
-                 gp-1
-                 (the-as art-joint-anim (-> self draw art-group data 2))
-                 num-func-identity
-                 )
-               (set! (-> gp-1 frame-num) 0.0)
-               )
+             (ja :group! plat-flip-turn-down-ja :num! min)
              (set! gp-0 #f)
              )
             ((begin (set! f30-0 (- f0-1 (-> self before-turn-down-time))) (< f30-0 (-> self turn-down-time)))
@@ -78,50 +68,31 @@
                (set! gp-0 #t)
                (sound-play-by-name (static-sound-name "plat-flip") (new-sound-id) 1024 0 0 1 #t)
                )
-             (let ((s5-1 (-> self skel root-channel 0)))
-               (joint-control-channel-group-eval!
-                 s5-1
-                 (the-as art-joint-anim (-> self draw art-group data 2))
-                 num-func-identity
+             (ja :group! plat-flip-turn-down-ja
+                 :num!
+                 (identity (/ (* f30-0 (the float (+ (-> (the-as art-joint-anim plat-flip-turn-down-ja) data 0 length) -1)))
+                              (-> self turn-down-time)
+                              )
+                           )
                  )
-               (set! (-> s5-1 frame-num)
-                     (/ (* f30-0 (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1)))
-                        (-> self turn-down-time)
-                        )
-                     )
-               )
              )
             ((begin (set! f30-1 (- f30-0 (-> self turn-down-time))) (< f30-1 (-> self before-turn-up-time)))
              (set! gp-0 #f)
-             (let ((s5-2 (-> self skel root-channel 0)))
-               (joint-control-channel-group-eval!
-                 s5-2
-                 (the-as art-joint-anim (-> self draw art-group data 2))
-                 num-func-identity
-                 )
-               (set! (-> s5-2 frame-num)
-                     (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
-                     )
-               )
+             (ja :group! plat-flip-turn-down-ja :num! max)
              )
             (else
               (when (not gp-0)
                 (set! gp-0 #t)
                 (sound-play-by-name (static-sound-name "plat-flip") (new-sound-id) 1024 0 0 1 #t)
                 )
-              (let ((f30-2 (- f30-1 (-> self before-turn-up-time)))
-                    (s5-4 (-> self skel root-channel 0))
+              (let ((f30-2 (- f30-1 (-> self before-turn-up-time))))
+                (ja :group! plat-flip-turn-up-ja
+                    :num!
+                    (identity (/ (* f30-2 (the float (+ (-> (the-as art-joint-anim plat-flip-turn-up-ja) data 0 length) -1)))
+                                 (-> self turn-up-time)
+                                 )
+                              )
                     )
-                (joint-control-channel-group-eval!
-                  s5-4
-                  (the-as art-joint-anim (-> self draw art-group data 3))
-                  num-func-identity
-                  )
-                (set! (-> s5-4 frame-num)
-                      (/ (* f30-2 (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1)))
-                         (-> self turn-up-time)
-                         )
-                      )
                 )
               )
             )

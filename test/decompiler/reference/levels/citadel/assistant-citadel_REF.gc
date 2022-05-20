@@ -19,14 +19,11 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *assistant-lavatube-end-sg* assistant-lavatube-end
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *assistant-lavatube-end-sg* assistant-lavatube-end assistant-lavatube-end-lod0-jg assistant-lavatube-end-idle-ja
+              ((assistant-lavatube-end-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow assistant-lavatube-end-shadow-mg
+              )
 
 ;; definition for method 32 of type assistant-lavatube-end
 (defmethod play-anim! assistant-lavatube-end ((obj assistant-lavatube-end) (arg0 symbol))
@@ -108,50 +105,15 @@
     )
   :code
   (behavior ()
-    (while #t
-      (when (!= (if (> (-> self skel active-channels) 0)
-                    (-> self skel root-channel 0 frame-group)
-                    )
-                (get-art-elem self)
-                )
-        (ja-channel-push! 1 15)
-        (let ((v1-5 (-> self skel root-channel 0)))
-          (set! (-> v1-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-          )
+    (loop
+      (when (!= (ja-group) (get-art-elem self))
+        (ja-channel-push! 1 (seconds 0.05))
+        (ja :group! (-> self draw art-group data 3))
         )
-      (let ((a0-10 (-> self skel root-channel 0)))
-        (set! (-> a0-10 frame-group) (if (> (-> self skel active-channels) 0)
-                                         (-> self skel root-channel 0 frame-group)
-                                         )
-              )
-        (set! (-> a0-10 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                       (-> self skel root-channel 0 frame-group)
-                                                       )
-                                                   data
-                                                   0
-                                                   length
-                                                   )
-                                               -1
-                                               )
-                                      )
-              )
-        (set! (-> a0-10 param 1) 1.0)
-        (set! (-> a0-10 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-10
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-11 (-> self skel root-channel 0)))
-          (set! (-> a0-11 param 0) (the float (+ (-> a0-11 frame-group data 0 length) -1)))
-          (set! (-> a0-11 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)

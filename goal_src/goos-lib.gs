@@ -35,6 +35,17 @@
   `(if (not ,clause) (begin ,@body) #f)
   )
 
+(defsmacro aif (condition true false)
+  "Anaphoric if, similar to Common Lisp"
+
+  `(let ((it ,condition))
+      (if it
+          ,true
+          ,false
+          )
+      )
+  )
+
 (desfun factorial (x)
 	(if (= x 1)
 	    1
@@ -290,6 +301,8 @@
   `(or (float? ,x) (integer? ,x))
   )
 
+(defsmacro neq? (a b) `(not (eq? ,a ,b)))
+
 (defsmacro != (a b) `(not (= ,a ,b)))
 (defsmacro zero? (x) `(= ,x 0))
 (defsmacro nonzero? (x) `(!= ,x 0))
@@ -423,5 +436,13 @@
     (#t   `(user? ,@(cdr users)))
     )
   )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; GAME STUFF!!!      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; a map for art definitions used by art loading code.
+(define *art-info* '())
 
 

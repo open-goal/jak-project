@@ -5,6 +5,9 @@
 ;; OTHER STUFF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; get list of all goal import files
+(asm-file "goal_src/build/all_imports.gc")
+
 ;; tell compiler about stuff defined/implemented in the runtime.
 (asm-file "goal_src/kernel-defs.gc")
 
@@ -34,6 +37,19 @@
   `(asm-file ,file :color :write)
   )
 
+(desfun run-frontend-command (file)
+  `(asm-file ,file :no-code)
+  )
+
+
+(defmacro load-art-import (name)
+  `(asm-file ,(string-append "goal_src/import/" (symbol->string name) "-ag.gc") :no-code :no-throw))
+
+(defmacro load-imports ()
+  `(begin
+     ,@(apply run-frontend-command all-import-files)
+     )
+  )
 
 (defmacro build-kernel ()
   "Build kernel and create the KERNEL CGO"
@@ -43,15 +59,6 @@
 (defmacro build-game ()
   "Build all game code and all game CGOs"
   `(make-group "all-code")
-  )
-
-(defmacro build-data ()
-  "Build all game data"
-  `(begin
-     (asm-data-file game-text "assets/game_text.txt")
-     (asm-data-file game-count "assets/game_count.txt")
-     (asm-data-file dir-tpages "assets/tpage-dir.txt")
-     )
   )
 
 (defmacro blg ()
@@ -517,11 +524,11 @@
   )
 
 (defmacro 1+! (place)
-  `(set! ,place (+ 1 ,place))
+  `(+! ,place 1)
   )
 
 (defmacro 1- (var)
-  `(- ,var 1)
+  `(+ ,var -1)
   )
 
 (defmacro dec (val)
@@ -533,7 +540,7 @@
   )
 
 (defmacro 1-! (place)
-  `(set! ,place (+ -1 ,place))
+  `(-! ,place 1)
   )
 
 (defmacro *! (place amount)
@@ -974,9 +981,6 @@
   `(sqrtf-no-fabs (fabs ,x))
   )
 
-;; load the default project
-(load-project "goal_src/game.gp")
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; user stuf
@@ -997,5 +1001,44 @@
   )
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; art stuf
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro def-art-elt (group name idx)
+  "define a new art element. adds it to a global map stored in goos."
+
+  ;; grab data about the art group
+  (let ((ag-info (assoc group *art-info*)))
+      ;; no art group was found, make a new one and add it.
+      (when (null? ag-info)
+            (set! ag-info (cons group '()))
+            (cons! *art-info* ag-info)
+            )
+      ;; lookup art element in our art group
+      (let ((elt-info (assoc name (cdr ag-info)))
+            (elt-new (list name idx))) ;; this is the format of the individual entries
+          ;; found, check if valid
+          (if (and (not (null? elt-info)) (not (eq? elt-info elt-new)))
+              (fmt #t "error redefining art element. data mismatch: {}" elt-info elt-new)
+              #f)
+          ;; not found. add to the art-group.
+          (when (null? elt-info)
+                (set! elt-info elt-new)
+                (set-cdr! ag-info (cons elt-info (cdr ag-info)))
+                )
+          )
+      )
+  ;; define a constant for it!
+  `(defconstant ,name (-> self draw art-group data ,idx))
+  )
+
+
+
+;; load the default project
+(load-project "goal_src/game.gp")
+(seval (fmt #t "Loading imports...\n"))
+(load-imports)
+(seval (fmt #t "Loaded imports. Have a nice day.\n"))
 
 

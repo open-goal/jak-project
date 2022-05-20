@@ -2,13 +2,13 @@
 (in-package goal)
 
 ;; failed to figure out what this is:
-(defskelgroup *minecartsteel-sg* minecartsteel
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *minecartsteel-sg* minecartsteel minecartsteel-lod0-jg minecartsteel-idle-ja
+              ((minecartsteel-lod0-mg (meters 20))
+               (minecartsteel-lod1-mg (meters 40))
+               (minecartsteel-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 ;; definition of type minecartsteel
 (deftype minecartsteel (process-drawable)
@@ -61,26 +61,12 @@
   :code
   (behavior ()
     (ja-channel-set! 1)
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self anim)))
-      )
-    (while #t
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 num-func) num-func-identity)
-        (set! (-> gp-0 frame-num)
-              (* (get-current-phase (-> self sync)) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                                          (-> self skel root-channel 0 frame-group)
-                                                                          )
-                                                                      data
-                                                                      0
-                                                                      length
-                                                                      )
-                                                                  -1
-                                                                  )
-                                                         )
-                 )
-              )
-        )
+    (ja :group! (-> self anim))
+    (loop
+      (ja :num-func num-func-identity
+          :frame-num
+          (* (get-current-phase (-> self sync)) (the float (+ (-> (ja-group) data 0 length) -1)))
+          )
       (let ((a1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4))))
         (update-trans! (-> self sound) a1-1)
         )

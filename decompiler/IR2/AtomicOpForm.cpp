@@ -65,7 +65,7 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
       }
     } else {
       // access a field
-      auto arg0_type = env.get_types_before_op(m_my_idx).get(m_src.get_arg(0).var().reg());
+      const auto& arg0_type = env.get_types_before_op(m_my_idx).get(m_src.get_arg(0).var().reg());
       if (arg0_type.kind == TP_Type::Kind::TYPESPEC) {
         FieldReverseLookupInput rd_in;
         rd_in.deref = std::nullopt;

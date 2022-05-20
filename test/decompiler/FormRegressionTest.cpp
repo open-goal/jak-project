@@ -233,8 +233,9 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
                                       test->func, *dts);
 
       // move variables into lets.
+      LetRewriteStats dummy;
       insert_lets(test->func, test->func.ir2.env, *test->func.ir2.form_pool,
-                  test->func.ir2.top_form);
+                  test->func.ir2.top_form, dummy);
     }
   }
 

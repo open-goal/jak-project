@@ -130,6 +130,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   bool no_code = false;
   bool disassemble = false;
   bool no_time_prints = false;
+  bool no_throw = false;
 
   std::vector<std::pair<std::string, double>> timing;
   Timer total_timer;
@@ -157,6 +158,8 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
         write = true;
       } else if (setting == ":no-code") {
         no_code = true;
+      } else if (setting == ":no-throw") {
+        no_throw = true;
       } else if (setting == ":disassemble") {
         disassemble = true;
         last_was_disasm = true;
@@ -171,87 +174,93 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
 
   // READ
   Timer reader_timer;
-  auto code = m_goos.reader.read_from_file({filename});
-  timing.emplace_back("read", reader_timer.getMs());
+  try {
+    auto code = m_goos.reader.read_from_file({filename});
+    timing.emplace_back("read", reader_timer.getMs());
 
-  Timer compile_timer;
-  std::string obj_file_name = filename;
+    Timer compile_timer;
+    std::string obj_file_name = filename;
 
-  // Extract object name from file name.
-  for (int idx = int(filename.size()) - 1; idx-- > 0;) {
-    if (filename.at(idx) == '\\' || filename.at(idx) == '/') {
-      obj_file_name = filename.substr(idx + 1);
-      break;
+    // Extract object name from file name.
+    for (int idx = int(filename.size()) - 1; idx-- > 0;) {
+      if (filename.at(idx) == '\\' || filename.at(idx) == '/') {
+        obj_file_name = filename.substr(idx + 1);
+        break;
+      }
     }
-  }
-  obj_file_name = obj_file_name.substr(0, obj_file_name.find_last_of('.'));
+    obj_file_name = obj_file_name.substr(0, obj_file_name.find_last_of('.'));
 
-  // COMPILE
-  auto obj_file = compile_object_file(obj_file_name, code, !no_code);
-  timing.emplace_back("compile", compile_timer.getMs());
+    // COMPILE
+    auto obj_file = compile_object_file(obj_file_name, code, !no_code);
+    timing.emplace_back("compile", compile_timer.getMs());
 
-  if (color) {
-    // register allocation
-    Timer color_timer;
-    color_object_file(obj_file);
-    timing.emplace_back("color", color_timer.getMs());
+    if (color) {
+      // register allocation
+      Timer color_timer;
+      color_object_file(obj_file);
+      timing.emplace_back("color", color_timer.getMs());
 
-    // code/object file generation
-    Timer codegen_timer;
-    std::vector<u8> data;
-    std::string disasm;
-    if (disassemble) {
-      codegen_and_disassemble_object_file(obj_file, &data, &disasm);
-      if (disasm_filename == "") {
-        printf("%s\n", disasm.c_str());
+      // code/object file generation
+      Timer codegen_timer;
+      std::vector<u8> data;
+      std::string disasm;
+      if (disassemble) {
+        codegen_and_disassemble_object_file(obj_file, &data, &disasm);
+        if (disasm_filename == "") {
+          printf("%s\n", disasm.c_str());
+        } else {
+          file_util::write_text_file(disasm_filename, disasm);
+        }
       } else {
-        file_util::write_text_file(disasm_filename, disasm);
+        data = codegen_object_file(obj_file);
+      }
+      timing.emplace_back("codegen", codegen_timer.getMs());
+
+      // send to target
+      if (load) {
+        if (m_listener.is_connected()) {
+          m_listener.send_code(data, obj_file_name);
+        } else {
+          printf("WARNING - couldn't load because listener isn't connected\n");  // todo log warn
+        }
+      }
+
+      // save file
+      if (write) {
+        auto path = file_util::get_file_path({"out", "obj", obj_file_name + ".o"});
+        file_util::create_dir_if_needed_for_file(path);
+        file_util::write_binary_file(path, (void*)data.data(), data.size());
       }
     } else {
-      data = codegen_object_file(obj_file);
-    }
-    timing.emplace_back("codegen", codegen_timer.getMs());
+      if (load) {
+        printf("WARNING - couldn't load because coloring is not enabled\n");
+      }
 
-    // send to target
-    if (load) {
-      if (m_listener.is_connected()) {
-        m_listener.send_code(data, obj_file_name);
-      } else {
-        printf("WARNING - couldn't load because listener isn't connected\n");  // todo log warn
+      if (write) {
+        printf("WARNING - couldn't write because coloring is not enabled\n");
+      }
+
+      if (disassemble) {
+        printf("WARNING - couldn't disassemble because coloring is not enabled\n");
       }
     }
 
-    // save file
-    if (write) {
-      auto path = file_util::get_file_path({"out", "obj", obj_file_name + ".o"});
-      file_util::create_dir_if_needed_for_file(path);
-      file_util::write_binary_file(path, (void*)data.data(), data.size());
+    if (m_settings.print_timing) {
+      printf("F: %36s ", obj_file_name.c_str());
+      timing.emplace_back("total", total_timer.getMs());
+      for (auto& e : timing) {
+        printf(" %12s %4.0f", e.first.c_str(), e.second);
+      }
+      printf("\n");
+    } else {
+      auto total_time = total_timer.getMs();
+      if (total_time > 10.0 && color && !no_time_prints) {
+        fmt::print("[ASM-FILE] {} took {:.2f} ms\n", obj_file_name, total_time);
+      }
     }
-  } else {
-    if (load) {
-      printf("WARNING - couldn't load because coloring is not enabled\n");
-    }
-
-    if (write) {
-      printf("WARNING - couldn't write because coloring is not enabled\n");
-    }
-
-    if (disassemble) {
-      printf("WARNING - couldn't disassemble because coloring is not enabled\n");
-    }
-  }
-
-  if (m_settings.print_timing) {
-    printf("F: %36s ", obj_file_name.c_str());
-    timing.emplace_back("total", total_timer.getMs());
-    for (auto& e : timing) {
-      printf(" %12s %4.0f", e.first.c_str(), e.second);
-    }
-    printf("\n");
-  } else {
-    auto total_time = total_timer.getMs();
-    if (total_time > 10.0 && color && !no_time_prints) {
-      fmt::print("[ASM-FILE] {} took {:.2f} ms\n", obj_file_name, total_time);
+  } catch (std::runtime_error& e) {
+    if (!no_throw) {
+      throw_compiler_error(form, "Error while compiling file: {}", e.what());
     }
   }
 

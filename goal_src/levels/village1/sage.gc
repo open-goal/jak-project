@@ -18,14 +18,11 @@
   )
 
 
-(defskelgroup *sage-sg* sage
-  0
-  4
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 2.5)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *sage-sg* sage sage-lod0-jg sage-idle-ecorocks-breathe-ja
+              ((sage-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :shadow sage-shadow-mg
+              )
 
 (defmethod play-anim! sage ((obj sage) (arg0 symbol))
   (with-pp
@@ -492,49 +489,18 @@
     )
   :code
   (behavior ()
-    (if (!= (if (> (-> self skel active-channels) 0)
-                (-> self skel root-channel 0 frame-group)
-                )
-            (get-art-elem self)
-            )
-        (ja-channel-push! 1 60)
+    (if (!= (ja-group) (get-art-elem self))
+        (ja-channel-push! 1 (seconds 0.2))
         )
-    (while #t
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 frame-group) (the-as art-joint-anim (get-art-elem self)))
-        )
+    (loop
+      (ja :group! (get-art-elem self))
       (let* ((f30-0 3.0)
              (v1-9 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
              (v1-10 (the-as number (logior #x3f800000 v1-9)))
              )
         (countdown (gp-1 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-10)))) 5))
           (TODO-RENAME-43 self)
-          (let ((a0-11 (-> self skel root-channel 0)))
-            (set! (-> a0-11 frame-group) (if (> (-> self skel active-channels) 0)
-                                             (-> self skel root-channel 0 frame-group)
-                                             )
-                  )
-            (set! (-> a0-11 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                           (-> self skel root-channel 0 frame-group)
-                                                           )
-                                                       data
-                                                       0
-                                                       length
-                                                       )
-                                                   -1
-                                                   )
-                                          )
-                  )
-            (set! (-> a0-11 param 1) 1.0)
-            (set! (-> a0-11 frame-num) 0.0)
-            (joint-control-channel-group!
-              a0-11
-              (if (> (-> self skel active-channels) 0)
-                  (-> self skel root-channel 0 frame-group)
-                  )
-              num-func-seek!
-              )
-            )
+          (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (if (and (-> self reminder-played)
                      (< 81920.0 (vector-vector-distance (-> self root-override trans) (camera-pos)))
@@ -542,35 +508,15 @@
                 (go-virtual idle)
                 )
             (suspend)
-            (let ((a0-13 (-> self skel root-channel 0)))
-              (set! (-> a0-13 param 0) (the float (+ (-> a0-13 frame-group data 0 length) -1)))
-              (set! (-> a0-13 param 1) 1.0)
-              (joint-control-channel-group-eval! a0-13 (the-as art-joint-anim #f) num-func-seek!)
-              )
+            (ja :num! (seek!))
             )
           )
         )
-      (when (= (if (> (-> self skel active-channels) 0)
-                   (-> self skel root-channel 0 frame-group)
-                   )
-               (-> self draw art-group data 4)
-               )
-        (let ((a0-20 (-> self skel root-channel 0)))
-          (set! (-> a0-20 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-          (set! (-> a0-20 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-                )
-          (set! (-> a0-20 param 1) 1.0)
-          (set! (-> a0-20 frame-num) 0.0)
-          (joint-control-channel-group! a0-20 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-          )
+      (when (ja-group? sage-idle-ecorocks-breathe-ja)
+        (ja-no-eval :group! sage-idle-ecorocks-peer-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
-          (let ((a0-21 (-> self skel root-channel 0)))
-            (set! (-> a0-21 param 0) (the float (+ (-> a0-21 frame-group data 0 length) -1)))
-            (set! (-> a0-21 param 1) 1.0)
-            (joint-control-channel-group-eval! a0-21 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           )
         )
       )

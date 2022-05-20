@@ -20,12 +20,22 @@ struct MatchResult {
     std::unordered_map<int, s64> label;
     std::unordered_map<int, s64> ints;
   } maps;
+
+  Form* int_or_form_to_form(FormPool& pool, int key_idx) {
+    if (maps.forms.find(key_idx) != maps.forms.end()) {
+      return maps.forms.at(key_idx);
+    } else {
+      return pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(maps.ints.at(key_idx)));
+    }
+  }
 };
 
 class Matcher {
  public:
   static Matcher any_reg(int match_id = -1);
   static Matcher any_label(int match_id = -1);
+  static Matcher reg(Register reg);
+  static inline Matcher s6() { return Matcher::reg(Register(Reg::GPR, Reg::S6)); }
   static Matcher op(const GenericOpMatcher& op, const std::vector<Matcher>& args);
   static Matcher op_fixed(FixedOperatorKind op, const std::vector<Matcher>& args);
   static Matcher op_with_rest(const GenericOpMatcher& op, const std::vector<Matcher>& args);
@@ -77,6 +87,7 @@ class Matcher {
     CONSTANT_TOKEN,
     SC_OR,
     BEGIN,
+    REG,  // a specific register. like s6.
     INVALID
   };
 
@@ -94,10 +105,12 @@ class Matcher {
   int m_label_out_id = -1;
   int m_int_out_id = -1;
   std::optional<int> m_int_match;
+  std::optional<Register> m_reg;
   std::string m_str;
 };
 
 MatchResult match(const Matcher& spec, Form* input);
+MatchResult match(const Matcher& spec, FormElement* input);
 
 class DerefTokenMatcher {
  public:

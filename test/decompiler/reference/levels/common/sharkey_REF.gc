@@ -76,13 +76,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *sharkey-sg* sharkey
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 6)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *sharkey-sg* sharkey sharkey-lod0-jg sharkey-idle-ja
+              ((sharkey-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              )
 
 ;; definition for method 44 of type sharkey
 ;; INFO: Return type mismatch symbol vs object.
@@ -321,21 +318,11 @@ nav-enemy-default-event-handler
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 22)
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group)
-            (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim)))
-            )
-      )
-    (let ((v1-5 (-> self skel root-channel 0)))
-      (set! (-> v1-5 num-func) num-func-identity)
-      (set! (-> v1-5 frame-num) 0.0)
-      )
+    (ja-channel-push! 1 (seconds 0.075))
+    (ja :group! (-> self draw art-group data (-> self nav-info idle-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
     (until (= (-> self collide-info trans y) (-> self y-min))
-      (let ((a0-7 (-> self skel root-channel 0)))
-        (set! (-> a0-7 param 0) (-> self anim-speed))
-        (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop! (-> self anim-speed)))
       (seek! (-> self anim-speed) 1.0 0.05)
       (seek! (-> self collide-info trans y) (-> self y-min) (* (-> self y-speed) (-> *display* seconds-per-frame)))
       (dummy-10 (-> self water))
@@ -367,26 +354,14 @@ nav-enemy-default-event-handler
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 22)
+    (ja-channel-push! 1 (seconds 0.075))
     (set! (-> self nav target-pos quad) (-> self spawn-point quad))
-    (while #t
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 frame-group)
-              (the-as art-joint-anim (-> self draw art-group data (-> self nav-info walk-anim)))
-              )
-        (set! (-> a0-3 param 0)
-              (the float
-                   (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self nav-info walk-anim))) data 0 length) -1)
-                   )
-              )
-        (set! (-> a0-3 param 1) (-> self anim-speed))
-        (set! (-> a0-3 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-3
-          (the-as art-joint-anim (-> self draw art-group data (-> self nav-info walk-anim)))
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group!
+                  (-> self draw art-group data (-> self nav-info walk-anim))
+                  :num! (seek! max (-> self anim-speed))
+                  :frame-num 0.0
+                  )
       (until (ja-done? 0)
         (seek! (-> self anim-speed) 1.0 0.05)
         (cond
@@ -400,11 +375,7 @@ nav-enemy-default-event-handler
             )
           )
         (suspend)
-        (let ((a0-6 (-> self skel root-channel 0)))
-          (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-          (set! (-> a0-6 param 1) (-> self anim-speed))
-          (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max (-> self anim-speed)))
         )
       )
     (none)
@@ -463,25 +434,15 @@ nav-enemy-default-event-handler
       (sound-play-by-name (static-sound-name "bigshark-bite") (new-sound-id) 1024 0 0 1 #t)
       (set! (-> self state-time) (-> *display* base-frame-counter))
       (set! (-> gp-0 quad) (-> self collide-info trans quad))
-      (ja-channel-push! 1 30)
-      (let ((s4-1 (-> self skel root-channel 0)))
-        (set! (-> s4-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-        (set! (-> s4-1 param 0) (ja-aframe 3.0 0))
-        (set! (-> s4-1 param 1) 2.0)
-        (set! (-> s4-1 frame-num) 0.0)
-        (joint-control-channel-group! s4-1 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-        )
+      (ja-channel-push! 1 (seconds 0.1))
+      (ja-no-eval :group! sharkey-chomp-ja :num! (seek! (ja-aframe 3.0 0) 2.0) :frame-num 0.0)
       (until (ja-done? 0)
         (sharkey-get-player-position s5-0)
         (setup-from-to-duration! (-> self jump-trajectory) gp-0 s5-0 3.0 -291.27112)
         (set! (-> self attack-time) (ja-aframe-num 0))
         (sharkey-follow-trajectory (-> self attack-time))
         (suspend)
-        (let ((s4-2 (-> self skel root-channel 0)))
-          (set! (-> s4-2 param 0) (ja-aframe 3.0 0))
-          (set! (-> s4-2 param 1) 2.0)
-          (joint-control-channel-group-eval! s4-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! (ja-aframe 3.0 0) 2.0))
         )
       )
     (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
@@ -502,15 +463,7 @@ nav-enemy-default-event-handler
               (f26-0 (-> self collide-info trans y))
               )
           (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
-            (let ((gp-1 (-> self skel root-channel 0)))
-              (set! (-> gp-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-              (set! (-> gp-1 param 0)
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-                    )
-              (set! (-> gp-1 param 1) 1.0)
-              (set! (-> gp-1 frame-num) (ja-aframe 3.0 0))
-              (joint-control-channel-group! gp-1 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-              )
+            (ja-no-eval :group! sharkey-chomp-ja :num! (seek!) :frame-num (ja-aframe 3.0 0))
             (until (ja-done? 0)
               (+! f28-0 (* f30-0 (-> *display* seconds-per-frame)))
               (+! f26-0 (* f28-0 (-> *display* seconds-per-frame)))
@@ -532,11 +485,7 @@ nav-enemy-default-event-handler
                 )
               (set! (-> self collide-info trans y) f26-0)
               (suspend)
-              (let ((a0-27 (-> self skel root-channel 0)))
-                (set! (-> a0-27 param 0) (the float (+ (-> a0-27 frame-group data 0 length) -1)))
-                (set! (-> a0-27 param 1) 1.0)
-                (joint-control-channel-group-eval! a0-27 (the-as art-joint-anim #f) num-func-seek!)
-                )
+              (ja :num! (seek!))
               )
             )
           )
@@ -623,32 +572,18 @@ nav-enemy-default-event-handler
   :code
   (behavior ()
     (set! (-> self player-water-time) (-> *display* base-frame-counter))
-    (ja-channel-push! 1 51)
+    (ja-channel-push! 1 (seconds 0.17))
     (sound-play-by-name (static-sound-name "bigshark-idle") (new-sound-id) 1024 0 0 1 #t)
-    (while #t
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data (-> self nav-info run-anim))))
-        (set! (-> a0-3 param 0)
-              (the float
-                   (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self nav-info run-anim))) data 0 length) -1)
-                   )
-              )
-        (set! (-> a0-3 param 1) (-> self anim-speed))
-        (set! (-> a0-3 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-3
-          (the-as art-joint-anim (-> self draw art-group data (-> self nav-info run-anim)))
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group!
+                  (-> self draw art-group data (-> self nav-info run-anim))
+                  :num! (seek! max (-> self anim-speed))
+                  :frame-num 0.0
+                  )
       (until (ja-done? 0)
         (seek! (-> self anim-speed) 1.0 (* 3.0 (-> *display* seconds-per-frame)))
         (suspend)
-        (let ((a0-5 (-> self skel root-channel 0)))
-          (set! (-> a0-5 param 0) (the float (+ (-> a0-5 frame-group data 0 length) -1)))
-          (set! (-> a0-5 param 1) (-> self anim-speed))
-          (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max (-> self anim-speed)))
         )
       )
     (none)
@@ -685,34 +620,18 @@ nav-enemy-default-event-handler
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 51)
-    (while #t
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 frame-group)
-              (the-as art-joint-anim (-> self draw art-group data (-> self nav-info walk-anim)))
-              )
-        (set! (-> a0-1 param 0)
-              (the float
-                   (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self nav-info walk-anim))) data 0 length) -1)
-                   )
-              )
-        (set! (-> a0-1 param 1) (-> self anim-speed))
-        (set! (-> a0-1 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-1
-          (the-as art-joint-anim (-> self draw art-group data (-> self nav-info walk-anim)))
-          num-func-seek!
-          )
-        )
+    (ja-channel-push! 1 (seconds 0.17))
+    (loop
+      (ja-no-eval :group!
+                  (-> self draw art-group data (-> self nav-info walk-anim))
+                  :num! (seek! max (-> self anim-speed))
+                  :frame-num 0.0
+                  )
       (until (ja-done? 0)
         (seek! (-> self anim-speed) 1.0 0.05)
         (seek! (-> self collide-info trans y) (-> self y-max) (* (-> self y-speed) (-> *display* seconds-per-frame)))
         (suspend)
-        (let ((a0-4 (-> self skel root-channel 0)))
-          (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
-          (set! (-> a0-4 param 1) (-> self anim-speed))
-          (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max (-> self anim-speed)))
         )
       )
     (none)
@@ -739,21 +658,11 @@ nav-enemy-default-event-handler
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 51)
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group)
-            (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim)))
-            )
-      )
-    (let ((v1-5 (-> self skel root-channel 0)))
-      (set! (-> v1-5 num-func) num-func-identity)
-      (set! (-> v1-5 frame-num) 0.0)
-      )
-    (while #t
-      (let ((a0-7 (-> self skel root-channel 0)))
-        (set! (-> a0-7 param 0) (-> self anim-speed))
-        (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-loop!)
-        )
+    (ja-channel-push! 1 (seconds 0.17))
+    (ja :group! (-> self draw art-group data (-> self nav-info idle-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (loop
+      (ja :num! (loop! (-> self anim-speed)))
       (seek! (-> self anim-speed) 1.0 0.05)
       (seek! (-> self collide-info trans y) (-> self y-max) (* (-> self y-speed) (-> *display* seconds-per-frame)))
       (suspend)
@@ -772,34 +681,16 @@ nav-enemy-default-event-handler
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 22)
+    (ja-channel-push! 1 (seconds 0.075))
     (dotimes (gp-0 3)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 frame-group)
-              (the-as art-joint-anim (-> self draw art-group data (-> self nav-info victory-anim)))
-              )
-        (set! (-> a0-1 param 0)
-              (the float
-                   (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self nav-info victory-anim))) data 0 length)
-                      -1
-                      )
-                   )
-              )
-        (set! (-> a0-1 param 1) (-> self anim-speed))
-        (set! (-> a0-1 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-1
-          (the-as art-joint-anim (-> self draw art-group data (-> self nav-info victory-anim)))
-          num-func-seek!
-          )
-        )
+      (ja-no-eval :group!
+                  (-> self draw art-group data (-> self nav-info victory-anim))
+                  :num! (seek! max (-> self anim-speed))
+                  :frame-num 0.0
+                  )
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) (-> self anim-speed))
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max (-> self anim-speed)))
         )
       )
     (go-virtual nav-enemy-stare)

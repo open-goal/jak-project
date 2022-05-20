@@ -145,40 +145,11 @@
   :code
   (behavior ()
     (transform-post)
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -235,13 +206,11 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *spike-sg* spike
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 8 0 10.2)
-  :longest-edge (meters 5)
-  )
+(defskelgroup *spike-sg* spike spike-lod0-jg spike-idle-ja
+              ((spike-lod0-mg (meters 20)) (spike-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 8 0 10.2)
+              :longest-edge (meters 5)
+              )
 
 ;; failed to figure out what this is:
 (defstate spike-up (spike)
@@ -290,42 +259,13 @@
     )
   :code
   (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                      (-> self skel root-channel 0 frame-group)
-                                      )
-            )
-      (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                    (-> self skel root-channel 0 frame-group)
-                                                    )
-                                                data
-                                                0
-                                                length
-                                                )
-                                            -1
-                                            )
-                                   )
-            )
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group!
-        a0-0
-        (if (> (-> self skel active-channels) 0)
-            (-> self skel root-channel 0 frame-group)
-            )
-        num-func-seek!
-        )
-      )
+    (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (transform-post)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -381,7 +321,7 @@
   :code
   (behavior ()
     (transform-post)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -427,7 +367,7 @@
   :code
   (behavior ()
     (transform-post)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -499,13 +439,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *crate-darkeco-cluster-sg* crate-darkeco-cluster
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 1.6 0 3.3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *crate-darkeco-cluster-sg* crate-darkeco-cluster crate-darkeco-cluster-lod0-jg crate-darkeco-cluster-idle-ja
+              ((crate-darkeco-cluster-lod0-mg (meters 20)) (crate-darkeco-cluster-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 1.6 0 3.3)
+              )
 
 ;; definition of type crate-darkeco-cluster
 (deftype crate-darkeco-cluster (process-drawable)

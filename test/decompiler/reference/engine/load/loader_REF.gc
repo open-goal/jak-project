@@ -832,16 +832,9 @@
   (when (or (handle->process (-> *art-control* spool-lock)) (!= *master-mode* 'game))
     (cond
       (arg1
-        (when (!= (if (> (-> self skel active-channels) 0)
-                      (-> self skel root-channel 0 frame-group)
-                      )
-                  arg1
-                  )
-          (ja-channel-push! 1 15)
-          (let ((s2-0 (-> self skel root-channel 0)))
-            (joint-control-channel-group-eval! s2-0 arg1 num-func-identity)
-            (set! (-> s2-0 frame-num) 0.0)
-            )
+        (when (!= (ja-group) arg1)
+          (ja-channel-push! 1 (seconds 0.05))
+          (ja :group! arg1 :num! min)
           )
         )
       (else
@@ -855,12 +848,9 @@
           )
       (spool-push *art-control* (-> arg0 name) spool-part self -9.0)
       (suspend)
-      (when arg1
-        (let ((a0-17 (-> self skel root-channel 0)))
-          (set! (-> a0-17 param 0) 1.0)
-          (joint-control-channel-group-eval! a0-17 (the-as art-joint-anim #f) num-func-loop!)
+      (if arg1
+          (ja :num! (loop!))
           )
-        )
       )
     )
   (let ((v1-46 (process->ppointer self)))
@@ -876,16 +866,9 @@
     (when (!= (file-status *art-control* (-> arg0 name) spool-part) 'active)
       (cond
         (arg1
-          (when (!= (if (> (-> self skel active-channels) 0)
-                        (-> self skel root-channel 0 frame-group)
-                        )
-                    arg1
-                    )
+          (when (!= (ja-group) arg1)
             (ja-channel-set! 1)
-            (let ((s2-2 (-> self skel root-channel 0)))
-              (joint-control-channel-group-eval! s2-2 arg1 num-func-identity)
-              (set! (-> s2-2 frame-num) 0.0)
-              )
+            (ja :group! arg1 :num! min)
             )
           )
         (else
@@ -899,12 +882,9 @@
         (spool-push *art-control* (-> arg0 name) spool-part self -20.0)
         (format #t "WARNING: ---------------------> loader stall on art ~S ~D~%" (-> arg0 name) spool-part)
         (suspend)
-        (when arg1
-          (let ((a0-37 (-> self skel root-channel 0)))
-            (set! (-> a0-37 param 0) 1.0)
-            (joint-control-channel-group-eval! a0-37 (the-as art-joint-anim #f) num-func-loop!)
+        (if arg1
+            (ja :num! (loop!))
             )
-          )
         )
       )
     (spool-push *art-control* (-> arg0 name) spool-part self -20.0)
@@ -912,13 +892,7 @@
       (cond
         (s2-4
           (ja-channel-set! 1)
-          (let ((a0-42 (-> self skel root-channel 0)))
-            (set! (-> a0-42 frame-group) s2-4)
-            (set! (-> a0-42 param 0) (the float (+ (-> s2-4 data 0 length) -1)))
-            (set! (-> a0-42 param 1) 1.0)
-            (set! (-> a0-42 frame-num) 0.0)
-            (joint-control-channel-group! a0-42 s2-4 num-func-seek!)
-            )
+          (ja-no-eval :group! s2-4 :num! (seek!) :frame-num 0.0)
           (when (zero? spool-part)
             (str-play-async (-> arg0 name) spool-sound)
             (set! (-> *art-control* active-stream) (-> arg0 name))
@@ -956,13 +930,8 @@
               (set! sv-32 sv-72)
               (set! sv-48 (the-as int (-> *display* base-frame-counter)))
               (suspend)
-              (let ((f0-14 (* (- (the float (current-str-pos spool-sound)) sv-24) f30-0))
-                    (a0-69 (-> self skel root-channel 0))
-                    )
-                (set! (-> a0-69 param 0) (the float (+ (-> a0-69 frame-group data 0 length) -1)))
-                (set! (-> a0-69 param 1) 1.0)
-                (set! (-> a0-69 frame-num) f0-14)
-                (joint-control-channel-group! a0-69 (the-as art-joint-anim #f) num-func-seek!)
+              (let ((f0-14 (* (- (the float (current-str-pos spool-sound)) sv-24) f30-0)))
+                (ja-no-eval :num! (seek!) :frame-num f0-14)
                 )
               (set! v0-39 (current-str-pos spool-sound))
               (set! sv-72 v0-39)
@@ -997,16 +966,12 @@
   (clear-pending-settings-from-process *setting-control* self 'spooling)
   (cond
     ((and arg1 (>= arg2 0))
-     (ja-channel-push! 1 30)
+     (ja-channel-push! 1 (seconds 0.1))
      (set! (-> self skel root-channel 0 frame-group) arg1)
      (while (!= (-> self skel root-channel 0) (-> self skel channel))
        (spool-push *art-control* (-> arg0 name) arg2 self -20.0)
        (suspend)
-       (let ((a0-12 (-> self skel root-channel 0)))
-         (set! (-> a0-12 param 0) (the float (+ (-> a0-12 frame-group data 0 length) -1)))
-         (set! (-> a0-12 param 1) 1.0)
-         (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-seek!)
-         )
+       (ja :num! (seek!))
        )
      )
     (else
