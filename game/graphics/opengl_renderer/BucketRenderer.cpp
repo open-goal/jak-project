@@ -59,7 +59,7 @@ void SkipRenderer::render(DmaFollower& dma,
 }
 
 void SharedRenderState::reset() {
-  has_camera_planes = false;
+  has_pc_data = false;
   for (auto& x : occlusion_vis) {
     x.valid = false;
   }

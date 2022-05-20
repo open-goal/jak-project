@@ -404,17 +404,6 @@ TEST(GoosBuiltins, Null) {
   }
 }
 
-TEST(GoosBuiltins, CurrentMethodType) {
-  Interpreter i;
-  i.goal_to_goos.enclosing_method_type = "test-type";
-  EXPECT_EQ(e(i, "(current-method-type)"), "test-type");
-
-  i.disable_printfs();
-  for (auto x : {"(current-method-type 1)"}) {
-    EXPECT_ANY_THROW(e(i, x));
-  }
-}
-
 TEST(GoosBuiltins, Type) {
   Interpreter i;
   EXPECT_EQ(e(i, "(type? 'empty-list '())"), "#t");

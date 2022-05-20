@@ -60,8 +60,7 @@
   )
 
 ;; definition for symbol *flutflut-shadow-control*, type shadow-control
-(define
-  *flutflut-shadow-control*
+(define *flutflut-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
                                            :center
                                            (new 'static 'vector :w (the-as float #xa))
@@ -74,15 +73,12 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *flutflut-sg* flut-saddle
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3.5)
-  :longest-edge (meters 0)
-  :shadow 2
-  :sort 1
-  )
+(defskelgroup *flutflut-sg* flut-saddle flut-saddle-lod0-jg -1
+              ((flut-saddle-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3.5)
+              :shadow flut-saddle-shadow-mg
+              :sort 1
+              )
 
 ;; definition for function flutflut-effect
 ;; INFO: Return type mismatch int vs none.
@@ -128,7 +124,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (let ((v1-0 (-> self condition)))
         (cond
           ((or (zero? v1-0) (= v1-0 1))
@@ -215,12 +211,10 @@
   :code
   (behavior ()
     (ja-channel-set! 1)
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      )
+    (ja :group! (-> self draw art-group data 3))
     (set! (-> self root-override root-prim prim-core action) (collide-action solid ca-11))
     (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
-    (while #t
+    (loop
       (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14)))
           (go-virtual wait-for-return)
           )
@@ -264,10 +258,7 @@
         )
       (flutflut-effect)
       (suspend)
-      (let ((a0-26 (-> self skel root-channel 0)))
-        (set! (-> a0-26 param 0) 1.0)
-        (joint-control-channel-group-eval! a0-26 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop!))
       )
     (none)
     )
@@ -283,9 +274,7 @@
     (case arg2
       (('draw)
        (ja-channel-set! 1)
-       (let ((v1-3 (-> self skel root-channel 0)))
-         (set! (-> v1-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-         )
+       (ja :group! (-> self draw art-group data 3))
        (set! (-> self root-override root-prim prim-core action) (collide-action solid ca-11))
        (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
        (transform-post)
@@ -356,7 +345,7 @@
   (behavior ()
     (ja-channel-set! 0)
     (ja-post)
-    (while #t
+    (loop
       (if (not (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14))))
           (go-virtual idle)
           )
@@ -421,19 +410,8 @@
           )
       )
     )
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "zoom-teleport")
-                           :volume #x400
-                           :fo-max 30
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "zoom-teleport" :fo-max 30) (-> obj root-override trans))
         )
   (go (method-of-object obj wait-for-start))
   (none)

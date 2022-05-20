@@ -624,7 +624,7 @@
                              (new
                                'debug
                                'debug-menu-item-flag
-                               (the-as string (-> s3-1 array-data s2-1 name))
+                               (-> s3-1 array-data s2-1 name)
                                (-> s3-1 array-data s2-1 name)
                                dm-instance-pick-func
                                )
@@ -636,7 +636,7 @@
                              (new
                                'debug
                                'debug-menu-item-flag
-                               (the-as string (-> s3-1 array-data s2-1 name))
+                               (-> s3-1 array-data s2-1 name)
                                (-> s3-1 array-data s2-1 name)
                                dm-enable-instance-func
                                )
@@ -3757,15 +3757,18 @@
            (function "Play" #f (lambda () (play #t #t)))
            (function "Start" #f (lambda () (the-as int (start 'debug (get-or-create-continue! *game-info*)))))
            (function "Stop" #f (lambda () (stop 'debug)))
-           (flag "Invulnerable" #f (lambda ((arg0 int) (arg1 debug-menu-msg))
-                                     (when (= arg1 (debug-menu-msg press))
-                                       (if *target*
-                                           (set! (-> *target* state-flags) (logxor (-> *target* state-flags) 16))
-                                           )
-                                       )
-                                     (the-as symbol (and *target* (logtest? (-> *target* state-flags) 16)))
-                                     )
+           (flag
+             "Invulnerable"
+             #f
+             (lambda ((arg0 int) (arg1 debug-menu-msg))
+               (when (= arg1 (debug-menu-msg press))
+                 (if *target*
+                     (set! (-> *target* state-flags) (logxor (-> *target* state-flags) (state-flags sf04)))
+                     )
                  )
+               (the-as symbol (and *target* (logtest? (-> *target* state-flags) (state-flags sf04))))
+               )
+             )
            (function
              "Reset Trans"
              #f
@@ -4052,7 +4055,7 @@
                 (new-dm-func (symbol->string (the-as symbol (car iter)))
                                  (-> (the-as symbol (car iter)) value)
                                  (lambda ((info level-load-info))
-                                  (let ((tf (new 'stack 'transformq)))
+                                  (let ((tf (new 'stack-no-clear 'transformq)))
                                     (set! (-> tf trans x) (-> info bsphere x))
                                     (set! (-> tf trans y) (-> info bsphere y))
                                     (set! (-> tf trans z) (-> info bsphere z))
@@ -4253,6 +4256,99 @@
       ))
   )
 
+(defun dm-toggle-collision-pick-func ((arg symbol) (msg debug-menu-msg))
+  (when (= msg (debug-menu-msg press))
+    (cond
+      ((-> arg value)
+       (false! (-> arg value))
+       (logior! *vu1-enable-user-menu* (vu1-renderer-mask tfrag trans-tfrag tie tie-near))
+       (true! *generic-tie*)
+       )
+      (else
+       (true! (-> arg value))
+       (logclear! *vu1-enable-user-menu* (vu1-renderer-mask tfrag trans-tfrag tie tie-near))
+       (false! *generic-tie*)
+       )
+      )
+    )
+  (-> arg value)
+  )
+
+(defun dm-collision-mode-pick-func ((arg pc-collision-mode) (msg debug-menu-msg))
+  (when (= msg (debug-menu-msg press))
+    (set! *collision-mode* arg)
+    )
+  (= *collision-mode* arg)
+  )
+
+(defun dm-collision-filter-mode-pick-func ((arg int) (msg debug-menu-msg))
+  (when (= msg (debug-menu-msg press))
+    (pc-set-collision-mask (pc-collision-mode mode) arg (not (pc-get-collision-mask (pc-collision-mode mode) arg)))
+    )
+  (pc-get-collision-mask (pc-collision-mode mode) arg)
+  )
+
+(defun dm-collision-filter-event-pick-func ((arg int) (msg debug-menu-msg))
+  (when (= msg (debug-menu-msg press))
+    (pc-set-collision-mask (pc-collision-mode event) arg (not (pc-get-collision-mask (pc-collision-mode event) arg)))
+    )
+  (pc-get-collision-mask (pc-collision-mode event) arg)
+  )
+
+(defun dm-collision-filter-material-pick-func ((arg int) (msg debug-menu-msg))
+  (when (= msg (debug-menu-msg press))
+    (pc-set-collision-mask (pc-collision-mode material) arg (not (pc-get-collision-mask (pc-collision-mode material) arg)))
+    )
+  (pc-get-collision-mask (pc-collision-mode material) arg)
+  )
+
+(defun dm-collision-filter-skip-pick-func ((arg int) (msg debug-menu-msg))
+  (when (= msg (debug-menu-msg press))
+    (pc-set-collision-mask (pc-collision-mode skip) arg (not (pc-get-collision-mask (pc-collision-mode skip) arg)))
+    )
+  (pc-get-collision-mask (pc-collision-mode skip) arg)
+  )
+
+(defun debug-menu-make-collision-renderer-menu ((ctx debug-menu-context))
+  (let ((menu (new 'debug 'debug-menu ctx "Collision renderer menu")))
+      ;; master toggle
+      (debug-menu-append-item menu (new-dm-bool "Enable" *collision-renderer* dm-toggle-collision-pick-func))
+      (debug-menu-append-item menu (new-dm-bool "Wireframe" *collision-wireframe* dm-boolean-toggle-pick-func))
+      (debug-menu-append-item menu (new-dm-submenu "Mode"
+          (let ((mode-menu (new 'debug 'debug-menu ctx "Collision renderer mode menu")))
+              (doenum (name val pc-collision-mode)
+                  (debug-menu-append-item mode-menu (new-dm-flag name val dm-collision-mode-pick-func))
+                  )
+              mode-menu)))
+      (debug-menu-append-item menu (new-dm-submenu "Filter mode"
+          (let ((filter-menu (new 'debug 'debug-menu ctx "Collision renderer filter mode menu")))
+              (doenum (name val pat-mode)
+                  (debug-menu-append-item filter-menu (new-dm-flag name val dm-collision-filter-mode-pick-func))
+                  )
+              filter-menu)))
+      (debug-menu-append-item menu (new-dm-submenu "Filter event"
+          (let ((filter-menu (new 'debug 'debug-menu ctx "Collision renderer filter event menu")))
+              (doenum (name val pat-event)
+                  (debug-menu-append-item filter-menu (new-dm-flag name val dm-collision-filter-event-pick-func))
+                  )
+              filter-menu)))
+      (debug-menu-append-item menu (new-dm-submenu "Filter material"
+          (let ((filter-menu (new 'debug 'debug-menu ctx "Collision renderer filter material menu")))
+              (doenum (name val pat-material)
+                  (debug-menu-append-item filter-menu (new-dm-flag name val dm-collision-filter-material-pick-func))
+                  )
+              filter-menu)))
+      (debug-menu-append-item menu (new-dm-submenu "Filter skip"
+          (let ((filter-menu (new 'debug 'debug-menu ctx "Collision renderer filter skip menu")))
+              (doenum (name val pc-pat-skip-hack)
+                  (debug-menu-append-item filter-menu (new-dm-flag name val dm-collision-filter-skip-pick-func))
+                  )
+              filter-menu)))
+
+      (new-dm-submenu "Collision renderer" menu)
+      )
+  )
+
 (defun dm-lod-int ((arg0 int) (arg1 debug-menu-msg) (arg2 int) (arg3 int))
   (when (= arg1 (debug-menu-msg press))
     (case (/ arg0 8)
@@ -4396,16 +4492,6 @@
             (flag "uk-english" 6 dm-subtitle-language)
             )
          (flag "Discord RPC" #t ,(dm-lambda-boolean-flag (-> *pc-settings* discord-rpc?)))
-         (menu "Game fixes"
-            (flag "sagecage crash" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes crash-sagecage)))
-            ;(flag "memory crash" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes crash-dma)))
-            ;(flag "light eco crash" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes crash-light-eco)))
-            ;(flag "softlock pelican" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes lockout-pelican)))
-            ;(flag "softlock pipegame" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes lockout-pipegame)))
-            ;(flag "softlock gambler" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes lockout-gambler)))
-            ;(flag "fix movies" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes fix-movies)))
-            ;(flag "fix credits" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fixes fix-credits)))
-            )
          (menu "PS2 settings"
             ;(flag "PS2 Load speed" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-read-speed?)))
             (flag "PS2 Particles" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-parts?)))
@@ -4433,9 +4519,10 @@
          ;(flag "Alt load boundaries" #f ,(dm-lambda-boolean-flag (-> *pc-settings* new-lb?)))
          (flag "All actors" #f ,(dm-lambda-boolean-flag (-> *pc-settings* force-actors?)))
          (flag "Display actor counts" #f ,(dm-lambda-boolean-flag (-> *pc-settings* display-actor-counts)))
+         (flag "Display git commit" #f ,(dm-lambda-boolean-flag (-> *pc-settings* display-sha)))
          (function "Reset" #f (lambda () (reset *pc-settings*)))
-         (function "Save" #f (lambda () (write-to-file *pc-settings* PC_SETTINGS_FILE_NAME)))
-         (function "Load" #f (lambda () (read-from-file *pc-settings* PC_SETTINGS_FILE_NAME)))
+         (function "Save" #f (lambda () (commit-to-file *pc-settings*)))
+         (function "Load" #f (lambda () (load-settings *pc-settings*)))
          )
       )
     )
@@ -4449,10 +4536,11 @@
                  (flag "Update vis outside bsp" *update-leaf-when-outside-bsp* dm-boolean-toggle-pick-func)
                  (flag "Pad display" #f ,(dm-lambda-boolean-flag (-> *pc-settings* debug-pad-display)))
                  (flag "Display actor bank" #f ,(dm-lambda-boolean-flag (-> *pc-settings* display-actor-bank)))
-                 (float-var "Actor birth dist" #f ,(dm-lambda-meters-var (-> *ACTOR-bank* birth-dist)) 20 1 #t 0 10000 1)
-                 (float-var "Actor pause dist" #f ,(dm-lambda-meters-var (-> *ACTOR-bank* pause-dist)) 20 1 #t 0 10000 1)
                  (flag "Heap status" #f ,(dm-lambda-boolean-flag (-> *pc-settings* display-heap-status)))
                  (flag "Bug report" #f ,(dm-lambda-boolean-flag (-> *pc-settings* display-bug-report)))
+                 (flag "Text boxes" #f ,(dm-lambda-boolean-flag (-> *pc-settings* display-text-box)))
+                 (float-var "Actor birth dist" #f ,(dm-lambda-meters-var (-> *ACTOR-bank* birth-dist)) 20 1 #t 0 10000 1)
+                 (float-var "Actor pause dist" #f ,(dm-lambda-meters-var (-> *ACTOR-bank* pause-dist)) 20 1 #t 0 10000 1)
                  (menu "Mood override"
                     (function "-- SIMPLE OVERRIDE" #f nothing)
                     (flag "Palette 0" 0 dm-mood-override-palette-pick-func)
@@ -4476,7 +4564,6 @@
                         (float-fixed-var "Palette 7 Amt" 7 dm-mood-palette-float 0 10 #t 0 1000 3)
                         )
                     )
-                 (flag "Force progress" #f ,(dm-lambda-boolean-flag (-> *pc-settings* progress-force?)))
                  )
               ))
          (other-menu (-> (the-as debug-menu-item-submenu other-menu-node) submenu))
@@ -4485,41 +4572,7 @@
       (debug-menu-append-item prog-menu
           (new-dm-func (new 'debug 'string 0 (enum->string progress-screen i)) i
                         (lambda ((val progress-screen))
-                          (cond
-                            ((-> *pc-settings* progress-force?)
-                               (cond
-                                ((not *progress-process*)
-                                  (make-levels-with-tasks-available-to-progress)
-                                  (disable-level-text-file-loading)
-                                  (set! (-> *progress-state* starting-state) val)
-                                  (set! *progress-process* (make-init-process progress progress-init-by-other
-                                                                              :to *dproc*
-                                                                              :stack *progress-stack-top*))
-                                  (let ((s5-1 *progress-process*))
-                                   (set! (-> s5-1 0 completion-percentage) (calculate-completion (-> s5-1 0)))
-                                   (set! *master-mode* 'progress)
-                                   (set! (-> s5-1 0 display-level-index) 0) ;; geyser rock
-                                   (set! (-> s5-1 0 next-level-index) (-> s5-1 0 display-level-index))
-                                   (set! (-> s5-1 0 display-state) (progress-screen invalid))
-                                   (set-transition-progress! (-> s5-1 0) 512)
-                                   (set! (-> s5-1 0 task-index) (get-next-task-up -1 (-> s5-1 0 display-level-index)))
-                                   )
-                                 (when *progress-process*
-                                  (enter! (-> *progress-process* 0) val 0)
-                                  (set! (-> *progress-process* 0 card-info) #f)
-                                  )
-                                 )
-                                (else
-                                 (push! (-> *progress-process* 0))
-                                 (set! (-> *progress-process* 0 next-display-state) val)
-                                 (set! (-> *progress-process* 0 card-info) #f)
-                                 )
-                                )
-                              )
-                            (else
-                              (activate-progress *dproc* val)
-                              )
-                            )
+                          (activate-progress *dproc* val)
                           (set-master-mode 'progress)
                           )
                         ))
@@ -4528,6 +4581,10 @@
 
     (debug-menu-append-item (-> *debug-menu-context* root-menu) other-menu-node)
     )
+
+  (debug-menu-append-item (-> (the debug-menu-item-submenu (caddddr (-> *debug-menu-context* root-menu items))) submenu)
+                          (debug-menu-make-collision-renderer-menu *debug-menu-context*))
+
   )
 
 )

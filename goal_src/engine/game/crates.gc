@@ -10,59 +10,44 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup *crate-barrel-sg* crate
-  17
-  21
-  ((18 (meters 20)) (19 (meters 40)) (20 (meters 999999)))
-  :bounds (static-spherem 0 1 0 1.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *crate-barrel-sg* crate crate-barrel-lod0-jg crate-barrel-idle-ja
+              ((crate-barrel-lod0-mg (meters 20)) (crate-barrel-lod1-mg (meters 40)) (crate-barrel-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 2
+              )
 
-(defskelgroup *crate-bucket-sg* crate
-  22
-  24
-  ((23 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *crate-bucket-sg* crate crate-bucket-lod0-jg crate-bucket-idle-ja
+              ((crate-bucket-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :texture-level 2
+              )
 
-(defskelgroup *crate-wood-sg* crate
-  0
-  16
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 1 0 1.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *crate-wood-sg* crate crate-wood-lod0-jg crate-idle-ja
+              ((crate-wood-lod0-mg (meters 20)) (crate-wood-lod1-mg (meters 40)) (crate-wood-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 2
+              )
 
-(defskelgroup *crate-iron-sg* crate
-  4
-  16
-  ((5 (meters 20)) (6 (meters 40)) (7 (meters 999999)))
-  :bounds (static-spherem 0 1 0 1.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *crate-iron-sg* crate crate-iron-lod0-jg crate-idle-ja
+              ((crate-iron-lod0-mg (meters 20)) (crate-iron-lod1-mg (meters 40)) (crate-iron-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 2
+              )
 
-(defskelgroup *crate-steel-sg* crate
-  8
-  16
-  ((9 (meters 20)) (10 (meters 40)) (11 (meters 999999)))
-  :bounds (static-spherem 0 1 0 1.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *crate-steel-sg* crate crate-steel-lod0-jg crate-idle-ja
+              ((crate-steel-lod0-mg (meters 20)) (crate-steel-lod1-mg (meters 40)) (crate-steel-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 2
+              )
 
-(defskelgroup *crate-darkeco-sg* crate
-  12
-  16
-  ((13 (meters 20)) (14 (meters 40)) (15 (meters 999999)))
-  :bounds (static-spherem 0 1 0 1.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *crate-darkeco-sg* crate crate-darkeco-lod0-jg crate-idle-ja
+              ((crate-darkeco-lod0-mg (meters 20))
+               (crate-darkeco-lod1-mg (meters 40))
+               (crate-darkeco-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 2
+              )
 
 (deftype crate-bank (basic)
   ((COLLIDE_YOFF           float  :offset-assert   4)
@@ -75,8 +60,7 @@
   )
 
 
-(define
-  *CRATE-bank*
+(define *CRATE-bank*
   (new 'static 'crate-bank :COLLIDE_YOFF 4096.0 :COLLIDE_RADIUS 4915.2 :DARKECO_EXPLODE_RADIUS 16384.0)
   )
 
@@ -538,9 +522,8 @@
              )
             (else
               (when (and (!= s4-0 (-> self incomming-attack-id)) (= (-> self root-override trans y) (-> self base y)))
-                (if (not
-                      (and (!= *kernel-boot-message* 'play) (= (-> *setting-control* current language) (language-enum japanese)))
-                      )
+                (if (not (and (!= *kernel-boot-message* 'play) (= (-> *setting-control* current language) (language-enum japanese)))
+                         )
                     (level-hint-spawn
                       (game-text-id sage-voicebox-hint-crate-iron)
                       "sagevb36"
@@ -732,7 +715,7 @@
     (suspend)
     (update-transforms! (-> self root-override))
     (logior! (-> self mask) (process-mask sleep))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -786,7 +769,7 @@
   :code
   (behavior ((arg0 handle))
     (set! (-> self target) arg0)
-    (while #t
+    (loop
       (let* ((gp-0 (handle->process (-> self target)))
              (v1-4 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
                        gp-0
@@ -1376,15 +1359,7 @@
   (set! (-> obj sound) (new
                          'process
                          'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x82
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "buzzer")
-                           :volume #x400
-                           :pitch-mod -762
-                           :fo-max 40
-                           )
+                         (static-sound-spec "buzzer" :pitch-mod -762 :fo-max 40)
                          (-> obj root-override trans)
                          )
         )
@@ -1419,7 +1394,7 @@
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (suspend)
     (update-transforms! (-> self root-override))
-    (while #t
+    (loop
       (set! (-> self state-time) (-> *display* base-frame-counter))
       (ja-post)
       (logior! (-> self mask) (process-mask sleep-code))
@@ -1494,7 +1469,7 @@
   :virtual #t
   :code
   (behavior ()
-    (while #t
+    (loop
       (if (or (not (-> self blocker)) (logtest? (-> self blocker extra perm status) (entity-perm-status complete)))
           (go-virtual die #t 0)
           )

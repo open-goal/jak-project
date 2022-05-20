@@ -722,13 +722,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *mistycannon-missile-sg* sack
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *mistycannon-missile-sg* sack sack-lod0-jg sack-idle-ja
+              ((sack-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 ;; definition for method 20 of type mistycannon-missile
 ;; INFO: Return type mismatch int vs none.
@@ -788,7 +785,7 @@
       )
     (restore-collide-with-as (-> self root-override))
     (set-vector! (-> self root-override scale) 0.6 0.6 0.6 1.0)
-    (while (zero? (logand (-> self root-override status) 1))
+    (while (zero? (logand (-> self root-override status) (cshape-moving-flags onsurf)))
       (if (and (zero? (-> self sfx))
                (< (if *target*
                       (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
@@ -827,7 +824,7 @@
               )
             (sound-trans-convert (-> gp-1 parms trans) a1-3)
             )
-          (set! (-> gp-1 parms mask) (the-as uint 32))
+          (set! (-> gp-1 parms mask) (sound-mask trans))
           (-> gp-1 id)
           )
         )
@@ -851,39 +848,15 @@
       1
       (the-as symbol (-> self root-override trans))
       )
-    (let ((a0-18 (-> self skel root-channel 0)))
-      (set! (-> a0-18 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      (set! (-> a0-18 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-            )
-      (set! (-> a0-18 param 1) 1.0)
-      (set! (-> a0-18 frame-num) 0.0)
-      (joint-control-channel-group! a0-18 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-      )
+    (ja-no-eval :group! sack-hit-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-19 (-> self skel root-channel 0)))
-        (set! (-> a0-19 param 0) (the float (+ (-> a0-19 frame-group data 0 length) -1)))
-        (set! (-> a0-19 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-19 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (let ((a0-21 (-> self skel root-channel 0)))
-      (set! (-> a0-21 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-      (set! (-> a0-21 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-            )
-      (set! (-> a0-21 param 1) 1.0)
-      (set! (-> a0-21 frame-num) 0.0)
-      (joint-control-channel-group! a0-21 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-      )
+    (ja-no-eval :group! sack-fuse-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-22 (-> self skel root-channel 0)))
-        (set! (-> a0-22 param 0) (the float (+ (-> a0-22 frame-group data 0 length) -1)))
-        (set! (-> a0-22 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-22 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go mistycannon-missile-explode)
     (none)
@@ -903,7 +876,7 @@
     (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
     (spawn-part self)
     (when (and (zero? (-> self draw cur-lod)) (logtest? (-> self draw status) (draw-status was-drawn)))
-      (if (logtest? (-> self root-override status) 1)
+      (if (logtest? (-> self root-override status) (cshape-moving-flags onsurf))
           (draw-shadow
             (-> self root-override shadow-pos)
             (-> self root-override shadow-pos)
@@ -917,7 +890,7 @@
             (-> self root-override shadow-pos)
             8192.0
             (collide-kind background)
-            (the-as process #f)
+            (the-as process-drawable #f)
             0.0
             81920.0
             )
@@ -956,15 +929,9 @@
       (-> self root-override transv)
       (-> self root-override root-prim collide-with)
       )
-    (set! (-> self root-override scale x)
-          (seek (-> self root-override scale x) 0.0 (* 0.01 (-> *display* time-adjust-ratio)))
-          )
-    (set! (-> self root-override scale y)
-          (seek (-> self root-override scale y) 0.0 (* 0.01 (-> *display* time-adjust-ratio)))
-          )
-    (set! (-> self root-override scale z)
-          (seek (-> self root-override scale z) 0.0 (* 0.01 (-> *display* time-adjust-ratio)))
-          )
+    (seek! (-> self root-override scale x) 0.0 (* 0.01 (-> *display* time-adjust-ratio)))
+    (seek! (-> self root-override scale y) 0.0 (* 0.01 (-> *display* time-adjust-ratio)))
+    (seek! (-> self root-override scale z) 0.0 (* 0.01 (-> *display* time-adjust-ratio)))
     (when (< 0.05 (-> self root-override scale x))
       (suspend)
       (goto cfg-3)
@@ -1049,24 +1016,8 @@
   :code
   (behavior ()
     (if (and *target* (= (-> *target* next-state name) 'target-periscope))
-        (sound-play-by-spec
-          (new 'static 'sound-spec
-            :mask #xc0
-            :num 1.0
-            :group #x1
-            :sound-name (static-sound-name "explosion")
-            :volume #x400
-            :fo-min #xc8
-            :fo-max #x190
-            )
-          (new-sound-id)
-          (the-as vector #t)
-          )
-        (sound-play-by-spec
-          (new 'static 'sound-spec :num 1.0 :group #x1 :sound-name (static-sound-name "explosion") :volume #x400)
-          (new-sound-id)
-          (the-as vector #t)
-          )
+        (sound-play-by-spec (static-sound-spec "explosion" :fo-min 200 :fo-max 400) (new-sound-id) (the-as vector #t))
+        (sound-play-by-spec (static-sound-spec "explosion") (new-sound-id) (the-as vector #t))
         )
     (spawn (-> self part2) (-> self root-override trans))
     (ja-channel-set! 0)
@@ -1099,7 +1050,7 @@
   )
 
 ;; definition for function mistycannon-collision-reaction
-;; INFO: Return type mismatch int vs uint.
+;; INFO: Return type mismatch int vs cshape-moving-flags.
 (defun mistycannon-collision-reaction ((arg0 collide-shape-moving) (arg1 collide-shape-intersect) (arg2 vector) (arg3 vector))
   (let ((s5-0 0))
     (let ((a1-1 (new 'stack-no-clear 'vector)))
@@ -1115,7 +1066,7 @@
     (vector-float*! (-> arg0 transv) (-> arg0 transv) 0.15)
     (let ((v0-1 (logior s5-0 7)))
       (logior! (-> arg0 status) v0-1)
-      (the-as uint v0-1)
+      (the-as cshape-moving-flags v0-1)
       )
     )
   )
@@ -1292,6 +1243,7 @@
   )
 
 ;; definition for function mistycannon-pick-random-target-point
+;; INFO: Return type mismatch float vs none.
 (defbehavior mistycannon-pick-random-target-point mistycannon ()
   (let ((f30-0 (* (sqrtf (rand-vu)) (-> self center-point w)))
         (f28-1 (* 65536.0 (rand-vu)))
@@ -1301,10 +1253,8 @@
     (set! (-> self at-point z) (+ (-> self center-point z) (* f30-0 (sin f28-1))))
     )
   (set! (-> self at-point w) 1.0)
-  (let ((f0-11 (rand-vu-float-range 2730.6667 12743.111)))
-    (set! (-> self target-theta) f0-11)
-    f0-11
-    )
+  (set! (-> self target-theta) (rand-vu-float-range 2730.6667 12743.111))
+  (none)
   )
 
 ;; definition for method 20 of type mistycannon
@@ -1402,19 +1352,17 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *mistycannon-sg* mistycannon
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 5 0 9)
-  :longest-edge (meters 4)
-  )
+(defskelgroup *mistycannon-sg* mistycannon mistycannon-lod0-jg mistycannon-idle-ja
+              ((mistycannon-lod0-mg (meters 20)) (mistycannon-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 5 0 9)
+              :longest-edge (meters 4)
+              )
 
 ;; definition for function mistycannon-prebind-function
 ;; INFO: Return type mismatch int vs none.
-(defun mistycannon-prebind-function ((arg0 mistycannon) (arg1 int) (arg2 mistycannon))
+(defun mistycannon-prebind-function ((arg0 pointer) (arg1 int) (arg2 mistycannon))
   (let ((t9-0 quaternion-axis-angle!)
-        (a0-1 (&-> arg0 link))
+        (a0-1 (&+ arg0 144))
         (a1-1 0.0)
         (a2-1 1.0)
         (a3-0 0.0)
@@ -1429,7 +1377,7 @@
       )
     )
   (let ((t9-1 quaternion-axis-angle!)
-        (a0-2 (&-> arg0 tilt min))
+        (a0-2 (&+ arg0 192))
         (a1-2 -1.0)
         (a2-2 0.0)
         (a3-1 0.0)
@@ -1456,10 +1404,10 @@
           (the float (sar (shl (the int (+ (-> v1-19 min) (-> v1-19 value))) 48) 48))
           )
     )
-  (quaternion-axis-angle! (the-as quaternion (&-> arg0 stack 324)) -1.0 0.0 0.0 (-> arg2 front-wheel))
-  (quaternion-axis-angle! (the-as quaternion (&-> arg0 stack 276)) 1.0 0.0 0.0 (-> arg2 front-wheel))
-  (quaternion-axis-angle! (the-as quaternion (&-> arg0 goggles y)) -1.0 0.0 0.0 (-> arg2 rear-wheel))
-  (quaternion-axis-angle! (the-as quaternion (&-> arg0 at-point y)) 1.0 0.0 0.0 (-> arg2 rear-wheel))
+  (quaternion-axis-angle! (the-as quaternion (&+ arg0 432)) -1.0 0.0 0.0 (-> arg2 front-wheel))
+  (quaternion-axis-angle! (the-as quaternion (&+ arg0 384)) 1.0 0.0 0.0 (-> arg2 front-wheel))
+  (quaternion-axis-angle! (the-as quaternion (&+ arg0 288)) -1.0 0.0 0.0 (-> arg2 rear-wheel))
+  (quaternion-axis-angle! (the-as quaternion (&+ arg0 336)) 1.0 0.0 0.0 (-> arg2 rear-wheel))
   0
   (none)
   )
@@ -1499,7 +1447,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (dummy-23 self)
       (suspend)
       )
@@ -1720,7 +1668,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (if (< (vector-vector-xz-distance (target-pos 0) (-> self center-point)) (-> self center-point w))
           (mistycannon-do-aim (-> *target* control trans) (-> *target* control transv))
           (mistycannon-do-aim (-> self at-point) (new-stack-vector0))
@@ -1767,7 +1715,7 @@
   :code
   (behavior ()
     (set! (-> self player-touching-grips?) #f)
-    (while #t
+    (loop
       (let ((f0-0 2730.6667)
             (v1-0 (-> self tilt))
             )
@@ -1796,7 +1744,7 @@
             (print-game-text (lookup-text! *common-text* (game-text-id press-to-use) #f) gp-0 #f 128 22)
             )
           (when (cpad-pressed? 0 circle)
-            (while #t
+            (loop
               (send-event *target* 'change-mode 'periscope self)
               (suspend)
               (suspend)
@@ -1833,7 +1781,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (let ((v1-0 (-> self change-event-from)))
         (set! (-> self trans quad) (-> (the-as mistycannon (-> v1-0 0)) goggles quad))
         (let ((t9-0 matrix-rotate-yx!)
@@ -1879,7 +1827,7 @@
     (let ((gp-0 0)
           (s5-0 0)
           )
-      (while #t
+      (loop
         (when *camera-read-analog*
           (let ((f30-0 (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 -1.0))
                 (f28-0 (analog-input (the-as int (-> *cpad-list* cpads 0 lefty)) 128.0 48.0 110.0 -1.0))
@@ -1897,7 +1845,7 @@
           (sound-stop (-> self sound-id))
           (send-event *camera* 'change-to-entity-by-name "camera-111")
           (suspend)
-          (while #t
+          (loop
             (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
               (set! (-> a1-8 from) self)
               (set! (-> a1-8 num-params) 0)
@@ -1942,7 +1890,7 @@
             (if (nonzero? gp-0)
                 (debug-percent-bar
                   #t
-                  (bucket-id debug-draw0)
+                  (bucket-id debug)
                   192
                   160
                   (* 0.0033333334 (the float gp-0))
@@ -1992,7 +1940,7 @@
   (the-as (function none :behavior mistycannon) rider-trans)
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       (dummy-23 self)
       (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
@@ -2052,9 +2000,7 @@
   (initialize-skeleton obj *mistycannon-sg* '())
   (logior! (-> obj skel status) (janim-status inited))
   (update-transforms! (-> obj root-override))
-  (set! (-> obj skel prebind-function)
-        (the-as (function pointer int process-drawable none) mistycannon-prebind-function)
-        )
+  (set! (-> obj skel prebind-function) mistycannon-prebind-function)
   (set! (-> obj skel postbind-function) mistycannon-postbind-function)
   (set! (-> obj fact-info-override)
         (new 'process 'fact-info-enemy obj (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))

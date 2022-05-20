@@ -115,10 +115,8 @@ std::string VifCode::print() {
     }
 
     default:
-      fmt::print("Unhandled vif code {}\n", (int)kind);
-
       result = "???";
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("Unhandled vif code {}", (int)kind));
       break;
   }
   // TODO: the rest of the VIF code.

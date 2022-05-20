@@ -1,6 +1,8 @@
 #include "Timer.h"
 
 #ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #define MS_PER_SEC 1000ULL  // MS = milliseconds
 #define US_PER_MS 1000ULL   // US = microseconds

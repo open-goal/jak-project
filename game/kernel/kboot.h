@@ -22,6 +22,13 @@ struct MasterConfig {
   u16 territory;  // added. this is normally burnt onto the disc executable.
 };
 
+enum class RuntimeExitStatus {
+  RUNNING = 0,
+  RESTART_RUNTIME = 1,
+  EXIT = 2,
+  RESTART_IN_DEBUG = 3,
+};
+
 // Level to load on boot
 extern char DebugBootLevel[64];
 
@@ -29,7 +36,7 @@ extern char DebugBootLevel[64];
 extern char DebugBootMessage[64];
 
 // Set to 1 to kill GOAL kernel
-extern u32 MasterExit;
+extern RuntimeExitStatus MasterExit;
 
 // Set to 1 to enable debug heap
 extern u32 MasterDebug;

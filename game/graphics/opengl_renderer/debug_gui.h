@@ -64,6 +64,9 @@ class OpenGlDebugGui {
   bool experimental_accurate_lag = false;
   bool sleep_in_frame_limiter = true;
   bool small_profiler = false;
+  bool record_events = false;
+  bool dump_events = false;
+  bool want_reboot_in_debug = false;
 
  private:
   FrameTimeRecorder m_frame_timer;

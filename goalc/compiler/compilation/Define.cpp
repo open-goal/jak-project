@@ -76,7 +76,7 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
   auto& sym = args.unnamed.at(0);
   auto& typespec = args.unnamed.at(1);
 
-  auto new_type = parse_typespec(typespec);
+  auto new_type = parse_typespec(typespec, env);
 
   auto existing_type = m_symbol_types.find(symbol_string(sym));
   if (existing_type != m_symbol_types.end() && existing_type->second != new_type) {

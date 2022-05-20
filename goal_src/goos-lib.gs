@@ -35,6 +35,17 @@
   `(if (not ,clause) (begin ,@body) #f)
   )
 
+(defsmacro aif (condition true false)
+  "Anaphoric if, similar to Common Lisp"
+
+  `(let ((it ,condition))
+      (if it
+          ,true
+          ,false
+          )
+      )
+  )
+
 (desfun factorial (x)
 	(if (= x 1)
 	    1
@@ -229,6 +240,7 @@
       )
   )
 
+(defsmacro cons! (lst obj) `(set! ,lst (cons ,obj ,lst)))
 
 (desfun append! (lst obj)
   "adds obj to the end of lst. only edits inplace if lst is not null."
@@ -284,6 +296,16 @@
 (defsmacro integer? (x)
   `(type? 'integer ,x)
   )
+
+(defsmacro number? (x)
+  `(or (float? ,x) (integer? ,x))
+  )
+
+(defsmacro neq? (a b) `(not (eq? ,a ,b)))
+
+(defsmacro != (a b) `(not (= ,a ,b)))
+(defsmacro zero? (x) `(= ,x 0))
+(defsmacro nonzero? (x) `(!= ,x 0))
 
 (defsmacro pair? (x)
   `(type? 'pair ,x)
@@ -377,7 +399,7 @@
 (desfun enum-max (enum)
   "get the highest value in an enum"
   
-  (let ((max-val -999999999))
+  (let ((max-val -999999999999))
     (doenum (name val enum)
       (when (> val max-val)
         (set! max-val val))
@@ -414,5 +436,13 @@
     (#t   `(user? ,@(cdr users)))
     )
   )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; GAME STUFF!!!      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; a map for art definitions used by art loading code.
+(define *art-info* '())
 
 

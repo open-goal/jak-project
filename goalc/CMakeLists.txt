@@ -15,6 +15,7 @@ add_library(compiler
         compiler/compilation/Asm.cpp
         compiler/compilation/Atoms.cpp
         compiler/compilation/CompilerControl.cpp
+        compiler/compilation/ConstantPropagation.cpp
         compiler/compilation/Block.cpp
         compiler/compilation/Macro.cpp
         compiler/compilation/Math.cpp
@@ -25,12 +26,12 @@ add_library(compiler
         compiler/compilation/Type.cpp
         compiler/compilation/State.cpp
         compiler/compilation/Static.cpp
+        compiler/nrepl/ReplServer.cpp
         compiler/Util.cpp
-        data_compiler/game_text.cpp
+        data_compiler/game_text_common.cpp
         data_compiler/dir_tpages.cpp
         data_compiler/DataObjectGenerator.cpp
         data_compiler/game_count.cpp
-        data_compiler/game_subtitle.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp
         listener/Listener.cpp

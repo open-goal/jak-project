@@ -387,8 +387,8 @@ static std::vector<EncodeInfo> g_encode_info_jak1 = {
 };
 
 static std::vector<ReplaceInfo> g_replace_info_jak1 = {
-    // \" -> " (confusing)
-    {"\\\"", "\""},
+    // \" -> " (yeah it looks confusing)
+    {"\"", "\\\""},
 
     // other
     {"A~Y~-21H~-5Vº~Z", "Å"},

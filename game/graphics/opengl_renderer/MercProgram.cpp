@@ -3141,8 +3141,7 @@ ASSERT(false);
   case 0x539:
     goto JUMP_539;
   default:
-    fmt::print("bad jump to {:x}\n", vu.vi08);
-  ASSERT(false);
+    ASSERT_MSG(false, fmt::format("bad jump to {:x}", vu.vi08));
   }
   L94:
   // 3072.0                     |  mulax.xyzw ACC, vf01, vf11 :i

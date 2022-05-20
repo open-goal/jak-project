@@ -124,7 +124,11 @@ void Compiler::expect_empty_list(const goos::Object& o) {
   }
 }
 
-TypeSpec Compiler::parse_typespec(const goos::Object& src) {
+TypeSpec Compiler::parse_typespec(const goos::Object& src, Env* env) {
+  if (src.is_pair() && src.as_pair()->car.is_symbol("current-method-type") &&
+      src.as_pair()->cdr.is_empty_list()) {
+    return env->function_env()->method_of_type_name;
+  }
   return ::parse_typespec(&m_ts, src);
 }
 
@@ -180,58 +184,6 @@ bool Compiler::is_bitfield(const TypeSpec& ts) {
 
 bool Compiler::is_pair(const TypeSpec& ts) {
   return m_ts.tc(m_ts.make_typespec("pair"), ts);
-}
-
-bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env) {
-  (void)env;
-  if (in.is_int()) {
-    *out = in.as_int();
-    return true;
-  }
-
-  if (in.is_pair()) {
-    auto head = in.as_pair()->car;
-    if (head.is_symbol()) {
-      auto head_sym = head.as_symbol();
-      auto enum_type = m_ts.try_enum_lookup(head_sym->name);
-      if (enum_type) {
-        bool success;
-        u64 as_enum = enum_lookup(in, enum_type, in.as_pair()->cdr, false, &success);
-        if (success) {
-          *out = as_enum;
-          return true;
-        }
-      }
-
-      if (head_sym->name == "size-of") {
-        *out = get_size_for_size_of(in, in.as_pair()->cdr);
-        return true;
-      }
-    }
-  }
-
-  if (in.is_symbol()) {
-    auto global_constant = m_global_constants.find(in.as_symbol());
-    if (global_constant != m_global_constants.end()) {
-      // recursively get constant integer, so we can have constants set to constants, etc.
-      if (try_getting_constant_integer(global_constant->second, out, env)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-bool Compiler::try_getting_constant_float(const goos::Object& in, float* out, Env* env) {
-  (void)env;
-  if (in.is_float()) {
-    *out = in.as_float();
-    return true;
-  }
-
-  // todo, try more things like constants before giving up.
-  return false;
 }
 
 bool Compiler::get_true_or_false(const goos::Object& form, const goos::Object& boolean) {

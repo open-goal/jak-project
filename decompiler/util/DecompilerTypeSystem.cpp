@@ -14,7 +14,7 @@ DecompilerTypeSystem::DecompilerTypeSystem() {
 namespace {
 // some utilities for parsing the type def file
 
-goos::Object& car(goos::Object& pair) {
+goos::Object& car(const goos::Object& pair) {
   if (pair.is_pair()) {
     return pair.as_pair()->car;
   } else {
@@ -22,7 +22,7 @@ goos::Object& car(goos::Object& pair) {
   }
 }
 
-goos::Object& cdr(goos::Object& pair) {
+goos::Object& cdr(const goos::Object& pair) {
   if (pair.is_pair()) {
     return pair.as_pair()->cdr;
   } else {

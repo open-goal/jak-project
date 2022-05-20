@@ -5,10 +5,10 @@
 ;; name in dgo: aligner
 ;; dgos: GAME, ENGINE
 
-;; definition for method 9 of type align-control
+;; DECOMP BEGINS
+
 ;; WARN: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
 ;; WARN: Unsupported inline assembly instruction kind - [jr ra]
-;; Used lq/sq
 (defmethod TODO-RENAME-9 align-control ((obj align-control))
   (local-vars (a0-9 symbol) (s7-0 none) (ra-0 int))
   (with-pp
@@ -21,11 +21,7 @@
                (a2-0 (= a0-4 a1-0))
                )
           (cond
-            ((or a2-0 (begin
-                       (set! a1-0 'stack1)
-                       (= a0-4 a1-0)
-                       )
-                 )
+            ((or a2-0 (begin (set! a1-0 'stack1) (= a0-4 a1-0)))
              )
             (else
                                         ; TODO - support decompiling the return-from-thread
@@ -62,37 +58,30 @@
          (set! a0-9 (< (* (-> a0-8 param 0) (- f0-0 (-> obj frame-num))) 0.0))
          )
         (else
-         (set! a0-9 (= f0-0 0.0))
-         )
+          (set! a0-9 (= f0-0 0.0))
+          )
         )
       (if a0-9
-          (logior! (-> obj flags) 1)
-          (set! (-> obj flags) (logand -2 (the-as int (-> obj flags))))
+          (logior! (-> obj flags) (align-flags algf00))
+          (logclear! (-> obj flags) (align-flags algf00))
           )
       (set! (-> obj frame-group) v1-16)
       (set! (-> obj frame-num) f0-0)
       )
-    (mem-copy!
-     (the-as pointer (-> obj transform 1))
-     (the-as pointer (-> obj transform))
-     48
-     )
-    (quaternion-copy!
-     (the-as quaternion (-> obj transform 1 rot))
-     (-> obj align quat)
-     )
+    (mem-copy! (the-as pointer (-> obj transform 1)) (the-as pointer (-> obj transform)) 48)
+    (quaternion-copy! (the-as quaternion (-> obj transform 1 rot)) (-> obj align quat))
     (set! (-> obj transform 1 scale quad) (-> obj align scale quad))
-    (let* ((a2-5 (-> obj matrix 1))
+    (let* ((a2-5 (-> obj matrix 1 vector))
            (a3-0 (-> obj matrix))
            (v1-19 (-> a3-0 0 vector 0 quad))
            (a0-18 (-> a3-0 0 vector 1 quad))
            (a1-12 (-> a3-0 0 vector 2 quad))
            (a3-1 (-> a3-0 0 vector 3 quad))
            )
-      (set! (-> a2-5 vector 0 quad) v1-19)
-      (set! (-> a2-5 vector 1 quad) a0-18)
-      (set! (-> a2-5 vector 2 quad) a1-12)
-      (set! (-> a2-5 vector 3 quad) a3-1)
+      (set! (-> a2-5 0 quad) v1-19)
+      (set! (-> a2-5 1 quad) a0-18)
+      (set! (-> a2-5 2 quad) a1-12)
+      (set! (-> a2-5 3 quad) a3-1)
       )
     (let ((s5-1 (-> obj process node-list data 1)))
       (cspace<-matrix-no-push-joint! s5-1 (-> obj process skel))
@@ -108,71 +97,43 @@
         (set! (-> v1-23 0 vector 2 quad) a2-6)
         (set! (-> v1-23 0 vector 3 quad) a3-3)
         )
-      (vector*!
-       (the-as vector (-> obj transform))
-       (-> s5-1 bone position)
-       (-> obj process root scale)
-       )
+      (vector*! (the-as vector (-> obj transform)) (-> s5-1 bone transform vector 3) (-> obj process root scale))
       )
     (vector-!
-     (the-as vector (-> obj delta))
-     (the-as vector (-> obj transform))
-     (the-as vector (-> obj transform 1))
-     )
+      (the-as vector (-> obj delta))
+      (the-as vector (-> obj transform))
+      (the-as vector (-> obj transform 1))
+      )
     (set-vector!
-     (-> obj align scale)
-     (vector-length (the-as vector (-> obj matrix)))
-     (vector-length (-> obj matrix 0 vector 1))
-     (vector-length (-> obj matrix 0 vector 2))
-     1.0
-     )
-    (vector-!
-     (-> obj delta scale)
-     (-> obj align scale)
-     (-> obj transform 1 scale)
-     )
-    (let
-        ((a2-8
-          (matrix-inv-scale! (new 'stack-no-clear 'matrix) (-> obj align scale))
-           )
-         )
-      (quaternion-normalize!
-       (matrix->quaternion
-        (-> obj align quat)
-        (matrix*! a2-8 (the-as matrix (-> obj matrix)) a2-8)
-        )
-       )
+      (-> obj align scale)
+      (vector-length (the-as vector (-> obj matrix)))
+      (vector-length (-> obj matrix 0 vector 1))
+      (vector-length (-> obj matrix 0 vector 2))
+      1.0
       )
-    (let
-        ((a1-24
-          (quaternion-inverse!
-           (new 'stack-no-clear 'quaternion)
-           (the-as quaternion (-> obj transform 1 rot))
-           )
-           )
-         )
+    (vector-! (-> obj delta scale) (-> obj align scale) (-> obj transform 1 scale))
+    (let ((a2-8 (matrix-inv-scale! (new 'stack-no-clear 'matrix) (-> obj align scale))))
       (quaternion-normalize!
-       (quaternion*! (-> obj delta quat) a1-24 (-> obj align quat))
-       )
+        (matrix->quaternion (-> obj align quat) (matrix*! a2-8 (the-as matrix (-> obj matrix)) a2-8))
+        )
+      )
+    (let ((a1-24 (quaternion-inverse! (new 'stack-no-clear 'quaternion) (the-as quaternion (-> obj transform 1 rot)))))
+      (quaternion-normalize! (quaternion*! (-> obj delta quat) a1-24 (-> obj align quat)))
       )
     (-> obj delta)
     )
   )
 
-;; definition for method 12 of type align-control
-;; INFO: Return type mismatch (inline-array transform) vs transform.
 (defmethod first-transform align-control ((obj align-control))
   (the-as transform (-> obj transform))
   )
 
-;; definition for method 13 of type align-control
 (defmethod snd-transform align-control ((obj align-control))
   (-> obj transform 1)
   )
 
-;; definition for method 10 of type align-control
 (defmethod TODO-RENAME-10 align-control ((obj align-control) (arg0 int) (arg1 float) (arg2 float) (arg3 float))
-  (when (zero? (logand (-> obj flags) 1))
+  (when (zero? (logand (-> obj flags) (align-flags algf00)))
     (let* ((a0-1 (-> obj process))
            (t9-0 (method-of-object a0-1 apply-alignment))
            (v1-4 (-> obj delta))
@@ -188,79 +149,45 @@
   (-> obj process root)
   )
 
-;; definition for method 26 of type trsqv
-(defmethod
-  TODO-RENAME-26
-  trsqv
-  ((obj trsqv) (arg0 int) (arg1 vector) (arg2 float))
+(defmethod TODO-RENAME-26 trsqv ((obj trsqv) (arg0 int) (arg1 vector) (arg2 float))
   (let ((gp-0 (-> obj transv)))
-   (when (nonzero? (logand arg0 4))
-    (set! (-> gp-0 x) (-> arg1 x))
-    (set! (-> gp-0 z) (-> arg1 z))
-    (let
-     ((f0-4
-       (fmin (* (vector-xz-length arg1) (-> *display* frames-per-second)) arg2)
-       )
+    (when (logtest? arg0 4)
+      (set! (-> gp-0 x) (-> arg1 x))
+      (set! (-> gp-0 z) (-> arg1 z))
+      (let ((f0-4 (fmin (* (vector-xz-length arg1) (-> *display* frames-per-second)) arg2)))
+        (vector-xz-normalize! gp-0 f0-4)
+        )
       )
-     (vector-xz-normalize! gp-0 f0-4)
-     )
     )
-   )
   obj
   )
 
-;; definition for method 11 of type align-control
-;; INFO: Return type mismatch trsqv vs none.
-(defmethod
-  TODO-RENAME-11
-  align-control
-  ((obj align-control)
-   (arg0 int)
-   (arg1 vector)
-   (arg2 int)
-   (arg3 float)
-   (arg4 float)
-   )
-  (when (zero? (logand (-> obj flags) 1))
-   (let ((s5-0 (-> obj delta)))
-    (let ((s3-0 (-> obj process root transv)))
-     (if (nonzero? (logand arg0 2))
-      (set!
-       (-> s3-0 y)
-       (* (* (-> s5-0 trans y) arg3) (-> *display* frames-per-second))
-       )
-      )
-     (when (nonzero? (logand arg0 4))
-      (set! (-> s3-0 x) (-> arg1 x))
-      (set! (-> s3-0 z) (-> arg1 z))
-      (let
-       ((f0-8
-         (*
-          (fmin
-           (vector-xz-length arg1)
-           (* (vector-xz-length (-> s5-0 trans)) arg4)
-           )
-          (-> *display* frames-per-second)
+(defmethod TODO-RENAME-11 align-control ((obj align-control) (arg0 int) (arg1 vector) (arg2 int) (arg3 float) (arg4 float))
+  (when (zero? (logand (-> obj flags) (align-flags algf00)))
+    (let ((s5-0 (-> obj delta)))
+      (let ((s3-0 (-> obj process root transv)))
+        (if (logtest? arg0 2)
+            (set! (-> s3-0 y) (* (-> s5-0 trans y) arg3 (-> *display* frames-per-second)))
+            )
+        (when (logtest? arg0 4)
+          (set! (-> s3-0 x) (-> arg1 x))
+          (set! (-> s3-0 z) (-> arg1 z))
+          (let ((f0-8 (* (fmin (vector-xz-length arg1) (* (vector-xz-length (-> s5-0 trans)) arg4))
+                         (-> *display* frames-per-second)
+                         )
+                      )
+                (t9-2 vector-xz-normalize!)
+                )
+            (set! (-> obj last-speed) f0-8)
+            (t9-2 s3-0 f0-8)
+            )
           )
-         )
-        (t9-2 vector-xz-normalize!)
         )
-       (set! (-> obj last-speed) f0-8)
-       (t9-2 s3-0 f0-8)
-       )
+      (if (logtest? arg0 16)
+          (quaternion-normalize! (quaternion*! (-> obj process root quat) (-> obj process root quat) (-> s5-0 quat)))
+          )
       )
-     )
-    (if (nonzero? (logand arg0 16))
-     (quaternion-normalize!
-      (quaternion*!
-       (-> obj process root quat)
-       (-> obj process root quat)
-       (-> s5-0 quat)
-       )
-      )
-     )
     )
-   )
   (-> obj process root)
   (none)
   )

@@ -41,6 +41,7 @@ void FrameLimiter::run(double target_fps,
 
 #else
 
+#define NOMINMAX
 #include <Windows.h>
 
 FrameLimiter::FrameLimiter() {

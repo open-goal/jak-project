@@ -562,11 +562,13 @@ static void link_v5(LinkedObjectFile& f,
         } else if ((reloc & 0x3f) == 0x3f) {
           ASSERT(false);  // todo, does this ever get hit?
         } else {
+          /*
           int n_methods_base = reloc & 0x3f;
           int n_methods = n_methods_base * 4;
           if (n_methods_base) {
             n_methods += 3;
           }
+          */
           link_ptr += 2;  // ghidra misses some aliasing here and would have you think this is +1!
           const char* sname = (const char*)(&data.at(link_ptr));
           link_ptr += strlen(sname) + 1;
@@ -807,8 +809,7 @@ LinkedObjectFile to_linked_object_file(const std::vector<uint8_t>& data,
   } else if (header->version == 5) {
     link_v5(result, data, name, dts);
   } else {
-    printf("Unsupported version %d\n", header->version);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("Unsupported version {}", header->version));
   }
 
   return result;

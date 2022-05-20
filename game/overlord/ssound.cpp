@@ -3,7 +3,7 @@
 #include "game/overlord/srpc.h"
 #include "ssound.h"
 #include "common/util/Assert.h"
-#include "sndshim.h"
+#include "game/sound/sndshim.h"
 
 using namespace iop;
 
@@ -19,8 +19,9 @@ s32 gMusicVol = 0x400;
 s32 gMusicFade = 0;
 s32 gMusicFadeDir = 0;
 
-u32 gVoice;
-u32 gStreamSRAM;
+u32 gStreamSRAM = 0;
+u32 gTrapSRAM = 0;
+
 s32 gSema;
 
 static u32 sLastTick;
@@ -87,10 +88,12 @@ void InitSound_Overlord() {
   // The voice allocator returns a number in the range 0-47 where voices
   // 0-23 are on SPU Core 0 and 24-47 are on core 2.
   // For some reason we convert it to this format where 0-47 alternate core every step.
-  gVoice = voice / 24 + ((voice % 24) * 2);
+  voice = voice / 24 + ((voice % 24) * 2);
 
   // Allocate SPU RAM for our streams.
+  // (Which we don't need on PC)
   gStreamSRAM = snd_SRAMMalloc(0xc030);
+  gTrapSRAM = gStreamSRAM + 0xC000;
 
   snd_SetMixerMode(0, 0);
 
@@ -100,9 +103,10 @@ void InitSound_Overlord() {
 
   snd_SetGroupVoiceRange(1, 0, 0xf);
   snd_SetGroupVoiceRange(2, 0, 0xf);
-  snd_SetReverbDepth(3, 0, 0);
-  snd_SetReverbType(1, 0);
-  snd_SetReverbType(2, 0);
+
+  snd_SetReverbDepth(SND_CORE_0 | SND_CORE_1, 0, 0);
+  snd_SetReverbType(SND_CORE_0, SD_REV_MODE_OFF);
+  snd_SetReverbType(SND_CORE_1, SD_REV_MODE_OFF);
 
   CatalogSRAM();
 
@@ -249,7 +253,7 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
     zdiff >>= 1;
   }
 
-  s32 distance = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
+  u32 distance = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
   if (distance != 0) {
     s32 steps = 0;
     while ((distance & 0xc0000000) == 0) {
@@ -284,7 +288,7 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
   }
 
   s32 factor = ((gCurve[fo_curve].unk4 << 16) + gCurve[fo_curve].unk3 * v13 +
-                gCurve[fo_curve].unk2 * ((v13 * 13) >> 16) +
+                gCurve[fo_curve].unk2 * ((v13 * v13) >> 16) +
                 gCurve[fo_curve].unk1 * (((((v13 * v13) >> 16) * v13) >> 16) >> 16)) >>
                12;
 
@@ -310,7 +314,7 @@ s32 CalculateAngle(Vec3w* trans) {
     lookupZ = trans->z - gCamTrans.z;
   }
 
-  if (diffX == 0 && diffZ == 0) {
+  if (lookupX == 0 && lookupZ == 0) {
     return 0;
   }
 
@@ -339,7 +343,7 @@ s32 CalculateAngle(Vec3w* trans) {
     } else if (diffZ >= 0) {
       angle = angle + 270;
     } else {
-      angle = 270 - 90;
+      angle = 270 - angle;
     }
   }
 
@@ -413,10 +417,10 @@ static void UpdateAutoVol(Sound* sound, s32 ticks) {
   if (sound->new_volume == -4) {
     snd_StopSound(sound->sound_handle);
     sound->id = 0;
-    return;
+  } else {
+    sound->params.volume = sound->new_volume;
   }
 
-  sound->params.volume = sound->new_volume;
   sound->auto_time = 0;
 }
 
@@ -432,8 +436,8 @@ void UpdateVolume(Sound* sound) {
 }
 
 void SetEarTrans(Vec3w* ear_trans, Vec3w* cam_trans, s32 cam_angle) {
-  s32 tick = 0;  // snd_GetTick();
-  s32 delta = tick - sLastTick;
+  s32 tick = snd_GetTick();
+  u32 delta = tick - sLastTick;
   sLastTick = tick;
 
   gEarTrans = *ear_trans;

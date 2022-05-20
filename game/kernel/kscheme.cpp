@@ -1213,8 +1213,7 @@ u64 call_method_of_type_arg2(u32 arg, Ptr<Type> type, u32 method_id, u32 a1, u32
               (*type_tag).offset);
     }
   }
-  printf("[ERROR] call_method_of_type_arg2 failed!\n");
-  ASSERT(false);
+  ASSERT_MSG(false, "[ERROR] call_method_of_type_arg2 failed!");
   return arg;
 }
 

@@ -8,7 +8,7 @@ std::string FunctionDebugInfo::disassemble_debug_info(bool* had_failure,
                                                       const goos::Reader* reader) {
   std::string result = fmt::format("[{}]\n", name);
   result += disassemble_x86_function(generated_code.data(), generated_code.size(), reader, 0x10000,
-                                     0x10000, instructions, function.get(), had_failure);
+                                     0x10000, instructions, function.get(), had_failure, true);
 
   return result;
 }

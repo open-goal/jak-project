@@ -99,9 +99,10 @@ struct Config {
   bool process_tpages = false;
   bool process_game_text = false;
   bool process_game_count = false;
+  bool process_art_groups = false;
   bool rip_levels = false;
+  bool extract_collision = false;
 
-  bool regenerate_all_types = false;
   bool write_hex_near_instructions = false;
   bool hexdump_code = false;
   bool hexdump_data = false;
@@ -131,15 +132,15 @@ struct Config {
   std::unordered_map<std::string, std::vector<StackStructureHint>>
       stack_structure_hints_by_function;
 
-  std::unordered_map<std::string, std::string> new_strings_same_across_langs;
-  std::unordered_map<std::string, std::vector<std::string>> new_strings_different_across_langs;
-
   std::unordered_map<std::string, int> bad_format_strings;
 
   std::vector<std::string> levels_to_extract;
   bool levels_extract;
 
   DecompileHacks hacks;
+
+  std::unordered_map<std::string, std::string> art_groups_by_file;
+  std::unordered_map<std::string, std::string> art_groups_by_function;
 };
 
 Config read_config_file(const std::string& path_to_config_file,

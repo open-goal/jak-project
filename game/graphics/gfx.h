@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <array>
 
 #include "common/common_types.h"
 #include "game/kernel/kboot.h"
@@ -31,6 +32,7 @@ struct GfxRendererModule {
   std::function<void(GfxDisplay*, int, int)> display_set_size;
   std::function<void(GfxDisplay*, float*, float*)> display_scale;
   std::function<void(GfxDisplay*, int, int)> set_fullscreen;
+  std::function<void(GfxDisplay*, int, int, s32*, s32*, s32*)> screen_size;
   std::function<void()> exit;
   std::function<u32()> vsync;
   std::function<u32()> sync_path;
@@ -64,6 +66,9 @@ struct GfxSettings {
 };
 
 // runtime settings
+static constexpr int PAT_MOD_COUNT = 3;
+static constexpr int PAT_EVT_COUNT = 7;
+static constexpr int PAT_MAT_COUNT = 23;
 struct GfxGlobalSettings {
   // note: this is actually the size of the display that ISN'T letterboxed
   // the excess space is what will be letterboxed away.
@@ -76,6 +81,17 @@ struct GfxGlobalSettings {
   // lod settings, used by bucket renderers
   int lod_tfrag = 0;
   int lod_tie = 0;
+
+  // collision renderer settings
+  bool collision_enable = false;
+  bool collision_wireframe = true;
+
+  // matching enum in kernel-defs.gc !!
+  enum CollisionRendererMode { None, Mode, Event, Material, Skip } collision_mode = Mode;
+  std::array<u32, (PAT_MOD_COUNT + 31) / 32> collision_mode_mask = {UINT32_MAX};
+  std::array<u32, (PAT_EVT_COUNT + 31) / 32> collision_event_mask = {UINT32_MAX};
+  std::array<u32, (PAT_MAT_COUNT + 31) / 32> collision_material_mask = {UINT32_MAX};
+  u32 collision_skip_mask = UINT32_MAX;
 };
 
 namespace Gfx {
@@ -86,6 +102,8 @@ extern GfxSettings g_settings;
 
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline);
 const GfxRendererModule* GetCurrentRenderer();
+
+enum DisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
 
 u32 Init();
 void Loop(std::function<bool()> f);
@@ -102,8 +120,10 @@ u64 get_window_width();
 u64 get_window_height();
 void set_window_size(u64 w, u64 h);
 void get_window_scale(float* x, float* y);
+int get_fullscreen();
+void get_screen_size(s64 vmode_idx, s32* w, s32* h, s32* c);
 void set_letterbox(int w, int h);
-void set_fullscreen(int mode, int screen);
+void set_fullscreen(DisplayMode mode, int screen);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);
@@ -114,5 +134,9 @@ int PadAnalogValue(Pad::Analog analog, int port);
 // matching enum in kernel-defs.gc !!
 enum class RendererTreeType { NONE = 0, TFRAG3 = 1, TIE3 = 2, INVALID };
 void SetLod(RendererTreeType tree, int lod);
+bool CollisionRendererGetMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);
+void CollisionRendererSetMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);
+void CollisionRendererClearMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);
+void CollisionRendererSetMode(GfxGlobalSettings::CollisionRendererMode mode);
 
 }  // namespace Gfx

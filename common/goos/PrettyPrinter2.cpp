@@ -17,15 +17,10 @@ namespace v2 {
 struct Node {
   Node() = default;
 
-  Node(const std::string& str) {
-    kind = Kind::ATOM;
-    atom_str = str;
-  }
+  Node(const std::string& str) : kind(Kind::ATOM), atom_str(str) {}
 
-  Node(std::vector<Node>&& list, bool is_list) {
-    kind = is_list ? Kind::LIST : Kind::IMPROPER_LIST;
-    child_nodes = std::move(list);
-  }
+  Node(std::vector<Node>&& list, bool is_list)
+      : kind(is_list ? Kind::LIST : Kind::IMPROPER_LIST), child_nodes(std::move(list)) {}
   enum class Kind : u8 { ATOM, LIST, IMPROPER_LIST, INVALID } kind = Kind::INVALID;
 
   std::vector<Node> child_nodes;
@@ -203,8 +198,9 @@ void break_list(Node* node) {
   node->top_line_count = 1;
 
   const std::unordered_set<std::string> sameline_splitters = {
-      "if", "<",   ">",  "<=",  ">=", "set!",   "=",      "!=",     "+",  "-",  "*",
-      "/",  "the", "->", "and", "or", "logand", "logior", "logxor", "+!", "*!", "logtest?"};
+      "if",     "<",  ">",  "<=",       ">=",  "set!",  "=",       "!=",     "+",
+      "-",      "*",  "/",  "the",      "->",  "and",   "or",      "logand", "logior",
+      "logxor", "+!", "*!", "logtest?", "not", "zero?", "nonzero?"};
 
   if (node->child_nodes.at(0).kind == Node::Kind::LIST) {
     // ((foo
@@ -215,11 +211,20 @@ void break_list(Node* node) {
     if (name == "defun" || name == "defun-debug" || name == "defbehavior" || name == "defstate") {
       // things with three things in the top line: (defun <name> <args>
       node->top_line_count = 3;
+    } else if (name == "defskelgroup") {
+      // things with 5 things in the top line: (defskelgroup <name> <art> jgeo janim
+      node->top_line_count = 5;
+      node->sub_elt_indent += name.size();
+    } else if (name == "ja" || name == "ja-no-eval") {
+      // things with 2 things in the top line: (ja <:key value>
+      node->top_line_count = 2;
+      node->sub_elt_indent += name.size();
     } else if (name == "defmethod") {
       // things with 4 things in the top line: (defmethod <method> <type> <args>
       node->top_line_count = 4;
     } else if (name == "until" || name == "while" || name == "dotimes" || name == "countdown" ||
-               name == "when" || name == "behavior" || name == "lambda" || name == "defpart") {
+               name == "when" || name == "behavior" || name == "lambda" || name == "defpart" ||
+               name == "define") {
       node->top_line_count = 2;
     } else if (name == "let" || name == "let*" || name == "rlet") {
       // special case for things like let.
@@ -264,9 +269,9 @@ void break_list(Node* node) {
 
 void insert_required_breaks(const std::vector<Node*>& bfs_order) {
   const std::unordered_set<std::string> always_break = {
-      "when",    "defun-debug", "countdown", "case",     "defun",  "defmethod", "let",
-      "until",   "while",       "if",        "dotimes",  "cond",   "else",      "defbehavior",
-      "with-pp", "rlet",        "defstate",  "behavior", "defpart"};
+      "when",    "defun-debug", "countdown", "case",     "defun",   "defmethod", "let",
+      "until",   "while",       "if",        "dotimes",  "cond",    "else",      "defbehavior",
+      "with-pp", "rlet",        "defstate",  "behavior", "defpart", "loop"};
   for (auto node : bfs_order) {
     if (!node->break_list && node->kind == Node::Kind::LIST &&
         node->child_nodes.at(0).kind == Node::Kind::ATOM) {

@@ -396,7 +396,8 @@ Disassembly Debugger::disassemble_at_rip(const InstructionPointerInfo& info) {
       result.text += disassemble_x86_function(
           function_mem.data(), function_mem.size(), m_reader,
           m_debug_context.base + info.map_entry->start_addr + func_info->offset_in_seg,
-          rip + rip_offset, func_info->instructions, func_info->function.get(), &result.failed);
+          rip + rip_offset, func_info->instructions, func_info->function.get(), &result.failed,
+          false);
     }
   } else {
     result.failed = true;
@@ -762,8 +763,8 @@ void Debugger::watcher() {
           break;
 #endif
         default:
-          printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("[Debugger] unhandled signal in watcher: {}",
+                                        int(signal_info.kind)));
       }
 
       {

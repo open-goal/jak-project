@@ -368,8 +368,9 @@ void load_and_link_dgo_from_c(const char* name,
 
     char objName[64];
     strcpy(objName, (dgoObj + 4).cast<char>().c());  // name from dgo object header
-    lg::debug("[link and exec] {:18s} {} {:6d} heap-use {:8d} {:8d}", objName, lastObjectLoaded,
-              objSize, kheapused(kglobalheap), kdebugheap.offset ? kheapused(kdebugheap) : 0);
+    lg::debug("[link and exec] {:18s} {} {:6d} heap-use {:8d} {:8d}: 0x{:x}", objName,
+              lastObjectLoaded, objSize, kheapused(kglobalheap),
+              kdebugheap.offset ? kheapused(kdebugheap) : 0, kglobalheap->current.offset);
     link_and_exec(obj, objName, objSize, heap, linkFlag, jump_from_c_to_goal);  // link now!
 
     // inform IOP we are done

@@ -27,13 +27,10 @@
 
 (method-set! springbox 12 (method-of-type process run-logic?))
 
-(defskelgroup *bouncer-sg* bounceytarp
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *bouncer-sg* bounceytarp bounceytarp-lod0-jg bounceytarp-idle-ja
+              ((bounceytarp-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 (defstate bouncer-wait (springbox)
   :event
@@ -68,16 +65,9 @@
     )
   :code
   (behavior ()
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) 0.0)
-      )
+    (ja :group! (-> self draw art-group data 2) :num! min)
     (transform-post)
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
@@ -102,30 +92,21 @@
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self smush) 0.0)
-    (while #t
-      (cond
-        ((>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
-         (let ((a0-1 (-> self skel root-channel 0)))
-           (set! (-> a0-1 param 0) 0.0)
-           (set! (-> a0-1 param 1) 0.1)
-           (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-           )
-         )
-        (else
-          (let ((gp-0 (-> self skel root-channel 0)))
-            (set! (-> gp-0 param 0) (lerp-scale
-                                      (ja-aframe 6.0 0)
-                                      (ja-aframe 2.0 0)
-                                      (vector-vector-xz-distance (target-pos 0) (-> self root trans))
-                                      0.0
-                                      4096.0
-                                      )
-                  )
-            (set! (-> gp-0 param 1) 0.2)
-            (joint-control-channel-group-eval! gp-0 (the-as art-joint-anim #f) num-func-seek!)
-            )
+    (loop
+      (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
+          (ja :num! (seek! 0.0 0.1))
+          (ja :num! (seek!
+                      (lerp-scale
+                        (ja-aframe 6.0 0)
+                        (ja-aframe 2.0 0)
+                        (vector-vector-xz-distance (target-pos 0) (-> self root trans))
+                        0.0
+                        4096.0
+                        )
+                      0.2
+                      )
+              )
           )
-        )
       (suspend)
       (if (ja-min? 0)
           (go bouncer-wait)
@@ -141,22 +122,10 @@
   :code
   (behavior ()
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-      (set! (-> gp-0 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
-            )
-      (set! (-> gp-0 param 1) 1.0)
-      (set! (-> gp-0 frame-num) (ja-aframe 6.0 0))
-      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-      )
+    (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num (ja-aframe 6.0 0))
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-        (set! (-> a0-3 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go bouncer-wait)
     (none)

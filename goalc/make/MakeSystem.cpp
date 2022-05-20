@@ -9,6 +9,7 @@
 #include "common/util/Timer.h"
 
 #include "goalc/make/Tools.h"
+#include "common/util/FileUtil.h"
 
 std::string MakeStep::print() const {
   std::string result = fmt::format("Tool {} with inputs", tool);
@@ -55,12 +56,16 @@ MakeSystem::MakeSystem() {
 
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
 
+  set_constant("*iso-data*", file_util::get_file_path({"iso_data"}));
+  set_constant("*use-iso-data-path*", false);
+
   add_tool<DgoTool>();
   add_tool<TpageDirTool>();
   add_tool<CopyTool>();
   add_tool<GameCntTool>();
-  add_tool<TextTool>();
   add_tool<GroupTool>();
+  add_tool<TextTool>();
+  add_tool<SubtitleTool>();
 }
 
 /*!
@@ -353,15 +358,19 @@ bool MakeSystem::make(const std::string& target, bool force, bool verbose) {
         print_input(rule->input, '\n');
       } else {
         fmt::print("[{:3d}%] [{:8s}] {:.3f} ", percent, tool->name(), step_timer.getSeconds());
-        if (tool->name() == "goalc") {
-          print_input(rule->input, '\r');
-        } else {
-          print_input(rule->input, '\n');
-        }
+        print_input(rule->input, '\n');
       }
     }
   }
   fmt::print("\nSuccessfully built all {} targets in {:.3f}s\n", deps.size(),
              make_timer.getSeconds());
   return true;
+}
+
+void MakeSystem::set_constant(const std::string& name, const std::string& value) {
+  m_goos.set_global_variable_by_name(name, goos::StringObject::make_new(value));
+}
+
+void MakeSystem::set_constant(const std::string& name, bool value) {
+  m_goos.set_global_variable_to_symbol(name, value ? "#t" : "#f");
 }

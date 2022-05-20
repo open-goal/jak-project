@@ -1307,8 +1307,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         // build new sequence
         replaced = true;
         if (!b0->succ_branch) {
-          fmt::print("asm missing branch in block {}\n", b0->to_string());
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("asm missing branch in block {}", b0->to_string()));
         }
         m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
 

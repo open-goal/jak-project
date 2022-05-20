@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #elif _WIN32
 #define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <mutex>
 #include <condition_variable>
@@ -38,9 +39,7 @@ ThreadID::ThreadID(pid_t _id) : id(_id) {}
 /*!
  * In Linux, the string representation of a ThreadID is just the number printed in base 10
  */
-ThreadID::ThreadID(const std::string& str) {
-  id = std::stoi(str);
-}
+ThreadID::ThreadID(const std::string& str) : id(std::stoi(str)) {}
 
 std::string ThreadID::to_string() const {
   return std::to_string(id);
@@ -523,7 +522,7 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
         out->kind = SignalInfo::DISAPPEARED;
         break;
       default:
-        printf("[Debugger] unhandled debug event %d\n", debugEvent.dwDebugEventCode);
+        printf("[Debugger] unhandled debug event %lu\n", debugEvent.dwDebugEventCode);
         out->kind = SignalInfo::UNKNOWN;
         break;
     }

@@ -122,12 +122,10 @@ void OceanMid::run(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
           run_call43_vu2c();
           break;
         default:
-          fmt::print("unknown call2: {}\n", v0.immediate);
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("unknown call2: {}", v0.immediate));
       }
     } else {
-      fmt::print("{} {}\n", data.vifcode0().print(), data.vifcode1().print());
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("{} {}", data.vifcode0().print(), data.vifcode1().print()));
     }
   }
   m_common_ocean_renderer.flush_mid(render_state, prof);

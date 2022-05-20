@@ -526,8 +526,7 @@ void SpriteRenderer::handle_clamp(u64 val,
                                   SharedRenderState* /*render_state*/,
                                   ScopedProfilerNode& /*prof*/) {
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
-    fmt::print("clamp: 0x{:x}\n", val);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("clamp: 0x{:x}", val));
   }
 
   m_adgif_state.reg_clamp = val;
@@ -654,7 +653,7 @@ void SpriteRenderer::do_block_common(SpriteMode mode,
       flush_sprites(render_state, prof);
     }
 
-    if (mode == Mode2D && render_state->has_camera_planes && m_enable_culling) {
+    if (mode == Mode2D && render_state->has_pc_data && m_enable_culling) {
       // we can skip sprites that are out of view
       // it's probably possible to do this for 3D as well.
       auto bsphere = m_vec_data_2d[sprite_idx].xyz_sx;

@@ -26,6 +26,18 @@
 ;; It is an error to have a circular dependency and this will crash the compiler due to stack overflow.
 
 ;;;;;;;;;;;;;;;;;;;;;;;
+;; Build Groups
+;;;;;;;;;;;;;;;;;;;;;;;
+(define *all-cgos* '())
+(define *all-str* '())
+(define *all-vis* '())
+(define *all-mus* '())
+(define *all-sbk* '())
+(define *all-vag* '())
+(define *all-gc* '())
+
+
+;;;;;;;;;;;;;;;;;;;;;;;
 ;; Build system macros
 ;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -40,24 +52,29 @@
 
 (defmacro goal-src (src-file &rest deps)
   "Add a GOAL source file with the given dependencies"
-  `(defstep :in ,(string-append "goal_src/" src-file)
+  `(let ((output-file ,(gc-file->o-file src-file)))
+    (set! *all-gc* (cons output-file *all-gc*))
+    (defstep :in ,(string-append "goal_src/" src-file)
      ;; use goal compiler
      :tool 'goalc
      ;; will output the obj file
-     :out '(,(gc-file->o-file src-file))
+     :out (list output-file)
      ;; dependencies are the obj files
      :dep '(,@(apply gc-file->o-file deps))
      )
+    )
   )
 
 (defun make-src-sequence-elt (current previous prefix)
   "Helper for goal-src-sequence"
-  `(defstep :in ,(string-append "goal_src/" prefix current)
+  `(let ((output-file ,(gc-file->o-file current)))
+    (set! *all-gc* (cons output-file *all-gc*))
+    (defstep :in ,(string-append "goal_src/" prefix current)
      :tool 'goalc
-     :out '(,(gc-file->o-file current))
-     :dep '(#|"iso/KERNEL.CGO"|#
-           ,(gc-file->o-file previous))
+     :out (list output-file)
+     :dep '(,(gc-file->o-file previous))
      )
+    )
   )
 
 (defmacro goal-src-sequence (prefix &key (deps '()) &rest sequence)
@@ -86,7 +103,6 @@
     )
   )
 
-(define *all-cgos* '())
 (defun cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
   (let ((out-name (string-append "out/iso/" output-name)))
@@ -131,34 +147,37 @@
     )
   )
 
+(defun get-iso-data-path ()
+  (if *use-iso-data-path*
+    (string-append *iso-data* "/")
+    (string-append "iso_data/" *game-directory* "/")
+    )
+  )
+
 (defun copy-iso-file (name subdir ext)
-  (let* ((path (string-append "iso_data/" *game-directory* subdir name ext))
+  (let* ((path (string-append (get-iso-data-path) subdir name ext))
          (out-name (string-append "out/iso/" name ext)))
     (defstep :in path
              :tool 'copy
              :out `(,out-name))
     out-name))
 
-(define *all-str* '())
 (defmacro copy-strs (&rest strs)
   `(begin ,@(apply (lambda (x) `(set! *all-str* (cons (copy-iso-file ,x "STR/" ".STR") *all-str*))) strs)))
 
-(define *all-vis* '())
 (defmacro copy-vis-files (&rest files)
   `(begin ,@(apply (lambda (x) `(set! *all-vis* (cons (copy-iso-file ,x "VIS/" ".VIS") *all-vis*))) files)))
 
 ;; Files not yet added in here:
 ;; - TESTTONE.SBK
-(define *all-sbk* '())
 (defmacro copy-sbk-files (&rest files)
   `(begin ,@(apply (lambda (x) `(set! *all-sbk* (cons (copy-iso-file ,x "SBK/" ".SBK") *all-sbk*))) files)))
 
-;; Files not yet added in here:
-;; - DANGER.MUS
-;; - TWEAKVAL.MUS
-(define *all-mus* '())
 (defmacro copy-mus-files (&rest files)
   `(begin ,@(apply (lambda (x) `(set! *all-mus* (cons (copy-iso-file ,x "MUS/" ".MUS") *all-mus*))) files)))
+
+(defmacro copy-vag-files (&rest files)
+  `(begin ,@(apply (lambda (x) `(set! *all-vag* (cons (copy-iso-file "VAGWAD" "VAG/" (string-append "." ,x)) *all-vag*))) files)))
 
 (defmacro group (name &rest stuff)
   `(defstep :in ""
@@ -222,22 +241,22 @@
   )
 
 ;; the TWEAKVAL file
-(defstep :in (string-append "iso_data/" *game-directory* "MUS/TWEAKVAL.MUS")
+(defstep :in (string-append (get-iso-data-path) "MUS/TWEAKVAL.MUS")
   :tool 'copy
   :out '("out/iso/TWEAKVAL.MUS"))
 
 ;; the VAGDIR file
-(defstep :in (string-append "iso_data/" *game-directory* "VAG/VAGDIR.AYB")
+(defstep :in (string-append (get-iso-data-path) "VAG/VAGDIR.AYB")
   :tool 'copy
   :out '("out/iso/VAGDIR.AYB"))
 
 ;; the save icon file
-(defstep :in (string-append "iso_data/" *game-directory* "DRIVERS/SAVEGAME.ICO")
+(defstep :in (string-append (get-iso-data-path) "DRIVERS/SAVEGAME.ICO")
   :tool 'copy
   :out '("out/iso/SAVEGAME.ICO"))
 
 ;; the loading screen file
-(defstep :in (string-append "iso_data/" *game-directory* "DRIVERS/SCREEN1.USA")
+(defstep :in (string-append (get-iso-data-path) "DRIVERS/SCREEN1.USA")
   :tool 'copy
   :out '("out/iso/SCREEN1.USA"))
 
@@ -287,7 +306,7 @@
   "EIPOLE"
   "EIRACER"
   "EITUBE"
-  
+
   ;; intro camera
   "NDINTRO"
   "LOINTRO"
@@ -317,7 +336,7 @@
 ;; Text
 ;;;;;;;;;;;;;;;;;;;;;
 
-(defstep :in "assets/game_text.txt"
+(defstep :in "game/assets/game_text.gp"
   :tool 'text
   :out '("out/iso/0COMMON.TXT"
          "out/iso/1COMMON.TXT"
@@ -328,7 +347,7 @@
          "out/iso/6COMMON.TXT")
   )
 
-(defstep :in "game/assets/game_subtitle.txt"
+(defstep :in "game/assets/game_subtitle.gp"
   :tool 'subtitle
   :out '("out/iso/0SUBTIT.TXT"
          "out/iso/3SUBTIT.TXT"
@@ -347,25 +366,6 @@
        "out/iso/0SUBTIT.TXT"
        "out/iso/KERNEL.CGO"
        "out/iso/GAME.CGO"
-       )
-
-
-;;;;;;;;;;;;;;;;;;;;;
-;; hub1 Group
-;;;;;;;;;;;;;;;;;;;;;
-;; the hub1 group is a group of files required to play the first hub (village1, jungle, beach, misty, training, firecanyon)
-
-(group "hub1"
-       "out/iso/0COMMON.TXT"
-       "out/iso/0SUBTIT.TXT"
-       "out/iso/KERNEL.CGO"
-       "out/iso/GAME.CGO"
-       "out/iso/VI1.DGO"
-       "out/iso/TRA.DGO"
-       "out/iso/FIC.DGO"
-       "out/iso/JUN.DGO"
-       "out/iso/BEA.DGO"
-       "out/iso/MIS.DGO"
        )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1611,7 +1611,17 @@
  "dma/dma-buffer.gc"
  "dma/dma-bucket.gc"
  "dma/dma-disasm.gc"
- "ps2/pad.gc"
+ )
+
+
+ (goal-src "engine/ps2/pad.gc" "pckernel-h")
+
+(goal-src-sequence
+ ;; prefix
+ "engine/"
+
+ :deps
+ ("out/ps2/pad.o")
  "gfx/hw/gs.gc"
  "gfx/hw/display-h.gc"
  "math/vector.gc"
@@ -1625,6 +1635,7 @@
  "gfx/decomp-h.gc"
  "gfx/hw/display.gc"
  "engine/connect.gc"
+ "ui/text-h.gc"
  "game/settings-h.gc"
  "gfx/capture.gc"
  "debug/memory-usage-h.gc"
@@ -1714,6 +1725,7 @@
  "camera/cam-update-h.gc"
  "debug/assert-h.gc"
  "ui/hud-h.gc"
+ "ui/progress-h.gc"
  "ps2/rpc-h.gc"
  "nav/path-h.gc"
  "nav/navigate-h.gc"
@@ -1827,7 +1839,17 @@
  "gfx/tie/prototype.gc"
  "collide/main-collide.gc"
  "game/video.gc"
- "game/main.gc"
+ )
+
+ (goal-src "engine/game/main.gc" "pckernel" "video")
+
+ (goal-src-sequence
+ ;; prefix
+ "engine/"
+
+ :deps
+ ("out/main.o")
+
  "collide/collide-cache.gc"
  "entity/relocate.gc"
  "debug/memory-usage.gc"
@@ -1847,7 +1869,10 @@
  "game/crates.gc"
  "ui/hud.gc"
  "ui/hud-classes.gc"
+ "ui/progress/progress-static.gc"
  "ui/progress/progress-part.gc"
+ "ui/progress/progress-draw.gc"
+ "ui/progress/progress.gc"
  "ui/credits.gc"
  "game/projectiles.gc"
  "gfx/ocean/ocean.gc"
@@ -1890,6 +1915,9 @@
  "ticky.gc"
  )
 
+(copy-mus-files "DANGER")
+
+(copy-vag-files "ENG" "FRE" "GER" "ITA" "SPA" "JAP")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ISO Group
@@ -1900,11 +1928,13 @@
  `("out/iso/0COMMON.TXT"
    "out/iso/0SUBTIT.TXT"
    "out/iso/TWEAKVAL.MUS"
-   ,@(reverse *all-cgos*)
+   "out/iso/VAGDIR.AYB"
    ,@(reverse *all-vis*)
    ,@(reverse *all-str*)
    ,@(reverse *all-sbk*)
-   ,@(reverse *all-mus*))
+   ,@(reverse *all-mus*)
+   ,@(reverse *all-vag*)
+   ,@(reverse *all-cgos*))
  )
 
 
@@ -1913,21 +1943,17 @@
  )
 
 (group-list "text"
- `(
-   "out/iso/0COMMON.TXT"
+ `("out/iso/0COMMON.TXT"
    "out/iso/0SUBTIT.TXT"
    )
  )
 
-
 ;; Custom or Modified Code
 (goal-src "pc/pckernel-h.gc" "dma-disasm")
 (goal-src "pc/pckernel.gc" "settings")
-(goal-src "pc/subtitle.gc" "text")
+(goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
+(goal-src "pc/progress-pc.gc" "progress" "pckernel")
 
-(goal-src "pc/engine/ui/text-h.gc" "connect")
-(goal-src "pc/engine/ui/progress-h.gc" "hud-h")
-(goal-src "pc/engine/ui/progress/progress-static.gc" "hud-classes")
-(goal-src "pc/engine/ui/progress/progress-draw.gc" "progress-part")
-(goal-src "pc/engine/ui/progress/progress.gc" "progress-draw")
-
+(group-list "all-code"
+  `(,@(reverse *all-gc*))
+  )

@@ -32,7 +32,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (when (not (paused?))
         (let ((gp-0 (new 'stack-no-clear 'vector)))
           (set! (-> self trans quad) (-> self saved-pt quad))
@@ -87,7 +87,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (format *stdcon* "ERROR <GMJ>: stayed in cam-fixed-read-entity~%")
       (suspend)
       )
@@ -125,7 +125,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (when (not (paused?))
         (vector<-cspace!
           (-> self trans)
@@ -207,7 +207,7 @@
             )
         (vector-normalize-copy! s5-0 (-> v1-11 vector 2) (the-as float 1.0))
         )
-      (while #t
+      (loop
         (when (not (paused?))
           (let ((s0-0
                   (-> (the-as pov-camera (-> *camera* pov-handle process 0))
@@ -286,7 +286,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (if (not (paused?))
           (vector<-cspace!
             (-> self trans)
@@ -357,7 +357,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (when (not (paused?))
         (cam-calc-follow! (-> self tracking) (-> self trans) #t)
         (cam-standoff-calc-trans)
@@ -409,7 +409,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (format *stdcon* "ERROR <GMJ>: stayed in cam-standoff-read-entity~%")
       (suspend)
       )
@@ -429,11 +429,11 @@
   )
 
 
-(define
-  *CAM_EYE-bank*
+(define *CAM_EYE-bank*
   (new 'static 'cam-eye-bank :rot-speed 364.0889 :max-degrees 12743.111 :max-fov 11650.845 :min-fov 6189.511)
   )
 
+;; main first-person camera
 (defstate cam-eye (camera-slave)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -461,7 +461,10 @@
     )
   :exit
   (behavior ()
-    (if (and *target* (logtest? (-> *camera* master-options) 2) (logtest? (-> *target* state-flags) 512))
+    (if (and *target*
+             (logtest? (-> *camera* master-options) 2)
+             (logtest? (-> *target* state-flags) (state-flags sf09))
+             )
         (send-event *target* 'end-mode)
         )
     (none)
@@ -476,13 +479,13 @@
   :code
   (behavior ()
     (let ((gp-0 (-> *display* base-frame-counter)))
-      (while #t
+      (loop
         (when (not (paused?))
           (let ((s4-0 (vector-reset! (new-stack-vector0)))
                 (s5-0 (new-stack-matrix0))
                 )
             (when *camera-read-analog*
-              (let ((f30-0 (analog-input
+              (let ((f30-0 (analog-input-horizontal-first   ;; changed for pc port
                              (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
                              (the-as float 0.0)
                              (the-as float 48.0)
@@ -490,7 +493,7 @@
                              (the-as float -1.0)
                              )
                            )
-                    (f0-0 (analog-input
+                    (f0-0 (analog-input-vertical-first   ;; changed for pc port
                             (the-as int (+ (-> *cpad-list* cpads 0 righty) -256 (-> *cpad-list* cpads 0 lefty)))
                             (the-as float 0.0)
                             (the-as float 48.0)
@@ -605,6 +608,7 @@
 
 (define *CAM_BILLY-bank* (new 'static 'cam-billy-bank :rot-speed 364.0889 :tilt-degrees -1820.4445))
 
+;; first person camera for rat game
 (defstate cam-billy (camera-slave)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -645,7 +649,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (when (not (paused?))
         (let ((s5-0 (vector-reset! (new-stack-vector0)))
               (s4-0 (vector-reset! (new-stack-vector0)))
@@ -656,7 +660,7 @@
           0.0
           (when *camera-read-analog*
             (let ((f1-0
-                    (analog-input
+                    (analog-input-horizontal-first   ;; changed for pc port
                       (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
                       (the-as float 0.0)
                       (the-as float 48.0)
@@ -818,7 +822,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (when (not (paused?))
         (cam-calc-follow! (-> self tracking) (-> self trans) #t)
         (new 'stack 'curve)
@@ -852,7 +856,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (when (not (paused?))
         (let ((s5-0 (new-stack-vector0))
               (gp-0 (new-stack-vector0))
@@ -921,7 +925,7 @@
         (init! gp-0 s4-0 (the-as float 81.92) (fmax 819.2 (vector-length s5-0)) (the-as float 0.75))
         (set! (-> gp-0 vel quad) (-> s5-0 quad))
         )
-      (while #t
+      (loop
         (when (not (paused?))
           (set! (-> gp-0 target x) (-> (target-pos 0) x))
           (set! (-> gp-0 target z) (-> (target-pos 0) z))
@@ -944,6 +948,7 @@
     )
   )
 
+;; third person cam used to focus on various entities
 (defbehavior cam-circular-position-into-max-angle camera-slave ((arg0 vector) (arg1 vector) (arg2 float))
   (let* ((f30-0 (vector-normalize-ret-len! arg0 (the-as float 1.0)))
          (f26-0 (vector-normalize-ret-len! arg1 (the-as float 1.0)))
@@ -952,7 +957,7 @@
          (s3-0 (new 'stack-no-clear 'matrix))
          )
     (when *camera-read-analog*
-      (let ((f24-0 (analog-input
+      (let ((f24-0 (analog-input-horizontal-third   ;; changed for pc port
                      (the-as int (-> *cpad-list* cpads 0 rightx))
                      (the-as float 128.0)
                      (the-as float 32.0)
@@ -960,7 +965,7 @@
                      (* 8192.0 (-> *display* seconds-per-frame))
                      )
                    )
-            (f1-2 (analog-input
+            (f1-2 (analog-input-vertical-third   ;; changed for pc port
                     (the-as int (-> *cpad-list* cpads 0 righty))
                     (the-as float 128.0)
                     (the-as float 32.0)
@@ -1219,7 +1224,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (if (not (paused?))
           (cam-circular-code)
           )
@@ -1249,7 +1254,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1281,7 +1286,7 @@
         )
     (vector--float*! s5-0 s5-0 (-> *camera* local-down) (-> *CAMERA-bank* default-string-min-y))
     (set! (-> arg0 quad) (-> s5-0 quad))
-    (while #t
+    (loop
       (vector--float*! s4-0 arg0 (-> *camera* local-down) (-> *camera* target-height))
       (if (< (fill-and-probe-using-line-sphere
                *collide-cache*
@@ -1342,7 +1347,7 @@
       (let ((t1-0 #x40000080))
         (add-debug-flat-triangle
           #t
-          (bucket-id debug-draw1)
+          (bucket-id debug-no-zbuf)
           (the-as vector (-> gp-0 0))
           (-> gp-0 0 vertex 1)
           (-> gp-0 0 vertex 2)
@@ -2322,11 +2327,16 @@
       ((< 160 arg0)
        (set! f0-0 (fmin arg1 (* 0.0125 (+ -160.0 (the float arg0)) arg1)))
        )
-      )
-    f0-0
+    )
+    ;; changed for pc port, only used for Third-Person Vertical camera
+    (*
+      (if (and PC_PORT (-> *pc-settings* third-camera-vflip?)) 1.0 -1.0)
+      f0-0
     )
   )
+)
 
+;; main third-person camera
 (defbehavior cam-string-joystick camera-slave ()
   (set! (-> self options) (logand -257 (-> self options)))
   (let ((f28-0 (cam-dist-analog-input (the-as int (-> *cpad-list* cpads 0 righty)) (the-as float 0.05)))
@@ -2417,7 +2427,7 @@
         )
     )
   (when *camera-read-analog*
-    (let ((f0-29 (analog-input
+    (let ((f0-29 (analog-input-horizontal-third   ;; changed for pc port
                    (the-as int (-> *cpad-list* cpads 0 rightx))
                    (the-as float 128.0)
                    (the-as float 32.0)
@@ -2969,7 +2979,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (when (not (paused?))
         (set-string-parms)
         (cam-string-code)
@@ -2994,8 +3004,7 @@
   )
 
 
-(define
-  *CAM_STICK-bank*
+(define *CAM_STICK-bank*
   (new 'static 'cam-stick-bank :max-z (meters 30) :min-z (meters 5) :max-y (meters 15) :min-y (meters 2))
   )
 
@@ -3097,6 +3106,7 @@
   (none)
   )
 
+;; third person camera (in debug menu, and fishermans-boat-player-control w/o autopilot?)
 (defstate cam-stick (camera-slave)
   :event
   cam-standard-event-handler
@@ -3133,7 +3143,7 @@
     (when (not (paused?))
       (when *camera-read-analog*
         (let ((f0-0
-                (analog-input
+                (analog-input-vertical-third   ;; changed for pc port
                   (the-as int (-> *cpad-list* cpads 0 righty))
                   (the-as float 128.0)
                   (the-as float 32.0)
@@ -3162,7 +3172,7 @@
             (lerp (-> *CAM_STICK-bank* min-z) (-> *CAM_STICK-bank* max-z) (-> self view-off-param))
             )
       (when *camera-read-analog*
-        (let ((f0-16 (analog-input
+        (let ((f0-16 (analog-input-horizontal-third   ;; changed for pc port
                        (the-as int (-> *cpad-list* cpads 0 rightx))
                        (the-as float 128.0)
                        (the-as float 32.0)
@@ -3205,7 +3215,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (if (not (paused?))
           (cam-stick-code)
           )
@@ -3227,8 +3237,7 @@
   )
 
 
-(define
-  *CAM_BIKE-bank*
+(define *CAM_BIKE-bank*
   (new 'static 'cam-bike-bank :max-z (meters 6) :min-z (meters 10) :max-y (meters 3) :min-y (meters 5))
   )
 
@@ -3373,7 +3382,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (if (not (paused?))
           (cam-bike-code)
           )

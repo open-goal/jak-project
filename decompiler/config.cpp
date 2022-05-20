@@ -54,13 +54,13 @@ Config read_config_file(const std::string& path_to_config_file,
   }
   config.disassemble_code = cfg.at("disassemble_code").get<bool>();
   config.decompile_code = cfg.at("decompile_code").get<bool>();
-  config.regenerate_all_types = cfg.at("regenerate_all_types").get<bool>();
   config.write_hex_near_instructions = cfg.at("write_hex_near_instructions").get<bool>();
   config.write_scripts = cfg.at("write_scripts").get<bool>();
   config.disassemble_data = cfg.at("disassemble_data").get<bool>();
   config.process_tpages = cfg.at("process_tpages").get<bool>();
   config.process_game_text = cfg.at("process_game_text").get<bool>();
   config.process_game_count = cfg.at("process_game_count").get<bool>();
+  config.process_art_groups = cfg.at("process_art_groups").get<bool>();
   config.hexdump_code = cfg.at("hexdump_code").get<bool>();
   config.hexdump_data = cfg.at("hexdump_data").get<bool>();
   config.dump_objs = cfg.at("dump_objs").get<bool>();
@@ -68,6 +68,7 @@ Config read_config_file(const std::string& path_to_config_file,
   config.generate_symbol_definition_map = cfg.at("generate_symbol_definition_map").get<bool>();
   config.is_pal = cfg.at("is_pal").get<bool>();
   config.rip_levels = cfg.at("levels_convert_to_obj").get<bool>();
+  config.extract_collision = cfg.at("extract_collision").get<bool>();
 
   auto allowed = cfg.at("allowed_objects").get<std::vector<std::string>>();
   for (const auto& x : allowed) {
@@ -225,17 +226,11 @@ Config read_config_file(const std::string& path_to_config_file,
   config.levels_to_extract = inputs_json.at("levels_to_extract").get<std::vector<std::string>>();
   config.levels_extract = cfg.at("levels_extract").get<bool>();
 
-  // get new strings
-  if (!cfg.contains("new_strings_file")) {
-    return config;
-  }
-
-  auto new_strings_json = read_json_file_from_config(cfg, "new_strings_file");
-  config.new_strings_same_across_langs = new_strings_json.at("same_across_languages")
-                                             .get<std::unordered_map<std::string, std::string>>();
-  config.new_strings_different_across_langs =
-      new_strings_json.at("different_across_languages")
-          .get<std::unordered_map<std::string, std::vector<std::string>>>();
+  auto art_info_json = read_json_file_from_config(cfg, "art_info_file");
+  config.art_groups_by_file =
+      art_info_json.at("files").get<std::unordered_map<std::string, std::string>>();
+  config.art_groups_by_function =
+      art_info_json.at("functions").get<std::unordered_map<std::string, std::string>>();
 
   return config;
 }

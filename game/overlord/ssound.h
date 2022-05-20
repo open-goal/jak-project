@@ -5,12 +5,19 @@
 #include "game/sce/iop.h"
 #include "sbank.h"
 
+struct VolumePair {
+  s16 left;
+  s16 right;
+};
+
 extern s32 gSema;
 extern s32 gMusicFade;
 extern s32 gMusicFadeDir;
 extern s32 gMusicVol;
+extern VolumePair gPanTable[361];
+extern u32 gStreamSRAM;
+extern u32 gTrapSRAM;
 
-// FIXME where to put this
 struct Vec3w {
   s32 x;
   s32 y;
@@ -47,11 +54,6 @@ struct Curve {
   s32 unk4;
 };
 
-struct VolumePair {
-  s16 left;
-  s16 right;
-};
-
 void InitSound_Overlord();
 void SetCurve(s32 curve, s32 fallof, s32 ease);
 void SetEarTrans(Vec3w* ear_trans, Vec3w* cam_trans, s32 cam_angle);
@@ -63,5 +65,7 @@ Sound* AllocateSound();
 void UpdateVolume(Sound* sound);
 s32 GetVolume(Sound* sound);
 s32 GetPan(Sound* sound);
+s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 fo_max);
+s32 CalculateAngle(Vec3w* trans);
 
 #endif  // JAK_V2_SSOUND_H

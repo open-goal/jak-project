@@ -8,6 +8,7 @@
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/Profiler.h"
 #include "game/graphics/opengl_renderer/opengl_utils.h"
+#include "game/graphics/opengl_renderer/CollideMeshRenderer.h"
 
 struct RenderOptions {
   int window_height_px = 0;
@@ -24,9 +25,19 @@ struct RenderOptions {
   float pmode_alp_register = 0.f;
 };
 
+/*!
+ * Main OpenGL renderer.
+ * This handles the glClear and all game rendering, but not actual setup, synchronization or imgui
+ * stuff.
+ *
+ * It is simply a collection of bucket renderers, and a few special case ones.
+ */
 class OpenGLRenderer {
  public:
   OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool, std::shared_ptr<Loader> loader);
+
+  // rendering interface: takes the dma chain from the game, and some size/debug settings from
+  // the graphics system.
   void render(DmaFollower dma, const RenderOptions& settings);
 
  private:
@@ -58,6 +69,7 @@ class OpenGLRenderer {
 
   std::array<float, (int)BucketCategory::MAX_CATEGORIES> m_category_times;
   FullScreenDraw m_blackout_renderer;
+  CollideMeshRenderer m_collide_renderer;
 
   float m_last_pmode_alp = 1.;
   bool m_enable_fast_blackout_loads = true;

@@ -11,11 +11,16 @@
 #include "decompiler/data/TextureDB.h"
 #include "common/util/os.h"
 #include "common/util/diff.h"
+#include "common/util/Timer.h"
 
 int main(int argc, char** argv) {
-  fmt::print("[Mem] Size of linked word: {}\n", sizeof(decompiler::LinkedWord));
+  Timer decomp_timer;
+
   fmt::print("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
   using namespace decompiler;
+  if (!file_util::setup_project_path(std::nullopt)) {
+    return 1;
+  }
   lg::set_file(file_util::get_file_path({"log/decompiler.txt"}));
   lg::set_file_level(lg::level::info);
   lg::set_stdout_level(lg::level::info);
@@ -23,7 +28,6 @@ int main(int argc, char** argv) {
   lg::initialize();
   lg::info("GOAL Decompiler version {}\n", versions::DECOMPILER_VERSION);
 
-  file_util::init_crc();
   init_opcode_info();
 
   if (argc < 4) {
@@ -153,11 +157,9 @@ int main(int argc, char** argv) {
                          config.write_hex_near_instructions);
   }
 
-  // regenerate all-types if needed
-  if (config.regenerate_all_types) {
-    db.analyze_functions_ir1(config);
-    file_util::write_text_file(file_util::combine_path(out_folder, "type_defs.gc"),
-                               db.all_type_defs);
+  // process art groups (used in decompilation)
+  if (config.decompile_code || config.process_art_groups) {
+    db.extract_art_info();
   }
 
   // main decompile.
@@ -170,6 +172,11 @@ int main(int argc, char** argv) {
   // write out all symbols
   file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
                              db.dts.dump_symbol_types());
+
+  // write art groups
+  if (config.process_art_groups) {
+    db.dump_art_info(out_folder);
+  }
 
   if (config.hexdump_code || config.hexdump_data) {
     db.write_object_file_words(out_folder, config.hexdump_data, config.hexdump_code);
@@ -212,10 +219,8 @@ int main(int argc, char** argv) {
   }
 
   if (config.levels_extract) {
-    extract_common(db, tex_db, "GAME.CGO");
-    for (auto& lev : config.levels_to_extract) {
-      extract_from_level(db, tex_db, lev, config.hacks, config.rip_levels);
-    }
+    extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config.hacks,
+                       config.rip_levels, config.extract_collision);
   }
 
   fmt::print("[Mem] After extraction: {} MB\n", get_peak_rss() / (1024 * 1024));
@@ -224,6 +229,6 @@ int main(int argc, char** argv) {
     process_streamed_audio(config.audio_dir_file_name, config.streamed_audio_file_names);
   }
 
-  lg::info("Disassembly has completed successfully.");
+  lg::info("Decompiler has finished successfully in {:.2f} seconds.", decomp_timer.getSeconds());
   return 0;
 }

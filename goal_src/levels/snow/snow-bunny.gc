@@ -45,14 +45,11 @@
 
 (define-extern *snow-bunny* (pointer snow-bunny))
 
-(defskelgroup *snow-bunny-sg* snow-bunny
-  0
-  5
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0.25 0 2)
-  :longest-edge (meters 0)
-  :shadow 4
-  )
+(defskelgroup *snow-bunny-sg* snow-bunny snow-bunny-lod0-jg snow-bunny-idle-ja
+              ((snow-bunny-lod0-mg (meters 20)) (snow-bunny-lod1-mg (meters 40)) (snow-bunny-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0.25 0 2)
+              :shadow snow-bunny-shadow-mg
+              )
 
 (define *snow-bunny-nav-enemy-info* (new 'static 'nav-enemy-info
                                       :idle-anim 5
@@ -100,7 +97,7 @@
                                       :use-proximity-notice #f
                                       :use-jump-blocked #f
                                       :use-jump-patrol #f
-                                      :gnd-collide-with #x1
+                                      :gnd-collide-with (collide-kind background)
                                       :debug-draw-neck #f
                                       :debug-draw-jump #f
                                       )
@@ -122,7 +119,7 @@
        (when (send-event-function arg0 a1-5)
          (set! (-> self touch-time) (-> *display* base-frame-counter))
          (set-collide-offense (-> self collide-info) 2 (collide-offense no-offense))
-         (logior! (-> self nav-enemy-flags) 256)
+         (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
          (go-virtual snow-bunny-attack)
          )
        )
@@ -208,7 +205,7 @@
 (defmethod TODO-RENAME-48 snow-bunny ((obj snow-bunny))
   (dummy-60 obj)
   (TODO-RENAME-45 obj *snow-bunny-nav-enemy-info*)
-  (set! (-> obj draw shadow-ctrl settings flags) (logand -9 (-> obj draw shadow-ctrl settings flags)))
+  (logclear! (-> obj draw shadow-ctrl settings flags) (shadow-flags shdf03))
   (cond
     ((zero? (res-lump-value (-> obj entity) 'mode uint128))
      (set! (-> obj defense) (the-as uint 1))
@@ -246,7 +243,7 @@
   )
 
 (defmethod dummy-58 snow-bunny ((obj snow-bunny))
-  (if (zero? (logand (-> *target* state-flags) 2))
+  (if (zero? (logand (-> *target* state-flags) (state-flags sf01)))
       (set! (-> obj last-nondangerous-time) (-> *display* base-frame-counter))
       )
   (none)
@@ -254,8 +251,8 @@
 
 (defbehavior snow-bunny-initialize-jump snow-bunny ((arg0 vector))
   (nav-enemy-initialize-custom-jump arg0 #f (-> self jump-height-min) (-> self jump-height-factor) -307200.0)
-  (set! (-> self nav-enemy-flags) (logand -1025 (-> self nav-enemy-flags)))
-  (logior! (-> self nav-enemy-flags) 512)
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags drop-jump))
+  (logior! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
   0
   (none)
   )
@@ -293,7 +290,7 @@
   )
 
 (defmethod dummy-57 snow-bunny ((obj snow-bunny))
-  (if (or (not *target*) (zero? (logand (-> *target* state-flags) 2)))
+  (if (or (not *target*) (zero? (logand (-> *target* state-flags) (state-flags sf01))))
       (return #f)
       )
   (let ((f0-0 (vector-vector-xz-distance (target-pos 0) (-> obj collide-info trans))))
@@ -345,34 +342,16 @@
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 30)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim)))
-        num-func-identity
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja :group!
+        (-> self draw art-group data (-> self nav-info idle-anim))
+        :num!
+        (identity (rand-vu-float-range 0.0 (the float (+ (-> (ja-group) data 0 length) -1))))
         )
-      (set! (-> gp-0 frame-num)
-            (rand-vu-float-range 0.0 (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                           (-> self skel root-channel 0 frame-group)
-                                                           )
-                                                       data
-                                                       0
-                                                       length
-                                                       )
-                                                   -1
-                                                   )
-                                          )
-                                 )
-            )
-      )
     (let ((f30-0 (nav-enemy-rnd-float-range 0.75 1.25)))
-      (while #t
+      (loop
         (suspend)
-        (let ((a0-4 (-> self skel root-channel 0)))
-          (set! (-> a0-4 param 0) f30-0)
-          (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-loop!)
-          )
+        (ja :num! (loop! f30-0))
         )
       )
     (none)
@@ -431,9 +410,9 @@
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (dummy-76 self #f)
-    (set! (-> self nav flags) (logior (nav-control-flags bit19) (-> self nav flags)))
-    (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
-    (logior! (-> self nav-enemy-flags) 8)
+    (set! (-> self nav flags) (logior (nav-control-flags navcf19) (-> self nav flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
     (set! (-> self state-timeout) (seconds 0.1))
     (none)
     )
@@ -468,35 +447,17 @@
         )
       (set! (-> self patrol-hop-failed?) #f)
       (let ((gp-2 (min gp-0 (nav-enemy-rnd-int-count 3))))
-        (ja-channel-push! 1 30)
-        (let ((s5-0 (-> self skel root-channel 0)))
-          (joint-control-channel-group-eval!
-            s5-0
-            (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim)))
-            num-func-identity
+        (ja-channel-push! 1 (seconds 0.1))
+        (ja :group!
+            (-> self draw art-group data (-> self nav-info idle-anim))
+            :num!
+            (identity (rand-vu-float-range 0.0 (the float (+ (-> (ja-group) data 0 length) -1))))
             )
-          (set! (-> s5-0 frame-num)
-                (rand-vu-float-range 0.0 (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                               (-> self skel root-channel 0 frame-group)
-                                                               )
-                                                           data
-                                                           0
-                                                           length
-                                                           )
-                                                       -1
-                                                       )
-                                              )
-                                     )
-                )
-          )
-        (while #t
+        (loop
           (let ((s5-1 (-> *display* base-frame-counter)))
             (until (>= (- (-> *display* base-frame-counter) s5-1) (seconds 2.52))
               (suspend)
-              (let ((a0-6 (-> self skel root-channel 0)))
-                (set! (-> a0-6 param 0) 1.0)
-                (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-loop!)
-                )
+              (ja :num! (loop!))
               )
             )
           (cond
@@ -533,7 +494,7 @@
                     (collide-kind background)
                     (-> obj collide-info process)
                     s4-0
-                    (the-as uint 1)
+                    (new 'static 'pat-surface :noentity #x1)
                     )
                   )
             )
@@ -664,8 +625,8 @@
     )
   :exit
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 24)
-    (set! (-> self collide-info nav-flags) (logand -3 (-> self collide-info nav-flags)))
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
+    (logclear! (-> self collide-info nav-flags) (nav-flags navf1))
     (none)
     )
   :trans
@@ -697,12 +658,12 @@
   snow-bunny-default-event-handler
   :enter
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 4)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (nav-enemy-neck-control-look-at)
-    (if (logtest? (-> self nav-enemy-flags) 2)
+    (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
         (go-virtual nav-enemy-chase)
         )
-    (logior! (-> self nav-enemy-flags) 2)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
     (dummy-76 self #t)
     (set-vector! (-> self collide-info transv) 0.0 (nav-enemy-rnd-float-range 102400.0 131072.0) 0.0 1.0)
     (none)
@@ -716,35 +677,19 @@
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 22)
+    (ja-channel-push! 1 (seconds 0.075))
     (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 frame-group)
-              (the-as art-joint-anim (-> self draw art-group data (-> self nav-info notice-anim)))
-              )
-        (set! (-> gp-0 param 0) (ja-aframe 8.0 0))
-        (set! (-> gp-0 param 1) f30-0)
-        (set! (-> gp-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          gp-0
-          (the-as art-joint-anim (-> self draw art-group data (-> self nav-info notice-anim)))
-          num-func-seek!
-          )
-        )
+      (ja-no-eval :group!
+                  (-> self draw art-group data (-> self nav-info notice-anim))
+                  :num! (seek! (ja-aframe 8.0 0) f30-0)
+                  :frame-num 0.0
+                  )
       (until (ja-done? 0)
         (suspend)
-        (let ((gp-1 (-> self skel root-channel 0)))
-          (set! (-> gp-1 param 0) (ja-aframe 8.0 0))
-          (set! (-> gp-1 param 1) f30-0)
-          (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! (ja-aframe 8.0 0) f30-0))
         )
-      (until (logtest? (-> self collide-info status) 1)
-        (let ((a0-11 (-> self skel root-channel 0)))
-          (set! (-> a0-11 param 0) (the float (+ (-> a0-11 frame-group data 0 length) -1)))
-          (set! (-> a0-11 param 1) f30-0)
-          (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-seek!)
-          )
+      (until (logtest? (-> self collide-info status) (cshape-moving-flags onsurf))
+        (ja :num! (seek! max f30-0))
         (+! (-> self collide-info transv y) (* -546119.7 (-> *display* seconds-per-frame)))
         (integrate-for-enemy-with-move-to-ground!
           (-> self collide-info)
@@ -763,29 +708,15 @@
           )
         (suspend)
         )
-      (ja-channel-push! 1 22)
-      (let ((a0-18 (-> self skel root-channel 0)))
-        (set! (-> a0-18 frame-group) (the-as art-joint-anim (-> self draw art-group data (-> self notice-land-anim))))
-        (set! (-> a0-18 param 0)
-              (the float
-                   (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self notice-land-anim))) data 0 length) -1)
-                   )
-              )
-        (set! (-> a0-18 param 1) f30-0)
-        (set! (-> a0-18 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-18
-          (the-as art-joint-anim (-> self draw art-group data (-> self notice-land-anim)))
-          num-func-seek!
-          )
-        )
+      (ja-channel-push! 1 (seconds 0.075))
+      (ja-no-eval :group!
+                  (-> self draw art-group data (-> self notice-land-anim))
+                  :num! (seek! max f30-0)
+                  :frame-num 0.0
+                  )
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-19 (-> self skel root-channel 0)))
-          (set! (-> a0-19 param 0) (the float (+ (-> a0-19 frame-group data 0 length) -1)))
-          (set! (-> a0-19 param 1) f30-0)
-          (joint-control-channel-group-eval! a0-19 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max f30-0))
         )
       )
     (go-virtual nav-enemy-chase)
@@ -888,7 +819,7 @@
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self should-retreat?) #f)
-    (if (or (not *target*) (logtest? (-> *target* state-flags) 128))
+    (if (or (not *target*) (logtest? (-> *target* state-flags) (state-flags sf07)))
         (go-virtual nav-enemy-patrol)
         )
     (if (not (TODO-RENAME-46 self (-> self nav-info stop-chase-distance)))
@@ -898,7 +829,7 @@
         (go-virtual snow-bunny-defend)
         )
     (when (not (dummy-52 self))
-      (set! (-> self nav-enemy-flags) (logand -3 (-> self nav-enemy-flags)))
+      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
       (go-virtual nav-enemy-notice)
       )
     (set-jump-height-factor! self 1)
@@ -910,8 +841,8 @@
     )
   :exit
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 24)
-    (set! (-> self collide-info nav-flags) (logand -3 (-> self collide-info nav-flags)))
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
+    (logclear! (-> self collide-info nav-flags) (nav-flags navf1))
     (none)
     )
   :trans
@@ -1164,7 +1095,7 @@
         (go-virtual nav-enemy-patrol)
         )
     (let ((v1-8 (>= 73728.0 (vector-vector-xz-distance (target-pos 0) (-> self collide-info trans)))))
-      (when (or (-> self should-retreat?) (and v1-8 (logtest? (-> *target* state-flags) 2)))
+      (when (or (-> self should-retreat?) (and v1-8 (logtest? (-> *target* state-flags) (state-flags sf01))))
         (set! (-> self retreat-timeout-time)
               (+ (-> *display* base-frame-counter) (the int (* 300.0 (-> self retreat-timeout))))
               )
@@ -1172,7 +1103,7 @@
         )
       (when (or (>= (-> *display* base-frame-counter) (-> self retreat-timeout-time)) (not v1-8))
         (if (or (not *target*)
-                (logtest? (-> *target* state-flags) 128)
+                (logtest? (-> *target* state-flags) (state-flags sf07))
                 (not (TODO-RENAME-46 self (-> self nav-info stop-chase-distance)))
                 )
             (go-virtual nav-enemy-patrol)
@@ -1193,8 +1124,8 @@
     )
   :exit
   (behavior ()
-    (logior! (-> self nav-enemy-flags) 24)
-    (set! (-> self collide-info nav-flags) (logand -3 (-> self collide-info nav-flags)))
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
+    (logclear! (-> self collide-info nav-flags) (nav-flags navf1))
     (none)
     )
   :trans
@@ -1236,42 +1167,24 @@
           (go-virtual snow-bunny-chase-hop)
           )
       )
-    (if (not (logtest? (-> *target* state-flags) 2))
+    (if (not (logtest? (-> *target* state-flags) (state-flags sf01)))
         (go-virtual snow-bunny-chase-hop)
         )
-    (if (and (logtest? (-> *target* state-flags) 2) (not (TODO-RENAME-46 self (-> self nav-info notice-distance))))
+    (if (and (logtest? (-> *target* state-flags) (state-flags sf01))
+             (not (TODO-RENAME-46 self (-> self nav-info notice-distance)))
+             )
         (go-virtual snow-bunny-retreat-hop)
         )
     (none)
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 22)
-    (while #t
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 frame-group)
-              (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim)))
-              )
-        (set! (-> a0-1 param 0)
-              (the float
-                   (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim))) data 0 length) -1)
-                   )
-              )
-        (set! (-> a0-1 param 1) 1.0)
-        (set! (-> a0-1 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-1
-          (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim)))
-          num-func-seek!
-          )
-        )
+    (ja-channel-push! 1 (seconds 0.075))
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim)) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -1313,31 +1226,13 @@
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 22)
-    (let ((a0-1 (-> self skel root-channel 0)))
-      (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data (-> self attack-anim))))
-      (set! (-> a0-1 param 0)
-            (the float
-                 (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self attack-anim))) data 0 length) -1)
-                 )
-            )
-      (set! (-> a0-1 param 1) 1.0)
-      (set! (-> a0-1 frame-num) 0.0)
-      (joint-control-channel-group!
-        a0-1
-        (the-as art-joint-anim (-> self draw art-group data (-> self attack-anim)))
-        num-func-seek!
-        )
-      )
+    (ja-channel-push! 1 (seconds 0.075))
+    (ja-no-eval :group! (-> self draw art-group data (-> self attack-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-        (set! (-> a0-2 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (until (logtest? (-> self collide-info status) 1)
+    (until (logtest? (-> self collide-info status) (cshape-moving-flags onsurf))
       (suspend)
       )
     (go-virtual snow-bunny-retreat-hop)

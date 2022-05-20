@@ -17,8 +17,7 @@ class LinkedWordReader {
       m_offset++;
       return result;
     } else {
-      ASSERT(false);
-      throw std::runtime_error("LinkedWordReader::get_type_tag failed");
+      ASSERT_MSG(false, "LinkedWordReader::get_type_tag failed");
     }
   }
 

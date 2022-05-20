@@ -325,7 +325,7 @@ struct TieFrag {
     u16 tgt_ip1_ptr = 0;
     u16 tgt_ip2_ptr = 0;
     u16 kick_addr = 0;
-    u16 clr_ptr = 0;
+    // u16 clr_ptr = 0;
     u16 point_ptr = 0;
     u16 misc_x = 0;  // at 971's x.
     math::Vector4f gifbufs;
@@ -464,8 +464,7 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
   auto masked = original & 0xffffff00;
   for (auto& t : map) {
     if (t.original_texid == masked) {
-      fmt::print("OKAY! remapped!\n");
-      ASSERT(false);
+      ASSERT_MSG(false, "OKAY! remapped!");
       return t.new_texid | 20;
     }
   }
@@ -1251,7 +1250,7 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
       //    iaddi vi15, vi00, 0x0      |  nop
       frag.prog_info.kick_addr = 0;
       //    mtir vi03, vf_clrbuf.x          |  nop
-      frag.prog_info.clr_ptr = 198;  // just forcing it to one buffer for now
+      // frag.prog_info.clr_ptr = 198;  // just forcing it to one buffer for now
       //    iaddiu vi_point_ptr, vi00, 0x32    |  nop
       frag.prog_info.point_ptr = 0x32;
 
@@ -1316,7 +1315,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       // we omit the pipeline startup here.
 
       // this was set by the previous program that sets up this prototype frag
-      u16 clr_ptr = frag.prog_info.clr_ptr;
+      // u16 clr_ptr = frag.prog_info.clr_ptr;
       u16 tgt_bp1_ptr = frag.prog_info.tgt_bp1_ptr;
       u16 tgt_bp2_ptr = frag.prog_info.tgt_bp2_ptr;
       u16 tgt_ip1_ptr = frag.prog_info.tgt_ip1_ptr;
@@ -1359,7 +1358,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
 
       // iaddi vi_clr_ptr, vi_clr_ptr, 0x7   |  nop
       // u16 clr_ptr_base = clr_ptr;
-      clr_ptr += 6;  // it says 7, but we want to point to the first index data.
+      // clr_ptr += 6;  // it says 7, but we want to point to the first index data.
 
       // mtir vi_ind, vf_inds.y              |  addx.w vf_res13, vf_res02, vf00 <- flags crap
       // div Q, vf00.w, vf_pos02.w           |  mulaw.xyzw ACC, vf_clr2, vf00
@@ -2012,8 +2011,7 @@ DrawMode process_draw_mode(const AdgifInfo& info, bool use_atest, bool use_decal
   // the clamp matters
   if (!(info.clamp_val == 0b101 || info.clamp_val == 0 || info.clamp_val == 1 ||
         info.clamp_val == 0b100)) {
-    fmt::print("clamp: 0x{:x}\n", info.clamp_val);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("clamp: 0x{:x}", info.clamp_val));
   }
 
   mode.set_clamp_s_enable(info.clamp_val & 0b1);
@@ -2036,6 +2034,10 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
 
   // loop over all prototypes
   for (auto& proto : protos) {
+    if (proto.uses_generic) {
+      // generic ties go through generic
+      continue;
+    }
     //    bool using_wind = true;  // hack, for testing
     bool using_wind = proto.stiffness != 0.f;
 
@@ -2104,14 +2106,13 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
                 // we're missing a texture, just use the first one.
                 tex_it = tdb.textures.begin();
               } else {
-                fmt::print(
-                    "texture {} wasn't found. make sure it is loaded somehow. You may need to "
-                    "include "
-                    "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures.\n",
-                    combo_tex);
-                fmt::print("tpage is {}\n", combo_tex >> 16);
-                fmt::print("id is {} (0x{:x})\n", combo_tex & 0xffff, combo_tex & 0xffff);
-                ASSERT(false);
+                ASSERT_MSG(
+                    false,
+                    fmt::format(
+                        "texture {} wasn't found. make sure it is loaded somehow. You may need to "
+                        "include ART.DGO or GAME.DGO in addition to the level DGOs for shared "
+                        "textures. tpage is {}. id is {} (0x{:x})",
+                        combo_tex, combo_tex >> 16, combo_tex & 0xffff, combo_tex & 0xffff));
               }
             }
             // add a new texture to the level data

@@ -67,11 +67,6 @@ struct MappingInfo {
   // TODO complex button mapping & key macros (e.g. shift+x for l2+r2 press etc.)
 };
 
-// key-down status of any detected key.
-extern std::unordered_map<int, int> g_key_status;
-// key-down status of any detected key. this is buffered for the remainder of a frame.
-extern std::unordered_map<int, int> g_buffered_key_status;
-
 void OnKeyPress(int key);
 void OnKeyRelease(int key);
 void ForceClearKeys();

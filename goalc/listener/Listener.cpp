@@ -18,7 +18,7 @@
 #undef max
 #endif
 
-#include "common/cross_sockets/xsocket.h"
+#include "common/cross_sockets/XSocket.h"
 
 #include <stdexcept>
 #include <cstring>

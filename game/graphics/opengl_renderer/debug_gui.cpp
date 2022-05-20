@@ -116,6 +116,19 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::Checkbox("Sleep in Frame Limiter", &sleep_in_frame_limiter);
       ImGui::EndMenu();
     }
+
+    if (ImGui::BeginMenu("Event Profiler")) {
+      ImGui::Checkbox("Record", &record_events);
+      ImGui::MenuItem("Dump to file", nullptr, &dump_events);
+      ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("Debug Mode")) {
+      if (ImGui::MenuItem("Reboot now!")) {
+        want_reboot_in_debug = true;
+      }
+      ImGui::EndMenu();
+    }
   }
   ImGui::EndMainMenuBar();
 

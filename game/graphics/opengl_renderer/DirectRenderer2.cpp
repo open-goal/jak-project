@@ -235,8 +235,7 @@ void DirectRenderer2::setup_opengl_for_draw_mode(const Draw& draw,
       case DrawMode::AlphaTest::NEVER:
         break;
       default:
-        fmt::print("unknown alpha test: {}\n", (int)draw.mode.get_alpha_test());
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("unknown alpha test: {}", (int)draw.mode.get_alpha_test()));
     }
   }
 
@@ -540,8 +539,7 @@ void DirectRenderer2::handle_ad(const u8* data) {
     case GsRegisterAddress::TEXFLUSH:
       break;
     default:
-      fmt::print("Address {} is not supported\n", register_address_name(addr));
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("Address {} is not supported", register_address_name(addr)));
   }
 }
 

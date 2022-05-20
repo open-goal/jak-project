@@ -238,7 +238,7 @@
 ;; the "skeleton group" is defined in code and tells the engine
 ;; how to actually use the art from the level data for this object.
 (deftype skeleton-group (basic)
-  ((art-group-name basic          :offset-assert   4)
+  ((art-group-name string         :offset-assert   4)
    (jgeo           int32          :offset-assert   8)
    (janim          int32          :offset-assert  12)
    (bounds         vector :inline :offset-assert  16)
@@ -384,11 +384,26 @@
   (-> obj skeleton bones 0 position)
   )
 
+(desfun art-elt->index (ag-name elt-name)
+  (if (number? elt-name)
+      elt-name
+      (let ((ag-info (assoc ag-name *art-info*)))
+          (if (null? ag-info)
+              -1
+              (let ((elt-info (assoc elt-name (cdr ag-info))))
+                  (if (null? elt-info)
+                      -1
+                      (cadr elt-info))
+                  )
+              )
+          )
+      )
+  )
 
 (defmacro defskelgroup (name art-name joint-geom joint-anim lods
                         &key (shadow 0)
                         &key bounds
-                        &key longest-edge
+                        &key (longest-edge 0.0)
                         &key (texture-level 0)
                         &key (sort 0)
                         &key (version 6) ;; do NOT use this!
@@ -402,18 +417,18 @@
                         :longest-edge ,longest-edge
                         :version ,version
                         :max-lod ,(- (length lods) 1)
-                        :shadow ,shadow
+                        :shadow ,(art-elt->index (string->symbol-format "{}-ag" art-name) shadow)
                         :texture-level ,texture-level
                         :sort ,sort
                         )))
         ;; set joint geometry and joint bones
-        (set! (-> skel jgeo) ,joint-geom)
-        (set! (-> skel janim) ,joint-anim)
+        (set! (-> skel jgeo) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-geom))
+        (set! (-> skel janim) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-anim))
         
         ;; set lods
         ,@(apply-i (lambda (x i)
                       `(begin
-                          (set! (-> skel mgeo ,i) ,(car x))
+                          (set! (-> skel mgeo ,i) ,(art-elt->index (string->symbol-format "{}-ag" art-name) (car x)))
                           (set! (-> skel lod-dist ,i) ,(cadr x))
                           )
                       ) lods)
