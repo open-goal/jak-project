@@ -396,7 +396,7 @@ void interp_time_of_day_fast(const float weights[8],
       auto result = _mm_packus_epi16(color0, color0);
 
       // store result
-      _mm_storeu_si64((__m128i*)(&out[color_quad * 4]), result);
+      _mm_storel_epi64((__m128i*)(&out[color_quad * 4]), result);
     }
 
     {
@@ -451,7 +451,7 @@ void interp_time_of_day_fast(const float weights[8],
       auto result = _mm_packus_epi16(color0, color0);
 
       // store result
-      _mm_storeu_si64((__m128i*)(&out[color_quad * 4 + 2]), result);
+      _mm_storel_epi64((__m128i*)(&out[color_quad * 4 + 2]), result);
     }
   }
 }
