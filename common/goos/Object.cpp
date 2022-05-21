@@ -73,6 +73,8 @@ std::string object_type_to_string(ObjectType type) {
       return "[macro]";
     case ObjectType::ENVIRONMENT:
       return "[environment]";
+    case ObjectType::STRING_HASH_TABLE:
+      return "[string-hash-table]";
     default:
       throw std::runtime_error("unknown object type in object_type_to_string");
   }
@@ -243,6 +245,8 @@ bool Object::operator==(const Object& other) const {
       }
       return true;
     }
+    case ObjectType::STRING_HASH_TABLE:
+      return as_string_hash_table()->data == other.as_string_hash_table()->data;
 
     default:
       throw std::runtime_error("equality not implemented for " + print());
