@@ -1690,13 +1690,20 @@ Object Interpreter::eval_get_env(const Object& form,
   return StringObject::make_new(env_p);
 }
 
+/*!
+ * Create a new empty hash table object.
+ */
 Object Interpreter::eval_make_string_hash_table(const Object& form,
                                                 Arguments& args,
-                                                const std::shared_ptr<EnvironmentObject>& env) {
+                                                const std::shared_ptr<EnvironmentObject>& /*env*/) {
   vararg_check(form, args, {}, {});
   return StringHashTableObject::make_new();
 }
 
+/*!
+ * Set a value in a hash table. Overwrites a previous value or inserts a new one.
+ * Returns empty list always.
+ */
 Object Interpreter::eval_hash_table_set(const Object& form,
                                         Arguments& args,
                                         const std::shared_ptr<EnvironmentObject>& env) {
@@ -1706,6 +1713,9 @@ Object Interpreter::eval_hash_table_set(const Object& form,
   return Object::make_empty_list();
 }
 
+/*!
+ * Try to look up a value by key in a hash table. The result is a pair of (success . value).
+ */
 Object Interpreter::eval_hash_table_try_ref(const Object& form,
                                             Arguments& args,
                                             const std::shared_ptr<EnvironmentObject>& env) {
