@@ -21,4 +21,4 @@ add_library(sound STATIC ${SOUND_SOURCES})
 target_link_libraries(sound PRIVATE fmt cubeb)
 
 add_executable(sndplay 989snd/sndplay.cpp)
-target_link_libraries(sndplay PRIVATE sound cubeb)
+target_link_libraries(sndplay PRIVATE sound cubeb stdc++fs)

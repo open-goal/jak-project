@@ -44,7 +44,7 @@ void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
       tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
       tex_data16 = _mm_srli_epi16(tex_data16, 7);
       auto result = _mm_packus_epi16(tex_data16, tex_data16);
-      _mm_storeu_si64((__m128i*)(out + (i * 8)), result);
+      _mm_storel_epi64((__m128i*)(out + (i * 8)), result);
     }
   }
 }
@@ -81,7 +81,7 @@ void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
       tex_data16 = _mm_min_epi16(max_intensity, tex_data16);
       auto result = _mm_packus_epi16(tex_data16, tex_data16);
       out_val = _mm_adds_epu8(out_val, result);
-      _mm_storeu_si64((__m128i*)(out + (i * 8)), out_val);
+      _mm_storel_epi64((__m128i*)(out + (i * 8)), out_val);
     }
   }
   /*
