@@ -290,6 +290,7 @@
   ("anim-tester.o" "anim-tester")
   ("viewer.o" "viewer")
   ("part-tester.o" "part-tester")
+  ("anim-tester-x.o" "anim-tester-x") ;; added
   ("default-menu.o" "default-menu")
   ("subtitle.o" "subtitle") ;; added
   ("dir-tpages.go" "dir-tpages")

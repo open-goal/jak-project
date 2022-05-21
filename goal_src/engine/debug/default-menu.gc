@@ -3977,6 +3977,11 @@
 (defmacro new-dm-submenu (text menu)
   `(new 'debug 'debug-menu-item-submenu ,text ,menu)
   )
+(defmacro new-dm-var-float (text var func inc min max)
+  `(debug-menu-item-var-make-float (new 'debug 'debug-menu-item-var ,text ,var (* 8 20))
+              (the-as (function int debug-menu-msg float float float) ,func)
+              ,inc #t ,min ,max 1)
+  )
 
 (defun dm-want-level-toggle-pick-func ((arg0 pair) (arg1 debug-menu-msg))
   (let* ((levname (the-as symbol (car arg0)))
@@ -4243,6 +4248,19 @@
       ))
   )
 
+(defmacro dm-lambda-float-var (val)
+  "helper macro for making float buttons"
+  `(lambda (arg (msg debug-menu-msg) (newval float))
+    (cond
+      ((= msg (debug-menu-msg press))
+       (set! ,val newval)
+       )
+      (else
+        ,val
+        )
+      ))
+  )
+
 (defmacro dm-lambda-meters-var (val)
   "helper macro for making meters buttons"
   `(lambda (arg (msg debug-menu-msg) (newval float))
@@ -4411,6 +4429,71 @@
   (when (= arg1 (debug-menu-msg press))
     (set! (-> *pc-settings* mood-overrides (/ pal 8)) newval))
   (-> *pc-settings* mood-overrides (/ pal 8))
+  )
+
+(defun dm-anim-tester-x-flag-func ((action symbol) (msg debug-menu-msg))
+  (case action
+    (('at-show-joint-info)
+      (if (= msg (debug-menu-msg press))
+          (logxor! (-> *ATX-settings* flags) (atx-flags show-joints)))
+      (return (logtest? (-> *ATX-settings* flags) (atx-flags show-joints)))
+      )
+    )
+  #f)
+
+(defun dm-anim-tester-x-func ((action symbol))
+  (unless *atx*
+      (atx-start))
+  
+  (case action
+    (('pick-art-group)
+     (set! (-> *atx* 0 edit-mode) (atx-edit-mode art-group))
+     (false! *camera-read-buttons*)
+     )
+    (('at-pick-joint-anim)
+     (when (-> *atx* 0 cur-art-group)
+       (set! (-> *atx* 0 edit-mode) (atx-edit-mode anim))
+       (false! *camera-read-buttons*)
+       )
+     )
+    (('pick-mesh-geo)
+     (when (-> *atx* 0 cur-art-group)
+       (set! (-> *atx* 0 edit-mode) (atx-edit-mode mgeo))
+       (false! *camera-read-buttons*)
+       )
+     )
+    (('pick-joint-geo)
+     (when (-> *atx* 0 cur-art-group)
+       (set! (-> *atx* 0 edit-mode) (atx-edit-mode jgeo))
+       (false! *camera-read-buttons*)
+       )
+     )
+    (('at-cam-free-floating)
+     (send-event *camera* 'change-state cam-free-floating 0)
+     )
+    (('at-cam-orbit)
+     (send-event *camera* 'change-state cam-orbit 0)
+     )
+    )
+  0)
+
+(defun debug-menu-make-anim-tester-x-menu ((ctx debug-menu-context))
+  (let ((menu (new 'debug 'debug-menu ctx "Anim Tester X menu")))
+      ;; master toggle
+      (debug-menu-append-item menu (new-dm-func "Start" #f atx-start))
+      (debug-menu-append-item menu (new-dm-func "Stop"  #f atx-stop))
+      (debug-menu-append-item menu (new-dm-var-float "Speed" (the int #f) (dm-lambda-float-var (-> *ATX-settings* speed)) 0.01 -10.0 10.0))
+      (debug-menu-append-item menu (new-dm-var-float "Frame Num" (the int #f) (dm-lambda-float-var (-> *ATX-settings* frame-num)) 0.1 0.0 99999.0))
+      (debug-menu-append-item menu (new-dm-func "Pick Art Group" 'pick-art-group dm-anim-tester-x-func))
+      (debug-menu-append-item menu (new-dm-func "Pick Anim" 'at-pick-joint-anim dm-anim-tester-x-func))
+      (debug-menu-append-item menu (new-dm-func "Pick Mesh" 'pick-mesh-geo dm-anim-tester-x-func))
+      (debug-menu-append-item menu (new-dm-func "Pick Skeleton" 'pick-joint-geo dm-anim-tester-x-func))
+      (debug-menu-append-item menu (new-dm-flag "Show Joint Info" 'at-show-joint-info dm-anim-tester-x-flag-func))
+      (debug-menu-append-item menu (new-dm-func "Free Floating cam" 'at-cam-free-floating dm-anim-tester-x-func))
+      (debug-menu-append-item menu (new-dm-func "Orbit cam" 'at-cam-orbit dm-anim-tester-x-func))
+
+      (new-dm-submenu "Anim Tester X" menu)
+      )
   )
 
 (when (-> *debug-menu-context* root-menu)
@@ -4582,8 +4665,11 @@
     (debug-menu-append-item (-> *debug-menu-context* root-menu) other-menu-node)
     )
 
-  (debug-menu-append-item (-> (the debug-menu-item-submenu (caddddr (-> *debug-menu-context* root-menu items))) submenu)
+  (debug-menu-append-item (-> (the debug-menu-item-submenu (ref (-> *debug-menu-context* root-menu items) 4)) submenu)
                           (debug-menu-make-collision-renderer-menu *debug-menu-context*))
+
+  (debug-menu-append-item (-> (the debug-menu-item-submenu (car (-> *debug-menu-context* root-menu items))) submenu)
+                          (debug-menu-make-anim-tester-x-menu *debug-menu-context*))
 
   )
 

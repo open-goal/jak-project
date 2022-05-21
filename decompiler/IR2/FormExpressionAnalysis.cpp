@@ -2406,7 +2406,8 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
       {FixedOperatorKind::ADDITION_PTR, FixedOperatorKind::ADDITION_PTR_IN_PLACE, 0},
       {FixedOperatorKind::LOGAND, FixedOperatorKind::LOGAND_IN_PLACE, 0},
       {FixedOperatorKind::LOGIOR, FixedOperatorKind::LOGIOR_IN_PLACE, 0},
-      {FixedOperatorKind::LOGCLEAR, FixedOperatorKind::LOGCLEAR_IN_PLACE, 0}};
+      {FixedOperatorKind::LOGCLEAR, FixedOperatorKind::LOGCLEAR_IN_PLACE, 0},
+      {FixedOperatorKind::LOGXOR, FixedOperatorKind::LOGXOR_IN_PLACE, 0}};
 
   typedef struct {
     std::string orig_name;
@@ -2439,9 +2440,8 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
               }
               ASSERT_MSG(
                   inplace_call,
-                  fmt::format(
-                      "Somehow, no appropriate inplace call was generated for (set! {}) -> {}",
-                      call_info.orig_name, call_info.inplace_name));
+                  fmt::format("no appropriate inplace call was generated for (set! {}) -> {}",
+                              call_info.orig_name, call_info.inplace_name));
               stack.push_form_element(inplace_call, true);
               return;
             }

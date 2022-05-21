@@ -1953,6 +1953,7 @@
 (goal-src "pc/pckernel.gc" "settings")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
+(goal-src "pc/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
 
 (group-list "all-code"
   `(,@(reverse *all-gc*))
