@@ -241,6 +241,16 @@ class Interpreter {
                     const Object& rest,
                     const std::shared_ptr<EnvironmentObject>& env);
 
+  Object eval_make_string_hash_table(const Object& form,
+                                     Arguments& args,
+                                     const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_hash_table_try_ref(const Object& form,
+                                 Arguments& args,
+                                 const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_hash_table_set(const Object& form,
+                             Arguments& args,
+                             const std::shared_ptr<EnvironmentObject>& env);
+
   bool want_exit = false;
   bool disable_printing = false;
 

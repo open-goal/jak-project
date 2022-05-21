@@ -38,6 +38,9 @@
  * MACRO - a heap allocated object representing a GOOS macro
  * ENVIRONMENT - a heap allocated object representing a GOOS environment
  *
+ * STRING_HASH_TABLE - a heap allocated object representing a key-value table. Currently the keys
+ * can only be strings, like make-str-hash-table in MIT Scheme.
+ *
  */
 
 #include <string>
@@ -76,6 +79,7 @@ enum class ObjectType : u8 {
   LAMBDA,
   MACRO,
   ENVIRONMENT,
+  STRING_HASH_TABLE,
   INVALID
 };
 
@@ -162,6 +166,7 @@ class StringObject;
 class LambdaObject;
 class MacroObject;
 class ArrayObject;
+class StringHashTableObject;
 
 // Wrapper Object class for all objects
 class Object {
@@ -246,6 +251,7 @@ class Object {
   LambdaObject* as_lambda() const;
   MacroObject* as_macro() const;
   ArrayObject* as_array() const;
+  StringHashTableObject* as_string_hash_table() const;
 
   IntType& as_int() {
     if (type != ObjectType::INTEGER) {
@@ -299,6 +305,7 @@ class Object {
   bool is_array() const { return type == ObjectType::ARRAY; }
   bool is_env() const { return type == ObjectType::ENVIRONMENT; }
   bool is_macro() const { return type == ObjectType::MACRO; }
+  bool is_string_hash_table() const { return type == ObjectType::STRING_HASH_TABLE; }
 
   bool operator==(const Object& other) const;
   bool operator!=(const Object& other) const { return !((*this) == other); }
@@ -594,6 +601,39 @@ class ArrayObject : public HeapObject {
   Object& operator[](size_t idx) { return data.at(idx); }
 };
 
+class StringHashTableObject : public HeapObject {
+ public:
+  std::unordered_map<std::string, Object> data;
+  StringHashTableObject() = default;
+  static Object make_new() {
+    Object obj;
+    obj.type = ObjectType::STRING_HASH_TABLE;
+    obj.heap_obj = std::make_shared<StringHashTableObject>();
+    return obj;
+  }
+
+  std::string print() const override {
+    std::string result = "{";
+    for (const auto& kv : data) {
+      result += '(';
+      result += kv.first;
+      result += ' ';
+      result += kv.second.print();
+      result += ')';
+      result += ' ';
+    }
+    if (!data.empty()) {
+      result.pop_back();
+    }
+    result += '}';
+    return result;
+  }
+
+  std::string inspect() const override {
+    return "[string-hash-table] kind: string, data: " + print() + "\n";
+  }
+};
+
 Object build_list(const std::vector<Object>& objects);
 Object build_list(std::vector<Object>&& objects);
 
@@ -654,5 +694,13 @@ inline ArrayObject* Object::as_array() const {
     throw std::runtime_error("as_array called on a " + object_type_to_string(type) + " " + print());
   }
   return static_cast<ArrayObject*>(heap_obj.get());
+}
+
+inline StringHashTableObject* Object::as_string_hash_table() const {
+  if (type != ObjectType::STRING_HASH_TABLE) {
+    throw std::runtime_error("as_string_hash_table called on a " + object_type_to_string(type) +
+                             " " + print());
+  }
+  return static_cast<StringHashTableObject*>(heap_obj.get());
 }
 }  // namespace goos
