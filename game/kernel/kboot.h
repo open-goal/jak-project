@@ -20,6 +20,7 @@ struct MasterConfig {
   u16 volume;            // todo           12
 
   u16 territory;  // added. this is normally burnt onto the disc executable.
+  u16 disable_sound = 0; // added. disables all sound code.
 };
 
 enum class RuntimeExitStatus {

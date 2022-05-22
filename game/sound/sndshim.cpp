@@ -14,7 +14,9 @@ void snd_StartSoundSystem() {
 }
 
 void snd_StopSoundSystem() {
-  player.reset();
+  if (player) {
+    player.reset();
+  }
 }
 
 // dma is always instant, allocation not required
@@ -25,7 +27,11 @@ s32 snd_GetFreeSPUDMA() {
 void snd_FreeSPUDMA([[maybe_unused]] s32 channel) {}
 
 s32 snd_GetTick() {
-  return player->get_tick();
+  if (player) {
+    return player->get_tick();
+  } else {
+    return 0;
+  }
 }
 
 void snd_RegisterIOPMemAllocator(AllocFun, FreeFun) {
@@ -59,35 +65,49 @@ void snd_SetReverbDepth(s32, s32, s32) {}
 void snd_SetReverbType(s32, s32) {}
 
 void snd_SetPanTable(s16* table) {
-  player->set_pan_table((snd::vol_pair*)table);
+  if (player) {
+    player->set_pan_table((snd::vol_pair*)table);
+  }
 }
 
 void snd_SetPlayBackMode(s32 mode) {
-  player->set_playback_mode(mode);
+  if (player) {
+    player->set_playback_mode(mode);
+  }
 }
 
 s32 snd_SoundIsStillPlaying(s32 sound_handle) {
-  if (player->sound_still_active(sound_handle)) {
-    return sound_handle;
+  if (player) {
+    if (player->sound_still_active(sound_handle)) {
+      return sound_handle;
+    }
   }
 
   return 0;
 }
 
 void snd_StopSound(s32 handle) {
-  player->stop_sound(handle);
+  if (player) {
+    player->stop_sound(handle);
+  }
 }
 
 void snd_SetSoundVolPan(s32 sound_handle, s32 vol, s32 pan) {
-  player->set_sound_vol_pan(sound_handle, vol, pan);
+  if (player) {
+    player->set_sound_vol_pan(sound_handle, vol, pan);
+  }
 }
 
 void snd_SetMasterVolume(s32 group, s32 volume) {
-  player->set_master_volume(group, volume);
+  if (player) {
+    player->set_master_volume(group, volume);
+  }
 }
 
 void snd_UnloadBank(s32 bank_handle) {
-  player->unload_bank(bank_handle);
+  if (player) {
+    player->unload_bank(bank_handle);
+  }
 }
 
 void snd_ResolveBankXREFS() {
@@ -95,23 +115,35 @@ void snd_ResolveBankXREFS() {
 }
 
 void snd_ContinueAllSoundsInGroup(u8 group) {
-  player->continue_all_sounds_in_group(group);
+  if (player) {
+    player->continue_all_sounds_in_group(group);
+  }
 }
 
 void snd_PauseAllSoundsInGroup(u8 group) {
-  player->pause_all_sounds_in_group(group);
+  if (player) {
+    player->pause_all_sounds_in_group(group);
+  }
 }
 
 void snd_SetMIDIRegister(s32 sound_handle, u8 reg, u8 value) {
-  player->set_midi_reg(sound_handle, reg, value);
+  if (player) {
+    player->set_midi_reg(sound_handle, reg, value);
+  }
 }
 
 s32 snd_PlaySoundVolPanPMPB(s32 bank, s32 sound, s32 vol, s32 pan, s32 pm, s32 pb) {
-  return player->play_sound(bank, sound, vol, pan, pm, pb);
+  if (player) {
+    return player->play_sound(bank, sound, vol, pan, pm, pb);
+  } else {
+    return 0;
+  }
 }
 
 void snd_SetSoundPitchModifier(s32 sound, s32 mod) {
-  player->set_sound_pmod(sound, mod);
+  if (player) {
+    player->set_sound_pmod(sound, mod);
+  }
 }
 
 void snd_SetSoundPitchBend(s32 sound, s32 bend) {
@@ -120,11 +152,15 @@ void snd_SetSoundPitchBend(s32 sound, s32 bend) {
 }
 
 void snd_PauseSound(s32 sound_handle) {
-  player->pause_sound(sound_handle);
+  if (player) {
+    player->pause_sound(sound_handle);
+  }
 }
 
 void snd_ContinueSound(s32 sound_handle) {
-  player->continue_sound(sound_handle);
+  if (player) {
+    player->continue_sound(sound_handle);
+  }
 }
 
 void snd_AutoPitch(s32, s32, s32, s32) {
@@ -138,8 +174,12 @@ void snd_AutoPitchBend(s32, s32, s32, s32) {
 
 s32 snd_BankLoadEx(const char* filename, s32 offset, s32, s32) {
   // printf("snd_BankLoadEx\n");
-  std::filesystem::path path = filename;
-  return player->load_bank(path, offset);
+  if (player) {
+    std::filesystem::path path = filename;
+    return player->load_bank(path, offset);
+  } else {
+    return 0;
+  }
 }
 
 s32 snd_GetVoiceStatus(s32 voice) {
@@ -152,9 +192,13 @@ s32 snd_GetVoiceStatus(s32 voice) {
 }
 
 void snd_keyOnVoiceRaw(u32 core, u32 voice_id) {
-  voice->key_on();
+  if (voice) {
+    voice->key_on();
+  }
 }
 
 void snd_keyOffVoiceRaw(u32 core, u32 voice_id) {
-  voice->key_off();
+  if (voice) {
+    voice->key_off();
+  }
 }

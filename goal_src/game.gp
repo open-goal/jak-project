@@ -1888,7 +1888,6 @@
  "debug/anim-tester.gc"
  "debug/viewer.gc"
  "debug/part-tester.gc"
- "debug/default-menu.gc"
  )
 
 (goal-src-sequence
@@ -1954,6 +1953,9 @@
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
 (goal-src "pc/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
+
+;; the debug menu is modified to include PC specific options:
+(goal-src "engine/debug/default-menu.gc" "anim-tester-x" "part-tester")
 
 (group-list "all-code"
   `(,@(reverse *all-gc*))

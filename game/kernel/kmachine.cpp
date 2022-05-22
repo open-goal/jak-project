@@ -135,6 +135,12 @@ void InitParms(int argc, const char* const* argv) {
       MasterUseKernel = false;
     }
 
+    // an added mode to allow booting without sound for testing
+    if (arg == "-nosound") {
+      Msg(6, "dkernel: no sound mode\n");
+      masterConfig.disable_sound = true;
+    }
+
     // GOAL Settings
     // ----------------------------
 
@@ -239,10 +245,17 @@ void InitIOP() {
   // we begin putting together a boot command for OVERLORD, the IOP driver, which must know the data
   // source and the name of the boot splash screen of the game.
   char overlord_boot_command[256];
-  kstrcpy(overlord_boot_command, init_types[(int)isodrv]);
-  char* cmd = overlord_boot_command + strlen(overlord_boot_command) + 1;
+  char* cmd = overlord_boot_command;
+  kstrcpy(cmd, init_types[(int)isodrv]);
+  cmd = cmd + strlen(cmd) + 1;
   kstrcpy(cmd, "SCREEN1.USA");
-  auto len = strlen(cmd);
+  cmd = cmd + strlen(cmd) + 1;
+  if (masterConfig.disable_sound) {
+    kstrcpy(cmd, "-nosound");
+    cmd = cmd + strlen(cmd) + 1;
+  }
+
+  int total_len = cmd - overlord_boot_command;
 
   if (modsrc == fakeiso) {
     // load from network
@@ -274,8 +287,7 @@ void InitIOP() {
     sceSifLoadModule("host0:/usr/home/src/989snd10/iop/989ERR.IRX", 0, nullptr);
 
     lg::debug("Initializing CD library...");
-    auto rv = sceSifLoadModule("host0:binee/overlord.irx", cmd + len + 1 - overlord_boot_command,
-                               overlord_boot_command);
+    auto rv = sceSifLoadModule("host0:binee/overlord.irx", total_len, overlord_boot_command);
     if (rv < 0) {
       MsgErr("loading overlord.irx failed\n");
     }
@@ -306,8 +318,8 @@ void InitIOP() {
     }
 
     lg::debug("Initializing CD library in ISO_CD mode...");
-    auto rv = sceSifLoadModule("cdrom0:\\\\DRIVERS\\\\OVERLORD.IRX;1",
-                               cmd + len + 1 - overlord_boot_command, overlord_boot_command);
+    auto rv =
+        sceSifLoadModule("cdrom0:\\\\DRIVERS\\\\OVERLORD.IRX;1", total_len, overlord_boot_command);
     if (rv < 0) {
       MsgErr("loading overlord.irx failed\n");
     }
