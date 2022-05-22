@@ -1706,7 +1706,7 @@ Object Interpreter::eval_make_string_hash_table(const Object& form,
  */
 Object Interpreter::eval_hash_table_set(const Object& form,
                                         Arguments& args,
-                                        const std::shared_ptr<EnvironmentObject>& env) {
+                                        const std::shared_ptr<EnvironmentObject>& /*env*/) {
   vararg_check(form, args, {ObjectType::STRING_HASH_TABLE, ObjectType::STRING, {}}, {});
   args.unnamed.at(0).as_string_hash_table()->data[args.unnamed.at(1).as_string()->data] =
       args.unnamed.at(2);
@@ -1718,7 +1718,7 @@ Object Interpreter::eval_hash_table_set(const Object& form,
  */
 Object Interpreter::eval_hash_table_try_ref(const Object& form,
                                             Arguments& args,
-                                            const std::shared_ptr<EnvironmentObject>& env) {
+                                            const std::shared_ptr<EnvironmentObject>& /*env*/) {
   vararg_check(form, args, {ObjectType::STRING_HASH_TABLE, ObjectType::STRING}, {});
   const auto* table = args.unnamed.at(0).as_string_hash_table();
   const auto& it = table->data.find(args.unnamed.at(1).as_string()->data);

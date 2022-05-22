@@ -16,6 +16,9 @@ u32 sceSdGetSwitch(u32 entry) {
 }
 
 u32 sceSdGetAddr(u32 entry) {
+  if (!voice) {
+    return 0;
+  }
   // u32 core = entry & 1;
   // u32 voice->id = (entry >> 1) & 0x1f;
   // u32 reg = entry & ~0x3f;
@@ -30,6 +33,9 @@ void sceSdSetSwitch(u32 entry, u32 value) {
 }
 
 void sceSdSetAddr(u32 entry, u32 value) {
+  if (!voice) {
+    return;
+  }
   [[maybe_unused]] u32 core = entry & 1;
   [[maybe_unused]] u32 voice_id = (entry >> 1) & 0x1f;
   u32 reg = entry & ~0x3f;
@@ -45,6 +51,9 @@ void sceSdSetAddr(u32 entry, u32 value) {
 }
 
 void sceSdSetParam(u32 entry, u32 value) {
+  if (!voice) {
+    return;
+  }
   [[maybe_unused]] u32 core = entry & 1;
   [[maybe_unused]] u32 voice_id = (entry >> 1) & 0x1f;
   u32 reg = entry & ~0x3f;
