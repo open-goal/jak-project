@@ -41,14 +41,14 @@ def main():
     # sg_locations = {}
     for source_file in all_non_import_files:
         sgs = get_sgs(source_file)
-        deps = []
+        deps = set()
         for sg in sgs:
             if sg not in import_map:
                 print("missing: ", sg)
             else:
-                deps.append(import_map[sg])
+                deps.add(import_map[sg])
         if len(deps) > 0:
-            output_json[os.path.basename(source_file)[:-3]] = deps
+            output_json[os.path.basename(source_file)[:-3]] = list(deps)
             to_modify[source_file] = deps
 
     # uncomment to modify files
@@ -56,11 +56,18 @@ def main():
     #     print("modifying ", file, deps)
     #     with open(file, "r") as f:
     #         lines = f.readlines()
-    #     to_add = ["\n"]
+    #     to_add = [] # ["\n"]
     #     for dep in deps:
     #         to_add.append("(import \"{}\")\n".format(dep))
     #     print(to_add)
-    #     lines[6:6] = to_add
+    #     added = False
+    #     for i, line in enumerate(lines):
+    #         if ";; decomp begins" in line.lower():
+    #             lines[i+1:i+1] = to_add
+    #             added = True
+    #             break
+    #     if not added:
+    #         lines[6:6] = to_add
     #     assert lines[1] == "(in-package goal)\n"
     #     with open(file, "w") as f:
     #         f.writelines(lines)
