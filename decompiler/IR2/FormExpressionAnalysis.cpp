@@ -3466,7 +3466,7 @@ Form* try_rewrite_as_pppointer_to_process(CondNoElseElement* value,
 //   )
 // (ja-group :chan 0)
 Form* try_rewrite_as_ja_group(CondNoElseElement* value,
-                              FormStack& stack,
+                              FormStack& /*stack*/,
                               FormPool& pool,
                               const Env& env) {
   if (value->entries.size() != 1) {
@@ -4152,7 +4152,7 @@ FormElement* ConditionElement::make_equal_check_generic(const Env& env,
           macro_args.push_back(source_forms.at(1));
 
           auto jagroup = source_forms.at(0)->try_as_element<GenericElement>();
-          for (int i = 1; i < jagroup->elts().size(); ++i) {
+          for (size_t i = 1; i < jagroup->elts().size(); ++i) {
             macro_args.push_back(jagroup->elts().at(i));
           }
           return pool.alloc_element<GenericElement>(
