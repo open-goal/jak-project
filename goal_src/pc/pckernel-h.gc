@@ -254,10 +254,10 @@
    (hinttitles? symbol) ;; if on, non-cutscene subtitles will show up
    (subtitle-language pc-subtitle-lang) ;; language for subtitles
    (subtitle-speaker? symbol) ;; #f (force off), #t (force on), auto (on for offscreen)
-   (first-camera-hflip? symbol) ;; first-person horizontal camera flipped
-   (first-camera-vflip? symbol) ;; first-person vertical camera flipped
-   (third-camera-hflip? symbol) ;; third-person horizontal camera flipped
-   (third-camera-vflip? symbol) ;; third-person vertical camera flipped
+   (first-camera-h-inverted? symbol) ;; first-person horizontal camera inverted
+   (first-camera-v-inverted? symbol) ;; first-person vertical camera inverted
+   (third-camera-h-inverted? symbol) ;; third-person horizontal camera inverted
+   (third-camera-v-inverted? symbol) ;; third-person vertical camera inverted
    (money-starburst? symbol) ;; add a starburst to the money
 
    (bingo pc-bingo-info :inline) ;; bingo integration. does nothing for now.
@@ -284,6 +284,7 @@
     (reset-gfx (_type_) none)
     (reset-ps2 (_type_) none)
     (reset-misc (_type_) none)
+    (reset-original-camera (_type_) none)
     (reset-extra (_type_) none)
     (draw (_type_ dma-buffer) none)
     (set-display-mode! (_type_ symbol) int)
@@ -427,11 +428,17 @@
   (set! (-> obj hinttitles?) #t)
   (set! (-> obj subtitle-speaker?) 'auto)
   (set! (-> obj subtitle-language) (pc-subtitle-lang english))
-  (set! (-> obj first-camera-hflip?) #f)
-  (set! (-> obj first-camera-vflip?) #f)
-  (set! (-> obj third-camera-hflip?) #f)
-  (set! (-> obj third-camera-vflip?) #f)
+  (reset-original-camera obj)
   (set! (-> obj money-starburst?) #f)
+  (none))
+
+(defmethod reset-original-camera pc-settings ((obj pc-settings))
+  "Set the original game's camera controls"
+  
+  (set! (-> obj first-camera-h-inverted?) #f) ;; first-person horizontal is NOT inverted in original game
+  (set! (-> obj first-camera-v-inverted?) #t) ;; first-person vertical IS inverted in original game
+  (set! (-> obj third-camera-h-inverted?) #t) ;; third person horizontal IS inverted in original game
+  (set! (-> obj third-camera-v-inverted?) #t) ;; third-person vertical IS inverted in original game
   (none))
 
 (defmethod reset-extra pc-settings ((obj pc-settings))
