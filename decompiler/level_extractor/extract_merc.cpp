@@ -516,10 +516,7 @@ void handle_frag(const std::string& debug_name,
  * Build OpenGL index list from a single GIF packet.
  * TODO: should check we aren't putting in x x R x x R
  */
-std::vector<u32> index_list_from_packet(u32 vtx_ptr,
-                                        u32 nloop,
-                                        const MercMemory& memory,
-                                        const std::vector<MercUnpackedVtx>& vertices) {
+std::vector<u32> index_list_from_packet(u32 vtx_ptr, u32 nloop, const MercMemory& memory) {
   std::vector<u32> result;
   u32 prev_vtx = UINT32_MAX;
 
@@ -799,7 +796,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
     for (size_t i = first_draw_to_update; i < result.draws.size(); i++) {
       auto& draw = result.draws[i];
       draw.indices = index_list_from_packet(draw.vtx_offset, draw.vtx_nloop,
-                                            merc_memories[memory_buffer_toggle], result.vertices);
+                                            merc_memories[memory_buffer_toggle]);
     }
 
     memory_buffer_toggle ^= 1;
