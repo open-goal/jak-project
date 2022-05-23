@@ -443,6 +443,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; a map for art definitions used by art loading code.
-(define *art-info* '())
+(define *art-info* (make-string-hash-table))
 
 

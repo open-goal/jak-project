@@ -1769,6 +1769,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "logior!";
     case FixedOperatorKind::LOGXOR:
       return "logxor";
+    case FixedOperatorKind::LOGXOR_IN_PLACE:
+      return "logxor!";
     case FixedOperatorKind::LOGNOR:
       return "lognor";
     case FixedOperatorKind::LOGNOT:

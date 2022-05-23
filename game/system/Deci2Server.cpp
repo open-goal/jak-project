@@ -26,6 +26,8 @@ Deci2Server::~Deci2Server() {
   // Cleanup the accept thread
   if (accept_thread_running) {
     kill_accept_thread = true;
+    // NOTE - if we don't want to wait for the roundtrip timeout to exit the game gracefully
+    // we should just terminate the thread forcefully
     accept_thread.join();
     accept_thread_running = false;
   }
@@ -43,7 +45,8 @@ void Deci2Server::post_init() {
 void Deci2Server::accept_thread_func() {
   socklen_t addr_len = sizeof(addr);
   while (!kill_accept_thread) {
-    accepted_socket = accept_socket(listening_socket, (sockaddr*)&addr, &addr_len);
+    accepted_socket = select_and_accept_socket(listening_socket, (sockaddr*)&addr, &addr_len,
+                                               100000);  // 0.1 second timeout
     if (accepted_socket >= 0) {
       set_socket_timeout(accepted_socket, 100000);
       u32 versions[2] = {versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR};
