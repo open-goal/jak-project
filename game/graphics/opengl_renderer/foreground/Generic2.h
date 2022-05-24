@@ -14,7 +14,6 @@ class Generic2 : public BucketRenderer {
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
   void init_shaders(ShaderLibrary& shaders) override;
-  // void init_shaders(ShaderLibrary& shaders) override;
 
   struct Vertex {
     math::Vector<float, 3> xyz;

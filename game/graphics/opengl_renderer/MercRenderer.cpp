@@ -59,9 +59,11 @@ void MercRenderer::render(DmaFollower& dma,
   m_direct.flush_pending(render_state, prof);
 }
 
+namespace {
 bool tag_is_nothing_next(const DmaFollower& dma) {
   return dma.current_tag().kind == DmaTag::Kind::NEXT && dma.current_tag().qwc == 0 &&
          dma.current_tag_vif0() == 0 && dma.current_tag_vif1() == 0;
+}
 }
 
 void MercRenderer::unpack32(const VifCodeUnpack& up, const u8* data, u32 imm) {
@@ -150,6 +152,11 @@ void MercRenderer::handle_merc_chain(DmaFollower& dma,
 
   auto init = dma.read_and_advance();
 
+  // skip pc port stuff
+  if (init.vifcode1().kind == VifCode::Kind::PC_PORT) {
+    dma.read_and_advance();
+    init = dma.read_and_advance();
+  }
   ASSERT(init.vifcode0().kind == VifCode::Kind::STROW);
   ASSERT(init.size_bytes == 16);
   m_vif.row[0] = init.vif1();

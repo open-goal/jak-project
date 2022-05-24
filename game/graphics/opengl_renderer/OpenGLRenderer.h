@@ -48,6 +48,8 @@ class OpenGLRenderer {
   void draw_renderer_selection_window();
   void finish_screenshot(const std::string& output_name, int px, int py, int x, int y);
 
+  void init_merc_renderer(const std::string& name, BucketId id);
+
   template <typename T, class... Args>
   T* init_bucket_renderer(const std::string& name,
                           BucketCategory cat,
@@ -60,12 +62,16 @@ class OpenGLRenderer {
     return ret;
   }
 
+
+
   SharedRenderState m_render_state;
   Profiler m_profiler;
   SmallProfiler m_small_profiler;
 
   std::array<std::unique_ptr<BucketRenderer>, (int)BucketId::MAX_BUCKETS> m_bucket_renderers;
   std::array<BucketCategory, (int)BucketId::MAX_BUCKETS> m_bucket_categories;
+
+  std::vector<RenderMux*> m_mercs;
 
   std::array<float, (int)BucketCategory::MAX_CATEGORIES> m_category_times;
   FullScreenDraw m_blackout_renderer;
