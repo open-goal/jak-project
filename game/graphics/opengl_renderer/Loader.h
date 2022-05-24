@@ -33,6 +33,10 @@ class Loader {
     std::vector<GLuint> shrub_vertex_data;
     GLuint collide_vertices;
 
+    GLuint merc_vertices;
+    GLuint merc_indices;
+    std::unordered_map<std::string, const tfrag3::MercModel*> merc_model_lookup;
+
     // internal load state
     bool tie_opengl_created = false;
     bool tie_verts_done = false;
@@ -73,6 +77,7 @@ class Loader {
   bool init_tfrag(Timer& timer, LevelData& data);
   bool init_shrub(Timer& timer, LevelData& data);
   bool init_collide(Timer& timer, LevelData& data);
+  bool init_merc(Timer& timer, LevelData& data);
 
   // used by game and loader thread
   std::unordered_map<std::string, Level> m_initializing_tfrag3_levels;

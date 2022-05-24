@@ -498,6 +498,23 @@ bool Loader::init_collide(Timer& /*timer*/, LevelData& data) {
   return true;
 }
 
+bool Loader::init_merc(Timer& /*timer*/, LevelData& data) {
+  glGenBuffers(1, &data.merc_indices);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.merc_indices);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.level->merc_data.indices.size() * sizeof(u32),
+               data.level->merc_data.indices.data(), GL_STATIC_DRAW);
+
+  glGenBuffers(1, &data.merc_vertices);
+  glBindBuffer(GL_ARRAY_BUFFER, data.merc_vertices);
+  glBufferData(GL_ARRAY_BUFFER, data.level->merc_data.vertices.size() * sizeof(tfrag3::MercVertex),
+               data.level->merc_data.vertices.data(), GL_STATIC_DRAW);
+
+  for (auto& model : data.level->merc_data.models) {
+    data.merc_model_lookup[model.name] = &model;
+  }
+  return true;
+}
+
 bool Loader::upload_textures(Timer& timer, LevelData& data, TexturePool& texture_pool) {
   // try to move level from initializing to initialized:
 
@@ -608,12 +625,14 @@ void Loader::update(TexturePool& texture_pool) {
           if (init_tfrag(loader_timer, lev.data)) {
             if (init_shrub(loader_timer, lev.data)) {
               if (init_collide(loader_timer, lev.data)) {
-                // we're done! lock before removing from loaded.
-                lk.lock();
-                it->second.data.load_id = m_id++;
+                if (init_merc(loader_timer, lev.data)) {
+                  // we're done! lock before removing from loaded.
+                  lk.lock();
+                  it->second.data.load_id = m_id++;
 
-                m_loaded_tfrag3_levels[name] = std::move(lev);
-                m_initializing_tfrag3_levels.erase(it);
+                  m_loaded_tfrag3_levels[name] = std::move(lev);
+                  m_initializing_tfrag3_levels.erase(it);
+                }
               }
             }
           }
@@ -668,6 +687,8 @@ void Loader::update(TexturePool& texture_pool) {
           }
 
           glDeleteBuffers(1, &lev.second.data.collide_vertices);
+          glDeleteBuffers(1, &lev.second.data.merc_vertices);
+          glDeleteBuffers(1, &lev.second.data.merc_indices);
 
           m_loaded_tfrag3_levels.erase(lev.first);
           break;

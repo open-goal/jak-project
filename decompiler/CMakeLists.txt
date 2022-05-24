@@ -53,6 +53,7 @@ add_library(
 
         level_extractor/BspHeader.cpp
         level_extractor/extract_collide_frags.cpp
+        level_extractor/extract_common.cpp
         level_extractor/extract_level.cpp
         level_extractor/extract_merc.cpp
         level_extractor/extract_tfrag.cpp

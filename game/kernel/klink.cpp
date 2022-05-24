@@ -9,6 +9,7 @@
 #include <cstring>
 #include <cstdio>
 #include <common/versions.h>
+#include "common/log/log.h"
 #include "klink.h"
 #include "fileio.h"
 #include "kscheme.h"
@@ -778,6 +779,7 @@ void link_control::finish(bool jump_from_c_to_goal) {
   *EnableMethodSet = *EnableMethodSet + m_keep_debug;
 
   ObjectFileHeader* ofh = m_link_block_ptr.cast<ObjectFileHeader>().c();
+  lg::info("link finish: {}", m_object_name);
   if (ofh->object_file_version == 3) {
     // todo check function type of entry
 

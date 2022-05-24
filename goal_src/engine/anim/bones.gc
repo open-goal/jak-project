@@ -330,7 +330,7 @@
   (let ((a2-1 (the-as bone-memory (+ 16 (scratchpad-object int))))
         (v1-2 (the-as bone-memory (+ 16 (scratchpad-object int))))
         )
-    
+
     ;; layout joints, bones, and outputs
     (set! (-> a2-1 work layout joint 0) (the-as joint (+ 256 (scratchpad-object int))))
     (set! (-> a2-1 work layout joint 1) (the-as joint (+ 4864 (scratchpad-object int))))
@@ -338,7 +338,7 @@
     (set! (-> a2-1 work layout bone 1) (the-as bone (+ 5888 (scratchpad-object int))))
     (set! (-> a2-1 work layout output 0) (the-as uint (+ 2816 (scratchpad-object int))))
     (set! (-> a2-1 work layout output 1) (the-as uint (+ 7424 (scratchpad-object int))))
-    
+
     ;; set up work
     (set! (-> v1-2 work next-tag dma) (new 'static 'dma-tag :id (dma-tag-id next)))
     (set! (-> v1-2 work next-tag vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
@@ -347,13 +347,13 @@
     (set! (-> v1-2 work sink-group) arg1)
     (set! (-> v1-2 work next-merc) (the-as dma-packet 0))
     )
-  
+
   ;; reset globals
   (let ((v1-3 *merc-globals*))
     (set! (-> v1-3 first) (the-as uint 0))
     (set! (-> v1-3 next) (the-as (pointer uint32) 0))
     )
-  
+
   ;; upload bones program.
   (#unless PC_PORT
            (let ((gp-0 *vu0-dma-list*))
@@ -373,7 +373,7 @@
              (dma-buffer-send-chain (the-as dma-bank-source #x10008000) gp-0)
              )
            )
-  
+
   ;; we will use "run" in the shadow queue. Reset that (but don't increment yet, just in case we don't draw shadows)
   (let ((gp-1 *shadow-queue*))
     (if (>= (-> gp-1 cur-run) (the-as uint 15))
@@ -476,11 +476,11 @@
           (.lvf vf25 (&-> v1-13 vector 0 quad))
           (.lvf vf26 (&-> v1-13 vector 1 quad))
           (.lvf vf27 (&-> v1-13 vector 2 quad))
-          
+
         (.mov v1-14 vf27)
         ;; hack??
-        
-        
+
+
         (bones-mtx-calc
           (the-as int (-> s4-0 matrix-area))
           (the-as pointer (-> s4-0 joints))
@@ -889,7 +889,7 @@
                     ; (let ((vec (the vector (+ (the-as int a3-2) 16))))
                     ;   (format 0 "#x~X #x~X mat ~D: ~f ~f ~f~%" a0-55 a3-2 a1-17 (-> vec x) (-> vec y) (-> vec z))
                     ;   )
-                    
+
                     )
                   (set! (-> (the-as dma-packet a0-55) vif0) (new 'static 'vif-tag))
                   (set! (-> (the-as dma-packet a0-55) vif1) (new 'static 'vif-tag))
@@ -936,6 +936,11 @@
   `(set! (-> (the-as (pointer uint32) ,addr)) ,val)
   )
 
+(defun pc-draw-bones ((dc draw-control))
+  ;; (format 0 "pcdb: ~A~%" (-> dc mgeo name))
+  (none)
+  )
+
 (defun draw-bones ((arg0 draw-control) (dma-buf dma-buffer) (arg2 float))
   "Main draw function for all bone-related renderers. Will set up merc, generic and shadow.
    and also add the bones to the calculation list."
@@ -943,7 +948,7 @@
     (used-merc int) (used-mercneric int) (effect-idx int) (sv-144 ripple-control))
   (rlet ((vf1 :class vf) (vf2 :class vf) (vf3 :class vf) (vf4 :class vf) (vf5 :class vf) (vf6 :class vf)
          (vf7 :class vf) (vf8 :class vf) (vf9 :class vf) (acc :class vf))
-        
+
     ;; compute the number of bones. I believe this num-joints doesn't count align/prejoint/main, so each needs a bone
     (let* ((num-bones (+ (-> arg0 mgeo num-joints) 3))
            ;; we'll use 128-bytes/bone.
@@ -951,11 +956,11 @@
            ;; temp work
            (spr-work (scratchpad-object terrain-context))
            )
-      
+
       ;;;;;;;;;;;;;;;;;;;;;;;;;
       ;; BONE CALC SETUP
       ;;;;;;;;;;;;;;;;;;;;;;;;;
-      
+
       ;; next, grab some DMA data.
       ;; we'll also use this for storing bone calculation entries.
       (let* ((dma-data-start (-> dma-buf base))
@@ -965,14 +970,14 @@
              ;; we won't calculate them now, but instead we'll tell the *bone-calculation-list* to put them here later.
              (matrix-data (the-as object (&+ dma-data-start 64)))
              )
-        
+
         ;; align the matrix data to 64 bytes (we know it is at least 16 byte aligned)
         (let ((a2-1 (logand (the-as int matrix-data) 48)))
           (b! (zero? a2-1) cfg-2 :delay (nop!))
           (set! matrix-data (&- (&+ (the-as pointer matrix-data) 64) (the-as uint a2-1)))
           )
         (label cfg-2)
-        
+
         ;; start recording perf stats.
         ;; this just counts the stats for adding the calculation to the linked list.
         ;; which is really fast and not worth profiling.
@@ -989,7 +994,7 @@
           (set! (-> a2-6 bone-ptr) (-> arg0 skeleton bones))
           (set! (-> a2-6 num-bones) (the-as uint num-bones))
           )
-        
+
         ;; Add the bone calculation to the list, to be done later.
         ;; this will write to both the "matrix data" and the bones array.
         (let ((t0-2 matrix-data)
@@ -1021,7 +1026,7 @@
         (&+ bone-calc-entry 48)
         ;; end stat collection
         (read! (-> *perf-stats* data (perf-stat-bucket bones)))
-        
+
         ;; set up the dma buffer
         (let ((s2-0 (the-as object (+ (the-as uint matrix-data) bone-data-size))))
           (let ((a0-2 (shl (the-as int s2-0) 32)))
@@ -1030,7 +1035,7 @@
                   )
             ;; NOTE: does this work correctly for the upper 64 bits??
             )
-          
+
           ;; only data-format 1 is supported.
           (when (= (-> arg0 data-format) 1)
             ;; lights should be converted to a single vu-lights already, by the drawing code.
@@ -1049,28 +1054,28 @@
               (.lvf vf3 (&-> v1-6 direction 2 quad))
               ;;(.vcallms 54)
               ;; TODO!
-              
+
                 ;mulax.xyzw ACC, vf01, vf04
                 (.mul.x.vf acc vf1 vf4)
                 ;madday.xyzw ACC, vf02, vf04
                 (.add.mul.y.vf acc vf2 vf4 acc)
                 ;maddz.xyzw vf07, vf03, vf04
                 (.add.mul.z.vf vf7 vf3 vf4 acc)
-                
+
                 ;mulax.xyzw ACC, vf01, vf05
                 (.mul.x.vf acc vf1 vf5)
                 ;madday.xyzw ACC, vf02, vf05
                 (.add.mul.y.vf acc vf2 vf5 acc)
                 ;maddz.xyzw vf08, vf03, vf05
                 (.add.mul.z.vf vf8 vf3 vf5 acc)
-                
+
                 ;mulax.xyzw ACC, vf01, vf06
                 (.mul.x.vf acc vf1 vf6)
                 ;madday.xyzw ACC, vf02, vf06 :e
                 (.add.mul.y.vf acc vf2 vf6 acc)
                 ;maddz.xyzw vf09, vf03, vf06
                 (.add.mul.z.vf vf9 vf3 vf6 acc)
-                
+
               (let ((a1-9 (-> v1-6 color 0 quad)))
                 (let ((a2-14 (-> v1-6 color 1 quad)))
                   (let ((a3-11 (-> v1-6 color 2 quad)))
@@ -1088,22 +1093,22 @@
               (.svf (&-> a0-7 direction 2 quad) vf9)
               (set! (-> a0-7 direction 1 w) (the-as float 0))
               )
-            
+
             ;; the drawable system's culling already knows if we need clipping or not,
             ;; we just trust it.
-            (set! (-> *merc-bucket-info* needs-clip) 
+            (set! (-> *merc-bucket-info* needs-clip)
                   (if (logtest? (-> arg0 status) (draw-status needs-clip))
                       1
                       0
                       )
                   )
-            
+
             ;; Now, we need to decide on merc settings. Default to nothing.
             (set! used-merc 0)
             (set! used-mercneric 0)
             (set! (-> *merc-bucket-info* need-mercprime-if-merc) 0)
             (set! (-> *merc-bucket-info* must-use-mercneric-for-clip) 0)
-            
+
             (when (logtest? (-> arg0 status) (draw-status needs-clip))
               ;; we can either clip with "mercprime" (part of merc), or fall back to generic.
               ;; the generic approach always works, but is slower, so we try to use mercprime.
@@ -1121,13 +1126,13 @@
                   )
                 )
               )
-            
+
             ;; grab the geometry at the appropriate level of detail.
             (let ((geom (-> arg0 lod-set lod (-> arg0 cur-lod) geo)))
               ;; loop over effects, and set them up/pick renderers.
               (set! effect-idx 0)
               (while (< effect-idx (the-as int (-> geom header effect-count)))
-                
+
                 ;; try texture scroll
                 (when (logtest? (-> geom effect effect-idx effect-bits) 1)
                   (let* ((v1-35 (-> geom effect effect-idx extra-info))
@@ -1139,7 +1144,7 @@
                         )
                     )
                   )
-                
+
                 ;; try ripple
                 (when (logtest? (-> geom effect effect-idx effect-bits) 4)
                   ;; TODO.
@@ -1182,8 +1187,8 @@
                       )
                     )
                   )
-                
-                
+
+
                 (cond
                   ((nonzero? (-> arg0 death-timer))
                    ;; if using hte death effect, use mercneric always!
@@ -1208,7 +1213,7 @@
                        (if (< f0-9 0.0)
                            (set! f0-9 0.0)
                            )
-                       
+
                        (cond
                          ;; do envmap stuff if we are using generic anyway, or our strength is > 0.
                          ((or (nonzero? (-> *merc-bucket-info* must-use-mercneric-for-clip)) (< 0.0 f0-9))
@@ -1262,7 +1267,7 @@
                     used-merc
                     )
                   )
-                
+
                 ;; HACK just use merc if we aren't using generic.
                 (#unless USE_GENERIC
                          (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
@@ -1283,12 +1288,12 @@
                              )
                            )
                          )
-                
+
                 (set! effect-idx (+ effect-idx 1))
                 ) ;; end effect loop
-              
+
               ;; draw generic!
-              ;; note: this doesn't do the fully draw, there's some other stuff in process-drawable.gc to actually execute.  
+              ;; note: this doesn't do the fully draw, there's some other stuff in process-drawable.gc to actually execute.
               (#when USE_GENERIC
                 (when (nonzero? used-mercneric)
                   (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
@@ -1297,7 +1302,7 @@
                     )
                   )
                 )
-              
+
               ;; draw shadow!
               ;; TODO
               (when (-> arg0 shadow)
@@ -1306,10 +1311,10 @@
                   (set! (-> dma-buf base) (the-as pointer s2-0))
                   )
                 )
-            
+
               ;; draw merc!
-              
-              ;; 
+
+              ;;
               (when (nonzero? used-merc)
                 (when (logtest? *vu1-enable-user* (vu1-renderer-mask merc))
                   (when (= (-> arg0 cur-lod) (-> arg0 lod-set max-lod))
@@ -1332,11 +1337,12 @@
                       (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 32 17))
                       (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 35 20))
                       )
+                  (pc-draw-bones arg0)
                   (set! s2-0 (-> dma-buf base))
                   )
                 )
               ) ;; end geom processing
-            
+
             ;; advance death timer.
             (when (nonzero? (-> arg0 death-timer))
               (when (not (paused?))
