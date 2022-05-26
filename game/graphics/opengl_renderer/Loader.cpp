@@ -40,7 +40,7 @@ const Loader::LevelData* Loader::get_tfrag3_level(const std::string& level_name)
     return nullptr;
   } else {
     existing->second.frames_since_last_used = 0;
-    return &existing->second.data;
+    return &existing->second;
   }
 }
 
@@ -84,7 +84,7 @@ std::vector<Loader::LevelData*> Loader::get_in_use_levels() {
 
   for (auto& lev : m_loaded_tfrag3_levels) {
     if (lev.second.frames_since_last_used < 5) {
-      result.push_back(&lev.second.data);
+      result.push_back(&lev.second);
     }
   }
   return result;
@@ -151,8 +151,8 @@ void Loader::loader_thread() {
     // grab the lock again
     lk.lock();
     // move this level to "initializing" state.
-    m_initializing_tfrag3_levels[lev].data = {};  // reset load state
-    m_initializing_tfrag3_levels[lev].data.level = std::move(result);
+    m_initializing_tfrag3_levels[lev] = {};  // reset load state
+    m_initializing_tfrag3_levels[lev].level = std::move(result);
     m_level_to_load = "";
     m_file_load_done_cv.notify_all();
   }
@@ -168,10 +168,14 @@ void Loader::load_common(TexturePool& tex_pool, const std::string& name) {
 
   auto decomp_data = compression::decompress_zstd(data.data(), data.size());
   Serializer ser(decomp_data.data(), decomp_data.size());
-  m_common_level.serialize(ser);
-  for (auto& tex : m_common_level.textures) {
+  m_common_level.level = std::make_unique<tfrag3::Level>();
+  m_common_level.level->serialize(ser);
+  for (auto& tex : m_common_level.level->textures) {
     add_texture(tex_pool, tex, true);
   }
+
+  Timer tim;
+  init_merc(tim, m_common_level);
 }
 
 /*!
@@ -499,6 +503,8 @@ bool Loader::init_collide(Timer& /*timer*/, LevelData& data) {
 }
 
 bool Loader::init_merc(Timer& /*timer*/, LevelData& data) {
+  fmt::print("INIT MERC for {}, {}\n", data.level->level_name, data.level->merc_data.models.size());
+
   glGenBuffers(1, &data.merc_indices);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.merc_indices);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.level->merc_data.indices.size() * sizeof(u32),
@@ -511,6 +517,8 @@ bool Loader::init_merc(Timer& /*timer*/, LevelData& data) {
 
   for (auto& model : data.level->merc_data.models) {
     data.merc_model_lookup[model.name] = &model;
+    m_all_merc_models[model.name].push_back({&model, data.load_id});
+    fmt::print("added merc model for {}\n", model.name);
   }
   return true;
 }
@@ -615,20 +623,21 @@ void Loader::update(TexturePool& texture_pool) {
     if (it != m_initializing_tfrag3_levels.end()) {
       std::string name = it->first;
       auto& lev = it->second;
+      it->second.load_id = m_id++;
+
       // we're the only place that erases, so it's okay to unlock and hold a reference
       lk.unlock();
-      if (!lev.data.tfrag_load_done) {
+      if (!lev.tfrag_load_done) {
         did_gpu_stuff = true;
       }
-      if (upload_textures(loader_timer, lev.data, texture_pool)) {
-        if (init_tie(loader_timer, lev.data)) {
-          if (init_tfrag(loader_timer, lev.data)) {
-            if (init_shrub(loader_timer, lev.data)) {
-              if (init_collide(loader_timer, lev.data)) {
-                if (init_merc(loader_timer, lev.data)) {
+      if (upload_textures(loader_timer, lev, texture_pool)) {
+        if (init_tie(loader_timer, lev)) {
+          if (init_tfrag(loader_timer, lev)) {
+            if (init_shrub(loader_timer, lev)) {
+              if (init_collide(loader_timer, lev)) {
+                if (init_merc(loader_timer, lev)) {
                   // we're done! lock before removing from loaded.
                   lk.lock();
-                  it->second.data.load_id = m_id++;
 
                   m_loaded_tfrag3_levels[name] = std::move(lev);
                   m_initializing_tfrag3_levels.erase(it);
@@ -644,19 +653,19 @@ void Loader::update(TexturePool& texture_pool) {
   if (!did_gpu_stuff) {
     // try to remove levels.
     if (m_loaded_tfrag3_levels.size() >= 3) {
-      for (const auto& lev : m_loaded_tfrag3_levels) {
+      for (auto& lev : m_loaded_tfrag3_levels) {
         if (lev.second.frames_since_last_used > 180) {
           std::unique_lock<std::mutex> lk(texture_pool.mutex());
           fmt::print("------------------------- PC unloading {}\n", lev.first);
-          for (size_t i = 0; i < lev.second.data.level->textures.size(); i++) {
-            auto& tex = lev.second.data.level->textures[i];
+          for (size_t i = 0; i < lev.second.level->textures.size(); i++) {
+            auto& tex = lev.second.level->textures[i];
             if (tex.load_to_pool) {
               texture_pool.unload_texture(PcTextureId::from_combo_id(tex.combo_id),
-                                          lev.second.data.textures.at(i));
+                                          lev.second.textures.at(i));
             }
           }
           lk.unlock();
-          for (auto tex : lev.second.data.textures) {
+          for (auto tex : lev.second.textures) {
             if (EXTRA_TEX_DEBUG) {
               for (auto& slot : texture_pool.all_textures()) {
                 if (slot.source) {
@@ -671,7 +680,7 @@ void Loader::update(TexturePool& texture_pool) {
             glDeleteTextures(1, &tex);
           }
 
-          for (auto& tie_geo : lev.second.data.tie_data) {
+          for (auto& tie_geo : lev.second.tie_data) {
             for (auto& tie_tree : tie_geo) {
               glDeleteBuffers(1, &tie_tree.vertex_buffer);
               if (tie_tree.has_wind) {
@@ -680,15 +689,23 @@ void Loader::update(TexturePool& texture_pool) {
             }
           }
 
-          for (auto& tfrag_geo : lev.second.data.tfrag_vertex_data) {
+          for (auto& tfrag_geo : lev.second.tfrag_vertex_data) {
             for (auto& tfrag_buff : tfrag_geo) {
               glDeleteBuffers(1, &tfrag_buff);
             }
           }
 
-          glDeleteBuffers(1, &lev.second.data.collide_vertices);
-          glDeleteBuffers(1, &lev.second.data.merc_vertices);
-          glDeleteBuffers(1, &lev.second.data.merc_indices);
+          glDeleteBuffers(1, &lev.second.collide_vertices);
+          glDeleteBuffers(1, &lev.second.merc_vertices);
+          glDeleteBuffers(1, &lev.second.merc_indices);
+
+          for (auto& model : lev.second.level->merc_data.models) {
+            auto& mercs = m_all_merc_models.at(model.name);
+            MercRef ref{&model, lev.second.load_id};
+            auto it = std::find(mercs.begin(), mercs.end(), ref);
+            ASSERT_MSG(it != mercs.end(), fmt::format("missing merc: {}\n", model.name));
+            mercs.erase(it);
+          }
 
           m_loaded_tfrag3_levels.erase(lev.first);
           break;
@@ -699,5 +716,16 @@ void Loader::update(TexturePool& texture_pool) {
 
   if (loader_timer.getMs() > 5) {
     fmt::print("Loader::update slow setup: {:.1f}ms\n", loader_timer.getMs());
+  }
+}
+
+const tfrag3::MercModel* Loader::get_merc_model(const char* model_name) {
+  // don't think we need to lock here...
+  const auto& it = m_all_merc_models.find(model_name);
+  if (it != m_all_merc_models.end() && !it->second.empty()) {
+    // it->second.front().parent_level->frames_since_last_used = 0;
+    return it->second.front().model;
+  } else {
+    return nullptr;
   }
 }

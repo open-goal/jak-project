@@ -1,13 +1,43 @@
 #include "Merc2.h"
+#include "third-party/imgui/imgui.h"
 
 Merc2::Merc2(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {}
 
-
-void Merc2::init_pc_model(const DmaTransfer& setup) {
+void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state) {
   char name[32];
   strcpy(name, (const char*)setup.data);
-  // fmt::print("name is {}\n", name);
+
+  m_current_model = render_state->loader->get_merc_model(name);
+  if (!m_current_model) {
+    fmt::print("no merc model for {}\n", name);
+  }
+
+  m_stats.num_models++;
+
+  if (m_current_model) {
+    for (const auto& effect : m_current_model->effects) {
+      m_stats.num_effects++;
+      m_stats.num_predicted_draws += effect.draws.size();
+      for (const auto& draw : effect.draws) {
+        m_stats.num_predicted_tris += draw.num_triangles;
+      }
+    }
+  }
 }
+
+void Merc2::init_for_frame() {
+  m_current_model = nullptr;
+  m_stats = {};
+}
+
+void Merc2::draw_debug_window() {
+  ImGui::Text("Models   : %d", m_stats.num_models);
+  ImGui::Text("Effects  : %d", m_stats.num_effects);
+  ImGui::Text("Draws (p): %d", m_stats.num_predicted_draws);
+  ImGui::Text("Tris  (p): %d", m_stats.num_predicted_tris);
+}
+
+void Merc2::init_shaders(ShaderLibrary& shaders) {}
 
 // Boring DMA stuff below
 void Merc2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
@@ -19,6 +49,16 @@ void Merc2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
     return;
   }
 
+  // do initialization
+  init_for_frame();
+
+  // iterate through the dma chain, filling buckets
+  handle_all_dma(dma, render_state, prof);
+}
+
+void Merc2::handle_all_dma(DmaFollower& dma,
+                           SharedRenderState* render_state,
+                           ScopedProfilerNode& prof) {
   // process the first tag. this is just jumping to the merc-specific dma.
   auto data0 = dma.read_and_advance();
   ASSERT(data0.vif1() == 0);
@@ -37,7 +77,7 @@ void Merc2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   ASSERT(data0.vif1() == 0);
 
   // if we reach here, there's stuff to draw
-  handle_setup(dma, render_state, prof);
+  handle_setup_dma(dma, render_state, prof);
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
     handle_merc_chain(dma, render_state, prof);
@@ -45,13 +85,9 @@ void Merc2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   ASSERT(dma.current_tag_offset() == render_state->next_bucket);
 }
 
-void Merc2::draw_debug_window() {}
-
-void Merc2::init_shaders(ShaderLibrary& shaders) {}
-
-void Merc2::handle_setup(DmaFollower& dma,
-                         SharedRenderState* render_state,
-                         ScopedProfilerNode& prof) {
+void Merc2::handle_setup_dma(DmaFollower& dma,
+                             SharedRenderState* render_state,
+                             ScopedProfilerNode& prof) {
   auto first = dma.read_and_advance();
 
   // 10 quadword setup packet
@@ -131,8 +167,6 @@ bool tag_is_nothing_cnt(const DmaFollower& dma) {
 void Merc2::handle_merc_chain(DmaFollower& dma,
                               SharedRenderState* render_state,
                               ScopedProfilerNode& prof) {
-
-
   while (tag_is_nothing_next(dma)) {
     auto nothing = dma.read_and_advance();
     ASSERT(nothing.size_bytes == 0);
@@ -146,10 +180,9 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
 
   auto init = dma.read_and_advance();
 
-
   if (init.vifcode1().kind == VifCode::Kind::PC_PORT) {
     // we got a PC PORT packet. this contains some extra data to set up the model
-    init_pc_model(init);
+    init_pc_model(init, render_state);
     ASSERT(tag_is_nothing_cnt(dma));
     init = dma.read_and_advance();
     init = dma.read_and_advance();

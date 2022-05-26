@@ -10,7 +10,6 @@ class Merc2 : public BucketRenderer {
   void handle_merc_chain(DmaFollower& dma,
                          SharedRenderState* render_state,
                          ScopedProfilerNode& prof);
-  void handle_setup(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
  private:
   enum MercDataMemory {
@@ -29,6 +28,19 @@ class Merc2 : public BucketRenderer {
   } m_low_memory;
   static_assert(sizeof(LowMemory) == 0x80);
 
-  void init_pc_model(const DmaTransfer& setup);
+  void init_for_frame();
+  void init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state);
+  void handle_all_dma(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_setup_dma(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
+
+  const tfrag3::MercModel* m_current_model = nullptr;
+
+  struct Stats {
+    int num_models = 0;
+    int num_chains = 0;
+    int num_effects = 0;
+    int num_predicted_draws = 0;
+    int num_predicted_tris = 0;
+  } m_stats;
 };
