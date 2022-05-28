@@ -9,6 +9,8 @@
 ;; This is missing most functions right now, but just has the types that we need for
 ;; looking into merc.
 
+;; DECOMP BEGINS
+
 (define *stats-blerc* #f)
 
 (deftype blerc-block-header (structure)
@@ -23,6 +25,7 @@
   :flag-assert         #x900000020
   )
 
+
 (deftype blerc-block (structure)
   ((output uint8              848     :offset-assert   0)
    (header blerc-block-header :inline :offset-assert 848)
@@ -32,6 +35,7 @@
   :flag-assert         #x900000370
   )
 
+
 (deftype blerc-dcache (structure)
   ((repl-mult vector 40 :inline :offset-assert   0)
    )
@@ -39,6 +43,7 @@
   :size-assert         #x280
   :flag-assert         #x900000280
   )
+
 
 (deftype blerc-globals (structure)
   ((first            uint32  :offset-assert   0)
@@ -54,6 +59,7 @@
   :flag-assert         #x900000018
   )
 
+
 (define *blerc-globals* (new 'global 'blerc-globals))
 
 (deftype blerc-context (structure)
@@ -66,35 +72,38 @@
   :flag-assert         #x900002370
   )
 
+
 (defun-debug blerc-stats-init ()
   (when *stats-blerc*
-   (when (nonzero? (-> *blerc-globals* fragment-count))
-    (format *stdcon* "~%BLERC (merc blend target) STATS~%")
-    (format *stdcon* "  ~D fragments, ~D vertices~%"
-     (-> *blerc-globals* fragment-count)
-     (-> *blerc-globals* vtx-count)
-     )
-    (format *stdcon* "  ~D blend target computations (~F average)~%"
-     (-> *blerc-globals* target-vtx-count)
-     (/ (the float (-> *blerc-globals* target-vtx-count))
-      (the float (-> *blerc-globals* vtx-count))
+    (when (nonzero? (-> *blerc-globals* fragment-count))
+      (format *stdcon* "~%BLERC (merc blend target) STATS~%")
+      (format
+        *stdcon*
+        "  ~D fragments, ~D vertices~%"
+        (-> *blerc-globals* fragment-count)
+        (-> *blerc-globals* vtx-count)
+        )
+      (format
+        *stdcon*
+        "  ~D blend target computations (~F average)~%"
+        (-> *blerc-globals* target-vtx-count)
+        (/ (the float (-> *blerc-globals* target-vtx-count)) (the float (-> *blerc-globals* vtx-count)))
+        )
+      (if (< (-> *blerc-globals* min-val) 0)
+          (format *stdcon* "MINIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* min-val))
+          )
+      (if (< 255 (-> *blerc-globals* max-val))
+          (format *stdcon* "MAXIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* max-val))
+          )
       )
-     )
-    (if (< (-> *blerc-globals* min-val) 0)
-     (format *stdcon* "MINIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* min-val))
-     )
-    (if (< 255 (-> *blerc-globals* max-val))
-     (format *stdcon* "MAXIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* max-val))
-     )
+    (let ((a0-7 *blerc-globals*))
+      (set! (-> a0-7 min-val) 255)
+      (set! (-> a0-7 max-val) 0)
+      (set! (-> a0-7 fragment-count) 0)
+      (set! (-> a0-7 vtx-count) 0)
+      (set! (-> a0-7 target-vtx-count) 0)
+      )
     )
-   (let ((a0-7 *blerc-globals*))
-    (set! (-> a0-7 min-val) 255)
-    (set! (-> a0-7 max-val) 0)
-    (set! (-> a0-7 fragment-count) 0)
-    (set! (-> a0-7 vtx-count) 0)
-    (set! (-> a0-7 target-vtx-count) 0)
-    )
-   )
   0
   (none)
   )
@@ -102,9 +111,9 @@
 (defun blerc-init ()
   (blerc-stats-init)
   (let ((v1-0 *blerc-globals*))
-   (set! (-> v1-0 first) (the-as uint 0))
-   (set! (-> v1-0 next) (the-as uint 0))
-   )
+    (set! (-> v1-0 first) (the-as uint 0))
+    (set! (-> v1-0 next) (the-as uint 0))
+    )
   0
   (none)
   )
@@ -128,7 +137,7 @@
     (when (and a3-0
                (> (-> arg0 skel active-channels) 0)
                (zero? (-> arg0 draw cur-lod))
-               (logtest? (-> arg0 skel status) 8)
+               (logtest? (-> arg0 skel status) (janim-status blerc))
                )
       (let ((a1-4 (-> a3-0 blerc-data)))
         (when a1-4
@@ -162,14 +171,14 @@
               )
             (setup-blerc-chains a0-10 a1-5 (-> *display* frames (-> *display* on-screen) frame global-buf))
             )
-          (logior! (-> arg0 skel status) 64)
+          (logior! (-> arg0 skel status) (janim-status blerc-done))
           (return (the-as object #f))
           )
         )
       )
     )
-  (when (logtest? (-> arg0 skel status) 64)
-    (set! (-> arg0 skel status) (logand -65 (-> arg0 skel status)))
+  (when (logtest? (-> arg0 skel status) (janim-status blerc-done))
+    (logclear! (-> arg0 skel status) (janim-status blerc-done))
     (setup-blerc-chains
       (-> arg0 draw lod-set lod 0 geo)
       (new 'static 'array int16 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
@@ -192,7 +201,6 @@
     (sv-48 int)
     (sv-64 int)
     )
-  ;; (format 0 "chain setup ctrl ~X array ~X~%" arg0 arg1)
   (set! sv-16 (-> arg0 header effect-count))
   (let ((s3-0 (-> arg0 header blend-target-count))
         (v1-1 (-> arg2 base))
@@ -203,11 +211,8 @@
           (set! (-> *blerc-globals* first) (the-as uint a2-1))
           )
       (dotimes (s2-0 (the-as int sv-16))
-      ; (format 0 "BLERC CHAIN AT ~X~%" a2-1)
-        
         (set! sv-24 (-> arg0 effect s2-0))
         (set! sv-28 (-> sv-24 blend-frag-count))
-        ;; (format 0 " blend frags: ~D~%" sv-28)
         (when (nonzero? sv-28)
           (let ((v1-15 (the-as object (-> sv-24 frag-geo)))
                 (s1-0 (the-as structure (-> sv-24 frag-ctrl)))
@@ -216,8 +221,6 @@
             (set! sv-32 (-> sv-24 blend-ctrl))
             (set! sv-48 0)
             (while (< sv-48 (the-as int sv-28))
-            ;; (format 0 " [~D] loc: ~X~%" sv-48 s0-0)
-              
               (set! sv-64 (+ (the-as int v1-15)
                              (logand (* (+ (-> (the-as merc-fragment-control s1-0) unsigned-four-count) 3) 4) #xfff0)
                              )
@@ -240,7 +243,6 @@
               (set! sv-32 (+ (the-as int sv-32) s3-0 2))
               (the-as int sv-32)
               (set! sv-48 (+ sv-48 1))
-              ;; (format 0 "~%")
               )
             )
           )
@@ -258,3 +260,7 @@
   0
   (none)
   )
+
+
+
+

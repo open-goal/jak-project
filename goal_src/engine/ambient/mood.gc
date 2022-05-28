@@ -16,10 +16,8 @@
 
 (defun update-light-kit ((arg0 light-group) (arg1 light) (arg2 float))
   (set! (-> arg0 ambi color quad) (-> arg1 color quad))
-  (let ((f0-1 (* (-> arg1 levels x) arg2)))
-    (set! (-> arg0 ambi levels x) f0-1)
-    f0-1
-    )
+  (set! (-> arg0 ambi levels x) (* (-> arg1 levels x) arg2))
+  (none)
   )
 
 (defun set-target-light-index ((arg0 int))
@@ -60,6 +58,17 @@
     (t3-1 uint128)
     (f31-0 none)
     )
+   ;; pc mood debug
+   (with-pc
+     (case (-> *pc-settings* mood-override?)
+        (('copy #t)
+          (dotimes (mti 8)
+              (set! (-> arg0 times mti w) (-> *pc-settings* mood-overrides mti)))
+          )
+        (('mult)
+          (dotimes (mti 8)
+              (*! (-> arg0 times mti w) (-> *pc-settings* mood-overrides mti)))
+          )))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -506,15 +515,13 @@
                                        )
         )
 
-(define
-  *flash1*
+(define *flash1*
   (the-as (array float)
     (new 'static 'boxed-array :type float :length 9 :allocated-length 9 1.0 0.8 0.0 1.0 0.5 1.0 0.4 0.2 0.1)
     )
   )
 
-(define
-  *flash2*
+(define *flash2*
   (the-as (array float)
     (new 'static 'boxed-array :type float :length 10 :allocated-length 10 1.0 0.9 0.8 0.7 0.0 0.0 1.0 0.0 1.0 0.5)
     )
@@ -802,7 +809,6 @@
         )
       )
     (when (not *lightning-frame-done*)
-      (#when PC_DEBUG_SOUND_ENABLE
       (let ((gp-3 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
         (set! (-> gp-3 command) (sound-command set-param))
         (set! (-> gp-3 id) *thunder-id0*)
@@ -817,7 +823,7 @@
             )
           (sound-trans-convert (-> gp-3 parms trans) a1-23)
           )
-        (set! (-> gp-3 parms mask) (the-as uint 32))
+        (set! (-> gp-3 parms mask) (sound-mask trans))
         (-> gp-3 id)
         )
       (let ((gp-4 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
@@ -834,7 +840,7 @@
             )
           (sound-trans-convert (-> gp-4 parms trans) a1-25)
           )
-        (set! (-> gp-4 parms mask) (the-as uint 32))
+        (set! (-> gp-4 parms mask) (sound-mask trans))
         (-> gp-4 id)
         )
       (let ((gp-5 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
@@ -851,10 +857,9 @@
             )
           (sound-trans-convert (-> gp-5 parms trans) a1-27)
           )
-        (set! (-> gp-5 parms mask) (the-as uint 32))
+        (set! (-> gp-5 parms mask) (sound-mask trans))
         (-> gp-5 id)
         )
-      )
       )
     (set! *lightning-frame-done* #t)
     (none)
@@ -1714,8 +1719,7 @@
                                    )
         )
 
-(define
-  *rolling-spheres-light2*
+(define *rolling-spheres-light2*
   (new 'static 'light-ellipse
     :matrix
     (new 'static 'matrix :vector (new 'static 'inline-array vector 4

@@ -2,7 +2,7 @@
 #include "third-party/imgui/imgui.h"
 #include "SpriteRenderer.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
-#include "game/graphics/opengl_renderer/tfrag/tfrag_common.h"
+#include "game/graphics/opengl_renderer/background/background_common.h"
 
 namespace {
 
@@ -199,6 +199,10 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma,
               m_frame_data.min_scale);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "max_scale"),
               m_frame_data.max_scale);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "fog_min"),
+              m_frame_data.fog_min);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "fog_max"),
+              m_frame_data.fog_max);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "bonus"),
               m_frame_data.bonus);
   glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE].id(), "hmge_scale"), 1,
@@ -522,8 +526,7 @@ void SpriteRenderer::handle_clamp(u64 val,
                                   SharedRenderState* /*render_state*/,
                                   ScopedProfilerNode& /*prof*/) {
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
-    fmt::print("clamp: 0x{:x}\n", val);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("clamp: 0x{:x}", val));
   }
 
   m_adgif_state.reg_clamp = val;
@@ -597,7 +600,7 @@ void SpriteRenderer::update_gl_prim(SharedRenderState* /*render_state*/) {
 }
 
 void SpriteRenderer::update_gl_texture(SharedRenderState* render_state, int unit) {
-  TextureRecord* tex = nullptr;
+  std::optional<u64> tex;
   auto& state = m_adgif_state_stack[unit];
   if (!state.used) {
     // nothing used this state, don't bother binding the texture.
@@ -610,22 +613,13 @@ void SpriteRenderer::update_gl_texture(SharedRenderState* render_state, int unit
   }
 
   if (!tex) {
-    // TODO Add back
     fmt::print("Failed to find texture at {}, using random\n", state.texture_base_ptr);
-    tex = render_state->texture_pool->get_random_texture();
-    if (tex) {
-      // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
-    }
+    tex = render_state->texture_pool->get_placeholder_texture();
   }
   ASSERT(tex);
 
-  // first: do we need to load the texture?
-  if (!tex->on_gpu) {
-    render_state->texture_pool->upload_to_gpu(tex);
-  }
-
   glActiveTexture(GL_TEXTURE20 + unit);
-  glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
+  glBindTexture(GL_TEXTURE_2D, *tex);
   // Note: CLAMP and CLAMP_TO_EDGE are different...
   if (state.clamp_s) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -659,7 +653,7 @@ void SpriteRenderer::do_block_common(SpriteMode mode,
       flush_sprites(render_state, prof);
     }
 
-    if (mode == Mode2D && render_state->has_camera_planes && m_enable_culling) {
+    if (mode == Mode2D && render_state->has_pc_data && m_enable_culling) {
       // we can skip sprites that are out of view
       // it's probably possible to do this for 3D as well.
       auto bsphere = m_vec_data_2d[sprite_idx].xyz_sx;

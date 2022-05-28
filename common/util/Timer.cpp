@@ -1,6 +1,8 @@
 #include "Timer.h"
 
 #ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #define MS_PER_SEC 1000ULL  // MS = milliseconds
 #define US_PER_MS 1000ULL   // US = microseconds
@@ -11,7 +13,7 @@
 #define NS_PER_HNS (100ULL)  // NS = nanoseconds
 #define NS_PER_SEC (MS_PER_SEC * US_PER_MS * NS_PER_US)
 
-int Timer::clock_gettime_monotonic(struct timespec* tv) {
+int Timer::clock_gettime_monotonic(struct timespec* tv) const {
   static LARGE_INTEGER ticksPerSec;
   LARGE_INTEGER ticks;
   double seconds;
@@ -42,7 +44,7 @@ void Timer::start() {
 #endif
 }
 
-int64_t Timer::getNs() {
+int64_t Timer::getNs() const {
   struct timespec now = {};
 #ifdef __linux__
   clock_gettime(CLOCK_MONOTONIC, &now);

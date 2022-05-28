@@ -22,22 +22,25 @@ class Shader {
 
 // note: update the constructor in Shader.cpp
 enum class ShaderId {
-  TEST_SHADER = 0,
+  SOLID_COLOR = 0,
   DIRECT_BASIC = 1,
   DIRECT_BASIC_TEXTURED = 2,
-  // DIRECT_BASIC_TEXTURED_TCC0 = 3,
-  DEBUG_RED = 4,
-  SPRITE_CPU = 5,
-  // SPRITE_CPU_AFAIL = 6,
-  SKY = 7,
-  SKY_BLEND = 8,
-  // DEBUG_BUFFERED = 9,
-  // BUFFERED_TCC0 = 10,
-  // BUFFERED_TCC1 = 11,
-  TFRAG3 = 12,
-  TFRAG3_NO_TEX = 13,
-  SPRITE = 14,
-  SPRITE3 = 15,
+  DEBUG_RED = 3,
+  SKY = 4,
+  SKY_BLEND = 5,
+  TFRAG3 = 6,
+  TFRAG3_NO_TEX = 7,
+  SPRITE = 8,
+  SPRITE3 = 9,
+  DIRECT2 = 10,
+  EYE = 11,
+  GENERIC = 12,
+  OCEAN_TEXTURE = 13,
+  OCEAN_TEXTURE_MIPMAP = 14,
+  OCEAN_COMMON = 15,
+  SHADOW = 16,
+  SHRUB = 17,
+  COLLISION = 18,
   MAX_SHADERS
 };
 
@@ -45,7 +48,6 @@ class ShaderLibrary {
  public:
   ShaderLibrary();
   Shader& operator[](ShaderId id) { return m_shaders[(int)id]; }
-
   Shader& at(ShaderId id) { return m_shaders[(int)id]; }
 
  private:

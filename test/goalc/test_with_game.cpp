@@ -30,7 +30,7 @@ class WithGameTests : public ::testing::Test {
       shared_compiler->compiler.run_test_no_load(
           "test/goalc/source_templates/with_game/test-build-game.gc");
       shared_compiler->compiler.run_front_end_on_string(
-          "(asm-data-file game-text \"test/test_data/test_game_text.txt\")");
+          "(asm-text-file text :files (\"test/test_data/test_game_text.gp\"))");
     } catch (std::exception& e) {
       fprintf(stderr, "caught exception %s\n", e.what());
       EXPECT_TRUE(false);
@@ -372,11 +372,11 @@ TEST_F(WithGameTests, GameCount) {
       "(asm-data-file game-count \"test/test_data/test_game_counts.txt\")");
   shared_compiler->compiler.run_test_from_string(
       "(build-dgos \"test/test_data/test_game_count_dgos.txt\")");
-  shared_compiler->compiler.run_test_from_string("(dgo-load \"game\" global #xf #x200000)");
+  shared_compiler->compiler.run_test_from_string("(dgo-load \"engine\" global #xf #x200000)");
   shared_compiler->runner.run_static_test(env, testCategory, "test-game-count.gc",
                                           get_test_pass_string("game-count", 4));
   // don't leave behind a weird version of the game-count file.
-  std::filesystem::remove(file_util::get_file_path({"out", "iso", "GAME.CGO"}));
+  std::filesystem::remove(file_util::get_file_path({"out", "iso", "ENGINE.CGO"}));
   std::filesystem::remove(file_util::get_file_path({"out", "obj", "game-cnt.go"}));
 }
 
@@ -944,7 +944,7 @@ TEST(TypeConsistency, MANUAL_TEST_TypeConsistencyWithBuildFirst) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();
   add_expected_type_mismatches(compiler);
-  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-game.gc");
+  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-all-code.gc");
   compiler.run_test_no_load("decompiler/config/all-types.gc");
 }
 
@@ -953,7 +953,7 @@ TEST(TypeConsistency, TypeConsistency) {
   compiler.enable_throw_on_redefines();
   add_expected_type_mismatches(compiler);
   compiler.run_test_no_load("decompiler/config/all-types.gc");
-  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-game.gc");
+  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-all-code.gc");
 }
 
 struct VectorFloatRegister {

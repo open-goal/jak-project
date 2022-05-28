@@ -1727,18 +1727,9 @@
     ;; send now!
     ;; we send this to the GIF, which will basically ignore the
     ;; VIF tags (hopefully).
-    (#cond
-      (PC_PORT
-       (format 0 "Skipping upload-now! for ~A sz #x~X/#x~X bytes~%"
-               obj
-               (* 4 (-> obj segment 2 size))
-               (* 4 NEAR_PRIVATE_WORDS)
-               )
-       )
-      (else
-       (dma-buffer-send-chain (the-as dma-bank-source #x1000a000) gp-0)
-       )
-      )
+    (#unless PC_PORT
+             (dma-buffer-send-chain (the-as dma-bank-source #x1000a000) gp-0)
+             )
     )
   ;; sync, wait for upload to complete
   (dma-sync (the-as pointer #x1000a000) 0 0)
@@ -2020,14 +2011,9 @@
                                         0)
 
         ;; send and sync! VIF tags are probably ignored.
-        (#cond
-          (PC_PORT
-           (format 0 "Skipping dma-buffer-send-chain to relocate font texture~%")
-           )
-          (else
-           (dma-buffer-send-chain (the-as dma-bank-source #x10009000) dma-buff)
-           )
-          )
+        (#unless PC_PORT
+                 (dma-buffer-send-chain (the-as dma-bank-source #x10009000) dma-buff)
+                 )
         )
       (dma-sync (the-as pointer #x10009000) 0 0)
 
@@ -2407,8 +2393,7 @@
   ;; hack - if we have a lot of mips, set alpha to miptbp.
   ;; and modify the adgif thing to have a (miptbp2-1 54)
   (when (< (the-as uint 4) (-> arg1 num-mips))
-   (set!
-    (-> arg0 alpha)
+   (set! (-> arg0 alpha-as-miptb2)
     (new 'static 'gs-miptbp
      :tbp1 (-> arg1 dest 4)
      :tbw1 (-> arg1 width 4)
@@ -2577,7 +2562,7 @@
    (adgif-shader<-texture! arg0 arg1)
    )
   (set! (-> arg0 clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
-  (set! (-> arg0 alpha) (new 'static 'gs-miptbp :tbp1 68))
+  (set! (-> arg0 alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
   (set! (-> arg0 prims 1) (gs-reg64 tex0-1))
   (set! (-> arg0 prims 3) (gs-reg64 tex1-1))
   (set! (-> arg0 prims 5) (gs-reg64 miptbp1-1))

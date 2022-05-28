@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/steam-cap-ag.gc")
+
 ;; definition of type steam-cap-control-pt
 (deftype steam-cap-control-pt (structure)
   ((trans  vector :inline :offset-assert   0)
@@ -465,13 +467,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *steam-cap-sg* steam-cap
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *steam-cap-sg* steam-cap steam-cap-lod0-jg steam-cap-idle-ja
+              ((steam-cap-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; definition for method 20 of type steam-cap
 ;; INFO: Return type mismatch object vs none.
@@ -717,7 +716,7 @@
   (the-as (function none :behavior steam-cap) rider-trans)
   :code
   (behavior ()
-    (while #t
+    (loop
       (dummy-20 self)
       (dummy-21 self)
       (suspend)
@@ -786,7 +785,7 @@
   (set! (-> obj do-landing-sound?) #f)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *steam-cap-sg* '())
-  (logior! (-> obj skel status) 1)
+  (logior! (-> obj skel status) (janim-status inited))
   (ja-channel-set! 1)
   (let ((s4-1 (-> obj skel root-channel 0)))
     (joint-control-channel-group-eval!

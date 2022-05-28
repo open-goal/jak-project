@@ -11,8 +11,8 @@
                    )
                )
          )
-    (add-debug-text-sphere #t (bucket-id debug-draw1) (-> obj trans) 819.2 (symbol->string (-> obj name)) s5-0)
-    (add-debug-vector #t (bucket-id debug-draw1) (-> obj trans) (-> obj normal) (meters 2.0) s5-0)
+    (add-debug-text-sphere #t (bucket-id debug-no-zbuf) (-> obj trans) 819.2 (symbol->string (-> obj name)) s5-0)
+    (add-debug-vector #t (bucket-id debug-no-zbuf) (-> obj trans) (-> obj normal) (meters 2.0) s5-0)
     )
   0
   (none)
@@ -294,8 +294,8 @@
   (case item
     (('life)
      (if (>= amount 0.0)
-         (set! (-> obj life) (seek (-> obj life) (-> obj life-max) amount))
-         (set! (-> obj life) (seek (-> obj life) 0.0 (- amount)))
+         (seek! (-> obj life) (-> obj life-max) amount)
+         (seek! (-> obj life) 0.0 (- amount))
          )
      (-> obj life)
      )
@@ -466,10 +466,10 @@
               )
             )
         (set! (-> obj health-pickup-time) (-> *display* base-frame-counter))
-        (set! (-> obj health) (seek (-> obj health) (-> obj health-max) amount))
+        (seek! (-> obj health) (-> obj health-max) amount)
         )
        (else
-         (set! (-> obj health) (seek (-> obj health) 0.0 (- amount)))
+         (seek! (-> obj health) 0.0 (- amount))
          (if (>= amount -10.0)
              (pickup-collectable! obj (pickup-type eco-pill) 0.0 source-handle)
              )
@@ -491,7 +491,7 @@
     (((pickup-type eco-pill))
      (when (>= amount 0.0)
        (set! (-> obj eco-pill-pickup-time) (-> *display* base-frame-counter))
-       (set! (-> obj eco-pill) (seek (-> obj eco-pill) (-> obj eco-pill-max) amount))
+       (seek! (-> obj eco-pill) (-> obj eco-pill-max) amount)
        (when (and (>= (-> obj eco-pill) (-> *FACT-bank* eco-pill-max-default)) (< (-> obj health) (-> obj health-max)))
          (set! (-> obj eco-pill) (- (-> obj eco-pill) (-> *FACT-bank* eco-pill-max-default)))
          (pickup-collectable!
@@ -734,10 +734,10 @@
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defmethod debug-draw! continue-point ((obj continue-point))
-  (add-debug-x #t (bucket-id debug-draw1) (-> obj trans) (new 'static 'rgba :r #xff :a #x80))
+  (add-debug-x #t (bucket-id debug-no-zbuf) (-> obj trans) (new 'static 'rgba :r #xff :a #x80))
   (add-debug-text-3d
     #t
-    (bucket-id debug-draw1)
+    (bucket-id debug-no-zbuf)
     (-> obj name)
     (-> obj trans)
     (font-color white)
@@ -746,7 +746,7 @@
   (let ((a3-2 (vector-z-quaternion! (new-stack-vector0) (-> obj quat))))
     (add-debug-vector
       #t
-      (bucket-id debug-draw1)
+      (bucket-id debug-no-zbuf)
       (-> obj trans)
       a3-2
       (meters 2.0)

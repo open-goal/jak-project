@@ -1,8 +1,10 @@
 #include "iso_api.h"
+#include "game/overlord/srpc.h"
 #include "game/sce/iop.h"
 #include "common/log/log.h"
 #include "sbank.h"
 #include "common/util/Assert.h"
+#include "iso_queue.h"
 
 using namespace iop;
 
@@ -10,7 +12,7 @@ using namespace iop;
  * Load a File to IOP memory (blocking)
  */
 s32 LoadISOFileToIOP(FileRecord* file, void* addr, uint32_t length) {
-  lg::debug("[OVERLORD] LoadISOFileToIOP {}, {}/{} bytes", file->name, length, file->size);
+  lg::debug("[OVERLORD] LoadISOFileToIOP {}, {}/{} bytes", file->name, length, (s32)file->size);
   IsoCommandLoadSingle cmd;
   cmd.cmd_id = LOAD_TO_IOP_CMD_ID;
   cmd.messagebox_to_reply = 0;
@@ -32,7 +34,7 @@ s32 LoadISOFileToIOP(FileRecord* file, void* addr, uint32_t length) {
  * Load a File to IOP memory (blocking)
  */
 s32 LoadISOFileToEE(FileRecord* file, uint32_t addr, uint32_t length) {
-  lg::debug("[OVERLORD] LoadISOFileToEE {}, {}/{} bytes", file->name, length, file->size);
+  lg::debug("[OVERLORD] LoadISOFileToEE {}, {}/{} bytes", file->name, length, (s32)file->size);
   IsoCommandLoadSingle cmd;
   cmd.cmd_id = LOAD_TO_EE_CMD_ID;
   cmd.messagebox_to_reply = 0;
@@ -83,4 +85,114 @@ void LoadSoundBank(const char* bank_name, SoundBank* bank) {
   cmd.bank = bank;
   SendMbx(iso_mbx, &cmd);
   SleepThread();  // wait for finish.
+}
+
+void LoadMusic(const char* music_name, s32* bank) {
+  ASSERT(strlen(music_name) < 16);
+  MusicLoadCommand cmd;
+  cmd.cmd_id = LOAD_MUSIC;
+  cmd.messagebox_to_reply = 0;
+  cmd.thread_id = GetThreadId();
+  strcpy(cmd.music_name, music_name);
+  cmd.music_handle = bank;
+  SendMbx(iso_mbx, &cmd);
+  SleepThread();
+
+  for (int i = 0; i < gMusicTweakInfo.TweakCount; i++) {
+    if (!strcmp(gMusicTweakInfo.MusicTweak[i].MusicName, music_name)) {
+      gMusicTweak = gMusicTweakInfo.MusicTweak[i].VolumeAdjust;
+      return;
+    }
+  }
+
+  gMusicTweak = 0x80;
+}
+
+void QueueVAGStream(FileRecord* file, VagDirEntry* vag, u32 sound_id, u32 priority) {
+  if (vag == nullptr) {
+    return;
+  }
+
+  auto* cmd = GetVAGCommand();
+  cmd->cmd_id = QUEUE_VAG_STREAM;
+  cmd->messagebox_to_reply = 0;
+  cmd->thread_id = 0;
+  cmd->file = file;
+  cmd->vag = vag;
+  cmd->sound_id = sound_id;
+  cmd->priority = priority;
+  cmd->positioned = 0;
+
+  SendMbx(iso_mbx, cmd);
+}
+
+void PlayVAGStream(FileRecord* file,
+                   VagDirEntry* vag,
+                   u32 sound_id,
+                   s32 volume,
+                   u32 priority,
+                   Vec3w* trans) {
+  auto cmd = GetVAGCommand();
+  cmd->cmd_id = PLAY_VAG_STREAM;
+  cmd->messagebox_to_reply = 0;
+  cmd->thread_id = 0;
+  cmd->file = file;
+  cmd->vag = vag;
+  cmd->sound_id = sound_id;
+  cmd->volume = volume;
+  cmd->priority = priority;
+
+  if (trans) {
+    cmd->trans = *trans;
+    cmd->positioned = 1;
+  } else {
+    cmd->positioned = 0;
+  }
+
+  SendMbx(iso_mbx, cmd);
+}
+
+void SetVAGStreamVolume(s32 volume) {
+  auto cmd = GetVAGCommand();
+  cmd->cmd_id = 1029;
+  cmd->messagebox_to_reply = 0;
+  cmd->thread_id = 0;
+  cmd->volume = volume;
+  SendMbx(iso_mbx, cmd);
+}
+
+void SetDialogVolume(s32 volume) {
+  auto cmd = GetVAGCommand();
+  cmd->cmd_id = 1030;
+  cmd->messagebox_to_reply = 0;
+  cmd->thread_id = 0;
+  cmd->volume = volume;
+  SendMbx(iso_mbx, cmd);
+}
+
+void StopVAGStream(VagDirEntry* vag, u32 priority) {
+  auto cmd = GetVAGCommand();
+  cmd->cmd_id = STOP_VAG_STREAM;
+  cmd->messagebox_to_reply = 0;
+  cmd->thread_id = 0;
+  cmd->vag = vag;
+  cmd->priority = priority;
+
+  SendMbx(iso_mbx, cmd);
+}
+
+void PauseVAGStream() {
+  auto cmd = GetVAGCommand();
+  cmd->cmd_id = 1027;
+  cmd->messagebox_to_reply = 0;
+  cmd->thread_id = 0;
+  SendMbx(iso_mbx, cmd);
+}
+
+void UnpauseVAGStream() {
+  auto cmd = GetVAGCommand();
+  cmd->cmd_id = 1028;
+  cmd->messagebox_to_reply = 0;
+  cmd->thread_id = 0;
+  SendMbx(iso_mbx, cmd);
 }

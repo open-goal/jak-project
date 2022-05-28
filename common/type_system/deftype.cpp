@@ -10,12 +10,9 @@
 
 /*!
  * Missing Features
- * - Bitfields
  * - Int128 children
  * - Refer to yourself (structure/basic only)
  * - Method List
- * - Evaluate constants.
- *
  */
 
 namespace {
@@ -80,7 +77,10 @@ double get_float(const goos::Object& obj) {
   throw std::runtime_error(obj.print() + " was supposed to be an number, but isn't");
 }
 
-void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def) {
+void add_field(StructureType* structure,
+               TypeSystem* ts,
+               const goos::Object& def,
+               std::unordered_map<goos::HeapObject*, goos::Object>& constants) {
   auto rest = &def;
 
   auto name = symbol_string(car(rest));
@@ -101,6 +101,10 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
     if (car(rest).is_int()) {
       array_size = car(rest).integer_obj.value;
       rest = cdr(rest);
+    } else if (car(rest).is_symbol() &&
+               constants.find((car(rest)).as_symbol()) != constants.end()) {
+      array_size = get_int(constants[(car(rest)).as_symbol()]);
+      rest = cdr(rest);
     }
 
     while (!rest->is_empty_list()) {
@@ -113,6 +117,15 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
         is_dynamic = true;
       } else if (opt_name == ":offset") {
         offset_override = get_int(car(rest));
+        rest = cdr(rest);
+      } else if (opt_name == ":overlay-at") {
+        auto field_name = symbol_string(car(rest));
+        Field overlay_field;
+        if (!structure->lookup_field(field_name, &overlay_field)) {
+          throw std::runtime_error(
+              fmt::format("Field {} not found to overlay for {}", field_name, name));
+        }
+        offset_override = overlay_field.offset();
         rest = cdr(rest);
       } else if (opt_name == ":score") {
         score = get_float(car(rest));
@@ -150,6 +163,7 @@ void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Objec
 
   int offset_override = -1;
   int size_override = -1;
+  bool skip_in_decomp = false;
 
   if (!rest->is_empty_list()) {
     while (!rest->is_empty_list()) {
@@ -162,6 +176,8 @@ void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Objec
       } else if (opt_name == ":size") {
         size_override = get_int(car(rest));
         rest = cdr(rest);
+      } else if (opt_name == ":do-not-decompile") {
+        skip_in_decomp = true;
       } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
@@ -173,7 +189,8 @@ void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Objec
   }
 
   // it's fine if the size is -1, that means it'll just use the type's size.
-  ts->add_field_to_bitfield(bitfield_type, name, type, offset_override, size_override);
+  ts->add_field_to_bitfield(bitfield_type, name, type, offset_override, size_override,
+                            skip_in_decomp);
 }
 
 void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def) {
@@ -280,12 +297,14 @@ struct StructureDefResult {
   bool always_stack_singleton = false;
 };
 
-StructureDefResult parse_structure_def(StructureType* type,
-                                       TypeSystem* ts,
-                                       const goos::Object& fields,
-                                       const goos::Object& options) {
+StructureDefResult parse_structure_def(
+    StructureType* type,
+    TypeSystem* ts,
+    const goos::Object& fields,
+    const goos::Object& options,
+    std::unordered_map<goos::HeapObject*, goos::Object>& constants) {
   StructureDefResult result;
-  for_each_in_list(fields, [&](const goos::Object& o) { add_field(type, ts, o); });
+  for_each_in_list(fields, [&](const goos::Object& o) { add_field(type, ts, o, constants); });
   TypeFlags flags;
   flags.heap_base = 0;
 
@@ -297,6 +316,7 @@ StructureDefResult parse_structure_def(StructureType* type,
   int method_count_assert = -1;
   uint64_t flag_assert = 0;
   bool flag_assert_set = false;
+  bool set_heapbase = false;
   while (!rest->is_empty_list()) {
     if (car(rest).is_pair()) {
       auto opt_list = &car(rest);
@@ -347,6 +367,7 @@ StructureDefResult parse_structure_def(StructureType* type,
         }
         rest = cdr(rest);
         flags.heap_base = hb;
+        set_heapbase = true;
       } else if (opt_name == ":allow-misaligned") {
         result.allow_misaligned = true;
       } else if (opt_name == ":final") {
@@ -356,6 +377,25 @@ StructureDefResult parse_structure_def(StructureType* type,
       } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
+    }
+  }
+
+  if (ts->fully_defined_type_exists(TypeSpec("process")) &&
+      ts->tc(TypeSpec("process"), TypeSpec(type->get_parent()))) {
+    // check heap-base if this is a child of process.
+    auto process_type = ts->get_type_of_type<BasicType>("process");
+    auto auto_hb = (flags.size - process_type->size() + 0xf) & ~0xf;
+    if (!set_heapbase) {
+      // wasnt set manually so set automatically.
+      flags.heap_base = auto_hb;
+    } else if (flags.heap_base < auto_hb) {
+      // was set manually so verify if that's correct.
+      throw std::runtime_error(
+          fmt::format("Process heap underflow in type {}: heap-base is {} vs. auto-detected {}",
+                      type->get_name(), flags.heap_base, auto_hb));
+      //} else if (flags.heap_base != auto_hb) {
+      //  fmt::print("Type {} has manual heap-base ({} vs {}). This is fine. \n", type->get_name(),
+      //             flags.heap_base, auto_hb);
     }
   }
 
@@ -377,15 +417,6 @@ StructureDefResult parse_structure_def(StructureType* type,
     throw std::runtime_error(
         fmt::format("Type {} has flag 0x{:x} but flag-assert was set to 0x{:x}", type->get_name(),
                     flags.flag, flag_assert));
-  }
-
-  if (result.flags.heap_base) {
-    int heap_start_1 = 112 + result.flags.heap_base;
-    int heap_start_2 = (result.flags.size + 15) & (~15);
-    if (heap_start_1 != heap_start_2) {
-      throw std::runtime_error(fmt::format("Heap base bad on {}: {} vs {}\n", type->get_name(),
-                                           heap_start_1, heap_start_2));
-    }
   }
 
   result.flags = flags;
@@ -530,7 +561,15 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
   return {};
 }
 
-DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
+DeftypeResult parse_deftype(const goos::Object& deftype,
+                            TypeSystem* ts,
+                            std::unordered_map<goos::HeapObject*, goos::Object>* constants) {
+  std::unordered_map<goos::HeapObject*, goos::Object> no_consts;
+  auto& constants_to_use = no_consts;
+  if (constants != nullptr) {
+    constants_to_use = *constants;
+  }
+
   auto iter = &deftype;
 
   auto& type_name_obj = car(iter);
@@ -545,7 +584,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     throw std::runtime_error("deftype must be given a symbol as the type name");
   }
 
-  auto name = type_name_obj.as_symbol()->name;
+  auto& name = type_name_obj.as_symbol()->name;
   auto parent_type_name = deftype_parent_list(parent_list_obj);
   auto parent_type = ts->make_typespec(parent_type_name);
   DeftypeResult result;
@@ -561,7 +600,8 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     }
     new_type->inherit(pto);
     ts->forward_declare_type_as(name, "basic");
-    auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
+    auto sr =
+        parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants_to_use);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
     if (sr.pack_me) {
@@ -592,7 +632,8 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     ASSERT(pto);
     new_type->inherit(pto);
     ts->forward_declare_type_as(name, "structure");
-    auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
+    auto sr =
+        parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants_to_use);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
     if (sr.pack_me) {

@@ -53,10 +53,10 @@
        (send-event *camera* 'reset-root)
        )
       ((= arg0 9)
-       (set! (-> *camera* master-options) (logxor (-> *camera* master-options) 1))
+       (logxor! (-> *camera* master-options) 1)
        )
       ((= arg0 10)
-       (set! (-> *camera* master-options) (logxor (-> *camera* master-options) 4))
+       (logxor! (-> *camera* master-options) 4)
        )
       ((= arg0 11)
        (send-event *camera* 'toggle-slave-option 32)
@@ -491,7 +491,7 @@
   (let ((v1-0 (find-instance-by-name *edit-instance*)))
     (when v1-0
       (if (= arg1 (debug-menu-msg press))
-          (set! (-> v1-0 flags) (logxor (-> v1-0 flags) (the-as uint arg0)))
+          (logxor! (-> v1-0 flags) (the-as uint arg0))
           )
       (logtest? (-> v1-0 flags) arg0)
       )
@@ -597,7 +597,7 @@
     (cond
       (v1-0
         (if (= arg1 (debug-menu-msg press))
-            (set! (-> v1-0 flags) (logxor (-> v1-0 flags) 1))
+            (logxor! (-> v1-0 flags) 1)
             )
         (zero? (logand (-> v1-0 flags) 1))
         )
@@ -635,13 +635,7 @@
                  (let ((s3-0 (-> (the-as drawable-tree-instance-shrub v1-7) info prototype-inline-array-shrub)))
                    (dotimes (s2-0 (-> s3-0 length))
                      (let ((a1-4
-                             (new
-                               'global
-                               'debug-menu-item-flag
-                               (the-as string (-> s3-0 data s2-0 name))
-                               (-> s3-0 data s2-0 name)
-                               dm-instance-pick-func
-                               )
+                             (new 'global 'debug-menu-item-flag (-> s3-0 data s2-0 name) (-> s3-0 data s2-0 name) dm-instance-pick-func)
                              )
                            )
                        (debug-menu-append-item *instance-shrub-menu* a1-4)
@@ -656,7 +650,7 @@
                              (new
                                'debug
                                'debug-menu-item-flag
-                               (the-as string (-> s3-1 array-data s2-1 name))
+                               (-> s3-1 array-data s2-1 name)
                                (-> s3-1 array-data s2-1 name)
                                dm-instance-pick-func
                                )
@@ -668,7 +662,7 @@
                              (new
                                'debug
                                'debug-menu-item-flag
-                               (the-as string (-> s3-1 array-data s2-1 name))
+                               (-> s3-1 array-data s2-1 name)
                                (-> s3-1 array-data s2-1 name)
                                dm-enable-instance-func
                                )
@@ -3353,13 +3347,13 @@
     (case arg0
       (('at-apply-align)
        (if (= arg1 (debug-menu-msg press))
-           (set! (-> *anim-tester* 0 flags) (logxor (-> *anim-tester* 0 flags) (anim-tester-flags fanimt5)))
+           (logxor! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt5))
            )
        (return (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt5)))
        )
       (('at-show-joint-info)
        (if (= arg1 (debug-menu-msg press))
-           (set! (-> *anim-tester* 0 flags) (logxor (-> *anim-tester* 0 flags) (anim-tester-flags fanimt4)))
+           (logxor! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt4))
            )
        (return (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt4)))
        )
@@ -3830,15 +3824,18 @@
            (function "Play" #f (lambda () (play #t #t)))
            (function "Start" #f (lambda () (the-as int (start 'debug (get-or-create-continue! *game-info*)))))
            (function "Stop" #f (lambda () (stop 'debug)))
-           (flag "Invulnerable" #f (lambda ((arg0 int) (arg1 debug-menu-msg))
-                                     (when (= arg1 (debug-menu-msg press))
-                                       (if *target*
-                                           (set! (-> *target* state-flags) (logxor (-> *target* state-flags) 16))
-                                           )
-                                       )
-                                     (the-as symbol (and *target* (logtest? (-> *target* state-flags) 16)))
-                                     )
+           (flag
+             "Invulnerable"
+             #f
+             (lambda ((arg0 int) (arg1 debug-menu-msg))
+               (when (= arg1 (debug-menu-msg press))
+                 (if *target*
+                     (logxor! (-> *target* state-flags) (state-flags sf04))
+                     )
                  )
+               (the-as symbol (and *target* (logtest? (-> *target* state-flags) (state-flags sf04))))
+               )
+             )
            (function
              "Reset Trans"
              #f

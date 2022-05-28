@@ -59,10 +59,11 @@ void SkipRenderer::render(DmaFollower& dma,
 }
 
 void SharedRenderState::reset() {
-  has_camera_planes = false;
+  has_pc_data = false;
   for (auto& x : occlusion_vis) {
     x.valid = false;
   }
+  load_status_debug.clear();
 }
 
 RenderMux::RenderMux(const std::string& name,
@@ -71,20 +72,17 @@ RenderMux::RenderMux(const std::string& name,
     : BucketRenderer(name, my_id), m_renderers(std::move(renderers)) {
   for (auto& r : m_renderers) {
     m_name_strs.push_back(r->name_and_id());
-    m_name_str_ptrs.push_back(m_name_strs.back().data());
+  }
+  for (auto& n : m_name_strs) {
+    m_name_str_ptrs.push_back(n.data());
   }
 }
 
 void RenderMux::render(DmaFollower& dma,
                        SharedRenderState* render_state,
                        ScopedProfilerNode& prof) {
+  m_renderers[m_render_idx]->enabled() = m_enabled;
   m_renderers[m_render_idx]->render(dma, render_state, prof);
-}
-
-void RenderMux::serialize(Serializer& ser) {
-  for (auto& r : m_renderers) {
-    r->serialize(ser);
-  }
 }
 
 void RenderMux::draw_debug_window() {

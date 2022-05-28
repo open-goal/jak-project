@@ -414,10 +414,7 @@
       )
      (('inactive)
       ;; no usable data here, fill the buffer
-      ;; TODO macro
-      (let ((v1-28 (-> obj heap)))
-       (set! (-> v1-28 current) (-> v1-28 base))
-       )
+      (kheap-reset (-> obj heap))
       (cond
        ((string= (-> obj load-file) "reserved") ;; we want to reserve this buffer for something (not loading an str file)
         (cond
@@ -556,8 +553,8 @@
   "Get the status of a file in this art control. #f = file not found"
 
   (dotimes (i 2)
-    (swhen (file-status (-> obj buffer i) name part)
-      (return bc)
+    (awhen (file-status (-> obj buffer i) name part)
+      (return it)
       )
     )
   #f
@@ -866,22 +863,19 @@
   )
 
 (defun-extern level-hint-surpress! none) ;; ? TODO
-(define-extern ja-channel-push! (function int int int :behavior process-drawable))
+(define-extern ja-channel-push! (function int time-frame int :behavior process-drawable))
 (define-extern ja-channel-set! (function int int :behavior process-drawable))
 (define-extern joint-control-channel-group-eval! (function joint-control-channel art-joint-anim (function joint-control-channel float float float) int))
 (define-extern joint-control-channel-group! (function joint-control-channel art-joint-anim (function joint-control-channel float float float) int))
 (define-extern ja-aframe-num (function int float :behavior process-drawable))
 
-;; this function is modified to work without sound.
-(define *str-pos-hack* 0)
-(define *str-play-speed* 17)
 (define-extern ja-abort-spooled-anim (function spool-anim art-joint-anim int int :behavior process-drawable))
 (defbehavior ja-play-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 art-joint-anim) (arg3 (function process-drawable symbol)))
   (local-vars
     (v0-39 int)
     (spool-part int)
     (sv-24 float)
-    (old-skel-status uint)
+    (old-skel-status janim-status)
     (sv-32 int)
     (sv-40 int)
     (sv-48 int)
@@ -889,7 +883,6 @@
     (spool-sound sound-id)
     (sv-72 int)
     )
-  (set! *str-pos-hack* 0)
   (set! spool-part 0)
   (set! sv-24 -17.0)
   (set! old-skel-status (-> self skel status))
@@ -900,7 +893,7 @@
   (set! spool-sound (new-sound-id))
   (backup-load-state-and-set-cmds *load-state* (-> arg0 command-list))
   (set-setting! *setting-control* self 'spooling (the-as symbol (process->ppointer self)) 0.0 0)
-  (logior! (-> self skel status) 7)
+  (logior! (-> self skel status) (janim-status inited drawn done))
   (kill-current-level-hint '() '() 'die)
   (level-hint-surpress!)
   (copy-settings-from-target! *setting-control*)
@@ -912,7 +905,7 @@
                       )
                   arg1
                   )
-          (ja-channel-push! 1 15)
+          (ja-channel-push! 1 (seconds 0.05))
           (let ((s2-0 (-> self skel root-channel 0)))
             (joint-control-channel-group-eval! s2-0 arg1 num-func-identity)
             (set! (-> s2-0 frame-num) 0.0)
@@ -996,23 +989,16 @@
             )
           (when (zero? spool-part)
             (str-play-async (-> arg0 name) spool-sound)
-            ;; hack!
-            ;;(set! *str-pos-hack* 0)
-            ;;
             (set! (-> *art-control* active-stream) (-> arg0 name))
             )
           (let* ((f30-0 (* 0.05859375 (-> s2-4 speed)))
                  (f28-0 (+ sv-24 (/ (the float (+ (-> s2-4 data 0 length) -1)) f30-0)))
                  )
-            ;;(set! sv-72 (current-str-pos spool-sound))
-            (set! sv-72 *str-pos-hack*)
-            
-            
+            (set! sv-72 (current-str-pos spool-sound))
             (set! sv-40 (-> *display* base-frame-counter))
             (until (>= (the float v0-39) f28-0)
-              (+! *str-pos-hack* *str-play-speed*)
               (if (= (-> self skel root-channel 0) (-> self skel channel))
-                  (logior! (-> self skel status) 32)
+                  (logior! (-> self skel status) (janim-status spool))
                   )
               (if (or (arg3 self)
                       (and (<= sv-72 0) (>= (- (-> *display* base-frame-counter) sv-40) 1200))
@@ -1023,11 +1009,11 @@
               (spool-push *art-control* (-> arg0 name) spool-part self -20.0)
               (if (< (+ spool-part 1) (-> arg0 parts))
                   (spool-push *art-control* (-> arg0 name) (+ spool-part 1) self -10.0)
-                  (set! (-> self skel status) (logand -5 (-> self skel status)))
+                  (logclear! (-> self skel status) (janim-status done))
                   )
               (execute-commands-up-to *load-state* (ja-aframe-num 0))
               (cond
-                ((and (< sv-32 sv-72) #|(= (current-str-id) spool-sound)|#)
+                ((and (< sv-32 sv-72) (= (current-str-id) spool-sound))
                  (set! sv-56 (+ sv-56 (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))))
                  (set! sv-40 (-> *display* base-frame-counter))
                  )
@@ -1038,7 +1024,7 @@
               (set! sv-32 sv-72)
               (set! sv-48 (-> *display* base-frame-counter))
               (suspend)
-              (let ((f0-14 (* (- (the float *str-pos-hack* #|(current-str-pos spool-sound)|#) sv-24) f30-0))
+              (let ((f0-14 (* (- (the float (current-str-pos spool-sound)) sv-24) f30-0))
                     (a0-69 (-> self skel root-channel 0))
                     )
                 (set! (-> a0-69 param 0) (the float (+ (-> a0-69 frame-group data 0 length) -1)))
@@ -1046,12 +1032,12 @@
                 (set! (-> a0-69 frame-num) f0-14)
                 (joint-control-channel-group! a0-69 (the-as art-joint-anim #f) num-func-seek!)
                 )
-              (set! v0-39 *str-pos-hack* #|(current-str-pos spool-sound)|#)
+              (set! v0-39 (current-str-pos spool-sound))
               (set! sv-72 v0-39)
               )
             (set! sv-24 f28-0)
             )
-          (set! (-> self skel status) (logand -33 (-> self skel status)))
+          (logclear! (-> self skel status) (janim-status spool))
           )
         (else
           (format 0 "ERROR: <asg> ~A in spool anim loop for ~A ~D, but not loaded.~" self (-> arg0 name) spool-part)
@@ -1073,14 +1059,14 @@
   (restore-load-state-and-cleanup *load-state*)
   (str-play-stop (-> arg0 name))
   (set! (-> *art-control* active-stream) #f)
-  (logclear! (-> self skel status) #x6) ;; #x4 and #x2
-  (if (not (logtest? (-> self skel status) 1))
-    (logclear! (-> self skel status) #x1)
+  (logclear! (-> self skel status) (janim-status drawn done))
+  (if (zero? (logand (-> self skel status) (janim-status inited)))
+    (logclear! (-> self skel status) (janim-status inited))
     )
   (clear-pending-settings-from-process *setting-control* self 'spooling)
   (cond
    ((and arg1 (>= arg2 0))
-    (ja-channel-push! 1 30)
+    (ja-channel-push! 1 (seconds 0.1))
     (set! (-> self skel root-channel 0 frame-group) arg1)
     (while (!= (-> self skel root-channel 0) (-> self skel channel))
       (spool-push *art-control* (-> arg0 name) arg2 self -20.0)

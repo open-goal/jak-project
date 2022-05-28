@@ -143,3 +143,80 @@ void Profiler::draw_node(ProfilerNode& node, bool expand, int depth, float start
 
   ImGui::PopStyleColor();
 }
+
+std::string Profiler::to_string() {
+  m_root.sort(ProfilerSort::TIME);
+  std::string str;
+  m_root.to_string_helper(str, 0);
+  return str;
+}
+
+void ProfilerNode::to_string_helper(std::string& str, int depth) const {
+  str +=
+      fmt::format("{}{:.2f} ms {:30s}\n", std::string(depth, ' '), m_stats.duration * 1000, m_name);
+  for (const auto& child : m_children) {
+    child.to_string_helper(str, depth + 1);
+  }
+}
+
+void FramePlot::push(float val) {
+  m_buffer[m_idx++] = val;
+  if (m_idx == SIZE) {
+    m_idx = 0;
+  }
+}
+
+void FramePlot::draw(float max) {
+  float worst = 0, total = 0;
+  for (auto x : m_buffer) {
+    worst = std::max(x, worst);
+    total += x;
+  }
+  ImGui::SameLine();
+  ImGui::Text("avg: %.1f", total / SIZE);
+
+  ImGui::SameLine();
+  ImGui::Text("worst: %.1f", worst);
+
+  ImGui::Separator();
+  ImGui::PlotLines(
+      "",
+      [](void* data, int idx) {
+        auto* me = (FramePlot*)data;
+        return me->m_buffer[(me->m_idx + idx) % SIZE];
+      },
+      (void*)this, SIZE, 0, nullptr, 0, max, ImVec2(300, 20));
+}
+
+void SmallProfiler::draw(const std::string& status, const SmallProfilerStats& stats) {
+  ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration |
+                                  ImGuiWindowFlags_AlwaysAutoResize |
+                                  ImGuiWindowFlags_NoSavedSettings |
+                                  ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+  const float PAD = 10.0f;
+  const ImGuiViewport* viewport = ImGui::GetMainViewport();
+  ImVec2 work_pos = viewport->WorkPos;  // Use work area to avoid menu-bar/task-bar, if any!
+  ImVec2 work_size = viewport->WorkSize;
+  ImVec2 window_pos, window_pos_pivot;
+  window_pos.x = (work_pos.x + PAD);
+  window_pos.y = (work_pos.y + work_size.y - PAD);
+  window_pos_pivot.x = 0.0f;
+  window_pos_pivot.y = 1.0f;
+  ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+
+  ImGui::SetNextWindowBgAlpha(0.85f);  // Transparent background
+  if (ImGui::Begin("Profiler (short)", nullptr, window_flags)) {
+    ImGui::Text(" tri: %7d\n", stats.triangles);
+    ImGui::Text("  DC: %4d\n", stats.draw_calls);
+    if (!status.empty()) {
+      ImGui::Text("%s", status.c_str());
+    }
+
+    for (int i = 0; i < (int)BucketCategory::MAX_CATEGORIES; i++) {
+      m_plots[i].push(stats.time_per_category[i] * 1000.f);
+      ImGui::Text("%6s", BUCKET_CATEGORY_NAMES[i]);
+      m_plots[i].draw(3.f);
+    }
+  }
+  ImGui::End();
+}

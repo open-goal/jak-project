@@ -8,7 +8,7 @@
   <a target="_blank" rel="noopener noreferrer" href="https://github.com/open-goal/jak-project/workflows/Windows/badge.svg"><img src="https://github.com/open-goal/jak-project/workflows/Windows/badge.svg" alt="Windows" style="max-width:100%;"></a>
   <a href="https://www.codacy.com/gh/open-goal/jak-project/dashboard?utm_source=github.com&utm_medium=referral&utm_content=open-goal/jak-project&utm_campaign=Badge_Coverage" rel="nofollow"><img src="https://app.codacy.com/project/badge/Coverage/29316d04a1644aa390c33be07289f3f5" alt="Codacy Badge" style="max-width:100%;"></a>
   <a href="https://www.codacy.com/gh/open-goal/jak-project/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=open-goal/jak-project&amp;utm_campaign=Badge_Grade" rel="nofollow"><img src="https://app.codacy.com/project/badge/Grade/29316d04a1644aa390c33be07289f3f5" alt="Codacy Badge" style="max-width:100%;"></a>
-  <a href="https://discord.gg/V82sTJGEAs"><img src="https://img.shields.io/discord/756287461377703987" alt="Discord"></a>
+  <a href="https://discord.gg/VZbXMHXzWv"><img src="https://img.shields.io/discord/756287461377703987" alt="Discord"></a>
   <a href="https://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt=PRs Welcome></a>
 </p>
 
@@ -16,14 +16,12 @@
 
 <!-- toc -->
 
-- [Table of Contents](#table-of-contents)
 - [Project Description](#project-description)
 - [Current Status](#current-status)
 - [What's Next](#whats-next)
 - [Getting Started - Linux](#getting-started---linux)
   - [Ubuntu (20.04)](#ubuntu-2004)
   - [Arch](#arch)
-  - [With Nix](#with-nix)
 - [Getting Started - Windows](#getting-started---windows)
   - [Required Software](#required-software)
   - [Setting up and Opening the Project](#setting-up-and-opening-the-project)
@@ -41,7 +39,7 @@
 
 ## Project Description
 
-This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 99% of this game is written in GOAL, a custom Lisp language developed by Naughty Dog. Our strategy is:
+This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 98% of this game is written in GOAL, a custom Lisp language developed by Naughty Dog. Our strategy is:
 - decompile the original game code into human-readable GOAL code
 - develop our own compiler for GOAL and recompile game code for x86-64
 - create a tool to extract game assets into formats that can be easily viewed or modified
@@ -55,15 +53,17 @@ Our objectives are:
 
 We support both Linux and Windows on x86-64.
 
-We have a Discord server where we discuss development. https://discord.gg/V82sTJGEAs
+### **[Please read the FAQ by clicking here if you have any questions.](FAQ.md)**
+
+We have a Discord server where we discuss development: https://discord.gg/VZbXMHXzWv
 
 ## Current Status
 
 So far, we've decompiled around 400,000 lines of GOAL code, out of an estimated 500,000 total lines. We have a working OpenGL renderer which renders most of the game world and foreground. Levels are fully playable, and you can finish the game with 100% completion! There is currently *no* audio.
 
 Here are some screenshots of the renderer:
-![](./docs/img/screenshot_hut_new_small.png)
-![](./docs/img/screenshot_jungle1_small.png)
+![](./docs/img/promosmall1.png)
+![](./docs/img/promosmall2.png)
 
 YouTube playlist:
 https://www.youtube.com/playlist?list=PLWx9T30aAT50cLnCTY1SAbt2TtWQzKfXX
@@ -74,10 +74,9 @@ We don't save any assets from the game - you must bring your own copy of the gam
 
 ## What's Next
 
-- Continue decompilation of GOAL code. We've made huge progress recently in decompiling gameplay code. We're finishing that up and also working on the some of the rendering code. Here's our decompilation progress over the past year: ![](./docs/img/code_progress.png)
-- Bug testing! The game can be beaten 100%, but it's possible a few things do not work correctly.
-- Improve the decompiler. We are always finding new features and macros in the GOAL language.
-- Investigate more complicated renderers. We have an in-progress port of the "merc" foreground renderer, shown in the screenshots above.
+- Bug testing! The game can be beaten 100% from start to finish, but it's possible a few things do not work correctly.
+- Improve the decompiler and clean up decompilation of GOAL code. We are always finding new features and macros in the GOAL language.
+- Investigate and rewrite the more complicated renderers.
 
 ## Getting Started - Linux
 
@@ -87,7 +86,7 @@ Install packages and init repository:
 
 ```sh
 sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev python
-sudo snap install task --classic
+sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 ```
 
 Compile:
@@ -119,7 +118,8 @@ cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse
 Install packages and init repository:
 
 ```sh
-sudo pacman -S gcc make cmake base-devel g++ nasm taskfile-git python
+sudo pacman -S gcc make cmake base-devel g++ nasm python
+yay -S taskfile-git
 ```
 
 Compile:
@@ -134,35 +134,15 @@ Run tests:
 ./test.sh
 ```
 
-### With Nix
-
-If your Nix supports flakes:
-
-```sh
-nix develop # development environment
-nix build # package
-nix develop '.#jak-asan-dev' # development environment with Clang
-nix build '.#jak-asan' # package with Clang ASan build
-```
-
-Otherwise, with traditional Nix:
-
-```sh
-nix-shell # development environment
-nix-build # package
-nix-shell -A packages.x86_64-linux.jak-asan-dev # development environment with Clang
-nix-build -A packages.x86_64-linux.jak-asan # package with Clang ASan build
-```
-
 ## Getting Started - Windows
 
 ### Required Software
 
-We primarily use Visual Studio for development on Windows for C++ development.  Download the community addition from [here](https://visualstudio.microsoft.com/vs/)
+We primarily use Visual Studio on Windows for C++ development.  Download the latest community edition from [here](https://visualstudio.microsoft.com/vs/)
 
-You will require the `Desktop development with C++` workload.  This can be selected during the installation, or after via the `Visual Studio Installer` and modifying the Visual Studio Installation.
+You will require the `Desktop development with C++` workload.  This can be selected during the installation, or after via the `Visual Studio Installer`, modifying the Visual Studio Installation.
 
-On Windows, it's recommended to get Scoop to use as a package manager, making the following steps _much_ easier. Follow the steps on the bottom of the homepage [here](https://scoop.sh/)
+On Windows, it's recommended to use a package manager, we use Scoop. Follow the steps on the bottom of the homepage [here](https://scoop.sh/) to get it.
 
 Once Scoop is installed, run the following commands:
 
@@ -180,7 +160,7 @@ Clone the repository by running the following command in your folder of choice.
 git clone https://github.com/open-goal/jak-project.git
 ```
 
-This will create a `jak-project` folder, we will open the project as a CMake project via Visual Studio.
+This will create a `jak-project` folder, open the project as a CMake project via Visual Studio.
 
 ![](./docs/img/windows/open-project.png)
 
@@ -200,7 +180,7 @@ Getting a running game involves 4 steps:
 
 ### Extract Assets
 
-The first step is to extract your ISO file contents into the `iso_data/<game-name>` folder.  In the case of jak  this is `iso_data/jak1`.
+The first step is to extract your ISO file contents into the `iso_data/<game-name>` folder.  In the case of Jak 1 this is `iso_data/jak1`.
 
 Once this is done, open a terminal in the `jak-project` folder and run the following:
 
@@ -219,16 +199,16 @@ task repl
 You will be greeted with a prompt like so:
 
 ```sh
- _____             _____ _____ _____ __    
-|     |___ ___ ___|   __|     |  _  |  |   
-|  |  | . | -_|   |  |  |  |  |     |  |__ 
+ _____             _____ _____ _____ __
+|     |___ ___ ___|   __|     |  _  |  |
+|  |  | . | -_|   |  |  |  |  |     |  |__
 |_____|  _|___|_|_|_____|_____|__|__|_____|
       |_|
 Welcome to OpenGOAL 0.8!
 Run (repl-help) for help with common commands and REPL usage.
 Run (lt) to connect to the local target.
 
-g > 
+g >
 ```
 
 Run the following to build the game:
@@ -239,7 +219,7 @@ g > (mi)
 
 ### Run the Game
 
-Finally the game can be ran.  Open a second terminal from the `jak-project` directly and run the following:
+Finally the game can be ran.  Open a second terminal from the `jak-project` directory and run the following:
 
 ```sh
 task boot-game
@@ -257,7 +237,7 @@ To do so, in the REPL after a successful `(mi)`, run the following:
 g > (lt)
 ```
 
-If successfuly your prompt should change to:
+If successful, your prompt should change to:
 
 ```sh
 gc>
@@ -299,7 +279,7 @@ gc>
 
 In the graphics window, you can use the period key to bring up the debug menu. Controllers also work, using the same mapping as the original game.
 
-Check out the `pc_debug`, `examples` and `engine/pc/` folders under `goal_src` for some examples of GOAL code we wrote. The debug files have instructions for how to run them if they are not loaded automatically by the engine.
+Check out the `pc_debug`, `examples` and `pc` folders under `goal_src` for some examples of GOAL code we wrote. The debug files that are not loaded automatically by the engine have instructions for how to run them.
 
 ## Project Layout
 
@@ -366,6 +346,7 @@ The final component is the "runtime", located in `game`. This is the part of the
     - `examples`: Example GOAL code we have written.
     - `test`: Test code we have written.
     - `pc_debug`: GOAL code for PC-specific debugging. Also written by us.
+    - `pc`: GOAL code for PC-specific features. Also written by us.
     - `user`: User sandboxes. Written by you! And anyone else that wishes to share their user code.
 - `goalc`: The OpenGOAL compiler.
     - `compiler`: The implementation of the OpenGOAL language.

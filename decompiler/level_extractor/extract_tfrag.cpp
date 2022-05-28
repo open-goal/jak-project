@@ -8,6 +8,9 @@
 
 namespace decompiler {
 namespace {
+
+static constexpr int GEOM_MAX = 3;
+
 /*!
  * Get the index of the first draw node in an array. Works for node or tfrag.
  */
@@ -536,7 +539,8 @@ struct TFragColorUnpack {
   }
 };
 
-void emulate_dma_building_for_tfrag(const level_tools::TFragment& frag,
+void emulate_dma_building_for_tfrag(int geom,
+                                    const level_tools::TFragment& frag,
                                     std::vector<u8>& vu_mem,
                                     TFragColorUnpack& color_indices,
                                     TFragExtractStats* stats) {
@@ -546,13 +550,13 @@ void emulate_dma_building_for_tfrag(const level_tools::TFragment& frag,
   state.cl = 4;
 
   // do the "canned" unpacks
-  if (frag.num_level0_colors == 0) {
+  if (frag.num_level0_colors == 0 || geom == 2) {
     // we're using base
-    ASSERT(frag.num_level1_colors == 0);
+    // ASSERT(frag.num_level1_colors == 0);
     stats->num_base++;
     emulate_chain(state, frag.dma_qwc[1] * 4, (const u32*)frag.dma_base.data(), vu_mem.data());
 
-  } else if (frag.num_level1_colors == 0) {
+  } else if (frag.num_level1_colors == 0 || geom == 1) {
     stats->num_l0++;
     emulate_chain(state, frag.dma_qwc[3] * 4, (const u32*)frag.dma_common_and_level0.data(),
                   vu_mem.data());
@@ -1756,10 +1760,9 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_FIX_DST);
     // src plus dest
   } else {
-    fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
-               (int)reg.c_mode(), (int)reg.d_mode());
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("unsupported blend: a {} b {} c {} d {}", (int)reg.a_mode(),
+                                  (int)reg.b_mode(), (int)reg.c_mode(), (int)reg.d_mode()));
   }
 }
 
@@ -1782,9 +1785,8 @@ void update_mode_from_test1(u64 val, DrawMode& mode) {
       mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
       break;
     default:
-      fmt::print("Alpha test: {} not supported\n", (int)test.alpha_test());
       mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("Alpha test: {} not supported", (int)test.alpha_test()));
   }
 
   // AREF
@@ -1905,8 +1907,7 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
           break;
         case GsRegisterAddress::CLAMP_1:
           if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
-            fmt::print("clamp: 0x{:x}\n", val);
-            ASSERT(false);
+            ASSERT_MSG(false, fmt::format("clamp: 0x{:x}", val));
           }
 
           // this isn't quite right, but I'm hoping it's enough!
@@ -1971,13 +1972,14 @@ std::map<u32, std::vector<GroupedDraw>> make_draw_groups(std::vector<TFragDraw>&
     }
   }
 
-  fmt::print("    grouped to get {} draw calls\n", dc);
+  // fmt::print("    grouped to get {} draw calls\n", dc);
 
   return result;
 }
 
 void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
                       tfrag3::TfragTree& tree_out,
+                      std::vector<tfrag3::PreloadedVertex>& vertices,
                       std::vector<tfrag3::Texture>& texture_pool,
                       const TextureDB& tdb,
                       const std::vector<std::pair<int, int>>& expected_missing_textures) {
@@ -2009,13 +2011,14 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
           // we're missing a texture, just use the first one.
           tex_it = tdb.textures.begin();
         } else {
-          fmt::print(
-              "texture {} wasn't found. make sure it is loaded somehow. You may need to include "
-              "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures.\n",
-              combo_tex_id);
-          fmt::print("tpage is {}\n", combo_tex_id >> 16);
-          fmt::print("id is {} (0x{:x})\n", combo_tex_id & 0xffff, combo_tex_id & 0xffff);
-          ASSERT(false);
+          ASSERT_MSG(
+              false,
+              fmt::format("texture {} wasn't found. make sure it is loaded somehow. You may need "
+                          "to include "
+                          "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures."
+                          "tpage is {}. id is {} (0x{:x})",
+                          combo_tex_id, combo_tex_id >> 16, combo_tex_id & 0xffff,
+                          combo_tex_id & 0xffff));
         }
       }
       tfrag3_tex_id = texture_pool.size();
@@ -2038,9 +2041,13 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
       for (auto& strip : draw.strips) {
         tfrag3::StripDraw::VisGroup vgroup;
         vgroup.vis_idx_in_pc_bvh = strip.tfrag_id;  // associate with the tfrag for culling
-        vgroup.num = strip.verts.size() + 1;        // one for the primitive restart!
+        vgroup.num_inds = strip.verts.size() + 1;   // one for the primitive restart!
+        vgroup.num_tris = strip.verts.size() - 2;
 
         tdraw.num_triangles += strip.verts.size() - 2;
+        tfrag3::StripDraw::VertexRun run;
+        run.vertex0 = vertices.size();
+        run.length = strip.verts.size();
         for (auto& vert : strip.verts) {
           // convert vert.
           tfrag3::PreloadedVertex vtx;
@@ -2056,12 +2063,9 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
           // ASSERT((vert.rgba >> 2) < 1024); spider cave has 2048?
           ASSERT((vert.rgba & 3) == 0);
 
-          size_t vert_idx = tree_out.vertices.size();
-          tree_out.vertices.push_back(vtx);
-          tdraw.vertex_index_stream.push_back(vert_idx);
+          vertices.push_back(vtx);
         }
-        tdraw.vertex_index_stream.push_back(UINT32_MAX);  // prim restart
-
+        tdraw.runs.push_back(run);
         tdraw.vis_groups.push_back(vgroup);
       }
 
@@ -2070,11 +2074,13 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
   }
 }
 
-void emulate_tfrags(const std::vector<level_tools::TFragment>& frags,
+void emulate_tfrags(int geom,
+                    const std::vector<level_tools::TFragment>& frags,
                     const std::string& debug_name,
                     const std::vector<level_tools::TextureRemap>& map,
                     tfrag3::Level& level_out,
                     tfrag3::TfragTree& tree_out,
+                    std::vector<tfrag3::PreloadedVertex>& vertices,
                     const TextureDB& tdb,
                     const std::vector<std::pair<int, int>>& expected_missing_textures,
                     bool dump_level) {
@@ -2087,7 +2093,7 @@ void emulate_tfrags(const std::vector<level_tools::TFragment>& frags,
 
   for (auto& frag : frags) {
     TFragColorUnpack color_indices;
-    emulate_dma_building_for_tfrag(frag, vu_mem, color_indices, &stats);
+    emulate_dma_building_for_tfrag(geom, frag, vu_mem, color_indices, &stats);
     VuMemWrapper mem(vu_mem);
     auto draws = emulate_tfrag_execution<false>(frag, mem, color_indices, &stats);
     all_draws.insert(all_draws.end(), draws.begin(), draws.end());
@@ -2096,7 +2102,7 @@ void emulate_tfrags(const std::vector<level_tools::TFragment>& frags,
   process_draw_mode(all_draws, map, tree_out.kind);
   auto groups = make_draw_groups(all_draws);
 
-  make_tfrag3_data(groups, tree_out, level_out.textures, tdb, expected_missing_textures);
+  make_tfrag3_data(groups, tree_out, vertices, level_out.textures, tdb, expected_missing_textures);
 
   if (dump_level) {
     auto debug_out = debug_dump_to_obj(all_draws);
@@ -2120,7 +2126,8 @@ void merge_groups(std::vector<tfrag3::StripDraw::VisGroup>& grps) {
   result.push_back(grps.at(0));
   for (size_t i = 1; i < grps.size(); i++) {
     if (grps[i].vis_idx_in_pc_bvh == result.back().vis_idx_in_pc_bvh) {
-      result.back().num += grps[i].num;
+      result.back().num_inds += grps[i].num_inds;
+      result.back().num_tris += grps[i].num_tris;
     } else {
       result.push_back(grps[i]);
     }
@@ -2130,6 +2137,85 @@ void merge_groups(std::vector<tfrag3::StripDraw::VisGroup>& grps) {
 
 }  // namespace
 
+constexpr float kClusterSize = 4096 * 40;  // 100 in-game meters
+constexpr float kMasterOffset = 12000 * 4096;
+
+std::pair<u64, u16> position_to_cluster_and_offset(float in) {
+  in += kMasterOffset;
+  if (in < 0) {
+    fmt::print("negative: {}\n", in);
+  }
+  ASSERT(in >= 0);
+  int cluster_cell = (in / kClusterSize);
+  float leftover = in - (cluster_cell * kClusterSize);
+  u16 offset = (leftover / kClusterSize) * float(UINT16_MAX);
+
+  float recovered = ((float)cluster_cell + ((float)offset / UINT16_MAX)) * kClusterSize;
+  float diff = std::fabs(recovered - in);
+  ASSERT(diff < 7);
+  ASSERT(cluster_cell >= 0);
+  ASSERT(cluster_cell < UINT16_MAX);
+  return {cluster_cell, offset};
+}
+
+void pack_vertices(tfrag3::PackedTfragVertices* result,
+                   const std::vector<tfrag3::PreloadedVertex>& vertices) {
+  u32 next_cluster_idx = 0;
+  std::map<u64, u32> clusters;
+
+  for (auto& vtx : vertices) {
+    auto x = position_to_cluster_and_offset(vtx.x);
+    auto y = position_to_cluster_and_offset(vtx.y);
+    auto z = position_to_cluster_and_offset(vtx.z);
+    u64 cluster_id = 0;
+    cluster_id |= x.first;
+    cluster_id |= (y.first << 16);
+    cluster_id |= (z.first << 32);
+
+    auto cluster_it = clusters.find(cluster_id);
+    u32 my_cluster_idx = 0;
+    if (cluster_it == clusters.end()) {
+      // first in cluster
+      clusters[cluster_id] = next_cluster_idx;
+      my_cluster_idx = next_cluster_idx;
+      next_cluster_idx++;
+    } else {
+      my_cluster_idx = cluster_it->second;
+    }
+
+    tfrag3::PackedTfragVertices::Vertex out_vtx;
+    out_vtx.xoff = x.second;
+    out_vtx.yoff = y.second;
+    out_vtx.zoff = z.second;
+    out_vtx.cluster_idx = my_cluster_idx;
+    // TODO check these
+    out_vtx.s = vtx.s * 1024;
+    out_vtx.t = vtx.t * 1024;
+    out_vtx.color_index = vtx.color_index;
+    result->vertices.push_back(out_vtx);
+  }
+
+  result->cluster_origins.resize(next_cluster_idx);
+  for (auto& cluster : clusters) {
+    auto& res = result->cluster_origins[cluster.second];
+    res.x() = (u16)cluster.first;
+    res.y() = (u16)(cluster.first >> 16);
+    res.z() = (u16)(cluster.first >> 32);
+  }
+
+  /*
+  std::unordered_set<tfrag3::PackedTfragVertices::Vertex, tfrag3::PackedTfragVertices::Vertex::hash>
+      a;
+  for (auto& v : result->vertices) {
+    a.insert(v);
+  }
+  fmt::print("SIZE: {} vs {} {}\n", a.size(), result->vertices.size(),
+             (float)a.size() / result->vertices.size());
+             */
+
+  ASSERT(next_cluster_idx < UINT16_MAX);
+}
+
 void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const std::string& debug_name,
                    const std::vector<level_tools::TextureRemap>& map,
@@ -2137,75 +2223,80 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const std::vector<std::pair<int, int>>& expected_missing_textures,
                    tfrag3::Level& out,
                    bool dump_level) {
-  tfrag3::TfragTree this_tree;
-  if (tree->my_type() == "drawable-tree-tfrag") {
-    this_tree.kind = tfrag3::TFragmentTreeKind::NORMAL;
-  } else if (tree->my_type() == "drawable-tree-dirt-tfrag") {
-    this_tree.kind = tfrag3::TFragmentTreeKind::DIRT;
-  } else if (tree->my_type() == "drawable-tree-ice-tfrag") {
-    this_tree.kind = tfrag3::TFragmentTreeKind::ICE;
-  } else if (tree->my_type() == "drawable-tree-lowres-tfrag") {
-    this_tree.kind = tfrag3::TFragmentTreeKind::LOWRES;
-  } else if (tree->my_type() == "drawable-tree-trans-tfrag") {
-    this_tree.kind = tfrag3::TFragmentTreeKind::TRANS;
-  } else {
-    fmt::print("unknown tfrag tree kind: {}\n", tree->my_type());
-    ASSERT(false);
-  }
+  // go through 3 lods(?)
+  for (int geom = 0; geom < GEOM_MAX; ++geom) {
+    tfrag3::TfragTree this_tree;
+    if (tree->my_type() == "drawable-tree-tfrag") {
+      this_tree.kind = tfrag3::TFragmentTreeKind::NORMAL;
+    } else if (tree->my_type() == "drawable-tree-dirt-tfrag") {
+      this_tree.kind = tfrag3::TFragmentTreeKind::DIRT;
+    } else if (tree->my_type() == "drawable-tree-ice-tfrag") {
+      this_tree.kind = tfrag3::TFragmentTreeKind::ICE;
+    } else if (tree->my_type() == "drawable-tree-lowres-tfrag") {
+      this_tree.kind = tfrag3::TFragmentTreeKind::LOWRES;
+    } else if (tree->my_type() == "drawable-tree-trans-tfrag") {
+      this_tree.kind = tfrag3::TFragmentTreeKind::TRANS;
+    } else {
+      ASSERT_MSG(false, fmt::format("unknown tfrag tree kind: {}", tree->my_type()));
+    }
 
-  ASSERT(tree->length == (int)tree->arrays.size());
-  ASSERT(tree->length > 0);
+    ASSERT(tree->length == (int)tree->arrays.size());
+    ASSERT(tree->length > 0);
 
-  auto last_array = tree->arrays.back().get();
+    auto last_array = tree->arrays.back().get();
 
-  auto as_tfrag_array = dynamic_cast<level_tools::DrawableInlineArrayTFrag*>(last_array);
-  ASSERT(as_tfrag_array);
-  ASSERT(as_tfrag_array->length == (int)as_tfrag_array->tfragments.size());
-  ASSERT(as_tfrag_array->length > 0);
-  u16 idx = as_tfrag_array->tfragments.front().id;
-  for (auto& elt : as_tfrag_array->tfragments) {
-    ASSERT(elt.id == idx);
-    idx++;
-  }
-  bool ok = verify_node_indices(tree);
-  ASSERT(ok);
-  fmt::print("    tree has {} arrays and {} tfragments\n", tree->length, as_tfrag_array->length);
+    auto as_tfrag_array = dynamic_cast<level_tools::DrawableInlineArrayTFrag*>(last_array);
+    ASSERT(as_tfrag_array);
+    ASSERT(as_tfrag_array->length == (int)as_tfrag_array->tfragments.size());
+    ASSERT(as_tfrag_array->length > 0);
+    u16 idx = as_tfrag_array->tfragments.front().id;
+    for (auto& elt : as_tfrag_array->tfragments) {
+      ASSERT(elt.id == idx);
+      idx++;
+    }
+    bool ok = verify_node_indices(tree);
+    ASSERT(ok);
+    // fmt::print("    tree has {} arrays and {} tfragments\n", tree->length,
+    // as_tfrag_array->length);
 
-  auto vis_nodes = extract_vis_data(tree, as_tfrag_array->tfragments.front().id);
-  this_tree.bvh.first_leaf_node = vis_nodes.first_child_node;
-  this_tree.bvh.last_leaf_node = vis_nodes.last_child_node;
-  this_tree.bvh.num_roots = vis_nodes.num_roots;
-  this_tree.bvh.only_children = vis_nodes.only_children;
-  this_tree.bvh.first_root = vis_nodes.first_root;
-  this_tree.bvh.vis_nodes = std::move(vis_nodes.vis_nodes);
+    auto vis_nodes = extract_vis_data(tree, as_tfrag_array->tfragments.front().id);
+    this_tree.bvh.first_leaf_node = vis_nodes.first_child_node;
+    this_tree.bvh.last_leaf_node = vis_nodes.last_child_node;
+    this_tree.bvh.num_roots = vis_nodes.num_roots;
+    this_tree.bvh.only_children = vis_nodes.only_children;
+    this_tree.bvh.first_root = vis_nodes.first_root;
+    this_tree.bvh.vis_nodes = std::move(vis_nodes.vis_nodes);
 
-  std::unordered_map<int, int> tfrag_parents;
-  // for (auto& node : this_tree.vis_nodes) {
-  for (size_t node_idx = 0; node_idx < this_tree.bvh.vis_nodes.size(); node_idx++) {
-    const auto& node = this_tree.bvh.vis_nodes[node_idx];
-    if (node.flags == 0) {
-      for (int i = 0; i < node.num_kids; i++) {
-        tfrag_parents[node.child_id + i] = node_idx;
+    std::unordered_map<int, int> tfrag_parents;
+    // for (auto& node : this_tree.vis_nodes) {
+    for (size_t node_idx = 0; node_idx < this_tree.bvh.vis_nodes.size(); node_idx++) {
+      const auto& node = this_tree.bvh.vis_nodes[node_idx];
+      if (node.flags == 0) {
+        for (int i = 0; i < node.num_kids; i++) {
+          tfrag_parents[node.child_id + i] = node_idx;
+        }
       }
     }
-  }
-  //  ASSERT(result.vis_nodes.last_child_node + 1 == idx);
+    //  ASSERT(result.vis_nodes.last_child_node + 1 == idx);
 
-  emulate_tfrags(as_tfrag_array->tfragments, debug_name, map, out, this_tree, tex_db,
-                 expected_missing_textures, dump_level);
-  extract_time_of_day(tree, this_tree);
+    std::vector<tfrag3::PreloadedVertex> vertices;
+    emulate_tfrags(geom, as_tfrag_array->tfragments, debug_name, map, out, this_tree, vertices,
+                   tex_db, expected_missing_textures, dump_level);
+    pack_vertices(&this_tree.packed_vertices, vertices);
+    extract_time_of_day(tree, this_tree);
 
-  for (auto& draw : this_tree.draws) {
-    for (auto& str : draw.vis_groups) {
-      auto it = tfrag_parents.find(str.vis_idx_in_pc_bvh);
-      if (it == tfrag_parents.end()) {
-        str.vis_idx_in_pc_bvh = UINT32_MAX;
-      } else {
-        str.vis_idx_in_pc_bvh = it->second;
+    for (auto& draw : this_tree.draws) {
+      for (auto& str : draw.vis_groups) {
+        auto it = tfrag_parents.find(str.vis_idx_in_pc_bvh);
+        if (it == tfrag_parents.end()) {
+          str.vis_idx_in_pc_bvh = UINT32_MAX;
+        } else {
+          str.vis_idx_in_pc_bvh = it->second;
+        }
       }
+      merge_groups(draw.vis_groups);
     }
-    merge_groups(draw.vis_groups);
+    out.tfrag_trees[geom].push_back(this_tree);
   }
-  out.tfrag_trees.push_back(this_tree);
 }
 }  // namespace decompiler

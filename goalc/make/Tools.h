@@ -8,7 +8,6 @@ class Compiler;
 class CompilerTool : public Tool {
  public:
   CompilerTool(Compiler* compiler);
-
   bool run(const ToolInput& task) override;
   bool needs_run(const ToolInput& task) override;
 
@@ -48,10 +47,18 @@ class TextTool : public Tool {
  public:
   TextTool();
   bool run(const ToolInput& task) override;
+  bool needs_run(const ToolInput& task) override;
 };
 
 class GroupTool : public Tool {
  public:
   GroupTool();
   bool run(const ToolInput& task) override;
+};
+
+class SubtitleTool : public Tool {
+ public:
+  SubtitleTool();
+  bool run(const ToolInput& task) override;
+  bool needs_run(const ToolInput& task) override;
 };

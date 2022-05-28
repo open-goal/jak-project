@@ -224,6 +224,125 @@ extern void link();
 namespace setup_blerc_chains_for_one_fragment {
 extern void link();
 }
+namespace generic_merc_init_asm {
+extern void link();
+}
+namespace generic_merc_execute_asm {
+extern void link();
+}
+namespace mercneric_convert {
+extern void link();
+}
+namespace generic_prepare_dma_double {
+extern void link();
+}
+namespace generic_light_proc {
+extern void link();
+}
+namespace generic_envmap_proc {
+extern void link();
+}
+namespace high_speed_reject {
+extern void link();
+}
+namespace generic_prepare_dma_single {
+extern void link();
+}
+namespace ripple_create_wave_table {
+extern void link();
+}
+namespace ripple_execute_init {
+extern void link();
+}
+namespace ripple_apply_wave_table {
+extern void link();
+}
+namespace ripple_matrix_scale {
+extern void link();
+}
+namespace init_ocean_far_regs {
+extern void link();
+}
+namespace render_ocean_quad {
+extern void link();
+}
+namespace draw_large_polygon_ocean {
+extern void link();
+}
+namespace ocean_interp_wave {
+extern void link();
+}
+namespace ocean_generate_verts {
+extern void link();
+}
+namespace shadow_execute {
+extern void link();
+}
+namespace shadow_add_double_edges {
+extern void link();
+}
+namespace shadow_add_double_tris {
+extern void link();
+}
+namespace shadow_add_single_edges {
+extern void link();
+}
+namespace shadow_add_facing_single_tris {
+extern void link();
+}
+namespace shadow_add_verts {
+extern void link();
+}
+namespace shadow_find_double_edges {
+extern void link();
+}
+namespace shadow_find_facing_double_tris {
+extern void link();
+}
+namespace shadow_find_single_edges {
+extern void link();
+}
+namespace shadow_find_facing_single_tris {
+extern void link();
+}
+namespace shadow_init_vars {
+extern void link();
+}
+namespace shadow_scissor_top {
+extern void link();
+}
+namespace shadow_scissor_edges {
+extern void link();
+}
+namespace shadow_calc_dual_verts {
+extern void link();
+}
+namespace shadow_xform_verts {
+extern void link();
+}
+namespace draw_inline_array_instance_tie {
+extern void link();
+}
+namespace draw_inline_array_prototype_tie_generic_asm {
+extern void link();
+}
+
+namespace generic_tie_dma_to_spad_sync {
+extern void link();
+}
+namespace generic_envmap_dproc {
+extern void link();
+}
+namespace generic_interp_dproc {
+extern void link();
+}
+namespace generic_no_light_dproc {
+extern void link();
+}
+
+namespace generic_tie_convert {
+extern void link();
+}
 LinkedFunctionTable gLinkedFunctionTable;
 Rng gRng;
 std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = {
@@ -259,7 +378,29 @@ std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = 
     {"joint", {calc_animation_from_spr::link, cspace_parented_transformq_joint::link}},
     {"bones",
      {bones_mtx_calc::link, draw_bones_merc::link, draw_bones_check_longest_edge_asm::link}},
-    {"merc-blend-shape", {blerc_execute::link, setup_blerc_chains_for_one_fragment::link}}};
+    {"merc-blend-shape", {blerc_execute::link, setup_blerc_chains_for_one_fragment::link}},
+    {"generic-merc",
+     {generic_merc_init_asm::link, generic_merc_execute_asm::link, mercneric_convert::link,
+      high_speed_reject::link}},
+    {"generic-effect",
+     {generic_prepare_dma_double::link, generic_light_proc::link, generic_envmap_proc::link,
+      generic_prepare_dma_single::link, generic_envmap_dproc::link, generic_interp_dproc::link,
+      generic_no_light_dproc::link}},
+    {"ripple",
+     {ripple_execute_init::link, ripple_create_wave_table::link, ripple_apply_wave_table::link,
+      ripple_matrix_scale::link}},
+    {"ocean", {init_ocean_far_regs::link, render_ocean_quad::link, draw_large_polygon_ocean::link}},
+    {"ocean-vu0", {ocean_interp_wave::link, ocean_generate_verts::link}},
+    {"shadow-cpu",
+     {shadow_execute::link, shadow_add_double_edges::link, shadow_add_double_tris::link,
+      shadow_add_single_edges::link, shadow_add_facing_single_tris::link, shadow_add_verts::link,
+      shadow_find_double_edges::link, shadow_find_facing_double_tris::link,
+      shadow_find_single_edges::link, shadow_find_facing_single_tris::link, shadow_init_vars::link,
+      shadow_scissor_top::link, shadow_scissor_edges::link, shadow_calc_dual_verts::link,
+      shadow_xform_verts::link}},
+    {"tie-methods",
+     {draw_inline_array_instance_tie::link, draw_inline_array_prototype_tie_generic_asm::link}},
+    {"generic-tie", {generic_tie_dma_to_spad_sync::link, generic_tie_convert::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

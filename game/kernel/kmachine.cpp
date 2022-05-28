@@ -28,6 +28,7 @@
 #include "game/sce/libpad.h"
 #include "common/symbols.h"
 #include "common/log/log.h"
+#include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 #include "game/graphics/sceGraphicsInterface.h"
 #include "game/graphics/gfx.h"
@@ -39,6 +40,10 @@
 #include "game/sce/libscf.h"
 #include "common/util/Assert.h"
 #include "game/discord.h"
+#include "common/global_profiler/GlobalProfiler.h"
+
+#include "svnrev.h"
+
 using namespace ee;
 
 /*!
@@ -62,7 +67,7 @@ Timer ee_clock_timer;
 u32 vif1_interrupt_handler = 0;
 
 void kmachine_init_globals() {
-  isodrv = iso_cd;
+  isodrv = fakeiso;  // changed. fakeiso is the only one that works in opengoal.
   modsrc = 1;
   reboot = 1;
   memset(pad_dma_buf, 0, sizeof(pad_dma_buf));
@@ -77,6 +82,16 @@ void kmachine_init_globals() {
  * Modified to use std::string, and removed call to fflush.
  */
 void InitParms(int argc, const char* const* argv) {
+  // Modified default settings:
+  if (argc == 1) {
+    DiskBoot = 1;
+    isodrv = fakeiso;
+    modsrc = 0;
+    reboot = 0;
+    DebugSegment = 0;
+    MasterDebug = 0;
+  }
+
   for (int i = 1; i < argc; i++) {
     std::string arg = argv[i];
     // DVD Settings
@@ -118,6 +133,12 @@ void InitParms(int argc, const char* const* argv) {
     if (arg == "-nokernel") {
       Msg(6, "dkernel: no kernel mode\n");
       MasterUseKernel = false;
+    }
+
+    // an added mode to allow booting without sound for testing
+    if (arg == "-nosound") {
+      Msg(6, "dkernel: no sound mode\n");
+      masterConfig.disable_sound = true;
     }
 
     // GOAL Settings
@@ -224,10 +245,17 @@ void InitIOP() {
   // we begin putting together a boot command for OVERLORD, the IOP driver, which must know the data
   // source and the name of the boot splash screen of the game.
   char overlord_boot_command[256];
-  kstrcpy(overlord_boot_command, init_types[(int)isodrv]);
-  char* cmd = overlord_boot_command + strlen(overlord_boot_command) + 1;
+  char* cmd = overlord_boot_command;
+  kstrcpy(cmd, init_types[(int)isodrv]);
+  cmd = cmd + strlen(cmd) + 1;
   kstrcpy(cmd, "SCREEN1.USA");
-  auto len = strlen(cmd);
+  cmd = cmd + strlen(cmd) + 1;
+  if (masterConfig.disable_sound) {
+    kstrcpy(cmd, "-nosound");
+    cmd = cmd + strlen(cmd) + 1;
+  }
+
+  int total_len = cmd - overlord_boot_command;
 
   if (modsrc == fakeiso) {
     // load from network
@@ -259,8 +287,7 @@ void InitIOP() {
     sceSifLoadModule("host0:/usr/home/src/989snd10/iop/989ERR.IRX", 0, nullptr);
 
     lg::debug("Initializing CD library...");
-    auto rv = sceSifLoadModule("host0:binee/overlord.irx", cmd + len + 1 - overlord_boot_command,
-                               overlord_boot_command);
+    auto rv = sceSifLoadModule("host0:binee/overlord.irx", total_len, overlord_boot_command);
     if (rv < 0) {
       MsgErr("loading overlord.irx failed\n");
     }
@@ -291,8 +318,8 @@ void InitIOP() {
     }
 
     lg::debug("Initializing CD library in ISO_CD mode...");
-    auto rv = sceSifLoadModule("cdrom0:\\\\DRIVERS\\\\OVERLORD.IRX;1",
-                               cmd + len + 1 - overlord_boot_command, overlord_boot_command);
+    auto rv =
+        sceSifLoadModule("cdrom0:\\\\DRIVERS\\\\OVERLORD.IRX;1", total_len, overlord_boot_command);
     if (rv < 0) {
       MsgErr("loading overlord.irx failed\n");
     }
@@ -354,9 +381,10 @@ int InitMachine() {
   //    MsgErr("dkernel: !init pad\n");
   //  }
 
-  if (MasterDebug) {  // connect to GOAL compiler
-    InitGoalProto();
-  }
+  // do this always
+  // if (MasterDebug) {  // connect to GOAL compiler
+  InitGoalProto();
+  //}
 
   lg::info("InitSound");
   InitSound();  // do nothing!
@@ -559,8 +587,23 @@ void pc_texture_relocate(u32 dst, u32 src, u32 format) {
 
 u64 pc_get_mips2c(u32 name) {
   const char* n = Ptr<String>(name).c()->data();
-  fmt::print("Getting mips: {}\n", n);
   return Mips2C::gLinkedFunctionTable.get(n);
+}
+
+void pc_set_levels(u32 l0, u32 l1) {
+  std::string l0s = Ptr<String>(l0).c()->data();
+  std::string l1s = Ptr<String>(l1).c()->data();
+
+  std::vector<std::string> levels;
+  if (l0s != "none" && l0s != "#f") {
+    levels.push_back(l0s);
+  }
+
+  if (l1s != "none" && l1s != "#f") {
+    levels.push_back(l1s);
+  }
+
+  Gfx::set_levels(levels);
 }
 
 /*!
@@ -700,12 +743,20 @@ void DecodeTime(u32 ptr) {
 }
 
 // TODO PutDisplayEnv
-void PutDisplayEnv() {
+void PutDisplayEnv(u32 ptr) {
+  u8 alp = Ptr<u8>(ptr).c()[1];
+  auto* renderer = Gfx::GetCurrentRenderer();
+  if (renderer) {
+    renderer->set_pmode_alp(alp / 255.f);
+  }
   // ASSERT(false);
 }
 
 /*!
- * PC Port function to get a 300MHz timer value.
+ * PC PORT FUNCTIONS BEGIN
+ */
+/*!
+ * Get a 300MHz timer value.
  */
 u64 read_ee_timer() {
   u64 ns = ee_clock_timer.getNs();
@@ -713,14 +764,14 @@ u64 read_ee_timer() {
 }
 
 /*!
- * PC Port function to do a fast memory copy.
+ * Do a fast memory copy.
  */
 void c_memmove(u32 dst, u32 src, u32 size) {
   memmove(Ptr<u8>(dst).c(), Ptr<u8>(src).c(), size);
 }
 
 /*!
- * PC Port function to return the current OS as a symbol.
+ * Return the current OS as a symbol. Actually returns what it was compiled for!
  */
 u64 get_os() {
 #ifdef _WIN32
@@ -733,7 +784,7 @@ u64 get_os() {
 }
 
 /*!
- * PC Port function
+ * Returns size of window.
  */
 void get_window_size(u32 w_ptr, u32 h_ptr) {
   if (w_ptr) {
@@ -747,12 +798,29 @@ void get_window_size(u32 w_ptr, u32 h_ptr) {
 }
 
 /*!
- * PC Port function
+ * Returns scale of window. This is for DPI stuff.
  */
 void get_window_scale(u32 x_ptr, u32 y_ptr) {
   float* x = x_ptr ? Ptr<float>(x_ptr).c() : NULL;
   float* y = y_ptr ? Ptr<float>(y_ptr).c() : NULL;
   Gfx::get_window_scale(x, y);
+}
+
+/*!
+ * Returns resolution of the monitor.
+ */
+void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr, u32 c_ptr) {
+  s32 *w_out = 0, *h_out = 0, *c_out = 0;
+  if (w_ptr) {
+    w_out = Ptr<s32>(w_ptr).c();
+  }
+  if (h_ptr) {
+    h_out = Ptr<s32>(h_ptr).c();
+  }
+  if (c_ptr) {
+    c_out = Ptr<s32>(c_ptr).c();
+  }
+  Gfx::get_screen_size(vmode_idx, w_out, h_out, c_out);
 }
 
 void update_discord_rpc(u32 discord_info) {
@@ -792,7 +860,7 @@ void update_discord_rpc(u32 discord_info) {
         strcat(state, std::to_string(cells).c_str());
         strcat(state, " | Orbs: ");
         strcat(state, std::to_string(orbs).c_str());
-        strcat(state, " | Scout flies: ");
+        strcat(state, " | Flies: ");
         strcat(state, std::to_string(scout_flies).c_str());
         strcat(state, " | Deaths: ");
         strcat(state, std::to_string(deaths).c_str());
@@ -819,14 +887,75 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
+u64 filepath_exists(u32 filepath) {
+  auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
+  if (std::filesystem::exists(filepath_str)) {
+    return intern_from_c("#t").offset;
+  }
+  return s7.offset;
+}
+
+void mkdir_path(u32 filepath) {
+  auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
+  file_util::create_dir_if_needed_for_file(filepath_str);
+}
+
+void prof_event(u32 name, u32 kind) {
+  prof().event(Ptr<String>(name).c()->data(), (ProfNode::Kind)kind);
+}
+
+u32 get_fullscreen() {
+  switch (Gfx::get_fullscreen()) {
+    default:
+    case Gfx::DisplayMode::Windowed:
+      return intern_from_c("windowed").offset;
+    case Gfx::DisplayMode::Borderless:
+      return intern_from_c("borderless").offset;
+    case Gfx::DisplayMode::Fullscreen:
+      return intern_from_c("fullscreen").offset;
+  }
+}
+
+void set_fullscreen(u32 symptr, s64 screen) {
+  if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
+    Gfx::set_fullscreen(Gfx::DisplayMode::Windowed, screen);
+  } else if (symptr == intern_from_c("borderless").offset) {
+    Gfx::set_fullscreen(Gfx::DisplayMode::Borderless, screen);
+  } else if (symptr == intern_from_c("fullscreen").offset) {
+    Gfx::set_fullscreen(Gfx::DisplayMode::Fullscreen, screen);
+  }
+}
+
+void set_collision(u32 symptr) {
+  Gfx::g_global_settings.collision_enable = symptr != s7.offset;
+}
+
+void set_collision_wireframe(u32 symptr) {
+  Gfx::g_global_settings.collision_wireframe = symptr != s7.offset;
+}
+
+void set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask, u32 symptr) {
+  if (symptr != s7.offset) {
+    Gfx::CollisionRendererSetMask(mode, mask);
+  } else {
+    Gfx::CollisionRendererClearMask(mode, mask);
+  }
+}
+
+u32 get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask) {
+  return Gfx::CollisionRendererGetMask(mode, mask) ? s7.offset + FIX_SYM_TRUE : s7.offset;
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
+
   make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
   make_function_symbol_from_c("__mem-move", (void*)c_memmove);
   make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
   make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
   make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
   make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
+  make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
   // pad stuff
   make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
@@ -841,24 +970,53 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-os", (void*)get_os);
   make_function_symbol_from_c("pc-get-window-size", (void*)get_window_size);
   make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
+  make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
+  make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
+  make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
+
+  // graphics things
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
-  make_function_symbol_from_c("pc-set-fullscreen", (void*)Gfx::set_fullscreen);
+  make_function_symbol_from_c("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
+  make_function_symbol_from_c("pc-set-collision-mode", (void*)Gfx::CollisionRendererSetMode);
+  make_function_symbol_from_c("pc-set-collision-mask", (void*)set_collision_mask);
+  make_function_symbol_from_c("pc-get-collision-mask", (void*)get_collision_mask);
+  make_function_symbol_from_c("pc-set-collision-wireframe", (void*)set_collision_wireframe);
+  make_function_symbol_from_c("pc-set-collision", (void*)set_collision);
+
+  // file related functions
+  make_function_symbol_from_c("pc-filepath-exists?", (void*)filepath_exists);
+  make_function_symbol_from_c("pc-mkdir-file-path", (void*)mkdir_path);
 
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
+
+  // profiler
+  make_function_symbol_from_c("pc-prof", (void*)prof_event);
 
   // init ps2 VM
   if (VM::use) {
     make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
     VM::vm_init();
   }
+
+  // setup string constants
+  auto user_dir_path = file_util::get_user_game_dir();
+  intern_from_c("*pc-user-dir-base-path*")->value =
+      make_string_from_c(user_dir_path.string().c_str());
+  // TODO - we will eventually need a better way to know what game we are playing
+  auto settings_path = file_util::get_user_settings_dir();
+  intern_from_c("*pc-settings-folder*")->value = make_string_from_c(settings_path.string().c_str());
+  intern_from_c("*pc-settings-built-sha*")->value = make_string_from_c(GIT_SHORT_SHA);
 }
+/*!
+ * PC PORT FUNCTIONS END
+ */
 
 void vif_interrupt_callback() {
   // added for the PC port for faking VIF interrupts from the graphics system.
-  if (vif1_interrupt_handler && MasterExit == 0) {
+  if (vif1_interrupt_handler && MasterExit == RuntimeExitStatus::RUNNING) {
     call_goal(Ptr<Function>(vif1_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
   }
 }

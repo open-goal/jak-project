@@ -11,11 +11,16 @@
 #include "decompiler/data/TextureDB.h"
 #include "common/util/os.h"
 #include "common/util/diff.h"
+#include "common/util/Timer.h"
 
 int main(int argc, char** argv) {
-  fmt::print("[Mem] Size of linked word: {}\n", sizeof(decompiler::LinkedWord));
+  Timer decomp_timer;
+
   fmt::print("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
   using namespace decompiler;
+  if (!file_util::setup_project_path(std::nullopt)) {
+    return 1;
+  }
   lg::set_file(file_util::get_file_path({"log/decompiler.txt"}));
   lg::set_file_level(lg::level::info);
   lg::set_stdout_level(lg::level::info);
@@ -23,7 +28,6 @@ int main(int argc, char** argv) {
   lg::initialize();
   lg::info("GOAL Decompiler version {}\n", versions::DECOMPILER_VERSION);
 
-  file_util::init_crc();
   init_opcode_info();
 
   if (argc < 4) {
@@ -85,11 +89,19 @@ int main(int argc, char** argv) {
 
   // Verify the in_folder is correct
   // TODO - refactor to use ghc::filesystem, cleanup file_util
-  if (!file_util::file_exists(in_folder) ||
-      (!config.expected_elf_name.empty() &&
-       !file_util::file_exists(file_util::combine_path(in_folder, config.expected_elf_name)))) {
-    printf("Aborting - 'in_folder' does not exist or does not contain the expected files\n");
+  if (!file_util::file_exists(in_folder)) {
+    fmt::print("Aborting - 'in_folder' does not exist '{}'\n", in_folder);
     return 1;
+  }
+
+  // Warning message if expected ELF isn't found, user could be using bad assets / didn't extract
+  // the ISO properly
+  if (!config.expected_elf_name.empty() &&
+      !file_util::file_exists(file_util::combine_path(in_folder, config.expected_elf_name))) {
+    fmt::print(
+        "WARNING - '{}' does not contain the expected ELF file '{}'.  Was the ISO extracted "
+        "properly or is there a version mismatch?\n",
+        in_folder, config.expected_elf_name);
   }
 
   std::vector<std::string> dgos, objs, strs;
@@ -145,11 +157,9 @@ int main(int argc, char** argv) {
                          config.write_hex_near_instructions);
   }
 
-  // regenerate all-types if needed
-  if (config.regenerate_all_types) {
-    db.analyze_functions_ir1(config);
-    file_util::write_text_file(file_util::combine_path(out_folder, "type_defs.gc"),
-                               db.all_type_defs);
+  // process art groups (used in decompilation)
+  if (config.decompile_code || config.process_art_groups) {
+    db.extract_art_info();
   }
 
   // main decompile.
@@ -163,6 +173,11 @@ int main(int argc, char** argv) {
   file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
                              db.dts.dump_symbol_types());
 
+  // write art groups
+  if (config.process_art_groups) {
+    db.dump_art_info(out_folder);
+  }
+
   if (config.hexdump_code || config.hexdump_data) {
     db.write_object_file_words(out_folder, config.hexdump_data, config.hexdump_code);
   }
@@ -173,7 +188,7 @@ int main(int argc, char** argv) {
   }
 
   if (config.process_game_text) {
-    auto result = db.process_game_text_files(config.text_version);
+    auto result = db.process_game_text_files(config);
     if (!result.empty()) {
       file_util::write_text_file(file_util::get_file_path({"assets", "game_text.txt"}), result);
     }
@@ -182,14 +197,19 @@ int main(int argc, char** argv) {
   fmt::print("[Mem] After text: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   decompiler::TextureDB tex_db;
-  if (config.process_tpages) {
+  if (config.process_tpages || config.levels_extract) {
     auto result = db.process_tpages(tex_db);
-    if (!result.empty()) {
+    if (!result.empty() && config.process_tpages) {
       file_util::write_text_file(file_util::get_file_path({"assets", "tpage-dir.txt"}), result);
     }
   }
 
   fmt::print("[Mem] After textures: {} MB\n", get_peak_rss() / (1024 * 1024));
+  // todo config
+  auto replacements_path = file_util::get_file_path({"texture_replacements"});
+  if (std::filesystem::exists(replacements_path)) {
+    tex_db.replace_textures(replacements_path);
+  }
 
   if (config.process_game_count) {
     auto result = db.process_game_count_file();
@@ -199,9 +219,8 @@ int main(int argc, char** argv) {
   }
 
   if (config.levels_extract) {
-    for (auto& lev : config.levels_to_extract) {
-      extract_from_level(db, tex_db, lev, config.hacks, config.rip_levels);
-    }
+    extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config.hacks,
+                       config.rip_levels, config.extract_collision);
   }
 
   fmt::print("[Mem] After extraction: {} MB\n", get_peak_rss() / (1024 * 1024));
@@ -210,6 +229,6 @@ int main(int argc, char** argv) {
     process_streamed_audio(config.audio_dir_file_name, config.streamed_audio_file_names);
   }
 
-  lg::info("Disassembly has completed successfully.");
+  lg::info("Decompiler has finished successfully in {:.2f} seconds.", decomp_timer.getSeconds());
   return 0;
 }

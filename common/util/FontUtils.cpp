@@ -25,6 +25,7 @@ GameTextFontBank::GameTextFontBank(GameTextVersion version,
   std::sort(
       m_replace_info->begin(), m_replace_info->end(),
       [](const ReplaceInfo& a, const ReplaceInfo& b) { return a.from.size() > b.from.size(); });
+  (void)m_version;
 }
 
 /*!
@@ -386,8 +387,8 @@ static std::vector<EncodeInfo> g_encode_info_jak1 = {
 };
 
 static std::vector<ReplaceInfo> g_replace_info_jak1 = {
-    // \" -> " (confusing)
-    {"\\\"", "\""},
+    // \" -> " (yeah it looks confusing)
+    {"\"", "\\\""},
 
     // other
     {"A~Y~-21H~-5Vº~Z", "Å"},

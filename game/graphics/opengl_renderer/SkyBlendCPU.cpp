@@ -1,12 +1,13 @@
 #include "SkyBlendCPU.h"
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
+#include "common/util/os.h"
 
 #include <immintrin.h>
 
 SkyBlendCPU::SkyBlendCPU() {
-  glGenTextures(2, m_textures);
   for (int i = 0; i < 2; i++) {
-    glBindTexture(GL_TEXTURE_2D, m_textures[i]);
+    glGenTextures(1, &m_textures[i].gl);
+    glBindTexture(GL_TEXTURE_2D, m_textures[i].gl);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[i], m_sizes[i], 0, GL_RGBA,
                  GL_UNSIGNED_INT_8_8_8_8_REV, 0);
     m_texture_data[i].resize(4 * m_sizes[i] * m_sizes[i]);
@@ -14,37 +15,78 @@ SkyBlendCPU::SkyBlendCPU() {
 }
 
 SkyBlendCPU::~SkyBlendCPU() {
-  glDeleteTextures(2, m_textures);
+  for (auto& tex : m_textures) {
+    glDeleteTextures(1, &tex.gl);
+  }
 }
 
 void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
-  __m256i intensity_vec = _mm256_set1_epi16(intensity);
-  for (u32 i = 0; i < size / 16; i++) {
-    __m128i tex_data8 = _mm_loadu_si128((const __m128i*)(in + (i * 16)));
-    __m256i tex_data16 = _mm256_cvtepu8_epi16(tex_data8);
-    tex_data16 = _mm256_mullo_epi16(tex_data16, intensity_vec);
-    tex_data16 = _mm256_srli_epi16(tex_data16, 7);
-    auto hi = _mm256_extracti128_si256(tex_data16, 1);
-    auto result = _mm_packus_epi16(_mm256_castsi256_si128(tex_data16), hi);
-    _mm_storeu_si128((__m128i*)(out + (i * 16)), result);
+  if (get_cpu_info().has_avx2) {
+#ifdef __AVX2__
+    __m256i intensity_vec = _mm256_set1_epi16(intensity);
+    for (u32 i = 0; i < size / 16; i++) {
+      __m128i tex_data8 = _mm_loadu_si128((const __m128i*)(in + (i * 16)));
+      __m256i tex_data16 = _mm256_cvtepu8_epi16(tex_data8);
+      tex_data16 = _mm256_mullo_epi16(tex_data16, intensity_vec);
+      tex_data16 = _mm256_srli_epi16(tex_data16, 7);
+      auto hi = _mm256_extracti128_si256(tex_data16, 1);
+      auto result = _mm_packus_epi16(_mm256_castsi256_si128(tex_data16), hi);
+      _mm_storeu_si128((__m128i*)(out + (i * 16)), result);
+    }
+#else
+    ASSERT(false);
+#endif
+  } else {
+    __m128i intensity_vec = _mm_set1_epi16(intensity);
+    for (u32 i = 0; i < size / 8; i++) {
+      __m128i tex_data8 = _mm_loadu_si64((const __m128i*)(in + (i * 8)));
+      __m128i tex_data16 = _mm_cvtepu8_epi16(tex_data8);
+      tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
+      tex_data16 = _mm_srli_epi16(tex_data16, 7);
+      auto result = _mm_packus_epi16(tex_data16, tex_data16);
+      _mm_storel_epi64((__m128i*)(out + (i * 8)), result);
+    }
   }
 }
 
 void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
-  __m256i intensity_vec = _mm256_set1_epi16(intensity);
-  __m256i max_intensity = _mm256_set1_epi16(255);
-  for (u32 i = 0; i < size / 16; i++) {
-    __m128i tex_data8 = _mm_loadu_si128((const __m128i*)(in + (i * 16)));
-    __m128i out_val = _mm_loadu_si128((const __m128i*)(out + (i * 16)));
-    __m256i tex_data16 = _mm256_cvtepu8_epi16(tex_data8);
-    tex_data16 = _mm256_mullo_epi16(tex_data16, intensity_vec);
-    tex_data16 = _mm256_srli_epi16(tex_data16, 7);
-    tex_data16 = _mm256_min_epi16(max_intensity, tex_data16);
-    auto hi = _mm256_extracti128_si256(tex_data16, 1);
-    auto result = _mm_packus_epi16(_mm256_castsi256_si128(tex_data16), hi);
-    out_val = _mm_adds_epu8(out_val, result);
-    _mm_storeu_si128((__m128i*)(out + (i * 16)), out_val);
+  if (get_cpu_info().has_avx2) {
+#ifdef __AVX2__
+    __m256i intensity_vec = _mm256_set1_epi16(intensity);
+    __m256i max_intensity = _mm256_set1_epi16(255);
+    for (u32 i = 0; i < size / 16; i++) {
+      __m128i tex_data8 = _mm_loadu_si128((const __m128i*)(in + (i * 16)));
+      __m128i out_val = _mm_loadu_si128((const __m128i*)(out + (i * 16)));
+      __m256i tex_data16 = _mm256_cvtepu8_epi16(tex_data8);
+      tex_data16 = _mm256_mullo_epi16(tex_data16, intensity_vec);
+      tex_data16 = _mm256_srli_epi16(tex_data16, 7);
+      tex_data16 = _mm256_min_epi16(max_intensity, tex_data16);
+      auto hi = _mm256_extracti128_si256(tex_data16, 1);
+      auto result = _mm_packus_epi16(_mm256_castsi256_si128(tex_data16), hi);
+      out_val = _mm_adds_epu8(out_val, result);
+      _mm_storeu_si128((__m128i*)(out + (i * 16)), out_val);
+    }
+#else
+    ASSERT(false);
+#endif
+  } else {
+    __m128i intensity_vec = _mm_set1_epi16(intensity);
+    __m128i max_intensity = _mm_set1_epi16(255);
+    for (u32 i = 0; i < size / 8; i++) {
+      __m128i tex_data8 = _mm_loadu_si64((const __m128i*)(in + (i * 8)));
+      __m128i out_val = _mm_loadu_si64((const __m128i*)(out + (i * 8)));
+      __m128i tex_data16 = _mm_cvtepu8_epi16(tex_data8);
+      tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
+      tex_data16 = _mm_srli_epi16(tex_data16, 7);
+      tex_data16 = _mm_min_epi16(max_intensity, tex_data16);
+      auto result = _mm_packus_epi16(tex_data16, tex_data16);
+      out_val = _mm_adds_epu8(out_val, result);
+      _mm_storel_epi64((__m128i*)(out + (i * 8)), out_val);
+    }
   }
+  /*
+
+   */
 }
 
 SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
@@ -52,13 +94,9 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
                                          ScopedProfilerNode& /*prof*/) {
   SkyBlendStats stats;
 
-  Timer sky_timer;
   while (dma.current_tag().qwc == 6) {
     // assuming that the vif and gif-tag is correct
     auto setup_data = dma.read_and_advance();
-    if (render_state->dump_playback) {
-      // continue;
-    }
 
     // first is an adgif
     AdgifHelper adgif(setup_data.data + 16);
@@ -93,9 +131,8 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
     }
 
     // look up the source texture
-    auto tex = render_state->texture_pool->lookup(adgif.tex0().tbp0());
+    auto tex = render_state->texture_pool->lookup_gpu_texture(adgif.tex0().tbp0());
     ASSERT(tex);
-    ASSERT(!tex->only_on_gpu);  // we need the actual data!!
 
     // slow version
     /*
@@ -113,59 +150,54 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
       m_texture_data[buffer_idx][i] += val;
     }
      */
-    if (is_first_draw) {
-      blend_sky_initial_fast(intensity, m_texture_data[buffer_idx].data(), tex->data.data(),
-                             tex->data.size());
-    } else {
-      blend_sky_fast(intensity, m_texture_data[buffer_idx].data(), tex->data.data(),
-                     tex->data.size());
-    }
-
-    if (buffer_idx == 0) {
+    if (tex->get_data_ptr()) {
       if (is_first_draw) {
-        stats.sky_draws++;
+        blend_sky_initial_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
+                               tex->data_size());
       } else {
-        stats.sky_blends++;
+        blend_sky_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
+                       tex->data_size());
       }
-    } else {
-      if (is_first_draw) {
-        stats.cloud_draws++;
+      if (buffer_idx == 0) {
+        if (is_first_draw) {
+          stats.sky_draws++;
+        } else {
+          stats.sky_blends++;
+        }
       } else {
-        stats.cloud_blends++;
+        if (is_first_draw) {
+          stats.cloud_draws++;
+        } else {
+          stats.cloud_blends++;
+        }
       }
+      glBindTexture(GL_TEXTURE_2D, m_textures[buffer_idx].gl);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[buffer_idx], m_sizes[buffer_idx], 0, GL_RGBA,
+                   GL_UNSIGNED_INT_8_8_8_8_REV, m_texture_data[buffer_idx].data());
+
+      render_state->texture_pool->move_existing_to_vram(m_textures[buffer_idx].tex,
+                                                        m_textures[buffer_idx].tbp);
     }
   }
-
-  // put in pool.
-  if (render_state->dump_playback) {
-    return stats;
-  }
-  for (int i = 0; i < 2; i++) {
-    // todo - these are hardcoded and rely on the vram layout.
-    u32 tbp = i == 0 ? 8064 : 8096;
-
-    // lookup existing, or create a new entry
-    TextureRecord* tex = render_state->texture_pool->lookup(tbp);
-    if (!tex) {
-      auto tsp = std::make_shared<TextureRecord>();
-      render_state->texture_pool->set_texture(tbp, tsp);
-      tex = tsp.get();
-    }
-
-    // update it
-    glBindTexture(GL_TEXTURE_2D, m_textures[i]);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[i], m_sizes[i], 0, GL_RGBA,
-                 GL_UNSIGNED_INT_8_8_8_8_REV, m_texture_data[i].data());
-
-    tex->gpu_texture = m_textures[i];
-    tex->on_gpu = true;
-    tex->only_on_gpu = true;
-    tex->do_gc = false;
-    tex->w = m_sizes[i];
-    tex->h = m_sizes[i];
-    tex->name = fmt::format("PC-SKY-{}", i);
-  }
-  //  fmt::print("sky blend took {:.2f} ms\n", sky_timer.getMs());
 
   return stats;
+}
+
+void SkyBlendCPU::init_textures(TexturePool& tex_pool) {
+  for (int i = 0; i < 2; i++) {
+    // update it
+    glBindTexture(GL_TEXTURE_2D, m_textures[i].gl);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[i], m_sizes[i], 0, GL_RGBA,
+                 GL_UNSIGNED_INT_8_8_8_8_REV, m_texture_data[i].data());
+    TextureInput in;
+
+    in.gpu_texture = m_textures[i].gl;
+    in.w = m_sizes[i];
+    in.h = m_sizes[i];
+    in.debug_name = fmt::format("PC-SKY-CPU-{}", i);
+    in.id = tex_pool.allocate_pc_port_texture();
+    u32 tbp = SKY_TEXTURE_VRAM_ADDRS[i];
+    m_textures[i].tex = tex_pool.give_texture_and_load_to_vram(in, tbp);
+    m_textures[i].tbp = tbp;
+  }
 }

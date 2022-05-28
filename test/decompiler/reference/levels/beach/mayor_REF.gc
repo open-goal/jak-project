@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/mayor-ag.gc")
+
 ;; definition of type mayor
 (deftype mayor (process-taskable)
   ()
@@ -19,14 +21,11 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *mayor-sg* mayor
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 2.5)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *mayor-sg* mayor mayor-lod0-jg mayor-idle-ja
+              ((mayor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :shadow mayor-shadow-mg
+              )
 
 ;; definition for method 52 of type mayor
 ;; INFO: Return type mismatch int vs none.
@@ -50,16 +49,19 @@
 (defmethod draw-npc-shadow mayor ((obj mayor))
   (-> obj draw shadow-ctrl)
   (cond
-    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status drwf03)))
+    ((and (-> obj draw shadow)
+          (zero? (-> obj draw cur-lod))
+          (logtest? (-> obj draw status) (draw-status was-drawn))
+          )
      (let ((v1-9 (-> obj draw shadow-ctrl)))
-       (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
+       (logclear! (-> v1-9 settings flags) (shadow-flags shdf05))
        )
      0
-     (dummy-14 (-> obj draw shadow-ctrl))
+     (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
      )
     (else
       (let ((v1-14 (-> obj draw shadow-ctrl)))
-        (set! (-> v1-14 settings flags) (logior (the-as int (-> v1-14 settings flags)) 32))
+        (set! (-> v1-14 settings flags) (the-as shadow-flags (logior (the-as int (-> v1-14 settings flags)) 32)))
         )
       0
       )

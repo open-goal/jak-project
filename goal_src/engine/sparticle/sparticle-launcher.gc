@@ -135,6 +135,10 @@
 ;; launch queue
 ;;;;;;;;;;;;;;;;;;;;;;;
 
+;(#if (not PC_BIG_MEMORY)
+    (defconstant SPARTICLE_QUEUE_SIZE 32)
+    ;(defconstant SPARTICLE_QUEUE_SIZE 80))
+
 (deftype sp-queued-launch-particles (structure)
   ((sp-system   sparticle-system           :offset-assert   0)
    (sp-launcher sparticle-launcher         :offset-assert   4)
@@ -147,7 +151,7 @@
 
 (deftype sp-launch-queue (basic)
   ((in-use int32                                 :offset-assert   4)
-   (queue  sp-queued-launch-particles 32 :inline :offset-assert  16)
+   (queue  sp-queued-launch-particles SPARTICLE_QUEUE_SIZE :inline :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x410
@@ -188,9 +192,7 @@
   (set! (-> arg0 clamp-reg) (gs-reg64 zbuf-1))
   ;; this is sometimes "gs-miptbp" instead.
   (set! (-> arg0 prims 9) (gs-reg64 alpha-1))
-  
-  ;; should probably fix this type eventually...
-  (set! (-> arg0 alpha) (the gs-miptbp (new 'static 'gs-alpha :b #x1 :d #x1)))
+  (set! (-> arg0 alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
   
   ;; clamp is actually zbuf for sparticles, not gs-clamp.
   (set! (-> arg0 clamp) (the gs-clamp (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)))
@@ -226,7 +228,7 @@
   (let ((v1-0 *sp-launch-queue*))
     
     ;; make sure we have room in the queue
-    (when (= (-> v1-0 in-use) 32)
+    (when (= (-> v1-0 in-use) SPARTICLE_QUEUE_SIZE)
       (format 0 "ERROR: sp-launch-particles called during processing, and queue is full~%")
       (return 0)
       )
@@ -506,7 +508,7 @@
       ;; first time we get here, set up the adgif shader.
       (set! *death-adgif* (new 'static 'adgif-shader))
       (particle-adgif *death-adgif* (new 'static 'texture-id :index #x18 :page #x2))
-      (set! (-> *death-adgif* alpha) (new 'static 'gs-miptbp :tbp1 #x48)) ;; I think this is actually an alpha?
+      (set! (-> *death-adgif* alpha) (new 'static 'gs-alpha :b #x2 :d #x1))
       )
     
     ;; copy the death-adgif to the adgif of our particle
@@ -859,15 +861,13 @@
 
 (defmethod create-launch-control sparticle-launch-group ((obj sparticle-launch-group) (arg0 process))
   "create a launch-control to hold the state of the particles. stored on the process heap."
-  (let ((gp-0 (the-as object (new 'process 'sparticle-launch-control (-> obj length)))))
-    (when (zero? (the-as sparticle-launch-control gp-0))
+  (let ((gp-0 (the-as sparticle-launch-control (new 'process 'sparticle-launch-control (-> obj length)))))
+    (when (zero? gp-0)
       (go process-drawable-art-error "memory")
-      (set! gp-0 0)
-      (goto cfg-4)
+      (return (the-as sparticle-launch-control 0))
       )
-    (initialize (the-as sparticle-launch-control gp-0) obj arg0)
-    (label cfg-4)
-    (the-as sparticle-launch-control gp-0)
+    (initialize gp-0 obj arg0)
+    gp-0
     )
   )
 
@@ -925,7 +925,7 @@
                )
           (add-debug-sphere
             *display-actor-vis*
-            (bucket-id debug-draw0)
+            (bucket-id debug)
             gp-1
             (-> gp-1 w)
             (new 'static 'rgba :g #xff :a #x80)
@@ -933,7 +933,13 @@
           )
       
       ;; can we see it?
-      (sphere-in-view-frustum? (the-as sphere gp-1))
+      (#if (not PC_PORT)
+          (sphere-in-view-frustum? (the-as sphere gp-1))
+          (if (-> *pc-settings* ps2-parts?)
+              ;; pc port : launchers have larger bsphere if you have ps2 parts off
+              (sphere-in-view-frustum? (the-as sphere gp-1))
+              (sphere-in-view-frustum? (the-as sphere (let ((bsph (new-stack-vector0))) (vector-copy! bsph gp-1) (*! (-> bsph w) 4.0) bsph))))
+          )
       )
      )
     )
@@ -983,6 +989,11 @@
       (if (nonzero? (-> obj matrix)) ;; if we have an additional matrix, say we're at the camera so we always draw.
           (set! f30-0 0.0)
           )
+      
+      ;; pc hack for more particles.
+      (with-pc
+        (if (not (-> *pc-settings* ps2-parts?))
+            (/! f30-0 256.0)))
       
       ;; loop over particles in the group.
       (let ((s2-1 (-> obj length)))

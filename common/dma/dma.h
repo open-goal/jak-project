@@ -9,6 +9,7 @@
 #include <cstring>
 #include "common/common_types.h"
 #include "common/util/Assert.h"
+#include "third-party/fmt/core.h"
 
 struct DmaStats {
   double sync_time_ms = 0;
@@ -68,6 +69,11 @@ inline void emulate_dma(const void* source_base, void* dest_base, u32 tadr, u32 
         dest_offset += (1 + tag.qwc) * 16;
         tadr += 16 + tag.qwc * 16;
         break;
+      case DmaTag::Kind::NEXT:
+        memcpy(dst + dest_offset, src + tadr, (1 + tag.qwc) * 16);
+        dest_offset += (1 + tag.qwc) * 16;
+        tadr = tag.addr;
+        break;
       case DmaTag::Kind::REF: {
         // tte
         memcpy(dst + dest_offset, src + tadr, 16);
@@ -87,9 +93,11 @@ inline void emulate_dma(const void* source_base, void* dest_base, u32 tadr, u32 
         tadr += 16;
         return;
       } break;
+      case DmaTag::Kind::END:
+        // does this transfer anything in TTE???
+        return;
       default:
-        printf("bad tag: %d\n", (int)tag.kind);
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("bad tag: {}", (int)tag.kind));
     }
   }
 }
@@ -122,6 +130,7 @@ struct VifCode {
     UNPACK_V4_16 = 0b1101101,
     UNPACK_V3_32 = 0b1101000,
     UNPACK_V4_8 = 0b1101110,
+    UNPACK_V2_16 = 0b1100101,
   };
 
   VifCode(u32 value) {

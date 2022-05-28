@@ -1,3 +1,5 @@
+#include "nrepl/ReplServer.h"  // this import has to come first because WinSock sucks
+
 #include "Compiler.h"
 #include <chrono>
 #include <thread>
@@ -8,6 +10,7 @@
 #include "goalc/regalloc/Allocator.h"
 #include "goalc/regalloc/Allocator_v2.h"
 #include "third-party/fmt/core.h"
+#include "common/goos/PrettyPrinter.h"
 
 using namespace goos;
 
@@ -26,8 +29,13 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
   compile_object_file("goal-lib", library_code, false);
 
   if (user_profile != "#f") {
-    Object user_code = m_goos.reader.read_from_file({"goal_src", "user", user_profile, "user.gc"});
-    compile_object_file(user_profile, user_code, false);
+    try {
+      Object user_code =
+          m_goos.reader.read_from_file({"goal_src", "user", user_profile, "user.gc"});
+      compile_object_file(user_profile, user_code, false);
+    } catch (std::exception& e) {
+      print_compiler_warning("REPL Warning: {}\n", e.what());
+    }
   }
 
   // add built-in forms to symbol info
@@ -38,90 +46,93 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
   // load auto-complete history, only if we are running in the interactive mode.
   if (m_repl) {
     m_repl->load_history();
+    // init repl
+    m_repl->print_welcome_message();
+    auto examples = m_repl->examples;
+    auto regex_colors = m_repl->regex_colors;
+    m_repl->init_default_settings();
+    using namespace std::placeholders;
+    m_repl->get_repl().set_completion_callback(
+        std::bind(&Compiler::find_symbols_by_prefix, this, _1, _2, std::cref(examples)));
+    m_repl->get_repl().set_hint_callback(
+        std::bind(&Compiler::find_hints_by_prefix, this, _1, _2, _3, std::cref(examples)));
+    m_repl->get_repl().set_highlighter_callback(
+        std::bind(&Compiler::repl_coloring, this, _1, _2, std::cref(regex_colors)));
   }
 
   // add GOOS forms that get info from the compiler
   setup_goos_forms();
 }
 
-ReplStatus Compiler::execute_repl(bool auto_listen, bool auto_debug) {
-  // init repl
-  m_repl->print_welcome_message();
-  auto examples = m_repl->examples;
-  auto regex_colors = m_repl->regex_colors;
-  m_repl->init_default_settings();
-  using namespace std::placeholders;
-  m_repl->get_repl().set_completion_callback(
-      std::bind(&Compiler::find_symbols_by_prefix, this, _1, _2, std::cref(examples)));
-  m_repl->get_repl().set_hint_callback(
-      std::bind(&Compiler::find_hints_by_prefix, this, _1, _2, _3, std::cref(examples)));
-  m_repl->get_repl().set_highlighter_callback(
-      std::bind(&Compiler::repl_coloring, this, _1, _2, std::cref(regex_colors)));
-
-  std::string auto_input;
-  if (auto_debug || auto_listen) {
-    auto_input.append("(lt)");
-  }
-  if (auto_debug) {
-    auto_input.append("(dbg) (:cont)");
-  }
-
-  while (!m_want_exit && !m_want_reload) {
-    try {
-      std::optional<goos::Object> code;
-
-      if (auto_input.empty()) {
-        // 1). get a line from the user (READ)
-        std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
-        if (m_listener.is_connected()) {
-          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
-        }
-        if (m_debugger.is_halted()) {
-          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
-        } else if (m_debugger.is_attached()) {
-          prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
-        }
-
-        code = m_goos.reader.read_from_stdin(prompt, *m_repl);
-      } else {
-        code = m_goos.reader.read_from_string(auto_input);
-        auto_input.clear();
-      }
-
-      if (!code) {
-        continue;
-      }
-
-      // 2). compile
-      auto obj_file = compile_object_file("repl", *code, m_listener.is_connected());
-      if (m_settings.debug_print_ir) {
-        obj_file->debug_print_tl();
-      }
-
-      if (!obj_file->is_empty()) {
-        // 3). color
-        color_object_file(obj_file);
-
-        // 4). codegen
-        auto data = codegen_object_file(obj_file);
-
-        // 4). send!
-        if (m_listener.is_connected()) {
-          m_listener.send_code(data);
-          if (!m_listener.most_recent_send_was_acked()) {
-            print_compiler_warning("Runtime is not responding. Did it crash?\n");
-          }
-        }
-      }
-
-    } catch (std::exception& e) {
-      print_compiler_warning("REPL Error: {}\n", e.what());
-    }
-  }
-
+Compiler::~Compiler() {
   if (m_listener.is_connected()) {
     m_listener.send_reset(false);  // reset the target
     m_listener.disconnect();
+  }
+}
+
+void Compiler::save_repl_history() {
+  m_repl->save_history();
+}
+
+void Compiler::print_to_repl(const std::string_view& str) {
+  m_repl->print_to_repl(str);
+}
+
+std::string Compiler::get_prompt() {
+  std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
+  if (m_listener.is_connected()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
+  }
+  if (m_debugger.is_halted()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
+  } else if (m_debugger.is_attached()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
+  }
+  return "\033[0m" + prompt;
+}
+
+std::string Compiler::get_repl_input() {
+  auto str = m_repl->readline(get_prompt());
+  if (str) {
+    m_repl->add_to_history(str);
+    return str;
+  } else {
+    return "";
+  }
+}
+
+ReplStatus Compiler::handle_repl_string(const std::string& input) {
+  if (input.empty()) {
+    return ReplStatus::OK;
+  }
+
+  try {
+    // 1). read
+    goos::Object code = m_goos.reader.read_from_string(input, true);
+    // 2). compile
+    auto obj_file = compile_object_file("repl", code, m_listener.is_connected());
+    if (m_settings.debug_print_ir) {
+      obj_file->debug_print_tl();
+    }
+
+    if (!obj_file->is_empty()) {
+      // 3). color
+      color_object_file(obj_file);
+
+      // 4). codegen
+      auto data = codegen_object_file(obj_file);
+
+      // 4). send!
+      if (m_listener.is_connected()) {
+        m_listener.send_code(data);
+        if (!m_listener.most_recent_send_was_acked()) {
+          print_compiler_warning("Runtime is not responding. Did it crash?\n");
+        }
+      }
+    }
+  } catch (std::exception& e) {
+    print_compiler_warning("REPL Error: {}\n", e.what());
   }
 
   if (m_want_exit) {
@@ -178,11 +189,6 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
     return compile(code, env);
   } catch (CompilerException& ce) {
     if (ce.print_err_stack) {
-      auto obj_print = code.print();
-      if (obj_print.length() > 80) {
-        obj_print = obj_print.substr(0, 80);
-        obj_print += "...";
-      }
       bool term;
       auto loc_info = m_goos.reader.db.get_info_for(code, &term);
       if (term) {
@@ -191,7 +197,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
       }
 
       fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
-      fmt::print("{}\n", obj_print);
+      fmt::print("{}\n", pretty_print::to_string(code, 120));
 
       if (term) {
         ce.print_err_stack = false;
@@ -206,12 +212,6 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
   catch (std::runtime_error& e) {
     fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
     fmt::print(fmt::emphasis::bold, "{}\n", e.what());
-
-    auto obj_print = code.print();
-    if (obj_print.length() > 80) {
-      obj_print = obj_print.substr(0, 80);
-      obj_print += "...";
-    }
     bool term;
     auto loc_info = m_goos.reader.db.get_info_for(code, &term);
     if (term) {
@@ -220,7 +220,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
     }
 
     fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
-    fmt::print("{}\n", obj_print);
+    fmt::print("{}\n", pretty_print::to_string(code, 120));
 
     CompilerException ce("Compiler Exception");
     if (term) {

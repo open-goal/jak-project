@@ -7,6 +7,7 @@
 #include "decompiler/IR2/bitfields.h"
 #include "common/type_system/state.h"
 #include "common/util/BitUtils.h"
+#include "decompiler/util/goal_constants.h"
 
 namespace decompiler {
 
@@ -640,7 +641,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
   if (tc(dts, TypeSpec("structure"), arg1_type) && !m_args[0].is_int() &&
       is_int_or_uint(dts, arg0_type)) {
     if (arg1_type.typespec() == TypeSpec("symbol") &&
-        arg0_type.is_integer_constant(SYM_INFO_OFFSET + POINTER_SIZE)) {
+        arg0_type.is_integer_constant(DECOMP_SYM_INFO_OFFSET + POINTER_SIZE)) {
       // symbol -> GOAL String
       // NOTE - the offset doesn't fit in a s16, so it's loaded into a register first.
       // so we expect the arg to be a variable, and the type propagation will figure out the

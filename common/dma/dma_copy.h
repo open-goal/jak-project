@@ -22,6 +22,8 @@ class FixedChunkDmaCopier {
   static constexpr u32 chunk_size = 0x20000;  // 128 kB, gives use 1024 chunks for a 128 MB RAM.
   FixedChunkDmaCopier(u32 main_memory_size);
 
+  void set_input_data(const void* memory, u32 offset, bool run);
+
   const DmaData& run(const void* memory, u32 offset, bool verify = false);
 
   void serialize_last_result(Serializer& serializer);

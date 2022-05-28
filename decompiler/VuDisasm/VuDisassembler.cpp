@@ -143,6 +143,7 @@ VuDisassembler::VuDisassembler(VuKind kind) : m_kind(kind) {
   add_op(VuInstrK::ADDq, "addq").iemdt().dst_mask().vft_zero().dst_vfd().src_vfs().src_q();
   add_op(VuInstrK::MULi, "muli").iemdt().dst_mask().vft_zero().dst_vfd().src_vfs().src_i();
   add_op(VuInstrK::ADDi, "addi").iemdt().dst_mask().vft_zero().dst_vfd().src_vfs().src_i();
+  add_op(VuInstrK::MULAq, "mula").iemdt().dst_mask().dst_acc().vft_zero().src_vfs().src_q();
 
   m_lower_op6_table[0b000000].set(VuInstrK::LQ);
   m_lower_op6_table[0b000001].set(VuInstrK::SQ);
@@ -214,11 +215,13 @@ VuDisassembler::VuDisassembler(VuKind kind) : m_kind(kind) {
   add_op(VuInstrK::IBGEZ, "ibgez").dst_mask_zero().vit_zero().src_vis().rel_branch11();
   add_op(VuInstrK::ISWR, "iswr").dst_mask().src_vit().src_vis();
   add_op(VuInstrK::JALR, "jalr").dst_mask_zero().dst_vit().src_vis().imm11_zero();
-  add_op(VuInstrK::WAITQ, "waitq").dst_mask_zero().vft_zero().vis_zero();
+  add_op(VuInstrK::WAITP, "waitp").dst_mask_zero().vft_zero().vfs_zero();
+  add_op(VuInstrK::WAITQ, "waitq").dst_mask_zero().vft_zero().vfs_zero();
   add_op(VuInstrK::IBLEZ, "iblez").dst_mask_zero().vit_zero().src_vis().rel_branch11();
   add_op(VuInstrK::SQRT, "sqrt").fsf_zero().ftf_0().vis_zero().dst_q().src_vft();
   add_op(VuInstrK::SQD, "sqd").dst_mask().src_vfs().src_vit();
   add_op(VuInstrK::ERLENG, "erleng").dst_mask().vft_zero().src_vfs().dst_p();
+  add_op(VuInstrK::ELENG, "eleng").dst_mask().vft_zero().src_vfs().dst_p();
   add_op(VuInstrK::MFP, "mfp").dst_mask().dst_vft().src_p();
 }
 
@@ -287,18 +290,20 @@ VuInstrK VuDisassembler::lower_kind(u32 in) {
         return VuInstrK::XTOP;
       case 0b11011'1111'00:
         return VuInstrK::XGKICK;
+      case 0b11100'1111'10:
+        return VuInstrK::ELENG;
       case 0b11100'1111'11:
         return VuInstrK::ERLENG;
+      case 0b11110'1111'11:
+        return VuInstrK::WAITP;
     }
-    fmt::print("Unknown lower special: 0b{:b}\n", in);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("Unknown lower special: 0b{:b}", in));
   } else {
     ASSERT((op & 0b1000000) == 0);
     ASSERT(op < 64);
     auto elt = m_lower_op6_table[(int)op];
     if (!elt.known) {
-      fmt::print("Invalid lower op6: 0b{:b} 0b{:b} 0x{:x}\n", op, in, in);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("Invalid lower op6: 0b{:b} 0b{:b} 0x{:x}", op, in, in));
     }
     return elt.kind;
   }
@@ -343,6 +348,8 @@ VuInstrK VuDisassembler::upper_kind(u32 in) {
       case 0b00110'1111'10:
       case 0b00110'1111'11:
         return VuInstrK::MULAbc;
+      case 0b00111'1111'00:
+        return VuInstrK::MULAq;
       case 0b00111'1111'11:
         return VuInstrK::CLIP;
       case 0b01010'1111'00:
@@ -361,13 +368,11 @@ VuInstrK VuDisassembler::upper_kind(u32 in) {
         break;
 
       default:
-        fmt::print("Invalid op11: 0b{:b}\n", upper_op11(in));
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("Invalid op11: 0b{:b}", upper_op11(in)));
     }
   }
   if (!upper_info.known) {
-    fmt::print("Invalid upper op6: 0b{:b}\n", upper_op6(in));
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("Invalid upper op6: 0b{:b}", upper_op6(in)));
   }
   return upper_info.kind;
 }
@@ -425,8 +430,7 @@ VuInstruction VuDisassembler::decode(VuInstrK kind, u32 data, int instr_idx) {
   instr.kind = kind;
   auto& inst = info(kind);
   if (!inst.known) {
-    fmt::print("instr idx {} is unknown\n", (int)kind);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("instr idx {} is unknown", (int)kind));
   }
   for (auto& step : inst.decode) {
     s64 value = -1;
@@ -592,10 +596,35 @@ std::string mask_to_string(u8 val) {
   }
   return result;
 }
+
+std::string vf_src(const std::string& name, bool mips2c_format) {
+  if (mips2c_format) {
+    return fmt::format("c->vf_src({}).vf", name);
+  } else {
+    return fmt::format("vu.{}", name);
+  }
+}
+
+std::string vf_dst(const std::string& name, bool mips2c_format) {
+  if (mips2c_format) {
+    return fmt::format("c->vfs[{}].vf", name);
+  } else {
+    return fmt::format("vu.{}", name);
+  }
+}
+
+std::string vi_src(const std::string& name, bool mips2c_format) {
+  if (mips2c_format) {
+    return fmt::format("vis[{}]", name);
+  } else {
+    return fmt::format("vu.{}", name);
+  }
+}
+
 }  // namespace
 
 int unk = 0;
-std::string VuDisassembler::to_cpp(const VuInstruction& instr) const {
+std::string VuDisassembler::to_cpp(const VuInstruction& instr, bool mips2c_format) const {
   switch (instr.kind) {
     case VuInstrK::NOP:
     case VuInstrK::LOWER_NOP:
@@ -606,36 +635,50 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr) const {
                            instr.dst->to_string(m_label_names),
                            instr.src.at(0).to_string(m_label_names));
       } else if (instr.src.at(0).value() == 0) {
-        return fmt::format("lq_buffer(Mask::{}, vu.{}, vu.{});", mask_to_string(*instr.mask),
-                           instr.dst->to_string(m_label_names),
+        return fmt::format(mips2c_format ? "lq_buffer(Mask::{}, c->vfs[{}].vf, vis[{}]);"
+                                         : "lq_buffer(Mask::{}, vu.{}, vu.{});",
+                           mask_to_string(*instr.mask), instr.dst->to_string(m_label_names),
                            instr.src.at(1).to_string(m_label_names));
       } else {
-        return fmt::format("lq_buffer(Mask::{}, vu.{}, vu.{} + {});", mask_to_string(*instr.mask),
-                           instr.dst->to_string(m_label_names),
+        return fmt::format(mips2c_format ? "lq_buffer(Mask::{}, c->vfs[{}].vf, vis[{}] + {});"
+                                         : "lq_buffer(Mask::{}, vu.{}, vu.{} + {});",
+                           mask_to_string(*instr.mask), instr.dst->to_string(m_label_names),
                            instr.src.at(1).to_string(m_label_names),
                            instr.src.at(0).to_string(m_label_names));
       }
       goto unknown;
     case VuInstrK::LQI:
-      return fmt::format("lq_buffer(Mask::{}, vu.{}, vu.{}++);", mask_to_string(*instr.mask),
-                         instr.dst->to_string(m_label_names),
+      ASSERT(!instr.src.at(0).is_int_reg(0));
+      return fmt::format(mips2c_format ? "lq_buffer(Mask::{}, c->vfs[{}].vf, vis[{}]++);"
+                                       : "lq_buffer(Mask::{}, vu.{}, vu.{}++);",
+                         mask_to_string(*instr.mask), instr.dst->to_string(m_label_names),
                          instr.src.at(0).to_string(m_label_names));
     case VuInstrK::SQI:
-      return fmt::format("sq_buffer(Mask::{}, vu.{}, vu.{}++);", mask_to_string(*instr.mask),
-                         instr.dst->to_string(m_label_names),
-                         instr.src.at(0).to_string(m_label_names));
+      ASSERT(!instr.src.at(0).is_int_reg(0));
+      if (mips2c_format) {
+        return fmt::format("sq_buffer(Mask::{}, {}, vis[{}]++);", mask_to_string(*instr.mask),
+                           vf_src(instr.dst->to_string(m_label_names), mips2c_format),
+                           instr.src.at(0).to_string(m_label_names));
+      } else {
+        return fmt::format("sq_buffer(Mask::{}, vu.{}, vu.{}++);", mask_to_string(*instr.mask),
+                           instr.dst->to_string(m_label_names),
+                           instr.src.at(0).to_string(m_label_names));
+      }
+
     case VuInstrK::SQ:
       if (instr.src.at(1).is_int_reg(0)) {
         return fmt::format("sq_buffer(Mask::{}, vu.{}, {});", mask_to_string(*instr.mask),
                            instr.dst->to_string(m_label_names),
                            instr.src.at(0).to_string(m_label_names));
       } else if (instr.src.at(0).value() == 0) {
-        return fmt::format("sq_buffer(Mask::{}, vu.{}, vu.{});", mask_to_string(*instr.mask),
-                           instr.dst->to_string(m_label_names),
+        return fmt::format(mips2c_format ? "sq_buffer(Mask::{}, c->vf_src({}).vf, vis[{}]);"
+                                         : "sq_buffer(Mask::{}, vu.{}, vu.{});",
+                           mask_to_string(*instr.mask), instr.dst->to_string(m_label_names),
                            instr.src.at(1).to_string(m_label_names));
       } else {
-        return fmt::format("sq_buffer(Mask::{}, vu.{}, vu.{} + {});", mask_to_string(*instr.mask),
-                           instr.dst->to_string(m_label_names),
+        return fmt::format(mips2c_format ? "sq_buffer(Mask::{}, c->vf_src({}).vf, vis[{}] + {});"
+                                         : "sq_buffer(Mask::{}, vu.{}, vu.{} + {});",
+                           mask_to_string(*instr.mask), instr.dst->to_string(m_label_names),
                            instr.src.at(1).to_string(m_label_names),
                            instr.src.at(0).to_string(m_label_names));
       }
@@ -650,13 +693,28 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr) const {
       }
 
     case VuInstrK::IADDIU:
+      ASSERT(!instr.dst->is_int_reg(0));
       if (instr.src.at(0).is_int_reg(0)) {
-        return fmt::format("vu.{} = 0x{:x}; /* {} */\n", instr.dst->to_string(m_label_names),
-                           (u16)instr.src.at(1).value(), instr.src.at(1).value());
+        if (mips2c_format) {
+          return fmt::format("vis[{}] = 0x{:x}; /* {} */", instr.dst->to_string(m_label_names),
+                             (u16)instr.src.at(1).value(), instr.src.at(1).value());
+        } else {
+          return fmt::format("vu.{} = 0x{:x}; /* {} */", instr.dst->to_string(m_label_names),
+                             (u16)instr.src.at(1).value(), instr.src.at(1).value());
+        }
+
       } else {
-        return fmt::format("vu.{} = vu.{} + 0x{:x}; /* {} */", instr.dst->to_string(m_label_names),
-                           instr.src.at(0).to_string(m_label_names), (u16)instr.src.at(1).value(),
-                           instr.src.at(1).value());
+        if (mips2c_format) {
+          return fmt::format("vis[{}] = vis[{}] + 0x{:x}; /* {} */",
+                             instr.dst->to_string(m_label_names),
+                             instr.src.at(0).to_string(m_label_names), (u16)instr.src.at(1).value(),
+                             instr.src.at(1).value());
+        } else {
+          return fmt::format("vu.{} = vu.{} + 0x{:x}; /* {} */",
+                             instr.dst->to_string(m_label_names),
+                             instr.src.at(0).to_string(m_label_names), (u16)instr.src.at(1).value(),
+                             instr.src.at(1).value());
+        }
       }
 
     case VuInstrK::ISW:
@@ -696,7 +754,7 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr) const {
 
     case VuInstrK::ISUBIU:
       if (instr.src.at(0).is_int_reg(0)) {
-        return fmt::format("vu.{} = -{};\n", instr.dst->to_string(m_label_names),
+        return fmt::format("vu.{} = -{};", instr.dst->to_string(m_label_names),
                            instr.src.at(1).value());
       } else {
         return fmt::format("vu.{} = vu.{} - 0x{:x}; /* {} */", instr.dst->to_string(m_label_names),
@@ -705,9 +763,10 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr) const {
       }
 
     case VuInstrK::MTIR:
-      return fmt::format("vu.{} = vu.{}.{}_as_u16();", instr.dst->to_string(m_label_names),
-                         instr.src.at(0).to_string(m_label_names),
-                         bc_to_part(*instr.first_src_field));
+      return fmt::format(
+          mips2c_format ? "vis[{}] = c->vf_src({}).vf.{}_as_u16();" : "vu.{} = vu.{}.{}_as_u16();",
+          instr.dst->to_string(m_label_names), instr.src.at(0).to_string(m_label_names),
+          bc_to_part(*instr.first_src_field));
 
     case VuInstrK::MFIR:
       return fmt::format("vu.{}.mfir(Mask::{}, vu.{});", instr.dst->to_string(m_label_names),
@@ -718,28 +777,41 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr) const {
 
     case VuInstrK::IBGTZ:
       return fmt::format("bc = ((s16)vu.{}) > 0;", instr.src.at(0).to_string(m_label_names));
-
+    case VuInstrK::IBLTZ:
+      return fmt::format("bc = ((s16)vu.{}) < 0;", instr.src.at(0).to_string(m_label_names));
+    case VuInstrK::IBLEZ:
+      return fmt::format("bc = ((s16)vu.{}) <= 0;", instr.src.at(0).to_string(m_label_names));
     case VuInstrK::IBGEZ:
       return fmt::format("bc = ((s16)vu.{}) >= 0;", instr.src.at(0).to_string(m_label_names));
 
     case VuInstrK::IBEQ:
+      ASSERT(!instr.src.at(1).is_int_reg(0));
       if (instr.src.at(0).is_int_reg(0)) {
-        return fmt::format("bc = (vu.{} == 0);", instr.src.at(1).to_string(m_label_names));
+        return fmt::format("bc = ({} == 0);",
+                           vi_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
       } else {
-        return fmt::format("bc = (vu.{} == vu.{});", instr.src.at(0).to_string(m_label_names),
-                           instr.src.at(1).to_string(m_label_names));
+        return fmt::format("bc = ({} == {});",
+                           vi_src(instr.src.at(0).to_string(m_label_names), mips2c_format),
+                           vi_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
       }
 
     case VuInstrK::IBNE:
+      ASSERT(!instr.src.at(1).is_int_reg(0));
       if (instr.src.at(0).is_int_reg(0)) {
-        return fmt::format("bc = (vu.{} != 0);", instr.src.at(1).to_string(m_label_names));
+        return fmt::format("bc = ({} != 0);",
+                           vi_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
       } else {
-        return fmt::format("bc = (vu.{} != vu.{});", instr.src.at(0).to_string(m_label_names),
-                           instr.src.at(1).to_string(m_label_names));
+        return fmt::format("bc = ({} != {});",
+                           vi_src(instr.src.at(0).to_string(m_label_names), mips2c_format),
+                           vi_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
       }
 
     case VuInstrK::IADD:
-      return fmt::format("vu.{} = vu.{} + vu.{};", instr.dst->to_string(m_label_names),
+      ASSERT(!instr.src.at(1).is_int_reg(0));
+      ASSERT(!instr.src.at(0).is_int_reg(0));
+      ASSERT(!instr.dst->is_int_reg(0));
+      return fmt::format(mips2c_format ? "vis[{}] = vis[{}] + vis[{}];" : "vu.{} = vu.{} + vu.{};",
+                         instr.dst->to_string(m_label_names),
                          instr.src.at(0).to_string(m_label_names),
                          instr.src.at(1).to_string(m_label_names));
     case VuInstrK::ISUB:
@@ -747,15 +819,33 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr) const {
                          instr.src.at(0).to_string(m_label_names),
                          instr.src.at(1).to_string(m_label_names));
     case VuInstrK::IAND:
-      return fmt::format("vu.{} = vu.{} & vu.{};", instr.dst->to_string(m_label_names),
-                         instr.src.at(0).to_string(m_label_names),
-                         instr.src.at(1).to_string(m_label_names));
+      ASSERT(!instr.src.at(1).is_int_reg(0));
+      ASSERT(!instr.src.at(0).is_int_reg(0));
+      ASSERT(!instr.dst->is_int_reg(0));
+      return fmt::format("{} = {} & {};",
+                         vi_src(instr.dst->to_string(m_label_names), mips2c_format),
+                         vi_src(instr.src.at(0).to_string(m_label_names), mips2c_format),
+                         vi_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
     case VuInstrK::IOR:
       if (instr.src.at(1).is_int_reg(0)) {
-        return fmt::format("vu.{} = vu.{};", instr.dst->to_string(m_label_names),
-                           instr.src.at(0).to_string(m_label_names));
+        if (instr.src.at(0).is_int_reg(0) && instr.src.at(1).is_int_reg(0)) {
+          return fmt::format("vu.{} = 0;", instr.dst->to_string(m_label_names));
+        } else {
+          ASSERT(!instr.dst->is_int_reg(0));
+          ASSERT(!instr.src.at(0).is_int_reg(0));
+          if (mips2c_format) {
+            return fmt::format("vis[{}] = vis[{}];", instr.dst->to_string(m_label_names),
+                               instr.src.at(0).to_string(m_label_names));
+          } else {
+            return fmt::format("vu.{} = vu.{};", instr.dst->to_string(m_label_names),
+                               instr.src.at(0).to_string(m_label_names));
+          }
+        }
+
       } else {
-        goto unknown;
+        return fmt::format("vu.{} = vu.{} | vu.{};", instr.dst->to_string(m_label_names),
+                           instr.src.at(0).to_string(m_label_names),
+                           instr.src.at(1).to_string(m_label_names));
       }
 
     case VuInstrK::MFP:
@@ -763,80 +853,148 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr) const {
                          mask_to_string(*instr.mask));
 
     case VuInstrK::MULq:
-      return fmt::format("vu.{}.mul(Mask::{}, vu.{}, vu.Q); /* TODO mulq */",
+      return fmt::format(mips2c_format ? "c->vfs[{}].vf.mul(Mask::{}, c->vf_src({}).vf, c->Q);"
+                                       : "vu.{}.mul(Mask::{}, vu.{}, vu.Q);",
+                         instr.dst->to_string(m_label_names), mask_to_string(*instr.mask),
+                         instr.src.at(0).to_string(m_label_names));
+    case VuInstrK::MULi:
+      return fmt::format(mips2c_format ? "c->vfs[{}].vf.mul(Mask::{}, c->vf_src({}).vf, c->I);"
+                                       : "vu.{}.mul(Mask::{}, vu.{}, vu.I);",
                          instr.dst->to_string(m_label_names), mask_to_string(*instr.mask),
                          instr.src.at(0).to_string(m_label_names));
     case VuInstrK::DIV:
       return fmt::format(
-          "vu.Q = vu.{}.{}() / vu.{}.{}();\n", instr.src.at(0).to_string(m_label_names),
+          "vu.Q = vu.{}.{}() / vu.{}.{}();", instr.src.at(0).to_string(m_label_names),
           bc_to_part(*instr.first_src_field), instr.src.at(1).to_string(m_label_names),
           bc_to_part(*instr.second_src_field));
 
     case VuInstrK::ERLENG:
-      return fmt::format("vu.P = erleng(Mask::{}, vu.{}); /* TODO erleng */",
-                         mask_to_string(*instr.mask), instr.src.at(0).to_string(m_label_names));
+      return fmt::format("vu.P = erleng(vu.{});", instr.src.at(0).to_string(m_label_names));
+    case VuInstrK::ELENG:
+      return fmt::format("vu.P = eleng(vu.{});", instr.src.at(0).to_string(m_label_names));
+    case VuInstrK::RSQRT:
+      return fmt::format(
+          "c->Q = c->vf_src({}).vf.{}() / std::sqrt(c->vf_src({}).vf.{}());",
+          instr.src.at(0).to_string(m_label_names), bc_to_part(*instr.first_src_field),
+          instr.src.at(1).to_string(m_label_names), bc_to_part(*instr.second_src_field));
 
     case VuInstrK::MR32:
     case VuInstrK::MOVE:
     case VuInstrK::ITOF0:
+    case VuInstrK::ITOF12:
     case VuInstrK::ITOF15:
     case VuInstrK::FTOI0:
     case VuInstrK::FTOI4:
-      return fmt::format("vu.{}.{}(Mask::{}, vu.{});", instr.dst->to_string(m_label_names),
+    case VuInstrK::FTOI12:
+      return fmt::format("{}.{}(Mask::{}, {});",
+                         vf_dst(instr.dst->to_string(m_label_names), mips2c_format),
                          info(instr.kind).name, mask_to_string(*instr.mask),
-                         instr.src.at(0).to_string(m_label_names));
+                         vf_src(instr.src.at(0).to_string(m_label_names), mips2c_format));
 
+    case VuInstrK::CLIP:
+      return fmt::format("ASSERT(false); cf = clip({}, {}.w(), cf);",
+                         vf_src(instr.src.at(0).to_string(m_label_names), mips2c_format),
+                         vf_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
+    case VuInstrK::FCAND:
+      return fmt::format("fcand(vu.vi01, 0x{:x}, cf);\n", instr.src.at(0).value());
+    case VuInstrK::FCOR:
+      return fmt::format("fcor(vu.vi01, 0x{:x}, cf);\n", instr.src.at(0).value());
+    case VuInstrK::FCSET:
+      return fmt::format("cf = 0x{:x};\n", instr.src.at(0).value());
     case VuInstrK::ADDbc:
+    case VuInstrK::SUBbc:
     case VuInstrK::MULbc:
     case VuInstrK::MINIbc:
     case VuInstrK::MAXbc:
-      return fmt::format("vu.{}.{}(Mask::{}, vu.{}, vu.{}.{}());",
-                         instr.dst->to_string(m_label_names), info(instr.kind).name,
-                         mask_to_string(*instr.mask), instr.src.at(0).to_string(m_label_names),
-                         instr.src.at(1).to_string(m_label_names), bc_to_part(*instr.bc));
+      return fmt::format("{}.{}(Mask::{}, {}, {}.{}());",
+                         vf_dst(instr.dst->to_string(m_label_names), mips2c_format),
+                         info(instr.kind).name, mask_to_string(*instr.mask),
+                         vf_src(instr.src.at(0).to_string(m_label_names), mips2c_format),
+                         vf_src(instr.src.at(1).to_string(m_label_names), mips2c_format),
+                         bc_to_part(*instr.bc));
 
     case VuInstrK::FP_CONSTANT:
-      return fmt::format("vu.I = {};", float_to_string(instr.fp));
+      if (mips2c_format) {
+        return fmt::format("c->I = {};", float_to_string(instr.fp));
+
+      } else {
+        return fmt::format("vu.I = {};", float_to_string(instr.fp));
+      }
 
     case VuInstrK::MINIi:
     case VuInstrK::MAXi:
-      return fmt::format("vu.{}.{}(Mask::{}, vu.{}, vu.I);", instr.dst->to_string(m_label_names),
+      return fmt::format("{}.{}(Mask::{}, {}, {});",
+                         vf_dst(instr.dst->to_string(m_label_names), mips2c_format),
                          info(instr.kind).name, mask_to_string(*instr.mask),
-                         instr.src.at(0).to_string(m_label_names));
+                         vf_src(instr.src.at(0).to_string(m_label_names), mips2c_format),
+                         mips2c_format ? "c->I" : "vu.I");
+    case VuInstrK::SUB:
+      if (instr.dst.value().value() == instr.src.at(0).value() &&
+          instr.src.at(0).value() == instr.src.at(1).value() && instr.mask.value() == 0b1111) {
+        return fmt::format("vu.{}.set_zero();", instr.src.at(0).to_string(m_label_names));
+      } else {
+        return fmt::format("{}.{}(Mask::{}, {}, {});",
+                           vf_dst(instr.dst->to_string(m_label_names), mips2c_format),
+                           info(instr.kind).name, mask_to_string(*instr.mask),
+                           vf_src(instr.src.at(0).to_string(m_label_names), mips2c_format),
+                           vf_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
+      }
+      break;
 
     case VuInstrK::MUL:
     case VuInstrK::ADD:
     case VuInstrK::MAX:
     case VuInstrK::MINI:
-      return fmt::format("vu.{}.{}(Mask::{}, vu.{}, vu.{});", instr.dst->to_string(m_label_names),
+      return fmt::format("{}.{}(Mask::{}, {}, {});",
+                         vf_dst(instr.dst->to_string(m_label_names), mips2c_format),
                          info(instr.kind).name, mask_to_string(*instr.mask),
-                         instr.src.at(0).to_string(m_label_names),
-                         instr.src.at(1).to_string(m_label_names));
+                         vf_src(instr.src.at(0).to_string(m_label_names), mips2c_format),
+                         vf_src(instr.src.at(1).to_string(m_label_names), mips2c_format));
 
     case VuInstrK::ADDAbc:
-      return fmt::format("vu.acc.adda(Mask::{}, vu.{}, vu.{}.{}());", mask_to_string(*instr.mask),
-                         instr.dst->to_string(m_label_names),
+      return fmt::format(mips2c_format
+                             ? "c->acc.vf.adda(Mask::{}, c->vfs[{}].vf, c->vfs[{}].vf.{}());"
+                             : "vu.acc.adda(Mask::{}, vu.{}, vu.{}.{}());",
+                         mask_to_string(*instr.mask), instr.dst->to_string(m_label_names),
                          instr.src.at(0).to_string(m_label_names), bc_to_part(*instr.bc));
     case VuInstrK::MADDA:
       return fmt::format("vu.acc.madda(Mask::{}, vu.{}, vu.{});", mask_to_string(*instr.mask),
                          instr.src.at(0).to_string(m_label_names),
                          instr.src.at(1).to_string(m_label_names));
     case VuInstrK::MADDAbc:
-      return fmt::format("vu.acc.madda(Mask::{}, vu.{}, vu.{}.{}());", mask_to_string(*instr.mask),
-                         instr.src.at(0).to_string(m_label_names),
+      return fmt::format(mips2c_format
+                             ? "c->acc.vf.madda(Mask::{}, c->vfs[{}].vf, c->vfs[{}].vf.{}());"
+                             : "vu.acc.madda(Mask::{}, vu.{}, vu.{}.{}());",
+                         mask_to_string(*instr.mask), instr.src.at(0).to_string(m_label_names),
                          instr.src.at(1).to_string(m_label_names), bc_to_part(*instr.bc));
     case VuInstrK::MADDbc:
-      return fmt::format("vu.acc.madd(Mask::{}, vu.{}, vu.{}, vu.{}.{}());",
-                         mask_to_string(*instr.mask), instr.dst->to_string(m_label_names),
-                         instr.src.at(0).to_string(m_label_names),
-                         instr.src.at(1).to_string(m_label_names), bc_to_part(*instr.bc));
+      return fmt::format(
+          mips2c_format
+              ? "c->acc.vf.madd(Mask::{}, c->vfs[{}].vf, c->vf_src({}).vf, c->vf_src({}).vf.{}());"
+              : "vu.acc.madd(Mask::{}, vu.{}, vu.{}, vu.{}.{}());",
+          mask_to_string(*instr.mask), instr.dst->to_string(m_label_names),
+          instr.src.at(0).to_string(m_label_names), instr.src.at(1).to_string(m_label_names),
+          bc_to_part(*instr.bc));
+    case VuInstrK::MSUBbc:
+      return fmt::format(
+          mips2c_format
+              ? "c->acc.vf.msub(Mask::{}, c->vfs[{}].vf, c->vf_src({}).vf, c->vf_src({}).vf.{}());"
+              : "vu.acc.msub(Mask::{}, vu.{}, vu.{}, vu.{}.{}());",
+          mask_to_string(*instr.mask), instr.dst->to_string(m_label_names),
+          instr.src.at(0).to_string(m_label_names), instr.src.at(1).to_string(m_label_names),
+          bc_to_part(*instr.bc));
     case VuInstrK::MULA:
       return fmt::format("vu.acc.mula(Mask::{}, vu.{}, vu.{});", mask_to_string(*instr.mask),
                          instr.src.at(0).to_string(m_label_names),
                          instr.src.at(1).to_string(m_label_names));
+    case VuInstrK::MULAq:
+      return fmt::format("vu.acc.mula(Mask::{}, vu.{}, vu.Q);", mask_to_string(*instr.mask),
+                         instr.src.at(0).to_string(m_label_names));
     case VuInstrK::MULAbc:
-      return fmt::format("vu.acc.mula(Mask::{}, vu.{}, vu.{}.{}());", mask_to_string(*instr.mask),
-                         instr.src.at(0).to_string(m_label_names),
+      return fmt::format(mips2c_format
+                             ? "c->acc.vf.mula(Mask::{}, c->vf_src({}).vf, c->vf_src({}).vf.{}());"
+                             : "vu.acc.mula(Mask::{}, vu.{}, vu.{}.{}());",
+                         mask_to_string(*instr.mask), instr.src.at(0).to_string(m_label_names),
                          instr.src.at(1).to_string(m_label_names), bc_to_part(*instr.bc));
 
     case VuInstrK::XGKICK:
@@ -844,15 +1002,26 @@ std::string VuDisassembler::to_cpp(const VuInstruction& instr) const {
 
     case VuInstrK::XTOP:
       return fmt::format("vu.{} = xtop();", instr.src.at(0).to_string(m_label_names));
+    case VuInstrK::OPMULA:
+      return fmt::format("vu.acc.opmula(vu.{}, vu.{});", instr.src.at(0).to_string(m_label_names),
+                         instr.src.at(1).to_string(m_label_names));
+    case VuInstrK::OPMSUB:
+      return fmt::format("vu.acc.opmsub(vu.{}, vu.{}, vu.{});", instr.dst->to_string(m_label_names),
+                         instr.src.at(0).to_string(m_label_names),
+                         instr.src.at(1).to_string(m_label_names));
     default:
       unk++;
-      return "???";
+      fmt::print("unknown 0 is {}\n", to_string(instr));
+
+      return "ASSERT(false);";  //"???";
   }
 
 unknown:
 
   unk++;
-  return "???";
+  fmt::print("unknown 1 is {}\n", to_string(instr));
+
+  return "ASSERT(false);";
 }
 
 std::string VuDisassembler::to_string(const VuInstruction& instr) const {
@@ -1049,7 +1218,7 @@ std::string get_label_name(const VuInstructionPair& pair,
   ASSERT(false);
 }
 
-std::string VuDisassembler::to_string_with_cpp(const VuProgram& prog) const {
+std::string VuDisassembler::to_string_with_cpp(const VuProgram& prog, bool mips2c_format) const {
   std::string result;
   for (int i = 0; i < (int)prog.instructions().size(); i++) {
     auto lab = m_labels.find(i);
@@ -1059,19 +1228,35 @@ std::string VuDisassembler::to_string_with_cpp(const VuProgram& prog) const {
       result += '\n';
     }
     auto& pair = prog.instructions().at(i);
-    if (has_branch_delay(pair)) {
-      result += "// BRANCH!\n";
+    if (has_branch_delay(pair) && pair.lower.kind != VuInstrK::JALR) {
+      result += "  // BRANCH!\n";
       // set bc
-      result += to_string_with_cpp(prog.instructions().at(i));
+      result += to_string_with_cpp(prog.instructions().at(i), mips2c_format, i);
       result += "\n";
-      result += to_string_with_cpp(prog.instructions().at(i + 1));
+      result += to_string_with_cpp(prog.instructions().at(i + 1), mips2c_format, i + 1);
       result += "\n";
-      result += fmt::format("if (bc) {{ goto {}; }}\n", get_label_name(pair, m_label_names));
+      result += fmt::format("  if (bc) {{ goto {}; }}", get_label_name(pair, m_label_names));
       result += "\n\n";
       i++;
     } else {
-      result += to_string_with_cpp(prog.instructions().at(i));
+      result += to_string_with_cpp(prog.instructions().at(i), mips2c_format, i);
       result += '\n';
+    }
+
+    if (i > 0) {
+      const auto& prev = prog.instructions().at(i - 1);
+      bool has_ebit = false;
+      if (prev.lower.iemdt && (*prev.lower.iemdt & 0b100000)) {
+        has_ebit = true;
+      }
+
+      if (prev.upper.iemdt && (*prev.upper.iemdt & 0b100000)) {
+        has_ebit = true;
+      }
+
+      if (has_ebit) {
+        result += "return;\n\n";
+      }
     }
   }
   fmt::print("TOTAL unk: {}\n", unk);
@@ -1083,20 +1268,23 @@ bool is_nop(const VuInstruction& i) {
   return i.kind == VuInstrK::NOP || i.kind == VuInstrK::LOWER_NOP;
 }
 }  // namespace
-std::string VuDisassembler::to_string_with_cpp(const VuInstructionPair& pair) const {
+std::string VuDisassembler::to_string_with_cpp(const VuInstructionPair& pair,
+                                               bool mips2c_format,
+                                               int idx) const {
   std::string result;
-  result += fmt::format("  // {:25s}  |  {:30s}\n", to_string(pair.lower), to_string(pair.upper));
+  result +=
+      fmt::format("  // {:25s}  |  {:30s} {}\n", to_string(pair.lower), to_string(pair.upper), idx);
 
   if (!is_nop(pair.lower) && !is_nop(pair.upper) && pair.lower.kind == VuInstrK::FP_CONSTANT) {
-    result += fmt::format("   {:25s}", to_cpp(pair.upper));
-    result += fmt::format("   {:25s}", to_cpp(pair.lower));
+    result += fmt::format("   {:25s}", to_cpp(pair.upper, mips2c_format));
+    result += fmt::format("   {:25s}", to_cpp(pair.lower, mips2c_format));
   } else {
     if (!is_nop(pair.upper)) {
-      result += fmt::format("   {:25s}", to_cpp(pair.upper));
+      result += fmt::format("   {:25s}", to_cpp(pair.upper, mips2c_format));
     }
 
     if (!is_nop(pair.lower)) {
-      result += fmt::format("   {:25s}", to_cpp(pair.lower));
+      result += fmt::format("   {:25s}", to_cpp(pair.lower, mips2c_format));
     }
   }
 

@@ -19,13 +19,7 @@
  */
 class DirectRenderer : public BucketRenderer {
  public:
-  // specializations of direct renderer to handle certain outputs.
-  enum class Mode {
-    NORMAL,      // use for general debug drawing, font.
-    SPRITE_CPU,  // use for sprites (does the appropriate alpha test tricks)
-    SKY          // disables texture perspective correction
-  };
-  DirectRenderer(const std::string& name, BucketId my_id, int batch_size, Mode mode);
+  DirectRenderer(const std::string& name, BucketId my_id, int batch_size);
   ~DirectRenderer();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
 
@@ -63,13 +57,22 @@ class DirectRenderer : public BucketRenderer {
 
   void draw_debug_window() override;
 
+  void hack_disable_blend() {
+    m_blend_state.a = GsAlpha::BlendMode::SOURCE;
+    m_blend_state.b = GsAlpha::BlendMode::SOURCE;
+    m_blend_state.c = GsAlpha::BlendMode::SOURCE;
+    m_blend_state.d = GsAlpha::BlendMode::SOURCE;
+  }
+
+  void set_mipmap(bool en) { m_debug_state.disable_mipmap = !en; }
+
  private:
   void handle_ad(const u8* data, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_zbuf1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_test1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_alpha1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_pabe(u64 val);
-  void handle_clamp1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_clamp1(u64 val);
   void handle_prim(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_prim_packed(const u8* data,
                           SharedRenderState* render_state,
@@ -81,11 +84,9 @@ class DirectRenderer : public BucketRenderer {
   void handle_xyzf2_packed(const u8* data,
                            SharedRenderState* render_state,
                            ScopedProfilerNode& prof);
-  void handle_tex0_1_packed(const u8* data,
-                            SharedRenderState* render_state,
-                            ScopedProfilerNode& prof);
-  void handle_tex0_1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_tex1_1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_tex0_1_packed(const u8* data);
+  void handle_tex0_1(u64 val);
+  void handle_tex1_1(u64 val);
   void handle_texa(u64 val);
 
   void handle_xyzf2_common(u32 x,
@@ -147,13 +148,14 @@ class DirectRenderer : public BucketRenderer {
     bool fix = false;     // what does this even do?
   } m_prim_gl_state;
 
-  static constexpr int TEXTURE_STATE_COUNT = 10;
+  static constexpr int TEXTURE_STATE_COUNT = 1;
 
   struct TextureState {
     GsTex0 current_register;
     u32 texture_base_ptr = 0;
     bool using_mt4hh = false;
     bool tcc = false;
+    bool decal = false;
 
     bool enable_tex_filt = true;
 
@@ -165,33 +167,26 @@ class DirectRenderer : public BucketRenderer {
     } m_clamp_state;
 
     bool used = false;
-  } m_texture_state[TEXTURE_STATE_COUNT];
 
-  void reset_texture_states() {
-    m_current_texture_state = 0;
-    m_texture_state[0].used = false;
-    for (auto& ts : m_texture_state) {
-      ts.used = false;
+    bool compatible_with(const TextureState& other) {
+      return current_register == other.current_register &&
+             m_clamp_state.current_register == other.m_clamp_state.current_register &&
+             enable_tex_filt == other.enable_tex_filt;
     }
-  }
+  };
 
-  struct TextureGlobalState {
-    bool needs_gl_update = true;
-  } m_global_texture_state;
+  // vertices will reference these texture states
+  TextureState m_buffered_tex_state[TEXTURE_STATE_COUNT];
+  int m_next_free_tex_state = 0;
 
-  int m_current_texture_state = 0;
+  // this texture state mirrors the current GS register.
+  TextureState m_tex_state_from_reg;
 
-  TextureState* current_texture_state() { return &m_texture_state[m_current_texture_state]; }
-  bool needs_state_flush() { return m_current_texture_state + 1 >= TEXTURE_STATE_COUNT; }
-  void push_texture_state() {
-    ++m_current_texture_state;
-    if (m_current_texture_state >= TEXTURE_STATE_COUNT) {
-      lg::error("fatal tex push {}!!!!", m_current_texture_state);
-    }
-    if (m_current_texture_state > 0) {
-      m_texture_state[m_current_texture_state] = m_texture_state[m_current_texture_state - 1];
-    }
-  }
+  // if this is not -1, then it is the index of a texture state in m_buffered_tex_state that
+  // matches m_tex_state_from_reg.
+  int m_current_tex_state_idx = -1;
+
+  int get_texture_unit_for_current_reg(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   // state set through the prim/rgbaq register that doesn't require changing GL stuff
   struct PrimBuildState {
@@ -200,7 +195,7 @@ class DirectRenderer : public BucketRenderer {
     math::Vector<float, 2> st_reg;
 
     std::array<math::Vector<u8, 4>, 3> building_rgba;
-    std::array<math::Vector<u32, 3>, 3> building_vert;
+    std::array<math::Vector<u32, 4>, 3> building_vert;
     std::array<math::Vector<float, 3>, 3> building_stq;
     int building_idx = 0;
     int tri_strip_startup = 0;
@@ -210,14 +205,17 @@ class DirectRenderer : public BucketRenderer {
   } m_prim_building;
 
   struct Vertex {
-    math::Vector<float, 4> xyz;
+    math::Vector<float, 4> xyzf;
     math::Vector<float, 3> stq;
     math::Vector<u8, 4> rgba;
-    math::Vector<u8, 2> tex;  // texture unit to use + tcc
-    math::Vector<u8, 30> pad;
+    u8 tex_unit;
+    u8 tcc;
+    u8 decal;
+    u8 fog_enable;
+    math::Vector<u8, 28> pad;
   };
   static_assert(sizeof(Vertex) == 64);
-  static_assert(offsetof(Vertex, tex) == 32);
+  static_assert(offsetof(Vertex, tex_unit) == 32);
 
   struct PrimitiveBuffer {
     PrimitiveBuffer(int max_triangles);
@@ -228,10 +226,12 @@ class DirectRenderer : public BucketRenderer {
     // leave 6 free on the end so we always have room to flush one last primitive.
     bool is_full() { return max_verts < (vert_count + 18); }
     void push(const math::Vector<u8, 4>& rgba,
-              const math::Vector<u32, 3>& vert,
+              const math::Vector<u32, 4>& vert,
               const math::Vector<float, 3>& stq,
               int unit,
-              bool tcc);
+              bool tcc,
+              bool decal,
+              bool fog_enable);
   } m_prim_buffer;
 
   struct {
@@ -239,7 +239,8 @@ class DirectRenderer : public BucketRenderer {
     GLuint vao;
     u32 vertex_buffer_bytes = 0;
     u32 vertex_buffer_max_verts = 0;
-    u32 last_vertex_offset = 0;
+    float color_mult = 1.0;
+    float alpha_mult = 1.0;
   } m_ogl;
 
   struct {
@@ -271,6 +272,4 @@ class DirectRenderer : public BucketRenderer {
   struct SpriteMode {
     bool do_first_draw = true;
   } m_sprite_mode;
-
-  Mode m_mode;
 };

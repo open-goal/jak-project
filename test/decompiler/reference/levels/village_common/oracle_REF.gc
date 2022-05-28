@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/oracle-ag.gc")
+
 ;; definition of type oracle
 (deftype oracle (process-taskable)
   ((first-task     uint8   :offset-assert 380)
@@ -27,13 +29,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *oracle-sg* oracle
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *oracle-sg* oracle oracle-lod0-jg oracle-idle-ja
+              ((oracle-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 ;; definition for method 32 of type oracle
 (defmethod play-anim! oracle ((obj oracle) (arg0 symbol))
@@ -254,26 +253,15 @@
 ;; definition for method 11 of type oracle
 (defmethod init-from-entity! oracle ((obj oracle) (arg0 entity-actor))
   (dummy-40 obj arg0 *oracle-sg* 3 4 (new 'static 'vector :y -4096.0 :w 4096.0) -1)
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "oracle-sleep")
-                           :volume #x400
-                           :fo-max 50
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "oracle-sleep" :fo-max 50) (-> obj root-override trans))
         )
   (set! (-> obj first-task) (the-as uint (-> arg0 extra perm task)))
   (set! (-> obj second-task) (res-lump-value arg0 'alt-task uint))
   (set! (-> obj tasks) (get-task-control (the-as game-task (-> obj first-task))))
   (set! (-> obj right-eye-cell) (the-as handle #f))
   (set! (-> obj left-eye-cell) (the-as handle #f))
-  (logior! (-> obj draw status) (draw-status drwf05))
+  (logior! (-> obj draw status) (draw-status skip-bones))
   (let ((s4-0 (new 'stack-no-clear 'vector))
         (s5-1 (lambda :behavior oracle
                 ()

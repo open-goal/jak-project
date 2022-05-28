@@ -145,7 +145,6 @@
   ("navigate-h.o" "navigate-h")
   ("load-dgo.o" "load-dgo")
   ("ramdisk.o" "ramdisk")
-  ("pckernel.o" "pckernel") ;; added
   ("gsound.o" "gsound")
   ("transformq.o" "transformq")
   ("collide-func.o" "collide-func")
@@ -196,6 +195,7 @@
   ("game-info.o" "game-info")
   ("game-save.o" "game-save")
   ("settings.o" "settings")
+  ("pckernel.o" "pckernel") ;; added
   ("mood-tables.o" "mood-tables")
   ("mood.o" "mood")
   ("weather-part.o" "weather-part")
@@ -278,6 +278,7 @@
   ("progress-part.o" "progress-part")
   ("progress-draw.o" "progress-draw")
   ("progress.o" "progress")
+  ("progress-pc.o" "progress-pc") ;; added
   ("credits.o" "credits")
   ("projectiles.o" "projectiles")
   ("ocean.o" "ocean")
@@ -293,5 +294,8 @@
   ("anim-tester.o" "anim-tester")
   ("viewer.o" "viewer")
   ("part-tester.o" "part-tester")
+  ("anim-tester-x.o" "anim-tester-x") ;; added
   ("default-menu.o" "default-menu")
+  ("subtitle.o" "subtitle") ;; added
   )
+

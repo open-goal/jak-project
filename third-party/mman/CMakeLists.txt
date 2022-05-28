@@ -1,1 +1,1 @@
-add_library(mman SHARED mman.c)
+add_library(mman mman.c)

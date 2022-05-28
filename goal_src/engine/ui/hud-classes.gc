@@ -6,6 +6,7 @@
 ;; dgos: GAME, ENGINE
 
 ;; DECOMP BEGINS
+(import "goal_src/import/fuelcell-naked-ag.gc")
 
 (defpartgroup group-part-hud-pickup
   :id 75
@@ -170,7 +171,7 @@
         )
       (dma-bucket-insert-tag
         (-> *display* frames (-> *display* on-screen) frame bucket-group)
-        (bucket-id debug-draw0)
+        (bucket-id debug)
         gp-0
         (the-as (pointer dma-tag) a3-7)
         )
@@ -437,6 +438,14 @@
       (set! (-> obj particles 2 init-pos x) 70.0)
       (set! (-> obj particles 2 init-pos y) 76.0)
       (set! (-> obj scale) 6963.2)
+      (with-pc
+        (when (not (-> *pc-settings* use-vis?))
+            (let ((base-x (-> obj particles 0 init-pos x)))
+              (set! (-> obj particles 1 init-pos x) (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> obj particles 1 init-pos x) base-x))))
+              (set! (-> obj particles 2 init-pos x) (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> obj particles 2 init-pos x) base-x))))
+              )
+            )
+        )
       )
     )
   0
@@ -557,7 +566,7 @@
           )
         (dma-bucket-insert-tag
           (-> *display* frames (-> *display* on-screen) frame bucket-group)
-          (bucket-id debug-draw0)
+          (bucket-id debug)
           s4-1
           (the-as (pointer dma-tag) a3-12)
           )
@@ -781,7 +790,7 @@
         )
       (dma-bucket-insert-tag
         (-> *display* frames (-> *display* on-screen) frame bucket-group)
-        (bucket-id debug-draw0)
+        (bucket-id debug)
         gp-0
         (the-as (pointer dma-tag) a3-7)
         )
@@ -919,14 +928,11 @@
   -0.011
   )
 
-(defskelgroup *fuelcell-naked-sg* fuelcell-naked
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 1 0 1.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *fuelcell-naked-sg* fuelcell-naked fuelcell-naked-lod0-jg fuelcell-naked-idle-ja
+              ((fuelcell-naked-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 2
+              )
 
 (defpart 313
   :init-specs
@@ -1184,7 +1190,7 @@
         )
       (dma-bucket-insert-tag
         (-> *display* frames (-> *display* on-screen) frame bucket-group)
-        (bucket-id debug-draw0)
+        (bucket-id debug)
         gp-0
         (the-as (pointer dma-tag) a3-7)
         )
@@ -1465,7 +1471,7 @@
         )
       (dma-bucket-insert-tag
         (-> *display* frames (-> *display* on-screen) frame bucket-group)
-        (bucket-id debug-draw0)
+        (bucket-id debug)
         gp-0
         (the-as (pointer dma-tag) a3-7)
         )
@@ -1935,6 +1941,22 @@
       (set! (-> obj scale-timer) 13107.2)
       (set! (-> obj scale-backing) 10240.0)
       )
+    )
+  (#when PC_PORT
+    
+    (let ((base-x (-> obj particles 2 init-pos x)))
+        (+! base-x (* (- 512.0 base-x) (- 1.0 (-> *pc-settings* aspect-ratio-reciprocal))))
+        (set! (-> obj particles 0 init-pos x) 435.0)
+        (set! (-> obj particles 1 init-pos x) 432.0)
+        (set! (-> obj particles 2 init-pos x) 435.0)
+        
+    (when (not (-> *pc-settings* use-vis?))
+      (dotimes (i (-> obj nb-of-particles))
+        (set! (-> obj particles i init-pos x) (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> obj particles i init-pos x) base-x))))
+
+        ))
+        
+        )
     )
   0
   (none)

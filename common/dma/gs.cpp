@@ -389,6 +389,21 @@ std::string DrawMode::to_string() const {
     case AlphaBlend::DISABLED:
       result += "disabled\n";
       break;
+    case AlphaBlend::SRC_DST_FIX_DST:
+      result += "src, dst, fix, dst\n";
+      break;
+    case AlphaBlend::SRC_0_DST_DST:
+      result += "src, 0, dst, dst\n";
+      break;
+    case AlphaBlend::SRC_SRC_SRC_SRC:
+      result += "src, src, src, src\n";
+      break;
+    case AlphaBlend::ZERO_SRC_SRC_DST:
+      result += "0, src, src, dst\n";
+      break;
+    case AlphaBlend::SRC_0_FIX_DST:
+      result += "src, 0, fix, dst\n";
+      break;
     default:
       ASSERT(false);
   }
@@ -409,7 +424,8 @@ std::string DrawMode::to_string() const {
       result += "never\n";
       break;
     default:
-      ASSERT(false);
+      result += "invalid!\n";
+      break;
   }
   result += fmt::format(" zte: {}\n", get_zt_enable());
   result += fmt::format(" abe: {}\n", get_ab_enable());
@@ -430,5 +446,6 @@ std::string DrawMode::to_string() const {
     default:
       ASSERT(false);
   }
+  result += fmt::format(" fog: {}\n decal: {}\n", get_fog_enable(), get_decal());
   return result;
 }

@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/sidekick-ag.gc")
+
 ;; definition for symbol *sidekick-remap*, type pair
 (define *sidekick-remap* '(("run-to-stance-left" "run-to-stance")
                            ("run-to-stance-loop-left" "run-to-stance-loop")
@@ -104,12 +106,12 @@
       (('blend-shape)
        (cond
          ((-> arg3 param 0)
-          (set! v0-0 (logior (-> self skel status) 8))
-          (set! (-> self skel status) (the-as uint v0-0))
+          (set! v0-0 (logior (-> self skel status) (janim-status blerc)))
+          (set! (-> self skel status) (the-as janim-status v0-0))
           )
          (else
-           (set! v0-0 (logand -9 (-> self skel status)))
-           (set! (-> self skel status) (the-as uint v0-0))
+           (set! v0-0 (logclear (-> self skel status) (janim-status blerc)))
+           (set! (-> self skel status) (the-as janim-status v0-0))
            )
          )
        v0-0
@@ -173,28 +175,28 @@
       (debug-print-channels (-> self skel) (the-as symbol *stdcon*))
       (add-debug-sphere
         *display-sidekick-stats*
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         (-> self parent-override 0 control unknown-cspace10 parent bone transform vector 3)
         409.6
         (new 'static 'rgba :g #xff :a #x80)
         )
       (add-debug-sphere
         *display-sidekick-stats*
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         (-> self node-list data 3 bone transform vector 3)
         409.6
         (new 'static 'rgba :r #xff :g #xff :a #x80)
         )
       (add-debug-sphere
         *display-sidekick-stats*
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         (-> self draw origin)
         409.6
         (new 'static 'rgba :r #xff :g #x80 :a #x80)
         )
       )
     (set! (-> self draw shadow) (the-as shadow-geo (if (and (movie?) (-> self shadow-in-movie?))
-                                                       (-> self draw art-group data 2)
+                                                       sidekick-shadow-mg
                                                        )
                                         )
           )
@@ -203,27 +205,25 @@
           (TODO-RENAME-9 a0-26)
           )
       )
-    (if (logtest? (-> self skel status) 72)
+    (if (logtest? (-> self skel status) (janim-status blerc blerc-done))
         (merc-blend-shape self)
         )
-    (if (logtest? (-> self skel status) 384)
-        (merc-eye-anim (the-as manipy self))
+    (if (logtest? (-> self skel status) (janim-status eye-done eye))
+        (merc-eye-anim self)
         )
     (none)
     )
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *sidekick-sg* sidekick
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 1)
-  :shadow 2
-  :texture-level 2
-  :sort 1
-  )
+(defskelgroup *sidekick-sg* sidekick sidekick-lod0-jg -1
+              ((sidekick-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :longest-edge (meters 1)
+              :shadow sidekick-shadow-mg
+              :texture-level 2
+              :sort 1
+              )
 
 ;; definition for function init-sidekick
 ;; INFO: Return type mismatch object vs none.
@@ -236,7 +236,7 @@
   (set! (-> self draw origin-joint-index) (the-as uint 6))
   (set! (-> self draw shadow-joint-index) (the-as uint 6))
   (set! (-> self draw shadow-ctrl) *target-shadow-control*)
-  (logior! (-> self skel status) 256)
+  (logior! (-> self skel status) (janim-status eye))
   (let ((v1-14 (-> self node-list data)))
     (set! (-> v1-14 0 param0) cspace<-cspace+quaternion!)
     (set! (-> v1-14 0 param1) (the-as basic (-> self parent-override 0 control unknown-cspace10 parent)))

@@ -1588,7 +1588,8 @@ void TypeSystem::add_field_to_bitfield(BitFieldType* type,
                                        const std::string& field_name,
                                        const TypeSpec& field_type,
                                        int offset,
-                                       int field_size) {
+                                       int field_size,
+                                       bool skip_in_decomp) {
   // in bits
   auto load_size = lookup_type(field_type)->get_load_size() * 8;
   if (field_size == -1) {
@@ -1616,7 +1617,7 @@ void TypeSystem::add_field_to_bitfield(BitFieldType* type,
         type->get_name(), field_name, offset, offset + field_size);
   }
 
-  BitField field(field_type, field_name, offset, field_size);
+  BitField field(field_type, field_name, offset, field_size, skip_in_decomp);
   type->m_fields.push_back(field);
 }
 

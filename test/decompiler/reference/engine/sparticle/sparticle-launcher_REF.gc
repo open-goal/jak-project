@@ -273,14 +273,12 @@
   )
 
 ;; definition for symbol *part-id-table*, type (array sparticle-launcher)
-(define
-  *part-id-table*
+(define *part-id-table*
   (the-as (array sparticle-launcher) (new 'global 'boxed-array sparticle-launcher 3584))
   )
 
 ;; definition for symbol *part-group-id-table*, type (array sparticle-launch-group)
-(define
-  *part-group-id-table*
+(define *part-group-id-table*
   (the-as (array sparticle-launch-group) (new 'global 'boxed-array sparticle-launch-group 1024))
   )
 
@@ -409,7 +407,7 @@
   (set! (-> arg0 prims 5) (gs-reg64 miptbp1-1))
   (set! (-> arg0 clamp-reg) (gs-reg64 zbuf-1))
   (set! (-> arg0 prims 9) (gs-reg64 alpha-1))
-  (set! (-> arg0 alpha) (new 'static 'gs-miptbp :tbp1 #x44))
+  (set! (-> arg0 alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
   (set! (-> arg0 clamp) (new 'static 'gs-clamp :minu #x1c :minv #x101))
   0
   (none)
@@ -653,7 +651,7 @@
       (when (not *death-adgif*)
         (set! *death-adgif* (new 'static 'adgif-shader))
         (particle-adgif *death-adgif* (new 'static 'texture-id :index #x18 :page #x2))
-        (set! (-> *death-adgif* alpha) (new 'static 'gs-miptbp :tbp1 #x48))
+        (set! (-> *death-adgif* alpha) (new 'static 'gs-alpha :b #x2 :d #x1))
         )
       (let ((v1-14 (-> *death-adgif* quad 0 quad)))
         (set! (-> gp-0 adgif quad 0 quad) v1-14)
@@ -924,9 +922,7 @@
     (set! (-> obj local-clock) 0)
     (set! (-> obj fade) 1.0)
     (set! (-> obj matrix) 0)
-    (set! (-> obj last-spawn-frame)
-          (the-as int (+ (-> *display* real-actual-frame-counter) (seconds -0.006666667)))
-          )
+    (set! (-> obj last-spawn-frame) (the-as int (+ (-> *display* real-actual-frame-counter) (seconds -0.007))))
     (set! (-> obj last-spawn-time) 0)
     (dotimes (s3-0 (-> arg0 length))
       (let* ((a0-2 (-> arg0 launcher s3-0))
@@ -1027,13 +1023,7 @@
         (let ((gp-1 (vector+! (new 'stack-no-clear 'vector) arg0 (the-as vector (-> v1-0 bounds)))))
           (set! (-> gp-1 w) f0-0)
           (if (and *display-actor-vis* (or (not *display-actor-anim*) (name= *display-actor-anim* (-> obj proc name))))
-              (add-debug-sphere
-                *display-actor-vis*
-                (bucket-id debug-draw0)
-                gp-1
-                (-> gp-1 w)
-                (new 'static 'rgba :g #xff :a #x80)
-                )
+              (add-debug-sphere *display-actor-vis* (bucket-id debug) gp-1 (-> gp-1 w) (new 'static 'rgba :g #xff :a #x80))
               )
           (sphere-in-view-frustum? (the-as sphere gp-1))
           )

@@ -54,7 +54,7 @@ mmode_func cdmmode = nullptr;               // function to call to set the expec
 static sceCdRMode sNominalMode;             // drive settings for "nominal" reading
 static sceCdRMode sStreamMode;              // drive settings for "streaming" reading
 static sceCdRMode* sMode;                   // pointer to currently selected read mode
-LoadStackEntry* sReadInfo;                  // LoadStackEntry for currently reading file
+static LoadStackEntry* sReadInfo;           // LoadStackEntry for currently reading file
 static u8* sSecBuffer[3];                   // Buffers for a single sector
 u32 add_files;                              // Should we add files we discover to the sFiles list?
 static FileRecord sFiles[MAX_ISO_FILES];    // Info for all files on the disc
@@ -909,7 +909,7 @@ uint32_t FS_LoadSoundBank(char* name, void* buffer) {
   }
 
   snd_ResolveBankXREFS();
-  PrintBankInfo(buffer);
+  PrintBankInfo((SoundBank*)buffer);
   _sector = 0;
   // ??? todo this is probably a field of the buffer.
   *(s32*)(((u8*)buffer) + 0x10) = load_status;

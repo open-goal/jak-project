@@ -276,8 +276,7 @@ Texture read_texture(ObjectFileData& data, const std::vector<LinkedWord>& words,
 
   auto kv = psms.find(tex.psm);
   if (kv == psms.end()) {
-    printf("Got unsupported texture 0x%x!\n", tex.psm);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("Got unsupported texture 0x{:x}!", tex.psm));
   }
 
   return tex;
@@ -418,6 +417,7 @@ TexturePage read_texture_page(ObjectFileData& data,
 TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
   TPageResultStats stats;
   auto& words = data.linked_data.words_by_seg.at(0);
+  const auto& level_names = data.dgo_names;
 
   // at the beginning there's a texture-page object.
   // find the size first.
@@ -518,12 +518,11 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       file_util::create_dir_if_needed(
           file_util::get_file_path({"assets", "textures", texture_page.name}));
       file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path(
-                          {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
-                      data.name_in_dgo, tex.name, tex.w, tex.h),
-          out.data(), tex.w, tex.h, false);
+          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
+                      tex.name),
+          out.data(), tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name);
+                             texture_page.name, level_names);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMT8) && tex.clutpsm == int(CPSM::PSMCT16)) {
       // will store output pixels, rgba (8888)
@@ -566,12 +565,11 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       file_util::create_dir_if_needed(
           file_util::get_file_path({"assets", "textures", texture_page.name}));
       file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path(
-                          {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
-                      data.name_in_dgo, tex.name, tex.w, tex.h),
-          out.data(), tex.w, tex.h, false);
+          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
+                      tex.name),
+          out.data(), tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name);
+                             texture_page.name, level_names);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMCT16) && tex.clutpsm == 0) {
       // not a clut.
@@ -596,12 +594,11 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       file_util::create_dir_if_needed(
           file_util::get_file_path({"assets", "textures", texture_page.name}));
       file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path(
-                          {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
-                      data.name_in_dgo, tex.name, tex.w, tex.h),
-          out.data(), tex.w, tex.h, false);
+          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
+                      tex.name),
+          out.data(), tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name);
+                             texture_page.name, level_names);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMT4) && tex.clutpsm == int(CPSM::PSMCT16)) {
       // will store output pixels, rgba (8888)
@@ -642,12 +639,11 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       file_util::create_dir_if_needed(
           file_util::get_file_path({"assets", "textures", texture_page.name}));
       file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path(
-                          {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
-                      data.name_in_dgo, tex.name, tex.w, tex.h),
-          out.data(), tex.w, tex.h, false);
+          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
+                      tex.name),
+          out.data(), tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name);
+                             texture_page.name, level_names);
       stats.successful_textures++;
     } else if (tex.psm == int(PSM::PSMT4) && tex.clutpsm == int(CPSM::PSMCT32)) {
       // will store output pixels, rgba (8888)
@@ -688,12 +684,11 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       file_util::create_dir_if_needed(
           file_util::get_file_path({"assets", "textures", texture_page.name}));
       file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path(
-                          {"assets", "textures", texture_page.name, "{}-{}-{}-{}.png"}),
-                      data.name_in_dgo, tex.name, tex.w, tex.h),
-          out.data(), tex.w, tex.h, false);
+          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
+                      tex.name),
+          out.data(), tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
-                             texture_page.name);
+                             texture_page.name, level_names);
       stats.successful_textures++;
     }
 

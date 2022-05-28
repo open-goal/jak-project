@@ -8,6 +8,16 @@ typedef OpenGOALAsm::InstructionModifiers MOD;
 
 const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUNCS = {
     // ----- EE -------
+    // Instructions that are nopped
+    //    {InstructionKind::MTC0,
+    //     {".nop", {MOD::SKIP_IT}}},  // they only use this for performance counters / Count /
+    //     Debug
+    //    {InstructionKind::MTPC, {".nop", {MOD::SKIP_IT}}},
+    //    {InstructionKind::MFPC, {".nop", {MOD::SKIP_IT}}},
+    //    {InstructionKind::SYNCP, {".nop", {MOD::SKIP_IT}}},
+    //    {InstructionKind::SYNCL, {".nop", {MOD::SKIP_IT}}},
+
+    // Shifts and such
     {InstructionKind::PSLLW, {".pw.sll", {}}},
     {InstructionKind::PSRAW, {".pw.sra", {}}},
     {InstructionKind::PSUBW, {".psubw", {}}},
@@ -156,6 +166,10 @@ OpenGOALAsm::OpenGOALAsm(Instruction _instr) : m_instr(_instr) {
     if (func.funcTemplate.rfind("TODO", 0) == 0) {
       todo = true;
     }
+    if (std::find(func.modifiers.begin(), func.modifiers.end(), InstructionModifiers::SKIP_IT) !=
+        func.modifiers.end()) {
+      skip = true;
+    }
   }
 }
 
@@ -169,6 +183,10 @@ OpenGOALAsm::OpenGOALAsm(Instruction _instr,
     func = MIPS_ASM_TO_OPEN_GOAL_FUNCS.at(m_instr.kind);
     if (func.funcTemplate.rfind("TODO", 0) == 0) {
       todo = true;
+    }
+    if (std::find(func.modifiers.begin(), func.modifiers.end(), InstructionModifiers::SKIP_IT) !=
+        func.modifiers.end()) {
+      skip = true;
     }
   }
 }

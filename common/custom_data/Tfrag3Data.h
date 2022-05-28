@@ -11,7 +11,46 @@
 
 namespace tfrag3 {
 
-constexpr int TFRAG3_VERSION = 9;
+// NOTE:
+// when updating any data structures in this file:
+// - change the TFRAG3_VERSION
+// - make sure to update the serialize function
+// - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
+// - if adding a new category to the memory usage, update extract_level to print it.
+
+enum MemoryUsageCategory {
+  TEXTURE,
+
+  TIE_DEINST_VIS,
+  TIE_DEINST_INDEX,
+  TIE_INST_VIS,
+  TIE_INST_INDEX,
+  TIE_BVH,
+  TIE_VERTS,
+  TIE_TIME_OF_DAY,
+  TIE_WIND_INSTANCE_INFO,
+
+  TIE_CIDX,
+  TIE_MATRICES,
+  TIE_GRPS,
+
+  TFRAG_VIS,
+  TFRAG_INDEX,
+  TFRAG_VERTS,
+  TFRAG_CLUSTER,
+  TFRAG_TIME_OF_DAY,
+  TFRAG_BVH,
+
+  SHRUB_TIME_OF_DAY,
+  SHRUB_VERT,
+  SHRUB_IND,
+
+  COLLISION,
+
+  NUM_CATEGORIES
+};
+
+constexpr int TFRAG3_VERSION = 17;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -25,6 +64,69 @@ struct PreloadedVertex {
 };
 static_assert(sizeof(PreloadedVertex) == 32, "PreloadedVertex size");
 
+struct PackedTieVertices {
+  struct Vertex {
+    float x, y, z;
+    float s, t;
+  };
+
+  struct MatrixGroup {
+    s32 matrix_idx;
+    u32 start_vert;
+    u32 end_vert;
+  };
+
+  std::vector<u16> color_indices;
+  std::vector<std::array<math::Vector4f, 4>> matrices;
+  std::vector<MatrixGroup> matrix_groups;  // todo pack
+  std::vector<Vertex> vertices;
+  void serialize(Serializer& ser);
+};
+
+struct PackedTfragVertices {
+  struct Vertex {
+    u16 xoff, yoff, zoff;
+    u16 cluster_idx;
+    u16 s, t;
+    u16 color_index;
+  };
+
+  std::vector<Vertex> vertices;
+  std::vector<math::Vector<u16, 3>> cluster_origins;
+};
+
+struct ShrubGpuVertex {
+  float x, y, z;
+  float s, t;
+  u32 pad0;
+  u16 color_index;
+  u16 pad1;
+  u8 rgba_base[3];
+  u8 pad2;
+};
+static_assert(sizeof(ShrubGpuVertex) == 32, "ShrubGpuVertex size");
+
+struct PackedShrubVertices {
+  struct Vertex {
+    float x, y, z;
+    float s, t;
+    u8 rgba[3];
+  };
+
+  struct InstanceGroup {
+    s32 matrix_idx;
+    u32 start_vert;
+    u32 end_vert;
+    u16 color_index;
+  };
+  std::vector<std::array<math::Vector4f, 4>> matrices;
+  std::vector<InstanceGroup> instance_groups;  // todo pack
+  std::vector<Vertex> vertices;
+  u32 total_vertex_count;
+
+  void serialize(Serializer& ser);
+};
+
 // Settings for drawing a group of triangle strips.
 // This refers to a group of PreloadedVertices that are already uploaded.
 // All triangles here are drawn in the same "mode" (blending, texture, etc)
@@ -35,17 +137,37 @@ struct StripDraw {
   DrawMode mode;        // the OpenGL draw settings.
   u32 tree_tex_id = 0;  // the texture that should be bound for the draw
 
-  // the list of vertices in the draw. This includes the restart code of UINT32_MAX that OpenGL
-  // will use to start a new strip.
-  std::vector<u32> vertex_index_stream;
+  struct {
+    u32 idx_of_first_idx_in_full_buffer = 0;
+  } unpacked;
+
+  struct VertexRun {
+    u32 vertex0;
+    u16 length;
+  };
+
+  std::vector<VertexRun> runs;
 
   // to do culling, the above vertex stream is grouped.
   // by following the visgroups and checking the visibility, you can leave out invisible vertices.
   struct VisGroup {
-    u32 num = 0;                // number of vertex indices in this group
+    u32 num_inds = 0;           // number of vertex indices in this group
+    u32 num_tris = 0;           // number of triangles
     u32 vis_idx_in_pc_bvh = 0;  // the visibility group they belong to (in BVH)
   };
   std::vector<VisGroup> vis_groups;
+
+  // for debug counting.
+  u32 num_triangles = 0;
+  void serialize(Serializer& ser);
+};
+
+struct ShrubDraw {
+  DrawMode mode;        // the OpenGL draw settings.
+  u32 tree_tex_id = 0;  // the texture that should be bound for the draw
+
+  u32 first_index_index;
+  u32 num_indices;
 
   // for debug counting.
   u32 num_triangles = 0;
@@ -118,6 +240,7 @@ struct Texture {
   std::vector<u32> data;
   std::string debug_name;
   std::string debug_tpage_name;
+  bool load_to_pool = false;
   void serialize(Serializer& ser);
 };
 
@@ -129,11 +252,17 @@ constexpr const char* tfrag_tree_names[] = {"normal", "trans",        "dirt",   
 
 // A tfrag model
 struct TfragTree {
-  TFragmentTreeKind kind;                 // our tfrag kind
-  std::vector<StripDraw> draws;           // the actual topology and settings
-  std::vector<PreloadedVertex> vertices;  // mesh vertices
-  std::vector<TimeOfDayColor> colors;     // vertex colors (pre-interpolation)
-  BVH bvh;                                // the bvh for frustum culling
+  TFragmentTreeKind kind;        // our tfrag kind
+  std::vector<StripDraw> draws;  // the actual topology and settings
+  PackedTfragVertices packed_vertices;
+  std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)
+  BVH bvh;                             // the bvh for frustum culling
+
+  struct {
+    std::vector<PreloadedVertex> vertices;  // mesh vertices
+    std::vector<u32> indices;
+  } unpacked;
+  void unpack();
   void serialize(Serializer& ser);
 };
 
@@ -147,24 +276,68 @@ struct TieWindInstance {
 // A tie model
 struct TieTree {
   BVH bvh;
-  std::vector<StripDraw> static_draws;    // the actual topology and settings
-  std::vector<PreloadedVertex> vertices;  // mesh vertices
-  std::vector<TimeOfDayColor> colors;     // vertex colors (pre-interpolation)
+  std::vector<StripDraw> static_draws;  // the actual topology and settings
+
+  PackedTieVertices packed_vertices;
+  std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)
 
   std::vector<InstancedStripDraw> instanced_wind_draws;
-  std::vector<TieWindInstance> instance_info;
+  std::vector<TieWindInstance> wind_instance_info;
+
+  struct {
+    std::vector<PreloadedVertex> vertices;  // mesh vertices
+    std::vector<u32> indices;
+  } unpacked;
 
   void serialize(Serializer& ser);
+  void unpack();
 };
+
+struct ShrubTree {
+  // todo some visibility structure
+  std::vector<TimeOfDayColor> time_of_day_colors;  // multiplier colors
+
+  PackedShrubVertices packed_vertices;
+  std::vector<ShrubDraw> static_draws;  // the actual topology and settings
+  std::vector<u32> indices;
+
+  struct {
+    std::vector<ShrubGpuVertex> vertices;  // mesh vertices
+  } unpacked;
+
+  void serialize(Serializer& ser);
+  void unpack();
+};
+
+struct CollisionMesh {
+  struct Vertex {
+    float x, y, z;
+    u32 flags;
+    s16 nx, ny, nz;
+    u16 pad;
+    u32 pat;
+    u32 pad2;
+  };
+  static_assert(sizeof(Vertex) == 32);
+  std::vector<Vertex> vertices;
+  void serialize(Serializer& ser);
+};
+
+constexpr int TFRAG_GEOS = 3;
+constexpr int TIE_GEOS = 4;
 
 struct Level {
   u16 version = TFRAG3_VERSION;
   std::string level_name;
   std::vector<Texture> textures;
-  std::vector<TfragTree> tfrag_trees;
-  std::vector<TieTree> tie_trees;
+  std::array<std::vector<TfragTree>, TFRAG_GEOS> tfrag_trees;
+  std::array<std::vector<TieTree>, TIE_GEOS> tie_trees;
+  std::vector<ShrubTree> shrub_trees;
+  CollisionMesh collision;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
+
+  std::array<int, MemoryUsageCategory::NUM_CATEGORIES> get_memory_usage() const;
 };
 
 }  // namespace tfrag3

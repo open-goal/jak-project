@@ -6,6 +6,7 @@
 ;; dgos: L1, ROL
 
 ;; DECOMP BEGINS
+(import "goal_src/import/race-ring-ag.gc")
 
 (deftype race-ring (process-drawable)
   ((rot-y                 float                 :offset-assert 176)
@@ -574,13 +575,10 @@
   (none)
   )
 
-(defskelgroup *race-ring-sg* race-ring
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *race-ring-sg* race-ring race-ring-lod0-jg race-ring-race-ring-idle-ja
+              ((race-ring-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 (defun first-ring? ((arg0 race-ring))
   (not (-> arg0 alt-actor))
@@ -865,7 +863,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       (cond
         ((first-ring? self)
@@ -967,8 +965,8 @@
                      (logior! (-> *target* mask) (process-mask sleep))
                      )
                  (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
-                 (logclear! (-> self draw status) (draw-status drwf01))
-                 (logior! (-> self draw status) (draw-status drwf05))
+                 (logclear! (-> self draw status) (draw-status hidden))
+                 (logior! (-> self draw status) (draw-status skip-bones))
                  (if (= (-> self entity extra perm task) (game-task rolling-ring-chase-2))
                      (ja-play-spooled-anim
                        (new 'static 'spool-anim :name "race-ring-second-anim" :index 4 :parts 2 :command-list '())
@@ -983,8 +981,8 @@
                        (the-as (function process-drawable symbol) false-func)
                        )
                      )
-                 (logclear! (-> self draw status) (draw-status drwf05))
-                 (logior! (-> self draw status) (draw-status drwf01))
+                 (logclear! (-> self draw status) (draw-status skip-bones))
+                 (logior! (-> self draw status) (draw-status hidden))
                  (cond
                    ((handle->process (the-as int gp-2))
                     (deactivate (-> gp-2 process 0))
@@ -1038,7 +1036,7 @@
     (if (nonzero? (-> self sound))
         (stop! (-> self sound))
         )
-    (while #t
+    (loop
       (suspend)
       (when (= (get-task-status (the-as game-task (-> self alt-task))) (task-status invalid))
         (close-specific-task! (-> self entity extra perm task) (task-status need-hint))
@@ -1065,7 +1063,7 @@
     (if (nonzero? (-> self sound))
         (stop! (-> self sound))
         )
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1085,20 +1083,9 @@
   (set! (-> obj link) (new 'process 'actor-link-info obj))
   (set! (-> obj part-track) (the-as handle #f))
   (set! (-> obj alt-actor) (entity-actor-lookup arg0 'alt-actor 0))
-  (logior! (-> obj draw status) (draw-status drwf01))
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "loop-racering")
-                           :volume #x400
-                           :fo-max 40
-                           )
-                         (-> obj root trans)
-                         )
+  (logior! (-> obj draw status) (draw-status hidden))
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "loop-racering" :fo-max 40) (-> obj root trans))
         )
   (let ((f0-1 (res-lump-float arg0 'timeout)))
     (set! (-> obj timeout) (the-as time-frame (the int (* 300.0 f0-1))))
@@ -1153,10 +1140,10 @@
      )
     ((and (last-ring? obj) (= (get-task-status (-> obj entity extra perm task)) (task-status need-resolution)))
      (let ((s5-2 (new 'stack-no-clear 'vector)))
-       (logclear! (-> obj draw status) (draw-status drwf01))
+       (logclear! (-> obj draw status) (draw-status hidden))
        (ja-post)
        (vector<-cspace! s5-2 (-> obj node-list data 5))
-       (logior! (-> obj draw status) (draw-status drwf01))
+       (logior! (-> obj draw status) (draw-status hidden))
        (birth-pickup-at-point
          s5-2
          (pickup-type fuel-cell)

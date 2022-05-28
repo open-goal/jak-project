@@ -287,7 +287,7 @@
 ;; Used lq/sq
 (defmethod do-joint-math! process-drawable ((obj process-drawable))
   (cond
-    ((logtest? (-> obj draw status) (draw-status drwf01 drwf02))
+    ((logtest? (-> obj draw status) (draw-status hidden no-anim))
      )
     ((zero? (-> obj skel))
      (matrix<-transformq+trans!
@@ -365,7 +365,7 @@
 
 ;; definition for method 18 of type process-drawable
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-18 process-drawable ((obj process-drawable))
+(defmethod cleanup-for-death process-drawable ((obj process-drawable))
   (if (type-type? (-> obj root type) collide-shape)
       (clear-collide-with-as (the-as collide-shape (-> obj root)))
       )
@@ -381,7 +381,7 @@
 (defun draw-joint-spheres ((arg0 process-drawable))
   (dotimes (s5-0 (-> arg0 node-list length))
     (let ((a2-0 (vector<-cspace! (new-stack-vector0) (-> arg0 node-list data s5-0))))
-      (add-debug-sphere #t (bucket-id debug-draw0) a2-0 819.2 (new 'static 'rgba :g #xff :a #x40))
+      (add-debug-sphere #t (bucket-id debug) a2-0 819.2 (new 'static 'rgba :g #xff :a #x40))
       )
     )
   #f
@@ -404,7 +404,7 @@
   :code
   (behavior ((arg0 string))
     (logior! (-> self entity extra perm status) (entity-perm-status bit-1))
-    (while #t
+    (loop
       (when *display-entity-errors*
         (let ((s5-0 add-debug-text-3d)
               (s4-0 #t)
@@ -456,15 +456,7 @@
                 )
               )
         )
-    (let ((s4-0 (load-to-heap-by-name
-                  (-> s1-0 art-group)
-                  (the-as string (-> arg0 art-group-name))
-                  #f
-                  global
-                  (-> arg0 version)
-                  )
-                )
-          )
+    (let ((s4-0 (load-to-heap-by-name (-> s1-0 art-group) (-> arg0 art-group-name) #f global (-> arg0 version))))
       (when (or (zero? s4-0) (or (not s4-0) (!= (-> s4-0 type) art-group)))
         (go process-drawable-art-error "art-group")
         (set! s3-0 (the-as draw-control #f))
@@ -482,7 +474,7 @@
         (set! s3-0 v0-3)
         )
       (let ((v1-26 s3-0))
-        (set! (-> v1-26 status) (draw-status drwf04))
+        (set! (-> v1-26 status) (draw-status no-skeleton-update))
         (set! (-> v1-26 art-group) s4-0)
         (set! (-> v1-26 jgeo) (the-as art-joint-geo sv-16))
         (set! (-> v1-26 force-lod) -1)
@@ -543,7 +535,7 @@
       (let ((a2-10 (res-lump-value (-> sv-16 extra) 'joint-channel int :default (the-as uint128 6))))
         (cond
           ((> a2-10 0)
-           (logior! (-> s3-0 status) (draw-status drwf07))
+           (logior! (-> s3-0 status) (draw-status has-joint-channels))
            (let ((v0-13 (new 'process 'joint-control a2-10)))
              (set! (-> obj skel) v0-13)
              (let ((s2-1 v0-13))
@@ -616,7 +608,7 @@
 
 ;; definition for method 16 of type process-drawable
 ;; INFO: Return type mismatch trsqv vs collide-shape.
-(defmethod dummy-16 process-drawable ((obj process-drawable) (arg0 int) (arg1 (inline-array vector)) (arg2 vector))
+(defmethod apply-alignment process-drawable ((obj process-drawable) (arg0 int) (arg1 transformq) (arg2 vector))
   (when (logtest? arg0 7)
     (let* ((body-T-world (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root quat)))
            (world-T-body (matrix-transpose! (new 'stack-no-clear 'matrix) body-T-world))
@@ -627,7 +619,7 @@
           (set-vector! grav-rt-body 0.0 0.0 0.0 1.0)
           )
       (when (logtest? arg0 1)
-        (set! (-> vel-rt-body x) (+ (* (-> arg1 0 x) (-> arg2 x) (-> *display* frames-per-second))
+        (set! (-> vel-rt-body x) (+ (* (-> arg1 trans x) (-> arg2 x) (-> *display* frames-per-second))
                                     (* (-> grav-rt-body x) (-> *display* seconds-per-frame))
                                     )
               )
@@ -635,14 +627,14 @@
             (set! (-> vel-rt-body z) 0.0)
             )
         )
-      (if (and (logtest? arg0 2) (not (and (logtest? arg0 4096) (= (-> arg1 0 y) 0.0))))
-          (set! (-> vel-rt-body y) (+ (* (-> arg1 0 y) (-> arg2 y) (-> *display* frames-per-second))
+      (if (and (logtest? arg0 2) (not (and (logtest? arg0 4096) (= (-> arg1 trans y) 0.0))))
+          (set! (-> vel-rt-body y) (+ (* (-> arg1 trans y) (-> arg2 y) (-> *display* frames-per-second))
                                       (* (-> grav-rt-body y) (-> *display* seconds-per-frame))
                                       )
                 )
           )
       (when (logtest? arg0 4)
-        (set! (-> vel-rt-body z) (+ (* (-> arg1 0 z) (-> arg2 z) (-> *display* frames-per-second))
+        (set! (-> vel-rt-body z) (+ (* (-> arg1 trans z) (-> arg2 z) (-> *display* frames-per-second))
                                     (* (-> grav-rt-body z) (-> *display* seconds-per-frame))
                                     )
               )
@@ -654,7 +646,7 @@
       )
     )
   (if (logtest? arg0 16)
-      (quaternion-normalize! (quaternion*! (-> obj root quat) (-> obj root quat) (the-as quaternion (-> arg1 1))))
+      (quaternion-normalize! (quaternion*! (-> obj root quat) (-> obj root quat) (-> arg1 quat)))
       )
   (the-as collide-shape (-> obj root))
   )
@@ -761,7 +753,7 @@
   )
 
 ;; definition for function ja-channel-push!
-(defbehavior ja-channel-push! process-drawable ((arg0 int) (arg1 int))
+(defbehavior ja-channel-push! process-drawable ((arg0 int) (arg1 time-frame))
   (cond
     ((or (zero? (-> self skel active-channels))
          (zero? arg1)
@@ -924,12 +916,12 @@
 ;; INFO: Return type mismatch int vs none.
 ;; WARN: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
 ;; WARN: Unsupported inline assembly instruction kind - [jr ra]
-(defmethod dummy-19 process-drawable ((obj process-drawable))
+(defmethod evaluate-joint-control process-drawable ((obj process-drawable))
   (local-vars (s7-0 none) (ra-0 int))
   (let ((gp-0 (-> obj skel)))
     (label cfg-1)
     (let ((s4-0 (-> gp-0 active-channels)))
-      (b! (logtest? (-> obj draw status) (draw-status drwf01)) cfg-27 :delay (empty-form))
+      (b! (logtest? (-> obj draw status) (draw-status hidden)) cfg-27 :delay (empty-form))
       (let ((s3-0 0))
         (b! #t cfg-13 :delay (nop!))
         (label cfg-3)
@@ -969,14 +961,14 @@
         (set! (-> gp-0 channel v1-26 frame-interp) (fmax 0.0 (fmin 1.0 (-> gp-0 channel v1-26 frame-interp))))
         )
       (if (or (zero? s4-0) (not (-> gp-0 root-channel 0 frame-group)))
-          (logior! (-> obj draw status) (draw-status drwf02))
+          (logior! (-> obj draw status) (draw-status no-anim))
           )
       )
-    (if (logtest? (-> obj skel status) 72)
+    (if (logtest? (-> obj skel status) (janim-status blerc blerc-done))
         (merc-blend-shape obj)
         )
-    (if (logtest? (-> obj skel status) 384)
-        (merc-eye-anim (the-as manipy obj))
+    (if (logtest? (-> obj skel status) (janim-status eye-done eye))
+        (merc-eye-anim obj)
         )
     (label cfg-27)
     (let ((a0-17 (-> gp-0 effect)))
@@ -994,11 +986,11 @@
 ;; WARN: Expression building failed: Function ja-post has a return type of none, but the expression builder found a return statement.
 (defbehavior ja-post process-drawable ()
   (when (nonzero? (-> self draw))
-    (let ((gp-1 (logtest? (-> self draw status) (draw-status drwf04))))
-      (logclear! (-> self draw status) (draw-status drwf02 drwf04))
+    (let ((gp-1 (logtest? (-> self draw status) (draw-status no-skeleton-update))))
+      (logclear! (-> self draw status) (draw-status no-anim no-skeleton-update))
       (when (nonzero? (-> self skel))
-        (dummy-19 self)
-        (when (or (logtest? (-> self skel status) 1) gp-1)
+        (evaluate-joint-control self)
+        (when (or (logtest? (-> self skel status) (janim-status inited)) gp-1)
           (do-joint-math! self)
           (if (and gp-1 (type-type? (-> self root type) collide-shape))
               (update-transforms! (the-as collide-shape (-> self root)))
@@ -1052,7 +1044,7 @@
 ;; definition for function anim-loop
 (defbehavior anim-loop process-drawable ()
   (logior! (-> self mask) (process-mask sleep-code))
-  (while #t
+  (loop
     (nop!)
     (suspend)
     )
@@ -1096,8 +1088,8 @@
 ;; definition for function process-drawable-delay-player
 (defbehavior process-drawable-delay-player process-drawable ((arg0 time-frame))
   (while (and *target*
-              (logtest? (-> *target* control unknown-surface00 flags) 2048)
-              (zero? (logand (-> *target* control status) 1))
+              (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+              (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
               )
     (suspend)
     )
@@ -1215,11 +1207,10 @@
             (else
               (set! s5-0 (cond
                            ((valid? (-> s2-0 frame-group) art-joint-anim "joint-control frame-group" #t *valid-con*)
-                            (when (not
-                                    (and (>= (the int (-> s2-0 frame-num)) 0)
-                                         (< (the int (-> s2-0 frame-num)) (-> s2-0 frame-group data 0 length))
-                                         )
-                                    )
+                            (when (not (and (>= (the int (-> s2-0 frame-num)) 0)
+                                            (< (the int (-> s2-0 frame-num)) (-> s2-0 frame-group data 0 length))
+                                            )
+                                       )
                               (format
                                 *valid-con*
                                 "ERROR: ~`joint-control-channel`P #~D has an invalid frame-num ~F/~D [0-~D]~%"

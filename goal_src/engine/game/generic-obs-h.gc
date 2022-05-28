@@ -14,7 +14,7 @@
 
 (define-extern fuel-cell type)
 
-(define-extern birth-pickup-at-point (function vector pickup-type float symbol process-drawable fact-info (pointer process) :behavior process))
+(define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process))
 
 (declare-type collide-shape-moving basic)
 (declare-type sparticle-launch-group basic)
@@ -31,6 +31,10 @@
 
 ;; DECOMP BEGINS
 
+;; generic-obs has general game "objects".  It's not related to the generic renderer.
+
+;; A manipy is a way to draw and move something. More complicated objects that want to draw multiple
+;; things may create a child manipy and then send it commands.
 (deftype manipy (process-drawable)
   ((new-trans-hook       (function none)         :offset-assert 176)
    (cur-trans-hook       (function none)         :offset-assert 180)
@@ -57,7 +61,7 @@
     )
   )
 
-
+;; A part-spawner simply spawns particles.
 (deftype part-spawner (process-drawable)
   ((mode         (pointer sparticle-launch-group)         :offset-assert 176)
    (enable       symbol                                   :offset-assert 180)
@@ -69,14 +73,15 @@
   :size-assert         #xd0
   :flag-assert         #x15006000d0
   (:methods
-    (dummy-20 (_type_) symbol 20)
+    (is-visible? (_type_) symbol 20)
     )
   (:states
     part-spawner-active
     )
   )
 
-
+;; a part-tracker will spawn particles, then linger for a bit, and then finally die.
+;; a more complicated object can use this to manage particles that do something interesting (like follow you)
 (deftype part-tracker (process)
   ((root            trsqv                                    :offset-assert 112)
    (part            sparticle-launch-control                 :offset-assert 116)
@@ -101,15 +106,15 @@
     )
   )
 
-
+;; a camera-tracker can control the camera.
 (deftype camera-tracker (process)
   ((entity-override entity-actor     :offset         52)
    (grab-target     handle           :offset        120)
    (grab-event      symbol           :offset-assert 128)
    (release-event   symbol           :offset-assert 132)
-   (old-global-mask uint32           :offset-assert 136)
-   (old-self-mask   uint32           :offset-assert 140)
-   (old-parent-mask uint32           :offset-assert 144)
+   (old-global-mask process-mask     :offset-assert 136)
+   (old-self-mask   process-mask     :offset-assert 140)
+   (old-parent-mask process-mask     :offset-assert 144)
    (look-at-target  handle           :offset-assert 152)
    (pov-target      handle           :offset-assert 160)
    (work-process    handle           :offset-assert 168)
@@ -119,7 +124,7 @@
    (userdata        basic            :offset-assert 196)
    (message         basic            :offset-assert 200)
    (border-value    basic            :offset-assert 204)
-   (mask-to-clear   uint32           :offset-assert 208)
+   (mask-to-clear   process-mask     :offset-assert 208)
    (script          pair             :offset-assert 212)
    (script-line     pair             :offset-assert 216)
    (script-func     (function none)  :offset-assert 220)
@@ -129,14 +134,14 @@
   :size-assert         #xe0
   :flag-assert         #xf007000e0
   (:methods
-    (dummy-14 (_type_ pair) process 14)
+    (eval (_type_ pair) process 14)
     )
   (:states
     camera-tracker-process
     )
   )
 
-
+;; a touch tracker waits to be touched, then calls some callback function.
 (deftype touch-tracker (process-drawable)
   ((root-override collide-shape-moving           :offset        112)
    (duration      time-frame                     :offset-assert 176)
@@ -155,7 +160,7 @@
     )
   )
 
-
+;; the classic pole
 (deftype swingpole (process)
   ((root        trsq           :offset-assert 112)
    (dir         vector :inline :offset-assert 128)
@@ -172,7 +177,7 @@
     )
   )
 
-
+;; do you want to fish?
 (deftype gui-query (structure)
   ((x-position        int32   :offset-assert   0)
    (y-position        int32   :offset-assert   4)
@@ -192,19 +197,19 @@
     )
   )
 
-
+;; control the camera from something else (an animation)
 (deftype othercam (process)
-  ((hand              handle         :offset-assert 112)
-   (old-global-mask   uint32         :offset-assert 120)
-   (mask-to-clear     uint32         :offset-assert 124)
-   (cam-joint-index   int32          :offset-assert 128)
-   (old-pos           vector :inline :offset-assert 144)
-   (old-mat-z         vector :inline :offset-assert 160)
-   (had-valid-frame   basic          :offset-assert 176)
-   (border-value      basic          :offset-assert 180)
-   (die?              symbol         :offset-assert 184)
-   (survive-anim-end? symbol         :offset-assert 188)
-   (spooling?         symbol         :offset-assert 192)
+  ((hand              handle               :offset-assert 112)
+   (old-global-mask   process-mask         :offset-assert 120)
+   (mask-to-clear     process-mask         :offset-assert 124)
+   (cam-joint-index   int32                :offset-assert 128)
+   (old-pos           vector       :inline :offset-assert 144)
+   (old-mat-z         vector       :inline :offset-assert 160)
+   (had-valid-frame   basic                :offset-assert 176)
+   (border-value      basic                :offset-assert 180)
+   (die?              symbol               :offset-assert 184)
+   (survive-anim-end? symbol               :offset-assert 188)
+   (spooling?         symbol               :offset-assert 192)
    )
   :heap-base #x60
   :method-count-assert 14
@@ -216,6 +221,7 @@
   )
 
 
+;; don't draw it! I guess used to disable things during development.
 (deftype process-hidden (process)
   ()
   :method-count-assert 15

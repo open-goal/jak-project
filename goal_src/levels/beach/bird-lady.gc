@@ -6,6 +6,7 @@
 ;; dgos: BEA, L1
 
 ;; DECOMP BEGINS
+(import "goal_src/import/bird-lady-ag.gc")
 
 (deftype bird-lady (process-taskable)
   ()
@@ -16,14 +17,11 @@
   )
 
 
-(defskelgroup *bird-lady-sg* bird-lady
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 1 0 2.5)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *bird-lady-sg* bird-lady bird-lady-lod0-jg bird-lady-idle-ja
+              ((bird-lady-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 2.5)
+              :shadow bird-lady-shadow-mg
+              )
 
 (defmethod dummy-52 bird-lady ((obj bird-lady))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
@@ -38,7 +36,7 @@
           )
         )
       0
-      (set! (-> v1-1 settings flags) (logand -9 (-> v1-1 settings flags)))
+      (logclear! (-> v1-1 settings flags) (shadow-flags shdf03))
       )
     )
   (none)
@@ -47,16 +45,19 @@
 (defmethod draw-npc-shadow bird-lady ((obj bird-lady))
   (-> obj draw shadow-ctrl)
   (cond
-    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status drwf03)))
+    ((and (-> obj draw shadow)
+          (zero? (-> obj draw cur-lod))
+          (logtest? (-> obj draw status) (draw-status was-drawn))
+          )
      (let ((v1-9 (-> obj draw shadow-ctrl)))
-       (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
+       (logclear! (-> v1-9 settings flags) (shadow-flags shdf05))
        )
      0
-     (dummy-14 (-> obj draw shadow-ctrl))
+     (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
      )
     (else
       (let ((v1-14 (-> obj draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) 32)
+        (logior! (-> v1-14 settings flags) (shadow-flags shdf05))
         )
       0
       )
@@ -164,7 +165,7 @@
   (set! (-> obj sound-flava) (music-flava birdlady))
   (set! (-> obj draw light-index) (the-as uint 4))
   (if (closed? (-> obj tasks) (game-task beach-flutflut) (task-status need-reminder))
-      (dummy-18 obj)
+      (cleanup-for-death obj)
       (go (method-of-object obj idle))
       )
   (none)

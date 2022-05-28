@@ -289,7 +289,7 @@ namespace fpng
 		return crc32_slice_by_4(buf + simd_len, len - simd_len, c);
 	}
 #endif
-
+/*
 #ifndef _MSC_VER
 	static void do_cpuid(uint32_t eax, uint32_t ecx, uint32_t* regs)
 	{
@@ -307,6 +307,7 @@ namespace fpng
 		regs[0] = eax; regs[1] = ebx; regs[2] = ecx; regs[3] = edx;
 	}
 #endif
+*/
 
 #if FPNG_X86_OR_X64_CPU && !FPNG_NO_SSE 
 	struct cpu_info
@@ -1591,8 +1592,8 @@ do_literals:
 
 		for (y = 0; y < h; ++y)
 		{
-			const uint8_t* pSrc = (uint8_t*)pImage + y * bpl;
-			const uint8_t* pPrev_src = y ? ((uint8_t*)pImage + (y - 1) * bpl) : nullptr;
+			const uint8_t* pSrc = (const uint8_t*)pImage + y * bpl;
+			const uint8_t* pPrev_src = y ? ((const uint8_t*)pImage + (y - 1) * bpl) : nullptr;
 
 			uint8_t* pDst = &temp_buf[temp_buf_ofs];
 
@@ -1636,7 +1637,7 @@ do_literals:
 
 			for (y = 0; y < h; ++y)
 			{
-				const uint8_t* pSrc = (uint8_t*)pImage + y * bpl;
+				const uint8_t* pSrc = (const uint8_t*)pImage + y * bpl;
 
 				uint8_t* pDst = &temp_buf[temp_buf_ofs];
 

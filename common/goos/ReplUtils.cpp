@@ -16,6 +16,7 @@ void ReplWrapper::clear_screen() {
 }
 
 void ReplWrapper::print_welcome_message() {
+  // TODO - dont print on std-out
   // Welcome message / brief intro for documentation
   std::string ascii;
   ascii += " _____             _____ _____ _____ __    \n";
@@ -33,6 +34,10 @@ void ReplWrapper::print_welcome_message() {
   fmt::print("Run ");
   fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(lt)");
   fmt::print(" to connect to the local target.\n\n");
+}
+
+void ReplWrapper::print_to_repl(const std::string_view& str) {
+  repl.print(str.data());
 }
 
 void ReplWrapper::set_history_max_size(size_t len) {

@@ -15,6 +15,7 @@
 #include <cstdio>
 #include "CodeTester.h"
 #include "IGen.h"
+#include "third-party/fmt/core.h"
 
 namespace emitter {
 
@@ -133,8 +134,7 @@ void CodeTester::init_code_buffer(int capacity) {
   code_buffer = (u8*)mmap(nullptr, capacity, PROT_EXEC | PROT_READ | PROT_WRITE,
                           MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
   if (code_buffer == (u8*)(-1)) {
-    printf("[CodeTester] Failed to map memory!\n");
-    ASSERT(false);
+    ASSERT_MSG(false, "[CodeTester] Failed to map memory!");
   }
 
   code_buffer_capacity = capacity;

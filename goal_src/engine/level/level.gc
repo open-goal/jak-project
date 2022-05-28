@@ -314,9 +314,9 @@
   (let* ((level-info (lookup-level-info name))
          (level-name (remap-level-name level-info))
          )
-      (swhen (level-get obj level-name)
-        (level-status-set! bc want-status)
-        (return bc)
+      (awhen (level-get obj level-name)
+        (level-status-set! it want-status)
+        (return it)
         )
       (let ((a0-7 (level-get-most-disposable obj)))
           (set! s5-1 (if a0-7 (level-status-set! a0-7 'inactive)
@@ -755,6 +755,15 @@
                    (when (< current-login-pos (-> s1-2 length))
                      (set! sv-16 (-> s1-2 array-data (the-as uint current-login-pos)))
                      (set! sv-32 0)
+                     
+                     (#when PC_PORT
+                       ;; if a TIE uses environment mapping, disable the fade out so it always renderers with
+                       ;; the generic renderer. In the port, we just make envmapped things always envmap.
+                       (when (!= (-> sv-16 envmap-fade-far) 0.0)
+                         (*! (-> sv-16 envmap-fade-far) 10000.)
+                         )
+                       )
+                     
                      (while (< sv-32 4)
                        (let ((a0-28 (-> sv-16 geometry sv-32)))
                          ;;(load-dbg " login geom: ~A~%" a0-28)
@@ -783,7 +792,7 @@
                               :wmt (gs-tex-wrap-mode clamp)
                               )
                          )
-                       (set! (-> s0-2 alpha) (new 'static 'gs-miptbp :tbp1 #x58))
+                       (set! (-> s0-2 alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1))
                        (set! (-> s0-2 prims 1) (gs-reg64 tex0-1))
                        (set! (-> s0-2 prims 3) (gs-reg64 tex1-1))
                        (set! (-> s0-2 prims 5) (gs-reg64 miptbp1-1))
@@ -1047,10 +1056,7 @@
   "Is arg0 visible? Note that this will return #f if the visibility data is not loaded."
 
   ;; note : pc port added option to show every actor regardless
-  (#when PC_PORT
-    (cond
-      ((actor-force-visible? *pc-settings*) #t)
-      (else
+  (with-pc (if (-> *pc-settings* force-actors?) (return #t)))
         
   ;; check the vis bits!
   (let* (;; lwu v1, 388(a0) 
@@ -1072,10 +1078,6 @@
     ;; movz v0, s7, v1   if (csw >= 0) result = false
     ;;(format 0 "vis check ~D ~X ~X ~A~%" arg0 vis-byte check-sign-word (>= check-sign-word 0))
     (< check-sign-word 0)
-    )
-
-        )
-      )
     )
   )
 
@@ -1505,7 +1507,7 @@
   (let ((startup-level (case *kernel-boot-message*
                         (('play)
                      (if *debug-segment*
-                       (#if (user? dass) 'citadel 'village1)
+                       'village1
                        'title
                        )
                          )
@@ -2142,6 +2144,13 @@
         )
       )
     )
+  
+  ;; tell PC port about our levels
+  (__pc-set-levels 
+    (if (= (-> obj level0 status) 'inactive) "none" (symbol->string (-> obj level0 nickname)))
+    (if (= (-> obj level1 status) 'inactive) "none" (symbol->string (-> obj level1 nickname)))
+    )
+  
   0
   )
 
@@ -2153,21 +2162,25 @@
   )
 
 ;; init art buffers and engines
+(defconstant FOREGROUND_DRAW_MAX_COUNT_0 (* PROCESS_HEAP_MULT 280))
+(defconstant FOREGROUND_DRAW_MAX_COUNT_2 (* PROCESS_HEAP_MULT 16))
+(defconstant DEFAULT_DRAW_MAX_COUNT_0 (* PROCESS_HEAP_MULT 280))
+(defconstant DEFAULT_DRAW_MAX_COUNT_2 (* PROCESS_HEAP_MULT 10))
 (when (zero? (-> *level* level0 art-group))
   (let ((lev-group *level*))
       (set! (-> lev-group vis?) #f)
       (set! (-> lev-group loading-level) (-> lev-group level-default))
       (set! (-> lev-group level0 art-group) (new 'global 'load-dir-art-group 50 (-> lev-group level0)))
-      (set! (-> lev-group level0 foreground-draw-engine 0) (new 'global 'engine 'draw 280))
-      (set! (-> lev-group level0 foreground-draw-engine 1) (new 'global 'engine 'draw 280))
-      (set! (-> lev-group level0 foreground-draw-engine 2) (new 'global 'engine 'draw 16))
+      (set! (-> lev-group level0 foreground-draw-engine 0) (new 'global 'engine 'draw FOREGROUND_DRAW_MAX_COUNT_0))
+      (set! (-> lev-group level0 foreground-draw-engine 1) (new 'global 'engine 'draw FOREGROUND_DRAW_MAX_COUNT_0))
+      (set! (-> lev-group level0 foreground-draw-engine 2) (new 'global 'engine 'draw FOREGROUND_DRAW_MAX_COUNT_2))
       (set! (-> lev-group level1 art-group) (new 'global 'load-dir-art-group 50 (-> lev-group level1)))
-      (set! (-> lev-group level1 foreground-draw-engine 0) (new 'global 'engine 'draw 280))
-      (set! (-> lev-group level1 foreground-draw-engine 1) (new 'global 'engine 'draw 280))
-      (set! (-> lev-group level1 foreground-draw-engine 2) (new 'global 'engine 'draw 16))
+      (set! (-> lev-group level1 foreground-draw-engine 0) (new 'global 'engine 'draw FOREGROUND_DRAW_MAX_COUNT_0))
+      (set! (-> lev-group level1 foreground-draw-engine 1) (new 'global 'engine 'draw FOREGROUND_DRAW_MAX_COUNT_0))
+      (set! (-> lev-group level1 foreground-draw-engine 2) (new 'global 'engine 'draw FOREGROUND_DRAW_MAX_COUNT_2))
       (set! (-> lev-group level-default art-group) (new 'global 'load-dir-art-group 50 (-> lev-group level1)))
-      (set! (-> lev-group level-default foreground-draw-engine 0) (new 'global 'engine 'draw 280))
-      (set! (-> lev-group level-default foreground-draw-engine 1) (new 'global 'engine 'draw 10))
+      (set! (-> lev-group level-default foreground-draw-engine 0) (new 'global 'engine 'draw DEFAULT_DRAW_MAX_COUNT_0))
+      (set! (-> lev-group level-default foreground-draw-engine 1) (new 'global 'engine 'draw DEFAULT_DRAW_MAX_COUNT_2))
       (set! (-> lev-group level0 other) (-> lev-group level1))
       (set! (-> lev-group level1 other) (-> lev-group level0))
       (set! (-> lev-group level-default other) #f)

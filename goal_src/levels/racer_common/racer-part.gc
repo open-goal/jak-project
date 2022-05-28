@@ -36,27 +36,17 @@
          )
     (cond
       ((< (-> *hud-parts* bike-speed 0 offset) 10)
-       (cond
-         ((< f0-1 (-> arg2 vector 1 z))
-          (let ((f0-4 (deg-seek (-> arg2 vector 1 z) f0-1 (* 131072.0 (-> *display* seconds-per-frame)))))
-            (set! (-> arg2 vector 1 z) f0-4)
-            f0-4
-            )
-          )
-         (else
-           (let ((f0-7 (deg-seek (-> arg2 vector 1 z) f0-1 (* 32768.0 (-> *display* seconds-per-frame)))))
-             (set! (-> arg2 vector 1 z) f0-7)
-             f0-7
-             )
+       (if (< f0-1 (-> arg2 vector 1 z))
+           (set! (-> arg2 vector 1 z) (deg-seek (-> arg2 vector 1 z) f0-1 (* 131072.0 (-> *display* seconds-per-frame))))
+           (set! (-> arg2 vector 1 z) (deg-seek (-> arg2 vector 1 z) f0-1 (* 32768.0 (-> *display* seconds-per-frame))))
            )
-         )
        )
       (else
         (set! (-> arg2 vector 1 z) f0-1)
-        f0-1
         )
       )
     )
+  (none)
   )
 
 (defpartgroup group-part-hud-racer-speed-dial
@@ -140,21 +130,16 @@
       ((and (< 0.8 f0-1) (zero? (logand (-> *display* integral-frame-counter) 8)))
        (set! (-> arg2 vector 2 x) 128.0)
        (set! (-> arg2 vector 2 y) 0.0)
-       (let ((f0-4 0.0))
-         (set! (-> arg2 vector 2 z) f0-4)
-         f0-4
-         )
+       (set! (-> arg2 vector 2 z) 0.0)
        )
       (else
         (set! (-> arg2 vector 2 x) 128.0)
         (set! (-> arg2 vector 2 y) 128.0)
-        (let ((f0-7 128.0))
-          (set! (-> arg2 vector 2 z) f0-7)
-          f0-7
-          )
+        (set! (-> arg2 vector 2 z) 128.0)
         )
       )
     )
+  (none)
   )
 
 (defun zoomer-heat-slice-color ((arg0 matrix) (arg1 float))
@@ -162,36 +147,25 @@
     ((< arg1 0.6)
      (set! (-> arg0 vector 2 x) (* 213.33333 arg1))
      (set! (-> arg0 vector 2 y) 128.0)
-     (let ((f0-4 0.0))
-       (set! (-> arg0 vector 2 z) f0-4)
-       f0-4
-       )
+     (set! (-> arg0 vector 2 z) 0.0)
      )
     ((< arg1 0.8)
      (set! (-> arg0 vector 2 x) 128.0)
      (set! (-> arg0 vector 2 y) (- 128.0 (* 640.0 (+ -0.6 arg1))))
-     (let ((f0-9 0.0))
-       (set! (-> arg0 vector 2 z) f0-9)
-       f0-9
-       )
+     (set! (-> arg0 vector 2 z) 0.0)
      )
     ((zero? (logand (-> *display* integral-frame-counter) 8))
      (set! (-> arg0 vector 2 x) 128.0)
      (set! (-> arg0 vector 2 y) 0.0)
-     (let ((f0-12 0.0))
-       (set! (-> arg0 vector 2 z) f0-12)
-       f0-12
-       )
+     (set! (-> arg0 vector 2 z) 0.0)
      )
     (else
       (set! (-> arg0 vector 2 x) 128.0)
       (set! (-> arg0 vector 2 y) 100.0)
-      (let ((f0-15 100.0))
-        (set! (-> arg0 vector 2 z) f0-15)
-        f0-15
-        )
+      (set! (-> arg0 vector 2 z) 100.0)
       )
     )
+  (none)
   )
 
 (defun part-hud-zoomer-heat-slice-01-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
@@ -199,6 +173,7 @@
     (set! (-> arg2 vector 1 z) (* 182.04445 (+ -135.0 (* 215.0 f0-1))))
     (zoomer-heat-slice-color arg2 f0-1)
     )
+  (none)
   )
 
 (defun part-hud-zoomer-heat-slice-02-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
@@ -209,6 +184,7 @@
         )
     (zoomer-heat-slice-color arg2 f0-1)
     )
+  (none)
   )
 
 (defun part-hud-zoomer-heat-slice-03-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
@@ -219,6 +195,7 @@
         )
     (zoomer-heat-slice-color arg2 f0-1)
     )
+  (none)
   )
 
 (defpartgroup group-part-hud-racer-heat-backing
@@ -491,6 +468,48 @@
     0
     (none)
     )
+  )
+
+(#when PC_PORT
+;; extra methods needed for aspect ratio in pc port
+(defmethod animate! hud-bike-heat ((obj hud-bike-heat) (arg0 symbol) (arg1 symbol))
+  (with-pc
+    (let ((base-x (-> obj particles 0 init-pos x)))
+        (*! base-x (-> *pc-settings* aspect-ratio-reciprocal))
+        (set! (-> obj particles 0 init-pos x) 13.0)
+        (set! (-> obj particles 1 init-pos x) 70.0)
+        (set! (-> obj particles 2 init-pos x) 20.0)
+        (set! (-> obj particles 3 init-pos x) 70.0)
+        
+    (when (not (-> *pc-settings* use-vis?))
+      (dotimes (i (-> obj nb-of-particles))
+        (set! (-> obj particles i init-pos x) (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> obj particles i init-pos x) base-x))))
+
+        ))
+        
+        )
+    )
+  (none)
+  )
+
+(defmethod animate! hud-bike-speed ((obj hud-bike-speed) (arg0 symbol) (arg1 symbol))
+  (with-pc
+    (let ((base-x (-> obj particles 1 init-pos x)))
+        (+! base-x (* (- 512.0 base-x) (- 1.0 (-> *pc-settings* aspect-ratio-reciprocal))))
+        (set! (-> obj particles 0 init-pos x) 433.0)
+        (set! (-> obj particles 1 init-pos x) 378.0)
+        (set! (-> obj particles 2 init-pos x) 415.0)
+        
+    (when (not (-> *pc-settings* use-vis?))
+      (dotimes (i (-> obj nb-of-particles))
+        (set! (-> obj particles i init-pos x) (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> obj particles i init-pos x) base-x))))
+
+        ))
+        
+        )
+    )
+  (none)
+  )
   )
 
 (defpartgroup group-racer-trans-pad

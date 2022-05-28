@@ -626,8 +626,8 @@ goos::Object TranslatedAsmBranch::to_form_internal(const Env& env) const {
 
   if (m_branch_delay) {
     if (m_branch_delay->parent_element != this) {
-      fmt::print("bad ptr. Parent is {}\n", m_branch_delay->parent_element->to_string(env));
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("bad ptr. Parent is {}",
+                                    m_branch_delay->parent_element->to_string(env)));
     }
 
     ASSERT(m_branch_delay->parent_element->parent_form);
@@ -667,8 +667,8 @@ void TranslatedAsmBranch::collect_vars(RegAccessSet& vars, bool recursive) const
     m_branch_condition->collect_vars(vars, recursive);
     if (m_branch_delay) {
       if (m_branch_delay->parent_element != this) {
-        fmt::print("bad ptr. Parent is {}\n", (void*)m_branch_delay->parent_element);
-        ASSERT(false);
+        ASSERT_MSG(false,
+                   fmt::format("bad ptr. Parent is {}", (void*)m_branch_delay->parent_element));
       }
 
       for (auto& elt : m_branch_delay->elts()) {
@@ -1180,8 +1180,13 @@ void WhileElement::apply(const std::function<void(FormElement*)>& f) {
 
 goos::Object WhileElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> list;
-  list.push_back(pretty_print::to_symbol("while"));
-  list.push_back(condition->to_form_as_condition(env));
+  auto cond = condition->to_form_as_condition(env);
+  if (cond == pretty_print::to_symbol("#t")) {
+    list.push_back(pretty_print::to_symbol("loop"));
+  } else {
+    list.push_back(pretty_print::to_symbol("while"));
+    list.push_back(condition->to_form_as_condition(env));
+  }
   body->inline_forms(list, env);
   return pretty_print::build_list(list);
 }
@@ -1764,6 +1769,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "logior!";
     case FixedOperatorKind::LOGXOR:
       return "logxor";
+    case FixedOperatorKind::LOGXOR_IN_PLACE:
+      return "logxor!";
     case FixedOperatorKind::LOGNOR:
       return "lognor";
     case FixedOperatorKind::LOGNOT:
@@ -2460,7 +2467,6 @@ void DecompiledDataElement::do_decomp(const Env& env, const LinkedObjectFile* fi
   if (m_label_info) {
     m_description = decompile_at_label_with_hint(*m_label_info, m_label, env.file->labels,
                                                  env.file->words_by_seg, *env.dts, file);
-
   } else {
     m_description = decompile_at_label_guess_type(m_label, env.file->labels, env.file->words_by_seg,
                                                   env.dts->ts, file);
@@ -2985,16 +2991,35 @@ void DefskelgroupElement::get_modified_regs(RegSet& regs) const {
 
 goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> forms;
-  forms.push_back(
-      pretty_print::to_symbol(fmt::format("defskelgroup {} {}", m_name, m_static_info.art_name)));
-  forms.push_back(m_info.jgeo->to_form(env));
-  forms.push_back(m_info.janim->to_form(env));
+  forms.push_back(pretty_print::to_symbol("defskelgroup"));
+  forms.push_back(pretty_print::to_symbol(m_name));
+  forms.push_back(pretty_print::to_symbol(m_static_info.art_name));
+  const auto& art = env.dts->art_group_info.find(m_static_info.art_name + "-ag");
+  bool has_art = art != env.dts->art_group_info.end();
+  auto jg = m_info.jgeo->to_form(env);
+  if (jg.is_int() && has_art && art->second.count(jg.as_int())) {
+    forms.push_back(pretty_print::to_symbol(art->second.at(jg.as_int())));
+  } else {
+    forms.push_back(jg);
+  }
+  auto ja = m_info.janim->to_form(env);
+  if (ja.is_int() && has_art && art->second.count(ja.as_int())) {
+    forms.push_back(pretty_print::to_symbol(art->second.at(ja.as_int())));
+  } else {
+    forms.push_back(ja);
+  }
 
   std::vector<goos::Object> lod_forms;
   for (const auto& e : m_info.lods) {
     auto f_dist = pretty_print::to_symbol(
         fmt::format("(meters {})", meters_to_string(e.lod_dist->to_form(env).as_float())));
-    lod_forms.push_back(pretty_print::build_list(e.mgeo->to_form(env), f_dist));
+    auto mg = e.mgeo->to_form(env);
+    if (mg.is_int() && has_art && art->second.count(mg.as_int())) {
+      lod_forms.push_back(
+          pretty_print::build_list(pretty_print::to_symbol(art->second.at(mg.as_int())), f_dist));
+    } else {
+      lod_forms.push_back(pretty_print::build_list(mg, f_dist));
+    }
   }
   forms.push_back(pretty_print::build_list(lod_forms));
 
@@ -3002,11 +3027,19 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
       ":bounds (static-spherem {} {} {} {})", meters_to_string(m_static_info.bounds.x()),
       meters_to_string(m_static_info.bounds.y()), meters_to_string(m_static_info.bounds.z()),
       meters_to_string(m_static_info.bounds.w()))));
-  forms.push_back(pretty_print::to_symbol(
-      fmt::format(":longest-edge (meters {})", meters_to_string(m_static_info.longest_edge))));
+
+  if (m_static_info.longest_edge != 0) {
+    forms.push_back(pretty_print::to_symbol(
+        fmt::format(":longest-edge (meters {})", meters_to_string(m_static_info.longest_edge))));
+  }
 
   if (m_static_info.shadow != 0) {
-    forms.push_back(pretty_print::to_symbol(fmt::format(":shadow {}", m_static_info.shadow)));
+    if (has_art && art->second.count(m_static_info.shadow)) {
+      forms.push_back(
+          pretty_print::to_symbol(fmt::format(":shadow {}", art->second.at(m_static_info.shadow))));
+    } else {
+      forms.push_back(pretty_print::to_symbol(fmt::format(":shadow {}", m_static_info.shadow)));
+    }
   }
   if (m_static_info.tex_level != 0) {
     forms.push_back(

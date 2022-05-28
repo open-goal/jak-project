@@ -1,13 +1,13 @@
 add_library(common
-        SHARED
         audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
-        cross_sockets/xsocket.cpp
+        cross_sockets/XSocket.cpp
+        cross_sockets/XSocketServer.cpp
         custom_data/TFrag3Data.cpp
         dma/dma.cpp
         dma/dma_copy.cpp
         dma/gs.cpp
-
+        global_profiler/GlobalProfiler.cpp
         goos/Interpreter.cpp
         goos/Object.cpp
         goos/ParseHelpers.cpp
@@ -29,12 +29,15 @@ add_library(common
         util/Assert.cpp
         util/BitUtils.cpp
         util/compress.cpp
+        util/crc32.cpp
         util/dgo_util.cpp
         util/DgoReader.cpp
         util/DgoWriter.cpp
         util/diff.cpp
         util/FileUtil.cpp
         util/json_util.cpp
+        util/read_iso_file.cpp
+        util/SimpleThreadGroup.cpp
         util/Timer.cpp
         util/os.cpp
         util/print_float.cpp
@@ -42,8 +45,7 @@ add_library(common
         util/FrameLimiter.cpp
         util/image_loading.cpp
         goos/Printer.cpp
-        goos/PrettyPrinter2.cpp
-        )
+        goos/PrettyPrinter2.cpp)
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 

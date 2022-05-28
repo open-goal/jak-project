@@ -9,9 +9,18 @@
 #include "common/util/Timer.h"
 
 #include "goalc/make/Tools.h"
+#include "common/util/FileUtil.h"
 
 std::string MakeStep::print() const {
-  std::string result = fmt::format("Tool {} with input \"{}\" and deps:\n ", tool, input);
+  std::string result = fmt::format("Tool {} with inputs", tool);
+  int i = 0;
+  for (auto& in : input) {
+    if (i++ > 0) {
+      result += ", ";
+    }
+    result += fmt::format("\"{}\"", in);
+  }
+  result += " and deps:\n ";
   for (auto& dep : deps) {
     result += dep;
     result += '\n';
@@ -47,12 +56,16 @@ MakeSystem::MakeSystem() {
 
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
 
+  set_constant("*iso-data*", file_util::get_file_path({"iso_data"}));
+  set_constant("*use-iso-data-path*", false);
+
   add_tool<DgoTool>();
   add_tool<TpageDirTool>();
   add_tool<CopyTool>();
   add_tool<GameCntTool>();
-  add_tool<TextTool>();
   add_tool<GroupTool>();
+  add_tool<TextTool>();
+  add_tool<SubtitleTool>();
 }
 
 /*!
@@ -66,6 +79,8 @@ void MakeSystem::load_project_file(const std::string& file_path) {
   auto data = m_goos.reader.read_from_file({file_path});
   // interpret it, which will call various handlers.
   m_goos.eval(data, m_goos.global_environment.as_env_ptr());
+  fmt::print("Loaded project {} with {} steps in {} ms\n", file_path, m_output_to_step.size(),
+             (int)timer.getMs());
 }
 
 goos::Object MakeSystem::handle_defstep(const goos::Object& form,
@@ -75,8 +90,9 @@ goos::Object MakeSystem::handle_defstep(const goos::Object& form,
   va_check(form, args, {},
            {{"out", {true, {goos::ObjectType::PAIR}}},
             {"tool", {true, {goos::ObjectType::SYMBOL}}},
-            {"in", {false, {goos::ObjectType::STRING}}},
-            {"dep", {false, {}}}});
+            {"in", {false, {}}},
+            {"dep", {false, {}}},
+            {"arg", {false, {}}}});
 
   auto step = std::make_shared<MakeStep>();
 
@@ -91,13 +107,26 @@ goos::Object MakeSystem::handle_defstep(const goos::Object& form,
   }
 
   if (args.has_named("in")) {
-    step->input = args.get_named("in").as_string()->data;
+    const auto& in = args.get_named("in");
+    if (in.is_pair()) {
+      step->input.clear();
+      goos::for_each_in_list(
+          in, [&](const goos::Object& o) { step->input.push_back(o.as_string()->data); });
+    } else {
+      step->input = {in.as_string()->data};
+    }
   }
 
   if (args.has_named("dep")) {
     goos::for_each_in_list(args.get_named("dep"), [&](const goos::Object& obj) {
       step->deps.push_back(obj.as_string()->data);
     });
+  }
+
+  if (args.has_named("arg")) {
+    step->arg = args.get_named("arg");
+  } else {
+    step->arg = goos::Object::make_empty_list();
   }
 
   for (auto& output : step->outputs) {
@@ -172,8 +201,9 @@ void MakeSystem::get_dependencies(const std::string& master_target,
   }
 
   const auto& rule = rule_it->second;
-  for (auto& dep : m_tools.at(rule->tool)
-                       ->get_additional_dependencies({rule->input, rule->deps, rule->outputs})) {
+  for (auto& dep :
+       m_tools.at(rule->tool)
+           ->get_additional_dependencies({rule->input, rule->deps, rule->outputs, rule->arg})) {
     get_dependencies(master_target, dep, result, result_set);
   }
 
@@ -212,10 +242,11 @@ std::vector<std::string> MakeSystem::filter_dependencies(const std::vector<std::
   for (auto& to_make : all_deps) {
     auto& rule = m_output_to_step.at(to_make);
     auto& tool = m_tools.at(rule->tool);
+    const ToolInput task = {rule->input, rule->deps, rule->outputs, rule->arg};
 
     bool added = false;
 
-    if (tool->needs_run({rule->input, rule->deps, rule->outputs})) {
+    if (tool->needs_run(task)) {
       result.push_back(to_make);
       stale_deps.insert(to_make);
       added = true;
@@ -235,8 +266,7 @@ std::vector<std::string> MakeSystem::filter_dependencies(const std::vector<std::
 
     if (!added) {
       // check transitive dependencies
-      for (auto& dep :
-           tool->get_additional_dependencies({rule->input, rule->deps, rule->outputs})) {
+      for (auto& dep : tool->get_additional_dependencies(task)) {
         if (stale_deps.find(dep) != stale_deps.end()) {
           result.push_back(to_make);
           stale_deps.insert(to_make);
@@ -253,11 +283,19 @@ std::vector<std::string> MakeSystem::filter_dependencies(const std::vector<std::
 }
 
 namespace {
-void print_input(const std::string& in, char end) {
-  if (in.length() > 70) {
-    fmt::print("{}...{}", in.substr(0, 70 - 3), end);
+void print_input(const std::vector<std::string>& in, char end) {
+  int i = 0;
+  std::string all_names;
+  for (auto& name : in) {
+    if (i++ > 0) {
+      all_names += ", ";
+    }
+    all_names += name;
+  }
+  if (all_names.length() > 70) {
+    fmt::print("{}...{}", all_names.substr(0, 70 - 3), end);
   } else {
-    fmt::print("{}{}{}", in, std::string(70 - in.length(), ' '), end);
+    fmt::print("{}{}{}", all_names, std::string(70 - all_names.length(), ' '), end);
   }
 }
 }  // namespace
@@ -286,7 +324,8 @@ bool MakeSystem::make(const std::string& target, bool force, bool verbose) {
     auto& tool = m_tools.at(rule->tool);
     int percent = (100.0 * (1 + (i++)) / (deps.size())) + 0.5;
     if (verbose) {
-      fmt::print("[{:3d}%] [{:8s}] {}\n", percent, tool->name(), rule->input);
+      fmt::print("[{:3d}%] [{:8s}] {}{}\n", percent, tool->name(), rule->input.at(0),
+                 rule->input.size() > 1 ? ", ..." : "");
     } else {
       fmt::print("[{:3d}%] [{:8s}]       ", percent, tool->name());
       print_input(rule->input, '\r');
@@ -294,13 +333,14 @@ bool MakeSystem::make(const std::string& target, bool force, bool verbose) {
 
     bool success = false;
     try {
-      success = tool->run({rule->input, rule->deps, rule->outputs});
+      success = tool->run({rule->input, rule->deps, rule->outputs, rule->arg});
     } catch (std::exception& e) {
       fmt::print("\n");
       fmt::print("Error: {}\n", e.what());
     }
     if (!success) {
-      fmt::print("Build failed on {}.\n", rule->input);
+      fmt::print("Build failed on {}{}.\n", rule->input.at(0),
+                 rule->input.size() > 1 ? ", ..." : "");
       throw std::runtime_error("Build failed.");
       return false;
     }
@@ -318,15 +358,19 @@ bool MakeSystem::make(const std::string& target, bool force, bool verbose) {
         print_input(rule->input, '\n');
       } else {
         fmt::print("[{:3d}%] [{:8s}] {:.3f} ", percent, tool->name(), step_timer.getSeconds());
-        if (tool->name() == "goalc") {
-          print_input(rule->input, '\r');
-        } else {
-          print_input(rule->input, '\n');
-        }
+        print_input(rule->input, '\n');
       }
     }
   }
   fmt::print("\nSuccessfully built all {} targets in {:.3f}s\n", deps.size(),
              make_timer.getSeconds());
   return true;
+}
+
+void MakeSystem::set_constant(const std::string& name, const std::string& value) {
+  m_goos.set_global_variable_by_name(name, goos::StringObject::make_new(value));
+}
+
+void MakeSystem::set_constant(const std::string& name, bool value) {
+  m_goos.set_global_variable_to_symbol(name, value ? "#t" : "#f");
 }

@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/ef-plane-ag.gc")
+
 ;; definition of type blocking-plane
 (deftype blocking-plane (process-drawable)
   ()
@@ -22,20 +24,17 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *ef-plane-sg* ef-plane
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 30)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *ef-plane-sg* ef-plane ef-plane-lod0-jg ef-plane-idle-ja
+              ((ef-plane-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 30)
+              )
 
 ;; failed to figure out what this is:
 (defstate blocking-plane-idle (blocking-plane)
   :code
   (behavior ()
     (transform-post)
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
@@ -89,7 +88,7 @@
       )
     )
   (initialize-skeleton self *ef-plane-sg* '())
-  (logior! (-> self draw status) (draw-status drwf05))
+  (logior! (-> self draw status) (draw-status skip-bones))
   (go blocking-plane-idle)
   (none)
   )

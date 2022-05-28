@@ -13,12 +13,19 @@
 #include "common/util/BinaryReader.h"
 #include "BinaryWriter.h"
 #include "common/common_types.h"
+
+// This disables the use of PCLMULQDQ which is probably ok, but let's just be safe and disable it
+// because nobody will care if png compression is 10% slower.
+#define FPNG_NO_SSE 1
 #include "third-party/fpng/fpng.cpp"
+
 #include "third-party/fpng/fpng.h"
 #include "third-party/fmt/core.h"
 #include "third-party/lzokay/lzokay.hpp"
 
 #ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #else
 #include <unistd.h>
@@ -38,14 +45,32 @@ std::filesystem::path get_user_home_dir() {
 #endif
 }
 
-std::string get_project_path() {
+std::filesystem::path get_user_game_dir() {
+  // TODO - i anticipate UTF-8 problems on windows with our current FS api
+  return get_user_home_dir() / "OpenGOAL";
+}
+
+std::filesystem::path get_user_settings_dir() {
+  return get_user_game_dir() / "jak1" / "settings";
+}
+
+std::filesystem::path get_user_memcard_dir() {
+  return get_user_game_dir() / "jak1" / "saves";
+}
+
+struct {
+  bool initialized = false;
+  std::filesystem::path path_to_data;
+} gFilePathInfo;
+
+/*!
+ * Get the path to the current executable.
+ */
+std::string get_current_executable_path() {
 #ifdef _WIN32
   char buffer[FILENAME_MAX];
   GetModuleFileNameA(NULL, buffer, FILENAME_MAX);
-  std::string::size_type pos =
-      std::string(buffer).rfind("jak-project");  // Strip file path down to \jak-project\ directory
-  return std::string(buffer).substr(
-      0, pos + 11);  // + 12 to include "\jak-project" in the returned filepath
+  return std::string(buffer);
 #else
   // do Linux stuff
   char buffer[FILENAME_MAX + 1];
@@ -53,29 +78,88 @@ std::string get_project_path() {
                       FILENAME_MAX);  // /proc/self acts like a "virtual folder" containing
   // information about the current process
   buffer[len] = '\0';
-  std::string::size_type pos =
-      std::string(buffer).rfind("jak-project");  // Strip file path down to /jak-project/ directory
-  return std::string(buffer).substr(
-      0, pos + 11);  // + 12 to include "/jak-project" in the returned filepath
+  return std::string(buffer);
 #endif
 }
 
-std::string get_file_path(const std::vector<std::string>& input) {
-  std::string currentPath = file_util::get_project_path();
-  char dirSeparator;
+/*!
+ * See if the current executable is somewhere in jak-project/. If so, return the path to jak-project
+ */
+std::optional<std::string> try_get_jak_project_path() {
+  std::string my_path = get_current_executable_path();
 
-#ifdef _WIN32
-  dirSeparator = '\\';
-#else
-  dirSeparator = '/';
-#endif
-
-  std::string filePath = currentPath;
-  for (int i = 0; i < int(input.size()); i++) {
-    filePath = filePath + dirSeparator + input[i];
+  std::string::size_type pos =
+      std::string(my_path).rfind("jak-project");  // Strip file path down to /jak-project/ directory
+  if (pos == std::string::npos) {
+    return {};
   }
 
-  return filePath;
+  return std::string(my_path).substr(
+      0, pos + 11);  // + 12 to include "/jak-project" in the returned filepath
+}
+
+std::optional<std::filesystem::path> try_get_data_dir() {
+  std::filesystem::path my_path = get_current_executable_path();
+  auto data_dir = my_path.parent_path() / "data";
+  if (std::filesystem::exists(data_dir) && std::filesystem::is_directory(data_dir)) {
+    return data_dir;
+  } else {
+    return {};
+  }
+}
+
+bool setup_project_path(std::optional<std::filesystem::path> project_path_override) {
+  if (gFilePathInfo.initialized) {
+    return true;
+  }
+
+  if (project_path_override) {
+    gFilePathInfo.path_to_data = *project_path_override;
+    gFilePathInfo.initialized = true;
+    fmt::print("Using explicitly set project path: {}\n", project_path_override->string());
+    return true;
+  }
+
+  auto data_path = try_get_data_dir();
+  if (data_path) {
+    gFilePathInfo.path_to_data = *data_path;
+    gFilePathInfo.initialized = true;
+    fmt::print("Using data path: {}\n", data_path->string());
+    return true;
+  }
+
+  auto development_repo_path = try_get_jak_project_path();
+  if (development_repo_path) {
+    gFilePathInfo.path_to_data = *development_repo_path;
+    gFilePathInfo.initialized = true;
+    fmt::print("Using development repo path: {}\n", *development_repo_path);
+    return true;
+  }
+
+  fmt::print("Failed to initialize project path.\n");
+  return false;
+}
+
+std::filesystem::path get_jak_project_dir() {
+  ASSERT(gFilePathInfo.initialized);
+  return gFilePathInfo.path_to_data;
+}
+
+std::string get_file_path(const std::vector<std::string>& input) {
+  // TODO - clean this behaviour up, it causes unexpected behaviour when working with files
+  // the project path should be explicitly provided by whatever if needed
+  // TEMP HACK
+  // - if the provided path is absolute, don't add the project path
+  if (input.size() == 1 && std::filesystem::path(input.at(0)).is_absolute()) {
+    return input.at(0);
+  }
+
+  auto current_path = file_util::get_jak_project_dir();
+  for (auto& str : input) {
+    current_path /= str;
+  }
+
+  return current_path.string();
 }
 
 bool create_dir_if_needed(const std::string& path) {
@@ -84,6 +168,10 @@ bool create_dir_if_needed(const std::string& path) {
     return true;
   }
   return false;
+}
+
+bool create_dir_if_needed_for_file(const std::string& path) {
+  return std::filesystem::create_directories(std::filesystem::path(path).parent_path());
 }
 
 void write_binary_file(const std::string& name, const void* data, size_t size) {
@@ -100,11 +188,8 @@ void write_binary_file(const std::string& name, const void* data, size_t size) {
   fclose(fp);
 }
 
-void write_rgba_png(const std::string& name, void* data, int w, int h, bool compress) {
+void write_rgba_png(const std::string& name, void* data, int w, int h) {
   auto flags = 0;
-  if (!compress) {
-    flags = fpng::FPNG_FORCE_UNCOMPRESSED;
-  }
 
   auto ok = fpng::fpng_encode_image_to_file(name.c_str(), data, w, h, 4, flags);
 
@@ -194,32 +279,6 @@ std::string base_name(const std::string& filename) {
   return filename.substr(pos);
 }
 
-static bool sInitCrc = false;
-static uint32_t crc_table[0x100];
-
-void init_crc() {
-  for (uint32_t i = 0; i < 0x100; i++) {
-    uint32_t n = i << 24u;
-    for (uint32_t j = 0; j < 8; j++)
-      n = n & 0x80000000 ? (n << 1u) ^ 0x04c11db7u : (n << 1u);
-    crc_table[i] = n;
-  }
-  sInitCrc = true;
-}
-
-uint32_t crc32(const uint8_t* data, size_t size) {
-  ASSERT(sInitCrc);
-  uint32_t crc = 0;
-  for (size_t i = size; i != 0; i--, data++) {
-    crc = crc_table[crc >> 24u] ^ ((crc << 8u) | *data);
-  }
-  return ~crc;
-}
-
-uint32_t crc32(const std::vector<uint8_t>& data) {
-  return crc32(data.data(), data.size());
-}
-
 void ISONameFromAnimationName(char* dst, const char* src) {
   // The Animation Name is a bunch of words separated by dashes
 
@@ -290,7 +349,7 @@ void ISONameFromAnimationName(char* dst, const char* src) {
 
   // upper case
   for (i = 0; i < 8; i++) {
-    if (dst[i] > '`' && dst[i] < '{') {
+    if (dst[i] >= 'a' && dst[i] <= 'z') {
       dst[i] -= 0x20;
     }
   }
@@ -349,8 +408,7 @@ void MakeISOName(char* dst, const char* src) {
 
 void assert_file_exists(const char* path, const char* error_message) {
   if (!std::filesystem::exists(path)) {
-    fprintf(stderr, "File %s was not found: %s\n", path, error_message);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("File {} was not found: {}", path, error_message));
   }
 }
 

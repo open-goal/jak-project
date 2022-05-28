@@ -48,7 +48,7 @@ echo " ================ Decompiling..."
 ../scripts/shell/decomp.sh
 
 echo " ================ Building project..."
-../scripts/shell/gc.sh -cmd \(make-group\ \"iso\"\)
+../scripts/shell/gc.sh --cmd \(make-group\ \"iso\"\)
 
 echo " ================ Checking assets..."
 ../scripts/shell/check.sh

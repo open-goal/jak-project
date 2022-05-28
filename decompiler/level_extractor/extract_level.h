@@ -6,9 +6,13 @@
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 
 namespace decompiler {
-void extract_from_level(ObjectFileDB& db,
-                        TextureDB& tex_db,
-                        const std::string& dgo_name,
+
+// extract everything
+void extract_all_levels(const ObjectFileDB& db,
+                        const TextureDB& tex_db,
+                        const std::vector<std::string>& dgo_names,
+                        const std::string& common_name,
                         const DecompileHacks& hacks,
-                        bool dump_level);
-}
+                        bool debug_dump_level,
+                        bool extract_collision);
+}  // namespace decompiler

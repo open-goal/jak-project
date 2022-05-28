@@ -12,8 +12,6 @@
 namespace goos {
 Interpreter::Interpreter(const std::string& username) {
   // Interpreter startup:
-  goal_to_goos.reset();
-
   // create the GOOS global environment
   global_environment = EnvironmentObject::make_new("global");
 
@@ -73,7 +71,6 @@ Interpreter::Interpreter(const std::string& username) {
                    {">=", &Interpreter::eval_geq},
                    {"null?", &Interpreter::eval_null},
                    {"type?", &Interpreter::eval_type},
-                   {"current-method-type", &Interpreter::eval_current_method_type},
                    {"fmt", &Interpreter::eval_format},
                    {"error", &Interpreter::eval_error},
                    {"string-ref", &Interpreter::eval_string_ref},
@@ -82,7 +79,10 @@ Interpreter::Interpreter(const std::string& username) {
                    {"ash", &Interpreter::eval_ash},
                    {"symbol->string", &Interpreter::eval_symbol_to_string},
                    {"string->symbol", &Interpreter::eval_string_to_symbol},
-                   {"get-environment-variable", &Interpreter::eval_get_env}};
+                   {"get-environment-variable", &Interpreter::eval_get_env},
+                   {"make-string-hash-table", &Interpreter::eval_make_string_hash_table},
+                   {"hash-table-set!", &Interpreter::eval_hash_table_set},
+                   {"hash-table-try-ref", &Interpreter::eval_hash_table_try_ref}};
 
   string_to_type = {{"empty-list", ObjectType::EMPTY_LIST},
                     {"integer", ObjectType::INTEGER},
@@ -1348,7 +1348,7 @@ Object Interpreter::eval_numequals(const Object& form,
     } break;
 
     default:
-      throw_eval_error(form, "+ must have a numeric argument");
+      throw_eval_error(form, "= must have a numeric argument");
       return Object::make_empty_list();
   }
 
@@ -1550,14 +1550,6 @@ Object Interpreter::eval_type(const Object& form,
   }
 }
 
-Object Interpreter::eval_current_method_type(const Object& form,
-                                             Arguments& args,
-                                             const std::shared_ptr<EnvironmentObject>& env) {
-  (void)env;
-  vararg_check(form, args, {}, {});
-  return SymbolObject::make_new(reader.symbolTable, goal_to_goos.enclosing_method_type);
-}
-
 Object Interpreter::eval_format(const Object& form,
                                 Arguments& args,
                                 const std::shared_ptr<EnvironmentObject>& env) {
@@ -1696,5 +1688,46 @@ Object Interpreter::eval_get_env(const Object& form,
     }
   }
   return StringObject::make_new(env_p);
+}
+
+/*!
+ * Create a new empty hash table object.
+ */
+Object Interpreter::eval_make_string_hash_table(const Object& form,
+                                                Arguments& args,
+                                                const std::shared_ptr<EnvironmentObject>& /*env*/) {
+  vararg_check(form, args, {}, {});
+  return StringHashTableObject::make_new();
+}
+
+/*!
+ * Set a value in a hash table. Overwrites a previous value or inserts a new one.
+ * Returns empty list always.
+ */
+Object Interpreter::eval_hash_table_set(const Object& form,
+                                        Arguments& args,
+                                        const std::shared_ptr<EnvironmentObject>& /*env*/) {
+  vararg_check(form, args, {ObjectType::STRING_HASH_TABLE, ObjectType::STRING, {}}, {});
+  args.unnamed.at(0).as_string_hash_table()->data[args.unnamed.at(1).as_string()->data] =
+      args.unnamed.at(2);
+  return Object::make_empty_list();
+}
+
+/*!
+ * Try to look up a value by key in a hash table. The result is a pair of (success . value).
+ */
+Object Interpreter::eval_hash_table_try_ref(const Object& form,
+                                            Arguments& args,
+                                            const std::shared_ptr<EnvironmentObject>& /*env*/) {
+  vararg_check(form, args, {ObjectType::STRING_HASH_TABLE, ObjectType::STRING}, {});
+  const auto* table = args.unnamed.at(0).as_string_hash_table();
+  const auto& it = table->data.find(args.unnamed.at(1).as_string()->data);
+  if (it == table->data.end()) {
+    // not in table
+    return PairObject::make_new(SymbolObject::make_new(reader.symbolTable, "#f"),
+                                Object::make_empty_list());
+  } else {
+    return PairObject::make_new(SymbolObject::make_new(reader.symbolTable, "#t"), it->second);
+  }
 }
 }  // namespace goos

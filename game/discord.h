@@ -4,7 +4,7 @@
 
 void init_discord_rpc();
 void set_discord_rpc(int state);
-const char* jak1_get_full_level_name(char* level_name);
+const char* jak1_get_full_level_name(const char* level_name);
 
 void handleDiscordReady(const DiscordUser* user);
 void handleDiscordDisconnected(int errcode, const char* message);

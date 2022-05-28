@@ -18,10 +18,41 @@
 (defun letterbox ()
   "Draw the letterbox black rectangles"
   (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf))
-                               (bucket-id debug-draw1)) ;; debug-draw1 is one of the last buckets
+                               (bucket-id debug-no-zbuf)) ;; debug-no-zbuf is one of the last buckets
     ;; draw the two sprites
-    (draw-sprite2d-xy dma-buf 0 0 512 25 (new 'static 'rgba :a #x80))
-    (draw-sprite2d-xy dma-buf 0 199 512 26 (new 'static 'rgba :a #x80))
+    (#cond
+      ((not PC_PORT)
+        (draw-sprite2d-xy dma-buf 0 0 512 25 (new 'static 'rgba :a #x80))
+        (draw-sprite2d-xy dma-buf 0 199 512 26 (new 'static 'rgba :a #x80))
+        )
+      (#t
+        (if (-> *pc-settings* use-vis?)
+            ;; original game mode. dont do anything.
+            (begin
+              (draw-sprite2d-xy dma-buf 0 0 512 25 (new 'static 'rgba :a #x80))
+              (draw-sprite2d-xy dma-buf 0 199 512 26 (new 'static 'rgba :a #x80)))
+            ;; native mode. force 16x9 letterboxing always.
+            (begin
+              (cond
+                ((< (-> *pc-settings* aspect-ratio) ASPECT_16X9)
+                  ;; too tall. needs vertical letterboxing.
+                  (let ((lbx-h (the int (* 112.0 (- 1.0 (/ (-> *pc-settings* aspect-ratio) ASPECT_16X9))))))
+                    (draw-sprite2d-xy dma-buf 0 0 512 lbx-h (new 'static 'rgba :a #x80))
+                    (draw-sprite2d-xy dma-buf 0 (- 224 lbx-h) 512 lbx-h (new 'static 'rgba :a #x80))
+                      )
+                  )
+                ((> (-> *pc-settings* aspect-ratio) ASPECT_16X9)
+                  ;; too wide. needs horizontal letterboxing.
+                  (let ((lbx-w (the int (* 256.0 (- 1.0 (/ ASPECT_16X9 (-> *pc-settings* aspect-ratio)))))))
+                    (draw-sprite2d-xy dma-buf 0 0 lbx-w 224 (new 'static 'rgba :a #x80))
+                    (draw-sprite2d-xy dma-buf (- 512 lbx-w) 0 lbx-w 224 (new 'static 'rgba :a #x80))
+                      )
+                  )
+                )
+              )
+            )
+        )
+      )
     )
   (none)
   )
@@ -44,7 +75,7 @@
 (defun blackout ()
   "Draw the blackout rectangle, convering the entire screen in darkness."
   (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf))
-                               (bucket-id debug-draw1)) ;; debug-draw1 is one of the last buckets
+                               (bucket-id debug-no-zbuf)) ;; debug-no-zbuf is one of the last buckets
     (draw-sprite2d-xy dma-buf 0 0 512 224 (new 'static 'rgba :a #x80))
     )
   (none)
@@ -116,7 +147,7 @@
     (('game)
      ;; allow pausable/menu to run.
      (logclear! (-> *setting-control* default process-mask) (process-mask pause menu))
-     ;; (sound-group-continue (the-as uint 255)) TODO (we need to flush sound commands)
+     (sound-group-continue (the-as uint 255))
      (hide-progress-screen)
      )
     )
@@ -138,9 +169,7 @@
       (cond
         ;; first, check if the controller fell out, and jak is spawned
         ((and (nonzero? (logand (-> *cpad-list* cpads 0 valid) 128)) *target*)
-         (if (or *progress-process*
-                 (not (-> *setting-control* current allow-pause))
-                 )
+         (if (or *progress-process* (not (-> *setting-control* current allow-pause)))
              *master-mode*
              'pause ;; no controller, jak spawned, no progress open, pause allowed.
              )
@@ -234,13 +263,7 @@
          )
         )
       )
-     (set! *pause-lock*
-           (and *cheat-mode*
-                (nonzero?
-                 (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r2))
-                 )
-                )
-           )
+     (set! *pause-lock* (and *cheat-mode* (cpad-hold? 0 r2)))
      )
     (('pause)
      (set! *last-master-mode* *master-mode*)
@@ -272,9 +295,7 @@
          )
         )
       )
-     (set! *pause-lock*
-           (and *cheat-mode* (cpad-hold? 0 r2))
-           )
+     (set! *pause-lock* (and *cheat-mode* (cpad-hold? 0 r2)))
      )
     (('progress)
      (set-master-mode
@@ -295,9 +316,7 @@
          )
         )
       )
-     (set! *pause-lock*
-           (and *cheat-mode* (cpad-hold? 0 r2))
-           )
+     (set! *pause-lock* (and *cheat-mode* (cpad-hold? 0 r2)))
      )
     )
   0
@@ -311,7 +330,7 @@
   )
 
 (defmethod draw screen-filter ((obj screen-filter))
-  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-draw1))
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf))
     (draw-sprite2d-xy buf -256 (- (-> *video-parms* screen-hy)) 512 (-> *video-parms* screen-sy) (-> obj color))
     )
   (none)
@@ -326,15 +345,6 @@
 (define *progress-cheat* #f)
 (define *first-boot* #t) ;; PAL
 
-(defmacro cheats-sound-play (cheat?)
-  "play the appropriate sound for inputting a cheat code"
-
-  `(if ,cheat?
-      (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 1 #t)
-      (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
-      )
-  )
-
 (defun main-cheats ()
   "Handle cheat codes and timeout"
 
@@ -346,7 +356,7 @@
     ;; cheat mode
     (check-cheat-code (-> *cheat-temp* 0) 0
         (up up down down left right left right x x square circle square circle)
-          (cpad-clear-buttons! 0 r1)
+          (cpad-clear! 0 r1)
           ;; toggle!
           (not! *cheat-mode*)
           (cheats-sound-play *cheat-mode*)
@@ -356,7 +366,7 @@
     (when *cheat-mode*
       (check-cheat-code (-> *cheat-temp* 1) 0
           (circle square circle square x x right left right left down down up up)
-            (cpad-clear-buttons! 0 r1)
+            (cpad-clear! 0 r1)
             ;; toggle between #t and debug.
             (set! *cheat-mode* (if (= *cheat-mode* 'debug)
                                         #t
@@ -372,7 +382,7 @@
       ((GAME_TERRITORY_SCEI)
         (check-cheat-code (-> *cheat-temp* 2) 0
             (l1 r1 l1 r1 triangle circle x square)
-              (cpad-clear-buttons! 0 r1)
+              (cpad-clear! 0 r1)
               (set! *progress-cheat* (if *progress-cheat*
                                            #f
                                            'language
@@ -387,7 +397,7 @@
     (when *debug-segment*
       (check-cheat-code (-> *cheat-temp* 3) 0
           (x square triangle circle x square triangle circle)
-            (cpad-clear-buttons! 0 r1)
+            (cpad-clear! 0 r1)
             (set! *progress-cheat* (if *progress-cheat*
                                          #f
                                          'pal
@@ -398,7 +408,7 @@
       ;; added in PAL
       (check-cheat-code (-> *cheat-temp* 4) 0 ;; they erroneously used (-> *cheat-temp* 5) here!
           (triangle x circle square triangle x circle square)
-            (cpad-clear-buttons! 0 r1)
+            (cpad-clear! 0 r1)
             (set! *cheat-mode* (if (= *cheat-mode* 'camera)
                                         #f
                                         'camera
@@ -457,7 +467,7 @@
                                                (-> (current-frame) debug-buf)
                                                (-> (current-frame) global-buf)
                                                ))
-                                   (bucket-id debug-draw0))
+                                   (bucket-id debug))
         (show-iop-memory dma-buff)
         )
       )
@@ -493,7 +503,7 @@
                  )
 
         ;; spawn a process that blacks out the screen, turns things off, and kills the game.
-        (if (make-function-process process :stack *scratch-memory-top*
+        (if (process-new-function process :stack *scratch-memory-top*
               (lambda :behavior process ()
                 (set-blackout-frames (seconds 100))
                 (set! (-> *setting-control* default allow-pause) #f)
@@ -573,7 +583,7 @@
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Pre loop initialization
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    
+
     ;; the size is 0, so this doesn't actually do anything.
     ;; (dma-send-to-spr (the-as uint #x70000000) (the-as uint *terrain-context*) (the-as uint 0) #t)
     (set! *teleport* #t)
@@ -585,106 +595,121 @@
     (blerc-init)
     ;; collide dma
     (suspend)
-    
-    
+
+
     (while *run*
       ;; start immediately after all process updates finish.
-      
+      (profiler-instant-event "display-loop-top")
+
       ;; drawing effects to be used in foreground drawing.
-      (blerc-execute)
-      (blerc-init)
-      (texscroll-execute)
-      ; (ripple-execute)
-      
+      (with-profiler "foreground-effects"
+        (blerc-execute)
+        (blerc-init)
+        (texscroll-execute)
+        (ripple-execute)
+        )
+
       ;;;;;;;;;;;;;;;;;;;;
       ;; AMBIENT
       ;;;;;;;;;;;;;;;;;;;;
-      
+
       ;; set defaults for weather/music/flava.
-      (set! *weather-off* #f)
-      (let ((v1-13 (-> *game-info* current-continue level)))
-        (dotimes (a0-8 (-> *level* length))
-          (let ((a1-6 (-> *level* level a0-8)))
-            (when (= (-> a1-6 status) 'active)
-              (if (and (= (-> a1-6 name) v1-13) (-> *level* play?))
-                  (set! (-> *setting-control* default music) (-> a1-6 info music-bank))
-                  )
+      (with-profiler "ambients"
+        (set! *weather-off* #f)
+        (let ((v1-13 (-> *game-info* current-continue level)))
+          (dotimes (a0-8 (-> *level* length))
+            (let ((a1-6 (-> *level* level a0-8)))
+              (when (= (-> a1-6 status) 'active)
+                (if (and (= (-> a1-6 name) v1-13) (-> *level* play?))
+                    (set! (-> *setting-control* default music) (-> a1-6 info music-bank))
+                    )
+                )
               )
             )
           )
-        )
-      
-      (set! (-> *setting-control* default sound-flava) (the-as uint 49))
-      (set! (-> *setting-control* default sound-flava-priority) 0.0)
-      
-      ;; find any ambients, and execute them.
-      (when (and *execute-ambients* (not (paused?)))
-        (if *target*
-            (set! (-> *target* draw secondary-interp) 0.0)
-            )
-        (let ((s5-1 (sphere<-vector+r! (new 'stack 'sphere) (ear-trans) 0.0)))
-          (let ((v1-28 (scratchpad-object terrain-context)))
-            (set! (-> v1-28 work ambient ambient-list num-items) 0)
-            )
-          (dotimes (s4-1 (-> *level* length))
-            (let ((v1-32 (-> *level* level s4-1)))
-              (when (= (-> v1-32 status) 'active)
-                  (collect-ambients (-> v1-32 bsp) s5-1 0 (-> (scratchpad-object terrain-context) work ambient ambient-list))
-                  )
+
+        (set! (-> *setting-control* default sound-flava) (the-as uint 49))
+        (set! (-> *setting-control* default sound-flava-priority) 0.0)
+
+        ;; find any ambients, and execute them.
+        (when (and *execute-ambients* (not (paused?)))
+          (if *target*
+              (set! (-> *target* draw secondary-interp) 0.0)
               )
-            )
-          
-          (countdown (s4-2 (-> (scratchpad-object terrain-context) work ambient ambient-list num-items))
-            (execute-ambient (-> (scratchpad-object terrain-context) work ambient ambient-list items s4-2) s5-1)
+          (let ((s5-1 (sphere<-vector+r! (new 'stack 'sphere) (ear-trans) 0.0)))
+            (let ((v1-28 (scratchpad-object terrain-context)))
+              (set! (-> v1-28 work ambient ambient-list num-items) 0)
+              )
+            (dotimes (s4-1 (-> *level* length))
+              (let ((v1-32 (-> *level* level s4-1)))
+                (when (= (-> v1-32 status) 'active)
+                    (collect-ambients (-> v1-32 bsp) s5-1 0 (-> (scratchpad-object terrain-context) work ambient ambient-list))
+                    )
+                )
+              )
+
+            (countdown (s4-2 (-> (scratchpad-object terrain-context) work ambient ambient-list num-items))
+              (execute-ambient (-> (scratchpad-object terrain-context) work ambient ambient-list items s4-2) s5-1)
+              )
             )
           )
         )
       (add-ee-profile-frame 'draw :r #x40 :b #x40) ;; actor update
-      
+
       ;; do math, before drawing
-      (execute-math-engine)
+      (with-profiler "math-engine" (execute-math-engine))
       ;; DEBUG PROF
       (add-ee-profile-frame 'draw :r #x80)
       (add-ee-profile-frame 'draw :r #x40 :b #x40)
       ;; debug hook
-      (*debug-hook*)
-      (main-cheats)
+      (with-profiler "debug" (*debug-hook*) (main-cheats))
       (add-ee-profile-frame 'draw :r #x20 :g #x20)
-      (update-camera)
+      (with-profiler "camera" (update-camera))
       (add-ee-profile-frame 'draw :r #x40 :b #x40)
-      (*draw-hook*)
+      (with-profiler "draw-hook" (*draw-hook*))
       (add-ee-profile-frame 'draw :g #x80)
 
-      (*menu-hook*)
-      (add-ee-profile-frame 'draw :g #x40)
+      (with-profiler "menu"
+        (with-pc
+          (if (and (-> *pc-settings* display-sha) *debug-segment*)
+              (draw-build-revision)))
 
-      ;; finally, update hints/text
-      (make-current-level-available-to-progress)
-      (update-task-hints)
-      (load-level-text-files -1)
+        (*menu-hook*)
+        (add-ee-profile-frame 'draw :g #x40)
 
-      (add-ee-profile-frame 'unknown-cpu-time)
-      ;; collect perf stats
-      (read! (-> *perf-stats* data (perf-stat-bucket all-code)))
+        ;; finally, update hints/text
+        (make-current-level-available-to-progress)
+        (update-task-hints)
+        (load-level-text-files -1)
 
-      (when (nonzero? (sync-path 0 0))
-        (*dma-timeout-hook*)
-        (reset-vif1-path)
-        (if *debug-segment*
-            (format 0 "profile bar at ~D.~%" (-> (current-frame) profile-bar 1 profile-frame-count))
-            )
+        (add-ee-profile-frame 'unknown-cpu-time)
+        ;; collect perf stats
+        (read! (-> *perf-stats* data (perf-stat-bucket all-code)))
         )
-      (reset! (-> *perf-stats* data (perf-stat-bucket all-code)))
+
+      (with-profiler "dma-sync"
+        (when (nonzero? (sync-path 0 0))
+          (*dma-timeout-hook*)
+          (reset-vif1-path)
+          (if *debug-segment*
+              (format 0 "profile bar at ~D.~%" (-> (current-frame) profile-bar 1 profile-frame-count))
+              )
+          )
+        (reset! (-> *perf-stats* data (perf-stat-bucket all-code)))
+        )
 
       ;; depth cue
       ;; screen filter
 
+      (with-profiler "post-sync-draw"
       ;; add letterbox effect
       (when (or (movie?) (< (-> *display* base-frame-counter) (-> *game-info* letterbox-time)))
         (if (< (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
             (set! (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
             )
-        (if (= (-> *setting-control* current aspect-ratio) 'aspect4x3)
+        (if (#if (not PC_PORT)
+                 (= (-> *setting-control* current aspect-ratio) 'aspect4x3)
+                 (or (not (-> *pc-settings* use-vis?)) (and (-> *pc-settings* use-vis?) (= (-> *setting-control* current aspect-ratio) 'aspect4x3))))
             (letterbox)
             )
         )
@@ -724,7 +749,7 @@
 
           ;; debug dma
           (with-dma-buffer-add-bucket ((debug-buf (-> disp frames (-> disp on-screen) frame debug-buf))
-                                       (bucket-id debug-draw1))
+                                       (bucket-id debug-no-zbuf))
             (when *display-profile*
               (dma-buffer-add-gs-set debug-buf
                       (alpha-1 (new 'static 'gs-alpha :b 1 :d 1))
@@ -767,8 +792,8 @@
                 (dotimes (i LEVEL_COUNT)
                   (format *stdcon* "level ~D ~12A ~A~%" i (-> *level* level i name) (-> *level* level i display?))
                   )
-                (format *stdcon* "music ~A (f: ~D/~D) sound ~A ~A~%"
-                    (-> *setting-control* current music) (-> *setting-control* current sound-flava) (-> *setting-control* default sound-flava)
+                (format *stdcon* "music ~A (f: ~D/~S) sound ~A ~A~%"
+                    (-> *setting-control* current music) (-> *setting-control* current sound-flava) (enum->string music-flava (-> *setting-control* default sound-flava))
                     *sound-bank-1* *sound-bank-2*)
                 (let ((pos (target-pos 0)))
                     (format *stdcon* "target ~m ~m ~m~%" (-> pos x) (-> pos y) (-> pos z))
@@ -825,7 +850,7 @@
                                                (-> disp frames (-> disp on-screen) frame debug-buf)
                                                (-> disp frames (-> disp on-screen) frame global-buf)
                                                ))
-                                     (bucket-id debug-draw0))
+                                     (bucket-id debug))
           (if (and (= *master-mode* 'pause) (!= *cheat-mode* 'camera))
               (draw-string-xy (lookup-text! *common-text* (game-text-id pause) #f)
                s3-1 256 160 (font-color orange-red) (font-flags shadow kerning middle large))
@@ -866,12 +891,13 @@
 
       ;; console buffers
       (set! *stdcon* (clear *stdcon0*))
+      )
 
       ;; <--------------------------- SWAP DISPLAY!
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-      (swap-display disp)
+      (with-profiler "swap-display" (swap-display disp))
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-      
+
       (set! (-> *time-of-day-context* title-updated) #f)
       (set! *teleport* #f)
       (when (nonzero? *teleport-count*)
@@ -881,19 +907,26 @@
 
       ;; perf stats
 
-      (process-particles)
-
+      (with-profiler "process-particles" (process-particles))
 
       ;; vif0 collide
       ;; swap sound
       ;; str play
-      (level-update *level*) ;; also updates settings.
-      (mc-run)
-      (auto-save-check)
+      (with-profiler "sound-update"
+                     (swap-sound-buffers (ear-trans) (camera-pos) (camera-angle))
+                     (str-play-kick)
+                     )
 
-      (#when PC_PORT
-        (update *pc-settings*)
-        )
+      (with-profiler "level-and-save"
+         (level-update *level*) ;; also updates settings.
+         (mc-run)
+         (auto-save-check)
+
+         (#when PC_PORT
+           (update *pc-settings*)
+           )
+         )
+
 
       ;; suspend
       (suspend)
@@ -914,7 +947,7 @@
         )
       )
     (set! *run* #t)
-    (let ((new-dproc (make-function-process process display-loop :name 'display
+    (let ((new-dproc (process-new-function process display-loop :name 'display
                                                                  :from *4k-dead-pool* :to *display-pool*)))
       (set! *dproc* (the process (ppointer->process new-dproc)))
       )

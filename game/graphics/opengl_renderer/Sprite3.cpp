@@ -5,7 +5,7 @@
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
-#include "game/graphics/opengl_renderer/tfrag/tfrag_common.h"
+#include "game/graphics/opengl_renderer/background/background_common.h"
 
 namespace {
 
@@ -36,7 +36,8 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
 
 constexpr int SPRITE_RENDERER_MAX_SPRITES = 8000;
 
-Sprite3::Sprite3(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
+Sprite3::Sprite3(const std::string& name, BucketId my_id)
+    : BucketRenderer(name, my_id), m_direct(name, my_id, 1024) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
   glBindVertexArray(m_ogl.vao);
@@ -121,16 +122,16 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id) : BucketRenderer(name,
  * the table upload stuff that runs every frame, even if there are no sprites.
  */
 void Sprite3::render_distorter(DmaFollower& dma,
-                               SharedRenderState* /*render_state*/,
-                               ScopedProfilerNode& /*prof*/) {
+                               SharedRenderState* render_state,
+                               ScopedProfilerNode& prof) {
   // Next thing should be the sprite-distorter setup
-  // m_direct_renderer.reset_state();
+  m_direct.reset_state();
   while (dma.current_tag().qwc != 7) {
-    dma.read_and_advance();
-    // m_direct_renderer.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
-    // direct_data.size_bytes, render_state, prof);
+    auto direct_data = dma.read_and_advance();
+    m_direct.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
+                        direct_data.size_bytes, render_state, prof);
   }
-  // m_direct_renderer.flush_pending(render_state, prof);
+  m_direct.flush_pending(render_state, prof);
   auto sprite_distorter_direct_setup = dma.read_and_advance();
   ASSERT(sprite_distorter_direct_setup.vifcode0().kind == VifCode::Kind::NOP);
   ASSERT(sprite_distorter_direct_setup.vifcode1().kind == VifCode::Kind::DIRECT);
@@ -220,6 +221,10 @@ void Sprite3::render_2d_group0(DmaFollower& dma,
               m_frame_data.min_scale);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "max_scale"),
               m_frame_data.max_scale);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "fog_min"),
+              m_frame_data.fog_min);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "fog_max"),
+              m_frame_data.fog_max);
   glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "bonus"),
               m_frame_data.bonus);
   glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "hmge_scale"), 1,
@@ -373,13 +378,13 @@ void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
     return;
   }
 
-  render_state->shaders[ShaderId::SPRITE3].activate();
-
   // First is the distorter
   {
     auto child = prof.make_scoped_child("distorter");
     render_distorter(dma, render_state, child);
   }
+
+  render_state->shaders[ShaderId::SPRITE3].activate();
 
   // next, sprite frame setup.
   handle_sprite_frame_setup(dma);
@@ -405,6 +410,10 @@ void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
     flush_sprites(render_state, prof, true);
   }
 
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendEquation(GL_FUNC_ADD);
+
   // TODO finish this up.
   // fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
   while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -412,15 +421,11 @@ void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
     // fmt::print("@ 0x{:x} tag: {}", dma.current_tag_offset(), tag.print());
     auto data = dma.read_and_advance();
     VifCode code(data.vif0());
-    // fmt::print(" vif: {}\n", code.print());
+    // fmt::print(" vif0: {}\n", code.print());
     if (code.kind == VifCode::Kind::NOP) {
-      // fmt::print(" vif: {}\n", VifCode(data.vif1()).print());
+      // fmt::print(" vif1: {}\n", VifCode(data.vif1()).print());
     }
   }
-
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glBlendEquation(GL_FUNC_ADD);
 }
 
 void Sprite3::draw_debug_window() {
@@ -453,11 +458,10 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
 
   // two passes through the buckets. first to build the index buffer
   u32 idx_offset = 0;
-  for (auto& kv : m_sprite_buckets) {
-    memcpy(&m_index_buffer_data[idx_offset], kv.second.ids.data(),
-           kv.second.ids.size() * sizeof(u32));
-    kv.second.offset_in_idx_buffer = idx_offset;
-    idx_offset += kv.second.ids.size();
+  for (const auto bucket : m_bucket_list) {
+    memcpy(&m_index_buffer_data[idx_offset], bucket->ids.data(), bucket->ids.size() * sizeof(u32));
+    bucket->offset_in_idx_buffer = idx_offset;
+    idx_offset += bucket->ids.size();
   }
 
   // now upload it
@@ -466,27 +470,22 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
                GL_STREAM_DRAW);
 
   // now do draws!
-  for (auto& kv : m_sprite_buckets) {
-    u32 tbp = kv.first >> 32;
+  for (const auto bucket : m_bucket_list) {
+    u32 tbp = bucket->key >> 32;
     DrawMode mode;
-    mode.as_int() = kv.first & 0xffffffff;
+    mode.as_int() = bucket->key & 0xffffffff;
 
-    TextureRecord* tex = nullptr;
+    std::optional<u64> tex;
     tex = render_state->texture_pool->lookup(tbp);
 
     if (!tex) {
       fmt::print("Failed to find texture at {}, using random\n", tbp);
-      tex = render_state->texture_pool->get_random_texture();
+      tex = render_state->texture_pool->get_placeholder_texture();
     }
     ASSERT(tex);
 
-    // first: do we need to load the texture?
-    if (!tex->on_gpu) {
-      render_state->texture_pool->upload_to_gpu(tex);
-    }
-
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
+    glBindTexture(GL_TEXTURE_2D, *tex);
 
     auto settings = setup_opengl_from_draw_mode(mode, GL_TEXTURE0, false);
 
@@ -497,10 +496,10 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
     glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "tex_T0"), 0);
 
     prof.add_draw_call();
-    prof.add_tri(2 * (kv.second.ids.size() / 5));
+    prof.add_tri(2 * (bucket->ids.size() / 5));
 
-    glDrawElements(GL_TRIANGLE_STRIP, kv.second.ids.size(), GL_UNSIGNED_INT,
-                   (void*)(kv.second.offset_in_idx_buffer * sizeof(u32)));
+    glDrawElements(GL_TRIANGLE_STRIP, bucket->ids.size(), GL_UNSIGNED_INT,
+                   (void*)(bucket->offset_in_idx_buffer * sizeof(u32)));
 
     if (double_draw) {
       switch (settings.kind) {
@@ -508,7 +507,7 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
           break;
         case DoubleDrawKind::AFAIL_NO_DEPTH_WRITE:
           prof.add_draw_call();
-          prof.add_tri(2 * (kv.second.ids.size() / 5));
+          prof.add_tri(2 * (bucket->ids.size() / 5));
           glUniform1f(
               glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "alpha_min"),
               -10.f);
@@ -516,8 +515,8 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
               glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "alpha_max"),
               settings.aref_second);
           glDepthMask(GL_FALSE);
-          glDrawElements(GL_TRIANGLE_STRIP, kv.second.ids.size(), GL_UNSIGNED_INT,
-                         (void*)(kv.second.offset_in_idx_buffer * sizeof(u32)));
+          glDrawElements(GL_TRIANGLE_STRIP, bucket->ids.size(), GL_UNSIGNED_INT,
+                         (void*)(bucket->offset_in_idx_buffer * sizeof(u32)));
           break;
         default:
           ASSERT(false);
@@ -526,6 +525,7 @@ void Sprite3::flush_sprites(SharedRenderState* render_state,
   }
 
   m_sprite_buckets.clear();
+  m_bucket_list.clear();
   m_last_bucket_key = UINT64_MAX;
   m_last_bucket = nullptr;
   m_sprite_idx = 0;
@@ -577,8 +577,7 @@ void Sprite3::handle_clamp(u64 val,
                            SharedRenderState* /*render_state*/,
                            ScopedProfilerNode& /*prof*/) {
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
-    fmt::print("clamp: 0x{:x}\n", val);
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("clamp: 0x{:x}", val));
   }
 
   m_current_mode.set_clamp_s_enable(val & 0b001);
@@ -616,6 +615,14 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
     // Cv = (Cs - Cd) * FIX + Cd
     ASSERT(reg.fix() == 64);
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_FIX_DST);
+  } else if (reg.a_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+             reg.b_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.c_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.d_mode() == GsAlpha::BlendMode::DEST) {
+    // (0 - Cs) * As + Cd
+    // Cd - Cs * As
+    // s, d
+    mode.set_alpha_blend(DrawMode::AlphaBlend::ZERO_SRC_SRC_DST);
   }
 
   else {
@@ -642,7 +649,7 @@ void Sprite3::do_block_common(SpriteMode mode,
       flush_sprites(render_state, prof, mode == ModeHUD);
     }
 
-    if (mode == Mode2D && render_state->has_camera_planes && m_enable_culling) {
+    if (mode == Mode2D && render_state->has_pc_data && m_enable_culling) {
       // we can skip sprites that are out of view
       // it's probably possible to do this for 3D as well.
       auto bsphere = m_vec_data_2d[sprite_idx].xyz_sx;
@@ -667,7 +674,14 @@ void Sprite3::do_block_common(SpriteMode mode,
     if (key == m_last_bucket_key) {
       bucket = m_last_bucket;
     } else {
-      bucket = &m_sprite_buckets[key];
+      auto it = m_sprite_buckets.find(key);
+      if (it == m_sprite_buckets.end()) {
+        bucket = &m_sprite_buckets[key];
+        bucket->key = key;
+        m_bucket_list.push_back(bucket);
+      } else {
+        bucket = &it->second;
+      }
     }
     u32 start_vtx_id = m_sprite_idx * 4;
     bucket->ids.push_back(start_vtx_id);

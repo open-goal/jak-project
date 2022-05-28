@@ -5,10 +5,6 @@
 ;; name in dgo: hud
 ;; dgos: GAME, ENGINE
 
-;; TODO - for hud-classes
-(define-extern hud-init-by-other (function int none :behavior hud))
-
-
 ;; DECOMP BEGINS
 
 (defmethod relocate hud ((obj hud) (arg0 int))
@@ -57,7 +53,7 @@
                   (not (movie?))
                   (>= (- (-> *display* base-frame-counter) (-> *game-info* letterbox-time)) (seconds 0.1))
                   (>= (- (-> *display* base-frame-counter) (-> *game-info* blackout-time)) (seconds 0.1))
-                  (not (and *target* (logtest? (-> *target* state-flags) 256)))
+                  (not (and *target* (logtest? (-> *target* state-flags) (state-flags sf08))))
                   )
              )
     (when (or (!= (-> obj value) arg0)
@@ -147,7 +143,13 @@
             (* 0.5 (- (* (-> *video-parms* relative-y-scale)
                          (+ (-> obj particles s5-0 init-pos y)
                             (the float (* (-> obj y-sgn) (-> obj offset)))
-                            (* (the float (-> obj y-offset)) (-> *video-parms* relative-x-scale-reciprical))
+                            (#if PC_PORT
+                                (if (not (-> *pc-settings* use-vis?))
+                                    (* (the float (-> obj y-offset)) (-> *video-parms* relative-y-scale))
+                                    (* (the float (-> obj y-offset)) (-> *video-parms* relative-x-scale-reciprical))
+                                    )
+                                (* (the float (-> obj y-offset)) (-> *video-parms* relative-x-scale-reciprical))
+                                )
                             )
                          )
                       (the float (-> *video-parms* screen-sy))
@@ -156,6 +158,8 @@
             )
       (set! (-> obj particles s5-0 pos z) (-> obj particles s5-0 init-pos z))
       )
+    (#when PC_PORT
+        (if (= *cheat-mode* 'camera) (set! (-> obj particles s5-0 pos x) 1024.0)))
     (if (> (-> obj particles s5-0 part matrix) 0)
         (set-vector!
           (sprite-get-user-hvdf (-> obj particles s5-0 part matrix))
@@ -271,7 +275,7 @@
   :code
   (behavior ()
     (logior! (-> self mask) (process-mask sleep-code))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -348,9 +352,9 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (if (not (paused?))
-          (set! (-> self offset) (seekl (-> self offset) 0 (the int (* 15.0 (-> *display* time-adjust-ratio)))))
+          (seekl! (-> self offset) 0 (the int (* 15.0 (-> *display* time-adjust-ratio))))
           )
       (dummy-17 self)
       (if (<= (-> self offset) 0)
@@ -410,11 +414,9 @@
   (-> hud-arriving event)
   :code
   (behavior ((arg0 int))
-    (while #t
+    (loop
       (if (not (paused?))
-          (set! (-> self offset)
-                (seekl (-> self offset) 128 (the int (* (the float arg0) (-> *display* time-adjust-ratio))))
-                )
+          (seekl! (-> self offset) 128 (the int (* (the float arg0) (-> *display* time-adjust-ratio))))
           )
       (dummy-17 self)
       (when (movie?)
@@ -494,7 +496,7 @@
             (f24-0 (-> self root-override scale y))
             (f22-0 (-> self root-override scale z))
             )
-        (while #t
+        (loop
           (let ((f0-7 (* f30-0 (-> *display* seconds-per-frame))))
             (+! f26-0 f0-7)
             (when (< 1.0 f26-0)

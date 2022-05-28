@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/lightning-mole-ag.gc")
+
 ;; definition for function find-adjacent-bounds-one
 ;; Used lq/sq
 (defun find-adjacent-bounds-one ((arg0 nav-mesh) (arg1 nav-poly) (arg2 int) (arg3 (array int8)) (arg4 (array int8)) (arg5 vector))
@@ -451,25 +453,13 @@
     )
   :code
   (behavior ()
-    (ja-channel-push! 1 22)
+    (ja-channel-push! 1 (seconds 0.075))
     (let ((f30-0 (nav-enemy-rnd-float-range 1.0 1.2)))
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 frame-group)
-              (the-as art-joint-anim (-> self draw art-group data (-> self nav-info notice-anim)))
-              )
-        (set! (-> a0-2 param 0)
-              (the float
-                   (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self nav-info notice-anim))) data 0 length) -1)
-                   )
-              )
-        (set! (-> a0-2 param 1) f30-0)
-        (set! (-> a0-2 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-2
-          (the-as art-joint-anim (-> self draw art-group data (-> self nav-info notice-anim)))
-          num-func-seek!
-          )
-        )
+      (ja-no-eval :group!
+                  (-> self draw art-group data (-> self nav-info notice-anim))
+                  :num! (seek! max f30-0)
+                  :frame-num 0.0
+                  )
       (until (ja-done? 0)
         (seek-toward-heading-vec!
           (-> self collide-info)
@@ -484,11 +474,7 @@
             (go-virtual nav-enemy-chase)
             )
         (suspend)
-        (let ((a0-5 (-> self skel root-channel 0)))
-          (set! (-> a0-5 param 0) (the float (+ (-> a0-5 frame-group data 0 length) -1)))
-          (set! (-> a0-5 param 1) f30-0)
-          (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max f30-0))
         )
       )
     (go-virtual nav-enemy-chase)
@@ -503,13 +489,13 @@
   :virtual #t
   :enter
   (behavior ()
-    (logior! (-> self nav flags) (nav-control-flags bit12))
+    (logior! (-> self nav flags) (nav-control-flags navcf12))
     ((-> (method-of-type nav-enemy nav-enemy-chase) enter))
     (none)
     )
   :exit
   (behavior ()
-    (logclear! (-> self nav flags) (nav-control-flags bit12))
+    (logclear! (-> self nav flags) (nav-control-flags navcf12))
     (none)
     )
   :trans
@@ -552,7 +538,7 @@
           )
       (set! (-> gp-0 x) 1.0)
       (set! (-> s5-0 x) 1.0)
-      (while #t
+      (loop
         (when (cpad-pressed? 1 r3)
           (suspend)
           (go fleeing-nav-enemy-debug)
@@ -625,14 +611,14 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *lightning-mole-sg* lightning-mole
-  0
-  5
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 8)
-  :longest-edge (meters 0)
-  :shadow 4
-  )
+(defskelgroup *lightning-mole-sg* lightning-mole lightning-mole-lod0-jg lightning-mole-idle-ja
+              ((lightning-mole-lod0-mg (meters 20))
+               (lightning-mole-lod1-mg (meters 40))
+               (lightning-mole-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 0 0 8)
+              :shadow lightning-mole-shadow-mg
+              )
 
 ;; definition for function lightning-mole-task-complete?
 (defbehavior lightning-mole-task-complete? lightning-mole ()
@@ -691,21 +677,12 @@
 
 ;; definition for function lightning-mole-run-code
 (defbehavior lightning-mole-run-code lightning-mole ()
-  (when (!= (if (> (-> self skel active-channels) 0)
-                (-> self skel root-channel 0 frame-group)
-                )
-            (-> self draw art-group data 7)
-            )
-    (ja-channel-push! 1 60)
-    (let ((v1-6 (-> self skel root-channel 0)))
-      (set! (-> v1-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-      )
+  (when (!= (ja-group) (-> self draw art-group data 7))
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja :group! (-> self draw art-group data 7))
     )
-  (while #t
-    (let ((a0-9 (-> self skel root-channel 0)))
-      (set! (-> a0-9 param 0) (-> self speed-adjust))
-      (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-loop!)
-      )
+  (loop
+    (ja :num! (loop! (-> self speed-adjust)))
     (suspend)
     )
   (none)
@@ -797,7 +774,7 @@
 (defstate lightning-mole-gone (lightning-mole)
   :code
   (behavior ()
-    (dummy-18 self)
+    (cleanup-for-death self)
     (ja-channel-set! 0)
     (ja-post)
     (while (-> self child)
@@ -820,9 +797,7 @@
   (behavior ()
     (when (task-closed? (-> self entity extra perm task) (task-status need-introduction))
       (ja-channel-set! 1)
-      (let ((v1-4 (-> self skel root-channel 0)))
-        (set! (-> v1-4 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-        )
+      (ja :group! (-> self draw art-group data 5))
       (restore-collide-with-as (-> self collide-info))
       (go-virtual nav-enemy-idle)
       )
@@ -830,7 +805,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -871,16 +846,8 @@
           (logior! (-> *target* mask) (process-mask sleep))
           )
       (ambient-hint-spawn "gamcam20" (the-as vector #f) *entity-pool* 'camera)
-      (ja-channel-push! 1 60)
-      (let ((a0-5 (-> self skel root-channel 0)))
-        (set! (-> a0-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 12)))
-        (set! (-> a0-5 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 12)) data 0 length) -1))
-              )
-        (set! (-> a0-5 param 1) f30-0)
-        (set! (-> a0-5 frame-num) 0.0)
-        (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> self draw art-group data 12)) num-func-seek!)
-        )
+      (ja-channel-push! 1 (seconds 0.2))
+      (ja-no-eval :group! (-> self draw art-group data 12) :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((s5-0 (new 'stack-no-clear 'vector)))
           (set! (-> *camera-other-fov* data) 11650.845)
@@ -892,11 +859,7 @@
         (set! (-> *camera-other-root* quad) (-> *lightning-mole-hole* quad))
         (set! *camera-look-through-other* 2)
         (suspend)
-        (let ((a0-13 (-> self skel root-channel 0)))
-          (set! (-> a0-13 param 0) (the float (+ (-> a0-13 frame-group data 0 length) -1)))
-          (set! (-> a0-13 param 1) f30-0)
-          (joint-control-channel-group-eval! a0-13 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max f30-0))
         )
       )
     (lightning-mole-task-complete?)
@@ -964,24 +927,12 @@
   (-> (method-of-type fleeing-nav-enemy nav-enemy-chase) trans)
   :code
   (behavior ()
-    (ja-channel-push! 1 60)
+    (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 10)))
-        (set! (-> a0-2 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 10)) data 0 length) -1))
-              )
-        (set! (-> a0-2 param 1) f30-0)
-        (set! (-> a0-2 frame-num) 0.0)
-        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 10)) num-func-seek!)
-        )
+      (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-          (set! (-> a0-3 param 1) f30-0)
-          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max f30-0))
         )
       )
     (go-virtual nav-enemy-chase)
@@ -1143,7 +1094,7 @@
                                           :use-proximity-notice #f
                                           :use-jump-blocked #f
                                           :use-jump-patrol #f
-                                          :gnd-collide-with #x1
+                                          :gnd-collide-with (collide-kind background)
                                           :debug-draw-neck #f
                                           :debug-draw-jump #f
                                           )
@@ -1173,7 +1124,7 @@
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *lightning-mole-sg* '())
   (TODO-RENAME-45 obj *lightning-mole-nav-enemy-info*)
-  (logclear! (-> obj nav flags) (nav-control-flags bit5 bit6 bit7))
+  (logclear! (-> obj nav flags) (nav-control-flags navcf5 navcf6 navcf7))
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
   (set! (-> obj reaction-time) (seconds 0.05))
   (set! (-> obj last-reflection-time) 0)
@@ -1452,8 +1403,8 @@
     )
   :code
   (behavior ()
-    (logior! (-> self draw status) (draw-status drwf01))
-    (while #t
+    (logior! (-> self draw status) (draw-status hidden))
+    (loop
       (suspend)
       )
     (none)
@@ -1469,16 +1420,12 @@
     (if (nonzero? (-> self sound))
         (stop! (-> self sound))
         )
-    (let ((a0-1 (-> self skel root-channel 0)))
-      (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-      (set! (-> a0-1 param 1) 2.0)
-      (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek! max 2.0))
     (while (not (ja-done? 0))
       (suspend)
       (ja-eval)
       )
-    (logior! (-> self draw status) (draw-status drwf01))
+    (logior! (-> self draw status) (draw-status hidden))
     (go peeper-wait)
     (none)
     )
@@ -1505,7 +1452,7 @@
     )
   :code
   (behavior ()
-    (logior! (-> self draw status) (draw-status drwf01))
+    (logior! (-> self draw status) (draw-status hidden))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
       (suspend)
@@ -1554,7 +1501,7 @@
     (if (nonzero? (-> self sound))
         (stop! (-> self sound))
         )
-    (logclear! (-> self draw status) (draw-status drwf01))
+    (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
   :trans
@@ -1566,23 +1513,11 @@
     )
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 13)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 13)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 13)) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 13) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       (go peeper-down)
       )

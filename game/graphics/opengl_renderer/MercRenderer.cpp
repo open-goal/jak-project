@@ -4,8 +4,13 @@
 
 MercRenderer::MercRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id),
-      m_direct(fmt::format("{}-dir", name), my_id, 0x30000, DirectRenderer::Mode::NORMAL) {
+      m_direct(fmt::format("{}-dir", name), my_id, 0x30000),
+      m_direct2(20000, 40000, 1000, name, false) {
   memset(m_buffer.data, 0, sizeof(m_buffer.data));
+}
+
+void MercRenderer::init_shaders(ShaderLibrary& shaders) {
+  m_direct2.init_shaders(shaders);
 }
 
 void MercRenderer::render(DmaFollower& dma,
@@ -42,11 +47,15 @@ void MercRenderer::render(DmaFollower& dma,
   // if we reach here, there's stuff to draw
   handle_setup(dma, render_state, prof);
 
+  m_direct2.reset_state();
   m_direct.reset_state();
+
   while (dma.current_tag_offset() != render_state->next_bucket) {
     handle_merc_chain(dma, render_state, prof);
   }
   ASSERT(dma.current_tag_offset() == render_state->next_bucket);
+  m_direct2.flush_pending(render_state, prof);
+
   m_direct.flush_pending(render_state, prof);
 }
 
@@ -238,8 +247,7 @@ void MercRenderer::handle_merc_chain(DmaFollower& dma,
       }
       break;
     default:
-      fmt::print("unknown mscal: {}\n", mscal_addr);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("unknown mscal: {}", mscal_addr));
   }
 
   //  while (true) {
@@ -337,10 +345,15 @@ void MercRenderer::draw_debug_window() {
   ImGui::Checkbox("Normal MSCAL enable", &m_enable_normal_mscals);
   ImGui::Checkbox("Prime MSCAL enable", &m_enable_prime_mscals);
   ImGui::Checkbox("Send to direct", &m_enable_send_to_direct);
+  m_direct2.draw_debug_window();
 }
 
 void MercRenderer::xgkick(u16 addr, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  if (m_enable_send_to_direct) {
-    m_direct.render_gif(m_buffer.data + (16 * addr), UINT32_MAX, render_state, prof);
+  if (m_enable_send_to_direct && render_state->enable_merc_xgkick) {
+    if (render_state->use_direct2) {
+      m_direct2.render_gif_data(m_buffer.data + (16 * addr), render_state, prof);
+    } else {
+      m_direct.render_gif(m_buffer.data + (16 * addr), UINT32_MAX, render_state, prof);
+    }
   }
 }

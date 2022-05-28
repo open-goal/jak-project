@@ -81,7 +81,8 @@ std::string disassemble_x86_function(u8* data,
                                      u64 highlight_addr,
                                      const std::vector<InstructionInfo>& x86_instructions,
                                      const FunctionEnv* fenv,
-                                     bool* had_failure) {
+                                     bool* had_failure,
+                                     bool print_whole_function) {
   std::string result;
   ZydisDecoder decoder;
   ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
@@ -207,8 +208,8 @@ std::string disassemble_x86_function(u8* data,
   }
 
   for (auto& line : lines) {
-    if (line.first >= rip_src_idx - FORM_DUMP_SIZE_REV &&
-        line.first < rip_src_idx + FORM_DUMP_SIZE_FWD) {
+    if (print_whole_function || (line.first >= rip_src_idx - FORM_DUMP_SIZE_REV &&
+                                 line.first < rip_src_idx + FORM_DUMP_SIZE_FWD)) {
       result.append(line.second);
     }
   }

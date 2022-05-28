@@ -125,8 +125,7 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
     if (read_words[i] < 1) {
       std::string debug;
       data.linked_data.append_word_to_string(debug, words.at(i));
-      printf("[%d] %d 0x%s\n", i, int(read_words[i]), debug.c_str());
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("[{}] {} 0x{}", i, int(read_words[i]), debug.c_str()));
     }
   }
 
@@ -134,17 +133,18 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
 }
 
 std::string write_game_text(
+    const Config& /*cfg*/,
     const std::unordered_map<int, std::unordered_map<int, std::string>>& data) {
   // first sort languages:
-  std::vector<int> langauges;
+  std::vector<int> languages;
   for (const auto& lang : data) {
-    langauges.push_back(lang.first);
+    languages.push_back(lang.first);
   }
-  std::sort(langauges.begin(), langauges.end());
+  std::sort(languages.begin(), languages.end());
 
   // build map
   std::map<int, std::vector<std::string>> text_by_id;
-  for (auto lang : langauges) {
+  for (auto lang : languages) {
     for (auto& text : data.at(lang)) {
       text_by_id[text.first].push_back(text.second);
     }
@@ -152,8 +152,12 @@ std::string write_game_text(
 
   // write!
   std::string result;  // = "\xEF\xBB\xBF";  // UTF-8 encode (don't need this anymore)
-  result += fmt::format("(language-count {})\n", langauges.size());
   result += "(group-name \"common\")\n";
+  result += "(language-id";
+  for (auto lang : languages) {
+    result += fmt::format(" {}", lang);
+  }
+  result += ")\n";
   for (auto& x : text_by_id) {
     result += fmt::format("(#x{:04x}\n  ", x.first);
     for (auto& y : x.second) {

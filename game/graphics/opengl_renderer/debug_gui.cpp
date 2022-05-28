@@ -17,7 +17,7 @@ void FrameTimeRecorder::start_frame() {
   m_fps_timer.start();
 }
 
-void FrameTimeRecorder::draw_window(const DmaStats& dma_stats) {
+void FrameTimeRecorder::draw_window(const DmaStats& /*dma_stats*/) {
   auto* p_open = &m_open;
   ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration |
                                   ImGuiWindowFlags_AlwaysAutoResize |
@@ -37,8 +37,9 @@ void FrameTimeRecorder::draw_window(const DmaStats& dma_stats) {
 
   ImGui::SetNextWindowBgAlpha(0.85f);  // Transparent background
   if (ImGui::Begin("Frame Timing", p_open, window_flags)) {
-    ImGui::Text("DMA: sync ms %.1f, tc %4d, sz %3d KB, ch %d", dma_stats.sync_time_ms,
-                dma_stats.num_tags, (dma_stats.num_data_bytes) / (1 << 10), dma_stats.num_chunks);
+    //    ImGui::Text("DMA: sync ms %.1f, tc %4d, sz %3d KB, ch %d", dma_stats.sync_time_ms,
+    //                dma_stats.num_tags, (dma_stats.num_data_bytes) / (1 << 10),
+    //                dma_stats.num_chunks);
     float worst = 0, total = 0;
     for (auto x : m_frame_times) {
       worst = std::max(x, worst);
@@ -92,23 +93,13 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::MenuItem("Frame Time Plot", nullptr, &m_draw_frame_time);
       ImGui::MenuItem("Render Debug", nullptr, &m_draw_debug);
       ImGui::MenuItem("Profiler", nullptr, &m_draw_profiler);
+      ImGui::MenuItem("Small Profiler", nullptr, &small_profiler);
       ImGui::EndMenu();
     }
 
-    if (ImGui::BeginMenu("Gfx Dump")) {
-      ImGui::Checkbox("Compress Screenshot", &m_compress_screenshot);
+    if (ImGui::BeginMenu("Screenshot")) {
       ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
-      ImGui::InputText("File", m_screenshot_save_name, 30);
-      ImGui::Separator();
-      ImGui::MenuItem("Dump Next Frame!", nullptr, &m_want_save);
-      bool old_replay = m_want_replay;
-      ImGui::MenuItem("Load Saved Dump", nullptr, &m_want_replay);
-      if (!old_replay && m_want_replay) {
-        m_want_dump_load = true;
-      }
-      ImGui::Separator();
-
-      ImGui::InputText("Dump", m_dump_save_name, 12);
+      ImGui::InputText("File", m_screenshot_save_name, 50);
       ImGui::EndMenu();
     }
 
@@ -123,6 +114,19 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::Separator();
       ImGui::Checkbox("Accurate Lag Mode", &experimental_accurate_lag);
       ImGui::Checkbox("Sleep in Frame Limiter", &sleep_in_frame_limiter);
+      ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("Event Profiler")) {
+      ImGui::Checkbox("Record", &record_events);
+      ImGui::MenuItem("Dump to file", nullptr, &dump_events);
+      ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("Debug Mode")) {
+      if (ImGui::MenuItem("Reboot now!")) {
+        want_reboot_in_debug = true;
+      }
       ImGui::EndMenu();
     }
   }

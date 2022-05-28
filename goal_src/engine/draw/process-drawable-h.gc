@@ -49,12 +49,7 @@
 
 (defun num-func-+! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
   "Increment the frame number, taking into account the animation speed and current game rate."
-  (let ((f0-1
-         (+ (-> arg0 frame-num)
-            (* arg1 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio)))
-            )
-          )
-        )
+  (let ((f0-1 (+ (-> arg0 frame-num) (* arg1 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio))))))
     (set! (-> arg0 frame-num) f0-1)
     f0-1
     )
@@ -62,12 +57,7 @@
 
 (defun num-func--! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
   "Decrement the frame number, taking into account the animation speed and current game rate."
-  (let ((f0-1
-         (- (-> arg0 frame-num)
-            (* arg1 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio)))
-            )
-          )
-        )
+  (let ((f0-1 (- (-> arg0 frame-num) (* arg1 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio))))))
     (set! (-> arg0 frame-num) f0-1)
     f0-1
     )
@@ -79,25 +69,21 @@
   ;; get the duration from the joint-animation-compressed.
   (let* ((duration (the float (+ (-> chan frame-group data 0 length) -1)))
          ;; increment (also add a full duration to it, I guess to avoid issues if inc is negative and we're near the start.)
-         (after-inc (+ (+ (-> chan frame-num) duration)
-           (* inc (* (-> chan frame-group speed) (-> *display* time-adjust-ratio)))
-           )
+         (after-inc
+           (+ (-> chan frame-num) duration (* inc (* (-> chan frame-group speed) (-> *display* time-adjust-ratio))))
            )
          ;; wrap.
          (wrapped (- after-inc (* (the float (the int (/ after-inc duration))) duration)))
          )
-   (set! (-> chan frame-num) wrapped)
-   wrapped
-   )
+    (set! (-> chan frame-num) wrapped)
+    wrapped
+    )
   )
 
 (defun num-func-seek! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
   "Seek toward arg1 by at most arg2 (taking into account speed etc)"
-  (let ((f0-3 (seek
-               (-> arg0 frame-num)
-               arg1
-               (* arg2 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio)))
-               )
+  (let ((f0-3
+          (seek (-> arg0 frame-num) arg1 (* arg2 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio))))
           )
         )
     ;; set it twice, just to make sure.
@@ -109,9 +95,7 @@
 
 (defun num-func-blend-in! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
   "Seek frame-interp toward 1. Once its there, do a joint-control-reset."
-  (let* ((v0-0 (seek (-> arg0 frame-interp) 1.0 (* arg1 (-> *display* time-adjust-ratio))))
-         (f30-0 (the-as float v0-0))
-         )
+  (let ((f30-0 (seek (-> arg0 frame-interp) 1.0 (* arg1 (-> *display* time-adjust-ratio)))))
     (set! (-> arg0 frame-interp) f30-0)
     (set! (-> arg0 frame-interp) f30-0)
     (if (= f30-0 1.0)

@@ -38,5 +38,24 @@ with open('goal_src/engine/ui/text-h.gc') as f:
 os.remove('goal_src/engine/ui/text-h.gc')
 with open('goal_src/engine/ui/text-h.gc', "w") as f:
   f.writelines(new_texth_lines)
+with open('goal_src/engine/pc/ui/text-h.gc') as f:
+  lines = f.readlines()
+  found_enum = False
+  for line in lines:
+    if begin_str in line:
+      found_enum = True
+      new_texth_lines.append(begin_str + "\n")
+      new_texth_lines += enum_lines
+      new_texth_lines.append(end_str + "\n")
+      continue
+    if end_str in line:
+      found_enum = False
+      continue
+    if found_enum:
+      continue
+    new_texth_lines.append(line)
+os.remove('goal_src/engine/pc/ui/text-h.gc')
+with open('goal_src/engine/pc/ui/text-h.gc', "w") as f:
+  f.writelines(new_texth_lines)
 print("game-text-id enum updated!")
 

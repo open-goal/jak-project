@@ -9,25 +9,36 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
+option(BUILD_FOR_RELEASE "Build for release purposes (static everything)" OFF)
+if(BUILD_FOR_RELEASE)
+    set(BUILD_SHARED_LIBS OFF)
+else()
+    set(BUILD_SHARED_LIBS ON)
+endif()
+
 # Set default compile flags
 # optimization level can be set here. You can overwrite these in a per-project basis if you want.
 if(MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
     message(STATUS "Clang on MSVC detected! Adding compile flags")
     set(CMAKE_CXX_FLAGS
-        "-Xclang -fcxx-exceptions \
+        "${CMAKE_CXX_FLAGS} \
+        -Xclang -fcxx-exceptions \
         -Xclang -fexceptions \
         -Xclang -std=c++17 \
-        -mfma -mavx2 \
-        -Wno-c++11-narrowing -W3 \
-        /arch:AVX")
-
-    # additional c++ flags for release mode for our projects
-    if(CMAKE_BUILD_TYPE MATCHES "Release")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
-    endif()
+        -Xclang -D_CRT_SECURE_NO_WARNINGS \
+        /arch:AVX \
+        -Wno-c++11-narrowing -Wno-c++98-compat -Wno-c++20-compat -W3")
 
     # linker flags
-    set(CMAKE_EXE_LINKER_FLAGS "/STACK:16000000,16384")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")
+
+    # additional c++ and linker flags for release mode for our projects
+    if(CMAKE_BUILD_TYPE MATCHES "Release")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
+    elseif(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
+    endif()
 
 elseif(UNIX)
     message(STATUS "GCC detected! Adding compile flags")
@@ -47,7 +58,7 @@ elseif(UNIX)
         -Wshadow \
         -Wsign-promo \
         -fdiagnostics-color=always \
-        -march=haswell")
+        -mavx")
 
     # additional c++ flags for release mode for our projects
     if(CMAKE_BUILD_TYPE MATCHES "Release")
@@ -62,10 +73,18 @@ elseif(MSVC)
       # set(CMAKE_CXX_FLAGS_DEBUG "/ZI")
     endif()
     # c++ flags for all build types
-    set(CMAKE_CXX_FLAGS "/EHsc /utf-8 /arch:AVX")
-    
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc /utf-8 /arch:AVX")
+
     # linker flags
-    set(CMAKE_EXE_LINKER_FLAGS "/STACK:16000000,16384")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")
+    
+    # additional c++ and linker flags for specific build types
+    if(CMAKE_BUILD_TYPE MATCHES "Release")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
+    elseif(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
+    endif()
 endif()
 
 if(WIN32)
@@ -73,30 +92,15 @@ if(WIN32)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    
+    set(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION 7.1.7600.0.30514) # win7.1, supports xp
+    message("Windows SDK version: ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
 endif()
 
 if(ASAN_BUILD)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -O1")
     message(STATUS "Doing ASAN build")
 endif()
-
-# if(WIN32)
-#   find_program(buildcache_program buildcache ${PROJECT_SOURCE_DIR}/bin/windows/)
-#   if(buildcache_program)
-#     message("Found Windows BuildCache, gonna use it!")
-#     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${buildcache_program}")
-#   else()
-#     message("Windows Buildcache not found!")
-#   endif()
-# else()
-#   find_program(buildcache_program buildcache ${PROJECT_SOURCE_DIR}/bin/linux/)
-#   if(buildcache_program)
-#     message("Found Linux BuildCache, gonna use it!")
-#     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${buildcache_program}")
-#   else()
-#     message("Linux Buildcache not found!")
-#   endif()
-# endif()
 
 option(CODE_COVERAGE "Enable Code Coverage Compiler Flags" OFF)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/third-party/cmake/modules/)
@@ -115,7 +119,6 @@ include_directories(./)
 include_directories(SYSTEM third-party/inja)
 
 # build repl library
-option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 add_subdirectory(third-party/replxx EXCLUDE_FROM_ALL)
 
 # build common library
@@ -124,9 +127,10 @@ add_subdirectory(common)
 # build decompiler
 add_subdirectory(decompiler)
 
+add_subdirectory(third-party/cubeb)
+
 # build glfw library
 add_subdirectory(third-party/glfw)
-
 add_subdirectory(third-party/zstd)
 
 # build imgui
@@ -158,7 +162,6 @@ add_subdirectory(third-party/lzokay EXCLUDE_FROM_ALL)
 
 # build format library
 add_subdirectory(third-party/fmt EXCLUDE_FROM_ALL)
-
 # discord rich presence
 include_directories(third-party/discord-rpc/include)
 add_subdirectory(third-party/discord-rpc EXCLUDE_FROM_ALL)
@@ -167,11 +170,15 @@ add_subdirectory(third-party/discord-rpc EXCLUDE_FROM_ALL)
 # NOTE: Once under CMake 3.13's policy CMP0077, override with `set()` instead
 option(ZYDIS_BUILD_TOOLS "Zydis: Build tools" OFF)
 option(ZYDIS_BUILD_EXAMPLES "Zydis: Build examples" OFF)
-option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" ON)
+if(BUILD_SHARED_LIBS)
+    option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" ON)
+else()
+    option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" OFF)
+endif()
 add_subdirectory(third-party/zydis EXCLUDE_FROM_ALL)
-
 
 # windows memory management lib
 if(WIN32)
     add_subdirectory(third-party/mman)
 endif()
+

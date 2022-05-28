@@ -18,6 +18,9 @@
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
 #include "goalc/make/MakeSystem.h"
+#include "goalc/data_compiler/game_text_common.h"
+
+#include <mutex>
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
@@ -26,13 +29,20 @@ enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
 class Compiler {
  public:
   Compiler(const std::string& user_profile = "#f", std::unique_ptr<ReplWrapper> repl = nullptr);
-  ReplStatus execute_repl(bool auto_listen = false, bool auto_debug = false);
+  ~Compiler();
+  void save_repl_history();
+  void print_to_repl(const std::string_view& str);
+  std::string get_prompt();
+  std::string get_repl_input();
+  ReplStatus handle_repl_string(const std::string& input);
   goos::Interpreter& get_goos() { return m_goos; }
   FileEnv* compile_object_file(const std::string& name, goos::Object code, bool allow_emit);
   std::unique_ptr<FunctionEnv> compile_top_level_function(const std::string& name,
                                                           const goos::Object& code,
                                                           Env* env);
   Val* compile(const goos::Object& code, Env* env);
+  Val* compile_no_const_prop(const goos::Object& code, Env* env);
+
   Val* compile_error_guard(const goos::Object& code, Env* env);
   None* get_none() { return m_none.get(); }
   std::vector<std::string> run_test_from_file(const std::string& source_code);
@@ -64,6 +74,7 @@ class Compiler {
                      Replxx::colors_t& colors,
                      std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
   bool knows_object_file(const std::string& name);
+  MakeSystem& make_system() { return m_make; }
 
  private:
   TypeSystem m_ts;
@@ -208,7 +219,7 @@ class Compiler {
                                       const Val* actual,
                                       const std::string& error_message = "");
 
-  TypeSpec parse_typespec(const goos::Object& src);
+  TypeSpec parse_typespec(const goos::Object& src, Env* env);
   bool is_local_symbol(const goos::Object& obj, Env* env);
   emitter::HWRegKind get_preferred_reg_kind(const TypeSpec& ts);
   Val* compile_real_function_call(const goos::Object& form,
@@ -217,8 +228,10 @@ class Compiler {
                                   Env* env,
                                   const std::string& method_type_name = "");
 
-  bool try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env);
-  bool try_getting_constant_float(const goos::Object& in, float* out, Env* env);
+  s64 get_constant_integer_or_error(const goos::Object& in, Env* env);
+  ValOrConstInt get_constant_integer_or_variable(const goos::Object& in, Env* env);
+  ValOrConstFloat get_constant_float_or_variable(const goos::Object& in, Env* env);
+
   Val* compile_heap_new(const goos::Object& form,
                         const std::string& allocation,
                         const goos::Object& type,
@@ -381,7 +394,9 @@ class Compiler {
   int get_size_for_size_of(const goos::Object& form, const goos::Object& rest);
 
   template <typename... Args>
-  void throw_compiler_error(const goos::Object& code, const std::string& str, Args&&... args) {
+  [[noreturn]] void throw_compiler_error(const goos::Object& code,
+                                         const std::string& str,
+                                         Args&&... args) {
     fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
     if (!str.empty() && str.back() == '\n') {
       fmt::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
@@ -395,7 +410,7 @@ class Compiler {
   }
 
   template <typename... Args>
-  void throw_compiler_error_no_code(const std::string& str, Args&&... args) {
+  [[noreturn]] void throw_compiler_error_no_code(const std::string& str, Args&&... args) {
     fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
     if (!str.empty() && str.back() == '\n') {
       fmt::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
@@ -427,6 +442,13 @@ class Compiler {
                                  Val*& enter_val);
 
  public:
+  struct ConstPropResult {
+    goos::Object value;
+    bool has_side_effects = true;
+  };
+  ConstPropResult try_constant_propagation(const goos::Object& form, Env* env);
+  ConstPropResult constant_propagation_dispatch(const goos::Object& form, Env* env);
+
   // Asm
   Val* compile_rlet(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_ret(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -437,8 +459,6 @@ class Compiler {
   Val* compile_asm_load_sym(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_jr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_mov(const goos::Object& form, const goos::Object& rest, Env* env);
-  Val* compile_asm_movn(const goos::Object& form, const goos::Object& rest, Env* env);
-  Val* compile_asm_slt(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Vector Float Operations
   Val* compile_asm_lvf(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -537,6 +557,7 @@ class Compiler {
 
   // Block
   Val* compile_begin(const goos::Object& form, const goos::Object& rest, Env* env);
+  ConstPropResult const_prop_begin(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_top_level(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_block(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_return_from(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -550,6 +571,7 @@ class Compiler {
   Val* compile_asm_file(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_repl_clear_screen(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_data_file(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_text_file(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_repl_help(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_listen_to_target(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_reset_target(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -599,6 +621,7 @@ class Compiler {
 
   // Macro
   Val* compile_gscond(const goos::Object& form, const goos::Object& rest, Env* env);
+  ConstPropResult const_prop_gscond(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_quote(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defglobalconstant(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defconstant(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -647,6 +670,7 @@ class Compiler {
   Val* compile_none(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defenum(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
+  ConstPropResult const_prop_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_psize_of(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // State

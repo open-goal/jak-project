@@ -54,7 +54,7 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
     // get the type of the new place
     TypeSpec ts = m_ts.make_typespec("object");
     if (def_args.has_named("type")) {
-      ts = parse_typespec(def_args.named.at("type"));
+      ts = parse_typespec(def_args.named.at("type"), env);
     }
 
     // figure out the class
@@ -590,11 +590,7 @@ Val* Compiler::compile_asm_int128_math2_imm_u8(const goos::Object& form,
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
   auto src = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
-  s64 imm;
-  if (!try_getting_constant_integer(args.unnamed.at(2), &imm, env)) {
-    throw_compiler_error(form, "Could not evaluate {} as a compile-time integer.",
-                         args.unnamed.at(2).print());
-  }
+  s64 imm = get_constant_integer_or_error(args.unnamed.at(2), env);
 
   if (imm < 0 || imm > 255) {
     throw_compiler_error(form, "Immediate {} is invalid. The value {} is out of range for a uint8.",

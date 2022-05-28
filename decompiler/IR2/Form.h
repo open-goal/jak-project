@@ -1025,6 +1025,8 @@ class GenericOperator {
     return m_condition_kind;
   }
 
+  bool is_func() const { return m_kind == Kind::FUNCTION_EXPR; }
+
   const Form* func() const {
     ASSERT(m_kind == Kind::FUNCTION_EXPR);
     return m_function;
@@ -1099,6 +1101,100 @@ class CastElement : public FormElement {
   TypeSpec m_type;
   Form* m_source = nullptr;
   bool m_numeric = false;  // if true, use the. otherwise the-as
+};
+
+class DynamicMethodAccess : public FormElement {
+ public:
+  explicit DynamicMethodAccess(RegisterAccess source);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  RegisterAccess m_source;
+};
+
+class GetMethodElement : public FormElement {
+ public:
+  GetMethodElement(Form* in, std::string name, bool is_object);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+
+ private:
+  Form* m_in = nullptr;
+  std::string m_name;
+  bool m_is_object = false;
+};
+
+class StringConstantElement : public FormElement {
+ public:
+  StringConstantElement(const std::string& value);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+
+ private:
+  std::string m_value;
+};
+
+class ConstantTokenElement : public FormElement {
+ public:
+  explicit ConstantTokenElement(const std::string& value);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  const std::string& value() const { return m_value; }
+
+ private:
+  std::string m_value;
+};
+
+class ConstantFloatElement : public FormElement {
+ public:
+  explicit ConstantFloatElement(float value);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  float value() const { return m_value; }
+
+ private:
+  float m_value;
 };
 
 class DerefToken {
@@ -1177,27 +1273,11 @@ class DerefElement : public FormElement {
   void set_addr_of(bool is_addr_of) { m_is_addr_of = is_addr_of; }
 
  private:
+  ConstantTokenElement* try_as_art_const(const Env& env, FormPool& pool);
+
   Form* m_base = nullptr;
   bool m_is_addr_of = false;
   std::vector<DerefToken> m_tokens;
-};
-
-class DynamicMethodAccess : public FormElement {
- public:
-  explicit DynamicMethodAccess(RegisterAccess source);
-  goos::Object to_form_internal(const Env& env) const override;
-  void apply(const std::function<void(FormElement*)>& f) override;
-  void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars, bool recursive) const override;
-  void update_from_stack(const Env& env,
-                         FormPool& pool,
-                         FormStack& stack,
-                         std::vector<FormElement*>* result,
-                         bool allow_side_effects) override;
-  void get_modified_regs(RegSet& regs) const override;
-
- private:
-  RegisterAccess m_source;
 };
 
 class ArrayFieldAccess : public FormElement {
@@ -1232,82 +1312,6 @@ class ArrayFieldAccess : public FormElement {
   int m_expected_stride = -1;
   int m_constant_offset = -1;
   bool m_flipped = false;
-};
-
-class GetMethodElement : public FormElement {
- public:
-  GetMethodElement(Form* in, std::string name, bool is_object);
-  goos::Object to_form_internal(const Env& env) const override;
-  void apply(const std::function<void(FormElement*)>& f) override;
-  void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars, bool recursive) const override;
-  void get_modified_regs(RegSet& regs) const override;
-  void update_from_stack(const Env& env,
-                         FormPool& pool,
-                         FormStack& stack,
-                         std::vector<FormElement*>* result,
-                         bool allow_side_effects) override;
-
- private:
-  Form* m_in = nullptr;
-  std::string m_name;
-  bool m_is_object = false;
-};
-
-class StringConstantElement : public FormElement {
- public:
-  StringConstantElement(const std::string& value);
-  goos::Object to_form_internal(const Env& env) const override;
-  void apply(const std::function<void(FormElement*)>& f) override;
-  void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars, bool recursive) const override;
-  void get_modified_regs(RegSet& regs) const override;
-  void update_from_stack(const Env& env,
-                         FormPool& pool,
-                         FormStack& stack,
-                         std::vector<FormElement*>* result,
-                         bool allow_side_effects) override;
-
- private:
-  std::string m_value;
-};
-
-class ConstantTokenElement : public FormElement {
- public:
-  explicit ConstantTokenElement(const std::string& value);
-  goos::Object to_form_internal(const Env& env) const override;
-  void apply(const std::function<void(FormElement*)>& f) override;
-  void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars, bool recursive) const override;
-  void get_modified_regs(RegSet& regs) const override;
-  void update_from_stack(const Env& env,
-                         FormPool& pool,
-                         FormStack& stack,
-                         std::vector<FormElement*>* result,
-                         bool allow_side_effects) override;
-  const std::string& value() const { return m_value; }
-
- private:
-  std::string m_value;
-};
-
-class ConstantFloatElement : public FormElement {
- public:
-  explicit ConstantFloatElement(float value);
-  goos::Object to_form_internal(const Env& env) const override;
-  void apply(const std::function<void(FormElement*)>& f) override;
-  void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars, bool recursive) const override;
-  void get_modified_regs(RegSet& regs) const override;
-  void update_from_stack(const Env& env,
-                         FormPool& pool,
-                         FormStack& stack,
-                         std::vector<FormElement*>* result,
-                         bool allow_side_effects) override;
-  float value() const { return m_value; }
-
- private:
-  float m_value;
 };
 
 class StorePlainDeref : public FormElement {

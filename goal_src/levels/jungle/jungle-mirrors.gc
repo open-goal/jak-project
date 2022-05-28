@@ -10,6 +10,8 @@
 (define-extern draw-power-beam (function vector vector none))
 
 ;; DECOMP BEGINS
+(import "goal_src/import/reflector-mirror-ag.gc")
+(import "goal_src/import/periscope-ag.gc")
 
 (defpartgroup group-jungle-binoculars
   :id 176
@@ -622,38 +624,29 @@
   )
 
 
-(defskelgroup *periscope-base-sg* periscope
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 23.5 0 24)
-  :longest-edge (meters 4.5)
-  )
+(defskelgroup *periscope-base-sg* periscope periscope-base-lod0-jg periscope-base-idle-ja
+              ((periscope-base-lod0-mg (meters 20)) (periscope-base-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 23.5 0 24)
+              :longest-edge (meters 4.5)
+              )
 
-(defskelgroup *periscope-mirror-sg* periscope
-  4
-  7
-  ((5 (meters 20)) (6 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *periscope-mirror-sg* periscope periscope-mirror-lod0-jg periscope-mirror-idle-ja
+              ((periscope-mirror-lod0-mg (meters 20)) (periscope-mirror-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
 
-(defskelgroup *reflector-mirror-sg* reflector-mirror
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 9 0 9)
-  :longest-edge (meters 3)
-  )
+(defskelgroup *reflector-mirror-sg* reflector-mirror reflector-mirror-lod0-jg reflector-mirror-idle-ja
+              ((reflector-mirror-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 9 0 9)
+              :longest-edge (meters 3)
+              )
 
-(defskelgroup *reflector-mirror-break-sg* reflector-mirror
-  4
-  6
-  ((5 (meters 999999)))
-  :bounds (static-spherem 0 9 0 9)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *reflector-mirror-break-sg* reflector-mirror reflector-mirror-break-lod0-jg reflector-mirror-break-break-ja
+              ((reflector-mirror-break-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 9 0 9)
+              )
 
+;; jungle eco connector first-person cam
 (defstate cam-periscope (camera-slave)
   :event
   cam-standard-event-handler
@@ -690,11 +683,11 @@
            (f30-0 (the-as float (-> (the-as periscope (-> gp-0 0)) turn)))
            (s5-0 (new 'stack-no-clear 'vector))
            )
-      (while #t
+      (loop
         (when (not (or (paused?) (-> (the-as periscope (-> self change-event-from 0)) aligned?)))
           (vector-reset! s5-0)
           (when *camera-read-analog*
-            (let ((f26-0 (analog-input
+            (let ((f26-0 (analog-input-horizontal-first   ;; changed for pc port
                            (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
                            0.0
                            48.0
@@ -702,7 +695,7 @@
                            -1.0
                            )
                          )
-                  (f0-0 (analog-input
+                  (f0-0 (analog-input-vertical-first   ;; changed for pc port
                           (the-as int (+ (-> *cpad-list* cpads 0 righty) -256 (-> *cpad-list* cpads 0 lefty)))
                           0.0
                           48.0
@@ -765,7 +758,7 @@
   :code
   (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (while #t
+      (loop
         (set! (-> gp-0 x) (-> self parent-override 0 tilt))
         (set! (-> gp-0 y) (-> self parent-override 0 turn))
         (set! (-> gp-0 z) 0.0)
@@ -1044,7 +1037,7 @@
 (defbehavior periscope-draw-beam-impact periscope ()
   (when (periscope-has-power-input?)
     (update! (-> self sound))
-    (if (logtest? (-> self draw status) (draw-status drwf03))
+    (if (logtest? (-> self draw status) (draw-status was-drawn))
         (sp-launch-particles-var
           *sp-particle-system-2d*
           (-> *part-id-table* 825)
@@ -1278,7 +1271,7 @@
   :exit
   (behavior ()
     (restore-collide-with-as (-> self root-override))
-    (logclear! (-> self draw status) (draw-status drwf01))
+    (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
   :trans
@@ -1295,8 +1288,8 @@
     (ja-post)
     (suspend)
     (update-transforms! (-> self root-override))
-    (logior! (-> self draw status) (draw-status drwf01))
-    (while #t
+    (logior! (-> self draw status) (draw-status hidden))
+    (loop
       (suspend)
       )
     (none)
@@ -1342,15 +1335,9 @@
         1
         (the-as symbol (-> self base))
         )
-      (set! (-> self y-offset)
-            (seek (-> self y-offset) (-> self height) (* 16384.0 (-> *display* seconds-per-frame)))
-            )
-      (set! (-> self turn)
-            (seek (-> self turn) (-> self target-turn) (* 7281.778 (-> *display* seconds-per-frame)))
-            )
-      (set! (-> self tilt)
-            (seek (-> self tilt) (-> self target-tilt) (* 7281.778 (-> *display* seconds-per-frame)))
-            )
+      (seek! (-> self y-offset) (-> self height) (* 16384.0 (-> *display* seconds-per-frame)))
+      (seek! (-> self turn) (-> self target-turn) (* 7281.778 (-> *display* seconds-per-frame)))
+      (seek! (-> self tilt) (-> self target-tilt) (* 7281.778 (-> *display* seconds-per-frame)))
       (set! (-> self raised?) (< (+ -12288.0 (-> self height)) (-> self y-offset)))
       (periscope-update-joints)
       (suspend)
@@ -1371,16 +1358,14 @@
     (set! (-> self raised?) #t)
     (let ((f30-0 (+ -20480.0 (-> self height))))
       (until (= (-> self y-offset-grips) f30-0)
-        (set! (-> self y-offset-grips)
-              (seek (-> self y-offset-grips) f30-0 (* 16384.0 (-> *display* seconds-per-frame)))
-              )
+        (seek! (-> self y-offset-grips) f30-0 (* 16384.0 (-> *display* seconds-per-frame)))
         (periscope-update-joints)
         (suspend)
         )
       )
     (update-transforms! (-> self root-override))
     (set! (-> self y-offset) (-> self height))
-    (while #t
+    (loop
       (if (periscope-has-power-input?)
           (go periscope-wait-for-player)
           )
@@ -1401,8 +1386,8 @@
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('touch)
-       (when (and *target* (not (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                                     (zero? (logand (-> *target* control status) 1))
+       (when (and *target* (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+                                     (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
                                      )
                                 )
                   )
@@ -1457,9 +1442,7 @@
           1
           (the-as symbol (-> self grips transform))
           )
-        (set! (-> self y-offset-grips)
-              (seek (-> self y-offset-grips) f30-0 (* 16384.0 (-> *display* seconds-per-frame)))
-              )
+        (seek! (-> self y-offset-grips) f30-0 (* 16384.0 (-> *display* seconds-per-frame)))
         (periscope-update-joints)
         (suspend)
         )
@@ -1471,17 +1454,15 @@
           (s4-0 (new 'stack-no-clear 'vector))
           (s3-0 (new 'stack-no-clear 'vector))
           )
-      (while #t
+      (loop
         (set! (-> s5-0 quad) (-> self node-list data 4 bone transform vector 3 quad))
         (let ((a0-10 s5-0)
               (f30-1 81920.0)
               )
           (when (and *target* (>= f30-1 (vector-vector-distance a0-10 (-> *target* control trans))))
-            (when (logtest? (-> *target* control status) 1)
+            (when (logtest? (-> *target* control status) (cshape-moving-flags onsurf))
               (let ((f0-7 (fmax 4096.0 (fmin 12288.0 (+ (- 5120.0 (-> self base y)) (-> *target* control trans y))))))
-                (set! (-> self y-offset-grips)
-                      (seek (-> self y-offset-grips) f0-7 (* 16384.0 (-> *display* seconds-per-frame)))
-                      )
+                (seek! (-> self y-offset-grips) f0-7 (* 16384.0 (-> *display* seconds-per-frame)))
                 )
               )
             (vector-! gp-1 (target-pos 0) (-> self base))
@@ -1517,7 +1498,7 @@
                   )
                 (when (cpad-pressed? 0 circle)
                   (set! (-> self grips-moving?) #f)
-                  (while #t
+                  (loop
                     (send-event *target* 'change-mode 'periscope self)
                     (hide-hud)
                     (suspend)
@@ -1560,7 +1541,7 @@
 (defstate periscope-player-control (periscope)
   :exit
   (behavior ()
-    (logclear! (-> self reflector 0 draw status) (draw-status drwf01))
+    (logclear! (-> self reflector 0 draw status) (draw-status hidden))
     (periscope-find-reflection-angles)
     (set! (-> self turn) (-> self target-turn))
     (set! (-> self tilt) (-> self target-tilt))
@@ -1677,9 +1658,9 @@
       (set! (-> gp-0 vector 3 quad) a2-2)
       )
     (send-event *camera* 'change-state cam-periscope 0)
-    (logior! (-> self reflector 0 draw status) (draw-status drwf01))
+    (logior! (-> self reflector 0 draw status) (draw-status hidden))
     (suspend)
-    (while #t
+    (loop
       (if (not (-> self aligned?))
           (set! (-> self lock-time) (-> *display* base-frame-counter))
           )
@@ -1691,7 +1672,7 @@
         (if (periscope-test-task-complete?)
             (close-specific-task! (game-task jungle-lurkerm) (task-status need-reminder))
             )
-        (while #t
+        (loop
           (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
             (set! (-> a1-6 from) self)
             (set! (-> a1-6 num-params) 0)
@@ -1705,7 +1686,7 @@
                      (periscope-crosshair)
                      (suspend)
                      )
-                   (logclear! (-> self reflector 0 draw status) (draw-status drwf01))
+                   (logclear! (-> self reflector 0 draw status) (draw-status hidden))
                    (periscope-find-reflection-angles)
                    (set! (-> self turn) (-> self target-turn))
                    (set! (-> self tilt) (-> self target-tilt))
@@ -1808,9 +1789,7 @@
     (set! (-> self tilt) (-> self target-tilt))
     (let ((f30-0 (+ -20480.0 (-> self height))))
       (until (= (-> self y-offset-grips) f30-0)
-        (set! (-> self y-offset-grips)
-              (seek (-> self y-offset-grips) f30-0 (* 16384.0 (-> *display* seconds-per-frame)))
-              )
+        (seek! (-> self y-offset-grips) f30-0 (* 16384.0 (-> *display* seconds-per-frame)))
         (periscope-update-joints)
         (sound-play-by-name
           (static-sound-name "site-moves")
@@ -1826,7 +1805,7 @@
       )
     (sound-stop (-> self grips-sound-id))
     (ja-post)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1908,19 +1887,8 @@
   (periscope-update-joints)
   (set! (-> obj grips-moving?) #f)
   (set! (-> obj sound-id) (new-sound-id))
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "eco-beam")
-                           :volume #x400
-                           :fo-max 50
-                           )
-                         (-> obj reflector-trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "eco-beam" :fo-max 50) (-> obj reflector-trans))
         )
   (set! (-> obj rise-sound-id) (new-sound-id))
   (set! (-> obj grips-sound-id) (new-sound-id))
@@ -1991,7 +1959,7 @@
       )
     (process-entity-status! self (entity-perm-status complete) #t)
     (reflector-origin-update (-> self link next))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -2034,10 +2002,10 @@
     (let ((gp-0 (new-stack-vector0)))
       (set! (-> gp-0 quad) (-> self root-override trans quad))
       (set! (-> gp-0 y) (+ 49152.0 (-> gp-0 y)))
-      (while #t
+      (loop
         (draw-power-beam gp-0 (-> self beam-end))
         (update! (-> self sound))
-        (when (logtest? (-> self draw status) (draw-status drwf03))
+        (when (logtest? (-> self draw status) (draw-status was-drawn))
           (sp-launch-particles-var
             *sp-particle-system-2d*
             (-> *part-id-table* 825)
@@ -2133,7 +2101,7 @@
         )
       )
     (logior! (-> self mask) (process-mask actor-pause))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -2183,19 +2151,8 @@
   (set! (-> obj link) (new 'process 'actor-link-info obj))
   (initialize-skeleton obj *reflector-mirror-sg* '())
   (set-vector! (-> obj beam-end) 1805721.6 167936.0 -932659.2 1.0)
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "eco-beam")
-                           :volume #x400
-                           :fo-max 50
-                           )
-                         (-> obj beam-end)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "eco-beam" :fo-max 50) (-> obj beam-end))
         )
   (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
       (go reflector-mirror-broken #t)

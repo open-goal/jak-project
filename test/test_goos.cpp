@@ -404,17 +404,6 @@ TEST(GoosBuiltins, Null) {
   }
 }
 
-TEST(GoosBuiltins, CurrentMethodType) {
-  Interpreter i;
-  i.goal_to_goos.enclosing_method_type = "test-type";
-  EXPECT_EQ(e(i, "(current-method-type)"), "test-type");
-
-  i.disable_printfs();
-  for (auto x : {"(current-method-type 1)"}) {
-    EXPECT_ANY_THROW(e(i, x));
-  }
-}
-
 TEST(GoosBuiltins, Type) {
   Interpreter i;
   EXPECT_EQ(e(i, "(type? 'empty-list '())"), "#t");
@@ -1326,4 +1315,17 @@ TEST(GoosBuiltins, StringUtils) {
   EXPECT_EQ(e(i, "(string-length \"test\")"), "4");
   EXPECT_EQ(e(i, "(string-append \"hello\" \" \" \"world\")"), "\"hello world\"");
   EXPECT_EQ(e(i, "(symbol->string 'test)"), "\"test\"");
+}
+
+TEST(GoosBuiltins, HashTable) {
+  Interpreter i;
+  e(i, "(define ht (make-string-hash-table))");
+  EXPECT_EQ(e(i, "(car (hash-table-try-ref ht \"foo\"))"), "#f");
+
+  e(i, "(hash-table-set! ht \"foo\" 123)");
+  EXPECT_EQ(e(i, "(car (hash-table-try-ref ht \"bar\"))"), "#f");
+  EXPECT_EQ(e(i, "(car (hash-table-try-ref ht \"foo\"))"), "#t");
+  EXPECT_EQ(e(i, "(cdr (hash-table-try-ref ht \"foo\"))"), "123");
+  e(i, "(hash-table-set! ht \"foo\" 456)");
+  EXPECT_EQ(e(i, "(cdr (hash-table-try-ref ht \"foo\"))"), "456");
 }

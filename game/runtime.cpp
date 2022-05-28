@@ -9,6 +9,8 @@
 #elif _WIN32
 #include <io.h>
 #include "third-party/mman/mman.h"
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #endif
 
@@ -55,6 +57,7 @@
 
 #include "common/goal_constants.h"
 #include "common/cross_os_debug/xdbg.h"
+#include "common/util/FileUtil.h"
 
 u8* g_ee_main_mem = nullptr;
 std::thread::id g_main_thread_id = std::thread::id();
@@ -73,7 +76,7 @@ void deci2_runner(SystemThreadInterface& iface) {
   std::function<bool()> shutdown_callback = [&]() { return iface.get_want_exit(); };
 
   // create and register server
-  Deci2Server server(shutdown_callback);
+  Deci2Server server(shutdown_callback, DECI2_PORT);
   ee::LIBRARY_sceDeci2_register(&server);
 
   // now its ok to continue with initialization
@@ -83,20 +86,20 @@ void deci2_runner(SystemThreadInterface& iface) {
   lg::debug("[DECI2] Waiting for EE to register protos");
   server.wait_for_protos_ready();
   // then allow the server to accept connections
-  if (!server.init()) {
-    ASSERT(false);
+  if (!server.init_server()) {
+    ASSERT_MSG(false, "[DECI2] Server not initialized even if protocols are ready, aborting");
   }
 
   lg::debug("[DECI2] Waiting for listener...");
   bool saw_listener = false;
   while (!iface.get_want_exit()) {
-    if (server.check_for_listener()) {
+    if (server.is_client_connected()) {
       if (!saw_listener) {
         lg::debug("[DECI2] Connected!");
       }
       saw_listener = true;
       // we have a listener, run!
-      server.run();
+      server.read_data();
     } else {
       // no connection yet.  Do a sleep so we don't spam checking the listener.
       std::this_thread::sleep_for(std::chrono::microseconds(50000));
@@ -272,10 +275,12 @@ void dmac_runner(SystemThreadInterface& iface) {
  * Main function to launch the runtime.
  * GOAL kernel arguments are currently ignored.
  */
-u32 exec_runtime(int argc, char** argv) {
+RuntimeExitStatus exec_runtime(int argc, char** argv) {
   g_argc = argc;
   g_argv = argv;
   g_main_thread_id = std::this_thread::get_id();
+
+  file_util::create_dir_if_needed("game_config/");
 
   // parse opengoal arguments
   bool enable_display = true;
@@ -311,19 +316,16 @@ u32 exec_runtime(int argc, char** argv) {
 
   // step 3: start the EE!
   iop_thread.start(iop_runner);
-  ee_thread.start(ee_runner);
   deci_thread.start(deci2_runner);
+  ee_thread.start(ee_runner);
   if (VM::use) {
     vm_dmac_thread.start(dmac_runner);
-  } else {
-    vm_dmac_thread.start(null_runner);
   }
 
   // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread.
   // TODO relegate this to its own function
-  // TODO also sync this up with how the game actually renders things (this is just a placeholder)
   if (enable_display) {
-    Gfx::Loop([]() { return !MasterExit; });
+    Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
     Gfx::Exit();
   }
 

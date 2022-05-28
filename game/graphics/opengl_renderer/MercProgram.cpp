@@ -3,11 +3,7 @@
 void MercRenderer::mscal(int enter_address,
                          SharedRenderState* render_state,
                          ScopedProfilerNode& prof) {
-  if (render_state->render_debug) {
-    mscal_impl<true>(enter_address, render_state, prof);
-  } else {
-    mscal_impl<false>(enter_address, render_state, prof);
-  }
+  mscal_impl<false>(enter_address, render_state, prof);
 }
 
 static inline REALLY_INLINE float erleng(const Vf& in) {
@@ -3145,8 +3141,7 @@ ASSERT(false);
   case 0x539:
     goto JUMP_539;
   default:
-    fmt::print("bad jump to {:x}\n", vu.vi08);
-  ASSERT(false);
+    ASSERT_MSG(false, fmt::format("bad jump to {:x}", vu.vi08));
   }
   L94:
   // 3072.0                     |  mulax.xyzw ACC, vf01, vf11 :i

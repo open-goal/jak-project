@@ -12,6 +12,7 @@
 
 
 ;; DECOMP BEGINS
+(import "goal_src/import/dark-crystal-ag.gc")
 
 (deftype dark-crystal (process-drawable)
   ((root-override         collide-shape         :offset        112)
@@ -40,31 +41,23 @@
   )
 
 
-(defskelgroup *dark-crystal-sg* dark-crystal
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 3.4 0 3.8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *dark-crystal-sg* dark-crystal dark-crystal-lod0-jg -1
+              ((dark-crystal-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3.4 0 3.8)
+              )
 
-(defskelgroup *dark-crystal-explode-sg* dark-crystal
-  3
-  -1
-  ((4 (meters 999999)))
-  :bounds (static-spherem 0 -15 0 50)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *dark-crystal-explode-sg* dark-crystal dark-crystal-explode-lod0-jg -1
+              ((dark-crystal-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -15 0 50)
+              )
 
-(define
-  *dark-crystal-flash-delays*
+(define *dark-crystal-flash-delays*
   (the-as (array int32)
     (new 'static 'boxed-array :type int32 :length 9 :allocated-length 9 #xb4 #x96 #x78 90 60 30 15 7 3)
     )
   )
 
-(define
-  *dark-crystal-exploder-params*
+(define *dark-crystal-exploder-params*
   (new 'static 'joint-exploder-static-params
     :joints
     (new
@@ -470,7 +463,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -540,7 +533,7 @@
       (suspend)
       (ja-channel-set! 0)
       (ja-post)
-      (logior! (-> self draw status) (draw-status drwf01))
+      (logior! (-> self draw status) (draw-status hidden))
       (dummy-20 self)
       (if (-> self underwater?)
           (sound-play-by-name (static-sound-name "water-explosion") (new-sound-id) 1024 0 0 1 #t)
@@ -576,7 +569,7 @@
           (go dark-crystal-spawn-fuel-cell)
           )
       )
-    (dummy-18 self)
+    (cleanup-for-death self)
     (until (not (-> self child))
       (suspend)
       )
@@ -603,7 +596,7 @@
       )
     (ja-channel-set! 0)
     (ja-post)
-    (logior! (-> self draw status) (draw-status drwf01))
+    (logior! (-> self draw status) (draw-status hidden))
     (if (not (task-complete? *game-info* (-> self entity extra perm task)))
         (birth-pickup-at-point
           (-> self root-override trans)
@@ -619,7 +612,7 @@
       (suspend)
       )
     (aybabtu 2)
-    (dummy-18 self)
+    (cleanup-for-death self)
     (none)
     )
   )

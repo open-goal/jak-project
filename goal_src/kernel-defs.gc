@@ -306,12 +306,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; PC Port functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defenum pc-renderer-tree-type
+  (none   0)
+  (tfrag3 1)
+  (tie3   2)
+  (invalid))
+
+(defenum pc-collision-mode
+  (none     0)
+  (mode     1)
+  (event    2)
+  (material 3)
+  (skip     4))
+
 (define-extern __read-ee-timer (function uint))
 (define-extern __mem-move (function pointer pointer uint none))
 (define-extern __send-gfx-dma-chain (function object object none))
 (define-extern __pc-texture-upload-now (function object object none))
 (define-extern __pc-texture-relocate (function object object object none))
 (define-extern __pc-get-mips2c (function string function))
+(define-extern __pc-set-levels (function string string none))
 (define-extern pc-pad-input-mode-set (function symbol none))
 (define-extern pc-pad-input-pad-set (function int none))
 (define-extern pc-pad-input-mode-get (function int))
@@ -319,14 +333,37 @@
 (define-extern pc-pad-input-index-get (function int))
 (define-extern pc-pad-input-map-save! (function none))
 (define-extern pc-pad-get-mapped-button (function int int int))
+(define-extern pc-get-fullscreen (function symbol))
+(define-extern pc-get-screen-size (function int (pointer int32) (pointer int32) (pointer int32) none))
 (define-extern pc-get-os (function symbol))
 (define-extern pc-get-window-size (function (pointer int32) (pointer int32) none))
 (define-extern pc-get-window-scale (function (pointer float) (pointer float) none))
 (define-extern pc-set-window-size (function int int none))
+(define-extern pc-set-fullscreen (function symbol int none))
+(define-extern pc-renderer-tree-set-lod (function pc-renderer-tree-type int none))
 (define-extern pc-set-letterbox (function int int none))
-(define-extern pc-set-fullscreen (function int int none))
+(define-extern pc-set-collision (function symbol none))
+(define-extern pc-set-collision-wireframe (function symbol none))
+(define-extern pc-get-collision-mask (function pc-collision-mode int symbol))
+(define-extern pc-set-collision-mask (function pc-collision-mode int symbol none))
+(define-extern pc-set-collision-mode (function pc-collision-mode none))
 (define-extern pc-discord-rpc-update (function discord-info none))
 (define-extern pc-discord-rpc-set (function int none))
+(define-extern pc-filepath-exists? (function string symbol))
+(define-extern pc-mkdir-file-path (function string none))
+
+(defenum pc-prof-event
+  (begin 0)
+  (end 1)
+  (instant 2)
+  )
+
+(define-extern pc-prof (function string pc-prof-event none))
+
+;; Constants generated within the C++ runtime
+(define-extern *pc-user-dir-base-path* string)
+(define-extern *pc-settings-folder* string)
+(define-extern *pc-settings-built-sha* string)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; vm functions
