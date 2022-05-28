@@ -25,14 +25,7 @@ uniform vec4 perspective2;
 uniform vec4 perspective3;
 uniform vec4 fog_constants;
 
-// matrix hack
-uniform vec4 hmat0;
-uniform vec4 hmat1;
-uniform vec4 hmat2;
-uniform vec4 hmat3;
-
 uniform mat4 perspective_matrix;
-uniform vec4 camera_position;
 
 // output
 out vec3 vtx_color;

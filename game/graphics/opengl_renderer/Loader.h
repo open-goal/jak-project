@@ -74,8 +74,8 @@ class Loader {
   void load_common(TexturePool& tex_pool, const std::string& name);
   void set_want_levels(const std::vector<std::string>& levels);
   std::vector<LevelData*> get_in_use_levels();
- private:
 
+ private:
   void loader_thread();
   u64 add_texture(TexturePool& pool, const tfrag3::Texture& tex, bool is_common);
 

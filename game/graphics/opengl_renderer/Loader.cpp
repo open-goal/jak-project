@@ -494,17 +494,18 @@ bool Loader::init_tie(Timer& timer, LevelData& data) {
 }
 
 bool Loader::init_collide(Timer& /*timer*/, LevelData& data) {
+  Timer t;
   glGenBuffers(1, &data.collide_vertices);
   glBindBuffer(GL_ARRAY_BUFFER, data.collide_vertices);
   glBufferData(GL_ARRAY_BUFFER,
                data.level->collision.vertices.size() * sizeof(tfrag3::CollisionMesh::Vertex),
                data.level->collision.vertices.data(), GL_STATIC_DRAW);
+  fmt::print("init_collide took {:.2f} ms\n", t.getMs());
   return true;
 }
 
 bool Loader::init_merc(Timer& /*timer*/, LevelData& data) {
-  fmt::print("INIT MERC for {}, {}\n", data.level->level_name, data.level->merc_data.models.size());
-
+  Timer t;
   glGenBuffers(1, &data.merc_indices);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.merc_indices);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.level->merc_data.indices.size() * sizeof(u32),
@@ -518,8 +519,8 @@ bool Loader::init_merc(Timer& /*timer*/, LevelData& data) {
   for (auto& model : data.level->merc_data.models) {
     data.merc_model_lookup[model.name] = &model;
     m_all_merc_models[model.name].push_back({&model, data.load_id, &data});
-    fmt::print("added merc model for {}\n", model.name);
   }
+  fmt::print("init_merc took {:.2f} ms\n", t.getMs());
   return true;
 }
 

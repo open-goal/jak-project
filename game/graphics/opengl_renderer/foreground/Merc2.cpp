@@ -84,11 +84,7 @@ void Merc2::init_shaders(ShaderLibrary& shaders) {
   m_uniforms.perspective[3] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "perspective3");
 
   m_uniforms.fog = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "fog_constants");
-
-  m_uniforms.hmat[0] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "hmat0");
-  m_uniforms.hmat[1] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "hmat1");
-  m_uniforms.hmat[2] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "hmat2");
-  m_uniforms.hmat[3] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "hmat3");
+  m_uniforms.decal = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "decal_enable");
 
   m_uniforms.fog_color = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "fog_color");
   m_uniforms.perspective_matrix =
@@ -208,7 +204,7 @@ void Merc2::handle_all_dma(DmaFollower& dma,
 
   // if we reach here, there's stuff to draw
   // this handles merc-specific setup DMA
-  handle_setup_dma(dma, render_state, prof);
+  handle_setup_dma(dma);
 
   // handle each merc transfer
   while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -226,9 +222,7 @@ void set_uniform(GLuint uniform, const math::Vector4f& val) {
 }
 }  // namespace
 
-void Merc2::handle_setup_dma(DmaFollower& dma,
-                             SharedRenderState* render_state,
-                             ScopedProfilerNode& prof) {
+void Merc2::handle_setup_dma(DmaFollower& dma) {
   auto first = dma.read_and_advance();
 
   // 10 quadword setup packet
@@ -496,7 +490,7 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
   m_current_model = std::nullopt;
 }
 
-void Merc2::flush_draw_buckets(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+void Merc2::flush_draw_buckets(SharedRenderState* /*render_state*/, ScopedProfilerNode& prof) {
   m_stats.num_draw_flush++;
 
   for (u32 li = 0; li < m_next_free_level_bucket; li++) {
@@ -592,6 +586,9 @@ void Merc2::flush_draw_buckets(SharedRenderState* render_state, ScopedProfilerNo
         last_light = draw.light_idx;
       }
       setup_opengl_from_draw_mode(draw.mode, GL_TEXTURE0, true);
+
+      glUniform1i(m_uniforms.decal, draw.mode.get_decal());
+
       prof.add_draw_call();
       prof.add_tri(draw.num_triangles);
       glBindBufferRange(GL_UNIFORM_BUFFER, 1, m_bones_buffer, sizeof(MercMat) * draw.first_bone,

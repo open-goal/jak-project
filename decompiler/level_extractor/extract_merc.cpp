@@ -229,6 +229,9 @@ DrawMode process_draw_mode(const MercShader& info) {
   // check these
   mode.disable_ab();
   mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
+  mode.set_tcc(info.tex0.tcc());
+  mode.set_decal(info.tex0.tfx() == GsTex0::TextureFunction::DECAL);
+  mode.set_filt_enable(info.tex1.mmag());
 
   // the alpha matters (maybe?)
   update_mode_from_alpha1(info.alpha, mode);

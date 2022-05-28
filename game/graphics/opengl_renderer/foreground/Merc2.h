@@ -48,10 +48,7 @@ class Merc2 : public BucketRenderer {
   void init_for_frame(SharedRenderState* render_state);
   void init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state);
   void handle_all_dma(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_setup_dma(DmaFollower& dma,
-                        SharedRenderState* render_state,
-                        ScopedProfilerNode& prof);
-  // void handle_lights_dma(const DmaTransfer& dma);
+  void handle_setup_dma(DmaFollower& dma);
   u32 alloc_lights(const VuLights& lights);
   void set_lights(const DmaTransfer& dma);
   void handle_matrix_dma(const DmaTransfer& dma);
@@ -86,8 +83,6 @@ class Merc2 : public BucketRenderer {
     GLuint perspective[4];
     GLuint fog;
 
-    GLuint hmat[4];
-
     GLuint tbone;
     GLuint nbone;
 
@@ -95,6 +90,7 @@ class Merc2 : public BucketRenderer {
     GLuint perspective_matrix;
 
     GLuint ignore_alpha;
+    GLuint decal;
   } m_uniforms;
 
   GLuint m_vao;

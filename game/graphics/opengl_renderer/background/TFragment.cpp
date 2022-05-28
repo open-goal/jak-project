@@ -31,10 +31,6 @@ TFragment::TFragment(const std::string& name,
   }
 }
 
-constexpr const char* level_names[] = {"bea", "cit", "dar", "fin", "int", "jub", "jun", "fic",
-                                       "lav", "mai", "mis", "ogr", "rob", "rol", "sno", "sub",
-                                       "sun", "swa", "tit", "tra", "vi1", "vi2", "vi3"};
-
 void TFragment::render(DmaFollower& dma,
                        SharedRenderState* render_state,
                        ScopedProfilerNode& prof) {
