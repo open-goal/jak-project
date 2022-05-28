@@ -60,12 +60,20 @@ class Loader {
     int frames_since_last_used = 0;
   };
 
+  struct MercRef {
+    const tfrag3::MercModel* model = nullptr;
+    u64 load_id = 0;
+    const LevelData* level = nullptr;
+    bool operator==(const MercRef& other) const {
+      return model == other.model && load_id == other.load_id;
+    }
+  };
+
   const LevelData* get_tfrag3_level(const std::string& level_name);
-  const tfrag3::MercModel* get_merc_model(const char* model_name);
+  std::optional<MercRef> get_merc_model(const char* model_name);
   void load_common(TexturePool& tex_pool, const std::string& name);
   void set_want_levels(const std::vector<std::string>& levels);
   std::vector<LevelData*> get_in_use_levels();
-
  private:
 
   void loader_thread();
@@ -79,7 +87,7 @@ class Loader {
   bool init_merc(Timer& timer, LevelData& data);
 
   // used by game and loader thread
-  std::unordered_map<std::string, LevelData> m_initializing_tfrag3_levels;
+  std::unordered_map<std::string, std::unique_ptr<LevelData>> m_initializing_tfrag3_levels;
 
   LevelData m_common_level;
 
@@ -93,15 +101,8 @@ class Loader {
   uint64_t m_id = 0;
 
   // used only by game thread
-  std::unordered_map<std::string, LevelData> m_loaded_tfrag3_levels;
+  std::unordered_map<std::string, std::unique_ptr<LevelData>> m_loaded_tfrag3_levels;
 
-  struct MercRef {
-    const tfrag3::MercModel* model = nullptr;
-    u64 load_id = 0;
-    bool operator==(const MercRef& other) const {
-      return model == other.model && load_id == other.load_id;
-    }
-  };
   std::unordered_map<std::string, std::vector<MercRef>> m_all_merc_models;
 
   std::vector<std::string> m_desired_levels;

@@ -266,6 +266,7 @@ void MercModel::serialize(Serializer& ser) {
   for (auto& effect : effects) {
     effect.serialize(ser);
   }
+  ser.from_ptr(&scale_xyz);
 }
 
 void MercModelGroup::serialize(Serializer& ser) {

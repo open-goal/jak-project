@@ -41,6 +41,7 @@ enum class ShaderId {
   SHADOW = 16,
   SHRUB = 17,
   COLLISION = 18,
+  MERC2 = 19,
   MAX_SHADERS
 };
 

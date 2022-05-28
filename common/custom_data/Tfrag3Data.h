@@ -331,11 +331,15 @@ struct CollisionMesh {
 struct MercVertex {
   float pos[3];
   float pad0;
+
   float normal[3];
   float pad1;
+
   float weights[3];
   float pad2;
+
   float st[2];
+
   u8 rgba[4];
   u8 mats[3];
   u8 pad3;
@@ -360,6 +364,7 @@ struct MercEffect {
 struct MercModel {
   std::string name;
   std::vector<MercEffect> effects;
+  float scale_xyz;
   void serialize(Serializer& ser);
 };
 

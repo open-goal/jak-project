@@ -28,13 +28,65 @@ class Merc2 : public BucketRenderer {
   } m_low_memory;
   static_assert(sizeof(LowMemory) == 0x80);
 
-  void init_for_frame();
+  void init_for_frame(SharedRenderState* render_state);
   void init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state);
   void handle_all_dma(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_setup_dma(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_setup_dma(DmaFollower& dma,
+                        SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
+  void handle_lights_dma(const DmaTransfer& dma);
+  void handle_matrix_dma(const DmaTransfer& dma);
+  void flush_pending_model(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
+  void upload_tbones(int count, float scale);
 
-  const tfrag3::MercModel* m_current_model = nullptr;
+  std::optional<Loader::MercRef> m_current_model = std::nullopt;
+  u16 m_current_effect_enable_bits = 0;
+  struct VuLights {
+    math::Vector3f direction0;
+    u32 w0;
+    math::Vector3f direction1;
+    u32 w1;
+    math::Vector3f direction2;
+    u32 w2;
+    math::Vector3f color0;
+    u32 w3;
+    math::Vector3f color1;
+    u32 w4;
+    math::Vector3f color2;
+    u32 w5;
+    math::Vector3f ambient;
+    u32 w6;
+  };
+
+  struct MercMat {
+    math::Vector4f tmat[4];
+    math::Vector4f nmat[3];
+  };
+
+  static constexpr int MAX_MERC_MATRICES = 128;
+  MercMat m_matrix_buffer[MAX_MERC_MATRICES];
+
+  struct {
+    GLuint light_direction[3];
+    GLuint light_color[3];
+    GLuint light_ambient;
+
+    GLuint hvdf_offset;
+    GLuint perspective[4];
+    GLuint fog;
+
+    GLuint hmat[4];
+
+    GLuint tbone;
+    GLuint nbone;
+
+    GLuint fog_color;
+    GLuint perspective_matrix;
+
+  } m_uniforms;
+
+  GLuint m_vao;
 
   struct Stats {
     int num_models = 0;

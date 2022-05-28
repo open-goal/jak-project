@@ -437,6 +437,7 @@ void handle_frag(const std::string& debug_name,
     vtx.dst0 = float_as_u32(v1.x()) - 371;  // xtop to output buffer offset
     vtx.dst1 = float_as_u32(v1.y()) - 371;
     vtx.rgba = frag.unsigned_four_including_header.at(rgba_ptr);
+    vtx.st = math::Vector2f(v2.x(), v2.y());
 
     // crazy flag logic to set adc
     s16 mat1_flag = mat1;
@@ -890,6 +891,7 @@ void extract_merc(const ObjectFileData& ag_data,
     auto& ctrl = ctrls[ci];
 
     pc_ctrl.name = ctrl.name;
+    pc_ctrl.scale_xyz = ctrl.header.xyz_scale;
 
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
       indices_temp[ci].emplace_back();
@@ -939,6 +941,8 @@ void extract_merc(const ObjectFileData& ag_data,
               new_tex.data = tex_it->second.rgba_bytes;
             }
           }
+
+          pc_draw->tree_tex_id = idx_in_level_texture;
         } else {
           pc_draw_idx = existing->second;
           pc_draw = &pc_effect.draws.at(pc_draw_idx);
