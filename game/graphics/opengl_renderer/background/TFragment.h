@@ -47,7 +47,6 @@ class TFragment : public BucketRenderer {
   void handle_initialization(DmaFollower& dma);
 
   bool m_child_mode = false;
-  bool m_hack_test_many_levels = false;
   bool m_override_time_of_day = false;
   float m_time_of_days[8] = {1, 0, 0, 0, 0, 0, 0, 0};
 
@@ -80,11 +79,4 @@ class TFragment : public BucketRenderer {
   Tfrag3 m_tfrag3;
   std::vector<tfrag3::TFragmentTreeKind> m_tree_kinds;
   int m_level_id;
-
-  struct HackManyLevels {
-    static constexpr int NUM_LEVELS = 23;
-    std::unique_ptr<Tfrag3> tfrag_level_renderers[NUM_LEVELS];
-    std::unique_ptr<Tie3> tie_level_renderers[NUM_LEVELS];
-    bool level_enables[NUM_LEVELS] = {0};
-  } m_many_level_render;
 };

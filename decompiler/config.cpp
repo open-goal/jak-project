@@ -232,6 +232,10 @@ Config read_config_file(const std::string& path_to_config_file,
   config.art_groups_by_function =
       art_info_json.at("functions").get<std::unordered_map<std::string, std::string>>();
 
+  auto import_deps = read_json_file_from_config(cfg, "import_deps_file");
+  config.import_deps_by_file =
+      import_deps.get<std::unordered_map<std::string, std::vector<std::string>>>();
+
   return config;
 }
 

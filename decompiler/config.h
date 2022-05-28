@@ -141,6 +141,8 @@ struct Config {
 
   std::unordered_map<std::string, std::string> art_groups_by_file;
   std::unordered_map<std::string, std::string> art_groups_by_function;
+
+  std::unordered_map<std::string, std::vector<std::string>> import_deps_by_file;
 };
 
 Config read_config_file(const std::string& path_to_config_file,

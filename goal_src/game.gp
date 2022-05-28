@@ -642,7 +642,7 @@
 ;; oracle
 (copy-strs "ORI1" "ORLE1" "ORRE1" "ORR1")
 ;; assistant
-(copy-strs "ASIBESWI" "ASR1BESW")
+(copy-strs "ASIBESWI" "ASR1BESW" "ASIRBIKE" "ASR1RBIK" "ASR1GENE")
 ;; sage
 (copy-strs "SAISA" "SAISD1" "SAISD2" "SAISE" "SAR1ECOR" "SAIMCANN" "SAR1MCAN" "SAR1GENE" "SAR2GENE")
 ;; fishermans-boat
@@ -1888,7 +1888,6 @@
  "debug/anim-tester.gc"
  "debug/viewer.gc"
  "debug/part-tester.gc"
- "debug/default-menu.gc"
  )
 
 (goal-src-sequence
@@ -1938,9 +1937,11 @@
  )
 
 
+(fmt #t "found {} spools\n" (count *all-str*))
 (group-list "spools"
  `(,@(reverse *all-str*))
  )
+
 
 (group-list "text"
  `("out/iso/0COMMON.TXT"
@@ -1953,7 +1954,12 @@
 (goal-src "pc/pckernel.gc" "settings")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
+(goal-src "pc/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
+
+;; the debug menu is modified to include PC specific options:
+(goal-src "engine/debug/default-menu.gc" "anim-tester-x" "part-tester")
 
 (group-list "all-code"
   `(,@(reverse *all-gc*))
   )
+

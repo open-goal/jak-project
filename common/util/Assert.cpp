@@ -1,7 +1,9 @@
+#include "Assert.h"
+
+#ifndef NO_ASSERT
+
 #include <cstdio>
 #include <cstdlib>
-
-#include "Assert.h"
 #include <string_view>
 
 void private_assert_failed(const char* expr,
@@ -32,3 +34,5 @@ void private_assert_failed(const char* expr,
     private_assert_failed(expr, file, line, function, msg.data());
   }
 }
+
+#endif

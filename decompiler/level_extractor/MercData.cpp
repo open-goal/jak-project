@@ -5,6 +5,7 @@
 
 namespace decompiler {
 void MercCtrlHeader::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {
+  st_magic = read_plain_data_field<u32>(tr, "st-magic", dts);
   xyz_scale = read_plain_data_field<float>(tr, "xyz-scale", dts);
   st_out_a = read_plain_data_field<u32>(tr, "st-out-a", dts);
   st_out_b = read_plain_data_field<u32>(tr, "st-out-b", dts);

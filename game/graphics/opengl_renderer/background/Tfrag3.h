@@ -12,11 +12,6 @@ class Tfrag3 {
   Tfrag3();
   ~Tfrag3();
 
-  void debug_render_all_trees_nolores(int geom,
-                                      const TfragRenderSettings& settings,
-                                      SharedRenderState* render_state,
-                                      ScopedProfilerNode& prof);
-
   void render_all_trees(int geom,
                         const TfragRenderSettings& settings,
                         SharedRenderState* render_state,
@@ -57,7 +52,7 @@ class Tfrag3 {
   static constexpr int GEOM_MAX = 3;
 
   struct TreeCache {
-    tfrag3::TFragmentTreeKind kind;
+    tfrag3::TFragmentTreeKind kind = tfrag3::TFragmentTreeKind::INVALID;
     GLuint vertex_buffer = -1;
     GLuint index_buffer = -1;
     GLuint single_draw_index_buffer = -1;

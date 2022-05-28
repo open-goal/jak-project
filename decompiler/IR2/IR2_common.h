@@ -123,6 +123,7 @@ enum class FixedOperatorKind {
   LOGIOR,
   LOGIOR_IN_PLACE,
   LOGXOR,
+  LOGXOR_IN_PLACE,
   LOGNOR,
   LOGNOT,
   LOGCLEAR,

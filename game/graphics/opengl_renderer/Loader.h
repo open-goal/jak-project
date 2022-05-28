@@ -33,6 +33,10 @@ class Loader {
     std::vector<GLuint> shrub_vertex_data;
     GLuint collide_vertices;
 
+    GLuint merc_vertices;
+    GLuint merc_indices;
+    std::unordered_map<std::string, const tfrag3::MercModel*> merc_model_lookup;
+
     // internal load state
     bool tie_opengl_created = false;
     bool tie_verts_done = false;
@@ -52,19 +56,26 @@ class Loader {
     bool shrub_load_done = false;
     u32 shrub_next_tree = 0;
     u32 shrub_next_vert = 0;
+
+    int frames_since_last_used = 0;
+  };
+
+  struct MercRef {
+    const tfrag3::MercModel* model = nullptr;
+    u64 load_id = 0;
+    const LevelData* level = nullptr;
+    bool operator==(const MercRef& other) const {
+      return model == other.model && load_id == other.load_id;
+    }
   };
 
   const LevelData* get_tfrag3_level(const std::string& level_name);
+  std::optional<MercRef> get_merc_model(const char* model_name);
   void load_common(TexturePool& tex_pool, const std::string& name);
   void set_want_levels(const std::vector<std::string>& levels);
   std::vector<LevelData*> get_in_use_levels();
 
  private:
-  struct Level {
-    LevelData data;
-    int frames_since_last_used = 0;
-  };
-
   void loader_thread();
   u64 add_texture(TexturePool& pool, const tfrag3::Texture& tex, bool is_common);
 
@@ -73,11 +84,12 @@ class Loader {
   bool init_tfrag(Timer& timer, LevelData& data);
   bool init_shrub(Timer& timer, LevelData& data);
   bool init_collide(Timer& timer, LevelData& data);
+  bool init_merc(Timer& timer, LevelData& data);
 
   // used by game and loader thread
-  std::unordered_map<std::string, Level> m_initializing_tfrag3_levels;
+  std::unordered_map<std::string, std::unique_ptr<LevelData>> m_initializing_tfrag3_levels;
 
-  tfrag3::Level m_common_level;
+  LevelData m_common_level;
 
   std::string m_level_to_load;
 
@@ -89,7 +101,9 @@ class Loader {
   uint64_t m_id = 0;
 
   // used only by game thread
-  std::unordered_map<std::string, Level> m_loaded_tfrag3_levels;
+  std::unordered_map<std::string, std::unique_ptr<LevelData>> m_loaded_tfrag3_levels;
+
+  std::unordered_map<std::string, std::vector<MercRef>> m_all_merc_models;
 
   std::vector<std::string> m_desired_levels;
 };

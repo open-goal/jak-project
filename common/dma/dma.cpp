@@ -79,6 +79,9 @@ std::string VifCode::print() {
     case Kind::DIRECTHL:
       result = "DIRECTHL";
       break;
+    case Kind::PC_PORT:
+      result = "PC_PORT";
+      break;
     case Kind::UNPACK_V4_8: {
       VifCodeUnpack up(*this);
       result = fmt::format("UNPACK-V4-8: {} addr: {} us: {} tops: {}", num, up.addr_qw,

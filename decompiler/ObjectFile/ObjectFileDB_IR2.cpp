@@ -92,13 +92,19 @@ void ObjectFileDB::analyze_functions_ir2(
 
     ir2_symbol_definition_map(data);
 
+    const auto& imports_it = config.import_deps_by_file.find(data.to_unique_name());
+    std::vector<std::string> imports;
+    if (imports_it != config.import_deps_by_file.end()) {
+      imports = imports_it->second;
+    }
+
     if (!output_dir.empty()) {
-      ir2_write_results(output_dir, config, data);
+      ir2_write_results(output_dir, config, imports, data);
     } else {
       if (!skip_functions.empty()) {
-        data.output_with_skips = ir2_final_out(data, skip_functions);
+        data.output_with_skips = ir2_final_out(data, imports, skip_functions);
       }
-      data.full_output = ir2_final_out(data);
+      data.full_output = ir2_final_out(data, imports, {});
     }
 
     for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
@@ -641,6 +647,7 @@ void ObjectFileDB::ir2_insert_anonymous_functions(int seg, ObjectFileData& data)
 
 void ObjectFileDB::ir2_write_results(const std::string& output_dir,
                                      const Config& config,
+                                     const std::vector<std::string>& imports,
                                      ObjectFileData& obj) {
   if (obj.linked_data.has_any_functions()) {
     // todo
@@ -649,7 +656,7 @@ void ObjectFileDB::ir2_write_results(const std::string& output_dir,
     auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_ir2.asm");
     file_util::write_text_file(file_name, file_text);
 
-    auto final = ir2_final_out(obj);
+    auto final = ir2_final_out(obj, imports, {});
     auto final_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_disasm.gc");
     file_util::write_text_file(final_name, final);
   }
@@ -1022,6 +1029,7 @@ bool ObjectFileDB::lookup_function_type(const FunctionName& name,
 }
 
 std::string ObjectFileDB::ir2_final_out(ObjectFileData& data,
+                                        const std::vector<std::string>& imports,
                                         const std::unordered_set<std::string>& skip_functions) {
   if (data.obj_version == 3) {
     std::string result;
@@ -1029,7 +1037,7 @@ std::string ObjectFileDB::ir2_final_out(ObjectFileData& data,
     result += "(in-package goal)\n\n";
     ASSERT(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).size() == 1);
     auto top_level = data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).at(0);
-    result += write_from_top_level(top_level, dts, data.linked_data, skip_functions);
+    result += write_from_top_level(top_level, dts, data.linked_data, imports, skip_functions);
     result += "\n\n";
     return result;
   } else {

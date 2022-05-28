@@ -11,6 +11,7 @@
 #include "common/util/print_float.h"
 #include "decompiler/IR2/ExpressionHelpers.h"
 #include "decompiler/util/goal_constants.h"
+#include "common/util/Assert.h"
 
 /*
  * TODO
@@ -2079,8 +2080,19 @@ void SimpleExpressionElement::update_from_stack_float_to_int(const Env& env,
   auto var = m_expr.get_arg(0).var();
   auto arg = pop_to_forms({var}, env, pool, stack, allow_side_effects).at(0);
   auto type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
+  auto fpr_convert_matcher =
+      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::GPR_TO_FPR), {Matcher::any(0)});
+  auto mr = match(fpr_convert_matcher, arg);
   if (type == TypeSpec("float")) {
     result->push_back(pool.alloc_element<CastElement>(TypeSpec("int"), arg, true));
+  } else if (env.dts->ts.tc(type, TypeSpec("float")) && mr.matched) {
+    // this is a parent of float. normally we would fix this with a manual cast, but that is too
+    // effective since float->int requires the type to be EXACTLY float.
+    // so we add a cast to float first.
+    // we also strip the gpr->fpr here
+    result->push_back(pool.alloc_element<CastElement>(
+        TypeSpec("int"), pool.form<CastElement>(TypeSpec("float"), mr.maps.forms.at(0), true),
+        true));
   } else {
     throw std::runtime_error(
         fmt::format("Used float to int on a {}: {}", type.print(), to_string(env)));
@@ -2406,7 +2418,8 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
       {FixedOperatorKind::ADDITION_PTR, FixedOperatorKind::ADDITION_PTR_IN_PLACE, 0},
       {FixedOperatorKind::LOGAND, FixedOperatorKind::LOGAND_IN_PLACE, 0},
       {FixedOperatorKind::LOGIOR, FixedOperatorKind::LOGIOR_IN_PLACE, 0},
-      {FixedOperatorKind::LOGCLEAR, FixedOperatorKind::LOGCLEAR_IN_PLACE, 0}};
+      {FixedOperatorKind::LOGCLEAR, FixedOperatorKind::LOGCLEAR_IN_PLACE, 0},
+      {FixedOperatorKind::LOGXOR, FixedOperatorKind::LOGXOR_IN_PLACE, 0}};
 
   typedef struct {
     std::string orig_name;
@@ -2439,9 +2452,8 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
               }
               ASSERT_MSG(
                   inplace_call,
-                  fmt::format(
-                      "Somehow, no appropriate inplace call was generated for (set! {}) -> {}",
-                      call_info.orig_name, call_info.inplace_name));
+                  fmt::format("no appropriate inplace call was generated for (set! {}) -> {}",
+                              call_info.orig_name, call_info.inplace_name));
               stack.push_form_element(inplace_call, true);
               return;
             }
@@ -3466,7 +3478,7 @@ Form* try_rewrite_as_pppointer_to_process(CondNoElseElement* value,
 //   )
 // (ja-group :chan 0)
 Form* try_rewrite_as_ja_group(CondNoElseElement* value,
-                              FormStack& stack,
+                              FormStack& /*stack*/,
                               FormPool& pool,
                               const Env& env) {
   if (value->entries.size() != 1) {
@@ -4152,7 +4164,7 @@ FormElement* ConditionElement::make_equal_check_generic(const Env& env,
           macro_args.push_back(source_forms.at(1));
 
           auto jagroup = source_forms.at(0)->try_as_element<GenericElement>();
-          for (int i = 1; i < jagroup->elts().size(); ++i) {
+          for (size_t i = 1; i < jagroup->elts().size(); ++i) {
             macro_args.push_back(jagroup->elts().at(i));
           }
           return pool.alloc_element<GenericElement>(
