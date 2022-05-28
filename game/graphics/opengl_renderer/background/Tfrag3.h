@@ -44,7 +44,7 @@ class Tfrag3 {
   };
 
   void update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
-                   const Loader::LevelData* loader_data);
+                   const LevelData* loader_data);
 
   int lod() const { return Gfx::g_global_settings.lod_tfrag; }
 
