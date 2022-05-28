@@ -365,6 +365,8 @@ struct MercModel {
   std::string name;
   std::vector<MercEffect> effects;
   float scale_xyz;
+  u32 max_draws;
+  u32 max_bones;
   void serialize(Serializer& ser);
 };
 

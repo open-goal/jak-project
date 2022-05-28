@@ -15,7 +15,7 @@
 
 ;; It's more than just bones in here - submitting to merc is done from here.
 
-(defglobalconstant USE_GENERIC #t)
+(defglobalconstant BACKWARD_COMPAT_MERC_CLIP #f)
 
 ;;;;;;;;;;;;;;;;;;
 ;; calc list
@@ -937,11 +937,12 @@
   )
 
 (defun pc-draw-bones ((dc draw-control) (dma-buf pointer))
-  ;; (format 0 "pcdb: ~A~%" (-> dc mgeo name))
+  "Add a dma packet to tell the PC renderer which model we are renderering."
   (let ((packet (the-as dma-packet dma-buf)))
+    ;; merc draw asm will check this.
     (when (zero? (-> (scratchpad-object terrain-context) work foreground bone-mem work next-merc))
-     (set! (-> (scratchpad-object terrain-context) work foreground bone-mem work next-merc) packet)
-     )
+      (set! (-> (scratchpad-object terrain-context) work foreground bone-mem work next-merc) packet)
+      )
     (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 10))
     (set! (-> packet vif0) (new 'static 'vif-tag))
     (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
@@ -953,10 +954,9 @@
     )
   (&+! dma-buf (* 16 10))
 
+  ;; merc linking needs this.
   (let ((packet (the-as dma-packet dma-buf)))
-    ; (set! (-> (scratchpad-object terrain-context) work foreground bone-mem work next-merc) packet)
     (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 0))
-
     (set! (-> packet vif0) (new 'static 'vif-tag))
     (set! (-> packet vif1) (new 'static 'vif-tag))
     (set! dma-buf (the pointer (&+ packet 16)))
@@ -1062,12 +1062,22 @@
 
           ;; only data-format 1 is supported.
           (when (= (-> arg0 data-format) 1)
+
+            ;; we'll be filling out the *merc-bucket-info*, then calling the draw asm functions
+            ;; the asm functions read *merc-bucket-info* and generate DMA data as needed.
+
+            ;;;;;;;;;;;;;;;;;;;;;;;;;
+            ;; LIGHT SETUP
+            ;;;;;;;;;;;;;;;;;;;;;;;;;
+
             ;; lights should be converted to a single vu-lights already, by the drawing code.
             ;; it stashes lights on the scratchpad. We'll load these here and transform them.
-            ;; the result goes in the merc-bucke-info.
+            ;; the result goes in the merc-bucket-info.
             (let ((v1-6 (the-as vu-lights (+ 64 (scratchpad-object int))))
                   (a0-7 (-> *merc-bucket-info* light))
                   )
+              ;; merc does drawing in a camera rotated frame, so multiply by inv-rot to have the right directions
+              ;; relative to the camera.
               (let ((a1-8 (-> *math-camera* inv-camera-rot)))
                 (.lvf vf4 (&-> a1-8 vector 0 quad))
                 (.lvf vf5 (&-> a1-8 vector 1 quad))
@@ -1076,29 +1086,28 @@
               (.lvf vf1 (&-> v1-6 direction 0 quad))
               (.lvf vf2 (&-> v1-6 direction 1 quad))
               (.lvf vf3 (&-> v1-6 direction 2 quad))
-              ;;(.vcallms 54)
-              ;; TODO!
+              ;;(.vcallms 54) ;; manually ported to goal here.
 
-                ;mulax.xyzw ACC, vf01, vf04
-                (.mul.x.vf acc vf1 vf4)
-                ;madday.xyzw ACC, vf02, vf04
-                (.add.mul.y.vf acc vf2 vf4 acc)
-                ;maddz.xyzw vf07, vf03, vf04
-                (.add.mul.z.vf vf7 vf3 vf4 acc)
+              ;mulax.xyzw ACC, vf01, vf04
+              (.mul.x.vf acc vf1 vf4)
+              ;madday.xyzw ACC, vf02, vf04
+              (.add.mul.y.vf acc vf2 vf4 acc)
+              ;maddz.xyzw vf07, vf03, vf04
+              (.add.mul.z.vf vf7 vf3 vf4 acc)
 
-                ;mulax.xyzw ACC, vf01, vf05
-                (.mul.x.vf acc vf1 vf5)
-                ;madday.xyzw ACC, vf02, vf05
-                (.add.mul.y.vf acc vf2 vf5 acc)
-                ;maddz.xyzw vf08, vf03, vf05
-                (.add.mul.z.vf vf8 vf3 vf5 acc)
+              ;mulax.xyzw ACC, vf01, vf05
+              (.mul.x.vf acc vf1 vf5)
+              ;madday.xyzw ACC, vf02, vf05
+              (.add.mul.y.vf acc vf2 vf5 acc)
+              ;maddz.xyzw vf08, vf03, vf05
+              (.add.mul.z.vf vf8 vf3 vf5 acc)
 
-                ;mulax.xyzw ACC, vf01, vf06
-                (.mul.x.vf acc vf1 vf6)
-                ;madday.xyzw ACC, vf02, vf06 :e
-                (.add.mul.y.vf acc vf2 vf6 acc)
-                ;maddz.xyzw vf09, vf03, vf06
-                (.add.mul.z.vf vf9 vf3 vf6 acc)
+              ;mulax.xyzw ACC, vf01, vf06
+              (.mul.x.vf acc vf1 vf6)
+              ;madday.xyzw ACC, vf02, vf06 :e
+              (.add.mul.y.vf acc vf2 vf6 acc)
+              ;maddz.xyzw vf09, vf03, vf06
+              (.add.mul.z.vf vf9 vf3 vf6 acc)
 
               (let ((a1-9 (-> v1-6 color 0 quad)))
                 (let ((a2-14 (-> v1-6 color 1 quad)))
@@ -1119,7 +1128,8 @@
               )
 
             ;; the drawable system's culling already knows if we need clipping or not,
-            ;; we just trust it.
+            ;; we just trust it. Anything needing clip will have this set. It might set it for
+            ;; meshes that actually don't need clipping.
             (set! (-> *merc-bucket-info* needs-clip)
                   (if (logtest? (-> arg0 status) (draw-status needs-clip))
                       1
@@ -1130,42 +1140,56 @@
             ;; Now, we need to decide on merc settings. Default to nothing.
             (set! used-merc 0)
             (set! used-mercneric 0)
+            ;; clipping is really slow because merc vertex interpolation is slow
+            ;; so we have an option to just let the GS scissor, called mercprime.
+            ;; it requires a special codepath in merc called mercprime.
             (set! (-> *merc-bucket-info* need-mercprime-if-merc) 0)
+            ;; if we're really out of bounds, mercprime will fail, and we need to fall back to mercneric
+            ;; in order to do clipping.
             (set! (-> *merc-bucket-info* must-use-mercneric-for-clip) 0)
 
-            (when (logtest? (-> arg0 status) (draw-status needs-clip))
-              ;; we can either clip with "mercprime" (part of merc), or fall back to generic.
-              ;; the generic approach always works, but is slower, so we try to use mercprime.
-              ;; the user must provide a longest edge length, and we must pass an edge check (fails if close to camera)
-              (cond
-                ((nonzero? (-> arg0 longest-edge))
-                 ;; TODO this makes close up things bad...
-                 (if (draw-bones-check-longest-edge-asm arg0 arg2)
-                     (set! (-> *merc-bucket-info* need-mercprime-if-merc) 1)      ;; clip with mercprime!
-                     (set! (-> *merc-bucket-info* must-use-mercneric-for-clip) 1) ;; failed, use generic
+            ;;;;;;;;;;;;;;;;;;;
+            ;; CLIPPING TEST
+            ;; in the PC port merc2 renderer, we handle clipping perfectly without any special flags, and it's the fastest.
+            ;; so we only need to worry about mercneric/mercprime if we want to maintain backward compatibility with original merc
+            (#when BACKWARD_COMPAT_MERC_CLIP
+                     (when (logtest? (-> arg0 status) (draw-status needs-clip))
+                       ;; we can either clip with "mercprime" (part of merc), or fall back to generic.
+                       ;; the generic approach always works, but is slower, so we try to use mercprime.
+                       ;; the user must provide a longest edge length, and we must pass an edge check (fails if close to camera)
+                       (cond
+                         ((nonzero? (-> arg0 longest-edge))
+                          ;; check to see if the edge will be too long:
+                          (if (draw-bones-check-longest-edge-asm arg0 arg2)
+                              (set! (-> *merc-bucket-info* need-mercprime-if-merc) 1)      ;; use mercprime!
+                              (set! (-> *merc-bucket-info* must-use-mercneric-for-clip) 1) ;; failed, use generic and actually scissor
+                              )
+                          )
+                         (else
+                           ;; in cases where no longest edge is set, fall back to mercneric for clipping always
+                           (set! (-> *merc-bucket-info* must-use-mercneric-for-clip) 1)
+                           )
+                         )
+                       )
                      )
-                 )
-                (else
-                  (set! (-> *merc-bucket-info* must-use-mercneric-for-clip) 1) ;; no longest edge info, use generic.
-                  )
-                )
-              )
 
             ;; grab the geometry at the appropriate level of detail.
             (let ((geom (-> arg0 lod-set lod (-> arg0 cur-lod) geo))
+                  ;; merc2 can't handle all cases of the original merc, so we add this fallback on PC.
                   (pc-force-mercneric #f)
                   )
               ;; loop over effects, and set them up/pick renderers.
               (set! effect-idx 0)
               (while (< effect-idx (the-as int (-> geom header effect-count)))
 
-                ;; try texture scroll
+                ;; check if this "effect" uses texture scrolling
                 (when (logtest? (-> geom effect effect-idx effect-bits) 1)
+                  ;; grab the extra info for it:
                   (let* ((v1-35 (-> geom effect effect-idx extra-info))
                          (v1-36 (the-as mei-texture-scroll (+ (the-as uint v1-35) (* (-> v1-35 texture-scroll-offset) 16))))
                          )
-                    (when (< arg2 (-> v1-36 max-dist))
-                        ;; do scrolling. in PC, always use generic here.
+                    (when (< arg2 (-> v1-36 max-dist)) ;; in range to draw?
+                        ;; do scrolling. in PC, always use generic here because merc2 can't update texture coordinates
                         (#when PC_PORT
                           (set! pc-force-mercneric #t)
                           )
@@ -1174,10 +1198,10 @@
                     )
                   )
 
-                ;; try ripple
+                ;; check if this effect uses "ripple"
                 (when (logtest? (-> geom effect effect-idx effect-bits) 4)
-                  ;; TODO.
                   (when (-> arg0 ripple)
+                    ;; merc2 can't handle ripple, even if it's off.
                     (#when PC_PORT
                       (set! pc-force-mercneric #t)
                       )
@@ -1220,16 +1244,44 @@
                     )
                   )
 
+                ;; additional check on PC to force mercneric for blend shapes
+                (#when PC_PORT
+                  (let* ((pd (the process-drawable (-> arg0 process)))
+                         (jc (-> pd skel)))
+                    (when (nonzero? jc)
+                      (when (logtest? (-> jc status) (janim-status blerc))
+                        (set! pc-force-mercneric #t)
+                        )
+                      )
+                    )
+                  )
 
+
+                ;; final mercneric checks
                 (cond
-                  ((nonzero? (-> arg0 death-timer))
-                   ;; if using hte death effect, use mercneric always!
+                  ((nonzero? (-> arg0 death-timer)) ;; death effect?
+                   ;; use mercneric always!
                    (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 1))
                    (set! used-mercneric 1)
                    used-mercneric
                    )
                   ((nonzero? (-> geom effect effect-idx envmap-usage))
                    ;; if we need envmap, set it up.
+
+                   ;; hack:
+                   ;; the game switches from mercneric to merc after the envmap is faded out.
+                   ;; this would normally be fine in the PC port too, but we want the eyes to remain
+                   ;; using mercneric (dynamic texture updates) in PC.
+                   ;; so we force mercneric on models with envmap and very few tris.
+                   ;; it seems to work so far...
+                   (#when PC_PORT
+                     (when (and
+                             (< (-> geom effect effect-idx tri-count) 60)
+                             (-> geom header eye-ctrl)
+                             )
+                       (set! pc-force-mercneric #t)
+                       )
+                     )
                    (let* ((v1-83 (-> geom effect effect-idx extra-info))
                           ;; pointer to envmap tint data
                           (v1-84 (the-as structure (+ (the-as uint v1-83) (* (-> v1-83 envmap-tint-offset) 16))))
@@ -1248,7 +1300,8 @@
 
                        (cond
                          ;; do envmap stuff if we are using generic anyway, or our strength is > 0.
-                         ((or (nonzero? (-> *merc-bucket-info* must-use-mercneric-for-clip)) (< 0.0 f0-9))
+                         ((or (nonzero? (-> *merc-bucket-info* must-use-mercneric-for-clip)) (< 0.0 f0-9) pc-force-mercneric)
+
                           ;; multiply colors by sun tint.
                           (let ((v1-85 (&-> (the-as merc-extra-info v1-84) dummy 4))
                                 (a0-36 (the-as object (-> *merc-bucket-info* effect effect-idx)))
@@ -1286,7 +1339,6 @@
                      )
                    )
                   ;; final two cases are for all other effects that don't matter generic/normal
-                  ;; here is a good place to force mercneric.
                   ((or (nonzero? (-> *merc-bucket-info* must-use-mercneric-for-clip)) pc-force-mercneric)
                    (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 1))
                    (set! used-mercneric 1)
@@ -1300,43 +1352,25 @@
                     )
                   )
 
-                ;; HACK just use merc if we aren't using generic.
-                (#unless USE_GENERIC
-                         (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
-                           (unless (logtest? (-> arg0 status) (draw-status needs-clip))
-                             ;; no clip, but wants generic. Just use merc for now.
-                             (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
-                             (set! used-merc 1)
-                             )
-                           (when (and (logtest? (-> arg0 status) (draw-status needs-clip)) ;; we need to clip
-                                      (nonzero? (-> arg0 longest-edge))                    ;; we known the longest edge
-                                      (draw-bones-check-longest-edge-asm arg0 arg2)        ;; it's ok to use percprime.
-                                      )
-                             ;; wants clip. in all cases, give to merc. this might give it to merc even if it fails the
-                             ;; long edge check, but it does ok
-                             (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
-                             (set! (-> *merc-bucket-info* need-mercprime-if-merc) 1)
-                             (set! used-merc 1)
-                             )
-                           )
-                         )
+                ;; final force to mercneric for ps
+                (when pc-force-mercneric
+                  (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 1))
+                  (set! used-mercneric 1)
+                  )
 
                 (set! effect-idx (+ effect-idx 1))
                 ) ;; end effect loop
 
               ;; draw generic!
               ;; note: this doesn't do the fully draw, there's some other stuff in process-drawable.gc to actually execute.
-              (#when USE_GENERIC
-                (when (nonzero? used-mercneric)
-                  (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
-                    (set! (-> dma-buf base) (draw-bones-generic-merc arg0 (the pointer matrix-data) (the pointer s2-0) 0))
-                    (set! s2-0 (-> dma-buf base))
-                    )
+              (when (nonzero? used-mercneric)
+                (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
+                  (set! (-> dma-buf base) (draw-bones-generic-merc arg0 (the pointer matrix-data) (the pointer s2-0) 0))
+                  (set! s2-0 (-> dma-buf base))
                   )
                 )
 
               ;; draw shadow!
-              ;; TODO
               (when (-> arg0 shadow)
                 (when #t
                   (set! s2-0 (draw-bones-shadow arg0 (the pointer matrix-data) (the pointer s2-0)))
@@ -1345,8 +1379,6 @@
                 )
 
               ;; draw merc!
-
-              ;;
               (when (nonzero? used-merc)
                 (when (logtest? *vu1-enable-user* (vu1-renderer-mask merc))
                   (when (= (-> arg0 cur-lod) (-> arg0 lod-set max-lod))
@@ -1366,7 +1398,6 @@
                       )
                     )
                   (set! s2-0 (pc-draw-bones arg0 (the pointer s2-0)))
-                  ; (format 0 "PKT0 ~X~%" (-> (the dma-packet (&- s2-0 (* 16 12))) dma))
                   (if (nonzero? (-> *merc-bucket-info* need-mercprime-if-merc))
                       (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 32 17))
                       (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 35 20))

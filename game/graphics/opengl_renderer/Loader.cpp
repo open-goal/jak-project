@@ -515,7 +515,6 @@ bool Loader::init_merc(Timer& /*timer*/, LevelData& data) {
   glBufferData(GL_ARRAY_BUFFER, data.level->merc_data.vertices.size() * sizeof(tfrag3::MercVertex),
                data.level->merc_data.vertices.data(), GL_STATIC_DRAW);
 
-
   for (auto& model : data.level->merc_data.models) {
     data.merc_model_lookup[model.name] = &model;
     m_all_merc_models[model.name].push_back({&model, data.load_id, &data});

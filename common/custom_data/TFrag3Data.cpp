@@ -267,6 +267,8 @@ void MercModel::serialize(Serializer& ser) {
     effect.serialize(ser);
   }
   ser.from_ptr(&scale_xyz);
+  ser.from_ptr(&max_draws);
+  ser.from_ptr(&max_bones);
 }
 
 void MercModelGroup::serialize(Serializer& ser) {

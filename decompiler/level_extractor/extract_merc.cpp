@@ -335,8 +335,8 @@ void handle_frag(const std::string& debug_name,
 
     if (vtx.kind == 1) {
       vtx.skel_mats[0] = state.vu1_matrix_slots.at(vu1_addr_to_matrix_slot(mat0_addr));
-      vtx.skel_mats[1] = -1;
-      vtx.skel_mats[2] = -1;
+      vtx.skel_mats[1] = 0;
+      vtx.skel_mats[2] = 0;
       vtx.mat_weights[0] = 1.f;
       vtx.mat_weights[1] = 0.f;
       vtx.mat_weights[2] = 0.f;
@@ -352,7 +352,7 @@ void handle_frag(const std::string& debug_name,
       }
       vtx.skel_mats[0] = state.vu1_matrix_slots.at(prev_mat0);
       vtx.skel_mats[1] = state.vu1_matrix_slots.at(prev_mat1);
-      vtx.skel_mats[2] = -1;
+      vtx.skel_mats[2] = 0;
 
       if (m0 != 0x7f && i != mat1_cnt) {
         if (perc_toggle) {
@@ -892,6 +892,8 @@ void extract_merc(const ObjectFileData& ag_data,
 
     pc_ctrl.name = ctrl.name;
     pc_ctrl.scale_xyz = ctrl.header.xyz_scale;
+    pc_ctrl.max_draws = 0;
+    pc_ctrl.max_bones = 0;
 
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
       indices_temp[ci].emplace_back();
@@ -899,13 +901,18 @@ void extract_merc(const ObjectFileData& ag_data,
       auto& effect = all_effects[ci][ei];
       u32 first_vertex = out.merc_data.vertices.size();
       for (auto& vtx : effect.vertices) {
-        out.merc_data.vertices.push_back(convert_vertex(vtx));
+        auto cvtx = convert_vertex(vtx);
+        out.merc_data.vertices.push_back(cvtx);
+        for (int i = 0; i < 3; i++) {
+          pc_ctrl.max_bones = std::max(pc_ctrl.max_bones, (u32)cvtx.mats[i]);
+        }
       }
 
       // can do two types of de-duplication: toggling back and forth shaders and matrices
       std::map<u64, u64> draw_mode_dedup;
 
       for (auto& draw : effect.draws) {
+        pc_ctrl.max_draws++;
         indices_temp[ci][ei].emplace_back();
         // find draw to add to, or create a new one
         const auto& existing = draw_mode_dedup.find(draw.state.merc_draw_mode.as_u64());
@@ -957,7 +964,6 @@ void extract_merc(const ObjectFileData& ag_data,
         }
       }
     }
-
   }
 
   // merge indices

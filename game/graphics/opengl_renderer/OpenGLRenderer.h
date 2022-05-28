@@ -62,8 +62,6 @@ class OpenGLRenderer {
     return ret;
   }
 
-
-
   SharedRenderState m_render_state;
   Profiler m_profiler;
   SmallProfiler m_small_profiler;
