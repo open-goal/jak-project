@@ -2079,8 +2079,19 @@ void SimpleExpressionElement::update_from_stack_float_to_int(const Env& env,
   auto var = m_expr.get_arg(0).var();
   auto arg = pop_to_forms({var}, env, pool, stack, allow_side_effects).at(0);
   auto type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
+  auto fpr_convert_matcher =
+      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::GPR_TO_FPR), {Matcher::any(0)});
+  auto mr = match(fpr_convert_matcher, arg);
   if (type == TypeSpec("float")) {
     result->push_back(pool.alloc_element<CastElement>(TypeSpec("int"), arg, true));
+  } else if (env.dts->ts.tc(type, TypeSpec("float")) && mr.matched) {
+    // this is a parent of float. normally we would fix this with a manual cast, but that is too
+    // effective since float->int requires the type to be EXACTLY float.
+    // so we add a cast to float first.
+    // we also strip the gpr->fpr here
+    result->push_back(pool.alloc_element<CastElement>(
+        TypeSpec("int"), pool.form<CastElement>(TypeSpec("float"), mr.maps.forms.at(0), true),
+        true));
   } else {
     throw std::runtime_error(
         fmt::format("Used float to int on a {}: {}", type.print(), to_string(env)));
