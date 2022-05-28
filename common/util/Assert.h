@@ -25,7 +25,6 @@
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
 
-
 #define ASSERT(EX) \
   (void)((EX) || (private_assert_failed(#EX, __FILE__, __LINE__, __PRETTY_FUNCTION__), 0))
 
