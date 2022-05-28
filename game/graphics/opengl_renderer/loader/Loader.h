@@ -50,5 +50,3 @@ class Loader {
   std::vector<std::string> m_desired_levels;
   std::vector<std::unique_ptr<LoaderStage>> m_loader_stages;
 };
-
-

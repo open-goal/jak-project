@@ -289,7 +289,9 @@ void Loader::update(TexturePool& texture_pool) {
       did_gpu_stuff = true;
       std::string name = it->first;
       auto& lev = it->second;
-      it->second->load_id = m_id++;
+      if (it->second->load_id == UINT64_MAX) {
+        it->second->load_id = m_id++;
+      }
 
       // we're the only place that erases, so it's okay to unlock and hold a reference
       lk.unlock();
@@ -309,7 +311,6 @@ void Loader::update(TexturePool& texture_pool) {
           break;
         }
       }
-
 
       if (done) {
         lk.lock();

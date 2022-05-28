@@ -67,7 +67,6 @@ class TfragLoadStage : public LoaderStage {
  public:
   TfragLoadStage() : LoaderStage("tfrag") {}
   bool run(Timer& timer, LoaderInput& data) override {
-    Timer debug_timer;
     if (m_done) {
       return true;
     }
@@ -126,11 +125,6 @@ class TfragLoadStage : public LoaderStage {
       glBufferSubData(GL_ARRAY_BUFFER, start_vert_for_chunk * sizeof(tfrag3::PreloadedVertex),
                       upload_size, tree.unpacked.vertices.data() + start_vert_for_chunk);
       uploaded_bytes += upload_size;
-      if (debug_timer.getMs() > 10) {
-        fmt::print("bad: {} {} {} ({} {} {} : {} so far): {:.2f}\n", start_vert_for_chunk,
-                   upload_size, unique_buffers, m_next_vert, m_next_tree, m_next_geo,
-                   uploaded_bytes / sizeof(tfrag3::PreloadedVertex), debug_timer.getMs());
-      }
 
       if (complete_tree) {
         unique_buffers++;
@@ -268,7 +262,6 @@ class TieLoadStage : public LoaderStage {
  public:
   TieLoadStage() : LoaderStage("tie") {}
   bool run(Timer& timer, LoaderInput& data) override {
-    Timer debug_timer;
     if (m_done) {
       return true;
     }
@@ -327,11 +320,6 @@ class TieLoadStage : public LoaderStage {
             (end_vert_for_chunk - start_vert_for_chunk) * sizeof(tfrag3::PreloadedVertex);
         glBufferSubData(GL_ARRAY_BUFFER, start_vert_for_chunk * sizeof(tfrag3::PreloadedVertex),
                         upload_size, tree.unpacked.vertices.data() + start_vert_for_chunk);
-        if (debug_timer.getMs() > 5) {
-          fmt::print("badA: {} {} ({} {} {} : {} so far): {:.2f}\n", start_vert_for_chunk,
-                     upload_size,  m_next_vert, m_next_tree, m_next_geo,
-                     uploaded_bytes / sizeof(tfrag3::PreloadedVertex), debug_timer.getMs());
-        }
         uploaded_bytes += upload_size;
 
         if (complete_tree) {
@@ -355,10 +343,6 @@ class TieLoadStage : public LoaderStage {
           return false;
         }
       }
-    }
-
-    if (debug_timer.getMs() > 10) {
-      fmt::print("badB: : {:.2f}\n", debug_timer.getMs());
     }
 
     if (!m_wind_indices_done) {
@@ -390,9 +374,6 @@ class TieLoadStage : public LoaderStage {
 
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, wind_idx_buffer_len * sizeof(u32), temp.data(),
                          GL_STATIC_DRAW);
-            if (debug_timer.getMs() > 10) {
-              fmt::print("badC: : {:.2f}\n", debug_timer.getMs());
-            }
             abort = true;
           }
         }
@@ -432,7 +413,7 @@ class TieLoadStage : public LoaderStage {
 class CollideLoaderStage : public LoaderStage {
  public:
   CollideLoaderStage() : LoaderStage("collide") {}
-  bool run(Timer& timer, LoaderInput& data) override {
+  bool run(Timer& /*timer*/, LoaderInput& data) override {
     if (m_done) {
       return true;
     }
@@ -482,7 +463,7 @@ void MercLoaderStage::reset() {
   m_idx = 0;
 }
 
-bool MercLoaderStage::run(Timer& timer, LoaderInput& data) {
+bool MercLoaderStage::run(Timer& /*timer*/, LoaderInput& data) {
   if (m_done) {
     return true;
   }

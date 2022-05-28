@@ -3,7 +3,7 @@
 struct LevelData {
   std::unique_ptr<tfrag3::Level> level;
   std::vector<GLuint> textures;
-  u64 load_id = 0;
+  u64 load_id = UINT64_MAX;
 
   struct TieOpenGL {
     GLuint vertex_buffer;
