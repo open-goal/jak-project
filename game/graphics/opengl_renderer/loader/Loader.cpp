@@ -310,6 +310,7 @@ void Loader::update(TexturePool& texture_pool) {
         }
       }
 
+
       if (done) {
         lk.lock();
         m_loaded_tfrag3_levels[name] = std::move(lev);

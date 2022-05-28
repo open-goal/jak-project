@@ -39,7 +39,7 @@ class TextureLoaderStage : public LoaderStage {
  public:
   TextureLoaderStage() : LoaderStage("texture") {}
   bool run(Timer& timer, LoaderInput& data) override {
-    constexpr int MAX_TEX_BYTES_PER_FRAME = 1024 * 128;
+    constexpr int MAX_TEX_BYTES_PER_FRAME = 1024 * 512;
 
     int bytes_this_run = 0;
     int tex_this_run = 0;
@@ -244,7 +244,7 @@ class ShrubLoadStage : public LoaderStage {
         }
       }
 
-      if (timer.getMs() > LOAD_BUDGET || (uploaded_bytes / 1024) > 2048) {
+      if (timer.getMs() > LOAD_BUDGET || (uploaded_bytes / 128) > 2048) {
         return false;
       }
     }
@@ -268,6 +268,7 @@ class TieLoadStage : public LoaderStage {
  public:
   TieLoadStage() : LoaderStage("tie") {}
   bool run(Timer& timer, LoaderInput& data) override {
+    Timer debug_timer;
     if (m_done) {
       return true;
     }
@@ -326,6 +327,11 @@ class TieLoadStage : public LoaderStage {
             (end_vert_for_chunk - start_vert_for_chunk) * sizeof(tfrag3::PreloadedVertex);
         glBufferSubData(GL_ARRAY_BUFFER, start_vert_for_chunk * sizeof(tfrag3::PreloadedVertex),
                         upload_size, tree.unpacked.vertices.data() + start_vert_for_chunk);
+        if (debug_timer.getMs() > 5) {
+          fmt::print("badA: {} {} ({} {} {} : {} so far): {:.2f}\n", start_vert_for_chunk,
+                     upload_size,  m_next_vert, m_next_tree, m_next_geo,
+                     uploaded_bytes / sizeof(tfrag3::PreloadedVertex), debug_timer.getMs());
+        }
         uploaded_bytes += upload_size;
 
         if (complete_tree) {
@@ -349,6 +355,10 @@ class TieLoadStage : public LoaderStage {
           return false;
         }
       }
+    }
+
+    if (debug_timer.getMs() > 10) {
+      fmt::print("badB: : {:.2f}\n", debug_timer.getMs());
     }
 
     if (!m_wind_indices_done) {
@@ -380,6 +390,9 @@ class TieLoadStage : public LoaderStage {
 
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, wind_idx_buffer_len * sizeof(u32), temp.data(),
                          GL_STATIC_DRAW);
+            if (debug_timer.getMs() > 10) {
+              fmt::print("badC: : {:.2f}\n", debug_timer.getMs());
+            }
             abort = true;
           }
         }
@@ -486,12 +499,6 @@ bool MercLoaderStage::run(Timer& timer, LoaderInput& data) {
     glBufferData(GL_ARRAY_BUFFER,
                  data.lev_data->level->merc_data.vertices.size() * sizeof(tfrag3::MercVertex),
                  nullptr, GL_STATIC_DRAW);
-
-    for (auto& model : data.lev_data->level->merc_data.models) {
-      data.lev_data->merc_model_lookup[model.name] = &model;
-      (*data.mercs)[model.name].push_back({&model, data.lev_data->load_id, data.lev_data});
-    }
-
     m_opengl = true;
   }
 
@@ -520,6 +527,10 @@ bool MercLoaderStage::run(Timer& timer, LoaderInput& data) {
     return false;
   } else {
     m_done = true;
+    for (auto& model : data.lev_data->level->merc_data.models) {
+      data.lev_data->merc_model_lookup[model.name] = &model;
+      (*data.mercs)[model.name].push_back({&model, data.lev_data->load_id, data.lev_data});
+    }
     return true;
   }
   return true;
