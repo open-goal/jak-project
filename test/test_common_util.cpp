@@ -16,6 +16,7 @@
 #include "common/util/CopyOnWrite.h"
 #include "common/util/SmallVector.h"
 #include "common/util/crc32.h"
+#include "common/util/Assert.h"
 
 TEST(CommonUtil, CpuInfo) {
   setup_cpu_info();
@@ -393,9 +394,11 @@ TEST(SmallVector, Construction) {
   EXPECT_FALSE(one.empty());
 }
 
+#ifndef NO_ASSERT
 TEST(Assert, Death) {
   EXPECT_DEATH(private_assert_failed("foo", "bar", 12, "aaa"), "");
 }
+#endif
 
 uint32_t crc_reference(const u8* data, size_t size) {
   u32 crc = 0xffffffff;

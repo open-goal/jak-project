@@ -11,6 +11,7 @@
 #include "common/util/print_float.h"
 #include "decompiler/IR2/ExpressionHelpers.h"
 #include "decompiler/util/goal_constants.h"
+#include "common/util/Assert.h"
 
 /*
  * TODO
