@@ -5,14 +5,11 @@
 Merc2::Merc2(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
   glGenVertexArrays(1, &m_vao);
   glBindVertexArray(m_vao);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0,                                        // location 0 in the shader
-                        3,                                        // 3 values per vert
-                        GL_FLOAT,                                 // floats
-                        GL_FALSE,                                 // normalized
-                        sizeof(tfrag3::MercVertex),               // stride
-                        (void*)offsetof(tfrag3::MercVertex, pos)  // offset (0)
-  );
+
+  glGenBuffers(1, &m_bones_buffer);
+  glBindBuffer(GL_UNIFORM_BUFFER, m_bones_buffer);
+  glBufferData(GL_UNIFORM_BUFFER, MAX_MERC_MATRICES * sizeof(MercMat), nullptr, GL_DYNAMIC_DRAW);
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void Merc2::init_pc_model(const DmaTransfer& setup, SharedRenderState* render_state) {
@@ -52,6 +49,7 @@ void Merc2::draw_debug_window() {
   ImGui::Text("Effects  : %d", m_stats.num_effects);
   ImGui::Text("Draws (p): %d", m_stats.num_predicted_draws);
   ImGui::Text("Tris  (p): %d", m_stats.num_predicted_tris);
+  ImGui::Text("Bones    : %d", m_stats.num_bones_uploaded);
 }
 
 void Merc2::init_shaders(ShaderLibrary& shaders) {
@@ -77,8 +75,6 @@ void Merc2::init_shaders(ShaderLibrary& shaders) {
   m_uniforms.hmat[2] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "hmat2");
   m_uniforms.hmat[3] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "hmat3");
 
-  m_uniforms.tbone = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "tbone");
-  m_uniforms.nbone = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "nbone");
   m_uniforms.fog_color = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "fog_color");
   m_uniforms.perspective_matrix =
       glGetUniformLocation(shaders[ShaderId::MERC2].id(), "perspective_matrix");
@@ -108,19 +104,13 @@ void Merc2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
 void Merc2::upload_tbones(int count, float scale) {
   constexpr int MAX_TBONES = 128;
   ASSERT(count <= MAX_TBONES);
-  std::array<std::array<math::Vector4f, 4>, MAX_TBONES> tbone_buffer;
-
-  math::Vector4f p(m_low_memory.perspective[0].x(), m_low_memory.perspective[1].y(),
-                   m_low_memory.perspective[2].z(), m_low_memory.perspective[2].w());
-  math::Vector4f vf15(p.x(), p.y(), p.z(), 0);
 
   for (int i = 0; i < count; i++) {
     auto& bone_mat = m_matrix_buffer[i].tmat;
 
     for (int j = 0; j < 3; j++) {
-      tbone_buffer[i][j] = bone_mat[j] * scale;
+      bone_mat[j] *= scale;
     }
-    tbone_buffer[i][3] = bone_mat[3];
 
     //        for (int j = 0; j < 3; j++) {
     //          tbone_buffer[i][j] = vf15.elementwise_multiply(bone_mat[j]);
@@ -131,18 +121,6 @@ void Merc2::upload_tbones(int count, float scale) {
     //        tbone_buffer[i][3] = vf15.elementwise_multiply(bone_mat[3]) +
     //        m_low_memory.perspective[3]; tbone_buffer[i][3].w() += p.w() * bone_mat[3].z();
   }
-  glUniformMatrix4fv(m_uniforms.tbone, count, GL_FALSE, &tbone_buffer[0][0].x());
-
-  std::array<std::array<math::Vector3f, 3>, MAX_TBONES> nbone_buffer;
-  for (int i = 0; i < count; i++) {
-    auto& bone_mat = m_matrix_buffer[i].nmat;
-    for (int j = 0; j < 3; j++) {
-      for (int k = 0; k < 3; k++) {
-        nbone_buffer[i][j][k] = bone_mat[j][k];
-      }
-    }
-  }
-  glUniformMatrix3fv(m_uniforms.nbone, count, GL_FALSE, &nbone_buffer[0][0].x());
 
   glUniformMatrix4fv(m_uniforms.perspective_matrix, 1, GL_FALSE, &m_low_memory.perspective[0].x());
 }
@@ -453,39 +431,13 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
                          (void*)offsetof(tfrag3::MercVertex, mats[0])  // offset in array
   );
 
-  // hack
-  // [p0x, p1y, p2z, p2w]
-  math::Vector4f p(m_low_memory.perspective[0].x(), m_low_memory.perspective[1].y(),
-                   m_low_memory.perspective[2].z(), m_low_memory.perspective[2].w());
-
-  math::Vector4f vf15(p.x(), p.y(), p.z(), 0);
-  math::Vector4f vf16(0, 0, 0, p.w());
-
-  auto& bone_mat = m_matrix_buffer[3].tmat;
-
-  //  mula.xyzw ACC, vf15, vf08
-  //  maddz.xyzw vf09, vf16, vf08
-  set_uniform(m_uniforms.hmat[0],
-              (vf15.elementwise_multiply(bone_mat[0]) + vf16 * bone_mat[0].z()) *
-                  m_current_model->model->scale_xyz);
-  //  mula.xyzw ACC, vf15, vf10
-  //  maddz.xyzw vf11, vf16, vf10
-  set_uniform(m_uniforms.hmat[1],
-              (vf15.elementwise_multiply(bone_mat[1]) + vf16 * bone_mat[1].z()) *
-                  m_current_model->model->scale_xyz);
-  //  mula.xyzw ACC, vf15, vf12
-  //  maddz.xyzw vf13, vf16, vf12
-  set_uniform(m_uniforms.hmat[2],
-              (vf15.elementwise_multiply(bone_mat[2]) + vf16 * bone_mat[2].z()) *
-                  m_current_model->model->scale_xyz);
-
-  //  addax.xyzw vf20, vf00
-  //  madda.xyzw ACC, vf27, vf25
-  //  maddz.xyzw vf26, vf28, vf25
-  set_uniform(m_uniforms.hmat[3], vf15.elementwise_multiply(bone_mat[3]) + vf16 * bone_mat[3].z() +
-                                      m_low_memory.perspective[3]);
-
   upload_tbones(128, m_current_model->model->scale_xyz);
+  m_stats.num_bones_uploaded += 128;
+
+  glBindBuffer(GL_UNIFORM_BUFFER, m_bones_buffer);
+  glBufferSubData(GL_UNIFORM_BUFFER, 0, MAX_MERC_MATRICES * sizeof(MercMat), m_matrix_buffer);
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
+  glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_bones_buffer);
 
   int last_texture = -1;
   // for (auto& effect : m_current_model->model->effects) {
@@ -503,6 +455,8 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
       }
 
       setup_opengl_from_draw_mode(draw.mode, GL_TEXTURE0, true);
+      prof.add_draw_call();
+      prof.add_tri(draw.num_triangles);
       // mode, count, type, offset
       glDrawElements(GL_TRIANGLE_STRIP, draw.index_count, GL_UNSIGNED_INT,
                      (void*)(sizeof(u32) * draw.first_index));

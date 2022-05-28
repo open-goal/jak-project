@@ -90,11 +90,14 @@ class Merc2 : public BucketRenderer {
 
   GLuint m_vao;
 
+  GLuint m_bones_buffer;
+
   struct Stats {
     int num_models = 0;
     int num_chains = 0;
     int num_effects = 0;
     int num_predicted_draws = 0;
     int num_predicted_tris = 0;
+    int num_bones_uploaded = 0;
   } m_stats;
 };

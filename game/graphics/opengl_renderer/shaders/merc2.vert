@@ -34,15 +34,20 @@ uniform vec4 hmat3;
 uniform mat4 perspective_matrix;
 uniform vec4 camera_position;
 
-// matrix
-uniform mat4 tbone[128];
-uniform mat3 nbone[128];
-
 // output
 out vec3 vtx_color;
 out vec2 vtx_st;
 
 out float fog;
+
+struct MercMatrixData {
+    mat4 X;
+    mat3 R;
+};
+
+layout (std140, binding = 1) uniform ub_bones {
+    MercMatrixData bones[128];
+};
 
 
 /*
@@ -72,15 +77,16 @@ void main() {
 //    transformed += -hmat1 * position_in.y;
 //    transformed += -hmat2 * position_in.z;
 
-    vec4 vtx_pos = -tbone[mats[0]] * vec4(position_in, 1) * weights_in[0]
-                       -tbone[mats[1]] * vec4(position_in, 1) * weights_in[1]
-                       -tbone[mats[2]] * vec4(position_in, 1) * weights_in[2];
+    vec4 p = vec4(position_in, 1);
+    vec4 vtx_pos = -bones[mats[0]].X * p * weights_in[0]
+                   -bones[mats[1]].X * p * weights_in[1]
+                   -bones[mats[2]].X * p * weights_in[2];
 
     vec4 transformed = perspective_matrix * vtx_pos;
 
-    vec3 rotated_nrm = nbone[mats[0]] * normal_in * weights_in[0]
-                     + nbone[mats[1]] * normal_in * weights_in[1]
-                     + nbone[mats[2]] * normal_in * weights_in[2];
+    vec3 rotated_nrm = bones[mats[0]].R * normal_in * weights_in[0]
+                     + bones[mats[1]].R * normal_in * weights_in[1]
+                     + bones[mats[2]].R * normal_in * weights_in[2];
 
     rotated_nrm = normalize(rotated_nrm);
     vec3 light_intensity = light_dir0 * rotated_nrm.x + light_dir1 * rotated_nrm.y + light_dir2 * rotated_nrm.z;
