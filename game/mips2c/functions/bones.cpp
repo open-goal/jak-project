@@ -801,9 +801,13 @@ u64 execute(void* ctxt) {
   // PC HACK: built a bitmask of which effects end up using mercneric.
   const MercBucketInfo* mbi = (const MercBucketInfo*)(g_ee_main_mem + c->sgpr64(a3));
   u16 use_pc_merc_bits = 0;
+  u16 ignore_alpha_bits = 0;
   for (int i = 0; i < 16; i++) {
     if (!mbi->effects[i].use_mercneric) {
       use_pc_merc_bits |= (1 << i);
+    }
+    if (mbi->effects[i].ignore_alpha) {
+      ignore_alpha_bits |= (1 << i);
     }
   }
 
@@ -878,6 +882,8 @@ block_3:
   c->sq(t1, 16, a2);                                // sq t1, 16(a2)    // row y (will be overwritten) z w (nop).
   // PC HACK: sneak in the bits here:
   memcpy(g_ee_main_mem + c->sgpr64(a2) + 28, &use_pc_merc_bits, 2);
+  memcpy(g_ee_main_mem + c->sgpr64(a2) + 30, &ignore_alpha_bits, 2);
+
 
   // store the dma tag for the lump fours
   c->xor_(t3, t3, s0);                              // xor t3, t3, s0

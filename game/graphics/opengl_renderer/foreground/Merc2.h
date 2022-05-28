@@ -42,6 +42,7 @@ class Merc2 : public BucketRenderer {
 
   std::optional<Loader::MercRef> m_current_model = std::nullopt;
   u16 m_current_effect_enable_bits = 0;
+  u16 m_current_ignore_alpha_bits = 0;
   struct VuLights {
     math::Vector3f direction0;
     u32 w0;
@@ -84,6 +85,7 @@ class Merc2 : public BucketRenderer {
     GLuint fog_color;
     GLuint perspective_matrix;
 
+    GLuint ignore_alpha;
   } m_uniforms;
 
   GLuint m_vao;

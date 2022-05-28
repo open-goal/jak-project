@@ -9,7 +9,7 @@ in float fog;
 uniform sampler2D tex_T0;
 
 uniform vec4 fog_color;
-
+uniform int ignore_alpha;
 
 
 void main() {
@@ -17,7 +17,7 @@ void main() {
     color = vec4(vtx_color, 1.0) * T0 * 2.0;
     color.w *= 2;
 
-    if (color.w < 0.128) {
+    if (ignore_alpha == 0 && color.w < 0.128) {
         discard;
     }
 

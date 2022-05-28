@@ -82,6 +82,7 @@ void Merc2::init_shaders(ShaderLibrary& shaders) {
   m_uniforms.fog_color = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "fog_color");
   m_uniforms.perspective_matrix =
       glGetUniformLocation(shaders[ShaderId::MERC2].id(), "perspective_matrix");
+  m_uniforms.ignore_alpha = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "ignore_alpha");
 }
 
 // Boring DMA stuff below
@@ -121,14 +122,14 @@ void Merc2::upload_tbones(int count, float scale) {
     }
     tbone_buffer[i][3] = bone_mat[3];
 
-//        for (int j = 0; j < 3; j++) {
-//          tbone_buffer[i][j] = vf15.elementwise_multiply(bone_mat[j]);
-//          tbone_buffer[i][j].w() += p.w() * bone_mat[j].z();
-//          tbone_buffer[i][j] *= scale;
-//        }
-//
-//        tbone_buffer[i][3] = vf15.elementwise_multiply(bone_mat[3]) + m_low_memory.perspective[3];
-//        tbone_buffer[i][3].w() += p.w() * bone_mat[3].z();
+    //        for (int j = 0; j < 3; j++) {
+    //          tbone_buffer[i][j] = vf15.elementwise_multiply(bone_mat[j]);
+    //          tbone_buffer[i][j].w() += p.w() * bone_mat[j].z();
+    //          tbone_buffer[i][j] *= scale;
+    //        }
+    //
+    //        tbone_buffer[i][3] = vf15.elementwise_multiply(bone_mat[3]) +
+    //        m_low_memory.perspective[3]; tbone_buffer[i][3].w() += p.w() * bone_mat[3].z();
   }
   glUniformMatrix4fv(m_uniforms.tbone, count, GL_FALSE, &tbone_buffer[0][0].x());
 
@@ -321,6 +322,7 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
   memcpy(&extra, init.data + 12, 4);
   // ASSERT(extra == 0);
   m_current_effect_enable_bits = extra;
+  m_current_ignore_alpha_bits = extra >> 16;
   DmaTransfer next;
 
   bool setting_up = true;
@@ -491,6 +493,8 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
     if (!(m_current_effect_enable_bits & (1 << ei))) {
       continue;
     }
+
+    glUniform1i(m_uniforms.ignore_alpha, (m_current_ignore_alpha_bits & (1 << ei)));
     auto& effect = m_current_model->model->effects[ei];
     for (auto& draw : effect.draws) {
       if ((int)draw.tree_tex_id != last_texture) {
