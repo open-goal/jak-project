@@ -642,7 +642,7 @@
 ;; oracle
 (copy-strs "ORI1" "ORLE1" "ORRE1" "ORR1")
 ;; assistant
-(copy-strs "ASIBESWI" "ASR1BESW")
+(copy-strs "ASIBESWI" "ASR1BESW" "ASIRBIKE" "ASR1RBIK" "ASR1GENE")
 ;; sage
 (copy-strs "SAISA" "SAISD1" "SAISD2" "SAISE" "SAR1ECOR" "SAIMCANN" "SAR1MCAN" "SAR1GENE" "SAR2GENE")
 ;; fishermans-boat
@@ -1937,9 +1937,11 @@
  )
 
 
+(fmt #t "found {} spools\n" (count *all-str*))
 (group-list "spools"
  `(,@(reverse *all-str*))
  )
+
 
 (group-list "text"
  `("out/iso/0COMMON.TXT"
@@ -1960,3 +1962,4 @@
 (group-list "all-code"
   `(,@(reverse *all-gc*))
   )
+

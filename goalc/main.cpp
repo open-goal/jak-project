@@ -64,11 +64,11 @@ int main(int argc, char** argv) {
       ts.seek_past_whitespace_and_comments();
       std::string found_username;
       while (ts.text_remains()) {
-        auto character = std::string(1, ts.peek());
-        if (!std::regex_match(character, allowed_chars)) {
+        auto character = ts.read();
+        if (!std::regex_match(std::string(1, character), allowed_chars)) {
           break;
         }
-        found_username.push_back(ts.read());
+        found_username.push_back(character);
       }
       if (!found_username.empty()) {
         username = found_username;
