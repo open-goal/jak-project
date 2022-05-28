@@ -1,6 +1,7 @@
 #include "extract_merc.h"
 #include "decompiler/util/goal_data_reader.h"
 #include "decompiler/level_extractor/MercData.h"
+#include "decompiler/level_extractor/extract_common.h"
 #include "common/util/FileUtil.h"
 #include "common/util/colors.h"
 
@@ -228,6 +229,9 @@ DrawMode process_draw_mode(const MercShader& info) {
   // check these
   mode.disable_ab();
   mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
+  mode.set_tcc(info.tex0.tcc());
+  mode.set_decal(info.tex0.tfx() == GsTex0::TextureFunction::DECAL);
+  mode.set_filt_enable(info.tex1.mmag());
 
   // the alpha matters (maybe?)
   update_mode_from_alpha1(info.alpha, mode);
@@ -334,8 +338,8 @@ void handle_frag(const std::string& debug_name,
 
     if (vtx.kind == 1) {
       vtx.skel_mats[0] = state.vu1_matrix_slots.at(vu1_addr_to_matrix_slot(mat0_addr));
-      vtx.skel_mats[1] = -1;
-      vtx.skel_mats[2] = -1;
+      vtx.skel_mats[1] = 0;
+      vtx.skel_mats[2] = 0;
       vtx.mat_weights[0] = 1.f;
       vtx.mat_weights[1] = 0.f;
       vtx.mat_weights[2] = 0.f;
@@ -351,7 +355,7 @@ void handle_frag(const std::string& debug_name,
       }
       vtx.skel_mats[0] = state.vu1_matrix_slots.at(prev_mat0);
       vtx.skel_mats[1] = state.vu1_matrix_slots.at(prev_mat1);
-      vtx.skel_mats[2] = -1;
+      vtx.skel_mats[2] = 0;
 
       if (m0 != 0x7f && i != mat1_cnt) {
         if (perc_toggle) {
@@ -436,6 +440,7 @@ void handle_frag(const std::string& debug_name,
     vtx.dst0 = float_as_u32(v1.x()) - 371;  // xtop to output buffer offset
     vtx.dst1 = float_as_u32(v1.y()) - 371;
     vtx.rgba = frag.unsigned_four_including_header.at(rgba_ptr);
+    vtx.st = math::Vector2f(v2.x(), v2.y());
 
     // crazy flag logic to set adc
     s16 mat1_flag = mat1;
@@ -812,6 +817,41 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   return result;
 }
 
+u8 convert_mat(int in) {
+  if (in >= 0) {
+    return in;
+  } else {
+    return 0;
+  }
+}
+
+tfrag3::MercVertex convert_vertex(const MercUnpackedVtx& vtx) {
+  tfrag3::MercVertex out;
+  out.pos[0] = vtx.pos[0];
+  out.pos[1] = vtx.pos[1];
+  out.pos[2] = vtx.pos[2];
+  out.pad0 = 0;
+  out.normal[0] = vtx.nrm[0];
+  out.normal[1] = vtx.nrm[1];
+  out.normal[2] = vtx.nrm[2];
+  out.pad1 = 0;
+  out.weights[0] = vtx.mat_weights[0];
+  out.weights[1] = vtx.mat_weights[1];
+  out.weights[2] = vtx.mat_weights[2];
+  out.pad2 = 0;
+  out.st[0] = vtx.st[0];
+  out.st[1] = vtx.st[1];
+  out.rgba[0] = vtx.rgba[0];
+  out.rgba[1] = vtx.rgba[1];
+  out.rgba[2] = vtx.rgba[2];
+  out.rgba[3] = vtx.rgba[3];
+  out.mats[0] = convert_mat(vtx.skel_mats[0]);
+  out.mats[1] = convert_mat(vtx.skel_mats[1]);
+  out.mats[2] = convert_mat(vtx.skel_mats[2]);
+  out.pad3 = 0;
+  return out;
+}
+
 /*!
  * Top-level merc extraction
  */
@@ -819,7 +859,7 @@ void extract_merc(const ObjectFileData& ag_data,
                   const TextureDB& tex_db,
                   const DecompilerTypeSystem& dts,
                   const std::vector<level_tools::TextureRemap>& map,
-                  tfrag3::Level& /*out*/,
+                  tfrag3::Level& out,
                   bool dump_level) {
   if (dump_level) {
     file_util::create_dir_if_needed(file_util::get_file_path({"debug_out/merc"}));
@@ -835,11 +875,113 @@ void extract_merc(const ObjectFileData& ag_data,
   }
 
   // extract draws. this does no regrouping yet.
-  std::vector<ConvertedMercEffect> all_effects;
+  std::vector<std::vector<ConvertedMercEffect>> all_effects;
   for (size_t ci = 0; ci < ctrls.size(); ci++) {
+    auto& effects_in_ctrl = all_effects.emplace_back();
     for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
-      all_effects.push_back(convert_merc_effect(ctrls[ci].effects[ei], ctrls[ci].header, tex_db,
-                                                map, ctrls[ci].name, ci, ei, dump_level));
+      effects_in_ctrl.push_back(convert_merc_effect(ctrls[ci].effects[ei], ctrls[ci].header, tex_db,
+                                                    map, ctrls[ci].name, ci, ei, dump_level));
+    }
+  }
+
+  // convert to PC format
+  // first pass, before merging indices
+  u32 first_model = out.merc_data.models.size();
+  std::vector<std::vector<std::vector<std::vector<u32>>>> indices_temp;  // ctrl, effect, draw, vtx
+  for (size_t ci = 0; ci < ctrls.size(); ci++) {
+    indices_temp.emplace_back();
+    auto& pc_ctrl = out.merc_data.models.emplace_back();
+    auto& ctrl = ctrls[ci];
+
+    pc_ctrl.name = ctrl.name;
+    pc_ctrl.scale_xyz = ctrl.header.xyz_scale;
+    pc_ctrl.max_draws = 0;
+    pc_ctrl.max_bones = 0;
+
+    for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
+      indices_temp[ci].emplace_back();
+      auto& pc_effect = pc_ctrl.effects.emplace_back();
+      auto& effect = all_effects[ci][ei];
+      u32 first_vertex = out.merc_data.vertices.size();
+      for (auto& vtx : effect.vertices) {
+        auto cvtx = convert_vertex(vtx);
+        out.merc_data.vertices.push_back(cvtx);
+        for (int i = 0; i < 3; i++) {
+          pc_ctrl.max_bones = std::max(pc_ctrl.max_bones, (u32)cvtx.mats[i]);
+        }
+      }
+
+      // can do two types of de-duplication: toggling back and forth shaders and matrices
+      std::map<u64, u64> draw_mode_dedup;
+
+      for (auto& draw : effect.draws) {
+        pc_ctrl.max_draws++;
+        indices_temp[ci][ei].emplace_back();
+        // find draw to add to, or create a new one
+        const auto& existing = draw_mode_dedup.find(draw.state.merc_draw_mode.as_u64());
+        tfrag3::MercDraw* pc_draw = nullptr;
+        u64 pc_draw_idx = -1;
+        if (existing == draw_mode_dedup.end()) {
+          pc_draw_idx = pc_effect.draws.size();
+          draw_mode_dedup[draw.state.merc_draw_mode.as_u64()] = pc_draw_idx;
+          pc_draw = &pc_effect.draws.emplace_back();
+          pc_draw->mode = draw.state.merc_draw_mode.mode;
+
+          u32 idx_in_level_texture = UINT32_MAX;
+          for (u32 i = 0; i < out.textures.size(); i++) {
+            if (out.textures[i].combo_id == draw.state.merc_draw_mode.pc_combo_tex_id) {
+              idx_in_level_texture = i;
+              break;
+            }
+          }
+
+          if (idx_in_level_texture == UINT32_MAX) {
+            // not added to level, add it
+            auto tex_it = tex_db.textures.find(draw.state.merc_draw_mode.pc_combo_tex_id);
+            if (tex_it == tex_db.textures.end()) {
+              ASSERT(false);
+            } else {
+              idx_in_level_texture = out.textures.size();
+              auto& new_tex = out.textures.emplace_back();
+              new_tex.combo_id = draw.state.merc_draw_mode.pc_combo_tex_id;
+              new_tex.w = tex_it->second.w;
+              new_tex.h = tex_it->second.h;
+              new_tex.debug_name = tex_it->second.name;
+              new_tex.debug_tpage_name = tex_db.tpage_names.at(tex_it->second.page);
+              new_tex.data = tex_it->second.rgba_bytes;
+            }
+          }
+
+          pc_draw->tree_tex_id = idx_in_level_texture;
+        } else {
+          pc_draw_idx = existing->second;
+          pc_draw = &pc_effect.draws.at(pc_draw_idx);
+        }
+
+        for (auto idx : draw.indices) {
+          if (idx == UINT32_MAX) {
+            indices_temp[ci][ei][pc_draw_idx].push_back(idx);
+          } else {
+            indices_temp[ci][ei][pc_draw_idx].push_back(idx + first_vertex);
+          }
+        }
+      }
+    }
+  }
+
+  // merge indices
+  for (size_t ci = 0; ci < ctrls.size(); ci++) {
+    auto& pc_ctrl = out.merc_data.models.at(ci + first_model);
+    for (size_t ei = 0; ei < ctrls[ci].effects.size(); ei++) {
+      auto& pc_effect = pc_ctrl.effects.at(ei);
+      for (size_t di = 0; di < pc_effect.draws.size(); di++) {
+        auto& pc_draw = pc_effect.draws.at(di);
+        auto& inds = indices_temp[ci][ei][di];
+        pc_draw.num_triangles = clean_up_vertex_indices(inds);
+        pc_draw.first_index = out.merc_data.indices.size();
+        pc_draw.index_count = inds.size();
+        out.merc_data.indices.insert(out.merc_data.indices.end(), inds.begin(), inds.end());
+      }
     }
   }
 }

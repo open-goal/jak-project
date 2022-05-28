@@ -237,6 +237,54 @@ void CollisionMesh::serialize(Serializer& ser) {
   ser.from_pod_vector(&vertices);
 }
 
+void MercDraw::serialize(Serializer& ser) {
+  ser.from_ptr(&mode);
+  ser.from_ptr(&tree_tex_id);
+  ser.from_ptr(&first_index);
+  ser.from_ptr(&index_count);
+  ser.from_ptr(&num_triangles);
+}
+
+void MercEffect::serialize(Serializer& ser) {
+  if (ser.is_saving()) {
+    ser.save<size_t>(draws.size());
+  } else {
+    draws.resize(ser.load<size_t>());
+  }
+  for (auto& draw : draws) {
+    draw.serialize(ser);
+  }
+}
+
+void MercModel::serialize(Serializer& ser) {
+  ser.from_str(&name);
+  if (ser.is_saving()) {
+    ser.save<size_t>(effects.size());
+  } else {
+    effects.resize(ser.load<size_t>());
+  }
+  for (auto& effect : effects) {
+    effect.serialize(ser);
+  }
+  ser.from_ptr(&scale_xyz);
+  ser.from_ptr(&max_draws);
+  ser.from_ptr(&max_bones);
+}
+
+void MercModelGroup::serialize(Serializer& ser) {
+  if (ser.is_saving()) {
+    ser.save<size_t>(models.size());
+  } else {
+    models.resize(ser.load<size_t>());
+  }
+  for (auto& model : models) {
+    model.serialize(ser);
+  }
+
+  ser.from_pod_vector(&indices);
+  ser.from_pod_vector(&vertices);
+}
+
 void Level::serialize(Serializer& ser) {
   ser.from_ptr(&version);
   if (ser.is_loading() && version != TFRAG3_VERSION) {
@@ -287,6 +335,7 @@ void Level::serialize(Serializer& ser) {
   }
 
   collision.serialize(ser);
+  merc_data.serialize(ser);
 
   ser.from_ptr(&version2);
   if (ser.is_loading() && version2 != TFRAG3_VERSION) {
@@ -357,6 +406,10 @@ std::array<int, MemoryUsageCategory::NUM_CATEGORIES> Level::get_memory_usage() c
                           sizeof(PackedShrubVertices::InstanceGroup);
     result[SHRUB_IND] += sizeof(u32) * shrub_tree.indices.size();
   }
+
+  // merc
+  result[MERC_INDEX] += merc_data.indices.size() * sizeof(u32);
+  result[MERC_VERT] += merc_data.vertices.size() * sizeof(MercVertex);
 
   // collision
   result[COLLISION] += sizeof(CollisionMesh::Vertex) * collision.vertices.size();

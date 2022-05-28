@@ -90,3 +90,15 @@ void RenderMux::draw_debug_window() {
   ImGui::Separator();
   m_renderers[m_render_idx]->draw_debug_window();
 }
+
+void RenderMux::init_textures(TexturePool& tp) {
+  for (auto& rend : m_renderers) {
+    rend->init_textures(tp);
+  }
+}
+
+void RenderMux::init_shaders(ShaderLibrary& sl) {
+  for (auto& rend : m_renderers) {
+    rend->init_shaders(sl);
+  }
+}

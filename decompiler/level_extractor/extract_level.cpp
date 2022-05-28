@@ -80,7 +80,9 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
       {"shrub-colors", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_TIME_OF_DAY]},
       {"shrub-vert", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_VERT]},
       {"shrub-ind", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_IND]},
-      {"collision", memory_use_by_category[tfrag3::MemoryUsageCategory::COLLISION]}};
+      {"collision", memory_use_by_category[tfrag3::MemoryUsageCategory::COLLISION]},
+      {"merc-vert", memory_use_by_category[tfrag3::MemoryUsageCategory::MERC_VERT]},
+      {"merc-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::MERC_INDEX]}};
   for (auto& known : known_categories) {
     total_accounted += known.second;
   }
@@ -263,6 +265,8 @@ void extract_common(const ObjectFileDB& db,
   tfrag_level.serialize(ser);
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
+
+  fmt::print("stats for {}\n", dgo_name);
   print_memory_usage(tfrag_level, ser.get_save_result().second);
   fmt::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
              100.f * compressed.size() / ser.get_save_result().second);
@@ -293,6 +297,7 @@ void extract_from_level(const ObjectFileDB& db,
   level_data.serialize(ser);
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
+  fmt::print("stats for {}\n", dgo_name);
   print_memory_usage(level_data, ser.get_save_result().second);
   fmt::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
              100.f * compressed.size() / ser.get_save_result().second);

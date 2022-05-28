@@ -45,12 +45,15 @@ enum MemoryUsageCategory {
   SHRUB_VERT,
   SHRUB_IND,
 
+  MERC_VERT,
+  MERC_INDEX,
+
   COLLISION,
 
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 17;
+constexpr int TFRAG3_VERSION = 19;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -323,6 +326,59 @@ struct CollisionMesh {
   void serialize(Serializer& ser);
 };
 
+// MERC
+
+struct MercVertex {
+  float pos[3];
+  float pad0;
+
+  float normal[3];
+  float pad1;
+
+  float weights[3];
+  float pad2;
+
+  float st[2];
+
+  u8 rgba[4];
+  u8 mats[3];
+  u8 pad3;
+};
+static_assert(sizeof(MercVertex) == 64);
+
+struct MercDraw {
+  DrawMode mode;
+  u32 tree_tex_id = 0;  // the texture that should be bound for the draw
+
+  u32 first_index;
+  u32 index_count;
+  u32 num_triangles;
+  void serialize(Serializer& ser);
+};
+
+struct MercEffect {
+  std::vector<MercDraw> draws;
+  void serialize(Serializer& ser);
+};
+
+struct MercModel {
+  std::string name;
+  std::vector<MercEffect> effects;
+  float scale_xyz;
+  u32 max_draws;
+  u32 max_bones;
+  void serialize(Serializer& ser);
+};
+
+struct MercModelGroup {
+  std::vector<MercVertex> vertices;
+  std::vector<u32> indices;
+  std::vector<MercModel> models;
+  void serialize(Serializer& ser);
+};
+
+//
+
 constexpr int TFRAG_GEOS = 3;
 constexpr int TIE_GEOS = 4;
 
@@ -334,6 +390,7 @@ struct Level {
   std::array<std::vector<TieTree>, TIE_GEOS> tie_trees;
   std::vector<ShrubTree> shrub_trees;
   CollisionMesh collision;
+  MercModelGroup merc_data;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
 

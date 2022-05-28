@@ -40,7 +40,8 @@ struct SharedRenderState {
   bool use_direct2 = true;
   math::Vector<u8, 4> fog_color;
   float fog_intensity = 1.f;
-  bool no_multidraw = true;
+  bool no_multidraw = false;
+  bool merc2 = true;
 
   void reset();
   bool has_pc_data = false;
@@ -87,6 +88,9 @@ class RenderMux : public BucketRenderer {
             std::vector<std::unique_ptr<BucketRenderer>> renderers);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+  void init_shaders(ShaderLibrary&) override;
+  void init_textures(TexturePool&) override;
+  void set_idx(u32 i) { m_render_idx = i; };
 
  private:
   std::vector<std::unique_ptr<BucketRenderer>> m_renderers;
