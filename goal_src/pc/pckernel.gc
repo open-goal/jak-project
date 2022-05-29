@@ -43,7 +43,9 @@
   (unknown 15)
   )
 
-
+;; forward declarations needed for discord rpc.
+(declare-type ogreboss process-drawable)
+(declare-type plant-boss process-drawable)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; updates
@@ -191,9 +193,50 @@
     (set! (-> info fuel) (&-> *game-info* fuel))
     (set! (-> info money-total) (&-> *game-info* money-total))
     (set! (-> info buzzer-total) (&-> *game-info* buzzer-total))
+    (set! (-> info deaths) (&-> *game-info* total-deaths))
     (set! (-> info status) "Playing Jak and Daxter: The Precursor Legacy™")
     (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name))) ;; grab the name of level we're in
     (set! (-> info cutscene?) (-> obj movie?))
+    (set! (-> info ogreboss?) (the-as symbol (and (process-by-ename "ogreboss-1") (case (-> (process-by-ename "ogreboss-1") next-state name) (
+                ('ogreboss-die
+                 'ogreboss-idle
+                 'ogreboss-stage1
+                 'ogreboss-stage2
+                 'ogreboss-stage3-hit
+                 'ogreboss-stage3-shuffle
+                 'ogreboss-stage3-throw
+                 'ogreboss-wait-for-player) #t)))))
+    (set! (-> info plant-boss?) (the-as symbol (and (process-by-ename "plant-boss-3") (case (-> (process-by-ename "plant-boss-3") next-state name) (
+                ('plant-boss-idle
+                 'plant-boss-hit
+                 'plant-boss-vulnerable
+                 'plant-boss-spawn
+                 'plant-boss-reset
+                 'plant-boss-attack) #t)))))
+    (set! (-> info racer?) (the-as symbol (and *target* (case (-> *target* next-state name) (
+                ('target-racing
+                 'target-racing-bounce
+                 'target-racing-death
+                 'target-racing-falling
+                 'target-racing-grab
+                 'target-racing-hit
+                 'target-racing-jump
+                 'target-racing-smack
+                 'target-racing-start) #t)))))
+    (set! (-> info flutflut?) (the-as symbol (and *target* (case (-> *target* next-state name) (
+                ('target-flut-air-attack
+                 'target-flut-air-attack-hit-ground
+                 'target-flut-double-jump
+                 'target-flut-falling
+                 'target-flut-grab
+                 'target-flut-hit
+                 'target-flut-hit-ground
+                 'target-flut-jump
+                 'target-flut-running-attack
+                 'target-flut-stance
+                 'target-flut-start
+                 'target-flut-walk) #t)))))
+
     (with-profiler "discord-update" (pc-discord-rpc-update info))
     )
 
