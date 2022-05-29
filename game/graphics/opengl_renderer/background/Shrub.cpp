@@ -61,7 +61,7 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   render_all_trees(settings, render_state, prof);
 }
 
-void Shrub::update_load(const Loader::LevelData* loader_data) {
+void Shrub::update_load(const LevelData* loader_data) {
   const tfrag3::Level* lev_data = loader_data->level.get();
   // We changed level!
   discard_tree_cache();

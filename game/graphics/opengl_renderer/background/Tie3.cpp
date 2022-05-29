@@ -14,7 +14,7 @@ Tie3::~Tie3() {
   discard_tree_cache();
 }
 
-void Tie3::update_load(const Loader::LevelData* loader_data) {
+void Tie3::update_load(const LevelData* loader_data) {
   const tfrag3::Level* lev_data = loader_data->level.get();
   m_wind_vectors.clear();
   // We changed level!

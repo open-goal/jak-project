@@ -40,7 +40,7 @@ class Tie3 : public BucketRenderer {
   int lod() const { return Gfx::g_global_settings.lod_tie; }
 
  private:
-  void update_load(const Loader::LevelData* loader_data);
+  void update_load(const LevelData* loader_data);
   void discard_tree_cache();
   void render_tree_wind(int idx,
                         int geom,

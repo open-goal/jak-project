@@ -24,7 +24,7 @@ class Shrub : public BucketRenderer {
   void draw_debug_window() override;
 
  private:
-  void update_load(const Loader::LevelData* loader_data);
+  void update_load(const LevelData* loader_data);
   void discard_tree_cache();
 
   struct Tree {

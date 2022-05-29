@@ -98,6 +98,8 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/ocean/OceanNear_PS2.cpp
         graphics/opengl_renderer/ocean/OceanTexture.cpp
         graphics/opengl_renderer/ocean/OceanTexture_PC.cpp
+        graphics/opengl_renderer/loader/Loader.cpp
+        graphics/opengl_renderer/loader/LoaderStages.cpp
         graphics/opengl_renderer/BucketRenderer.cpp
         graphics/opengl_renderer/CollideMeshRenderer.cpp
         graphics/opengl_renderer/debug_gui.cpp
@@ -105,7 +107,6 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/DirectRenderer2.cpp
         graphics/opengl_renderer/EyeRenderer.cpp
         graphics/opengl_renderer/dma_helpers.cpp
-        graphics/opengl_renderer/Loader.cpp
         graphics/opengl_renderer/MercProgram.cpp
         graphics/opengl_renderer/MercRenderer.cpp
         graphics/opengl_renderer/opengl_utils.cpp

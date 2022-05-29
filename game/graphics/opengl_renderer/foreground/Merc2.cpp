@@ -412,7 +412,7 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
     return;
   }
 
-  const Loader::LevelData* lev = m_current_model->level;
+  const LevelData* lev = m_current_model->level;
   const tfrag3::MercModel* model = m_current_model->model;
 
   int bone_count = (model->max_bones + 31) & (~31);  // todo

@@ -39,7 +39,7 @@ Tfrag3::~Tfrag3() {
 }
 
 void Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
-                         const Loader::LevelData* loader_data) {
+                         const LevelData* loader_data) {
   const auto* lev_data = loader_data->level.get();
   discard_tree_cache();
   for (int geom = 0; geom < GEOM_MAX; ++geom) {
