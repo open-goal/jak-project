@@ -850,15 +850,15 @@ void update_discord_rpc(u32 discord_info) {
       } else if (plantboss != offset_of_s7()) {
         strcpy(state, "Fighting Dark Eco Plant");
         rpc.largeImageKey = "plant-boss";
-        rpc.largeImageText = "Dark Eco Plant";
+        strcpy(large_image_text, "Dark Eco Plant");
       } else if (ogreboss != offset_of_s7()) {
         strcpy(state, "Fighting Klaww");
         rpc.largeImageKey = "ogreboss";
-        rpc.largeImageText = "Klaww";
+        strcpy(large_image_text, "Klaww");
       } else if (!strcmp(level, "title")) {
         strcpy(state, "On title screen");
         rpc.largeImageKey = "title";
-        rpc.largeImageText = "Title screen";
+        strcpy(large_image_text, "Title screen");
       } else if (!strcmp(level, "intro")) {
         strcpy(state, "Intro");
       } else if (cutscene != offset_of_s7()) {
