@@ -56,7 +56,7 @@ class Merc2 : public BucketRenderer {
 
   u32 alloc_bones(int count, float scale);
 
-  std::optional<Loader::MercRef> m_current_model = std::nullopt;
+  std::optional<MercRef> m_current_model = std::nullopt;
   u16 m_current_effect_enable_bits = 0;
   u16 m_current_ignore_alpha_bits = 0;
 
@@ -120,7 +120,7 @@ class Merc2 : public BucketRenderer {
   };
 
   struct LevelDrawBucket {
-    const Loader::LevelData* level = nullptr;
+    const LevelData* level = nullptr;
     std::vector<Draw> draws;
     u32 next_free_draw = 0;
 

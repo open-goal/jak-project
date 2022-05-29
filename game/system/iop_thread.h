@@ -18,7 +18,7 @@ class IOP {
   void wait_for_overlord_start_cmd();
   void wait_for_overlord_init_finish();
   void signal_overlord_init_finish();
-  void signal_run_iop();
+  void signal_run_iop(bool force);
   void wait_run_iop();
   void kill_from_ee();
 

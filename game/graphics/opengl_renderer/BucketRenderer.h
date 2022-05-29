@@ -6,7 +6,7 @@
 #include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/texture/TexturePool.h"
 #include "game/graphics/opengl_renderer/Profiler.h"
-#include "game/graphics/opengl_renderer/Loader.h"
+#include "game/graphics/opengl_renderer/loader/Loader.h"
 #include "game/graphics/opengl_renderer/buckets.h"
 
 struct LevelVis {
