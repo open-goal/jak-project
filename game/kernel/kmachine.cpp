@@ -827,6 +827,7 @@ void update_discord_rpc(u32 discord_info) {
   if (gDiscordRpcEnabled) {
     DiscordRichPresence rpc;
     char state[128];
+    char large_image_text[128];
     auto info = discord_info ? Ptr<DiscordInfo>(discord_info).c() : NULL;
     if (info) {
       int cells = (int)*Ptr<float>(info->fuel).c();
@@ -835,6 +836,7 @@ void update_discord_rpc(u32 discord_info) {
       int deaths = *Ptr<int>(info->deaths).c();
       auto cutscene = Ptr<Symbol>(info->cutscene)->value;
       auto ogreboss = Ptr<Symbol>(info->ogreboss)->value;
+      auto plantboss = Ptr<Symbol>(info->plantboss)->value;
       auto racer = Ptr<Symbol>(info->racer)->value;
       auto flutflut = Ptr<Symbol>(info->flutflut)->value;
       char* status = Ptr<String>(info->status).c()->data();
@@ -842,15 +844,21 @@ void update_discord_rpc(u32 discord_info) {
       const char* full_level_name = jak1_get_full_level_name(Ptr<String>(info->level).c()->data());
       memset(&rpc, 0, sizeof(rpc));
       rpc.largeImageKey = level;
-      rpc.largeImageText = full_level_name;
+      strcpy(large_image_text, full_level_name);
       if (!strcmp(level, "finalboss")) {
         strcpy(state, "Fighting Final Boss");
-      } else if (!strcmp(level, "ogre") && ogreboss != offset_of_s7()) {
+      } else if (plantboss != offset_of_s7()) {
+        strcpy(state, "Fighting Dark Eco Plant");
+        rpc.largeImageKey = "plant-boss";
+        rpc.largeImageText = "Dark Eco Plant";
+      } else if (ogreboss != offset_of_s7()) {
         strcpy(state, "Fighting Klaww");
         rpc.largeImageKey = "ogreboss";
         rpc.largeImageText = "Klaww";
       } else if (!strcmp(level, "title")) {
         strcpy(state, "On title screen");
+        rpc.largeImageKey = "title";
+        rpc.largeImageText = "Title screen";
       } else if (!strcmp(level, "intro")) {
         strcpy(state, "Intro");
       } else if (cutscene != offset_of_s7()) {
@@ -862,9 +870,17 @@ void update_discord_rpc(u32 discord_info) {
         strcat(state, std::to_string(orbs).c_str());
         strcat(state, " | Flies: ");
         strcat(state, std::to_string(scout_flies).c_str());
-        strcat(state, " | Deaths: ");
-        strcat(state, std::to_string(deaths).c_str());
+
+        strcat(large_image_text, " | Cells: ");
+        strcat(large_image_text, std::to_string(cells).c_str());
+        strcat(large_image_text, " | Orbs: ");
+        strcat(large_image_text, std::to_string(orbs).c_str());
+        strcat(large_image_text, " | Flies: ");
+        strcat(large_image_text, std::to_string(scout_flies).c_str());
+        strcat(large_image_text, " | Deaths: ");
+        strcat(large_image_text, std::to_string(deaths).c_str());
       }
+      rpc.largeImageText = large_image_text;
       rpc.state = state;
       if (racer != offset_of_s7()) {
         rpc.smallImageKey = "target-racer";

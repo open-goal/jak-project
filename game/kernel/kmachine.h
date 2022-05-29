@@ -141,10 +141,11 @@ struct DiscordInfo {
   u32 deaths;
   u32 status;
   u32 level;
-  u32 cutscene;  // check if cutscene is playing
-  u32 ogreboss;  // are we fighting ogreboss?
-  u32 racer;     // are we driving the zoomer?
-  u32 flutflut;  // are we riding on flut flut?
+  u32 cutscene;   // check if cutscene is playing
+  u32 ogreboss;   // are we fighting ogreboss?
+  u32 plantboss;  // are we fighting plant-boss?
+  u32 racer;      // are we driving the zoomer?
+  u32 flutflut;   // are we riding on flut flut?
 };
 
 // static_assert(offsetof(CpadInfo, new_pad) == 76, "cpad type offset");
