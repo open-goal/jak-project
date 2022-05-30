@@ -103,9 +103,13 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
             // ok, no need for double draw
             break;
           case GsTest::AlphaFail::FB_ONLY:
-            // darn, we need to draw twice
-            double_draw.kind = DoubleDrawKind::AFAIL_NO_DEPTH_WRITE;
-            double_draw.aref_second = alpha_min;
+            if (mode.get_depth_write_enable()) {
+              // darn, we need to draw twice
+              double_draw.kind = DoubleDrawKind::AFAIL_NO_DEPTH_WRITE;
+              double_draw.aref_second = alpha_min;
+            } else {
+              alpha_min = 0.f;
+            }
             break;
           default:
             ASSERT(false);
