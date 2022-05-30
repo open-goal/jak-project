@@ -1,149 +1,508 @@
 (group-name "common")
-(language-id 0 6)
+(language-id 0 1 2 3 4 5 6)
 
 ;; -----------------
 ;; progress menu (insanity)
 
 (#x1000 "CAMERA OPTIONS"
-        "CAMERA OPTIONS")
+        "OPTIONS DE CAMÉRA"
+        "KAMERAOPTIONEN"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1001 "NORMAL"
-        "NORMAL")
+        "NORMAL"
+        "NORMAL"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1002 "INVERTED"
-        "INVERTED")
+        "INVERSÉ"
+        "INVERTIERT"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1003 "1ST-PERSON HORIZONTAL CAMERA"
-        "1ST-PERSON HORIZONTAL CAMERA")
+        "CAMÉRA HORIZONTALE À LA 1ÈRE PERSONNE"
+        "HORIZONTALE-1ST-PERSON KAMERA"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1004 "1ST-PERSON VERTICAL CAMERA"
-        "1ST-PERSON VERTICAL CAMERA")
+        "CAMÉRA VERTICALE À LA 1ÈRE PERSONNE"
+        "VERTIKALE 1ST-PERSON-KAMERA"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1005 "3RD-PERSON HORIZONTAL CAMERA"
-        "3RD-PERSON HORIZONTAL CAMERA")
+        "CAMÉRA HORIZONTALE À LA 3E PERSONNE"
+        "HORIZONTALE-3RD-PERSON KAMERA"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1006 "3RD-PERSON VERTICAL CAMERA"
-        "3RD-PERSON VERTICAL CAMERA")
+        "CAMÉRA VERTICALE À LA 3ÈME PERSONNE"
+        "VERTIKALE 3RD-PERSON-KAMERA"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1007 "RESTORE ORIGINAL GAME CONTROLS"
-        "RESTORE ORIGINAL GAME CONTROLS")
-
+        "RESTAURATION DES COMMANDES DE JEU D'ORIGINE"
+        "WIEDERHERSTELLEN DER URSPRÜNGLICHEN SPIELSTEUERUNG"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x100f "MISCELLANEOUS"
-        "MISCELLANEOUS")
-
+        "DIVERS"
+        "SONSTIGES"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1010 "ACCESSIBILITY"
-        "ACCESSIBILITY")
+        "ACCESSIBILITÉ"
+        "BARRIEREFREIHEIT"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1011 "PRECURSOR ORB GLOW"
-        "PRECURSOR ORB GLOW")
+        "LUMIÈRE ORBE PRÉCURSEUR"
+        "PRECURSOR ORB GLÜHEN"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 
 (#x1020 "PS2 OPTIONS"
-        "PS2 OPTIONS")
+        "OPTIONS PS2"
+        "PS2-OPTIONEN"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1021 "PS2 LOAD SPEED"
-        "PS2 LOAD SPEED")
+        "VITESSE DE CHARGE PS2"
+        "PS2 LADEGESCHWINDIGKEIT"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1022 "PARTICLE CULLING"
-        "PARTICLE CULLING")
+        "ÉLIMINATION DES PARTICULES"
+        "PARTIKEL-CULLING"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 
 (#x1030 "DISCORD RICH-PRESENCE"
-        "DISCORD RICH-PRESENCE")
+        "RICHE PRESENCE DISCORD"
+        "DISCORD RICH-PRÄSENZ"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 
 (#x1031 "DISPLAY MODE"
-        "DISPLAY MODE")
+        "MODE D'AFFICHAGE"
+        "ANZEIGEMODUS"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1032 "WINDOWED"
-        "WINDOWED")
+        "FENÊTRÉ"
+        "FENSTER"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1033 "BORDERLESS"
-        "BORDERLESS")
+        "SANS BORDURES"
+        "RANDLOS"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1034 "FULLSCREEN"
-        "FULLSCREEN")
-
+        "PLEIN ÉCRAN"
+        "GANZER BILDSCHIRM"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1035 "GAME RESOLUTION"
-        "GAME RESOLUTION")
+        "RÉSOLUTION DE JEU"
+        "SPIELAUFLÖSUNG"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1036 "~D X ~D"
-        "~D X ~D")
-
+        "~D X ~D"
+        "~D X ~D"
+        "~D X ~D"
+        "~D X ~D"
+        "~D X ~D"
+        "~D X ~D"
+  )
 (#x1037 "PS2 ASPECT RATIO"
-        "PS2 ASPECT RATIO")
+        "FORMAT PS2"
+        "PS2-SEITENVERHÄLTNIS"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1038 "WHEN PS2 ASPECT RATIO IS ENABLED, ONLY 4X3 AND 16X9 ASPECT RATIO CAN BE SELECTED. CONTINUE?"
-        "WHEN PS2 ASPECT RATIO IS ENABLED, ONLY 4X3 AND 16X9 ASPECT RATIO CAN BE SELECTED. CONTINUE?")
+        "LORSQUE LE RAPPORT D'ASPECT PS2 EST ACTIVÉ, SEULS LES RAPPORTS D'ASPECT 4X3 ET 16X9 PEUVENT ÊTRE SÉLECTIONNÉS. CONTINUEZ?"
+        "WENN DAS PS2-SEITENVERHÄLTNIS AKTIVIERT IST, KÖNNEN NUR DIE SEITENVERHÄLTNISSE 4X3 UND 16X9 AUSGEWÄHLT WERDEN. FORTSETZEN?"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1039 "ASPECT RATIO (PS2)"
-        "ASPECT RATIO (PS2)")
+        "RAPPORT D'ASPECT (PS2)"
+        "SEITENVERHÄLTNIS (PS2)"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x103a "FIT TO SCREEN"
-        "FIT TO SCREEN")
-
+        "ADAPTER A L'ÉCRAN"
+        "VOLLBILD"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1050 "MSAA"
-        "MSAA")
+        "MSAA"
+        "MSAA"
+        "MSAA"
+        "MSAA"
+        "MSAA"
+        "MSAA"
+  )
 (#x1051 "~DX"
-        "~DX")
+        "~DX"
+        "~DX"
+        "~DX"
+        "~DX"
+        "~DX"
+        "~DX"
+  )
 (#x1052 "2X"
-        "2X")
+        "2X"
+        "2X"
+        "2X"
+        "2X"
+        "2X"
+        "2X"
+  )
 (#x1053 "4X"
-        "4X")
+        "4X"
+        "4X"
+        "4X"
+        "4X"
+        "4X"
+        "4X"
+  )
 (#x1054 "8X"
-        "8X")
+        "8X"
+        "8X"
+        "8X"
+        "8X"
+        "8X"
+        "8X"
+  )
 (#x1055 "16X"
-        "16X")
+        "16X"
+        "16X"
+        "16X"
+        "16X"
+        "16X"
+        "16X"
+  )
 
 (#x1060 "FRAME RATE"
-        "FRAME RATE")
+        "FRÉQUENCE D'IMAGE"
+        "BILDRATE"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 
 (#x1070 "LEVEL OF DETAIL (BACKGROUND)"
-        "LEVEL OF DETAIL (BACKGROUND)")
+        "NIVEAU DE DÉTAIL (ARRIÈRE PLAN)"
+        "DETAILLEBENE (HINTERGRUND)"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1071 "LEVEL OF DETAIL (FOREGROUND)"
-        "LEVEL OF DETAIL (FOREGROUND)")
+        "NIVEAU DE DÉTAIL (PREMIER PLAN)"
+        "DETAILLEBENE (VORDERGRUND)"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1072 "HIGHEST"
-        "HIGHEST")
+        "LE PLUS ÉLEVÉ"
+        "HÖCHSTE"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1073 "HIGH"
-        "HIGH")
+        "HAUT"
+        "HOCH"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1074 "MID"
-        "MID")
+        "MOYEN"
+        "MITTEL"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1075 "LOW"
-        "LOW")
+        "BAS"
+        "NIEDRIG"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1076 "LOWEST"
-        "LOWEST")
+        "LE PLUS BAS"
+        "NIEDRIGSTE"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1077 "PS2"
-        "PS2")
+        "PS2"
+        "PS2"
+        "PS2"
+        "PS2"
+        "ポーズ"
+        "PS2"
+  )
 
 (#x1078 "SUBTITLES"
-        "SUBTITLES")
+        "SOUS-TITRES"
+        "UNTERTITEL"
+        "SUBTÍTULOS"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
+
+        
 (#x1079 "HINT SUBTITLES"
-        "HINT SUBTITLES")
+        "SOUS-TITRES ASTUCES"
+        "TIPP UNTERTITEL"
+        "HINT SUBTÍTULOS"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x107a "SUBTITLES LANGUAGE"
-        "SUBTITLES LANGUAGE")
+        "LANGUE DES SOUS-TITRES"
+        "UNTERTITEL SPRACHE"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x107b "SUBTITLES SPEAKER"
-        "SUBTITLES SPEAKER")
+        "INTERVENANT SOUS-TITRES"
+        "UNTERTITEL LAUTSPRECHER"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x107c "ALWAYS"
-        "ALWAYS")
+        "TOUJOURS"
+        "IMMER"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x107d "NEVER"
-        "NEVER")
+        "JAMAIS"
+        "NIEMALS"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x107e "OFF-SCREEN"
-        "OFF-SCREEN")
+        "HORS ECRAN"
+        "OFF-SCREEN"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 
 (#x107f "HINT LOG"
-        "HINT LOG")
+        "JOURNAL DES CONSEILS"
+        "TIPP-LOG"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 
 (#x1080 "CHEATS"
-        "CHEATS")
+        "TRICHE"
+        "CHEATS"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1090 "INFINITE BLUE ECO"
-        "INFINITE BLUE ECO")
+        "ECO BLEU INFINI"
+        "UNENDLICH BLAUES ECO"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1091 "INFINITE RED ECO"
-        "INFINITE RED ECO")
+        "ECO ROUGE INFINI"
+        "UNENDLICH ROTES ECO"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1092 "INFINITE GREEN ECO"
-        "INFINITE GREEN ECO")
+        "ECO VERT INFINI"
+        "UNENDLICH GRÜNES ÖKO"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1093 "INFINITE YELLOW ECO"
-        "INFINITE YELLOW ECO")
+        "ECO JAUNE INFINI"
+        "UNENDLICH GELBES ECO"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1094 "ALTERNATE DAXTER"
-        "ALTERNATE DAXTER")
+        "DAXTER ALTERNATIF"
+        "ALTERNATIVER DAXTER"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x1095 "INVINCIBILITY"
-        "INVINCIBILITY")
+        "INVINCIBILITÉ"
+        "UNBESIEGBARKEIT"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 
 (#x10c0 "MUSIC PLAYER"
-        "MUSIC PLAYER")
+        "LECTEUR DE MUSIQUE"
+        "MUSIKSPIELER"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x10c1 "SCENE PLAYER"
-        "SCENE PLAYER")
+        "LECTEUR DE SCÈNE"
+        "SZENENSPIELER"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x10c2 "PLAY CREDITS"
-        "PLAY CREDITS")
+        "JOUER LES CRÉDITS"
+        "ABSPANN ABSPIELEN"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 (#x10c3 "SCRAPBOOK"
-        "SCRAPBOOK")
+        "SCRAPBOOK"
+        "SAMMELALBUM"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
+  )
 
 
 ;; -----------------
 ;; test
 
 (#x7fff
-  "ARMOR"
-  "ARMOUR"
+        "ARMOR"
+        "ARMURE"
+        "RÜSTUNG"
+        "PAUSA"
+        "PAUSA"
+        "ポーズ"
+        "PAUSE"
   )
+  
 
 
+message_1.txt
+10 KB
