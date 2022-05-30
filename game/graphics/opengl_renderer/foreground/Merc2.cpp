@@ -8,8 +8,22 @@ Merc2::Merc2(const std::string& name, BucketId my_id) : BucketRenderer(name, my_
 
   glGenBuffers(1, &m_bones_buffer);
   glBindBuffer(GL_UNIFORM_BUFFER, m_bones_buffer);
-  glBufferData(GL_UNIFORM_BUFFER, MAX_SHADER_BONES * sizeof(MercMat), nullptr, GL_DYNAMIC_DRAW);
+  glBufferData(GL_UNIFORM_BUFFER, MAX_SHADER_BONE_VECTORS * sizeof(math::Vector4f), nullptr,
+               GL_DYNAMIC_DRAW);
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+  GLint val;
+  glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &val);
+  if (val <= 16) {
+    // somehow doubt this can happen, but just in case
+    m_opengl_buffer_alignment = 1;
+  } else {
+    m_opengl_buffer_alignment = val / 16;  // number of bone vectors
+    if (m_opengl_buffer_alignment * 16 != (u32)val) {
+      ASSERT_MSG(false,
+                 fmt::format("opengl uniform buffer alignment is {}, which is strange\n", val));
+    }
+  }
 
   for (int i = 0; i < MAX_LEVELS; i++) {
     auto& draws = m_level_draw_buckets.emplace_back();
@@ -113,48 +127,6 @@ void Merc2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   flush_pending_model(render_state, prof);
   // flush buckets to draws
   flush_draw_buckets(render_state, prof);
-}
-
-/*!
- * Queue up some bones to be included in the bone buffer.
- * Returns the index of the first bone.
- */
-u32 Merc2::alloc_bones(int count, float scale) {
-  ASSERT(count + m_next_free_bone <= MAX_SHADER_BONES);
-
-  u32 first_bone = m_next_free_bone;
-
-  // model should have under 128 bones.
-  ASSERT(count <= MAX_SKEL_BONES);
-
-  // iterate over each bone we need
-  for (int i = 0; i < count; i++) {
-    auto& skel_mat = m_skel_matrix_buffer[i];
-    auto& shader_mat = m_shader_matrix_buffer[m_next_free_bone++];
-
-    // scale the transformation matrix (todo: can we move this to the extraction)
-    // and copy to the large bone buffer.
-    for (int j = 0; j < 3; j++) {
-      shader_mat.tmat[j] = skel_mat.tmat[j] * scale;
-    }
-    shader_mat.tmat[3] = skel_mat.tmat[3];
-
-    for (int j = 0; j < 3; j++) {
-      shader_mat.nmat[j] = skel_mat.nmat[j];
-    }
-
-    // we could include the effect of the perspective matrix here.
-    //        for (int j = 0; j < 3; j++) {
-    //          tbone_buffer[i][j] = vf15.elementwise_multiply(bone_mat[j]);
-    //          tbone_buffer[i][j].w() += p.w() * bone_mat[j].z();
-    //          tbone_buffer[i][j] *= scale;
-    //        }
-    //
-    //        tbone_buffer[i][3] = vf15.elementwise_multiply(bone_mat[3]) +
-    //        m_low_memory.perspective[3]; tbone_buffer[i][3].w() += p.w() * bone_mat[3].z();
-  }
-
-  return first_bone;
 }
 
 u32 Merc2::alloc_lights(const VuLights& lights) {
@@ -405,6 +377,55 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
 }
 
 /*!
+ * Queue up some bones to be included in the bone buffer.
+ * Returns the index of the first bone vector.
+ */
+u32 Merc2::alloc_bones(int count, float scale) {
+  u32 first_bone_vector = m_next_free_bone_vector;
+  ASSERT(count * 8 + first_bone_vector <= MAX_SHADER_BONE_VECTORS);
+
+  // model should have under 128 bones.
+  ASSERT(count <= MAX_SKEL_BONES);
+
+  // iterate over each bone we need
+  for (int i = 0; i < count; i++) {
+    auto& skel_mat = m_skel_matrix_buffer[i];
+    auto* shader_mat = &m_shader_bone_vector_buffer[m_next_free_bone_vector];
+    int bv = 0;
+
+    // scale the transformation matrix (todo: can we move this to the extraction)
+    // and copy to the large bone buffer.
+    for (int j = 0; j < 3; j++) {
+      shader_mat[bv++] = skel_mat.tmat[j] * scale;
+    }
+    shader_mat[bv++] = skel_mat.tmat[3];
+
+    for (int j = 0; j < 3; j++) {
+      shader_mat[bv++] = skel_mat.nmat[j];
+    }
+
+    // we could include the effect of the perspective matrix here.
+    //        for (int j = 0; j < 3; j++) {
+    //          tbone_buffer[i][j] = vf15.elementwise_multiply(bone_mat[j]);
+    //          tbone_buffer[i][j].w() += p.w() * bone_mat[j].z();
+    //          tbone_buffer[i][j] *= scale;
+    //        }
+    //
+    //        tbone_buffer[i][3] = vf15.elementwise_multiply(bone_mat[3]) +
+    //        m_low_memory.perspective[3]; tbone_buffer[i][3].w() += p.w() * bone_mat[3].z();
+
+    m_next_free_bone_vector += 8;
+  }
+
+  auto b0 = m_next_free_bone_vector;
+  m_next_free_bone_vector += m_opengl_buffer_alignment - 1;
+  m_next_free_bone_vector /= m_opengl_buffer_alignment;
+  m_next_free_bone_vector *= m_opengl_buffer_alignment;
+  ASSERT(b0 <= m_next_free_bone_vector);
+  ASSERT(first_bone_vector + count * 8 <= m_next_free_bone_vector);
+  return first_bone_vector;
+}
+/*!
  * Flush a model to draw buckets
  */
 void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerNode& prof) {
@@ -415,16 +436,16 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
   const LevelData* lev = m_current_model->level;
   const tfrag3::MercModel* model = m_current_model->model;
 
-  int bone_count = (model->max_bones + 31) & (~31);  // todo
-  // int bone_count = 128;
+  int bone_count = model->max_bones + 1;
 
   if (m_next_free_light >= MAX_LIGHTS) {
     fmt::print("MERC2 out of lights, consider increasing MAX_LIGHTS\n");
     flush_draw_buckets(render_state, prof);
   }
 
-  if (m_next_free_bone + bone_count > MAX_SHADER_BONES) {
-    fmt::print("MERC2 out of bones, consider increasing MAX_SHADER_BONES\n");
+  if (m_next_free_bone_vector + m_opengl_buffer_alignment + bone_count * 8 >
+      MAX_SHADER_BONE_VECTORS) {
+    fmt::print("MERC2 out of bones, consider increasing MAX_SHADER_BONE_VECTORS\n");
     flush_draw_buckets(render_state, prof);
   }
 
@@ -560,11 +581,11 @@ void Merc2::flush_draw_buckets(SharedRenderState* /*render_state*/, ScopedProfil
 
     int last_tex = -1;
     int last_light = -1;
-    m_stats.num_bones_uploaded += m_next_free_bone;
+    m_stats.num_bones_uploaded += m_next_free_bone_vector;
 
     glBindBuffer(GL_UNIFORM_BUFFER, m_bones_buffer);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, m_next_free_bone * sizeof(MercMat),
-                    m_shader_matrix_buffer);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, m_next_free_bone_vector * sizeof(math::Vector4f),
+                    m_shader_bone_vector_buffer);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     for (u32 di = 0; di < lev_bucket.next_free_draw; di++) {
@@ -591,14 +612,14 @@ void Merc2::flush_draw_buckets(SharedRenderState* /*render_state*/, ScopedProfil
 
       prof.add_draw_call();
       prof.add_tri(draw.num_triangles);
-      glBindBufferRange(GL_UNIFORM_BUFFER, 1, m_bones_buffer, sizeof(MercMat) * draw.first_bone,
-                        128 * sizeof(MercMat));
+      glBindBufferRange(GL_UNIFORM_BUFFER, 1, m_bones_buffer,
+                        sizeof(math::Vector4f) * draw.first_bone, 128 * sizeof(ShaderMercMat));
       glDrawElements(GL_TRIANGLE_STRIP, draw.index_count, GL_UNSIGNED_INT,
                      (void*)(sizeof(u32) * draw.first_index));
     }
   }
 
   m_next_free_light = 0;
-  m_next_free_bone = 0;
+  m_next_free_bone_vector = 0;
   m_next_free_level_bucket = 0;
 }

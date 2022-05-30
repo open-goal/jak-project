@@ -65,14 +65,21 @@ class Merc2 : public BucketRenderer {
     math::Vector4f nmat[3];
   };
 
+  struct ShaderMercMat {
+    math::Vector4f tmat[4];
+    math::Vector4f nmat[3];
+    math::Vector4f pad;
+  };
+
   static constexpr int MAX_SKEL_BONES = 128;
-  static constexpr int MAX_SHADER_BONES = 8192;
+  static constexpr int BONE_VECTORS_PER_BONE = 7;
+  static constexpr int MAX_SHADER_BONE_VECTORS = 8192;  // ??
 
   static constexpr int MAX_LEVELS = 3;
   static constexpr int MAX_DRAWS_PER_LEVEL = 1024;
 
-  MercMat m_shader_matrix_buffer[MAX_SHADER_BONES];
-  MercMat m_skel_matrix_buffer[MAX_SKEL_BONES];
+  math::Vector4f m_shader_bone_vector_buffer[MAX_SHADER_BONE_VECTORS];
+  ShaderMercMat m_skel_matrix_buffer[MAX_SKEL_BONES];
 
   struct {
     GLuint light_direction[3];
@@ -137,7 +144,8 @@ class Merc2 : public BucketRenderer {
 
   std::vector<LevelDrawBucket> m_level_draw_buckets;
   u32 m_next_free_level_bucket = 0;
-  u32 m_next_free_bone = 0;
+  u32 m_next_free_bone_vector = 0;
+  size_t m_opengl_buffer_alignment = 0;
 
   void flush_draw_buckets(SharedRenderState* render_state, ScopedProfilerNode& prof);
 };
