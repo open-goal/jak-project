@@ -5,6 +5,17 @@
 ;; name in dgo: process-taskable
 ;; dgos: GAME, ENGINE
 
+(defmacro is-nan-hack (flt)
+  `(and (< 0.0 ,flt) (< ,flt 0.0))
+  )
+
+(defmacro less-than-hack (a b)
+  `(if (is-nan-hack ,a)
+       #f
+       (< ,a ,b)
+       )
+  )
+
 ;; DECOMP BEGINS
 
 (defmethod dummy-52 process-taskable ((obj process-taskable))
@@ -160,7 +171,8 @@
             )
         (set! (-> s5-1 y) (* 4.0 (-> s5-1 y)))
         (cond
-          ((< (vector-length s5-1) 102400.0)
+          ;; s5-1 can be nan on the first frame after something spawns
+          ((less-than-hack (vector-length s5-1) 102400.0)
            (when (not (-> obj have-flava))
              (set! (-> obj have-flava) #t)
              (set-setting! *setting-control* pp 'sound-flava #f 20.0 (the-as int (-> obj sound-flava)))
@@ -899,17 +911,6 @@
 
 (defmethod target-above-threshold? process-taskable ((obj process-taskable))
   #t
-  )
-
-(defmacro is-nan-hack (flt)
-  `(and (< 0.0 ,flt) (< ,flt 0.0))
-  )
-
-(defmacro less-than-hack (a b)
-  `(if (is-nan-hack ,a)
-       #f
-       (< ,a ,b)
-       )
   )
 
 (defstate idle (process-taskable)
