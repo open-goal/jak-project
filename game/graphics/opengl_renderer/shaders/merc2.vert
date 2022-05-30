@@ -36,6 +36,7 @@ out float fog;
 struct MercMatrixData {
     mat4 X;
     mat3 R;
+    vec4 pad;
 };
 
 layout (std140, binding = 1) uniform ub_bones {

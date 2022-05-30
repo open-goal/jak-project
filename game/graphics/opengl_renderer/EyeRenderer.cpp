@@ -249,7 +249,7 @@ std::vector<EyeRenderer::SingleEyeDraws> EyeRenderer::get_draws(DmaFollower& dma
       pair_idx = y0 / SINGLE_EYE_SIZE;
       l_draw.pair = pair_idx;
       r_draw.pair = pair_idx;
-      if (tex0->get_data_ptr()) {
+      if (tex0 && tex0->get_data_ptr()) {
         u32 tex_val;
         memcpy(&tex_val, tex0->get_data_ptr(), 4);
         l_draw.clear_color = tex_val;
@@ -280,7 +280,7 @@ std::vector<EyeRenderer::SingleEyeDraws> EyeRenderer::get_draws(DmaFollower& dma
     AdgifHelper adgif1(adgif1_dma.data + 16);
     auto tex1 = render_state->texture_pool->lookup_gpu_texture(adgif1.tex0().tbp0());
 
-    {
+    if (tex1 && tex1->get_data_ptr()) {
       l_draw.pupil = read_eye_draw(dma);
       r_draw.pupil = read_eye_draw(dma);
       l_draw.pupil_tex = tex1;
