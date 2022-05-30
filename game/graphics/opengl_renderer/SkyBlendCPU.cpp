@@ -151,13 +151,16 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
     }
      */
     if (tex->get_data_ptr()) {
-      if (is_first_draw) {
-        blend_sky_initial_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
-                               tex->data_size());
-      } else {
-        blend_sky_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
-                       tex->data_size());
+      if (m_texture_data[buffer_idx].size() == tex->data_size()) {
+        if (is_first_draw) {
+          blend_sky_initial_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
+                                 m_texture_data[buffer_idx].size());
+        } else {
+          blend_sky_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
+                         m_texture_data[buffer_idx].size());
+        }
       }
+
       if (buffer_idx == 0) {
         if (is_first_draw) {
           stats.sky_draws++;

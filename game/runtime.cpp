@@ -86,14 +86,15 @@ void deci2_runner(SystemThreadInterface& iface) {
   lg::debug("[DECI2] Waiting for EE to register protos");
   server.wait_for_protos_ready();
   // then allow the server to accept connections
-  if (!server.init_server()) {
-    ASSERT_MSG(false, "[DECI2] Server not initialized even if protocols are ready, aborting");
+  bool server_ok = server.init_server();
+  if (!server_ok) {
+    lg::error("[DECI2] failed to initialize, REPL will not work.\n");
   }
 
   lg::debug("[DECI2] Waiting for listener...");
   bool saw_listener = false;
   while (!iface.get_want_exit()) {
-    if (server.is_client_connected()) {
+    if (server_ok && server.is_client_connected()) {
       if (!saw_listener) {
         lg::debug("[DECI2] Connected!");
       }
