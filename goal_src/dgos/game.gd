@@ -332,4 +332,5 @@
   ("plat-eco.o" "plat-eco")
   ("ropebridge.o" "ropebridge")
   ("ticky.o" "ticky")
+  ("hud-classes-pc.o" "hud-classes-pc") ;; added
   )
