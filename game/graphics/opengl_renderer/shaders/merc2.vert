@@ -96,7 +96,7 @@ void main() {
 
 
     float Q = fog_constants.x / transformed[3];
-    fog = (255 - clamp(-transformed.w + hvdf_offset.w, fog_constants.z, fog_constants.y))/255.0;
+    fog = 255 - clamp(-transformed.w + hvdf_offset.w, fog_constants.y, fog_constants.z);
 
     transformed.xyz *= Q;
     transformed.xyz += hvdf_offset.xyz;

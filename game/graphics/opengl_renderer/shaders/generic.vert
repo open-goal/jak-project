@@ -46,7 +46,7 @@ void main() {
     // vu.Q = gen.fog.x() / gen.vtx_p0.w();
     float Q = fog_constants.x / transformed.w;
 
-    fog = 255 - clamp(-transformed.w + hvdf_offset.w, fog_constants.z, fog_constants.y);
+    fog = 255 - clamp(-transformed.w + hvdf_offset.w, fog_constants.y, fog_constants.z);
 
     // itof12.xyz vf18, vf22        texture int to float
     // vu.vf18.itof12(Mask::xyz, vu.vf22);
