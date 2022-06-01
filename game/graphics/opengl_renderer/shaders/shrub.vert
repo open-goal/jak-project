@@ -36,10 +36,10 @@ void main() {
     // the itof0 is done in the preprocessing step.  now we have floats.
     
     // Step 3, the camera transform
-    vec4 transformed = camera[3];
-    transformed += camera[0] * position_in.x;
-    transformed += camera[1] * position_in.y;
-    transformed += camera[2] * position_in.z;
+    vec4 transformed = -camera[3];
+    transformed -= camera[0] * position_in.x;
+    transformed -= camera[1] * position_in.y;
+    transformed -= camera[2] * position_in.z;
 
     // compute Q
     float Q = fog_constant / transformed.w;

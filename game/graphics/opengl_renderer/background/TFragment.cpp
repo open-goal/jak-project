@@ -138,12 +138,6 @@ void TFragment::render(DmaFollower& dma,
       }
     }
 
-    // invert the camera
-    auto cam = settings.math_camera.data();
-    for (int i = 0; i < 16; i++) {
-      cam[i] = -cam[i];
-    }
-
     auto t3prof = prof.make_scoped_child("t3");
     m_tfrag3.render_matching_trees(m_tfrag3.lod(), m_tree_kinds, settings, render_state, t3prof);
   }
