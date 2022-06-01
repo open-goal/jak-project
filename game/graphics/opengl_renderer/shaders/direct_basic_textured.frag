@@ -73,7 +73,7 @@ void main() {
         discard;
     }
     if (tex_info.w == 1) {
-        color.xyz = mix(color.xyz, fog_color.xyz / 255., clamp(fog_color.w * (1 - fog), 0, 1));
+        color.xyz = mix(color.xyz, fog_color.rgb, clamp(fog_color.a * fog, 0, 1));
     }
 
 }

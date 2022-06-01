@@ -148,21 +148,18 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings,
                             SharedRenderState* render_state,
                             ShaderId shader) {
   render_state->shaders[shader].activate();
-  glUniform1i(glGetUniformLocation(render_state->shaders[shader].id(), "tex_T0"), 0);
-  glUniformMatrix4fv(glGetUniformLocation(render_state->shaders[shader].id(), "camera"), 1,
-                     GL_FALSE, settings.math_camera.data());
-  glUniform4f(glGetUniformLocation(render_state->shaders[shader].id(), "hvdf_offset"),
-              settings.hvdf_offset[0], settings.hvdf_offset[1], settings.hvdf_offset[2],
-              settings.hvdf_offset[3]);
-  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "fog_constant"),
-              settings.fog.x());
-  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "fog_min"),
-              settings.fog.y());
-  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "fog_max"),
-              settings.fog.z());
-  glUniform4f(glGetUniformLocation(render_state->shaders[shader].id(), "fog_color"),
-              render_state->fog_color[0], render_state->fog_color[1], render_state->fog_color[2],
-              render_state->fog_intensity);
+  auto shid = render_state->shaders[shader].id();
+  glUniform1i(glGetUniformLocation(shid, "tex_T0"), 0);
+  glUniformMatrix4fv(glGetUniformLocation(shid, "camera"), 1, GL_FALSE,
+                     settings.math_camera.data());
+  glUniform4f(glGetUniformLocation(shid, "hvdf_offset"), settings.hvdf_offset[0],
+              settings.hvdf_offset[1], settings.hvdf_offset[2], settings.hvdf_offset[3]);
+  glUniform1f(glGetUniformLocation(shid, "fog_constant"), settings.fog.x());
+  glUniform1f(glGetUniformLocation(shid, "fog_min"), settings.fog.y());
+  glUniform1f(glGetUniformLocation(shid, "fog_max"), settings.fog.z());
+  glUniform4f(glGetUniformLocation(shid, "fog_color"), render_state->fog_color[0] / 255.f,
+              render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
+              render_state->fog_intensity / 255);
 }
 
 void interp_time_of_day_slow(const float weights[8],

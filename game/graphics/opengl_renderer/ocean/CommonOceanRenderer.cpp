@@ -275,8 +275,8 @@ void CommonOceanRenderer::flush_near(SharedRenderState* render_state, ScopedProf
                GL_STREAM_DRAW);
   render_state->shaders[ShaderId::OCEAN_COMMON].activate();
   glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_COMMON].id(), "fog_color"),
-              render_state->fog_color[0], render_state->fog_color[1], render_state->fog_color[2],
-              render_state->fog_intensity);
+              render_state->fog_color[0] / 255.f, render_state->fog_color[1] / 255.f,
+              render_state->fog_color[2] / 255.f, render_state->fog_intensity / 255);
 
   glDepthMask(GL_FALSE);
   glEnable(GL_DEPTH_TEST);
@@ -450,8 +450,8 @@ void CommonOceanRenderer::flush_mid(SharedRenderState* render_state, ScopedProfi
                GL_STREAM_DRAW);
   render_state->shaders[ShaderId::OCEAN_COMMON].activate();
   glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::OCEAN_COMMON].id(), "fog_color"),
-              render_state->fog_color[0], render_state->fog_color[1], render_state->fog_color[2],
-              render_state->fog_intensity);
+              render_state->fog_color[0] / 255.f, render_state->fog_color[1] / 255.f,
+              render_state->fog_color[2] / 255.f, render_state->fog_intensity / 255);
 
   glDepthMask(GL_TRUE);
   glEnable(GL_DEPTH_TEST);

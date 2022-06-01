@@ -269,8 +269,8 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
                 m_ogl.alpha_mult);
     glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
                                      "fog_color"),
-                render_state->fog_color[0], render_state->fog_color[1], render_state->fog_color[2],
-                render_state->fog_intensity);
+                render_state->fog_color[0] / 255.f, render_state->fog_color[1] / 255.f,
+                render_state->fog_color[2] / 255.f, render_state->fog_intensity / 255);
 
   } else {
     render_state->shaders[ShaderId::DIRECT_BASIC].activate();
