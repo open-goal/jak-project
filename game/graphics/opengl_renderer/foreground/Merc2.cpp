@@ -67,8 +67,9 @@ void Merc2::init_for_frame(SharedRenderState* render_state) {
   render_state->shaders[ShaderId::MERC2].activate();
 
   // set uniforms that we know from render_state
-  glUniform4f(m_uniforms.fog_color, render_state->fog_color[0], render_state->fog_color[1],
-              render_state->fog_color[2], render_state->fog_intensity);
+  glUniform4f(m_uniforms.fog_color, render_state->fog_color[0] / 255.f,
+              render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
+              render_state->fog_intensity / 255);
 }
 
 void Merc2::draw_debug_window() {

@@ -78,8 +78,9 @@ void Generic2::init_shaders(ShaderLibrary& shaders) {
 
 void Generic2::opengl_bind_and_setup_proj(SharedRenderState* render_state) {
   render_state->shaders[ShaderId::GENERIC].activate();
-  glUniform4f(m_ogl.fog_color, render_state->fog_color[0], render_state->fog_color[1],
-              render_state->fog_color[2], render_state->fog_intensity);
+  glUniform4f(m_ogl.fog_color, render_state->fog_color[0] / 255.f,
+              render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
+              render_state->fog_intensity / 255);
   glUniform4f(m_ogl.scale, m_drawing_config.proj_scale[0], m_drawing_config.proj_scale[1],
               m_drawing_config.proj_scale[2], 0);
   glUniform1f(m_ogl.mat_23, m_drawing_config.proj_mat_23);
@@ -189,8 +190,9 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
 
   glUniform1f(m_ogl.alpha_reject, alpha_reject);
   glUniform1f(m_ogl.color_mult, color_mult);
-  glUniform4f(m_ogl.fog_color, render_state->fog_color[0], render_state->fog_color[1],
-              render_state->fog_color[2], render_state->fog_intensity);
+  glUniform4f(m_ogl.fog_color, render_state->fog_color[0] / 255.f,
+              render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
+              render_state->fog_intensity / 255);
 }
 
 void Generic2::setup_opengl_tex(u16 unit,

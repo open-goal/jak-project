@@ -30,5 +30,5 @@ void main() {
         discard;
     }
 
-    color.xyz = mix(color.xyz, fog_color.xyz / 255., clamp(fog, 0, 1));
+    color.xyz = mix(color.xyz, fog_color.rgb, clamp(fog, 0, 1));
 }

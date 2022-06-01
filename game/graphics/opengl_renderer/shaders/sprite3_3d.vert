@@ -16,12 +16,10 @@ uniform float fog_min;
 uniform float fog_max;
 uniform float min_scale;
 uniform float max_scale;
-uniform float bonus;
 uniform float deg_to_rad;
 uniform float inv_area;
 uniform vec4 basis_x;
 uniform vec4 basis_y;
-uniform vec4 hmge_scale;
 uniform vec4 xy_array[8];
 uniform vec4 xyz_array[4];
 uniform vec4 st_array[4];
@@ -29,6 +27,8 @@ uniform vec4 st_array[4];
 out flat vec4 fragment_color;
 out vec3 tex_coord;
 out flat uvec2 tex_info;
+
+const float SCISSOR_ADJUST = 512.0/448.0;
 
 vec4 matrix_transform(mat4 mtx, vec3 pt) {
     return mtx[3]
@@ -114,8 +114,8 @@ void main() {
           fge = false;
         } */
 
-        scales_vf01.z = min(max(scales_vf01.z, min_scale), max_scale);
-        scales_vf01.w = min(max(scales_vf01.w, min_scale), max_scale);
+        scales_vf01.z = clamp(scales_vf01.z, min_scale, max_scale);
+        scales_vf01.w = clamp(scales_vf01.w, min_scale, max_scale);
 
         quat.z *= deg_to_rad;
         float sp_sin = sin(quat.z);
@@ -131,6 +131,7 @@ void main() {
         transformed = offset_pos_vf10 + vf12_rotated * xy0_vf19.x + vf13_rotated_trans * xy0_vf19.y;
 
     } else if (rendermode == 2) { // hud sprites
+    
         transformed_pos_vf02.xyz *= Q;
         vec4 offset_pos_vf10 = transformed_pos_vf02 + (matrix == 0 ? hud_hvdf_offset : hud_hvdf_user[matrix - 1]);
 
@@ -159,22 +160,19 @@ void main() {
     // STEP 5: final adjustments
     // correct xy offset
     transformed.xy -= (2048.);
-
     // correct z scale
     transformed.z /= (8388608);
     transformed.z -= 1;
-
     // correct xy scale
     transformed.x /= (256);
     transformed.y /= -(128);
-
     // hack
     transformed.xyz *= transformed.w;
-
-    gl_Position = transformed;
     // scissoring area adjust
-    gl_Position.y *= 512.0/448.0;
+    transformed.y *= SCISSOR_ADJUST;
+    gl_Position = transformed;
 
+    fragment_color *= 2;
     fragment_color.w *= 2;
 
     tex_info = tex_info_in.xy;

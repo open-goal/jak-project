@@ -57,6 +57,12 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
     settings.planes[i] = m_pc_port_data.planes[i];
   }
 
+  // invert the camera
+  auto cam = settings.math_camera.data();
+  for (int i = 0; i < 16; i++) {
+    cam[i] = -cam[i];
+  }
+
   m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
   render_all_trees(settings, render_state, prof);
 }

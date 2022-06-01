@@ -369,6 +369,13 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
           2 * (0xff & m_pc_port_data.itimes[i / 2].data()[2 * (i % 2)]) / 127.f;
     }
   }
+
+  // invert the camera
+  auto cam = settings.math_camera.data();
+  for (int i = 0; i < 16; i++) {
+    cam[i] = -cam[i];
+  }
+
   if (!m_override_level) {
     m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
   }

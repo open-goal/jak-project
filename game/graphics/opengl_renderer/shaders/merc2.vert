@@ -27,6 +27,8 @@ uniform vec4 fog_constants;
 
 uniform mat4 perspective_matrix;
 
+const float SCISSOR_ADJUST = 512.0/448.0;
+
 // output
 out vec3 vtx_color;
 out vec2 vtx_st;
@@ -94,10 +96,7 @@ void main() {
 
 
     float Q = fog_constants.x / transformed[3];
-    float fog1 = -transformed.w + hvdf_offset.w;
-    float fog2 = min(fog1, fog_constants.z);
-    float fog3 = max(fog2, fog_constants.y);
-    fog = 1 - (fog3/256);
+    fog = (255 - clamp(-transformed.w + hvdf_offset.w, fog_constants.z, fog_constants.y))/255.0;
 
     transformed.xyz *= Q;
     transformed.xyz += hvdf_offset.xyz;
@@ -107,8 +106,8 @@ void main() {
     transformed.x /= (256);
     transformed.y /= -(128);
     transformed.xyz *= transformed.w;
+    transformed.y *= SCISSOR_ADJUST;
     gl_Position = transformed;
-    gl_Position.y *= 512.0/448.0;
 
 
     vtx_color = rgba * light_color;
