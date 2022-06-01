@@ -51,17 +51,17 @@ struct ObjectFileData {
  * Stats structure for let rewriting.
  */
 struct LetRewriteStats {
-  int dotimes;
-  int countdown;
-  int abs;
-  int abs2;
-  int unused;
-  int ja;
-  int case_no_else;
-  int case_with_else;
-  int set_vector;
-  int set_vector2;
-  int send_event;
+  int dotimes = 0;
+  int countdown = 0;
+  int abs = 0;
+  int abs2 = 0;
+  int unused = 0;
+  int ja = 0;
+  int case_no_else = 0;
+  int case_with_else = 0;
+  int set_vector = 0;
+  int set_vector2 = 0;
+  int send_event = 0;
 
   int total() const {
     return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
