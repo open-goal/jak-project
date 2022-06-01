@@ -299,13 +299,6 @@
   "DE0197"
   "DE0199"
   "DE0202"
-  ;; jak other
-  "EIFISH"
-  "EIICE"
-  "EIFLUT"
-  "EIPOLE"
-  "EIRACER"
-  "EITUBE"
 
   ;; intro camera
   "NDINTRO"
