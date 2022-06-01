@@ -1614,7 +1614,7 @@
  )
 
 
- (goal-src "engine/ps2/pad.gc" "pckernel-h")
+(goal-src "engine/ps2/pad.gc" "pckernel-h")
 
 (goal-src-sequence
  ;; prefix
@@ -1841,9 +1841,9 @@
  "game/video.gc"
  )
 
- (goal-src "engine/game/main.gc" "pckernel" "video")
+(goal-src "engine/game/main.gc" "pckernel" "video")
 
- (goal-src-sequence
+(goal-src-sequence
  ;; prefix
  "engine/"
 
@@ -1938,9 +1938,7 @@
 
 
 (fmt #t "found {} spools\n" (count *all-str*))
-(group-list "spools"
- `(,@(reverse *all-str*))
- )
+(group-list "spools" (reverse *all-str*))
 
 
 (group-list "text"
@@ -1955,6 +1953,7 @@
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
 (goal-src "pc/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
+(goal-src "pc/hud-classes-pc.gc" "pckernel" "hud" "battlecontroller" "generic-obs")
 
 ;; the debug menu is modified to include PC specific options:
 (goal-src "engine/debug/default-menu.gc" "anim-tester-x" "part-tester")
