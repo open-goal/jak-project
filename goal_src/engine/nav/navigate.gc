@@ -5,6 +5,13 @@
 ;; name in dgo: navigate
 ;; dgos: GAME, ENGINE
 
+;; note: added this to avoid a bug where enemies with NaN positions end up inside the nav mesh.
+;; it's not clear yet why the enemies have NaN positions, but nothing else seems to go wrong if we
+;; ignore them here. It's possible this happens as enemies are spawned/despawned by the visibility system.
+(defmacro is-nan? (flt)
+  `(and (< 0.0 ,flt) (< ,flt 0.0))
+  )
+
 ;; DECOMP BEGINS
 
 (define *nav-timer* (new 'global 'stopwatch))
@@ -2080,7 +2087,9 @@
                          (f0-9 (+ (-> sv-112 w) (-> sv-80 shape nav-radius)))
                          (f2-17 (+ 40960.0 f0-9))
                          )
-                    (when (< f1-3 (* f2-17 f2-17))
+                    ;; HACK: added a NaN check here. it seems like some enemies have bogus positions (maybe on their first frame?)
+                    ;; and in these cases we shouldn't bother including them in the mesh.
+                    (when (and (< f1-3 (* f2-17 f2-17)) (not (is-nan? (-> sv-112 x))))
                       (let ((v1-94 sv-96)
                             (a0-47 (-> sv-80 mesh origin))
                             )
