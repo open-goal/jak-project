@@ -152,7 +152,10 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
       // (Cs - 0) * Ad + Cd
       glBlendFunc(GL_DST_ALPHA, GL_ONE);
       glBlendEquation(GL_FUNC_ADD);
-      color_mult = 0.5f;  // HACK, should probably be 0.5
+      color_mult = 0.5f;
+    } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_FIX_DST) {
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ONE, GL_ZERO);
     } else {
       ASSERT(false);
     }
@@ -296,9 +299,10 @@ void Generic2::do_draws(SharedRenderState* render_state, ScopedProfilerNode& pro
 
   opengl_bind_and_setup_proj(render_state);
   constexpr DrawMode::AlphaBlend alpha_order[ALPHA_MODE_COUNT] = {
-      DrawMode::AlphaBlend::SRC_SRC_SRC_SRC, DrawMode::AlphaBlend::SRC_DST_SRC_DST,
-      DrawMode::AlphaBlend::SRC_0_SRC_DST,   DrawMode::AlphaBlend::ZERO_SRC_SRC_DST,
-      DrawMode::AlphaBlend::SRC_DST_FIX_DST, DrawMode::AlphaBlend::SRC_0_DST_DST,
+      DrawMode::AlphaBlend::SRC_0_FIX_DST,    DrawMode::AlphaBlend::SRC_SRC_SRC_SRC,
+      DrawMode::AlphaBlend::SRC_DST_SRC_DST,  DrawMode::AlphaBlend::SRC_0_SRC_DST,
+      DrawMode::AlphaBlend::ZERO_SRC_SRC_DST, DrawMode::AlphaBlend::SRC_DST_FIX_DST,
+      DrawMode::AlphaBlend::SRC_0_DST_DST,
   };
 
   for (int i = 0; i < ALPHA_MODE_COUNT; i++) {
