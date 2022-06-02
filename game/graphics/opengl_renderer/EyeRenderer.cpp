@@ -579,7 +579,7 @@ void EyeRenderer::run_gpu(const std::vector<SingleEyeDraws>& draws,
     // first, the clear
     float clear[4] = {0, 0, 0, 0};
     for (int i = 0; i < 4; i++) {
-      clear[i] = (draw.clear_color >> (8 * i)) / 255.f;
+      clear[i] = ((draw.clear_color >> (8 * i)) & 0xff) / 255.f;
     }
     glClearBufferfv(GL_COLOR, 0, clear);
 
