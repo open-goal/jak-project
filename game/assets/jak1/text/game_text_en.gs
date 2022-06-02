@@ -82,16 +82,16 @@
         "LEVEL OF DETAIL (BACKGROUND)")
 (#x1071 "LEVEL OF DETAIL (FOREGROUND)"
         "LEVEL OF DETAIL (FOREGROUND)")
-(#x1072 "HIGHEST"
-        "HIGHEST")
+(#x1072 "MAXIMUM"
+        "MAXIMUM")
 (#x1073 "HIGH"
         "HIGH")
-(#x1074 "MID"
-        "MID")
+(#x1074 "MEDIUM"
+        "MEDIUM")
 (#x1075 "LOW"
         "LOW")
-(#x1076 "LOWEST"
-        "LOWEST")
+(#x1076 "MINIMUM"
+        "MINIMUM")
 (#x1077 "PS2"
         "PS2")
 
