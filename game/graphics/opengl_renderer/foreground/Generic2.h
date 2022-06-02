@@ -184,8 +184,8 @@ class Generic2 : public BucketRenderer {
     u32 dma_tags = 0;
   } m_stats;
 
-  static constexpr int ALPHA_MODE_COUNT = 6;
-  bool m_alpha_draw_enable[ALPHA_MODE_COUNT] = {true, true, true, true, true, true};
+  static constexpr int ALPHA_MODE_COUNT = 7;
+  bool m_alpha_draw_enable[ALPHA_MODE_COUNT] = {true, true, true, true, true, true, true};
 
   struct {
     GLuint vao;
