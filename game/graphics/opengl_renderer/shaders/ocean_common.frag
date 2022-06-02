@@ -17,22 +17,14 @@ uniform sampler2D tex_T0;
 void main() {
     vec4 T0 = texture(tex_T0, tex_coord.xy / tex_coord.z);
     if (bucket == 0) {
-        color.xyz = fragment_color.xyz * T0.xyz;
-        color.w = fragment_color.w;
-        color.xyz *= 2;
-        color.xyz = mix(color.xyz, fog_color.xyz / 255., clamp(fog_color.w * (1 - fog), 0, 1));
-    } else if (bucket == 1) {
-        color = fragment_color * T0;
-        color.xyzw *= 2;
-    } else if (bucket == 2) {
+        color.rgb = fragment_color.rgb * T0.rgb;
+        color.a = fragment_color.a;
+        color.rgb = mix(color.rgb, fog_color.rgb, clamp(fog_color.a * fog, 0, 1));
+    } else if (bucket == 1 || bucket == 2 || bucket == 4) {
         color = fragment_color * T0;
     } else if (bucket == 3) {
         color = fragment_color * T0;
-        color.xyzw *= 2;
-        color.xyz = mix(color.xyz, fog_color.xyz / 255., clamp(fog_color.w * (1 - fog), 0, 1));
-    } else if (bucket == 4) {
-        color = fragment_color * T0;
-        color.w = 0;
+        color.rgb = mix(color.rgb, fog_color.rgb, clamp(fog_color.a * fog, 0, 1));
     }
 
 }

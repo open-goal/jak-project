@@ -22,5 +22,5 @@ void main() {
     fragment_color = vec4(rgba_in.x, rgba_in.y, rgba_in.z, rgba_in.w * 2.);
     tex_coord = tex_coord_in;
     tex_info = byte_info.xy;
-    fog = float(byte_info.z) / 255.;
+    fog = 255 - byte_info.z;
 }

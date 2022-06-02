@@ -16,6 +16,8 @@ out vec4 fragment_color;
 out vec3 tex_coord;
 out float fogginess;
 
+const float SCISSOR_ADJUST = 512.0/448.0;
+
 void main() {
 
 
@@ -32,47 +34,36 @@ void main() {
     // gs is 12.4 fixed point, set up with 2048.0 as the center.
 
     // the itof0 is done in the preprocessing step.  now we have floats.
-
+    
     // Step 3, the camera transform
-    vec4 transformed = -camera[3].xyzw;
-    transformed += -camera[0] * position_in.x;
-    transformed += -camera[1] * position_in.y;
-    transformed += -camera[2] * position_in.z;
+    vec4 transformed = -camera[3];
+    transformed -= camera[0] * position_in.x;
+    transformed -= camera[1] * position_in.y;
+    transformed -= camera[2] * position_in.z;
 
     // compute Q
-    float Q = fog_constant / transformed[3];
+    float Q = fog_constant / transformed.w;
 
-    float fog1 = -transformed.w + hvdf_offset.w;
-    float fog2 = min(fog1, fog_max);
-    float fog3 = max(fog2, fog_min);
-    fogginess = 255 - fog3;
+    // do fog!
+    fogginess = 255 - clamp(-transformed.w + hvdf_offset.w, fog_min, fog_max);
 
     // perspective divide!
     transformed.xyz *= Q;
-
     // offset
     transformed.xyz += hvdf_offset.xyz;
-
-    // ftoi4
-    //transformed.xyzw *= 16;
-
     // correct xy offset
     transformed.xy -= (2048.);
-
     // correct z scale
     transformed.z /= (8388608);
     transformed.z -= 1;
-
     // correct xy scale
     transformed.x /= (256);
     transformed.y /= -(128);
-
     // hack
     transformed.xyz *= transformed.w;
-
-    gl_Position = transformed;
     // scissoring area adjust
-    gl_Position.y *= 512.0/448.0;
+    transformed.y *= SCISSOR_ADJUST;
+    gl_Position = transformed;
 
     // time of day lookup
     // start with the vertex color (only rgb, VIF filled in the 255.)
@@ -80,7 +71,8 @@ void main() {
     // get the time of day multiplier
     vec4 tod_color = texelFetch(tex_T1, time_of_day_index, 0);
     // combine
-    fragment_color *= tod_color * 2;
+    fragment_color *= tod_color * 4;
+    fragment_color.a *= 2;
 
     tex_coord = tex_coord_in;
 }

@@ -213,38 +213,24 @@ void Sprite3::render_2d_group0(DmaFollower& dma,
                                SharedRenderState* render_state,
                                ScopedProfilerNode& prof) {
   // opengl sprite frame setup
-  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "hvdf_offset"),
-               1, m_3d_matrix_data.hvdf_offset.data());
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "pfog0"),
-              m_frame_data.pfog0);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "min_scale"),
-              m_frame_data.min_scale);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "max_scale"),
-              m_frame_data.max_scale);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "fog_min"),
-              m_frame_data.fog_min);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "fog_max"),
-              m_frame_data.fog_max);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "bonus"),
-              m_frame_data.bonus);
-  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "hmge_scale"), 1,
-               m_frame_data.hmge_scale.data());
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "deg_to_rad"),
-              m_frame_data.deg_to_rad);
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "inv_area"),
-              m_frame_data.inv_area);
-  glUniformMatrix4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "camera"),
-                     1, GL_FALSE, m_3d_matrix_data.camera.data());
-  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "xy_array"), 8,
-               m_frame_data.xy_array[0].data());
-  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "xyz_array"), 4,
-               m_frame_data.xyz_array[0].data());
-  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "st_array"), 4,
-               m_frame_data.st_array[0].data());
-  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "basis_x"), 1,
-               m_frame_data.basis_x.data());
-  glUniform4fv(glGetUniformLocation(render_state->shaders[ShaderId::SPRITE3].id(), "basis_y"), 1,
-               m_frame_data.basis_y.data());
+  auto shid = render_state->shaders[ShaderId::SPRITE3].id();
+  glUniform4fv(glGetUniformLocation(shid, "hvdf_offset"), 1, m_3d_matrix_data.hvdf_offset.data());
+  glUniform1f(glGetUniformLocation(shid, "pfog0"), m_frame_data.pfog0);
+  glUniform1f(glGetUniformLocation(shid, "min_scale"), m_frame_data.min_scale);
+  glUniform1f(glGetUniformLocation(shid, "max_scale"), m_frame_data.max_scale);
+  glUniform1f(glGetUniformLocation(shid, "fog_min"), m_frame_data.fog_min);
+  glUniform1f(glGetUniformLocation(shid, "fog_max"), m_frame_data.fog_max);
+  // glUniform1f(glGetUniformLocation(shid, "bonus"), m_frame_data.bonus);
+  // glUniform4fv(glGetUniformLocation(shid, "hmge_scale"), 1, m_frame_data.hmge_scale.data());
+  glUniform1f(glGetUniformLocation(shid, "deg_to_rad"), m_frame_data.deg_to_rad);
+  glUniform1f(glGetUniformLocation(shid, "inv_area"), m_frame_data.inv_area);
+  glUniformMatrix4fv(glGetUniformLocation(shid, "camera"), 1, GL_FALSE,
+                     m_3d_matrix_data.camera.data());
+  glUniform4fv(glGetUniformLocation(shid, "xy_array"), 8, m_frame_data.xy_array[0].data());
+  glUniform4fv(glGetUniformLocation(shid, "xyz_array"), 4, m_frame_data.xyz_array[0].data());
+  glUniform4fv(glGetUniformLocation(shid, "st_array"), 4, m_frame_data.st_array[0].data());
+  glUniform4fv(glGetUniformLocation(shid, "basis_x"), 1, m_frame_data.basis_x.data());
+  glUniform4fv(glGetUniformLocation(shid, "basis_y"), 1, m_frame_data.basis_y.data());
 
   u16 last_prog = -1;
 

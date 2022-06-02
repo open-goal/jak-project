@@ -618,6 +618,8 @@
       )
   )
 
+(defconstant INVALID_HANDLE (the handle #f))
+
 (defmacro handle->name (handle)
   "get the name of a process using a handle. #f is the result if the handle was invalid."
 
@@ -627,6 +629,19 @@
             (-> ,proc name)
             )
           )
+    )
+  )
+
+(defmacro with-children (bindings &rest body)
+  "run body for each child. not recursive.
+   bindings are: (child proc); proc = process we do this on; child = var name for the current child ptr."
+  `(let ((,(first bindings) (-> ,(second bindings) child)))
+    (while ,(first bindings)
+      
+      ,@body
+      
+      (set! ,(first bindings) (-> ,(first bindings) 0 brother))
+      )
     )
   )
 

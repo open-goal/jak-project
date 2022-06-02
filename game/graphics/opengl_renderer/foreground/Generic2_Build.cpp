@@ -155,10 +155,12 @@ void Generic2::determine_draw_modes() {
         } else if (a == GsAlpha::BlendMode::SOURCE && b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                    c == GsAlpha::BlendMode::DEST && d == GsAlpha::BlendMode::DEST) {
           current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
+        } else if (a == GsAlpha::BlendMode::SOURCE && b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+                   c == GsAlpha::BlendMode::ZERO_OR_FIXED && d == GsAlpha::BlendMode::DEST) {
+          current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_FIX_DST);
         } else {
-          // unsupported blend: a 0 b 2 c 2 d 1
-          // lg::error("unsupported blend: a {} b {} c {} d {}", (int)a, (int)b, (int)c, (int)d);
-          //      ASSERT(false);
+          fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)a, (int)b, (int)c, (int)d);
+          // ASSERT(false);
         }
       }
     }
