@@ -73,7 +73,7 @@ class Merc2 : public BucketRenderer {
 
   static constexpr int MAX_SKEL_BONES = 128;
   static constexpr int BONE_VECTORS_PER_BONE = 7;
-  static constexpr int MAX_SHADER_BONE_VECTORS = 8192;  // ??
+  static constexpr int MAX_SHADER_BONE_VECTORS = 1024 * 32;  // ??
 
   static constexpr int MAX_LEVELS = 3;
   static constexpr int MAX_DRAWS_PER_LEVEL = 1024;
@@ -137,7 +137,7 @@ class Merc2 : public BucketRenderer {
     }
   };
 
-  static constexpr int MAX_LIGHTS = 256;
+  static constexpr int MAX_LIGHTS = 1024;
   VuLights m_lights_buffer[MAX_LIGHTS];
   u32 m_next_free_light = 0;
   VuLights m_current_lights;
