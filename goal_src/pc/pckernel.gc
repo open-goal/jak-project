@@ -169,9 +169,11 @@
     (pc-set-collision-mode *collision-mode*)
     )
 
+  (pc-sound-set-flava-hack (-> obj flava-hack))
+
   (none))
 
-(define *pc-cheat-temp* (the-as (pointer int32) (malloc 'global 24)))
+(define *pc-cheat-temp* (the-as (pointer int32) (malloc 'global (* 4 7))))
 (defmacro pc-cheat-toggle-and-tune (obj cheat)
   `(begin
     (cpad-clear! 0 r1)
@@ -306,6 +308,9 @@
 
     (pc-check-cheat-code (-> *pc-cheat-temp* 5) 0 (l e a d s)
           (pc-cheat-toggle-and-tune obj sidekick-blue))
+
+    (pc-check-cheat-code (-> *pc-cheat-temp* 6) 0 (t u n e s)
+          (pc-cheat-toggle-and-tune obj tunes))
     )
 
   (when *target*
@@ -342,6 +347,13 @@
         )
 
       )
+      
+  (if (pc-cheats? obj tunes)
+      (set! (-> obj flava-hack) -1)
+      (set! (-> obj flava-hack) 0)
+      )
+  
+  (logior! (-> obj cheats-known) (-> obj cheats))
   0)
 
 
