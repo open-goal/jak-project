@@ -2,8 +2,12 @@
 // SPDX-License-Identifier: ISC
 #include "ame_handler.h"
 #include "game/sound/989snd/blocksound_handler.h"
+#include "game/kernel/ksound.h"
 
 namespace snd {
+
+// added!
+u64 SoundFlavaHack = 0;
 
 ame_handler::ame_handler(MultiMIDIBlockHeader* block,
                          voice_manager& vm,
@@ -41,6 +45,7 @@ bool ame_handler::tick() {
   for (auto it = m_midis.begin(); it != m_midis.end();) {
     bool done = it->second->tick();
     if (done) {
+      fmt::print("stopping segment {}\n", it->first);
       it = m_midis.erase(it);
     } else {
       it++;
@@ -247,9 +252,14 @@ std::pair<bool, u8*> ame_handler::run_ame(midi_handler& midi, u8* stream) {
         } else {
           comp = m_register[m_groups[group].basis - 1];
         }
+        // fmt::print("group: {} basis: {} excite: {}\n", group, m_groups[group].basis, comp);
         for (int i = 0; i < m_groups[group].num_channels; i++) {
-          if ((m_groups[group].excite_min[i] - 1 >= comp) ||
-              (m_groups[group].excite_max[i] + 1 <= comp)) {
+          // auto xmin = m_groups[group].excite_min[i];
+          // auto xmax = m_groups[group].excite_max[i];
+          // fmt::print("chan {} excite: {}-{}\n", i, xmin, xmax);
+          // note : added hack here! :-)
+          if (!SoundFlavaHack &&
+              (comp < m_groups[group].excite_min[i] || comp > m_groups[group].excite_max[i])) {
             midi.mute_channel(m_groups[group].channel[i]);
           } else {
             midi.unmute_channel(m_groups[group].channel[i]);

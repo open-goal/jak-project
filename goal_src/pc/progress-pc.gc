@@ -72,45 +72,19 @@
 (define *progress-carousell* (new 'static 'progress-carousell-state))
 
 
-(define *carousell-display-mode* (new 'static 'boxed-array :type game-text-id :length 3 :allocated-length 3
-    (game-text-id windowed)
-    (game-text-id fullscreen)
-    (game-text-id borderless)
-    ))
+(defmacro def-progress-carousell (name texts)
+  `(define ,name (new 'static 'boxed-array :type game-text-id
+      ,@(apply (lambda (x) `(game-text-id ,x)) texts)
+      ))
+  )
 
-(define *carousell-msaa* (new 'static 'boxed-array :type game-text-id :length 5 :allocated-length 5
-    (game-text-id off)
-    (game-text-id 2-times)
-    (game-text-id 4-times)
-    (game-text-id 8-times)
-    (game-text-id 16-times)
-    ))
-
-(define *carousell-lod-bg* (new 'static 'boxed-array :type game-text-id :length 2 :allocated-length 2
-    (game-text-id lod-high)
-    (game-text-id lod-low)
-    ))
-
-(define *carousell-lod-fg* (new 'static 'boxed-array :type game-text-id :length 3 :allocated-length 3
-    (game-text-id lod-high)
-    (game-text-id lod-low)
-    (game-text-id lod-ps2)
-    ))
-
-(define *carousell-subtitle-language* (new 'static 'boxed-array :type game-text-id :length 6 :allocated-length 6
-    (game-text-id english)
-    (game-text-id french)
-    (game-text-id german)
-    (game-text-id spanish)
-    (game-text-id italian)
-    (game-text-id japanese)
-    ))
-
-(define *carousell-speaker* (new 'static 'boxed-array :type game-text-id :length 3 :allocated-length 3
-    (game-text-id speaker-always)
-    (game-text-id speaker-never)
-    (game-text-id speaker-auto)
-    ))
+;; all carousells
+(def-progress-carousell *carousell-display-mode* (windowed fullscreen borderless))
+(def-progress-carousell *carousell-msaa* (off 2-times 4-times 8-times 16-times))
+(def-progress-carousell *carousell-lod-bg* (lod-high lod-low))
+(def-progress-carousell *carousell-lod-fg* (lod-high lod-low lod-ps2))
+(def-progress-carousell *carousell-subtitle-language* (english french german spanish italian japanese))
+(def-progress-carousell *carousell-speaker* (speaker-always speaker-never speaker-auto))
 
 
 
@@ -119,8 +93,7 @@
 ;; pc menu defines
 
 
-(define *game-options-pc*
-  (new 'static 'boxed-array :type game-option :length 6 :allocated-length 6
+(define *game-options-pc* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vibrations) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id play-hints) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id camera-options) :scale #t :param3 (game-option-menu camera-options))
@@ -130,8 +103,7 @@
     )
   )
 
-(define *graphic-options-pc*
-  (new 'static 'boxed-array :type game-option :length 8 :allocated-length 9
+(define *graphic-options-pc* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id game-resolution) :scale #t :param3 (game-option-menu resolution))
     (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
     (new 'static 'game-option :option-type (game-option-type aspect-native) :name (game-text-id ps2-aspect-ratio) :scale #t)
@@ -144,15 +116,13 @@
     )
   )
 
-(define *misc-options*
-  (new 'static 'boxed-array :type game-option :length 2 :allocated-length 2
+(define *misc-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id discord-rpc) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
   )
 
-(define *camera-options*
-  (new 'static 'boxed-array :type game-option :length 6 :allocated-length 6
+(define *camera-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (game-text-id camera-controls-first-horz) :scale #t)
     (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (game-text-id camera-controls-first-vert) :scale #t)
     (new 'static 'game-option :option-type (game-option-type normal-inverted) :name (game-text-id camera-controls-third-horz) :scale #t)
@@ -162,15 +132,13 @@
     )
   )
 
-(define *accessibility-options*
-  (new 'static 'boxed-array :type game-option :length 2 :allocated-length 2
+(define *accessibility-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id money-starburst) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
   )
 
-(define *gfx-ps2-options*
-  (new 'static 'boxed-array :type game-option :length 4 :allocated-length 4
+(define *gfx-ps2-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type lod-bg) :name (game-text-id lod-bg) :scale #t)
     (new 'static 'game-option :option-type (game-option-type lod-fg) :name (game-text-id lod-fg) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id ps2-parts) :scale #t)
@@ -178,8 +146,7 @@
     )
   )
 
-(define *aspect-ratio-options*
-  (new 'static 'boxed-array :type game-option :length 6 :allocated-length 6
+(define *aspect-ratio-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id fit-to-screen) :scale #t)
     (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id resolution-fmt) :param1 4.0 :param2 3.0 :scale #t)
     (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id resolution-fmt) :param1 16.0 :param2 9.0 :scale #t)
@@ -189,8 +156,7 @@
     )
   )
 
-(define *sound-options-pc*
-  (new 'static 'boxed-array :type game-option :length 9 :allocated-length 9
+(define *sound-options-pc* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :name (game-text-id sfx-volume) :scale #t :param2 100.0)
     (new 'static 'game-option :name (game-text-id music-volume) :scale #t :param2 100.0)
     (new 'static 'game-option :name (game-text-id speech-volume) :scale #t :param2 100.0)
@@ -203,17 +169,90 @@
     )
   )
 
-(define *title-pc*
-  (new 'static 'boxed-array :type game-option :length 5 :allocated-length 5
+(define *title-pc* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id new-game) :scale #t :param3 (game-option-menu save-game-title))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id load-game) :scale #t :param3 (game-option-menu load-game))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id options) :scale #t :param3 (game-option-menu settings-title))
+    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id secrets) :scale #t :param3 (game-option-menu secrets))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id quit-game) :scale #t :param3 (game-option-menu quit-title))
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
   )
 
-(define *back-button* (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t))
+(define *secrets-options* (new 'static 'boxed-array :type game-option
+    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id music-player) :scale #t :param3 (game-option-menu music-player))
+    (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
+    )
+  )
+
+(define *music-player-options* (new 'static 'boxed-array :type game-option
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id village1-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id beach-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id jungle-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id fishgame) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id jungleb-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id misty-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id fire-canyon-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id village2-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id rolling-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id swamp-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id sunken-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id ogre-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id ogreboss) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id village3-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id snowy-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id cave-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id lavatube-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id citadel-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id finalboss-level-name) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id credits) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button-music) :name (game-text-id danger-mus) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
+    )
+  )
+
+(define *music-list* '(village1 beach jungle fishgame jungleb misty firecanyon
+                       village2 rolling swamp sunken ogre ogreboss
+                       village3 snow maincave lavatube
+                       citadel finalboss credits danger))
+(define *progress-music* -1)
+(defmacro progress-get-music-by-index (idx)
+  `(the symbol (ref *music-list* ,idx)))
+(defmacro progress-reset-music-parms ()
+  `(begin
+    (set! *progress-music* -1)
+    (set! *progress-flava* -1)))
+
+(defmacro static-text-list-array (&rest texts)
+  `(new 'static 'boxed-array :type game-text-id
+      ,@(apply (lambda (x) `(game-text-id ,x)) texts)
+      )
+  )
+(define *music-flava-name-list* (new 'static 'boxed-array :type (array game-text-id)
+    (static-text-list-array village1-level-name flava-vi1-unused0 flava-sage flava-sage-hut flava-birdlady flava-farmer flava-assistant flava-mayor flava-sculptor flava-explorer flava-dock)
+    (static-text-list-array beach-level-name flava-bea-sentinel flava-bea-cannon flava-bea-grotto flava-birdlady)
+    (static-text-list-array jungle-level-name flava-jun-temple-exit flava-jun-lurkerm flava-jun-temple-top)
+    (static-text-list-array fishgame)
+    (static-text-list-array jungleb-level-name flava-jub-eggtop flava-jub-plant-boss)
+    (static-text-list-array misty-level-name flava-mis-battle flava-mis-boat flava-racer flava-mis-unused0)
+    (static-text-list-array fire-canyon-level-name flava-racer flava-fic-unused0)
+    (static-text-list-array village2-level-name flava-sage flava-assistant flava-warrior flava-geologist flava-gambler flava-levitator)
+    (static-text-list-array rolling-level-name flava-rol-gorge)
+    (static-text-list-array swamp-level-name flava-swa-game flava-swa-launcher flava-swa-battle flava-flutflut)
+    (static-text-list-array sunken-level-name)
+    (static-text-list-array ogre-level-name flava-ogr-middle flava-ogr-end)
+    (static-text-list-array ogreboss)
+    (static-text-list-array village3-level-name flava-vi3-miners flava-sage flava-assistant flava-vi3-mai flava-vi3-sno)
+    (static-text-list-array snowy-level-name flava-sno-battle flava-flutflut flava-sno-cave flava-sno-fort flava-sno-balls)
+    (static-text-list-array cave-level-name flava-mai-rob flava-mai-rob-top flava-mai-mai flava-mai-dar)
+    (static-text-list-array zero lavatube-level-name flava-lav-middle flava-lav-end)
+    (static-text-list-array citadel-level-name flava-sage flava-assistant flava-cit-yellowsage flava-cit-redsage flava-cit-bluesage flava-cit-hub)
+    (static-text-list-array finalboss-level-name flava-fin-middle flava-fin-end)
+    (static-text-list-array credits flava-credits-middle flava-credits-end)
+    (static-text-list-array danger-mus)
+    ))
+
+
 (define-perm *temp-options-alloced* symbol #f)
 
 (defconstant RESOLUTIONS 6)
@@ -268,6 +307,18 @@
       (set! (-> option name) (game-text-id resolution-fmt))
       (set! (-> option param1) (the float ,x))
       (set! (-> option param2) (the float ,y))
+      (set! (-> option scale) #t)
+      
+      (1+! (-> *temp-options* length))
+      )
+  )
+
+(defmacro add-flava-player-option (text-id flava)
+  "add a resolution button to *temp-options* with specified size"
+  `(let ((option (-> *temp-options* (length *temp-options*))))
+      (set! (-> option option-type) (game-option-type button-flava))
+      (set! (-> option name) ,text-id)
+      (set! (-> option param1) (the float ,flava))
       (set! (-> option scale) #t)
       
       (1+! (-> *temp-options* length))
@@ -346,6 +397,20 @@
     (add-back-option)
     )
   
+  
+  *temp-options*
+  )
+
+(defun build-flava-player-options ((mus-idx int))
+  
+  (set! (-> *temp-options* length) 0)
+  
+  (dotimes (i (-> *music-flava-name-list* mus-idx length))
+      (if (nonzero? (-> *music-flava-name-list* mus-idx i))
+          (add-flava-player-option (-> *music-flava-name-list* mus-idx i) i)
+          )
+      )
+  (add-back-option)
   
   *temp-options*
   )
@@ -488,6 +553,9 @@
   (set! (-> *options-remap* (progress-screen resolution))             *temp-options*)
   (set! (-> *options-remap* (progress-screen aspect-ratio))           *aspect-ratio-options*)
   (set! (-> *options-remap* (progress-screen quit-title))             *yes-no-options*)
+  (set! (-> *options-remap* (progress-screen secrets))                *secrets-options*)
+  (set! (-> *options-remap* (progress-screen music-player))           *music-player-options*)
+  (set! (-> *options-remap* (progress-screen flava-player))           *temp-options*)
   
   ;; set default params
   (set! (-> *progress-state* aspect-ratio-choice) (get-aspect-ratio))
@@ -554,6 +622,9 @@
     (((progress-screen resolution))
       ;; TODO infinite scrolling
       (build-resolution-options 0 0)
+      )
+    (((progress-screen flava-player))
+      (build-flava-player-options *progress-music*)
       )
     )
   ;; run nav code
@@ -867,6 +938,9 @@
                 (sound-play-by-name (static-sound-name "menu-stats") (new-sound-id) 1024 0 0 1 #t)
                 (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
                 )
+            (when (= (-> obj display-state) (progress-screen music-player))
+                (sound-group-pause (the-as uint 2))
+                (progress-reset-music-parms))
             (load-level-text-files (-> *level-task-data* (-> obj display-level-index) text-group-index))
             (set! (-> obj next-display-state) (progress-screen invalid))
             )
@@ -891,6 +965,28 @@
                   )
                  )
                )
+              ((= (-> options (-> obj option-index) option-type) (game-option-type button-music))
+               ;; go to the music+flava player
+               (when (find-music-log (progress-get-music-by-index (-> obj option-index)))
+                 (cpad-clear! 0 x)
+                 (cpad-clear! 0 circle)
+                 (set! *progress-music* (-> obj option-index))
+                 (push! obj)
+                 (sound-play-by-name (static-sound-name "select-option") (new-sound-id) 1024 0 0 1 #t)
+                 (set! (-> obj next-display-state) (progress-screen flava-player))
+                 )
+               )
+              ((= (-> options (-> obj option-index) option-type) (game-option-type button-flava))
+               ;; set flava
+               (when (find-flava-log (progress-get-music-by-index *progress-music*) (the int (-> options (-> obj option-index) param1)))
+                 (cpad-clear! 0 x)
+                 (cpad-clear! 0 circle)
+                 (set-setting! *setting-control* obj 'music (progress-get-music-by-index *progress-music*) 0.0 0)
+                 (set! *progress-flava* (the int (-> options (-> obj option-index) param1)))
+                 (sound-group-continue (the-as uint 2))
+                 (sound-play-by-name (static-sound-name "select-option") (new-sound-id) 1024 0 0 1 #t)
+                 )
+               )
               ((= (-> options (-> obj option-index) option-type) (game-option-type button))
                ;; a button. what?
                (case (-> options (-> obj option-index) name)
@@ -905,6 +1001,9 @@
                       (sound-play-by-name (static-sound-name "menu-stats") (new-sound-id) 1024 0 0 1 #t)
                       (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
                       )
+                  (when (= (-> obj display-state) (progress-screen music-player))
+                      (sound-group-pause (the-as uint 2))
+                      (progress-reset-music-parms))
                   (load-level-text-files (-> *level-task-data* (-> obj display-level-index) text-group-index))
                   (set! (-> obj next-display-state) (progress-screen invalid))
                   )
@@ -1321,6 +1420,8 @@
         (set-width! font 370)
         (set-height! font 25)
         (set! (-> font flags) (font-flags shadow kerning middle left large))
+        ;; set scroll arrow sprite vertical position right now
+        (set! (-> obj particles 32 init-pos y) (the float (* 2 (- y-off 20))))
         ;; when scrolling we draw an extra line
         (cond
           ((progress-scrolling-down?) (set! y-off (+ (- y-off arg1) (* (the float arg1) (- 1.0 (-> *progress-scroll* transition))))))
@@ -1341,6 +1442,21 @@
                                                                 -320
                                                                 )))
             )
+        ;; cheating a bit and putting some screen-specific code here. it's not a big deal.
+        (case (-> obj display-state)
+          (((progress-screen music-player))
+            (set-color! font (font-color default))
+            (set-origin! font (- 17 (-> obj left-x-offset)) 15)
+            (set-scale! font (* 0.6 (-> obj transition-percentage-invert)))
+            (print-game-text (lookup-text! *common-text* (game-text-id select-level) #f) font #f (the int (* 128.0 (-> obj transition-percentage-invert))) 22)
+            )
+          (((progress-screen flava-player))
+            (set-color! font (font-color default))
+            (set-origin! font (- 17 (-> obj left-x-offset)) 15)
+            (set-scale! font (* 0.6 (-> obj transition-percentage-invert)))
+            (print-game-text (lookup-text! *common-text* (game-text-id select-flava) #f) font #f (the int (* 128.0 (-> obj transition-percentage-invert))) 22)
+            )
+          )
         (dotimes (index (length options))
         (let ((option-str (the string #f)) ;; the option text
               (option-x 17)
@@ -1359,6 +1475,20 @@
              (if (nonzero? (-> options index name))
                  (set! option-str (lookup-text! *common-text* (-> options index name) #f))
                  (set! option-str (the-as string #f))
+                 )
+             )
+            (((game-option-type button-music))
+             ;; a button for the music player. has the text "locked" sometimes!
+             (if (and (nonzero? (-> options index name)) (find-music-log (progress-get-music-by-index index)))
+                 (set! option-str (lookup-text! *common-text* (-> options index name) #f))
+                 (set! option-str (lookup-text! *common-text* (game-text-id locked) #f))
+                 )
+             )
+            (((game-option-type button-flava))
+             ;; a button for the flava player. has the text "locked" sometimes!
+             (if (and (nonzero? (-> options index name)) (find-flava-log (progress-get-music-by-index *progress-music*) (the int (-> options index param1))))
+                 (set! option-str (lookup-text! *common-text* (-> options index name) #f))
+                 (set! option-str (lookup-text! *common-text* (game-text-id locked) #f))
                  )
              )
             (((game-option-type resolution) (game-option-type aspect-new))
@@ -1385,7 +1515,7 @@
                          (a0-34 (logior (logand v1-82 -256) (shr (shl (the int (+ 64.0 (* 191.0 f0-12))) 56) 56)))
                          (a3-5 (logior (logand a0-34 -65281) (shr (shl (shr (shl a0-34 56) 56) 56) 48)))
                          )
-                    (draw-percent-bar (- 75 (-> obj left-x-offset)) (+ y-off 8) f0-12 (the-as int a3-5))
+                    (draw-percent-bar (- 75 (-> obj left-x-offset)) (+ y-off 8) f0-12 (the-as rgba a3-5))
                     )
                   (set! option-str (string-format "~D" (the int (-> (the-as (pointer float) (-> options index value-to-modify))))))
                   (set! option-x (+ (the int (* 2.5 (-> (the-as (pointer float) (-> options index value-to-modify))))) -100))
@@ -1565,10 +1695,17 @@
                  (set! scroll-amt 1.0)
                  )
                 )
-              (set-color! font (if (and (= index (-> obj option-index)) (not (or (progress-scrolling?) (-> obj in-transition))))
-                                   (font-color yellow-green-2)
-                                   (font-color default)
-                                   ))
+              (set-color! font (cond
+                                 ((and (!= index (-> obj option-index))
+                                       (string= (lookup-text! *common-text* (game-text-id locked) #f) option-str)) ;; hacky..
+                                  ;; for "locked" options!
+                                  (font-color flat-dark-purple))
+                                 ((and (= index (-> obj option-index))
+                                       (not (or (progress-scrolling?) (-> obj in-transition))))
+                                  (font-color yellow-green-2))
+                                 (else
+                                  (font-color default))
+                                 ))
               (set! (-> font origin x) (the float (- option-x (-> obj left-x-offset))))
               (set! (-> font origin y) (the float (the int (* (the float option-y) (if (-> options index scale)
                                                                                         f0-23
@@ -1702,14 +1839,23 @@
           (progress-screen game-ps2-options)
           (progress-screen resolution)
           (progress-screen aspect-ratio)
+          (progress-screen secrets)
           )
          (hide-progress-icons)
          (draw-options self 115 25 0.82)
          )
+        (((progress-screen music-player))
+         (hide-progress-icons)
+         (draw-options self 128 21 0.82)
+         )
+        (((progress-screen flava-player))
+         (hide-progress-icons)
+         (draw-options self 128 21 0.82)
+         )
         (((progress-screen camera-options))
          ;; camera options lines are a bit too big
          (hide-progress-icons)
-         (draw-options self 125 30 0.65)
+         (draw-options self 115 25 0.65)
          )
         (((progress-screen gfx-ps2-options))
          (hide-progress-icons)
@@ -1817,6 +1963,9 @@
   (lambda :behavior progress ()
     (sound-play-by-name (static-sound-name "menu-close") (new-sound-id) 1024 0 0 1 #t)
     (hide-progress-icons)
+    (clear-pending-settings-from-process *setting-control* self 'music)
+    (copy-settings-from-target! *setting-control*)
+    (progress-reset-music-parms)
     (commit-to-file *pc-settings*)
     (set! (-> self particles 3 init-pos x) -320.0)
     (set! (-> self particles 4 init-pos x) -320.0)
