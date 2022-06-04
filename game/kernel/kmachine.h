@@ -146,6 +146,7 @@ struct DiscordInfo {
   u32 plantboss;  // are we fighting plant-boss?
   u32 racer;      // are we driving the zoomer?
   u32 flutflut;   // are we riding on flut flut?
+  u32 time_of_day;
 };
 
 // static_assert(offsetof(CpadInfo, new_pad) == 76, "cpad type offset");
