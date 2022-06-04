@@ -1,6 +1,8 @@
 #include <map>
 #include <cstring>
 #include <string>
+#include <sstream>
+#include <iomanip>
 
 #include "discord.h"
 
@@ -61,6 +63,38 @@ const char* jak1_get_full_level_name(const char* level_name) {
   }
   return "Unknown";
 };
+
+// time of day string to append to level name for icons
+const char* time_of_day_str(float time) {
+  int hour = static_cast<int>(time);
+
+  if (hour >= 0 && hour <= 9)
+    return "green-sun";
+  else if (hour >= 10 && hour <= 21)
+    return "day";
+  else if (hour >= 22 && hour <= 24)
+    return "evening";
+  else
+    return "";
+}
+
+// convert time of day float to a 24-hour hh:mm format string
+std::string get_time_of_day(float time) {
+  int hour = static_cast<int>(time);
+  int minutes = static_cast<int>((time - hour) * 60);
+  std::stringstream ss;
+  ss << hour << ':' << std::setw(2) << std::setfill('0') << minutes;
+  return ss.str();
+}
+
+// are we in an area that's indoors, i.e. not affected by time of day?
+int indoors(const char* level_name) {
+  return !strcmp(level_name, "intro") || !strcmp(level_name, "title") ||
+         !strcmp(level_name, "jungleb") || !strcmp(level_name, "sunken") ||
+         !strcmp(level_name, "sunkenb") || !strcmp(level_name, "maincave") ||
+         !strcmp(level_name, "robocave") || !strcmp(level_name, "darkcave") ||
+         !strcmp(level_name, "lavatube") || !strcmp(level_name, "citadel");
+}
 
 void handleDiscordReady(const DiscordUser* user) {
   printf("\nDiscord: connected to user %s#%s - %s\n", user->username, user->discriminator,
