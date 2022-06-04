@@ -282,6 +282,10 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
             auto time = car(entry).as_int();
             goos::StringObject *speaker = nullptr, *line = nullptr;
             bool offscreen = false;
+            if (scene.kind() == SubtitleSceneKind::Hint ||
+                scene.kind() == SubtitleSceneKind::HintNamed) {
+              offscreen = true;
+            }
             for_each_in_list(cdr(entry), [&](const goos::Object& arg) {
               if (arg.is_string()) {
                 if (!speaker) {
