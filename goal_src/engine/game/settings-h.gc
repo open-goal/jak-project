@@ -60,49 +60,6 @@
     )
   )
 
-(defmethod inspect setting-data ((obj setting-data))
-  (format #t "[~8x] ~A~%" obj 'setting-data)
-  (format #t "~Tborder-mode: ~A~%" (-> obj border-mode))
-  (format #t "~Tsfx-volume: ~f~%" (-> obj sfx-volume))
-  (format #t "~Tmusic-volume: ~f~%" (-> obj music-volume))
-  (format #t "~Tdialog-volume: ~f~%" (-> obj dialog-volume))
-  (format #t "~Tprocess-mask: ~D~%" (-> obj process-mask))
-  (format #t "~Tcommon-page: ~D~%" (-> obj common-page))
-  (format #t "~Tlanguage: ~D~%" (-> obj language))
-  (format #t "~Tscreenx: ~D~%" (-> obj screenx))
-  (format #t "~Tscreeny: ~D~%" (-> obj screeny))
-  (format #t "~Tvibration: ~A~%" (-> obj vibration))
-  (format #t "~Tplay-hints: ~A~%" (-> obj play-hints))
-  (format #t "~Tmovie: ~A~%" (ppointer->process (-> obj movie)))
-  (format #t "~Ttalking: ~A~%" (ppointer->process (-> obj talking)))
-  (format #t "~Tspooling: ~A~%" (ppointer->process (-> obj spooling)))
-  (format #t "~Thint: ~A~%" (ppointer->process (-> obj hint)))
-  (format #t "~Tambient: ~A~%" (ppointer->process (-> obj ambient)))
-  (format #t "~Tvideo-mode: ~A~%" (-> obj video-mode))
-  (format #t "~Taspect-ratio: ~A~%" (-> obj aspect-ratio))
-  (format #t "~Tsound-flava: ~D~%" (-> obj sound-flava))
-  (format #t "~Tauto-save: ~A~%" (-> obj auto-save))
-  (format #t "~Tmusic-volume-movie: ~f~%" (-> obj music-volume-movie))
-  (format #t "~Tsfx-volume-movie: ~f~%" (-> obj sfx-volume-movie))
-  (format #t "~Tmusic: ~A~%" (-> obj music))
-  (format #t "~Tbg-r: ~f~%" (-> obj bg-r))
-  (format #t "~Tbg-g: ~f~%" (-> obj bg-g))
-  (format #t "~Tbg-b: ~f~%" (-> obj bg-b))
-  (format #t "~Tbg-a: ~f~%" (-> obj bg-a))
-  (format #t "~Tbg-a-speed: ~f~%" (-> obj bg-a-speed))
-  (format #t "~Tbg-a-force: ~f~%" (-> obj bg-a-force))
-  (format #t "~Tallow-progress: ~A~%" (-> obj allow-progress))
-  (format #t "~Tallow-pause: ~A~%" (-> obj allow-pause))
-  (format #t "~Tsound-flava-priority: ~f~%" (-> obj sound-flava-priority))
-  (format #t "~Tocean-off: ~A~%" (-> obj ocean-off))
-  (format #t "~Tallow-look-around: ~A~%" (-> obj allow-look-around))
-  (format #t "~Tambient-volume: ~f~%" (-> obj ambient-volume))
-  (format #t "~Tambient-volume-movie: ~f~%" (-> obj ambient-volume-movie))
-  (format #t "~Tdialog-volume-hint: ~f~%" (-> obj dialog-volume-hint))
-  (format #t "~Tdummy[11] @ #x~X~%" (-> obj dummy))
-  obj
-  )
-
 ;; There are three copies of setting data:
 ;;  - default - if nothing is requesting a setting to be set, you end up with this value.
 ;;  - target  - the default settings, plus the changes from all processes
@@ -131,12 +88,10 @@
 
 (defmethod new setting-control ((allocation symbol) (type-to-make type) (max-connections int))
   "Allocate a new setting-control and its engine"
-  (local-vars (s4-0 setting-control))
-  (set! s4-0 (object-new allocation type-to-make (the-as int (-> type-to-make size))))
-  (set! (-> s4-0 engine)
-        ((method-of-type engine new) allocation engine 'setting-control max-connections)
-        )
-  s4-0
+  (let ((s4-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> s4-0 engine) ((method-of-type engine new) allocation engine 'setting-control max-connections))
+    s4-0
+    )
   )
 
 ;; used for memory card time information

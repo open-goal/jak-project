@@ -254,6 +254,9 @@ std::pair<bool, u8*> ame_handler::run_ame(midi_handler& midi, u8* stream) {
         }
         // fmt::print("group: {} basis: {} excite: {}\n", group, m_groups[group].basis, comp);
         for (int i = 0; i < m_groups[group].num_channels; i++) {
+          // auto xmin = m_groups[group].excite_min[i];
+          // auto xmax = m_groups[group].excite_max[i];
+          // fmt::print("chan {} excite: {}-{}\n", i, xmin, xmax);
           // note : added hack here! :-)
           if (!SoundFlavaHack &&
               (comp < m_groups[group].excite_min[i] || comp > m_groups[group].excite_max[i])) {

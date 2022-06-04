@@ -5,6 +5,9 @@
 ;; name in dgo: settings
 ;; dgos: GAME, ENGINE
 
+(#when PC_PORT    
+  (define *progress-flava* -1)
+  )
 
 (defmethod update-from-engine setting-data ((obj setting-data) (arg0 engine))
   "this goes through the list of desired setting changes in 
@@ -222,24 +225,19 @@
 (defmethod clear-pending-settings-from-process setting-control ((obj setting-control) (arg0 process) (arg1 symbol))
   "Remove requests to change settings from the given process."
   (when arg0
-   (let ((s5-0 (-> obj engine))
-         (s4-0 (-> arg0 connection-list next1))
-         )
-    (while s4-0
-     (if
-      (and
-       ((method-of-type connection belongs-to-engine?)
-        (the-as connection s4-0)
-        s5-0
+    (let ((s5-0 (-> obj engine))
+          (s4-0 (-> arg0 connection-list next1))
+          )
+      (while s4-0
+        (if (and (belongs-to-engine? (the-as connection s4-0) s5-0)
+                 (or (= arg1 #t) (= arg1 (-> (the-as connection s4-0) param0)))
+                 )
+            (move-to-dead (the-as connection s4-0))
+            )
+        (set! s4-0 (-> s4-0 next1))
         )
-       (or (= arg1 #t) (= arg1 (-> (the-as connection s4-0) param0)))
-       )
-      ((method-of-type connection move-to-dead) (the-as connection s4-0))
       )
-     (set! s4-0 (-> s4-0 next1))
-     )
     )
-   )
   0
   (none)
   )
@@ -342,7 +340,10 @@
       (set! (-> s5-1 sound-flava) (the-as uint (flava-lookup (-> gp-0 music) (the-as music-flava (-> s5-1 sound-flava)))))
       (set! (-> gp-0 sound-flava) (-> s5-1 sound-flava))
       (if *sound-player-enable*
-          (sound-set-flava (-> gp-0 sound-flava))
+          (#if PC_PORT
+              (sound-set-flava (if (>= *progress-flava* 0) (the uint *progress-flava*) (-> gp-0 sound-flava)))
+              (sound-set-flava (-> gp-0 sound-flava))
+              )
           )
       
       ;; update display settings
