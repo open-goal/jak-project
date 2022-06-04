@@ -23,13 +23,12 @@ void sleep_us(u64 us) {
 }
 
 #else
+#define NOMINMAX
+#include <Windows.h>
 
 void sleep_us(u64 us) {
   Sleep(us);
 }
-
-#define NOMINMAX
-#include <Windows.h>
 
 FrameLimiter::FrameLimiter() {
   timeBeginPeriod(1);
