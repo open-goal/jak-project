@@ -5,6 +5,9 @@
 ;; name in dgo: tie-methods
 ;; dgos: GAME, ENGINE
 
+(def-mips2c draw-inline-array-instance-tie (function pointer (inline-array instance-tie) int dma-buffer none))
+(def-mips2c draw-inline-array-prototype-tie-generic-asm (function dma-buffer int prototype-array-tie none))
+
 (defun tie-init-buffers ((arg0 dma-buffer))
   "Initialize the TIE buckets.
   Note: the buffer passed in here is _not_ used.
@@ -296,7 +299,11 @@
     ;; 
     (let ((s4-0 (+ (-> arg0 length) -1))) ;; number of arrays of draw-nodes (depth of the BVH tree, not counting instance leaves)
       
-      ;; perform draw node culling. TODO
+      ;; perform draw node culling.
+      ;; Note: It's okay to skip this. The visible list right now will just be the occlusion string
+      ;; The PC renderer won't see this (and has its own version of culling that's plenty fast)
+      ;; The instance drawing will end up looking at too many instances, but this is fine - it
+      ;; should reject those, and it plenty fast.
       #|
       (when (nonzero? s4-0)
         (dotimes (s3-0 s4-0)
@@ -363,7 +370,10 @@
               (reset! (-> *perf-stats* data 9))
               
               ;; DRAW!
-              ;;(draw-inline-array-instance-tie s0-0 s1-0 sv-16 s3-1)
+              ;; note: this is a bit wasteful because we only care about generic ties.
+              ;; non-generics are drawn fully in C++, but we're computing unused stuff here.
+              ;; This ends up being so fast it's probably not worth worrying about yet.
+              (with-profiler "tie-instance" (draw-inline-array-instance-tie s0-0 s1-0 sv-16 s3-1))
               ;; finish perf stats
               (read! (-> *perf-stats* data 9))
               (update-wait-stats (-> *perf-stats* data 9) (the-as uint 0)
@@ -398,8 +408,10 @@
                   (set! (-> *prototype-tie-work* generic-wait-from-spr) (the-as uint 0))
                   (set! (-> *instance-tie-work* first-generic-prototype) (the-as uint (-> s3-1 base)))
                   
+                  ;; hack, I expect this to overwrite this.
+                  (set! (-> (the (pointer uint64) (-> s3-1 base))) #xdeadbeefdeadbeef)
                   (reset! (-> *perf-stats* data 10))
-                  ;;(draw-inline-array-prototype-tie-generic-asm s3-1 s5-1 s4-1)
+                  (with-profiler "tie-generic-protos" (draw-inline-array-prototype-tie-generic-asm s3-1 s5-1 s4-1))
                   (read! (-> *perf-stats* data 10))
                   (update-wait-stats (-> *perf-stats* data 10) (the-as uint 0)
                                      (-> *prototype-tie-work* generic-wait-to-spr)

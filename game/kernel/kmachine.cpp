@@ -67,7 +67,7 @@ Timer ee_clock_timer;
 u32 vif1_interrupt_handler = 0;
 
 void kmachine_init_globals() {
-  isodrv = iso_cd;
+  isodrv = fakeiso;  // changed. fakeiso is the only one that works in opengoal.
   modsrc = 1;
   reboot = 1;
   memset(pad_dma_buf, 0, sizeof(pad_dma_buf));
@@ -88,6 +88,8 @@ void InitParms(int argc, const char* const* argv) {
     isodrv = fakeiso;
     modsrc = 0;
     reboot = 0;
+    DebugSegment = 0;
+    MasterDebug = 0;
   }
 
   for (int i = 1; i < argc; i++) {
@@ -131,6 +133,12 @@ void InitParms(int argc, const char* const* argv) {
     if (arg == "-nokernel") {
       Msg(6, "dkernel: no kernel mode\n");
       MasterUseKernel = false;
+    }
+
+    // an added mode to allow booting without sound for testing
+    if (arg == "-nosound") {
+      Msg(6, "dkernel: no sound mode\n");
+      masterConfig.disable_sound = true;
     }
 
     // GOAL Settings
@@ -237,10 +245,17 @@ void InitIOP() {
   // we begin putting together a boot command for OVERLORD, the IOP driver, which must know the data
   // source and the name of the boot splash screen of the game.
   char overlord_boot_command[256];
-  kstrcpy(overlord_boot_command, init_types[(int)isodrv]);
-  char* cmd = overlord_boot_command + strlen(overlord_boot_command) + 1;
+  char* cmd = overlord_boot_command;
+  kstrcpy(cmd, init_types[(int)isodrv]);
+  cmd = cmd + strlen(cmd) + 1;
   kstrcpy(cmd, "SCREEN1.USA");
-  auto len = strlen(cmd);
+  cmd = cmd + strlen(cmd) + 1;
+  if (masterConfig.disable_sound) {
+    kstrcpy(cmd, "-nosound");
+    cmd = cmd + strlen(cmd) + 1;
+  }
+
+  int total_len = cmd - overlord_boot_command;
 
   if (modsrc == fakeiso) {
     // load from network
@@ -272,8 +287,7 @@ void InitIOP() {
     sceSifLoadModule("host0:/usr/home/src/989snd10/iop/989ERR.IRX", 0, nullptr);
 
     lg::debug("Initializing CD library...");
-    auto rv = sceSifLoadModule("host0:binee/overlord.irx", cmd + len + 1 - overlord_boot_command,
-                               overlord_boot_command);
+    auto rv = sceSifLoadModule("host0:binee/overlord.irx", total_len, overlord_boot_command);
     if (rv < 0) {
       MsgErr("loading overlord.irx failed\n");
     }
@@ -304,8 +318,8 @@ void InitIOP() {
     }
 
     lg::debug("Initializing CD library in ISO_CD mode...");
-    auto rv = sceSifLoadModule("cdrom0:\\\\DRIVERS\\\\OVERLORD.IRX;1",
-                               cmd + len + 1 - overlord_boot_command, overlord_boot_command);
+    auto rv =
+        sceSifLoadModule("cdrom0:\\\\DRIVERS\\\\OVERLORD.IRX;1", total_len, overlord_boot_command);
     if (rv < 0) {
       MsgErr("loading overlord.irx failed\n");
     }
@@ -367,9 +381,10 @@ int InitMachine() {
   //    MsgErr("dkernel: !init pad\n");
   //  }
 
-  if (MasterDebug) {  // connect to GOAL compiler
-    InitGoalProto();
-  }
+  // do this always
+  // if (MasterDebug) {  // connect to GOAL compiler
+  InitGoalProto();
+  //}
 
   lg::info("InitSound");
   InitSound();  // do nothing!
@@ -812,20 +827,38 @@ void update_discord_rpc(u32 discord_info) {
   if (gDiscordRpcEnabled) {
     DiscordRichPresence rpc;
     char state[128];
+    char large_image_text[128];
     auto info = discord_info ? Ptr<DiscordInfo>(discord_info).c() : NULL;
     if (info) {
       int cells = (int)*Ptr<float>(info->fuel).c();
       int orbs = (int)*Ptr<float>(info->money_total).c();
       int scout_flies = (int)*Ptr<float>(info->buzzer_total).c();
+      int deaths = *Ptr<int>(info->deaths).c();
       auto cutscene = Ptr<Symbol>(info->cutscene)->value;
+      auto ogreboss = Ptr<Symbol>(info->ogreboss)->value;
+      auto plantboss = Ptr<Symbol>(info->plantboss)->value;
+      auto racer = Ptr<Symbol>(info->racer)->value;
+      auto flutflut = Ptr<Symbol>(info->flutflut)->value;
       char* status = Ptr<String>(info->status).c()->data();
       char* level = Ptr<String>(info->level).c()->data();
       const char* full_level_name = jak1_get_full_level_name(Ptr<String>(info->level).c()->data());
       memset(&rpc, 0, sizeof(rpc));
+      rpc.largeImageKey = level;
+      strcpy(large_image_text, full_level_name);
       if (!strcmp(level, "finalboss")) {
         strcpy(state, "Fighting Final Boss");
+      } else if (plantboss != offset_of_s7()) {
+        strcpy(state, "Fighting Dark Eco Plant");
+        rpc.largeImageKey = "plant-boss";
+        strcpy(large_image_text, "Dark Eco Plant");
+      } else if (ogreboss != offset_of_s7()) {
+        strcpy(state, "Fighting Klaww");
+        rpc.largeImageKey = "ogreboss";
+        strcpy(large_image_text, "Klaww");
       } else if (!strcmp(level, "title")) {
         strcpy(state, "On title screen");
+        rpc.largeImageKey = "title";
+        strcpy(large_image_text, "Title screen");
       } else if (!strcmp(level, "intro")) {
         strcpy(state, "Intro");
       } else if (cutscene != offset_of_s7()) {
@@ -837,14 +870,30 @@ void update_discord_rpc(u32 discord_info) {
         strcat(state, std::to_string(orbs).c_str());
         strcat(state, " | Flies: ");
         strcat(state, std::to_string(scout_flies).c_str());
+
+        strcat(large_image_text, " | Cells: ");
+        strcat(large_image_text, std::to_string(cells).c_str());
+        strcat(large_image_text, " | Orbs: ");
+        strcat(large_image_text, std::to_string(orbs).c_str());
+        strcat(large_image_text, " | Flies: ");
+        strcat(large_image_text, std::to_string(scout_flies).c_str());
+        strcat(large_image_text, " | Deaths: ");
+        strcat(large_image_text, std::to_string(deaths).c_str());
       }
+      rpc.largeImageText = large_image_text;
       rpc.state = state;
+      if (racer != offset_of_s7()) {
+        rpc.smallImageKey = "target-racer";
+        rpc.smallImageText = "Driving A-Grav Zoomer";
+      } else if (flutflut != offset_of_s7()) {
+        rpc.smallImageKey = "flutflut";
+        rpc.smallImageText = "Riding on Flut Flut";
+      } else {
+        rpc.smallImageKey = 0;
+        rpc.smallImageText = 0;
+      }
       rpc.startTimestamp = gStartTime;
       rpc.details = status;
-      rpc.largeImageKey = level;
-      rpc.largeImageText = full_level_name;
-      rpc.smallImageKey = 0;
-      rpc.smallImageText = 0;
       rpc.partySize = 0;
       rpc.partyMax = 0;
       Discord_UpdatePresence(&rpc);
@@ -893,8 +942,29 @@ void set_fullscreen(u32 symptr, s64 screen) {
   }
 }
 
+void set_collision(u32 symptr) {
+  Gfx::g_global_settings.collision_enable = symptr != s7.offset;
+}
+
+void set_collision_wireframe(u32 symptr) {
+  Gfx::g_global_settings.collision_wireframe = symptr != s7.offset;
+}
+
+void set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask, u32 symptr) {
+  if (symptr != s7.offset) {
+    Gfx::CollisionRendererSetMask(mode, mask);
+  } else {
+    Gfx::CollisionRendererClearMask(mode, mask);
+  }
+}
+
+u32 get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask) {
+  return Gfx::CollisionRendererGetMask(mode, mask) ? s7.offset + FIX_SYM_TRUE : s7.offset;
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
+
   make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
   make_function_symbol_from_c("__mem-move", (void*)c_memmove);
   make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
@@ -919,9 +989,16 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
   make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
-  make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
   make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
+
+  // graphics things
+  make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
   make_function_symbol_from_c("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
+  make_function_symbol_from_c("pc-set-collision-mode", (void*)Gfx::CollisionRendererSetMode);
+  make_function_symbol_from_c("pc-set-collision-mask", (void*)set_collision_mask);
+  make_function_symbol_from_c("pc-get-collision-mask", (void*)get_collision_mask);
+  make_function_symbol_from_c("pc-set-collision-wireframe", (void*)set_collision_wireframe);
+  make_function_symbol_from_c("pc-set-collision", (void*)set_collision);
 
   // file related functions
   make_function_symbol_from_c("pc-filepath-exists?", (void*)filepath_exists);
@@ -955,7 +1032,7 @@ void InitMachine_PCPort() {
 
 void vif_interrupt_callback() {
   // added for the PC port for faking VIF interrupts from the graphics system.
-  if (vif1_interrupt_handler && MasterExit == 0) {
+  if (vif1_interrupt_handler && MasterExit == RuntimeExitStatus::RUNNING) {
     call_goal(Ptr<Function>(vif1_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
   }
 }

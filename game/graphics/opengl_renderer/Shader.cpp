@@ -83,4 +83,10 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::OCEAN_COMMON) = {"ocean_common"};
   at(ShaderId::SHRUB) = {"shrub"};
   at(ShaderId::SHADOW) = {"shadow"};
+  at(ShaderId::COLLISION) = {"collision"};
+  at(ShaderId::MERC2) = {"merc2"};
+
+  for (auto& shader : m_shaders) {
+    ASSERT_MSG(shader.okay(), "Shader compiled");
+  }
 }

@@ -2034,6 +2034,10 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
 
   // loop over all prototypes
   for (auto& proto : protos) {
+    if (proto.uses_generic) {
+      // generic ties go through generic
+      continue;
+    }
     //    bool using_wind = true;  // hack, for testing
     bool using_wind = proto.stiffness != 0.f;
 

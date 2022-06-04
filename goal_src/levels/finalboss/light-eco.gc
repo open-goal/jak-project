@@ -6,6 +6,7 @@
 ;; dgos: FIN, L1
 
 ;; DECOMP BEGINS
+(import "goal_src/import/light-eco-ag.gc")
 
 (deftype light-eco-child (process-drawable)
   ((root-override      collide-shape         :offset        112)
@@ -58,21 +59,15 @@
   )
 
 
-(defskelgroup *light-eco-big-sg* light-eco
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 9)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *light-eco-big-sg* light-eco light-eco-big-lod0-jg -1
+              ((light-eco-big-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 9)
+              )
 
-(defskelgroup *light-eco-small-sg* light-eco
-  3
-  -1
-  ((4 (meters 999999)))
-  :bounds (static-spherem 0 0 0 1.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *light-eco-small-sg* light-eco light-eco-small-lod0-jg -1
+              ((light-eco-small-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.5)
+              )
 
 (defpartgroup group-light-eco-mother-growing
   :id 690
@@ -454,12 +449,9 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 param 0) 1.0)
-        (joint-control-channel-group-eval! a0-0 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop!))
       )
     (none)
     )
@@ -511,12 +503,9 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 param 0) 1.0)
-        (joint-control-channel-group-eval! a0-0 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop!))
       )
     (none)
     )
@@ -542,12 +531,9 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 param 0) 1.0)
-        (joint-control-channel-group-eval! a0-0 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop!))
       )
     (none)
     )
@@ -622,19 +608,8 @@
   (logclear! (-> self mask) (process-mask actor-pause))
   (initialize-skeleton self *light-eco-small-sg* '())
   (ja-channel-set! 1)
-  (let ((a0-21 (-> self skel root-channel 0)))
-    (set! (-> a0-21 param 0) (the float (+ (-> a0-21 frame-group data 0 length) -1)))
-    (set! (-> a0-21 param 1) 1.0)
-    (joint-control-channel-group! a0-21 (the-as art-joint-anim #f) num-func-seek!)
-    )
-  (let ((gp-1 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-      gp-1
-      (the-as art-joint-anim (-> self draw art-group data 5))
-      num-func-identity
-      )
-    (set! (-> gp-1 frame-num) 0.0)
-    )
+  (ja-no-eval :num! (seek!))
+  (ja :group! light-eco-small-idle-ja :num! min)
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 692) self))
   (transform-post)
   (go light-eco-child-appear)
@@ -661,15 +636,15 @@
           )
         )
       (cond
-        ((and *target* (logtest? (-> *target* state-flags) 256))
+        ((and *target* (logtest? (-> *target* state-flags) (state-flags sf08)))
          (set! (-> obj last-spawned-time) (-> *display* base-frame-counter))
-         (set! (-> obj delay-til-spawn) (seconds 8))
+         (set! (-> obj delay-til-spawn) 2400)
          )
         (else
           (when (>= (- (-> *display* base-frame-counter) (-> obj last-spawned-time)) (-> obj delay-til-spawn))
             (when (spawn-child-eco obj)
               (set! (-> obj last-spawned-time) (-> *display* base-frame-counter))
-              (set! (-> obj delay-til-spawn) (rand-vu-int-range (seconds 1) (seconds 2)))
+              (set! (-> obj delay-til-spawn) (rand-vu-int-range 300 600))
               )
             )
           )
@@ -762,10 +737,7 @@
         (set-vector! (-> self root scale) f0-3 f0-3 f0-3 1.0)
         )
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop!))
       )
     (go light-eco-mother-active)
     (none)
@@ -786,12 +758,9 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (suspend)
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 param 0) 1.0)
-        (joint-control-channel-group-eval! a0-0 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop!))
       )
     (none)
     )
@@ -814,10 +783,7 @@
         (set-vector! (-> self root scale) f0-3 f0-3 f0-3 1.0)
         )
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop!))
       )
     (logior! (-> self draw status) (draw-status hidden))
     (until (not (-> self child))
@@ -848,7 +814,7 @@
   (set! (-> self entity) arg0)
   (set! (-> self last-update-time) 0)
   (set! (-> self last-spawned-time) (-> *display* base-frame-counter))
-  (set! (-> self delay-til-spawn) (seconds 8))
+  (set! (-> self delay-til-spawn) 2400)
   (set! (-> self angle-mask) 0)
   (set! (-> self player-got-eco?) #f)
   (set! (-> self root) (new 'process 'trsqv))
@@ -858,35 +824,12 @@
   (logclear! (-> self mask) (process-mask actor-pause))
   (initialize-skeleton self *light-eco-big-sg* '())
   (ja-channel-set! 1)
-  (let ((a0-7 (-> self skel root-channel 0)))
-    (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-    (set! (-> a0-7 param 1) 1.0)
-    (joint-control-channel-group! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-    )
-  (let ((gp-1 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-      gp-1
-      (the-as art-joint-anim (-> self draw art-group data 2))
-      num-func-identity
-      )
-    (set! (-> gp-1 frame-num) 0.0)
-    )
+  (ja-no-eval :num! (seek!))
+  (ja :group! light-eco-big-idle-ja :num! min)
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 691) self))
   (set! (-> self part2) (create-launch-control (-> *part-group-id-table* 690) self))
-  (set! (-> self sound) (new
-                          'process
-                          'ambient-sound
-                          (new 'static 'sound-spec
-                            :mask #xc0
-                            :num 1.0
-                            :group #x1
-                            :sound-name (static-sound-name "white-eco-lp")
-                            :volume #x400
-                            :fo-min #x12c
-                            :fo-max #x190
-                            )
-                          (-> self root trans)
-                          )
+  (set! (-> self sound)
+        (new 'process 'ambient-sound (static-sound-spec "white-eco-lp" :fo-min 300 :fo-max 400) (-> self root trans))
         )
   (ja-post)
   (let ((f0-4 0.0))

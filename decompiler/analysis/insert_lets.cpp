@@ -792,58 +792,417 @@ FormElement* rewrite_as_case_with_else(LetElement* in, const Env& env, FormPool&
   return nullptr;
 }
 
+bool var_name_equal(const Env& env, const std::string& a, std::optional<RegisterAccess> b) {
+  ASSERT(b);
+  return env.get_variable_name(*b) == a;
+}
+
+Form* match_ja_set(const Env& env,
+                   const std::string& ch_var_name,
+                   const std::string& field_name,
+                   int arr_idx,
+                   Form* in,
+                   int* idx,
+                   bool* bad) {
+  ASSERT(idx);
+  ASSERT(bad);
+  if (*idx >= in->size()) {
+    // *bad = true;
+    return nullptr;
+  }
+
+  auto deref_matcher =
+      arr_idx == -1
+          ? Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string(field_name)})
+          : Matcher::deref(
+                Matcher::any_reg(0), false,
+                {DerefTokenMatcher::string(field_name), DerefTokenMatcher::integer(arr_idx)});
+  auto mr = match(Matcher::set(deref_matcher, Matcher::any(1)), in->at(*idx));
+  if (!mr.matched) {
+    // TODO what if didn't match but it was some weird thing?? i guess later size checks fix that.
+    return nullptr;
+  }
+
+  if (!var_name_equal(env, ch_var_name, mr.maps.regs.at(0))) {
+    lg::error("[{}] JA MACRO ERROR channel var not {} in set {} {}", env.func->name(), ch_var_name,
+              field_name, arr_idx);
+    *bad = true;
+    return nullptr;
+  }
+
+  *idx += 1;
+  return mr.maps.forms.at(1);
+}
+
+void ja_push_form_to_args(const Env& env,
+                          FormPool& pool,
+                          std::vector<Form*>& args,
+                          Form* form,
+                          const std::string& key_name) {
+  if (form) {
+    auto text = form->to_form(env).print();
+    if (text.length() > 50) {
+      args.push_back(pool.form<ConstantTokenElement>(fmt::format(":{}", key_name)));
+      args.push_back(form);
+    } else {
+      args.push_back(pool.form<ConstantTokenElement>(fmt::format(":{} {}", key_name, text)));
+    }
+  }
+}
+
+Form* strip_cast(const std::string& type, Form* in) {
+  auto casted = dynamic_cast<CastElement*>(in->try_as_single_element());
+  if (casted && casted->type() == TypeSpec(type)) {
+    in = casted->source();
+  }
+  return in;
+}
+
+FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool) {
+  // this function checks for the behemoth (ja) macro.
+
+  // TODO this should honestly just use its own custom element instead of GenericElement
+  // since it would make analyzing after rewriting it MUCH easier, but I am kind of lazy right now
+
+  const static std::unordered_map<std::string, std::string> num_func_remap = {
+      {"num-func-identity", "identity"},   {"num-func-+!", "+!"},       {"num-func--!", "-!"},
+      {"num-func-loop!", "loop!"},         {"num-func-seek!", "seek!"}, {"num-func-chan", "chan"},
+      {"num-func-blend-in!", "blend-in!"}, {"num-func-none", "none"}};
+
+  // should have this anyway, but double check so we don't throw this away.
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  auto test = in->to_form(env).print();
+
+  // look for setting a var to (-> self skel root-channel ,channel).
+  // yes, channel is actually not always just 0!
+  auto ra = in->entries().at(0).dest;
+  auto var = env.get_variable_name(ra);
+  auto mr_chan = match(
+      Matcher::deref(Matcher::s6(), false,
+                     {DerefTokenMatcher::string("skel"), DerefTokenMatcher::string("root-channel"),
+                      DerefTokenMatcher::any_expr_or_int(0)}),
+      in->entries().at(0).src);
+  if (!mr_chan.matched) {
+    return nullptr;
+  }
+  auto channel_form = mr_chan.int_or_form_to_form(pool, 0);
+
+  // now we checks for set!'s. the actual contents of the macro are not very complicated to match.
+  // there is just a LOT to match. and then to write!
+  bool bad = false;
+  int idx = 0;
+  auto set_fi = match_ja_set(env, var, "frame-interp", -1, in->body(), &idx, &bad);
+  auto set_dist = match_ja_set(env, var, "dist", -1, in->body(), &idx, &bad);
+  auto set_fg = match_ja_set(env, var, "frame-group", -1, in->body(), &idx, &bad);
+  auto set_p0 = match_ja_set(env, var, "param", 0, in->body(), &idx, &bad);
+  auto set_p1 = match_ja_set(env, var, "param", 1, in->body(), &idx, &bad);
+  auto set_nf = match_ja_set(env, var, "num-func", -1, in->body(), &idx, &bad);
+  auto set_fn = match_ja_set(env, var, "frame-num", -1, in->body(), &idx, &bad);
+
+  // lastly, match the function call.
+  enum { NO_FUNC, EVAL, NO_EVAL } func_status = NO_FUNC;
+  Form* arg_group = nullptr;
+  std::string arg_num_func;
+  if (idx < in->body()->size()) {
+    auto mr_func =
+        match(Matcher::op(GenericOpMatcher::func(Matcher::any_symbol(3)),
+                          {Matcher::any_reg(0), Matcher::any(1), Matcher::any_symbol(2)}),
+              in->body()->at(idx));
+    if (mr_func.matched) {
+      // NOTE : it's actually fine for there to be no func. we just forgo setting the num! param.
+      if (!var_name_equal(env, var, mr_func.maps.regs.at(0))) {
+        return nullptr;
+      }
+
+      arg_group = mr_func.maps.forms.at(1);
+      arg_num_func = mr_func.maps.strings.at(2);
+      const auto& func_name = mr_func.maps.strings.at(3);
+      if (func_name == "joint-control-channel-group!") {
+        func_status = NO_EVAL;
+      } else if (func_name == "joint-control-channel-group-eval!") {
+        func_status = EVAL;
+      } else {
+        // wtf happened?
+        lg::error("[{}] JA MACRO ERROR func name: {}", env.func->name(), func_name);
+        return nullptr;
+      }
+
+      if (num_func_remap.find(arg_num_func) == num_func_remap.end()) {
+        lg::error("[{}] JA MACRO ERROR unknown num func: {}", env.func->name(), arg_num_func);
+        return nullptr;
+      }
+
+      auto group_lisp = strip_cast("art-joint-anim", arg_group)->to_form(env);
+      if (group_lisp.is_symbol() && group_lisp.as_symbol()->name == "#f") {
+        arg_group = nullptr;
+      }
+
+      idx++;
+    }
+  }
+
+  // PSYCHE! there may actually be a second frame-num set. for some reason. sigh...
+  auto set_fn2 = match_ja_set(env, var, "frame-num", -1, in->body(), &idx, &bad);
+
+  if (bad) {
+    // an error occurred
+    return nullptr;
+  }
+
+  // check that we have nothing more
+  if (in->body()->size() > idx) {
+    lg::error("[{}] JA MACRO ERROR elts matched: {}/{}", env.func->name(), idx, in->body()->size());
+    return nullptr;
+  }
+
+  // now check the arguments.
+  if (set_fn && set_fn2) {
+    lg::error("[{}] JA MACRO ERROR both frame nums: {}", env.func->name(),
+              set_fn->to_form(env).print(), set_fn2->to_form(env).print());
+    ASSERT(false);
+    return nullptr;
+  }
+
+  if (func_status != NO_FUNC && set_fg && arg_group) {
+    ASSERT(set_fg->to_form(env) == arg_group->to_form(env));
+    // lg::info("p0: {} p1: {} nf: {} fn: {}", !!set_p0, !!set_p1, !!set_nf, !!set_fn);
+  }
+
+  auto form_fg = set_fg ? set_fg : arg_group;
+  auto matcher_max_num = Matcher::cast(
+      "float",
+      Matcher::fixed_op(
+          FixedOperatorKind::ADDITION,
+          {form_fg
+               ? Matcher::deref(Matcher::any(1), false,
+                                {DerefTokenMatcher::string("data"), DerefTokenMatcher::integer(0),
+                                 DerefTokenMatcher::string("length")})
+               : Matcher::deref(
+                     Matcher::any_reg(0), false,
+                     {DerefTokenMatcher::string("frame-group"), DerefTokenMatcher::string("data"),
+                      DerefTokenMatcher::integer(0), DerefTokenMatcher::string("length")}),
+           Matcher::integer(-1)}));
+
+  // DONE CHECKING EVERYTHING!!! Now write the goddamn macro.
+  std::vector<Form*> args;
+
+  // check the channel arg
+  auto channel_arg = channel_form->to_form(env);
+  if (!channel_arg.is_int(0)) {
+    ja_push_form_to_args(env, pool, args, channel_form, "chan");
+  }
+
+  if (func_status != NO_FUNC) {
+    // check the group! arg
+    if (form_fg) {
+      ja_push_form_to_args(env, pool, args, strip_cast("art-joint-anim", form_fg), "group!");
+    }
+
+    const std::string prelim_num =
+        num_func_remap.count(arg_num_func) == 0 ? "" : num_func_remap.at(arg_num_func);
+    Form* num_form = nullptr;
+    // check the num! arg
+    if (prelim_num == "identity") {
+      if (set_fn2) {
+        auto obj_fn2 = set_fn2->to_form(env);
+        if (obj_fn2.is_float(0.0)) {
+          num_form = pool.form<ConstantTokenElement>("min");
+        } else {
+          auto mr = match(matcher_max_num, set_fn2);
+          if (mr.matched &&
+              ((form_fg && mr.maps.forms.at(1)->to_form(env) == form_fg->to_form(env)) ||
+               (!form_fg && var_name_equal(env, var, mr.maps.regs.at(0))))) {
+            num_form = pool.form<ConstantTokenElement>("max");
+          } else {
+            num_form = pool.form<GenericElement>(
+                GenericOperator::make_function(pool.form<ConstantTokenElement>(prelim_num)),
+                set_fn2);
+          }
+        }
+        set_fn2 = nullptr;
+      }
+    } else if (prelim_num == "loop!" || prelim_num == "+!" || prelim_num == "-!") {
+      if (set_p0) {
+        auto obj_p0 = set_p0->to_form(env);
+        if (obj_p0.is_float(1.0)) {
+          num_form = pool.form<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>(prelim_num)));
+        } else {
+          auto mr = match(matcher_max_num, set_p0);
+          if (mr.matched &&
+              ((form_fg && mr.maps.forms.at(1)->to_form(env) == form_fg->to_form(env)) ||
+               (!form_fg && var_name_equal(env, var, mr.maps.regs.at(0))))) {
+            num_form = pool.form<GenericElement>(
+                GenericOperator::make_function(pool.form<ConstantTokenElement>(prelim_num)),
+                pool.form<ConstantTokenElement>("max"));
+          } else {
+            num_form = pool.form<GenericElement>(
+                GenericOperator::make_function(pool.form<ConstantTokenElement>(prelim_num)),
+                set_p0);
+          }
+        }
+        set_p0 = nullptr;
+      }
+    } else if (prelim_num == "chan") {
+      if (set_p0) {
+        auto obj_p0 = set_p0->to_form(env);
+        if (obj_p0.is_float((goos::FloatType)((goos::IntType)obj_p0.as_float()))) {
+          num_form = pool.form<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("chan")),
+              pool.form<SimpleAtomElement>(
+                  SimpleAtom::make_int_constant((goos::IntType)obj_p0.as_float())));
+        } else {
+          lg::error("[{}] JA MACRO ERROR bad chan arg: {}", env.func->name(), obj_p0.print());
+          ASSERT_MSG(false, "chan case");
+        }
+        set_p0 = nullptr;
+      }
+    } else if (prelim_num == "seek!") {
+      ASSERT(set_p0 && set_p1);
+      std::vector<Form*> seek_args;
+
+      // (the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
+      // (the float (1- (-> ja-ch frame-group data 0 length)))
+      auto mr = match(matcher_max_num, set_p0);
+      if (!mr.matched || (form_fg && mr.maps.forms.at(1)->to_form(env) != form_fg->to_form(env)) ||
+          (!form_fg && !var_name_equal(env, var, mr.maps.regs.at(0)))) {
+        // did not match default
+        seek_args.push_back(set_p0);
+      }
+
+      auto obj_p1 = set_p1->to_form(env);
+      if (!obj_p1.is_float(1.0)) {
+        // did not match default
+        if (seek_args.size() < 1) {
+          seek_args.push_back(mr.matched ? pool.form<ConstantTokenElement>("max") : set_p0);
+        }
+        seek_args.push_back(set_p1);
+      }
+
+      // do not print :param0 and :param1 keys
+      set_p0 = nullptr;
+      set_p1 = nullptr;
+
+      num_form = pool.form<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("seek!")), seek_args);
+    }
+
+    if (!num_form) {
+      num_form = pool.form<ConstantTokenElement>(prelim_num);
+    }
+
+    ja_push_form_to_args(env, pool, args, num_form, "num!");
+  } else if (form_fg) {
+    ja_push_form_to_args(env, pool, args, strip_cast("art-joint-anim", form_fg), "group!");
+  }
+
+  if (set_fn) {
+    auto mr = match(matcher_max_num, set_fn);
+    if (mr.matched && ((form_fg && mr.maps.forms.at(1)->to_form(env) == form_fg->to_form(env)) ||
+                       (!form_fg && var_name_equal(env, var, mr.maps.regs.at(0))))) {
+      set_fn = pool.form<ConstantTokenElement>("max");
+    }
+  }
+
+  // other generic args
+  ja_push_form_to_args(env, pool, args, set_fi, "frame-interp");
+  ja_push_form_to_args(env, pool, args, set_dist, "dist");
+  // ja_push_form_to_args(env, pool, args, form_fg, "frame-group");
+  ja_push_form_to_args(env, pool, args, set_p0, "param0");
+  ja_push_form_to_args(env, pool, args, set_p1, "param1");
+  ja_push_form_to_args(env, pool, args, set_nf, "num-func");
+  ja_push_form_to_args(env, pool, args, set_fn, "frame-num");
+
+  // TODO
+  if (set_fn2) {
+    lg::error("[{}] JA MACRO ERROR ignoring frame-num 2: {}", env.func->name(),
+              set_fn2->to_form(env).print());
+    ASSERT(func_status != NO_FUNC && arg_num_func == "num-func-identity");
+    return nullptr;
+  }
+  if (set_p0 || set_p1) {
+    lg::error("[{}] JA MACRO ERROR something still using params: {}", env.func->name(), test);
+    ASSERT(false);
+    return nullptr;
+  }
+
+  return pool.alloc_element<GenericElement>(
+      GenericOperator::make_function(
+          pool.form<ConstantTokenElement>(func_status == NO_EVAL ? "ja-no-eval" : "ja")),
+      args);
+}
+
 /*!
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
-FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
+FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats) {
+  auto as_unused = rewrite_empty_let(in, env, pool);
+  if (as_unused) {
+    stats.unused++;
+    return as_unused;
+  }
+
+  auto as_joint_macro = rewrite_joint_macro(in, env, pool);
+  if (as_joint_macro) {
+    stats.ja++;
+    return as_joint_macro;
+  }
+
+  auto as_set_vector = rewrite_set_vector(in, env, pool);
+  if (as_set_vector) {
+    stats.set_vector++;
+    return as_set_vector;
+  }
+
   auto as_dotimes = rewrite_as_dotimes(in, env, pool);
   if (as_dotimes) {
+    stats.dotimes++;
     return as_dotimes;
+  }
+
+  auto as_send_event = rewrite_as_send_event(in, env, pool);
+  if (as_send_event) {
+    stats.send_event++;
+    return as_send_event;
   }
 
   auto as_countdown = rewrite_as_countdown(in, env, pool);
   if (as_countdown) {
+    stats.countdown++;
     return as_countdown;
-  }
-
-  auto as_abs = fix_up_abs(in, env, pool);
-  if (as_abs) {
-    return as_abs;
-  }
-
-  auto as_abs_2 = fix_up_abs_2(in, env, pool);
-  if (as_abs_2) {
-    return as_abs_2;
-  }
-
-  auto as_unused = rewrite_empty_let(in, env, pool);
-  if (as_unused) {
-    return as_unused;
   }
 
   auto as_case_no_else = rewrite_as_case_no_else(in, env, pool);
   if (as_case_no_else) {
+    stats.case_no_else++;
     return as_case_no_else;
   }
 
   auto as_case_with_else = rewrite_as_case_with_else(in, env, pool);
   if (as_case_with_else) {
+    stats.case_with_else++;
     return as_case_with_else;
-  }
-
-  auto as_set_vector = rewrite_set_vector(in, env, pool);
-  if (as_set_vector) {
-    return as_set_vector;
   }
 
   auto as_set_vector2 = rewrite_set_vector_2(in, env, pool);
   if (as_set_vector2) {
+    stats.set_vector2++;
     return as_set_vector2;
   }
 
-  auto as_send_event = rewrite_as_send_event(in, env, pool);
-  if (as_send_event) {
-    return as_send_event;
+  auto as_abs_2 = fix_up_abs_2(in, env, pool);
+  if (as_abs_2) {
+    stats.abs2++;
+    return as_abs_2;
+  }
+
+  auto as_abs = fix_up_abs(in, env, pool);
+  if (as_abs) {
+    stats.abs++;
+    return as_abs;
   }
 
   // nothing matched.
@@ -983,7 +1342,11 @@ bool register_can_hold_var(const Register& reg) {
 }
 }  // namespace
 
-LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_level_form) {
+LetStats insert_lets(const Function& func,
+                     Env& env,
+                     FormPool& pool,
+                     Form* top_level_form,
+                     LetRewriteStats& let_rewrite_stats) {
   (void)func;
   //    if (func.name() != "(method 4 pair)") {
   //      return {};
@@ -1235,7 +1598,7 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
     for (auto& elt : f->elts()) {
       auto as_let = dynamic_cast<LetElement*>(elt);
       if (as_let) {
-        auto rewritten = rewrite_let(as_let, env, pool);
+        auto rewritten = rewrite_let(as_let, env, pool, let_rewrite_stats);
         if (rewritten) {
           rewritten->parent_form = f;
           elt = rewritten;

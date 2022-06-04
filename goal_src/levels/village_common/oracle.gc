@@ -6,6 +6,7 @@
 ;; dgos: CIT, L1, VI1, VI2, VI3, VILLAGEP
 
 ;; DECOMP BEGINS
+(import "goal_src/import/oracle-ag.gc")
 
 (deftype oracle (process-taskable)
   ((first-task     uint8   :offset-assert 380)
@@ -20,13 +21,10 @@
   )
 
 
-(defskelgroup *oracle-sg* oracle
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *oracle-sg* oracle oracle-lod0-jg oracle-idle-ja
+              ((oracle-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
 
 (defmethod play-anim! oracle ((obj oracle) (arg0 symbol))
   (set! (-> obj talk-message) (game-text-id press-to-talk))
@@ -243,19 +241,8 @@
 
 (defmethod init-from-entity! oracle ((obj oracle) (arg0 entity-actor))
   (dummy-40 obj arg0 *oracle-sg* 3 4 (new 'static 'vector :y -4096.0 :w 4096.0) -1)
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "oracle-sleep")
-                           :volume #x400
-                           :fo-max 50
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "oracle-sleep" :fo-max 50) (-> obj root-override trans))
         )
   (set! (-> obj first-task) (the-as uint (-> arg0 extra perm task)))
   (set! (-> obj second-task) (res-lump-value arg0 'alt-task uint))

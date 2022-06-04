@@ -8,6 +8,7 @@
 (declare-type wall-plat process-drawable)
 
 ;; DECOMP BEGINS
+(import "goal_src/import/wall-plat-ag.gc")
 
 (deftype wall-plat (process-drawable)
   ((root-override   collide-shape-moving         :offset        112)
@@ -31,13 +32,10 @@
   )
 
 
-(defskelgroup *wall-plat-sg* wall-plat
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 1 -2 0 6.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *wall-plat-sg* wall-plat wall-plat-lod0-jg -1
+              ((wall-plat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 1 -2 0 6.5)
+              )
 
 (defstate wall-plat-retracted (wall-plat)
   :event
@@ -54,7 +52,7 @@
     (move-to-point! (-> self root-override) (-> self in-trans))
     (transform-post)
     (clear-collide-with-as (-> self root-override))
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -84,7 +82,7 @@
   (behavior ()
     (restore-collide-with-as (-> self root-override))
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (seek! (-> self extended-amount) 1.0 (* 2.5 (-> *display* seconds-per-frame)))
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
@@ -115,7 +113,7 @@
     (set! (-> self extended-amount) 1.0)
     (move-to-point! (-> self root-override) (-> self out-trans))
     (transform-post)
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -144,7 +142,7 @@
   :code
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (seek! (-> self extended-amount) 0.0 (* 2.5 (-> *display* seconds-per-frame)))
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
@@ -187,7 +185,7 @@
   :code
   (behavior ()
     (let ((gp-0 #f))
-      (while #t
+      (loop
         (let ((f30-0 (get-current-phase-with-mirror (-> self sync))))
           (let ((s5-0 (new 'stack-no-clear 'vector)))
             (vector-lerp! s5-0 (-> self in-trans) (-> self out-trans) f30-0)

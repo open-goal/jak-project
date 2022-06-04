@@ -58,26 +58,28 @@ void ObjectFileDB::analyze_functions_ir2(
     ir2_do_segment_analysis_phase1(MAIN_SEGMENT, config, data);
     ir2_setup_labels(config, data);
     ir2_do_segment_analysis_phase2(TOP_LEVEL_SEGMENT, config, data);
-    try {
-      if (data.linked_data.functions_by_seg.size() == 3) {
+    if (data.linked_data.functions_by_seg.size() == 3) {
+      enum { DEFPART, DEFSTATE, DEFSKELGROUP } step = DEFPART;
+      try {
         run_defpartgroup(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
-      }
-    } catch (const std::exception& e) {
-      lg::error("Failed to find defpartgroups: {}", e.what());
-    }
-    try {
-      if (data.linked_data.functions_by_seg.size() == 3) {
+        step = DEFSTATE;
         run_defstate(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front(), skip_states);
-      }
-    } catch (const std::exception& e) {
-      lg::error("Failed to find defstates: {}", e.what());
-    }
-    try {
-      if (data.linked_data.functions_by_seg.size() == 3) {
+        step = DEFSKELGROUP;
         run_defskelgroups(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
+
+      } catch (const std::exception& e) {
+        switch (step) {
+          case DEFPART:
+            lg::error("Failed to find defpartgroups: {}", e.what());
+            break;
+          case DEFSTATE:
+            lg::error("Failed to find defstates: {}", e.what());
+            break;
+          case DEFSKELGROUP:
+            lg::error("Failed to find defskelgroups: {}", e.what());
+            break;
+        }
       }
-    } catch (const std::exception& e) {
-      lg::error("Failed to find defskelgroups: {}", e.what());
     }
     ir2_do_segment_analysis_phase2(DEBUG_SEGMENT, config, data);
     ir2_do_segment_analysis_phase2(MAIN_SEGMENT, config, data);
@@ -90,19 +92,39 @@ void ObjectFileDB::analyze_functions_ir2(
 
     ir2_symbol_definition_map(data);
 
+    const auto& imports_it = config.import_deps_by_file.find(data.to_unique_name());
+    std::vector<std::string> imports;
+    if (imports_it != config.import_deps_by_file.end()) {
+      imports = imports_it->second;
+    }
+
     if (!output_dir.empty()) {
-      ir2_write_results(output_dir, config, data);
+      ir2_write_results(output_dir, config, imports, data);
     } else {
       if (!skip_functions.empty()) {
-        data.output_with_skips = ir2_final_out(data, skip_functions);
+        data.output_with_skips = ir2_final_out(data, imports, skip_functions);
       }
-      data.full_output = ir2_final_out(data);
+      data.full_output = ir2_final_out(data, imports, {});
     }
 
     for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
 
     fmt::print("Done in {:.2f}ms\n", file_timer.getMs());
   });
+
+  int total = stats.let.total();
+  lg::info("LET REWRITE STATS: {} total", total);
+  lg::info("  dotimes: {}", stats.let.dotimes);
+  lg::info("  countdown: {}", stats.let.countdown);
+  lg::info("  abs: {}", stats.let.abs);
+  lg::info("  abs2: {}", stats.let.abs2);
+  lg::info("  ja: {}", stats.let.ja);
+  lg::info("  set_vector: {}", stats.let.set_vector);
+  lg::info("  set_vector2: {}", stats.let.set_vector2);
+  lg::info("  case_no_else: {}", stats.let.case_no_else);
+  lg::info("  case_with_else: {}", stats.let.case_with_else);
+  lg::info("  unused: {}", stats.let.unused);
+  lg::info("  send_event: {}", stats.let.send_event);
 
   if (config.generate_symbol_definition_map) {
     lg::info("Generating symbol definition map...");
@@ -403,6 +425,7 @@ Value try_lookup(const std::unordered_map<Key, Value>& map, const Key& key) {
  * - NOTE: this will update register info usage more accurately for functions.
  */
 void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectFileData& data) {
+  auto obj_name = data.to_unique_name();
   for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     if (!func.suspected_asm) {
       TypeSpec ts;
@@ -414,9 +437,11 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
         auto register_casts =
             try_lookup(config.register_type_casts_by_function_by_atomic_op_idx, func_name);
         func.ir2.env.set_type_casts(register_casts);
+
         auto stack_casts =
             try_lookup(config.stack_type_casts_by_function_by_stack_offset, func_name);
         func.ir2.env.set_stack_casts(stack_casts);
+
         if (config.hacks.pair_functions_by_name.find(func_name) !=
             config.hacks.pair_functions_by_name.end()) {
           func.ir2.env.set_sloppy_pair_typing();
@@ -426,8 +451,18 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
             config.hacks.reject_cond_to_value.end()) {
           func.ir2.env.aggressively_reject_cond_to_value_rewrite = true;
         }
+
         func.ir2.env.set_stack_structure_hints(
             try_lookup(config.stack_structure_hints_by_function, func_name));
+
+        if (config.art_groups_by_function.find(func_name) != config.art_groups_by_function.end()) {
+          func.ir2.env.set_art_group(config.art_groups_by_function.at(func_name));
+        } else if (config.art_groups_by_file.find(obj_name) != config.art_groups_by_file.end()) {
+          func.ir2.env.set_art_group(config.art_groups_by_file.at(obj_name));
+        } else {
+          func.ir2.env.set_art_group(obj_name + "-ag");
+        }
+
         if (run_type_analysis_ir2(ts, dts, func)) {
           func.ir2.env.types_succeeded = true;
         } else {
@@ -446,7 +481,7 @@ void ObjectFileDB::ir2_register_usage_pass(int seg, ObjectFileData& data) {
     if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
       func.ir2.env.set_reg_use(analyze_ir2_register_usage(func));
 
-      auto block_0_start = func.ir2.env.reg_use().block.at(0).input;
+      auto& block_0_start = func.ir2.env.reg_use().block.at(0).input;
       std::vector<Register> dep_regs;
       for (auto x : block_0_start) {
         dep_regs.push_back(x);
@@ -572,12 +607,14 @@ void ObjectFileDB::ir2_insert_lets(int seg, ObjectFileData& data) {
   for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     if (func.ir2.expressions_succeeded) {
       try {
-        insert_lets(func, func.ir2.env, *func.ir2.form_pool, func.ir2.top_form);
+        insert_lets(func, func.ir2.env, *func.ir2.form_pool, func.ir2.top_form, stats.let);
       } catch (const std::exception& e) {
-        func.warnings.general_warning(
-            fmt::format("Error while inserting lets: {}. Make sure that the return type is not "
-                        "none if something is actually returned.",
-                        e.what()));
+        const auto err = fmt::format(
+            "Error while inserting lets: {}. Make sure that the return type is not "
+            "none if something is actually returned.",
+            e.what());
+        lg::warn(err);
+        func.warnings.general_warning(err);
       }
     }
   });
@@ -610,6 +647,7 @@ void ObjectFileDB::ir2_insert_anonymous_functions(int seg, ObjectFileData& data)
 
 void ObjectFileDB::ir2_write_results(const std::string& output_dir,
                                      const Config& config,
+                                     const std::vector<std::string>& imports,
                                      ObjectFileData& obj) {
   if (obj.linked_data.has_any_functions()) {
     // todo
@@ -618,7 +656,7 @@ void ObjectFileDB::ir2_write_results(const std::string& output_dir,
     auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_ir2.asm");
     file_util::write_text_file(file_name, file_text);
 
-    auto final = ir2_final_out(obj);
+    auto final = ir2_final_out(obj, imports, {});
     auto final_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_disasm.gc");
     file_util::write_text_file(final_name, final);
   }
@@ -991,6 +1029,7 @@ bool ObjectFileDB::lookup_function_type(const FunctionName& name,
 }
 
 std::string ObjectFileDB::ir2_final_out(ObjectFileData& data,
+                                        const std::vector<std::string>& imports,
                                         const std::unordered_set<std::string>& skip_functions) {
   if (data.obj_version == 3) {
     std::string result;
@@ -998,7 +1037,7 @@ std::string ObjectFileDB::ir2_final_out(ObjectFileData& data,
     result += "(in-package goal)\n\n";
     ASSERT(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).size() == 1);
     auto top_level = data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).at(0);
-    result += write_from_top_level(top_level, dts, data.linked_data, skip_functions);
+    result += write_from_top_level(top_level, dts, data.linked_data, imports, skip_functions);
     result += "\n\n";
     return result;
   } else {

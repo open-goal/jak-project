@@ -99,7 +99,9 @@ struct Config {
   bool process_tpages = false;
   bool process_game_text = false;
   bool process_game_count = false;
+  bool process_art_groups = false;
   bool rip_levels = false;
+  bool extract_collision = false;
 
   bool write_hex_near_instructions = false;
   bool hexdump_code = false;
@@ -136,6 +138,11 @@ struct Config {
   bool levels_extract;
 
   DecompileHacks hacks;
+
+  std::unordered_map<std::string, std::string> art_groups_by_file;
+  std::unordered_map<std::string, std::string> art_groups_by_function;
+
+  std::unordered_map<std::string, std::vector<std::string>> import_deps_by_file;
 };
 
 Config read_config_file(const std::string& path_to_config_file,

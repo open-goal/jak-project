@@ -117,7 +117,7 @@
   )
 
 ;; definition for function projectile-collision-reaction
-;; INFO: Return type mismatch int vs uint.
+;; INFO: Return type mismatch int vs cshape-moving-flags.
 ;; Used lq/sq
 (defun projectile-collision-reaction ((arg0 collide-shape-moving) (arg1 collide-shape-intersect) (arg2 vector) (arg3 vector))
   (local-vars (sv-64 vector) (sv-68 vector) (sv-72 matrix) (sv-80 int) (sv-224 symbol))
@@ -159,7 +159,7 @@
       (set! sv-80 (logior sv-80 16))
       )
   (set! sv-224 (< (fabs (-> arg0 surface-angle)) (-> *pat-mode-info* (-> arg0 cur-pat mode) wall-angle)))
-  (if (zero? (logand (-> arg0 prev-status) 1))
+  (if (zero? (logand (-> arg0 prev-status) (cshape-moving-flags onsurf)))
       (set! (-> arg0 ground-impact-vel) (- (vector-dot (-> arg0 transv) (-> arg0 dynam gravity-normal))))
       )
   (set! sv-80 (logior sv-80 4))
@@ -187,7 +187,7 @@
       )
     )
   (logior! (-> arg0 status) sv-80)
-  (the-as uint sv-80)
+  (the-as cshape-moving-flags sv-80)
   )
 
 ;; failed to figure out what this is:
@@ -767,7 +767,9 @@
               (countdown (v1-35 16)
                 (+! f0-16 (-> self old-dist v1-35))
                 )
-              (if (or (and (logtest? (-> self root-override status) 8) (< f0-16 2048.0)) (< f0-16 204.8))
+              (if (or (and (logtest? (-> self root-override status) (cshape-moving-flags twall)) (< f0-16 2048.0))
+                      (< f0-16 204.8)
+                      )
                   (set! gp-0 #t)
                   )
               )
@@ -792,7 +794,7 @@
           (s3-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> arg0 root-override transv) 1.0))
           (f30-0 (vector-length (-> arg0 root-override transv)))
           )
-      (if (logtest? (-> arg0 root-override status) 4)
+      (if (logtest? (-> arg0 root-override status) (cshape-moving-flags tsurf))
           (vector-flatten! s5-1 s5-1 (-> arg0 root-override local-normal))
           )
       (vector-normalize-copy! s4-0 s5-1 1.0)
@@ -1051,7 +1053,7 @@
     (case (-> *target* current-level name)
       (('swamp)
        (set! (-> obj water) (new 'process 'water-control obj 0 0.0 8192.0 2048.0))
-       (set! (-> obj water flags) (the-as uint 146))
+       (set! (-> obj water flags) (water-flags wt01 wt04 wt07))
        (set! (-> obj water height) (if (logtest? (-> obj options) 64)
                                        8192.0
                                        10240.0
@@ -1062,7 +1064,7 @@
       (('ogre)
        (when (zero? (logand (-> obj options) 128))
          (set! (-> obj water) (new 'process 'water-control obj 0 0.0 8192.0 2048.0))
-         (set! (-> obj water flags) (the-as uint 146))
+         (set! (-> obj water flags) (water-flags wt01 wt04 wt07))
          (set! (-> obj water height) 129024.0)
          (logior! (-> obj root-override root-prim collide-with) (collide-kind water))
          )
@@ -1070,7 +1072,7 @@
       (('finalboss)
        (set! (-> obj root-override trans y) (+ 4096.0 (-> obj root-override trans y)))
        (set! (-> obj water) (new 'process 'water-control obj 0 0.0 8192.0 2048.0))
-       (set! (-> obj water flags) (the-as uint 146))
+       (set! (-> obj water flags) (water-flags wt01 wt04 wt07))
        (set! (-> obj water height) 1977958.4)
        (logior! (-> obj root-override root-prim collide-with) (collide-kind water))
        )
@@ -1138,7 +1140,7 @@
           )
         (sound-trans-convert (-> s5-0 parms trans) a1-3)
         )
-      (set! (-> s5-0 parms mask) (the-as uint 32))
+      (set! (-> s5-0 parms mask) (sound-mask trans))
       (-> s5-0 id)
       )
     0

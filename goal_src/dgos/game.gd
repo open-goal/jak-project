@@ -205,7 +205,6 @@
   ("level-info.o" "level-info")
   ("level.o" "level")
   ("text.o" "text")
-  ("subtitle.o" "subtitle") ;; added
   ("collide-probe.o" "collide-probe")
   ("collide-frag.o" "collide-frag")
   ("collide-mesh.o" "collide-mesh")
@@ -291,7 +290,9 @@
   ("anim-tester.o" "anim-tester")
   ("viewer.o" "viewer")
   ("part-tester.o" "part-tester")
+  ("anim-tester-x.o" "anim-tester-x") ;; added
   ("default-menu.o" "default-menu")
+  ("subtitle.o" "subtitle") ;; added
   ("dir-tpages.go" "dir-tpages")
   ("tpage-463.go" "tpage-463")
   ("tpage-2.go" "tpage-2")
@@ -331,4 +332,5 @@
   ("plat-eco.o" "plat-eco")
   ("ropebridge.o" "ropebridge")
   ("ticky.o" "ticky")
+  ("hud-classes-pc.o" "hud-classes-pc") ;; added
   )

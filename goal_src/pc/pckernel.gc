@@ -22,9 +22,30 @@
 
  |#
 
-;; is this necessary?
-(#when PC_PORT
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; global variables
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; collision renderer things. debug only.
+(define *collision-renderer* #f)
+(define *collision-wireframe* #f)
+(define *collision-mode* (pc-collision-mode mode))
+
+(defenum pc-pat-skip-hack
+  :bitfield #t
+  (noentity 0)
+  (nocamera 1)
+  (noedge   2)
+  (nolineofsight 12)
+  (unknowncamera 13)
+  (unknown 15)
+  )
+
+;; forward declarations needed for discord rpc.
+(declare-type ogreboss process-drawable)
+(declare-type plant-boss process-drawable)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; updates
@@ -79,7 +100,7 @@
   (none))
 
 (defmethod update-from-os pc-settings ((obj pc-settings))
-  "Update settings from the PC kernel to GOAL."
+  "Update settings from the C kernel to GOAL."
 
   (set! (-> obj os) (pc-get-os))
   (pc-get-window-size (&-> obj win-width) (&-> obj win-height))
@@ -123,7 +144,7 @@
   (none))
 
 (defmethod update-to-os pc-settings ((obj pc-settings))
-  "Update settings from GOAL to the PC kernel."
+  "Update settings from GOAL to the C kernel."
 
   (cond
     ((-> obj letterbox?)
@@ -142,7 +163,11 @@
     (pc-renderer-tree-set-lod (pc-renderer-tree-type tie3) (-> obj lod-force-tie))
     )
 
-  ;; TODO - save changes
+  (when *debug-segment*
+    (pc-set-collision *collision-renderer*)
+    (pc-set-collision-wireframe *collision-wireframe*)
+    (pc-set-collision-mode *collision-mode*)
+    )
 
   (none))
 
@@ -168,9 +193,50 @@
     (set! (-> info fuel) (&-> *game-info* fuel))
     (set! (-> info money-total) (&-> *game-info* money-total))
     (set! (-> info buzzer-total) (&-> *game-info* buzzer-total))
+    (set! (-> info deaths) (&-> *game-info* total-deaths))
     (set! (-> info status) "Playing Jak and Daxter: The Precursor Legacy™")
     (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name))) ;; grab the name of level we're in
     (set! (-> info cutscene?) (-> obj movie?))
+    (set! (-> info ogreboss?) (the-as symbol (and (process-by-ename "ogreboss-1") (case (-> (process-by-ename "ogreboss-1") next-state name) (
+                ('ogreboss-die
+                 'ogreboss-idle
+                 'ogreboss-stage1
+                 'ogreboss-stage2
+                 'ogreboss-stage3-hit
+                 'ogreboss-stage3-shuffle
+                 'ogreboss-stage3-throw
+                 'ogreboss-wait-for-player) #t)))))
+    (set! (-> info plant-boss?) (the-as symbol (and (process-by-ename "plant-boss-3") (case (-> (process-by-ename "plant-boss-3") next-state name) (
+                ('plant-boss-idle
+                 'plant-boss-hit
+                 'plant-boss-vulnerable
+                 'plant-boss-spawn
+                 'plant-boss-reset
+                 'plant-boss-attack) #t)))))
+    (set! (-> info racer?) (the-as symbol (and *target* (case (-> *target* next-state name) (
+                ('target-racing
+                 'target-racing-bounce
+                 'target-racing-death
+                 'target-racing-falling
+                 'target-racing-grab
+                 'target-racing-hit
+                 'target-racing-jump
+                 'target-racing-smack
+                 'target-racing-start) #t)))))
+    (set! (-> info flutflut?) (the-as symbol (and *target* (case (-> *target* next-state name) (
+                ('target-flut-air-attack
+                 'target-flut-air-attack-hit-ground
+                 'target-flut-double-jump
+                 'target-flut-falling
+                 'target-flut-grab
+                 'target-flut-hit
+                 'target-flut-hit-ground
+                 'target-flut-jump
+                 'target-flut-running-attack
+                 'target-flut-stance
+                 'target-flut-start
+                 'target-flut-walk) #t)))))
+
     (with-profiler "discord-update" (pc-discord-rpc-update info))
     )
 
@@ -198,7 +264,7 @@
       )
     )
   (cond
-    ((actor-force-visible? obj)
+    ((-> obj force-actors?)
       ;; kinda overkill.
       (set! (-> *ACTOR-bank* birth-dist) (meters 10000))
       (set! (-> *ACTOR-bank* pause-dist) (meters 10000))
@@ -518,27 +584,15 @@
                 (("subtitles?") (set! (-> obj subtitles?) (file-stream-read-symbol file)))
                 (("hinttitles?") (set! (-> obj hinttitles?) (file-stream-read-symbol file)))
                 (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
-                (("camera-hflip?") (set! (-> obj camera-hflip?) (file-stream-read-symbol file)))
-                (("camera-vflip?") (set! (-> obj camera-vflip?) (file-stream-read-symbol file)))
+                (("first-camera-h-inverted?") (set! (-> obj first-camera-h-inverted?) (file-stream-read-symbol file)))
+                (("first-camera-v-inverted?") (set! (-> obj first-camera-v-inverted?) (file-stream-read-symbol file)))
+                (("third-camera-h-inverted?") (set! (-> obj third-camera-h-inverted?) (file-stream-read-symbol file)))
+                (("third-camera-v-inverted?") (set! (-> obj third-camera-v-inverted?) (file-stream-read-symbol file)))
                 (("money-starburst?") (set! (-> obj money-starburst?) (file-stream-read-symbol file)))
+                (("extra-hud?") (set! (-> obj extra-hud?) (file-stream-read-symbol file)))
                 (("scenes-seen")
                   (dotimes (i 197)
                     (set! (-> obj scenes-seen i) (file-stream-read-int file))
-                    )
-                  )
-                (("fixes")
-                  (dosettings (file)
-                    (case-str *pc-temp-string*
-                      (("crash-sagecage") (set! (-> obj fixes crash-sagecage) (file-stream-read-symbol file)))
-                      (("crash-dma") (set! (-> obj fixes crash-dma) (file-stream-read-symbol file)))
-                      (("crash-light-eco") (set! (-> obj fixes crash-light-eco) (file-stream-read-symbol file)))
-                      (("crash-moles") (set! (-> obj fixes crash-moles) (file-stream-read-symbol file)))
-                      (("lockout-pelican") (set! (-> obj fixes lockout-pelican) (file-stream-read-symbol file)))
-                      (("lockout-pipegame") (set! (-> obj fixes lockout-pipegame) (file-stream-read-symbol file)))
-                      (("lockout-gambler") (set! (-> obj fixes lockout-gambler) (file-stream-read-symbol file)))
-                      (("fix-movies") (set! (-> obj fixes fix-movies) (file-stream-read-symbol file)))
-                      (("fix-credits") (set! (-> obj fixes fix-credits) (file-stream-read-symbol file)))
-                      )
                     )
                   )
                 (("secrets")
@@ -627,6 +681,7 @@
 
     (format file "  (stick-deadzone ~f)~%" (-> obj stick-deadzone))
 
+    (format file "  (extra-hud? ~A)~%" (-> obj extra-hud?))
     (format file "  (ps2-read-speed? ~A)~%" (-> obj ps2-read-speed?))
     (format file "  (ps2-parts? ~A)~%" (-> obj ps2-parts?))
     (format file "  (ps2-music? ~A)~%" (-> obj ps2-music?))
@@ -637,8 +692,10 @@
     (format file "  (use-vis? ~A)~%" (-> obj use-vis?))
     (format file "  (skip-movies? ~A)~%" (-> obj skip-movies?))
     (format file "  (discord-rpc? ~A)~%" (-> obj discord-rpc?))
-    (format file "  (camera-hflip? ~A)~%" (-> obj camera-hflip?))
-    (format file "  (camera-vflip? ~A)~%" (-> obj camera-vflip?))
+    (format file "  (first-camera-h-inverted? ~A)~%" (-> obj first-camera-h-inverted?))
+    (format file "  (first-camera-v-inverted? ~A)~%" (-> obj first-camera-v-inverted?))
+    (format file "  (third-camera-h-inverted? ~A)~%" (-> obj third-camera-h-inverted?))
+    (format file "  (third-camera-v-inverted? ~A)~%" (-> obj third-camera-v-inverted?))
     (format file "  (money-starburst? ~A)~%" (-> obj money-starburst?))
     (format file "  (force-actors? ~A)~%" (-> obj force-actors?))
     (format file "  (subtitles? ~A)~%" (-> obj subtitles?))
@@ -654,18 +711,6 @@
       (format file " ~D" (-> obj scenes-seen i))
       )
     (format file "~%    )~%")
-
-    (format file "  (fixes~%")
-    (format file "    (crash-sagecage ~A)~%" (-> obj fixes crash-sagecage))
-    (format file "    (crash-dma ~A)~%" (-> obj fixes crash-dma))
-    (format file "    (crash-light-eco ~A)~%" (-> obj fixes crash-light-eco))
-    (format file "    (crash-moles ~A)~%" (-> obj fixes crash-moles))
-    (format file "    (lockout-pelican ~A)~%" (-> obj fixes lockout-pelican))
-    (format file "    (lockout-pipegame ~A)~%" (-> obj fixes lockout-pipegame))
-    (format file "    (lockout-gambler ~A)~%" (-> obj fixes lockout-gambler))
-    (format file "    (fix-movies ~A)~%" (-> obj fixes fix-movies))
-    (format file "    (fix-credits ~A)~%" (-> obj fixes fix-credits))
-    (format file "    )~%")
 
     (format file "  (secrets~%")
     (format file "    (art #x~X)~%" (-> obj secrets art))
@@ -796,15 +841,25 @@
 
 (defun-debug draw-build-revision ()
   (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
-                                     (bucket-id debug-draw1))
+                                     (bucket-id debug-no-zbuf))
           (draw-string-xy *pc-settings-built-sha*
                           buf
                           0
                           (* 10 (-> *video-parms* relative-y-scale))
                           (font-color flat-yellow)
-                          (font-flags kerning))))
+                          (font-flags shadow kerning))))
 
-) ;; when PC_PORT
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; process pools
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; the actor pool for PC processes! it has space for 4 processes, with 16K of space.
+(defconstant PC_PROC_DEFAULT_STACK_SIZE 1024)
+(define *pc-dead-pool* (new 'global 'dead-pool 4 (* 16 1024) '*pc-dead-pool*))
+
 
 
 

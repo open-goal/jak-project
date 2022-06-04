@@ -150,6 +150,10 @@ class Env {
 
   const std::unordered_map<int, StackTypeCast>& stack_casts() const { return m_stack_typecasts; }
 
+  void set_art_group(const std::string& art_group) { m_art_group = art_group; }
+  const std::string& art_group() const { return m_art_group; }
+  std::optional<std::string> get_art_elt_name(int idx) const;
+
   void set_remap_for_function(const TypeSpec& ts);
   void set_remap_for_method(const TypeSpec& ts);
   void set_remap_for_new_method(const TypeSpec& ts);
@@ -233,5 +237,7 @@ class Env {
   std::optional<TypeSpec> m_type_analysis_return_type;
 
   StackSpillMap m_stack_spill_map;
+
+  std::string m_art_group;
 };
 }  // namespace decompiler

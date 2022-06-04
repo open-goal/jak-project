@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/sidekick-ag.gc")
+
 ;; definition for symbol *sidekick-remap*, type pair
 (define *sidekick-remap* '(("run-to-stance-left" "run-to-stance")
                            ("run-to-stance-loop-left" "run-to-stance-loop")
@@ -173,28 +175,28 @@
       (debug-print-channels (-> self skel) (the-as symbol *stdcon*))
       (add-debug-sphere
         *display-sidekick-stats*
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         (-> self parent-override 0 control unknown-cspace10 parent bone transform vector 3)
         409.6
         (new 'static 'rgba :g #xff :a #x80)
         )
       (add-debug-sphere
         *display-sidekick-stats*
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         (-> self node-list data 3 bone transform vector 3)
         409.6
         (new 'static 'rgba :r #xff :g #xff :a #x80)
         )
       (add-debug-sphere
         *display-sidekick-stats*
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         (-> self draw origin)
         409.6
         (new 'static 'rgba :r #xff :g #x80 :a #x80)
         )
       )
     (set! (-> self draw shadow) (the-as shadow-geo (if (and (movie?) (-> self shadow-in-movie?))
-                                                       (-> self draw art-group data 2)
+                                                       sidekick-shadow-mg
                                                        )
                                         )
           )
@@ -214,16 +216,14 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *sidekick-sg* sidekick
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 1)
-  :shadow 2
-  :texture-level 2
-  :sort 1
-  )
+(defskelgroup *sidekick-sg* sidekick sidekick-lod0-jg -1
+              ((sidekick-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :longest-edge (meters 1)
+              :shadow sidekick-shadow-mg
+              :texture-level 2
+              :sort 1
+              )
 
 ;; definition for function init-sidekick
 ;; INFO: Return type mismatch object vs none.

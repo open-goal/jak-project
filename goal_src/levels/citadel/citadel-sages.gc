@@ -10,14 +10,18 @@
 (declare-type citb-sage process-taskable)
 
 ;; DECOMP BEGINS
+(import "goal_src/import/evilbro-citadel-ag.gc")
+(import "goal_src/import/evilsis-citadel-ag.gc")
+(import "goal_src/import/yellowsage-ag.gc")
+(import "goal_src/import/citb-sagecage-ag.gc")
+(import "goal_src/import/redsage-ag.gc")
+(import "goal_src/import/green-sagecage-ag.gc")
+(import "goal_src/import/bluesage-ag.gc")
 
-(defskelgroup *citb-sagecage-sg* citb-sagecage
-  0
-  4
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 -6 0 7)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-sagecage-sg* citb-sagecage citb-sagecage-lod0-jg citb-sagecage-redsage-idle-ja
+              ((citb-sagecage-lod0-mg (meters 20)) (citb-sagecage-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 -6 0 7)
+              )
 
 (deftype citb-sagecage (process-drawable)
   ((parent-override (pointer citb-sage)             :offset         12)
@@ -128,7 +132,7 @@
   (the-as (function none :behavior citb-sagecage) rider-trans)
   :code
   (behavior ()
-    (while #t
+    (loop
       (cond
         ((-> self cloning)
          (let ((gp-0 (ppointer->process (-> self parent-override))))
@@ -146,10 +150,7 @@
            )
          )
         (else
-          (let ((a0-2 (-> self skel root-channel 0)))
-            (set! (-> a0-2 param 0) 1.0)
-            (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-loop!)
-            )
+          (ja :num! (loop!))
           )
         )
       (suspend)
@@ -216,19 +217,8 @@
     (set-vector! (-> obj bar-array 10) 0.0 f0-1 f1-0 1.0)
     (set-vector! (-> obj bar-array 11) f2-0 f0-1 f1-0 1.0)
     )
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "sagecage-gen")
-                           :volume #x400
-                           :fo-max 20
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "sagecage-gen" :fo-max 20) (-> obj root-override trans))
         )
   (set! (-> obj bars-on) (not (task-complete? *game-info* (-> obj entity extra perm task))))
   (citb-sagecage-update-collision)
@@ -248,59 +238,41 @@
   (none)
   )
 
-(defskelgroup *redsage-sg* redsage
-  0
-  4
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  :shadow 3
-  )
+(defskelgroup *redsage-sg* redsage redsage-lod0-jg redsage-redsage-idle-ja
+              ((redsage-lod0-mg (meters 20)) (redsage-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :shadow redsage-shadow-mg
+              )
 
-(defskelgroup *bluesage-sg* bluesage
-  0
-  4
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :shadow 3
-  )
+(defskelgroup *bluesage-sg* bluesage bluesage-lod0-jg bluesage-bluesage-idle-ja
+              ((bluesage-lod0-mg (meters 20)) (bluesage-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow bluesage-shadow-mg
+              )
 
-(defskelgroup *yellowsage-sg* yellowsage
-  0
-  4
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  :shadow 3
-  )
+(defskelgroup *yellowsage-sg* yellowsage yellowsage-lod0-jg yellowsage-yellowsage-idle-ja
+              ((yellowsage-lod0-mg (meters 20)) (yellowsage-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :shadow yellowsage-shadow-mg
+              )
 
-(defskelgroup *green-sagecage-sg* green-sagecage
-  0
-  4
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 2.5)
-  :longest-edge (meters 0)
-  :shadow 3
-  )
+(defskelgroup *green-sagecage-sg* green-sagecage green-sagecage-lod0-jg green-sagecage-green-sagecage-idle-ja
+              ((green-sagecage-lod0-mg (meters 20)) (green-sagecage-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :shadow green-sagecage-shadow-mg
+              )
 
-(defskelgroup *evilbro-citadel-sg* evilbro-citadel
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 1)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *evilbro-citadel-sg* evilbro-citadel evilbro-citadel-lod0-jg evilbro-citadel-idle-ja
+              ((evilbro-citadel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :shadow evilbro-citadel-shadow-mg
+              )
 
-(defskelgroup *evilsis-citadel-sg* evilsis-citadel
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 1)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *evilsis-citadel-sg* evilsis-citadel evilsis-citadel-lod0-jg evilsis-citadel-idle-ja
+              ((evilsis-citadel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :shadow evilsis-citadel-shadow-mg
+              )
 
 (deftype citb-sage (process-taskable)
   ((spawn-pos         vector                   :inline :offset-assert 384)
@@ -484,7 +456,7 @@
   (behavior ()
     (#if PC_PORT
         ;; fix infinite state recursion
-        (if (and (not (and (-> self been-kicked) (-> *pc-settings* fixes crash-sagecage))) (not (should-display? self)))
+        (if (and (not (-> self been-kicked)) (not (should-display? self)))
             (go-virtual hidden)
             )
         ;; no fix
@@ -525,7 +497,7 @@
         (set! (-> a0-3 settings top-plane w) (- 4096.0))
         )
       0
-      (set! (-> v1-1 settings flags) (logand -13 (-> v1-1 settings flags)))
+      (logclear! (-> v1-1 settings flags) (shadow-flags shdf02 shdf03))
       )
     )
   (none)
@@ -539,14 +511,14 @@
           (logtest? (-> obj draw status) (draw-status was-drawn))
           )
      (let ((v1-9 (-> obj draw shadow-ctrl)))
-       (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
+       (logclear! (-> v1-9 settings flags) (shadow-flags shdf05))
        )
      0
      (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
      )
     (else
       (let ((v1-14 (-> obj draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) 32)
+        (logior! (-> v1-14 settings flags) (shadow-flags shdf05))
         )
       0
       )
@@ -642,7 +614,7 @@
         (set! (-> a0-3 settings top-plane w) (- 4096.0))
         )
       0
-      (set! (-> v1-1 settings flags) (logand -13 (-> v1-1 settings flags)))
+      (logclear! (-> v1-1 settings flags) (shadow-flags shdf02 shdf03))
       )
     )
   (none)
@@ -656,14 +628,14 @@
           (logtest? (-> obj draw status) (draw-status was-drawn))
           )
      (let ((v1-9 (-> obj draw shadow-ctrl)))
-       (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
+       (logclear! (-> v1-9 settings flags) (shadow-flags shdf05))
        )
      0
      (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
      )
     (else
       (let ((v1-14 (-> obj draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) 32)
+        (logior! (-> v1-14 settings flags) (shadow-flags shdf05))
         )
       0
       )
@@ -764,7 +736,7 @@
         (set! (-> a0-3 settings top-plane w) (- 4096.0))
         )
       0
-      (set! (-> v1-1 settings flags) (logand -13 (-> v1-1 settings flags)))
+      (logclear! (-> v1-1 settings flags) (shadow-flags shdf02 shdf03))
       )
     )
   (none)
@@ -778,14 +750,14 @@
           (logtest? (-> obj draw status) (draw-status was-drawn))
           )
      (let ((v1-9 (-> obj draw shadow-ctrl)))
-       (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
+       (logclear! (-> v1-9 settings flags) (shadow-flags shdf05))
        )
      0
      (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
      )
     (else
       (let ((v1-14 (-> obj draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) 32)
+        (logior! (-> v1-14 settings flags) (shadow-flags shdf05))
         )
       0
       )

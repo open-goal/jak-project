@@ -24,6 +24,8 @@
 #include "third-party/lzokay/lzokay.hpp"
 
 #ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #else
 #include <unistd.h>

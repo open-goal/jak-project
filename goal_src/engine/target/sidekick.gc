@@ -5,9 +5,10 @@
 ;; name in dgo: sidekick
 ;; dgos: GAME, ENGINE
 
-(define-extern *sidekick-sg* skeleton-group)
+(load-art-import sidekick)
 
 ;; DECOMP BEGINS
+(import "goal_src/import/sidekick-ag.gc")
 
 (define *sidekick-remap* '(("run-to-stance-left" "run-to-stance")
                            ("run-to-stance-loop-left" "run-to-stance-loop")
@@ -182,28 +183,28 @@
       (debug-print-channels (-> self skel) (the-as symbol *stdcon*))
       (add-debug-sphere
         *display-sidekick-stats*
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         (-> self parent-override 0 control unknown-cspace10 parent bone transform vector 3)
         409.6
         (new 'static 'rgba :g #xff :a #x80)
         )
       (add-debug-sphere
         *display-sidekick-stats*
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         (-> self node-list data 3 bone transform vector 3)
         409.6
         (new 'static 'rgba :r #xff :g #xff :a #x80)
         )
       (add-debug-sphere
         *display-sidekick-stats*
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         (-> self draw origin)
         409.6
         (new 'static 'rgba :r #xff :g #x80 :a #x80)
         )
       )
     (set! (-> self draw shadow) (the-as shadow-geo (if (and (movie?) (-> self shadow-in-movie?))
-                                                       (-> self draw art-group data 2)
+                                                       sidekick-shadow-mg
                                                        )
                                         )
           )
@@ -222,16 +223,14 @@
     )
   )
 
-(defskelgroup *sidekick-sg* sidekick
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 1)
-  :shadow 2
-  :texture-level 2
-  :sort 1
-  )
+(defskelgroup *sidekick-sg* sidekick sidekick-lod0-jg -1
+              ((sidekick-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :longest-edge (meters 1)
+              :shadow sidekick-shadow-mg
+              :texture-level 2
+              :sort 1
+              )
 
 (defbehavior init-sidekick sidekick ()
   (logior! (-> self mask) (process-mask sidekick))
@@ -243,6 +242,14 @@
   (set! (-> self draw shadow-joint-index) (the-as uint 6))
   (set! (-> self draw shadow-ctrl) *target-shadow-control*)
   (logior! (-> self skel status) (janim-status eye))
+
+  (#when PC_PORT
+    ;; daxter can be killed mid-blerc, leaving blerc modifications in the merc data.
+    ;; once sidekick is restarted, the blerc-done flag will be lost, so the modifications will
+    ;; to work around this, just set blerc-done on spawn. it will run blerc with 0's on the
+    ;; first frame when daxter is drawn, clearing blerc data.
+    (logior! (-> self skel status) (janim-status blerc-done))
+    )
   (let ((v1-14 (-> self node-list data)))
     (set! (-> v1-14 0 param0) cspace<-cspace+quaternion!)
     (set! (-> v1-14 0 param1) (the-as basic (-> self parent-override 0 control unknown-cspace10 parent)))

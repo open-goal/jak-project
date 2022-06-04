@@ -44,7 +44,7 @@ void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
       tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
       tex_data16 = _mm_srli_epi16(tex_data16, 7);
       auto result = _mm_packus_epi16(tex_data16, tex_data16);
-      _mm_storeu_si64((__m128i*)(out + (i * 8)), result);
+      _mm_storel_epi64((__m128i*)(out + (i * 8)), result);
     }
   }
 }
@@ -81,7 +81,7 @@ void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
       tex_data16 = _mm_min_epi16(max_intensity, tex_data16);
       auto result = _mm_packus_epi16(tex_data16, tex_data16);
       out_val = _mm_adds_epu8(out_val, result);
-      _mm_storeu_si64((__m128i*)(out + (i * 8)), out_val);
+      _mm_storel_epi64((__m128i*)(out + (i * 8)), out_val);
     }
   }
   /*
@@ -151,13 +151,16 @@ SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,
     }
      */
     if (tex->get_data_ptr()) {
-      if (is_first_draw) {
-        blend_sky_initial_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
-                               tex->data_size());
-      } else {
-        blend_sky_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
-                       tex->data_size());
+      if (m_texture_data[buffer_idx].size() == tex->data_size()) {
+        if (is_first_draw) {
+          blend_sky_initial_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
+                                 m_texture_data[buffer_idx].size());
+        } else {
+          blend_sky_fast(intensity, m_texture_data[buffer_idx].data(), tex->get_data_ptr(),
+                         m_texture_data[buffer_idx].size());
+        }
       }
+
       if (buffer_idx == 0) {
         if (is_first_draw) {
           stats.sky_draws++;
@@ -194,7 +197,8 @@ void SkyBlendCPU::init_textures(TexturePool& tex_pool) {
     in.gpu_texture = m_textures[i].gl;
     in.w = m_sizes[i];
     in.h = m_sizes[i];
-    in.name = fmt::format("PC-SKY-CPU-{}", i);
+    in.debug_name = fmt::format("PC-SKY-CPU-{}", i);
+    in.id = tex_pool.allocate_pc_port_texture();
     u32 tbp = SKY_TEXTURE_VRAM_ADDRS[i];
     m_textures[i].tex = tex_pool.give_texture_and_load_to_vram(in, tbp);
     m_textures[i].tbp = tbp;

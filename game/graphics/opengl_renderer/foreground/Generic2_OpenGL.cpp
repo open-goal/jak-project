@@ -78,8 +78,9 @@ void Generic2::init_shaders(ShaderLibrary& shaders) {
 
 void Generic2::opengl_bind_and_setup_proj(SharedRenderState* render_state) {
   render_state->shaders[ShaderId::GENERIC].activate();
-  glUniform4f(m_ogl.fog_color, render_state->fog_color[0], render_state->fog_color[1],
-              render_state->fog_color[2], render_state->fog_intensity);
+  glUniform4f(m_ogl.fog_color, render_state->fog_color[0] / 255.f,
+              render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
+              render_state->fog_intensity / 255);
   glUniform4f(m_ogl.scale, m_drawing_config.proj_scale[0], m_drawing_config.proj_scale[1],
               m_drawing_config.proj_scale[2], 0);
   glUniform1f(m_ogl.mat_23, m_drawing_config.proj_mat_23);
@@ -151,7 +152,10 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
       // (Cs - 0) * Ad + Cd
       glBlendFunc(GL_DST_ALPHA, GL_ONE);
       glBlendEquation(GL_FUNC_ADD);
-      color_mult = 0.5f;  // HACK, should probably be 0.5
+      color_mult = 0.5f;
+    } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_FIX_DST) {
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ONE, GL_ZERO);
     } else {
       ASSERT(false);
     }
@@ -189,8 +193,9 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
 
   glUniform1f(m_ogl.alpha_reject, alpha_reject);
   glUniform1f(m_ogl.color_mult, color_mult);
-  glUniform4f(m_ogl.fog_color, render_state->fog_color[0], render_state->fog_color[1],
-              render_state->fog_color[2], render_state->fog_intensity);
+  glUniform4f(m_ogl.fog_color, render_state->fog_color[0] / 255.f,
+              render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
+              render_state->fog_intensity / 255);
 }
 
 void Generic2::setup_opengl_tex(u16 unit,
@@ -294,9 +299,10 @@ void Generic2::do_draws(SharedRenderState* render_state, ScopedProfilerNode& pro
 
   opengl_bind_and_setup_proj(render_state);
   constexpr DrawMode::AlphaBlend alpha_order[ALPHA_MODE_COUNT] = {
-      DrawMode::AlphaBlend::SRC_SRC_SRC_SRC, DrawMode::AlphaBlend::SRC_DST_SRC_DST,
-      DrawMode::AlphaBlend::SRC_0_SRC_DST,   DrawMode::AlphaBlend::ZERO_SRC_SRC_DST,
-      DrawMode::AlphaBlend::SRC_DST_FIX_DST, DrawMode::AlphaBlend::SRC_0_DST_DST,
+      DrawMode::AlphaBlend::SRC_0_FIX_DST,    DrawMode::AlphaBlend::SRC_SRC_SRC_SRC,
+      DrawMode::AlphaBlend::SRC_DST_SRC_DST,  DrawMode::AlphaBlend::SRC_0_SRC_DST,
+      DrawMode::AlphaBlend::ZERO_SRC_SRC_DST, DrawMode::AlphaBlend::SRC_DST_FIX_DST,
+      DrawMode::AlphaBlend::SRC_0_DST_DST,
   };
 
   for (int i = 0; i < ALPHA_MODE_COUNT; i++) {

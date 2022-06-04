@@ -6,6 +6,9 @@
 ;; dgos: L1, VI3
 
 ;; DECOMP BEGINS
+(import "goal_src/import/evilsis-village3-ag.gc")
+(import "goal_src/import/evilbro-village3-ag.gc")
+(import "goal_src/import/sage-village3-ag.gc")
 
 (deftype sage-villagec (process-taskable)
   ((evilbro   handle        :offset-assert 384)
@@ -19,32 +22,23 @@
   )
 
 
-(defskelgroup *sage-village3-sg* sage-village3
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *sage-village3-sg* sage-village3 sage-village3-lod0-jg sage-village3-idle-ja
+              ((sage-village3-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow sage-village3-shadow-mg
+              )
 
-(defskelgroup *evilbro-village3-sg* evilbro-village3
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *evilbro-village3-sg* evilbro-village3 evilbro-village3-lod0-jg evilbro-village3-idle-ja
+              ((evilbro-village3-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow evilbro-village3-shadow-mg
+              )
 
-(defskelgroup *evilsis-village3-sg* evilsis-village3
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *evilsis-village3-sg* evilsis-village3 evilsis-village3-lod0-jg evilsis-village3-idle-ja
+              ((evilsis-village3-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow evilsis-village3-shadow-mg
+              )
 
 (defmethod play-anim! sage-villagec ((obj sage-villagec) (arg0 symbol))
   (with-pp
@@ -319,18 +313,21 @@
 (defmethod draw-npc-shadow sage-villagec ((obj sage-villagec))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
     (cond
-      ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status was-drawn)))
-       (set! (-> v1-1 settings flags) (logand -9 (-> v1-1 settings flags)))
-       (set! (-> v1-1 settings flags) (logand -5 (-> v1-1 settings flags)))
+      ((and (-> obj draw shadow)
+            (zero? (-> obj draw cur-lod))
+            (logtest? (-> obj draw status) (draw-status was-drawn))
+            )
+       (logclear! (-> v1-1 settings flags) (shadow-flags shdf03))
+       (logclear! (-> v1-1 settings flags) (shadow-flags shdf02))
        (set! (-> v1-1 settings bot-plane w) 20480.0)
        (let ((a0-8 v1-1))
-         (set! (-> a0-8 settings flags) (logand -33 (-> a0-8 settings flags)))
+         (logclear! (-> a0-8 settings flags) (shadow-flags shdf05))
          )
        0
        (update-direction-from-time-of-day v1-1)
        )
       (else
-        (logior! (-> v1-1 settings flags) 32)
+        (logior! (-> v1-1 settings flags) (shadow-flags shdf05))
         0
         )
       )

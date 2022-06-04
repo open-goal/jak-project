@@ -14,7 +14,7 @@ Tie3::~Tie3() {
   discard_tree_cache();
 }
 
-void Tie3::update_load(const Loader::LevelData* loader_data) {
+void Tie3::update_load(const LevelData* loader_data) {
   const tfrag3::Level* lev_data = loader_data->level.get();
   m_wind_vectors.clear();
   // We changed level!
@@ -353,11 +353,11 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
     settings.occlusion_culling = render_state->occlusion_vis[m_level_id].data;
   }
 
+  update_render_state_from_pc_settings(render_state, m_pc_port_data);
+
   for (int i = 0; i < 4; i++) {
     settings.planes[i] = m_pc_port_data.planes[i];
-    render_state->camera_planes[i] = m_pc_port_data.planes[i];
   }
-  render_state->has_camera_planes = true;
 
   if (false) {
     //    for (int i = 0; i < 8; i++) {
@@ -369,6 +369,7 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
           2 * (0xff & m_pc_port_data.itimes[i / 2].data()[2 * (i % 2)]) / 127.f;
     }
   }
+
   if (!m_override_level) {
     m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
   }

@@ -35,23 +35,17 @@
 (defstate viewer-process (viewer)
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (-> self janim))
-        (set! (-> a0-0 param 0) (the float (+ (-> self janim data 0 length) -1)))
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (-> self janim) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! (-> self janim)
+                  :num!
+                  (seek! (the float (+ (-> self janim data 0 length) -1)))
+                  :frame-num 0.0
+                  )
       (until (ja-done? 0)
         (TODO-RENAME-9 (-> self align))
         (TODO-RENAME-10 (-> self align) 31 1.0 1.0 1.0)
         (suspend)
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-          (set! (-> a0-3 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)

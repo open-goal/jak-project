@@ -381,7 +381,7 @@
 (defun draw-joint-spheres ((arg0 process-drawable))
   (dotimes (s5-0 (-> arg0 node-list length))
     (let ((a2-0 (vector<-cspace! (new-stack-vector0) (-> arg0 node-list data s5-0))))
-      (add-debug-sphere #t (bucket-id debug-draw0) a2-0 819.2 (new 'static 'rgba :g #xff :a #x40))
+      (add-debug-sphere #t (bucket-id debug) a2-0 819.2 (new 'static 'rgba :g #xff :a #x40))
       )
     )
   #f
@@ -404,7 +404,7 @@
   :code
   (behavior ((arg0 string))
     (logior! (-> self entity extra perm status) (entity-perm-status bit-1))
-    (while #t
+    (loop
       (when *display-entity-errors*
         (let ((s5-0 add-debug-text-3d)
               (s4-0 #t)
@@ -456,15 +456,7 @@
                 )
               )
         )
-    (let ((s4-0 (load-to-heap-by-name
-                  (-> s1-0 art-group)
-                  (the-as string (-> arg0 art-group-name))
-                  #f
-                  global
-                  (-> arg0 version)
-                  )
-                )
-          )
+    (let ((s4-0 (load-to-heap-by-name (-> s1-0 art-group) (-> arg0 art-group-name) #f global (-> arg0 version))))
       (when (or (zero? s4-0) (or (not s4-0) (!= (-> s4-0 type) art-group)))
         (go process-drawable-art-error "art-group")
         (set! s3-0 (the-as draw-control #f))
@@ -761,7 +753,7 @@
   )
 
 ;; definition for function ja-channel-push!
-(defbehavior ja-channel-push! process-drawable ((arg0 int) (arg1 int))
+(defbehavior ja-channel-push! process-drawable ((arg0 int) (arg1 time-frame))
   (cond
     ((or (zero? (-> self skel active-channels))
          (zero? arg1)
@@ -1052,7 +1044,7 @@
 ;; definition for function anim-loop
 (defbehavior anim-loop process-drawable ()
   (logior! (-> self mask) (process-mask sleep-code))
-  (while #t
+  (loop
     (nop!)
     (suspend)
     )
@@ -1096,8 +1088,8 @@
 ;; definition for function process-drawable-delay-player
 (defbehavior process-drawable-delay-player process-drawable ((arg0 time-frame))
   (while (and *target*
-              (logtest? (-> *target* control unknown-surface00 flags) 2048)
-              (zero? (logand (-> *target* control status) 1))
+              (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+              (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
               )
     (suspend)
     )
@@ -1215,11 +1207,10 @@
             (else
               (set! s5-0 (cond
                            ((valid? (-> s2-0 frame-group) art-joint-anim "joint-control frame-group" #t *valid-con*)
-                            (when (not
-                                    (and (>= (the int (-> s2-0 frame-num)) 0)
-                                         (< (the int (-> s2-0 frame-num)) (-> s2-0 frame-group data 0 length))
-                                         )
-                                    )
+                            (when (not (and (>= (the int (-> s2-0 frame-num)) 0)
+                                            (< (the int (-> s2-0 frame-num)) (-> s2-0 frame-group data 0 length))
+                                            )
+                                       )
                               (format
                                 *valid-con*
                                 "ERROR: ~`joint-control-channel`P #~D has an invalid frame-num ~F/~D [0-~D]~%"

@@ -12,11 +12,6 @@ class Tfrag3 {
   Tfrag3();
   ~Tfrag3();
 
-  void debug_render_all_trees_nolores(int geom,
-                                      const TfragRenderSettings& settings,
-                                      SharedRenderState* render_state,
-                                      ScopedProfilerNode& prof);
-
   void render_all_trees(int geom,
                         const TfragRenderSettings& settings,
                         SharedRenderState* render_state,
@@ -49,7 +44,7 @@ class Tfrag3 {
   };
 
   void update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
-                   const Loader::LevelData* loader_data);
+                   const LevelData* loader_data);
 
   int lod() const { return Gfx::g_global_settings.lod_tfrag; }
 
@@ -57,7 +52,7 @@ class Tfrag3 {
   static constexpr int GEOM_MAX = 3;
 
   struct TreeCache {
-    tfrag3::TFragmentTreeKind kind;
+    tfrag3::TFragmentTreeKind kind = tfrag3::TFragmentTreeKind::INVALID;
     GLuint vertex_buffer = -1;
     GLuint index_buffer = -1;
     GLuint single_draw_index_buffer = -1;

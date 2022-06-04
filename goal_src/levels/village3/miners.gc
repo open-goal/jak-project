@@ -8,24 +8,18 @@
 (declare-type minershort process-taskable)
 
 ;; DECOMP BEGINS
+(import "goal_src/import/minershort-ag.gc")
+(import "goal_src/import/minertall-ag.gc")
+(import "goal_src/import/cavegem-ag.gc")
 
 (defbehavior miners-anim-loop minershort ()
-  (when (!= (if (> (-> self skel active-channels) 0)
-                (-> self skel root-channel 0 frame-group)
-                )
-            (get-art-elem self)
-            )
-    (ja-channel-push! 1 60)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (set! (-> gp-0 frame-group) (the-as art-joint-anim (get-art-elem self)))
-      )
+  (when (!= (ja-group) (get-art-elem self))
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja :group! (get-art-elem self))
     )
-  (while #t
+  (loop
     (suspend)
-    (let ((a0-8 (-> self skel root-channel 0)))
-      (set! (-> a0-8 param 0) 2.0)
-      (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-loop!)
-      )
+    (ja :num! (loop! 2.0))
     (if (= (-> self next-state name) 'idle)
         (TODO-RENAME-43 self)
         )
@@ -43,14 +37,11 @@
   )
 
 
-(defskelgroup *minertall-sg* minertall
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 2.5)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *minertall-sg* minertall minertall-lod0-jg minertall-idle-ja
+              ((minertall-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :shadow minertall-shadow-mg
+              )
 
 (defmethod dummy-52 minertall ((obj minertall))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
@@ -65,7 +56,7 @@
           )
         )
       0
-      (set! (-> v1-1 settings flags) (logand -9 (-> v1-1 settings flags)))
+      (logclear! (-> v1-1 settings flags) (shadow-flags shdf03))
       )
     )
   (none)
@@ -74,16 +65,19 @@
 (defmethod draw-npc-shadow minertall ((obj minertall))
   (-> obj draw shadow-ctrl)
   (cond
-    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status was-drawn)))
+    ((and (-> obj draw shadow)
+          (zero? (-> obj draw cur-lod))
+          (logtest? (-> obj draw status) (draw-status was-drawn))
+          )
      (let ((v1-9 (-> obj draw shadow-ctrl)))
-       (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
+       (logclear! (-> v1-9 settings flags) (shadow-flags shdf05))
        )
      0
      (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
      )
     (else
       (let ((v1-14 (-> obj draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) 32)
+        (logior! (-> v1-14 settings flags) (shadow-flags shdf05))
         )
       0
       )
@@ -139,14 +133,11 @@
   )
 
 
-(defskelgroup *minershort-sg* minershort
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 2.5)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *minershort-sg* minershort minershort-lod0-jg minershort-idle-ja
+              ((minershort-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :shadow minershort-shadow-mg
+              )
 
 (defpartgroup group-minershort-candle
   :id 566
@@ -246,7 +237,7 @@
           )
         )
       0
-      (set! (-> v1-1 settings flags) (logand -9 (-> v1-1 settings flags)))
+      (logclear! (-> v1-1 settings flags) (shadow-flags shdf03))
       )
     )
   (none)
@@ -255,16 +246,19 @@
 (defmethod draw-npc-shadow minershort ((obj minershort))
   (-> obj draw shadow-ctrl)
   (cond
-    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status was-drawn)))
+    ((and (-> obj draw shadow)
+          (zero? (-> obj draw cur-lod))
+          (logtest? (-> obj draw status) (draw-status was-drawn))
+          )
      (let ((v1-9 (-> obj draw shadow-ctrl)))
-       (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
+       (logclear! (-> v1-9 settings flags) (shadow-flags shdf05))
        )
      0
      (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
      )
     (else
       (let ((v1-14 (-> obj draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) 32)
+        (logior! (-> v1-14 settings flags) (shadow-flags shdf05))
         )
       0
       )
@@ -631,52 +625,20 @@
   )
 
 
-(defskelgroup *cavegem-sg* cavegem
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 9)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *cavegem-sg* cavegem cavegem-lod0-jg cavegem-idle-ja
+              ((cavegem-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 9)
+              )
 
 (defstate idle (cavegem)
   :virtual #t
   :code
   (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)

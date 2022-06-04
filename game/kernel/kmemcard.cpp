@@ -344,12 +344,12 @@ void pc_game_load_open_file(FILE* fd) {
       mc_print("closing save file..");
       if (fclose(fd) == 0) {
         // cb_closedload //
-        p2++;
         // added : check if aux bank exists
-        auto new_bankname = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p2];
-        bool aux_exists = std::filesystem::exists(new_bankname);
-        if (p2 < 2 && aux_exists) {
+        if (p2 < 1 && std::filesystem::exists(file_util::get_user_memcard_dir() /
+                                              filename[op.param2 * 2 + 4 + p2 + 1])) {
+          p2++;
           mc_print("reading next save bank {}", filename[op.param2 * 2 + 4 + p2]);
+          auto new_bankname = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p2];
           auto new_fd = fopen(new_bankname.string().c_str(), "rb");
           pc_game_load_open_file(new_fd);
         } else {
@@ -365,7 +365,7 @@ void pc_game_load_open_file(FILE* fd) {
               (McHeader*)(op.data_ptr.c() + BANK_TOTAL_SIZE + sizeof(McHeader) + BANK_SIZE);
           static_assert(BANK_TOTAL_SIZE * 2 == 0x21000, "save layout");
           ok[0] = true;
-          ok[1] = aux_exists;
+          ok[1] = p2 == 1;
 
           for (int idx = 0; idx < 2; idx++) {
             u32 expected_save_count = headers[idx]->save_count;
@@ -429,8 +429,8 @@ void pc_game_load_open_file(FILE* fd) {
 
             mc_print(fmt::format("loading bank {}", bank));
             u32 current_save_count = headers[bank]->save_count;
-            memcpy(op.data_ptr.c(), op.data_ptr.c() + bank * BANK_TOTAL_SIZE + sizeof(McHeader),
-                   BANK_SIZE);
+            memmove(op.data_ptr.c(), op.data_ptr.c() + bank * BANK_TOTAL_SIZE + sizeof(McHeader),
+                    BANK_SIZE);
             mc_last_file = op.param2;
             mc_files[op.param2].most_recent_save_count = current_save_count;
             mc_files[op.param2].last_saved_bank = bank;
@@ -853,8 +853,8 @@ u32 MC_check_result() {
  * You can call this at any time.
  * The slot includes the four save slots (8 banks), and a few other files.
  */
-void MC_get_status(s32 slot, Ptr<mc_slot_info> info) {
-  ASSERT(slot == 0);  // no memory cards so only allow "slot 0"!!!
+void MC_get_status(s32 /*slot*/, Ptr<mc_slot_info> info) {
+  // slot is ignored, so you'll get the same thing regardless of what slot you pick
 
   info->handle = 0;
   info->known = 0;

@@ -755,6 +755,15 @@
                    (when (< current-login-pos (-> s1-2 length))
                      (set! sv-16 (-> s1-2 array-data (the-as uint current-login-pos)))
                      (set! sv-32 0)
+                     
+                     (#when PC_PORT
+                       ;; if a TIE uses environment mapping, disable the fade out so it always renderers with
+                       ;; the generic renderer. In the port, we just make envmapped things always envmap.
+                       (when (!= (-> sv-16 envmap-fade-far) 0.0)
+                         (*! (-> sv-16 envmap-fade-far) 10000.)
+                         )
+                       )
+                     
                      (while (< sv-32 4)
                        (let ((a0-28 (-> sv-16 geometry sv-32)))
                          ;;(load-dbg " login geom: ~A~%" a0-28)
@@ -1047,10 +1056,7 @@
   "Is arg0 visible? Note that this will return #f if the visibility data is not loaded."
 
   ;; note : pc port added option to show every actor regardless
-  (#when PC_PORT
-    (cond
-      ((actor-force-visible? *pc-settings*) #t)
-      (else
+  (with-pc (if (-> *pc-settings* force-actors?) (return #t)))
         
   ;; check the vis bits!
   (let* (;; lwu v1, 388(a0) 
@@ -1072,10 +1078,6 @@
     ;; movz v0, s7, v1   if (csw >= 0) result = false
     ;;(format 0 "vis check ~D ~X ~X ~A~%" arg0 vis-byte check-sign-word (>= check-sign-word 0))
     (< check-sign-word 0)
-    )
-
-        )
-      )
     )
   )
 

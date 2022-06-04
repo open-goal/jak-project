@@ -5,6 +5,17 @@
 ;; name in dgo: process-taskable
 ;; dgos: GAME, ENGINE
 
+(defmacro is-nan-hack (flt)
+  `(and (< 0.0 ,flt) (< ,flt 0.0))
+  )
+
+(defmacro less-than-hack (a b)
+  `(if (is-nan-hack ,a)
+       #f
+       (< ,a ,b)
+       )
+  )
+
 ;; DECOMP BEGINS
 
 (defmethod dummy-52 process-taskable ((obj process-taskable))
@@ -89,7 +100,7 @@
                )
              (dma-bucket-insert-tag
                (-> *display* frames (-> *display* on-screen) frame bucket-group)
-               (bucket-id debug-draw0)
+               (bucket-id debug)
                s5-0
                (the-as (pointer dma-tag) a3-4)
                )
@@ -118,7 +129,7 @@
               )
             (dma-bucket-insert-tag
               (-> *display* frames (-> *display* on-screen) frame bucket-group)
-              (bucket-id debug-draw0)
+              (bucket-id debug)
               s5-1
               (the-as (pointer dma-tag) a3-7)
               )
@@ -160,7 +171,8 @@
             )
         (set! (-> s5-1 y) (* 4.0 (-> s5-1 y)))
         (cond
-          ((< (vector-length s5-1) 102400.0)
+          ;; s5-1 can be nan on the first frame after something spawns
+          ((less-than-hack (vector-length s5-1) 102400.0)
            (when (not (-> obj have-flava))
              (set! (-> obj have-flava) #t)
              (set-setting! *setting-control* pp 'sound-flava #f 20.0 (the-as int (-> obj sound-flava)))
@@ -272,22 +284,13 @@
   )
 
 (defbehavior process-taskable-anim-loop process-taskable ()
-  (when (!= (if (> (-> self skel active-channels) 0)
-                (-> self skel root-channel 0 frame-group)
-                )
-            (get-art-elem self)
-            )
-    (ja-channel-push! 1 60)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (set! (-> gp-0 frame-group) (the-as art-joint-anim (get-art-elem self)))
-      )
+  (when (!= (ja-group) (get-art-elem self))
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja :group! (get-art-elem self))
     )
-  (while #t
+  (loop
     (suspend)
-    (let ((a0-8 (-> self skel root-channel 0)))
-      (set! (-> a0-8 param 0) 1.0)
-      (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-loop!)
-      )
+    (ja :num! (loop!))
     (if (= (-> self next-state name) 'idle)
         (TODO-RENAME-43 self)
         )
@@ -424,7 +427,7 @@
   (if (nonzero? *camera-look-through-other*)
       (set! *camera-look-through-other* 2)
       )
-  (set-letterbox-frames (seconds 0.016666668))
+  (set-letterbox-frames (seconds 0.017))
   (draw-npc-shadow self)
   (none)
   )
@@ -504,10 +507,7 @@
     (else
       (when (not arg1)
         (format #t "ERROR<GMJ>: ~S ~S got #f from anim picker~%" (-> self name) (-> self state name))
-        (set! arg1 (if (> (-> self skel active-channels) 0)
-                       (-> self skel root-channel 0 frame-group)
-                       )
-              )
+        (set! arg1 (ja-group))
         )
       (when (not (type-type? (-> arg1 type) art-joint-anim))
         (format
@@ -516,58 +516,23 @@
           (-> self name)
           (-> self state name)
           )
-        (set! arg1 (if (> (-> self skel active-channels) 0)
-                       (-> self skel root-channel 0 frame-group)
-                       )
-              )
+        (set! arg1 (ja-group))
         )
       (format #t "~S ~S anim ~S~%" (-> self name) (-> self state name) (-> (the-as art-joint-anim arg1) name))
-      (ja-channel-push! 1 60)
+      (ja-channel-push! 1 (seconds 0.2))
       (set! (-> self skel root-channel 0 frame-group) (the-as art-joint-anim arg1))
       (when (< (ja-num-frames 0) 3)
         (suspend)
         (suspend)
         0
         )
-      (let ((a0-30 (-> self skel root-channel 0)))
-        (set! (-> a0-30 frame-group) (if (> (-> self skel active-channels) 0)
-                                         (-> self skel root-channel 0 frame-group)
-                                         )
-              )
-        (set! (-> a0-30 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                       (-> self skel root-channel 0 frame-group)
-                                                       )
-                                                   data
-                                                   0
-                                                   length
-                                                   )
-                                               -1
-                                               )
-                                      )
-              )
-        (set! (-> a0-30 param 1) 1.0)
-        (set! (-> a0-30 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-30
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
-        (when (and *debug-segment* (= (get-response (-> self query)) 'no))
-          (let ((v1-106 (-> self skel root-channel 0)))
-            (set! (-> v1-106 num-func) num-func-identity)
-            (set! (-> v1-106 frame-num) (the float (+ (-> v1-106 frame-group data 0 length) -1)))
+        (if (and *debug-segment* (= (get-response (-> self query)) 'no))
+            (ja :num-func num-func-identity :frame-num max)
             )
-          )
         (suspend)
-        (let ((a0-38 (-> self skel root-channel 0)))
-          (set! (-> a0-38 param 0) (the float (+ (-> a0-38 frame-group data 0 length) -1)))
-          (set! (-> a0-38 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-38 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       #f
       )
@@ -764,7 +729,7 @@
 (defbehavior process-taskable-hide-enter process-taskable ()
   (set! (-> self state-time) (-> *display* base-frame-counter))
   (let ((v1-3 (-> self draw shadow-ctrl)))
-    (logior! (-> v1-3 settings flags) 32)
+    (logior! (-> v1-3 settings flags) (shadow-flags shdf05))
     )
   0
   (process-taskable-clean-up-after-talking)
@@ -780,13 +745,11 @@
       )
     (else
       (ja-channel-set! 1)
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 frame-group) (the-as art-joint-anim (get-art-elem self)))
-        )
+      (ja :group! (get-art-elem self))
       (restore-collide-with-as (-> self root-override))
       (process-entity-status! self (entity-perm-status bit-3) #t)
       (let ((v1-7 (-> self draw shadow-ctrl)))
-        (set! (-> v1-7 settings flags) (logand -33 (-> v1-7 settings flags)))
+        (logclear! (-> v1-7 settings flags) (shadow-flags shdf05))
         )
       0
       )
@@ -950,17 +913,6 @@
   #t
   )
 
-(defmacro is-nan-hack (flt)
-  `(and (< 0.0 ,flt) (< ,flt 0.0))
-  )
-
-(defmacro less-than-hack (a b)
-  `(if (is-nan-hack ,a)
-       #f
-       (< ,a ,b)
-       )
-  )
-
 (defstate idle (process-taskable)
   :virtual #t
   :event
@@ -1052,11 +1004,10 @@
        )
       ((begin
          (dummy-46 self)
-         (and (not
-                (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                     (zero? (logand (-> *target* control status) 1))
-                     )
-                )
+         (and (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+                        (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                        )
+                   )
               (< (-> (target-pos 0) y) (+ 8192.0 (-> self root-override root-prim prim-core world-sphere y)))
               (less-than-hack (vector-vector-distance (target-pos 0) (the-as vector (-> self root-override root-prim prim-core)))
                  32768.0
@@ -1304,7 +1255,7 @@
        )
       (('mask)
        (set! v0-0 (-> arg3 param 0))
-       (set! (-> self mask-to-clear) (the-as uint v0-0))
+       (set! (-> self mask-to-clear) (the-as process-mask v0-0))
        v0-0
        )
       )
@@ -1344,7 +1295,7 @@
     )
   :code
   (behavior ()
-    (while #t
+    (loop
       (let ((s2-0 (-> self hand process 0)))
         (when (not s2-0)
           (format #t "ERROR<GMJ>: othercam parent invalid~%")
@@ -1424,7 +1375,7 @@
   (set! (-> self border-value) #f)
   (set! (-> self die?) #f)
   (set! (-> self survive-anim-end?) arg2)
-  (set! (-> self mask-to-clear) (the-as uint #x4a0800))
+  (set! (-> self mask-to-clear) (process-mask movie enemy platform projectile))
   (set! (-> self event-hook) (-> othercam-running event))
   (go othercam-running)
   0
@@ -1434,13 +1385,16 @@
 (defmethod draw-npc-shadow process-taskable ((obj process-taskable))
   (let ((gp-0 (-> obj draw shadow-ctrl)))
     (cond
-      ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status was-drawn)))
+      ((and (-> obj draw shadow)
+            (zero? (-> obj draw cur-lod))
+            (logtest? (-> obj draw status) (draw-status was-drawn))
+            )
        (collide-to-find-planes gp-0 (-> obj draw origin) -4096.0 4096.0 32768.0)
        (update-direction-from-time-of-day gp-0)
        )
       (else
         (let ((v1-10 gp-0))
-          (logior! (-> v1-10 settings flags) 32)
+          (logior! (-> v1-10 settings flags) (shadow-flags shdf05))
           )
         0
         )

@@ -24,8 +24,9 @@ void EyeRenderer::init_textures(TexturePool& texture_pool) {
         in.gpu_texture = gl_tex;
         in.w = 32;
         in.h = 32;
-        in.page_name = "PC-EYES";
-        in.name = fmt::format("{}-eye-cpu-{}", lr ? "left" : "right", pair_idx);
+        in.debug_page_name = "PC-EYES";
+        in.debug_name = fmt::format("{}-eye-cpu-{}", lr ? "left" : "right", pair_idx);
+        in.id = texture_pool.allocate_pc_port_texture();
         auto* gpu_tex = texture_pool.give_texture_and_load_to_vram(in, tbp);
         m_cpu_eye_textures[tidx] = {gl_tex, gpu_tex, tbp};
       }
@@ -37,8 +38,9 @@ void EyeRenderer::init_textures(TexturePool& texture_pool) {
         in.gpu_texture = m_gpu_eye_textures[tidx].fb.texture();
         in.w = 32;
         in.h = 32;
-        in.page_name = "PC-EYES";
-        in.name = fmt::format("{}-eye-gpu-{}", lr ? "left" : "right", pair_idx);
+        in.debug_page_name = "PC-EYES";
+        in.debug_name = fmt::format("{}-eye-gpu-{}", lr ? "left" : "right", pair_idx);
+        in.id = texture_pool.allocate_pc_port_texture();
         m_gpu_eye_textures[tidx].gpu_tex = texture_pool.give_texture_and_load_to_vram(in, tbp);
         m_gpu_eye_textures[tidx].tbp = tbp;
       }
@@ -247,7 +249,7 @@ std::vector<EyeRenderer::SingleEyeDraws> EyeRenderer::get_draws(DmaFollower& dma
       pair_idx = y0 / SINGLE_EYE_SIZE;
       l_draw.pair = pair_idx;
       r_draw.pair = pair_idx;
-      if (tex0->get_data_ptr()) {
+      if (tex0 && tex0->get_data_ptr()) {
         u32 tex_val;
         memcpy(&tex_val, tex0->get_data_ptr(), 4);
         l_draw.clear_color = tex_val;
@@ -278,7 +280,7 @@ std::vector<EyeRenderer::SingleEyeDraws> EyeRenderer::get_draws(DmaFollower& dma
     AdgifHelper adgif1(adgif1_dma.data + 16);
     auto tex1 = render_state->texture_pool->lookup_gpu_texture(adgif1.tex0().tbp0());
 
-    {
+    if (tex1 && tex1->get_data_ptr()) {
       l_draw.pupil = read_eye_draw(dma);
       r_draw.pupil = read_eye_draw(dma);
       l_draw.pupil_tex = tex1;
@@ -577,7 +579,7 @@ void EyeRenderer::run_gpu(const std::vector<SingleEyeDraws>& draws,
     // first, the clear
     float clear[4] = {0, 0, 0, 0};
     for (int i = 0; i < 4; i++) {
-      clear[i] = (draw.clear_color >> (8 * i)) / 255.f;
+      clear[i] = ((draw.clear_color >> (8 * i)) & 0xff) / 255.f;
     }
     glClearBufferfv(GL_COLOR, 0, clear);
 

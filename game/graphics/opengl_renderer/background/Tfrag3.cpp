@@ -39,7 +39,7 @@ Tfrag3::~Tfrag3() {
 }
 
 void Tfrag3::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
-                         const Loader::LevelData* loader_data) {
+                         const LevelData* loader_data) {
   const auto* lev_data = loader_data->level.get();
   discard_tree_cache();
   for (int geom = 0; geom < GEOM_MAX; ++geom) {
@@ -317,33 +317,9 @@ void Tfrag3::render_matching_trees(int geom,
   }
 }
 
-void Tfrag3::debug_render_all_trees_nolores(int geom,
-                                            const TfragRenderSettings& settings,
-                                            SharedRenderState* render_state,
-                                            ScopedProfilerNode& prof) {
-  TfragRenderSettings settings_copy = settings;
-  for (size_t i = 0; i < m_cached_trees.size(); i++) {
-    if (m_cached_trees[geom][i].kind != tfrag3::TFragmentTreeKind::INVALID &&
-        m_cached_trees[geom][i].kind != tfrag3::TFragmentTreeKind::LOWRES_TRANS &&
-        m_cached_trees[geom][i].kind != tfrag3::TFragmentTreeKind::LOWRES) {
-      settings_copy.tree_idx = i;
-      render_tree(geom, settings_copy, render_state, prof);
-    }
-  }
-
-  // for (size_t i = 0; i < m_cached_trees.size(); i++) {
-  //  if (m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::INVALID &&
-  //      m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::LOWRES_TRANS &&
-  //      m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::LOWRES) {
-  //    settings_copy.tree_idx = i;
-  //    render_tree_cull_debug(settings_copy, render_state, prof);
-  //  }
-  // }
-}
-
 void Tfrag3::draw_debug_window() {
-  for (int i = 0; i < (int)m_cached_trees.size(); i++) {
-    auto& tree = m_cached_trees[lod()][i];
+  for (int i = 0; i < (int)m_cached_trees.at(lod()).size(); i++) {
+    auto& tree = m_cached_trees.at(lod()).at(i);
     if (tree.kind == tfrag3::TFragmentTreeKind::INVALID) {
       continue;
     }

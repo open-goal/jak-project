@@ -22,7 +22,9 @@
 
 #define SCECdComplete 0x02
 #define SCECdNotReady 0x06
+#define KE_OK 0
 #define KE_MBOX_NOMSG -424
+#define KE_WAIT_DELETE -425
 
 #define TH_C 0x02000000
 

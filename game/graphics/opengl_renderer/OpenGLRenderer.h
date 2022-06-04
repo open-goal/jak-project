@@ -8,7 +8,8 @@
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/Profiler.h"
 #include "game/graphics/opengl_renderer/opengl_utils.h"
-#include <game/tools/subtitles/subtitle_editor.h>
+#include "game/graphics/opengl_renderer/CollideMeshRenderer.h"
+#include "game/tools/subtitles/subtitle_editor.h"
 
 struct RenderOptions {
   int window_height_px = 0;
@@ -26,9 +27,19 @@ struct RenderOptions {
   float pmode_alp_register = 0.f;
 };
 
+/*!
+ * Main OpenGL renderer.
+ * This handles the glClear and all game rendering, but not actual setup, synchronization or imgui
+ * stuff.
+ *
+ * It is simply a collection of bucket renderers, and a few special case ones.
+ */
 class OpenGLRenderer {
  public:
   OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool, std::shared_ptr<Loader> loader);
+
+  // rendering interface: takes the dma chain from the game, and some size/debug settings from
+  // the graphics system.
   void render(DmaFollower dma, const RenderOptions& settings);
 
  private:
@@ -38,6 +49,8 @@ class OpenGLRenderer {
   void init_bucket_renderers();
   void draw_renderer_selection_window();
   void finish_screenshot(const std::string& output_name, int px, int py, int x, int y);
+
+  void init_merc_renderer(const std::string& name, BucketId id);
 
   template <typename T, class... Args>
   T* init_bucket_renderer(const std::string& name,
@@ -59,8 +72,11 @@ class OpenGLRenderer {
   std::array<std::unique_ptr<BucketRenderer>, (int)BucketId::MAX_BUCKETS> m_bucket_renderers;
   std::array<BucketCategory, (int)BucketId::MAX_BUCKETS> m_bucket_categories;
 
+  std::vector<RenderMux*> m_mercs;
+
   std::array<float, (int)BucketCategory::MAX_CATEGORIES> m_category_times;
   FullScreenDraw m_blackout_renderer;
+  CollideMeshRenderer m_collide_renderer;
 
   float m_last_pmode_alp = 1.;
   bool m_enable_fast_blackout_loads = true;

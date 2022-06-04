@@ -8,6 +8,9 @@
 (declare-type fishermans-boat rigid-body-platform)
 
 ;; DECOMP BEGINS
+(import "goal_src/import/fishermans-boat-ag.gc")
+(import "goal_src/import/evilsis-ag.gc")
+(import "goal_src/import/evilbro-ag.gc")
 
 (define *fishermans-boat-constants* (new 'static 'rigid-body-platform-constants
                                       :drag-factor 2.0
@@ -121,7 +124,7 @@
       (set! (-> s3-0 w) 1.0)
       (add-debug-line
         #t
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         s4-0
         s3-0
         (new 'static 'rgba :r #xff :g #xff :a #x80)
@@ -130,7 +133,7 @@
         )
       (add-debug-vector
         #t
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         s4-0
         s5-0
         (meters 0.00024414062)
@@ -447,14 +450,14 @@
   (debug-draw (-> obj path))
   (add-debug-sphere
     #t
-    (bucket-id debug-draw1)
+    (bucket-id debug-no-zbuf)
     (-> obj dest-circle)
     (-> obj dest-circle w)
     (new 'static 'rgba :g #xff :a #x80)
     )
   (add-debug-x
     #t
-    (bucket-id debug-draw1)
+    (bucket-id debug-no-zbuf)
     (-> obj target-point)
     (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
     )
@@ -526,29 +529,21 @@
   )
 
 
-(defskelgroup *fishermans-boat-sg* fishermans-boat
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 3 0 15)
-  :longest-edge (meters 7.3)
-  )
+(defskelgroup *fishermans-boat-sg* fishermans-boat fishermans-boat-lod0-jg fishermans-boat-idle-ja
+              ((fishermans-boat-lod0-mg (meters 20)) (fishermans-boat-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 15)
+              :longest-edge (meters 7.3)
+              )
 
-(defskelgroup *fb-evilbro-sg* evilbro
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 1)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *fb-evilbro-sg* evilbro evilbro-lod0-jg evilbro-idle-ja
+              ((evilbro-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              )
 
-(defskelgroup *fb-evilsis-sg* evilsis
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 1)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *fb-evilsis-sg* evilsis evilsis-lod0-jg evilsis-idle-ja
+              ((evilsis-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              )
 
 (defmethod TODO-RENAME-23 fishermans-boat ((obj fishermans-boat) (arg0 float))
   (local-vars (sv-128 int) (sv-144 rigid-body-control-point) (sv-160 int) (sv-176 vector))
@@ -834,14 +829,14 @@
     (dummy-16 (-> self controller))
     (add-debug-sphere
       #t
-      (bucket-id debug-draw1)
+      (bucket-id debug-no-zbuf)
       (the-as vector (-> self boat-path))
       614400.0
       (new 'static 'rgba :b #xff :a #x80)
       )
     (add-debug-sphere
       #t
-      (bucket-id debug-draw1)
+      (bucket-id debug-no-zbuf)
       (the-as vector (&-> self stack 848))
       409600.0
       (new 'static 'rgba :b #xff :a #x80)
@@ -1007,7 +1002,7 @@
     (send-event (handle->process (-> self cam-tracker)) 'mask #x20800)
     (fishermans-boat-set-path-point 0)
     (fishermans-boat-next-path-point)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1169,7 +1164,7 @@
     (send-event (handle->process (-> self cam-tracker)) 'mask #x20800)
     (fishermans-boat-set-path-point 4)
     (fishermans-boat-next-path-point)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1204,7 +1199,7 @@
     (set-continue! *game-info* "misty-start")
     (fishermans-boat-set-dock-point 4)
     (fishermans-boat-set-path-point 2)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1240,7 +1235,7 @@
     (send-event (handle->process (-> self cam-tracker)) 'message 'release)
     (suspend)
     (send-event *camera* 'change-state cam-stick 0)
-    (while #t
+    (loop
       (if (and (= *cheat-mode* 'debug) (cpad-pressed? 0 triangle))
           (set! (-> self auto-pilot) #f)
           )
@@ -1535,16 +1530,14 @@
         (set! (-> self draw force-lod) 0)
         (ja-play-spooled-anim
           (-> self anim)
-          (the-as art-joint-anim (-> self draw art-group data 3))
+          (the-as art-joint-anim fishermans-boat-idle-ja)
           (the-as art-joint-anim #f)
           (the-as (function process-drawable symbol) false-func)
           )
         (set! (-> self draw force-lod) -1)
         (send-event *target* 'blend-shape #f)
         (ja-channel-set! 1)
-        (let ((v1-33 (-> self skel root-channel 0)))
-          (set! (-> v1-33 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-          )
+        (ja :group! fishermans-boat-idle-ja)
         (vector<-cspace! (-> self root-overlay trans) (-> self node-list data 3))
         (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
         (fishermans-boat-reset-physics)
@@ -1555,7 +1548,7 @@
           (send-event *target* 'end-mode)
           (update-transforms! (-> self root-overlay))
           (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
-          (logior! (-> *target* control status) 7)
+          (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
           (suspend)
           (send-event *camera* 'teleport-to-other-start-string)
           )
@@ -1711,16 +1704,14 @@
         (set! (-> self draw force-lod) 0)
         (ja-play-spooled-anim
           (-> self anim)
-          (the-as art-joint-anim (-> self draw art-group data 3))
+          (the-as art-joint-anim fishermans-boat-idle-ja)
           (the-as art-joint-anim #f)
           (the-as (function process-drawable symbol) false-func)
           )
         (set! (-> self draw force-lod) -1)
         (send-event *target* 'blend-shape #f)
         (ja-channel-set! 1)
-        (let ((v1-33 (-> self skel root-channel 0)))
-          (set! (-> v1-33 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-          )
+        (ja :group! fishermans-boat-idle-ja)
         (vector<-cspace! (-> self root-overlay trans) (-> self node-list data 3))
         (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
         (fishermans-boat-reset-physics)
@@ -1731,7 +1722,7 @@
           (send-event *target* 'end-mode)
           (update-transforms! (-> self root-overlay))
           (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
-          (logior! (-> *target* control status) 7)
+          (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
           (suspend)
           (send-event *camera* 'teleport-to-other-start-string)
           )

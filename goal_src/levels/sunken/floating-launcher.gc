@@ -6,6 +6,7 @@
 ;; dgos: L1, SUN, SUNKEN
 
 ;; DECOMP BEGINS
+(import "goal_src/import/floating-launcher-ag.gc")
 
 (deftype floating-launcher (baseplat)
   ((trigger-height float               :offset-assert 228)
@@ -23,13 +24,10 @@
   )
 
 
-(defskelgroup *floating-launcher-sg* floating-launcher
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *floating-launcher-sg* floating-launcher floating-launcher-lod0-jg floating-launcher-idle-ja
+              ((floating-launcher-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
 
 (defstate floating-launcher-idle (floating-launcher)
   :event
@@ -40,7 +38,9 @@
     (when (< (vector-xz-length (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root-override trans)))
              81920.0
              )
-      (if (and (>= (-> (target-pos 0) y) (-> self trigger-height)) (logtest? (-> *target* control status) 2))
+      (if (and (>= (-> (target-pos 0) y) (-> self trigger-height))
+               (logtest? (-> *target* control status) (cshape-moving-flags onground))
+               )
           (go floating-launcher-lowering)
           )
       )
@@ -52,7 +52,7 @@
     (suspend)
     (transform-post)
     (suspend)
-    (while #t
+    (loop
       (suspend)
       )
     (none)

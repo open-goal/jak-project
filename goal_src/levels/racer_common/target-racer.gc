@@ -30,7 +30,7 @@
                        :alignv 1.0
                        :slope-up-traction 1.0
                        :align-speed 1.0
-                       :flags #x1
+                       :flags (surface-flags surf00)
                        )
         )
 
@@ -58,7 +58,7 @@
                            :slope-up-traction 1.0
                            :align-speed 1.0
                            :mode 'air
-                           :flags #x801
+                           :flags (surface-flags surf00 surf11)
                            )
         )
 
@@ -91,7 +91,7 @@
   )
 
 (defbehavior racer-on-ground? racer ()
-  (logtest? (-> self root-override status) 1)
+  (logtest? (-> self root-override status) (cshape-moving-flags onsurf))
   )
 
 (defbehavior racer-calc-gravity target ()
@@ -128,16 +128,14 @@
   (let ((v1-1 (-> self racer slide-mode)))
     (cond
       ((zero? v1-1)
-       (if (zero?
-             (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
-             )
+       (if (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
+                  )
            (set! (-> self racer slide-mode) -1)
            )
        )
       ((= v1-1 1)
-       (if (zero?
-             (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
-             )
+       (if (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
+                  )
            (set! (-> self racer slide-mode) -1)
            )
        )
@@ -199,7 +197,7 @@
     (let ((f30-4 (* (deg-diff f30-3 0.0) (-> self racer slide-grip-mult))))
       (add-debug-vector
         *display-target-marks*
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         (-> self control trans)
         (-> self control transv)
         (meters 0.000061035156)
@@ -226,7 +224,7 @@
     (vector-float*! gp-1 gp-1 0.5)
     (add-debug-vector
       *display-target-marks*
-      (bucket-id debug-draw1)
+      (bucket-id debug-no-zbuf)
       (-> self control trans)
       gp-1
       (meters 0.00024414062)
@@ -235,7 +233,7 @@
     (vector+! gp-1 gp-1 (-> self control trans))
     (add-debug-text-sphere
       *display-target-marks*
-      (bucket-id debug-draw1)
+      (bucket-id debug-no-zbuf)
       gp-1
       819.2
       "ltransv"
@@ -246,7 +244,7 @@
     (vector+! gp-1 gp-1 (-> self control trans))
     (add-debug-text-sphere
       *display-target-marks*
-      (bucket-id debug-draw1)
+      (bucket-id debug-no-zbuf)
       gp-1
       819.2
       "nose"
@@ -300,11 +298,10 @@
          )
     (set! f0-13
           (cond
-            ((and (not
-                    (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
-                         (>= (-> self fact-info-target eco-level) 1.0)
-                         )
-                    )
+            ((and (not (and (= (-> self fact-info-target eco-type) (pickup-type eco-yellow))
+                            (>= (-> self fact-info-target eco-level) 1.0)
+                            )
+                       )
                   (cpad-hold? (-> self control unknown-cpad-info00 number) square)
                   )
              (if (and (cpad-hold? (-> self control unknown-cpad-info00 number) x)
@@ -365,7 +362,7 @@
       (+! (-> a2-1 y) (-> self racer cushion-bob))
       (add-debug-sphere
         *display-target-marks*
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         a2-1
         819.2
         (new 'static 'rgba :r #xff :b #xff :a #x80)
@@ -452,7 +449,7 @@
       )
     (deg-diff (vector-y-angle gp-0) (vector-y-angle (-> self control transv)))
     (let ((f30-2 (vector-xz-length gp-0)))
-      (when (and (logtest? (-> self control status) 8)
+      (when (and (logtest? (-> self control status) (cshape-moving-flags twall))
                  (< 20480.0 f30-2)
                  (and (< (fabs (-> self racer mod-x)) 0.5) (!= (-> self next-state name) 'target-racing-smack))
                  )
@@ -531,8 +528,10 @@
                                               )
         )
   (let ((f0-2
-          (if (or (and (logtest? (-> self control status) 8) (zero? (logand (-> self control status) 1)))
-                  (logtest? (-> self state-flags) #x8000)
+          (if (or (and (logtest? (-> self control status) (cshape-moving-flags twall))
+                       (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
+                       )
+                  (logtest? (-> self state-flags) (state-flags sf15))
                   )
               0.0
               (-> self control unknown-float81)
@@ -601,7 +600,9 @@
     ((and (!= (-> self current-level name) 'ogre) (!= (-> self current-level name) 'lavatube))
      #f
      )
-    ((or (logtest? (-> self control status) 2) (< 12288.0 (vector-length (-> self control transv))))
+    ((or (logtest? (-> self control status) (cshape-moving-flags onground))
+         (< 12288.0 (vector-length (-> self control transv)))
+         )
      (let ((v0-5 (the-as object (-> *display* base-frame-counter))))
        (set! (-> self racer unstuck-time) (the-as time-frame v0-5))
        v0-5
@@ -818,7 +819,7 @@
                   )
              (cpad-pressed? (-> self control unknown-cpad-info00 number) circle square)
              (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword82)) (seconds 0.25))
-             (zero? (logand (-> self state-flags) #x8008))
+             (zero? (logand (-> self state-flags) (state-flags sf03 sf15)))
              )
     (let ((gp-6 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat)))
           (s5-4 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self manipy 0 node-list data 4)))
@@ -917,9 +918,8 @@
         (set! (-> self racer boost-curve) 0.0)
         )
     )
-  (when (or (zero?
-              (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-              )
+  (when (or (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
+                   )
             (< (-> self control unknown-float01) 4096.0)
             (= (-> self racer boost-level) 0.0)
             )
@@ -930,7 +930,7 @@
         (set! (-> v1-241 parms volume) -4)
         (set! (-> v1-241 auto-time) 120)
         (set! (-> v1-241 auto-from) 2)
-        (set! (-> v1-241 parms mask) (the-as uint 17))
+        (set! (-> v1-241 parms mask) (sound-mask volume time))
         (-> v1-241 id)
         )
       (set! (-> self racer boost-sound-id) (new 'static 'sound-id))
@@ -955,12 +955,12 @@
       )
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 1 (seconds 0.1))
     )
-  (when (logtest? (-> self control status) 8)
+  (when (logtest? (-> self control status) (cshape-moving-flags twall))
     (let* ((gp-8 (racer-find-prop-point (new 'stack-no-clear 'vector) (-> self control unknown-vector70)))
-           (v1-274 (shr (shl (-> self control unknown-int60) 52) 58))
+           (v1-274 (-> self control wall-pat material))
            (a1-54
              (cond
-               ((or (= v1-274 16) (= v1-274 8))
+               ((or (= v1-274 (pat-material metal)) (= v1-274 (pat-material pcmetal)))
                 (set! (-> *part-id-table* 2226 init-specs 1 initial-valuef)
                       (lerp-scale 0.2 10.0 (-> self control unknown-float01) 0.0 (-> self racer transv-max))
                       )
@@ -986,7 +986,7 @@
       )
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 51 (seconds 0.05))
     (sound-play-by-name
-      (sound-name-with-material 'zoom-hit (the-as pat-surface (-> self control unknown-int60)) "")
+      (sound-name-with-material 'zoom-hit (-> self control wall-pat) "")
       (-> self racer scrape-sound-id)
       1024
       0
@@ -1140,15 +1140,8 @@
     (* -273.06668 (-> self racer tail-anim-frame))
     )
   (let ((f30-2 (fmin 1.0 (* 2.0 (fabs (-> self racer slide-shift-x))))))
-    (let ((gp-1 (-> self skel root-channel 0)))
-      (set! (-> gp-1 num-func) num-func-identity)
-      (set! (-> gp-1 frame-num) (ja-aframe (-> self racer turn-anim-frame) 0))
-      )
-    (let ((a0-9 (-> self skel root-channel 1)))
-      (set! (-> a0-9 frame-interp) (+ 0.5 (* 0.025 (-> self racer tail-anim-frame))))
-      (set! (-> a0-9 param 0) 0.0)
-      (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-chan)
-      )
+    (ja :num-func num-func-identity :frame-num (ja-aframe (-> self racer turn-anim-frame) 0))
+    (ja :chan 1 :num! (chan 0) :frame-interp (+ 0.5 (* 0.025 (-> self racer tail-anim-frame))))
     (let ((gp-2 (-> self skel root-channel 2)))
       (let ((f0-82 (lerp (-> self racer slide-interp) f30-2 0.125)))
         (set! (-> self racer slide-interp) f0-82)
@@ -1158,18 +1151,16 @@
       (joint-control-channel-group-eval! gp-2 (the-as art-joint-anim #f) num-func-chan)
       )
     )
-  (let ((a0-12 (-> self skel root-channel 3)))
-    (set! (-> a0-12 frame-interp)
-          (* (-> self racer slide-interp) (+ 0.5 (* 0.025 (-> self racer tail-anim-frame))))
-          )
-    (set! (-> a0-12 param 0) 0.0)
-    (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-chan)
-    )
+  (ja :chan 3
+      :num! (chan 0)
+      :frame-interp
+      (* (-> self racer slide-interp) (+ 0.5 (* 0.025 (-> self racer tail-anim-frame))))
+      )
   0
   (none)
   )
 
-(defbehavior target-racing-jump-anim target ((arg0 basic) (arg1 int))
+(defbehavior target-racing-jump-anim target ((arg0 basic) (arg1 time-frame))
   (let ((s4-0 'nothing)
         (f30-0 0.0)
         )
@@ -1183,17 +1174,9 @@
         (when (!= s5-0 s4-0)
           (if (= s4-0 'nothing)
               (ja-channel-push! 1 arg1)
-              (ja-channel-push! 1 37)
+              (ja-channel-push! 1 (seconds 0.125))
               )
-          (let ((a0-3 (-> self skel root-channel 0)))
-            (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 130)))
-            (set! (-> a0-3 param 0)
-                  (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 130)) data 0 length) -1))
-                  )
-            (set! (-> a0-3 param 1) 1.0)
-            (set! (-> a0-3 frame-num) f30-0)
-            (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 130)) num-func-seek!)
-            )
+          (ja-no-eval :group! (-> self draw art-group data 130) :num! (seek!) :frame-num f30-0)
           (set! s4-0 s5-0)
           )
         )
@@ -1202,35 +1185,17 @@
         (if (= (-> self next-state name) 'target-racing-falling)
             (set! f0-4 (* 0.5 f0-4))
             )
-        (let ((a0-8 (-> self skel root-channel 0)))
-          (set! (-> a0-8 param 0) (the float (+ (-> a0-8 frame-group data 0 length) -1)))
-          (set! (-> a0-8 param 1) f0-4)
-          (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max f0-4))
         )
       (set! f30-0 (ja-aframe-num 0))
       (ja-blend-eval)
       )
     )
   (ja-channel-set! 2)
-  (let ((gp-1 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-      gp-1
-      (the-as art-joint-anim (-> self draw art-group data 131))
-      num-func-identity
-      )
-    (set! (-> gp-1 frame-num) 0.0)
-    )
-  (let ((gp-2 (-> self skel root-channel 1)))
-    (joint-control-channel-group-eval!
-      gp-2
-      (the-as art-joint-anim (-> self draw art-group data 132))
-      num-func-identity
-      )
-    (set! (-> gp-2 frame-num) (ja-aframe 44.0 0))
-    )
+  (ja :group! (-> self draw art-group data 131) :num! min)
+  (ja :chan 1 :group! (-> self draw art-group data 132) :num! (identity (ja-aframe 44.0 0)))
   (let ((f30-1 0.0))
-    (while #t
+    (loop
       (suspend)
       (let ((gp-3 (-> self skel root-channel 1)))
         (set! f30-1 (seek f30-1 1.0 (-> *display* seconds-per-frame)))
@@ -1246,72 +1211,36 @@
   (if (>= (-> self racer slide-mode) 0)
       (goto cfg-23)
       )
-  (ja-channel-push! 1 21)
+  (ja-channel-push! 1 (seconds 0.07))
   (cond
     ((= arg0 'high-jump)
-     (let ((a0-2 (-> self skel root-channel 0)))
-       (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 135)))
-       (set! (-> a0-2 param 0)
-             (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 135)) data 0 length) -1))
-             )
-       (set! (-> a0-2 param 1) 1.0)
-       (set! (-> a0-2 frame-num) 0.0)
-       (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 135)) num-func-seek!)
-       )
+     (ja-no-eval :group! (-> self draw art-group data 135) :num! (seek!) :frame-num 0.0)
      (until (ja-done? 0)
        (if (>= (-> self racer slide-mode) 0)
            (goto cfg-23)
            )
        (suspend)
-       (let ((a0-3 (-> self skel root-channel 0)))
-         (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-         (set! (-> a0-3 param 1) 1.0)
-         (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-         )
+       (ja :num! (seek!))
        )
      )
     ((= arg0 'jump)
-     (let ((gp-1 (-> self skel root-channel 0)))
-       (set! (-> gp-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 129)))
-       (set! (-> gp-1 param 0)
-             (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 129)) data 0 length) -1))
-             )
-       (set! (-> gp-1 param 1) 1.0)
-       (set! (-> gp-1 frame-num) (ja-aframe 44.0 0))
-       (joint-control-channel-group! gp-1 (the-as art-joint-anim (-> self draw art-group data 129)) num-func-seek!)
-       )
+     (ja-no-eval :group! (-> self draw art-group data 129) :num! (seek!) :frame-num (ja-aframe 44.0 0))
      (until (ja-done? 0)
        (if (>= (-> self racer slide-mode) 0)
            (goto cfg-23)
            )
        (suspend)
-       (let ((a0-7 (-> self skel root-channel 0)))
-         (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-         (set! (-> a0-7 param 1) 1.0)
-         (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-         )
+       (ja :num! (seek!))
        )
      )
     (else
-      (let ((gp-2 (-> self skel root-channel 0)))
-        (set! (-> gp-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 132)))
-        (set! (-> gp-2 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 132)) data 0 length) -1))
-              )
-        (set! (-> gp-2 param 1) 1.0)
-        (set! (-> gp-2 frame-num) (ja-aframe 44.0 0))
-        (joint-control-channel-group! gp-2 (the-as art-joint-anim (-> self draw art-group data 132)) num-func-seek!)
-        )
+      (ja-no-eval :group! (-> self draw art-group data 132) :num! (seek!) :frame-num (ja-aframe 44.0 0))
       (until (ja-done? 0)
         (if (>= (-> self racer slide-mode) 0)
             (goto cfg-23)
             )
         (suspend)
-        (let ((a0-11 (-> self skel root-channel 0)))
-          (set! (-> a0-11 param 0) (the float (+ (-> a0-11 frame-group data 0 length) -1)))
-          (set! (-> a0-11 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     )
@@ -1540,7 +1469,7 @@
                     )
                   )
             (cond
-              ((and (logtest? (-> self control status) 8)
+              ((and (logtest? (-> self control status) (cshape-moving-flags twall))
                     (and (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 0.1))
                          (or (-> self racer stick-lock) (< (target-move-dist (-> *TARGET-bank* stuck-time)) 4096.0))
                          (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))

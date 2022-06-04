@@ -133,7 +133,7 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
 }
 
 std::string write_game_text(
-    const Config& cfg,
+    const Config& /*cfg*/,
     const std::unordered_map<int, std::unordered_map<int, std::string>>& data) {
   // first sort languages:
   std::vector<int> languages;

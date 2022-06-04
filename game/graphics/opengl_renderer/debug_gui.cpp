@@ -123,6 +123,13 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::MenuItem("Dump to file", nullptr, &dump_events);
       ImGui::EndMenu();
     }
+
+    if (ImGui::BeginMenu("Debug Mode")) {
+      if (ImGui::MenuItem("Reboot now!")) {
+        want_reboot_in_debug = true;
+      }
+      ImGui::EndMenu();
+    }
   }
   ImGui::EndMainMenuBar();
 

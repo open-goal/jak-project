@@ -69,6 +69,11 @@ inline void emulate_dma(const void* source_base, void* dest_base, u32 tadr, u32 
         dest_offset += (1 + tag.qwc) * 16;
         tadr += 16 + tag.qwc * 16;
         break;
+      case DmaTag::Kind::NEXT:
+        memcpy(dst + dest_offset, src + tadr, (1 + tag.qwc) * 16);
+        dest_offset += (1 + tag.qwc) * 16;
+        tadr = tag.addr;
+        break;
       case DmaTag::Kind::REF: {
         // tte
         memcpy(dst + dest_offset, src + tadr, 16);

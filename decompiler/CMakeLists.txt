@@ -51,11 +51,15 @@ add_library(
         IR2/LabelDB.cpp
         IR2/OpenGoalMapping.cpp
 
+        level_extractor/BspHeader.cpp
+        level_extractor/extract_collide_frags.cpp
+        level_extractor/extract_common.cpp
         level_extractor/extract_level.cpp
+        level_extractor/extract_merc.cpp
         level_extractor/extract_tfrag.cpp
         level_extractor/extract_tie.cpp
-        level_extractor/BspHeader.cpp
         level_extractor/extract_shrub.cpp
+        level_extractor/MercData.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp

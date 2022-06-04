@@ -30,7 +30,7 @@ struct GifTag {
   };
 
   u32 nloop() const {
-    return data[0] & 0x7f;  // 15 bits
+    return data[0] & 0x7fff;  // 15 bits
   }
 
   bool eop() const { return data[0] & (1ull << 15); }

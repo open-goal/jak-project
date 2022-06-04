@@ -8,6 +8,8 @@
 (declare-type orbit-plat baseplat)
 
 ;; DECOMP BEGINS
+(import "goal_src/import/orbit-plat-ag.gc")
+(import "goal_src/import/orbit-plat-bottom-ag.gc")
 
 (deftype orbit-plat-bottom (process-drawable)
   ((parent-override (pointer orbit-plat)      :offset         12)
@@ -26,13 +28,10 @@
   )
 
 
-(defskelgroup *orbit-plat-bottom-sg* orbit-plat-bottom
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 2.8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *orbit-plat-bottom-sg* orbit-plat-bottom orbit-plat-bottom-lod0-jg orbit-plat-bottom-idle-ja
+              ((orbit-plat-bottom-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.8)
+              )
 
 (deftype orbit-plat (baseplat)
   ((other        entity-actor         :offset-assert 228)
@@ -62,13 +61,10 @@
   )
 
 
-(defskelgroup *orbit-plat-sg* orbit-plat
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3.4)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *orbit-plat-sg* orbit-plat orbit-plat-lod0-jg orbit-plat-idle-ja
+              ((orbit-plat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3.4)
+              )
 
 (defpartgroup group-orbit-plat-jet
   :id 440
@@ -107,14 +103,7 @@
   :init-specs
   ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 1.0 2.0 1.0)
-    (sp-sound (new 'static 'sound-spec
-                :mask #x1
-                :num 0.05
-                :group #x1
-                :sound-name (static-sound-name "steam-medium")
-                :volume #x333
-                )
-              )
+    (sp-sound (static-sound-spec "steam-medium" :num 0.05 :volume 80.0))
     (sp-rnd-flt spt-scale-x (meters 0.75) (meters 0.75) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -181,7 +170,7 @@
 (defstate orbit-plat-bottom-idle (orbit-plat-bottom)
   :code
   (behavior ()
-    (while #t
+    (loop
       (set! (-> self root trans quad) (-> self parent-override 0 root-override trans quad))
       (set! (-> self root trans y) (+ -5324.8 (-> self root trans y)))
       (spawn (-> self part2) (-> self root trans))
@@ -282,14 +271,7 @@
   (set! (-> self part2) (create-launch-control (-> *part-group-id-table* 107) self))
   (initialize-skeleton self *orbit-plat-bottom-sg* '())
   (ja-channel-set! 1)
-  (let ((gp-1 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-      gp-1
-      (the-as art-joint-anim (-> self draw art-group data 2))
-      num-func-identity
-      )
-    (set! (-> gp-1 frame-num) 0.0)
-    )
+  (ja :group! orbit-plat-idle-ja :num! min)
   (go orbit-plat-bottom-idle)
   (none)
   )
@@ -337,23 +319,15 @@
   :code
   (behavior ()
     (set! (-> self plat-status) (the-as uint 0))
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) 0.0)
-      (set! (-> a0-0 param 1) 1.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek! 0.0))
     (dotimes (gp-0 2)
       (transform-post)
       (suspend)
-      (when (not (ja-done? 0))
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) 0.0)
-          (set! (-> a0-2 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
+      (if (not (ja-done? 0))
+          (ja :num! (seek! 0.0))
           )
-        )
       )
-    (while #t
+    (loop
       (when (nonzero? (-> self root-override riders num-riders))
         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-2 from) self)
@@ -373,13 +347,9 @@
         (go orbit-plat-riding)
         )
       (suspend)
-      (when (not (ja-done? 0))
-        (let ((a0-5 (-> self skel root-channel 0)))
-          (set! (-> a0-5 param 0) 0.0)
-          (set! (-> a0-5 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-seek!)
+      (if (not (ja-done? 0))
+          (ja :num! (seek! 0.0))
           )
-        )
       (when (not (-> self is-reset?))
         (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-4 from) self)
@@ -445,11 +415,7 @@
   (behavior ()
     (set! (-> self plat-status) (the-as uint 0))
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) 0.0)
-      (set! (-> a0-0 param 1) 1.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek! 0.0))
     (until (dummy-28 self)
       (when (nonzero? (-> self root-override riders num-riders))
         (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
@@ -470,13 +436,9 @@
         (go orbit-plat-riding)
         )
       (suspend)
-      (when (not (ja-done? 0))
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 param 0) 0.0)
-          (set! (-> a0-3 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
+      (if (not (ja-done? 0))
+          (ja :num! (seek! 0.0))
           )
-        )
       )
     (go orbit-plat-idle)
     (none)
@@ -493,12 +455,8 @@
   :code
   (behavior ()
     (set! (-> self plat-status) (the-as uint 1))
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) (the float (+ (-> a0-0 frame-group data 0 length) -1)))
-      (set! (-> a0-0 param 1) 1.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
-      )
-    (while #t
+    (ja-no-eval :num! (seek!))
+    (loop
       (when (zero? (-> self root-override riders num-riders))
         (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-1 from) self)
@@ -518,13 +476,9 @@
         (go orbit-plat-still)
         )
       (suspend)
-      (when (not (ja-done? 0))
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-          (set! (-> a0-3 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
+      (if (not (ja-done? 0))
+          (ja :num! (seek!))
           )
-        )
       )
     (none)
     )
@@ -609,11 +563,7 @@
         (vector-! a0-0 (-> self basetrans) gp-0)
         (let ((f30-0 (vector-length a0-0)))
           (set! (-> self reset-length) f30-0)
-          (let ((a0-1 (-> self skel root-channel 0)))
-            (set! (-> a0-1 param 0) 0.0)
-            (set! (-> a0-1 param 1) 1.0)
-            (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja-no-eval :num! (seek! 0.0))
           (label cfg-3)
           (dotimes (s4-0 2)
             (get-rotate-point! s5-0 gp-0 (-> self basetrans) (the-as vector f30-0) (-> self rot-dir) 40960.0)
@@ -628,13 +578,9 @@
       )
     (label cfg-9)
     (suspend)
-    (when (not (ja-done? 0))
-      (let ((a0-7 (-> self skel root-channel 0)))
-        (set! (-> a0-7 param 0) 0.0)
-        (set! (-> a0-7 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
+    (if (not (ja-done? 0))
+        (ja :num! (seek! 0.0))
         )
-      )
     (b! #t cfg-3 :delay (nop!))
     (none)
     )
@@ -813,11 +759,7 @@
   (behavior ()
     (set! (-> self plat-status) (the-as uint 3))
     (logclear! (-> self nav flags) (nav-control-flags navcf19))
-    (let ((a0-3 (-> self skel root-channel 0)))
-      (set! (-> a0-3 param 0) 0.0)
-      (set! (-> a0-3 param 1) 1.0)
-      (joint-control-channel-group! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek! 0.0))
     (while (zero? (logand (nav-control-flags navcf19) (-> self nav flags)))
       (dummy-27 self)
       (when (nonzero? (-> self root-override riders num-riders))
@@ -839,13 +781,9 @@
         (go orbit-plat-riding)
         )
       (suspend)
-      (when (not (ja-done? 0))
-        (let ((a0-7 (-> self skel root-channel 0)))
-          (set! (-> a0-7 param 0) 0.0)
-          (set! (-> a0-7 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
+      (if (not (ja-done? 0))
+          (ja :num! (seek! 0.0))
           )
-        )
       )
     (set! (-> self is-reset?) #t)
     (go orbit-plat-idle)
@@ -859,12 +797,8 @@
   :code
   (behavior ()
     (set! (-> self plat-status) (the-as uint 0))
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) 0.0)
-      (set! (-> a0-0 param 1) 1.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
-      )
-    (while #t
+    (ja-no-eval :num! (seek! 0.0))
+    (loop
       (let ((v1-3 (-> self other)))
         (when (if v1-3
                   (-> v1-3 extra process)
@@ -874,13 +808,9 @@
           )
         )
       (suspend)
-      (when (not (ja-done? 0))
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 param 0) 0.0)
-          (set! (-> a0-3 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
+      (if (not (ja-done? 0))
+          (ja :num! (seek! 0.0))
           )
-        )
       )
     (none)
     )
