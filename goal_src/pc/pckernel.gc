@@ -276,7 +276,7 @@
   ;; cheats.
   (update-cheats obj)
   ;; music.
-  (update-music-heard obj)
+  (update-music-log obj)
 
   (none))
 
@@ -355,28 +355,72 @@
   0)
 
 
-(defmethod update-music-heard pc-settings ((obj pc-settings))
-  "update music log settings."
+(defmethod add-to-music-log pc-settings ((obj pc-settings) (music symbol) (flava int))
+  "add music and flava information to the music log.
+   if music already exists, adds flava. if flava already exists, nothing happens."
   
   ;; go through our music log
   (dotimes (i PC_MUSIC_LOG_LENGTH)
     (cond
       ;; an empty log entry! place the currently playing music there, and fill flava.
-      ;; note that flava 0 is ALWAYS filled.
       ((not (-> obj secrets music i name))
-       (set! (-> obj secrets music i name) (-> *setting-control* current music))
-       (set! (-> obj secrets music i flava-mask) (logior 1 (ash 1 (-> *setting-control* current sound-flava))))
-       (set! i PC_MUSIC_LOG_LENGTH)
+       (set! (-> obj secrets music i name) music)
+       (set! (-> obj secrets music i flava-mask) (ash 1 flava))
+       (return 0)
        )
       ;; an existing log entry for the current music. fill flava.
-      ((= (-> *setting-control* current music) (-> obj secrets music i name))
-       (logior! (-> obj secrets music i flava-mask) 1)
-       (logior! (-> obj secrets music i flava-mask) (ash 1 (-> *setting-control* current sound-flava)))
-       (set! i PC_MUSIC_LOG_LENGTH)
+      ((= music (-> obj secrets music i name))
+       (logior! (-> obj secrets music i flava-mask) (ash 1 flava))
+       (return 0)
        )
       ;; something else. maybe the wrong entry, in which case nothing to do.
       )
     )
+  
+  0)
+
+(defmethod update-music-log pc-settings ((obj pc-settings))
+  "update music log settings."
+  
+  ;; add whatever is playing to the music log.
+  (add-to-music-log obj (-> *setting-control* current music) (the int (-> *setting-control* current sound-flava)))
+  
+  ;; special cases. for example, npc's that despawn and you can't hear their music anymore.
+  (if (task-closed? (game-task beach-ecorocks) (task-status need-introduction))
+      (add-to-music-log obj 'village1 1))
+  (if (task-closed? (game-task jungle-plant) (task-status need-resolution))
+      (add-to-music-log obj 'jungleb 2))
+  (if (task-closed? (game-task beach-flutflut) (task-status need-resolution))
+      (add-to-music-log obj 'beach (flava-lookup 'beach (music-flava birdlady))))
+  (if (task-closed? (game-task beach-flutflut) (task-status need-resolution))
+      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava birdlady))))
+  (if (task-closed? (game-task misty-warehouse) (task-status need-resolution))
+      (add-to-music-log obj 'misty (flava-lookup 'misty (music-flava misty-battle))))
+  (if (task-closed? (game-task misty-cannon) (task-status need-resolution))
+      (add-to-music-log obj 'misty 4))
+  (if (task-closed? (game-task firecanyon-end) (task-status need-resolution))
+      (add-to-music-log obj 'firecanyon 2))
+  (if (task-closed? (game-task swamp-billy) (task-status need-resolution))
+      (add-to-music-log obj 'swamp 1))
+  (if (task-closed? (game-task swamp-battle) (task-status need-resolution))
+      (add-to-music-log obj 'swamp (flava-lookup 'swamp (music-flava swamp-battle))))
+  (if (task-closed? (game-task snow-bunnies) (task-status need-resolution))
+      (add-to-music-log obj 'snow (flava-lookup 'snow (music-flava snow-battle))))
+  (if (task-closed? (game-task citadel-sage-yellow) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-yellow))))
+  (if (task-closed? (game-task citadel-sage-red) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-red))))
+  (if (task-closed? (game-task citadel-sage-blue) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-blue))))
+  (if (task-closed? (game-task citadel-sage-green) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage))))
+  (if (task-closed? (game-task citadel-buzzer) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava assistant))))
+  (when (and *target* (>= (send-event *target* 'query 'pickup (pickup-type fuel-cell)) 100.0))
+      (add-to-music-log obj 'credits 0)
+      (add-to-music-log obj 'credits 1)
+      (add-to-music-log obj 'credits 2)
+      )
   
   0)
 
