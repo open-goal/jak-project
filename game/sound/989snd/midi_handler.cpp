@@ -395,7 +395,7 @@ void midi_handler::step() {
         }
         [[fallthrough]];
       default:
-        throw midi_error(fmt::format("MIDI error: invalid status {}", m_status));
+        throw midi_error(fmt::format("invalid status {}", m_status));
         return;
     }
 
