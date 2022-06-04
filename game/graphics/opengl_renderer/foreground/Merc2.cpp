@@ -463,7 +463,7 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
     // no existing bucket
     if (m_next_free_level_bucket >= m_level_draw_buckets.size()) {
       // out of room, flush
-      fmt::print("MERC2 out of levels, consider increasing MAX_LEVELS\n");
+      // fmt::print("MERC2 out of levels, consider increasing MAX_LEVELS\n");
       flush_draw_buckets(render_state, prof);
       // and retry the whole thing.
       flush_pending_model(render_state, prof);

@@ -7,25 +7,30 @@
 int gDiscordRpcEnabled;
 int64_t gStartTime;
 static const char* APPLICATION_ID = "938876425585434654";
-static std::map<std::string, std::string> jak1_level_names = {{"intro", "Intro"},
-                                                              {"title", "Title screen"},
-                                                              {"training", "Geyser Rock"},
-                                                              {"village1", "Sandover Village"},
-                                                              {"beach", "Sentinel Beach"},
-                                                              {"jungle", "Forbidden Jungle"},
-                                                              {"misty", "Misty Island"},
-                                                              {"firecanyon", "Fire Canyon"},
-                                                              {"village2", "Rock Village"},
-                                                              {"swamp", "Boggy Swamp"},
-                                                              {"rolling", "Precursor Basin"},
-                                                              {"sunken", "Lost Precursor City"},
-                                                              {"ogre", "Mountain Pass"},
-                                                              {"village3", "Volcanic Crater"},
-                                                              {"snow", "Snowy Mountain"},
-                                                              {"maincave", "Spider Cave"},
-                                                              {"lavatube", "Lava Tube"},
-                                                              {"citadel", "Gol and Maia's Citadel"},
-                                                              {"finalboss", "Final Boss"}};
+static const std::map<std::string, std::string> jak1_level_names = {
+    {"intro", "Intro"},
+    {"title", "Title screen"},
+    {"training", "Geyser Rock"},
+    {"village1", "Sandover Village"},
+    {"beach", "Sentinel Beach"},
+    {"jungle", "Forbidden Jungle"},
+    {"misty", "Misty Island"},
+    {"firecanyon", "Fire Canyon"},
+    {"village2", "Rock Village"},
+    {"swamp", "Boggy Swamp"},
+    {"rolling", "Precursor Basin"},
+    {"sunken", "Lost Precursor City"},
+    {"ogre", "Mountain Pass"},
+    {"village3", "Volcanic Crater"},
+    {"snow", "Snowy Mountain"},
+    {"maincave", "Spider Cave"},
+    {"lavatube", "Lava Tube"},
+    {"citadel", "Gol and Maia's Citadel"},
+    {"finalboss", "Final Boss"}};
+static const std::map<std::string, std::string> jak1_level_name_remap = {{"jungleb", "jungle"},
+                                                                         {"sunkenb", "sunken"},
+                                                                         {"robocave", "maincave"},
+                                                                         {"darkcave", "maincave"}};
 
 void init_discord_rpc() {
   gDiscordRpcEnabled = 1;
@@ -47,15 +52,10 @@ void set_discord_rpc(int state) {
 // get full level name from symbol name ("village1" -> "Sandover Village")
 const char* jak1_get_full_level_name(const char* level_name) {
   // ignore sublevels
-  if (!strcmp(level_name, "jungleb")) {
-    level_name = "jungle";
-  } else if (!strcmp(level_name, "sunkenb")) {
-    level_name = "sunken";
-  } else if (!strcmp(level_name, "darkcave") || !strcmp(level_name, "robocave")) {
-    level_name = "maincave";
-  }
+  auto it = jak1_level_name_remap.find(level_name);
+  auto actual_level_name = it == jak1_level_name_remap.end() ? level_name : it->second;
 
-  const auto& nice_name = jak1_level_names.find(level_name);
+  const auto& nice_name = jak1_level_names.find(actual_level_name);
   if (nice_name != jak1_level_names.end()) {
     return nice_name->second.c_str();
   }

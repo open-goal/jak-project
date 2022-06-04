@@ -913,7 +913,7 @@ StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
   auto args = get_va(form, rest);
 
   if (args.unnamed.size() < 2) {
-    throw_compiler_error(form, "new static boxed array must have type and min-size arguments");
+    throw_compiler_error(form, "new static boxed array must have heap and type arguments");
   }
 
   if (!args.has_named("type")) {
@@ -921,19 +921,24 @@ StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
   }
   auto content_type = parse_typespec(args.get_named("type"), env);
 
+  s64 initialized_count = args.unnamed.size() - 2;
+
+  s64 length;
   if (!args.has_named("length")) {
-    throw_compiler_error(form, "boxed array must have length");
+    length = initialized_count;
+  } else {
+    length = get_constant_integer_or_error(args.get_named("length"), env);
   }
-  s64 length = get_constant_integer_or_error(args.get_named("length"), env);
 
   s64 allocated_length;
   if (args.has_named("allocated-length")) {
+    if (!args.has_named("length")) {
+      throw_compiler_error(form, "boxed array must length if it also has allocated-length");
+    }
     allocated_length = get_constant_integer_or_error(args.get_named("allocated-length"), env);
   } else {
     allocated_length = length;
   }
-
-  s64 initialized_count = args.unnamed.size() - 2;
 
   if (initialized_count > length) {
     throw_compiler_error(form, "Initialized {} elements, but length was {}", initialized_count,

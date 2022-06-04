@@ -86,10 +86,7 @@ u32 crc32(const u8* data, s32 size) {
     crc = crc_table[crc >> 24] ^ ((crc << 8) | *data);
   }
 
-  if ((~crc) == 0) {
-    // if this happens, I think the hash table implementation breaks.
-    ASSERT(false);
-  }
+  ASSERT(~crc);
   return ~crc;
 }
 

@@ -43,10 +43,6 @@
   (unknown 15)
   )
 
-;; forward declarations needed for discord rpc.
-(declare-type ogreboss process-drawable)
-(declare-type plant-boss process-drawable)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; updates
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -169,9 +165,11 @@
     (pc-set-collision-mode *collision-mode*)
     )
 
+  (pc-sound-set-flava-hack (-> obj flava-hack))
+
   (none))
 
-(define *pc-cheat-temp* (the-as (pointer int32) (malloc 'global 24)))
+(define *pc-cheat-temp* (the-as (pointer int32) (malloc 'global (* 4 7))))
 (defmacro pc-cheat-toggle-and-tune (obj cheat)
   `(begin
     (cpad-clear! 0 r1)
@@ -197,45 +195,45 @@
     (set! (-> info status) "Playing Jak and Daxter: The Precursor Legacy™")
     (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name))) ;; grab the name of level we're in
     (set! (-> info cutscene?) (-> obj movie?))
-    (set! (-> info ogreboss?) (the-as symbol (and (process-by-ename "ogreboss-1") (case (-> (process-by-ename "ogreboss-1") next-state name) (
-                ('ogreboss-die
-                 'ogreboss-idle
-                 'ogreboss-stage1
-                 'ogreboss-stage2
-                 'ogreboss-stage3-hit
-                 'ogreboss-stage3-shuffle
-                 'ogreboss-stage3-throw
-                 'ogreboss-wait-for-player) #t)))))
-    (set! (-> info plant-boss?) (the-as symbol (and (process-by-ename "plant-boss-3") (case (-> (process-by-ename "plant-boss-3") next-state name) (
-                ('plant-boss-idle
-                 'plant-boss-hit
-                 'plant-boss-vulnerable
-                 'plant-boss-spawn
-                 'plant-boss-reset
-                 'plant-boss-attack) #t)))))
-    (set! (-> info racer?) (the-as symbol (and *target* (case (-> *target* next-state name) (
-                ('target-racing
-                 'target-racing-bounce
-                 'target-racing-death
-                 'target-racing-falling
-                 'target-racing-grab
-                 'target-racing-hit
-                 'target-racing-jump
-                 'target-racing-smack
-                 'target-racing-start) #t)))))
-    (set! (-> info flutflut?) (the-as symbol (and *target* (case (-> *target* next-state name) (
-                ('target-flut-air-attack
-                 'target-flut-air-attack-hit-ground
-                 'target-flut-double-jump
-                 'target-flut-falling
-                 'target-flut-grab
-                 'target-flut-hit
-                 'target-flut-hit-ground
-                 'target-flut-jump
-                 'target-flut-running-attack
-                 'target-flut-stance
-                 'target-flut-start
-                 'target-flut-walk) #t)))))
+    (set! (-> info ogreboss?) (aif (process-by-ename "ogreboss-1") (case (-> it next-state name) (
+                                      ('ogreboss-die
+                                       'ogreboss-idle
+                                       'ogreboss-stage1
+                                       'ogreboss-stage2
+                                       'ogreboss-stage3-hit
+                                       'ogreboss-stage3-shuffle
+                                       'ogreboss-stage3-throw
+                                       'ogreboss-wait-for-player) #t))))
+    (set! (-> info plant-boss?) (aif (process-by-ename "plant-boss-3") (case (-> it next-state name) (
+                                      ('plant-boss-idle
+                                       'plant-boss-hit
+                                       'plant-boss-vulnerable
+                                       'plant-boss-spawn
+                                       'plant-boss-reset
+                                       'plant-boss-attack) #t))))
+    (set! (-> info racer?) (aif *target* (case (-> it next-state name) (
+                                      ('target-racing
+                                       'target-racing-bounce
+                                       'target-racing-death
+                                       'target-racing-falling
+                                       'target-racing-grab
+                                       'target-racing-hit
+                                       'target-racing-jump
+                                       'target-racing-smack
+                                       'target-racing-start) #t))))
+    (set! (-> info flutflut?) (aif *target* (case (-> it next-state name) (
+                                      ('target-flut-air-attack
+                                       'target-flut-air-attack-hit-ground
+                                       'target-flut-double-jump
+                                       'target-flut-falling
+                                       'target-flut-grab
+                                       'target-flut-hit
+                                       'target-flut-hit-ground
+                                       'target-flut-jump
+                                       'target-flut-running-attack
+                                       'target-flut-stance
+                                       'target-flut-start
+                                       'target-flut-walk) #t))))
 
     (with-profiler "discord-update" (pc-discord-rpc-update info))
     )
@@ -277,6 +275,8 @@
 
   ;; cheats.
   (update-cheats obj)
+  ;; music.
+  (update-music-log obj)
 
   (none))
 
@@ -306,6 +306,9 @@
 
     (pc-check-cheat-code (-> *pc-cheat-temp* 5) 0 (l e a d s)
           (pc-cheat-toggle-and-tune obj sidekick-blue))
+
+    (pc-check-cheat-code (-> *pc-cheat-temp* 6) 0 (t u n e s)
+          (pc-cheat-toggle-and-tune obj tunes))
     )
 
   (when *target*
@@ -342,7 +345,85 @@
         )
 
       )
+      
+  (if (pc-cheats? obj tunes)
+      (set! (-> obj flava-hack) -1)
+      (set! (-> obj flava-hack) 0)
+      )
+  
+  (logior! (-> obj cheats-known) (-> obj cheats))
   0)
+
+
+(defmethod add-to-music-log pc-settings ((obj pc-settings) (music symbol) (flava int))
+  "add music and flava information to the music log.
+   if music already exists, adds flava. if flava already exists, nothing happens."
+  
+  ;; go through our music log
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (cond
+      ;; an empty log entry! place the currently playing music there, and fill flava.
+      ((not (-> obj secrets music i name))
+       (set! (-> obj secrets music i name) music)
+       (set! (-> obj secrets music i flava-mask) (ash 1 flava))
+       (return 0)
+       )
+      ;; an existing log entry for the current music. fill flava.
+      ((= music (-> obj secrets music i name))
+       (logior! (-> obj secrets music i flava-mask) (ash 1 flava))
+       (return 0)
+       )
+      ;; something else. maybe the wrong entry, in which case nothing to do.
+      )
+    )
+  
+  0)
+
+(defmethod update-music-log pc-settings ((obj pc-settings))
+  "update music log settings."
+  
+  ;; add whatever is playing to the music log.
+  (add-to-music-log obj (-> *setting-control* current music) (the int (-> *setting-control* current sound-flava)))
+  
+  ;; special cases. for example, npc's that despawn and you can't hear their music anymore.
+  (if (task-closed? (game-task beach-ecorocks) (task-status need-introduction))
+      (add-to-music-log obj 'village1 1))
+  (if (task-closed? (game-task jungle-plant) (task-status need-resolution))
+      (add-to-music-log obj 'jungleb 2))
+  (if (task-closed? (game-task beach-flutflut) (task-status need-resolution))
+      (add-to-music-log obj 'beach (flava-lookup 'beach (music-flava birdlady))))
+  (if (task-closed? (game-task beach-flutflut) (task-status need-resolution))
+      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava birdlady))))
+  (if (task-closed? (game-task misty-warehouse) (task-status need-resolution))
+      (add-to-music-log obj 'misty (flava-lookup 'misty (music-flava misty-battle))))
+  (if (task-closed? (game-task misty-cannon) (task-status need-resolution))
+      (add-to-music-log obj 'misty 4))
+  (if (task-closed? (game-task firecanyon-end) (task-status need-resolution))
+      (add-to-music-log obj 'firecanyon 2))
+  (if (task-closed? (game-task swamp-billy) (task-status need-resolution))
+      (add-to-music-log obj 'swamp 1))
+  (if (task-closed? (game-task swamp-battle) (task-status need-resolution))
+      (add-to-music-log obj 'swamp (flava-lookup 'swamp (music-flava swamp-battle))))
+  (if (task-closed? (game-task snow-bunnies) (task-status need-resolution))
+      (add-to-music-log obj 'snow (flava-lookup 'snow (music-flava snow-battle))))
+  (if (task-closed? (game-task citadel-sage-yellow) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-yellow))))
+  (if (task-closed? (game-task citadel-sage-red) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-red))))
+  (if (task-closed? (game-task citadel-sage-blue) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-blue))))
+  (if (task-closed? (game-task citadel-sage-green) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage))))
+  (if (task-closed? (game-task citadel-buzzer) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava assistant))))
+  (when (and *target* (>= (float->int (send-event *target* 'query 'pickup (pickup-type fuel-cell))) 100))
+      (add-to-music-log obj 'credits 0)
+      (add-to-music-log obj 'credits 1)
+      (add-to-music-log obj 'credits 2)
+      )
+  
+  0)
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -366,6 +447,31 @@
   (none))
 
 )
+
+
+(defun find-music-log ((music symbol))
+  "return #t if the given music is logged into the *pc-settings*, #f otherwise."
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (if (= music (-> *pc-settings* secrets music i name))
+        (return #t)))
+  #f)
+
+(defun find-flava-log ((music symbol) (flava-idx int))
+  "return #t if the given music's flava is logged into the *pc-settings*, #f otherwise."
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (if (= music (-> *pc-settings* secrets music i name))
+        (return (logtest? (-> *pc-settings* secrets music i flava-mask) (ash 1 flava-idx)))))
+  #f)
+
+(defun print-music-log ((out object))
+  "prints the *pc-settings* music log."
+  
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (if (-> *pc-settings* secrets music i name)
+        (format out "music log ~D: ~A (f #x~x)~%" i (-> *pc-settings* secrets music i name) (-> *pc-settings* secrets music i flava-mask)))
+    )
+  
+  0)
 
 
 
@@ -488,6 +594,21 @@
     )
   )
 
+(defmacro file-stream-get-next-char-ret (fs)
+  `(begin
+    (file-stream-seek-past-whitespace ,fs)
+    (let ((c (file-stream-getc ,fs)))
+      (file-stream-seek ,fs -1 SCE_SEEK_CUR)
+      c))
+  )
+
+(defmacro file-stream-get-next-char (fs)
+  `(begin
+    (file-stream-seek-past-whitespace ,fs)
+    (file-stream-getc ,fs)
+    )
+  )
+
 (defmacro dosettings (bindings &rest body)
   "iterate over a list of key-value pairs like so: (<key> <value>) (<key> <value>) ...
    the name of key is stored in *pc-temp-string*"
@@ -498,8 +619,7 @@
 
             ,@body
 
-            (file-stream-seek-past-whitespace ,fs)
-            (set! c (file-stream-getc ,fs))
+            (set! c (file-stream-get-next-char ,fs))
             (when (!= #x29 c)
               (pc-settings-read-throw-error ,fs (string-format "invalid char, ) not found, got #x~X ~A" c *pc-temp-string*))
               )
@@ -521,8 +641,7 @@
 
     (let ((version PC_KERNEL_VERSION))
       (with-settings-scope (file)
-        (file-stream-read-word file)
-        (case-str *pc-temp-string*
+        (case-str (file-stream-read-word file)
           (("settings")
             (set! version (file-stream-read-int file))
             (cond
@@ -591,7 +710,7 @@
                 (("money-starburst?") (set! (-> obj money-starburst?) (file-stream-read-symbol file)))
                 (("extra-hud?") (set! (-> obj extra-hud?) (file-stream-read-symbol file)))
                 (("scenes-seen")
-                  (dotimes (i 197)
+                  (dotimes (i PC_SPOOL_LOG_LENGTH)
                     (set! (-> obj scenes-seen i) (file-stream-read-int file))
                     )
                   )
@@ -609,8 +728,13 @@
                       (("hard-rats-hiscore") (set! (-> obj secrets hard-rats-hiscore) (file-stream-read-int file)))
                       (("hard-rats-hiwave") (set! (-> obj secrets hard-rats-hiwave) (file-stream-read-int file)))
                       (("music")
-                        (dotimes (i 30)
-                          (set! (-> obj secrets music i) (file-stream-read-int file))
+                        (dotimes (i PC_MUSIC_LOG_LENGTH)
+                          (when (!= #x29 (file-stream-get-next-char-ret file))
+                              (with-settings-scope (file)
+                                (set! (-> obj secrets music i name) (file-stream-read-symbol file))
+                                (set! (-> obj secrets music i flava-mask) (file-stream-read-int file))
+                                )
+                            )
                           )
                         )
                       )
@@ -703,16 +827,19 @@
     (format file "  (subtitle-language ~D)~%" (-> obj subtitle-language))
     (format file "  (subtitle-speaker ~A)~%" (-> obj subtitle-speaker?))
 
+    #|
     (format file "  (scenes-seen")
-    (dotimes (i 197)
+    (dotimes (i PC_SPOOL_LOG_LENGTH)
       (if (zero? (mod i 16))
         (format file "~%   ")
         )
       (format file " ~D" (-> obj scenes-seen i))
       )
     (format file "~%    )~%")
+    |#
 
     (format file "  (secrets~%")
+    #|
     (format file "    (art #x~X)~%" (-> obj secrets art))
     (format file "    (hard-rats? ~A)~%" (-> obj secrets hard-rats?))
     (format file "    (hero-mode? ~A)~%" (-> obj secrets hero-mode?))
@@ -721,14 +848,17 @@
     (format file "    (hard-fish-hiscore ~D)~%" (-> obj secrets hard-fish-hiscore))
     (format file "    (hard-rats-hiscore ~D)~%" (-> obj secrets hard-rats-hiscore))
     (format file "    (hard-rats-hiwave ~D)~%" (-> obj secrets hard-rats-hiwave))
+    |#
+
     (format file "    (music")
-    (dotimes (i 30)
-      (if (zero? (mod i 1))
-        (format file "~%     ")
-        )
-      (format file " #x~X" (-> obj secrets music i))
+    (dotimes (i PC_MUSIC_LOG_LENGTH)
+      (if (-> obj secrets music i name)
+    (format file "      (~A #x~X)~%" (-> obj secrets music i name) (-> obj secrets music i flava-mask))
+    )
       )
-    (format file "~%      )~%")
+
+    (format file "      )~%")
+
     (format file "    )~%")
 
     (format file "  )~%")

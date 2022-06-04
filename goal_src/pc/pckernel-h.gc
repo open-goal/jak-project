@@ -31,7 +31,7 @@
 (defglobalconstant PC_KERNEL_VERSION_BUILD #x0001)
 (defglobalconstant PC_KERNEL_VERSION_REVISION #x0004)
 
-(defglobalconstant PC_KERNEL_VERSION_MINOR #x0001)
+(defglobalconstant PC_KERNEL_VERSION_MINOR #x0003)
 (defglobalconstant PC_KERNEL_VERSION_MAJOR #x0001)
 (defglobalconstant PC_KERNEL_VERSION (logior
                                         (ash PC_KERNEL_VERSION_MAJOR 48)
@@ -48,6 +48,12 @@
 (defconstant ASPECT_16X9_SCALE (/ ASPECT_16X9 ASPECT_4X3))
 (defconstant PC_BASE_WIDTH 640)
 (defconstant PC_BASE_HEIGHT 480)
+
+
+;; how many entries the music log has. the game only has 21 tracks but let's have more space for no reason.
+(defconstant PC_MUSIC_LOG_LENGTH 30)
+;; how many entries the spool anim log has. only 164 are used in-game.
+(defconstant PC_SPOOL_LOG_LENGTH 170)
 
 
 (defconstant PC_SETTINGS_FILE_NAME "game_config/pc-settings.txt")
@@ -114,15 +120,24 @@
   (eco-yellow)
   (invinc)
   (sidekick-blue)
+  (tunes)
   )
 
 (defmacro pc-cheats? (obj &rest cheats)
   `(logtest? (-> ,obj cheats) (pc-cheats ,@cheats)))
 
+;; music log info
+(deftype pc-music-log-entry (structure)
+  ((name  symbol)
+   (flava-mask  int32)
+   )
+  :pack-me
+  )
+
 ;; secrets and goodies
 (deftype pc-game-secrets (structure)
   ((art pc-jak1-concept-art) ;; concept art unlocked
-   (music uint64 30) ;; flavas unlocked, for each track (there's like 30 musics, right?)
+   (music pc-music-log-entry PC_MUSIC_LOG_LENGTH :inline)
    (hard-fish-hiscore int32)
    (hard-rats? symbol) ;; enable this crap
    (hard-rats-hiscore int32)
@@ -265,12 +280,15 @@
 
    (secrets pc-game-secrets :inline) ;; hidden goodies and additional secrets!
 
-   (scenes-seen uint8 197) ;; cutscenes that have been seen, by spool-anim (maybe use 8-char name or bits instead?)
+   (scenes-seen uint8 PC_SPOOL_LOG_LENGTH) ;; cutscenes that have been seen, by spool-anim (maybe use 8-char name or bits instead?)
 
    (discord-rpc? symbol) ;; enable discord rich presence integration
    
    (cheats pc-cheats)
+   (cheats-known pc-cheats)
 
+   (flava-hack int64)
+   
    ;; TODO - save/restore original settings (language/sound/etc)
    )
 
@@ -295,6 +313,8 @@
     (read-from-file (_type_ string) symbol)
     (write-to-file (_type_ string) symbol)
     (update-cheats (_type_) int)
+    (update-music-log (_type_) int)
+    (add-to-music-log (_type_ symbol int) int)
     (commit-to-file (_type_) none)
     (load-settings (_type_) int)
     )
@@ -451,11 +471,12 @@
 (defmethod reset-extra pc-settings ((obj pc-settings))
   "Set the default goodies settings"
 
-  (dotimes (i 197)
+  (dotimes (i PC_SPOOL_LOG_LENGTH)
     (set! (-> obj scenes-seen i) 0)
     )
-  (dotimes (i 30)
-    (set! (-> obj secrets music i) 0)
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (set! (-> obj secrets music i name) #f)
+    (set! (-> obj secrets music i flava-mask) 0)
     )
 
   (set! (-> obj secrets art) (pc-jak1-concept-art))
@@ -468,6 +489,9 @@
   (set! (-> obj secrets hud-counters?) #t)
   (set! (-> obj secrets hud-watch?) #f)
   (set! (-> obj secrets watch-12hr?) #f)
+  
+  (set! (-> obj cheats) (pc-cheats))
+  (set! (-> obj cheats-known) (pc-cheats))
   (none))
 
 (defmacro with-pc (&rest body)
