@@ -26,11 +26,9 @@ add_library(compiler
         compiler/compilation/Type.cpp
         compiler/compilation/State.cpp
         compiler/compilation/Static.cpp
-        compiler/nrepl/ReplServer.cpp
         compiler/Util.cpp
         data_compiler/game_text_common.cpp
         data_compiler/dir_tpages.cpp
-        "../common/serialization/DataObjectGenerator.cpp"
         data_compiler/game_count.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp

@@ -46,10 +46,10 @@ add_library(common
         util/image_loading.cpp
         goos/Printer.cpp
         goos/PrettyPrinter2.cpp
-        serialization/subtitles/subtitles.h
         serialization/subtitles/subtitles.cpp
-        serialization/DataObjectGenerator.h
-        serialization/DataObjectGenerator.cpp)
+        serialization/DataObjectGenerator.cpp
+        nrepl/ReplClient.cpp
+        nrepl/ReplServer.cpp "cross_sockets/XSocketClient.h" "cross_sockets/XSocketClient.cpp")
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 

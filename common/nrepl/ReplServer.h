@@ -1,8 +1,8 @@
 #pragma once
 
 #include "common/cross_sockets/XSocketServer.h"
-
-#include "goalc/compiler/Compiler.h"
+#include <set>
+#include <optional>
 
 enum ReplServerMessageType { PING = 0, EVAL = 10, SHUTDOWN = 20 };
 

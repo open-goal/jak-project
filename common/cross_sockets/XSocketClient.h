@@ -1,0 +1,29 @@
+#pragma once
+
+#include "common/cross_sockets/XSocket.h"
+
+#include <thread>
+#include "common/common_types.h"
+#include <functional>
+#include <mutex>
+
+/// @brief A cross platform generic socket client implementation
+class XSocketClient {
+ public:
+  XSocketClient(int _tcp_port);
+  ~XSocketClient();
+
+  XSocketClient(const XSocketClient&) = delete;
+  XSocketClient& operator=(const XSocketClient&) = delete;
+
+  bool connect();
+  void shutdown();
+
+  //bool ping_server();
+  
+
+ protected:
+  int tcp_port;
+  struct sockaddr_in addr = {};
+  int client_socket = -1;
+};

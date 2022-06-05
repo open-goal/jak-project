@@ -25,6 +25,7 @@ const int TCP_SOCKET_LEVEL = IPPROTO_TCP;
 #endif
 
 int open_socket(int af, int type, int protocol);
+int connect_socket(int socket, sockaddr* addr, int nameLen);
 #ifdef __linux
 int accept_socket(int socket, sockaddr* addr, socklen_t* addrLen);
 int select_and_accept_socket(int socket, sockaddr* addr, socklen_t* addrLen, int microSeconds);
