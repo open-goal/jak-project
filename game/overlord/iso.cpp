@@ -273,7 +273,7 @@ u32 GetISOFileLength(FileRecord* f) {
  */
 VagDirEntry* FindVAGFile(const char* name) {
   VagDirEntry* entry = gVagDir.vag;
-  for (s32 idx = 0; idx < gVagDir.count; idx++) {
+  for (u32 idx = 0; idx < gVagDir.count; idx++) {
     // check if matching name
     if (memcmp(entry->name, name, 8) == 0) {
       return entry;
@@ -1104,13 +1104,13 @@ static s32 CheckVAGStreamProgress(VagCommand* vag) {
   }
 
   if (vag->end_point != -1) {
-    if ((gPlayPos & 0xFFFFFFF0) == vag->end_point) {
+    if ((s32)(gPlayPos & 0xFFFFFFF0) == vag->end_point) {
       return 0;
     }
 
     if (((gPlayPos < 0x6000) && (vag->end_point < 0x6000)) ||
         ((0x5fff < gPlayPos && (0x5fff < vag->end_point)))) {
-      if ((vag->unk2 == 0) && (gPlayPos < vag->end_point)) {
+      if ((vag->unk2 == 0) && (gPlayPos < (u32)vag->end_point)) {
         sceSdSetAddr(gVoice | SD_VA_LSAX, gStreamSRAM + vag->end_point);
         vag->unk2 = 1;
       }
@@ -1223,7 +1223,7 @@ static void UpdatePlayPos() {
   }
 
   u32 pos = GetPlayPos();
-  if (pos == -1) {
+  if (pos == 0xffffffff) {
     if (gLastVagHalf) {
       pos = 0xC000;
     } else {

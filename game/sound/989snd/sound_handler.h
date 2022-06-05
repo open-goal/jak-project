@@ -20,6 +20,6 @@ class sound_handler {
   virtual void stop() = 0;
   virtual void set_vol_pan(s32 vol, s32 pan) = 0;
   virtual void set_pmod(s32 mod) = 0;
-  virtual void set_register(u8 reg, u8 value) {}
+  virtual void set_register(u8 /*reg*/, u8 /*value*/) {}
 };
 }  // namespace snd

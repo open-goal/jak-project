@@ -27,3 +27,12 @@ else()
     target_link_libraries(sndplay PRIVATE sound cubeb stdc++fs)
 endif()
 
+if (NOT WIN32)
+    target_compile_options(sound
+            PRIVATE
+            -Wno-unknown-warning-option
+            -Wno-unused-private-field
+            -Wno-unused-parameter
+            -Wno-shadow
+            )
+endif()
