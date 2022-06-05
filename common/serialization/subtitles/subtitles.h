@@ -7,6 +7,7 @@
 #include <map>
 #include <unordered_set>
 #include <memory>
+#include <algorithm>
 
 /*!
  * The text bank contains all lines (accessed with an ID) for a language.
@@ -78,6 +79,8 @@ class GameSubtitleSceneInfo {
     std::string line;
     std::string speaker;
     bool offscreen;
+
+    bool operator<(const SubtitleLine& line) const { return (frame < line.frame); }
   };
 
   GameSubtitleSceneInfo() {}
@@ -100,6 +103,7 @@ class GameSubtitleSceneInfo {
 
   void add_line(int frame, std::string line, std::string speaker, bool offscreen) {
     m_lines.emplace_back(frame, line, speaker, offscreen);
+    std::sort(m_lines.begin(), m_lines.end());
   }
 
   std::string m_name;

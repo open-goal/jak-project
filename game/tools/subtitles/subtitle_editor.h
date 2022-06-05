@@ -14,8 +14,14 @@ class SubtitleEditor {
   GameSubtitleDB m_subtitle_db;
   std::optional<GameSubtitleSceneInfo> m_current_scene = {};
   std::string m_filter;
+  std::string m_filter_hints;
 
   ReplClient m_repl;
+
+  int m_current_scene_frame = 0;
+  std::string m_current_scene_text = "";
+  std::string m_current_scene_speaker = "";
+  bool m_current_scene_offscreen = false;
 
   std::string m_filter_placeholder = "Filter List...";
 };
