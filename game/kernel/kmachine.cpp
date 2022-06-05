@@ -906,6 +906,9 @@ void update_discord_rpc(u32 discord_info) {
           strcpy(small_image_key, time_of_day_str(time));
           strcpy(small_image_text, "Time of day: ");
           strcat(small_image_text, get_time_of_day(time).c_str());
+        } else {
+          strcpy(small_image_key, "");
+          strcpy(small_image_text, "");
         }
       }
       rpc.smallImageKey = small_image_key;
