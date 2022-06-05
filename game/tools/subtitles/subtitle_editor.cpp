@@ -22,6 +22,7 @@ SubtitleEditor::SubtitleEditor() : m_repl(8181) {
 
 // Get a Process by Name:
 // - (process-by-name \"flutflutegg-1\" *active-pool*)
+// - better - (the-as assistant (process-by-name "assistant-11" *active-pool*))
 
 void SubtitleEditor::draw_window() {
   ImGui::Begin("Subtitle Editor");
@@ -34,7 +35,7 @@ void SubtitleEditor::draw_window() {
     m_repl.eval("(send-event (process-by-name \"bird-lady-4\" *active-pool*) 'play-anim)");
   }
 
-  if (ImGui::TreeNode("Current Scene")) {
+  if (ImGui::TreeNode("Currently Selected Movie")) {
     if (m_current_scene.has_value()) {
       if (ImGui::Button("New Text Entry")) {
       }
@@ -62,9 +63,14 @@ void SubtitleEditor::draw_window() {
     }
     ImGui::TreePop();
   }
-  if (ImGui::TreeNode("All Cutscenes")) {
+  // TODO - are playing arbitrary hints easier? Find out
+  if (ImGui::TreeNode("All Movies")) {
     ImGui::InputText("Filter", &m_filter, ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
     for (auto& [sceneName, sceneInfo] : m_subtitle_db.m_banks.at(0)->m_scenes) {
+      if (sceneInfo.m_kind != SubtitleSceneKind::Movie) {
+        // TODO - hints later
+        continue;
+      }
       if ((!m_filter.empty() && m_filter != m_filter_placeholder) &&
           sceneName.find(m_filter) == std::string::npos) {
         continue;
