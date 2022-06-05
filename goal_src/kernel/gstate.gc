@@ -31,7 +31,7 @@ There are several ways to "go"
   Use the go-process macro to do this.
 
 - go from a non-main thread in the right process. You can do a go from a temporary thread, like trans or post.
-  If you do it from post, the go returns. If you do it from any other thread, the temporary thread
+  If you do it from post, the go returns and the rest of the post runs. If you do it from any other thread, the temporary thread
   is immediately abandonded. Like the previous two, it will defer the actual go until the next time the
   process runs.
 
@@ -50,20 +50,22 @@ It type checks the arguments for the entry function.
 
 |#
 
-;; cause the current process to change state
 (defmacro go (next-state &rest args)
+  "Change the state of the current process.
+   This will only return if this is called within the post thread.
+   Otherwise, execution stops here and the kernel will run the next state next time."
   `(with-pp
      (go-hook pp ,next-state ,@args)
      )
   )
 
 (defmacro go-virtual (state-name &key (proc self) &rest args)
-  "Change the current process to the virtual state of the given process."
+  "Same as go, but use a virtual state."
   `(go (method-of-object ,proc ,state-name) ,@args)
   )
 
-;; cause the given process to change state.
 (defmacro go-process (proc next-state &rest args)
+  "Make another process go."
   `(with-pp
      (protect (pp)
               (set! pp ,proc)
@@ -79,6 +81,7 @@ It type checks the arguments for the entry function.
 ;;  - you go
 ;;  - you throw to 'initialize
 (defmacro run-now-in-process (proc func &rest args)
+  "Run a function in another process right now."
   `((the (function _varargs_ object) run-function-in-process)
     ,proc ,func ,@args
     )
@@ -87,6 +90,7 @@ It type checks the arguments for the entry function.
 ;; sets the main thread of the given process to run the given thing.
 ;; this resets the main thread stack back to the top
 (defmacro run-next-time-in-process (proc func &rest args)
+  "Set up a process to run a function the next time it is scheduled."
   `((the (function _varargs_ object) set-to-run)
     (-> ,proc main-thread) ,func ,@args
     )
@@ -307,7 +311,6 @@ It type checks the arguments for the entry function.
 (define-extern enter-state (function object object object object object object object))
 (defun enter-state (arg0 arg1 arg2 arg3 arg4 arg5)
   "Make the process stored in pp enter the state in pp next-state"
-  ;;(declare (print-asm))
   (with-pp
     ;; unsleep us
     (process-mask-clear! (-> pp mask) sleep sleep-code)
@@ -318,6 +321,7 @@ It type checks the arguments for the entry function.
        ;; did a go during initialize.
        ;; remove the old trans hook, if there was one
        (set! (-> pp trans-hook) #f)
+       ;; set us up to run enter-state again, the next time we're scheduled.
        (set-to-run (-> pp main-thread) enter-state arg0 arg1 arg2 arg3 arg4 arg5)
        ;; tell the kernel that we did a go during init
        (set! (-> pp status) 'initialize-go)
@@ -339,10 +343,14 @@ It type checks the arguments for the entry function.
        )
       ((= (-> pp main-thread) (-> pp top-thread))
        ;; we are in the right process, and in the main thread!
-       ;; actually do a go!
+       ;; we will do a nonlocal control transfer to the new state's code.
+       ;; the new state can then suspend and get back to the kernel dispatcher lambda
+       ;; like normal.
+
+       ;; change state!
        (set! (-> pp state) (-> pp next-state))
 
-       ;; loop through current stack frames
+       ;; do exits
        (let ((frame (-> pp stack-frame-top)))
          (while frame
            (case (-> frame type)
@@ -354,7 +362,7 @@ It type checks the arguments for the entry function.
            )
          )
 
-       ;; done with going!
+       ;; done with going, clear the mask
        (process-mask-clear! (-> pp mask) going)
 
        ;; now, update the process:
@@ -369,19 +377,25 @@ It type checks the arguments for the entry function.
              )
          (set! (-> pp post-hook) (-> new-state post))
          (set! (-> pp trans-hook) (-> new-state trans))
-         ;; now do the enter
+
+
+         ;; start up the new state. First run the enter function
          (let ((enter-func (-> new-state enter)))
            (if enter-func
                ((the (function _varargs_ none) enter-func) arg0 arg1 arg2 arg3 arg4 arg5)
                )
            )
-         ;; now do the trans
+
+         ;; run the trans function before the code.
          (let ((trans-func (-> new-state trans)))
            (if trans-func
                (trans-func)
                )
            )
          ;; now we run the code, but in a tricky way.
+         ;; we need to:
+         ;; - make sure that when this code returns, we do a deactivate
+         ;; - reset the stack to the top, so we can't just call the code.
          (rlet ((temp)
                 (func)
                 (sp :reg rsp :type uint)
@@ -405,7 +419,7 @@ It type checks the arguments for the entry function.
            (.mov sp (-> pp main-thread stack-top))
            (.add sp off)
            ;; push the return trampoline for when code returns.
-           (.mov temp return-from-thread-dead)
+           (.mov temp return-from-thread-dead) ;; will deactivate
            (.add temp off)
            (.push temp)
            ;; and call!
@@ -432,7 +446,7 @@ It type checks the arguments for the entry function.
          ;; temporary, but if this turns out to be false, we will need to change this.
          (rlet ((temp)
                 (off :reg r15 :type uint :reset-here #t))
-           (.mov temp return-from-thread)
+           (.mov temp return-from-thread) ;; could probably just call this...
            (.add temp off)
            (.push temp)
            (.ret)
