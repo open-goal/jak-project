@@ -7,6 +7,7 @@
   (jak1-v1 "assets/game_text.txt") ;; this is the decompiler-generated file!
   ;; add custom files down here
   (jak1-v1 "game/assets/jak1/text/game_text_en.gs")
+  (jak1-v1 "game/assets/jak1/text/game_text_ja.gs")
   )
 
 
