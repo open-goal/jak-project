@@ -827,13 +827,17 @@ void update_discord_rpc(u32 discord_info) {
   if (gDiscordRpcEnabled) {
     DiscordRichPresence rpc;
     char state[128];
+    char large_image_key[128];
     char large_image_text[128];
+    char small_image_key[128];
+    char small_image_text[128];
     auto info = discord_info ? Ptr<DiscordInfo>(discord_info).c() : NULL;
     if (info) {
       int cells = (int)*Ptr<float>(info->fuel).c();
       int orbs = (int)*Ptr<float>(info->money_total).c();
       int scout_flies = (int)*Ptr<float>(info->buzzer_total).c();
       int deaths = *Ptr<int>(info->deaths).c();
+      float time = *Ptr<float>(info->time_of_day).c();
       auto cutscene = Ptr<Symbol>(info->cutscene)->value;
       auto ogreboss = Ptr<Symbol>(info->ogreboss)->value;
       auto plantboss = Ptr<Symbol>(info->plantboss)->value;
@@ -843,7 +847,16 @@ void update_discord_rpc(u32 discord_info) {
       char* level = Ptr<String>(info->level).c()->data();
       const char* full_level_name = jak1_get_full_level_name(Ptr<String>(info->level).c()->data());
       memset(&rpc, 0, sizeof(rpc));
-      rpc.largeImageKey = level;
+      if (!indoors(level)) {
+        char level_with_tod[128];
+        strcpy(level_with_tod, level);
+        strcat(level_with_tod, "-");
+        strcat(level_with_tod, time_of_day_str(time));
+        strcpy(large_image_key, level_with_tod);
+      } else {
+        strcpy(large_image_key, level);
+      }
+      rpc.largeImageKey = large_image_key;
       strcpy(large_image_text, full_level_name);
       if (!strcmp(level, "finalboss")) {
         strcpy(state, "Fighting Final Boss");
@@ -883,15 +896,20 @@ void update_discord_rpc(u32 discord_info) {
       rpc.largeImageText = large_image_text;
       rpc.state = state;
       if (racer != offset_of_s7()) {
-        rpc.smallImageKey = "target-racer";
-        rpc.smallImageText = "Driving A-Grav Zoomer";
+        strcpy(small_image_key, "target-racer");
+        strcpy(small_image_text, "Driving A-Grav Zoomer");
       } else if (flutflut != offset_of_s7()) {
-        rpc.smallImageKey = "flutflut";
-        rpc.smallImageText = "Riding on Flut Flut";
+        strcpy(small_image_key, "flutflut");
+        strcpy(small_image_text, "Riding on Flut Flut");
       } else {
-        rpc.smallImageKey = 0;
-        rpc.smallImageText = 0;
+        if (!indoors(level)) {
+          strcpy(small_image_key, time_of_day_str(time));
+          strcpy(small_image_text, "Time of day: ");
+          strcat(small_image_text, get_time_of_day(time).c_str());
+        }
       }
+      rpc.smallImageKey = small_image_key;
+      rpc.smallImageText = small_image_text;
       rpc.startTimestamp = gStartTime;
       rpc.details = status;
       rpc.partySize = 0;
