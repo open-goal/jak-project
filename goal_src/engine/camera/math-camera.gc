@@ -5,8 +5,34 @@
 ;; name in dgo: math-camera
 ;; dgos: GAME, ENGINE
 
-;; The fog-corrector stores a fog-end fog-start value that is somehow
-;; corrected for the field of view.
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; math camera basics
+;;;;;;;;;;;;;;;;;;;;;;
+
+;; the math camera computes the perspective matrix, hvdf offset, and hmge scale.
+
+;; multiplying a point by the perspective matrix, doing the persepctive divide, then adding hvdf offset gives you:
+;; H : horizontal position (in GS coordinates)
+;; V : vertical position (in GS coordinates)
+;; D : depth (as a 24-bit integer for the z buffer)
+;; F : fog
+
+;; Multiplying by hmge then checking the clipping flags can be used to see if a point is outside the view frustum.
+
+;; The "camera-temp" matrix is the perspective matrix multplied by the camera tranformation and is used
+;; renderers that want a single matrix.
+
+;;;;;;;;;;;;;;;;;;;
+;; fog correction
+;;;;;;;;;;;;;;;;;;;
+
+;; The math-camera matrices are used to compute fogging values, which are a per-vertex uint8 that
+;; tells the GS how "foggy" the color should be. This should be proportional to how far away the vertex
+;; is. There is a scaling factor applied so the fog intensity isn't affected by the field of view angle.
+
+;; The fog-corrector stores a fog-end fog-start value that is corrected for the field of view.
+;; the actual correction factor is computed in cam-update.gc
 (deftype fog-corrector (structure)
   ((fog-end   float  :offset-assert 0)
    (fog-start float  :offset-assert 4)
@@ -23,8 +49,6 @@
   (none)
   )
 
-;; create the single global fog corrector
-;; it appears to be unused.
 (define *math-camera-fog-correction* (new 'global 'fog-corrector))
 
 (define-extern sprite-distorter-generate-tables (function none))
@@ -139,7 +163,7 @@
         (max-depth 16760631.0) ;; almost 2^24.
         )
     (let ((f0-21 16777115.0))) ;; unused. this is actually float closest to 2^24
-    
+
     ;; next, compute the fog slope d(8bit_integer_fog_value)/d(game_world_distance).
     ;; the final fog values we want are an 8-bit integer.
     ;; note that this is the fog at the near plane too.
@@ -157,7 +181,7 @@
       (let ((half-depth-buffer-slope (/ depth-buffer-half-range (* (-> math-cam d) (- (-> math-cam f) (-> math-cam d)))))
             (cam-fov-mult (-> math-cam fov-correction-factor))
             )
-        
+
         ;; finally, build the actual matrix.
         ;; x/y are just the usual scaling
         (set! (-> math-cam perspective vector 0 x) (* cam-fov-mult (- (/ (-> math-cam x-pix) (* (-> math-cam x-ratio) (-> math-cam d))))))
@@ -166,7 +190,7 @@
         (set! (-> math-cam perspective vector 2 z) (* cam-fov-mult (+ (-> math-cam f) (-> math-cam d)) half-depth-buffer-slope))
         ;; depth to fog
         (set! (-> math-cam perspective vector 2 w) (* (/ cam-fov-mult (-> math-cam d)) fog-slope))
-        
+
         (set! (-> math-cam perspective vector 3 z) (* -2.0 half-depth-buffer-slope (-> math-cam f) (-> math-cam d) cam-fov-mult))
         )
 
@@ -211,7 +235,7 @@
                  ;; #x4b002032 -> #x4b002031
                  (set! (-> math-cam isometric vector 3 z) (the-as float (- (the-as int (-> math-cam isometric vector 3 z)) 1)))
                  )
-          
+
           )
         (set! (-> math-cam isometric vector 3 w) fog-slope)
 
@@ -327,7 +351,9 @@
   )
 
 (defun move-target-from-pad ((trans transform) (pad-idx int))
-  "Unused function to adjust trans based on inputs from the pad."
+  "Unused function to adjust trans based on inputs from the pad.
+   This function must be extremely old because it takes a non-quaternion transform,
+   and all target stuff uses quaternions."
 
   ;; local-trans is the translation in the camera frame.
   (let ((local-trans (new-stack-vector0)))
@@ -474,7 +500,7 @@
    (init-vf0-vector)
    (let ((v1-0 0))
     )
-   
+
    ;; this camera matrix has both the projection and camera translation/rotation
    (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
    (.lvf vf25 (&-> *math-camera* camera-temp vector 1 quad))
@@ -489,21 +515,21 @@
 
    ;; input point
    (.lvf vf28 (&-> arg1 quad))
-   
+
    ;; matrix multiply, result in vf28
    (.mul.x.vf acc vf24 vf28)
    (.add.mul.y.vf acc vf25 vf28 acc)
    (.add.mul.z.vf acc vf26 vf28 acc)
    (.add.mul.w.vf vf28 vf27 vf0 acc)
 
-   
+
    (.add.w.vf vf23 vf0 vf0) ;; set w = 1.0
 
    ;; apply hmge scaling. the result of this multiply sets clipping flags appropriately
    (.mul.vf vf31 vf28 vf29) ;; scale.
    ;;(TODO.VCLIP vf31 vf31)
    (let ((clip (vu-clip vf31 0))) ;; clip!
-     
+
      ;; perspective divide
      (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
      (.wait.vf)

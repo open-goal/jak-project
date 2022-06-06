@@ -84,7 +84,9 @@ class WithMinimalGameTests : public ::testing::Test {
     shared_compiler->runtime_thread = std::thread((GoalTest::runtime_with_kernel));
     shared_compiler->runner.c = &shared_compiler->compiler;
 
-    shared_compiler->compiler.run_test_from_string("(dgo-load \"kernel\" global #xf #x200000)");
+    shared_compiler->compiler.run_test_from_string(
+        "(dgo-load \"kernel\" global (link-flag output-load-msg output-load-true-msg execute-login "
+        "print-login) #x200000)");
 
     const auto minimal_files = {"goal_src/engine/math/vector-h.gc"};
     for (auto& file : minimal_files) {
@@ -372,7 +374,9 @@ TEST_F(WithGameTests, GameCount) {
       "(asm-data-file game-count \"test/test_data/test_game_counts.txt\")");
   shared_compiler->compiler.run_test_from_string(
       "(build-dgos \"test/test_data/test_game_count_dgos.txt\")");
-  shared_compiler->compiler.run_test_from_string("(dgo-load \"engine\" global #xf #x200000)");
+  shared_compiler->compiler.run_test_from_string(
+      "(dgo-load \"engine\" global (link-flag output-load-msg output-load-true-msg execute-login "
+      "print-login) #x200000)");
   shared_compiler->runner.run_static_test(env, testCategory, "test-game-count.gc",
                                           get_test_pass_string("game-count", 4));
   // don't leave behind a weird version of the game-count file.
