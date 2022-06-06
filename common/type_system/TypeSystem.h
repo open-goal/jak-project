@@ -128,6 +128,8 @@ class TypeSystem {
   void forward_declare_type_as_type(const std::string& name);
   void forward_declare_type_as(const std::string& new_type, const std::string& parent_type);
   void forward_declare_type_method_count(const std::string& name, int num_methods);
+  void forward_declare_type_method_count_multiple_of_4(const std::string& name, int num_methods);
+
   int get_type_method_count(const std::string& name) const;
   std::optional<int> try_get_type_method_count(const std::string& name) const;
   std::string get_runtime_type(const TypeSpec& ts);

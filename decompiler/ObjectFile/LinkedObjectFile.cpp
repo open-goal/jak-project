@@ -444,6 +444,8 @@ void LinkedObjectFile::disassemble_functions() {
             decode_instruction(words_by_seg.at(seg).at(word), *this, seg, word));
         if (function.instructions.back().is_valid()) {
           stats.decoded_ops++;
+        } else {
+          lg::error("Failed to decode op: 0x{:08x}", words_by_seg.at(seg).at(word).data);
         }
       }
     }
@@ -582,6 +584,9 @@ std::string LinkedObjectFile::print_function_disassembly(Function& func,
       result += " ;;";
       auto& word = words_by_seg[seg].at(func.start_word + i);
       append_word_to_string(result, word);
+    } else {
+      result += line;
+      result += '\n';
     }
 
     if (in_delay_slot) {

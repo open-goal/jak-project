@@ -7,6 +7,7 @@
 #include <optional>
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/data/game_text.h"
+#include "common/versions.h"
 
 namespace decompiler {
 struct RegisterTypeCast {
@@ -82,7 +83,7 @@ struct DecompileHacks {
 };
 
 struct Config {
-  int game_version = -1;
+  GameVersion game_version = GameVersion::Jak1;
   std::vector<std::string> dgo_names;
   std::vector<std::string> object_file_names;
   std::vector<std::string> str_file_names;
@@ -91,6 +92,7 @@ struct Config {
   std::vector<std::string> streamed_audio_file_names;
 
   std::string obj_file_name_map_file;
+  std::string all_types_file;
 
   bool disassemble_code = false;
   bool decompile_code = false;

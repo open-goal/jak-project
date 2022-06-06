@@ -34,12 +34,15 @@ Config read_config_file(const std::string& path_to_config_file,
     cfg[key] = val;
   }
 
-  config.game_version = cfg.at("game_version").get<int>();
+  int version_int = cfg.at("game_version").get<int>();
+  ASSERT(version_int == 1 || version_int == 2);
+  config.game_version = (GameVersion)version_int;
   config.text_version = cfg.at("text_version").get<GameTextVersion>();
   config.game_name = cfg.at("game_name").get<std::string>();
   if (cfg.contains("expected_elf_name")) {
     config.expected_elf_name = cfg.at("expected_elf_name").get<std::string>();
   }
+  config.all_types_file = cfg.at("all_types_file").get<std::string>();
 
   auto inputs_json = read_json_file_from_config(cfg, "inputs_file");
   config.dgo_names = inputs_json.at("dgo_names").get<std::vector<std::string>>();
