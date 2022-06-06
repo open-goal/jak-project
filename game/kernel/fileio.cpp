@@ -278,7 +278,7 @@ char* DecodeFileName(const char* name) {
  * PC PORT NOTE : Changed some paths so that they work for us (namely, got rid of 'host')
  */
 char* MakeFileName(int type, const char* name, int new_string) {
-  using namespace versions;
+  using namespace versions::jak1;
   // start with network filesystem
   // kstrcpy(buffer_633, "host:");
   kstrcpy(buffer_633, "");

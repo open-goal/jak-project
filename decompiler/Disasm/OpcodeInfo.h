@@ -5,9 +5,6 @@
  * Decoding info for each opcode.
  */
 
-#ifndef NEXT_OPCODEINFO_H
-#define NEXT_OPCODEINFO_H
-
 #include <string>
 
 namespace decompiler {
@@ -128,6 +125,8 @@ enum class InstructionKind {
   EI,
   CACHE_DXWBIN,
   PREF,
+  MTSAB,
+  QFSRV,
 
   // MMI unsorted
   PSLLW,
@@ -144,6 +143,7 @@ enum class InstructionKind {
   PEXTLW,
   PPACH,
   PSUBW,
+  PCGTB,
   PCGTW,
   PEXTLH,
   PEXTLB,
@@ -153,6 +153,8 @@ enum class InstructionKind {
   PADDH,
   PMAXW,
   PPACW,
+  PSUBH,
+  PADDB,
 
   // MMI 1
   PCEQW,
@@ -171,6 +173,7 @@ enum class InstructionKind {
   PMADDH,
   PMULTH,
   PEXEW,
+  PXOR,
 
   // MMI 3
   POR,
@@ -212,6 +215,7 @@ enum class InstructionKind {
   VFTOI0,
   VFTOI4,
   VFTOI12,
+  VFTOI15,
   VITOF0,
   VITOF12,
   VITOF15,
@@ -247,6 +251,7 @@ enum class InstructionKind {
   VMULA,
   VADDA,
   VMADDA,
+  VMSUBA,
 
   VOPMULA,
   VDIV,
@@ -268,6 +273,7 @@ enum class InstructionKind {
   VRNEXT,
   VNOP,
   VWAITQ,
+  VMR32,
   VCALLMS,  // last cop2 macro instruction
 
   EE_OP_MAX
@@ -361,4 +367,3 @@ extern OpcodeInfo gOpcodeInfo[(uint32_t)InstructionKind::EE_OP_MAX];
 
 void init_opcode_info();
 }  // namespace decompiler
-#endif  // NEXT_OPCODEINFO_H

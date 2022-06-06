@@ -13,5 +13,5 @@ class DecompilerTypeSystem;
 LinkedObjectFile to_linked_object_file(const std::vector<uint8_t>& data,
                                        const std::string& name,
                                        DecompilerTypeSystem& dts,
-                                       int game_version);
+                                       GameVersion game_version);
 }  // namespace decompiler

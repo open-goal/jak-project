@@ -115,7 +115,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
   Timer timer;
 
   lg::info("-Loading types...");
-  dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
+  dts.parse_type_defs({config.all_types_file});
 
   if (!obj_file_name_map_file.empty()) {
     lg::info("-Loading obj name map file...");
@@ -407,7 +407,9 @@ std::string ObjectFileDB::generate_obj_listing(const std::unordered_set<std::str
   // this check is extremely important. It makes sure we don't have any repeat names. This could
   // be caused by two files with the same name, in the same DGOs, but different data.
   if (int(all_unique_names.size()) != unique_count) {
-    lg::error("Object files are not named properly, data will be lost!");
+    lg::error(
+        "Object files are not named properly, data will be lost! Got {} objs, but only {} names\n",
+        unique_count, all_unique_names.size());
   }
 
   if (unique_count > 0) {
@@ -530,7 +532,7 @@ void ObjectFileDB::find_code(const Config& config) {
     obj.linked_data.find_functions();
     obj.linked_data.disassemble_functions();
 
-    if (config.game_version == 1 || obj.to_unique_name() != "effect-control-v0") {
+    if (config.game_version == GameVersion::Jak1 || obj.to_unique_name() != "effect-control-v0") {
       obj.linked_data.process_fp_relative_links();
     } else {
       lg::warn("Skipping process_fp_relative_links in {}", obj.to_unique_name().c_str());
