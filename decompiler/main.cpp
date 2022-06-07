@@ -151,6 +151,11 @@ int main(int argc, char** argv) {
   db.process_labels();
   fmt::print("[Mem] After code: {} MB\n", get_peak_rss() / (1024 * 1024));
 
+  // top level decompile (do this before printing asm so we get function names)
+  if (config.find_functions) {
+    db.ir2_top_level_pass(config);
+  }
+
   // print disassembly
   if (config.disassemble_code || config.disassemble_data) {
     db.write_disassembly(out_folder, config.disassemble_data, config.disassemble_code,

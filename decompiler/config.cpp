@@ -66,6 +66,7 @@ Config read_config_file(const std::string& path_to_config_file,
   config.process_art_groups = cfg.at("process_art_groups").get<bool>();
   config.hexdump_code = cfg.at("hexdump_code").get<bool>();
   config.hexdump_data = cfg.at("hexdump_data").get<bool>();
+  config.find_functions = cfg.at("find_functions").get<bool>();
   config.dump_objs = cfg.at("dump_objs").get<bool>();
   config.print_cfgs = cfg.at("print_cfgs").get<bool>();
   config.generate_symbol_definition_map = cfg.at("generate_symbol_definition_map").get<bool>();

@@ -21,6 +21,8 @@
 #include "common/util/Assert.h"
 #include "third-party/fmt/core.h"
 
+using namespace jak1_symbols;
+
 namespace {
 // turn on printf's for debugging linking issues.
 constexpr bool link_debug_printfs = false;
