@@ -6,7 +6,6 @@
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "insert_lets.h"
-#include "common/goos/Printer.h"
 #include "common/util/Assert.h"
 
 namespace decompiler {
@@ -1135,10 +1134,11 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
       if (std::get<0>(sub_res).matched) {
         if (std::get<2>(sub_res) && strip_cast) {
           // strip lowest-level (pointer <type>) cast.
-          if (as_set->cast_for_set() && *as_set->cast_for_set() == *strip_cast) {
+          if (as_set->cast_for_set() && env.dts->ts.tc(*as_set->cast_for_set(), *strip_cast)) {
             as_set->set_cast_for_set({});
           }
-          if (as_set->cast_for_define() && *as_set->cast_for_define() == *strip_cast) {
+          if (as_set->cast_for_define() &&
+              env.dts->ts.tc(*as_set->cast_for_define(), *strip_cast)) {
             as_set->set_cast_for_define({});
           }
         }
@@ -1155,7 +1155,7 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
           matcher, as_cast->source()->try_as_single_element(), env, pool, func, strip_cast);
 
       if (std::get<0>(sub_res).matched) {
-        if (std::get<2>(sub_res) && strip_cast && as_cast->type() == *strip_cast) {
+        if (std::get<2>(sub_res) && strip_cast && env.dts->ts.tc(as_cast->type(), *strip_cast)) {
           // strip lowest-level (pointer <type>) cast instead.
           return {std::get<0>(sub_res), std::get<1>(sub_res), false};
         }
@@ -1282,8 +1282,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
           args.push_back(as_func->elts().at(i));
         }
 
-        if (mr_ac_call.maps.forms.at(1)->to_form(env) !=
-            pretty_print::to_symbol(fmt::format("'{}", proc_type))) {
+        if (mr_ac_call.maps.forms.at(1)->to_string(env) != fmt::format("'{}", proc_type)) {
           ja_push_form_to_args(env, pool, args, mr_ac_call.maps.forms.at(1), "name");
         }
         if (!mr_get_proc.maps.forms.at(0)->to_form(env).is_symbol("*default-dead-pool*")) {
