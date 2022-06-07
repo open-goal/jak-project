@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <limits>
+#include <tuple>
 
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
@@ -1115,12 +1116,13 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
       args);
 }
 
-std::pair<MatchResult, Form*> rewrite_shelled_return_form(
+std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
     const Matcher& matcher,
     FormElement* in,
     const Env& env,
     FormPool& pool,
-    std::function<Form*(FormElement*, const MatchResult&, const Env&, FormPool&)> func) {
+    std::function<Form*(FormElement*, const MatchResult&, const Env&, FormPool&)> func,
+    const TypeSpec* const strip_cast) {
   auto mr = match(matcher, in);
 
   // TODO check forbidden form
@@ -1128,23 +1130,38 @@ std::pair<MatchResult, Form*> rewrite_shelled_return_form(
     auto as_set = dynamic_cast<SetFormFormElement*>(in);
     if (as_set) {
       auto sub_res = rewrite_shelled_return_form(matcher, as_set->src()->try_as_single_element(),
-                                                 env, pool, func);
+                                                 env, pool, func, strip_cast);
 
-      if (sub_res.first.matched) {
-        return {sub_res.first,
-                pool.form<SetFormFormElement>(as_set->dst(), sub_res.second, as_set->cast_for_set(),
-                                              as_set->cast_for_define())};
+      if (std::get<0>(sub_res).matched) {
+        if (std::get<2>(sub_res) && strip_cast) {
+          // strip lowest-level (pointer <type>) cast.
+          if (as_set->cast_for_set() && *as_set->cast_for_set() == *strip_cast) {
+            as_set->set_cast_for_set({});
+          }
+          if (as_set->cast_for_define() && *as_set->cast_for_define() == *strip_cast) {
+            as_set->set_cast_for_define({});
+          }
+        }
+        return {std::get<0>(sub_res),
+                pool.form<SetFormFormElement>(as_set->dst(), std::get<1>(sub_res),
+                                              as_set->cast_for_set(), as_set->cast_for_define()),
+                false};
       }
     }
 
     auto as_cast = dynamic_cast<CastElement*>(in);
     if (as_cast) {
       auto sub_res = rewrite_shelled_return_form(
-          matcher, as_cast->source()->try_as_single_element(), env, pool, func);
+          matcher, as_cast->source()->try_as_single_element(), env, pool, func, strip_cast);
 
-      if (sub_res.first.matched) {
-        return {sub_res.first,
-                pool.form<CastElement>(as_cast->type(), sub_res.second, as_cast->numeric())};
+      if (std::get<0>(sub_res).matched) {
+        if (std::get<2>(sub_res) && strip_cast && as_cast->type() == *strip_cast) {
+          // strip lowest-level (pointer <type>) cast instead.
+          return {std::get<0>(sub_res), std::get<1>(sub_res), false};
+        }
+        return {std::get<0>(sub_res),
+                pool.form<CastElement>(as_cast->type(), std::get<1>(sub_res), as_cast->numeric()),
+                false};
       }
     }
 
@@ -1154,27 +1171,27 @@ std::pair<MatchResult, Form*> rewrite_shelled_return_form(
       int m = as_gen->elts().size();
       for (; i < m; ++i) {
         auto sub_res = rewrite_shelled_return_form(
-            matcher, as_gen->elts().at(i)->try_as_single_element(), env, pool, func);
+            matcher, as_gen->elts().at(i)->try_as_single_element(), env, pool, func, strip_cast);
 
-        if (sub_res.first.matched) {
+        if (std::get<0>(sub_res).matched) {
           std::vector<Form*> shell_args;
           for (int ii = 0; ii < m; ++ii) {
             if (ii == i) {
-              shell_args.push_back(sub_res.second);
+              shell_args.push_back(std::get<1>(sub_res));
             } else {
               shell_args.push_back(as_gen->elts().at(ii));
             }
           }
 
-          return {sub_res.first, pool.form<GenericElement>(as_gen->op(), shell_args)};
+          return {std::get<0>(sub_res), pool.form<GenericElement>(as_gen->op(), shell_args), false};
         }
       }
     }
 
-    return {mr, nullptr};
+    return {mr, nullptr, false};
   }
 
-  return {mr, func(in, mr, env, pool)};
+  return {mr, func(in, mr, env, pool), true};
 }
 
 FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
@@ -1191,15 +1208,16 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
   // look for setting a var to (get-process *default-dead-pool* logo-slave #x4000)
   auto ra = in->entries().at(0).dest;
   auto var = env.get_variable_name(ra);
-  auto mr_get_proc =
-      match(Matcher::func("get-process", {Matcher::any(0), Matcher::any_symbol(1), Matcher::any(2)}),
-            in->entries().at(0).src);
+  auto mr_get_proc = match(
+      Matcher::func("get-process", {Matcher::any(0), Matcher::any_symbol(1), Matcher::any(2)}),
+      in->entries().at(0).src);
   if (!mr_get_proc.matched) {
     return nullptr;
   }
 
   const auto& proc_type = mr_get_proc.maps.strings.at(1);
 
+  auto cast_type = TypeSpec("pointer", {TypeSpec(proc_type)});
   auto mr_with_shell = rewrite_shelled_return_form(
       Matcher::if_no_else(
           Matcher::op(GenericOpMatcher::condition(IR2_Condition::Kind::TRUTHY),
@@ -1287,13 +1305,14 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
             GenericOperator::make_function(pool.form<ConstantTokenElement>(
                 is_next_time ? "process-new-function" : "process-new")),
             args);
-      });
+      },
+      &cast_type);
 
-  if (!mr_with_shell.first.matched) {
+  if (!std::get<0>(mr_with_shell).matched) {
     return nullptr;
   }
 
-  auto elt = mr_with_shell.second->try_as_single_element();
+  auto elt = std::get<1>(mr_with_shell)->try_as_single_element();
   return elt;
 }
 

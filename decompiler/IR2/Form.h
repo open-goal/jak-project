@@ -422,6 +422,8 @@ class SetFormFormElement : public FormElement {
   Form* dst() { return m_dst; }
   const std::optional<TypeSpec>& cast_for_set() const { return m_cast_for_set; }
   const std::optional<TypeSpec>& cast_for_define() const { return m_cast_for_define; }
+  void set_cast_for_set(const std::optional<TypeSpec>& ts) { m_cast_for_set = ts; }
+  void set_cast_for_define(const std::optional<TypeSpec>& ts) { m_cast_for_define = ts; }
 
  private:
   int m_real_push_count = 0;
