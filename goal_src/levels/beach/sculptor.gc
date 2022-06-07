@@ -7,8 +7,9 @@
 (declare-type muse nav-enemy)
 
 ;; DECOMP BEGINS
-(import "goal_src/import/sculptor-ag.gc")
+
 (import "goal_src/import/sculptor-muse-ag.gc")
+(import "goal_src/import/sculptor-ag.gc")
 
 (deftype sculptor (process-taskable)
   ((muse handle  :offset-assert 384)
@@ -71,21 +72,19 @@
   )
 
 (defbehavior muse-to-idle sculptor ((arg0 muse))
-  (when (not (handle->process (-> arg0 incomming-attack-id)))
-    (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
-      (set! (-> arg0 incomming-attack-id)
-            (ppointer->handle
-              (when s5-0
-                (let ((t9-1 (method-of-type manipy activate)))
-                  (t9-1 (the-as manipy s5-0) arg0 'manipy (the-as pointer #x70004000))
-                  )
-                (run-now-in-process s5-0 manipy-init (-> arg0 collide-info trans) (-> arg0 entity) *sculptor-muse-sg* #f)
-                (-> s5-0 ppointer)
-                )
-              )
+  (if (not (handle->process (-> arg0 incomming-attack-id)))
+      (set! (-> arg0 incomming-attack-id) (ppointer->handle (process-spawn
+                                                              manipy
+                                                              manipy-init
+                                                              (-> arg0 collide-info trans)
+                                                              (-> arg0 entity)
+                                                              *sculptor-muse-sg*
+                                                              #f
+                                                              :to arg0
+                                                              )
+                                                            )
             )
       )
-    )
   (let ((v1-11 (handle->process (-> arg0 incomming-attack-id))))
     (if v1-11
         (set! (-> (the-as muse v1-11) draw light-index) (the-as uint 3))
@@ -145,19 +144,11 @@
      (when arg0
        (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
        (close-current! (-> obj tasks))
-       (let ((s5-1 (get-process *default-dead-pool* manipy #x4000)))
-         (set! (-> obj muse)
-               (ppointer->handle
-                 (when s5-1
-                   (let ((t9-5 (method-of-type manipy activate)))
-                     (t9-5 (the-as manipy s5-1) obj 'manipy (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process s5-1 manipy-init (-> obj root-override trans) (-> obj entity) *sculptor-muse-sg* #f)
-                   (-> s5-1 ppointer)
-                   )
-                 )
+       (set! (-> obj muse)
+             (ppointer->handle
+               (process-spawn manipy manipy-init (-> obj root-override trans) (-> obj entity) *sculptor-muse-sg* #f :to obj)
                )
-         )
+             )
        (let ((v1-18 (handle->process (-> obj muse))))
          (if v1-18
              (set! (-> (the-as muse v1-18) draw light-index) (the-as uint 3))

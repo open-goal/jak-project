@@ -7,17 +7,18 @@
 
 
 ;; DECOMP BEGINS
-(import "goal_src/import/medres-village2-ag.gc")
-(import "goal_src/import/pontoonten-ag.gc")
-(import "goal_src/import/exit-chamber-dummy-ag.gc")
-(import "goal_src/import/ceilingflag-ag.gc")
-(import "goal_src/import/allpontoons-ag.gc")
-(import "goal_src/import/ogreboss-village2-ag.gc")
-(import "goal_src/import/medres-rolling-ag.gc")
+
 (import "goal_src/import/pontoonfive-ag.gc")
-(import "goal_src/import/fireboulder-ag.gc")
-(import "goal_src/import/medres-rolling1-ag.gc")
+(import "goal_src/import/allpontoons-ag.gc")
+(import "goal_src/import/medres-village2-ag.gc")
+(import "goal_src/import/exit-chamber-dummy-ag.gc")
 (import "goal_src/import/village2cam-ag.gc")
+(import "goal_src/import/fireboulder-ag.gc")
+(import "goal_src/import/ogreboss-village2-ag.gc")
+(import "goal_src/import/ceilingflag-ag.gc")
+(import "goal_src/import/medres-rolling1-ag.gc")
+(import "goal_src/import/medres-rolling-ag.gc")
+(import "goal_src/import/pontoonten-ag.gc")
 
 (deftype village2cam (pov-camera)
   ((seq uint64  :offset-assert 224)
@@ -782,28 +783,19 @@
                  )
            )
           (else
-            (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-              (set! (-> self tracker)
-                    (ppointer->handle
-                      (when gp-0
-                        (let ((t9-3 (method-of-type part-tracker activate)))
-                          (t9-3 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-                          )
-                        (run-now-in-process
-                          gp-0
-                          part-tracker-init
-                          (-> *part-group-id-table* 271)
-                          -1
-                          #f
-                          #f
-                          #f
-                          (-> self root-override trans)
-                          )
-                        (-> gp-0 ppointer)
-                        )
-                      )
-                    )
-              )
+            (set! (-> self tracker) (ppointer->handle (process-spawn
+                                                        part-tracker
+                                                        part-tracker-init
+                                                        (-> *part-group-id-table* 271)
+                                                        -1
+                                                        #f
+                                                        #f
+                                                        #f
+                                                        (-> self root-override trans)
+                                                        :to *entity-pool*
+                                                        )
+                                                      )
+                  )
             )
           )
         (suspend)
@@ -1441,19 +1433,11 @@
   ogreboss-village2-trans
   :code
   (behavior ()
-    (let ((gp-0 (get-process *default-dead-pool* manipy #x4000)))
-      (set! (-> self boulder)
-            (ppointer->handle
-              (when gp-0
-                (let ((t9-1 (method-of-type manipy activate)))
-                  (t9-1 (the-as manipy gp-0) self 'manipy (the-as pointer #x70004000))
-                  )
-                (run-now-in-process gp-0 manipy-init (-> self entity extra trans) (-> self entity) *fireboulder-sg* #f)
-                (-> gp-0 ppointer)
-                )
-              )
+    (set! (-> self boulder)
+          (ppointer->handle
+            (process-spawn manipy manipy-init (-> self entity extra trans) (-> self entity) *fireboulder-sg* #f :to self)
             )
-      )
+          )
     (send-event (handle->process (-> self boulder)) 'anim-mode 'play1)
     (send-event (handle->process (-> self boulder)) 'art-joint-anim "fireboulder-pre-throw" 0)
     (send-event (handle->process (-> self boulder)) 'draw #t)

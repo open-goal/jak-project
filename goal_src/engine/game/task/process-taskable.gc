@@ -392,18 +392,11 @@
 (defbehavior process-taskable-play-anim-enter process-taskable ()
   (init! (-> self query) (the-as string #f) 40 150 25 #t (the-as string #f))
   (logior! (-> self skel status) (janim-status blerc))
-  (let ((gp-0 (get-process *default-dead-pool* othercam #x4000)))
-    (set! (-> self camera)
-          (ppointer->handle (when gp-0
-                              (let ((t9-2 (method-of-type othercam activate)))
-                                (t9-2 (the-as othercam gp-0) self 'othercam (the-as pointer #x70004000))
-                                )
-                              (run-now-in-process gp-0 othercam-init-by-other self (-> self cam-joint-index) #f #t)
-                              (-> gp-0 ppointer)
-                              )
-                            )
+  (set! (-> self camera)
+        (ppointer->handle
+          (process-spawn othercam othercam-init-by-other self (-> self cam-joint-index) #f #t :to self)
           )
-    )
+        )
   (set! (-> self cell-for-task) (game-task none))
   (set! (-> self skippable) #f)
   (set! (-> self blend-on-exit) #f)
@@ -434,26 +427,14 @@
 
 (defbehavior process-taskable-play-anim-code process-taskable ((arg0 art-joint-anim) (arg1 basic))
   (when (nonzero? (-> self cell-for-task))
-    (cond
-      ((name= (-> self state name) "play-anim")
-       (let ((s4-0 (get-process *default-dead-pool* fuel-cell #x4000)))
-         (set! (-> self cell-x)
-               (ppointer->handle
-                 (when s4-0
-                   (let ((t9-2 (method-of-type fuel-cell activate)))
-                     (t9-2 (the-as fuel-cell s4-0) self 'fuel-cell (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process s4-0 fuel-cell-init-as-clone (process->handle self) (-> self cell-for-task))
-                   (-> s4-0 ppointer)
-                   )
-                 )
-               )
-         )
-       )
-      (else
+    (if (name= (-> self state name) "play-anim")
+        (set! (-> self cell-x)
+              (ppointer->handle
+                (process-spawn fuel-cell fuel-cell-init-as-clone (process->handle self) (-> self cell-for-task) :to self)
+                )
+              )
         (format #t "ERROR<GMJ>: ~S ~S trying to give cell on release~%" (-> self name) (-> self state name))
         )
-      )
     )
   (cond
     ((and arg1 (type-type? (-> arg1 type) spool-anim))

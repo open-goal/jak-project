@@ -10,12 +10,13 @@
 (declare-type citb-sage process-taskable)
 
 ;; DECOMP BEGINS
+
+(import "goal_src/import/green-sagecage-ag.gc")
+(import "goal_src/import/yellowsage-ag.gc")
+(import "goal_src/import/redsage-ag.gc")
 (import "goal_src/import/evilbro-citadel-ag.gc")
 (import "goal_src/import/evilsis-citadel-ag.gc")
-(import "goal_src/import/yellowsage-ag.gc")
 (import "goal_src/import/citb-sagecage-ag.gc")
-(import "goal_src/import/redsage-ag.gc")
-(import "goal_src/import/green-sagecage-ag.gc")
 (import "goal_src/import/bluesage-ag.gc")
 
 (defskelgroup *citb-sagecage-sg* citb-sagecage citb-sagecage-lod0-jg citb-sagecage-redsage-idle-ja
@@ -317,18 +318,7 @@
 
 (defmethod play-reminder citb-sage ((obj citb-sage))
   (set! (-> obj root-override pause-adjust-distance) 409600.0)
-  (let ((s5-0 (get-process *default-dead-pool* citb-sagecage #x4000)))
-    (set! (-> obj cage)
-          (ppointer->handle (when s5-0
-                              (let ((t9-1 (method-of-type citb-sagecage activate)))
-                                (t9-1 (the-as citb-sagecage s5-0) obj 'citb-sagecage (the-as pointer #x70004000))
-                                )
-                              (run-now-in-process s5-0 citb-sagecage-init-by-other obj)
-                              (-> s5-0 ppointer)
-                              )
-                            )
-          )
-    )
+  (set! (-> obj cage) (ppointer->handle (process-spawn citb-sagecage citb-sagecage-init-by-other obj :to obj)))
   (set! (-> obj beam-on) #f)
   (set! (-> obj sound-id) (new-sound-id))
   (if (zero? (-> obj sound-name))
@@ -922,35 +912,35 @@
        (when arg0
          (+! (-> obj which-movie) 1)
          (set! (-> obj draw bounds w) 40960.0)
-         (let ((s5-1 (get-process *default-dead-pool* manipy #x4000)))
-           (set! (-> obj evilbro)
-                 (ppointer->handle
-                   (when s5-1
-                     (let ((t9-8 (method-of-type manipy activate)))
-                       (t9-8 (the-as manipy s5-1) obj 'manipy (the-as pointer #x70004000))
-                       )
-                     (run-now-in-process s5-1 manipy-init (-> obj root-override trans) (-> obj entity) *evilbro-citadel-sg* #f)
-                     (-> s5-1 ppointer)
-                     )
+         (set! (-> obj evilbro)
+               (ppointer->handle
+                 (process-spawn
+                   manipy
+                   manipy-init
+                   (-> obj root-override trans)
+                   (-> obj entity)
+                   *evilbro-citadel-sg*
+                   #f
+                   :to obj
                    )
                  )
-           )
+               )
          (send-event (handle->process (-> obj evilbro)) 'anim-mode 'clone-anim)
          (send-event (handle->process (-> obj evilbro)) 'blend-shape #t)
          (send-event (handle->process (-> obj evilbro)) 'center-joint 3)
-         (let ((s5-2 (get-process *default-dead-pool* manipy #x4000)))
-           (set! (-> obj evilsis)
-                 (ppointer->handle
-                   (when s5-2
-                     (let ((t9-14 (method-of-type manipy activate)))
-                       (t9-14 (the-as manipy s5-2) obj 'manipy (the-as pointer #x70004000))
-                       )
-                     (run-now-in-process s5-2 manipy-init (-> obj root-override trans) (-> obj entity) *evilsis-citadel-sg* #f)
-                     (-> s5-2 ppointer)
-                     )
+         (set! (-> obj evilsis)
+               (ppointer->handle
+                 (process-spawn
+                   manipy
+                   manipy-init
+                   (-> obj root-override trans)
+                   (-> obj entity)
+                   *evilsis-citadel-sg*
+                   #f
+                   :to obj
                    )
                  )
-           )
+               )
          (send-event (handle->process (-> obj evilsis)) 'anim-mode 'clone-anim)
          (send-event (handle->process (-> obj evilsis)) 'blend-shape #t)
          (send-event (handle->process (-> obj evilsis)) 'center-joint 3)
@@ -1066,19 +1056,11 @@
        (let ((gp-0 (entity-by-name "robotboss-3")))
          (format 0 "robotboss ent ~A~%" gp-0)
          (when gp-0
-           (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
-             (set! (-> self robotboss)
-                   (ppointer->handle
-                     (when s5-0
-                       (let ((t9-3 (method-of-type manipy activate)))
-                         (t9-3 (the-as manipy s5-0) self 'manipy (the-as pointer #x70004000))
-                         )
-                       (run-now-in-process s5-0 manipy-init (-> self root-override trans) gp-0 *robotboss-sg* #f)
-                       (-> s5-0 ppointer)
-                       )
-                     )
+           (set! (-> self robotboss)
+                 (ppointer->handle
+                   (process-spawn manipy manipy-init (-> self root-override trans) gp-0 *robotboss-sg* #f :to self)
                    )
-             )
+                 )
            (send-event (handle->process (-> self robotboss)) 'anim-mode 'clone-anim)
            (send-event (handle->process (-> self robotboss)) 'center-joint 3)
            (send-event (handle->process (-> self robotboss)) 'origin-joint-index 3)

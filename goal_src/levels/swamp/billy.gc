@@ -8,6 +8,7 @@
 (declare-type billy-snack process-drawable)
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/farthy-snack-ag.gc")
 (import "goal_src/import/billy-ag.gc")
 (import "goal_src/import/billy-sidekick-ag.gc")
@@ -1186,19 +1187,11 @@
       )
     )
   (set! (-> obj path) (-> obj path-snacks))
-  (let ((s5-1 (get-process *default-dead-pool* manipy #x4000)))
-    (set! (-> obj farthy)
-          (ppointer->handle
-            (when s5-1
-              (let ((t9-4 (method-of-type manipy activate)))
-                (t9-4 (the-as manipy s5-1) obj 'manipy (the-as pointer #x70004000))
-                )
-              (run-now-in-process s5-1 manipy-init (-> obj root-override trans) (-> obj entity) *billy-sidekick-sg* #f)
-              (-> s5-1 ppointer)
-              )
-            )
+  (set! (-> obj farthy)
+        (ppointer->handle
+          (process-spawn manipy manipy-init (-> obj root-override trans) (-> obj entity) *billy-sidekick-sg* #f :to obj)
           )
-    )
+        )
   (send-event (handle->process (-> obj farthy)) 'center-joint 3)
   (send-event (handle->process (-> obj farthy)) 'anim-mode 'clone-anim)
   (dummy-42 obj)

@@ -6,6 +6,7 @@
 ;; dgos: GAME, ENGINE
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/fuelcell-naked-ag.gc")
 
 (defpartgroup group-part-hud-pickup
@@ -1963,86 +1964,12 @@
   )
 
 (defun activate-hud ((arg0 process))
-  (let ((s5-0 (get-process *default-dead-pool* hud-pickups #x4000)))
-    (set! (-> *hud-parts* pickups)
-          (the-as
-            (pointer hud-pickups)
-            (when s5-0
-              (let ((t9-1 (method-of-type hud-pickups activate)))
-                (t9-1 (the-as hud-pickups s5-0) arg0 'hud-pickups (the-as pointer #x70004000))
-                )
-              (run-now-in-process s5-0 hud-init-by-other 0)
-              (-> s5-0 ppointer)
-              )
-            )
-          )
-    )
-  (let ((s5-1 (get-process *default-dead-pool* hud-money #x4000)))
-    (set! (-> *hud-parts* money)
-          (the-as (pointer hud-money) (when s5-1
-                                        (let ((t9-4 (method-of-type hud-money activate)))
-                                          (t9-4 (the-as hud-money s5-1) arg0 'hud-money (the-as pointer #x70004000))
-                                          )
-                                        (run-now-in-process s5-1 hud-init-by-other 0)
-                                        (-> s5-1 ppointer)
-                                        )
-                  )
-          )
-    )
-  (let ((s5-2 (get-process *default-dead-pool* hud-fuel-cell #x4000)))
-    (set! (-> *hud-parts* fuel-cell)
-          (the-as
-            (pointer hud-fuel-cell)
-            (when s5-2
-              (let ((t9-7 (method-of-type hud-fuel-cell activate)))
-                (t9-7 (the-as hud-fuel-cell s5-2) arg0 'hud-fuel-cell (the-as pointer #x70004000))
-                )
-              (run-now-in-process s5-2 hud-init-by-other 0)
-              (-> s5-2 ppointer)
-              )
-            )
-          )
-    )
-  (let ((s5-3 (get-process *default-dead-pool* hud-health #x4000)))
-    (set! (-> *hud-parts* health)
-          (the-as
-            (pointer hud-health)
-            (when s5-3
-              (let ((t9-10 (method-of-type hud-health activate)))
-                (t9-10 (the-as hud-health s5-3) arg0 'hud-health (the-as pointer #x70004000))
-                )
-              (run-now-in-process s5-3 hud-init-by-other 0)
-              (-> s5-3 ppointer)
-              )
-            )
-          )
-    )
-  (let ((s5-4 (get-process *default-dead-pool* hud-buzzers #x4000)))
-    (set! (-> *hud-parts* buzzers)
-          (the-as
-            (pointer hud-buzzers)
-            (when s5-4
-              (let ((t9-13 (method-of-type hud-buzzers activate)))
-                (t9-13 (the-as hud-buzzers s5-4) arg0 'hud-buzzers (the-as pointer #x70004000))
-                )
-              (run-now-in-process s5-4 hud-init-by-other 0)
-              (-> s5-4 ppointer)
-              )
-            )
-          )
-    )
-  (let ((s5-5 (get-process *default-dead-pool* hud-power #x4000)))
-    (set! (-> *hud-parts* power)
-          (the-as (pointer hud-power) (when s5-5
-                                        (let ((t9-16 (method-of-type hud-power activate)))
-                                          (t9-16 (the-as hud-power s5-5) arg0 'hud-power (the-as pointer #x70004000))
-                                          )
-                                        (run-now-in-process s5-5 hud-init-by-other 0)
-                                        (-> s5-5 ppointer)
-                                        )
-                  )
-          )
-    )
+  (set! (-> *hud-parts* pickups) (process-spawn hud-pickups hud-init-by-other 0 :to arg0))
+  (set! (-> *hud-parts* money) (process-spawn hud-money hud-init-by-other 0 :to arg0))
+  (set! (-> *hud-parts* fuel-cell) (process-spawn hud-fuel-cell hud-init-by-other 0 :to arg0))
+  (set! (-> *hud-parts* health) (process-spawn hud-health hud-init-by-other 0 :to arg0))
+  (set! (-> *hud-parts* buzzers) (process-spawn hud-buzzers hud-init-by-other 0 :to arg0))
+  (set! (-> *hud-parts* power) (process-spawn hud-power hud-init-by-other 0 :to arg0))
   (set! (-> *hud-parts* bike-speed) (the-as (pointer hud-bike-speed) #f))
   (set! (-> *hud-parts* bike-heat) (the-as (pointer hud-bike-heat) #f))
   (set! (-> *hud-parts* money-all) (the-as (pointer hud-money-all) #f))
@@ -2186,22 +2113,9 @@
   )
 
 (defun activate-orb-all ((arg0 int))
-  (when (not (-> *hud-parts* money-all))
-    (let ((s5-0 (get-process *default-dead-pool* hud-money-all #x4000)))
-      (set! (-> *hud-parts* money-all)
-            (the-as
-              (pointer hud-money-all)
-              (when s5-0
-                (let ((t9-1 (method-of-type hud-money-all activate)))
-                  (t9-1 (the-as hud-money-all s5-0) *target* 'hud-money-all (the-as pointer #x70004000))
-                  )
-                (run-now-in-process s5-0 hud-init-by-other arg0)
-                (-> s5-0 ppointer)
-                )
-              )
-            )
+  (if (not (-> *hud-parts* money-all))
+      (set! (-> *hud-parts* money-all) (process-spawn hud-money-all hud-init-by-other arg0 :to *target*))
       )
-    )
   0
   )
 

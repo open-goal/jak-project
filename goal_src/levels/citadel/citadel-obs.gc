@@ -6,17 +6,18 @@
 ;; dgos: CIT, L1
 
 ;; DECOMP BEGINS
-(import "goal_src/import/citb-disc-ag.gc")
-(import "goal_src/import/citb-arm-ag.gc")
+
+(import "goal_src/import/citb-generator-ag.gc")
+(import "goal_src/import/citb-launcher-ag.gc")
+(import "goal_src/import/citb-button-ag.gc")
+(import "goal_src/import/citadelcam-ag.gc")
+(import "goal_src/import/citb-hose-ag.gc")
+(import "goal_src/import/citb-robotboss-ag.gc")
+(import "goal_src/import/citb-coil-ag.gc")
 (import "goal_src/import/citb-arm-shoulder-ag.gc")
 (import "goal_src/import/citb-iris-door-ag.gc")
-(import "goal_src/import/citb-launcher-ag.gc")
-(import "goal_src/import/citb-hose-ag.gc")
-(import "goal_src/import/citb-coil-ag.gc")
-(import "goal_src/import/citadelcam-ag.gc")
-(import "goal_src/import/citb-button-ag.gc")
-(import "goal_src/import/citb-generator-ag.gc")
-(import "goal_src/import/citb-robotboss-ag.gc")
+(import "goal_src/import/citb-disc-ag.gc")
+(import "goal_src/import/citb-arm-ag.gc")
 
 (deftype citb-arm-section (process-drawable)
   ((sync           sync-info :inline :offset-assert 176)
@@ -665,19 +666,9 @@
 (defmethod dummy-26 citb-launcher ((obj citb-launcher))
   (let ((f30-0 (res-lump-float (-> obj entity) 'spring-height :default 163840.0))
         (s5-0 (res-lump-value (-> obj entity) 'mode uint128))
-        (s4-0 (get-process *default-dead-pool* launcher #x4000))
         )
     (set! (-> obj launcher)
-          (the-as
-            (pointer launcher)
-            (when s4-0
-              (let ((t9-3 (method-of-type launcher activate)))
-                (t9-3 (the-as launcher s4-0) obj 'launcher (the-as pointer #x70004000))
-                )
-              (run-now-in-process s4-0 launcher-init-by-other (-> obj root-override trans) f30-0 s5-0 81920.0)
-              (-> s4-0 ppointer)
-              )
-            )
+          (process-spawn launcher launcher-init-by-other (-> obj root-override trans) f30-0 s5-0 81920.0 :to obj)
           )
     )
   (set! (-> obj root-override root-prim local-sphere w) 18432.0)

@@ -25,13 +25,14 @@
 
 
 ;; DECOMP BEGINS
-(import "goal_src/import/ogre-bridgeend-ag.gc")
-(import "goal_src/import/shortcut-boulder-ag.gc")
+
 (import "goal_src/import/ogre-step-ag.gc")
-(import "goal_src/import/ogre-isle-ag.gc")
-(import "goal_src/import/ogre-bridge-ag.gc")
-(import "goal_src/import/medres-snow-ag.gc")
 (import "goal_src/import/tntbarrel-ag.gc")
+(import "goal_src/import/ogre-bridge-ag.gc")
+(import "goal_src/import/shortcut-boulder-ag.gc")
+(import "goal_src/import/medres-snow-ag.gc")
+(import "goal_src/import/ogre-bridgeend-ag.gc")
+(import "goal_src/import/ogre-isle-ag.gc")
 
 (defskelgroup *med-res-snow-sg* medres-snow medres-snow-lod0-jg medres-snow-idle-ja
               ((medres-snow-lod0-mg (meters 999999)))
@@ -1037,28 +1038,28 @@
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
-      (the-as
-        object
-        (when (= v1-0 'effect)
-          (when (= (-> arg3 param 0) 'splash)
-            (let ((gp-0 (new 'stack-no-clear 'vector)))
-              (let ((a1-1 (-> arg3 param 2)))
-                (set! (-> gp-0 quad) (-> self node-list data a1-1 bone transform vector 3 quad))
-                )
-              (set! (-> gp-0 y) 118784.0)
-              (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-                (when s5-0
-                  (let ((t9-1 (method-of-type part-tracker activate)))
-                    (t9-1 (the-as part-tracker s5-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process s5-0 part-tracker-init (-> *part-group-id-table* 466) -1 #f #f #f gp-0)
-                  (-> s5-0 ppointer)
-                  )
-                )
+      (the-as object (when (= v1-0 'effect)
+                       (when (= (-> arg3 param 0) 'splash)
+                         (let ((gp-0 (new 'stack-no-clear 'vector)))
+                           (let ((a1-1 (-> arg3 param 2)))
+                             (set! (-> gp-0 quad) (-> self node-list data a1-1 bone transform vector 3 quad))
+                             )
+                           (set! (-> gp-0 y) 118784.0)
+                           (process-spawn
+                             part-tracker
+                             part-tracker-init
+                             (-> *part-group-id-table* 466)
+                             -1
+                             #f
+                             #f
+                             #f
+                             gp-0
+                             :to *entity-pool*
+                             )
+                           )
+                         )
+                       )
               )
-            )
-          )
-        )
       )
     )
   :code

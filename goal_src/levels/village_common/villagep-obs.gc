@@ -7,8 +7,9 @@
 
 
 ;; DECOMP BEGINS
-(import "goal_src/import/village-cam-ag.gc")
+
 (import "goal_src/import/warp-gate-switch-ag.gc")
+(import "goal_src/import/village-cam-ag.gc")
 
 (deftype warpgate (process-hidden)
   ()
@@ -782,18 +783,11 @@
   :enter
   (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (let ((gp-0 (get-process *default-dead-pool* warp-gate #x4000)))
-      (set! (-> self warp)
-            (ppointer->handle (when gp-0
-                                (let ((t9-1 (method-of-type warp-gate activate)))
-                                  (t9-1 (the-as warp-gate gp-0) self 'warp-gate (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process gp-0 warp-gate-init-by-other (-> self notify-actor extra trans))
-                                (-> gp-0 ppointer)
-                                )
-                              )
+    (set! (-> self warp)
+          (ppointer->handle
+            (process-spawn warp-gate warp-gate-init-by-other (-> self notify-actor extra trans) :to self)
             )
-      )
+          )
     (process-entity-status! self (entity-perm-status complete) #t)
     (let ((t9-4 (-> (method-of-type basebutton basebutton-down-idle) enter)))
       (if t9-4

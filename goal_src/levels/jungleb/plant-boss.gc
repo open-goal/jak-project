@@ -1048,54 +1048,47 @@
     (set-mode! (-> self body) (joint-mod-handler-mode world-look-at))
     (b! #t cfg-17 :delay (nop!))
     (label cfg-5)
-    (when (not (handle->process (-> self cam-tracker)))
-      (let ((gp-1 (get-process *default-dead-pool* camera-tracker #x4000)))
+    (if (not (handle->process (-> self cam-tracker)))
         (set! (-> self cam-tracker)
-              (ppointer->handle (when gp-1
-                                  (let ((t9-9 (method-of-type camera-tracker activate)))
-                                    (t9-9 (the-as camera-tracker gp-1) self 'camera-tracker (the-as pointer #x70004000))
-                                    )
-                                  (run-now-in-process
-                                    gp-1
-                                    camera-tracker-init
-                                    (lambda :behavior camera-tracker
-                                      ()
-                                      (while (not (process-grab? *target*))
-                                        (suspend)
-                                        )
-                                      (ambient-hint-spawn "gamcam28" (the-as vector #f) *entity-pool* 'ambient)
-                                      (send-event *camera* 'blend-from-as-fixed)
-                                      (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 13))
-                                      (camera-change-to "camera-220" 0 #f)
-                                      (while (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-                                               (set! (-> a1-4 from) self)
-                                               (set! (-> a1-4 num-params) 0)
-                                               (set! (-> a1-4 message) 'intro-done?)
-                                               (not (send-event-function *camera* a1-4))
-                                               )
-                                        (suspend)
-                                        )
-                                      (camera-change-to "camera-222" 600 #f)
-                                      (let ((gp-0 (-> *display* base-frame-counter)))
-                                        (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 2))
-                                          (suspend)
-                                          )
-                                        )
-                                      (while (not (process-release? (handle->process (-> self grab-target))))
-                                        (suspend)
-                                        )
-                                      (send-event *camera* 'blend-from-as-fixed)
-                                      (camera-look-at (the-as pair *target*) (the-as uint 0))
-                                      (camera-change-to (the-as string 'base) 150 #f)
-                                      (none)
+              (ppointer->handle (process-spawn
+                                  camera-tracker
+                                  camera-tracker-init
+                                  (lambda :behavior camera-tracker
+                                    ()
+                                    (while (not (process-grab? *target*))
+                                      (suspend)
                                       )
+                                    (ambient-hint-spawn "gamcam28" (the-as vector #f) *entity-pool* 'ambient)
+                                    (send-event *camera* 'blend-from-as-fixed)
+                                    (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 13))
+                                    (camera-change-to "camera-220" 0 #f)
+                                    (while (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+                                             (set! (-> a1-4 from) self)
+                                             (set! (-> a1-4 num-params) 0)
+                                             (set! (-> a1-4 message) 'intro-done?)
+                                             (not (send-event-function *camera* a1-4))
+                                             )
+                                      (suspend)
+                                      )
+                                    (camera-change-to "camera-222" 600 #f)
+                                    (let ((gp-0 (-> *display* base-frame-counter)))
+                                      (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 2))
+                                        (suspend)
+                                        )
+                                      )
+                                    (while (not (process-release? (handle->process (-> self grab-target))))
+                                      (suspend)
+                                      )
+                                    (send-event *camera* 'blend-from-as-fixed)
+                                    (camera-look-at (the-as pair *target*) (the-as uint 0))
+                                    (camera-change-to (the-as string 'base) 150 #f)
+                                    (none)
                                     )
-                                  (-> gp-1 ppointer)
+                                  :to self
                                   )
                                 )
               )
         )
-      )
     (let ((v1-37 (-> self neck)))
       (set! (-> v1-37 blend) 0.0)
       )
@@ -1556,18 +1549,9 @@
         (seek! (-> self energy) (the-as float 0.5) (* 0.2 (-> *display* seconds-per-frame)))
         (when (and (>= (ja-aframe-num 0) 175.0) (zero? gp-0))
           (set! gp-0 1)
-          (let ((s5-2 (get-process *default-dead-pool* othercam #x4000)))
-            (set! (-> self camera)
-                  (ppointer->handle (when s5-2
-                                      (let ((t9-11 (method-of-type othercam activate)))
-                                        (t9-11 (the-as othercam s5-2) self 'othercam (the-as pointer #x70004000))
-                                        )
-                                      (run-now-in-process s5-2 othercam-init-by-other self 28 #f #t)
-                                      (-> s5-2 ppointer)
-                                      )
-                                    )
-                  )
-            )
+          (set! (-> self camera)
+                (ppointer->handle (process-spawn othercam othercam-init-by-other self 28 #f #t :to self))
+                )
           (logior! (-> self skel status) (janim-status spool))
           (ambient-hint-spawn "gamcam29" (the-as vector #f) *entity-pool* 'ambient)
           )
@@ -2109,50 +2093,29 @@
       (-> s5-10 ppointer)
       )
     )
-  (let ((s5-11 (get-process *default-dead-pool* plant-boss-leaf #x4000)))
-    (set! (-> obj leaf 0)
-          (the-as
-            (pointer plant-boss-leaf)
-            (when s5-11
-              (let ((t9-48 (method-of-type plant-boss-leaf activate)))
-                (t9-48 (the-as plant-boss-leaf s5-11) obj 'plant-boss-leaf (the-as pointer #x70004000))
-                )
-              (run-now-in-process
-                s5-11
-                plant-boss-leaf-init
-                (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :w 1.0))
-                0.0
-                0
-                )
-              (-> s5-11 ppointer)
-              )
-            )
+  (set! (-> obj leaf 0)
+        (process-spawn
+          plant-boss-leaf
+          plant-boss-leaf-init
+          (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :w 1.0))
+          0.0
+          0
+          :to obj
           )
-    )
-  (let ((s5-12 (get-process *default-dead-pool* plant-boss-leaf #x4000)))
-    (set! (-> obj leaf 1)
-          (the-as
-            (pointer plant-boss-leaf)
-            (when s5-12
-              (let ((t9-51 (method-of-type plant-boss-leaf activate)))
-                (t9-51 (the-as plant-boss-leaf s5-12) obj 'plant-boss-leaf (the-as pointer #x70004000))
-                )
-              (run-now-in-process
-                s5-12
-                plant-boss-leaf-init
-                (vector+!
-                  (new-stack-vector0)
-                  (-> obj root-override trans)
-                  (new 'static 'vector :x -13189.12 :y 2838.528 :z 12288.0 :w 1.0)
-                  )
-                0.0
-                1
-                )
-              (-> s5-12 ppointer)
-              )
-            )
-          )
-    )
+        )
+  (set! (-> obj leaf 1) (process-spawn
+                          plant-boss-leaf
+                          plant-boss-leaf-init
+                          (vector+!
+                            (new-stack-vector0)
+                            (-> obj root-override trans)
+                            (new 'static 'vector :x -13189.12 :y 2838.528 :z 12288.0 :w 1.0)
+                            )
+                          0.0
+                          1
+                          :to obj
+                          )
+        )
   (set! (-> obj energy) 0.25)
   (set! (-> obj health) 3.0)
   (set! (-> obj cam-tracker) (the-as handle #f))

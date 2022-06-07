@@ -8,15 +8,16 @@
 (define-extern spawn-flying-rock (function vector vector float entity none))
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/ecoventrock-ag.gc")
+(import "goal_src/import/beachcam-ag.gc")
 (import "goal_src/import/windmill-one-ag.gc")
 (import "goal_src/import/kickrock-ag.gc")
+(import "goal_src/import/harvester-ag.gc")
 (import "goal_src/import/flutflutegg-ag.gc")
+(import "goal_src/import/grottopole-ag.gc")
 (import "goal_src/import/flutflut-ag.gc")
 (import "goal_src/import/bladeassm-ag.gc")
-(import "goal_src/import/harvester-ag.gc")
-(import "goal_src/import/grottopole-ag.gc")
-(import "goal_src/import/beachcam-ag.gc")
 
 (defskelgroup *beachcam-sg* beachcam beachcam-lod0-jg beachcam-anim-ja
               ((beachcam-lod0-mg (meters 999999)))
@@ -684,20 +685,14 @@
             (suspend)
             )
           )
-        (let ((gp-1
-                (cond
-                  (arg0
-                    (the-as int #f)
-                    )
-                  (else
-                    (ambient-hint-spawn "gamcam10" (the-as vector #f) *entity-pool* 'camera)
-                    (let ((gp-2 (get-process *default-dead-pool* pov-camera #x4000)))
-                      (ppointer->handle (when gp-2
-                                          (let ((t9-23 (method-of-type pov-camera activate)))
-                                            (t9-23 (the-as pov-camera gp-2) self 'pov-camera (the-as pointer #x70004000))
-                                            )
-                                          (run-now-in-process
-                                            gp-2
+        (let ((gp-1 (cond
+                      (arg0
+                        (the-as int #f)
+                        )
+                      (else
+                        (ambient-hint-spawn "gamcam10" (the-as vector #f) *entity-pool* 'camera)
+                        (ppointer->handle (process-spawn
+                                            pov-camera
                                             pov-camera-init-by-other
                                             (-> self root-override trans)
                                             *beachcam-sg*
@@ -705,14 +700,12 @@
                                             0
                                             #f
                                             '()
+                                            :to self
                                             )
-                                          (-> gp-2 ppointer)
                                           )
-                                        )
+                        )
                       )
                     )
-                  )
-                )
               )
           (process-drawable-birth-fuel-cell (the-as entity #f) (the-as vector #f) #f)
           (while (handle->process (the-as handle gp-1))

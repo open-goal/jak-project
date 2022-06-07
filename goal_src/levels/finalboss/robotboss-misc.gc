@@ -10,6 +10,7 @@
 
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/silodoor-ag.gc")
 (import "goal_src/import/ecoclaw-ag.gc")
 (import "goal_src/import/finalbosscam-ag.gc")
@@ -244,27 +245,19 @@
                )
          )
         ((-> self particles gp-0 kind)
-         (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-           (set! (-> self particles gp-0 tracker)
-                 (ppointer->handle (when s5-0
-                                     (let ((t9-2 (method-of-type part-tracker activate)))
-                                       (t9-2 (the-as part-tracker s5-0) self 'part-tracker (the-as pointer #x70004000))
-                                       )
-                                     (run-now-in-process
-                                       s5-0
-                                       part-tracker-init
-                                       (-> self particles gp-0 kind)
-                                       -1
-                                       ecoclaw-beam-particle-callback
-                                       (-> self ppointer)
-                                       #f
-                                       (&+ (&-> self stack 80) (* gp-0 32))
-                                       )
-                                     (-> s5-0 ppointer)
-                                     )
-                                   )
-                 )
-           )
+         (set! (-> self particles gp-0 tracker) (ppointer->handle (process-spawn
+                                                                    part-tracker
+                                                                    part-tracker-init
+                                                                    (-> self particles gp-0 kind)
+                                                                    -1
+                                                                    ecoclaw-beam-particle-callback
+                                                                    (-> self ppointer)
+                                                                    #f
+                                                                    (&+ (&-> self stack 80) (* gp-0 32))
+                                                                    :to self
+                                                                    )
+                                                                  )
+               )
          )
         )
       )
@@ -498,19 +491,11 @@
 
 (defmethod play-anim! finalbosscam ((obj finalbosscam) (arg0 symbol))
   (when arg0
-    (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
-      (set! (-> obj robotboss)
-            (ppointer->handle
-              (when s5-0
-                (let ((t9-1 (method-of-type manipy activate)))
-                  (t9-1 (the-as manipy s5-0) obj 'manipy (the-as pointer #x70004000))
-                  )
-                (run-now-in-process s5-0 manipy-init (-> obj root-override trans) (-> obj entity) *robotboss-sg* #f)
-                (-> s5-0 ppointer)
-                )
-              )
+    (set! (-> obj robotboss)
+          (ppointer->handle
+            (process-spawn manipy manipy-init (-> obj root-override trans) (-> obj entity) *robotboss-sg* #f :to obj)
             )
-      )
+          )
     (send-event (handle->process (-> obj robotboss)) 'anim-mode 'clone-anim)
     (send-event (handle->process (-> obj robotboss)) 'center-joint 3)
     (send-event (handle->process (-> obj robotboss)) 'origin-joint-index 3)

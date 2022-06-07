@@ -9,6 +9,7 @@
 (define-extern *ogreboss* ogreboss)
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/ogreboss-ag.gc")
 
 (defskelgroup *ogreboss-sg* ogreboss ogreboss-lod0-jg ogreboss-idle-ja
@@ -1912,25 +1913,16 @@
   )
 
 (defbehavior ogreboss-spawn-super-boulder ogreboss ()
-  (let ((gp-0 (get-process *default-dead-pool* ogreboss-super-boulder #x4000)))
-    (set! (-> self boulder)
-          (ppointer->handle
-            (when gp-0
-              (let ((t9-1 (method-of-type ogreboss-super-boulder activate)))
-                (t9-1 (the-as ogreboss-super-boulder gp-0) self 'ogreboss-super-boulder (the-as pointer #x70004000))
-                )
-              (run-now-in-process
-                gp-0
-                ogreboss-super-boulder-init-by-other
-                (-> self far-pos)
-                (-> self grow-time)
-                (-> self entity)
-                )
-              (-> gp-0 ppointer)
-              )
-            )
-          )
-    )
+  (set! (-> self boulder) (ppointer->handle (process-spawn
+                                              ogreboss-super-boulder
+                                              ogreboss-super-boulder-init-by-other
+                                              (-> self far-pos)
+                                              (-> self grow-time)
+                                              (-> self entity)
+                                              :to self
+                                              )
+                                            )
+        )
   0
   (none)
   )

@@ -13,8 +13,9 @@
 (define-extern *helix-button* helix-button)
 
 ;; DECOMP BEGINS
-(import "goal_src/import/helix-button-ag.gc")
+
 (import "goal_src/import/helix-slide-door-ag.gc")
+(import "goal_src/import/helix-button-ag.gc")
 
 (deftype helix-slide-door (process-drawable)
   ((root-override collide-shape  :offset 112)
@@ -747,20 +748,7 @@
       )
     )
   (set! (-> obj root trans y) (-> obj start-y))
-  (let ((s5-1 (get-process *default-dead-pool* helix-dark-eco #x4000)))
-    (set! (-> obj dark-eco)
-          (the-as
-            (pointer helix-dark-eco)
-            (when s5-1
-              (let ((t9-6 (method-of-type helix-dark-eco activate)))
-                (t9-6 (the-as helix-dark-eco s5-1) obj 'helix-dark-eco (the-as pointer #x70004000))
-                )
-              (run-now-in-process s5-1 water-vol-init-by-other (-> obj entity))
-              (-> s5-1 ppointer)
-              )
-            )
-          )
-    )
+  (set! (-> obj dark-eco) (process-spawn helix-dark-eco water-vol-init-by-other (-> obj entity) :to obj))
   (set! *helix-water* obj)
   (go helix-water-idle)
   (none)
