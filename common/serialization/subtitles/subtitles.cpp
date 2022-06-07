@@ -250,9 +250,11 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
                 }
               }
             });
-            auto line_str = font->convert_utf8_to_game(line ? line->data : "");
-            auto speaker_str = font->convert_utf8_to_game(speaker ? speaker->data : "");
-            scene.add_line(time, line_str, speaker_str, offscreen);
+            auto line_utf8 = line ? line->data : "";
+            auto line_str = font->convert_utf8_to_game(line_utf8);
+            auto speaker_utf8 = speaker ? speaker->data : "";
+            auto speaker_str = font->convert_utf8_to_game(speaker_utf8);
+            scene.add_line(time, line_str, line_utf8, speaker_str, speaker_utf8, offscreen);
           } else {
             throw std::runtime_error("Each entry must be a list");
           }

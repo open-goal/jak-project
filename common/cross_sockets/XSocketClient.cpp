@@ -31,10 +31,10 @@ bool XSocketClient::connect() {
   client_socket = open_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (client_socket < 0) {
     // TODO - log
+    shutdown();
     return false;
   }
 
-  
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = inet_addr("127.0.0.1");
   addr.sin_port = htons(tcp_port);
@@ -43,6 +43,7 @@ bool XSocketClient::connect() {
   int result = connect_socket(client_socket, (sockaddr*)&addr, sizeof(addr));
   if (result == -1) {
     // TODO - log and close
+    shutdown();
     return false;
   }
 

@@ -10,6 +10,6 @@ class ReplClient : public XSocketClient {
 
   ReplClient& operator=(const ReplClient&) { return *this; }
 
-  // TODO - void for now :(
-  void eval(std::string form);
+  // TODO - just a simple true/false return for now :(
+  bool eval(std::string form);
 };

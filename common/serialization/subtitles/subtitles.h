@@ -72,12 +72,24 @@ enum class SubtitleSceneKind { Invalid = -1, Movie = 0, Hint = 1, HintNamed = 2 
 class GameSubtitleSceneInfo {
  public:
   struct SubtitleLine {
-    SubtitleLine(int frame, std::string line, std::string speaker, bool offscreen)
-        : frame(frame), line(line), speaker(speaker), offscreen(offscreen) {}
+    SubtitleLine(int frame,
+                 std::string line,
+                 std::string line_utf8,
+                 std::string speaker,
+                 std::string speaker_utf8,
+                 bool offscreen)
+        : frame(frame),
+          line(line),
+          line_utf8(line_utf8),
+          speaker(speaker),
+          speaker_utf8(speaker_utf8),
+          offscreen(offscreen) {}
 
     int frame;
     std::string line;
+    std::string line_utf8;
     std::string speaker;
+    std::string speaker_utf8;
     bool offscreen;
 
     bool operator<(const SubtitleLine& line) const { return (frame < line.frame); }
@@ -101,8 +113,13 @@ class GameSubtitleSceneInfo {
     m_id = scene.id();
   }
 
-  void add_line(int frame, std::string line, std::string speaker, bool offscreen) {
-    m_lines.emplace_back(frame, line, speaker, offscreen);
+  void add_line(int frame,
+                std::string line,
+                std::string line_utf8,
+                std::string speaker,
+                std::string speaker_utf8,
+                bool offscreen) {
+    m_lines.emplace_back(SubtitleLine(frame, line, line_utf8, speaker, speaker_utf8, offscreen));
     std::sort(m_lines.begin(), m_lines.end());
   }
 
@@ -110,6 +127,7 @@ class GameSubtitleSceneInfo {
   int m_id;
   std::vector<SubtitleLine> m_lines;
   SubtitleSceneKind m_kind;
+  std::optional<std::string> m_sorting_group;
 };
 
 /*!

@@ -26,5 +26,6 @@ void ReplClient::eval(std::string form) {
   int result = write_to_socket(client_socket, buffer.data(), buffer.size());
   if (result == -1) {
     // TODO - log
+    // return an error
   }
 }
