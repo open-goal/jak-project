@@ -1421,26 +1421,15 @@
       (if (-> obj buddy-on-shoulders?)
           (set! (-> s5-0 quad) (-> obj collide-info trans quad))
           )
-      (let ((s4-0 (get-process *default-dead-pool* double-lurker-top #x4000)))
-        (set! (-> obj buddy-handle)
-              (ppointer->handle
-                (when s4-0
-                  (let ((t9-6 (method-of-type double-lurker-top activate)))
-                    (t9-6 (the-as double-lurker-top s4-0) obj 'double-lurker-top (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process
-                    s4-0
-                    double-lurker-top-init-by-other
-                    (-> obj entity)
-                    obj
-                    (-> obj buddy-on-shoulders?)
-                    s5-0
-                    )
-                  (-> s4-0 ppointer)
-                  )
-                )
-              )
-        )
+      (set! (-> obj buddy-handle) (ppointer->handle (process-new double-lurker-top double-lurker-top-init-by-other
+                                                                 (-> obj entity)
+                                                                 obj
+                                                                 (-> obj buddy-on-shoulders?)
+                                                                 s5-0
+                                                                 :to obj
+                                                                 )
+                                                    )
+            )
       )
     )
   (when (and (not (-> obj dead?)) (not (-> obj buddy-on-shoulders?)))

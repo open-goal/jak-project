@@ -30,6 +30,14 @@ Matcher Matcher::op(const GenericOpMatcher& op, const std::vector<Matcher>& args
   return m;
 }
 
+Matcher Matcher::func(const Matcher& matcher, const std::vector<Matcher>& args) {
+  return Matcher::op(GenericOpMatcher::func(matcher), args);
+}
+
+Matcher Matcher::func(const std::string& name, const std::vector<Matcher>& args) {
+  return Matcher::op(GenericOpMatcher::func(Matcher::constant_token(name)), args);
+}
+
 Matcher Matcher::op_fixed(FixedOperatorKind op, const std::vector<Matcher>& args) {
   return Matcher::op(GenericOpMatcher::fixed(op), args);
 }
@@ -42,12 +50,12 @@ Matcher Matcher::op_with_rest(const GenericOpMatcher& op, const std::vector<Matc
   return m;
 }
 
-Matcher Matcher::fixed_op(FixedOperatorKind op, const std::vector<Matcher>& args) {
-  Matcher m;
-  m.m_kind = Kind::GENERIC_OP;
-  m.m_gen_op_matcher = std::make_shared<GenericOpMatcher>(GenericOpMatcher::fixed(op));
-  m.m_sub_matchers = args;
-  return m;
+Matcher Matcher::func_with_rest(const Matcher& matcher, const std::vector<Matcher>& args) {
+  return Matcher::op_with_rest(GenericOpMatcher::func(matcher), args);
+}
+
+Matcher Matcher::func_with_rest(const std::string& name, const std::vector<Matcher>& args) {
+  return Matcher::op_with_rest(GenericOpMatcher::func(Matcher::constant_token(name)), args);
 }
 
 Matcher Matcher::match_or(const std::vector<Matcher>& args) {
@@ -257,35 +265,18 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       }
     } break;
 
-    case Kind::GENERIC_OP: {
+    case Kind::GENERIC_OP:
+    case Kind::GENERIC_OP_WITH_REST:
+    {
       auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_active_element());
       if (as_generic) {
         if (!m_gen_op_matcher->do_match(as_generic->op(), maps_out)) {
           return false;
         }
 
-        if (as_generic->elts().size() != m_sub_matchers.size()) {
-          return false;
-        }
-
-        for (size_t i = 0; i < m_sub_matchers.size(); i++) {
-          if (!m_sub_matchers.at(i).do_match(as_generic->elts().at(i), maps_out)) {
-            return false;
-          }
-        }
-        return true;
-      }
-      return false;
-    } break;
-
-    case Kind::GENERIC_OP_WITH_REST: {
-      auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_active_element());
-      if (as_generic) {
-        if (!m_gen_op_matcher->do_match(as_generic->op(), maps_out)) {
-          return false;
-        }
-
-        if (as_generic->elts().size() < m_sub_matchers.size()) {
+        if ((m_kind == Kind::GENERIC_OP && as_generic->elts().size() != m_sub_matchers.size()) ||
+            (m_kind == Kind::GENERIC_OP_WITH_REST &&
+             as_generic->elts().size() < m_sub_matchers.size())) {
           return false;
         }
 

@@ -879,7 +879,7 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
   if (bitfield_128) {
     auto in_no_cast = strip_int_or_uint_cast(in);
     auto pcpyld_matcher =
-        Matcher::fixed_op(FixedOperatorKind::PCPYLD, {Matcher::any(0), Matcher::any(1)});
+        Matcher::op_fixed(FixedOperatorKind::PCPYLD, {Matcher::any(0), Matcher::any(1)});
     auto mr = match(pcpyld_matcher, in_no_cast);
     if (mr.matched) {
       auto upper = mr.maps.forms.at(0);

@@ -1099,31 +1099,22 @@
   :code
   (behavior ()
     (load-state-want-levels 'village1 'misty)
-    (let ((gp-0 (get-process *default-dead-pool* camera-tracker #x4000)))
-      (set! (-> self cam-tracker)
-            (ppointer->handle (when gp-0
-                                (let ((t9-2 (method-of-type camera-tracker activate)))
-                                  (t9-2 (the-as camera-tracker gp-0) self 'camera-tracker (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process
-                                  gp-0
-                                  camera-tracker-init
-                                  (lambda :behavior fishermans-boat
-                                    ()
-                                    (camera-change-to "camera-282" 0 #f)
-                                    (while (!= (-> self rbody lin-momentum-damping-factor) 'release)
-                                      (suspend)
-                                      )
-                                    (set! (-> self rbody lin-momentum-damping-factor) (the-as float #f))
-                                    (camera-change-to (the-as string 'base) 0 #f)
-                                    (none)
-                                    )
-                                  )
-                                (-> gp-0 ppointer)
-                                )
-                              )
-            )
-      )
+    (set! (-> self cam-tracker)
+          (ppointer->handle (process-new camera-tracker camera-tracker-init
+                                         (lambda :behavior fishermans-boat
+                                           ()
+                                           (camera-change-to "camera-282" 0 #f)
+                                           (while (!= (-> self rbody lin-momentum-damping-factor) 'release)
+                                             (suspend)
+                                             )
+                                           (set! (-> self rbody lin-momentum-damping-factor) (the-as float #f))
+                                           (camera-change-to (the-as string 'base) 0 #f)
+                                           (none)
+                                           )
+                                         :to self
+                                         )
+                            )
+          )
     (send-event (handle->process (-> self cam-tracker)) 'border #t)
     (send-event (handle->process (-> self cam-tracker)) 'mask #x20800)
     (fishermans-boat-set-path-point 0)
@@ -1264,31 +1255,22 @@
     )
   :code
   (behavior ()
-    (let ((gp-0 (get-process *default-dead-pool* camera-tracker #x4000)))
-      (set! (-> self cam-tracker)
-            (ppointer->handle (when gp-0
-                                (let ((t9-1 (method-of-type camera-tracker activate)))
-                                  (t9-1 (the-as camera-tracker gp-0) self 'camera-tracker (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process
-                                  gp-0
-                                  camera-tracker-init
-                                  (lambda :behavior fishermans-boat
-                                    ()
-                                    (camera-change-to "camera-287" 0 #f)
-                                    (while (!= (-> self rbody lin-momentum-damping-factor) 'release)
-                                      (suspend)
-                                      )
-                                    (set! (-> self rbody lin-momentum-damping-factor) (the-as float #f))
-                                    (camera-change-to (the-as string 'base) 0 #f)
-                                    (none)
-                                    )
-                                  )
-                                (-> gp-0 ppointer)
-                                )
-                              )
-            )
-      )
+    (set! (-> self cam-tracker)
+          (ppointer->handle (process-new camera-tracker camera-tracker-init
+                                         (lambda :behavior fishermans-boat
+                                           ()
+                                           (camera-change-to "camera-287" 0 #f)
+                                           (while (!= (-> self rbody lin-momentum-damping-factor) 'release)
+                                             (suspend)
+                                             )
+                                           (set! (-> self rbody lin-momentum-damping-factor) (the-as float #f))
+                                           (camera-change-to (the-as string 'base) 0 #f)
+                                           (none)
+                                           )
+                                         :to self
+                                         )
+                            )
+          )
     (send-event (handle->process (-> self cam-tracker)) 'border #t)
     (send-event (handle->process (-> self cam-tracker)) 'mask #x20800)
     (fishermans-boat-set-path-point 4)
@@ -1763,19 +1745,11 @@
            (when (= (level-status *level* 'intro) 'active)
              (let ((gp-1 (entity-by-name "evilbro-2")))
                (when gp-1
-                 (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
-                   (set! (-> self evilbro)
-                         (ppointer->handle
-                           (when s5-0
-                             (let ((t9-3 (method-of-type manipy activate)))
-                               (t9-3 (the-as manipy s5-0) self 'manipy (the-as pointer #x70004000))
-                               )
-                             (run-now-in-process s5-0 manipy-init (-> self root-overlay trans) gp-1 *fb-evilbro-sg* #f)
-                             (-> s5-0 ppointer)
-                             )
-                           )
+                 (set! (-> self evilbro)
+                       (ppointer->handle
+                         (process-new manipy manipy-init (-> self root-overlay trans) gp-1 *fb-evilbro-sg* #f :to self)
                          )
-                   )
+                       )
                  (send-event (handle->process (-> self evilbro)) 'anim-mode 'clone-anim)
                  (send-event (handle->process (-> self evilbro)) 'blend-shape #t)
                  (send-event (handle->process (-> self evilbro)) 'center-joint 3)
@@ -1783,19 +1757,11 @@
                )
              (let ((gp-2 (entity-by-name "evilsis-2")))
                (when gp-2
-                 (let ((s5-1 (get-process *default-dead-pool* manipy #x4000)))
-                   (set! (-> self evilsis)
-                         (ppointer->handle
-                           (when s5-1
-                             (let ((t9-10 (method-of-type manipy activate)))
-                               (t9-10 (the-as manipy s5-1) self 'manipy (the-as pointer #x70004000))
-                               )
-                             (run-now-in-process s5-1 manipy-init (-> self root-overlay trans) gp-2 *fb-evilsis-sg* #f)
-                             (-> s5-1 ppointer)
-                             )
-                           )
+                 (set! (-> self evilsis)
+                       (ppointer->handle
+                         (process-new manipy manipy-init (-> self root-overlay trans) gp-2 *fb-evilsis-sg* #f :to self)
                          )
-                   )
+                       )
                  (send-event (handle->process (-> self evilsis)) 'anim-mode 'clone-anim)
                  (send-event (handle->process (-> self evilsis)) 'blend-shape #t)
                  (send-event (handle->process (-> self evilsis)) 'center-joint 3)

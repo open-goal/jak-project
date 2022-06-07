@@ -65,38 +65,29 @@
 ;; definition for function misty-camera-view
 ;; INFO: Return type mismatch int vs none.
 (defbehavior misty-camera-view silostep ()
-  (let ((gp-0 (get-process *default-dead-pool* camera-tracker #x4000)))
-    (set! (-> self cam-tracker)
-          (ppointer->handle (when gp-0
-                              (let ((t9-1 (method-of-type camera-tracker activate)))
-                                (t9-1 (the-as camera-tracker gp-0) self 'camera-tracker (the-as pointer #x70004000))
-                                )
-                              (run-now-in-process
-                                gp-0
-                                camera-tracker-init
-                                (lambda :behavior camera-tracker
-                                  ()
-                                  (while (not (process-grab? *target*))
-                                    (suspend)
-                                    )
-                                  (camera-change-to "camera-160" 150 #f)
-                                  (let ((gp-0 (-> *display* base-frame-counter)))
-                                    (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 3))
-                                      (suspend)
-                                      )
-                                    )
-                                  (while (not (process-release? (handle->process (-> self grab-target))))
-                                    (suspend)
-                                    )
-                                  (camera-change-to (the-as string 'base) 150 #f)
-                                  (none)
-                                  )
-                                )
-                              (-> gp-0 ppointer)
-                              )
-                            )
-          )
-    )
+  (set! (-> self cam-tracker)
+        (ppointer->handle (process-new camera-tracker camera-tracker-init
+                                       (lambda :behavior camera-tracker
+                                         ()
+                                         (while (not (process-grab? *target*))
+                                           (suspend)
+                                           )
+                                         (camera-change-to "camera-160" 150 #f)
+                                         (let ((gp-0 (-> *display* base-frame-counter)))
+                                           (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 3))
+                                             (suspend)
+                                             )
+                                           )
+                                         (while (not (process-release? (handle->process (-> self grab-target))))
+                                           (suspend)
+                                           )
+                                         (camera-change-to (the-as string 'base) 150 #f)
+                                         (none)
+                                         )
+                                       :to self
+                                       )
+                          )
+        )
   (none)
   )
 

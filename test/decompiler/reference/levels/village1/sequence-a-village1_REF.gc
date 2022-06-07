@@ -245,19 +245,11 @@
     (send-event *camera* 'force-blend 0)
     (send-event *camera* 'change-state cam-fixed 0)
     (send-event *target* 'sidekick #f)
-    (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
-      (set! (-> obj boat)
-            (ppointer->handle
-              (when s5-0
-                (let ((t9-6 (method-of-type manipy activate)))
-                  (t9-6 (the-as manipy s5-0) obj 'manipy (the-as pointer #x70004000))
-                  )
-                (run-now-in-process s5-0 manipy-init (-> obj root-override trans) (-> obj entity) *fishermans-boat-sg* #f)
-                (-> s5-0 ppointer)
-                )
-              )
+    (set! (-> obj boat)
+          (ppointer->handle
+            (process-new manipy manipy-init (-> obj root-override trans) (-> obj entity) *fishermans-boat-sg* #f :to obj)
             )
-      )
+          )
     (send-event (handle->process (-> obj boat)) 'anim-mode 'clone-anim)
     (send-event (handle->process (-> obj boat)) 'origin-joint-index 3)
     )
@@ -308,19 +300,11 @@
          (let ((gp-1 (entity-by-name "sequenceA-1")))
            (when gp-1
              (format 0 "found entity for sidekick-human~%")
-             (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
-               (set! (-> self side)
-                     (ppointer->handle
-                       (when s5-0
-                         (let ((t9-5 (method-of-type manipy activate)))
-                           (t9-5 (the-as manipy s5-0) self 'manipy (the-as pointer #x70004000))
-                           )
-                         (run-now-in-process s5-0 manipy-init (-> self root-override trans) gp-1 *sidekick-human-sg* #f)
-                         (-> s5-0 ppointer)
-                         )
-                       )
+             (set! (-> self side)
+                   (ppointer->handle
+                     (process-new manipy manipy-init (-> self root-override trans) gp-1 *sidekick-human-sg* #f :to self)
                      )
-               )
+                   )
              (send-event (handle->process (-> self side)) 'anim-mode 'clone-anim)
              (send-event (handle->process (-> self side)) 'center-joint 3)
              (send-event (handle->process (-> self side)) 'blend-shape #t)

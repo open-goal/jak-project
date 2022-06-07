@@ -420,6 +420,8 @@ class SetFormFormElement : public FormElement {
   const Form* dst() const { return m_dst; }
   Form* src() { return m_src; }
   Form* dst() { return m_dst; }
+  const std::optional<TypeSpec>& cast_for_set() const { return m_cast_for_set; }
+  const std::optional<TypeSpec>& cast_for_define() const { return m_cast_for_define; }
 
  private:
   int m_real_push_count = 0;
@@ -1096,6 +1098,7 @@ class CastElement : public FormElement {
   const Form* source() const { return m_source; }
   void set_type(const TypeSpec& ts) { m_type = ts; }
   Form* source() { return m_source; }
+  bool numeric() const { return m_numeric; }
 
  private:
   TypeSpec m_type;

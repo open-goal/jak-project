@@ -1567,23 +1567,14 @@
     (send-event (ppointer->process (-> *hud-parts* money)) 'disable)
     (send-event (ppointer->process (-> *hud-parts* money)) 'hide)
     (race-time-read (-> self record-time) 1 (-> self tasks) (seconds 45))
-    (let ((gp-0 (get-process *default-dead-pool* rolling-start #x4000)))
-      (set! (-> self end-banner)
-            (ppointer->handle (when gp-0
-                                (let ((t9-7 (method-of-type rolling-start activate)))
-                                  (t9-7 (the-as rolling-start gp-0) self 'rolling-start (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process
-                                  gp-0
-                                  rolling-start-init-by-other
-                                  (new 'static 'vector :x -86016.0 :y 112640.0 :z -6309888.0)
-                                  16384.0
-                                  )
-                                (-> gp-0 ppointer)
-                                )
-                              )
-            )
-      )
+    (set! (-> self end-banner)
+          (ppointer->handle (process-new rolling-start rolling-start-init-by-other
+                                         (new 'static 'vector :x -86016.0 :y 112640.0 :z -6309888.0)
+                                         16384.0
+                                         :to self
+                                         )
+                            )
+          )
     (let ((gp-1 (get-process *default-dead-pool* gorge-finish #x4000)))
       (when gp-1
         (let ((t9-10 (method-of-type gorge-finish activate)))

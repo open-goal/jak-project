@@ -1044,27 +1044,19 @@
                               s5-0
                               )
                           )
-                    (s5-1 (get-process *default-dead-pool* part-tracker #x4000))
                     )
-               (when s5-1
-                 (let ((t9-3 (method-of-type part-tracker activate)))
-                   (t9-3 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process
-                   s5-1
-                   part-tracker-init
-                   (-> *part-group-id-table* 287)
-                   150
-                   #f
-                   #f
-                   #f
-                   (if gp-0
-                       (-> (the-as process-drawable gp-0) root trans)
-                       (-> self root-override trans)
-                       )
-                   )
-                 (-> s5-1 ppointer)
-                 )
+               (process-new part-tracker part-tracker-init
+                            (-> *part-group-id-table* 287)
+                            150
+                            #f
+                            #f
+                            #f
+                            (if gp-0
+                                (-> (the-as process-drawable gp-0) root trans)
+                                (-> self root-override trans)
+                                )
+                            :to *entity-pool*
+                            )
                )
              )
            )
@@ -1931,20 +1923,11 @@
   (let ((s5-2 (entity-actor-count (-> obj entity) 'alt-actor)))
     (dotimes (s4-1 s5-2)
       (let ((s3-1 (entity-actor-lookup (-> obj entity) 'alt-actor s4-1)))
-        (when s3-1
-          (let ((s2-0 (get-process *default-dead-pool* swamp-rope #x4000)))
+        (if s3-1
             (set! (-> obj the-ropes s4-1)
-                  (ppointer->handle (when s2-0
-                                      (let ((t9-19 (method-of-type swamp-rope activate)))
-                                        (t9-19 (the-as swamp-rope s2-0) obj 'swamp-rope (the-as pointer #x70004000))
-                                        )
-                                      (run-now-in-process s2-0 swamp-rope-init-by-other (-> obj trans-at-init) s3-1)
-                                      (-> s2-0 ppointer)
-                                      )
-                                    )
+                  (ppointer->handle (process-new swamp-rope swamp-rope-init-by-other (-> obj trans-at-init) s3-1 :to obj))
                   )
             )
-          )
         )
       )
     )

@@ -237,20 +237,16 @@
     (set! (-> self racer surface-y) (-> self control trans y))
     (let ((s5-0 (-> self entity)))
       (set! (-> self entity) (-> self racer entity))
-      (let ((s4-0 (get-process *8k-dead-pool* manipy #x4000)))
-        (set! (-> self manipy)
-              (the-as
-                (pointer manipy)
-                (when s4-0
-                  (let ((t9-9 (method-of-type manipy activate)))
-                    (t9-9 (the-as manipy s4-0) self 'manipy (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process s4-0 manipy-init (-> self control trans) (-> self entity) *racer-sg* #f)
-                  (-> s4-0 ppointer)
-                  )
-                )
-              )
-        )
+      (set! (-> self manipy) (the-as (pointer manipy) (process-new manipy manipy-init
+                                                                   (-> self control trans)
+                                                                   (-> self entity)
+                                                                   *racer-sg*
+                                                                   #f
+                                                                   :from *8k-dead-pool*
+                                                                   :to self
+                                                                   )
+                                     )
+            )
       (set! (-> self entity) s5-0)
       )
     (when (-> self manipy)
@@ -995,45 +991,36 @@
                (vector-normalize! (-> gp-0 fountain-rand-transv-lo) (* 12288.0 f30-0))
                )
              (vector+! (-> gp-0 fountain-rand-transv-lo) (-> gp-0 fountain-rand-transv-lo) (-> s5-0 0 control trans))
-             (let ((s5-1 (get-process *default-dead-pool* joint-exploder #x4000)))
-               (when s5-1
-                 (let ((t9-5 (method-of-type joint-exploder activate)))
-                   (t9-5 (the-as joint-exploder s5-1) self 'joint-exploder (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process
-                   s5-1
-                   joint-exploder-init-by-other
-                   *racer-explode-sg*
-                   24
-                   gp-0
-                   (new 'static 'joint-exploder-static-params
-                     :joints
-                     (new
-                       'static
-                       'boxed-array
-                       :type joint-exploder-static-joint-params :length 16 :allocated-length 16
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 17 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 18 :parent-joint-index -1)
-                       )
-                     )
-                   )
-                 (-> s5-1 ppointer)
-                 )
-               )
+             (process-new joint-exploder joint-exploder-init-by-other
+                          *racer-explode-sg*
+                          24
+                          gp-0
+                          (new 'static 'joint-exploder-static-params
+                            :joints
+                            (new
+                              'static
+                              'boxed-array
+                              :type joint-exploder-static-joint-params :length 16 :allocated-length 16
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 17 :parent-joint-index -1)
+                              (new 'static 'joint-exploder-static-joint-params :joint-index 18 :parent-joint-index -1)
+                              )
+                            )
+                          :to self
+                          )
              )
            )
          )
@@ -1241,38 +1228,16 @@
                 (= (-> *target* current-level name) 'firecanyon)
                 (= (-> *target* current-level name) 'citadel)
                 )
-        (let ((gp-3 (get-process *default-dead-pool* hud-bike-heat #x4000)))
-          (set! (-> *hud-parts* bike-heat)
-                (the-as
-                  (pointer hud-bike-heat)
-                  (when gp-3
-                    (let ((t9-23 (method-of-type hud-bike-heat activate)))
-                      (t9-23 (the-as hud-bike-heat gp-3) self 'hud-bike-heat (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process gp-3 hud-init-by-other 0)
-                    (-> gp-3 ppointer)
-                    )
-                  )
-                )
-          )
+        (set! (-> *hud-parts* bike-heat)
+              (the-as (pointer hud-bike-heat) (process-new hud-bike-heat hud-init-by-other 0 :to self))
+              )
         (set! (-> *hud-parts* buzzers 0 next-y-offset) -120)
         (set! (-> *hud-parts* buzzers 0 y-sgn) 0)
         0
         )
-      (let ((gp-4 (get-process *default-dead-pool* hud-bike-speed #x4000)))
-        (set! (-> *hud-parts* bike-speed)
-              (the-as
-                (pointer hud-bike-speed)
-                (when gp-4
-                  (let ((t9-26 (method-of-type hud-bike-speed activate)))
-                    (t9-26 (the-as hud-bike-speed gp-4) self 'hud-bike-speed (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process gp-4 hud-init-by-other 0)
-                  (-> gp-4 ppointer)
-                  )
-                )
-              )
-        )
+      (set! (-> *hud-parts* bike-speed)
+            (the-as (pointer hud-bike-speed) (process-new hud-bike-speed hud-init-by-other 0 :to self))
+            )
       (set! (-> *hud-parts* power 0 next-y-offset) -120)
       (set! (-> *hud-parts* power 0 y-sgn) 0)
       0

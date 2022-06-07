@@ -37,11 +37,14 @@ class Matcher {
   static Matcher reg(Register reg);
   static inline Matcher s6() { return Matcher::reg(Register(Reg::GPR, Reg::S6)); }
   static Matcher op(const GenericOpMatcher& op, const std::vector<Matcher>& args);
+  static Matcher func(const Matcher& match, const std::vector<Matcher>& args);
+  static Matcher func(const std::string& name, const std::vector<Matcher>& args);
   static Matcher op_fixed(FixedOperatorKind op, const std::vector<Matcher>& args);
   static Matcher op_with_rest(const GenericOpMatcher& op, const std::vector<Matcher>& args);
+  static Matcher func_with_rest(const Matcher& match, const std::vector<Matcher>& args);
+  static Matcher func_with_rest(const std::string& name, const std::vector<Matcher>& args);
   static Matcher set(const Matcher& dst, const Matcher& src);    // form-form
   static Matcher set_var(const Matcher& src, int dst_match_id);  // var-form
-  static Matcher fixed_op(FixedOperatorKind op, const std::vector<Matcher>& args);
   static Matcher match_or(const std::vector<Matcher>& args);
   static Matcher cast(const std::string& type, Matcher value);
   static Matcher any(int match_id = -1);

@@ -264,19 +264,11 @@
   (set! (-> self vulnerable) arg0)
   (let ((gp-0 (new 'stack 'sphere)))
     (set! (-> gp-0 w) 4096.0)
-    (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
-      (set! (-> self shot-attractor)
-            (ppointer->handle
-              (when s5-0
-                (let ((t9-2 (method-of-type manipy activate)))
-                  (t9-2 (the-as manipy s5-0) self 'manipy (the-as pointer #x70004000))
-                  )
-                (run-now-in-process s5-0 manipy-init (-> self root-override trans) (-> self entity) *redring-sg* gp-0)
-                (-> s5-0 ppointer)
-                )
-              )
+    (set! (-> self shot-attractor)
+          (ppointer->handle
+            (process-new manipy manipy-init (-> self root-override trans) (-> self entity) *redring-sg* gp-0 :to self)
             )
-      )
+          )
     )
   (send-event (handle->process (-> self shot-attractor)) 'attackable #t)
   (send-event (handle->process (-> self shot-attractor)) 'draw #f)
@@ -388,15 +380,15 @@
           )
         )
       )
-    (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when s5-1
-        (let ((t9-5 (method-of-type part-tracker activate)))
-          (t9-5 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 638) 300 #f #f #f gp-0)
-        (-> s5-1 ppointer)
-        )
-      )
+    (process-new part-tracker part-tracker-init
+                 (-> *part-group-id-table* 638)
+                 300
+                 #f
+                 #f
+                 #f
+                 gp-0
+                 :to *entity-pool*
+                 )
     )
   )
 
@@ -717,19 +709,11 @@
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (set! (-> gp-0 quad) (-> self entity extra trans quad))
         (set! (-> gp-0 y) (+ 81920.0 (-> gp-0 y)))
-        (let ((s5-0 (get-process *default-dead-pool* light-eco-mother #x4000)))
-          (set! (-> self white-eco)
-                (ppointer->handle
-                  (when s5-0
-                    (let ((t9-2 (method-of-type light-eco-mother activate)))
-                      (t9-2 (the-as light-eco-mother s5-0) self 'light-eco-mother (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process s5-0 light-eco-mother-init-by-other (-> self entity) gp-0)
-                    (-> s5-0 ppointer)
-                    )
-                  )
+        (set! (-> self white-eco)
+              (ppointer->handle
+                (process-new light-eco-mother light-eco-mother-init-by-other (-> self entity) gp-0 :to self)
                 )
-          )
+              )
         )
       )
     (none)

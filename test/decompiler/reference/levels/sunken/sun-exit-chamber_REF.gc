@@ -1346,35 +1346,23 @@
              )
             )
           )
-        (let ((s0-1 (get-process *default-dead-pool* sun-iris-door #x4000)))
-          (set! (-> obj door)
-                (the-as
-                  (pointer sun-iris-door)
-                  (when s0-1
-                    (let ((t9-23 (method-of-type sun-iris-door activate)))
-                      (t9-23 (the-as sun-iris-door s0-1) obj 'sun-iris-door (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process s0-1 sun-iris-door-init-by-other (-> s3-1 vector) (-> s3-1 vector 1) s1-3)
-                    (-> s0-1 ppointer)
-                    )
-                  )
-                )
-          )
-        )
-      (let ((s1-4 (get-process *default-dead-pool* exit-chamber-button #x4000)))
-        (set! (-> obj button)
+        (set! (-> obj door)
               (the-as
-                (pointer exit-chamber-button)
-                (when s1-4
-                  (let ((t9-26 (method-of-type exit-chamber-button activate)))
-                    (t9-26 (the-as exit-chamber-button s1-4) obj 'exit-chamber-button (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process s1-4 exit-chamber-button-init-by-other (-> s3-1 vector 2) (-> s3-1 vector 3) arg0 #f)
-                  (-> s1-4 ppointer)
-                  )
+                (pointer sun-iris-door)
+                (process-new sun-iris-door sun-iris-door-init-by-other (-> s3-1 vector) (-> s3-1 vector 1) s1-3 :to obj)
                 )
               )
         )
+      (set! (-> obj button)
+            (the-as (pointer exit-chamber-button) (process-new exit-chamber-button exit-chamber-button-init-by-other
+                                                               (-> s3-1 vector 2)
+                                                               (-> s3-1 vector 3)
+                                                               arg0
+                                                               #f
+                                                               :to obj
+                                                               )
+                    )
+            )
       (set! (-> obj sound) (new
                              'process
                              'ambient-sound

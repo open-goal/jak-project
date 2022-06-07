@@ -198,9 +198,9 @@ void break_list(Node* node) {
   node->top_line_count = 1;
 
   const std::unordered_set<std::string> sameline_splitters = {
-      "if",     "<",  ">",  "<=",       ">=",  "set!",  "=",       "!=",     "+",
-      "-",      "*",  "/",  "the",      "->",  "and",   "or",      "logand", "logior",
-      "logxor", "+!", "*!", "logtest?", "not", "zero?", "nonzero?"};
+      "if",     "<",  ">",  "<=",       ">=",  "set!",  "=",        "!=",     "+",
+      "-",      "*",  "/",  "the",      "->",  "and",   "or",       "logand", "logior",
+      "logxor", "+!", "*!", "logtest?", "not", "zero?", "nonzero?", "ja",     "ja-no-eval"};
 
   if (node->child_nodes.at(0).kind == Node::Kind::LIST) {
     // ((foo
@@ -215,9 +215,9 @@ void break_list(Node* node) {
       // things with 5 things in the top line: (defskelgroup <name> <art> jgeo janim
       node->top_line_count = 5;
       node->sub_elt_indent += name.size();
-    } else if (name == "ja" || name == "ja-no-eval") {
-      // things with 2 things in the top line: (ja <:key value>
-      node->top_line_count = 2;
+    } else if (name == "process-new") {
+      // things with 3 things in the top line
+      node->top_line_count = 3;
       node->sub_elt_indent += name.size();
     } else if (name == "defmethod") {
       // things with 4 things in the top line: (defmethod <method> <type> <args>

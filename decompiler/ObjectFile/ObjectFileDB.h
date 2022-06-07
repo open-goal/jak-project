@@ -62,10 +62,31 @@ struct LetRewriteStats {
   int set_vector = 0;
   int set_vector2 = 0;
   int send_event = 0;
+  int font_context_meth = 0;
+  int proc_new = 0;
 
   int total() const {
     return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
-           set_vector + set_vector2 + send_event;
+           set_vector + set_vector2 + send_event + font_context_meth + proc_new;
+  }
+
+  std::string print() const {
+    std::string out;
+    out += fmt::format("LET REWRITE STATS: {} total\n", total());
+    out += fmt::format("  dotimes: {}\n", dotimes);
+    out += fmt::format("  countdown: {}\n", countdown);
+    out += fmt::format("  abs: {}\n", abs);
+    out += fmt::format("  abs2: {}\n", abs2);
+    out += fmt::format("  ja: {}\n", ja);
+    out += fmt::format("  set_vector: {}\n", set_vector);
+    out += fmt::format("  set_vector2: {}\n", set_vector2);
+    out += fmt::format("  case_no_else: {}\n", case_no_else);
+    out += fmt::format("  case_with_else: {}\n", case_with_else);
+    out += fmt::format("  unused: {}\n", unused);
+    out += fmt::format("  send_event: {}\n", send_event);
+    // out += fmt::format("  font_context_meth: {}\n", font_context_meth);
+    out += fmt::format("  proc_new: {}\n", proc_new);
+    return out;
   }
 };
 
