@@ -1195,7 +1195,7 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
 }
 
 FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
-  // this function checks for the process-new macros.
+  // this function checks for the process-spawn macros.
   // it uses recursive form scanning to wrap the macro inside a potential "shell"
   // which means this is probably slow and bad
 
@@ -1303,7 +1303,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
 
         return pool.form<GenericElement>(
             GenericOperator::make_function(pool.form<ConstantTokenElement>(
-                is_next_time ? "process-new-function" : "process-new")),
+                is_next_time ? "process-spawn-function" : "process-spawn")),
             args);
       },
       &cast_type);
