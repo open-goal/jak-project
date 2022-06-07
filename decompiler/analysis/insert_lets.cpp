@@ -1291,7 +1291,12 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
         if (!mr_ac_call.maps.forms.at(0)->to_form(env).is_symbol("*default-pool*")) {
           ja_push_form_to_args(env, pool, args, mr_ac_call.maps.forms.at(0), "to");
         }
-        if (mr_ac_call.maps.forms.at(2)->to_string(env) != "(the-as pointer #x70004000)") {
+        auto stack_arg = mr_ac_call.maps.forms.at(2)->to_string(env);
+        if (stack_arg == "(&-> *dram-stack* 14336)") {
+          // special case!
+          ja_push_form_to_args(env, pool, args,
+                               pool.form<ConstantTokenElement>("*kernel-dram-stack*"), "stack");
+        } else if (stack_arg != "(the-as pointer #x70004000)") {
           ja_push_form_to_args(env, pool, args, mr_ac_call.maps.forms.at(2), "stack");
         }
         if (!mr_get_proc.maps.forms.at(2)->to_form(env).is_int(0x4000)) {
