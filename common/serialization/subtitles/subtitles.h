@@ -127,7 +127,8 @@ class GameSubtitleSceneInfo {
   int m_id;
   std::vector<SubtitleLine> m_lines;
   SubtitleSceneKind m_kind;
-  std::optional<std::string> m_sorting_group;
+  std::string m_sorting_group;
+  int m_sorting_group_idx;
 };
 
 /*!
@@ -152,6 +153,22 @@ class GameSubtitleBank {
   std::map<std::string, GameSubtitleSceneInfo> m_scenes;
 };
 
+class GameSubtitleGroups {
+ public:
+  std::vector<std::string> m_group_order;
+  std::map<std::string, std::vector<std::string>> m_groups;
+
+  void hydrate_from_asset_file();
+  std::string find_group(const std::string scene_name);
+  int find_group_index(const std::string group_name);
+  void remove_scene(const std::string group_name, const std::string scene_name);
+  void add_scene(const std::string group_name, const std::string scene_name);
+
+  std::string group_order_key = "_groups";
+  std::string uncategorized_group = "uncategorized";
+};
+
+
 /*!
  * The subtitles database contains a subtitles bank for each language.
  * Each subtitles bank contains a series of subtitle scene infos.
@@ -175,6 +192,7 @@ class GameSubtitleDB {
   }
 
   std::map<int, std::shared_ptr<GameSubtitleBank>> m_banks;
+  std::unique_ptr<GameSubtitleGroups> m_subtitle_groups;
 };
 
 // TODO add docstrings

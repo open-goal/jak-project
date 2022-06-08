@@ -4,6 +4,7 @@
 #include <optional>
 #include <common/nrepl/ReplClient.h>
 #include <third-party/imgui/imgui.h>
+#include <string_view>
 
 class SubtitleEditorDB {
  public:
@@ -18,10 +19,7 @@ class SubtitleEditorDB {
 };
 
 // TODO List:
-// - validation on inputs
-// - add metadata for groups (can use groups in my output!)
 // - create a deserializer to update the file
-// - dropdown to change sorting group
 
 // TODO Later:
 // - Hints, these seem less annoying but there are a lot of them
@@ -35,7 +33,8 @@ class SubtitleEditor {
   void draw_edit_options();
   void draw_repl_options();
 
-  void draw_all_cutscenes(bool base_cutscenes = false);
+  void draw_all_cutscene_groups();
+  void draw_all_scenes(std::string group_name, bool base_cutscenes = false);
   void draw_current_cutscene();
 
   GameSubtitleDB m_subtitle_db;
@@ -45,7 +44,6 @@ class SubtitleEditor {
   std::string m_filter_hints;
 
   ReplClient m_repl;
-  bool m_repl_connected;
 
   int m_current_scene_frame = 0;
   std::string m_current_scene_text = "";
@@ -54,6 +52,8 @@ class SubtitleEditor {
 
   std::string m_new_scene_name = "";
   std::string m_new_scene_group = "";
+
+  std::string m_new_scene_group_name = "";
 
   std::string m_filter_placeholder = "Filter List...";
 

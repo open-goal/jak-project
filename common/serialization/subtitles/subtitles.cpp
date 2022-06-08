@@ -3,6 +3,7 @@
 #include "common/goos/Reader.h"
 #include <common/util/FileUtil.h>
 #include "third-party/fmt/core.h"
+#include <common/util/json_util.h>
 
 static const std::unordered_map<std::string, GameTextVersion> s_text_ver_enum_map = {
     {"jak1-v1", GameTextVersion::JAK1_V1}};
@@ -211,13 +212,16 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
           id = head.as_int();
         }
         scene.set_id(id);
+        scene.m_sorting_group = db.m_subtitle_groups->find_group(scene.name());
+        scene.m_sorting_group_idx = db.m_subtitle_groups->find_group_index(scene.m_sorting_group);
 
         for_each_in_list(entries, [&](const goos::Object& entry) {
           if (entry.is_pair()) {
             // expected formats:
             // (time <args>)
             // all arguments have default values. the arguments are:
-            // "speaker" "line" - two strings. one for the speaker's name and one for the actual
+            // "speaker" "line" - two strings. one for the speaker's name and one for the
+            // actual
             //                    line. speaker can be empty. default is just empty string.
             // :offscreen - speaker is offscreen. default is not offscreen.
 
@@ -239,7 +243,8 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
                 }
               } else if (speaker && !line) {
                 throw std::runtime_error(
-                    "Invalid object in subtitle entry, expecting actual line string after speaker");
+                    "Invalid object in subtitle entry, expecting actual line string after "
+                    "speaker");
               } else if (arg.is_symbol()) {
                 if (scene.kind() == SubtitleSceneKind::Movie &&
                     arg.as_symbol()->name == ":offscreen") {
@@ -279,9 +284,65 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
   }
 }
 
+void GameSubtitleGroups::hydrate_from_asset_file() {
+  std::string db_path = (file_util::get_jak_project_dir() / "game" / "assets" / "jak1" /
+                         "subtitle" / "subtitle-groups.json")
+                            .string();
+  auto config_str = file_util::read_text_file(db_path);
+  auto group_data = parse_commented_json(config_str, db_path);
+
+  for (const auto& [key, val] : group_data.items()) {
+    try {
+      if (key == group_order_key) {
+        m_group_order = val.get<std::vector<std::string>>();
+      } else {
+        m_groups[key] = val.get<std::vector<std::string>>();
+      }
+    } catch (std::exception& ex) {
+      fmt::print("Bad subtitle group entry - {} - {}", key, ex.what());
+    }
+  }
+}
+
+std::string GameSubtitleGroups::find_group(const std::string scene_name) {
+  for (auto const& [group, scenes] : m_groups) {
+    for (auto const& name : scenes) {
+      if (name == scene_name) {
+        return group;
+      }
+    }
+  }
+  // Add to the uncategorized group if it wasn't found
+  m_groups[uncategorized_group].push_back(scene_name);
+  return uncategorized_group;
+}
+
+int GameSubtitleGroups::find_group_index(const std::string group_name) {
+  auto it = find(m_group_order.begin(), m_group_order.end(), group_name);
+  if (it != m_group_order.end()) {
+    return it - m_group_order.begin();
+  } else {
+    return m_group_order.size() - 1;
+  }
+}
+
+void GameSubtitleGroups::remove_scene(const std::string group_name, const std::string scene_name) {
+  // TODO - validate group_name
+  m_groups[group_name].erase(
+      std::remove(m_groups[group_name].begin(), m_groups[group_name].end(), scene_name),
+      m_groups[group_name].end());
+}
+void GameSubtitleGroups::add_scene(const std::string group_name, const std::string scene_name) {
+  // TODO - validate group_name
+  // TODO - don't add duplicates
+  m_groups[group_name].push_back(scene_name);
+}
+
 GameSubtitleDB load_subtitle_project() {
   // Load the subtitle files
   GameSubtitleDB db;
+  db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
+  db.m_subtitle_groups->hydrate_from_asset_file();
   goos::Reader reader;
   std::unordered_map<GameTextVersion, std::vector<std::string>> inputs;
   std::string subtitle_project =

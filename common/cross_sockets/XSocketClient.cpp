@@ -19,10 +19,11 @@ XSocketClient::XSocketClient(int _tcp_port) {
 }
 
 XSocketClient::~XSocketClient() {
-  shutdown();
+  disconnect();
+  client_socket = -1;
 }
 
-void XSocketClient::shutdown() {
+void XSocketClient::disconnect() {
   close_socket(client_socket);
 }
 
@@ -31,7 +32,7 @@ bool XSocketClient::connect() {
   client_socket = open_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (client_socket < 0) {
     // TODO - log
-    shutdown();
+    disconnect();
     return false;
   }
 
@@ -43,7 +44,7 @@ bool XSocketClient::connect() {
   int result = connect_socket(client_socket, (sockaddr*)&addr, sizeof(addr));
   if (result == -1) {
     // TODO - log and close
-    shutdown();
+    disconnect();
     return false;
   }
 

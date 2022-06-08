@@ -6,6 +6,7 @@
 #include <common/util/FileUtil.h>
 #include <common/util/json_util.h>
 #include <regex>
+#include <string_view>
 
 SubtitleEditor::SubtitleEditor() : m_repl(8181) {
   std::string db_path = (file_util::get_jak_project_dir() / "game" / "assets" / "jak1" /
@@ -21,7 +22,7 @@ SubtitleEditor::SubtitleEditor() : m_repl(8181) {
       new_entry.process_name = val.at("process_name").get<std::string>();
       new_entry.continue_name = val.at("continue_name").get<std::string>();
       new_entry.move_to = val.at("move_to").get<std::vector<double>>();
-      if (new_entry.move_to.size() != 0 || new_entry.move_to.size() != 3) {
+      if (new_entry.move_to.size() != 0 && new_entry.move_to.size() != 3) {
         fmt::print("Bad subtitle db entry, provide 0 or 3 coordinates for 'move_to' - {}", key);
         continue;
       }
@@ -36,17 +37,15 @@ SubtitleEditor::SubtitleEditor() : m_repl(8181) {
   m_subtitle_db = load_subtitle_project();
   m_filter = m_filter_placeholder;
   m_filter_hints = m_filter_placeholder;
-  m_repl_connected = m_repl.connect();
+  m_repl.connect();
 }
 
 void SubtitleEditor::repl_set_continue_point(const std::string_view& continue_point) {
-  // TODO - check if connected
   m_repl.eval(
       fmt::format("(start 'play (get-continue-by-name *game-info* \"{}\"))", continue_point));
 }
 
 void SubtitleEditor::repl_move_jak(const double x, const double y, const double z) {
-  // TODO - check if connected
   m_repl.eval(
       fmt::format("(move-to-point! (-> *target* control) (new 'static 'vector :x (meters {:.1f}) "
                   ":y (meters {:.1f}) :z (meters {:.1f})))",
@@ -55,7 +54,6 @@ void SubtitleEditor::repl_move_jak(const double x, const double y, const double 
 }
 
 void SubtitleEditor::repl_reset_game() {
-  // TODO - check if connected
   m_repl.eval("(set! (-> *game-info* mode) 'debug)");
   m_repl.eval("(initialize! *game-info* 'game (the-as game-save #f) (the-as string #f))");
 }
@@ -67,7 +65,6 @@ std::string SubtitleEditor::repl_get_process_string(const std::string_view& enti
 }
 
 void SubtitleEditor::repl_execute_cutscene_code(const SubtitleEditorDB::Entry& entry) {
-  // TODO - check if connected
   // Reset the game first to get to a known state
   repl_reset_game();
   // Run any requirements to setup the task state
@@ -99,7 +96,6 @@ void SubtitleEditor::repl_execute_cutscene_code(const SubtitleEditorDB::Entry& e
 }
 
 void SubtitleEditor::repl_rebuild_text() {
-  // TODO - check connected
   m_repl.eval("(make-text)");
   // NOTE - still no clue how this doesn't switch languages lol
   m_repl.eval("(1+! (-> *subtitle-text* lang))");
@@ -111,16 +107,17 @@ bool SubtitleEditor::is_scene_in_current_lang(const std::string& scene_name) {
 
 void SubtitleEditor::draw_window() {
   ImGui::Begin("Subtitle Editor");
+
   draw_edit_options();
   draw_repl_options();
 
   draw_current_cutscene();
 
   if (ImGui::TreeNode("All Cutscenes")) {
-    ImGui::InputText("Filter", &m_filter, ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
     ImGui::InputText("New Scene Name", &m_new_scene_name);
     // TODO - make this a dropdown
     ImGui::InputText("New Scene Group", &m_new_scene_group);
+    ImGui::InputText("Filter", &m_filter, ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
     if (is_scene_in_current_lang(m_new_scene_name)) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
       ImGui::Text("Scene already exists with that name, no!");
@@ -136,17 +133,14 @@ void SubtitleEditor::draw_window() {
         GameSubtitleSceneInfo newScene;
         newScene.m_name = m_new_scene_name;
         newScene.m_kind = SubtitleSceneKind::Movie;
-        newScene.m_id = 0;  // TODO - id is always zero?
-        newScene.m_sorting_group = std::make_optional(m_new_scene_group);
+        newScene.m_id = 0;  // TODO - id is always zero, bug in subtitles.cpp?
+        newScene.m_sorting_group = m_new_scene_group;
         m_subtitle_db.m_banks.at(m_current_language)->add_scene(newScene);
         m_new_scene_name = "";
       }
     }
 
-    draw_all_cutscenes();
-    if (m_base_show_missing_cutscenes) {
-      draw_all_cutscenes(true);
-    }
+    draw_all_cutscene_groups();
     ImGui::TreePop();
   }
 
@@ -161,6 +155,20 @@ void SubtitleEditor::draw_edit_options() {
     ImGui::SameLine();
     ImGui::InputInt("Base language ID", &m_base_language);
     ImGui::Checkbox("Show missing cutscenes from base", &m_base_show_missing_cutscenes);
+    ImGui::InputText("New Subtitle Group Name", &m_new_scene_group_name);
+    if (!m_new_scene_group_name.empty()) {
+      if (m_new_scene_group_name == "_groups" ||
+          std::find(m_subtitle_db.m_subtitle_groups->m_group_order.begin(),
+                    m_subtitle_db.m_subtitle_groups->m_group_order.end(), m_new_scene_group_name) !=
+              m_subtitle_db.m_subtitle_groups->m_group_order.end()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
+        ImGui::Text("Invalid group name, has to be unique and not '_groups'");
+        ImGui::PopStyleColor();
+      } else if (ImGui::Button("Add New Group")) {
+        m_subtitle_db.m_subtitle_groups->m_group_order.push_back(m_new_scene_group_name);
+        m_new_scene_group_name = "";
+      }
+    }
     if (ImGui::Button("Save Changes")) {
       // TODO - deserializer do its thing
       repl_rebuild_text();
@@ -181,32 +189,53 @@ void SubtitleEditor::draw_repl_options() {
     ImGui::Text(" - `(lt)`");
     ImGui::Text(" - `(mi)`");
     ImGui::Text(" - Click Connect Below!");
-    if (m_repl_connected) {
+    if (m_repl.is_connected()) {
       ImGui::Text("REPL Connected, should be good to go!");
     } else {
       if (ImGui::Button("Connect to REPL")) {
-        m_repl_connected = m_repl.connect();
-        // if false, display an error!
+        m_repl.connect();
+        if (!m_repl.is_connected()) {
+          ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
+          ImGui::Text("Could not connect.");
+          ImGui::PopStyleColor();
+        }
       }
     }
     ImGui::TreePop();
   }
 }
 
-void SubtitleEditor::draw_all_cutscenes(bool base_cutscenes) {
-  for (auto& [sceneName, sceneInfo] :
-       m_subtitle_db.m_banks.at(base_cutscenes ? m_base_language : m_current_language)->m_scenes) {
+void SubtitleEditor::draw_all_cutscene_groups() {
+  for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
+    ImGui::SetNextItemOpen(true);
+    if (ImGui::TreeNode(group_name.c_str())) {
+      draw_all_scenes(group_name, false);
+      draw_all_scenes(group_name, true);
+      ImGui::TreePop();
+    }
+  }
+}
+
+void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes) {
+  auto& scenes =
+      m_subtitle_db.m_banks.at(base_cutscenes ? m_base_language : m_current_language)->m_scenes;
+  auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
+  for (auto& scene_name : scenes_in_group) {
+    if (scenes.count(scene_name) == 0) {
+      continue;
+    }
+    auto& scene_info = scenes[scene_name];
     // Don't duplicate entries
-    if (base_cutscenes && is_scene_in_current_lang(sceneName)) {
+    if (base_cutscenes && is_scene_in_current_lang(scene_name)) {
       continue;
     }
     bool is_current_scene =
-        m_current_scene.has_value() && m_current_scene->m_name == sceneInfo.m_name;
-    if (sceneInfo.m_kind != SubtitleSceneKind::Movie) {
+        m_current_scene.has_value() && m_current_scene->m_name == scene_info.m_name;
+    if (scene_info.m_kind != SubtitleSceneKind::Movie) {
       continue;
     }
     if ((!m_filter.empty() && m_filter != m_filter_placeholder) &&
-        sceneName.find(m_filter) == std::string::npos) {
+        scene_name.find(m_filter) == std::string::npos) {
       continue;
     }
     if (!base_cutscenes && is_current_scene) {
@@ -216,24 +245,44 @@ void SubtitleEditor::draw_all_cutscenes(bool base_cutscenes) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
     }
     if (ImGui::TreeNode(
-            fmt::format("{}-{}", sceneName, base_cutscenes ? m_base_language : m_current_language)
+            fmt::format("{}-{}", scene_name, base_cutscenes ? m_base_language : m_current_language)
                 .c_str(),
-            sceneName.c_str())) {
+            scene_name.c_str())) {
       if (base_cutscenes || is_current_scene) {
         ImGui::PopStyleColor();
       }
       if (!base_cutscenes && !is_current_scene) {
         if (ImGui::Button("Select as Current")) {
-          m_current_scene = std::make_optional(sceneInfo);
+          m_current_scene = std::make_optional(scene_info);
         }
       }
       if (base_cutscenes) {
         if (ImGui::Button("Copy from Base Language")) {
-          m_subtitle_db.m_banks.at(m_current_language)->add_scene(sceneInfo);
+          m_subtitle_db.m_banks.at(m_current_language)->add_scene(scene_info);
         }
       }
-      for (int i = 0; i < sceneInfo.m_lines.size(); i++) {
-        auto& subtitleLine = sceneInfo.m_lines.at(i);
+      if (ImGui::BeginCombo("Sorting Group", scene_info.m_sorting_group.c_str())) {
+        for (int i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
+          const bool isSelected = (scene_info.m_sorting_group_idx == i);
+          if (ImGui::Selectable(m_subtitle_db.m_subtitle_groups->m_group_order[i].c_str(),
+                                isSelected)) {
+            // Remove from current group
+            m_subtitle_db.m_subtitle_groups->remove_scene(scene_info.m_sorting_group,
+                                                          scene_info.m_name);
+            // Add to new group
+            scene_info.m_sorting_group_idx = i;
+            scene_info.m_sorting_group = m_subtitle_db.m_subtitle_groups->m_group_order.at(i);
+            m_subtitle_db.m_subtitle_groups->add_scene(scene_info.m_sorting_group,
+                                                       scene_info.m_name);
+          }
+          if (isSelected) {
+            ImGui::SetItemDefaultFocus();
+          }
+        }
+        ImGui::EndCombo();
+      }
+      for (int i = 0; i < scene_info.m_lines.size(); i++) {
+        auto& subtitleLine = scene_info.m_lines.at(i);
         std::string summary;
         if (subtitleLine.line_utf8.empty()) {
           summary = fmt::format("[{}] Clear Screen", subtitleLine.frame);
@@ -277,9 +326,15 @@ void SubtitleEditor::draw_current_cutscene() {
   if (ImGui::TreeNode("Currently Selected Movie")) {
     ImGui::PopStyleColor();
     if (m_current_scene.has_value()) {
-      if (ImGui::Button("Play Scene")) {
-        if (m_db.count(m_current_scene->m_name) == 1) {
-          repl_execute_cutscene_code(m_db[m_current_scene->m_name]);
+      if (m_repl.is_connected()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
+        ImGui::Text("REPL not connected, can't play!");
+        ImGui::PopStyleColor();
+      } else {
+        if (ImGui::Button("Play Scene")) {
+          if (m_db.count(m_current_scene->m_name) == 1) {
+            repl_execute_cutscene_code(m_db[m_current_scene->m_name]);
+          }
         }
       }
       ImGui::SameLine();
@@ -291,17 +346,52 @@ void SubtitleEditor::draw_current_cutscene() {
       ImGui::InputText("Text", &m_current_scene_text);
       ImGui::InputText("Speaker", &m_current_scene_speaker);
       ImGui::Checkbox("Offscreen", &m_current_scene_offscreen);
-      if (ImGui::Button("Add Text Entry")) {
-        // TODO - validation
-        m_current_scene->add_line(m_current_scene_frame, "", m_current_scene_text, "",
-                                  m_current_scene_speaker, m_current_scene_offscreen);
+      bool rendered_text_entry_btn = false;
+      if (m_current_scene_frame < 0 || m_current_scene_text.empty() ||
+          m_current_scene_speaker.empty()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
+        ImGui::Text("Can't add a new text entry with the current fields!");
+        ImGui::PopStyleColor();
+      } else {
+        rendered_text_entry_btn = true;
+        if (ImGui::Button("Add Text Entry")) {
+          m_current_scene->add_line(m_current_scene_frame, "", m_current_scene_text, "",
+                                    m_current_scene_speaker, m_current_scene_offscreen);
+        }
       }
-      ImGui::SameLine();
-      if (ImGui::Button("Add Clear Screen Entry")) {
-        // TODO - validation
-        m_current_scene->add_line(m_current_scene_frame, "", "", "", "", false);
+      if (m_current_scene_frame < 0) {
+        ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
+        ImGui::Text("Can't add a clear screen entry with the current fields!");
+        ImGui::PopStyleColor();
+      } else {
+        if (rendered_text_entry_btn) {
+          ImGui::SameLine();
+          if (ImGui::Button("Add Clear Screen Entry")) {
+            m_current_scene->add_line(m_current_scene_frame, "", "", "", "", false);
+          }
+        }
       }
       ImGui::NewLine();
+      if (ImGui::BeginCombo("Sorting Group", m_current_scene->m_sorting_group.c_str())) {
+        for (int i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
+          const bool isSelected = (m_current_scene->m_sorting_group_idx == i);
+          if (ImGui::Selectable(m_subtitle_db.m_subtitle_groups->m_group_order[i].c_str(),
+                                isSelected)) {
+            // Remove from current group
+            m_subtitle_db.m_subtitle_groups->remove_scene(m_current_scene->m_sorting_group,
+                                                          m_current_scene->m_name);
+            // Add to new group
+            m_current_scene->m_sorting_group_idx = i;
+            m_current_scene->m_sorting_group = m_subtitle_db.m_subtitle_groups->m_group_order.at(i);
+            m_subtitle_db.m_subtitle_groups->add_scene(m_current_scene->m_sorting_group,
+                                                       m_current_scene->m_name);
+          }
+          if (isSelected) {
+            ImGui::SetItemDefaultFocus();
+          }
+        }
+        ImGui::EndCombo();
+      }
       for (int i = 0; i < m_current_scene->m_lines.size(); i++) {
         auto& subtitleLine = m_current_scene->m_lines.at(i);
         std::string summary;

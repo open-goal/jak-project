@@ -17,10 +17,9 @@ class XSocketClient {
   XSocketClient& operator=(const XSocketClient&) = delete;
 
   bool connect();
-  void shutdown();
+  void disconnect();
 
-  //bool ping_server();
-  
+  bool is_connected() { return client_socket = -1; }
 
  protected:
   int tcp_port;
