@@ -49,6 +49,7 @@ int convert_block_to_atomic_ops(int begin_idx,
                                 const std::vector<DecompilerLabel>& labels,
                                 FunctionAtomicOps* container,
                                 DecompWarnings& warnings,
+                                GameVersion version,
                                 bool inline_asm_hint = false,
                                 bool block_ends_in_asm_branch = false);
 
@@ -60,5 +61,6 @@ FunctionAtomicOps convert_function_to_atomic_ops(
     const std::vector<DecompilerLabel>& labels,
     DecompWarnings& warnings,
     bool hint_inline_asm,
-    const std::unordered_set<int>& blocks_ending_in_asm_branches);
+    const std::unordered_set<int>& blocks_ending_in_asm_branches,
+    GameVersion version);
 }  // namespace decompiler

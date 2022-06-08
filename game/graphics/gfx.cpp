@@ -241,7 +241,7 @@ void set_fullscreen(DisplayMode mode, int screen) {
 }
 
 void input_mode_set(u32 enable) {
-  if (enable == s7.offset + FIX_SYM_TRUE) {  // #t
+  if (enable == s7.offset + jak1_symbols::FIX_SYM_TRUE) {  // #t
     Pad::g_input_mode_mapping = g_settings.pad_mapping_info;
     Pad::EnterInputMode();
   } else {

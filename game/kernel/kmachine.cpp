@@ -44,6 +44,7 @@
 
 #include "svnrev.h"
 
+using namespace jak1_symbols;
 using namespace ee;
 
 /*!

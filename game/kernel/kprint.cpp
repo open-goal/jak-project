@@ -24,6 +24,8 @@
 #include "common/symbols.h"
 #include "common/util/Assert.h"
 
+using namespace jak1_symbols;
+
 ///////////
 // SDATA
 ///////////

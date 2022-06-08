@@ -104,6 +104,7 @@ struct Config {
   bool process_art_groups = false;
   bool rip_levels = false;
   bool extract_collision = false;
+  bool find_functions = false;
 
   bool write_hex_near_instructions = false;
   bool hexdump_code = false;

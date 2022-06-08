@@ -25,6 +25,8 @@
 #include "game/mips2c/mips2c_table.h"
 #include "common/util/Assert.h"
 
+using namespace jak1_symbols;
+
 //! Controls link mode when EnableMethodSet = 0, MasterDebug = 1, DiskBoot = 0. Will enable a
 //! warning message if EnableMethodSet = 1
 u32 FastLink;

@@ -508,27 +508,47 @@ void LinkedObjectFile::process_fp_relative_links() {
               case InstructionKind::DADDU:
               case InstructionKind::ADDU: {
                 ASSERT(prev_instr);
-                if (prev_instr->kind != InstructionKind::ORI) {
+                if (prev_instr->kind == InstructionKind::ORI) {
+                  ASSERT(prev_instr->kind == InstructionKind::ORI);
+                  int offset_reg_src_id = instr.kind == InstructionKind::DADDU ? 0 : 1;
+                  auto offset_reg = instr.get_src(offset_reg_src_id).get_reg();
+                  ASSERT(offset_reg == prev_instr->get_dst(0).get_reg());
+                  ASSERT(offset_reg == prev_instr->get_src(0).get_reg());
+                  auto& atom = prev_instr->get_imm_src();
+                  int additional_offset = 0;
+                  if (pprev_instr && pprev_instr->kind == InstructionKind::LUI) {
+                    ASSERT(pprev_instr->get_dst(0).get_reg() == offset_reg);
+                    additional_offset = (1 << 16) * pprev_instr->get_imm_src().get_imm();
+                    pprev_instr->get_imm_src().set_label(
+                        get_label_id_for(seg, current_fp + atom.get_imm() + additional_offset));
+                  }
+                  atom.set_label(
+                      get_label_id_for(seg, current_fp + atom.get_imm() + additional_offset));
+                  stats.n_fp_reg_use_resolved++;
+                } else if (prev_instr->kind == InstructionKind::DADDIU) {
+                  /*
+                   * Jak 2 has a new use of fp to access elements of a static array that looks like
+                   * this:
+                   *     (set! v1 (* idx stride))
+                   *     daddiu v1, v1, 8128
+                   *     daddu v1, v1, fp
+                   */
+                  auto val_plus_off_reg = prev_instr->get_dst(0).get_reg();
+
+                  // it's possible that this isn't always the case, but works for all of jak 2
+                  ASSERT(val_plus_off_reg == prev_instr->get_src(0).get_reg());
+                  ASSERT(val_plus_off_reg == instr.get_src(0).get_reg());
+                  ASSERT(val_plus_off_reg == instr.get_dst(0).get_reg());
+                  auto& atom = prev_instr->get_imm_src();
+                  atom.set_label(get_label_id_for(seg, current_fp + atom.get_imm()));
+
+                  stats.n_fp_reg_use_resolved++;
+                } else {
                   lg::error("Failed to process fp relative links for (d)addu preceded by: {}",
                             prev_instr->to_string(labels));
                   return;
                 }
-                ASSERT(prev_instr->kind == InstructionKind::ORI);
-                int offset_reg_src_id = instr.kind == InstructionKind::DADDU ? 0 : 1;
-                auto offset_reg = instr.get_src(offset_reg_src_id).get_reg();
-                ASSERT(offset_reg == prev_instr->get_dst(0).get_reg());
-                ASSERT(offset_reg == prev_instr->get_src(0).get_reg());
-                auto& atom = prev_instr->get_imm_src();
-                int additional_offset = 0;
-                if (pprev_instr && pprev_instr->kind == InstructionKind::LUI) {
-                  ASSERT(pprev_instr->get_dst(0).get_reg() == offset_reg);
-                  additional_offset = (1 << 16) * pprev_instr->get_imm_src().get_imm();
-                  pprev_instr->get_imm_src().set_label(
-                      get_label_id_for(seg, current_fp + atom.get_imm() + additional_offset));
-                }
-                atom.set_label(
-                    get_label_id_for(seg, current_fp + atom.get_imm() + additional_offset));
-                stats.n_fp_reg_use_resolved++;
+
               } break;
 
               default:

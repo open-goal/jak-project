@@ -11,6 +11,8 @@
 #include "game/kernel/kscheme.h"
 #include "all_jak1_symbols.h"
 
+using namespace jak1_symbols;
+
 TEST(Kernel, strend) {
   char test[] = "test";
   char* end = strend(test);

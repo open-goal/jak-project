@@ -591,12 +591,15 @@ Mips2C_Line handle_generic_op2_u16(const Instruction& i0, const std::string& ins
           instr_str};
 }
 
-Mips2C_Line handle_daddiu(Mips2C_Output& out, const Instruction& i0, const std::string& instr_str) {
+Mips2C_Line handle_daddiu(Mips2C_Output& out,
+                          const Instruction& i0,
+                          const std::string& instr_str,
+                          GameVersion version) {
   if (i0.get_src(1).is_label()) {
     return {instr_str, instr_str};
   } else if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_sym("#t")) {
     return {fmt::format("c->{}({}, {}, {});", i0.op_name_to_string(), reg_to_name(i0.get_dst(0)),
-                        reg_to_name(i0.get_src(0)), FIX_SYM_TRUE),
+                        reg_to_name(i0.get_src(0)), true_symbol_offset(version)),
             instr_str};
   } else if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_sym()) {
     out.require_symbol(i0.get_src(1).get_sym());
@@ -931,7 +934,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
                                 const Instruction& i0,
                                 const std::string& instr_str,
                                 int& unknown_count,
-                                const LinkedObjectFile* file) {
+                                const LinkedObjectFile* file,
+                                GameVersion version) {
   switch (i0.kind) {
     case InstructionKind::CTC2:
       return handle_ctc2(i0, instr_str);
@@ -1073,7 +1077,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::AND:
       return handle_generic_op3(i0, instr_str, "and_");  // and isn't allowed in C++
     case InstructionKind::DADDIU:
-      return handle_daddiu(output, i0, instr_str);
+      return handle_daddiu(output, i0, instr_str, version);
     case InstructionKind::ADDIU:
       return handle_generic_op2_u16(i0, instr_str);
     case InstructionKind::QMTC2:
@@ -1172,7 +1176,9 @@ struct JumpTableBlock {
   bool branch_always = false;  // that branch is always taken?
 };
 
-void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locations) {
+void run_mips2c_jump_table(Function* f,
+                           const std::vector<int>& jump_table_locations,
+                           GameVersion version) {
   fmt::print("mips2c-jump on {}\n", f->name());
   u32 magic_code = std::hash<std::string>()(f->name());
   std::unordered_map<int, int> loc_to_block;
@@ -1212,8 +1218,8 @@ void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locat
           ASSERT(delay_block.end_instr - delay_block.start_instr == 1);  // only 1 instr.
           auto& delay_instr = f->instructions.at(delay_block.start_instr);
           auto delay_instr_str = delay_instr.to_string(file->labels);
-          auto delay_instr_line =
-              handle_normal_instr(output, delay_instr, delay_instr_str, unknown_count, file);
+          auto delay_instr_line = handle_normal_instr(output, delay_instr, delay_instr_str,
+                                                      unknown_count, file, version);
           output.lines.emplace_back(fmt::format("  {}", delay_instr_line.code),
                                     delay_instr_line.comment);
           ASSERT(delay_block.succ_ft == -1);
@@ -1230,7 +1236,7 @@ void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locat
             auto& delay_i = f->instructions.at(i);
             auto delay_i_str = delay_i.to_string(file->labels);
             output.lines.push_back(
-                handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
+                handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file, version));
             ASSERT(i + 1 == block.end_instr);
             // then the goto
             output.lines.emplace_back(fmt::format("next_block = {};", block.succ_branch),
@@ -1246,7 +1252,7 @@ void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locat
             auto& delay_i = f->instructions.at(i);
             auto delay_i_str = delay_i.to_string(file->labels);
             output.lines.push_back(
-                handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
+                handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file, version));
             ASSERT(i + 1 == block.end_instr);
             // then the goto
             output.lines.emplace_back(
@@ -1264,7 +1270,7 @@ void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locat
         auto& delay_i = f->instructions.at(i);
         auto delay_i_str = delay_i.to_string(file->labels);
         output.lines.push_back(
-            handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
+            handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file, version));
 
         // then the goto
         output.lines.emplace_back(fmt::format("goto end_of_function;", block.succ_branch),
@@ -1279,7 +1285,7 @@ void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locat
         auto& delay_i = f->instructions.at(i);
         auto delay_i_str = delay_i.to_string(file->labels);
         output.lines.push_back(
-            handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
+            handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file, version));
         output.lines.emplace_back("c->jalr(call_addr);", instr_str);
       } else if (instr.kind == InstructionKind::JR) {
         // special case for jr's to handle the jump tableing.
@@ -1290,7 +1296,8 @@ void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locat
         output.lines.emplace_back("break;");
 
       } else {
-        output.lines.push_back(handle_normal_instr(output, instr, instr_str, unknown_count, file));
+        output.lines.push_back(
+            handle_normal_instr(output, instr, instr_str, unknown_count, file, version));
       }
 
       ASSERT(output.lines.size() > old_line_count);
@@ -1312,7 +1319,7 @@ void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locat
   }
 }
 
-void run_mips2c(Function* f) {
+void run_mips2c(Function* f, GameVersion version) {
   g_unknown = 0;
   auto* file = f->ir2.env.file;
   std::unordered_set<int> likely_delay_blocks;
@@ -1347,8 +1354,8 @@ void run_mips2c(Function* f) {
           ASSERT(delay_block.end_instr - delay_block.start_instr == 1);  // only 1 instr.
           auto& delay_instr = f->instructions.at(delay_block.start_instr);
           auto delay_instr_str = delay_instr.to_string(file->labels);
-          auto delay_instr_line =
-              handle_normal_instr(output, delay_instr, delay_instr_str, unknown_count, file);
+          auto delay_instr_line = handle_normal_instr(output, delay_instr, delay_instr_str,
+                                                      unknown_count, file, version);
           output.lines.emplace_back(fmt::format("  {}", delay_instr_line.code),
                                     delay_instr_line.comment);
           ASSERT(delay_block.succ_ft == -1);
@@ -1364,7 +1371,7 @@ void run_mips2c(Function* f) {
             auto& delay_i = f->instructions.at(i);
             auto delay_i_str = delay_i.to_string(file->labels);
             output.lines.push_back(
-                handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
+                handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file, version));
             ASSERT(i + 1 == block.end_instr);
             // then the goto
             output.lines.emplace_back(fmt::format("goto block_{};", block.succ_branch),
@@ -1382,7 +1389,7 @@ void run_mips2c(Function* f) {
             auto& delay_i = f->instructions.at(i);
             auto delay_i_str = delay_i.to_string(file->labels);
             output.lines.push_back(
-                handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
+                handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file, version));
             // ASSERT(i + 1 == block.end_instr);
             // then the goto
             output.lines.emplace_back(fmt::format("if (bc) {{goto block_{};}}", block.succ_branch),
@@ -1398,7 +1405,7 @@ void run_mips2c(Function* f) {
         auto& delay_i = f->instructions.at(i);
         auto delay_i_str = delay_i.to_string(file->labels);
         output.lines.push_back(
-            handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
+            handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file, version));
 
         // then the goto
         output.lines.emplace_back(fmt::format("goto end_of_function;", block.succ_branch),
@@ -1413,10 +1420,11 @@ void run_mips2c(Function* f) {
         auto& delay_i = f->instructions.at(i);
         auto delay_i_str = delay_i.to_string(file->labels);
         output.lines.push_back(
-            handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
+            handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file, version));
         output.lines.emplace_back("c->jalr(call_addr);", instr_str);
       } else {
-        output.lines.push_back(handle_normal_instr(output, instr, instr_str, unknown_count, file));
+        output.lines.push_back(
+            handle_normal_instr(output, instr, instr_str, unknown_count, file, version));
       }
 
       ASSERT(output.lines.size() > old_line_count);
