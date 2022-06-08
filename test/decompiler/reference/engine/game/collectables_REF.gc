@@ -431,22 +431,19 @@
 ;; failed to figure out what this is:
 (defstate blocked (eco-collectable)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (task-complete? *game-info* (-> self entity extra perm task))
         (go-virtual wait)
         )
     (none)
     )
-  :code
-  (the-as (function none :behavior eco-collectable) anim-loop)
+  :code (the-as (function none :behavior eco-collectable) anim-loop)
   )
 
 ;; failed to figure out what this is:
 (defstate jump (eco-collectable)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (type-type? (-> self type) fuel-cell)
         (sound-play-by-name (static-sound-name "cell-prize") (new-sound-id) 1024 0 0 1 #t)
         )
@@ -490,8 +487,7 @@
 ;; failed to figure out what this is:
 (defstate wait (eco-collectable)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-3 none))
     (when (and (or (= arg2 'touch) (= arg2 'attack))
                (and (logtest? (-> self flags) (collectable-flags can-collect))
@@ -570,8 +566,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (if (and (logtest? (-> self fact options) (fact-options fop6 can-collect))
              (logtest? (-> self flags) (collectable-flags can-collect))
              (!= (-> self next-state name) 'pickup)
@@ -581,8 +576,7 @@
         )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (cond
       ((logtest? (-> self flags) (collectable-flags trans))
        (vector-v++!
@@ -626,8 +620,7 @@
     (update-transforms! (-> self root-override))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (let ((gp-0 (-> self part))
             (s5-0 (-> self root-override root-prim prim-core))
@@ -668,8 +661,7 @@
 ;; failed to figure out what this is:
 (defstate notice-blue (eco-collectable)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (when (and (or (= arg2 'touch) (= arg2 'attack))
                (and (logtest? (-> self flags) (collectable-flags can-collect))
                     (>= (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self collect-timeout))
@@ -681,8 +673,7 @@
       (go-virtual pickup #f (process->handle arg0))
       )
     )
-  :enter
-  (behavior ((arg0 handle))
+  :enter (behavior ((arg0 handle))
     (set! (-> self target) arg0)
     (set! (-> self speed quad) (the-as uint128 0))
     (set! (-> self speed z) (the-as float (if (rand-vu-percent? (the-as float 0.5))
@@ -695,15 +686,13 @@
     (logclear! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (if (-> self actor-pause)
         (logior! (-> self mask) (process-mask actor-pause))
         )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) self)
       (set! (-> a1-0 num-params) 2)
@@ -716,8 +705,7 @@
       )
     (none)
     )
-  :code
-  (behavior ((arg0 handle))
+  :code (behavior ((arg0 handle))
     (loop
       (set! (-> self root-override trans quad) (-> self base quad))
       (add-blue-motion #t #f #t #f)
@@ -744,8 +732,7 @@
 ;; failed to figure out what this is:
 (defstate pickup (eco-collectable)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as
         object
@@ -784,8 +771,7 @@
         )
       )
     )
-  :enter
-  (behavior ((arg0 object) (arg1 handle))
+  :enter (behavior ((arg0 object) (arg1 handle))
     (set! (-> self pickup-handle) arg1)
     (when (-> self notify-parent)
       (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
@@ -808,8 +794,7 @@
     (logclear! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :code
-  (behavior ((arg0 object) (arg1 handle))
+  :code (behavior ((arg0 object) (arg1 handle))
     (clear-collide-with-as (-> self root-override))
     (if (not (or (= (-> self fact pickup-type) (pickup-type eco-pill))
                  (logtest? (-> self fact options) (fact-options powerup))
@@ -862,8 +847,7 @@
             #f
             #f
             (-> self root-override root-prim prim-core)
-            :to
-            gp-6
+            :to gp-6
             )
           )
       )
@@ -905,8 +889,7 @@
           (process->handle self)
           #f
           (-> self root-override root-prim prim-core)
-          :to
-          self
+          :to self
           )
         )
     (while (-> self child)
@@ -920,8 +903,7 @@
 ;; failed to figure out what this is:
 (defstate die (eco-collectable)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status dead) #t)
     (none)
     )
@@ -962,8 +944,7 @@
 ;; failed to figure out what this is:
 (defstate die (eco)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'fade)
@@ -977,16 +958,14 @@
               )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (if (-> self actor-pause)
         (logior! (-> self mask) (process-mask actor-pause))
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (logclear! (-> self mask) (process-mask actor-pause))
     (logclear! (-> self fact options) (fact-options fop6 can-collect))
@@ -1269,8 +1248,7 @@
 ;; failed to figure out what this is:
 (defstate wait (money)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (quaternion-rotate-y!
         (-> self root-override quat)
@@ -1304,8 +1282,7 @@
 ;; failed to figure out what this is:
 (defstate notice-blue (money)
   :virtual #t
-  :code
-  (behavior ((arg0 handle))
+  :code (behavior ((arg0 handle))
     (loop
       (quaternion-rotate-y!
         (-> self root-override quat)
@@ -1340,8 +1317,7 @@
 ;; failed to figure out what this is:
 (defstate pickup (money)
   :virtual #t
-  :code
-  (behavior ((arg0 object) (arg1 handle))
+  :code (behavior ((arg0 object) (arg1 handle))
     (logclear! (-> self mask) (process-mask actor-pause))
     (clear-collide-with-as (-> self root-override))
     (process-entity-status! self (entity-perm-status dead) #t)
@@ -1603,8 +1579,7 @@
 ;; failed to figure out what this is:
 (defstate wait (fuel-cell)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-3 none))
     (when (and (or (= arg2 'touch) (= arg2 'attack))
                (and (logtest? (-> self flags) (collectable-flags can-collect))
@@ -1664,8 +1639,7 @@
                      )
             )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     0.5
     (let ((f28-0 0.0))
       (ja :group! (-> self draw art-group data 2))
@@ -1697,8 +1671,7 @@
 ;; failed to figure out what this is:
 (defstate pickup (fuel-cell)
   :virtual #t
-  :enter
-  (behavior ((arg0 object) (arg1 handle))
+  :enter (behavior ((arg0 object) (arg1 handle))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self state-object) #t)
     (let ((t9-1 (-> (the-as (state eco-collectable) (find-parent-method fuel-cell 23)) enter)))
@@ -1708,8 +1681,7 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((f30-0 (the-as float (cond
                                  ((string= (-> self victory-anim name) "fuel-cell-victory")
                                   97.0
@@ -1766,8 +1738,7 @@
       )
     (none)
     )
-  :code
-  (behavior ((arg0 object) (arg1 handle))
+  :code (behavior ((arg0 object) (arg1 handle))
     (local-vars (sv-96 res-tag))
     (sound-play-by-name (static-sound-name "pu-powercell") (new-sound-id) 1024 0 0 1 #t)
     (clear-collide-with-as (-> self root-override))
@@ -1803,10 +1774,8 @@
                (-> self entity)
                'movie-pos
                (inline-array vector)
-               :tag-ptr
-               (& sv-96)
-               :time
-               (the-as float -1000000000.0)
+               :tag-ptr (& sv-96)
+               :time (the-as float -1000000000.0)
                )
              )
            (gp-1 (if (and v1-34 (< (-> self movie-pos-index) (the-as int (-> sv-96 elt-count))))
@@ -2122,8 +2091,7 @@
         (none)
         )
       (the int (-> self fact pickup-amount))
-      :to
-      self
+      :to self
       )
     (case (the int (-> self fact pickup-amount))
       (((game-task citadel-sage-blue))
@@ -2147,8 +2115,7 @@
     (convert-to-hud-object self (the-as hud (ppointer->process (-> *hud-parts* fuel-cell))))
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (transform-post)
     (if (-> self state-object)
         (spawn (-> self part) (the-as vector (-> self root-override root-prim prim-core)))
@@ -2255,8 +2222,7 @@
 
 ;; failed to figure out what this is:
 (defstate fuel-cell-clone-anim (fuel-cell)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('pickup)
        (when (!= (-> self next-state name) 'pickup)
@@ -2283,24 +2249,21 @@
        )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (if (-> self actor-pause)
         (logior! (-> self mask) (process-mask actor-pause))
         )
     (logclear! (-> self skel status) (janim-status spool))
     (none)
     )
-  :code
-  (behavior ((arg0 handle))
+  :code (behavior ((arg0 handle))
     (logclear! (-> self mask) (process-mask actor-pause))
     (clone-anim arg0 3 #t "")
     (format #t "ERROR<GMJ>: clone-anim returned in fuel-cell~%")
     (deactivate self)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (update-transforms! (-> self root-override))
     (animate self)
     (none)
@@ -2377,8 +2340,7 @@
 ;; failed to figure out what this is:
 (defstate wait (buzzer)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (case (get-reminder (get-task-control (the-as game-task (logand (the int (-> self fact pickup-amount)) #xffff))) 0)
       ((127)
        (go-virtual pickup #t (the-as handle #f))
@@ -2396,8 +2358,7 @@
 ;; failed to figure out what this is:
 (defstate pickup (buzzer)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (if (= v1-0 'notify)
                          (process-entity-status! self (entity-perm-status dead) #t)
@@ -2405,14 +2366,12 @@
               )
       )
     )
-  :enter
-  (behavior ((arg0 object) (arg1 handle))
+  :enter (behavior ((arg0 object) (arg1 handle))
     (set! (-> self pickup-handle) arg1)
     (logclear! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :code
-  (behavior ((arg0 object) (arg1 handle))
+  :code (behavior ((arg0 object) (arg1 handle))
     (logclear! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status complete) #t)
     (sound-play-by-name (static-sound-name "buzzer-pickup") (new-sound-id) 1024 0 0 1 #t)
@@ -2958,8 +2917,7 @@
 
 ;; failed to figure out what this is:
 (defstate ecovalve-idle (ecovalve)
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
     (suspend)
     (transform-post)
@@ -3171,8 +3129,7 @@
 
 ;; failed to figure out what this is:
 (defstate vent-wait-for-touch (vent)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (if (and (or (= arg2 'touch) (= arg2 'attack))
              (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
                (set! (-> a1-1 from) self)
@@ -3189,8 +3146,7 @@
         )
     (vent-standard-event-handler arg0 arg1 arg2 arg3)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (let ((a0-0 (-> self part))
             (a1-0 (-> self root-override trans))
@@ -3211,16 +3167,14 @@
 
 ;; failed to figure out what this is:
 (defstate vent-blocked (vent)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('show)
        (go vent-wait-for-touch)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (if (not ((-> self block-func) self))
           (go vent-wait-for-touch)
@@ -3233,10 +3187,8 @@
 
 ;; failed to figure out what this is:
 (defstate vent-pickup (vent)
-  :event
-  vent-standard-event-handler
-  :code
-  (behavior ((arg0 handle))
+  :event vent-standard-event-handler
+  :code (behavior ((arg0 handle))
     (when (-> self show-particles)
       (when (nonzero? (-> self collect-effect))
         (let* ((s5-0 (handle->process arg0))
@@ -3262,8 +3214,7 @@
                   #f
                   #f
                   (-> (the-as collide-shape s5-1) root-prim prim-core)
-                  :to
-                  gp-0
+                  :to gp-0
                   )
                 (process-spawn
                   part-tracker
@@ -3274,8 +3225,7 @@
                   #f
                   #f
                   (-> self root-override root-prim prim-core)
-                  :to
-                  self
+                  :to self
                   )
                 )
               )

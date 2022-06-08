@@ -811,13 +811,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-idle (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (nav-enemy-neck-control-inactive)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (if (-> self nav-info move-to-ground)
@@ -827,8 +825,7 @@ nav-enemy-default-event-handler
     (set! (-> self state-timeout) (seconds 1))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and (and *target* (>= (-> self enemy-info idle-distance)
                                (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
                                )
@@ -841,8 +838,7 @@ nav-enemy-default-event-handler
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (ja :group! (-> self draw art-group data (-> self nav-info idle-anim)))
     (ja :num-func num-func-identity :frame-num 0.0)
@@ -854,20 +850,17 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior nav-enemy) ja-post)
+  :post (the-as (function none :behavior nav-enemy) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-patrol (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self nav flags)
           (the-as nav-control-flags (the-as int (logior (nav-control-flags navcf19) (-> self nav flags))))
@@ -881,13 +874,11 @@ nav-enemy-default-event-handler
     (set! (-> self turn-time) (-> self nav-info walk-turn-time))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
         (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) (draw-status was-drawn)))
@@ -926,12 +917,10 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
       (loop
-        (ja-no-eval :group!
-                    (-> self draw art-group data (-> self nav-info walk-anim))
+        (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim))
                     :num! (seek! max f30-0)
                     :frame-num 0.0
                     )
@@ -943,8 +932,7 @@ nav-enemy-default-event-handler
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.6))
           (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
-          (ja-no-eval :group!
-                      (-> self draw art-group data (-> self nav-info idle-anim))
+          (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim))
                       :num! (seek! max f30-0)
                       :frame-num 0.0
                       )
@@ -954,8 +942,7 @@ nav-enemy-default-event-handler
             (ja :num! (seek! max f30-0))
             )
           (until (not (nav-enemy-rnd-go-idle? 0.2))
-            (ja-no-eval :group!
-                        (-> self draw art-group data (-> self nav-info idle-anim))
+            (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim))
                         :num! (seek! max f30-0)
                         :frame-num 0.0
                         )
@@ -967,8 +954,7 @@ nav-enemy-default-event-handler
           (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.6))
-          (ja-no-eval :group!
-                      (-> self draw art-group data (-> self nav-info walk-anim))
+          (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim))
                       :num! (seek! max f30-0)
                       :frame-num 0.0
                       )
@@ -982,20 +968,17 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  nav-enemy-patrol-post
+  :post nav-enemy-patrol-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-notice (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (nav-enemy-neck-control-look-at)
     (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
@@ -1012,12 +995,10 @@ nav-enemy-default-event-handler
     (set! (-> self turn-time) (-> self nav-info run-turn-time))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-      (ja-no-eval :group!
-                  (-> self draw art-group data (-> self nav-info notice-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self nav-info notice-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
@@ -1035,8 +1016,7 @@ nav-enemy-default-event-handler
     (go-virtual nav-enemy-chase)
     (none)
     )
-  :post
-  nav-enemy-simple-post
+  :post nav-enemy-simple-post
   )
 
 ;; definition for function ja-group-index?
@@ -1047,18 +1027,15 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-flee (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self reaction-time))
       (if (or (or (not *target*) (< (-> self nav-info stop-chase-distance)
                                     (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
@@ -1079,12 +1056,10 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group!
-                  (-> self draw art-group data (-> self nav-info notice-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self nav-info notice-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
@@ -1094,8 +1069,7 @@ nav-enemy-default-event-handler
         )
       (ja-channel-push! 1 (seconds 0.2))
       (loop
-        (ja-no-eval :group!
-                    (-> self draw art-group data (-> self nav-info idle-anim))
+        (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim))
                     :num! (seek! max f30-0)
                     :frame-num 0.0
                     )
@@ -1107,8 +1081,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  nav-enemy-face-player-post
+  :post nav-enemy-face-player-post
   )
 
 ;; definition for function nav-enemy-reset-frustration
@@ -1141,13 +1114,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-chase (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (nav-enemy-neck-control-look-at)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self free-time) (-> *display* base-frame-counter))
@@ -1159,8 +1130,7 @@ nav-enemy-default-event-handler
     (nav-enemy-reset-frustration)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (logtest? (-> *target* state-flags) (state-flags sf07))
         (go-virtual nav-enemy-patrol)
         )
@@ -1198,8 +1168,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja :group! (-> self draw art-group data (-> self nav-info run-anim)))
     (ja :num-func num-func-identity :frame-num 0.0)
@@ -1211,20 +1180,17 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  nav-enemy-chase-post
+  :post nav-enemy-chase-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let* ((f30-0 (vector-vector-distance (-> self collide-info trans) (target-pos 0)))
            (gp-1 (the int (+ (lerp-scale 600.0 1800.0 f30-0 32768.0 122880.0) (nav-enemy-rnd-float-range 0.0 30.0))))
@@ -1240,8 +1206,7 @@ nav-enemy-default-event-handler
     (set! (-> self turn-time) (-> self nav-info walk-turn-time))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
       (if (logtest? (-> *target* state-flags) (state-flags sf07))
           (go-virtual nav-enemy-patrol)
@@ -1261,8 +1226,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (ja :group! (-> self draw art-group data (-> self nav-info walk-anim)))
     (ja :num-func num-func-identity :frame-num 0.0)
@@ -1274,20 +1238,17 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  nav-enemy-chase-post
+  :post nav-enemy-chase-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-stare (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
     (let ((f0-0 (vector-vector-distance (-> self collide-info trans) (target-pos 0))))
@@ -1303,13 +1264,11 @@ nav-enemy-default-event-handler
     (set! (-> self collide-info transv quad) (-> *null-vector* quad))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
       (if (logtest? (-> *target* state-flags) (state-flags sf07))
           (go-virtual nav-enemy-patrol)
@@ -1351,32 +1310,27 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual nav-enemy-give-up)
     (none)
     )
-  :post
-  nav-enemy-face-player-post
+  :post nav-enemy-face-player-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-give-up (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (nav-enemy-neck-control-inactive)
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
       (if (TODO-RENAME-46 self (-> self nav-info notice-distance))
           (go-virtual nav-enemy-chase)
@@ -1384,51 +1338,42 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual nav-enemy-patrol)
     (none)
     )
-  :post
-  nav-enemy-simple-post
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-attack (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual nav-enemy-victory)
     (none)
     )
-  :post
-  nav-enemy-simple-post
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-victory (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self collide-info transv quad) (-> *null-vector* quad))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-      (ja-no-eval :group!
-                  (-> self draw art-group data (-> self nav-info victory-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self nav-info victory-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
@@ -1440,25 +1385,21 @@ nav-enemy-default-event-handler
     (go-virtual nav-enemy-stare)
     (none)
     )
-  :post
-  nav-enemy-simple-post
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-die (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     process-drawable-death-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (send-event (ppointer->process (-> self parent)) 'child-die)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (clear-collide-with-as (-> self collide-info))
     (nav-enemy-fall-and-play-death-anim
@@ -1478,20 +1419,17 @@ nav-enemy-default-event-handler
     (cleanup-for-death self)
     (none)
     )
-  :post
-  nav-enemy-death-post
+  :post nav-enemy-death-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-fuel-cell (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     process-drawable-fuel-cell-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self collide-info))
     (ja-post)
@@ -1665,8 +1603,7 @@ nav-enemy-default-event-handler
 (defbehavior nav-enemy-jump-land-anim nav-enemy ()
   (ja-no-eval :num! (seek!))
   (ja-channel-push! 1 (seconds 0.075))
-  (ja-no-eval :group!
-              (-> self draw art-group data (-> self nav-info jump-land-anim))
+  (ja-no-eval :group! (-> self draw art-group data (-> self nav-info jump-land-anim))
               :num! (seek!)
               :frame-num 0.0
               )
@@ -1682,10 +1619,8 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-jump (nav-enemy)
   :virtual #t
-  :event
-  nav-enemy-jump-event-handler
-  :enter
-  (behavior ()
+  :event nav-enemy-jump-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (if (and (-> self nav-info use-jump-blocked) (TODO-RENAME-50 self (-> self event-param-point)))
         (go-virtual nav-enemy-jump-blocked)
@@ -1693,13 +1628,11 @@ nav-enemy-default-event-handler
     (nav-enemy-initialize-jump (-> self event-param-point))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (nav-enemy-execute-jump)
     (let ((a1-0 (-> self nav user-poly)))
       (if (not a1-0)
@@ -1712,8 +1645,7 @@ nav-enemy-default-event-handler
     (go-virtual nav-enemy-jump-land)
     (none)
     )
-  :post
-  nav-enemy-jump-post
+  :post nav-enemy-jump-post
   )
 
 ;; definition for function nav-enemy-jump-land-post
@@ -1770,13 +1702,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-jump-land (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (logclear! (-> self nav flags) (nav-control-flags navcf19))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -1789,8 +1719,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
             (logtest? (nav-control-flags navcf19) (-> self nav flags))
             )
@@ -1798,44 +1727,36 @@ nav-enemy-default-event-handler
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (nav-enemy-jump-land-anim)
     (go (-> self jump-return-state))
     (none)
     )
-  :post
-  nav-enemy-jump-land-post
+  :post nav-enemy-jump-land-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-jump-blocked (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
         (go (-> self jump-return-state))
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (not (ja-group? (-> self draw art-group data (-> self nav-info idle-anim))))
       (ja-channel-push! 1 (seconds 0.2))
-      (ja :group!
-          (-> self draw art-group data (-> self nav-info idle-anim))
-          :num!
-          (identity (rand-vu-float-range 0.0 (the float (+ (-> (ja-group) data 0 length) -1))))
+      (ja :group! (-> self draw art-group data (-> self nav-info idle-anim))
+          :num! (identity (rand-vu-float-range 0.0 (the float (+ (-> (ja-group) data 0 length) -1))))
           )
       )
     (let ((f30-0 (nav-enemy-rnd-float-range 0.75 1.25)))
@@ -1846,20 +1767,17 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  nav-enemy-simple-post
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-wait-for-cue (nav-enemy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior nav-enemy)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf11))
     (ja-channel-push! 1 (seconds 0.1))
@@ -1884,27 +1802,22 @@ nav-enemy-default-event-handler
     (go-virtual nav-enemy-jump-to-point)
     (none)
     )
-  :post
-  nav-enemy-simple-post
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-jump-to-point (nav-enemy)
   :virtual #t
-  :event
-  nav-enemy-jump-event-handler
-  :exit
-  (behavior ()
+  :event nav-enemy-jump-event-handler
+  :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     0
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (nav-enemy-initialize-jump (-> self event-param-point))
     (nav-enemy-neck-control-look-at)
@@ -1921,17 +1834,14 @@ nav-enemy-default-event-handler
     (go-virtual nav-enemy-wait-for-cue)
     (none)
     )
-  :post
-  nav-enemy-jump-post
+  :post nav-enemy-jump-post
   )
 
 ;; definition for symbol *nav-enemy-dummy-shadow-control*, type shadow-control
 (define *nav-enemy-dummy-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
-                                           :center
-                                           (new 'static 'vector :w (the-as float #x28))
-                                           :shadow-dir
-                                           (new 'static 'vector :y -1.0 :w 614400.0)
+                                           :center (new 'static 'vector :w (the-as float #x28))
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 614400.0)
                                            :bot-plane (new 'static 'plane :y 1.0 :w 4096.0)
                                            :top-plane (new 'static 'plane :y 1.0 :w -4096.0)
                                            )

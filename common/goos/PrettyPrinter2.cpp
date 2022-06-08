@@ -198,9 +198,9 @@ void break_list(Node* node) {
   node->top_line_count = 1;
 
   const std::unordered_set<std::string> sameline_splitters = {
-      "if",     "<",  ">",  "<=",       ">=",  "set!",  "=",        "!=",     "+",
-      "-",      "*",  "/",  "the",      "->",  "and",   "or",       "logand", "logior",
-      "logxor", "+!", "*!", "logtest?", "not", "zero?", "nonzero?", "ja",     "ja-no-eval"};
+      "if",     "<",  ">",  "<=",       ">=",  "set!",  "=",       "!=",     "+",
+      "-",      "*",  "/",  "the",      "->",  "and",   "or",      "logand", "logior",
+      "logxor", "+!", "*!", "logtest?", "not", "zero?", "nonzero?"};
 
   if (node->child_nodes.at(0).kind == Node::Kind::LIST) {
     // ((foo
@@ -217,6 +217,9 @@ void break_list(Node* node) {
       node->sub_elt_indent += name.size();
     } else if (name == "process-new") {
       // things with 3 things in the top line
+      node->top_line_count = 3;
+      node->sub_elt_indent += name.size();
+    } else if (name == "ja" || name == "ja-no-eval") {
       node->top_line_count = 3;
       node->sub_elt_indent += name.size();
     } else if (name == "defmethod") {
@@ -368,6 +371,7 @@ void append_node_to_string(const Node* node,
           str.pop_back();
         }
         str.push_back('\n');
+        bool after_key = false;
         for (; node_idx < node->child_nodes.size(); node_idx++) {
           if (node->kind == Node::Kind::IMPROPER_LIST &&
               &node->child_nodes.at(node_idx) == &node->child_nodes.back()) {
@@ -376,9 +380,17 @@ void append_node_to_string(const Node* node,
             }
             str.append(".\n");
           }
-          append_node_to_string(&node->child_nodes.at(node_idx), str, listing_indent,
-                                listing_indent);
-          str.push_back('\n');
+          append_node_to_string(&node->child_nodes.at(node_idx), str,
+                                after_key ? 0 : listing_indent, listing_indent);
+          if (node->child_nodes.at(node_idx).kind == Node::Kind::ATOM &&
+              node->child_nodes.at(node_idx).atom_str.at(0) == ':' &&
+              node->child_nodes.at(node_idx).atom_str.find(' ') == std::string::npos) {
+            str.push_back(' ');
+            after_key = true;
+          } else {
+            str.push_back('\n');
+            after_key = false;
+          }
         }
         for (int i = 0; i < listing_indent; i++) {
           str.push_back(' ');

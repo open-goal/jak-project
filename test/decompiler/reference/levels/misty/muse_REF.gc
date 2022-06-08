@@ -228,13 +228,11 @@ nav-enemy-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate muse-idle (muse)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior muse)
     nav-enemy-default-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (seek! (-> self sprint-distance) 61440.0 (* 8192.0 (-> *display* seconds-per-frame)))
     (if (and *target* (>= 102400.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
         (level-hint-spawn (game-text-id zero) (the-as string #f) (-> self entity) *entity-pool* (game-task none))
@@ -244,8 +242,7 @@ nav-enemy-default-event-handler
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (ja-group? muse-run-ja)
       (ja-channel-push! 1 (seconds 0.1))
       (ja-no-eval :num! (loop!))
@@ -267,25 +264,21 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior muse) ja-post)
+  :post (the-as (function none :behavior muse) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-chase (muse)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior muse)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (cond
       ((or (not *target*)
            (< 102400.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans)))
@@ -309,8 +302,7 @@ nav-enemy-default-event-handler
     (muse-check-dest-point)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((ja-group? muse-idle-ja)
        (ja-channel-push! 1 (seconds 0.1))
@@ -333,8 +325,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (set! (-> self nav destination-pos quad) (-> self dest-point quad))
     (dummy-19
       (-> self nav)
@@ -354,31 +345,26 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-jump (muse)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior muse)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     ((-> (method-of-type nav-enemy nav-enemy-jump) enter))
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
     (none)
     )
-  :code
-  (-> (method-of-type nav-enemy nav-enemy-jump) code)
+  :code (-> (method-of-type nav-enemy nav-enemy-jump) code)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-jump-land (muse)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior muse)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (ja-channel-push! 1 (seconds 0.075))
     (ja-no-eval :group! muse-run-ja :num! (seek! max 0.8) :frame-num (ja-aframe 6.0 0))
@@ -394,15 +380,12 @@ nav-enemy-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate muse-caught (muse)
-  :event
-  (the-as (function process int symbol event-message-block object :behavior muse) #f)
-  :trans
-  (behavior ()
+  :event (the-as (function process int symbol event-message-block object :behavior muse) #f)
+  :trans (behavior ()
     (spool-push *art-control* (-> self anim name) 0 self -1.0)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (sound-play-by-name (static-sound-name "money-pickup") (new-sound-id) 1024 0 0 1 #t)
     (close-specific-task! (game-task misty-muse) (task-status need-reminder))
     (process-entity-status! self (entity-perm-status dead) #t)
@@ -492,8 +475,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (dummy-51 self)
     (level-hint-surpress!)
     (kill-current-level-hint '() '() 'exit)
@@ -603,8 +585,7 @@ nav-enemy-default-event-handler
                         :name "muse-victory"
                         :index 9
                         :parts 2
-                        :command-list
-                        '((1 blackout 0) (219 blackout 60))
+                        :command-list '((1 blackout 0) (219 blackout 60))
                         )
         )
   (set! (-> obj victory-anim) (fuel-cell-pick-anim obj))

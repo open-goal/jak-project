@@ -49,8 +49,7 @@
 
 ;; failed to figure out what this is:
 (defstate plunger-lurker-plunge (plunger-lurker)
-  :code
-  (behavior ()
+  :code (behavior ()
     (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
     (logclear! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status bit-3) #t)
@@ -115,8 +114,7 @@
           :name "plunger-lurker-blowup"
           :index 7
           :parts 4
-          :command-list
-          '((200 alive "tntbarrel-223")
+          :command-list '((200 alive "tntbarrel-223")
             (200 alive "tntbarrel-222")
             (200 alive "tntbarrel-221")
             (200 alive "tntbarrel-220")
@@ -188,14 +186,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plunger-lurker) ja-post)
+  :post (the-as (function none :behavior plunger-lurker) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plunger-lurker-flee (plunger-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'attack)
                        (let ((v0-0 #t))
@@ -206,8 +202,7 @@
               )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (-> self got-hit)
       (close-specific-task! (game-task plunger-lurker-hit) (task-status need-hint))
       (process-entity-status! self (entity-perm-status complete) #t)
@@ -227,16 +222,14 @@
         #f
         #f
         (-> self root trans)
-        :to
-        *entity-pool*
+        :to *entity-pool*
         )
       (cleanup-for-death self)
       (deactivate self)
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :group! plunger-lurker-notice-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
@@ -252,14 +245,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plunger-lurker) ja-post)
+  :post (the-as (function none :behavior plunger-lurker) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plunger-lurker-idle (plunger-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('plunge)
        (logclear! (-> self mask) (process-mask actor-pause))
@@ -267,8 +258,7 @@
        )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (spool-push *art-control* "plunger-lurker-blowup" 0 self -99.0)
     (when (and *target* (< (vector-vector-distance-squared (-> self root trans) (target-pos 0)) 6710886400.0))
       (logclear! (-> self mask) (process-mask actor-pause))
@@ -276,8 +266,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (ja-no-eval :group! plunger-lurker-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -287,14 +276,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plunger-lurker) ja-post)
+  :post (the-as (function none :behavior plunger-lurker) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plunger-lurker-die (plunger-lurker)
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (deactivate self)
     (suspend)
@@ -508,8 +495,7 @@
 
 ;; failed to figure out what this is:
 (defstate flying-lurker-die (flying-lurker)
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (deactivate self)
     (none)
@@ -518,8 +504,7 @@
 
 ;; failed to figure out what this is:
 (defstate flying-lurker-sleep (flying-lurker)
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (logior! (-> self draw status) (draw-status hidden))
     (loop
@@ -666,8 +651,7 @@
 
 ;; failed to figure out what this is:
 (defstate flying-lurker-fly (flying-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'clone-and-kill-links)
@@ -768,14 +752,12 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (dummy-20 self)
     (when (not (movie?))
       (flying-lurker-calc-speed (meters 15.0) (meters 30.0) (meters 0.11666667) (meters 0.083333336))
@@ -807,8 +789,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (not (ja-group? flying-lurker-fly-ja))
         (ja-channel-push! 1 (seconds 0.2))
@@ -836,8 +817,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior flying-lurker) ja-post)
+  :post (the-as (function none :behavior flying-lurker) ja-post)
   )
 
 ;; definition for function flying-lurker-handler
@@ -1032,23 +1012,19 @@
         )
       (none)
       )
-    :to
-    self
+    :to self
     )
   (none)
   )
 
 ;; failed to figure out what this is:
 (defstate flying-lurker-start (flying-lurker)
-  :event
-  flying-lurker-handler
-  :exit
-  (behavior ()
+  :event flying-lurker-handler
+  :exit (behavior ()
     (clear-pending-settings-from-process *setting-control* self 'allow-progress)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (play-movie?)
       (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
       (flying-lurker-play-intro)
@@ -1083,14 +1059,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior flying-lurker) ja-post)
+  :post (the-as (function none :behavior flying-lurker) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate flying-lurker-clone (flying-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'die)
@@ -1176,13 +1150,11 @@
               )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (ja-channel-set! 0)
     (none)
     )
-  :code
-  (behavior ((arg0 handle) (arg1 string))
+  :code (behavior ((arg0 handle) (arg1 string))
     (clone-anim arg0 3 #t arg1)
     (none)
     )
@@ -1190,8 +1162,7 @@
 
 ;; failed to figure out what this is:
 (defstate flying-lurker-idle (flying-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('saw-player)
        (set! (-> self take-off) #t)
@@ -1256,21 +1227,18 @@
         )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (spool-push *art-control* "flying-lurker-intro" 0 self -99.0)
     (if (and (-> self take-off) (first?))
         (go flying-lurker-start)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars (gp-0 int) (f30-0 float))
     1.0
     0
@@ -1324,8 +1292,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior flying-lurker) ja-post)
+  :post (the-as (function none :behavior flying-lurker) ja-post)
   )
 
 ;; definition for method 11 of type flying-lurker

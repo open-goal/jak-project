@@ -821,13 +821,8 @@ void ja_push_form_to_args(const Env& env,
                           Form* form,
                           const std::string& key_name) {
   if (form) {
-    auto text = form->to_form(env).print();
-    if (text.length() > 50) {
-      args.push_back(pool.form<ConstantTokenElement>(fmt::format(":{}", key_name)));
-      args.push_back(form);
-    } else {
-      args.push_back(pool.form<ConstantTokenElement>(fmt::format(":{} {}", key_name, text)));
-    }
+    args.push_back(pool.form<ConstantTokenElement>(fmt::format(":{}", key_name)));
+    args.push_back(form);
   }
 }
 

@@ -39,10 +39,8 @@
 
 ;; failed to figure out what this is:
 (defstate target-continue (target)
-  :event
-  target-generic-event-handler
-  :exit
-  (behavior ()
+  :event target-generic-event-handler
+  :exit (behavior ()
     (set! (-> *load-boundary-target* 0 quad) (-> (camera-pos) quad))
     (set! (-> *load-boundary-target* 1 quad) (-> (target-pos 0) quad))
     (set! (-> *load-boundary-target* 2 quad) (-> *load-boundary-target* 0 quad))
@@ -60,8 +58,7 @@
     (clear-pending-settings-from-process *setting-control* self 'music)
     (none)
     )
-  :code
-  (behavior ((arg0 continue-point))
+  :code (behavior ((arg0 continue-point))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (if (-> *art-control* reserve-buffer)
         (reserve-free *art-control* (-> *art-control* reserve-buffer heap))
@@ -457,8 +454,7 @@
     (go target-stance)
     (none)
     )
-  :post
-  target-no-move-post
+  :post target-no-move-post
   )
 
 ;; definition for symbol *smack-mods*, type surface
@@ -484,8 +480,7 @@
                        :alignv 1.0
                        :slope-up-traction 1.0
                        :align-speed 1.0
-                       :mult-hook
-                       (lambda :behavior target
+                       :mult-hook (lambda :behavior target
                          ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
                          (when (= arg3 1)
                            (let ((f30-0 (-> self control unknown-float40))
@@ -531,8 +526,7 @@
     :alignv 1.0
     :slope-up-traction 1.0
     :align-speed 1.0
-    :mult-hook
-    (lambda :behavior target
+    :mult-hook (lambda :behavior target
       ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
       (when (= arg3 1)
         (let ((f30-0 (-> self control unknown-float40))
@@ -583,8 +577,7 @@
         (-> arg0 intersection)
         (-> self control root-prim prim-core)
         )
-    :to
-    self
+    :to self
     )
   (let ((v1-9 (-> arg0 mode)))
     (cond
@@ -829,10 +822,8 @@
 
 ;; failed to figure out what this is:
 (defstate target-hit (target)
-  :event
-  target-standard-event-handler
-  :exit
-  (behavior ()
+  :event target-standard-event-handler
+  :exit (behavior ()
     (let ((gp-0 (new-stack-vector0))
           (f30-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
           )
@@ -857,8 +848,7 @@
     (target-exit)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (= *cheat-mode* 'debug)
       (when (and (not *pause-lock*) (cpad-hold? (-> self control unknown-cpad-info00 number) r2))
         (pickup-collectable! (-> self fact-info-target) (pickup-type eco-green) (the-as float 1.0) (the-as handle #f))
@@ -867,8 +857,7 @@
       )
     (none)
     )
-  :code
-  (behavior ((arg0 symbol) (arg1 attack-info))
+  :code (behavior ((arg0 symbol) (arg1 attack-info))
     (logclear! (-> self water flags) (water-flags wt16))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((gp-0 (-> self attack-info)))
@@ -997,17 +986,13 @@
     (go target-hit-ground #f)
     (none)
     )
-  :post
-  target-post
+  :post target-post
   )
 
 ;; definition for symbol *death-spool-array*, type (array spool-anim)
 (define *death-spool-array*
   (the-as (array spool-anim)
-    (new
-      'static
-      'boxed-array
-      :type spool-anim :length 11 :allocated-length 11
+    (new 'static 'boxed-array :type spool-anim
       (new 'static 'spool-anim :name "death-0181" :index 3 :parts 1 :command-list '())
       (new 'static 'spool-anim :name "death-0182" :index 4 :parts 1 :command-list '())
       (new 'static 'spool-anim :name "death-0184" :index 5 :parts 1 :command-list '())
@@ -1068,8 +1053,7 @@
 
 ;; failed to figure out what this is:
 (defstate target-death (target)
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags sf03 sf15))
     (target-exit)
     (clear-pending-settings-from-process *setting-control* self 'process-mask)
@@ -1080,10 +1064,8 @@
     (set! (-> self control dynam gravity-length) (-> self control unknown-dynamics00 gravity-length))
     (none)
     )
-  :trans
-  (-> target-hit trans)
-  :code
-  (behavior ((arg0 symbol))
+  :trans (-> target-hit trans)
+  :code (behavior ((arg0 symbol))
     (set! (-> self control unknown-uint20) (the-as uint #f))
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) self)
@@ -1165,8 +1147,7 @@
             #f
             #f
             (-> self control trans)
-            :to
-            *entity-pool*
+            :to *entity-pool*
             )
           )
          ((or (= arg0 'lava) (= arg0 'melt))
@@ -1180,8 +1161,7 @@
             #f
             #f
             (-> self control trans)
-            :to
-            *entity-pool*
+            :to *entity-pool*
             )
           )
          )
@@ -1326,8 +1306,7 @@
          #f
          #f
          (-> self control trans)
-         :to
-         *entity-pool*
+         :to *entity-pool*
          )
        (target-death-anim (the-as spool-anim #f))
        )
@@ -1415,6 +1394,5 @@
     (anim-loop)
     (none)
     )
-  :post
-  target-no-stick-post
+  :post target-no-stick-post
   )

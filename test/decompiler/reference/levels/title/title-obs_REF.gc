@@ -150,8 +150,7 @@
 ;; failed to figure out what this is:
 (defstate idle (logo-slave)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 uint))
     (let ((v1-0 arg2))
       (the-as object (cond
@@ -177,8 +176,7 @@
               )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-post)
     (loop
       (clone-anim-once
@@ -226,8 +224,7 @@
 ;; failed to figure out what this is:
 (defstate startup (logo)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (if (= v1-0 'update)
                          (clear-pending-settings-from-process *setting-control* self 'process-mask)
@@ -235,8 +232,7 @@
               )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (let ((a0-0 (-> self anim)))
       (when (nonzero? a0-0)
         (ja-abort-spooled-anim a0-0 (the-as art-joint-anim #f) -1)
@@ -251,8 +247,7 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not (none-reserved? *art-control*))
         (go-virtual hidden)
         )
@@ -261,8 +256,7 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (while (!= (file-status *art-control* (-> self next-anim name) 0) 'active)
       (set-blackout-frames (seconds 0.05))
       (suspend)
@@ -280,8 +274,7 @@
               4
               #t
               'logo
-              :to
-              (handle->process (-> self camera-anim))
+              :to (handle->process (-> self camera-anim))
               )
             )
           )
@@ -307,8 +300,7 @@
             :name "logo-intro-2"
             :index 7
             :parts 15
-            :command-list
-            '((260 want-force-inside village1 #t)
+            :command-list '((260 want-force-inside village1 #t)
               (261 kill "sage-23")
               (261 kill "assistant-11")
               (261 kill "explorer-4")
@@ -357,8 +349,7 @@
             :name "logo-loop"
             :index 9
             :parts 17
-            :command-list
-            '((61 kill "sage-23")
+            :command-list '((61 kill "sage-23")
               (61 kill "assistant-11")
               (61 kill "explorer-4")
               ((new 'static 'bfloat :data 61.5) kill "farmer-3")
@@ -386,8 +377,7 @@
     (go-virtual idle)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (if *progress-process*
         (logior! (-> self draw status) (draw-status skip-bones))
         (logclear! (-> self draw status) (draw-status skip-bones))
@@ -426,12 +416,9 @@
 ;; failed to figure out what this is:
 (defstate idle (logo)
   :virtual #t
-  :exit
-  (-> (method-of-type logo startup) exit)
-  :trans
-  (-> (method-of-type logo startup) trans)
-  :code
-  (behavior ()
+  :exit (-> (method-of-type logo startup) exit)
+  :trans (-> (method-of-type logo startup) trans)
+  :code (behavior ()
     (loop
       (set! (-> self anim) (-> self next-anim))
       (if (not (handle->process (-> self camera)))
@@ -443,8 +430,7 @@
                     4
                     #t
                     'logo
-                    :to
-                    (handle->process (-> self camera-anim))
+                    :to (handle->process (-> self camera-anim))
                     )
                   )
                 )
@@ -467,22 +453,19 @@
       )
     (none)
     )
-  :post
-  (-> (method-of-type logo startup) post)
+  :post (-> (method-of-type logo startup) post)
   )
 
 ;; failed to figure out what this is:
 (defstate hidden (logo)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (nonzero? (-> self next-anim))
         (spool-push *art-control* (-> self next-anim name) 0 self -1.0)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 0)
     (ja-post)
     (let ((gp-0 *master-mode*))
@@ -510,8 +493,7 @@
 ;; failed to figure out what this is:
 (defstate ndi (logo)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (if (= v1-0 'blackout)
                          (set-setting! *setting-control* self 'bg-a 'abs 1.0 0)
@@ -519,8 +501,7 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set-setting! *setting-control* self 'bg-a 'abs 0.0 0)
     (copy-settings-from-target! *setting-control*)
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -530,14 +511,12 @@
     (set! (-> self done?) #f)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     ((-> (method-of-type logo startup) exit))
     (set-blackout-frames (seconds 0.035))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     ((-> (method-of-type logo startup) trans))
     (if (and *debug-segment*
              (cpad-pressed? 0 start circle x)
@@ -571,8 +550,7 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (while (!= (file-status *art-control* (-> self next-anim name) 0) 'active)
       (set-blackout-frames (seconds 0.05))
       (suspend)
@@ -589,8 +567,7 @@
               3
               #t
               'logo
-              :to
-              (handle->process (-> self camera-anim))
+              :to (handle->process (-> self camera-anim))
               )
             )
           )
@@ -618,8 +595,7 @@
     (anim-loop)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (ja-post)
     (none)
     )
@@ -652,8 +628,7 @@
                                  :name "logo-intro"
                                  :index 5
                                  :parts 3
-                                 :command-list
-                                 '((0 want-levels title village1)
+                                 :command-list '((0 want-levels title village1)
                                    (5 display-level village1 special)
                                    (5 want-vis vi1)
                                    (5 want-force-inside village1 #t)
@@ -714,10 +689,8 @@
 
 ;; failed to figure out what this is:
 (defstate target-title (target)
-  :event
-  target-generic-event-handler
-  :enter
-  (behavior ()
+  :event target-generic-event-handler
+  :enter (behavior ()
     (set-setting! *setting-control* self 'music-volume 'abs 0.0 0)
     (set-setting! *setting-control* self 'sfx-volume 'abs 0.0 0)
     (set-setting! *setting-control* self 'ambient-volume 'abs 0.0 0)
@@ -732,8 +705,7 @@
     (send-event *camera* 'change-state cam-fixed 0)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (when (not (or (= (-> self next-state name) 'target-title-play) (= (-> self next-state name) 'target-title-wait)))
       (if (-> self manipy)
           (deactivate (-> self manipy 0))
@@ -741,15 +713,13 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (hide-hud-quick)
     (spool-push *art-control* "ndi-intro" 0 self -1.0)
     (sound-group-pause (the-as uint 2))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (the-as handle #f)))
       (case (scf-get-territory)
         ((2)
@@ -836,14 +806,12 @@
     (go target-title-play)
     (none)
     )
-  :post
-  target-no-move-post
+  :post target-no-move-post
   )
 
 ;; failed to figure out what this is:
 (defstate target-title-play (target)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'wait)
@@ -859,26 +827,20 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set-setting! *setting-control* self 'allow-pause #f 0.0 0)
     (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
     (none)
     )
-  :exit
-  (-> target-title exit)
-  :trans
-  (the-as (function none :behavior target) hide-hud-quick)
-  :code
-  (the-as (function none :behavior target) anim-loop)
-  :post
-  target-no-move-post
+  :exit (-> target-title exit)
+  :trans (the-as (function none :behavior target) hide-hud-quick)
+  :code (the-as (function none :behavior target) anim-loop)
+  :post target-no-move-post
   )
 
 ;; failed to figure out what this is:
 (defstate target-title-wait (target)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'play)
@@ -894,8 +856,7 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (clear-pending-settings-from-process *setting-control* self 'ambient-volume)
     (clear-pending-settings-from-process *setting-control* self 'sfx-volume)
     (clear-pending-settings-from-process *setting-control* self 'music-volume)
@@ -907,8 +868,7 @@
       )
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (when *time-of-day-proc*
       (set! (-> *time-of-day-proc* 0 time-ratio) 300.0)
       (set! *time-of-day-fast* #f)
@@ -917,8 +877,7 @@
     ((-> target-title exit))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (hide-hud-quick)
     (if (cpad-pressed? 0 start)
         (activate-progress *dproc* (progress-screen title))
@@ -940,8 +899,6 @@
       )
     (none)
     )
-  :code
-  (the-as (function none :behavior target) anim-loop)
-  :post
-  target-no-move-post
+  :code (the-as (function none :behavior target) anim-loop)
+  :post target-no-move-post
   )
