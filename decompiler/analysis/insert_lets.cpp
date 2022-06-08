@@ -3,10 +3,10 @@
 #include <limits>
 #include <tuple>
 
+#include "common/util/Assert.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "insert_lets.h"
-#include "common/util/Assert.h"
 
 namespace decompiler {
 
@@ -284,7 +284,7 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
   bool not_proc = false;
   Matcher set_from_matcher = Matcher::set(
       Matcher::deref(Matcher::reg(block_var_reg), false, {DerefTokenMatcher::string("from")}),
-                   Matcher::any_reg(1));
+      Matcher::any_reg(1));
   auto from_mr = match(set_from_matcher, body->at(0));
   if (!from_mr.matched) {
     // initial matcher failed. try more advanced "from" matcher now.
@@ -881,8 +881,7 @@ Form* match_ja_set(const Env& env,
   return mr.maps.forms.at(1);
 }
 
-void ja_push_form_to_args(const Env& env,
-                          FormPool& pool,
+void ja_push_form_to_args(FormPool& pool,
                           std::vector<Form*>& args,
                           Form* form,
                           const std::string& key_name) {
@@ -1032,13 +1031,13 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   // check the channel arg
   auto channel_arg = channel_form->to_form(env);
   if (!channel_arg.is_int(0)) {
-    ja_push_form_to_args(env, pool, args, channel_form, "chan");
+    ja_push_form_to_args(pool, args, channel_form, "chan");
   }
 
   if (func_status != NO_FUNC) {
     // check the group! arg
     if (form_fg) {
-      ja_push_form_to_args(env, pool, args, strip_cast("art-joint-anim", form_fg), "group!");
+      ja_push_form_to_args(pool, args, strip_cast("art-joint-anim", form_fg), "group!");
     }
 
     const std::string prelim_num =
@@ -1134,9 +1133,9 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
       num_form = pool.form<ConstantTokenElement>(prelim_num);
     }
 
-    ja_push_form_to_args(env, pool, args, num_form, "num!");
+    ja_push_form_to_args(pool, args, num_form, "num!");
   } else if (form_fg) {
-    ja_push_form_to_args(env, pool, args, strip_cast("art-joint-anim", form_fg), "group!");
+    ja_push_form_to_args(pool, args, strip_cast("art-joint-anim", form_fg), "group!");
   }
 
   if (set_fn) {
@@ -1148,13 +1147,13 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   }
 
   // other generic args
-  ja_push_form_to_args(env, pool, args, set_fi, "frame-interp");
-  ja_push_form_to_args(env, pool, args, set_dist, "dist");
-  // ja_push_form_to_args(env, pool, args, form_fg, "frame-group");
-  ja_push_form_to_args(env, pool, args, set_p0, "param0");
-  ja_push_form_to_args(env, pool, args, set_p1, "param1");
-  ja_push_form_to_args(env, pool, args, set_nf, "num-func");
-  ja_push_form_to_args(env, pool, args, set_fn, "frame-num");
+  ja_push_form_to_args(pool, args, set_fi, "frame-interp");
+  ja_push_form_to_args(pool, args, set_dist, "dist");
+  // ja_push_form_to_args(pool, args, form_fg, "frame-group");
+  ja_push_form_to_args(pool, args, set_p0, "param0");
+  ja_push_form_to_args(pool, args, set_p1, "param1");
+  ja_push_form_to_args(pool, args, set_nf, "num-func");
+  ja_push_form_to_args(pool, args, set_fn, "frame-num");
 
   // TODO
   if (set_fn2) {
@@ -1284,7 +1283,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
           } else {
             args.push_back(pool.form<ConstantTokenElement>(proc_type));
             if (!init_func.is_symbol(fmt::format("{}-init-by-other", proc_type))) {
-              ja_push_form_to_args(env, pool, args, as_func->elts().at(1), "init");
+              ja_push_form_to_args(pool, args, as_func->elts().at(1), "init");
             }
           }
         }
@@ -1296,7 +1295,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
         }
 
         if (mr_ac_call.maps.forms.at(1)->to_string(env) != fmt::format("'{}", proc_type)) {
-          ja_push_form_to_args(env, pool, args, mr_ac_call.maps.forms.at(1), "name");
+          ja_push_form_to_args(pool, args, mr_ac_call.maps.forms.at(1), "name");
         }
         if (!mr_get_proc.maps.forms.at(0)->to_form(env).is_symbol("*default-dead-pool*")) {
           args.push_back(pool.form<ConstantTokenElement>(":from"));
@@ -1309,15 +1308,14 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
         auto stack_arg = mr_ac_call.maps.forms.at(2)->to_string(env);
         if (stack_arg == "(&-> *dram-stack* 14336)") {
           // special case!
-          ja_push_form_to_args(env, pool, args,
-                               pool.form<ConstantTokenElement>("*kernel-dram-stack*"), "stack");
+          ja_push_form_to_args(pool, args, pool.form<ConstantTokenElement>("*kernel-dram-stack*"),
+                               "stack");
         } else if (stack_arg != "(the-as pointer #x70004000)") {
-          ja_push_form_to_args(env, pool, args, mr_ac_call.maps.forms.at(2), "stack");
+          ja_push_form_to_args(pool, args, mr_ac_call.maps.forms.at(2), "stack");
         }
         if (!mr_get_proc.maps.forms.at(2)->to_form(env).is_int(0x4000)) {
-          ja_push_form_to_args(env, pool, args, mr_get_proc.maps.forms.at(2), "stack-size");
+          ja_push_form_to_args(pool, args, mr_get_proc.maps.forms.at(2), "stack-size");
         }
-
 
         return pool.form<GenericElement>(
             GenericOperator::make_function(pool.form<ConstantTokenElement>(head)), args);
@@ -1327,7 +1325,6 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
   if (!std::get<0>(mr_with_shell).matched) {
     return nullptr;
   }
-
 
   if (!is_full_let) {
     // we're actually just editing entries in a let here.
