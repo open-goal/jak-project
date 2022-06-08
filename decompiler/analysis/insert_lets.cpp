@@ -167,6 +167,89 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
                                                 mr.maps.forms.at(1), body);
 }
 
+std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
+    const Matcher& matcher,
+    FormElement* in,
+    const Env& env,
+    FormPool& pool,
+    std::function<Form*(FormElement*, const MatchResult&, const Env&, FormPool&)> func,
+    const TypeSpec* const strip_cast) {
+  auto mr = match(matcher, in);
+
+  // TODO check forbidden form
+  if (!mr.matched) {
+    auto as_set = dynamic_cast<SetFormFormElement*>(in);
+    if (as_set) {
+      auto sub_res = rewrite_shelled_return_form(matcher, as_set->src()->try_as_single_element(),
+                                                 env, pool, func, strip_cast);
+
+      if (std::get<0>(sub_res).matched) {
+        if (std::get<2>(sub_res) && strip_cast) {
+          // strip lowest-level (pointer <type>) cast.
+          if (as_set->cast_for_set() && env.dts->ts.tc(*as_set->cast_for_set(), *strip_cast)) {
+            as_set->set_cast_for_set({});
+          }
+          if (as_set->cast_for_define() &&
+              env.dts->ts.tc(*as_set->cast_for_define(), *strip_cast)) {
+            as_set->set_cast_for_define({});
+          }
+        }
+        return {std::get<0>(sub_res),
+                pool.form<SetFormFormElement>(as_set->dst(), std::get<1>(sub_res),
+                                              as_set->cast_for_set(), as_set->cast_for_define()),
+                false};
+      }
+    }
+
+    auto as_cast = dynamic_cast<CastElement*>(in);
+    if (as_cast) {
+      auto sub_res = rewrite_shelled_return_form(
+          matcher, as_cast->source()->try_as_single_element(), env, pool, func, strip_cast);
+
+      if (std::get<0>(sub_res).matched) {
+        if (std::get<2>(sub_res) && strip_cast && env.dts->ts.tc(as_cast->type(), *strip_cast)) {
+          // strip lowest-level (pointer <type>) cast instead.
+          return {std::get<0>(sub_res), std::get<1>(sub_res), false};
+        }
+        return {std::get<0>(sub_res),
+                pool.form<CastElement>(as_cast->type(), std::get<1>(sub_res), as_cast->numeric()),
+                false};
+      }
+    }
+
+    auto as_gen = dynamic_cast<GenericElement*>(in);
+    if (as_gen) {
+      int i = 0;
+      int m = as_gen->elts().size();
+      for (; i < m; ++i) {
+        auto sub_res = rewrite_shelled_return_form(
+            matcher, as_gen->elts().at(i)->try_as_single_element(), env, pool, func, strip_cast);
+
+        if (std::get<0>(sub_res).matched) {
+          std::vector<Form*> shell_args;
+          for (int ii = 0; ii < m; ++ii) {
+            if (ii == i) {
+              shell_args.push_back(std::get<1>(sub_res));
+            } else {
+              shell_args.push_back(as_gen->elts().at(ii));
+            }
+          }
+
+          return {std::get<0>(sub_res), pool.form<GenericElement>(as_gen->op(), shell_args), false};
+        }
+      }
+    }
+
+    return {mr, nullptr, false};
+  }
+
+  auto new_f = func(in, mr, env, pool);
+  if (!new_f) {
+    mr.matched = false;
+  }
+  return {mr, new_f, true};
+}
+
 FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& pool) {
   if (in->entries().size() != 1) {
     return nullptr;
@@ -174,6 +257,7 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
 
   // (let ((block-var (new 'stack-no-clear 'event-message-block))
   auto block_var = in->entries().at(0).dest;
+  const auto& block_var_reg = block_var.reg();
   auto block_var_name = env.get_variable_name(block_var);
   auto block_src = in->entries().at(0).src->try_as_element<StackStructureDefElement>();
   if (!block_src) {
@@ -198,8 +282,8 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
   ////////////////////////////////////////////////////////
   // (set! (-> block-var from) <something>)
   bool not_proc = false;
-  Matcher set_from_matcher =
-      Matcher::set(Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("from")}),
+  Matcher set_from_matcher = Matcher::set(
+      Matcher::deref(Matcher::reg(block_var_reg), false, {DerefTokenMatcher::string("from")}),
                    Matcher::any_reg(1));
   auto from_mr = match(set_from_matcher, body->at(0));
   if (!from_mr.matched) {
@@ -214,11 +298,6 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
     not_proc = true;
   }
 
-  if (env.get_variable_name(*from_mr.maps.regs.at(0)) != block_var_name) {
-    // fmt::print(" fail: from2\n");
-    return nullptr;
-  }
-
   // if we couldnt match with simple reg matching that means it's a more complex form.
   if (!not_proc) {
     auto from_var = *from_mr.maps.regs.at(1);
@@ -231,15 +310,11 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
   ////////////////////////////////////////////////////////
   // (set! (-> a1-14 num-params) param-count) where param-count is a constant integer
   Matcher set_num_params_matcher = Matcher::set(
-      Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("num-params")}),
+      Matcher::deref(Matcher::reg(block_var_reg), false, {DerefTokenMatcher::string("num-params")}),
       Matcher::any_integer(1));
   auto num_params_mr = match(set_num_params_matcher, body->at(1));
   if (!num_params_mr.matched) {
     // fmt::print(" fail: pc1\n");
-    return nullptr;
-  }
-  if (env.get_variable_name(*num_params_mr.maps.regs.at(0)) != block_var_name) {
-    // fmt::print(" fail: pc2\n");
     return nullptr;
   }
   int param_count = num_params_mr.maps.ints.at(1);
@@ -252,15 +327,11 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
   ////////////////////////////////////////////////////////
   // (set! (-> a1-14 message) the-message-name)
   Matcher set_message_matcher = Matcher::set(
-      Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("message")}),
+      Matcher::deref(Matcher::reg(block_var_reg), false, {DerefTokenMatcher::string("message")}),
       Matcher::any(1));
   auto set_message_mr = match(set_message_matcher, body->at(2));
   if (!set_message_mr.matched) {
     // fmt::print(" fail: msg1\n");
-    return nullptr;
-  }
-  if (env.get_variable_name(*set_message_mr.maps.regs.at(0)) != block_var_name) {
-    // fmt::print(" fail: msg2\n");
     return nullptr;
   }
   Form* message_name = set_message_mr.maps.forms.at(1);
@@ -271,16 +342,12 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
   for (int param_idx = 0; param_idx < param_count; param_idx++) {
     auto set_form = body->at(3 + param_idx);
     Matcher set_param_matcher = Matcher::set(
-        Matcher::deref(Matcher::any_reg(0), false,
+        Matcher::deref(Matcher::reg(block_var_reg), false,
                        {DerefTokenMatcher::string("param"), DerefTokenMatcher::integer(param_idx)}),
         Matcher::any(1));
     auto set_param_mr = match(set_param_matcher, set_form);
     if (!set_param_mr.matched) {
       // fmt::print(" fail: pv {} 1: {}\n", param_idx, set_form->to_string(env));
-      return nullptr;
-    }
-    if (env.get_variable_name(*set_param_mr.maps.regs.at(0)) != block_var_name) {
-      // fmt::print(" fail: pv {} 2\n", param_idx);
       return nullptr;
     }
 
@@ -296,42 +363,41 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
   ////////////////////////////////////////////////////////
   // (send-event-function <dest> <block-var>)
   Matcher call_matcher = Matcher::op(GenericOpMatcher::func(Matcher::symbol("send-event-function")),
-                                     {Matcher::any(0), Matcher::any_reg(1)});
-  auto call_mr = match(call_matcher, body->at(3 + param_count));
-  if (!call_mr.matched) {
-    // fmt::print(" fail: call1: {}\n", body->at(3 + param_count)->to_string(env));
+                                     {Matcher::any(0), Matcher::reg(block_var_reg)});
+  auto mr_with_shell = rewrite_shelled_return_form(
+      call_matcher, body->at(3 + param_count), env, pool,
+      [&](FormElement* s_in, const MatchResult& mr, const Env& env, FormPool& pool) {
+        Form* send_destination = mr.maps.forms.at(0);
+
+        // time to build the macro!
+        std::vector<Form*> macro_args = {send_destination, message_name};
+        if (not_proc) {
+          // something was going on with from. build :from key.
+          macro_args.push_back(pool.form<ConstantTokenElement>(":from"));
+          // fill in the value for it
+          if (from_mr.maps.forms.find(1) != from_mr.maps.forms.end()) {
+            // matched some form. we can just copy it.
+            macro_args.push_back(from_mr.maps.forms.at(1));
+          } else {
+            // matched reg but it wasnt s6
+            macro_args.push_back(alloc_var_form(*from_mr.maps.regs.at(1), pool));
+          }
+        }
+        for (int i = 0; i < param_count; i++) {
+          macro_args.push_back(param_values.at(i));
+        }
+
+        auto oper = GenericOperator::make_fixed(FixedOperatorKind::SEND_EVENT);
+        return pool.form<GenericElement>(oper, macro_args);
+      },
+      nullptr);
+
+  if (!std::get<0>(mr_with_shell).matched) {
     return nullptr;
   }
 
-  if (env.get_variable_name(*call_mr.maps.regs.at(1)) != block_var_name) {
-    // fmt::print(" fail: call2\n");
-    return nullptr;
-  }
-
-  Form* send_destination = call_mr.maps.forms.at(0);
-
-  // time to build the macro!
-  std::vector<Form*> macro_args = {send_destination, message_name};
-  if (not_proc) {
-    // something was going on with from. build :from key.
-    macro_args.push_back(pool.form<ConstantTokenElement>(":from"));
-    // fill in the value for it
-    if (from_mr.maps.forms.find(1) != from_mr.maps.forms.end()) {
-      // matched some form. we can just copy it.
-      macro_args.push_back(from_mr.maps.forms.at(1));
-    } else {
-      // matched reg but it wasnt s6
-      macro_args.push_back(alloc_var_form(*from_mr.maps.regs.at(1), pool));
-    }
-  }
-  for (int i = 0; i < param_count; i++) {
-    macro_args.push_back(param_values.at(i));
-  }
-
-  auto oper = GenericOperator::make_fixed(FixedOperatorKind::SEND_EVENT);
-  return pool.alloc_element<GenericElement>(oper, macro_args);
-
-  return nullptr;
+  auto elt = std::get<1>(mr_with_shell)->try_as_single_element();
+  return elt;
 }
 
 FormElement* rewrite_as_countdown(LetElement* in, const Env& env, FormPool& pool) {
@@ -1108,89 +1174,6 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
       GenericOperator::make_function(
           pool.form<ConstantTokenElement>(func_status == NO_EVAL ? "ja-no-eval" : "ja")),
       args);
-}
-
-std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
-    const Matcher& matcher,
-    FormElement* in,
-    const Env& env,
-    FormPool& pool,
-    std::function<Form*(FormElement*, const MatchResult&, const Env&, FormPool&)> func,
-    const TypeSpec* const strip_cast) {
-  auto mr = match(matcher, in);
-
-  // TODO check forbidden form
-  if (!mr.matched) {
-    auto as_set = dynamic_cast<SetFormFormElement*>(in);
-    if (as_set) {
-      auto sub_res = rewrite_shelled_return_form(matcher, as_set->src()->try_as_single_element(),
-                                                 env, pool, func, strip_cast);
-
-      if (std::get<0>(sub_res).matched) {
-        if (std::get<2>(sub_res) && strip_cast) {
-          // strip lowest-level (pointer <type>) cast.
-          if (as_set->cast_for_set() && env.dts->ts.tc(*as_set->cast_for_set(), *strip_cast)) {
-            as_set->set_cast_for_set({});
-          }
-          if (as_set->cast_for_define() &&
-              env.dts->ts.tc(*as_set->cast_for_define(), *strip_cast)) {
-            as_set->set_cast_for_define({});
-          }
-        }
-        return {std::get<0>(sub_res),
-                pool.form<SetFormFormElement>(as_set->dst(), std::get<1>(sub_res),
-                                              as_set->cast_for_set(), as_set->cast_for_define()),
-                false};
-      }
-    }
-
-    auto as_cast = dynamic_cast<CastElement*>(in);
-    if (as_cast) {
-      auto sub_res = rewrite_shelled_return_form(
-          matcher, as_cast->source()->try_as_single_element(), env, pool, func, strip_cast);
-
-      if (std::get<0>(sub_res).matched) {
-        if (std::get<2>(sub_res) && strip_cast && env.dts->ts.tc(as_cast->type(), *strip_cast)) {
-          // strip lowest-level (pointer <type>) cast instead.
-          return {std::get<0>(sub_res), std::get<1>(sub_res), false};
-        }
-        return {std::get<0>(sub_res),
-                pool.form<CastElement>(as_cast->type(), std::get<1>(sub_res), as_cast->numeric()),
-                false};
-      }
-    }
-
-    auto as_gen = dynamic_cast<GenericElement*>(in);
-    if (as_gen) {
-      int i = 0;
-      int m = as_gen->elts().size();
-      for (; i < m; ++i) {
-        auto sub_res = rewrite_shelled_return_form(
-            matcher, as_gen->elts().at(i)->try_as_single_element(), env, pool, func, strip_cast);
-
-        if (std::get<0>(sub_res).matched) {
-          std::vector<Form*> shell_args;
-          for (int ii = 0; ii < m; ++ii) {
-            if (ii == i) {
-              shell_args.push_back(std::get<1>(sub_res));
-            } else {
-              shell_args.push_back(as_gen->elts().at(ii));
-            }
-          }
-
-          return {std::get<0>(sub_res), pool.form<GenericElement>(as_gen->op(), shell_args), false};
-        }
-      }
-    }
-
-    return {mr, nullptr, false};
-  }
-
-  auto new_f = func(in, mr, env, pool);
-  if (!new_f) {
-    mr.matched = false;
-  }
-  return {mr, new_f, true};
 }
 
 FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {

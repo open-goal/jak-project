@@ -76,110 +76,102 @@
 
 ;; definition for method 32 of type assistant
 (defmethod play-anim! assistant ((obj assistant) (arg0 symbol))
-  (with-pp
-    (case (current-status (-> obj tasks))
-      (((task-status need-hint) (task-status need-introduction))
-       (case (current-task (-> obj tasks))
-         (((game-task jungle-eggtop))
-          (when arg0
-            (let* ((s5-1 (-> obj tasks))
-                   (s4-0 (method-of-object s5-1 save-reminder))
-                   (a1-3 (new 'stack-no-clear 'event-message-block))
-                   )
-              (set! (-> a1-3 from) pp)
-              (set! (-> a1-3 num-params) 2)
-              (set! (-> a1-3 message) 'query)
-              (set! (-> a1-3 param 0) (the-as uint 'pickup))
-              (set! (-> a1-3 param 1) (the-as uint 6))
-              (s4-0 s5-1 (the int (the-as float (send-event-function *target* a1-3))) 1)
-              )
-            (close-status! (-> obj tasks) (task-status need-introduction))
+  (case (current-status (-> obj tasks))
+    (((task-status need-hint) (task-status need-introduction))
+     (case (current-task (-> obj tasks))
+       (((game-task jungle-eggtop))
+        (when arg0
+          (let* ((s5-1 (-> obj tasks))
+                 (s4-0 (method-of-object s5-1 save-reminder))
+                 )
+            (s4-0 s5-1 (the int (the-as float (send-event *target* 'query 'pickup 6))) 1)
             )
-          (new 'static 'spool-anim
-            :name "assistant-introduction-blue-eco-switch"
-            :index 10
-            :parts 11
-            :command-list '((0 want-levels village1 beach)
-              (128 joint "cameraB")
-              (312 joint "camera")
-              (492 joint "cameraB")
-              (537 joint "camera")
-              (734 display-level beach movie)
-              (734 want-force-vis beach #t)
-              (735 alive "ecovent-48")
-              (742 blackout 10)
-              (743 joint "cameraB")
-              (745 blackout 0)
-              (839 alive "ecovent-200")
-              (841 joint "camera")
-              (842 dead "ecovent-48")
-              (942 blackout 10)
-              (944 joint "cameraB")
-              (945 blackout 0)
-              (945 dead "ecovent-200")
-              (945 display-level beach #f)
-              (1049 blackout 10)
-              (1051 joint "camera")
-              (1052 blackout 0)
-              (1135 blackout 10)
-              (1137 joint "cameraB")
-              (1138 blackout 0)
-              (1216 joint "camera")
-              )
+          (close-status! (-> obj tasks) (task-status need-introduction))
+          )
+        (new 'static 'spool-anim
+          :name "assistant-introduction-blue-eco-switch"
+          :index 10
+          :parts 11
+          :command-list '((0 want-levels village1 beach)
+            (128 joint "cameraB")
+            (312 joint "camera")
+            (492 joint "cameraB")
+            (537 joint "camera")
+            (734 display-level beach movie)
+            (734 want-force-vis beach #t)
+            (735 alive "ecovent-48")
+            (742 blackout 10)
+            (743 joint "cameraB")
+            (745 blackout 0)
+            (839 alive "ecovent-200")
+            (841 joint "camera")
+            (842 dead "ecovent-48")
+            (942 blackout 10)
+            (944 joint "cameraB")
+            (945 blackout 0)
+            (945 dead "ecovent-200")
+            (945 display-level beach #f)
+            (1049 blackout 10)
+            (1051 joint "camera")
+            (1052 blackout 0)
+            (1135 blackout 10)
+            (1137 joint "cameraB")
+            (1138 blackout 0)
+            (1216 joint "camera")
             )
           )
-         (else
-           (if arg0
-               (close-status! (-> obj tasks) (task-status need-introduction))
-               )
-           (new 'static 'spool-anim
-             :name "assistant-introduction-race-bike"
-             :index 12
-             :parts 6
-             :command-list '((0 want-levels village1 beach) (129 joint "cameraB") (319 joint "camera") (505 joint "cameraB"))
-             )
-           )
-         )
-       )
-      (((task-status need-reminder) (task-status need-reminder-a))
-       (set! (-> obj skippable) #t)
-       (cond
-         ((= (current-task (-> obj tasks)) (game-task none))
-          (new 'static 'spool-anim :name "assistant-reminder-1-generic" :index 14 :parts 2 :command-list '())
-          )
-         ((closed? (-> obj tasks) (game-task jungle-eggtop) (task-status need-resolution))
-          (new 'static 'spool-anim :name "assistant-reminder-1-race-bike" :index 13 :parts 3 :command-list '())
-          )
-         ((or (closed? (-> obj tasks) (game-task misty-bike) (task-status need-resolution))
-              (not (closed? (-> obj tasks) (game-task misty-bike) (task-status need-introduction)))
-              )
-          (new 'static 'spool-anim :name "assistant-reminder-1-blue-eco-switch" :index 11 :parts 3 :command-list '())
-          )
-         ((zero? (get-reminder (-> obj tasks) 2))
-          (if arg0
-              (save-reminder (-> obj tasks) 1 2)
-              )
-          (new 'static 'spool-anim :name "assistant-reminder-1-race-bike" :index 13 :parts 3 :command-list '())
-          )
-         (else
-           (if arg0
-               (save-reminder (-> obj tasks) 0 2)
-               )
-           (new 'static 'spool-anim :name "assistant-reminder-1-blue-eco-switch" :index 11 :parts 3 :command-list '())
-           )
-         )
-       )
-      (else
-        (if arg0
-            (format
-              0
-              "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-              (-> obj name)
-              (task-status->string (current-status (-> obj tasks)))
-              )
-            )
-        (-> obj draw art-group data 3)
         )
+       (else
+         (if arg0
+             (close-status! (-> obj tasks) (task-status need-introduction))
+             )
+         (new 'static 'spool-anim
+           :name "assistant-introduction-race-bike"
+           :index 12
+           :parts 6
+           :command-list '((0 want-levels village1 beach) (129 joint "cameraB") (319 joint "camera") (505 joint "cameraB"))
+           )
+         )
+       )
+     )
+    (((task-status need-reminder) (task-status need-reminder-a))
+     (set! (-> obj skippable) #t)
+     (cond
+       ((= (current-task (-> obj tasks)) (game-task none))
+        (new 'static 'spool-anim :name "assistant-reminder-1-generic" :index 14 :parts 2 :command-list '())
+        )
+       ((closed? (-> obj tasks) (game-task jungle-eggtop) (task-status need-resolution))
+        (new 'static 'spool-anim :name "assistant-reminder-1-race-bike" :index 13 :parts 3 :command-list '())
+        )
+       ((or (closed? (-> obj tasks) (game-task misty-bike) (task-status need-resolution))
+            (not (closed? (-> obj tasks) (game-task misty-bike) (task-status need-introduction)))
+            )
+        (new 'static 'spool-anim :name "assistant-reminder-1-blue-eco-switch" :index 11 :parts 3 :command-list '())
+        )
+       ((zero? (get-reminder (-> obj tasks) 2))
+        (if arg0
+            (save-reminder (-> obj tasks) 1 2)
+            )
+        (new 'static 'spool-anim :name "assistant-reminder-1-race-bike" :index 13 :parts 3 :command-list '())
+        )
+       (else
+         (if arg0
+             (save-reminder (-> obj tasks) 0 2)
+             )
+         (new 'static 'spool-anim :name "assistant-reminder-1-blue-eco-switch" :index 11 :parts 3 :command-list '())
+         )
+       )
+     )
+    (else
+      (if arg0
+          (format
+            0
+            "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+            (-> obj name)
+            (task-status->string (current-status (-> obj tasks)))
+            )
+          )
+      (-> obj draw art-group data 3)
       )
     )
   )
