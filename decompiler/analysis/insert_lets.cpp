@@ -1191,7 +1191,11 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
     return {mr, nullptr, false};
   }
 
-  return {mr, func(in, mr, env, pool), true};
+  auto new_f = func(in, mr, env, pool);
+  if (!new_f) {
+    mr.matched = false;
+  }
+  return {mr, new_f, true};
 }
 
 FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
@@ -1199,7 +1203,8 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
   // it uses recursive form scanning to wrap the macro inside a potential "shell"
   // which means this is probably slow and bad
 
-  if (in->entries().size() != 1 || in->body()->size() != 1) {
+  auto is_full_let = in->entries().size() == 1 && in->body()->size() == 1;
+  if (!(is_full_let || (in->entries().size() == 2))) {
     return nullptr;
   }
 
@@ -1216,6 +1221,8 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
   }
 
   const auto& proc_type = mr_get_proc.maps.strings.at(1);
+  auto macro_form =
+      is_full_let ? in->body()->at(0) : in->entries().at(1).src->try_as_single_element();
 
   auto cast_type = TypeSpec("pointer", {TypeSpec(proc_type)});
   auto mr_with_shell = rewrite_shelled_return_form(
@@ -1227,10 +1234,9 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
                Matcher::func_with_rest(
                    Matcher::match_or({Matcher::constant_token("run-now-in-process"),
                                       Matcher::constant_token("run-next-time-in-process")}),
-                   {Matcher::reg(ra.reg()), Matcher::any(4)}),
-               Matcher::deref(Matcher::reg(ra.reg()), false,
-                              {DerefTokenMatcher::string("ppointer")})})),
-      in->body()->at(0), env, pool,
+                   {Matcher::reg(ra.reg()), Matcher::any(1)}),
+               Matcher::any(2)})),
+      macro_form, env, pool,
       [&](FormElement* s_in, const MatchResult& mr, const Env& env, FormPool& pool) {
         auto as_when = dynamic_cast<CondNoElseElement*>(s_in);
         const auto& when_body = as_when->entries.front().body->elts();
@@ -1243,6 +1249,19 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
 
         auto as_func = dynamic_cast<GenericElement*>(when_body.at(1));
         if (!as_func) {
+          return (Form*)nullptr;
+        }
+        bool is_next_time = as_func->op().func()->to_string(env) == "run-next-time-in-process";
+
+        auto has_unused_let = dynamic_cast<LetElement*>(when_body.at(2));
+        auto matcher_unused_let =
+            Matcher::deref(Matcher::reg(ra.reg()), false, {DerefTokenMatcher::string("ppointer")});
+        if (has_unused_let) {
+          auto new_pptr = rewrite_empty_let(has_unused_let, env, pool);
+          if (!new_pptr || !match(matcher_unused_let, new_pptr).matched) {
+            return (Form*)nullptr;
+          }
+        } else if (!match(matcher_unused_let, when_body.at(2)).matched) {
           return (Form*)nullptr;
         }
 
@@ -1276,9 +1295,19 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
 
         // type
         args.push_back(pool.form<ConstantTokenElement>(proc_type));
-        // init func + args
+
+        // init func
+        if (is_next_time) {
+          args.push_back(as_func->elts().at(1));
+        } else {
+          if (as_func->elts().at(1)->to_string(env) != fmt::format("{}-init-by-other", proc_type)) {
+            ja_push_form_to_args(env, pool, args, as_func->elts().at(1), "init");
+          }
+        }
+
+        // args
         // this would be a great place to do some hacky stuff! hmm, maybe i will...
-        for (int i = 1; i < as_func->elts().size(); ++i) {
+        for (int i = 2; i < as_func->elts().size(); ++i) {
           args.push_back(as_func->elts().at(i));
         }
 
@@ -1303,7 +1332,6 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
           ja_push_form_to_args(env, pool, args, mr_get_proc.maps.forms.at(2), "stack-size");
         }
 
-        bool is_next_time = as_func->op().func()->to_string(env) == "run-next-time-in-process";
 
         return pool.form<GenericElement>(
             GenericOperator::make_function(pool.form<ConstantTokenElement>(
@@ -1314,6 +1342,19 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
 
   if (!std::get<0>(mr_with_shell).matched) {
     return nullptr;
+  }
+
+
+  if (!is_full_let) {
+    // we're actually just editing entries in a let here.
+
+    // delete us.
+    in->entries().erase(in->entries().begin());
+    // set the value of the new first entry to the macro
+    in->entries().at(0).src = std::get<1>(mr_with_shell);
+
+    // return us but modified?
+    return in;
   }
 
   auto elt = std::get<1>(mr_with_shell)->try_as_single_element();

@@ -240,15 +240,7 @@
           (set! (-> obj on?) v1-3)
           (cond
             (v1-3
-              (let ((s5-0 (get-process *default-dead-pool* qbert-plat-on #x4000)))
-                (when s5-0
-                  (let ((t9-2 (method-of-type qbert-plat-on activate)))
-                    (t9-2 (the-as qbert-plat-on s5-0) obj 'qbert-plat-on (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process s5-0 qbert-plat-on-init-by-other (-> obj entity) obj)
-                  (-> s5-0 ppointer)
-                  )
-                )
+              (process-spawn qbert-plat-on (-> obj entity) obj :to obj)
               (sound-play-by-name (static-sound-name "plat-light-on") (new-sound-id) 1024 0 0 1 #t)
               )
             (else
@@ -692,48 +684,14 @@
     (cond
       (arg0
         (ambient-hint-spawn "gamcam08" (the-as vector #f) *entity-pool* 'camera)
-        (let ((s5-0 (get-process *default-dead-pool* pov-camera #x4000)))
-          (when s5-0
-            (let ((t9-7 (method-of-type pov-camera activate)))
-              (t9-7 (the-as pov-camera s5-0) self 'pov-camera (the-as pointer #x70004000))
-              )
-            (run-now-in-process
-              s5-0
-              pov-camera-init-by-other
-              (-> self root trans)
-              *sunkencam-sg*
-              "qbert-show-door-open"
-              0
-              #f
-              '()
-              )
-            (-> s5-0 ppointer)
-            )
-          )
+        (process-spawn pov-camera (-> self root trans) *sunkencam-sg* "qbert-show-door-open" 0 #f '() :to self)
         (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1.4))
           (suspend)
           )
         )
       (else
         (ambient-hint-spawn "gamcam07" (the-as vector #f) *entity-pool* 'camera)
-        (let ((s5-1 (get-process *default-dead-pool* pov-camera #x4000)))
-          (when s5-1
-            (let ((t9-11 (method-of-type pov-camera activate)))
-              (t9-11 (the-as pov-camera s5-1) self 'pov-camera (the-as pointer #x70004000))
-              )
-            (run-now-in-process
-              s5-1
-              pov-camera-init-by-other
-              (-> self root trans)
-              *sunkencam-sg*
-              "qbert-show-door-close"
-              0
-              #f
-              '()
-              )
-            (-> s5-1 ppointer)
-            )
-          )
+        (process-spawn pov-camera (-> self root trans) *sunkencam-sg* "qbert-show-door-close" 0 #f '() :to self)
         (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
           (suspend)
           )

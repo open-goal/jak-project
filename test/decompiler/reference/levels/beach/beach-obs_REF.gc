@@ -670,23 +670,16 @@
         )
       )
     (when (not arg0)
-      (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-0
-          (let ((t9-7 (method-of-type part-tracker activate)))
-            (t9-7 (the-as part-tracker s5-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process
-            s5-0
-            part-tracker-init
-            (-> *part-group-id-table* 156)
-            -1
-            #f
-            #f
-            #f
-            (-> self root-override root-prim prim-core)
-            )
-          (-> s5-0 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 156)
+        -1
+        #f
+        #f
+        #f
+        (-> self root-override root-prim prim-core)
+        :to *entity-pool*
         )
       (let* ((s5-1 (-> self root-override trans))
              (v1-14 (target-pos 0))
@@ -739,27 +732,19 @@
             (suspend)
             )
           )
-        (let ((gp-1 (cond
-                      (arg0
-                        (the-as int #f)
-                        )
-                      (else
-                        (ambient-hint-spawn "gamcam10" (the-as vector #f) *entity-pool* 'camera)
-                        (ppointer->handle (process-spawn
-                                            pov-camera
-                                            pov-camera-init-by-other
-                                            (-> self root-override trans)
-                                            *beachcam-sg*
-                                            (-> self name)
-                                            0
-                                            #f
-                                            '()
-                                            :to self
-                                            )
-                                          )
-                        )
+        (let ((gp-1
+                (cond
+                  (arg0
+                    (the-as int #f)
+                    )
+                  (else
+                    (ambient-hint-spawn "gamcam10" (the-as vector #f) *entity-pool* 'camera)
+                    (ppointer->handle
+                      (process-spawn pov-camera (-> self root-override trans) *beachcam-sg* (-> self name) 0 #f '() :to self)
                       )
                     )
+                  )
+                )
               )
           (process-drawable-birth-fuel-cell (the-as entity #f) (the-as vector #f) #f)
           (while (handle->process (the-as handle gp-1))
@@ -995,15 +980,7 @@
 ;; definition for function spawn-flying-rock
 ;; INFO: Return type mismatch int vs none.
 (defun spawn-flying-rock ((arg0 vector) (arg1 vector) (arg2 float) (arg3 entity))
-  (let ((s2-0 (get-process *default-dead-pool* flying-rock #x4000)))
-    (when s2-0
-      (let ((t9-1 (method-of-type flying-rock activate)))
-        (t9-1 (the-as flying-rock s2-0) *entity-pool* 'flying-rock (the-as pointer #x70004000))
-        )
-      (run-now-in-process s2-0 flying-rock-init-by-other arg0 arg1 arg2 arg3)
-      (-> s2-0 ppointer)
-      )
-    )
+  (process-spawn flying-rock arg0 arg1 arg2 arg3 :to *entity-pool*)
   0
   (none)
   )
@@ -1365,37 +1342,30 @@
   :code
   (behavior ()
     (local-vars (v1-25 symbol))
-    (let ((gp-0 (get-process *default-dead-pool* camera-tracker #x4000)))
-      (when gp-0
-        (let ((t9-1 (method-of-type camera-tracker activate)))
-          (t9-1 (the-as camera-tracker gp-0) self 'camera-tracker (the-as pointer #x70004000))
+    (process-spawn
+      camera-tracker
+      :init camera-tracker-init
+      (lambda :behavior camera-tracker
+        ()
+        (while (not (process-grab? *target*))
+          (suspend)
           )
-        (run-now-in-process
-          gp-0
-          camera-tracker-init
-          (lambda :behavior camera-tracker
-            ()
-            (while (not (process-grab? *target*))
-              (suspend)
-              )
-            (camera-change-to "camera-135" 0 #f)
-            (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 9))
-            (let ((gp-0 (-> *display* base-frame-counter)))
-              (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 4))
-                (suspend)
-                )
-              )
-            (while (not (process-release? (handle->process (-> self grab-target))))
-              (suspend)
-              )
-            (camera-look-at (the-as pair *target*) (the-as uint 0))
-            (send-event *camera* 'blend-from-as-fixed)
-            (camera-change-to (the-as string 'base) 75 #f)
-            (none)
+        (camera-change-to "camera-135" 0 #f)
+        (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 9))
+        (let ((gp-0 (-> *display* base-frame-counter)))
+          (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 4))
+            (suspend)
             )
           )
-        (-> gp-0 ppointer)
+        (while (not (process-release? (handle->process (-> self grab-target))))
+          (suspend)
+          )
+        (camera-look-at (the-as pair *target*) (the-as uint 0))
+        (send-event *camera* 'blend-from-as-fixed)
+        (camera-change-to (the-as string 'base) 75 #f)
+        (none)
         )
+      :to self
       )
     (close-specific-task! (game-task beach-flutflut) (task-status need-reminder))
     (loop

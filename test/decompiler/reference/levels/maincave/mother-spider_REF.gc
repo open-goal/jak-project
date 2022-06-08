@@ -373,15 +373,7 @@
   (let ((s3-0 (new 'stack-no-clear 'baby-spider-spawn-params)))
     (init! s3-0 arg2 #f #t #f 7 1 'untrigger)
     (set-delay! s3-0 (seconds 9))
-    (let ((s2-0 (get-process *default-dead-pool* baby-spider #x4000)))
-      (when s2-0
-        (let ((t9-3 (method-of-type baby-spider activate)))
-          (t9-3 (the-as baby-spider s2-0) obj 'baby-spider (the-as pointer #x70004000))
-          )
-        (run-now-in-process s2-0 baby-spider-init-by-other obj arg0 arg1 s3-0)
-        (-> s2-0 ppointer)
-        )
-      )
+    (process-spawn baby-spider obj arg0 arg1 s3-0 :to obj)
     )
   (let ((v0-5 (+ (-> obj baby-count) 1)))
     (set! (-> obj baby-count) v0-5)
@@ -1251,14 +1243,15 @@
                 (vector-normalize! s5-0 1.0)
                 (vector-deg-seek s5-0 s2-0 s5-0 6371.5557)
                 (vector-normalize-copy! s3-0 s5-0 32768.0)
-                (let ((gp-1 (get-process *default-dead-pool* mother-spider-proj #x4000)))
-                  (when gp-1
-                    (let ((t9-12 (method-of-type mother-spider-proj activate)))
-                      (t9-12 (the-as mother-spider-proj gp-1) self 'mother-spider-proj (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process gp-1 projectile-init-by-other (-> self entity) s4-0 s3-0 0 (process->handle *target*))
-                    (-> gp-1 ppointer)
-                    )
+                (process-spawn
+                  mother-spider-proj
+                  :init projectile-init-by-other
+                  (-> self entity)
+                  s4-0
+                  s3-0
+                  0
+                  (process->handle *target*)
+                  :to self
                   )
                 (set! gp-0 #t)
                 (set! (-> self last-spit-time) (-> *display* base-frame-counter))
@@ -1387,22 +1380,7 @@
                 (s4-0 (new 'stack-no-clear 'vector))
                 )
             (when (TODO-RENAME-20 self s5-0 s4-0)
-              (let ((s3-0 (get-process *default-dead-pool* mother-spider-egg #x4000)))
-                (when s3-0
-                  (let ((t9-5 (method-of-type mother-spider-egg activate)))
-                    (t9-5 (the-as mother-spider-egg s3-0) self 'mother-spider-egg (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process
-                    s3-0
-                    mother-spider-egg-init-by-other
-                    (-> self entity)
-                    (-> self root-override trans)
-                    s5-0
-                    s4-0
-                    )
-                  (-> s3-0 ppointer)
-                  )
-                )
+              (process-spawn mother-spider-egg (-> self entity) (-> self root-override trans) s5-0 s4-0 :to self)
               (+! (-> self baby-count) 1)
               (+! (-> self birthing-counter) -1)
               (sound-play-by-name (static-sound-name "lay-eggs") (new-sound-id) 1024 0 0 1 #t)
@@ -1639,15 +1617,7 @@
             (set! (-> s1-0 quad) (-> s2-0 quad))
             (set! (-> s1-0 y) (+ 0.3 (-> s1-0 y)))
             (vector-normalize! s1-0 1.0)
-            (let ((s0-1 (get-process *default-dead-pool* mother-spider-leg #x4000)))
-              (when s0-1
-                (let ((t9-6 (method-of-type mother-spider-leg activate)))
-                  (t9-6 (the-as mother-spider-leg s0-1) self 'mother-spider-leg (the-as pointer #x70004000))
-                  )
-                (run-now-in-process s0-1 mother-spider-leg-init-by-other self s3-0 s2-0 s1-0)
-                (-> s0-1 ppointer)
-                )
-              )
+            (process-spawn mother-spider-leg self s3-0 s2-0 s1-0 :to self)
             )
           (+! s5-0 1)
           )

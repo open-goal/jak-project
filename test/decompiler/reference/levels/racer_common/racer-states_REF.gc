@@ -239,7 +239,7 @@
       (set! (-> self entity) (-> self racer entity))
       (set! (-> self manipy) (process-spawn
                                manipy
-                               manipy-init
+                               :init manipy-init
                                (-> self control trans)
                                (-> self entity)
                                *racer-sg*
@@ -963,14 +963,16 @@
        (send-event (ppointer->process (-> self manipy)) 'anim-mode 'loop)
        (send-event (ppointer->process (-> self manipy)) 'draw #f)
        (sound-play-by-name (static-sound-name "zoomer-explode") (new-sound-id) 1024 0 0 1 #t)
-       (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-         (when gp-1
-           (let ((t9-7 (method-of-type part-tracker activate)))
-             (t9-7 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-             )
-           (run-now-in-process gp-1 part-tracker-init (-> *part-group-id-table* 116) -1 #f #f #f (-> self control trans))
-           (-> gp-1 ppointer)
-           )
+       (process-spawn
+         part-tracker
+         :init part-tracker-init
+         (-> *part-group-id-table* 116)
+         -1
+         #f
+         #f
+         #f
+         (-> self control trans)
+         :to *entity-pool*
          )
        (send-event
          (ppointer->process (-> self manipy))
@@ -994,7 +996,6 @@
              (vector+! (-> gp-0 fountain-rand-transv-lo) (-> gp-0 fountain-rand-transv-lo) (-> s5-0 0 control trans))
              (process-spawn
                joint-exploder
-               joint-exploder-init-by-other
                *racer-explode-sg*
                24
                gp-0
@@ -1058,14 +1059,16 @@
        )
       (('melt)
        (sound-play-by-name (static-sound-name "zoomer-melt") (new-sound-id) 1024 0 0 1 #t)
-       (let ((gp-5 (get-process *default-dead-pool* part-tracker #x4000)))
-         (when gp-5
-           (let ((t9-29 (method-of-type part-tracker activate)))
-             (t9-29 (the-as part-tracker gp-5) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-             )
-           (run-now-in-process gp-5 part-tracker-init (-> *part-group-id-table* 32) -1 #f #f #f (-> self control trans))
-           (-> gp-5 ppointer)
-           )
+       (process-spawn
+         part-tracker
+         :init part-tracker-init
+         (-> *part-group-id-table* 32)
+         -1
+         #f
+         #f
+         #f
+         (-> self control trans)
+         :to *entity-pool*
          )
        (clear-collide-with-as (-> self control))
        (set! (-> self post-hook) target-no-ja-move-post)
@@ -1231,12 +1234,12 @@
                 (= (-> *target* current-level name) 'firecanyon)
                 (= (-> *target* current-level name) 'citadel)
                 )
-        (set! (-> *hud-parts* bike-heat) (process-spawn hud-bike-heat hud-init-by-other 0 :to self))
+        (set! (-> *hud-parts* bike-heat) (process-spawn hud-bike-heat :init hud-init-by-other 0 :to self))
         (set! (-> *hud-parts* buzzers 0 next-y-offset) -120)
         (set! (-> *hud-parts* buzzers 0 y-sgn) 0)
         0
         )
-      (set! (-> *hud-parts* bike-speed) (process-spawn hud-bike-speed hud-init-by-other 0 :to self))
+      (set! (-> *hud-parts* bike-speed) (process-spawn hud-bike-speed :init hud-init-by-other 0 :to self))
       (set! (-> *hud-parts* power 0 next-y-offset) -120)
       (set! (-> *hud-parts* power 0 y-sgn) 0)
       0

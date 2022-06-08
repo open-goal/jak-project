@@ -218,14 +218,16 @@
         *entity-pool*
         (game-task none)
         )
-      (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when gp-0
-          (let ((t9-4 (method-of-type part-tracker activate)))
-            (t9-4 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process gp-0 part-tracker-init (-> *part-group-id-table* 474) -1 #f #f #f (-> self root trans))
-          (-> gp-0 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 474)
+        -1
+        #f
+        #f
+        #f
+        (-> self root trans)
+        :to *entity-pool*
         )
       (cleanup-for-death self)
       (deactivate self)
@@ -1011,30 +1013,25 @@
         )
     )
   (process-release? *target*)
-  (let ((gp-2 (get-process *default-dead-pool* process #x4000)))
-    (when gp-2
-      (let ((t9-18 (method-of-type process activate)))
-        (t9-18 gp-2 self 'process (the-as pointer #x70004000))
+  (process-spawn-function
+    process
+    (lambda :behavior process
+      ()
+      (let ((gp-0 (-> *display* base-frame-counter)))
+        (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 0.1))
+          (suspend)
+          )
         )
-      (run-next-time-in-process gp-2 (lambda :behavior process
-                                       ()
-                                       (let ((gp-0 (-> *display* base-frame-counter)))
-                                         (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 0.1))
-                                           (suspend)
-                                           )
-                                         )
-                                       (level-hint-spawn
-                                         (game-text-id assistant-voicebox-intro-ogre-race)
-                                         "asstvb24"
-                                         (the-as entity #f)
-                                         *entity-pool*
-                                         (game-task none)
-                                         )
-                                       (none)
-                                       )
-                                )
-      (-> gp-2 ppointer)
+      (level-hint-spawn
+        (game-text-id assistant-voicebox-intro-ogre-race)
+        "asstvb24"
+        (the-as entity #f)
+        *entity-pool*
+        (game-task none)
+        )
+      (none)
       )
+    :to self
     )
   (none)
   )

@@ -1102,7 +1102,7 @@
     (set! (-> self cam-tracker)
           (ppointer->handle (process-spawn
                               camera-tracker
-                              camera-tracker-init
+                              :init camera-tracker-init
                               (lambda :behavior fishermans-boat
                                 ()
                                 (camera-change-to "camera-282" 0 #f)
@@ -1260,7 +1260,7 @@
     (set! (-> self cam-tracker)
           (ppointer->handle (process-spawn
                               camera-tracker
-                              camera-tracker-init
+                              :init camera-tracker-init
                               (lambda :behavior fishermans-boat
                                 ()
                                 (camera-change-to "camera-287" 0 #f)
@@ -1693,37 +1693,32 @@
     (set! (-> self propeller enable) #t)
     (fishermans-boat-play-sounds)
     (copy-settings-from-target! *setting-control*)
-    (let ((gp-1 (get-process *default-dead-pool* process #x4000)))
-      (when gp-1
-        (let ((t9-25 (method-of-type process activate)))
-          (t9-25 gp-1 self 'process (the-as pointer #x70004000))
+    (process-spawn-function
+      process
+      (lambda :behavior fishermans-boat
+        ()
+        (let ((gp-0 (-> *display* base-frame-counter)))
+          (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1))
+            (suspend)
+            )
           )
-        (run-next-time-in-process gp-1 (lambda :behavior fishermans-boat
-                                         ()
-                                         (let ((gp-0 (-> *display* base-frame-counter)))
-                                           (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1))
-                                             (suspend)
-                                             )
-                                           )
-                                         (while (or (-> *setting-control* current ambient)
-                                                    (-> *setting-control* current hint)
-                                                    (-> *setting-control* current movie)
-                                                    )
-                                           (suspend)
-                                           )
-                                         (suspend)
-                                         (level-hint-spawn
-                                           (game-text-id misty-daxter-scared)
-                                           "sksp0060"
-                                           (the-as entity #f)
-                                           *entity-pool*
-                                           (game-task none)
-                                           )
-                                         (none)
-                                         )
-                                  )
-        (-> gp-1 ppointer)
+        (while (or (-> *setting-control* current ambient)
+                   (-> *setting-control* current hint)
+                   (-> *setting-control* current movie)
+                   )
+          (suspend)
+          )
+        (suspend)
+        (level-hint-spawn
+          (game-text-id misty-daxter-scared)
+          "sksp0060"
+          (the-as entity #f)
+          *entity-pool*
+          (game-task none)
+          )
+        (none)
         )
+      :to self
       )
     (go fishermans-boat-docked-misty)
     (none)
@@ -1751,7 +1746,7 @@
                (when gp-1
                  (set! (-> self evilbro)
                        (ppointer->handle
-                         (process-spawn manipy manipy-init (-> self root-overlay trans) gp-1 *fb-evilbro-sg* #f :to self)
+                         (process-spawn manipy :init manipy-init (-> self root-overlay trans) gp-1 *fb-evilbro-sg* #f :to self)
                          )
                        )
                  (send-event (handle->process (-> self evilbro)) 'anim-mode 'clone-anim)
@@ -1763,7 +1758,7 @@
                (when gp-2
                  (set! (-> self evilsis)
                        (ppointer->handle
-                         (process-spawn manipy manipy-init (-> self root-overlay trans) gp-2 *fb-evilsis-sg* #f :to self)
+                         (process-spawn manipy :init manipy-init (-> self root-overlay trans) gp-2 *fb-evilsis-sg* #f :to self)
                          )
                        )
                  (send-event (handle->process (-> self evilsis)) 'anim-mode 'clone-anim)

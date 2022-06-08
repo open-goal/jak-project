@@ -447,14 +447,16 @@
       ((< (-> self racer shock-offset) -8192.0)
        (set! (-> self racer shock-offset) -8192.0)
        (set! (-> self racer shock-offsetv) 0.0)
-       (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-         (when s5-0
-           (let ((t9-4 (method-of-type part-tracker activate)))
-             (t9-4 (the-as part-tracker s5-0) self 'part-tracker (the-as pointer #x70004000))
-             )
-           (run-now-in-process s5-0 part-tracker-init (-> *part-group-id-table* 13) -1 #f #f #f (-> self control trans))
-           (-> s5-0 ppointer)
-           )
+       (process-spawn
+         part-tracker
+         :init part-tracker-init
+         (-> *part-group-id-table* 13)
+         -1
+         #f
+         #f
+         #f
+         (-> self control trans)
+         :to self
          )
        (dummy-10 (-> self skel effect) 'effect-land -1.0 -1)
        )
@@ -850,25 +852,18 @@
       (set! (-> gp-6 y) 0.0)
       (vector-normalize! gp-6 (-> *RACER-bank* yellow-projectile-speed))
       (vector+! gp-6 gp-6 (-> self control transv))
-      (let ((s4-3 (get-process *default-dead-pool* projectile-yellow #x4000)))
-        (when s4-3
-          (let ((t9-22 (method-of-type projectile-yellow activate)))
-            (t9-22 (the-as projectile-yellow s4-3) self 'projectile-yellow (the-as pointer #x70004000))
+      (process-spawn
+        projectile-yellow
+        :init projectile-init-by-other
+        (-> self entity)
+        s5-4
+        gp-6
+        (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
+            152
+            136
             )
-          (run-now-in-process
-            s4-3
-            projectile-init-by-other
-            (-> self entity)
-            s5-4
-            gp-6
-            (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
-                152
-                136
-                )
-            #f
-            )
-          (-> s4-3 ppointer)
-          )
+        #f
+        :to self
         )
       )
     (set! (-> self control unknown-dword82) (-> *display* base-frame-counter))

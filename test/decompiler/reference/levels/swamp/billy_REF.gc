@@ -391,15 +391,7 @@
            (eval-path-curve-div! (-> obj path-snacks) s5-1 (the float s4-0) 'exact)
            (set! (-> s5-1 x) (+ -40960.0 (-> s5-1 x)))
            (set! (-> s5-1 z) (+ 20480.0 (-> s5-1 z)))
-           (let ((s3-0 (get-process *default-dead-pool* manipy #x4000)))
-             (when s3-0
-               (let ((t9-4 (method-of-type manipy activate)))
-                 (t9-4 (the-as manipy s3-0) obj 'manipy (the-as pointer #x70004000))
-                 )
-               (run-now-in-process s3-0 manipy-init s5-1 (-> obj entity) *farthy-snack-sg* #f)
-               (-> s3-0 ppointer)
-               )
-             )
+           (process-spawn manipy :init manipy-init s5-1 (-> obj entity) *farthy-snack-sg* #f :to obj)
            )
          )
        )
@@ -1262,10 +1254,16 @@
       )
     )
   (set! (-> obj path) (-> obj path-snacks))
-  (set! (-> obj farthy)
-        (ppointer->handle
-          (process-spawn manipy manipy-init (-> obj root-override trans) (-> obj entity) *billy-sidekick-sg* #f :to obj)
-          )
+  (set! (-> obj farthy) (ppointer->handle (process-spawn
+                                            manipy
+                                            :init manipy-init
+                                            (-> obj root-override trans)
+                                            (-> obj entity)
+                                            *billy-sidekick-sg*
+                                            #f
+                                            :to obj
+                                            )
+                                          )
         )
   (send-event (handle->process (-> obj farthy)) 'center-joint 3)
   (send-event (handle->process (-> obj farthy)) 'anim-mode 'clone-anim)

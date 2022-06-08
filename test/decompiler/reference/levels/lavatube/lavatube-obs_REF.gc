@@ -613,14 +613,16 @@
     (let ((gp-1 (new 'stack-no-clear 'vector)))
       (set! (-> gp-1 quad) (-> self root-override trans quad))
       (set! (-> gp-1 y) (+ -49152.0 (-> gp-1 y)))
-      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-1
-          (let ((t9-6 (method-of-type part-tracker activate)))
-            (t9-6 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 541) 600 #f #f #f gp-1)
-          (-> s5-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 541)
+        600
+        #f
+        #f
+        #f
+        gp-1
+        :to *entity-pool*
         )
       )
     (suspend)
@@ -828,21 +830,13 @@
           )
       (let ((gp-2 (- gp-1 (-> self spawn-array (-> self cur-spawn)))))
         (when (>= gp-2 0)
-          (let ((s5-0 (get-process *default-dead-pool* darkecobarrel-mover #x4000)))
-            (when s5-0
-              (let ((t9-4 (method-of-type darkecobarrel-mover activate)))
-                (t9-4 (the-as darkecobarrel-mover s5-0) self 'darkecobarrel-mover (the-as pointer #x70004000))
-                )
-              (run-now-in-process
-                s5-0
-                darkecobarrel-mover-init-by-other
-                (-> self entity)
-                (-> self speed)
-                (- (darkecobarrel-base-time) (the-as time-frame gp-2))
-                (-> self sync)
-                )
-              (-> s5-0 ppointer)
-              )
+          (process-spawn
+            darkecobarrel-mover
+            (-> self entity)
+            (-> self speed)
+            (- (darkecobarrel-base-time) (the-as time-frame gp-2))
+            (-> self sync)
+            :to self
             )
           (darkecobarrel-advance-curspawn)
           )
@@ -921,15 +915,7 @@
           (s5-4 (- (darkecobarrel-base-time) (the-as time-frame (- s5-3 (-> obj spawn-array (-> obj cur-spawn))))))
           )
       (until (darkecobarrel-base-done? (darkecobarrel-base-pos s5-4))
-        (let ((s3-0 (get-process *default-dead-pool* darkecobarrel-mover #x4000)))
-          (when s3-0
-            (let ((t9-14 (method-of-type darkecobarrel-mover activate)))
-              (t9-14 (the-as darkecobarrel-mover s3-0) obj 'darkecobarrel-mover (the-as pointer #x70004000))
-              )
-            (run-now-in-process s3-0 darkecobarrel-mover-init-by-other (-> obj entity) (-> obj speed) s5-4 (-> obj sync))
-            (-> s3-0 ppointer)
-            )
-          )
+        (process-spawn darkecobarrel-mover (-> obj entity) (-> obj speed) s5-4 (-> obj sync) :to obj)
         (set! s5-4 (- s5-4 (the-as time-frame (-> obj spawn-array s4-0))))
         (+! s4-0 -1)
         (if (< s4-0 0)
@@ -1237,14 +1223,16 @@
     (let ((gp-1 (new 'stack-no-clear 'vector)))
       (set! (-> gp-1 quad) (-> self root-override trans quad))
       (set! (-> gp-1 y) (+ -73728.0 (-> gp-1 y)))
-      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-1
-          (let ((t9-6 (method-of-type part-tracker activate)))
-            (t9-6 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 542) 600 #f #f #f gp-1)
-          (-> s5-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 542)
+        600
+        #f
+        #f
+        #f
+        gp-1
+        :to *entity-pool*
         )
       )
     (suspend)
@@ -1444,23 +1432,16 @@
     (clear-collide-with-as (-> self root-override))
     (ja-post)
     (sound-play-by-name (static-sound-name "cool-balloon") (new-sound-id) 1024 0 0 1 #t)
-    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-1
-        (let ((t9-6 (method-of-type part-tracker activate)))
-          (t9-6 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-1
-          part-tracker-init
-          (-> *part-group-id-table* 543)
-          -1
-          #f
-          #f
-          #f
-          (-> self root-override trans)
-          )
-        (-> gp-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 543)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override trans)
+      :to *entity-pool*
       )
     (suspend)
     (cleanup-for-death self)

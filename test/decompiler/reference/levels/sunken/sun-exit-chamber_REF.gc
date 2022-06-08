@@ -596,15 +596,7 @@
   (set! (-> obj master) (entity-actor-lookup arg0 'alt-actor 0))
   (set! (-> obj link) (new 'process 'actor-link-info obj))
   (set! (-> obj charger-id) (+ (actor-count-before (-> obj link)) 1))
-  (let ((s5-1 (get-process *default-dead-pool* blue-eco-charger-orb #x4000)))
-    (when s5-1
-      (let ((t9-17 (method-of-type blue-eco-charger-orb activate)))
-        (t9-17 (the-as blue-eco-charger-orb s5-1) obj 'blue-eco-charger-orb (the-as pointer #x70004000))
-        )
-      (run-now-in-process s5-1 blue-eco-charger-orb-init-by-other (-> obj entity) obj)
-      (-> s5-1 ppointer)
-      )
-    )
+  (process-spawn blue-eco-charger-orb (-> obj entity) obj :to obj)
   (set! (-> obj sound)
         (new 'process 'ambient-sound (static-sound-spec "blue-eco-charg" :fo-max 35) (-> obj root-override trans))
         )
@@ -817,23 +809,15 @@
 (defstate exit-chamber-charger-puzzle-beaten (exit-chamber)
   :code
   (behavior ()
-    (let ((gp-0 (get-process *default-dead-pool* pov-camera #x4000)))
-      (when gp-0
-        (let ((t9-1 (method-of-type pov-camera activate)))
-          (t9-1 (the-as pov-camera gp-0) self 'pov-camera (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-0
-          pov-camera-init-by-other
-          (-> self root-override trans)
-          *sunkencam-sg*
-          "exit-chamber-door-open"
-          0
-          #f
-          '()
-          )
-        (-> gp-0 ppointer)
-        )
+    (process-spawn
+      pov-camera
+      (-> self root-override trans)
+      *sunkencam-sg*
+      "exit-chamber-door-open"
+      0
+      #f
+      '()
+      :to self
       )
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 2.5))
@@ -1346,19 +1330,10 @@
              )
             )
           )
-        (set! (-> obj door)
-              (process-spawn sun-iris-door sun-iris-door-init-by-other (-> s3-1 vector) (-> s3-1 vector 1) s1-3 :to obj)
-              )
+        (set! (-> obj door) (process-spawn sun-iris-door (-> s3-1 vector) (-> s3-1 vector 1) s1-3 :to obj))
         )
-      (set! (-> obj button) (process-spawn
-                              exit-chamber-button
-                              exit-chamber-button-init-by-other
-                              (-> s3-1 vector 2)
-                              (-> s3-1 vector 3)
-                              arg0
-                              #f
-                              :to obj
-                              )
+      (set! (-> obj button)
+            (process-spawn exit-chamber-button (-> s3-1 vector 2) (-> s3-1 vector 3) arg0 #f :to obj)
             )
       (set! (-> obj sound) (new
                              'process

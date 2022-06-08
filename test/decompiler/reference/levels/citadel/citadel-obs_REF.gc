@@ -870,9 +870,7 @@
   (let ((f30-0 (res-lump-float (-> obj entity) 'spring-height :default 163840.0))
         (s5-0 (res-lump-value (-> obj entity) 'mode uint128))
         )
-    (set! (-> obj launcher)
-          (process-spawn launcher launcher-init-by-other (-> obj root-override trans) f30-0 s5-0 81920.0 :to obj)
-          )
+    (set! (-> obj launcher) (process-spawn launcher (-> obj root-override trans) f30-0 s5-0 81920.0 :to obj))
     )
   (set! (-> obj root-override root-prim local-sphere w) 18432.0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -1789,23 +1787,16 @@
         )
       )
     (process-entity-status! self (entity-perm-status complete) #t)
-    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-1
-        (let ((t9-7 (method-of-type part-tracker activate)))
-          (t9-7 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-1
-          part-tracker-init
-          (-> *part-group-id-table* 598)
-          -1
-          #f
-          #f
-          #f
-          (-> self root-override trans)
-          )
-        (-> gp-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 598)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override trans)
+      :to *entity-pool*
       )
     (sound-play-by-name (static-sound-name "sagecage-open") (new-sound-id) 1024 0 0 1 #t)
     (go citb-generator-broken)

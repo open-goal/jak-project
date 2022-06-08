@@ -489,7 +489,7 @@
       (set! (-> self entity) (the-as entity (-> self flut entity)))
       (set! (-> self manipy) (process-spawn
                                manipy
-                               manipy-init
+                               :init manipy-init
                                (-> self control trans)
                                (-> self entity)
                                *flutflut-sg*
@@ -1326,25 +1326,18 @@
         (set! (-> gp-0 y) 0.0)
         (vector-normalize! gp-0 (+ 81920.0 (-> *TARGET-bank* yellow-projectile-speed)))
         (vector+! gp-0 gp-0 (-> self control transv))
-        (let ((s4-0 (get-process *default-dead-pool* projectile-yellow #x4000)))
-          (when s4-0
-            (let ((t9-6 (method-of-type projectile-yellow activate)))
-              (t9-6 (the-as projectile-yellow s4-0) self 'projectile-yellow (the-as pointer #x70004000))
+        (process-spawn
+          projectile-yellow
+          :init projectile-init-by-other
+          (-> self entity)
+          s5-0
+          gp-0
+          (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
+              281
+              265
               )
-            (run-now-in-process
-              s4-0
-              projectile-init-by-other
-              (-> self entity)
-              s5-0
-              gp-0
-              (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
-                  281
-                  265
-                  )
-              #f
-              )
-            (-> s4-0 ppointer)
-            )
+          #f
+          :to self
           )
         )
       (set! (-> self control unknown-dword82) (-> *display* base-frame-counter))

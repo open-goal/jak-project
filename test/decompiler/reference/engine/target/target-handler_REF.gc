@@ -402,26 +402,19 @@
          (- (-> *FACT-bank* health-single-inc))
          (the-as handle #f)
          )
-       (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-         (when gp-1
-           (let ((t9-5 (method-of-type part-tracker activate)))
-             (t9-5 (the-as part-tracker gp-1) self 'part-tracker (the-as pointer #x70004000))
+       (process-spawn
+         part-tracker
+         :init part-tracker-init
+         (-> *part-group-id-table* 1)
+         -1
+         #f
+         #f
+         #f
+         (if (logtest? (-> self attack-info-rec mask) 4)
+             (-> self attack-info-rec intersection)
+             (-> self control root-prim prim-core)
              )
-           (run-now-in-process
-             gp-1
-             part-tracker-init
-             (-> *part-group-id-table* 1)
-             -1
-             #f
-             #f
-             #f
-             (if (logtest? (-> self attack-info-rec mask) 4)
-                 (-> self attack-info-rec intersection)
-                 (-> self control root-prim prim-core)
-                 )
-             )
-           (-> gp-1 ppointer)
-           )
+         :to self
          )
        (target-timed-invulnerable
          (if (logtest? (-> self attack-info-rec mask) 16)

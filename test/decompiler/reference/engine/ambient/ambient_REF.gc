@@ -265,15 +265,7 @@
   (let ((s3-1 (level-hint-task-process arg2 (the-as uint128 arg0) arg1)))
     (when (!= s3-1 -1)
       (kill-current-level-hint '() '() 'exit)
-      (let ((s2-0 (get-process *default-dead-pool* level-hint #x4000)))
-        (when s2-0
-          (let ((t9-4 (method-of-type level-hint activate)))
-            (t9-4 (the-as level-hint s2-0) arg3 'level-hint (the-as pointer #x70004000))
-            )
-          (run-now-in-process s2-0 level-hint-init-by-other s3-1 arg1 arg2)
-          (-> s2-0 ppointer)
-          )
-        )
+      (process-spawn level-hint s3-1 arg1 arg2 :to arg3)
       )
     )
   0
@@ -288,10 +280,10 @@
      (kill-current-level-hint '() '() 'exit)
      )
     )
-  (the-as
-    object
-    (and (not *hint-semaphore*) (process-spawn level-hint ambient-hint-init-by-other arg0 arg1 arg3 :to arg2))
-    )
+  (the-as object (and (not *hint-semaphore*)
+                      (process-spawn level-hint :init ambient-hint-init-by-other arg0 arg1 arg3 :to arg2)
+                      )
+          )
   )
 
 ;; definition for function kill-current-level-hint
@@ -673,7 +665,7 @@
 
 ;; definition for function ambient-type-error
 ;; INFO: Return type mismatch int vs none.
-(defun ambient-type-error ((arg0 drawable-ambient) (arg1 vector))
+(defbehavior ambient-type-error process ((arg0 drawable-ambient) (arg1 vector))
   (when *display-entity-errors*
     (let ((s2-0 (-> arg0 ambient)))
       (format
@@ -700,57 +692,47 @@
 
 ;; definition for function ambient-type-poi
 ;; INFO: Return type mismatch int vs none.
-(defun ambient-type-poi ((arg0 drawable-ambient) (arg1 vector))
+(defbehavior ambient-type-poi process ((arg0 drawable-ambient) (arg1 vector))
   0
   (none)
   )
 
 ;; definition for function ambient-type-hint
 ;; INFO: Return type mismatch int vs none.
-(defun ambient-type-hint ((arg0 drawable-ambient) (arg1 vector))
-  (with-pp
-    (let ((s5-0 (level-hint-task-process (-> arg0 ambient) (the-as uint128 0) (the-as string #f))))
-      (cond
-        ((zero? s5-0)
-         (when (and *debug-segment* (not (paused?)) (not (str-is-playing?)) (bottom-hud-hidden?))
-           (let ((a1-3
-                   (new 'stack 'font-context *font-default-matrix* 56 160 0.0 (font-color default) (font-flags shadow kerning))
-                   )
+(defbehavior ambient-type-hint process ((arg0 drawable-ambient) (arg1 vector))
+  (let ((s5-0 (level-hint-task-process (-> arg0 ambient) (the-as uint128 0) (the-as string #f))))
+    (cond
+      ((zero? s5-0)
+       (when (and *debug-segment* (not (paused?)) (not (str-is-playing?)) (bottom-hud-hidden?))
+         (let ((a1-3
+                 (new 'stack 'font-context *font-default-matrix* 56 160 0.0 (font-color default) (font-flags shadow kerning))
                  )
-             (let ((v1-5 a1-3))
-               (set! (-> v1-5 width) (the float 400))
                )
-             (let ((v1-6 a1-3))
-               (set! (-> v1-6 height) (the float 96))
-               )
-             (set! (-> a1-3 flags) (font-flags shadow kerning middle large))
-             (print-game-text "AS: UNKNOWN ID" a1-3 #f 128 22)
+           (let ((v1-5 a1-3))
+             (set! (-> v1-5 width) (the float 400))
              )
+           (let ((v1-6 a1-3))
+             (set! (-> v1-6 height) (the float 96))
+             )
+           (set! (-> a1-3 flags) (font-flags shadow kerning middle large))
+           (print-game-text "AS: UNKNOWN ID" a1-3 #f 128 22)
            )
          )
-        ((!= s5-0 -1)
-         (kill-current-level-hint '() '() 'exit)
-         (let ((s4-0 (get-process *default-dead-pool* level-hint #x4000)))
-           (when s4-0
-             (let ((t9-8 (method-of-type level-hint activate)))
-               (t9-8 (the-as level-hint s4-0) pp 'level-hint (the-as pointer #x70004000))
-               )
-             (run-now-in-process s4-0 level-hint-init-by-other s5-0 #f (-> arg0 ambient))
-             (-> s4-0 ppointer)
-             )
-           )
-         )
-        )
+       )
+      ((!= s5-0 -1)
+       (kill-current-level-hint '() '() 'exit)
+       (process-spawn level-hint s5-0 #f (-> arg0 ambient) :to self)
+       )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition for function ambient-type-sound
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defun ambient-type-sound ((arg0 drawable-ambient) (arg1 vector))
+(defbehavior ambient-type-sound process ((arg0 drawable-ambient) (arg1 vector))
   (local-vars (sv-16 string) (sv-112 res-tag))
   (let* ((s5-0 (-> arg0 ambient))
          (s4-0 (-> s5-0 ambient-data user-uint64 0))
@@ -818,7 +800,7 @@
 ;; definition for function ambient-type-sound-loop
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defun ambient-type-sound-loop ((arg0 drawable-ambient) (arg1 vector))
+(defbehavior ambient-type-sound-loop process ((arg0 drawable-ambient) (arg1 vector))
   (let* ((s5-0 (-> arg0 ambient))
          (s2-0 (symbol->string (the-as symbol (-> s5-0 ambient-data user-float 2))))
          (s3-0 (the-as object (-> s5-0 ambient-data user-float 1)))
@@ -849,7 +831,7 @@
 ;; definition for function ambient-type-light
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defun ambient-type-light ((arg0 drawable-ambient) (arg1 vector))
+(defbehavior ambient-type-light process ((arg0 drawable-ambient) (arg1 vector))
   (when *target*
     (let ((s4-0 (-> arg0 ambient))
           (s5-0 #t)
@@ -895,7 +877,7 @@
 ;; definition for function ambient-type-dark
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defun ambient-type-dark ((arg0 drawable-ambient) (arg1 vector))
+(defbehavior ambient-type-dark process ((arg0 drawable-ambient) (arg1 vector))
   (when *target*
     (let ((s4-0 (-> arg0 ambient))
           (s5-0 #t)
@@ -942,7 +924,7 @@
 ;; definition for function ambient-type-weather-off
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defun ambient-type-weather-off ((arg0 drawable-ambient) (arg1 vector))
+(defbehavior ambient-type-weather-off process ((arg0 drawable-ambient) (arg1 vector))
   (when *target*
     (let ((s4-0 (-> arg0 ambient))
           (s5-0 #t)
@@ -988,7 +970,7 @@
 
 ;; definition for function ambient-type-ocean-off
 ;; INFO: Return type mismatch int vs none.
-(defun ambient-type-ocean-off ((arg0 drawable-ambient) (arg1 vector))
+(defbehavior ambient-type-ocean-off process ((arg0 drawable-ambient) (arg1 vector))
   (set! *ocean-off* #t)
   0
   (none)
@@ -996,7 +978,7 @@
 
 ;; definition for function ambient-type-ocean-near-off
 ;; INFO: Return type mismatch int vs none.
-(defun ambient-type-ocean-near-off ((arg0 drawable-ambient) (arg1 vector))
+(defbehavior ambient-type-ocean-near-off process ((arg0 drawable-ambient) (arg1 vector))
   (set! *ocean-near-off* #t)
   0
   (none)
@@ -1004,7 +986,7 @@
 
 ;; definition for function ambient-type-music
 ;; INFO: Return type mismatch int vs none.
-(defun ambient-type-music ((arg0 drawable-ambient) (arg1 vector))
+(defbehavior ambient-type-music process ((arg0 drawable-ambient) (arg1 vector))
   (let ((gp-0 (-> arg0 ambient)))
     (if (-> gp-0 ambient-data user-float 0)
         (set! (-> *setting-control* default music) (the-as symbol (-> gp-0 ambient-data user-float 0)))

@@ -879,23 +879,16 @@
                        )
                      )
                )
-          (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
-            (when s4-1
-              (let ((t9-21 (method-of-type part-tracker activate)))
-                (t9-21 (the-as part-tracker s4-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-                )
-              (run-now-in-process
-                s4-1
-                part-tracker-init
-                (-> *part-group-id-table* 285)
-                -1
-                #f
-                #f
-                #f
-                (-> self root-override trans)
-                )
-              (-> s4-1 ppointer)
-              )
+          (process-spawn
+            part-tracker
+            :init part-tracker-init
+            (-> *part-group-id-table* 285)
+            -1
+            #f
+            #f
+            #f
+            (-> self root-override trans)
+            :to *entity-pool*
             )
           (logior! (-> self draw status) (draw-status skip-bones))
           (let* ((s4-2 (get-process *default-dead-pool* manipy #x4000))
@@ -957,64 +950,57 @@
               )
             )
           (process-release? *target*)
-          (let ((gp-3 (get-process *default-dead-pool* process #x4000)))
-            (when gp-3
-              (let ((t9-37 (method-of-type process activate)))
-                (t9-37 gp-3 self 'process (the-as pointer #x70004000))
+          (process-spawn-function
+            process
+            (lambda ((arg0 int))
+              (while (or (-> *setting-control* current ambient)
+                         (-> *setting-control* current hint)
+                         (-> *setting-control* current movie)
+                         )
+                (suspend)
                 )
-              (run-next-time-in-process
-                gp-3
-                (lambda ((arg0 int))
-                  (while (or (-> *setting-control* current ambient)
-                             (-> *setting-control* current hint)
-                             (-> *setting-control* current movie)
-                             )
-                    (suspend)
-                    )
-                  (cond
-                    ((= arg0 3)
-                     (level-hint-spawn
-                       (game-text-id swamp-tethers-three-to-go)
-                       "sksp0157"
-                       (the-as entity #f)
-                       *entity-pool*
-                       (game-task none)
-                       )
-                     )
-                    ((= arg0 2)
-                     (level-hint-spawn
-                       (game-text-id swamp-tethers-two-to-go)
-                       "sksp0158"
-                       (the-as entity #f)
-                       *entity-pool*
-                       (game-task none)
-                       )
-                     )
-                    ((= arg0 1)
-                     (level-hint-spawn
-                       (game-text-id swamp-tethers-lefts-find-the-last)
-                       "sksp0159"
-                       (the-as entity #f)
-                       *entity-pool*
-                       (game-task none)
-                       )
-                     )
-                    ((zero? arg0)
-                     (level-hint-spawn
-                       (game-text-id swamp-tethers-completion-sage-precursor-arm)
-                       "sagevb04"
-                       (the-as entity #f)
-                       *entity-pool*
-                       (game-task none)
-                       )
-                     )
-                    )
-                  (none)
-                  )
-                s5-2
+              (cond
+                ((= arg0 3)
+                 (level-hint-spawn
+                   (game-text-id swamp-tethers-three-to-go)
+                   "sksp0157"
+                   (the-as entity #f)
+                   *entity-pool*
+                   (game-task none)
+                   )
+                 )
+                ((= arg0 2)
+                 (level-hint-spawn
+                   (game-text-id swamp-tethers-two-to-go)
+                   "sksp0158"
+                   (the-as entity #f)
+                   *entity-pool*
+                   (game-task none)
+                   )
+                 )
+                ((= arg0 1)
+                 (level-hint-spawn
+                   (game-text-id swamp-tethers-lefts-find-the-last)
+                   "sksp0159"
+                   (the-as entity #f)
+                   *entity-pool*
+                   (game-task none)
+                   )
+                 )
+                ((zero? arg0)
+                 (level-hint-spawn
+                   (game-text-id swamp-tethers-completion-sage-precursor-arm)
+                   "sagevb04"
+                   (the-as entity #f)
+                   *entity-pool*
+                   (game-task none)
+                   )
+                 )
                 )
-              (-> gp-3 ppointer)
+              (none)
               )
+            s5-2
+            :to self
             )
           )
         )
@@ -1047,7 +1033,7 @@
                     )
                (process-spawn
                  part-tracker
-                 part-tracker-init
+                 :init part-tracker-init
                  (-> *part-group-id-table* 287)
                  150
                  #f
@@ -1927,7 +1913,7 @@
       (let ((s3-1 (entity-actor-lookup (-> obj entity) 'alt-actor s4-1)))
         (if s3-1
             (set! (-> obj the-ropes s4-1)
-                  (ppointer->handle (process-spawn swamp-rope swamp-rope-init-by-other (-> obj trans-at-init) s3-1 :to obj))
+                  (ppointer->handle (process-spawn swamp-rope (-> obj trans-at-init) s3-1 :to obj))
                   )
             )
         )

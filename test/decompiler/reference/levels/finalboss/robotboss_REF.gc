@@ -264,10 +264,16 @@
   (set! (-> self vulnerable) arg0)
   (let ((gp-0 (new 'stack 'sphere)))
     (set! (-> gp-0 w) 4096.0)
-    (set! (-> self shot-attractor)
-          (ppointer->handle
-            (process-spawn manipy manipy-init (-> self root-override trans) (-> self entity) *redring-sg* gp-0 :to self)
-            )
+    (set! (-> self shot-attractor) (ppointer->handle (process-spawn
+                                                       manipy
+                                                       :init manipy-init
+                                                       (-> self root-override trans)
+                                                       (-> self entity)
+                                                       *redring-sg*
+                                                       gp-0
+                                                       :to self
+                                                       )
+                                                     )
           )
     )
   (send-event (handle->process (-> self shot-attractor)) 'attackable #t)
@@ -370,19 +376,11 @@
       (vector<-cspace! gp-0 (-> self node-list data 60))
       (set! (-> s4-0 quad) (-> self entity extra trans quad))
       (vector+! s4-0 s4-0 arg0)
-      (let ((s3-1 (get-process *default-dead-pool* darkecobomb #x4000)))
-        (when s3-1
-          (let ((t9-2 (method-of-type darkecobomb activate)))
-            (t9-2 (the-as darkecobomb s3-1) self 'darkecobomb (the-as pointer #x70004000))
-            )
-          (run-now-in-process s3-1 darkecobomb-init-by-other gp-0 s4-0 61440.0 300 arg1)
-          (-> s3-1 ppointer)
-          )
-        )
+      (process-spawn darkecobomb gp-0 s4-0 61440.0 300 arg1 :to self)
       )
     (process-spawn
       part-tracker
-      part-tracker-init
+      :init part-tracker-init
       (-> *part-group-id-table* 638)
       300
       #f
@@ -711,11 +709,7 @@
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (set! (-> gp-0 quad) (-> self entity extra trans quad))
         (set! (-> gp-0 y) (+ 81920.0 (-> gp-0 y)))
-        (set! (-> self white-eco)
-              (ppointer->handle
-                (process-spawn light-eco-mother light-eco-mother-init-by-other (-> self entity) gp-0 :to self)
-                )
-              )
+        (set! (-> self white-eco) (ppointer->handle (process-spawn light-eco-mother (-> self entity) gp-0 :to self)))
         )
       )
     (none)
@@ -958,25 +952,19 @@
       (vector-! s5-0 s5-0 gp-0)
       (vector-normalize! s5-0 (the-as float 819200.0))
       (vector+! s5-0 s5-0 gp-0)
-      (let ((s4-1 (get-process *default-dead-pool* yellowshot #x4000)))
-        (when s4-1
-          (let ((t9-4 (method-of-type yellowshot activate)))
-            (t9-4 (the-as yellowshot s4-1) self 'yellowshot (the-as pointer #x70004000))
-            )
-          (run-now-in-process s4-1 yellowshot-init-by-other gp-0 s5-0 0.0 750)
-          (-> s4-1 ppointer)
-          )
-        )
+      (process-spawn yellowshot gp-0 s5-0 0.0 750 :to self)
       )
     (send-event self 'flash 255.0)
-    (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when s5-1
-        (let ((t9-8 (method-of-type part-tracker activate)))
-          (t9-8 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 642) 300 #f #f #f gp-0)
-        (-> s5-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 642)
+      300
+      #f
+      #f
+      #f
+      gp-0
+      :to *entity-pool*
       )
     )
   (sound-play-by-name (static-sound-name "bfg-fire") (new-sound-id) 1024 0 0 1 #t)
@@ -1115,14 +1103,16 @@
        (set! (-> self yellow-smoke) #t)
        (let ((gp-0 (new 'stack-no-clear 'vector)))
          (vector<-cspace! gp-0 (-> self node-list data 27))
-         (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-           (when s5-0
-             (let ((t9-7 (method-of-type part-tracker activate)))
-               (t9-7 (the-as part-tracker s5-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-               )
-             (run-now-in-process s5-0 part-tracker-init (-> *part-group-id-table* 653) 300 #f #f #f gp-0)
-             (-> s5-0 ppointer)
-             )
+         (process-spawn
+           part-tracker
+           :init part-tracker-init
+           (-> *part-group-id-table* 653)
+           300
+           #f
+           #f
+           #f
+           gp-0
+           :to *entity-pool*
            )
          )
        (let* ((s5-1 (get-process *default-dead-pool* manipy #x4000))
@@ -1629,14 +1619,16 @@
           )
         )
       (when s5-0
-        (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-          (when s5-1
-            (let ((t9-7 (method-of-type part-tracker activate)))
-              (t9-7 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-              )
-            (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 641) 300 #f #f #f gp-0)
-            (-> s5-1 ppointer)
-            )
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          (-> *part-group-id-table* 641)
+          300
+          #f
+          #f
+          #f
+          gp-0
+          :to *entity-pool*
           )
         (sound-play-by-name (static-sound-name "red-fire") (new-sound-id) 1024 0 0 1 #t)
         )
@@ -1795,14 +1787,16 @@
        (set! (-> self red-smoke) #t)
        (let ((gp-0 (new 'stack-no-clear 'vector)))
          (vector<-cspace! gp-0 (-> self node-list data 51))
-         (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-           (when s5-0
-             (let ((t9-7 (method-of-type part-tracker activate)))
-               (t9-7 (the-as part-tracker s5-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-               )
-             (run-now-in-process s5-0 part-tracker-init (-> *part-group-id-table* 649) 300 #f #f #f gp-0)
-             (-> s5-0 ppointer)
-             )
+         (process-spawn
+           part-tracker
+           :init part-tracker-init
+           (-> *part-group-id-table* 649)
+           300
+           #f
+           #f
+           #f
+           gp-0
+           :to *entity-pool*
            )
          )
        (let* ((s5-1 (get-process *default-dead-pool* manipy #x4000))
@@ -2131,25 +2125,19 @@
       (set! (-> s2-0 quad) (-> self entity extra trans quad))
       (set! (-> s2-0 y) (+ -40960.0 (-> s2-0 y)))
       (vector+! s2-0 s2-0 arg0)
-      (let ((s1-1 (get-process *default-dead-pool* greenshot #x4000)))
-        (when s1-1
-          (let ((t9-2 (method-of-type greenshot activate)))
-            (t9-2 (the-as greenshot s1-1) self 'greenshot (the-as pointer #x70004000))
-            )
-          (run-now-in-process s1-1 greenshot-init-by-other gp-0 s2-0 arg1 arg2)
-          (-> s1-1 ppointer)
-          )
-        )
+      (process-spawn greenshot gp-0 s2-0 arg1 arg2 :to self)
       )
     (when arg3
-      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-1
-          (let ((t9-5 (method-of-type part-tracker activate)))
-            (t9-5 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 640) 300 #f #f #f gp-0)
-          (-> s5-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 640)
+        300
+        #f
+        #f
+        #f
+        gp-0
+        :to *entity-pool*
         )
       (sound-play-by-name (static-sound-name "green-fire") (new-sound-id) 1024 0 0 1 #t)
       )
@@ -2348,20 +2336,12 @@
             (< (-> self children-spawned) 10)
             )
        (+! (-> self children-spawned) 1)
-       (let ((gp-0 (get-process *default-dead-pool* green-eco-lurker-gen #x4000)))
-         (when gp-0
-           (let ((t9-16 (method-of-type green-eco-lurker-gen activate)))
-             (t9-16 (the-as green-eco-lurker-gen gp-0) self 'green-eco-lurker-gen (the-as pointer #x70004000))
-             )
-           (run-now-in-process
-             gp-0
-             green-eco-lurker-gen-init-by-other
-             (-> self entity)
-             (-> self entity extra trans)
-             (-> self dda num-blobs)
-             )
-           (-> gp-0 ppointer)
-           )
+       (process-spawn
+         green-eco-lurker-gen
+         (-> self entity)
+         (-> self entity extra trans)
+         (-> self dda num-blobs)
+         :to self
          )
        (set! (-> self old-loc quad) (-> self desired-loc quad))
        (set-vector! (-> self desired-loc) 24576.0 0.0 655360.0 1.0)
@@ -2878,14 +2858,16 @@
        (set! (-> self blue-smoke) #t)
        (let ((gp-1 (new 'stack-no-clear 'vector)))
          (vector<-cspace! gp-1 (-> self node-list data 7))
-         (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-           (when s5-1
-             (let ((t9-9 (method-of-type part-tracker activate)))
-               (t9-9 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-               )
-             (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 644) 300 #f #f #f gp-1)
-             (-> s5-1 ppointer)
-             )
+         (process-spawn
+           part-tracker
+           :init part-tracker-init
+           (-> *part-group-id-table* 644)
+           300
+           #f
+           #f
+           #f
+           gp-1
+           :to *entity-pool*
            )
          )
        (let* ((s5-2 (get-process *default-dead-pool* manipy #x4000))

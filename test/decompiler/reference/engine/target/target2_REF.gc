@@ -538,9 +538,7 @@
           )
       )
     (set! (-> self fp-hud)
-          (ppointer->handle
-            (process-spawn first-person-hud first-person-hud-init-by-other :to *dproc* :stack (&+ *fp-hud-stack* #x3800))
-            )
+          (ppointer->handle (process-spawn first-person-hud :to *dproc* :stack (&+ *fp-hud-stack* #x3800)))
           )
     (none)
     )
@@ -716,9 +714,7 @@
           )
       )
     (set! (-> self fp-hud)
-          (ppointer->handle
-            (process-spawn first-person-hud first-person-hud-init-by-other :to *dproc* :stack (&+ *fp-hud-stack* #x3800))
-            )
+          (ppointer->handle (process-spawn first-person-hud :to *dproc* :stack (&+ *fp-hud-stack* #x3800)))
           )
     (none)
     )
@@ -1682,29 +1678,22 @@
         )
       )
     (ja :num! (seek!))
-    (let ((gp-3 (get-process *default-dead-pool* projectile-yellow #x4000)))
-      (when gp-3
-        (let ((t9-9 (method-of-type projectile-yellow activate)))
-          (t9-9 (the-as projectile-yellow gp-3) self 'projectile-yellow (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-3
-          projectile-init-by-other
-          (-> self entity)
-          (-> self control unknown-vector90)
-          (vector-float*!
-            (new 'stack-no-clear 'vector)
-            (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat))
-            (the-as float (-> *TARGET-bank* yellow-projectile-speed))
-            )
-          (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
-              16
-              0
-              )
-          #f
-          )
-        (-> gp-3 ppointer)
+    (process-spawn
+      projectile-yellow
+      :init projectile-init-by-other
+      (-> self entity)
+      (-> self control unknown-vector90)
+      (vector-float*!
+        (new 'stack-no-clear 'vector)
+        (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat))
+        (the-as float (-> *TARGET-bank* yellow-projectile-speed))
         )
+      (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
+          16
+          0
+          )
+      #f
+      :to self
       )
     (set! (-> self control unknown-dword82) (-> *display* base-frame-counter))
     (let ((gp-4 (-> *display* base-frame-counter)))
@@ -2874,85 +2863,78 @@
     (if arg1
         (send-event *camera* 'change-state arg1 180)
         )
-    (when (nonzero? arg3)
-      (let ((s3-1 (get-process *default-dead-pool* process #x4000)))
-        (when s3-1
-          (let ((t9-9 (method-of-type process activate)))
-            (t9-9 s3-1 self 'process (the-as pointer #x70004000))
-            )
-          (run-next-time-in-process
-            s3-1
-            (lambda :behavior target
-              ((arg0 vector) (arg1 time-frame) (arg2 float))
-              (local-vars (sv-32 time-frame) (sv-40 vector) (sv-44 symbol))
-              (set! sv-32 (-> *display* base-frame-counter))
-              (let ((v1-2 (new-stack-vector0)))
-                (set! (-> v1-2 quad) (-> arg0 quad))
-                (set! sv-40 v1-2)
-                )
-              (set! sv-44 #t)
-              (until (>= (- (-> *display* base-frame-counter) sv-32) arg1)
-                (let ((s4-0 (ppointer->process (-> self parent))))
-                  (cond
-                    ((and sv-44
-                          (< (- (-> (the-as target s4-0) control trans y) (-> (the-as target s4-0) control unknown-vector52 y)) arg2)
-                          )
-                     (vector-xz-normalize!
-                       (-> (the-as target s4-0) control transv)
-                       (the-as float (-> (new 'static 'array int32 1 0) 0))
-                       )
-                     (case (-> (the-as target s4-0) current-level name)
-                       (('jungleb)
-                        (let ((v1-16 (vector-! (new-stack-vector0) (-> (the-as target s4-0) control trans) sv-40)))
-                          (set! (-> (the-as target s4-0) control trans x) (+ (-> sv-40 x) (fmax -4096.0 (fmin 4096.0 (-> v1-16 x)))))
-                          (set! (-> (the-as target s4-0) control trans z) (+ (-> sv-40 z) (fmax -4096.0 (fmin 4096.0 (-> v1-16 z)))))
-                          )
+    (if (nonzero? arg3)
+        (process-spawn-function
+          process
+          (lambda :behavior target
+            ((arg0 vector) (arg1 time-frame) (arg2 float))
+            (local-vars (sv-32 time-frame) (sv-40 vector) (sv-44 symbol))
+            (set! sv-32 (-> *display* base-frame-counter))
+            (let ((v1-2 (new-stack-vector0)))
+              (set! (-> v1-2 quad) (-> arg0 quad))
+              (set! sv-40 v1-2)
+              )
+            (set! sv-44 #t)
+            (until (>= (- (-> *display* base-frame-counter) sv-32) arg1)
+              (let ((s4-0 (ppointer->process (-> self parent))))
+                (cond
+                  ((and sv-44
+                        (< (- (-> (the-as target s4-0) control trans y) (-> (the-as target s4-0) control unknown-vector52 y)) arg2)
                         )
-                       )
+                   (vector-xz-normalize!
+                     (-> (the-as target s4-0) control transv)
+                     (the-as float (-> (new 'static 'array int32 1 0) 0))
                      )
-                    (else
-                      (if sv-44
-                          (set! sv-32 (-> *display* base-frame-counter))
-                          )
-                      (set! sv-44 (the-as symbol #f))
-                      (when (or (= (-> (the-as target s4-0) next-state name) 'target-duck-high-jump-jump)
-                                (= (-> (the-as target s4-0) next-state name) 'target-falling)
-                                )
-                        (let ((v1-30 (-> (the-as target s4-0) control trans))
-                              (s3-0 (-> (the-as target s4-0) control transv))
+                   (case (-> (the-as target s4-0) current-level name)
+                     (('jungleb)
+                      (let ((v1-16 (vector-! (new-stack-vector0) (-> (the-as target s4-0) control trans) sv-40)))
+                        (set! (-> (the-as target s4-0) control trans x) (+ (-> sv-40 x) (fmax -4096.0 (fmin 4096.0 (-> v1-16 x)))))
+                        (set! (-> (the-as target s4-0) control trans z) (+ (-> sv-40 z) (fmax -4096.0 (fmin 4096.0 (-> v1-16 z)))))
+                        )
+                      )
+                     )
+                   )
+                  (else
+                    (if sv-44
+                        (set! sv-32 (-> *display* base-frame-counter))
+                        )
+                    (set! sv-44 (the-as symbol #f))
+                    (when (or (= (-> (the-as target s4-0) next-state name) 'target-duck-high-jump-jump)
+                              (= (-> (the-as target s4-0) next-state name) 'target-falling)
                               )
-                          (set! (-> s3-0 x) (- (-> sv-40 x) (-> v1-30 x)))
-                          (set! (-> s3-0 z) (- (-> sv-40 z) (-> v1-30 z)))
-                          (let ((f30-0 (vector-xz-length s3-0)))
-                            (if (< 122880.0 f30-0)
-                                (vector-xz-normalize! s3-0 (the-as float 122880.0))
-                                )
-                            (if (< 4096.0 f30-0)
-                                (forward-up-nopitch->quaternion
-                                  (-> (the-as target s4-0) control dir-targ)
-                                  (vector-normalize-copy! (new 'stack-no-clear 'vector) s3-0 (the-as float 1.0))
-                                  (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> (the-as target s4-0) control quat))
-                                  )
-                                )
+                      (let ((v1-30 (-> (the-as target s4-0) control trans))
+                            (s3-0 (-> (the-as target s4-0) control transv))
                             )
+                        (set! (-> s3-0 x) (- (-> sv-40 x) (-> v1-30 x)))
+                        (set! (-> s3-0 z) (- (-> sv-40 z) (-> v1-30 z)))
+                        (let ((f30-0 (vector-xz-length s3-0)))
+                          (if (< 122880.0 f30-0)
+                              (vector-xz-normalize! s3-0 (the-as float 122880.0))
+                              )
+                          (if (< 4096.0 f30-0)
+                              (forward-up-nopitch->quaternion
+                                (-> (the-as target s4-0) control dir-targ)
+                                (vector-normalize-copy! (new 'stack-no-clear 'vector) s3-0 (the-as float 1.0))
+                                (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> (the-as target s4-0) control quat))
+                                )
+                              )
                           )
                         )
                       )
                     )
                   )
-                (suspend)
-                0
                 )
-              #f
+              (suspend)
+              0
               )
-            arg2
-            arg3
-            143360.0
+            #f
             )
-          (-> s3-1 ppointer)
+          arg2
+          arg3
+          143360.0
+          :to self
           )
         )
-      )
     (sound-play-by-name (static-sound-name "launch-fire") (new-sound-id) 1024 0 0 1 #t)
     (go target-high-jump arg0 arg0 'launch)
     (none)

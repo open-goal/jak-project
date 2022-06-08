@@ -183,14 +183,16 @@
 (defun ogreboss-rock-explosion-effect ((arg0 basic))
   (with-pp
     (sound-play-by-name (static-sound-name "ogre-explode") (new-sound-id) 1024 0 0 1 (the-as symbol arg0))
-    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-1
-        (let ((t9-3 (method-of-type part-tracker activate)))
-          (t9-3 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process gp-1 part-tracker-init (-> *part-group-id-table* 471) -1 #f #f #f arg0)
-        (-> gp-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 471)
+      -1
+      #f
+      #f
+      #f
+      arg0
+      :to *entity-pool*
       )
     (activate! *camera-smush-control* (the-as float 819.2) 37 600 (the-as float 1.0) (the-as float 0.995))
     (let* ((s4-1 (get-process *default-dead-pool* manipy #x4000))
@@ -665,14 +667,16 @@
     (the-as symbol (-> self draw origin))
     )
   (activate! *camera-smush-control* (the-as float 819.2) 37 600 (the-as float 1.0) (the-as float 0.995))
-  (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-    (when gp-1
-      (let ((t9-4 (method-of-type part-tracker activate)))
-        (t9-4 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-        )
-      (run-now-in-process gp-1 part-tracker-init (-> *part-group-id-table* 471) -1 #f #f #f (-> self draw origin))
-      (-> gp-1 ppointer)
-      )
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 471)
+    -1
+    #f
+    #f
+    #f
+    (-> self draw origin)
+    :to *entity-pool*
     )
   0
   (none)
@@ -1499,24 +1503,18 @@
       1
       (the-as symbol (-> self root-override trans))
       )
-    (let ((s5-2 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when s5-2
-        (let ((t9-5 (method-of-type part-tracker activate)))
-          (t9-5 (the-as part-tracker s5-2) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process s5-2 part-tracker-init (-> *part-group-id-table* 470) -1 #f #f #f (-> gp-0 src))
-        (-> s5-2 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 470)
+      -1
+      #f
+      #f
+      #f
+      (-> gp-0 src)
+      :to *entity-pool*
       )
-    (let ((s5-3 (get-process *default-dead-pool* ogreboss-missile #x4000)))
-      (when s5-3
-        (let ((t9-8 (method-of-type ogreboss-missile activate)))
-          (t9-8 (the-as ogreboss-missile s5-3) self 'ogreboss-missile (the-as pointer #x70004000))
-          )
-        (run-now-in-process s5-3 ogreboss-missile-init-by-other gp-0 (-> self entity))
-        (-> s5-3 ppointer)
-        )
-      )
+    (process-spawn ogreboss-missile gp-0 (-> self entity) :to self)
     )
   0
   (none)
@@ -1822,37 +1820,13 @@
   (let ((v1-7 (-> self roll-boulder)))
     (cond
       ((zero? v1-7)
-       (let ((gp-2 (get-process *default-dead-pool* ogreboss-bounce-boulder #x4000)))
-         (when gp-2
-           (let ((t9-4 (method-of-type ogreboss-bounce-boulder activate)))
-             (t9-4 (the-as ogreboss-bounce-boulder gp-2) self 'ogreboss-bounce-boulder (the-as pointer #x70004000))
-             )
-           (run-now-in-process gp-2 ogreboss-bounce-boulder-init-by-other 2 (-> self entity))
-           (-> gp-2 ppointer)
-           )
-         )
+       (process-spawn ogreboss-bounce-boulder 2 (-> self entity) :to self)
        )
       ((= v1-7 1)
-       (let ((gp-3 (get-process *default-dead-pool* ogreboss-bounce-boulder #x4000)))
-         (when gp-3
-           (let ((t9-7 (method-of-type ogreboss-bounce-boulder activate)))
-             (t9-7 (the-as ogreboss-bounce-boulder gp-3) self 'ogreboss-bounce-boulder (the-as pointer #x70004000))
-             )
-           (run-now-in-process gp-3 ogreboss-bounce-boulder-init-by-other 1 (-> self entity))
-           (-> gp-3 ppointer)
-           )
-         )
+       (process-spawn ogreboss-bounce-boulder 1 (-> self entity) :to self)
        )
       (else
-        (let ((gp-4 (get-process *default-dead-pool* ogreboss-bounce-boulder #x4000)))
-          (when gp-4
-            (let ((t9-10 (method-of-type ogreboss-bounce-boulder activate)))
-              (t9-10 (the-as ogreboss-bounce-boulder gp-4) self 'ogreboss-bounce-boulder (the-as pointer #x70004000))
-              )
-            (run-now-in-process gp-4 ogreboss-bounce-boulder-init-by-other 0 (-> self entity))
-            (-> gp-4 ppointer)
-            )
-          )
+        (process-spawn ogreboss-bounce-boulder 0 (-> self entity) :to self)
         )
       )
     )
@@ -2040,15 +2014,10 @@
 ;; definition for function ogreboss-spawn-super-boulder
 ;; INFO: Return type mismatch int vs none.
 (defbehavior ogreboss-spawn-super-boulder ogreboss ()
-  (set! (-> self boulder) (ppointer->handle (process-spawn
-                                              ogreboss-super-boulder
-                                              ogreboss-super-boulder-init-by-other
-                                              (-> self far-pos)
-                                              (-> self grow-time)
-                                              (-> self entity)
-                                              :to self
-                                              )
-                                            )
+  (set! (-> self boulder)
+        (ppointer->handle
+          (process-spawn ogreboss-super-boulder (-> self far-pos) (-> self grow-time) (-> self entity) :to self)
+          )
         )
   0
   (none)

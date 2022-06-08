@@ -1231,7 +1231,6 @@
             ((name= arg0 "reflector-mirror-2")
              (process-spawn
                pov-camera
-               pov-camera-init-by-other
                (-> gp-0 extra trans)
                *junglecam-sg*
                "tower1"
@@ -1244,7 +1243,6 @@
             ((name= arg0 "periscope-11")
              (process-spawn
                pov-camera
-               pov-camera-init-by-other
                (-> gp-0 extra trans)
                *junglecam-sg*
                "tower2"
@@ -1257,7 +1255,6 @@
             ((name= arg0 "periscope-12")
              (process-spawn
                pov-camera
-               pov-camera-init-by-other
                (-> gp-0 extra trans)
                *junglecam-sg*
                "tower3"
@@ -1270,7 +1267,6 @@
             ((name= arg0 "periscope-13")
              (process-spawn
                pov-camera
-               pov-camera-init-by-other
                (-> gp-0 extra trans)
                *junglecam-sg*
                "tower4"
@@ -1283,7 +1279,6 @@
             ((name= arg0 "periscope-14")
              (process-spawn
                pov-camera
-               pov-camera-init-by-other
                (-> gp-0 extra trans)
                *junglecam-sg*
                "tower5"
@@ -1296,7 +1291,6 @@
             ((name= arg0 "periscope-15")
              (process-spawn
                pov-camera
-               pov-camera-init-by-other
                (-> gp-0 extra trans)
                *junglecam-sg*
                "beamcam"
@@ -1781,55 +1775,48 @@
                      (suspend)
                      )
                    )
-                 (let ((gp-2 (get-process *default-dead-pool* process #x4000)))
-                   (when gp-2
-                     (let ((t9-18 (method-of-type process activate)))
-                       (t9-18 gp-2 self 'process (the-as pointer #x70004000))
+                 (process-spawn-function
+                   process
+                   (lambda ((arg0 string))
+                     (while (or (-> *setting-control* current ambient)
+                                (-> *setting-control* current movie)
+                                (-> *setting-control* current hint)
+                                )
+                       (suspend)
                        )
-                     (run-next-time-in-process
-                       gp-2
-                       (lambda ((arg0 string))
-                         (while (or (-> *setting-control* current ambient)
-                                    (-> *setting-control* current movie)
-                                    (-> *setting-control* current hint)
-                                    )
-                           (suspend)
-                           )
-                         (cond
-                           ((name= arg0 "periscope-11")
-                            (level-hint-spawn
-                              (game-text-id jungle-mirrors-follow-the-beam)
-                              "sksp0053"
-                              (the-as entity #f)
-                              *entity-pool*
-                              (game-task none)
-                              )
-                            )
-                           ((name= arg0 "periscope-12")
-                            (level-hint-spawn
-                              (game-text-id jungle-mirrors-go-to-the-next-tower)
-                              "sksp0052"
-                              (the-as entity #f)
-                              *entity-pool*
-                              (game-task none)
-                              )
-                            )
-                           ((name= arg0 "periscope-15")
-                            (level-hint-spawn
-                              (game-text-id jungle-mirrors-completion-talk-to-mayor)
-                              "sksp0018"
-                              (the-as entity #f)
-                              *entity-pool*
-                              (game-task none)
-                              )
-                            )
-                           )
-                         (none)
-                         )
-                       (-> self name)
+                     (cond
+                       ((name= arg0 "periscope-11")
+                        (level-hint-spawn
+                          (game-text-id jungle-mirrors-follow-the-beam)
+                          "sksp0053"
+                          (the-as entity #f)
+                          *entity-pool*
+                          (game-task none)
+                          )
+                        )
+                       ((name= arg0 "periscope-12")
+                        (level-hint-spawn
+                          (game-text-id jungle-mirrors-go-to-the-next-tower)
+                          "sksp0052"
+                          (the-as entity #f)
+                          *entity-pool*
+                          (game-task none)
+                          )
+                        )
+                       ((name= arg0 "periscope-15")
+                        (level-hint-spawn
+                          (game-text-id jungle-mirrors-completion-talk-to-mayor)
+                          "sksp0018"
+                          (the-as entity #f)
+                          *entity-pool*
+                          (game-task none)
+                          )
+                        )
                        )
-                     (-> gp-2 ppointer)
+                     (none)
                      )
+                   (-> self name)
+                   :to self
                    )
                  )
                 (else
@@ -1950,7 +1937,7 @@
   (set! (-> obj base quad) (-> obj root-override trans quad))
   (set! (-> obj reflector-trans quad) (-> obj base quad))
   (+! (-> obj reflector-trans y) (-> obj height))
-  (set! (-> obj reflector) (process-spawn reflector reflector-init-by-other (-> obj reflector-trans) :to obj))
+  (set! (-> obj reflector) (process-spawn reflector (-> obj reflector-trans) :to obj))
   (set! (-> obj link) (new 'process 'actor-link-info obj))
   (periscope-find-next)
   (initialize-skeleton obj *periscope-base-sg* '())

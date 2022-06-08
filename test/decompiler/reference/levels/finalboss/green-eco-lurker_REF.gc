@@ -530,14 +530,16 @@
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (set! (-> gp-0 quad) (-> self collide-info trans quad))
       (set! (-> gp-0 y) (+ 8192.0 (-> gp-0 y)))
-      (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-0
-          (let ((t9-3 (method-of-type part-tracker activate)))
-            (t9-3 (the-as part-tracker s5-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-0 part-tracker-init (-> *part-group-id-table* 643) -1 #f #f #f gp-0)
-          (-> s5-0 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 643)
+        -1
+        #f
+        #f
+        #f
+        gp-0
+        :to *entity-pool*
         )
       )
     (let ((gp-1 (new 'stack-no-clear 'vector)))
@@ -740,23 +742,16 @@
   :enter
   (behavior ()
     (send-event (ppointer->process (-> self parent)) 'blob-died)
-    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-0
-        (let ((t9-2 (method-of-type part-tracker activate)))
-          (t9-2 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-0
-          part-tracker-init
-          (-> *part-group-id-table* 643)
-          -1
-          #f
-          #f
-          #f
-          (-> self collide-info trans)
-          )
-        (-> gp-0 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 643)
+      -1
+      #f
+      #f
+      #f
+      (-> self collide-info trans)
+      :to *entity-pool*
       )
     (sound-play-by-name (static-sound-name "blob-explode") (new-sound-id) 1024 0 0 1 #t)
     (activate! *camera-smush-control* 409.6 37 150 1.0 0.99)
@@ -912,15 +907,7 @@
         (let ((gp-0 (new 'stack-no-clear 'vector)))
           (set! (-> gp-0 quad) (-> self root trans quad))
           (set! (-> gp-0 y) (+ -16384.0 (-> gp-0 y)))
-          (let ((s5-0 (get-process *default-dead-pool* green-eco-lurker #x4000)))
-            (when s5-0
-              (let ((t9-1 (method-of-type green-eco-lurker activate)))
-                (t9-1 (the-as green-eco-lurker s5-0) self 'green-eco-lurker (the-as pointer #x70004000))
-                )
-              (run-now-in-process s5-0 green-eco-lurker-init-by-other (-> self entity) self gp-0)
-              (-> s5-0 ppointer)
-              )
-            )
+          (process-spawn green-eco-lurker (-> self entity) self gp-0 :to self)
           )
         (+! (-> self num-spawned) 1)
         (+! (-> self num-alive) 1)

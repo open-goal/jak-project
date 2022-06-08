@@ -172,41 +172,32 @@
 ;; INFO: Return type mismatch none vs object.
 (defbehavior keg-event-handler keg ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((v1-0 arg2))
-    (the-as
-      object
-      (when (or (= v1-0 'touch) (= v1-0 'attack))
-        (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-3 from) self)
-          (set! (-> a1-3 num-params) 2)
-          (set! (-> a1-3 message) 'attack)
-          (set! (-> a1-3 param 0) (-> arg3 param 0))
-          (set! (-> a1-3 param 1) (the-as uint (new 'static 'attack-info)))
-          (when (send-event-function arg0 a1-3)
-            (sound-play-by-name (static-sound-name "icrate-break") (new-sound-id) 1024 0 0 1 #t)
-            (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-              (when gp-1
-                (let ((t9-4 (method-of-type part-tracker activate)))
-                  (t9-4 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-                  )
-                (run-now-in-process
-                  gp-1
-                  part-tracker-init
-                  (-> *part-group-id-table* 71)
-                  20
-                  #f
-                  #f
-                  #f
-                  (-> self root-override trans)
-                  )
-                (-> gp-1 ppointer)
-                )
-              )
-            (sound-stop (-> self sound-id))
-            (deactivate self)
+    (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack))
+                     (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+                       (set! (-> a1-3 from) self)
+                       (set! (-> a1-3 num-params) 2)
+                       (set! (-> a1-3 message) 'attack)
+                       (set! (-> a1-3 param 0) (-> arg3 param 0))
+                       (set! (-> a1-3 param 1) (the-as uint (new 'static 'attack-info)))
+                       (when (send-event-function arg0 a1-3)
+                         (sound-play-by-name (static-sound-name "icrate-break") (new-sound-id) 1024 0 0 1 #t)
+                         (process-spawn
+                           part-tracker
+                           :init part-tracker-init
+                           (-> *part-group-id-table* 71)
+                           20
+                           #f
+                           #f
+                           #f
+                           (-> self root-override trans)
+                           :to *entity-pool*
+                           )
+                         (sound-stop (-> self sound-id))
+                         (deactivate self)
+                         )
+                       )
+                     )
             )
-          )
-        )
-      )
     )
   )
 
@@ -386,23 +377,16 @@
                     (activate! (-> self smush) -0.15 90 150 1.0 1.0)
                     (set! sv-64 f24-0)
                     (sound-play-by-name (static-sound-name "barrel-bounce") (new-sound-id) 819 0 0 1 #t)
-                    (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
-                      (when s4-1
-                        (let ((t9-12 (method-of-type part-tracker activate)))
-                          (t9-12 (the-as part-tracker s4-1) self 'part-tracker (the-as pointer #x70004000))
-                          )
-                        (run-now-in-process
-                          s4-1
-                          part-tracker-init
-                          (-> *part-group-id-table* 197)
-                          -1
-                          keg-bounce-set-particle-rotation-callback
-                          (-> self ppointer)
-                          #f
-                          (-> self root-override trans)
-                          )
-                        (-> s4-1 ppointer)
-                        )
+                    (process-spawn
+                      part-tracker
+                      :init part-tracker-init
+                      (-> *part-group-id-table* 197)
+                      -1
+                      keg-bounce-set-particle-rotation-callback
+                      (-> self ppointer)
+                      #f
+                      (-> self root-override trans)
+                      :to self
                       )
                     )
                   (let ((f0-39 (update! (-> self smush))))
@@ -542,12 +526,12 @@
 
 ;; definition for function keg-conveyor-spawn-keg
 (defun keg-conveyor-spawn-keg ((arg0 keg-conveyor))
-  (process-spawn keg keg-init-by-other arg0 0 :to arg0)
+  (process-spawn keg arg0 0 :to arg0)
   )
 
 ;; definition for function keg-conveyor-spawn-bouncing-keg
 (defun keg-conveyor-spawn-bouncing-keg ((arg0 keg-conveyor))
-  (process-spawn keg keg-init-by-other arg0 1 :to arg0)
+  (process-spawn keg arg0 1 :to arg0)
   )
 
 ;; definition for symbol *keg-conveyor-keg-spawn-table*, type (array int8)
@@ -714,15 +698,7 @@
       )
     (vector+! (-> obj root trans) (-> obj root trans) s5-1)
     )
-  (let ((s5-2 (get-process *default-dead-pool* keg-conveyor-paddle #x4000)))
-    (when s5-2
-      (let ((t9-11 (method-of-type keg-conveyor-paddle activate)))
-        (t9-11 (the-as keg-conveyor-paddle s5-2) obj 'keg-conveyor-paddle (the-as pointer #x70004000))
-        )
-      (run-now-in-process s5-2 keg-conveyor-paddle-init-by-other obj)
-      (-> s5-2 ppointer)
-      )
-    )
+  (process-spawn keg-conveyor-paddle obj :to obj)
   (go keg-conveyor-idle)
   (none)
   )

@@ -242,26 +242,19 @@
                 (suspend)
                 (ja :num! (seek!))
                 )
-              (when (logtest? (-> self draw status) (draw-status was-drawn))
-                (let ((s5-3 (get-process *default-dead-pool* part-tracker #x4000)))
-                  (when s5-3
-                    (let ((t9-11 (method-of-type part-tracker activate)))
-                      (t9-11 (the-as part-tracker s5-3) self 'part-tracker (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process
-                      s5-3
-                      part-tracker-init
-                      (-> *part-group-id-table* 289)
-                      -1
-                      swamp-spike-set-particle-rotation-callback
-                      (-> self ppointer)
-                      #f
-                      (-> self root-override trans)
-                      )
-                    (-> s5-3 ppointer)
+              (if (logtest? (-> self draw status) (draw-status was-drawn))
+                  (process-spawn
+                    part-tracker
+                    :init part-tracker-init
+                    (-> *part-group-id-table* 289)
+                    -1
+                    swamp-spike-set-particle-rotation-callback
+                    (-> self ppointer)
+                    #f
+                    (-> self root-override trans)
+                    :to self
                     )
                   )
-                )
               (set! (-> self dangerous) #t)
               (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
@@ -274,26 +267,19 @@
               (until (< (get-current-phase (-> self sync)) 0.5)
                 (suspend)
                 )
-              (when (logtest? (-> self draw status) (draw-status was-drawn))
-                (let ((s5-4 (get-process *default-dead-pool* part-tracker #x4000)))
-                  (when s5-4
-                    (let ((t9-18 (method-of-type part-tracker activate)))
-                      (t9-18 (the-as part-tracker s5-4) self 'part-tracker (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process
-                      s5-4
-                      part-tracker-init
-                      (-> *part-group-id-table* 290)
-                      -1
-                      swamp-spike-set-particle-rotation-callback
-                      (-> self ppointer)
-                      #f
-                      (-> self root-override trans)
-                      )
-                    (-> s5-4 ppointer)
+              (if (logtest? (-> self draw status) (draw-status was-drawn))
+                  (process-spawn
+                    part-tracker
+                    :init part-tracker-init
+                    (-> *part-group-id-table* 290)
+                    -1
+                    swamp-spike-set-particle-rotation-callback
+                    (-> self ppointer)
+                    #f
+                    (-> self root-override trans)
+                    :to self
                     )
                   )
-                )
               (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
@@ -332,23 +318,16 @@
       (ja :num-func num-func-identity :frame-num 0.0)
       (suspend)
       )
-    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-0
-        (let ((t9-1 (method-of-type part-tracker activate)))
-          (t9-1 (the-as part-tracker gp-0) self 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-0
-          part-tracker-init
-          (-> *part-group-id-table* 290)
-          -1
-          swamp-spike-set-particle-rotation-callback
-          (-> self ppointer)
-          #f
-          (-> self root-override trans)
-          )
-        (-> gp-0 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 290)
+      -1
+      swamp-spike-set-particle-rotation-callback
+      (-> self ppointer)
+      #f
+      (-> self root-override trans)
+      :to self
       )
     (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -713,14 +692,16 @@
   (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
     (sound-play-by-name (static-sound-name "rock-break") (new-sound-id) 1024 0 0 1 #t)
-    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-1
-        (let ((t9-4 (method-of-type part-tracker activate)))
-          (t9-4 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process gp-1 part-tracker-init (-> *part-group-id-table* 291) -1 #f #f #f (-> self root trans))
-        (-> gp-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 291)
+      -1
+      #f
+      #f
+      #f
+      (-> self root trans)
+      :to *entity-pool*
       )
     (cleanup-for-death self)
     (deactivate self)

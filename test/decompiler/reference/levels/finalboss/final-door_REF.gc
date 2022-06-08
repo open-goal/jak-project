@@ -320,23 +320,16 @@
     (set! (-> self base quad) (-> self root-override trans quad))
     (transform-post)
     (sound-play-by-name (static-sound-name "land-pcmetal") (new-sound-id) 1024 3048 0 1 #t)
-    (let ((gp-3 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-3
-        (let ((t9-12 (method-of-type part-tracker activate)))
-          (t9-12 (the-as part-tracker gp-3) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-3
-          part-tracker-init
-          (-> *part-group-id-table* 4)
-          -1
-          #f
-          #f
-          #f
-          (-> self root-override root-prim prim-core)
-          )
-        (-> gp-3 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 4)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override root-prim prim-core)
+      :to *entity-pool*
       )
     (go-virtual idle)
     (none)

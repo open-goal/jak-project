@@ -630,31 +630,26 @@
     (cond
       (sv-16
         (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
-        (let ((gp-0 (get-process *default-dead-pool* process #x4000)))
-          (when gp-0
-            (let ((t9-4 (method-of-type process activate)))
-              (t9-4 gp-0 self 'process (the-as pointer #x70004000))
+        (process-spawn-function
+          process
+          (lambda :behavior lightning-mole
+            ()
+            (while (or (-> *setting-control* current ambient)
+                       (-> *setting-control* current movie)
+                       (-> *setting-control* current hint)
+                       )
+              (suspend)
               )
-            (run-next-time-in-process gp-0 (lambda :behavior lightning-mole
-                                             ()
-                                             (while (or (-> *setting-control* current ambient)
-                                                        (-> *setting-control* current movie)
-                                                        (-> *setting-control* current hint)
-                                                        )
-                                               (suspend)
-                                               )
-                                             (level-hint-spawn
-                                               (game-text-id rolling-lightning-moles-completion)
-                                               "sksp0112"
-                                               (the-as entity #f)
-                                               *entity-pool*
-                                               (game-task none)
-                                               )
-                                             (none)
-                                             )
-                                      )
-            (-> gp-0 ppointer)
+            (level-hint-spawn
+              (game-text-id rolling-lightning-moles-completion)
+              "sksp0112"
+              (the-as entity #f)
+              *entity-pool*
+              (game-task none)
+              )
+            (none)
             )
+          :to self
           )
         (format #t "lightning-mole task is complete~%")
         )

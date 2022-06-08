@@ -1033,27 +1033,31 @@
        (send-event (ppointer->process (-> self parent)) 'deadly)
        )
       (('powerup)
-       (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-         (when gp-1
-           (let ((t9-5 (method-of-type part-tracker activate)))
-             (t9-5 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-             )
-           (run-now-in-process gp-1 part-tracker-init (-> *part-group-id-table* 179) -1 #f #f #f (-> self root trans))
-           (-> gp-1 ppointer)
-           )
+       (process-spawn
+         part-tracker
+         :init part-tracker-init
+         (-> *part-group-id-table* 179)
+         -1
+         #f
+         #f
+         #f
+         (-> self root trans)
+         :to *entity-pool*
          )
        (sound-play-by-name (static-sound-name "get-big-fish") (new-sound-id) 1024 0 0 1 #t)
        (send-event (ppointer->process (-> self parent)) 'fisher-fish-caught 5)
        )
       (else
-        (let ((gp-3 (get-process *default-dead-pool* part-tracker #x4000)))
-          (when gp-3
-            (let ((t9-11 (method-of-type part-tracker activate)))
-              (t9-11 (the-as part-tracker gp-3) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-              )
-            (run-now-in-process gp-3 part-tracker-init (-> *part-group-id-table* 179) -1 #f #f #f (-> self root trans))
-            (-> gp-3 ppointer)
-            )
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          (-> *part-group-id-table* 179)
+          -1
+          #f
+          #f
+          #f
+          (-> self root trans)
+          :to *entity-pool*
           )
         (sound-play-by-name (static-sound-name "get-small-fish") (new-sound-id) 1024 0 0 1 #t)
         (send-event (ppointer->process (-> self parent)) 'fisher-fish-caught 1)
@@ -1449,25 +1453,17 @@
             (-> gp-2 user-uint8 6)
             )
           )
-        (let ((gp-3 (get-process *default-dead-pool* process #x4000)))
-          (when gp-3
-            (let ((t9-15 (method-of-type process activate)))
-              (t9-15 gp-3 *default-pool* 'process (the-as pointer #x70004000))
-              )
-            (run-next-time-in-process gp-3 (lambda :behavior process
-                                             ()
-                                             (let ((gp-0 (-> *display* base-frame-counter)))
-                                               (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 0.1))
-                                                 (suspend)
-                                                 )
-                                               )
-                                             (ambient-hint-spawn "st-lose" (the-as vector #f) *entity-pool* 'stinger)
-                                             (none)
-                                             )
-                                      )
-            (-> gp-3 ppointer)
-            )
-          )
+        (process-spawn-function process (lambda :behavior process
+                                          ()
+                                          (let ((gp-0 (-> *display* base-frame-counter)))
+                                            (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 0.1))
+                                              (suspend)
+                                              )
+                                            )
+                                          (ambient-hint-spawn "st-lose" (the-as vector #f) *entity-pool* 'stinger)
+                                          (none)
+                                          )
+                                )
         (send-event *target* 'lose)
         )
       )
@@ -1641,15 +1637,7 @@
       (set! (-> self spawn-time) (-> *display* base-frame-counter))
       (sound-play-by-name (static-sound-name "fish-spawn") (new-sound-id) 716 0 0 1 #t)
       (fisher-spawn-ambient)
-      (let ((s5-1 (get-process *default-dead-pool* fisher-fish #x4000)))
-        (when s5-1
-          (let ((t9-10 (method-of-type fisher-fish activate)))
-            (t9-10 (the-as fisher-fish s5-1) self 'fisher-fish (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 fisher-fish-init-by-other gp-0 (-> self spawner) (* 1.85 (-> self params fish-vel)))
-          (-> s5-1 ppointer)
-          )
-        )
+      (process-spawn fisher-fish gp-0 (-> self spawner) (* 1.85 (-> self params fish-vel)) :to self)
       )
     )
   (let ((f1-14 (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 32.0 110.0 28.0)))
@@ -1703,23 +1691,18 @@
     (send-event *target* 'reset-pickup 'eco)
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self root-override))
-    (let ((gp-0 (get-process *default-dead-pool* process #x4000)))
-      (when gp-0
-        (let ((t9-5 (method-of-type process activate)))
-          (t9-5 gp-0 self 'process (the-as pointer #x70004000))
+    (process-spawn-function
+      process
+      (lambda :behavior fisher-fish
+        ()
+        (logclear! (-> self mask) (process-mask pause))
+        (loop
+          (fisher-draw-display (the-as fisher (ppointer->process (-> self parent))))
+          (suspend)
           )
-        (run-next-time-in-process gp-0 (lambda :behavior fisher-fish
-                                         ()
-                                         (logclear! (-> self mask) (process-mask pause))
-                                         (loop
-                                           (fisher-draw-display (the-as fisher (ppointer->process (-> self parent))))
-                                           (suspend)
-                                           )
-                                         (none)
-                                         )
-                                  )
-        (-> gp-0 ppointer)
+        (none)
         )
+      :to self
       )
     (send-event *camera* 'change-to-entity-by-name "camera-152")
     (init! (-> self query) (the-as string #f) 40 150 25 #t (lookup-text! *common-text* (game-text-id quit) #f))

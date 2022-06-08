@@ -846,23 +846,16 @@
     (set! (-> self explosion-force-position quad)
           (-> self node-list data (-> self explosion-joint-index-bytes arg0) bone transform vector 3 quad)
           )
-    (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when s5-0
-        (let ((t9-1 (method-of-type part-tracker activate)))
-          (t9-1 (the-as part-tracker s5-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          s5-0
-          part-tracker-init
-          (-> *part-group-id-table* 204)
-          -1
-          #f
-          #f
-          #f
-          (-> self explosion-force-position)
-          )
-        (-> s5-0 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 204)
+      -1
+      #f
+      #f
+      #f
+      (-> self explosion-force-position)
+      :to *entity-pool*
       )
     (sound-play-by-name (static-sound-name "explosion") (new-sound-id) 1024 0 0 1 #t)
     (set! (-> self explosion) #t)
@@ -1017,23 +1010,16 @@
     )
   :code
   (behavior ()
-    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-0
-        (let ((t9-1 (method-of-type part-tracker activate)))
-          (t9-1 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-0
-          part-tracker-init
-          (-> *part-group-id-table* 203)
-          -1
-          #f
-          #f
-          #f
-          (-> self root-override trans)
-          )
-        (-> gp-0 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 203)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override trans)
+      :to *entity-pool*
       )
     (TODO-RENAME-17
       (-> self parent-override 0 rbody)
@@ -1258,15 +1244,7 @@
      (return #f)
      )
     (else
-      (let ((s5-1 (get-process *default-dead-pool* balloonlurker-pilot #x4000)))
-        (when s5-1
-          (let ((t9-6 (method-of-type balloonlurker-pilot activate)))
-            (t9-6 (the-as balloonlurker-pilot s5-1) obj 'balloonlurker-pilot (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 balloonlurker-pilot-init-by-other obj)
-          (-> s5-1 ppointer)
-          )
-        )
+      (process-spawn balloonlurker-pilot obj :to obj)
       (go balloonlurker-patrol)
       )
     )

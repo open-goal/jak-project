@@ -313,7 +313,7 @@
       (set! (-> self cam-tracker)
             (ppointer->handle (process-spawn
                                 camera-tracker
-                                camera-tracker-init
+                                :init camera-tracker-init
                                 (lambda :behavior camera-tracker
                                   ()
                                   (local-vars
@@ -756,31 +756,26 @@
         (quaternion-copy! (-> self root-override quat) s5-2)
         )
       )
-    (let ((gp-2 (get-process *default-dead-pool* process #x4000)))
-      (when gp-2
-        (let ((t9-18 (method-of-type process activate)))
-          (t9-18 gp-2 self 'process (the-as pointer #x70004000))
+    (process-spawn-function
+      process
+      (lambda :behavior pelican
+        ()
+        (while (or (-> *setting-control* current ambient)
+                   (-> *setting-control* current movie)
+                   (-> *setting-control* current hint)
+                   )
+          (suspend)
           )
-        (run-next-time-in-process gp-2 (lambda :behavior pelican
-                                         ()
-                                         (while (or (-> *setting-control* current ambient)
-                                                    (-> *setting-control* current movie)
-                                                    (-> *setting-control* current hint)
-                                                    )
-                                           (suspend)
-                                           )
-                                         (level-hint-spawn
-                                           (game-text-id beach-pelican-quick-get-cell)
-                                           "sksp0027"
-                                           (the-as entity #f)
-                                           *entity-pool*
-                                           (game-task none)
-                                           )
-                                         (none)
-                                         )
-                                  )
-        (-> gp-2 ppointer)
+        (level-hint-spawn
+          (game-text-id beach-pelican-quick-get-cell)
+          "sksp0027"
+          (the-as entity #f)
+          *entity-pool*
+          (game-task none)
+          )
+        (none)
         )
+      :to self
       )
     (let ((gp-3 (handle->process (-> self fuel-cell))))
       (when gp-3
@@ -942,23 +937,16 @@
       )
     (when (not arg0)
       (sound-play-by-name (static-sound-name "scrate-break") (new-sound-id) 1024 0 0 1 #t)
-      (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when gp-1
-          (let ((t9-3 (method-of-type part-tracker activate)))
-            (t9-3 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process
-            gp-1
-            part-tracker-init
-            (-> *part-group-id-table* 71)
-            -1
-            #f
-            #f
-            #f
-            (-> self root-override trans)
-            )
-          (-> gp-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 71)
+        -1
+        #f
+        #f
+        #f
+        (-> self root-override trans)
+        :to *entity-pool*
         )
       )
     (let ((gp-2 (new-stack-vector0)))

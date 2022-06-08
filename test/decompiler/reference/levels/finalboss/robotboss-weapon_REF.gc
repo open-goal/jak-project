@@ -309,23 +309,16 @@
     (sound-play-by-name (static-sound-name "explod-bomb") (new-sound-id) 1024 0 0 1 #f)
     (activate! *camera-smush-control* 819.2 37 600 1.0 0.995)
     (send-event (ppointer->process (-> self parent)) 'flash 255.0)
-    (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when s5-1
-        (let ((t9-6 (method-of-type part-tracker activate)))
-          (t9-6 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          s5-1
-          part-tracker-init
-          (-> *part-group-id-table* 619)
-          900
-          #f
-          #f
-          #f
-          (-> self root-override trans)
-          )
-        (-> s5-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 619)
+      900
+      #f
+      #f
+      #f
+      (-> self root-override trans)
+      :to *entity-pool*
       )
     (logior! (-> self draw status) (draw-status hidden))
     (cond
@@ -417,23 +410,16 @@
         (set! (-> self anim-speed) (+ 1.0 f1-5))
         )
       (when (< (cos (* 16384.0 (- 1.0 f0-1))) (-> self next-tick))
-        (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-          (when gp-0
-            (let ((t9-3 (method-of-type part-tracker activate)))
-              (t9-3 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-              )
-            (run-now-in-process
-              gp-0
-              part-tracker-init
-              (-> *part-group-id-table* 663)
-              150
-              #f
-              #f
-              #f
-              (-> self root-override trans)
-              )
-            (-> gp-0 ppointer)
-            )
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          (-> *part-group-id-table* 663)
+          150
+          #f
+          #f
+          #f
+          (-> self root-override trans)
+          :to *entity-pool*
           )
         (set! (-> self next-tick) (+ -0.06 (-> self next-tick)))
         (sound-play-by-name (static-sound-name "robo-warning") (new-sound-id) 1024 0 0 1 #t)
@@ -787,7 +773,7 @@
     (set-vector! (-> self ring axis) 0.0 1.0 0.0 1.0)
     (set! (-> self part-track) (ppointer->handle (process-spawn
                                                    part-tracker
-                                                   part-tracker-init
+                                                   :init part-tracker-init
                                                    (-> *part-group-id-table* 648)
                                                    -1
                                                    redshot-particle-callback

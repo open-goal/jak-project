@@ -537,22 +537,7 @@
         (set-vector! (-> gp-0 fountain-rand-transv-lo) -40960.0 20480.0 -40960.0 1.0)
         (set-vector! (-> gp-0 fountain-rand-transv-hi) 40960.0 49152.0 40960.0 1.0)
         )
-      (let ((s5-0 (get-process *default-dead-pool* joint-exploder #x4000)))
-        (when s5-0
-          (let ((t9-3 (method-of-type joint-exploder activate)))
-            (t9-3 (the-as joint-exploder s5-0) self 'joint-exploder (the-as pointer #x70004000))
-            )
-          (run-now-in-process
-            s5-0
-            joint-exploder-init-by-other
-            *dark-crystal-explode-sg*
-            5
-            gp-0
-            *dark-crystal-exploder-params*
-            )
-          (-> s5-0 ppointer)
-          )
-        )
+      (process-spawn joint-exploder *dark-crystal-explode-sg* 5 gp-0 *dark-crystal-exploder-params* :to self)
       )
     (activate! *camera-smush-control* 819.2 37 210 1.0 0.995)
     (let ((gp-1 (dummy-21 self)))
@@ -565,26 +550,19 @@
           (sound-play-by-name (static-sound-name "water-explosion") (new-sound-id) 1024 0 0 1 #t)
           (sound-play-by-name (static-sound-name "crystal-explode") (new-sound-id) 1024 0 0 1 #t)
           )
-      (let ((s5-3 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-3
-          (let ((t9-15 (method-of-type part-tracker activate)))
-            (t9-15 (the-as part-tracker s5-3) *entity-pool* 'part-tracker (the-as pointer #x70004000))
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (if (-> self underwater?)
+            (-> *part-group-id-table* 323)
+            (-> *part-group-id-table* 322)
             )
-          (run-now-in-process
-            s5-3
-            part-tracker-init
-            (if (-> self underwater?)
-                (-> *part-group-id-table* 323)
-                (-> *part-group-id-table* 322)
-                )
-            -1
-            #f
-            #f
-            #f
-            (-> self root-override trans)
-            )
-          (-> s5-3 ppointer)
-          )
+        -1
+        #f
+        #f
+        #f
+        (-> self root-override trans)
+        :to *entity-pool*
         )
       (let ((s5-4 (-> *display* base-frame-counter)))
         (until (>= (- (-> *display* base-frame-counter) s5-4) (seconds 0.25))

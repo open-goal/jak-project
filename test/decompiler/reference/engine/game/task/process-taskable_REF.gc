@@ -407,9 +407,7 @@
   (init! (-> self query) (the-as string #f) 40 150 25 #t (the-as string #f))
   (logior! (-> self skel status) (janim-status blerc))
   (set! (-> self camera)
-        (ppointer->handle
-          (process-spawn othercam othercam-init-by-other self (-> self cam-joint-index) #f #t :to self)
-          )
+        (ppointer->handle (process-spawn othercam self (-> self cam-joint-index) #f #t :to self))
         )
   (set! (-> self cell-for-task) (game-task none))
   (set! (-> self skippable) #f)
@@ -445,10 +443,14 @@
 (defbehavior process-taskable-play-anim-code process-taskable ((arg0 art-joint-anim) (arg1 basic))
   (when (nonzero? (-> self cell-for-task))
     (if (name= (-> self state name) "play-anim")
-        (set! (-> self cell-x)
-              (ppointer->handle
-                (process-spawn fuel-cell fuel-cell-init-as-clone (process->handle self) (-> self cell-for-task) :to self)
-                )
+        (set! (-> self cell-x) (ppointer->handle (process-spawn
+                                                   fuel-cell
+                                                   :init fuel-cell-init-as-clone
+                                                   (process->handle self)
+                                                   (-> self cell-for-task)
+                                                   :to self
+                                                   )
+                                                 )
               )
         (format #t "ERROR<GMJ>: ~S ~S trying to give cell on release~%" (-> self name) (-> self state name))
         )

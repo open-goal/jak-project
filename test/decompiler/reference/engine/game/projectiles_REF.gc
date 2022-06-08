@@ -829,23 +829,16 @@
   :virtual #t
   :code
   (behavior ()
-    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-0
-        (let ((t9-1 (method-of-type part-tracker activate)))
-          (t9-1 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-0
-          part-tracker-init
-          (-> *part-group-id-table* 104)
-          -1
-          #f
-          #f
-          #f
-          (-> self root-override root-prim prim-core)
-          )
-        (-> gp-0 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 104)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override root-prim prim-core)
+      :to *entity-pool*
       )
     (if (nonzero? (-> self sound-id))
         (sound-stop (-> self sound-id))
@@ -862,23 +855,16 @@
   :virtual #t
   :code
   (behavior ()
-    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-0
-        (let ((t9-1 (method-of-type part-tracker activate)))
-          (t9-1 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-0
-          part-tracker-init
-          (-> *part-group-id-table* 104)
-          -1
-          #f
-          #f
-          #f
-          (-> self root-override root-prim prim-core)
-          )
-        (-> gp-0 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 104)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override root-prim prim-core)
+      :to *entity-pool*
       )
     (if (nonzero? (-> self sound-id))
         (sound-stop (-> self sound-id))
@@ -1034,17 +1020,9 @@
             )
       (sound-play-by-name (static-sound-name "yellow-fire") (new-sound-id) 1024 0 0 1 #t)
       (set! (-> obj sound-id) (sound-play-by-name (static-sound-name "yellow-buzz") (new-sound-id) 1024 0 0 1 #t))
-      (when (zero? (logand (-> obj options) 416))
-        (let ((s4-2 (get-process *default-dead-pool* part-tracker #x4000)))
-          (when s4-2
-            (let ((t9-10 (method-of-type part-tracker activate)))
-              (t9-10 (the-as part-tracker s4-2) obj 'part-tracker (the-as pointer #x70004000))
-              )
-            (run-now-in-process s4-2 part-tracker-init (-> *part-group-id-table* 103) -1 #f #f #f s5-0)
-            (-> s4-2 ppointer)
-            )
+      (if (zero? (logand (-> obj options) 416))
+          (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 103) -1 #f #f #f s5-0 :to obj)
           )
-        )
       (set! (-> *part-id-table* 350 init-specs 2 initial-valuef) f30-0)
       )
     )
