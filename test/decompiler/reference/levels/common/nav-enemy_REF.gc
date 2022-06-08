@@ -167,23 +167,20 @@
 ;; definition for function nav-enemy-send-attack
 ;; INFO: Return type mismatch symbol vs object.
 (defbehavior nav-enemy-send-attack nav-enemy ((arg0 process) (arg1 touching-shapes-entry) (arg2 symbol))
-  (let ((v1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> v1-0 from) self)
-    (set! (-> v1-0 num-params) 2)
-    (set! (-> v1-0 message) 'attack)
-    (set! (-> v1-0 param 0) (the-as uint arg1))
-    (let ((a1-1 (new 'static 'attack-info :mask (attack-mask atki05 atki06 atki07))))
-      (set! (-> a1-1 shove-back) (-> self nav-info attack-shove-back))
-      (set! (-> a1-1 shove-up) (-> self nav-info attack-shove-up))
-      (set! (-> a1-1 mode) arg2)
-      (set! (-> v1-0 param 1) (the-as uint a1-1))
-      )
-    (the-as object (when (send-event-function arg0 v1-0)
-                     (set-collide-offense (-> self collide-info) 2 (collide-offense no-offense))
-                     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
-                     #t
-                     )
+  (the-as
+    object
+    (when (send-event
+            arg0
+            'attack
+            arg1
+            (static-attack-info
+              ((shove-back (-> self nav-info attack-shove-back)) (shove-up (-> self nav-info attack-shove-up)) (mode arg2))
+              )
             )
+      (set-collide-offense (-> self collide-info) 2 (collide-offense no-offense))
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
+      #t
+      )
     )
   )
 

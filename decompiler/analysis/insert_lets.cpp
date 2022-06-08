@@ -4,10 +4,11 @@
 #include <tuple>
 
 #include "common/util/Assert.h"
+#include "common/util/print_float.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
+#include "decompiler/IR2/bitfields.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "insert_lets.h"
-#include "decompiler/IR2/bitfields.h"
 
 namespace decompiler {
 
@@ -255,6 +256,18 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
       }
     }
 
+    auto as_cond_e = dynamic_cast<CondNoElseElement*>(in);
+    if (as_cond_e) {
+      auto sub_res = rewrite_shelled_return_form(
+          matcher, as_cond_e->entries.at(0).condition->try_as_single_element(), env, pool, func,
+          strip_cast);
+
+      if (std::get<0>(sub_res).matched) {
+        as_cond_e->entries.at(0).condition = std::get<1>(sub_res);
+        return {std::get<0>(sub_res), pool.form<CondNoElseElement>(as_cond_e->entries), false};
+      }
+    }
+
     lg::error("shell match failed, dont know this form: {}", in->to_string(env));
 
     return {mr, nullptr, false};
@@ -267,7 +280,10 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
   return {mr, new_f, true};
 }
 
-FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats) {
+FormElement* rewrite_as_send_event(LetElement* in,
+                                   const Env& env,
+                                   FormPool& pool,
+                                   LetRewriteStats& stats) {
   if (in->entries().size() != 1) {
     return nullptr;
   }
@@ -1366,38 +1382,6 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
   return elt;
 }
 
-Form* match_attack_info_set(const Env& env,
-                            Register reg,
-                            const std::string& field_name,
-                            bool is_vector,
-                            Form* in,
-                            int* idx,
-                            bool* bad) {
-  ASSERT(idx);
-  ASSERT(bad);
-  if (*idx >= in->size()) {
-    // *bad = true;
-    return nullptr;
-  }
-
-  auto deref_matcher =
-      !is_vector ? Matcher::deref(Matcher::reg(reg), false, {DerefTokenMatcher::string(field_name)})
-                 : Matcher::deref(
-                       Matcher::reg(reg), false,
-                       {DerefTokenMatcher::string(field_name), DerefTokenMatcher::string("quad")});
-  auto deref_src_matcher =
-      !is_vector ? Matcher::any(0)
-                 : Matcher::deref(Matcher::any(0), false, {DerefTokenMatcher::string("quad")});
-  auto mr = match(Matcher::set(deref_matcher, deref_src_matcher), in->at(*idx));
-  if (!mr.matched) {
-    // TODO what if didn't match but it was some weird thing?? i guess later size checks fix that.
-    return nullptr;
-  }
-
-  *idx += 1;
-  return mr.maps.forms.at(0);
-}
-
 FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool) {
   // this function checks for the static-attack-info macro.
 
@@ -1421,26 +1405,86 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
   const auto& label = block_src->label();
   const auto& words = env.file->words_by_seg.at(label.target_segment);
   u32 mask = words.at((label.offset + 64) / 4).data;
+  u32 mask_implicit = 0;
 
   auto block_var = in->entries().at(0).dest;
   const auto& block_var_reg = block_var.reg();
   auto block_var_name = env.get_variable_name(block_var);
 
-  bool bad = false;
-  int i = 0;
-  auto shup = match_attack_info_set(env, block_var_reg, "shove-up", false, in->body(), &i, &bad);
-  auto shbk = match_attack_info_set(env, block_var_reg, "shove-back", false, in->body(), &i, &bad);
-  auto mode = match_attack_info_set(env, block_var_reg, "mode", false, in->body(), &i, &bad);
-  auto vect = match_attack_info_set(env, block_var_reg, "vector", true, in->body(), &i, &bad);
+  const static std::map<std::string, std::pair<int, bool>> possible_args = {
+      {"vector", {1, true}},    {"mode", {5, false}},     {"shove-back", {6, false}},
+      {"shove-up", {7, false}}, {"control", {10, false}}, {"angle", {11, false}}};
 
-  if (i != in->body()->size() - 1) {
-    lg::error("attack info err 1 {}/{} elts", i, in->body()->size() - 1);
+  std::vector<std::pair<std::string, Form*>> args_in_info;
+  for (int i = 0; i < in->body()->size() - 1; ++i) {
+    auto s_elt = dynamic_cast<SetFormFormElement*>(in->body()->at(i));
+    if (!s_elt) {
+      lg::error("attack info err elt {} not a set!: {}", i, in->body()->at(i)->to_string(env));
+      return nullptr;
+    }
+
+    auto d_elt = s_elt->dst()->try_as_element<DerefElement>();
+    if (!d_elt) {
+      lg::error("attack info err elt {} dst not a deref: {}", i, s_elt->dst()->to_string(env));
+      return nullptr;
+    }
+    if (d_elt->tokens().size() != 1 && d_elt->tokens().size() != 2) {
+      lg::error("attack info err elt {} invalid token len: {}", i, d_elt->to_string(env));
+      return nullptr;
+    }
+    if (d_elt->tokens().at(0).kind() != DerefToken::Kind::FIELD_NAME) {
+      lg::error("attack info err elt {} invalid token kind: {}", i, d_elt->to_string(env));
+      return nullptr;
+    }
+    const auto& field_name = d_elt->tokens().at(0).field_name();
+    auto arg_it = possible_args.find(field_name);
+    if (arg_it == possible_args.end()) {
+      lg::error("attack info unknown field {}", field_name);
+      return nullptr;
+    }
+    if (arg_it->second.second &&
+        (d_elt->tokens().size() != 2 || d_elt->tokens().at(1).field_name() != "quad")) {
+      lg::error("attack info err elt {} invalid vector field: {}", i, d_elt->to_string(env));
+      return nullptr;
+    } else if (!arg_it->second.second && d_elt->tokens().size() != 1) {
+      lg::error("attack info err elt {} invalid field: {}", i, d_elt->to_string(env));
+      break;
+    }
+
+    if (arg_it->second.second) {
+      auto d_src = s_elt->src()->try_as_element<DerefElement>();
+      if (d_src) {
+        if (d_src->tokens().size() == 1 && d_src->tokens().at(0).is_field_name("quad")) {
+          args_in_info.push_back({field_name, d_src->base()});
+        } else {
+          d_src->tokens().pop_back();
+          args_in_info.push_back({field_name, s_elt->src()});
+        }
+      }
+    } else {
+      if ((field_name == "shove-back" || field_name == "shove-up") &&
+          s_elt->src()->to_form(env).is_float()) {
+        args_in_info.push_back(
+            {field_name, pool.form<GenericElement>(GenericOperator::make_function(
+                                                       pool.form<ConstantTokenElement>("meters")),
+                                                   pool.form<ConstantTokenElement>(meters_to_string(
+                                                       s_elt->src()->to_form(env).as_float())))});
+      } else {
+        args_in_info.push_back({field_name, s_elt->src()});
+      }
+    }
+    mask_implicit |= 1 << arg_it->second.first;
+  }
+
+  if ((mask & mask_implicit) != mask_implicit) {
+    lg::error("attack info bad mask: #x{:x} but needed #x{:x}", mask, mask_implicit);
     return nullptr;
   }
+  mask ^= mask_implicit;
 
   // (static-attack-info :mask <mask> etc)
   auto mr_with_shell = rewrite_shelled_return_form(
-      Matcher::cast("uint", Matcher::reg(block_var_reg)), in->body()->at(i), env, pool,
+      Matcher::reg(block_var_reg), in->body()->at(in->body()->size() - 1), env, pool,
       [&](FormElement* s_in, const MatchResult& mr, const Env& env, FormPool& pool) {
         // time to build the macro!
         std::vector<Form*> macro_args;
@@ -1453,10 +1497,16 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
               "mask");
         }
 
-        ja_push_form_to_args(pool, macro_args, shup, "shove-up");
-        ja_push_form_to_args(pool, macro_args, shbk, "shove-back");
-        ja_push_form_to_args(pool, macro_args, mode, "mode");
-        ja_push_form_to_args(pool, macro_args, vect, "vector");
+        if (args_in_info.size() > 0) {
+          std::vector<Form*> info_args;
+          for (auto& [name, val] : args_in_info) {
+            info_args.push_back(pool.form<GenericElement>(
+                GenericOperator::make_function(pool.form<ConstantTokenElement>(name)), val));
+          }
+          auto head = GenericOperator::make_function(info_args.at(0));
+          info_args.erase(info_args.begin());
+          macro_args.push_back(pool.form<GenericElement>(head, info_args));
+        }
 
         return pool.form<GenericElement>(
             GenericOperator::make_function(pool.form<ConstantTokenElement>("static-attack-info")),

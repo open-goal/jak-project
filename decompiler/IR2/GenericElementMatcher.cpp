@@ -266,8 +266,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     } break;
 
     case Kind::GENERIC_OP:
-    case Kind::GENERIC_OP_WITH_REST:
-    {
+    case Kind::GENERIC_OP_WITH_REST: {
       auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_active_element());
       if (as_generic) {
         if (!m_gen_op_matcher->do_match(as_generic->op(), maps_out)) {

@@ -936,7 +936,11 @@ Form* cast_to_int_enum(const EnumType* type_info, FormPool& pool, const Env& env
   return pool.form<GenericElement>(oper, pool.form<ConstantTokenElement>(entry));
 }
 
-Form* cast_to_bitfield_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in, bool no_head) {
+Form* cast_to_bitfield_enum(const EnumType* type_info,
+                            FormPool& pool,
+                            const Env& env,
+                            s64 in,
+                            bool no_head) {
   ASSERT(type_info->is_bitfield());
   auto elts = decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
   if (no_head) {

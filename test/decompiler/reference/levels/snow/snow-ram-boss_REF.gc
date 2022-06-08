@@ -943,7 +943,7 @@
           (cond
             ((send-event-function *target* a1-3)
              (nav-enemy-set-hit-from-direction arg0)
-             (send-event arg0 'shove #f (static-attack-info :mask (atki06) :shove-back 8192.0))
+             (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 2)))))
              (go ram-boss-lose-shield)
              (return #t)
              v0-4
@@ -961,25 +961,14 @@
                  )
                (>= (- (-> (target-pos 0) y) (-> self collide-info trans y)) 9420.8)
                )
-             (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-               (set! (-> a1-6 from) self)
-               (set! (-> a1-6 num-params) 2)
-               (set! (-> a1-6 message) 'shove)
-               (set! (-> a1-6 param 0) (the-as uint #f))
-               (let ((v1-22 (new 'static 'attack-info :mask (attack-mask atki06 atki07))))
-                 (set! (-> v1-22 shove-back) 16384.0)
-                 (set! (-> v1-22 shove-up) 8192.0)
-                 (set! (-> a1-6 param 1) (the-as uint v1-22))
-                 )
-               (send-event-function arg0 a1-6)
-               )
+             (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 4)) (shove-up (meters 2)))))
              (go ram-boss-up-defend-block)
              (return #t)
              v0-4
              )
             (else
               (when (= arg2 'attack)
-                (send-event arg0 'shove #f (static-attack-info :mask (atki06) :shove-back 16384.0))
+                (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 4)))))
                 (go ram-boss-forward-defend-block)
                 (return #t)
                 v0-4
@@ -1003,17 +992,11 @@
        ((-> self has-shield?)
         (cond
           ((>= (- (-> (target-pos 0) y) (-> self collide-info trans y)) 9420.8)
-           (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> a1-8 from) self)
-             (set! (-> a1-8 num-params) 2)
-             (set! (-> a1-8 message) 'shove)
-             (set! (-> a1-8 param 0) (-> arg3 param 0))
-             (let ((v1-49 (new 'static 'attack-info :mask (attack-mask atki06 atki07))))
-               (set! (-> v1-49 shove-back) 16384.0)
-               (set! (-> v1-49 shove-up) 8192.0)
-               (set! (-> a1-8 param 1) (the-as uint v1-49))
-               )
-             (send-event-function arg0 a1-8)
+           (send-event
+             arg0
+             'shove
+             (-> arg3 param 0)
+             (static-attack-info ((shove-back (meters 4)) (shove-up (meters 2))))
              )
            (go ram-boss-up-defend-block)
            (return #t)
@@ -1021,7 +1004,7 @@
            )
           (else
             (when (= arg2 'attack)
-              (send-event arg0 'shove (-> arg3 param 0) (static-attack-info :mask (atki06) :shove-back 16384.0))
+              (send-event arg0 'shove (-> arg3 param 0) (static-attack-info ((shove-back (meters 4)))))
               (go ram-boss-forward-defend-block)
               (return #t)
               v0-4
