@@ -157,7 +157,7 @@ void parse_text(const goos::Object& data, GameTextVersion text_ver, GameTextDB& 
  * Each scene should be (scene-name <entry 1> <entry 2> ... )
  * This adds the subtitle to each of the specified languages.
  */
-void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& db) {
+void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& db, const std::string& file_path) {
   auto font = get_font_bank(text_ver);
   std::map<int, std::shared_ptr<GameSubtitleBank>> banks;
 
@@ -178,8 +178,10 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
           if (!db.bank_exists(lang)) {
             // database has no lang yet
             banks[lang] = db.add_bank(std::make_shared<GameSubtitleBank>(lang));
+            banks[lang]->file_path = file_path;
           } else {
             banks[lang] = db.bank_by_id(lang);
+            banks[lang]->file_path = file_path;
           }
         });
       }
@@ -285,11 +287,11 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
 }
 
 void GameSubtitleGroups::hydrate_from_asset_file() {
-  std::string db_path = (file_util::get_jak_project_dir() / "game" / "assets" / "jak1" /
+  std::string file_path = (file_util::get_jak_project_dir() / "game" / "assets" / "jak1" /
                          "subtitle" / "subtitle-groups.json")
                             .string();
-  auto config_str = file_util::read_text_file(db_path);
-  auto group_data = parse_commented_json(config_str, db_path);
+  auto config_str = file_util::read_text_file(file_path);
+  auto group_data = parse_commented_json(config_str, file_path);
 
   for (const auto& [key, val] : group_data.items()) {
     try {
@@ -351,7 +353,7 @@ GameSubtitleDB load_subtitle_project() {
   for (auto& [ver, in] : inputs) {
     for (auto& filename : in) {
       auto code = reader.read_from_file({filename});
-      parse_subtitle(code, ver, db);
+      parse_subtitle(code, ver, db, filename);
     }
   }
   return db;

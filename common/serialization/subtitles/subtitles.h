@@ -149,6 +149,7 @@ class GameSubtitleBank {
   }
 
   int m_lang_id;
+  std::string file_path;
 
   std::map<std::string, GameSubtitleSceneInfo> m_scenes;
 };
@@ -167,7 +168,6 @@ class GameSubtitleGroups {
   std::string group_order_key = "_groups";
   std::string uncategorized_group = "uncategorized";
 };
-
 
 /*!
  * The subtitles database contains a subtitles bank for each language.
@@ -198,6 +198,9 @@ class GameSubtitleDB {
 // TODO add docstrings
 
 void parse_text(const goos::Object& data, GameTextVersion text_ver, GameTextDB& db);
-void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& db);
+void parse_subtitle(const goos::Object& data,
+                    GameTextVersion text_ver,
+                    GameSubtitleDB& db,
+                    const std::string& file_path);
 
 GameSubtitleDB load_subtitle_project();

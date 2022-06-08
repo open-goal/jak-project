@@ -3,7 +3,9 @@ add_library(common
         cross_os_debug/xdbg.cpp
         cross_sockets/XSocket.cpp
         cross_sockets/XSocketServer.cpp
+        cross_sockets/XSocketClient.cpp
         custom_data/TFrag3Data.cpp
+        deserialization/subtitles/subtitles.cpp
         dma/dma.cpp
         dma/dma_copy.cpp
         dma/gs.cpp
@@ -17,8 +19,11 @@ add_library(common
         goos/Reader.cpp
         goos/TextDB.cpp
         goos/ReplUtils.cpp
-        math/geometry.cpp
         log/log.cpp
+        math/geometry.cpp
+        nrepl/ReplClient.cpp
+        nrepl/ReplServer.cpp
+        serialization/subtitles/subtitles.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp
         type_system/state.cpp
@@ -43,13 +48,7 @@ add_library(common
         util/print_float.cpp
         util/FontUtils.cpp
         util/FrameLimiter.cpp
-        util/image_loading.cpp
-        goos/Printer.cpp
-        goos/PrettyPrinter2.cpp
-        serialization/subtitles/subtitles.cpp
-        serialization/DataObjectGenerator.cpp
-        nrepl/ReplClient.cpp
-        nrepl/ReplServer.cpp "cross_sockets/XSocketClient.h" "cross_sockets/XSocketClient.cpp")
+        util/image_loading.cpp)
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 

@@ -7,6 +7,7 @@
 #include <common/util/json_util.h>
 #include <regex>
 #include <string_view>
+#include <common/deserialization/subtitles/subtitles.h>
 
 SubtitleEditor::SubtitleEditor() : m_repl(8181) {
   std::string db_path = (file_util::get_jak_project_dir() / "game" / "assets" / "jak1" /
@@ -170,7 +171,8 @@ void SubtitleEditor::draw_edit_options() {
       }
     }
     if (ImGui::Button("Save Changes")) {
-      // TODO - deserializer do its thing
+      write_subtitle_db_to_files(m_subtitle_db);
+      // TODO some feedback!
       repl_rebuild_text();
     }
     ImGui::TreePop();

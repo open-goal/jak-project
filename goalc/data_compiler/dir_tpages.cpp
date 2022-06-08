@@ -3,8 +3,7 @@
 #include "common/goos/Reader.h"
 #include "common/goos/ParseHelpers.h"
 #include "common/util/FileUtil.h"
-
-#include <common/serialization/DataObjectGenerator.h>
+#include <goalc/data_compiler/DataObjectGenerator.h>
 
 void compile_dir_tpages(const std::string& filename) {
   std::vector<int> lengths;

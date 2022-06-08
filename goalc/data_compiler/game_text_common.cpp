@@ -15,12 +15,12 @@
 #include <queue>
 #include "game_text_common.h"
 #include "common/goos/Reader.h"
-#include "common/serialization/DataObjectGenerator.h"
 #include "common/util/FileUtil.h"
 #include "common/util/FontUtils.h"
 #include "common/goos/ParseHelpers.h"
 #include "third-party/fmt/core.h"
 #include "common/serialization/subtitles/subtitles.h"
+#include <goalc/data_compiler/DataObjectGenerator.h>
 
 namespace {
 
