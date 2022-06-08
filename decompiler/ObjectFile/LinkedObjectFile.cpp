@@ -543,8 +543,7 @@ void LinkedObjectFile::process_fp_relative_links() {
                   atom.set_label(get_label_id_for(seg, current_fp + atom.get_imm()));
 
                   stats.n_fp_reg_use_resolved++;
-                }
-                else {
+                } else {
                   lg::error("Failed to process fp relative links for (d)addu preceded by: {}",
                             prev_instr->to_string(labels));
                   return;
