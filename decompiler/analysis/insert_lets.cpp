@@ -1251,7 +1251,8 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
         if (!as_func) {
           return (Form*)nullptr;
         }
-        bool is_next_time = as_func->op().func()->to_string(env) == "run-next-time-in-process";
+        bool is_next_time =
+            as_func->op().func()->to_form(env).is_symbol("run-next-time-in-process");
 
         auto has_unused_let = dynamic_cast<LetElement*>(when_body.at(2));
         auto matcher_unused_let =
@@ -1291,17 +1292,22 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
         // ok done checking that stuff, now make the macro!
         // once again, I should just make a new element for it. but... so lazy...
 
+        std::string head = is_next_time ? "process-spawn-function" : "process-spawn";
         std::vector<Form*> args;
 
-        // type
-        args.push_back(pool.form<ConstantTokenElement>(proc_type));
-
-        // init func
+        // type and init func
         if (is_next_time) {
+          args.push_back(pool.form<ConstantTokenElement>(proc_type));
           args.push_back(as_func->elts().at(1));
         } else {
-          if (as_func->elts().at(1)->to_string(env) != fmt::format("{}-init-by-other", proc_type)) {
-            ja_push_form_to_args(env, pool, args, as_func->elts().at(1), "init");
+          auto init_func = as_func->elts().at(1)->to_form(env);
+          if (init_func.is_symbol("manipy-init") && proc_type == "manipy") {
+            head = "manipy-spawn";
+          } else {
+            args.push_back(pool.form<ConstantTokenElement>(proc_type));
+            if (!init_func.is_symbol(fmt::format("{}-init-by-other", proc_type))) {
+              ja_push_form_to_args(env, pool, args, as_func->elts().at(1), "init");
+            }
           }
         }
 
@@ -1315,10 +1321,12 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
           ja_push_form_to_args(env, pool, args, mr_ac_call.maps.forms.at(1), "name");
         }
         if (!mr_get_proc.maps.forms.at(0)->to_form(env).is_symbol("*default-dead-pool*")) {
-          ja_push_form_to_args(env, pool, args, mr_get_proc.maps.forms.at(0), "from");
+          args.push_back(pool.form<ConstantTokenElement>(":from"));
+          args.push_back(mr_get_proc.maps.forms.at(0));
         }
         if (!mr_ac_call.maps.forms.at(0)->to_form(env).is_symbol("*default-pool*")) {
-          ja_push_form_to_args(env, pool, args, mr_ac_call.maps.forms.at(0), "to");
+          args.push_back(pool.form<ConstantTokenElement>(":to"));
+          args.push_back(mr_ac_call.maps.forms.at(0));
         }
         auto stack_arg = mr_ac_call.maps.forms.at(2)->to_string(env);
         if (stack_arg == "(&-> *dram-stack* 14336)") {
@@ -1334,9 +1342,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
 
 
         return pool.form<GenericElement>(
-            GenericOperator::make_function(pool.form<ConstantTokenElement>(
-                is_next_time ? "process-spawn-function" : "process-spawn")),
-            args);
+            GenericOperator::make_function(pool.form<ConstantTokenElement>(head)), args);
       },
       &cast_type);
 
