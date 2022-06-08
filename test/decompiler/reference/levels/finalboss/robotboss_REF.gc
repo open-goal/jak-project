@@ -188,15 +188,9 @@
     cfg-49
     :delay (empty-form)
     )
-  (let ((a1-18 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-18 from) self)
-    (set! (-> a1-18 num-params) 1)
-    (set! (-> a1-18 message) 'query-state)
-    (set! (-> a1-18 param 0) (the-as uint cam-robotboss))
-    (when (not (send-event-function *camera* a1-18))
-      (send-event *camera* 'change-state cam-robotboss 300)
-      (send-event *camera* 'clear-entity)
-      )
+  (when (not (send-event *camera* 'query-state cam-robotboss))
+    (send-event *camera* 'change-state cam-robotboss 300)
+    (send-event *camera* 'clear-entity)
     )
   (b! #t cfg-66 :delay (nop!))
   (label cfg-49)
@@ -207,35 +201,23 @@
                        )
                   )
              )
-    (let ((a1-24 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-24 from) self)
-      (set! (-> a1-24 num-params) 1)
-      (set! (-> a1-24 message) 'query-state)
-      (set! (-> a1-24 param 0) (the-as uint cam-string))
-      (when (not (send-event-function *camera* a1-24))
-        (send-event *camera* 'point-of-interest #f)
-        (send-event *camera* 'force-blend 300)
-        (send-event *camera* 'clear-entity)
-        (send-event *camera* 'change-state cam-string 300)
-        )
+    (when (not (send-event *camera* 'query-state cam-string))
+      (send-event *camera* 'point-of-interest #f)
+      (send-event *camera* 'force-blend 300)
+      (send-event *camera* 'clear-entity)
+      (send-event *camera* 'change-state cam-string 300)
       )
     )
   (label cfg-66)
-  (let ((a1-29 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-29 from) self)
-    (set! (-> a1-29 num-params) 1)
-    (set! (-> a1-29 message) 'query-state)
-    (set! (-> a1-29 param 0) (the-as uint cam-string))
-    (cond
-      ((send-event-function *camera* a1-29)
+  (cond
+    ((send-event *camera* 'query-state cam-string)
+     )
+    ((-> self use-interesting)
+     (let ((s5-10 (new 'stack-no-clear 'vector)))
+       (vector<-cspace! s5-10 (-> self node-list data 87))
+       (send-event *camera* 'point-of-interest s5-10)
        )
-      ((-> self use-interesting)
-       (let ((s5-10 (new 'stack-no-clear 'vector)))
-         (vector<-cspace! s5-10 (-> self node-list data 87))
-         (send-event *camera* 'point-of-interest s5-10)
-         )
-       )
-      )
+     )
     )
   (when (and arg0 *debug-segment* (cpad-pressed? 1 x))
     (logclear! (-> *cpad-list* cpads 1 button0-abs 0) (pad-buttons x))
@@ -2509,31 +2491,25 @@
                  (a2-0 (new 'stack-no-clear 'vector))
                  )
              (vector-! a2-0 gp-0 s4-0)
-             (when (>= (fill-and-probe-using-line-sphere
-                         *collide-cache*
-                         s4-0
-                         a2-0
-                         (the-as float 4096.0)
-                         (collide-kind target)
-                         self
-                         t2-0
-                         1
-                         )
-                       0.0
+             (if (>= (fill-and-probe-using-line-sphere
+                       *collide-cache*
+                       s4-0
+                       a2-0
+                       (the-as float 4096.0)
+                       (collide-kind target)
+                       self
+                       t2-0
+                       1
                        )
-               (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
-                 (set! (-> a1-13 from) self)
-                 (set! (-> a1-13 num-params) 2)
-                 (set! (-> a1-13 message) 'attack)
-                 (set! (-> a1-13 param 0) (the-as uint #f))
-                 (let ((v1-50 (new 'static 'attack-info :mask #xc0)))
-                   (set! (-> v1-50 shove-up) 10240.0)
-                   (set! (-> v1-50 shove-back) 30720.0)
-                   (set! (-> a1-13 param 1) (the-as uint v1-50))
+                     0.0
+                     )
+                 (send-event
+                   *target*
+                   'attack
+                   #f
+                   (static-attack-info :mask (atki06 atki07) :shove-up 10240.0 :shove-back 30720.0)
                    )
-                 (send-event-function *target* a1-13)
                  )
-               )
              )
            )
          )
@@ -2549,23 +2525,17 @@
        (spawn (-> self particle 1) gp-0)
        (when (and arg1 (nonzero? (-> self looping-sound 1)))
          (update! (-> self looping-sound 1))
-         (when (and *target*
-                    (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
-                    (>= 8192.0 (vector-vector-distance gp-0 (target-pos 0)))
-                    )
-           (let ((a1-16 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> a1-16 from) self)
-             (set! (-> a1-16 num-params) 2)
-             (set! (-> a1-16 message) 'attack)
-             (set! (-> a1-16 param 0) (the-as uint #f))
-             (let ((v1-80 (new 'static 'attack-info :mask #xc0)))
-               (set! (-> v1-80 shove-up) 10240.0)
-               (set! (-> v1-80 shove-back) 30720.0)
-               (set! (-> a1-16 param 1) (the-as uint v1-80))
+         (if (and *target*
+                  (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+                  (>= 8192.0 (vector-vector-distance gp-0 (target-pos 0)))
+                  )
+             (send-event
+               *target*
+               'attack
+               #f
+               (static-attack-info :mask (atki06 atki07) :shove-up 10240.0 :shove-back 30720.0)
                )
-             (send-event-function *target* a1-16)
              )
-           )
          )
        )
       ((nonzero? (-> self looping-sound 1))

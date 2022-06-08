@@ -1698,85 +1698,80 @@
             (close-specific-task! (game-task jungle-lurkerm) (task-status need-reminder))
             )
         (loop
-          (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-6 from) self)
-            (set! (-> a1-6 num-params) 0)
-            (set! (-> a1-6 message) 'end-mode)
-            (when (send-event-function *target* a1-6)
-              (cond
-                ((and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
-                 (let ((gp-1 (ppointer->handle (peri-beamcam-init-by-other (the-as string (-> self name))))))
+          (when (send-event *target* 'end-mode)
+            (cond
+              ((and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
+               (let ((gp-1 (ppointer->handle (peri-beamcam-init-by-other (the-as string (-> self name))))))
+                 (suspend)
+                 (while (and *target* (= (-> *target* next-state name) 'target-periscope))
+                   (periscope-crosshair)
                    (suspend)
-                   (while (and *target* (= (-> *target* next-state name) 'target-periscope))
-                     (periscope-crosshair)
-                     (suspend)
-                     )
-                   (logclear! (-> self reflector 0 draw status) (draw-status hidden))
-                   (periscope-find-reflection-angles)
-                   (set! (-> self turn) (-> self target-turn))
-                   (set! (-> self tilt) (-> self target-tilt))
-                   (set! *camera-init-mat* (-> self old-camera-matrix))
-                   (send-event *camera* 'change-state *camera-base-mode* 0)
-                   (set! *camera-init-mat* #f)
-                   (while (handle->process (the-as handle gp-1))
-                     (suspend)
-                     )
                    )
-                 (process-spawn-function
-                   process
-                   (lambda ((arg0 string))
-                     (while (or (-> *setting-control* current ambient)
-                                (-> *setting-control* current movie)
-                                (-> *setting-control* current hint)
-                                )
-                       (suspend)
-                       )
-                     (cond
-                       ((name= arg0 "periscope-11")
-                        (level-hint-spawn
-                          (game-text-id jungle-mirrors-follow-the-beam)
-                          "sksp0053"
-                          (the-as entity #f)
-                          *entity-pool*
-                          (game-task none)
-                          )
-                        )
-                       ((name= arg0 "periscope-12")
-                        (level-hint-spawn
-                          (game-text-id jungle-mirrors-go-to-the-next-tower)
-                          "sksp0052"
-                          (the-as entity #f)
-                          *entity-pool*
-                          (game-task none)
-                          )
-                        )
-                       ((name= arg0 "periscope-15")
-                        (level-hint-spawn
-                          (game-text-id jungle-mirrors-completion-talk-to-mayor)
-                          "sksp0018"
-                          (the-as entity #f)
-                          *entity-pool*
-                          (game-task none)
-                          )
-                        )
-                       )
-                     (none)
-                     )
-                   (-> self name)
-                   :to self
+                 (logclear! (-> self reflector 0 draw status) (draw-status hidden))
+                 (periscope-find-reflection-angles)
+                 (set! (-> self turn) (-> self target-turn))
+                 (set! (-> self tilt) (-> self target-tilt))
+                 (set! *camera-init-mat* (-> self old-camera-matrix))
+                 (send-event *camera* 'change-state *camera-base-mode* 0)
+                 (set! *camera-init-mat* #f)
+                 (while (handle->process (the-as handle gp-1))
+                   (suspend)
                    )
                  )
-                (else
-                  (set! *camera-init-mat* (-> self old-camera-matrix))
-                  (send-event *camera* 'change-state *camera-base-mode* 0)
-                  (set! *camera-init-mat* #f)
-                  )
+               (process-spawn-function
+                 process
+                 (lambda ((arg0 string))
+                   (while (or (-> *setting-control* current ambient)
+                              (-> *setting-control* current movie)
+                              (-> *setting-control* current hint)
+                              )
+                     (suspend)
+                     )
+                   (cond
+                     ((name= arg0 "periscope-11")
+                      (level-hint-spawn
+                        (game-text-id jungle-mirrors-follow-the-beam)
+                        "sksp0053"
+                        (the-as entity #f)
+                        *entity-pool*
+                        (game-task none)
+                        )
+                      )
+                     ((name= arg0 "periscope-12")
+                      (level-hint-spawn
+                        (game-text-id jungle-mirrors-go-to-the-next-tower)
+                        "sksp0052"
+                        (the-as entity #f)
+                        *entity-pool*
+                        (game-task none)
+                        )
+                      )
+                     ((name= arg0 "periscope-15")
+                      (level-hint-spawn
+                        (game-text-id jungle-mirrors-completion-talk-to-mayor)
+                        "sksp0018"
+                        (the-as entity #f)
+                        *entity-pool*
+                        (game-task none)
+                        )
+                      )
+                     )
+                   (none)
+                   )
+                 (-> self name)
+                 :to self
+                 )
+               )
+              (else
+                (set! *camera-init-mat* (-> self old-camera-matrix))
+                (send-event *camera* 'change-state *camera-base-mode* 0)
+                (set! *camera-init-mat* #f)
                 )
-              (if (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
-                  (go periscope-power-on)
-                  (go periscope-wait-for-player)
-                  )
               )
+            (if (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
+                (go periscope-power-on)
+                (go periscope-wait-for-player)
+                )
             )
           (suspend)
           )

@@ -1384,6 +1384,7 @@ class DecompiledDataElement : public FormElement {
   void get_modified_regs(RegSet& regs) const override;
   void do_decomp(const Env& env, const LinkedObjectFile* file);
   DecompilerLabel label() const { return m_label; }
+  std::optional<LabelInfo> label_info() const { return m_label_info; }
 
  private:
   bool m_decompiled = false;

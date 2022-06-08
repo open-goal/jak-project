@@ -171,28 +171,21 @@
 (defbehavior keg-event-handler keg ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((v1-0 arg2))
     (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack))
-                     (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                       (set! (-> a1-3 from) self)
-                       (set! (-> a1-3 num-params) 2)
-                       (set! (-> a1-3 message) 'attack)
-                       (set! (-> a1-3 param 0) (-> arg3 param 0))
-                       (set! (-> a1-3 param 1) (the-as uint (new 'static 'attack-info)))
-                       (when (send-event-function arg0 a1-3)
-                         (sound-play-by-name (static-sound-name "icrate-break") (new-sound-id) 1024 0 0 1 #t)
-                         (process-spawn
-                           part-tracker
-                           :init part-tracker-init
-                           (-> *part-group-id-table* 71)
-                           20
-                           #f
-                           #f
-                           #f
-                           (-> self root-override trans)
-                           :to *entity-pool*
-                           )
-                         (sound-stop (-> self sound-id))
-                         (deactivate self)
+                     (when (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+                       (sound-play-by-name (static-sound-name "icrate-break") (new-sound-id) 1024 0 0 1 #t)
+                       (process-spawn
+                         part-tracker
+                         :init part-tracker-init
+                         (-> *part-group-id-table* 71)
+                         20
+                         #f
+                         #f
+                         #f
+                         (-> self root-override trans)
+                         :to *entity-pool*
                          )
+                       (sound-stop (-> self sound-id))
+                       (deactivate self)
                        )
                      )
             )

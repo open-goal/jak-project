@@ -336,46 +336,34 @@
                        )
                      (set-vector! s4-0 (* (sin f26-0) f28-0) 0.0 (* (cos f26-0) f28-0) 1.0)
                      )
-                   (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> a1-8 from) self)
-                     (set! (-> a1-8 num-params) 2)
-                     (set! (-> a1-8 message) 'shove)
-                     (set! (-> a1-8 param 0) (-> arg3 param 0))
-                     (let ((v1-23 (new 'static 'attack-info :mask #x82)))
-                       (set! (-> v1-23 shove-up) f30-0)
-                       (set! (-> v1-23 vector quad) (-> s4-0 quad))
-                       (set! (-> a1-8 param 1) (the-as uint v1-23))
+                   (when (send-event
+                           arg0
+                           'shove
+                           (-> arg3 param 0)
+                           (static-attack-info :mask (atki01 atki07) :shove-up f30-0 :vector s4-0)
+                           )
+                     (level-hint-spawn
+                       (game-text-id sunken-bully-dive-hint)
+                       "sksp0131"
+                       (the-as entity #f)
+                       *entity-pool*
+                       (game-task none)
                        )
-                     (when (send-event-function arg0 a1-8)
-                       (level-hint-spawn
-                         (game-text-id sunken-bully-dive-hint)
-                         "sksp0131"
-                         (the-as entity #f)
-                         *entity-pool*
-                         (game-task none)
-                         )
-                       (set! (-> self bounced?) #t)
-                       (set! v0-0 (the-as none 100))
-                       (set! (-> self bounce-volume) (the-as int v0-0))
-                       v0-0
-                       )
+                     (set! (-> self bounced?) #t)
+                     (set! v0-0 (the-as none 100))
+                     (set! (-> self bounce-volume) (the-as int v0-0))
+                     v0-0
                      )
                    )
                  )
                 (else
-                  (let ((f0-21 (fmax 0.6 (* 0.000023935356 (-> self travel-speed))))
-                        (a1-10 (new 'stack-no-clear 'event-message-block))
-                        )
-                    (set! (-> a1-10 from) self)
-                    (set! (-> a1-10 num-params) 2)
-                    (set! (-> a1-10 message) 'attack)
-                    (set! (-> a1-10 param 0) (-> arg3 param 0))
-                    (let ((v1-29 (new 'static 'attack-info :mask #xc0)))
-                      (set! (-> v1-29 shove-up) (* 12288.0 f0-21))
-                      (set! (-> v1-29 shove-back) (* 16384.0 f0-21))
-                      (set! (-> a1-10 param 1) (the-as uint v1-29))
-                      )
-                    (when (send-event-function arg0 a1-10)
+                  (let ((f0-21 (fmax 0.6 (* 0.000023935356 (-> self travel-speed)))))
+                    (when (send-event
+                            arg0
+                            'attack
+                            (-> arg3 param 0)
+                            (static-attack-info :mask (atki06 atki07) :shove-up (* 12288.0 f0-21) :shove-back (* 16384.0 f0-21))
+                            )
                       (level-hint-spawn
                         (game-text-id sunken-bully-dive-hint)
                         "sksp0131"
@@ -399,17 +387,7 @@
             (when (= arg2 'touched)
               (cond
                 ((= (-> arg0 type) target)
-                 (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
-                   (set! (-> a1-13 from) self)
-                   (set! (-> a1-13 num-params) 2)
-                   (set! (-> a1-13 message) 'attack)
-                   (set! (-> a1-13 param 0) (-> arg3 param 0))
-                   (let ((a0-26 (new 'static 'attack-info :mask #x20)))
-                     (set! (-> a0-26 mode) 'explode)
-                     (set! (-> a1-13 param 1) (the-as uint a0-26))
-                     )
-                   (send-event-function arg0 a1-13)
-                   )
+                 (send-event arg0 'attack (-> arg3 param 0) (static-attack-info :mask (atki05) :mode 'explode))
                  )
                 (else
                   (let ((a1-14 (new 'stack-no-clear 'event-message-block)))

@@ -7,6 +7,7 @@
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "insert_lets.h"
+#include "decompiler/IR2/bitfields.h"
 
 namespace decompiler {
 
@@ -38,6 +39,8 @@ If the previous let variables appear in the definition of new one, make the let 
  */
 
 namespace {
+FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats);
+
 std::vector<Form*> path_up_tree(Form* in, const Env&) {
   std::vector<Form*> path;
 
@@ -240,6 +243,20 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
       }
     }
 
+    auto as_cond_ne = dynamic_cast<CondNoElseElement*>(in);
+    if (as_cond_ne) {
+      auto sub_res = rewrite_shelled_return_form(
+          matcher, as_cond_ne->entries.at(0).condition->try_as_single_element(), env, pool, func,
+          strip_cast);
+
+      if (std::get<0>(sub_res).matched) {
+        as_cond_ne->entries.at(0).condition = std::get<1>(sub_res);
+        return {std::get<0>(sub_res), pool.form<CondNoElseElement>(as_cond_ne->entries), false};
+      }
+    }
+
+    lg::error("shell match failed, dont know this form: {}", in->to_string(env));
+
     return {mr, nullptr, false};
   }
 
@@ -250,7 +267,7 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
   return {mr, new_f, true};
 }
 
-FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& pool) {
+FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats) {
   if (in->entries().size() != 1) {
     return nullptr;
   }
@@ -340,6 +357,13 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
   // (set! (-> a1-14 param X) the-param-value)
   std::vector<Form*> param_values;
   for (int param_idx = 0; param_idx < param_count; param_idx++) {
+    auto as_let = dynamic_cast<LetElement*>(body->at(3 + param_idx));
+    if (as_let) {
+      auto rewritten = rewrite_let(as_let, env, pool, stats);
+      if (rewritten) {
+        body->at(3 + param_idx) = rewritten;
+      }
+    }
     auto set_form = body->at(3 + param_idx);
     Matcher set_param_matcher = Matcher::set(
         Matcher::deref(Matcher::reg(block_var_reg), false,
@@ -1342,6 +1366,112 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
   return elt;
 }
 
+Form* match_attack_info_set(const Env& env,
+                            Register reg,
+                            const std::string& field_name,
+                            bool is_vector,
+                            Form* in,
+                            int* idx,
+                            bool* bad) {
+  ASSERT(idx);
+  ASSERT(bad);
+  if (*idx >= in->size()) {
+    // *bad = true;
+    return nullptr;
+  }
+
+  auto deref_matcher =
+      !is_vector ? Matcher::deref(Matcher::reg(reg), false, {DerefTokenMatcher::string(field_name)})
+                 : Matcher::deref(
+                       Matcher::reg(reg), false,
+                       {DerefTokenMatcher::string(field_name), DerefTokenMatcher::string("quad")});
+  auto deref_src_matcher =
+      !is_vector ? Matcher::any(0)
+                 : Matcher::deref(Matcher::any(0), false, {DerefTokenMatcher::string("quad")});
+  auto mr = match(Matcher::set(deref_matcher, deref_src_matcher), in->at(*idx));
+  if (!mr.matched) {
+    // TODO what if didn't match but it was some weird thing?? i guess later size checks fix that.
+    return nullptr;
+  }
+
+  *idx += 1;
+  return mr.maps.forms.at(0);
+}
+
+FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool) {
+  // this function checks for the static-attack-info macro.
+
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  auto test = in->to_form(env).print();
+
+  // (let ((block-var (new 'static 'attack-info))
+  auto block_src = in->entries().at(0).src->try_as_element<DecompiledDataElement>();
+  if (!block_src) {
+    return nullptr;
+  }
+
+  auto e = block_src->label_info();
+  if (e && (*e).result_type != TypeSpec("attack-info")) {
+    return nullptr;
+  }
+
+  const auto& label = block_src->label();
+  const auto& words = env.file->words_by_seg.at(label.target_segment);
+  u32 mask = words.at((label.offset + 64) / 4).data;
+
+  auto block_var = in->entries().at(0).dest;
+  const auto& block_var_reg = block_var.reg();
+  auto block_var_name = env.get_variable_name(block_var);
+
+  bool bad = false;
+  int i = 0;
+  auto shup = match_attack_info_set(env, block_var_reg, "shove-up", false, in->body(), &i, &bad);
+  auto shbk = match_attack_info_set(env, block_var_reg, "shove-back", false, in->body(), &i, &bad);
+  auto mode = match_attack_info_set(env, block_var_reg, "mode", false, in->body(), &i, &bad);
+  auto vect = match_attack_info_set(env, block_var_reg, "vector", true, in->body(), &i, &bad);
+
+  if (i != in->body()->size() - 1) {
+    lg::error("attack info err 1 {}/{} elts", i, in->body()->size() - 1);
+    return nullptr;
+  }
+
+  // (static-attack-info :mask <mask> etc)
+  auto mr_with_shell = rewrite_shelled_return_form(
+      Matcher::cast("uint", Matcher::reg(block_var_reg)), in->body()->at(i), env, pool,
+      [&](FormElement* s_in, const MatchResult& mr, const Env& env, FormPool& pool) {
+        // time to build the macro!
+        std::vector<Form*> macro_args;
+
+        if (mask) {
+          ja_push_form_to_args(
+              pool, macro_args,
+              decompiler::cast_to_bitfield_enum(env.dts->ts.try_enum_lookup("attack-mask"), pool,
+                                                env, mask, true),
+              "mask");
+        }
+
+        ja_push_form_to_args(pool, macro_args, shup, "shove-up");
+        ja_push_form_to_args(pool, macro_args, shbk, "shove-back");
+        ja_push_form_to_args(pool, macro_args, mode, "mode");
+        ja_push_form_to_args(pool, macro_args, vect, "vector");
+
+        return pool.form<GenericElement>(
+            GenericOperator::make_function(pool.form<ConstantTokenElement>("static-attack-info")),
+            macro_args);
+      },
+      nullptr);
+
+  if (!std::get<0>(mr_with_shell).matched) {
+    return nullptr;
+  }
+
+  auto elt = std::get<1>(mr_with_shell)->try_as_single_element();
+  return elt;
+}
+
 /*!
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
@@ -1370,7 +1500,7 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
     return as_dotimes;
   }
 
-  auto as_send_event = rewrite_as_send_event(in, env, pool);
+  auto as_send_event = rewrite_as_send_event(in, env, pool, stats);
   if (as_send_event) {
     stats.send_event++;
     return as_send_event;
@@ -1416,6 +1546,12 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
   if (as_proc_new) {
     stats.proc_new++;
     return as_proc_new;
+  }
+
+  auto as_attack_info = rewrite_attack_info(in, env, pool);
+  if (as_attack_info) {
+    stats.attack_info++;
+    return as_attack_info;
   }
 
   // nothing matched.

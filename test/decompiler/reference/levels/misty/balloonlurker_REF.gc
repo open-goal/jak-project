@@ -507,7 +507,7 @@
          (set! (-> a1-3 num-params) 2)
          (set! (-> a1-3 message) 'shove)
          (set! (-> a1-3 param 0) (-> arg3 param 0))
-         (let ((v1-9 (new 'static 'attack-info :mask #xc0)))
+         (let ((v1-9 (new 'static 'attack-info :mask (attack-mask atki06 atki07))))
            (set! (-> v1-9 shove-back) 8192.0)
            (set! (-> v1-9 shove-up) 2048.0)
            (set! (-> a1-3 param 1) (the-as uint v1-9))
@@ -530,25 +530,15 @@
            (let ((a0-10 (find-prim-by-id (-> self root-overlay) (the-as uint s3-0))))
              (when a0-10
                (set! (-> self explosion-force-position quad) (-> a0-10 prim-core world-sphere quad))
-               (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-                 (set! (-> a1-6 from) self)
-                 (set! (-> a1-6 num-params) 2)
-                 (set! (-> a1-6 message) 'attack)
-                 (set! (-> a1-6 param 0) (-> arg3 param 0))
-                 (let ((a0-13 (new 'static 'attack-info :mask #x20)))
-                   (set! (-> a0-13 mode) 'balloonlurker)
-                   (set! (-> a1-6 param 1) (the-as uint a0-13))
-                   )
-                 (if (send-event-function arg0 a1-6)
-                     (level-hint-spawn
-                       (game-text-id misty-daxter-hit-lurkers-not-mines)
-                       "sksp0063"
-                       (the-as entity #f)
-                       *entity-pool*
-                       (game-task none)
-                       )
+               (if (send-event arg0 'attack (-> arg3 param 0) (static-attack-info :mask (atki05) :mode 'balloonlurker))
+                   (level-hint-spawn
+                     (game-text-id misty-daxter-hit-lurkers-not-mines)
+                     "sksp0063"
+                     (the-as entity #f)
+                     *entity-pool*
+                     (game-task none)
                      )
-                 )
+                   )
                (go balloonlurker-mine-explode s4-0)
                )
              )

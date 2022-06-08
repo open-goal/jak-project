@@ -64,10 +64,11 @@ struct LetRewriteStats {
   int send_event = 0;
   int font_context_meth = 0;
   int proc_new = 0;
+  int attack_info = 0;
 
   int total() const {
     return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
-           set_vector + set_vector2 + send_event + font_context_meth + proc_new;
+           set_vector + set_vector2 + send_event + font_context_meth + proc_new + attack_info;
   }
 
   std::string print() const {
@@ -86,7 +87,45 @@ struct LetRewriteStats {
     out += fmt::format("  send_event: {}\n", send_event);
     // out += fmt::format("  font_context_meth: {}\n", font_context_meth);
     out += fmt::format("  proc_new: {}\n", proc_new);
+    out += fmt::format("  attack_info: {}\n", attack_info);
     return out;
+  }
+
+  LetRewriteStats operator+(const LetRewriteStats& other) {
+    LetRewriteStats result;
+    result.dotimes = dotimes + other.dotimes;
+    result.countdown = countdown + other.countdown;
+    result.abs = abs + other.abs;
+    result.abs2 = abs2 + other.abs2;
+    result.ja = ja + other.ja;
+    result.set_vector = set_vector + other.set_vector;
+    result.set_vector2 = set_vector2 + other.set_vector2;
+    result.case_no_else = case_no_else + other.case_no_else;
+    result.case_with_else = case_with_else + other.case_with_else;
+    result.unused = unused + other.unused;
+    result.send_event = send_event + other.send_event;
+    result.font_context_meth = font_context_meth + other.font_context_meth;
+    result.proc_new = proc_new + other.proc_new;
+    result.attack_info = attack_info + other.attack_info;
+    return result;
+  }
+
+  LetRewriteStats& operator+=(const LetRewriteStats& other) {
+    dotimes += other.dotimes;
+    countdown += other.countdown;
+    abs += other.abs;
+    abs2 += other.abs2;
+    ja += other.ja;
+    set_vector += other.set_vector;
+    set_vector2 += other.set_vector2;
+    case_no_else += other.case_no_else;
+    case_with_else += other.case_with_else;
+    unused += other.unused;
+    send_event += other.send_event;
+    font_context_meth += other.font_context_meth;
+    proc_new += other.proc_new;
+    attack_info += other.attack_info;
+    return *this;
   }
 };
 
