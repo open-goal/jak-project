@@ -454,6 +454,48 @@
     )
   )
 
+(#when PC_PORT
+;; extra methods needed for aspect ratio in pc port
+(defmethod set-pos-and-scale hud-bike-heat ((obj hud-bike-heat) (arg0 symbol) (arg1 symbol))
+  (with-pc
+    (let ((base-x (-> obj particles 0 init-pos x)))
+        (*! base-x (-> *pc-settings* aspect-ratio-reciprocal))
+        (set! (-> obj particles 0 init-pos x) 13.0)
+        (set! (-> obj particles 1 init-pos x) 70.0)
+        (set! (-> obj particles 2 init-pos x) 20.0)
+        (set! (-> obj particles 3 init-pos x) 70.0)
+        
+    (when (not (-> *pc-settings* use-vis?))
+      (dotimes (i (-> obj nb-of-particles))
+        (set! (-> obj particles i init-pos x) (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> obj particles i init-pos x) base-x))))
+
+        ))
+        
+        )
+    )
+  (none)
+  )
+
+(defmethod set-pos-and-scale hud-bike-speed ((obj hud-bike-speed) (arg0 symbol) (arg1 symbol))
+  (with-pc
+    (let ((base-x (-> obj particles 1 init-pos x)))
+        (+! base-x (* (- 512.0 base-x) (- 1.0 (-> *pc-settings* aspect-ratio-reciprocal))))
+        (set! (-> obj particles 0 init-pos x) 433.0)
+        (set! (-> obj particles 1 init-pos x) 378.0)
+        (set! (-> obj particles 2 init-pos x) 415.0)
+        
+    (when (not (-> *pc-settings* use-vis?))
+      (dotimes (i (-> obj nb-of-particles))
+        (set! (-> obj particles i init-pos x) (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> obj particles i init-pos x) base-x))))
+
+        ))
+        
+        )
+    )
+  (none)
+  )
+  )
+
 (defpartgroup group-racer-trans-pad
   :id 115
   :bounds (static-bspherem 0 0 0 8)
