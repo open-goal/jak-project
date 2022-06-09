@@ -263,17 +263,7 @@
     (let ((gp-0 (-> self path-vector)))
       (eval-path-curve-div! (-> self path-dive0) gp-0 4.5 'interp)
       (set! (-> gp-0 y) (+ -4505.6 (-> gp-0 y)))
-      (let* ((s5-0 (get-process *default-dead-pool* manipy #x4000))
-             (v1-8
-               (when s5-0
-                 (let ((t9-3 (method-of-type manipy activate)))
-                   (t9-3 (the-as manipy s5-0) self 'manipy (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process s5-0 manipy-init gp-0 (-> self entity) *fuel-cell-sg* (new 'static 'vector :w 4915.2))
-                 (-> s5-0 ppointer)
-                 )
-               )
-             )
+      (let ((v1-8 (manipy-spawn gp-0 (-> self entity) *fuel-cell-sg* (new 'static 'vector :w 4915.2) :to self)))
         (set! (-> self fuel-cell) (ppointer->handle v1-8))
         (if v1-8
             (send-event
@@ -660,19 +650,10 @@
   :event (-> pelican-circle event)
   :code (behavior ()
     (local-vars (v1-21 symbol) (v1-31 symbol))
-    (let* ((gp-0 (get-process *default-dead-pool* manipy #x4000))
-           (gp-1
-             (ppointer->handle
-               (when gp-0
-                 (let ((t9-1 (method-of-type manipy activate)))
-                   (t9-1 (the-as manipy gp-0) self 'manipy (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process gp-0 manipy-init (-> self entity extra trans) (-> self entity) *beachcam-sg* #f)
-                 (-> gp-0 ppointer)
-                 )
-               )
-             )
-           )
+    (let ((gp-1
+            (ppointer->handle (manipy-spawn (-> self entity extra trans) (-> self entity) *beachcam-sg* #f :to self))
+            )
+          )
       (let ((s5-0 (get-process *default-dead-pool* othercam #x4000)))
         (ppointer->handle (when s5-0
                             (let ((t9-4 (method-of-type othercam activate)))
@@ -683,18 +664,11 @@
                             )
                           )
         )
-      (let* ((s5-1 (get-process *default-dead-pool* fuel-cell #x4000))
-             (s4-0 (ppointer->handle (when s5-1
-                                       (let ((t9-7 (method-of-type fuel-cell activate)))
-                                         (t9-7 (the-as fuel-cell s5-1) self 'fuel-cell (the-as pointer #x70004000))
-                                         )
-                                       (run-now-in-process s5-1 fuel-cell-init-as-clone (process->handle self) 0)
-                                       (-> s5-1 ppointer)
-                                       )
-                                     )
-                   )
-             (s5-2 (new 'stack-no-clear 'quaternion))
-             )
+      (let ((s4-0
+              (ppointer->handle (process-spawn fuel-cell :init fuel-cell-init-as-clone (process->handle self) 0 :to self))
+              )
+            (s5-2 (new 'stack-no-clear 'quaternion))
+            )
         (quaternion-copy! s5-2 (-> self root-override quat))
         (until v1-21
           (suspend)
@@ -991,23 +965,15 @@
      (go pelican-wait-at-nest #t)
      )
     ((2)
-     (let* ((s4-1 (get-process *default-dead-pool* manipy #x4000))
-            (s5-2 (when s4-1
-                    (let ((t9-15 (method-of-type manipy activate)))
-                      (t9-15 (the-as manipy s4-1) obj 'manipy (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process
-                      s4-1
-                      manipy-init
-                      (-> obj root-override trans)
-                      (-> obj entity)
-                      *fuel-cell-sg*
-                      (new 'static 'vector :w 4915.2)
-                      )
-                    (-> s4-1 ppointer)
-                    )
-                  )
-            )
+     (let ((s5-2 (manipy-spawn
+                   (-> obj root-override trans)
+                   (-> obj entity)
+                   *fuel-cell-sg*
+                   (new 'static 'vector :w 4915.2)
+                   :to obj
+                   )
+                 )
+           )
        (set! (-> obj fuel-cell) (the-as handle (if s5-2
                                                    (ppointer->handle s5-2)
                                                    (the-as int #f)

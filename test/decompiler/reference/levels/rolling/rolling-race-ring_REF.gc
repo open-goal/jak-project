@@ -881,29 +881,17 @@
                  )
                )
               ((last-ring? self)
-               (let* ((gp-1 (get-process *default-dead-pool* othercam #x4000))
-                      (gp-2 (ppointer->handle (when gp-1
-                                                (let ((t9-15 (method-of-type othercam activate)))
-                                                  (t9-15 (the-as othercam gp-1) self 'othercam (the-as pointer #x70004000))
-                                                  )
-                                                (run-now-in-process gp-1 othercam-init-by-other self 4 #f #t)
-                                                (-> gp-1 ppointer)
-                                                )
-                                              )
-                            )
-                      (s5-1 (get-process *default-dead-pool* fuel-cell #x4000))
-                      (s5-2
-                        (ppointer->handle
-                          (when s5-1
-                            (let ((t9-18 (method-of-type fuel-cell activate)))
-                              (t9-18 (the-as fuel-cell s5-1) self 'fuel-cell (the-as pointer #x70004000))
-                              )
-                            (run-now-in-process s5-1 fuel-cell-init-as-clone (process->handle self) (-> self entity extra perm task))
-                            (-> s5-1 ppointer)
-                            )
-                          )
-                        )
-                      )
+               (let ((gp-2 (ppointer->handle (process-spawn othercam self 4 #f #t :to self)))
+                     (s5-2 (ppointer->handle (process-spawn
+                                               fuel-cell
+                                               :init fuel-cell-init-as-clone
+                                               (process->handle self)
+                                               (-> self entity extra perm task)
+                                               :to self
+                                               )
+                                             )
+                           )
+                     )
                  (if *target*
                      (logior! (-> *target* mask) (process-mask sleep))
                      )

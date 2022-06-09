@@ -1347,19 +1347,11 @@
             (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
             (send-event (ppointer->process (-> self sidekick)) 'shadow #f)
             (send-event self 'blend-shape #t)
-            (let* ((s5-7 (get-process *default-dead-pool* pov-camera #x4000))
-                   (s5-8
-                     (ppointer->handle
-                       (when s5-7
-                         (let ((t9-68 (method-of-type pov-camera activate)))
-                           (t9-68 (the-as pov-camera s5-7) *target-pool* 'pov-camera (the-as pointer #x70004000))
-                           )
-                         (run-now-in-process s5-7 pov-camera-init-by-other (-> self control trans) *deathcam-sg* gp-18 4 self '())
-                         (-> s5-7 ppointer)
-                         )
-                       )
-                     )
-                   )
+            (let ((s5-8 (ppointer->handle
+                          (process-spawn pov-camera (-> self control trans) *deathcam-sg* gp-18 4 self '() :to *target-pool*)
+                          )
+                        )
+                  )
               (send-event (handle->process s5-8) 'music-movie-volume 0.0)
               (send-event (handle->process s5-8) 'sfx-movie-volume 50.0)
               (set! (-> self post-hook) target-no-ja-move-post)

@@ -1926,38 +1926,23 @@
   (with-pp
     (let ((gp-0 (entity-actor-lookup (-> pp entity) 'alt-actor 0)))
       (when gp-0
-        (let* ((s5-0 (get-process *default-dead-pool* pov-camera #x4000))
-               (gp-1
-                 (ppointer->handle
-                   (when s5-0
-                     (let ((t9-2 (method-of-type pov-camera activate)))
-                       (t9-2 (the-as pov-camera s5-0) pp 'pov-camera (the-as pointer #x70004000))
-                       )
-                     (run-now-in-process
-                       s5-0
-                       pov-camera-init-by-other
-                       (-> gp-0 extra trans)
-                       *mistycam-sg*
-                       (new 'static 'spool-anim :name "mistycam-cannon" :index 5 :parts 1 :command-list '())
-                       0
-                       #f
-                       '()
-                       )
-                     (-> s5-0 ppointer)
-                     )
-                   )
-                 )
-               (s5-1 (get-process *default-dead-pool* fuel-cell #x4000))
-               (s5-2
-                 (ppointer->handle (when s5-1
-                                     (let ((t9-5 (method-of-type fuel-cell activate)))
-                                       (t9-5 (the-as fuel-cell s5-1) pp 'fuel-cell (the-as pointer #x70004000))
-                                       )
-                                     (run-now-in-process s5-1 fuel-cell-init-as-clone gp-1 (-> pp entity extra perm task))
-                                     (-> s5-1 ppointer)
+        (let* ((gp-1
+                 (ppointer->handle (process-spawn
+                                     pov-camera
+                                     (-> gp-0 extra trans)
+                                     *mistycam-sg*
+                                     (new 'static 'spool-anim :name "mistycam-cannon" :index 5 :parts 1 :command-list '())
+                                     0
+                                     #f
+                                     '()
+                                     :to pp
                                      )
                                    )
                  )
+               (s5-2 (ppointer->handle
+                       (process-spawn fuel-cell :init fuel-cell-init-as-clone gp-1 (-> pp entity extra perm task) :to pp)
+                       )
+                     )
                )
           (let ((v1-13 (handle->process gp-1)))
             (if v1-13
@@ -1997,19 +1982,11 @@
 (defstate battlecontroller-play-intro-camera (misty-battlecontroller)
   :virtual #t
   :code (behavior ()
-    (let* ((gp-0 (get-process *default-dead-pool* pov-camera #x4000))
-           (gp-1
-             (ppointer->handle
-               (when gp-0
-                 (let ((t9-1 (method-of-type pov-camera activate)))
-                   (t9-1 (the-as pov-camera gp-0) self 'pov-camera (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process gp-0 pov-camera-init-by-other (-> self root trans) *mistycam-sg* "lurkerattack" 0 #f '())
-                 (-> gp-0 ppointer)
-                 )
-               )
-             )
-           )
+    (let ((gp-1 (ppointer->handle
+                  (process-spawn pov-camera (-> self root trans) *mistycam-sg* "lurkerattack" 0 #f '() :to self)
+                  )
+                )
+          )
       (while (handle->process (the-as handle gp-1))
         (suspend)
         )
@@ -2119,26 +2096,12 @@
     (process-drawable-birth-fuel-cell (the-as entity #f) (the-as vector #f) #f)
     (when (and *target* (-> self play-cutscene?))
       (ambient-hint-spawn "gamcam02" (the-as vector #f) *entity-pool* 'camera)
-      (let* ((gp-0 (get-process *default-dead-pool* pov-camera #x4000))
-             (gp-1 (ppointer->handle (when gp-0
-                                       (let ((t9-3 (method-of-type pov-camera activate)))
-                                         (t9-3 (the-as pov-camera gp-0) self 'pov-camera (the-as pointer #x70004000))
-                                         )
-                                       (run-now-in-process
-                                         gp-0
-                                         pov-camera-init-by-other
-                                         (-> self root trans)
-                                         *mistycam-sg*
-                                         "mistycam-balloon-fuel-cell"
-                                         0
-                                         #f
-                                         '()
-                                         )
-                                       (-> gp-0 ppointer)
-                                       )
-                                     )
-                   )
-             )
+      (let ((gp-1
+              (ppointer->handle
+                (process-spawn pov-camera (-> self root trans) *mistycam-sg* "mistycam-balloon-fuel-cell" 0 #f '() :to self)
+                )
+              )
+            )
         (while (handle->process (the-as handle gp-1))
           (suspend)
           )

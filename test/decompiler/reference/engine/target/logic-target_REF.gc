@@ -2127,16 +2127,16 @@
   (set! (-> *level* border?) #f)
   (set! (-> *setting-control* default border-mode) #f)
   (stop arg0)
-  (let* ((s5-0 (get-process *target-dead-pool* target #x4000))
-         (v1-3 (when s5-0
-                 (let ((t9-2 (method-of-type target activate)))
-                   (t9-2 (the-as target s5-0) *target-pool* 'target (&-> *dram-stack* 14336))
-                   )
-                 (run-now-in-process s5-0 init-target arg1)
-                 (-> s5-0 ppointer)
-                 )
-               )
-         )
+  (let ((v1-3 (process-spawn
+                target
+                :init init-target
+                arg1
+                :from *target-dead-pool*
+                :to *target-pool*
+                :stack *kernel-dram-stack*
+                )
+              )
+        )
     (if v1-3
         (set! *target* (the-as target (-> v1-3 0 self)))
         (set! *target* #f)

@@ -1037,19 +1037,11 @@
   :code (behavior ()
     (suspend)
     (process-drawable-delay-player (seconds 1))
-    (let* ((gp-0 (get-process *default-dead-pool* pov-camera #x4000))
-           (gp-1
-             (ppointer->handle
-               (when gp-0
-                 (let ((t9-2 (method-of-type pov-camera activate)))
-                   (t9-2 (the-as pov-camera gp-0) self 'pov-camera (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process gp-0 pov-camera-init-by-other (-> self root trans) *swampcam-sg* "swamp-ambush" 0 #f '())
-                 (-> gp-0 ppointer)
-                 )
-               )
-             )
-           )
+    (let ((gp-1 (ppointer->handle
+                  (process-spawn pov-camera (-> self root trans) *swampcam-sg* "swamp-ambush" 0 #f '() :to self)
+                  )
+                )
+          )
       (while (handle->process (the-as handle gp-1))
         (suspend)
         )

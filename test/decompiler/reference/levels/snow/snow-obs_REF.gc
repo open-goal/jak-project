@@ -70,19 +70,18 @@
            )
          )
         ((= v1-0 1)
-         (let* ((gp-1 (get-process *default-dead-pool* fuel-cell #x4000))
-                (gp-2
-                  (ppointer->handle
-                    (when gp-1
-                      (let ((t9-10 (method-of-type fuel-cell activate)))
-                        (t9-10 (the-as fuel-cell gp-1) (ppointer->process (-> self parent)) 'fuel-cell (the-as pointer #x70004000))
-                        )
-                      (run-now-in-process gp-1 fuel-cell-init-as-clone (process->handle self) (-> self entity extra perm task))
-                      (-> gp-1 ppointer)
-                      )
-                    )
-                  )
-                )
+         (let ((gp-2
+                 (ppointer->handle
+                   (process-spawn
+                     fuel-cell
+                     :init fuel-cell-init-as-clone
+                     (process->handle self)
+                     (-> self entity extra perm task)
+                     :to (ppointer->process (-> self parent))
+                     )
+                   )
+                 )
+               )
            (push-setting! *setting-control* self 'music-volume 'abs 0.0 0)
            (push-setting! *setting-control* self 'sfx-volume 'rel 50.0 0)
            (ja-play-spooled-anim
@@ -401,26 +400,20 @@
       (-> self root-override trans)
       :to *entity-pool*
       )
-    (let* ((gp-1 (get-process *default-dead-pool* snowcam #x4000))
-           (v1-7
-             (when gp-1
-               (let ((t9-4 (method-of-type snowcam activate)))
-                 (t9-4 (the-as snowcam gp-1) self 'snowcam (the-as pointer #x70004000))
-                 )
-               (run-now-in-process
-                 gp-1
-                 pov-camera-init-by-other
-                 (-> self spawn-trans)
-                 *snowcam-sg*
-                 "gearstart"
-                 0
-                 self
-                 '((0 ambient camera "gamcam38") (10 alive "ecovent-278"))
-                 )
-               (-> gp-1 ppointer)
-               )
-             )
-           )
+    (let ((v1-7
+            (process-spawn
+              snowcam
+              :init pov-camera-init-by-other
+              (-> self spawn-trans)
+              *snowcam-sg*
+              "gearstart"
+              0
+              self
+              '((0 ambient camera "gamcam38") (10 alive "ecovent-278"))
+              :to self
+              )
+            )
+          )
       (set! (-> (the-as snowcam (-> v1-7 0)) seq) (the-as uint 2))
       )
     (change-sound! (-> self sound) (static-sound-name "snw-eggtop-seq"))

@@ -599,17 +599,17 @@
        (when (= kind (pickup-type eco-blue))
          (when (= eco-lev 0.0)
            (let ((s5-1 (-> obj process)))
-             (let* ((s3-5 (get-process *default-dead-pool* touch-tracker #x4000))
-                    (s4-3
-                      (when s3-5
-                        (let ((t9-28 (method-of-type touch-tracker activate)))
-                          (t9-28 (the-as touch-tracker s3-5) s5-1 'touch-tracker (the-as pointer #x70004000))
-                          )
-                        (run-now-in-process s3-5 touch-tracker-init (-> s5-1 root trans) (-> *FACT-bank* suck-bounce-dist) 300)
-                        (-> s3-5 ppointer)
-                        )
-                      )
-                    )
+             (let ((s4-3
+                     (process-spawn
+                       touch-tracker
+                       :init touch-tracker-init
+                       (-> s5-1 root trans)
+                       (-> *FACT-bank* suck-bounce-dist)
+                       300
+                       :to s5-1
+                       )
+                     )
+                   )
                (send-event (ppointer->process s4-3) 'target s5-1)
                (send-event (ppointer->process s4-3) 'event 'eco-blue)
                (send-event (ppointer->process s4-3) 'exit (lambda () (send-event *target* 'query 'powerup 3)))

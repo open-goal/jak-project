@@ -65,10 +65,12 @@ struct LetRewriteStats {
   int font_context_meth = 0;
   int proc_new = 0;
   int attack_info = 0;
+  int vector_dot = 0;
 
   int total() const {
     return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
-           set_vector + set_vector2 + send_event + font_context_meth + proc_new + attack_info;
+           set_vector + set_vector2 + send_event + font_context_meth + proc_new + attack_info +
+           vector_dot;
   }
 
   std::string print() const {
@@ -88,6 +90,7 @@ struct LetRewriteStats {
     // out += fmt::format("  font_context_meth: {}\n", font_context_meth);
     out += fmt::format("  proc_new: {}\n", proc_new);
     out += fmt::format("  attack_info: {}\n", attack_info);
+    out += fmt::format("  vector_dot: {}\n", vector_dot);
     return out;
   }
 
@@ -107,6 +110,7 @@ struct LetRewriteStats {
     result.font_context_meth = font_context_meth + other.font_context_meth;
     result.proc_new = proc_new + other.proc_new;
     result.attack_info = attack_info + other.attack_info;
+    result.vector_dot = vector_dot + other.vector_dot;
     return result;
   }
 
@@ -125,6 +129,7 @@ struct LetRewriteStats {
     font_context_meth += other.font_context_meth;
     proc_new += other.proc_new;
     attack_info += other.attack_info;
+    vector_dot += other.vector_dot;
     return *this;
   }
 };

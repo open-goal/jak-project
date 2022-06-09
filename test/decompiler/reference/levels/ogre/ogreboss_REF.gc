@@ -183,16 +183,7 @@
       :to *entity-pool*
       )
     (activate! *camera-smush-control* (the-as float 819.2) 37 600 (the-as float 1.0) (the-as float 0.995))
-    (let* ((s4-1 (get-process *default-dead-pool* manipy #x4000))
-           (gp-2 (when s4-1
-                   (let ((t9-7 (method-of-type manipy activate)))
-                     (t9-7 (the-as manipy s4-1) pp 'manipy (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process s4-1 manipy-init arg0 (-> pp entity) *ogreboss-shoot-boulder-break-sg* #f)
-                   (-> s4-1 ppointer)
-                   )
-                 )
-           )
+    (let ((gp-2 (manipy-spawn arg0 (-> pp entity) *ogreboss-shoot-boulder-break-sg* #f :to pp)))
       (quaternion-axis-angle!
         (-> (the-as manipy (-> gp-2 0)) root quat)
         (the-as float 0.0)
@@ -1235,17 +1226,7 @@
 (defstate ogreboss-idle (ogreboss)
   :enter (behavior ()
     (when (zero? (-> self try-count))
-      (let* ((s5-0 (get-process *default-dead-pool* manipy #x4000))
-             (gp-0
-               (when s5-0
-                 (let ((t9-1 (method-of-type manipy activate)))
-                   (t9-1 (the-as manipy s5-0) self 'manipy (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process s5-0 manipy-init (-> self root-override trans) (-> self entity) *ogreboss-column-sg* #f)
-                 (-> s5-0 ppointer)
-                 )
-               )
-             )
+      (let ((gp-0 (manipy-spawn (-> self root-override trans) (-> self entity) *ogreboss-column-sg* #f :to self)))
         (set! (-> self column) (ppointer->handle gp-0))
         (send-event (ppointer->process gp-0) 'anim-mode 'loop)
         (send-event (ppointer->process gp-0) 'art-joint-anim "ogreboss-column-idle" 0)

@@ -1668,38 +1668,23 @@
   (with-pp
     (let ((gp-0 (entity-actor-lookup (-> pp entity) 'alt-actor 0)))
       (when gp-0
-        (let* ((s5-0 (get-process *default-dead-pool* pov-camera #x4000))
-               (gp-1
-                 (ppointer->handle
-                   (when s5-0
-                     (let ((t9-2 (method-of-type pov-camera activate)))
-                       (t9-2 (the-as pov-camera s5-0) pp 'pov-camera (the-as pointer #x70004000))
-                       )
-                     (run-now-in-process
-                       s5-0
-                       pov-camera-init-by-other
-                       (-> gp-0 extra trans)
-                       *beachcam-sg*
-                       (new 'static 'spool-anim :name "beachcam-cannon" :index 3 :parts 1 :command-list '())
-                       0
-                       #f
-                       '()
-                       )
-                     (-> s5-0 ppointer)
-                     )
-                   )
-                 )
-               (s5-1 (get-process *default-dead-pool* fuel-cell #x4000))
-               (s5-2
-                 (ppointer->handle (when s5-1
-                                     (let ((t9-5 (method-of-type fuel-cell activate)))
-                                       (t9-5 (the-as fuel-cell s5-1) pp 'fuel-cell (the-as pointer #x70004000))
-                                       )
-                                     (run-now-in-process s5-1 fuel-cell-init-as-clone gp-1 (-> pp entity extra perm task))
-                                     (-> s5-1 ppointer)
+        (let* ((gp-1
+                 (ppointer->handle (process-spawn
+                                     pov-camera
+                                     (-> gp-0 extra trans)
+                                     *beachcam-sg*
+                                     (new 'static 'spool-anim :name "beachcam-cannon" :index 3 :parts 1 :command-list '())
+                                     0
+                                     #f
+                                     '()
+                                     :to pp
                                      )
                                    )
                  )
+               (s5-2 (ppointer->handle
+                       (process-spawn fuel-cell :init fuel-cell-init-as-clone gp-1 (-> pp entity extra perm task) :to pp)
+                       )
+                     )
                )
           (let ((v1-13 (handle->process gp-1)))
             (if v1-13

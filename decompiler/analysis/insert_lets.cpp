@@ -1696,10 +1696,19 @@ FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, For
   return in;
 }
 
-FormElement* rewrite_multi_let(LetElement* in, const Env& env, FormPool& pool) {
+FormElement* rewrite_multi_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats) {
+  if (in->entries().size() >= 2) {
+    auto as_proc_new = rewrite_proc_new(in, env, pool);
+    if (as_proc_new) {
+      stats.proc_new++;
+      return as_proc_new;
+    }
+  }
+
   if (in->entries().size() >= 6) {
     auto as_vector_dot = rewrite_multi_let_as_vector_dot(in, env, pool);
     if (as_vector_dot) {
+      stats.vector_dot++;
       return as_vector_dot;
     }
   }
@@ -2024,6 +2033,17 @@ LetStats insert_lets(const Function& func,
         }
 
         for (auto& e : inner_let->entries()) {
+          as_let->add_entry(e);
+        }
+
+        as_let->set_body(inner_let->body());
+
+        // rewrite:
+        form->at(idx) = rewrite_multi_let(as_let, env, pool, let_rewrite_stats);
+        ASSERT(form->at(idx)->parent_form == form);
+
+        // check star
+        for (auto& e : inner_let->entries()) {
           if (!as_let->is_star()) {
             RegAccessSet used;
             e.src->collect_vars(used, true);
@@ -2038,14 +2058,8 @@ LetStats insert_lets(const Function& func,
               }
             }
           }
-          as_let->add_entry(e);
         }
 
-        as_let->set_body(inner_let->body());
-
-        // rewrite:
-        form->at(idx) = rewrite_multi_let(as_let, env, pool);
-        ASSERT(form->at(idx)->parent_form == form);
         changed = true;
       }
     });

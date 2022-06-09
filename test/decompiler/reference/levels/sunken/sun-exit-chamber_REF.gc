@@ -1088,25 +1088,19 @@
     (none)
     )
   :code (behavior ()
-    (let* ((gp-0 (get-process *default-dead-pool* sunkencam #x4000))
-           (v1-1 (when gp-0
-                   (let ((t9-1 (method-of-type sunkencam activate)))
-                     (t9-1 (the-as sunkencam gp-0) self 'sunkencam (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     gp-0
-                     pov-camera-init-by-other
-                     (-> self root-override trans)
-                     *sunkencam-sg*
-                     "qbert-show-door-open"
-                     0
-                     #f
-                     '()
-                     )
-                   (-> gp-0 ppointer)
-                   )
-                 )
-           )
+    (let ((v1-1 (process-spawn
+                  sunkencam
+                  :init pov-camera-init-by-other
+                  (-> self root-override trans)
+                  *sunkencam-sg*
+                  "qbert-show-door-open"
+                  0
+                  #f
+                  '()
+                  :to self
+                  )
+                )
+          )
       (set! (-> (the-as sunkencam (-> v1-1 0)) seq) (the-as uint 1))
       )
     (load-state-want-display-level 'sunken 'display)

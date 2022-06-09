@@ -664,19 +664,10 @@
     (while (and *target* (< (vector-vector-distance (-> self root-override trans) (target-pos 0)) 24576.0))
       (suspend)
       )
-    (let* ((gp-1 (get-process *default-dead-pool* manipy #x4000))
-           (gp-2
-             (ppointer->handle
-               (when gp-1
-                 (let ((t9-5 (method-of-type manipy activate)))
-                   (t9-5 (the-as manipy gp-1) self 'manipy (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process gp-1 manipy-init (-> self entity extra trans) (-> self entity) *rollingcam-sg* #f)
-                 (-> gp-1 ppointer)
-                 )
-               )
-             )
-           )
+    (let ((gp-2
+            (ppointer->handle (manipy-spawn (-> self entity extra trans) (-> self entity) *rollingcam-sg* #f :to self))
+            )
+          )
       (let ((s5-1 (get-process *default-dead-pool* othercam #x4000)))
         (ppointer->handle (when s5-1
                             (let ((t9-8 (method-of-type othercam activate)))
@@ -687,17 +678,10 @@
                             )
                           )
         )
-      (let* ((s5-2 (get-process *default-dead-pool* fuel-cell #x4000))
-             (s5-3 (ppointer->handle (when s5-2
-                                       (let ((t9-11 (method-of-type fuel-cell activate)))
-                                         (t9-11 (the-as fuel-cell s5-2) self 'fuel-cell (the-as pointer #x70004000))
-                                         )
-                                       (run-now-in-process s5-2 fuel-cell-init-as-clone (process->handle self) 55)
-                                       (-> s5-2 ppointer)
-                                       )
-                                     )
-                   )
-             )
+      (let ((s5-3
+              (ppointer->handle (process-spawn fuel-cell :init fuel-cell-init-as-clone (process->handle self) 55 :to self))
+              )
+            )
         (if *target*
             (logior! (-> *target* mask) (process-mask sleep))
             )
@@ -1384,31 +1368,18 @@
 ;; INFO: Return type mismatch int vs handle.
 ;; Used lq/sq
 (defbehavior gorge-start-launch-start-banner gorge-start ()
-  (the-as
-    handle
-    (when (task-closed? (game-task rolling-race) (task-status need-introduction))
-      (when (not (handle->process (-> self start-banner)))
-        (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (set! (-> gp-0 quad) (-> self root-override trans quad))
-          (let* ((s5-0 (get-process *default-dead-pool* rolling-start #x4000))
-                 (v0-1
-                   (ppointer->handle (when s5-0
-                                       (let ((t9-2 (method-of-type rolling-start activate)))
-                                         (t9-2 (the-as rolling-start s5-0) self 'rolling-start (the-as pointer #x70004000))
-                                         )
-                                       (run-now-in-process s5-0 rolling-start-init-by-other gp-0 0.0)
-                                       (-> s5-0 ppointer)
-                                       )
-                                     )
+  (the-as handle (when (task-closed? (game-task rolling-race) (task-status need-introduction))
+                   (when (not (handle->process (-> self start-banner)))
+                     (let ((gp-0 (new 'stack-no-clear 'vector)))
+                       (set! (-> gp-0 quad) (-> self root-override trans quad))
+                       (let ((v0-1 (ppointer->handle (process-spawn rolling-start gp-0 0.0 :to self))))
+                         (set! (-> self start-banner) (the-as handle v0-1))
+                         v0-1
+                         )
+                       )
+                     )
                    )
-                 )
-            (set! (-> self start-banner) (the-as handle v0-1))
-            v0-1
-            )
           )
-        )
-      )
-    )
   )
 
 ;; failed to figure out what this is:

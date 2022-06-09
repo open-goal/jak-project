@@ -377,29 +377,17 @@
     (logclear! (-> self draw status) (draw-status hidden))
     (ja-channel-set! 1)
     (ja :group! (-> self draw art-group data 2) :num! min)
-    (let* ((gp-1 (get-process *default-dead-pool* othercam #x4000))
-           (gp-2 (ppointer->handle (when gp-1
-                                     (let ((t9-5 (method-of-type othercam activate)))
-                                       (t9-5 (the-as othercam gp-1) self 'othercam (the-as pointer #x70004000))
-                                       )
-                                     (run-now-in-process gp-1 othercam-init-by-other self 7 #f #t)
-                                     (-> gp-1 ppointer)
-                                     )
-                                   )
-                 )
-           (s5-0 (get-process *default-dead-pool* fuel-cell #x4000))
-           (s5-1
-             (ppointer->handle
-               (when s5-0
-                 (let ((t9-8 (method-of-type fuel-cell activate)))
-                   (t9-8 (the-as fuel-cell s5-0) self 'fuel-cell (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process s5-0 fuel-cell-init-as-clone (process->handle self) (-> self entity extra perm task))
-                 (-> s5-0 ppointer)
-                 )
-               )
-             )
-           )
+    (let ((gp-2 (ppointer->handle (process-spawn othercam self 7 #f #t :to self)))
+          (s5-1 (ppointer->handle (process-spawn
+                                    fuel-cell
+                                    :init fuel-cell-init-as-clone
+                                    (process->handle self)
+                                    (-> self entity extra perm task)
+                                    :to self
+                                    )
+                                  )
+                )
+          )
       (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
       (set! (-> self movie-start) (-> *display* base-frame-counter))
       (spool-push *art-control* "lrocklrg-falling" 0 self -1.0)
