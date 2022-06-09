@@ -40,7 +40,9 @@ files_with_modifications = [
   "ice-cube",
   "snow-bunny",
   "citadel-sages",
-  "racer-part"
+  "racer-part",
+  "collectables-part",
+  "collectables"
 ]
 
 for file in files:
