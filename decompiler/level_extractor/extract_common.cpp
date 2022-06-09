@@ -1,3 +1,4 @@
+#include <cstddef>
 #include "extract_common.h"
 
 u32 clean_up_vertex_indices(std::vector<u32>& idx) {
