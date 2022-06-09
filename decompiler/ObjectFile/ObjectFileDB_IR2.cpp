@@ -39,12 +39,6 @@ void ObjectFileDB::analyze_functions_ir2(
     const Config& config,
     const std::unordered_set<std::string>& skip_functions,
     const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
-  // First, do basic analysis on the top level:
-  lg::info("Using IR2 analysis...");
-
-  lg::info("Processing top-level functions...");
-  ir2_top_level_pass(config);
-
   int total_file_count = 0;
   for (auto& f : obj_files_by_name) {
     total_file_count += f.second.size();
@@ -178,12 +172,12 @@ void ObjectFileDB::ir2_run_mips2c(const Config& config, ObjectFileData& data) {
   for_each_function_def_order_in_obj(data, [&](Function& func, int) {
     if (config.hacks.mips2c_functions_by_name.count(func.name())) {
       lg::info("MIPS2C on {}", func.name());
-      run_mips2c(&func);
+      run_mips2c(&func, config.game_version);
     }
 
     auto it = config.hacks.mips2c_jump_table_functions.find(func.name());
     if (it != config.hacks.mips2c_jump_table_functions.end()) {
-      run_mips2c_jump_table(&func, it->second);
+      run_mips2c_jump_table(&func, it->second, config.game_version);
     }
   });
 }
@@ -390,8 +384,9 @@ void ObjectFileDB::ir2_atomic_op_pass(int seg, const Config& config, ObjectFileD
           blocks_ending_in_asm_branch = asm_branch_it->second;
         }
 
-        auto ops = convert_function_to_atomic_ops(func, data.linked_data.labels, func.warnings,
-                                                  inline_asm, blocks_ending_in_asm_branch);
+        auto ops =
+            convert_function_to_atomic_ops(func, data.linked_data.labels, func.warnings, inline_asm,
+                                           blocks_ending_in_asm_branch, config.game_version);
         func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
         func.ir2.atomic_ops_succeeded = true;
         func.ir2.env.set_end_var(func.ir2.atomic_ops->end_op().return_var());
@@ -877,7 +872,12 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
       init_types = &func.ir2.env.get_types_at_block_entry(block_id);
     }
 
-    for (int instr_id = block.start_word; instr_id < block.end_word; instr_id++) {
+    int start_word = block.start_word;
+    // if we have no prologue, skip the type tag.
+    if (start_word == 0) {
+      start_word = 1;
+    }
+    for (int instr_id = start_word; instr_id < block.end_word; instr_id++) {
       print_instr_start(instr_id);
       bool printed_comment = false;
 

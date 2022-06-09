@@ -498,7 +498,7 @@
     (.xor.vf vf18 vf18 vf18)
     (.xor.vf vf23 vf23 vf23)
     (.xor.vf vf19 vf19 vf19)
-    
+
     (init-vf0-vector)
     (.lvf vf23 (&-> src vector 0 quad))
     (.lvf vf24 (&-> src vector 1 quad))
@@ -899,22 +899,22 @@
       ;; this a0 constant has ffff in the upper 16 bits to mask out w, later on.
       ;; dsll32 a0, a0, 16
       (set! a0 (shl a0 48)) ;; a0 = ffff'0000'0000'0000
-      
+
       ;;mfc1 a1, f1
       ;;qmtc2.i vf6, a1
       (.mov vf6 c) ;; will set vf6.x to cosine.
-      
+
       ;;pceqw a1, v1, r0
       ;; compare for equality with zero.
       ;; this will set 32-bits for each component.
-      (.pceqw a1 v1 r0) 
-      
+      (.pceqw a1 v1 r0)
+
       ;; so we pack: [upper64, w0?16, z0?16, y0?16, x0?16]
       (.ppach a1 r0 a1)
-      
+
       ;;qmtc2.i vf1, v1
       (.mov vf1 v1) ;; should be quad move!
-      
+
       ;;or v1, a1, a0
       ;;  make it seem like w is zero. If x,y,z = 0, but w != 0, we want
       ;; it to act like zero.
@@ -922,14 +922,14 @@
         ;;mfc1 a0, f0
         ;;qmtc2.i vf5, a0
         (.mov vf5 s)
-      
+
         ;;daddiu v1, v1, 1
         ;; if all is zero, this will overflow and give us 0.
         (+! xyz-zero 1)
-        
+
         ;;vsubx.w vf5, vf0, vf6
         (.sub.x.vf vf5 vf0 vf6 :mask #b1000)
-        
+
         ;;beq v1, r0, L15
         ;;vaddx.y vf5, vf0, vf6
         (.add.x.vf vf5 vf0 vf6 :mask #b0010)
@@ -944,58 +944,58 @@
     (.xor.vf vf2 vf2 vf2)
     (.xor.vf vf3 vf3 vf3)
     (.xor.vf vf4 vf4 vf4)
-    
+
     ;;vmulx.xyz vf11, vf1, vf5
     (.mul.x.vf vf11 vf1 vf5 :mask #b0111)
-    
+
     ;;vaddy.x vf7, vf0, vf5
     (.add.y.vf vf7 vf0 vf5 :mask #b0001)
-    
+
     ;;vaddy.y vf8, vf0, vf5
     (.add.y.vf vf8 vf0 vf5 :mask #b0010)
-    
+
     ;;vaddy.z vf9, vf0, vf5
     (.add.y.vf vf9 vf0 vf5 :mask #b0100)
-    
+
     ;;vmulw.xyz vf10, vf1, vf5
     (.mul.w.vf vf10 vf1 vf5 :mask #b0111)
-    
+
     ;;vsubz.y vf7, vf0, vf11
     (.sub.z.vf vf7 vf0 vf11 :mask #b0010)
-    
+
     ;;vaddy.z vf7, vf0, vf11
     (.add.y.vf vf7 vf0 vf11 :mask #b0100)
-    
+
     ;;vaddz.x vf8, vf0, vf11
     (.add.z.vf vf8 vf0 vf11 :mask #b0001)
-               
+
     ;;vsubx.z vf8, vf0, vf11
     (.sub.x.vf vf8 vf0 vf11 :mask #b0100)
-               
+
     ;;vmulx.xyz vf2, vf10, vf1
     (.mul.x.vf vf2 vf10 vf1 :mask #b0111)
-    
+
     ;;vmuly.xyz vf3, vf10, vf1
     (.mul.y.vf vf3 vf10 vf1 :mask #b0111)
-    
+
     ;;vmulz.xyz vf4, vf10, vf1
     (.mul.z.vf vf4 vf10 vf1 :mask #b0111)
-    
+
     ;;vsuby.x vf9, vf0, vf11
     (.sub.y.vf vf9 vf0 vf11 :mask #b0001)
-    
+
     ;;vaddx.y vf9, vf0, vf11
     (.add.x.vf vf9 vf0 vf11 :mask #b0010)
-    
+
     ;;vadd.xyz vf2, vf2, vf7
     (.add.vf vf2 vf2 vf7 :mask #b0111)
-    
+
     ;;vadd.xyz vf3, vf3, vf8
     (.add.vf vf3 vf3 vf8 :mask #b0111)
-    
+
     ;;vadd.xyz vf4, vf4, vf9
     (.add.vf vf4 vf4 vf9 :mask #b0111)
-    
+
     ;;sqc2 vf2, 0(v0)
     ;;sqc2 vf3, 16(v0)
     ;;sqc2 vf0, 48(v0)
@@ -1676,72 +1676,72 @@
          (v1 :type int)
          )
     (init-vf0-vector)
-  
+
     ;; blez a3, L3
     (when-goto (<= count 0) end)
-    
+
     ;; lqc2 vf1, 0(a0)
     (.lvf vf1 (-> obj vector 0))
 
     ;; lqc2 vf2, 16(a0)
     (.lvf vf2 (-> obj vector 1))
-    
+
     ;; lqc2 vf3, 32(a0)
     (.lvf vf3 (-> obj vector 2))
-    
+
     ;; lqc2 vf4, 48(a0)
     (.lvf vf4 (-> obj vector 3))
-    
+
     ;; lqc2 vf5, 0(a2)
     (.lvf vf5 (-> src 0))
-    
+
     ;; lqc2 vf6, 16(a2)
     (.lvf vf6 (-> src 1))
-    
+
     (label loop-top)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;;vmulaw.xyzw acc, vf4, vf0
     (.mul.w.vf acc vf4 vf0)
-    
+
     ;; lqc2 vf7, 32(a2)
     (.lvf vf7 (-> src 2))
-    
+
     ;;vmaddax.xyzw acc, vf1, vf5
     (.add.mul.x.vf acc vf1 vf5 acc)
-    
+
     ;;lqc2 vf8, 48(a2)
     (.lvf vf8 (-> src 3))
-    
+
     ;;vmadday.xyzw acc, vf2, vf5
     (.add.mul.y.vf acc vf2 vf5 acc)
-    
+
     ;;daddiu a2, a2, 64
     ;;(&+! src 64)
     (set! src (the (inline-array vector) (+ 64 (the int src))))
-     
+
     ;;vmaddz.xyz vf5, vf3, vf5
     (.add.mul.z.vf vf5 vf3 vf5 acc :mask #b0111)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    
+
     ;;daddiu v1, a3, -1
     (set! v1 (- count 1))
-    
+
     ;;vmulaw.xyzw acc, vf4, vf0
     (.mul.w.vf acc vf4 vf0)
-    
+
     ;;vmaddax.xyzw acc, vf1, vf6
     (.add.mul.x.vf acc vf1 vf6 acc)
-    
+
     ;; vmadday.xyzw acc, vf2, vf6
     (.add.mul.y.vf acc vf2 vf6 acc)
-    
+
     ;; vmaddz.xyz vf6, vf3, vf6
     (.add.mul.z.vf vf6 vf3 vf6 acc :mask #b0111)
-    
+
     ;;sqc2 vf5, 0(a1)
     (.svf (-> dst 0) vf5)
-    
+
     ;;beq v1, r0, L3
     ;;vmulaw.xyzw acc, vf4, vf0
     (.mul.w.vf acc vf4 vf0)
@@ -1760,7 +1760,7 @@
     (.add.mul.z.vf vf7 vf3 vf7 acc :mask #b0111)
     ;;sqc2 vf6, 16(a1)
     (.svf (-> dst 1) vf6)
-    
+
     ;;beq v1, r0, L3
     ;;vmulaw.xyzw acc, vf4, vf0
     (.mul.w.vf acc vf4 vf0)
@@ -1779,7 +1779,7 @@
     (.add.mul.z.vf vf8 vf3 vf8 acc :mask #b0111)
     ;;sqc2 vf7, 32(a1)
     (.svf (-> dst 2) vf7)
-    
+
     ;;beq v1, r0, L3
     ;;daddiu a1, a1, 64
     ;;(&!+ dst 64)

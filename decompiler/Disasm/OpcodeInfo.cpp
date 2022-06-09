@@ -278,12 +278,18 @@ void init_opcode_info() {
   def(IK::SYNCL, "sync.l");  // Synchronize Shared Memory (Load)
   def(IK::ERET, "eret");     // Exception Return
   def(IK::EI, "ei");         // Enable Interrupt
+  def(IK::MTSAB, "mtsab")
+      .src_gpr(FT::RS)
+      .src(FT::ZIMM16, DT::IMM);                  // Move Byte Count to Shift Amount Register
+  drd_srs_srt(def(IK::QFSRV, "qfsrv")).gpr128();  // Quadword Funnel Shift Right Variable
 
   drd_srs_srt(def(IK::PPACB, "ppacb").gpr128());    // Parallel Pack to Byte
   drd_srs_srt(def(IK::PPACH, "ppach").gpr128());    // Parallel Pack to Halfword
   drd_srs_srt(def(IK::PPACW, "ppacw").gpr128());    // Parallel Pack to Word
+  drd_srs_srt(def(IK::PADDB, "paddb").gpr128());    // Parallel Add Byte
   drd_srs_srt(def(IK::PADDH, "paddh").gpr128());    // Parallel Add Halfword
   drd_srs_srt(def(IK::PADDW, "paddw").gpr128());    // Parallel Add Word
+  drd_srs_srt(def(IK::PSUBH, "psubh").gpr128());    // Parallel Subtract Halfword
   drd_srs_srt(def(IK::PSUBW, "psubw").gpr128());    // Parallel Subtract Word
   drd_srs_srt(def(IK::PMINH, "pminh").gpr128());    // Parallel Minimize Halfword
   drd_srs_srt(def(IK::PMINW, "pminw").gpr128());    // Parallel Minimize Word
@@ -293,6 +299,7 @@ void init_opcode_info() {
   drd_srs_srt(def(IK::PEXTLH, "pextlh").gpr128());  // Parallel Extend Lower from Halfword
   drd_srs_srt(def(IK::PEXTLW, "pextlw").gpr128());  // Parallel Extend Lower from Word
   drd_srs_srt(def(IK::PCGTW, "pcgtw").gpr128());    // Parallel Compare for Greater Than Word
+  drd_srs_srt(def(IK::PCGTB, "pcgtb").gpr128());    // Parallel Compare for Greater Than Byte
   drd_srs_srt(def(IK::PCEQB, "pceqb").gpr128());    // Parallel Compare for Equal Byte
   drd_srs_srt(def(IK::PCEQW, "pceqw").gpr128());    // Parallel Compare for Equal Word
   drd_srs_srt(def(IK::PEXTUB, "pextub").gpr128());  // Parallel Extend Upper from Byte
@@ -306,6 +313,7 @@ void init_opcode_info() {
   drd_srs_srt(def(IK::PAND, "pand").gpr128());      // Parallel And
   drd_srs_srt(def(IK::POR, "por").gpr128());        // Parallel Or
   drd_srs_srt(def(IK::PNOR, "pnor").gpr128());      // Parallel Not Or
+  drd_srs_srt(def(IK::PXOR, "pxor").gpr128());      // Parallel Exclusive Or
 
   def(IK::PEXEW, "pexew").gpr128().dst_gpr(FT::RD).src_gpr(FT::RT);  // Parallel Exchange Even Word
 
@@ -372,6 +380,7 @@ void init_opcode_info() {
   cd_dvft_svfs(def(IK::VFTOI0, "vftoi0"));    // Conversion to Fixed Point
   cd_dvft_svfs(def(IK::VFTOI4, "vftoi4"));    // Conversion to Fixed Point
   cd_dvft_svfs(def(IK::VFTOI12, "vftoi12"));  // Conversion to Fixed Point
+  cd_dvft_svfs(def(IK::VFTOI15, "vftoi15"));  // Conversion to Fixed Point
   cd_dvft_svfs(def(IK::VITOF0, "vitof0"));    // Conversion to Floating Point Number
   cd_dvft_svfs(def(IK::VITOF12, "vitof12"));  // Conversion to Floating Point Number
   cd_dvft_svfs(def(IK::VITOF15, "vitof15"));  // Conversion to Floating Point Number
@@ -407,6 +416,7 @@ void init_opcode_info() {
   cd_dacc_svfs_svft(def(IK::VMULA, "vmula"));
   cd_dacc_svfs_svft(def(IK::VADDA, "vadda"));
   cd_dacc_svfs_svft(def(IK::VMADDA, "vmadda"));
+  cd_dacc_svfs_svft(def(IK::VMSUBA, "vmsuba"));
 
   cd_dacc_svfs_svft(def(IK::VOPMULA, "vopmula"));
 
@@ -431,6 +441,7 @@ void init_opcode_info() {
       .src(FT::ZERO, DT::VU_Q);
 
   def(IK::VRGET, "vrget").src(FT::DEST, DT::DEST).dst_vf(FT::FT);
+  def(IK::VMR32, "vmr32").src(FT::DEST, DT::DEST).src_vf(FT::FT).dst_vf(FT::FS);
 
   // integer
   def(IK::VMTIR, "vmtir").dst(FT::RT, DT::VI).src_vf(FT::FS).src(FT::BC, DT::BC);

@@ -91,7 +91,7 @@ u32 loader::read_bank(std::fstream& in) {
     attr.where[chunk::bank].size += 4;
   }
 
-  auto pos = in.tellg();
+  // auto pos = in.tellg();
   auto bank_buf = std::make_unique<u8[]>(attr.where[chunk::bank].size);
   in.seekg(origin + attr.where[chunk::bank].offset, std::fstream::beg);
   in.read((char*)bank_buf.get(), attr.where[chunk::bank].size);

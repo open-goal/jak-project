@@ -211,6 +211,34 @@ void TypeSystem::forward_declare_type_method_count(const std::string& name, int 
   m_forward_declared_method_counts[name] = num_methods;
 }
 
+/*!
+ * forward declare, but allow the method count to be too large by up to 3 because jak2 stores
+ * method counts in v2/v4's like n*4 + 3.
+ */
+void TypeSystem::forward_declare_type_method_count_multiple_of_4(const std::string& name,
+                                                                 int num_methods) {
+  auto existing_fwd = m_forward_declared_method_counts.find(name);
+  if (existing_fwd != m_forward_declared_method_counts.end() &&
+      existing_fwd->second + 3 < num_methods) {
+    throw_typesystem_error(
+        "Type {} was originally forward declared with {} methods and is now being forward declared "
+        "with {} methods",
+        name, existing_fwd->second, num_methods);
+  }
+
+  auto existing_type = m_types.find(name);
+  if (existing_type != m_types.end()) {
+    int existing_count = get_next_method_id(existing_type->second.get());
+    if (existing_count + 3 < num_methods) {
+      throw_typesystem_error(
+          "Type {} was defined with {} methods and is now being forward declared with {} methods",
+          name, existing_count, num_methods);
+    }
+  }
+
+  m_forward_declared_method_counts[name] = num_methods;
+}
+
 int TypeSystem::get_type_method_count(const std::string& name) const {
   auto result = try_get_type_method_count(name);
   if (result) {

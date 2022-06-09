@@ -24,35 +24,13 @@
 ;; are monitored in the runtime for debugging.
 (defglobalconstant USE_VM #t)
 
+;; enables the with-profiler statements, which send profiling data from
+;; GOAL code to the frame profiler in C++.
 (defglobalconstant PC_PROFILER_ENABLE #t)
-
-
-(defmacro get-vm-ptr (ptr)
-  "Turn an EE register address into a valid PS2 VM address"
-  `(#cond
-     (USE_VM
-      (vm-ptr ,ptr)
-      )
-     (#t
-      ,ptr
-      )
-     )
-  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; GOAL language constants
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; GOAL built-in method IDs
-(defconstant NEW_METHOD_ID 0)
-(defconstant DELETE_METHOD_ID 1)
-(defconstant PRINT_METHOD_ID 2)
-(defconstant INSPECT_METHOD_ID 3)
-(defconstant LENGTH_METHOD_ID 4)
-(defconstant ASIZE_METHOD_ID 5)
-(defconstant COPY_METHOD_ID 6)
-(defconstant RELOC_METHOD_ID 7) ;; or login?
-(defconstant MEM_USAGE_METHOD_ID 8)
 
 ;; distance from a symbol pointer to a (pointer string)
 ;; this relies on the memory layout of the symbol table
@@ -68,16 +46,26 @@
 (defconstant PAIR_OFFSET 2)
 (defconstant BASIC_OFFSET 4)
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; GOAL language macros
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro symbol->string (sym)
   "Convert a symbol to a goal string."
   `(-> (the-as (pointer string) (+ SYM_TO_STRING_OFFSET (the-as int ,sym))))
   )
 
+(defmacro get-vm-ptr (ptr)
+  "Turn an EE register address into a valid PS2 VM address"
+  `(#cond
+     (USE_VM
+      (vm-ptr ,ptr)
+      )
+     (#t
+      ,ptr
+      )
+     )
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Function versions of built-in forms
@@ -85,6 +73,7 @@
 
 ;; basic operations like +, - are handled by the compiler.
 ;; these provide actual functions that wrap these common operations.
+;; this allows you to use them as actual function objects
 
 (defun identity ((x object))
   "Function which returns its input. The first function of the game!
@@ -138,7 +127,6 @@
   This is a 32-bit operation.  It uses an idiv on x86 and gets the remainder."
 
   ;; The original implementation is div, mfhi
-  ;; todo - verify this is exactly the same as the PS2.
   (mod a b)
   )
 
@@ -147,7 +135,6 @@
   "Compute remainder (32-bit).  It is identical to mod. It uses a idiv and gets the remainder"
 
   ;; The original implementation is div, mfhi
-  ;; todo - verify this is exactly the same as the PS2.
   (mod a b)
   )
 
@@ -290,6 +277,7 @@
      (the-as uint result)
      )
   )
+
 ;; A "boxed float" type. Simply a float with type information.
 (deftype bfloat (basic)
   ((data float :offset-assert 4))
@@ -664,7 +652,7 @@
 ;; This is used as base class for boxed inline arrays.
 ;; The heap-base of the _type_ object will be used to store the stride
 ;; This way, you don't pay the price of storing the stride in each object.
-;; however, 250k lines in, we haven't seen anything actually use this...
+;; however, as far as we've seen, nothing actually reads the stride.
 
 (deftype inline-array-class (basic)
   ((length           int32  :offset-assert 4)
@@ -887,7 +875,6 @@
   obj
   )
 
-;; definition for method of type array
 (defmethod inspect array ((obj array))
   "Inspect an array"
   (format #t "[~8x] ~A~%" obj (-> obj type))
@@ -1103,7 +1090,10 @@
   )
 
 (defmacro printl (obj)
-  "Print out a boxed object and a newline"
+  "Print out a boxed object and a newline.
+   Note: we define both a macro and a function on purpose.
+   The compiler will use the macro over the function, which will
+   allow it to pick the correct print method for non-boxed objects"
   `(begin
      (print ,obj)
      (format #t "~%")
@@ -1429,32 +1419,48 @@
   `(none)
   )
 
+;;;;;;;;;;;;;;;;;;;;
+;; Profiler Macros
+;;;;;;;;;;;;;;;;;;;;
+
+
 (defmacro profiler-instant-event (name)
+  "Record an 'instant' event in the profile.
+   This can be used however you'd like, but there should be a
+   'ROOT' event logged every now and then (like once per frame)
+   when no timed events are in progress, to allow the profiler
+   to correctly recover the event stack."
   `(#when PC_PROFILER_ENABLE
      (pc-prof ,name (pc-prof-event instant))
      )
   )
 
 (defmacro profiler-start-event (name)
+  "Start a timed event with the given name."
   `(#when PC_PROFILER_ENABLE
      (pc-prof ,name (pc-prof-event begin))
      )
   )
 
 (defmacro profiler-end-event ()
+  "End the most recently started event that hasn't been stopped yet.
+   It is up to you to correctly balance the starts/ends, otherwise
+   the profiling data will be corrupted."
   `(#when PC_PROFILER_ENABLE
      (pc-prof "" (pc-prof-event end))
      )
   )
 
 (defmacro with-profiler (name &rest body)
+  "Execute the body in a named profiler block.
+   Do not `return` or `go` from inside this block,
+   otherwise the end will be skipped."
   `(#if PC_PROFILER_ENABLE
         (begin
           (pc-prof ,name (pc-prof-event begin))
           ,@body
           (pc-prof ,name (pc-prof-event end))
           )
-
         (begin
           ,@body
           )

@@ -5,19 +5,27 @@
 ;; name in dgo: gkernel-h
 ;; dgos: KERNEL
 
-;; Type definitions and constants for the GOAL Kernel and process pools.
-;; The kernel is dispatched from a simple loop in C and runs all GOAL processes.
+;; Type definitions and constants for the GOAL Kernel. The GOAL kernel is dipatched
+;; from C++ through the *kernel-dispatcher* and is responsible for:
+;; - running all GOAL code
+;; - handling creation, destruction, and compaction of GOAL processes
+;; - managing GOAL threads and the "suspend" keyword
+;; - handling stack frames, nonlocal throws used by the state system
+;; - process handles.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; CONSTANTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; -hardware-
-
+;; if set, will attempt to detect memory corruption and stack overflow bugs
+;; to some extent.
 (defglobalconstant KERNEL_DEBUG #t)
 
-;; the end of the 16 kB fast "scratchpad" memory of the PS2.
-;; this memory is mapped to 0x70000000 in the PS2.
+;; -hardware
+
+;; processes can execute using the scratchpad as their stack to get better
+;; performance. The scratchpad address is #x70000000 to #x70004000 on PS2.
+;; On PC, we'll detect the use of the scratchpad within gkernel.gc and move it elsewhere.
 (defconstant *scratch-memory-top* (the pointer #x70004000))
 
 ;; -versions-
@@ -34,11 +42,15 @@
 
 ;; -memory-
 
-;; the size of the execution stack (14 kB) shared by all threads
-;; OpenGOAL NOTE: increased to 32kB
+;; in GOAL threads, to save memory, each thread owns a tiny stack to store
+;; the stack when suspended, and copies it to and from a larger stack for execution.
+;; Attempting to suspend a thread in a deep callstack will fail because the tiny stack won't have
+;; enough room. But this strategy saves memory in the end.
+
+;; the size of the single large "DRAM" execution stack (14 kB increased to 32 kB in PC)
 (defconstant DPROCESS_STACK_SIZE #x8000)
 
-;; another stack size used as a maximum for temporary threads
+;; the size of the execution stack, if not using the big DRAM stack.
 ;; OpenGOAL NOTE: 7kB -> 24kB
 (defconstant PROCESS_STACK_SIZE (#if PC_PORT #x6000 #x1c00))
 
@@ -64,36 +76,40 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; bitfield enum to indicate properties about a process-tree
+;; Some of these bits are used by the kernel for book-keeping, but others
+;; can be set by the user to prevent a process from running in certain conditions.
+
 (defenum process-mask
     :bitfield #t :type uint32
-    (execute         0) ;; 1         ?, prevents from running
-    (draw            1) ;; 2         ?
-    (pause           2) ;; 4         shouldn't run when game is paused
-    (menu            3) ;; 8         shouldn't run when debug menu open
-    (progress        4) ;; 16        shouldn't run when progress menu open
-    (actor-pause     5) ;; 32        ?, related to the actor system
-    (sleep           6) ;; 64        do not run this process at all
-    (sleep-code      7) ;; 128       do not run the code of this process (other stuff runs)
-    (process-tree    8) ;; 256       not an actual process, just a "tree node" for organization
-    (heap-shrunk     9) ;; 512       actor heap compactor has already shrunk the heap of this proc
-    (going          10) ;; 1024      there is a next state set that will be entered next time (pending enter-state)
-    (movie          11) ;; 2048
-    (movie-subject  12) ;; 4096
-    (target         13) ;; 8192
-    (sidekick       14) ;; 16384
-    (crate          15) ;; 32768
-    (collectable    16) ;; 65536
-    (enemy          17) ;; 131072
-    (camera         18) ;; 262144
-    (platform       19) ;; 524288
-    (ambient        20) ;; 1048576
-    (entity         21) ;; 2097152
-    (projectile     22) ;; 4194304
-    (attackable     23) ;; 8388608
-    (death          24) ;; 16777216
+    (execute         0) ;; when set, prevents a process from running, in every case.
+    (draw            1) ;; unused
+    (pause           2) ;; when set, the process won't run if the game is paused.
+    (menu            3) ;; when set, the process won't run if the debug menu system is open
+    (progress        4) ;; the process won't run if the start menu (progress menu) is open
+    (actor-pause     5) ;; when set, the entity system will try to pause it automatically if you are far away.
+    (sleep           6) ;; prevents the process from running, but can be woken up by state changes.
+    (sleep-code      7) ;; do not run the code (main thread) of this process (other stuff runs)
+    (process-tree    8) ;; not an actual process, just a "tree node" for organization
+    (heap-shrunk     9) ;; actor heap compactor has already shrunk the heap of this proc
+    (going          10) ;; there is a next state set that will be entered next time (pending enter-state)
+    (movie          11) ;; when set, don't run if we are in a movie
+    (movie-subject  12) ;; set on silostep, unused otherwise.
+    (target         13) ;; set on target
+    (sidekick       14) ;; set on sidekick
+    (crate          15) ;; set on all crates
+    (collectable    16) ;; set on all collectables
+    (enemy          17) ;; set on all enemies (inclues stuff like seagulls)
+    (camera         18) ;; set on all cameras
+    (platform       19) ;; set on all platforms
+    (ambient        20) ;; set on all ambients
+    (entity         21) ;; set on all processes spawned from entities
+    (projectile     22) ;; set on all projectiles
+    (attackable     23) ;; set on all "attackables" that can be targeted by projectiles or similar
+    (death          24) ;; set on misty-conveyor, appears unused.
     )
 
 ;; -961
+;; these bits are cleared when inheriting the mask from a parent process.
 (defconstant PROCESS_CLEAR_MASK
   (lognot (process-mask sleep sleep-code process-tree heap-shrunk)))
 
@@ -107,11 +123,9 @@
   )
 
 (defmacro msg-err (&rest args)
-  ;; "Print a message to stdout immediately. This won't appear in the compiler."
-  `(format 0 ,@args)
-  )
-
-(defmacro msg-warn (&rest args)
+  "Print a message to stdout immediately. This won't appear in the compiler.
+   This is useful if the game is crashing before messages can be flushed
+   to compiler."
   `(format 0 ,@args)
   )
 
@@ -121,19 +135,19 @@
 
 ;; this stores the current state of the kernel.
 (deftype kernel-context (basic)
-  ((prevent-from-run   process-mask  :offset-assert 4)
-   (require-for-run    process-mask  :offset-assert 8)  ;; seems unused
-   (allow-to-run       process-mask  :offset-assert 12) ;; seems unused
-   (next-pid           int32         :offset-assert 16)
+  ((prevent-from-run   process-mask  :offset-assert 4)  ;; don't run processes with any of these bits set.
+   (require-for-run    process-mask  :offset-assert 8)  ;; unused
+   (allow-to-run       process-mask  :offset-assert 12) ;; unused
+   (next-pid           int32         :offset-assert 16) ;; next unused unique process ID
    (fast-stack-top     pointer       :offset-assert 20)
-   (current-process    process       :offset-assert 24)
-   (relocating-process basic         :offset-assert 28)
-   (relocating-min     int32         :offset-assert 32)
-   (relocating-max     int32         :offset-assert 36)
-   (relocating-offset  int32         :offset-assert 40)
-   (low-memory-message symbol        :offset-assert 44)
+   (current-process    process       :offset-assert 24) ;; currently executing process
+   (relocating-process basic         :offset-assert 28) ;; currently relocating process
+   (relocating-min     int32         :offset-assert 32) ;; start of memory being relocated
+   (relocating-max     int32         :offset-assert 36) ;; end of memory being relocated
+   (relocating-offset  int32         :offset-assert 40) ;; how far the memory being relocated is moving
+   (low-memory-message symbol        :offset-assert 44) ;; should we print warnings if low on memory?
    )
-  
+
   :size-assert #x30
   :method-count-assert 9
   :flag-assert #x900000030
@@ -164,13 +178,13 @@
    (stack-top     pointer  :offset-assert 32) ;; top of the thread's stack (actual stack)
    (stack-size    int32    :offset-assert 36) ;; size of the thread's stack (backup stack)
    )
-  
+
   (:methods
     (stack-size-set! (_type_ int) none 9)
     (thread-suspend (_type_) none 10)
     (thread-resume  (_type_) none 11)
    )
-  
+
   :size-assert #x28
   :method-count-assert 12
   :flag-assert #xc00000028
@@ -183,48 +197,49 @@
    ;; This is what GOAL did:
    ;; (rreg   uint64 8        :offset-assert 40)   ;; general purpose saved registers
    ;; (freg   float 6         :offset-assert 104)  ;; floating point registers
-   
+
    ;; OpenGOAL has only 5 saved registers but 8 fregs, so we swap a rreg for 2 fregs.
    (rreg uint64 7 :offset-assert 40)
    (freg float 8)
-   
+
    ;; This is the same between GOAL and OpenGOAL
    (stack  uint8 :dynamic  :offset-assert 128) ;; stack memory (dynamic array)
    )
-  
+
   (:methods
     (new (symbol type process symbol int pointer) _type_ 0)
     (thread-suspend (_type_) none 10)
     (thread-resume  (_type_) none 11)
    )
-  
+
   :size-assert #x80
   :method-count-assert 12
   :flag-assert #xc00000080
   )
 
+;; ppointer system:
+;;  a process may move in memory, but we need a way to keep track of a process.
+;;  this is where "ppointer" comes in. It is a GOAL (pointer process), like a C Process**.
+;;  Each process must contain a ppointer that can be used to find it. The process pointed to by
+;;  the ppointer must be a valid process or #f at all times.
+
 ;; Parent type of all process tree nodes.
-;; A process-tree is a left-child right-sibling binary tree 
+;; A process-tree is a left-child right-sibling binary tree
 ;; (except GOAL is old and it looks like they called them left-child right-brother trees back then)
 (declare-type entity-actor basic)
 (deftype process-tree (basic)
-  ((name basic :offset-assert 4)
-   (mask process-mask :offset-assert 8)
+  ((name     basic                  :offset-assert 4)
+   (mask     process-mask           :offset-assert 8)
    ;; tree
-   (parent (pointer process-tree) :offset-assert 12)
-   (brother (pointer process-tree) :offset-assert 16)
-   (child (pointer process-tree) :offset-assert 20)
-   
-   ;; a process may move in memory.  However, an active process must have a ppointer. The value of the ppointer never changes
-   ;; you can dereference this pointer at any time.
-   ;; you will either get: your original process, another process (with a different PID), or #f.
-   ;; NOTE: the ppointer is like a C++ Process**.
-   (ppointer (pointer process) :offset-assert 24)
-   
+   (parent   (pointer process-tree) :offset-assert 12)
+   (brother  (pointer process-tree) :offset-assert 16)
+   (child    (pointer process-tree) :offset-assert 20)
+   (ppointer (pointer process)      :offset-assert 24)
+
    ;; in cases where the process never moves, the kernel will set ppointer to the address of the self field
-   (self process-tree :offset-assert 28)
+   (self     process-tree           :offset-assert 28)
    )
-  
+
   (:methods
     (new (symbol type basic) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
@@ -232,8 +247,8 @@
     (init-from-entity! (_type_ entity-actor) none 11)
     (run-logic? (_type_) symbol 12)
     (dummy-method () none 13)
-   )  
-  
+   )
+
   :size-assert #x20
   :method-count-assert 14
   :no-runtime-type ;; already defined by kscheme. Don't do it again.
@@ -246,7 +261,7 @@
 (deftype process (process-tree)
   ((pool dead-pool :offset-assert #x20)  ;; the memory pool we came from, and should return to when we die
    (status basic :offset-assert #x24)
-   (pid int32 :offset-assert #x28)       ;; unqiue process ID
+   (pid int32 :offset-assert #x28)              ;; unqiue process ID
    (main-thread cpu-thread :offset-assert #x2c) ;; our suspendable main thread
    (top-thread thread :offset-assert #x30)      ;; currently running thread
    (entity entity :offset-assert #x34)          ;; if we are a process spawned by an entity, our entity
@@ -299,7 +314,7 @@
    (prev dead-pool-heap-rec :offset-assert 4) ;; next rec in the linked list
    (next dead-pool-heap-rec :offset-assert 8) ;; prev. rec in the linked list
    )
-  
+
   :pack-me ; don't worry about aligning me to 16-bytes in arrays and types.
   :size-assert #xc
   :method-count-assert 9
@@ -311,19 +326,17 @@
 ;; Alive processes in a dead-pool-heap can be relocated and compacted to reduce heap fragmentation.
 (deftype dead-pool-heap (dead-pool)
   ((allocated-length    int32                           :offset-assert #x20) ;; size of heap
-   (compact-time        uint32                          :offset-assert #x24) ;; ??
-   (compact-count-targ  uint32                          :offset-assert #x28) ;; ??
-   (compact-count       uint32                          :offset-assert #x2c) ;; ??
-   (fill-percent        float                           :offset-assert #x30) ;; ??
-   (first-gap           dead-pool-heap-rec              :offset-assert #x34) ;; ??
-   (first-shrink        dead-pool-heap-rec              :offset-assert #x38) ;; ??
-   (heap                kheap :inline                   :offset-assert 64) ;; ??
-   (alive-list          dead-pool-heap-rec :inline      :offset-assert 80) ;; ??
+   (compact-time        uint32                          :offset-assert #x24) ;; unused...
+   (compact-count-targ  uint32                          :offset-assert #x28) ;; number of compactions requested
+   (compact-count       uint32                          :offset-assert #x2c) ;; number of compactions perfomed
+   (fill-percent        float                           :offset-assert #x30) ;; unused
+   (first-gap           dead-pool-heap-rec              :offset-assert #x34) ;; the lowest process with a gap in the heap
+   (first-shrink        dead-pool-heap-rec              :offset-assert #x38) ;; the lowest process that needs shrinking
+   (heap                kheap :inline                   :offset-assert 64)   ;; our shared heap for processes
+   (alive-list          dead-pool-heap-rec :inline      :offset-assert 80)   ;; records for processes that are alive
    (last                dead-pool-heap-rec :offset #x54 :offset-assert #x54) ;; overlay of (-> alive-list prev)
-   ;; note - the placement of dead-list at 92 here is used to determine the packing behavior.
-   ;; see TypeSystem::get_size_in_type().
-   (dead-list           dead-pool-heap-rec :inline      :offset-assert 92) ;; ??
-   (process-list        dead-pool-heap-rec :inline :dynamic :offset-assert 104)
+   (dead-list           dead-pool-heap-rec :inline      :offset-assert 92)   ;; unused records
+   (process-list        dead-pool-heap-rec :inline :dynamic :offset-assert 104) ;; array of records
    )
   (:methods
     (new (symbol type basic int int) _type_ 0)
@@ -339,7 +352,7 @@
     (memory-free (dead-pool-heap) int 25)
     (compact-time (dead-pool-heap) uint 26)
    )
-  
+
   :size-assert #x68
   :method-count-assert #x1b
   :flag-assert #x1b00000068
@@ -352,7 +365,7 @@
   ((name symbol :offset 4)
    (next stack-frame :offset 8) ;; follow this to get to the root frame, away from top.
    )
-  
+
   :size-assert #xc
   :method-count-assert 9
   :flag-assert #x90000000c
@@ -365,16 +378,16 @@
 (deftype catch-frame (stack-frame)
   ((sp int32 :offset 12) ;; where to reset the stack when throwing.
    (ra int32 :offset 16) ;; where to jump when throwing
-   
+
    ;; In GOAL
    ;; (freg float 6 :offset-assert 20) ;; saved floating point registers from "catch" statement
    ;; (rreg uint128 8 :offset-assert 48) ;; saved GPRs from "catch" statement (ugh they are 128s)
-   
-   ;; In OpenGOAL, we swap a rreg for 4 more fregs. 
+
+   ;; In OpenGOAL, we swap a rreg for 4 more fregs.
    (freg float 10 :offset-assert 20) ;; only use 8
    (rreg uint128 7)                  ;; only use 5
    )
-  
+
   (:methods
    (new (symbol type symbol function (pointer uint64)) object 0)
    )
@@ -386,7 +399,7 @@
 ;; A protect frame is a frame which has a cleanup function called on exit.
 (deftype protect-frame (stack-frame)
   ((exit (function none) :offset-assert 12)) ;; function to call to clean up
-  
+
   (:methods
    (new (symbol type (function none)) protect-frame)
    )
@@ -420,8 +433,7 @@
 
 
 (defmacro handle->process (handle)
-  ;; the actual implementation is more clever than this.
-  ;; Checks PID.
+  "Convert a handle to a process. If the process no longer exists, returns #f."
   `(let ((the-handle (the-as handle ,handle)))
      (if (-> the-handle process) ;; if we don't point to a process, kernel sets this to #f
          (let ((proc (-> (-> the-handle process))))
@@ -434,7 +446,7 @@
   )
 
 (defmacro ppointer->process (ppointer)
-  ;; convert a (pointer process) to a process.
+  "convert a (pointer process) to a process."
   ;; this uses the self field, which seems to always just get set to the object.
   ;; perhaps when deleting a process you could have it set self to #f?
   ;; I don't see this happen anywhere though, so it's not clear.
@@ -451,21 +463,22 @@
   )
 
 (defmacro ppointer->handle (pproc)
+  "convert a ppointer to a handle. assumes the ppointer is valid."
   `(let ((the-process (the-as (pointer process) ,pproc)))
       (new 'static 'handle :process the-process :pid (-> the-process 0 pid))
       )
   )
 
 (defmacro process->handle (proc)
+  "convert a process to a handle. if proc is #f, returns a #f handle."
   `(ppointer->handle (process->ppointer ,proc))
   )
 
 (defmethod print handle ((obj handle))
-  ;; the get-process-from-handle macro can't deal with
-  ;; a 0 in the process field, so we check it manually here.
-  (if (nonzero? (-> obj u64))
+  "print a handle"
+  (if (nonzero? (-> obj u64)) ;; zero-initialized handles can't be derefenced safely.
       (format #t "#<handle :process ~A :pid ~D>"
-              (handle->process obj)
+              (handle->process obj) ;; actually print the process stored
               (-> obj pid)
               )
       (format #t "#<handle :process 0 :pid 0>")
@@ -491,7 +504,7 @@
    )
   (:methods
     (new (symbol type symbol function
-          (function none) 
+          (function none)
           function
           (function none)
           (function process int symbol event-message-block object)) _type_ 0)
@@ -510,7 +523,7 @@
    (message symbol :offset-assert 12)
    (param uint64 7 :offset-assert 16)
    )
-  
+
   :size-assert #x48
   :method-count-assert 9
   :flag-assert #x900000048
@@ -557,14 +570,11 @@
   `(set! ,mask (logand ,mask (lognot (process-mask ,@enum-value))))
   )
 
-;; set to true to get error prints on suspends out of stack.
-(defglobalconstant DEBUG_PRINT_SUSPEND_FAIL #f)
-
 (defmacro suspend ()
-  ;; suspend the current process.
-  
+  "suspend the current process, to be resumed on the next frame."
   `(rlet ((pp :reg r13 :reset-here #t))
-         (#when (or DEBUG_PRINT_SUSPEND_FAIL KERNEL_DEBUG)
+         ;; debug check for stack overflow here, where we can easily print the process name.
+         (#when (or KERNEL_DEBUG)
            (rlet ((sp :reg rsp :reset-here #t :type int)
                   (off :reg r15 :type uint))
                  (let* ((sp-goal (- sp off))
@@ -582,23 +592,25 @@
          (set! pp (-> (the process pp) top-thread))
          ;; call the suspend hook (put nothing as the argument)
          ((-> (the cpu-thread pp) suspend-hook) (the cpu-thread 0))
-         ;; the kernel will set pp (possibly to a new value) on resume.
+         ;; the kernel will set pp (possibly to a new value, if we've been relocated) on resume.
          )
   )
 
 (defmacro process-deactivate ()
-  ;; deactivate the current process
+  "deactivate (kill) the current process"
   `(rlet ((pp :reg r13 :reset-here #t :type process))
          (deactivate pp)
          )
   )
 
 (defmacro with-pp (&rest body)
+  "execute the body with pp bound to the current process register."
   `(rlet ((pp :reg r13 :reset-here #t :type process))
          ,@body)
   )
 
 (defmacro with-proc (bindings &rest body)
+  "execute the body with process register set to the given value and bound to pp."
   `(rlet ((pp :reg r13 :reset-here #t :type process))
       (protect (pp)
           (set! pp ,(car bindings))
@@ -607,6 +619,8 @@
   )
 
 (defmacro defbehavior (name process-type bindings &rest body)
+  "define a new behavior. This is simply a function where self is bound to the process register,
+   which is assumed to have type process-type."
   (if (and
        (> (length body) 1)     ;; more than one thing in function
        (string? (first body))  ;; first thing is a string
@@ -637,9 +651,9 @@
    bindings are: (child proc); proc = process we do this on; child = var name for the current child ptr."
   `(let ((,(first bindings) (-> ,(second bindings) child)))
     (while ,(first bindings)
-      
+
       ,@body
-      
+
       (set! ,(first bindings) (-> ,(first bindings) 0 brother))
       )
     )
@@ -663,6 +677,7 @@
   )
 
 (defmacro with-sp (&rest body)
+  "execute the body with sp bound to the current stack pointer (be careful!)"
   `(rlet ((sp :reg rsp :reset-here #t :type pointer))
          ,@body)
   )
@@ -678,8 +693,9 @@
   )
 
 
+;; Some assembly functions in GOAL are ported to C++, then accessed from GOAL using these mips2c macros.
 (defmacro def-mips2c (name type)
-  "Define a mips2c object."
+  "Define a mips2c object (typically a function)."
   `(begin
      (define-extern ,name ,type)
      (set! ,name (the-as ,type (__pc-get-mips2c ,(symbol->string name))))
@@ -687,5 +703,6 @@
   )
 
 (defmacro defmethod-mips2c (name method-id method-type)
+  "Define a mips2c method."
   `(method-set! ,method-type ,method-id (__pc-get-mips2c ,name))
   )

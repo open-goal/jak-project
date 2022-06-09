@@ -307,6 +307,7 @@ void disassemble(Decompiler& dc) {
 
 void decompile(Decompiler& dc, const OfflineTestConfig& config) {
   dc.db->extract_art_info();
+  dc.db->ir2_top_level_pass(*dc.config);
   dc.db->analyze_functions_ir2({}, *dc.config, config.skip_compile_functions,
                                config.skip_compile_states);
 }

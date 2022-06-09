@@ -3,7 +3,7 @@
 
 ;; definition of type load-dir
 (deftype load-dir (basic)
-  ((unknown      basic           :offset-assert   4)
+  ((lev          level           :offset-assert   4)
    (string-array (array string)  :offset-assert   8)
    (data-array   (array basic)   :offset-assert  12)
    )
@@ -11,7 +11,7 @@
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (new (symbol type int basic) _type_ 0)
+    (new (symbol type int level) _type_ 0)
     (load-to-heap-by-name (_type_ string symbol kheap int) art-group 9)
     (set-loaded-art (_type_ art-group) art-group 10)
     )
@@ -25,14 +25,14 @@
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (new (symbol type int basic) _type_ 0)
+    (new (symbol type int level) _type_ 0)
     )
   )
 
 ;; definition for method 0 of type load-dir
-(defmethod new load-dir ((allocation symbol) (type-to-make type) (length int) (unk basic))
+(defmethod new load-dir ((allocation symbol) (type-to-make type) (length int) (unk level))
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> obj unknown) unk)
+    (set! (-> obj lev) unk)
     (set! (-> obj string-array)
           (the-as (array string) ((method-of-type array new) allocation array string length))
           )
@@ -45,7 +45,7 @@
 
 ;; definition for method 0 of type load-dir-art-group
 ;; INFO: Return type mismatch load-dir vs load-dir-art-group.
-(defmethod new load-dir-art-group ((allocation symbol) (type-to-make type) (length int) (unk basic))
+(defmethod new load-dir-art-group ((allocation symbol) (type-to-make type) (length int) (unk level))
   (let ((obj ((method-of-type load-dir new) allocation type-to-make length unk)))
     (set! (-> obj data-array content-type) art-group)
     (the-as load-dir-art-group obj)

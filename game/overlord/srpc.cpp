@@ -204,7 +204,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           Sound* sound = LookupSound(cmd->sound_id.sound_id);
           if (sound != nullptr) {
             snd_PauseSound(sound->sound_handle);
-          } else if (cmd->sound_id.sound_id == gVAG_Id) {
+          } else if (cmd->sound_id.sound_id == (u32)gVAG_Id) {
             PauseVAGStream();
           }
         } break;
@@ -212,7 +212,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           Sound* sound = LookupSound(cmd->sound_id.sound_id);
           if (sound != nullptr) {
             snd_StopSound(sound->sound_handle);
-          } else if (cmd->sound_id.sound_id == gVAG_Id) {
+          } else if (cmd->sound_id.sound_id == (u32)gVAG_Id) {
             StopVAGStream(nullptr, 0);
           }
         } break;
@@ -220,7 +220,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           Sound* sound = LookupSound(cmd->sound_id.sound_id);
           if (sound != nullptr) {
             snd_ContinueSound(sound->sound_handle);
-          } else if (cmd->sound_id.sound_id == gVAG_Id) {
+          } else if (cmd->sound_id.sound_id == (u32)gVAG_Id) {
             UnpauseVAGStream();
           }
         } break;
@@ -261,7 +261,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
               }
             }
 
-          } else if (cmd->sound_id.sound_id == gVAG_Id) {
+          } else if (cmd->sound_id.sound_id == (u32)gVAG_Id) {
             SetVAGStreamVolume(cmd->param.parms.volume);
           }
         } break;
@@ -486,7 +486,7 @@ s32 VBlank_Handler() {
 
   sceSifDmaData dma;
   dma.data = &info;
-  dma.addr = (void*)gInfoEE;
+  dma.addr = (void*)(uintptr_t)gInfoEE;
   dma.size = 0x110;
   dma.mode = 0;
   dmaid = sceSifSetDma(&dma, 1);
