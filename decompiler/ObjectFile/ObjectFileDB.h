@@ -66,11 +66,12 @@ struct LetRewriteStats {
   int proc_new = 0;
   int attack_info = 0;
   int vector_dot = 0;
+  int rand_float_gen = 0;
 
   int total() const {
     return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
            set_vector + set_vector2 + send_event + font_context_meth + proc_new + attack_info +
-           vector_dot;
+           vector_dot + rand_float_gen;
   }
 
   std::string print() const {
@@ -91,6 +92,7 @@ struct LetRewriteStats {
     out += fmt::format("  proc_new: {}\n", proc_new);
     out += fmt::format("  attack_info: {}\n", attack_info);
     out += fmt::format("  vector_dot: {}\n", vector_dot);
+    out += fmt::format("  rand_float_gen: {}\n", rand_float_gen);
     return out;
   }
 
@@ -111,6 +113,7 @@ struct LetRewriteStats {
     result.proc_new = proc_new + other.proc_new;
     result.attack_info = attack_info + other.attack_info;
     result.vector_dot = vector_dot + other.vector_dot;
+    result.rand_float_gen = rand_float_gen + other.rand_float_gen;
     return result;
   }
 
@@ -130,6 +133,7 @@ struct LetRewriteStats {
     proc_new += other.proc_new;
     attack_info += other.attack_info;
     vector_dot += other.vector_dot;
+    rand_float_gen += other.rand_float_gen;
     return *this;
   }
 };

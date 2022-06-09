@@ -2491,6 +2491,10 @@ void LetElement::make_let_star() {
   m_star = true;
 }
 
+void LetElement::clear_let_star() {
+  m_star = false;
+}
+
 goos::Object LetElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> outer = {pretty_print::to_symbol(m_star ? "let*" : "let")};
 

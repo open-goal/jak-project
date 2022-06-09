@@ -268,8 +268,6 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
       }
     }
 
-    lg::error("shell match failed, dont know this form: {}", in->to_string(env));
-
     return {mr, nullptr, false};
   }
 
@@ -433,6 +431,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
       nullptr);
 
   if (!std::get<0>(mr_with_shell).matched) {
+    lg::error("shell match failed, dont know this form: {}", in->to_string(env));
     return nullptr;
   }
 
@@ -1363,6 +1362,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
       &cast_type);
 
   if (!std::get<0>(mr_with_shell).matched) {
+    lg::error("shell match failed, dont know this form: {}", in->to_string(env));
     return nullptr;
   }
 
@@ -1515,6 +1515,7 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
       nullptr);
 
   if (!std::get<0>(mr_with_shell).matched) {
+    lg::error("shell match failed, dont know this form: {}", in->to_string(env));
     return nullptr;
   }
 
@@ -1608,6 +1609,89 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
   return nullptr;
 }
 
+FormElement* rewrite_rand_float_gen(LetElement* in, const Env& env, FormPool& pool) {
+  // this function checks for the (rand-float-gen) macro
+
+  bool ret_in_body = in->entries().size() == 2;
+
+  if (ret_in_body && in->body()->size() != 1) {
+    return nullptr;
+  }
+
+  auto test = in->to_string(env);
+
+  auto mr_div = match(
+      Matcher::op_fixed(FixedOperatorKind::DIVISION,
+                        {Matcher::cast("int", Matcher::func(Matcher::symbol("rand-uint31-gen"),
+                                                            {Matcher::any(0)})),
+                         Matcher::integer(256)}),
+      in->entries().at(0).src);
+  if (!mr_div.matched) {
+    return nullptr;
+  }
+
+  const auto& reg1 = in->entries().at(0).dest.reg();
+  auto gen = mr_div.maps.forms.at(0);
+  if (gen->to_form(env).is_symbol("*random-generator*")) {
+    gen = nullptr;
+  }
+
+  auto mr_or =
+      match(Matcher::cast("number",
+                          Matcher::op_fixed(FixedOperatorKind::LOGIOR,
+                                            {Matcher::integer(0x3f800000), Matcher::reg(reg1)})),
+            in->entries().at(1).src);
+  if (!mr_or.matched) {
+    return nullptr;
+  }
+
+  const auto& reg2 = in->entries().at(1).dest.reg();
+
+  auto matcher_res =
+      Matcher::op_fixed(FixedOperatorKind::ADDITION, {Matcher::single(-1.f), Matcher::reg(reg2)});
+
+  if (!ret_in_body) {
+    // simpler case
+
+    auto mr_res = match(matcher_res, in->entries().at(2).src);
+
+    if (!mr_res.matched) {
+      return nullptr;
+    }
+
+    // delete us.
+    in->entries().erase(in->entries().begin());
+    in->entries().erase(in->entries().begin());
+
+    auto head = GenericOperator::make_function(pool.form<ConstantTokenElement>("rand-float-gen"));
+
+    // set the value of the new first entry to the macro
+    in->entries().at(0).src =
+        gen ? pool.form<GenericElement>(head, gen) : pool.form<GenericElement>(head);
+
+    // return us but modified?
+    in->clear_let_star();
+    return in;
+  } else {
+    auto mr_res = rewrite_shelled_return_form(
+        matcher_res, in->body()->at(0), env, pool,
+        [&](FormElement* s_in, const MatchResult& mr, const Env& env, FormPool& pool) {
+          auto head =
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("rand-float-gen"));
+          return gen ? pool.form<GenericElement>(head, gen) : pool.form<GenericElement>(head);
+        },
+        nullptr);
+
+    if (!std::get<0>(mr_res).matched) {
+      lg::error("shell match failed, dont know this form: {}", in->to_string(env));
+      return nullptr;
+    }
+
+    auto elt = std::get<1>(mr_res)->try_as_single_element();
+    return elt;
+  }
+}
+
 FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, FormPool& pool) {
   if (in->body()->size() != 3) {
     return nullptr;
@@ -1698,6 +1782,12 @@ FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, For
 
 FormElement* rewrite_multi_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats) {
   if (in->entries().size() >= 2) {
+    auto as_rand_float_gen = rewrite_rand_float_gen(in, env, pool);
+    if (as_rand_float_gen) {
+      stats.rand_float_gen++;
+      return as_rand_float_gen;
+    }
+
     auto as_proc_new = rewrite_proc_new(in, env, pool);
     if (as_proc_new) {
       stats.proc_new++;

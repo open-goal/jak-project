@@ -50,6 +50,7 @@ class Matcher {
   static Matcher any(int match_id = -1);
   static Matcher integer(std::optional<int> value);
   static Matcher any_integer(int match_id = -1);
+  static Matcher single(std::optional<float> value);
   static Matcher any_reg_cast_to_int_or_uint(int match_id = -1);
   static Matcher any_quoted_symbol(int match_id = -1);
   static Matcher any_symbol(int match_id = -1);
@@ -76,6 +77,7 @@ class Matcher {
     ANY,
     INT,
     ANY_INT,
+    FLOAT,
     ANY_QUOTED_SYMBOL,
     ANY_SYMBOL,
     DEREF_OP,
@@ -108,6 +110,7 @@ class Matcher {
   int m_label_out_id = -1;
   int m_int_out_id = -1;
   std::optional<int> m_int_match;
+  std::optional<float> m_float_match;
   std::optional<Register> m_reg;
   std::string m_str;
 };

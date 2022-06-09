@@ -1399,6 +1399,7 @@ class LetElement : public FormElement {
   void add_def(RegisterAccess dst, Form* value);
 
   void make_let_star();
+  void clear_let_star();
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;

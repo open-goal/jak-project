@@ -94,6 +94,13 @@ Matcher Matcher::any_integer(int match_id) {
   return m;
 }
 
+Matcher Matcher::single(std::optional<float> value) {
+  Matcher m;
+  m.m_kind = Kind::FLOAT;
+  m.m_float_match = value;
+  return m;
+}
+
 Matcher Matcher::any_quoted_symbol(int match_id) {
   Matcher m;
   m.m_kind = Kind::ANY_QUOTED_SYMBOL;
@@ -341,13 +348,26 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
 
       auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
-        auto atom = as_expr->expr().get_arg(0);
+        const auto& atom = as_expr->expr().get_arg(0);
         if (atom.is_int()) {
           if (!m_int_match.has_value()) {
             return true;
           }
           return atom.get_int() == *m_int_match;
         }
+      }
+
+      return false;
+    } break;
+
+    case Kind::FLOAT: {
+      auto as_const_float =
+          dynamic_cast<ConstantFloatElement*>(input->try_as_single_active_element());
+      if (as_const_float) {
+        if (!m_float_match.has_value()) {
+          return true;
+        }
+        return as_const_float->value() == *m_float_match;
       }
 
       return false;
@@ -366,7 +386,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
 
       auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
-        auto atom = as_expr->expr().get_arg(0);
+        const auto& atom = as_expr->expr().get_arg(0);
         if (atom.is_int()) {
           if (m_int_out_id != -1) {
             maps_out->ints[m_int_out_id] = atom.get_int();
@@ -391,7 +411,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
 
       auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
-        auto atom = as_expr->expr().get_arg(0);
+        const auto& atom = as_expr->expr().get_arg(0);
         if (atom.is_sym_ptr()) {
           if (m_string_out_id != -1) {
             maps_out->strings[m_string_out_id] = atom.get_str();
@@ -415,7 +435,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
 
       auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
-        auto atom = as_expr->expr().get_arg(0);
+        const auto& atom = as_expr->expr().get_arg(0);
         if (atom.is_sym_val()) {
           if (m_string_out_id != -1) {
             maps_out->strings[m_string_out_id] = atom.get_str();
@@ -436,7 +456,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
 
       auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
-        auto atom = as_expr->expr().get_arg(0);
+        const auto& atom = as_expr->expr().get_arg(0);
         if (atom.is_sym_val()) {
           return atom.get_str() == m_str;
         }
