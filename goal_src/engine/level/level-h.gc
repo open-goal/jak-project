@@ -55,7 +55,7 @@
 ;; compressed visibility string for a given bsp leaf.
 
 ;; Each level may have multiple level-vis-infos.
-;; One level-vis-info (the first) is always for the 
+;; One level-vis-info (the first) is always for the
 ;; actual level (stored in .VIS file), and there is typically one for each neighboring level.
 ;; The final level-vis-info (7) should always be empty (set to 0 in the bsp-header)
 
@@ -112,13 +112,13 @@
    (priority          int32      :offset-assert 64) ;; either 100 or 200
    (load-commands     pair       :offset-assert 68) ;; ??
    (alt-load-commands pair       :offset-assert 72) ;; ??
-   (bsp-mask          uint64     :offset-assert 80) ;; ??
+   (bsp-mask          uint64     :offset-assert 80) ;; ?? unused
    (bsphere           sphere     :offset-assert 88) ;; boundings sphere of level?
    (buzzer            int32      :offset-assert 92) ;; which task is the scout fly?
    (bottom-height     meters     :offset-assert 96)
    (run-packages      pair       :offset-assert 100) ;; possibly unused?
-   (prev-level        basic      :offset-assert 104)
-   (next-level        basic      :offset-assert 108)
+   (prev-level        basic      :offset-assert 104) ;; unused
+   (next-level        basic      :offset-assert 108) ;; unused
    (wait-for-load     symbol     :offset-assert 112)
    )
   :method-count-assert 9
@@ -140,51 +140,67 @@
   )
 
 ;; The actual "level". This manages loading and running a game level.
+;; These are allocated by the engine and aren't in static level data.
 (deftype level (basic)
-  ((name                      symbol          :offset-assert 4)
-   (load-name                 symbol          :offset-assert 8)
-   (nickname                  symbol          :offset-assert 12)
-   (index                     int32           :offset-assert 16)
-   (status                    symbol          :offset-assert 20)
-   (other                     level           :offset-assert 24)      ;; the other level object
-   (heap                      kheap   :inline :offset-assert 32)      ;; level's ~10 MB heap
-   (bsp                       bsp-header      :offset-assert 48)      ;; the main level object in the DGO
-   (art-group                 load-dir-art-group  :offset-assert 52)  ;; the art (foreground models/anims) for the level
-   (info                      level-load-info     :offset-assert 56)
-   (texture-page              texture-page 9      :offset-assert 60)
-   (loaded-texture-page       texture-page 16     :offset-assert 96)
-   (loaded-texture-page-count int32           :offset-assert 160)
-   ; (foreground-sink-group-0   dma-foreground-sink-group :inline :offset-assert 176)
-   ; (foreground-sink-group-1   dma-foreground-sink-group :inline :offset-assert 208)
-   ; (foreground-sink-group-2   dma-foreground-sink-group :inline :offset-assert 240)
-   ; (array-pad uint8 12)
-   (foreground-sink-group     dma-foreground-sink-group 3 :inline :offset-assert 176) ;; inline basic
+  ((name                      symbol              :offset-assert 4)
+   (load-name                 symbol              :offset-assert 8)
+   (nickname                  symbol              :offset-assert 12)
+   (index                     int32               :offset-assert 16)
+   (status                    symbol              :offset-assert 20)
+   (other                     level               :offset-assert 24) ;; the other level object
+   (heap                      kheap   :inline     :offset-assert 32) ;; level's ~10 MB heap
+   (bsp                       bsp-header          :offset-assert 48) ;; the main level object in the DGO
+   (art-group                 load-dir-art-group  :offset-assert 52) ;; the art (foreground models/anims) for the level
+   (info                      level-load-info     :offset-assert 56) ;; the load-info for this level,
+   (texture-page              texture-page 9      :offset-assert 60) ;; logged-in texture pages (tfrag, pris, shrub, alpha, water)
+   (loaded-texture-page       texture-page 16     :offset-assert 96) ;; texture pages that are loaded (and will need unloading)
+   (loaded-texture-page-count int32               :offset-assert 160)
+
+   ;; dma "sinks" for foreground level things to render to (plus water and generic tie)
+   (tfrag-tex-foreground-sink-group dma-foreground-sink-group :inline :offset-assert 176)
+   (pris-tex-foreground-sink-group dma-foreground-sink-group  :inline :offset-assert 208)
+   (water-tex-foreground-sink-group dma-foreground-sink-group :inline :offset-assert 240)
+   (foreground-sink-group     dma-foreground-sink-group 3     :inline :offset 176) ;; overlay of previous 3.
+
+   ;; engines for each of the three sinks
    (foreground-draw-engine    engine 3       :offset-assert 272)
+
+   ;; linked entities/ambients
    (entity                    entity-links-array           :offset-assert 284)
-   (ambient                   entity-ambient-data-array           :offset-assert 288)
+   (ambient                   entity-ambient-data-array    :offset-assert 288)
+
+   ;; closest objects, used for texture upload decisions. indexed by tpage (only first 5 used)
    (closest-object            float 9       :offset-assert 292)
+
+   ;; texture upload size, bytes. indexed by tpage (only first 5 used)
    (upload-size               int32 9       :offset-assert 328)
-   (level-distance            meters          :offset-assert 364)
-   (inside-sphere?            symbol          :offset-assert 368)
-   (inside-boxes?             symbol          :offset-assert 372)
-   (display?                  symbol          :offset-assert 376)
-   (meta-inside?              symbol          :offset-assert 380)
-   (mood                      mood-context          :offset-assert 384)
-   (mood-func                 (function mood-context float int none)           :offset-assert 388)
-   (vis-bits                  pointer         :offset-assert 392)
-   (all-visible?              symbol        :offset-assert 396)
-   (force-all-visible?        symbol          :offset-assert 400)
-   (linking                   basic           :offset-assert 404)
-   (vis-info                  level-vis-info 8       :offset-assert 408) ;; note: #f when doesn't exist.
-   (vis-self-index            int32           :offset-assert 440)
-   (vis-adj-index             int32           :offset-assert 444)
-   (vis-buffer                uint8 2048    :offset-assert 448)
-   (mem-usage-block           memory-usage-block           :offset-assert 2496)
-   (mem-usage                 int32           :offset-assert 2500)
-   (code-memory-start         pointer          :offset-assert 2504)
-   (code-memory-end           pointer          :offset-assert 2508)
-   (texture-mask              uint32 9       :offset-assert 2512)
-   (force-inside?             symbol          :offset-assert 2548)
+
+   ;; info about jak/camera position, relative to the level
+   (level-distance            meters        :offset-assert 364) ;; camera distance from level bsphere origin
+   (inside-sphere?            symbol        :offset-assert 368) ;; camera inside bsphere?
+   (inside-boxes?             symbol        :offset-assert 372) ;; inside the level box list?
+   (display?                  symbol        :offset-assert 376) ;; level being displayed?
+   (meta-inside?              symbol        :offset-assert 380) ;; inside, but stays true until you go inside another level.
+
+   ;; mood
+   (mood                      mood-context  :offset-assert 384) ;; current state
+   (mood-func (function mood-context float int none)  :offset-assert 388) ;; function to call to update mood
+
+   ;; vis
+   (vis-bits                  pointer       :offset-assert 392) ;; visibility string buffer
+   (all-visible?              symbol        :offset-assert 396) ;; set if visibility system has no info
+   (force-all-visible?        symbol        :offset-assert 400) ;; set to disable visibiltiy system and display all
+   (linking                   basic         :offset-assert 404) ;; is linking in progress?
+   (vis-info                  level-vis-info 8   :offset-assert 408) ;; note: #f when doesn't exist.
+   (vis-self-index            int32         :offset-assert 440)  ;; vis-info index for this level
+   (vis-adj-index             int32         :offset-assert 444)  ;; vis-info index for the other level
+   (vis-buffer                uint8 2048    :offset-assert 448)  ;; buffer for vis decompression
+   (mem-usage-block           memory-usage-block  :offset-assert 2496) ;; level data memory usage stats
+   (mem-usage                 int32         :offset-assert 2500) ;; total use
+   (code-memory-start         pointer       :offset-assert 2504) ;; address of start of code
+   (code-memory-end           pointer       :offset-assert 2508) ;; address of end of code
+   (texture-mask              uint32 9      :offset-assert 2512) ;; mask of textures we need, per tpage.
+   (force-inside?             symbol        :offset-assert 2548) ;; fake being inside?
    (pad                       uint8 56)
    )
   :method-count-assert 29
@@ -203,7 +219,7 @@
     (load-begin (_type_) _type_ 18)
     (login-begin (_type_) _type_ 19)
     (vis-load (_type_) uint 20)
-    (dummy-21 (_type_) none 21)
+    (unused-21 (_type_) none 21)
     (birth (_type_) _type_ 22)
     (level-status-set! (_type_ symbol) _type_ 23)
     (load-required-packages (_type_) _type_ 24)
@@ -217,7 +233,7 @@
 
 ;; Main *level* object.
 ;; There are actually three levels. level0 and level1 correspond to the actual buffered levels
-;; The level-default seems to be a fake level that can possibly be used by renderers that
+;; The level-default is to be a fake level that can possibly be used by renderers that
 ;; don't belong to any level, for example to render Jak.
 (deftype level-group (basic)
   ((length           int32                :offset-assert 4)
@@ -270,6 +286,7 @@
 (defun-extern level-update-after-load level login-state level)
 
 ;; Initialize the level structure. This assigns DMA buckets to each level.
+;; there are 3 foreground sinks per texture bucket: merc, generic, and an unused one.
 ;; TODO: figure out exactly which buckets are used for what.
 (define-extern *level* level-group)
 (if (zero? *level*)
@@ -287,39 +304,38 @@
                (new 'static 'level
                     :name #f
                     :status 'inactive
-                    :foreground-sink-group
-                    (new 'static 'inline-array dma-foreground-sink-group 3
-                         (new 'static 'dma-foreground-sink-group
-                              :sink (new 'static 'array dma-foreground-sink 3
-                                         (new 'static 'dma-foreground-sink :bucket 10)
-                                         (new 'static 'generic-dma-foreground-sink
-                                              :bucket 11 :foreground-output-bucket 1
-                                              )
-                                         )
+                    :tfrag-tex-foreground-sink-group
+                    (new 'static 'dma-foreground-sink-group
+                         :sink
+                         (new 'static 'array dma-foreground-sink 3
+                              ;; merc + tfrag texture
+                              (new 'static 'dma-foreground-sink :bucket (bucket-id merc-tfrag-tex0))
+                              ;; generic + tfrag texture
+                              (new 'static 'generic-dma-foreground-sink :bucket (bucket-id generic-tfrag-tex0) :foreground-output-bucket 1)
                               )
-                         (new 'static 'dma-foreground-sink-group
-                              :sink (new 'static 'array dma-foreground-sink 3
-                                         (new 'static 'dma-foreground-sink
-                                              :bucket 49
-                                              :foreground-texture-page 1
-                                              )
-                                         (new 'static 'generic-dma-foreground-sink
-                                              :bucket 50 :foreground-texture-page 1
-                                              :foreground-output-bucket 1)
-                                         )
+                         )
+                    :pris-tex-foreground-sink-group
+                    (new 'static 'dma-foreground-sink-group
+                         :sink
+                         (new 'static 'array dma-foreground-sink 3
+                              (new 'static 'dma-foreground-sink :bucket (bucket-id merc-pris0) :foreground-texture-page 1)
+                              (new 'static 'generic-dma-foreground-sink
+                                   :bucket (bucket-id generic-pris0)
+                                   :foreground-texture-page 1
+                                   :foreground-output-bucket 1
+                                   )
                               )
-                         (new 'static 'dma-foreground-sink-group
-                              :sink (new 'static 'array dma-foreground-sink 3
-                                         (new 'static 'dma-foreground-sink
-                                              :bucket 58
-                                              :foreground-texture-page 2
-                                              )
-                                         (new 'static 'generic-dma-foreground-sink
-                                              :bucket 59
-                                              :foreground-texture-page 2
-                                              :foreground-output-bucket 1
-                                              )
-                                         )
+                         )
+                    :water-tex-foreground-sink-group
+                    (new 'static 'dma-foreground-sink-group
+                         :sink
+                         (new 'static 'array dma-foreground-sink 3
+                              (new 'static 'dma-foreground-sink :bucket (bucket-id merc-water0) :foreground-texture-page 2)
+                              (new 'static 'generic-dma-foreground-sink
+                                   :bucket (bucket-id generic-water0)
+                                   :foreground-texture-page 2
+                                   :foreground-output-bucket 1
+                                   )
                               )
                          )
                     :inside-sphere? #f
@@ -331,52 +347,47 @@
                     :name #f
                     :index 1
                     :status 'inactive
-                    :foreground-sink-group
-                    (new 'static 'inline-array dma-foreground-sink-group 3
-                         (new 'static 'dma-foreground-sink-group
-                              :sink (new 'static 'array dma-foreground-sink 3
-                                         (new 'static 'dma-foreground-sink
-                                              :bucket 17
-                                              :foreground-texture-level 1
-                                              )
-                                         (new 'static 'generic-dma-foreground-sink
-                                              :bucket 18
-                                              :foreground-texture-level 1
-                                              :foreground-output-bucket 1
-                                              )
-                                         )
+                    :tfrag-tex-foreground-sink-group
+                    (new 'static 'dma-foreground-sink-group
+                         :sink
+                         (new 'static 'array dma-foreground-sink 3
+                              (new 'static 'dma-foreground-sink :bucket (bucket-id merc-tfrag-tex1) :foreground-texture-level 1)
+                              (new 'static 'generic-dma-foreground-sink
+                                   :bucket (bucket-id generic-tfrag-tex1)
+                                   :foreground-texture-level 1
+                                   :foreground-output-bucket 1
+                                   )
                               )
-                         (new 'static 'dma-foreground-sink-group
-                              :sink (new 'static 'array dma-foreground-sink 3
-                                         (new 'static 'dma-foreground-sink
-                                              :bucket 52
-                                              :foreground-texture-page 1
-                                              :foreground-texture-level 1
-                                              )
-                                         (new 'static 'generic-dma-foreground-sink
-                                              :bucket 53
-                                              :foreground-texture-page 1
-                                              :foreground-texture-level 1
-                                              :foreground-output-bucket 1
-                                              )
-                                         
-                                         )
-                              )
-                         (new 'static 'dma-foreground-sink-group
-                              :sink (new 'static 'array dma-foreground-sink 3
-                                         (new 'static 'dma-foreground-sink
-                                              :bucket 61
-                                              :foreground-texture-page 2
-                                              :foreground-texture-level 1
-                                              )
-                                         (new 'static 'generic-dma-foreground-sink
-                                              :bucket 62
-                                              :foreground-texture-page 2
-                                              :foreground-texture-level 1
-                                              :foreground-output-bucket 1
-                                              )
-                                         )
-                              )
+                         )
+                    :pris-tex-foreground-sink-group
+                    (new 'static 'dma-foreground-sink-group :sink (new 'static 'array dma-foreground-sink 3
+                                                                       (new 'static 'dma-foreground-sink
+                                                                            :bucket (bucket-id merc-pris1)
+                                                                            :foreground-texture-page 1
+                                                                            :foreground-texture-level 1
+                                                                            )
+                                                                       (new 'static 'generic-dma-foreground-sink
+                                                                            :bucket (bucket-id generic-pris1)
+                                                                            :foreground-texture-page 1
+                                                                            :foreground-texture-level 1
+                                                                            :foreground-output-bucket 1
+                                                                            )
+                                                                       )
+                         )
+                    :water-tex-foreground-sink-group
+                    (new 'static 'dma-foreground-sink-group :sink (new 'static 'array dma-foreground-sink 3
+                                                                       (new 'static 'dma-foreground-sink
+                                                                            :bucket (bucket-id merc-water1)
+                                                                            :foreground-texture-page 2
+                                                                            :foreground-texture-level 1
+                                                                            )
+                                                                       (new 'static 'generic-dma-foreground-sink
+                                                                            :bucket (bucket-id generic-water1)
+                                                                            :foreground-texture-page 2
+                                                                            :foreground-texture-level 1
+                                                                            :foreground-output-bucket 1
+                                                                            )
+                                                                       )
                          )
                     :inside-sphere? #f
                     :inside-boxes? #f
@@ -387,52 +398,50 @@
                     :name 'default
                     :index 2
                     :status 'reserved
-                    :foreground-sink-group
-                    (new 'static 'inline-array dma-foreground-sink-group 3
-                         (new 'static 'dma-foreground-sink-group
-                              :sink (new 'static 'array dma-foreground-sink 3
-                                         (new 'static 'dma-foreground-sink
-                                              :bucket 45
-                                              :foreground-texture-level 2
-                                              )
-                                         (new 'static 'generic-dma-foreground-sink
-                                              :bucket 46
-                                              :foreground-texture-level 2
-                                              :foreground-output-bucket 1
-                                              )
-                                         )
+                    :tfrag-tex-foreground-sink-group
+                    ;; the tfrag texture sink group for the common level uses alpha
+                    (new 'static 'dma-foreground-sink-group
+                         :sink
+                         (new 'static 'array dma-foreground-sink 3
+                              (new 'static 'dma-foreground-sink :bucket (bucket-id merc-alpha-tex) :foreground-texture-level 2)
+                              (new 'static 'generic-dma-foreground-sink
+                                   :bucket (bucket-id generic-alpha-tex)
+                                   :foreground-texture-level 2
+                                   :foreground-output-bucket 1
+                                   )
                               )
-                         (new 'static 'dma-foreground-sink-group
-                              :sink (new 'static 'array dma-foreground-sink 3
-                                         (new 'static 'dma-foreground-sink
-                                              :bucket 55
-                                              :foreground-texture-page 1
-                                              :foreground-texture-level 2
-                                              )
-                                         (new 'static 'generic-dma-foreground-sink
-                                              :bucket 56
-                                              :foreground-texture-page 1
-                                              :foreground-texture-level 2
-                                              :foreground-output-bucket 1
-                                              )
-                                         )
-                              )
-                         (new 'static 'dma-foreground-sink-group
-                              :sink (new 'static 'array dma-foreground-sink 3
-                                         (new 'static 'dma-foreground-sink
-                                              :bucket 58
-                                              :foreground-texture-page 2
-                                              :foreground-texture-level 2
-                                              )
-                                         (new 'static 'generic-dma-foreground-sink
-                                              :bucket 59
-                                              :foreground-texture-page 2
-                                              :foreground-texture-level 2
-                                              :foreground-output-bucket 1
-                                              )
-                                         
-                                         )
-                              )
+                         )
+                    :pris-tex-foreground-sink-group
+                    ;; pris uses the separate pris common area
+                    (new 'static 'dma-foreground-sink-group :sink (new 'static 'array dma-foreground-sink 3
+                                                                       (new 'static 'dma-foreground-sink
+                                                                            :bucket (bucket-id merc-pris-common)
+                                                                            :foreground-texture-page 1
+                                                                            :foreground-texture-level 2
+                                                                            )
+                                                                       (new 'static 'generic-dma-foreground-sink
+                                                                            :bucket (bucket-id generic-pris-common)
+                                                                            :foreground-texture-page 1
+                                                                            :foreground-texture-level 2
+                                                                            :foreground-output-bucket 1
+                                                                            )
+                                                                       )
+                         )
+                    :water-tex-foreground-sink-group
+                    ;; water just goes to level 0's buckets
+                    (new 'static 'dma-foreground-sink-group :sink (new 'static 'array dma-foreground-sink 3
+                                                                       (new 'static 'dma-foreground-sink
+                                                                            :bucket (bucket-id merc-water0)
+                                                                            :foreground-texture-page 2
+                                                                            :foreground-texture-level 2
+                                                                            )
+                                                                       (new 'static 'generic-dma-foreground-sink
+                                                                            :bucket (bucket-id generic-water0)
+                                                                            :foreground-texture-page 2
+                                                                            :foreground-texture-level 2
+                                                                            :foreground-output-bucket 1
+                                                                            )
+                                                                       )
                          )
                     :inside-sphere? #f
                     :inside-boxes? #f
@@ -441,6 +450,9 @@
                )
           )
     )
+
+
+
 
 (define-extern *level-load-list* pair)
 (define-extern lookup-level-info (function symbol level-load-info))

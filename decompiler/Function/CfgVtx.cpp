@@ -2612,7 +2612,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
     Function& func,
     const CondWithElseLengthHack& cond_with_else_hack,
     const std::unordered_set<int>& blocks_ending_in_asm_br) {
-  //  fmt::print("START {}\n", func.guessed_name.to_string());
+  // fmt::print("START {}\n", func.guessed_name.to_string());
   auto cfg = std::make_shared<ControlFlowGraph>();
 
   const auto& blocks = cfg->create_blocks(func.basic_blocks.size());

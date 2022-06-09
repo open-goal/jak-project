@@ -32,16 +32,16 @@
 
 ;; Can be 'boot, 'listener, or 'debug-boot
 ;; set to 'boot when DiskBooting.
-(define *kernel-boot-mode* 'listener)
+(define *kernel-boot-mode* 'listener) ;; mostly unused.
 
 ;; DebugBootLevel in C Kernel
-(define *kernel-boot-level* (the symbol #f))
+(define *kernel-boot-level* (the symbol #f)) ;; doesn't do anything.
 
 ;; The number of DECI messages received.
 ;; The C Kernel increments this.
 (define *deci-count* 0)
 
-;; Some debug stats. Unused?
+;; Some debug stats. Unused.
 (define *last-loado-length* 0)
 (define *last-loado-global-usage* 0)
 (define *last-loado-debug-usage* 0)
@@ -72,8 +72,7 @@
 (defun load-package ((package string) (allocation kheap))
   "Load a Package from a CGO/DGO"
   (unless (nmember package *kernel-packages*)
-    ;; #xf = OUTPUT_LOAD, OUTPUT_TRUE, EXECUTE, PRINT_LOGIN
-    (dgo-load package allocation #xf #x200000)
+    (dgo-load package allocation (link-flag output-load-msg output-load-true-msg execute-login print-login) #x200000)
     (set! *kernel-packages* (cons package *kernel-packages*))
     )
   )
@@ -96,7 +95,7 @@
 ;; The kernel context is a global which stores the state of the kernel.
 (define *kernel-context* (new 'static 'kernel-context
                               :prevent-from-run (process-mask execute sleep)
-                              :next-pid 2
+                              :next-pid 2         ;; 1 will be listener
                               :current-process #f
                               :relocating-process #f
                               :low-memory-message #t
@@ -117,23 +116,24 @@
 ;; without executing anything, to find a process for instance.
 (define *null-kernel-context* (new 'static 'kernel-context))
 
+
+;; scratchpad setup
 (#cond
   (PC_PORT
-
-  ;; make sure the scratchpad is 16kb aligned, and make it 32 kB so we can big stacks on it.
+  ;; we'll create a fake scratchpad:
+  ;; make sure the scratchpad is 64kb aligned, and make it 32 kB so we can big stacks on it.
+  ;; some (partially buggy) code in generic tie relies on 64 kB alignment.
   (let* ((mem (new 'global 'array 'uint8 (* 128 1024)))
          )
       (define *fake-scratchpad-data* (the pointer (align-n mem (* 64 1024))))
     )
 
-  ;; We will move stacks on the scratchpad to here.
-  ;; it might be possible to also throw them on the *dram-stack*, but they might depend on these
-  ;; not overlapping. We can spare the 16k of memory.
+  ;; use the same memory for the scratchpad stacks.
+  ;; defining it as a separate thing so we can split them for debugging stack corruption easily.
   (define *fake-scratchpad-stack* *fake-scratchpad-data*)
-  ;;(define *fake-scratchpad-stack* (new 'global 'array 'uint8 (* 16 1024)))
 
-
-  (defmacro scratchpad-start()
+  (defmacro scratchpad-start ()
+    "Get the start of the scratchpad. At least 64kB aligned."
     '*fake-scratchpad-data*
     )
   )
@@ -145,10 +145,12 @@
   )
 
 (defmacro scratchpad-end ()
+  "Get the end of the scratchpad memory"
   `(&+ (scratchpad-start) (* 16 1024))
   )
 
 (defmacro in-scratchpad? (x)
+  "Is the given address in the scratchpad?"
   `(and
      (>= (the-as int ,x) (scratchpad-start))
      (< (the-as int ,x) (scratchpad-end))
@@ -197,7 +199,8 @@
 
 (defmethod stack-size-set! thread ((this thread) (stack-size int))
   "Set the backup stack size of a thread. This should only be done on the main-thread.
-  This should be done immediately after allocating the main-thread."
+  This should be done immediately after allocating the main-thread.
+   Users can do this if they want a larger or smaller backup stack than the default."
 
   (let ((proc (-> this process)))
     (cond
@@ -238,7 +241,7 @@
                 ((-> parent-process top-thread)
                  ;; we're allocating a temporary thread, the main thread already exists.
                  ;; we can stash the cpu-thread structure at the bottom of the stack.
-                 ;; we use the smaller PROCESS_STACK_SIZE, which is only half the size of the real stack.
+                 ;; we use the smaller PROCESS_STACK_SIZE, in case we're running on the scratchpad.
                  (the cpu-thread (&+ stack-top
                                      (- PROCESS_STACK_SIZE)
                                      *gtype-basic-offset*
@@ -292,7 +295,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defbehavior remove-exit process ()
-  "Pops a single stack frame, if there is one."
+  "Pops a single stack frame, if there is one.
+   User code can call this before doing a 'go' to avoid running the exit for the current state."
   (when (-> self stack-frame-top)
     (set! (-> self stack-frame-top) (-> self stack-frame-top next))
     )
@@ -312,9 +316,8 @@
   arg1
   )
 
-;; game state
-(define *master-mode* 'game)
-(define *pause-lock* #f)
+(define *master-mode* 'game) ;; game, process, menu, pause
+(define *pause-lock* #f)     ;; set to #t when paused and doing a single frame advance with R2.
 
 (defmethod new process-tree ((allocation symbol) (type-to-make type) (name basic))
   "Create a process-tree node"
@@ -531,7 +534,7 @@
          (s4 :reg r12 :type uint)
          )
 
-    ;; first call the deactivate method. (todo - is the stack properly aligned for this?)
+    ;; first call the deactivate method.
     (deactivate pp)
     ;; get the kernel stack pointer as a GOAL pointer
     (.load-sym :sext #f sp *kernel-sp*)
@@ -557,7 +560,6 @@
   NOTE: this should only be done from the kernel, running on the
   kernel's stack."
   (declare (asm-func object)
-                                        ;(print-asm)
            )
 
   (rlet ((pp :reg r13 :type process)
@@ -854,7 +856,8 @@
 ;; Process Dead Pool
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-                                        ; a dead-pool is a collection of processes of fixed size that you can get processes from.
+;; a dead pool is just a collection of dead processes of a fixed size.
+
 
 (define-extern *debug-dead-pool* dead-pool-heap)
 
@@ -1134,6 +1137,9 @@
     )
   )
 
+;; this will be set to #t if we're using visibility data.
+;; if we aren't, there will be many cases where we try to spawn too many actors, and we shouldn't
+;; warn when this happens.
 (define-extern *vis-boot* basic)
 
 (defmethod get-process dead-pool-heap ((obj dead-pool-heap) (type-to-make type) (stack-size int))
@@ -1527,7 +1533,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod run-logic? process ((obj process))
-  "Return if the process should be run or not."
+  "Return if the process should be run or not.
+   Children of process should override this with more interesting functions"
   #t)
 
 ;; the following three functions recursively iterate through process trees.
@@ -1571,7 +1578,7 @@
 
     ;; run on our children
     (cond
-      ((eq? ret 'dead)
+      ((eq? ret 'dead) ;; if dead, don't bother checking children.
        )
       (else (let ((brother (-> obj child)))
               (while brother
@@ -1637,48 +1644,60 @@
 (define-extern *active-pool* process-tree)
 
 (defun kernel-dispatcher ()
-  "Run the kernel!"
+  "Run the kernel!
+   This is the entry point from C++ to GOAL."
+
+  ;; outside of all profiler events, set a ROOT event
   (profiler-instant-event "ROOT")
+
+  ;; execute the listener function, if we got one.
   (when *listener-function*
-    (let ((result (reset-and-call (-> *listener-process* main-thread) *listener-function*)))
+    (+! *enable-method-set* 1) ;; allow out-of-order method definitions (slower)
+    (let ((result (reset-and-call (-> *listener-process* main-thread) *listener-function*))) ;; run function!
+      ;; print result.
       (if *use-old-listener-print*
           (format #t "~D~%" result result result)
           (format #t "~D        #x~X        ~F        ~A~%" result result result result)
           )
       )
+    ;; clear pending function
     (set! *listener-function* #f)
     (+! *enable-method-set* -1)
     )
 
-
+  ;; iterate over all processes, running this lambda:
   (execute-process-tree
    *active-pool*
    (lambda ((obj process))
-                                        ;(format 0 "Call to dispatcher lambda!~%")
      (let ((context *kernel-context*))
        (cond
          ((or (eq? (-> obj status) 'waiting-to-run)
               (eq? (-> obj status) 'suspended))
+
+          ;; begin event in profiler.
           (profiler-start-event (process-name-as-string obj))
 
-          ;; we should run!
           ;; set current process to us
           (set! (-> context current-process) obj)
 
-          ;; update pause junk for this run
+          ;; pause tricks to prevent debug text and drawings from disappearing when pausing:
           (cond
             ((process-mask? (-> obj mask) pause)
-             ;; we're paused.
+             ;; we are a pausable object, so we should put our *stdcon* to the one that isn't cleared during pause:
              (set! *stdcon* *stdcon1*)
+             ;; and we should do our debug drawing to a buffer that isn't cleared during pause:
              (set! *debug-draw-pauseable* #t)
              )
             (else
-             (set! *stdcon* *stdcon0*)
-             (set! *debug-draw-pauseable* #f)
-             )
+              ;; non-pausable, use the *stdcon* that's cleared each time
+              (set! *stdcon* *stdcon0*)
+              ;; and don't debug draw to a buffer
+              (set! *debug-draw-pauseable* #f)
+              )
             )
 
           ;; TRANS
+          ;; this function should run before resuming.
           (cond
             ((-> obj trans-hook)
              ;; we have a trans hook defined. let's create a thread and run it. we can reuse the stack of the main-thread
@@ -1698,7 +1717,7 @@
                (when (eq? (-> obj status) 'dead)
                  (set! (-> context current-process) #f)
                  (profiler-end-event)
-                 (return 'dead)
+                 (return 'dead) ;; tells the execute-process-tree function to skip our children.
                  )
                )
              )
@@ -1709,7 +1728,7 @@
               ;; we're sleeping. Move us to suspended, in case we were in waiting to run.
               (set! (-> obj status) 'suspended)
 
-              ;; not sleeping. call resume hook
+              ;; not sleeping. call resume hook. This will return once the main thread suspends again.
               ((-> obj main-thread resume-hook) (-> obj main-thread))
 
               )
@@ -1726,6 +1745,8 @@
              ;; POST CODE
              (cond
                ((-> obj post-hook)
+                ;; Note: use dram stack always. This will allow actors to use the scratchpad stack and get a speedup for trans/code
+                ;; but still be able to do joint-animation stuff that uses the scratchpad in post.
                 (let ((post (new 'process 'cpu-thread obj 'post PROCESS_STACK_SAVE_SIZE *kernel-dram-stack*)))
                   (reset-and-call post (-> obj post-hook))
                   (delete post)
@@ -2203,23 +2224,31 @@
 
 (defmethod activate process ((obj process) (dest process-tree) (name basic) (stack-top pointer))
   "Activate a process! Put it on the given active tree and set up the main thread."
+
+  ;; if we got the scratchpad stack, move to the fake scratchpad.
   (#when PC_PORT
     (when (= stack-top *scratch-memory-top*)
-      ;; (format #t "Process ~A requested a stack on the scratchpad, moving to fake scratch~%")
       (set! stack-top (&+ *fake-scratchpad-stack* (* 32 1024)))
       )
     )
-
+  ;; inherit mask (minus stuff like sleep)
   (set! (-> obj mask) (logand (-> dest mask) PROCESS_CLEAR_MASK))
   (set! (-> obj status) 'ready)
+
+  ;; get a unique pid.
   (let ((pid (-> *kernel-context* next-pid)))
     (set! (-> obj pid) pid)
     (set! (-> *kernel-context* next-pid) (+ 1 pid)))
   (set! (-> obj top-thread) #f)
   (set! (-> obj main-thread) #f)
   (set! (-> obj name) name)
+
+  ;; set up our heap. Note that we apply an offset of heap-base to leave room for fields of the actual type.
+  ;; unclear why we can't just use the size of our type... but I guess this gives you the option
+  ;; to put some other stuff in between the fields and the heap.
   (set! (-> obj heap-base) (set! (-> obj heap-cur) (&+ (-> obj stack) (-> obj type heap-base))))
   (set! (-> obj stack-frame-top) #f)
+  ;; heaps should be 0 initialized.
   (mem-set32! (-> obj stack) (the int (/ (-> obj type heap-base) 4)) 0)
 
   (set! (-> obj trans-hook) #f)
@@ -2227,14 +2256,18 @@
   (set! (-> obj event-hook) #f)
   (set! (-> obj state) #f)
   (set! (-> obj next-state) #f)
+
+  ;; inherit entity if our parent is another process
   (if (process-mask? (-> dest mask) process-tree)
       (set! (-> obj entity) #f)
       (set! (-> obj entity) (-> (the process dest) entity))
       )
 
+  ;; reset all connections
   (set! (-> obj connection-list next1) #f)
   (set! (-> obj connection-list prev1) #f)
 
+  ;; allocate the main thread (sets everything up.)
   (let ((thread (new 'process 'cpu-thread obj 'code PROCESS_STACK_SAVE_SIZE stack-top)))
     (set! (-> obj main-thread) thread)
     )
@@ -2304,7 +2337,8 @@
    To reset a thread to running a new function, we stash the arguments as saved registers.
    These are then restored by thread-resume on the next run of the kernel.
    This stub remaps these saved registers to argument registers.
-   It also creates a return trampoline to return-from-thread-dead"
+   It also creates a return trampoline to return-from-thread-dead, so if the main thread returns, the
+   process is properly cleaned up by deactivate."
   (declare (asm-func none)
            ;;(print-asm)
            )
@@ -2376,6 +2410,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod deactivate process-tree ((obj process-tree))
+  "Can't deactivate a process-tree"
   (none)
   )
 
@@ -2412,19 +2447,22 @@
 
   ;; don't do anything if we already died.
   (unless (eq? (-> obj status) 'dead)
+    ;; set our state to a dead-state that does nothing.
     (set! (-> obj next-state) dead-state)
 
-    ;; call entity handler
+    ;; call entity handler if we're from an entity.
     (when (-> obj entity)
       (entity-deactivate-handler obj (-> obj entity))
       )
 
     ;; clean up stack frames the process is in.
     ;; first, set pp so the cleanup code thinks its running in the right process.
+    ;; we might be getting deactivated from another process.
     (rlet ((pp :reg r13 :type process))
       (let ((old-pp pp))
         (set! pp obj)
         (let ((cur (-> pp stack-frame-top)))
+          ;; loop over frames...
           (while cur
             (case (-> cur type)
               ((protect-frame state)
@@ -2439,6 +2477,7 @@
         )
       )
 
+    ;; remove our connections.
     ;; hack - if this isn't defined yet, don't try it.
     (if (!= 0 (the uint process-disconnect))
         (process-disconnect obj)
@@ -2470,6 +2509,7 @@
        ;; go straight to dead.
        (set! (-> obj status) 'dead)
        ;; and return (with no deactivate)
+       ;; TODO: replace with abandon.
        (let ((temp (the uint return-from-thread)))
          (rlet ((off :reg r15 :type uint))
            (+! temp off)
@@ -2480,13 +2520,8 @@
        )
       ;; second case - we deactivated while initializing.
       ((eq? (-> obj status) 'initialize)
-       ;; added this
-
-                                        ; (if (!= pp obj)
-                                        ;     (format 0 "ERROR: deactivated a non-current initializing process!")
-                                        ;     (break)
-                                        ;     )
        (set! (-> obj status) 'dead)
+       ;; throw back to the place where we started initializing.
        (throw 'initialize #f)
        )
       )
@@ -2500,14 +2535,20 @@
 ;; Process Globals
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; the listener process is used to run functions from the REPL.
 (let ((obj (define *listener-process* (new 'global 'process 'listener 2048))))
   (set! (-> obj status) 'ready)
   (set! (-> obj pid) 1)
   (set! (-> obj main-thread) (new 'process 'cpu-thread obj 'main 256 *kernel-dram-stack*))
   )
 
-;; these are unknown
+;; a dummy process for process records that don't have a process to point to.
+;; it has a PID of 0, which matches nothing so the handle->process will return #f if the
+;; ppointer points to this
 (define *null-process* (new 'global 'process 'listener 16))
+
+;; do we have visibility data? level.gc will set this once we do, and once that happens, we expect
+;; actors to fit in the non-debug heap.
 (define *vis-boot* #f)
 
 ;; a few pools of fixed size processes that are shared.
@@ -2520,31 +2561,44 @@
 (define *camera-dead-pool* (new 'global 'dead-pool 7 (* 4 1024) '*camera-dead-pool*))
 (define *camera-master-dead-pool* (new 'global 'dead-pool 1 (* 8 1024) '*camera-master-dead-pool*))
 
+;; used if other pools run out of space in debug mode
 (if *debug-segment*
     (define *debug-dead-pool* (new 'debug 'dead-pool-heap '*debug-dead-pool* 768 (* 1024 1024)))
     )
 
+;; variable sized actor pool (most actors go here)
 (define *nk-dead-pool* (new 'global 'dead-pool-heap '*nk-dead-pool* (* PROCESS_HEAP_MULT 768) PROCESS_HEAP_SIZE))
+
+;; use the nk-dead-pool in most places
 (define *default-dead-pool* (the dead-pool *nk-dead-pool*))
 (define *pickup-dead-pool* (the dead-pool *nk-dead-pool*))
 
+;; list of all dead pools held by the kernel.
 (define *dead-pool-list* '(*4k-dead-pool* *8k-dead-pool* *16k-dead-pool* *nk-dead-pool* *target-dead-pool* *camera-dead-pool* *camera-master-dead-pool*))
 
-;; main active pool
+;; main active pool. All active processes are under here. This is what the kernel-dispatcher looks at.
 (define *active-pool* (new 'global 'process-tree 'active-pool))
 
-;; other active pools
+;; create pools within *active-pool*
+
+;; the *display-pool* will contain the display process which does rendering, vsync, and many per-frame updates.
 (change-parent (define *display-pool* (new 'global 'process-tree 'display-pool)) *active-pool*)
 
+;; the *camera-pool* will contain all cameras
 (change-parent (define *camera-pool* (new 'global 'process-tree 'camera-pool)) *active-pool*)
+;; all cameras should pause in menus
 (set! (-> *camera-pool* mask) (process-mask pause menu progress camera process-tree))
 
+;; the *target-pool* will contain jak
 (change-parent (define *target-pool* (new 'global 'process-tree 'target-pool)) *active-pool*)
+;; pause in menus
 (set! (-> *target-pool* mask) (process-mask pause menu progress process-tree))
 
+;; the *entity-pool* contains all processes spawned from entities.
 (change-parent (define *entity-pool*  (new 'global 'process-tree 'entity-pool)) *active-pool*)
 (set! (-> *entity-pool* mask) (process-mask pause menu progress entity process-tree))
 
+;; the *default-pool* is used for processes that don't fall into the others.
 (change-parent (define *default-pool* (new 'global 'process-tree 'default-pool)) *active-pool*)
 (set! (-> *default-pool* mask) (process-mask pause menu progress process-tree))
 

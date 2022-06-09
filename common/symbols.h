@@ -1,10 +1,13 @@
 #pragma once
 
+#include "common/versions.h"
+
 /*!
  * @file symbols.h
  * The location of fixed symbols in the GOAL symbol table.
  */
 
+namespace jak1_symbols {
 constexpr int FIX_SYM_EMPTY_CAR = -0xc;
 constexpr int FIX_SYM_EMPTY_PAIR = -0xa;
 constexpr int FIX_SYM_EMPTY_CDR = -0x8;
@@ -76,3 +79,34 @@ constexpr int FIX_SYM_SOUND = 0x1b8;                // ??
 constexpr int FIX_SYM_DGO = 0x1c0;                  // ??
 constexpr int FIX_SYM_TOP_LEVEL = 0x1c8;            // ??
 constexpr int FIX_FIXED_SYM_END_OFFSET = 0x1d0;
+}  // namespace jak1_symbols
+
+namespace jak2_symbols {
+constexpr int FIX_SYM_EMPTY_CAR = -0x8;
+constexpr int FIX_SYM_EMPTY_PAIR = -0x7;
+constexpr int FIX_SYM_EMPTY_CDR = -0x4;
+constexpr int FIX_SYM_FALSE = 0x0;  // GOAL boolean #f (note that this is equal to the $s7 register)
+constexpr int FIX_SYM_TRUE = 0x4;   // GOAL boolean #t
+}  // namespace jak2_symbols
+
+constexpr int false_symbol_offset() {
+  return jak1_symbols::FIX_SYM_FALSE;
+}
+
+constexpr int true_symbol_offset(GameVersion version) {
+  switch (version) {
+    case GameVersion::Jak1:
+      return jak1_symbols::FIX_SYM_TRUE;
+    case GameVersion::Jak2:
+      return jak2_symbols::FIX_SYM_TRUE;
+  }
+}
+
+constexpr int empty_pair_offset(GameVersion version) {
+  switch (version) {
+    case GameVersion::Jak1:
+      return jak1_symbols::FIX_SYM_EMPTY_PAIR;
+    case GameVersion::Jak2:
+      return jak2_symbols::FIX_SYM_EMPTY_PAIR;
+  }
+}

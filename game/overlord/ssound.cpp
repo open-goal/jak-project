@@ -266,11 +266,11 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
     distance = 0;
   }
 
-  if (distance <= min) {
+  if (distance <= (u32)min) {
     return volume;
   }
 
-  if (distance >= max) {
+  if (distance >= (u32)max) {
     return 0;
   }
 
@@ -492,4 +492,4 @@ void SetMusicVol() {
 static void* SndMemAlloc() {
   return nullptr;
 }
-static void SndMemFree(void* ptr) {}
+static void SndMemFree(void* /*ptr*/) {}

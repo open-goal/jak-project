@@ -5,10 +5,6 @@
  * The Instruction Decoder - converts a LinkedWord into a Instruction.
  * This is the part of the disassembler that decodes MIPS instructions.
  */
-
-#ifndef NEXT_INSTRUCTIONDECODE_H
-#define NEXT_INSTRUCTIONDECODE_H
-
 #include "Instruction.h"
 
 namespace decompiler {
@@ -17,4 +13,3 @@ class LinkedObjectFile;
 
 Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg_id, int word_id);
 }  // namespace decompiler
-#endif  // NEXT_INSTRUCTIONDECODE_H

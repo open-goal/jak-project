@@ -17,7 +17,7 @@
 
 (defun get-current-time ()
   "Get the in game time.  This advances when the game is unpaused.
-   This increase at the same rate for PAL/NTSC and if the game is lagging."
+   This increases at the same rate for PAL/NTSC and if the game is lagging."
   (-> *display* base-frame-counter)
   )
 
@@ -32,12 +32,12 @@
 (defmethod set-time-ratios display ((obj display) (slowdown float))
   "Set the time ratios for the current game speed. For example, set slowdown = 1.0 if the game
    is running at full speed or slowdown = 2.0 if the game is running at half speed."
-  
+
   ;; don't allow slowdowns of more than 4x. This prevents the dt's in the physics
   ;; calculations from getting huge.
   (let ((ratio (fmin 4.0 slowdown)))
     (set! (-> obj time-ratio) ratio)
-    (case (get-video-mode) 
+    (case (get-video-mode)
       (('pal)
        (set! (-> obj time-adjust-ratio) (* 1.2 ratio))
        (set! (-> obj seconds-per-frame) (* 0.02 ratio))
@@ -76,7 +76,7 @@
    fpb: the framebuffer."
 
   ;; these will eventually be consumed by a sony function. I think it just sets GS registers.
-  
+
   ;; set these to the mode that makes the GS actually work. Basically every game uses exactly this.
   (set! (-> env pmode)
         (new 'static 'gs-pmode :en1 #x1 :mmod #x1 :slbg #x1 :alp #xff)
@@ -243,7 +243,8 @@
   (set! (-> disp integral-frame-counter) (seconds 1000))
   (set! (-> disp real-integral-frame-counter) (seconds 1000))
 
-  ;; and the "old" version, which I think was their value on the last... frame?
+  ;; and fake the "old" versions.  These are normally set to the value on the previous frame
+  ;; (which may jump due to saving/loading or lag)
   (set! (-> disp old-base-frame-counter) (+ (-> disp base-frame-counter) -1))
   (set! (-> disp old-game-frame-counter) (+ (-> disp game-frame-counter) -1))
   (set! (-> disp old-real-frame-counter) (+ (-> disp real-frame-counter) -1))
@@ -458,7 +459,7 @@
 
 (defun draw-sprite2d-xy ((buf dma-buffer) (x int) (y int) (w int) (h int) (color rgba))
   "Draw a sprite primitive with the given color and dimensions."
-  
+
   ;; create context and clip dimensions.
   (let* ((context (new 'stack 'draw-context x y w h color))
          (draw-x (max 1792 (min 2304 (+ (-> context orgx) 1792))))
@@ -473,14 +474,14 @@
          ;; remember the address of the first dma-tag
          )
     (with-cnt-vif-block (buf)
-      
+
       (dma-buffer-add-gif-tag buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :flg (gif-flag reg-list) :nreg 4)
                               (gs-reg-list prim rgbaq xyzf2 xyzf2)
                               )
       (dma-buffer-add-uint64 buf (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe 1)
                              (-> context color 0)
                              (new 'static 'gs-xyzf :x (* draw-x 16) :y (* draw-y 16) :z #x3fffff)
-                             (new 'static 'gs-xyzf :x (* (minmax (+ draw-x draw-w) 1792 2304) 16) 
+                             (new 'static 'gs-xyzf :x (* (minmax (+ draw-x draw-w) 1792 2304) 16)
                                   :y (* (minmax (+ draw-y draw-h) (-> *video-parms* screen-miny) (-> *video-parms* screen-maxy)) 16) :z #x3fffff)
                              )
       )

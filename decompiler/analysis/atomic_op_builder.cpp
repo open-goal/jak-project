@@ -15,7 +15,8 @@ namespace {
 std::unique_ptr<AtomicOp> convert_1(const Instruction& i0,
                                     int idx,
                                     bool hint_inline_asm,
-                                    bool force_asm_branch);
+                                    bool force_asm_branch,
+                                    GameVersion version);
 
 //////////////////////
 // Register Helpers
@@ -368,10 +369,10 @@ std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
   }
 }
 
-std::unique_ptr<AtomicOp> convert_1_allow_asm(const Instruction& i0, int idx) {
+std::unique_ptr<AtomicOp> convert_1_allow_asm(const Instruction& i0, int idx, GameVersion version) {
   // only used for delay slots, so fine to assume that this can never be an asm branch itself
   // as there are no branches in delay slots anywhere.
-  auto as_normal = convert_1(i0, idx, false, false);
+  auto as_normal = convert_1(i0, idx, false, false, version);
   if (as_normal) {
     return as_normal;
   }
@@ -382,7 +383,7 @@ std::unique_ptr<AtomicOp> convert_1_allow_asm(const Instruction& i0, int idx) {
 // Branch Helpers
 ////////////////////////
 
-IR2_BranchDelay get_branch_delay(const Instruction& i0, int idx) {
+IR2_BranchDelay get_branch_delay(const Instruction& i0, int idx, GameVersion version) {
   if (is_nop(i0)) {
     return IR2_BranchDelay(IR2_BranchDelay::Kind::NOP);
   } else if (is_gpr_3(i0, InstructionKind::OR, {}, rs7(), rr0())) {
@@ -391,7 +392,7 @@ IR2_BranchDelay get_branch_delay(const Instruction& i0, int idx) {
     return IR2_BranchDelay(IR2_BranchDelay::Kind::SET_REG_REG, make_dst_var(i0, idx),
                            make_src_var(i0.get_src(0).get_reg(), idx));
   } else if (i0.kind == InstructionKind::DADDIU && i0.get_src(0).is_reg(rs7()) &&
-             i0.get_src(1).is_imm(FIX_SYM_TRUE)) {
+             i0.get_src(1).is_imm(true_symbol_offset(version))) {
     return IR2_BranchDelay(IR2_BranchDelay::Kind::SET_REG_TRUE, make_dst_var(i0, idx));
   } else if (i0.kind == InstructionKind::LW && i0.get_src(1).is_reg(rs7()) &&
              i0.get_src(0).is_sym()) {
@@ -419,13 +420,14 @@ std::unique_ptr<AtomicOp> make_branch(const IR2_Condition& condition,
                                       bool likely,
                                       int dest_label,
                                       int my_idx,
-                                      bool force_asm) {
+                                      bool force_asm,
+                                      GameVersion version) {
   ASSERT(!likely);
-  auto branch_delay = get_branch_delay(delay, my_idx);
+  auto branch_delay = get_branch_delay(delay, my_idx, version);
   if (!force_asm && branch_delay.is_known()) {
     return std::make_unique<BranchOp>(likely, condition, dest_label, branch_delay, my_idx);
   } else {
-    auto delay_op = std::shared_ptr<AtomicOp>(convert_1_allow_asm(delay, my_idx));
+    auto delay_op = std::shared_ptr<AtomicOp>(convert_1_allow_asm(delay, my_idx, version));
     if (!delay_op) {
       throw std::runtime_error(
           fmt::format("Failed to convert branch delay slot instruction for branch at {}", my_idx));
@@ -459,9 +461,10 @@ std::unique_ptr<AtomicOp> make_asm_branch(const IR2_Condition& condition,
                                           const Instruction& delay,
                                           bool likely,
                                           int dest_label,
-                                          int my_idx) {
+                                          int my_idx,
+                                          GameVersion version) {
   ASSERT(!likely);
-  auto delay_op = std::shared_ptr<AtomicOp>(convert_1_allow_asm(delay, my_idx));
+  auto delay_op = std::shared_ptr<AtomicOp>(convert_1_allow_asm(delay, my_idx, version));
   if (!delay_op) {
     throw std::runtime_error(
         fmt::format("Failed to convert branch delay slot instruction for branch at {}", my_idx));
@@ -561,12 +564,12 @@ std::unique_ptr<AtomicOp> convert_lw_1(const Instruction& i0, int idx) {
   }
 }
 
-std::unique_ptr<AtomicOp> convert_daddiu_1(const Instruction& i0, int idx) {
+std::unique_ptr<AtomicOp> convert_daddiu_1(const Instruction& i0, int idx, GameVersion version) {
   if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_sym()) {
     // get symbol pointer
     return std::make_unique<SetVarOp>(
         make_dst_var(i0, idx), SimpleAtom::make_sym_ptr(i0.get_src(1).get_sym()).as_expr(), idx);
-  } else if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_imm(FIX_SYM_EMPTY_PAIR)) {
+  } else if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_imm(empty_pair_offset(version))) {
     // get empty pair
     return std::make_unique<SetVarOp>(make_dst_var(i0, idx),
                                       SimpleAtom::make_empty_list().as_expr(), idx);
@@ -574,8 +577,7 @@ std::unique_ptr<AtomicOp> convert_daddiu_1(const Instruction& i0, int idx) {
     // get pointer to beginning of symbol table (this is a bit of a hack)
     return std::make_unique<SetVarOp>(
         make_dst_var(i0, idx), SimpleAtom::make_sym_val("__START-OF-TABLE__").as_expr(), idx);
-  } else if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_imm(FIX_SYM_TRUE)) {
-    // get pointer to beginning of symbol table (this is a bit of a hack)
+  } else if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_imm(true_symbol_offset(version))) {
     return std::make_unique<SetVarOp>(make_dst_var(i0, idx),
                                       SimpleAtom::make_sym_ptr("#t").as_expr(), idx);
   } else if (i0.get_src(0).is_reg(rfp()) && i0.get_src(1).is_label()) {
@@ -805,7 +807,8 @@ std::unique_ptr<AtomicOp> convert_subu_1(const Instruction& i0, int idx) {
 std::unique_ptr<AtomicOp> convert_1(const Instruction& i0,
                                     int idx,
                                     bool hint_inline_asm,
-                                    bool force_asm_branch) {
+                                    bool force_asm_branch,
+                                    GameVersion version) {
   switch (i0.kind) {
     case InstructionKind::OR:
       return convert_or_1(i0, idx);
@@ -870,7 +873,7 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0,
     case InstructionKind::MAXS:
       return make_3reg_op(i0, SimpleExpression::Kind::MAX_S, idx);
     case InstructionKind::DADDIU:
-      return convert_daddiu_1(i0, idx);
+      return convert_daddiu_1(i0, idx, version);
     case InstructionKind::DADDU:
       return convert_daddu_1(i0, idx);
     case InstructionKind::DSUBU:
@@ -1003,7 +1006,8 @@ std::unique_ptr<AtomicOp> convert_bne_2(const Instruction& i0,
                                         const Instruction& i1,
                                         int idx,
                                         bool likely,
-                                        bool force_asm) {
+                                        bool force_asm,
+                                        GameVersion version) {
   auto s0 = i0.get_src(0).get_reg();
   auto s1 = i0.get_src(1).get_reg();
   auto dest = i0.get_src(2).get_label();
@@ -1021,14 +1025,15 @@ std::unique_ptr<AtomicOp> convert_bne_2(const Instruction& i0,
                               make_src_atom(s1, idx));
     condition.make_flipped();
   }
-  return make_branch(condition, i1, likely, dest, idx, force_asm);
+  return make_branch(condition, i1, likely, dest, idx, force_asm, version);
 }
 
 std::unique_ptr<AtomicOp> convert_beq_2(const Instruction& i0,
                                         const Instruction& i1,
                                         int idx,
                                         bool likely,
-                                        bool force_asm) {
+                                        bool force_asm,
+                                        GameVersion version) {
   auto s0 = i0.get_src(0).get_reg();
   auto s1 = i0.get_src(1).get_reg();
   auto dest = i0.get_src(2).get_label();
@@ -1053,10 +1058,13 @@ std::unique_ptr<AtomicOp> convert_beq_2(const Instruction& i0,
         IR2_Condition(IR2_Condition::Kind::EQUAL, make_src_atom(s0, idx), make_src_atom(s1, idx));
     condition.make_flipped();
   }
-  return make_branch(condition, i1, likely, dest, idx, force_asm);
+  return make_branch(condition, i1, likely, dest, idx, force_asm, version);
 }
 
-std::unique_ptr<AtomicOp> convert_daddiu_2(const Instruction& i0, const Instruction& i1, int idx) {
+std::unique_ptr<AtomicOp> convert_daddiu_2(const Instruction& i0,
+                                           const Instruction& i1,
+                                           int idx,
+                                           GameVersion version) {
   // daddiu dest, s7, 8
   // mov{n,z} dest, s7, src
   if (i1.kind == InstructionKind::MOVN || i1.kind == InstructionKind::MOVZ) {
@@ -1066,7 +1074,7 @@ std::unique_ptr<AtomicOp> convert_daddiu_2(const Instruction& i0, const Instruct
       return nullptr;
     }
     ASSERT(i0.get_src(0).is_reg(rs7()));
-    ASSERT(i0.get_src(1).is_imm(8));
+    ASSERT(i0.get_src(1).is_imm(true_symbol_offset(version)));
     ASSERT(i1.get_dst(0).is_reg(dest));
     ASSERT(i1.get_src(0).is_reg(rs7()));
     auto kind =
@@ -1143,42 +1151,55 @@ std::unique_ptr<AtomicOp> convert_slt_2(const Instruction& i0,
   return result;
 }
 
-std::unique_ptr<AtomicOp> convert_bltz_2(const Instruction& i0, const Instruction& i1, int idx) {
+std::unique_ptr<AtomicOp> convert_bltz_2(const Instruction& i0,
+                                         const Instruction& i1,
+                                         int idx,
+                                         GameVersion version) {
   // bltz is never emitted outside of inline asm.
   auto dest = i0.get_src(1).get_label();
   return make_asm_branch(IR2_Condition(IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED,
                                        make_src_atom(i0.get_src(0).get_reg(), idx)),
-                         i1, false, dest, idx);
+                         i1, false, dest, idx, version);
 }
 
-std::unique_ptr<AtomicOp> convert_bgez_2(const Instruction& i0, const Instruction& i1, int idx) {
+std::unique_ptr<AtomicOp> convert_bgez_2(const Instruction& i0,
+                                         const Instruction& i1,
+                                         int idx,
+                                         GameVersion version) {
   // bgez is never emitted outside of inline asm.
   auto dest = i0.get_src(1).get_label();
   return make_asm_branch(IR2_Condition(IR2_Condition::Kind::GEQ_ZERO_SIGNED,
                                        make_src_atom(i0.get_src(0).get_reg(), idx)),
-                         i1, false, dest, idx);
+                         i1, false, dest, idx, version);
 }
 
-std::unique_ptr<AtomicOp> convert_blez_2(const Instruction& i0, const Instruction& i1, int idx) {
+std::unique_ptr<AtomicOp> convert_blez_2(const Instruction& i0,
+                                         const Instruction& i1,
+                                         int idx,
+                                         GameVersion version) {
   // blez is never emitted outside of inline asm.
   auto dest = i0.get_src(1).get_label();
   return make_asm_branch(IR2_Condition(IR2_Condition::Kind::LEQ_ZERO_SIGNED,
                                        make_src_atom(i0.get_src(0).get_reg(), idx)),
-                         i1, false, dest, idx);
+                         i1, false, dest, idx, version);
 }
 
-std::unique_ptr<AtomicOp> convert_bgtz_2(const Instruction& i0, const Instruction& i1, int idx) {
+std::unique_ptr<AtomicOp> convert_bgtz_2(const Instruction& i0,
+                                         const Instruction& i1,
+                                         int idx,
+                                         GameVersion version) {
   // bgtz is never emitted outside of inline asm.
   auto dest = i0.get_src(1).get_label();
   return make_asm_branch(IR2_Condition(IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED,
                                        make_src_atom(i0.get_src(0).get_reg(), idx)),
-                         i1, false, dest, idx);
+                         i1, false, dest, idx, version);
 }
 
 std::unique_ptr<AtomicOp> convert_2(const Instruction& i0,
                                     const Instruction& i1,
                                     int idx,
-                                    bool force_asm_branch) {
+                                    bool force_asm_branch,
+                                    GameVersion version) {
   switch (i0.kind) {
     case InstructionKind::DIV:
       return convert_division_2(i0, i1, idx, true);
@@ -1187,11 +1208,11 @@ std::unique_ptr<AtomicOp> convert_2(const Instruction& i0,
     case InstructionKind::JALR:
       return convert_jalr_2(i0, i1, idx);
     case InstructionKind::BNE:
-      return convert_bne_2(i0, i1, idx, false, force_asm_branch);
+      return convert_bne_2(i0, i1, idx, false, force_asm_branch, version);
     case InstructionKind::BEQ:
-      return convert_beq_2(i0, i1, idx, false, force_asm_branch);
+      return convert_beq_2(i0, i1, idx, false, force_asm_branch, version);
     case InstructionKind::DADDIU:
-      return convert_daddiu_2(i0, i1, idx);
+      return convert_daddiu_2(i0, i1, idx, version);
     case InstructionKind::LUI:
       return convert_lui_2(i0, i1, idx);
     case InstructionKind::SLT:
@@ -1201,13 +1222,13 @@ std::unique_ptr<AtomicOp> convert_2(const Instruction& i0,
     case InstructionKind::CLTS:
       return convert_fp_branch_asm(i0, i1, IR2_Condition::Kind::FLOAT_LESS_THAN, idx);
     case InstructionKind::BLTZ:
-      return convert_bltz_2(i0, i1, idx);
+      return convert_bltz_2(i0, i1, idx, version);
     case InstructionKind::BGEZ:
-      return convert_bgez_2(i0, i1, idx);
+      return convert_bgez_2(i0, i1, idx, version);
     case InstructionKind::BGTZ:
-      return convert_bgtz_2(i0, i1, idx);
+      return convert_bgtz_2(i0, i1, idx, version);
     case InstructionKind::BLEZ:
-      return convert_blez_2(i0, i1, idx);
+      return convert_blez_2(i0, i1, idx, version);
     default:
       return nullptr;
   }
@@ -1264,7 +1285,8 @@ std::unique_ptr<AtomicOp> convert_lui_3(const Instruction& i0,
 std::unique_ptr<AtomicOp> convert_dsubu_3(const Instruction& i0,
                                           const Instruction& i1,
                                           const Instruction& i2,
-                                          int idx) {
+                                          int idx,
+                                          GameVersion version) {
   if (i1.kind == InstructionKind::DADDIU &&
       (i2.kind == InstructionKind::MOVN || i2.kind == InstructionKind::MOVZ)) {
     // dsubu temp, a, b
@@ -1275,7 +1297,7 @@ std::unique_ptr<AtomicOp> convert_dsubu_3(const Instruction& i0,
     auto b = i0.get_src(1).get_reg();
     auto dest = i1.get_dst(0).get_reg();
     ASSERT(i1.get_src(0).is_reg(rs7()));
-    ASSERT(i1.get_src(1).is_imm(FIX_SYM_TRUE));
+    ASSERT(i1.get_src(1).is_imm(true_symbol_offset(version)));
     ASSERT(i2.get_dst(0).get_reg() == dest);
     ASSERT(i2.get_src(0).is_reg(rs7()));
     ASSERT(i2.get_src(1).get_reg() == temp);
@@ -1321,7 +1343,8 @@ std::unique_ptr<AtomicOp> convert_slt_3(const Instruction& i0,
                                         const Instruction& i1,
                                         const Instruction& i2,
                                         bool is_signed,
-                                        int idx) {
+                                        int idx,
+                                        GameVersion version) {
   auto s0 = i0.get_src(0).get_reg();
   auto s1 = i0.get_src(1).get_reg();
   std::unique_ptr<AtomicOp> result;
@@ -1354,7 +1377,7 @@ std::unique_ptr<AtomicOp> convert_slt_3(const Instruction& i0,
     if (i1.kind == InstructionKind::BEQ) {
       condition.invert();
     }
-    result = make_branch(condition, i2, false, dest, idx, false);
+    result = make_branch(condition, i2, false, dest, idx, false, version);
     add_clobber_if_unwritten(*result, temp);
     return result;
   } else if (i1.kind == InstructionKind::DADDIU &&
@@ -1366,7 +1389,7 @@ std::unique_ptr<AtomicOp> convert_slt_3(const Instruction& i0,
     auto temp = i0.get_dst(0).get_reg();
     auto dest = i1.get_dst(0).get_reg();
     ASSERT(i1.get_src(0).is_reg(rs7()));
-    ASSERT(i1.get_src(1).is_imm(FIX_SYM_TRUE));
+    ASSERT(i1.get_src(1).is_imm(true_symbol_offset(version)));
     ASSERT(i2.get_dst(0).get_reg() == dest);
     ASSERT(i2.get_src(0).is_reg(rs7()));
     ASSERT(i2.get_src(1).get_reg() == temp);
@@ -1400,7 +1423,8 @@ std::unique_ptr<AtomicOp> convert_slti_3(const Instruction& i0,
                                          const Instruction& i1,
                                          const Instruction& i2,
                                          bool is_signed,
-                                         int idx) {
+                                         int idx,
+                                         GameVersion version) {
   auto s0 = i0.get_src(0).get_reg();
   auto s1 = SimpleAtom::make_int_constant(i0.get_src(1).get_imm());
   std::unique_ptr<AtomicOp> result;
@@ -1419,7 +1443,7 @@ std::unique_ptr<AtomicOp> convert_slti_3(const Instruction& i0,
     if (i1.kind == InstructionKind::BEQ) {
       condition.invert();
     }
-    result = make_branch(condition, i2, false, dest, idx, false);
+    result = make_branch(condition, i2, false, dest, idx, false, version);
     add_clobber_if_unwritten(*result, temp);
     return result;
   } else if (i1.kind == InstructionKind::DADDIU &&
@@ -1431,7 +1455,7 @@ std::unique_ptr<AtomicOp> convert_slti_3(const Instruction& i0,
     auto temp = i0.get_dst(0).get_reg();
     auto dest = i1.get_dst(0).get_reg();
     ASSERT(i1.get_src(0).is_reg(rs7()));
-    ASSERT(i1.get_src(1).is_imm(FIX_SYM_TRUE));
+    ASSERT(i1.get_src(1).is_imm(true_symbol_offset(version)));
     ASSERT(i2.get_dst(0).get_reg() == dest);
     ASSERT(i2.get_src(0).is_reg(rs7()));
     ASSERT(i2.get_src(1).get_reg() == temp);
@@ -1455,14 +1479,15 @@ std::unique_ptr<AtomicOp> convert_fp_branch(const Instruction& i0,
                                             const Instruction& i1,
                                             const Instruction& i2,
                                             IR2_Condition::Kind kind,
-                                            int idx) {
+                                            int idx,
+                                            GameVersion version) {
   if (i1.kind == InstructionKind::BC1T || i1.kind == InstructionKind::BC1F) {
     IR2_Condition condition(kind, make_src_atom(i0.get_src(0).get_reg(), idx),
                             make_src_atom(i0.get_src(1).get_reg(), idx));
     if (i1.kind == InstructionKind::BC1F) {
       condition.invert();
     }
-    return make_branch(condition, i2, false, i1.get_src(0).get_label(), idx, false);
+    return make_branch(condition, i2, false, i1.get_src(0).get_label(), idx, false, version);
   }
   return nullptr;
 }
@@ -1470,26 +1495,27 @@ std::unique_ptr<AtomicOp> convert_fp_branch(const Instruction& i0,
 std::unique_ptr<AtomicOp> convert_3(const Instruction& i0,
                                     const Instruction& i1,
                                     const Instruction& i2,
-                                    int idx) {
+                                    int idx,
+                                    GameVersion version) {
   switch (i0.kind) {
     case InstructionKind::LUI:
       return convert_lui_3(i0, i1, i2, idx);
     case InstructionKind::DSUBU:
-      return convert_dsubu_3(i0, i1, i2, idx);
+      return convert_dsubu_3(i0, i1, i2, idx, version);
     case InstructionKind::SLT:
-      return convert_slt_3(i0, i1, i2, true, idx);
+      return convert_slt_3(i0, i1, i2, true, idx, version);
     case InstructionKind::SLTU:
-      return convert_slt_3(i0, i1, i2, false, idx);
+      return convert_slt_3(i0, i1, i2, false, idx, version);
     case InstructionKind::SLTI:
-      return convert_slti_3(i0, i1, i2, true, idx);
+      return convert_slti_3(i0, i1, i2, true, idx, version);
     case InstructionKind::SLTIU:
-      return convert_slti_3(i0, i1, i2, false, idx);
+      return convert_slti_3(i0, i1, i2, false, idx, version);
     case InstructionKind::CEQS:
-      return convert_fp_branch(i0, i1, i2, IR2_Condition::Kind::FLOAT_EQUAL, idx);
+      return convert_fp_branch(i0, i1, i2, IR2_Condition::Kind::FLOAT_EQUAL, idx, version);
     case InstructionKind::CLTS:
-      return convert_fp_branch(i0, i1, i2, IR2_Condition::Kind::FLOAT_LESS_THAN, idx);
+      return convert_fp_branch(i0, i1, i2, IR2_Condition::Kind::FLOAT_LESS_THAN, idx, version);
     case InstructionKind::CLES:
-      return convert_fp_branch(i0, i1, i2, IR2_Condition::Kind::FLOAT_LEQ, idx);
+      return convert_fp_branch(i0, i1, i2, IR2_Condition::Kind::FLOAT_LEQ, idx, version);
     default:
       return nullptr;
   }
@@ -1503,7 +1529,8 @@ std::unique_ptr<AtomicOp> convert_dsll32_4(const Instruction& i0,
                                            const Instruction& i1,
                                            const Instruction& i2,
                                            const Instruction& i3,
-                                           int idx) {
+                                           int idx,
+                                           GameVersion version) {
   if (i1.kind == InstructionKind::SLT && i2.kind == InstructionKind::BEQ) {
     // dsll32 temp, a0, 30
     // slt temp, temp, r0
@@ -1524,7 +1551,7 @@ std::unique_ptr<AtomicOp> convert_dsll32_4(const Instruction& i0,
     ASSERT(i2.get_src(1).is_reg(rr0()));
 
     IR2_Condition condition(IR2_Condition::Kind::IS_NOT_PAIR, make_src_atom(arg, idx));
-    auto result = make_branch(condition, i3, false, i2.get_src(2).get_label(), idx, false);
+    auto result = make_branch(condition, i3, false, i2.get_src(2).get_label(), idx, false, version);
     result->add_clobber_reg(temp);
     return result;
   }
@@ -1536,7 +1563,8 @@ std::unique_ptr<AtomicOp> convert_fp_branch_with_nop(const Instruction& i0,
                                                      const Instruction& i2,
                                                      const Instruction& i3,
                                                      IR2_Condition::Kind kind,
-                                                     int idx) {
+                                                     int idx,
+                                                     GameVersion version) {
   if (i1.kind != InstructionKind::VNOP) {
     return nullptr;
   }
@@ -1546,7 +1574,7 @@ std::unique_ptr<AtomicOp> convert_fp_branch_with_nop(const Instruction& i0,
     if (i2.kind == InstructionKind::BC1F) {
       condition.invert();
     }
-    return make_branch(condition, i3, false, i2.get_src(0).get_label(), idx, false);
+    return make_branch(condition, i3, false, i2.get_src(0).get_label(), idx, false, version);
   }
   return nullptr;
 }
@@ -1555,12 +1583,14 @@ std::unique_ptr<AtomicOp> convert_4(const Instruction& i0,
                                     const Instruction& i1,
                                     const Instruction& i2,
                                     const Instruction& i3,
-                                    int idx) {
+                                    int idx,
+                                    GameVersion version) {
   switch (i0.kind) {
     case InstructionKind::DSLL32:
-      return convert_dsll32_4(i0, i1, i2, i3, idx);
+      return convert_dsll32_4(i0, i1, i2, i3, idx, version);
     case InstructionKind::CEQS:
-      return convert_fp_branch_with_nop(i0, i1, i2, i3, IR2_Condition::Kind::FLOAT_EQUAL, idx);
+      return convert_fp_branch_with_nop(i0, i1, i2, i3, IR2_Condition::Kind::FLOAT_EQUAL, idx,
+                                        version);
     default:
       return nullptr;
   }
@@ -2035,6 +2065,7 @@ int convert_block_to_atomic_ops(int begin_idx,
                                 const std::vector<DecompilerLabel>& labels,
                                 FunctionAtomicOps* container,
                                 DecompWarnings& warnings,
+                                GameVersion version,
                                 bool hint_inline_asm,
                                 bool block_ends_in_asm_branch) {
   container->block_id_to_first_atomic_op.push_back(container->ops.size());
@@ -2089,7 +2120,7 @@ int convert_block_to_atomic_ops(int begin_idx,
 
     if (!converted && n_instr >= 4) {
       // try 4 instructions
-      op = convert_4(instr[0], instr[1], instr[2], instr[3], op_idx);
+      op = convert_4(instr[0], instr[1], instr[2], instr[3], op_idx, version);
       if (op) {
         converted = true;
         length = 4;
@@ -2098,7 +2129,7 @@ int convert_block_to_atomic_ops(int begin_idx,
 
     if (!converted && n_instr >= 3) {
       // try 3 instructions
-      op = convert_3(instr[0], instr[1], instr[2], op_idx);
+      op = convert_3(instr[0], instr[1], instr[2], op_idx, version);
       if (op) {
         converted = true;
         length = 3;
@@ -2107,7 +2138,7 @@ int convert_block_to_atomic_ops(int begin_idx,
 
     if (!converted && n_instr >= 2) {
       // try 2 instructions
-      op = convert_2(instr[0], instr[1], op_idx, block_ends_in_asm_branch);
+      op = convert_2(instr[0], instr[1], op_idx, block_ends_in_asm_branch, version);
       if (op) {
         converted = true;
         length = 2;
@@ -2117,7 +2148,7 @@ int convert_block_to_atomic_ops(int begin_idx,
     if (!converted) {
       // try 1 instruction
       bool force_asm_branch = n_instr == 1 && block_ends_in_asm_branch;
-      op = convert_1(*instr, op_idx, hint_inline_asm, force_asm_branch);
+      op = convert_1(*instr, op_idx, hint_inline_asm, force_asm_branch, version);
       if (op) {
         converted = true;
         length = 1;
@@ -2162,7 +2193,8 @@ FunctionAtomicOps convert_function_to_atomic_ops(
     const std::vector<DecompilerLabel>& labels,
     DecompWarnings& warnings,
     bool hint_inline_asm,
-    const std::unordered_set<int>& blocks_ending_in_asm_branches) {
+    const std::unordered_set<int>& blocks_ending_in_asm_branches,
+    GameVersion version) {
   FunctionAtomicOps result;
 
   int last_op = 0;
@@ -2173,7 +2205,7 @@ FunctionAtomicOps convert_function_to_atomic_ops(
       auto begin = func.instructions.begin() + block.start_word;
       auto end = func.instructions.begin() + block.end_word;
       last_op = convert_block_to_atomic_ops(
-          block.start_word, begin, end, labels, &result, warnings, hint_inline_asm,
+          block.start_word, begin, end, labels, &result, warnings, version, hint_inline_asm,
           blocks_ending_in_asm_branches.find(i) != blocks_ending_in_asm_branches.end());
       if (i == int(func.basic_blocks.size()) - 1) {
         // we're the last block. insert the function end op.

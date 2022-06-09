@@ -161,7 +161,7 @@
 
 (defun texture-bpp ((arg0 gs-psm))
   "Get the number of bits per pixel for the given texture format"
-  (case arg0 
+  (case arg0
    (((gs-psm mt8))
      8
      )
@@ -337,7 +337,7 @@
   )
 
 (defun gs-page-width ((arg0 gs-psm))
-  (case arg0 
+  (case arg0
    (((gs-psm ct32) (gs-psm ct24) (gs-psm ct16) (gs-psm ct16s))
      64
      )
@@ -352,7 +352,7 @@
   )
 
 (defun gs-page-height ((arg0 gs-psm))
-  (case arg0 
+  (case arg0
    (((gs-psm ct32) (gs-psm ct24))
      32
      )
@@ -373,7 +373,7 @@
   )
 
 (defun gs-block-width ((arg0 gs-psm))
-  (case arg0 
+  (case arg0
    (((gs-psm ct32) (gs-psm ct24))
      8
      )
@@ -391,7 +391,7 @@
   )
 
 (defun gs-block-height ((arg0 gs-psm))
-  (case arg0 
+  (case arg0
    (((gs-psm ct32) (gs-psm ct24) (gs-psm ct16) (gs-psm ct16s))
      8
      )
@@ -716,7 +716,7 @@
        (tex-dbg "  boot allocator got known common-page ~D~%" tex-id)
        ;; let the common allocator deal with it.
        (texture-page-common-allocate pool page heap tpage-id)
-       
+
        ;; textures that:
        ;; - are in the common page (uploaded before use, shared VRAM)
        ;; - are in common memory (not level-specific)
@@ -799,8 +799,8 @@
    (first-chunk-idx-to-upload int)
    (tex-id uint)
    )
-  
-  
+
+
   (let ((total-upload-size 0))
     (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf)) ;; the global DMA buffer
                                  bucket-idx)
@@ -869,7 +869,7 @@
                                           (shl chunks-to-upload-count 5)
                                           )
                         )
-                 
+
                  (+! total-upload-size chunks-to-upload-count)
                  ;; reset
                  (set! chunks-to-upload-count 0)
@@ -883,7 +883,7 @@
               )
           )
         )
-      
+
       ;; if we finished with a run of "needs upload", set up the upload.
       (when (nonzero? chunks-to-upload-count)
         (#when (not PC_PORT)
@@ -905,7 +905,7 @@
                                     (texflush 1) ;; texflush
                                     )
              )
-      
+
       ;; in PC PORT we just skip all that stuff and just send a pointer to the texture page and the mode.
       (#when PC_PORT
              (dma-buffer-add-cnt-vif2 dma-buf 1 (new 'static 'vif-tag :cmd (vif-cmd pc-port)) (the-as vif-tag 3))
@@ -926,7 +926,7 @@
   ;; this is clearly copy-pasta from upload-vram-pages, and there are some weird leftovers.
   (let ((v1-0 (-> page segment 0 block-data)))
     )
-  
+
   (let ((dest-block (shr (-> page segment 0 dest) 12)) ;; where we're loading to
         (sz (-> page segment 0 size))
         (modified-chunk-count 0)
@@ -1071,7 +1071,7 @@
        (dma-buffer-add-uint64 dma-buf page)
        (dma-buffer-add-uint64 dma-buf -1)
        )
-           
+
      )
    (shl total-upload-size 14)
    )
@@ -1132,7 +1132,7 @@
   ;; and we've already used some time in the upload-now!, so we will delay the actual
   ;; copy until the next frame.
   ;; The level loader know about this, and all we have to do is set up *texture-reloate-later*
-  
+
   (let ((page-seg-2-size (logand -4096 (the-as int (+ (-> page segment 2 size) 4095)))))
     (cond
       ((< (the-as uint NEAR_PRIVATE_WORDS) page-seg-2-size)
@@ -1212,7 +1212,7 @@
     (upload-now! page 2)
     ;; and remember it in the cache.
     (update-vram-pages pool (-> pool segment-near) page 2)
-    
+
     (cond
       ((< (the-as uint NEAR_PRIVATE_WORDS) seg2-size)
        ;; we use the shared part. Kick out only the non-shared texture.
@@ -1383,7 +1383,7 @@
   (dotimes (page-idx 9)
     (set! (-> level texture-page page-idx) #f)
     )
-  
+
   (if (>= max-page-kind 0) ;; tfrag.
       ;; login with near allocator.
       (let ((tfrag-dir-entry (texture-page-login
@@ -1401,7 +1401,7 @@
             )
         )
       )
-  
+
   (if (>= max-page-kind 1) ;; pris.
       ;; login with common.
       (let ((pris-dir-entry (texture-page-login (-> id-array 1) texture-page-common-allocate loading-level)))
@@ -1449,7 +1449,7 @@
 (defmethod add-tex-to-dma! texture-pool ((obj texture-pool) (level level) (tex-page-kind int))
   "For the given tpage-kind, upload as needed for the level"
   (when (= tex-page-kind (tpage-kind tfrag)) ;; TFRAG (0)
-    ;; get the texture page, bucket to add to, and an effective distance from the closest thing.    
+    ;; get the texture page, bucket to add to, and an effective distance from the closest thing.
     (let ((tfrag-page (-> level texture-page 0))
           (tfrag-bucket (if (zero? (-> level index)) (bucket-id tfrag-tex0) (bucket-id tfrag-tex1)))
           ;; not really sure how this is calculated, but it's a distance.
@@ -1501,7 +1501,7 @@
         )
       )
     )
-  
+
   (if (= tex-page-kind (tpage-kind pris)) ;; PRIS (1)
       (let ((pris-page (-> level texture-page 1)))
         (if (and pris-page (nonzero? pris-page))
@@ -1515,7 +1515,7 @@
             )
         )
       )
-  
+
   (if (= tex-page-kind (tpage-kind shrub)) ;; SHRUB (2)
       (let ((shrub-page (-> level texture-page 2))
             (shrub-closest (-> level closest-object 2)) ;; I guess this is the shrub closest.
@@ -1545,7 +1545,7 @@
             )
         )
       )
-  
+
   (if (= tex-page-kind (tpage-kind alpha)) ;; ALPHA (3)
       (let ((alpha-page (-> level texture-page 3))
             (alpha-closest (-> level closest-object 3))
@@ -1580,7 +1580,7 @@
             )
         )
       )
-  
+
   (if (= tex-page-kind (tpage-kind water)) ;; WATER (4)
       (let ((water-page (-> level texture-page 4)))
         (if (and water-page (nonzero? water-page))
@@ -1604,7 +1604,7 @@
                  (and (nonzero? a2-0) (logtest? (-> obj common-page-mask) (ash 1 v1-0))) ;; in the mask.
                  )
         ;; upload it!
-        (upload-vram-pages obj (-> obj segment-common) a2-0 -2 (bucket-id pre-sprite-textures))
+        (upload-vram-pages obj (-> obj segment-common) a2-0 -2 (bucket-id common-page-tex))
         (return #f)
         )
       )
@@ -1910,7 +1910,7 @@
           )
 
       ;; if we have the font texture after log-in, then set our heap marker to before it.
-      ;; resetting the heap to here would kick 
+      ;; resetting the heap to here would kick
       (if (and main-font-tx (-> main-font-tx page))
           (set! heap-before-font-tex
            (the-as int (-> main-font-tx page segment 0 dest))
@@ -2196,7 +2196,7 @@
   )
 
 (defun texture-page-login ((id texture-id) (alloc-func (function texture-pool texture-page kheap int texture-page)) (heap kheap))
-  "Return the tpage-dir entry for the given texture. 
+  "Return the tpage-dir entry for the given texture.
    Load if from the debug network if its not loaded. Return #f if it doesn't work"
 
   ;; make sure its a valid entry

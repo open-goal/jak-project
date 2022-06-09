@@ -157,7 +157,10 @@ void parse_text(const goos::Object& data, GameTextVersion text_ver, GameTextDB& 
  * Each scene should be (scene-name <entry 1> <entry 2> ... )
  * This adds the subtitle to each of the specified languages.
  */
-void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubtitleDB& db, const std::string& file_path) {
+void parse_subtitle(const goos::Object& data,
+                    GameTextVersion text_ver,
+                    GameSubtitleDB& db,
+                    const std::string& file_path) {
   auto font = get_font_bank(text_ver);
   std::map<int, std::shared_ptr<GameSubtitleBank>> banks;
 
@@ -222,8 +225,7 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
             // expected formats:
             // (time <args>)
             // all arguments have default values. the arguments are:
-            // "speaker" "line" - two strings. one for the speaker's name and one for the
-            // actual
+            // "speaker" "line" - two strings. one for the speaker's name and one for the actual
             //                    line. speaker can be empty. default is just empty string.
             // :offscreen - speaker is offscreen. default is not offscreen.
 
@@ -234,6 +236,10 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
             auto time = car(entry).as_int();
             goos::StringObject *speaker = nullptr, *line = nullptr;
             bool offscreen = false;
+            if (scene.kind() == SubtitleSceneKind::Hint ||
+                scene.kind() == SubtitleSceneKind::HintNamed) {
+              offscreen = true;
+            }
             for_each_in_list(cdr(entry), [&](const goos::Object& arg) {
               if (arg.is_string()) {
                 if (!speaker) {
@@ -245,8 +251,7 @@ void parse_subtitle(const goos::Object& data, GameTextVersion text_ver, GameSubt
                 }
               } else if (speaker && !line) {
                 throw std::runtime_error(
-                    "Invalid object in subtitle entry, expecting actual line string after "
-                    "speaker");
+                    "Invalid object in subtitle entry, expecting actual line string after speaker");
               } else if (arg.is_symbol()) {
                 if (scene.kind() == SubtitleSceneKind::Movie &&
                     arg.as_symbol()->name == ":offscreen") {
