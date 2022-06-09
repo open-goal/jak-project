@@ -4,6 +4,7 @@
 #include "decompiler/level_extractor/extract_common.h"
 #include "common/util/FileUtil.h"
 #include "common/util/colors.h"
+#include "common/fbx/FbxBuilder.h"
 
 namespace decompiler {
 
@@ -649,6 +650,36 @@ std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
   return result;
 }
 
+void debug_dump_to_fbx(const std::vector<MercDraw>& draws,
+                       const std::vector<MercUnpackedVtx>& vertices,
+                       const std::string& path) {
+  std::vector<math::Vector3f> verts;
+  std::vector<uint32_t> faces;
+
+  for (auto& draw : draws) {
+    // add verts...
+    for (size_t ii = 2; ii < draw.indices.size(); ii++) {
+      u32 v0 = draw.indices[ii - 2];
+      u32 v1 = draw.indices[ii - 1];
+      u32 v2 = draw.indices[ii - 0];
+      if (v0 != UINT32_MAX && v1 != UINT32_MAX && v2 != UINT32_MAX) {
+        faces.emplace_back(v0);
+        faces.emplace_back(v1);
+        faces.emplace_back(v2);
+      }
+    }
+  }
+
+
+  for (auto& vtx : vertices) {
+    verts.push_back(vtx.pos);
+  }
+
+  fbx::FbxBuilder builder;
+  builder.add_instance_of_geom(builder.add_tri_mesh_geom("test", verts, faces));
+  builder.write(path);
+}
+
 ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
                                         const MercCtrlHeader& ctrl_header,
                                         const TextureDB& tdb,
@@ -808,10 +839,13 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
   }
 
   if (dump) {
-    file_util::write_text_file(
-        file_util::get_file_path(
-            {"debug_out/merc", fmt::format("{}_{}.ply", debug_name, effect_idx)}),
-        debug_dump_to_ply(result.draws, result.vertices));
+    debug_dump_to_fbx(result.draws, result.vertices,
+                      file_util::get_file_path(
+                          {"debug_out/merc", fmt::format("{}_{}.fbx", debug_name, effect_idx)}));
+        file_util::write_text_file(
+            file_util::get_file_path(
+                {"debug_out/merc", fmt::format("{}_{}.ply", debug_name, effect_idx)}),
+            debug_dump_to_ply(result.draws, result.vertices));
   }
 
   return result;

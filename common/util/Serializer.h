@@ -84,6 +84,11 @@ class Serializer {
     read_or_write(ptr, sizeof(T));
   }
 
+  template <typename T>
+  void from_ptr_at_offset(T* ptr, size_t offset) {
+    read_or_write_at_offset(ptr, sizeof(T), offset);
+  }
+
   /*!
    * Save or load size bytes from ptr.
    */
@@ -107,6 +112,12 @@ class Serializer {
   void save(const T& thing) {
     ASSERT(m_writing);
     read_or_write(const_cast<T*>(&thing), sizeof(T));
+  }
+
+  template <typename T>
+  void save_at_offset(const T& thing, size_t offset) {
+    ASSERT(m_writing);
+    read_or_write_at_offset(const_cast<T*>(&thing), sizeof(T), offset);
   }
 
   /*!
@@ -194,6 +205,8 @@ class Serializer {
    */
   size_t data_size() const { return m_size; }
 
+  size_t current_offset() const { return m_offset; }
+
  private:
   /*!
    * Main function to read and write the buffer.
@@ -212,6 +225,15 @@ class Serializer {
       memcpy(data, m_data + m_offset, size);
     }
     m_offset += size;
+  }
+
+  void read_or_write_at_offset(void* data, size_t size, size_t offset) {
+    ASSERT(offset + size <= m_size);
+    if (m_writing) {
+      memcpy(m_data + offset, data, size);
+    } else {
+      memcpy(data, m_data + offset, size);
+    }
   }
 
   u8* m_data = nullptr;

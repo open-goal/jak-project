@@ -7,6 +7,8 @@ add_library(common
         dma/dma.cpp
         dma/dma_copy.cpp
         dma/gs.cpp
+        fbx/FBX.cpp
+        fbx/FbxBuilder.cpp
         global_profiler/GlobalProfiler.cpp
         goos/Interpreter.cpp
         goos/Object.cpp
@@ -49,8 +51,8 @@ add_library(common
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 
-if(WIN32)
+if (WIN32)
     target_link_libraries(common wsock32 ws2_32 windowsapp)
-else()
+else ()
     target_link_libraries(common stdc++fs)
-endif()
+endif ()
