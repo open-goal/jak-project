@@ -25,6 +25,7 @@ XSocketClient::~XSocketClient() {
 
 void XSocketClient::disconnect() {
   close_socket(client_socket);
+  client_socket = -1;
 }
 
 bool XSocketClient::connect() {

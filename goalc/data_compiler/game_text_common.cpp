@@ -163,7 +163,7 @@ void compile_game_subtitle(const std::vector<std::string>& filenames,
   for (auto& filename : filenames) {
     fmt::print("[Build Game Subtitle] {}\n", filename.c_str());
     auto code = reader.read_from_file({filename});
-    parse_subtitle(code, text_ver, db);
+    parse_subtitle(code, text_ver, db, filename);
   }
   compile_subtitle(db);
 }

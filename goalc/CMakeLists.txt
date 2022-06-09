@@ -30,6 +30,7 @@ add_library(compiler
         data_compiler/game_text_common.cpp
         data_compiler/dir_tpages.cpp
         data_compiler/game_count.cpp
+        data_compiler/DataObjectGenerator.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp
         listener/Listener.cpp

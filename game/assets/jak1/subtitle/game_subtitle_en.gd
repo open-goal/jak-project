@@ -253,15 +253,15 @@
 ;; -----------------
 
 ("ASSTLP01" :hint #x0
-  (0 "KEIRA" "WHAT 1")
+  (0 "KEIRA" "HMM...")
   )
 
 ("ASSTLP02" :hint #x0
-  (0 "KEIRA" "SHUT UP")
+  (0 "KEIRA" "GOTTA GET THIS HEAT SHIELD WORKING...")
   )
 
 ("ASSTLP03" :hint #x0
-  (0 "KEIRA" "WHAT 2")
+  (0 "KEIRA" "WE NEED POWER CELLS TO FUEL THE HEAT SHIELD...")
   )
 
 ("ASSTLP04" :hint #x0

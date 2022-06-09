@@ -14,12 +14,10 @@ class SubtitleEditorDB {
     std::string continue_name;
     std::vector<double> move_to;
     std::string execute_code;
+    bool move_first;
     std::vector<std::string> requirements;
   };
 };
-
-// TODO List:
-// - create a deserializer to update the file
 
 // TODO Later:
 // - Hints, these seem less annoying but there are a lot of them
@@ -39,7 +37,7 @@ class SubtitleEditor {
 
   GameSubtitleDB m_subtitle_db;
   std::map<std::string, SubtitleEditorDB::Entry> m_db = {};
-  std::optional<GameSubtitleSceneInfo> m_current_scene = {};
+  GameSubtitleSceneInfo* m_current_scene = nullptr;
   std::string m_filter;
   std::string m_filter_hints;
 
@@ -57,19 +55,20 @@ class SubtitleEditor {
 
   std::string m_filter_placeholder = "Filter List...";
 
+  std::optional<bool> m_files_saved_successfully = {};
+
   int m_base_language = 0;
-  // NOTE - English is mapped to 0,6 but I don't know how to handle this UX condition where
-  // basically everything is the same, for now that is a special case
-  int m_current_language = 3;
+  int m_current_language = 0;
   // bool m_base_show_lines = false;
   bool m_base_show_missing_cutscenes = true;
 
   // TODO - let the user customize these colors
-  int m_normal_text_color = IM_COL32(255, 255, 255, 255);
+  ImVec4 m_normal_text_color = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);
   int m_selected_text_color = IM_COL32(89, 227, 225, 255);
-  int m_success_text_color = IM_COL32(0, 255, 0, 255);
-  int m_error_text_color = IM_COL32(255, 0, 0, 255);
-  int m_disabled_text_color = IM_COL32(255, 255, 255, 175);
+  ImVec4 m_success_text_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+  ImVec4 m_error_text_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+  ImVec4 m_disabled_text_color = ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
+  ImVec4 m_warning_color = ImVec4(0.619f, 0.443f, 0.0f, 1.0f);
   int m_offscreen_text_color = IM_COL32(240, 242, 102, 255);
   // TODO - cycle speaker colors
 

@@ -6,7 +6,7 @@
 #include <common/util/FileUtil.h>
 #include "third-party/json.hpp"
 
-void write_subtitle_db_to_files(const GameSubtitleDB& db) {
+bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
   // Write the subtitles out
   std::vector<int> completed_banks = {};
   for (const auto& [id, bank] : db.m_banks) {
@@ -76,4 +76,6 @@ void write_subtitle_db_to_files(const GameSubtitleDB& db) {
                            "subtitle" / "subtitle-groups.json")
                               .string();
   file_util::write_text_file(file_path, json.dump(2));
+
+  return true;
 }
