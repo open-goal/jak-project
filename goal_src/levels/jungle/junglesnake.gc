@@ -6,6 +6,7 @@
 ;; dgos: JUN, JUNGLE, L1
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/junglesnake-ag.gc")
 
 (defskelgroup *junglesnake-sg* junglesnake junglesnake-lod0-jg junglesnake-idle-ja
@@ -18,13 +19,11 @@
   :id 173
   :flags (use-local-clock)
   :bounds (static-bspherem 0 -12 0 14)
-  :parts
-  ((sp-item 799 :period 300 :length 150))
+  :parts ((sp-item 799 :period 300 :length 150))
   )
 
 (defpart 799
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
     (sp-flt spt-num 1.0)
     (sp-rnd-flt spt-x (meters -9) (meters 18) 1.0)
     (sp-flt spt-y (meters -6))
@@ -120,33 +119,20 @@
          ((and (-> self is-lethal?)
                (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
                )
-          (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-2 from) self)
-            (set! (-> a1-2 num-params) 2)
-            (set! (-> a1-2 message) 'attack)
-            (set! (-> a1-2 param 0) (-> arg3 param 0))
-            (set! (-> a1-2 param 1) (the-as uint (new 'static 'attack-info)))
-            (when (send-event-function arg0 a1-2)
-              (let ((v0-1 (the-as object #t)))
-                (set! (-> self hit-player) (the-as symbol v0-1))
-                v0-1
-                )
+          (when (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+            (let ((v0-1 (the-as object #t)))
+              (set! (-> self hit-player) (the-as symbol v0-1))
+              v0-1
               )
             )
           )
          (else
            (do-push-aways! (-> self root-override))
-           (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> a1-3 from) self)
-             (set! (-> a1-3 num-params) 2)
-             (set! (-> a1-3 message) 'shove)
-             (set! (-> a1-3 param 0) (-> arg3 param 0))
-             (let ((v1-17 (new 'static 'attack-info :mask #xc0)))
-               (set! (-> v1-17 shove-back) 8192.0)
-               (set! (-> v1-17 shove-up) 2048.0)
-               (set! (-> a1-3 param 1) (the-as uint v1-17))
-               )
-             (send-event-function arg0 a1-3)
+           (send-event
+             arg0
+             'shove
+             (-> arg3 param 0)
+             (static-attack-info ((shove-back (meters 2)) (shove-up (meters 0.5))))
              )
            )
          )
@@ -337,10 +323,8 @@ junglesnake-default-event-handler
   )
 
 (defstate junglesnake-sleeping (junglesnake)
-  :event
-  junglesnake-default-event-handler
-  :enter
-  (behavior ()
+  :event junglesnake-default-event-handler
+  :enter (behavior ()
     (set! (-> self skel postbind-function) #f)
     (set! (-> self track-player-ry) #f)
     (set! (-> self track-player-tilt) #f)
@@ -349,8 +333,7 @@ junglesnake-default-event-handler
     (logior! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when *target*
       (let* ((a0-1 (target-pos 0))
              (f0-1 (- (-> a0-1 y) (-> self root-override trans y)))
@@ -362,8 +345,7 @@ junglesnake-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
@@ -372,10 +354,8 @@ junglesnake-default-event-handler
   )
 
 (defstate junglesnake-wake (junglesnake)
-  :event
-  junglesnake-default-event-handler
-  :enter
-  (behavior ()
+  :event junglesnake-default-event-handler
+  :enter (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (set! (-> self track-player-ry) #f)
     (set! (-> self track-player-tilt) #f)
@@ -384,8 +364,7 @@ junglesnake-default-event-handler
     0
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (dummy-20 self)
     (when *target*
       (if *target*
@@ -399,8 +378,7 @@ junglesnake-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :group! junglesnake-drop-down-ja :num! (seek! max 0.85) :frame-num 0.5)
     (until (ja-done? 0)
       (suspend)
@@ -409,22 +387,18 @@ junglesnake-default-event-handler
     (go junglesnake-tracking)
     (none)
     )
-  :post
-  (the-as (function none :behavior junglesnake) transform-post)
+  :post (the-as (function none :behavior junglesnake) transform-post)
   )
 
 (defstate junglesnake-tracking (junglesnake)
-  :event
-  junglesnake-default-event-handler
-  :enter
-  (behavior ()
+  :event junglesnake-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self track-player-ry) #t)
     (set! (-> self track-player-tilt) #t)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and (and *target* (>= 24576.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
              (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self refractory-delay))
              (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
@@ -453,8 +427,7 @@ junglesnake-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((ja-group? junglesnake-idle-ja)
        (while (not (ja-done? 0))
@@ -475,25 +448,20 @@ junglesnake-default-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior junglesnake) transform-post)
+  :post (the-as (function none :behavior junglesnake) transform-post)
   )
 
 (defstate junglesnake-attack (junglesnake)
-  :event
-  junglesnake-default-event-handler
-  :enter
-  (behavior ()
+  :event junglesnake-default-event-handler
+  :enter (behavior ()
     (set! (-> self hit-player) #f)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (dummy-24 self)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (dummy-20 self)
     (when *target*
       (if *target*
@@ -507,8 +475,7 @@ junglesnake-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self track-player-ry) #t)
     (set! (-> self track-player-tilt) #t)
     (ja-channel-push! 2 (seconds 0.15))
@@ -551,15 +518,12 @@ junglesnake-default-event-handler
     (go junglesnake-tracking)
     (none)
     )
-  :post
-  (the-as (function none :behavior junglesnake) transform-post)
+  :post (the-as (function none :behavior junglesnake) transform-post)
   )
 
 (defstate junglesnake-give-up (junglesnake)
-  :event
-  junglesnake-default-event-handler
-  :enter
-  (behavior ()
+  :event junglesnake-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self track-player-ry) #f)
     (set! (-> self track-player-tilt) #f)
@@ -567,13 +531,11 @@ junglesnake-default-event-handler
     (set! (-> self des-tilt) (-> self tilt))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (dummy-20 self)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (let ((s5-0 (new 'stack-no-clear 'vector)))
@@ -601,18 +563,15 @@ junglesnake-default-event-handler
     (go junglesnake-sleeping)
     (none)
     )
-  :post
-  (the-as (function none :behavior junglesnake) transform-post)
+  :post (the-as (function none :behavior junglesnake) transform-post)
   )
 
 (defstate junglesnake-die (junglesnake)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior junglesnake)
     process-drawable-death-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
     (clear-collide-with-as (-> self root-override))
     (ja-channel-push! 1 (seconds 0.15))
@@ -624,8 +583,7 @@ junglesnake-default-event-handler
     (cleanup-for-death self)
     (none)
     )
-  :post
-  (the-as (function none :behavior junglesnake) ja-post)
+  :post (the-as (function none :behavior junglesnake) ja-post)
   )
 
 (defmethod dummy-23 junglesnake ((obj junglesnake))

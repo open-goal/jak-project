@@ -73,16 +73,8 @@
 
 (defbehavior muse-to-idle sculptor ((arg0 muse))
   (if (not (handle->process (-> arg0 incomming-attack-id)))
-      (set! (-> arg0 incomming-attack-id) (ppointer->handle (process-spawn
-                                                              manipy
-                                                              manipy-init
-                                                              (-> arg0 collide-info trans)
-                                                              (-> arg0 entity)
-                                                              *sculptor-muse-sg*
-                                                              #f
-                                                              :to arg0
-                                                              )
-                                                            )
+      (set! (-> arg0 incomming-attack-id)
+            (ppointer->handle (manipy-spawn (-> arg0 collide-info trans) (-> arg0 entity) *sculptor-muse-sg* #f :to arg0))
             )
       )
   (let ((v1-11 (handle->process (-> arg0 incomming-attack-id))))
@@ -98,8 +90,7 @@
 
 (defstate give-cell (sculptor)
   :virtual #t
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (muse-to-idle (the-as muse self))
     (none)
     )
@@ -115,8 +106,7 @@
        :name "sculptor-introduction"
        :index 16
        :parts 14
-       :command-list
-       '((0 display-level beach special)
+       :command-list '((0 display-level beach special)
          (0 kill "med-res-level-2")
          (0 kill "med-res-level-4")
          (0 kill "med-res-level-6")
@@ -145,9 +135,7 @@
        (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
        (close-current! (-> obj tasks))
        (set! (-> obj muse)
-             (ppointer->handle
-               (process-spawn manipy manipy-init (-> obj root-override trans) (-> obj entity) *sculptor-muse-sg* #f :to obj)
-               )
+             (ppointer->handle (manipy-spawn (-> obj root-override trans) (-> obj entity) *sculptor-muse-sg* #f :to obj))
              )
        (let ((v1-18 (handle->process (-> obj muse))))
          (if v1-18
@@ -161,8 +149,7 @@
        :name "sculptor-resolution"
        :index 18
        :parts 4
-       :command-list
-       '((51 joint "cameraB") (87 joint "camera"))
+       :command-list '((51 joint "cameraB") (87 joint "camera"))
        )
      )
     (else
@@ -192,10 +179,7 @@
 
 (defmethod TODO-RENAME-43 sculptor ((obj sculptor))
   (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
-    (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-4 (the-as number (logior #x3f800000 v1-3)))
-           (f0-2 (+ -1.0 (the-as float v1-4)))
-           )
+    (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.85714287 f0-2)
          (play-ambient (-> obj ambient) "SCU-LO01" #f (-> obj root-override trans))
@@ -225,8 +209,7 @@
 
 (defstate idle (sculptor)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (!= (ja-group) (get-art-elem self))
       (ja-channel-push! 1 (seconds 0.2))
       (ja :group! (get-art-elem self))
@@ -267,10 +250,7 @@
                  )
                )
              )
-           (let* ((v1-97 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                  (v1-98 (the-as number (logior #x3f800000 v1-97)))
-                  (f30-1 (+ -1.0 (the-as float v1-98)))
-                  )
+           (let ((f30-1 (rand-float-gen)))
              (ja-no-eval :group! sculptor-small-to-looking-ja :num! (seek!) :frame-num 0.0)
              (until (ja-done? 0)
                (suspend)
@@ -336,11 +316,7 @@
                    )
                  )
                )
-             (let* ((v1-316 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                    (v1-317 (the-as number (logior #x3f800000 v1-316)))
-                    )
-               (< (+ -1.0 (the-as float v1-317)) 0.5)
-               )
+             (< (rand-float-gen) 0.5)
              )
            (ja-no-eval :group! sculptor-sigh-ja :num! (seek!) :frame-num 0.0)
            (until (ja-done? 0)

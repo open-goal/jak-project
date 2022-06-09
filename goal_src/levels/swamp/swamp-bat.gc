@@ -9,6 +9,7 @@
 (declare-type swamp-bat process-drawable)
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/swamp-bat-ag.gc")
 
 (deftype swamp-bat-idle-path (structure)
@@ -188,10 +189,8 @@ swamp-bat-slave-event-handler
   )
 
 (defstate swamp-bat-slave-idle (swamp-bat-slave)
-  :event
-  swamp-bat-slave-event-handler
-  :code
-  (behavior ()
+  :event swamp-bat-slave-event-handler
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self launch-ready) #f)
     (ja-channel-push! 1 (seconds 0.165))
@@ -255,15 +254,12 @@ swamp-bat-slave-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-post)
+  :post (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-post)
   )
 
 (defstate swamp-bat-slave-launch (swamp-bat-slave)
-  :event
-  swamp-bat-slave-event-handler
-  :code
-  (behavior ()
+  :event swamp-bat-slave-event-handler
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self launch-ready) #f)
     (ja-channel-push! 1 (seconds 0.1))
@@ -289,15 +285,12 @@ swamp-bat-slave-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-post)
+  :post (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-post)
   )
 
 (defstate swamp-bat-slave-swoop (swamp-bat-slave)
-  :event
-  swamp-bat-slave-event-handler
-  :code
-  (behavior ()
+  :event swamp-bat-slave-event-handler
+  :code (behavior ()
     (set! (-> self strafe-envelope) 0.0)
     (ja-channel-push! 1 (seconds 0.1))
     (ja :group! swamp-bat-notice-ja :num! min)
@@ -320,15 +313,12 @@ swamp-bat-slave-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-path-post)
+  :post (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-path-post)
   )
 
 (defstate swamp-bat-slave-strafe (swamp-bat-slave)
-  :event
-  swamp-bat-slave-event-handler
-  :code
-  (behavior ()
+  :event swamp-bat-slave-event-handler
+  :code (behavior ()
     (set! (-> self strafe-envelope) 20480.0)
     (ja-channel-push! 1 (seconds 0.1))
     (ja :group! swamp-bat-strafe-ja)
@@ -341,15 +331,12 @@ swamp-bat-slave-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-path-post)
+  :post (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-path-post)
   )
 
 (defstate swamp-bat-slave-return (swamp-bat-slave)
-  :event
-  swamp-bat-slave-event-handler
-  :code
-  (behavior ()
+  :event swamp-bat-slave-event-handler
+  :code (behavior ()
     (set! (-> self strafe-envelope) 0.0)
     (ja-channel-push! 1 (seconds 0.075))
     (ja :group! swamp-bat-strafe-ja)
@@ -375,18 +362,15 @@ swamp-bat-slave-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-path-post)
+  :post (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-path-post)
   )
 
 (defstate swamp-bat-slave-die (swamp-bat-slave)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior swamp-bat-slave)
     process-drawable-death-event-handler
     )
-  :code
-  (behavior ((arg0 handle))
+  :code (behavior ((arg0 handle))
     (ja-channel-push! 1 (seconds 0.07))
     (let ((gp-0 (new-stack-vector0)))
       (let ((v1-1 (handle->process arg0)))
@@ -406,8 +390,7 @@ swamp-bat-slave-event-handler
     (cleanup-for-death self)
     (none)
     )
-  :post
-  (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-post)
+  :post (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-post)
   )
 
 (defbehavior swamp-bat-slave-init-by-other swamp-bat-slave ((arg0 swamp-bat-slave) (arg1 int))
@@ -531,10 +514,8 @@ swamp-bat-slave-event-handler
   )
 
 (defstate swamp-bat-idle (swamp-bat)
-  :trans
-  swamp-bat-debug
-  :code
-  (behavior ()
+  :trans swamp-bat-debug
+  :code (behavior ()
     (when (zero? (-> self path-count))
       (process-entity-status! self (entity-perm-status dead) #t)
       (deactivate self)
@@ -563,8 +544,7 @@ swamp-bat-slave-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior swamp-bat) #f)
+  :post (the-as (function none :behavior swamp-bat) #f)
   )
 
 (defbehavior swamp-bat-launch-slave swamp-bat ()
@@ -585,10 +565,8 @@ swamp-bat-slave-event-handler
   )
 
 (defstate swamp-bat-launch-slaves (swamp-bat)
-  :trans
-  swamp-bat-debug
-  :code
-  (behavior ()
+  :trans swamp-bat-debug
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (loop
       (swamp-bat-update-path)
@@ -602,8 +580,7 @@ swamp-bat-slave-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior swamp-bat) #f)
+  :post (the-as (function none :behavior swamp-bat) #f)
   )
 
 (defmethod init-from-entity! swamp-bat ((obj swamp-bat) (arg0 entity-actor))
@@ -646,15 +623,7 @@ swamp-bat-slave-event-handler
   (swamp-bat-setup-new-path 0)
   (swamp-bat-update-path)
   (dotimes (s5-1 (-> obj slave-count))
-    (let ((s4-1 (get-process *default-dead-pool* swamp-bat-slave 4512)))
-      (when s4-1
-        (let ((t9-16 (method-of-type swamp-bat-slave activate)))
-          (t9-16 (the-as swamp-bat-slave s4-1) obj 'swamp-bat-slave (the-as pointer #x70004000))
-          )
-        (run-now-in-process s4-1 swamp-bat-slave-init-by-other obj s5-1)
-        (-> s4-1 ppointer)
-        )
-      )
+    (process-spawn swamp-bat-slave obj s5-1 :to obj :stack-size 4512)
     )
   (go swamp-bat-idle)
   (none)

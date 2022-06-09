@@ -6,6 +6,7 @@
 ;; dgos: JUN, JUNGLE, L1
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/junglefish-ag.gc")
 
 (deftype junglefish (nav-enemy)
@@ -33,23 +34,19 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-patrol (junglefish)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior junglefish)
     nav-enemy-default-event-handler
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
       (loop
-        (ja-no-eval :group!
-                    (-> self draw art-group data (-> self nav-info walk-anim))
+        (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim))
                     :num! (seek! max f30-0)
                     :frame-num 0.0
                     )
@@ -61,8 +58,7 @@ nav-enemy-default-event-handler
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.6))
           (set! (-> self target-speed) 0.0)
-          (ja-no-eval :group!
-                      (-> self draw art-group data (-> self nav-info idle-anim))
+          (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim))
                       :num! (seek! max f30-0)
                       :frame-num 0.0
                       )
@@ -72,8 +68,7 @@ nav-enemy-default-event-handler
             (ja :num! (seek! max f30-0))
             )
           (until (not (nav-enemy-rnd-go-idle? 0.2))
-            (ja-no-eval :group!
-                        (-> self draw art-group data (-> self nav-info idle-anim))
+            (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim))
                         :num! (seek! max f30-0)
                         :frame-num 0.0
                         )
@@ -85,8 +80,7 @@ nav-enemy-default-event-handler
           (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.6))
-          (ja-no-eval :group!
-                      (-> self draw art-group data (-> self nav-info walk-anim))
+          (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim))
                       :num! (seek! max f30-0)
                       :frame-num 0.0
                       )
@@ -104,13 +98,11 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-notice (junglefish)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior junglefish)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual nav-enemy-chase)
     (none)
     )
@@ -118,13 +110,11 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-chase (junglefish)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior junglefish)
     nav-enemy-default-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
     (if (and *target* (>= 8192.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
         (go-virtual nav-enemy-attack)
@@ -135,13 +125,11 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-stop-chase (junglefish)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior junglefish)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual nav-enemy-patrol)
     (none)
     )
@@ -149,13 +137,11 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-stare (junglefish)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior junglefish)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual nav-enemy-patrol)
     (none)
     )
@@ -163,13 +149,11 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-give-up (junglefish)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior junglefish)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual nav-enemy-patrol)
     (none)
     )
@@ -177,13 +161,11 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-attack (junglefish)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior junglefish)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! junglefish-chomp-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -193,19 +175,16 @@ nav-enemy-default-event-handler
     (go-virtual nav-enemy-chase)
     (none)
     )
-  :post
-  (the-as (function none :behavior junglefish) nav-enemy-chase-post)
+  :post (the-as (function none :behavior junglefish) nav-enemy-chase-post)
   )
 
 (defstate nav-enemy-victory (junglefish)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior junglefish)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (ja-no-eval :group! junglefish-swim-ja :num! (seek! max 2.0) :frame-num 0.0)
     (until (ja-done? 0)
