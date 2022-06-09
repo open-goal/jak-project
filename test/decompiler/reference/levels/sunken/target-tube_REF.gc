@@ -543,27 +543,30 @@
     (set! (-> self control unknown-float01) 0.0)
     (logior! (-> self control root-prim prim-core action) (collide-action ca-13))
     (remove-exit)
-    (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-4 from) self)
-      (set! (-> a1-4 num-params) 4)
-      (set! (-> a1-4 message) 'update)
-      (set! (-> a1-4 param 0) (the-as uint (-> self tube centertube)))
-      (set! (-> a1-4 param 1) (the-as uint (-> self tube downtube)))
-      (set! (-> a1-4 param 2) (the-as uint (-> self tube sidetube)))
-      (set! (-> a1-4 param 3) (the-as uint (-> self tube foretube)))
-      (cond
-        ((< (the-as float (send-event-function (handle->process (-> self tube tube)) a1-4)) 0.5)
-         (vector-normalize-copy! (-> self control transv) (-> self tube downtube) 40960.0)
-         (forward-up-nopitch->quaternion
-           (-> self control dir-targ)
-           (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> self control transv) 1.0)
-           (-> self control dynam gravity-normal)
-           )
-         (go target-tube-jump (-> *TARGET-bank* tube-jump-height-min) (-> *TARGET-bank* tube-jump-height-max))
-         )
-        (else
-          (go target-tube)
+    (cond
+      ((< (the-as
+            float
+            (send-event
+              (handle->process (-> self tube tube))
+              'update
+              (-> self tube centertube)
+              (-> self tube downtube)
+              (-> self tube sidetube)
+              (-> self tube foretube)
+              )
+            )
+          0.5
           )
+       (vector-normalize-copy! (-> self control transv) (-> self tube downtube) 40960.0)
+       (forward-up-nopitch->quaternion
+         (-> self control dir-targ)
+         (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> self control transv) 1.0)
+         (-> self control dynam gravity-normal)
+         )
+       (go target-tube-jump (-> *TARGET-bank* tube-jump-height-min) (-> *TARGET-bank* tube-jump-height-max))
+       )
+      (else
+        (go target-tube)
         )
       )
     (none)

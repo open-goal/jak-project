@@ -256,7 +256,7 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
       }
     }
 
-    auto as_cond_e = dynamic_cast<CondNoElseElement*>(in);
+    auto as_cond_e = dynamic_cast<CondWithElseElement*>(in);
     if (as_cond_e) {
       auto sub_res = rewrite_shelled_return_form(
           matcher, as_cond_e->entries.at(0).condition->try_as_single_element(), env, pool, func,
@@ -264,7 +264,8 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
 
       if (std::get<0>(sub_res).matched) {
         as_cond_e->entries.at(0).condition = std::get<1>(sub_res);
-        return {std::get<0>(sub_res), pool.form<CondNoElseElement>(as_cond_e->entries), false};
+        return {std::get<0>(sub_res),
+                pool.form<CondWithElseElement>(as_cond_e->entries, as_cond_e->else_ir), false};
       }
     }
 

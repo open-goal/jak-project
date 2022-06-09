@@ -779,46 +779,39 @@
                  (< (-> *target* control trans y) (+ 20480.0 (-> self activation-point y)))
                  (not (-> self child))
                  )
-        (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-2 from) self)
-          (set! (-> a1-2 num-params) 2)
-          (set! (-> a1-2 message) 'query)
-          (set! (-> a1-2 param 0) (the-as uint 'powerup))
-          (set! (-> a1-2 param 1) (the-as uint 3))
-          (cond
-            ((send-event-function *target* a1-2)
-             (logclear! (-> self mask) (process-mask actor-pause))
-             (logclear! (-> self mask) (process-mask platform))
-             (let ((gp-1 (entity-by-name "junglecam-1")))
-               (cond
-                 (gp-1
-                   (process-spawn
-                     precurbridgecam
-                     :init pov-camera-init-by-other
-                     (-> gp-1 extra trans)
-                     *junglecam-sg*
-                     "precurbridgecam"
-                     0
-                     #f
-                     '()
-                     :to self
-                     )
+        (cond
+          ((send-event *target* 'query 'powerup 3)
+           (logclear! (-> self mask) (process-mask actor-pause))
+           (logclear! (-> self mask) (process-mask platform))
+           (let ((gp-1 (entity-by-name "junglecam-1")))
+             (cond
+               (gp-1
+                 (process-spawn
+                   precurbridgecam
+                   :init pov-camera-init-by-other
+                   (-> gp-1 extra trans)
+                   *junglecam-sg*
+                   "precurbridgecam"
+                   0
+                   #f
+                   '()
+                   :to self
                    )
-                 (else
-                   (format #t "ERROR<GMJ>: position for precursor bridge camera not found~%")
-                   (go precurbridge-activate)
-                   )
+                 )
+               (else
+                 (format #t "ERROR<GMJ>: position for precursor bridge camera not found~%")
+                 (go precurbridge-activate)
                  )
                )
              )
-            (else
-              (level-hint-spawn
-                (game-text-id jungle-precursorbridge-hint)
-                "sksp0039"
-                (the-as entity #f)
-                *entity-pool*
-                (game-task none)
-                )
+           )
+          (else
+            (level-hint-spawn
+              (game-text-id jungle-precursorbridge-hint)
+              "sksp0039"
+              (the-as entity #f)
+              *entity-pool*
+              (game-task none)
               )
             )
           )

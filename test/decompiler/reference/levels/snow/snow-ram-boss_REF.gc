@@ -934,45 +934,38 @@
     (('attack 'bonk 'roll)
      (cond
        ((-> self has-shield?)
-        (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-3 from) self)
-          (set! (-> a1-3 num-params) 2)
-          (set! (-> a1-3 message) 'query)
-          (set! (-> a1-3 param 0) (the-as uint 'powerup))
-          (set! (-> a1-3 param 1) (the-as uint 2))
-          (cond
-            ((send-event-function *target* a1-3)
-             (nav-enemy-set-hit-from-direction arg0)
-             (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 2)))))
-             (go ram-boss-lose-shield)
-             (return #t)
-             v0-4
-             )
-            ((begin
-               (if (zero? (logand (-> self nav-enemy-flags) (nav-enemy-flags navenmf8)))
-                   (do-push-aways! (-> self collide-info))
-                   )
-               (level-hint-spawn
-                 (game-text-id ram-boss-red-eco-hint)
-                 "sksp0346"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
+        (cond
+          ((send-event *target* 'query 'powerup 2)
+           (nav-enemy-set-hit-from-direction arg0)
+           (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 2)))))
+           (go ram-boss-lose-shield)
+           (return #t)
+           v0-4
+           )
+          ((begin
+             (if (zero? (logand (-> self nav-enemy-flags) (nav-enemy-flags navenmf8)))
+                 (do-push-aways! (-> self collide-info))
                  )
-               (>= (- (-> (target-pos 0) y) (-> self collide-info trans y)) 9420.8)
+             (level-hint-spawn
+               (game-text-id ram-boss-red-eco-hint)
+               "sksp0346"
+               (the-as entity #f)
+               *entity-pool*
+               (game-task none)
                )
-             (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 4)) (shove-up (meters 2)))))
-             (go ram-boss-up-defend-block)
-             (return #t)
-             v0-4
+             (>= (- (-> (target-pos 0) y) (-> self collide-info trans y)) 9420.8)
              )
-            (else
-              (when (= arg2 'attack)
-                (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 4)))))
-                (go ram-boss-forward-defend-block)
-                (return #t)
-                v0-4
-                )
+           (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 4)) (shove-up (meters 2)))))
+           (go ram-boss-up-defend-block)
+           (return #t)
+           v0-4
+           )
+          (else
+            (when (= arg2 'attack)
+              (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 4)))))
+              (go ram-boss-forward-defend-block)
+              (return #t)
+              v0-4
               )
             )
           )
