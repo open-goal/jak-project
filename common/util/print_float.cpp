@@ -69,6 +69,13 @@ std::string fixed_point_to_string(s64 value, s64 scale, bool append_trailing_dec
   ASSERT_MSG(false, fmt::format("fixed_point_to_string failed hard. v: {} s: {}", value, scale));
 }
 
+/*!
+ * Wrapper around fixed_point_to_string, for printing seconds.
+ */
+std::string seconds_to_string(s64 value, bool append_trailing_decimal) {
+  return fixed_point_to_string(value, TICKS_PER_SECOND, append_trailing_decimal);
+}
+
 int float_to_cstr(float value, char* buffer, bool append_trailing_decimal) {
   ASSERT(std::isfinite(value));
   // dragonbox gives us:

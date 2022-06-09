@@ -421,6 +421,30 @@ FormElement* rewrite_as_send_event(LetElement* in,
     if (param_val_cast && param_val_cast->type() == TypeSpec("uint")) {
       param_val = param_val_cast->source();
     }
+
+    // fancy casting if necessary
+    if (param_val->to_form(env).is_int()) {
+      auto msg_str = message_name->to_string(env);
+      auto val = param_val->to_form(env).as_int();
+      if (val &&
+          ((param_idx == 1 && (msg_str == "'change-state" || msg_str == "'change-state-no-go" ||
+                               msg_str == "'art-joint-anim")) ||
+           (param_idx == 0 && (msg_str == "'no-look-around" || msg_str == "'no-load-wait" ||
+                               msg_str == "'force-blend")))) {
+        param_val = pool.form<GenericElement>(
+            GenericOperator::make_function(pool.form<ConstantTokenElement>("seconds")),
+            pool.form<ConstantTokenElement>(seconds_to_string(param_val->to_form(env).as_int())));
+      } else if (param_idx == 1) {
+        auto parm0_str = param_values.at(0)->to_string(env);
+        if (parm0_str == "'powerup" || parm0_str == "'pickup") {
+          auto enum_ts = env.dts->ts.try_enum_lookup("pickup-type");
+          if (enum_ts) {
+            param_val = cast_to_int_enum(enum_ts, pool, env, param_val->to_form(env).as_int());
+          }
+        }
+      }
+    }
+
     param_values.push_back(param_val);
   }
 
