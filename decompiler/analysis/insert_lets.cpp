@@ -268,6 +268,17 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
       }
     }
 
+    auto as_while = dynamic_cast<WhileElement*>(in);
+    if (as_while) {
+      auto sub_res = rewrite_shelled_return_form(
+          matcher, as_while->condition->try_as_single_element(), env, pool, func, strip_cast);
+
+      if (std::get<0>(sub_res).matched) {
+        return {std::get<0>(sub_res), pool.form<WhileElement>(std::get<1>(sub_res), as_while->body),
+                false};
+      }
+    }
+
     return {mr, nullptr, false};
   }
 
@@ -431,7 +442,8 @@ FormElement* rewrite_as_send_event(LetElement* in,
       nullptr);
 
   if (!std::get<0>(mr_with_shell).matched) {
-    lg::error("shell match failed, dont know this form: {}", in->to_string(env));
+    lg::error("shell match failed, dont know this form: {}",
+              body->at(3 + param_count)->to_string(env));
     return nullptr;
   }
 
@@ -1362,7 +1374,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
       &cast_type);
 
   if (!std::get<0>(mr_with_shell).matched) {
-    lg::error("shell match failed, dont know this form: {}", in->to_string(env));
+    lg::error("shell match failed, dont know this form: {}", macro_form->to_string(env));
     return nullptr;
   }
 
@@ -1515,7 +1527,8 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
       nullptr);
 
   if (!std::get<0>(mr_with_shell).matched) {
-    lg::error("shell match failed, dont know this form: {}", in->to_string(env));
+    lg::error("shell match failed, dont know this form: {}",
+              in->body()->at(in->body()->size() - 1)->to_string(env));
     return nullptr;
   }
 
@@ -1683,11 +1696,12 @@ FormElement* rewrite_rand_float_gen(LetElement* in, const Env& env, FormPool& po
         nullptr);
 
     if (!std::get<0>(mr_res).matched) {
-      lg::error("shell match failed, dont know this form: {}", in->to_string(env));
+      lg::error("shell match failed, dont know this form: {}", in->body()->at(0)->to_string(env));
       return nullptr;
     }
 
     auto elt = std::get<1>(mr_res)->try_as_single_element();
+    elt->parent_form = in->parent_form;
     return elt;
   }
 }
