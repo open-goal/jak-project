@@ -282,7 +282,8 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
 
     auto as_counter = dynamic_cast<CounterLoopElement*>(in);
     if (as_counter) {
-      auto sub_res = rewrite_shelled_return_form(matcher, as_counter->counter_value()->try_as_single_element(),
+      auto sub_res =
+          rewrite_shelled_return_form(matcher, as_counter->counter_value()->try_as_single_element(),
                                       env, pool, func, strip_cast);
 
       if (std::get<0>(sub_res).matched) {
@@ -1833,7 +1834,10 @@ FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, For
   return in;
 }
 
-FormElement* rewrite_multi_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats) {
+FormElement* rewrite_multi_let(LetElement* in,
+                               const Env& env,
+                               FormPool& pool,
+                               LetRewriteStats& stats) {
   if (in->entries().size() >= 2) {
     auto as_rand_float_gen = rewrite_rand_float_gen(in, env, pool);
     if (as_rand_float_gen) {
