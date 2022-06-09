@@ -1438,6 +1438,12 @@ class CounterLoopElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   bool allow_in_if() const override { return false; }
+  Kind kind() const { return m_kind; }
+  Form* counter_value() const { return m_check_value; }
+  Form* body() const { return m_body; }
+  RegisterAccess var_init() const { return m_var_init; }
+  RegisterAccess var_check() const { return m_var_check; }
+  RegisterAccess var_inc() const { return m_var_inc; }
 
  private:
   RegisterAccess m_var_init, m_var_check, m_var_inc;

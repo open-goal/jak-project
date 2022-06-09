@@ -279,6 +279,20 @@ std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
       }
     }
 
+    auto as_counter = dynamic_cast<CounterLoopElement*>(in);
+    if (as_counter) {
+      auto sub_res = rewrite_shelled_return_form(matcher, as_counter->counter_value()->try_as_single_element(),
+                                      env, pool, func, strip_cast);
+
+      if (std::get<0>(sub_res).matched) {
+        return {std::get<0>(sub_res),
+                pool.form<CounterLoopElement>(as_counter->kind(), as_counter->var_init(),
+                                              as_counter->var_check(), as_counter->var_inc(),
+                                              std::get<1>(sub_res), as_counter->body()),
+                false};
+      }
+    }
+
     return {mr, nullptr, false};
   }
 
