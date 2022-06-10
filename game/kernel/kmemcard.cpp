@@ -181,11 +181,12 @@ u32 mc_checksum(Ptr<u8> data, s32 size) {
  */
 bool file_is_present(int id, int bank = 0) {
   auto bankname = file_util::get_user_memcard_dir() / filename[4 + id * 2 + bank];
-  if (!std::filesystem::exists(bankname)) {
-    // file doesn't exist...
+  if (!std::filesystem::exists(bankname) ||
+      std::filesystem::file_size(bankname) < BANK_TOTAL_SIZE) {
+    // file doesn't exist, or size is bad. we do not want to open files that will crash on read!
     return false;
   }
-  // avoid file check tbh. there shouldn't be any saves with a save count of zero anyway.
+  // avoid file check here tbh. there shouldn't be any saves with a save count of zero anyway.
   // the file check is quite slow and ultimately not very useful.
   return true;
 
@@ -278,7 +279,7 @@ void pc_game_save_synch() {
   auto save_path = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p4];
   file_util::create_dir_if_needed_for_file(save_path.string());
   auto fd = fopen(save_path.string().c_str(), "wb");
-  fmt::print("[MC] synchronous save file open took {:.2f}ms\n", mc_timer.getMs());
+  mc_print("synchronous save file open took {:.2f}ms\n", mc_timer.getMs());
   if (fd) {
     // cb_openedsave //
     mc_print("save file opened, writing header...");
@@ -331,7 +332,7 @@ void pc_game_save_synch() {
     op.result = McStatusCode::INTERNAL_ERROR;
   }
 
-  fmt::print("[MC] synchronous save took {:.2f}ms\n", mc_timer.getMs());
+  mc_print("[MC] synchronous save took {:.2f}ms\n", mc_timer.getMs());
 }
 
 void pc_game_load_open_file(FILE* fd) {
@@ -470,7 +471,7 @@ void pc_game_load_synch() {
   auto fd = fopen(path.string().c_str(), "rb");
   pc_game_load_open_file(fd);
 
-  fmt::print("[MC] synchronous load took {:.2f}ms\n", mc_timer.getMs());
+  mc_print("synchronous load took {:.2f}ms\n", mc_timer.getMs());
 }
 
 /*!
@@ -1640,10 +1641,13 @@ void MC_get_status(s32 /*slot*/, Ptr<mc_slot_info> info) {
 //        }
 //
 //        u32 current_save_count = headers[bank]->save_count;
-//        memcpy(op.data_ptr.c(), op.data_ptr.c() + bank * BANK_TOTAL_SIZE + sizeof(McHeader),
-//        BANK_SIZE); mc_last_file = op.param2; mc_files[op.param2].most_recent_save_count =
-//        current_save_count; mc_files[op.param2].last_saved_bank = bank; op.operation =
-//        MemoryCardOperationKind::NO_OP; op.result = McStatusCode::OK; mc_print("load succeeded");
+//        memcpy(op.data_ptr.c(), op.data_ptr.c() + bank * BANK_TOTAL_SIZE + sizeof(McHeader), BANK_SIZE);
+//        mc_last_file = op.param2;
+//        mc_files[op.param2].most_recent_save_count = current_save_count;
+//        mc_files[op.param2].last_saved_bank = bank;
+//        op.operation = MemoryCardOperationKind::NO_OP;
+//        op.result = McStatusCode::OK;
+//        mc_print("load succeeded");
 //      }
 //    }
 //  }
