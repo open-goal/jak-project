@@ -49,6 +49,7 @@
 #include "game/overlord/srpc.h"
 #include "game/overlord/stream.h"
 #include "game/overlord/sbank.h"
+#include "game/overlord/ssound.h"
 
 #include "game/graphics/gfx.h"
 
@@ -329,6 +330,9 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
     Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
     Gfx::Exit();
   }
+
+  // hack to make the IOP die quicker if it's loading/unloading music
+  gMusicFade = 0;
 
   deci_thread.join();
   // DECI has been killed, shutdown!

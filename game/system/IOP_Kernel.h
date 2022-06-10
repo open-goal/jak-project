@@ -123,11 +123,6 @@ class IOP_Kernel {
    * Returns if it got something.
    */
   s32 PollMbx(void** msg, s32 mbx) {
-    if (_currentThread != -1 && threads.at(_currentThread).wantExit) {
-      // total hack - returning this value causes the ISO thread to error out and quit.
-      return KE_WAIT_DELETE;
-    }
-
     ASSERT(mbx < (s32)mbxs.size());
     s32 gotSomething = mbxs[mbx].empty() ? 0 : 1;
     if (gotSomething) {
@@ -164,6 +159,9 @@ class IOP_Kernel {
                s32 sendSize,
                void* recvBuff,
                s32 recvSize);
+
+  bool GetWantExit(s32 thid) const { return threads.at(thid).wantExit; }
+  bool OnlyThreadAlive(s32 thid);
 
  private:
   void setupThread(s32 id);
