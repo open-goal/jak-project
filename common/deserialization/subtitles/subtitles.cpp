@@ -49,7 +49,7 @@ bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
             file_contents += fmt::format("  ({})\n", line.frame);
           } else {
             file_contents += fmt::format("  ({}", line.frame);
-            if (line.offscreen) {
+            if (line.offscreen && scene_info.m_kind == SubtitleSceneKind::Movie) {
               file_contents += " :offscreen";
             }
             file_contents += fmt::format(" \"{}\"", line.speaker_utf8);
