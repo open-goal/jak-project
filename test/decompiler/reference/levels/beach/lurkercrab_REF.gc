@@ -7,16 +7,14 @@
 (defpartgroup group-lurkercrab-slide
   :id 159
   :bounds (static-bspherem 0 -12 0 14)
-  :parts
-  ((sp-item 663 :fade-after (meters 40) :falloff-to (meters 40))
+  :parts ((sp-item 663 :fade-after (meters 40) :falloff-to (meters 40))
     (sp-item 664 :fade-after (meters 40) :falloff-to (meters 40))
     )
   )
 
 ;; failed to figure out what this is:
 (defpart 663
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-rnd-flt spt-num 0.3 0.3 1.0)
     (sp-flt spt-y (meters -2))
     (sp-rnd-flt spt-scale-x (meters 2) (meters 2) 1.0)
@@ -36,8 +34,7 @@
 
 ;; failed to figure out what this is:
 (defpart 664
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-rnd-flt spt-num 0.1 1.0 1.0)
     (sp-flt spt-y (meters -2))
     (sp-rnd-flt spt-scale-x (meters 0.2) (meters 0.2) 1.0)
@@ -217,18 +214,15 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-idle (lurkercrab)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkercrab)
     nav-enemy-default-event-handler
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self draw force-lod) -1)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self target-speed) 0.0)
     (set! (-> self draw force-lod) 2)
     (ja-channel-push! 1 (seconds 0.075))
@@ -289,20 +283,17 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-patrol (lurkercrab)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkercrab)
     nav-enemy-default-event-handler
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (lurkercrab-invulnerable)
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (ja-group? lurkercrab-idle-ja)
       (ja-no-eval :group! lurkercrab-idle-to-walk-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -368,13 +359,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-notice (lurkercrab)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkercrab)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual nav-enemy-chase)
     (none)
     )
@@ -383,19 +372,16 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-chase (lurkercrab)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkercrab)
     nav-enemy-default-event-handler
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (lurkercrab-invulnerable)
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (logtest? (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15))
         (go-virtual nav-enemy-victory)
         )
@@ -404,8 +390,7 @@ nav-enemy-default-event-handler
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
     (ja-channel-push! 1 (seconds 0.075))
     (loop
@@ -461,13 +446,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (lurkercrab)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkercrab)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual nav-enemy-patrol)
     (none)
     )
@@ -476,13 +459,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-stare (lurkercrab)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkercrab)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual nav-enemy-patrol)
     (none)
     )
@@ -491,13 +472,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-victory (lurkercrab)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkercrab)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (ja-channel-push! 1 (seconds 0.075))
     (ja :group! (-> self draw art-group data (-> self nav-info victory-anim)))
@@ -512,18 +491,15 @@ nav-enemy-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate lurkercrab-pushed (lurkercrab)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkercrab)
     nav-enemy-default-event-handler
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self orient) #t)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self momentum-speed) 57344.0)
     (set! (-> self target-speed) 0.0)
     (set! (-> self orient) #f)
@@ -545,8 +521,7 @@ nav-enemy-default-event-handler
     (go-virtual nav-enemy-chase)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (let ((a0-0 (-> self part))
           (a1-0 (-> self collide-info root-prim prim-core))
           )

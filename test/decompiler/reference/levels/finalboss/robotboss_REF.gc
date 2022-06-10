@@ -165,8 +165,7 @@
               )
          )
     cfg-37
-    :delay
-    (empty-form)
+    :delay (empty-form)
     )
   (if (or (not (-> *camera* cam-entity))
           (not (string=
@@ -187,18 +186,11 @@
              )
          )
     cfg-49
-    :delay
-    (empty-form)
+    :delay (empty-form)
     )
-  (let ((a1-18 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-18 from) self)
-    (set! (-> a1-18 num-params) 1)
-    (set! (-> a1-18 message) 'query-state)
-    (set! (-> a1-18 param 0) (the-as uint cam-robotboss))
-    (when (not (send-event-function *camera* a1-18))
-      (send-event *camera* 'change-state cam-robotboss 300)
-      (send-event *camera* 'clear-entity)
-      )
+  (when (not (send-event *camera* 'query-state cam-robotboss))
+    (send-event *camera* 'change-state cam-robotboss (seconds 1))
+    (send-event *camera* 'clear-entity)
     )
   (b! #t cfg-66 :delay (nop!))
   (label cfg-49)
@@ -209,35 +201,23 @@
                        )
                   )
              )
-    (let ((a1-24 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-24 from) self)
-      (set! (-> a1-24 num-params) 1)
-      (set! (-> a1-24 message) 'query-state)
-      (set! (-> a1-24 param 0) (the-as uint cam-string))
-      (when (not (send-event-function *camera* a1-24))
-        (send-event *camera* 'point-of-interest #f)
-        (send-event *camera* 'force-blend 300)
-        (send-event *camera* 'clear-entity)
-        (send-event *camera* 'change-state cam-string 300)
-        )
+    (when (not (send-event *camera* 'query-state cam-string))
+      (send-event *camera* 'point-of-interest #f)
+      (send-event *camera* 'force-blend (seconds 1))
+      (send-event *camera* 'clear-entity)
+      (send-event *camera* 'change-state cam-string (seconds 1))
       )
     )
   (label cfg-66)
-  (let ((a1-29 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-29 from) self)
-    (set! (-> a1-29 num-params) 1)
-    (set! (-> a1-29 message) 'query-state)
-    (set! (-> a1-29 param 0) (the-as uint cam-string))
-    (cond
-      ((send-event-function *camera* a1-29)
+  (cond
+    ((send-event *camera* 'query-state cam-string)
+     )
+    ((-> self use-interesting)
+     (let ((s5-10 (new 'stack-no-clear 'vector)))
+       (vector<-cspace! s5-10 (-> self node-list data 87))
+       (send-event *camera* 'point-of-interest s5-10)
        )
-      ((-> self use-interesting)
-       (let ((s5-10 (new 'stack-no-clear 'vector)))
-         (vector<-cspace! s5-10 (-> self node-list data 87))
-         (send-event *camera* 'point-of-interest s5-10)
-         )
-       )
-      )
+     )
     )
   (when (and arg0 *debug-segment* (cpad-pressed? 1 x))
     (logclear! (-> *cpad-list* cpads 1 button0-abs 0) (pad-buttons x))
@@ -264,19 +244,9 @@
   (set! (-> self vulnerable) arg0)
   (let ((gp-0 (new 'stack 'sphere)))
     (set! (-> gp-0 w) 4096.0)
-    (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
-      (set! (-> self shot-attractor)
-            (ppointer->handle
-              (when s5-0
-                (let ((t9-2 (method-of-type manipy activate)))
-                  (t9-2 (the-as manipy s5-0) self 'manipy (the-as pointer #x70004000))
-                  )
-                (run-now-in-process s5-0 manipy-init (-> self root-override trans) (-> self entity) *redring-sg* gp-0)
-                (-> s5-0 ppointer)
-                )
-              )
-            )
-      )
+    (set! (-> self shot-attractor)
+          (ppointer->handle (manipy-spawn (-> self root-override trans) (-> self entity) *redring-sg* gp-0 :to self))
+          )
     )
   (send-event (handle->process (-> self shot-attractor)) 'attackable #t)
   (send-event (handle->process (-> self shot-attractor)) 'draw #f)
@@ -370,6 +340,7 @@
   )
 
 ;; definition for function robotboss-darkecobomb
+;; INFO: Return type mismatch (pointer process) vs (pointer part-tracker).
 ;; Used lq/sq
 (defbehavior robotboss-darkecobomb robotboss ((arg0 vector) (arg1 float))
   (+! (-> self children-spawned) 1)
@@ -378,24 +349,18 @@
       (vector<-cspace! gp-0 (-> self node-list data 60))
       (set! (-> s4-0 quad) (-> self entity extra trans quad))
       (vector+! s4-0 s4-0 arg0)
-      (let ((s3-1 (get-process *default-dead-pool* darkecobomb #x4000)))
-        (when s3-1
-          (let ((t9-2 (method-of-type darkecobomb activate)))
-            (t9-2 (the-as darkecobomb s3-1) self 'darkecobomb (the-as pointer #x70004000))
-            )
-          (run-now-in-process s3-1 darkecobomb-init-by-other gp-0 s4-0 61440.0 300 arg1)
-          (-> s3-1 ppointer)
-          )
-        )
+      (process-spawn darkecobomb gp-0 s4-0 61440.0 300 arg1 :to self)
       )
-    (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when s5-1
-        (let ((t9-5 (method-of-type part-tracker activate)))
-          (t9-5 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 638) 300 #f #f #f gp-0)
-        (-> s5-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 638)
+      300
+      #f
+      #f
+      #f
+      gp-0
+      :to *entity-pool*
       )
     )
   )
@@ -482,8 +447,7 @@
 
 ;; failed to figure out what this is:
 (defstate robotboss-yellow-dark-bomb-wait (robotboss)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'white-eco-picked-up)
@@ -514,15 +478,13 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (set! (-> self children-spawned) 0)
     0
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self des-cam-entity) #f)
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) self)
@@ -587,15 +549,13 @@
     (send-event (handle->process (-> self white-eco)) 'beam-off)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans (the-as (state robotboss) #f))
     (spool-push *art-control* "green-sagecage-outro-beat-boss-a" 0 self (the-as float -1.0))
     (robotboss-position)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
@@ -657,14 +617,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robotboss-daxter-sacrifice-movie (robotboss)
-  :code
-  (behavior ()
+  :code (behavior ()
     (set-blackout-frames (seconds 100))
     (entity-birth-no-kill (-> self alts 5))
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -694,21 +652,18 @@
 
 ;; failed to figure out what this is:
 (defstate robotboss-white-eco-movie (robotboss)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (set! (-> self children-spawned) 0)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (ja-post)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (spool-push *art-control* "green-sagecage-daxter-sacrifice" 0 self (the-as float -1.0))
     (when (and (< (-> self children-spawned) 1)
                (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.95))
@@ -717,25 +672,12 @@
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (set! (-> gp-0 quad) (-> self entity extra trans quad))
         (set! (-> gp-0 y) (+ 81920.0 (-> gp-0 y)))
-        (let ((s5-0 (get-process *default-dead-pool* light-eco-mother #x4000)))
-          (set! (-> self white-eco)
-                (ppointer->handle
-                  (when s5-0
-                    (let ((t9-2 (method-of-type light-eco-mother activate)))
-                      (t9-2 (the-as light-eco-mother s5-0) self 'light-eco-mother (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process s5-0 light-eco-mother-init-by-other (-> self entity) gp-0)
-                    (-> s5-0 ppointer)
-                    )
-                  )
-                )
-          )
+        (set! (-> self white-eco) (ppointer->handle (process-spawn light-eco-mother (-> self entity) gp-0 :to self)))
         )
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) self)
       (set! (-> a1-0 num-params) 1)
@@ -872,17 +814,7 @@
           )
         )
       )
-    (let* ((gp-0 (get-process *default-dead-pool* finalbosscam #x4000))
-           (gp-1 (ppointer->handle (when gp-0
-                                     (let ((t9-9 (method-of-type finalbosscam activate)))
-                                       (t9-9 (the-as finalbosscam gp-0) self 'finalbosscam (the-as pointer #x70004000))
-                                       )
-                                     (run-now-in-process gp-0 finalbosscam-init-by-other (-> self entity))
-                                     (-> gp-0 ppointer)
-                                     )
-                                   )
-                 )
-           )
+    (let ((gp-1 (ppointer->handle (process-spawn finalbosscam (-> self entity) :to self))))
       (send-event (handle->process gp-1) 'play-anim)
       (suspend)
       (while (movie?)
@@ -908,8 +840,7 @@
 
 ;; failed to figure out what this is:
 (defstate robotboss-yellow-dark-bomb (robotboss)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self old-loc quad) (-> self desired-loc quad))
     (set-vector! (-> self desired-loc) 16384.0 -81920.0 716800.0 1.0)
     (set! (-> self loc-t) 0.0)
@@ -919,8 +850,7 @@
     (play-ambient (-> self ambient) "GOL-AM01" #t (the-as vector #f))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans (the-as (state robotboss) #f))
     (spool-push *art-control* "finalbosscam-white-eco" 0 self (the-as float -1.0))
     (if (>= (-> self loc-t) 1.0)
@@ -929,8 +859,7 @@
     (robotboss-position)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja :group! robotboss-dark-reveal-no-yellow-ja)
     (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
@@ -951,8 +880,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; definition for function robotboss-yellowshot
@@ -972,25 +900,19 @@
       (vector-! s5-0 s5-0 gp-0)
       (vector-normalize! s5-0 (the-as float 819200.0))
       (vector+! s5-0 s5-0 gp-0)
-      (let ((s4-1 (get-process *default-dead-pool* yellowshot #x4000)))
-        (when s4-1
-          (let ((t9-4 (method-of-type yellowshot activate)))
-            (t9-4 (the-as yellowshot s4-1) self 'yellowshot (the-as pointer #x70004000))
-            )
-          (run-now-in-process s4-1 yellowshot-init-by-other gp-0 s5-0 0.0 750)
-          (-> s4-1 ppointer)
-          )
-        )
+      (process-spawn yellowshot gp-0 s5-0 0.0 750 :to self)
       )
     (send-event self 'flash 255.0)
-    (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when s5-1
-        (let ((t9-8 (method-of-type part-tracker activate)))
-          (t9-8 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 642) 300 #f #f #f gp-0)
-        (-> s5-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 642)
+      300
+      #f
+      #f
+      #f
+      gp-0
+      :to *entity-pool*
       )
     )
   (sound-play-by-name (static-sound-name "bfg-fire") (new-sound-id) 1024 0 0 1 #t)
@@ -1009,14 +931,10 @@
 
 ;; failed to figure out what this is:
 (defstate robotboss-yellow-wait (robotboss)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('hit-jak)
-       (let* ((v1-2 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-              (v1-3 (the-as number (logior #x3f800000 v1-2)))
-              (f0-2 (+ -1.0 (the-as float v1-3)))
-              )
+       (let ((f0-2 (rand-float-gen)))
          (cond
            ((< 0.75 f0-2)
             (play-ambient (-> self ambient) "GOL-AM10" #t (the-as vector #f))
@@ -1034,10 +952,7 @@
          )
        )
       (('missed-jak)
-       (let* ((v1-13 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-              (v1-14 (the-as number (logior #x3f800000 v1-13)))
-              (f0-5 (+ -1.0 (the-as float v1-14)))
-              )
+       (let ((f0-5 (rand-float-gen)))
          (if (< 0.5 f0-5)
              (play-ambient (-> self ambient) "GOL-AM14" #t (the-as vector #f))
              (play-ambient (-> self ambient) "MAI-AM02" #t (the-as vector #f))
@@ -1049,8 +964,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self hits-to-go) -1)
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (set! (-> self till-next-shot) 300)
@@ -1058,8 +972,7 @@
     (set! (-> self keep-charging) #f)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (let ((a0-1 (handle->process (-> self shot-attractor))))
       (if a0-1
           (deactivate a0-1)
@@ -1113,8 +1026,7 @@
     (stop! (-> self looping-sound 3))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans robotboss-yellow-dark-bomb)
     (robotboss-shooting-trans 21)
     (cond
@@ -1129,33 +1041,19 @@
        (set! (-> self yellow-smoke) #t)
        (let ((gp-0 (new 'stack-no-clear 'vector)))
          (vector<-cspace! gp-0 (-> self node-list data 27))
-         (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-           (when s5-0
-             (let ((t9-7 (method-of-type part-tracker activate)))
-               (t9-7 (the-as part-tracker s5-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-               )
-             (run-now-in-process s5-0 part-tracker-init (-> *part-group-id-table* 653) 300 #f #f #f gp-0)
-             (-> s5-0 ppointer)
-             )
+         (process-spawn
+           part-tracker
+           :init part-tracker-init
+           (-> *part-group-id-table* 653)
+           300
+           #f
+           #f
+           #f
+           gp-0
+           :to *entity-pool*
            )
          )
-       (let* ((s5-1 (get-process *default-dead-pool* manipy #x4000))
-              (gp-1 (when s5-1
-                      (let ((t9-10 (method-of-type manipy activate)))
-                        (t9-10 (the-as manipy s5-1) self 'manipy (the-as pointer #x70004000))
-                        )
-                      (run-now-in-process
-                        s5-1
-                        manipy-init
-                        (-> self root-override trans)
-                        (-> self entity)
-                        *robotboss-yelloweco-sg*
-                        #f
-                        )
-                      (-> s5-1 ppointer)
-                      )
-                    )
-              )
+       (let ((gp-1 (manipy-spawn (-> self root-override trans) (-> self entity) *robotboss-yelloweco-sg* #f :to self)))
          (send-event (ppointer->process (-> self parent)) 'flash 255.0)
          (send-event (ppointer->process gp-1) 'anim-mode 'play1)
          (send-event (ppointer->process gp-1) 'rot-quat (-> self root-override quat))
@@ -1184,8 +1082,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
@@ -1245,22 +1142,15 @@
                  (or (robotboss-time-to-shoot-yellow) (not (ja-group? robotboss-yellow-hit-ja)))
                  )
         (set! (-> self state-time) (-> *display* game-frame-counter))
-        (let* ((f30-1 (-> self dda yellow-shot-time-min))
-               (f28-0 (-> self dda yellow-shot-time-rnd))
-               (v1-147 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-               (v1-148 (the-as number (logior #x3f800000 v1-147)))
-               )
-          (set! (-> self till-next-shot)
-                (the int (+ f30-1 (the float (the int (* f28-0 (+ -1.0 (the-as float v1-148)))))))
-                )
+        (let ((f30-1 (-> self dda yellow-shot-time-min))
+              (f28-0 (-> self dda yellow-shot-time-rnd))
+              )
+          (set! (-> self till-next-shot) (the int (+ f30-1 (the float (the int (* f28-0 (rand-float-gen)))))))
           )
         (stop! (-> self looping-sound 3))
         (robotboss-yellowshot)
         (robotboss-yellow-eco-on)
-        (let* ((v1-154 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-               (v1-155 (the-as number (logior #x3f800000 v1-154)))
-               (f0-29 (+ -1.0 (the-as float v1-155)))
-               )
+        (let ((f0-29 (rand-float-gen)))
           (cond
             ((< 0.8333333 f0-29)
              (play-ambient (-> self ambient) "GOL-AM04" #t (the-as vector #f))
@@ -1301,8 +1191,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (when *target*
       (if (nonzero? (-> self yellow-gun))
           (set-target! (-> self yellow-gun) (target-pos 5))
@@ -1315,10 +1204,8 @@
 
 ;; failed to figure out what this is:
 (defstate robotboss-yellow (robotboss)
-  :event
-  robotboss-handler
-  :enter
-  (behavior ()
+  :event robotboss-handler
+  :enter (behavior ()
     (set! (-> self old-loc quad) (-> self desired-loc quad))
     (set-vector! (-> self desired-loc) 13653.333 77824.0 491520.0 1.0)
     (set! (-> self loc-t) 0.0)
@@ -1327,8 +1214,7 @@
     (set! (-> self desired-pool-y) -18432.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans robotboss-yellow-wait)
     (if (>= (-> self loc-t) 1.0)
         (go robotboss-yellow-wait)
@@ -1336,8 +1222,7 @@
     (robotboss-position)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
@@ -1371,29 +1256,24 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robotboss-red-dark-bomb-wait (robotboss)
-  :event
-  robotboss-bomb-handler
-  :enter
-  (behavior ()
+  :event robotboss-bomb-handler
+  :enter (behavior ()
     (set! (-> self children-spawned) 0)
     (logior! (-> self alts 11 extra perm status) (entity-perm-status bit-3))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self ignore-camera) #f)
     (set! (-> self des-cam-entity) #f)
     (logclear! (-> self alts 11 extra perm status) (entity-perm-status bit-3))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans robotboss-yellow)
     (if (and (< (-> self children-spawned) 0)
              (or (not *target*) (!= (-> *target* control unknown-surface00 name) 'launch-jump))
@@ -1403,8 +1283,7 @@
     (robotboss-position)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
@@ -1434,14 +1313,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robotboss-red-dark-bomb (robotboss)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self old-loc quad) (-> self desired-loc quad))
     (set-vector! (-> self desired-loc) 0.0 -81920.0 716800.0 1.0)
     (set! (-> self loc-t) 0.0)
@@ -1450,8 +1327,7 @@
     (set! (-> self desired-pool-y) -20480.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans robotboss-red-dark-bomb-wait)
     (robotboss-position)
     (if (>= (-> self loc-t) 1.0)
@@ -1459,8 +1335,7 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja :group! robotboss-dark-reveal-no-red-ja)
     (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
@@ -1481,8 +1356,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; definition of type redshot-launch-info
@@ -1532,20 +1406,16 @@
     0.0
     (dotimes (s3-0 6)
       (let ((s1-0 (-> arg0 info s3-0)))
-        (let* ((f30-0 -40960.0)
-               (f28-0 81920.0)
-               (v1-4 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-               (v1-5 (the-as number (logior #x3f800000 v1-4)))
-               )
-          (set! (-> s1-0 dest x) (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-5)))))
+        (let ((f30-0 -40960.0)
+              (f28-0 81920.0)
+              )
+          (set! (-> s1-0 dest x) (+ f30-0 (* f28-0 (rand-float-gen))))
           )
         (set! (-> s1-0 dest y) 0.0)
-        (let* ((f30-1 -40960.0)
-               (f28-1 81920.0)
-               (v1-10 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-               (v1-11 (the-as number (logior #x3f800000 v1-10)))
-               )
-          (set! (-> s1-0 dest z) (+ f30-1 (* f28-1 (+ -1.0 (the-as float v1-11)))))
+        (let ((f30-1 -40960.0)
+              (f28-1 81920.0)
+              )
+          (set! (-> s1-0 dest z) (+ f30-1 (* f28-1 (rand-float-gen))))
           )
         (set! (-> s1-0 dest w) 1.0)
         )
@@ -1571,14 +1441,10 @@
               (the-as time-frame (+ (the int (* f30-2 (+ -1.0 (the-as float v1-28)))) 180))
               )
         )
-      (let* ((s1-3 (max 150 (- (the-as time-frame s2-0) (-> arg0 info s3-0 flight-time))))
-             (f30-3 60.0)
-             (v1-38 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-             (v1-39 (the-as number (logior #x3f800000 v1-38)))
-             )
-        (set! (-> arg0 info s3-0 stall-time)
-              (the-as time-frame (+ (the int (* f30-3 (+ -1.0 (the-as float v1-39)))) 300 s1-3))
-              )
+      (let ((s1-3 (max 150 (- (the-as time-frame s2-0) (-> arg0 info s3-0 flight-time))))
+            (f30-3 60.0)
+            )
+        (set! (-> arg0 info s3-0 stall-time) (the-as time-frame (+ (the int (* f30-3 (rand-float-gen))) 300 s1-3)))
         )
       (set! s2-0 (the-as int (+ (-> arg0 info s3-0 flight-time) (-> arg0 info s3-0 stall-time))))
       )
@@ -1613,12 +1479,10 @@
                 (s0-0 gp-0)
                 )
             (set! sv-48 (-> sv-32 dest))
-            (let* ((f30-0 20480.0)
-                   (f28-0 12288.0)
-                   (v1-10 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                   (v1-11 (the-as number (logior #x3f800000 v1-10)))
-                   )
-              (set! sv-64 (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-11)))))
+            (let ((f30-0 20480.0)
+                  (f28-0 12288.0)
+                  )
+              (set! sv-64 (+ f30-0 (* f28-0 (rand-float-gen))))
               )
             (set! sv-80 (-> sv-32 flight-time))
             (set! sv-96 (-> sv-32 stall-time))
@@ -1643,14 +1507,16 @@
           )
         )
       (when s5-0
-        (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-          (when s5-1
-            (let ((t9-7 (method-of-type part-tracker activate)))
-              (t9-7 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-              )
-            (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 641) 300 #f #f #f gp-0)
-            (-> s5-1 ppointer)
-            )
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          (-> *part-group-id-table* 641)
+          300
+          #f
+          #f
+          #f
+          gp-0
+          :to *entity-pool*
           )
         (sound-play-by-name (static-sound-name "red-fire") (new-sound-id) 1024 0 0 1 #t)
         )
@@ -1665,14 +1531,10 @@
 
 ;; failed to figure out what this is:
 (defstate robotboss-red-wait (robotboss)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('hit-jak)
-       (let* ((v1-2 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-              (v1-3 (the-as number (logior #x3f800000 v1-2)))
-              (f0-2 (+ -1.0 (the-as float v1-3)))
-              )
+       (let ((f0-2 (rand-float-gen)))
          (cond
            ((< 0.75 f0-2)
             (play-ambient (-> self ambient) "GOL-AM10" #t (the-as vector #f))
@@ -1690,10 +1552,7 @@
          )
        )
       (('missed-jak)
-       (let* ((v1-13 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-              (v1-14 (the-as number (logior #x3f800000 v1-13)))
-              (f0-5 (+ -1.0 (the-as float v1-14)))
-              )
+       (let ((f0-5 (rand-float-gen)))
          (if (< 0.5 f0-5)
              (play-ambient (-> self ambient) "GOL-AM14" #t (the-as vector #f))
              (play-ambient (-> self ambient) "MAI-AM01" #t (the-as vector #f))
@@ -1705,8 +1564,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self hits-to-go) -1)
     (set! (-> self des-cam-entity) "camera-390")
     (set! (-> self use-interesting) #t)
@@ -1715,8 +1573,7 @@
     0
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (let ((a0-1 (handle->process (-> self shot-attractor))))
       (if a0-1
           (deactivate a0-1)
@@ -1780,8 +1637,7 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans robotboss-red-dark-bomb)
     (robotboss-shooting-trans 40)
     (cond
@@ -1809,27 +1665,19 @@
        (set! (-> self red-smoke) #t)
        (let ((gp-0 (new 'stack-no-clear 'vector)))
          (vector<-cspace! gp-0 (-> self node-list data 51))
-         (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-           (when s5-0
-             (let ((t9-7 (method-of-type part-tracker activate)))
-               (t9-7 (the-as part-tracker s5-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-               )
-             (run-now-in-process s5-0 part-tracker-init (-> *part-group-id-table* 649) 300 #f #f #f gp-0)
-             (-> s5-0 ppointer)
-             )
+         (process-spawn
+           part-tracker
+           :init part-tracker-init
+           (-> *part-group-id-table* 649)
+           300
+           #f
+           #f
+           #f
+           gp-0
+           :to *entity-pool*
            )
          )
-       (let* ((s5-1 (get-process *default-dead-pool* manipy #x4000))
-              (gp-1
-                (when s5-1
-                  (let ((t9-10 (method-of-type manipy activate)))
-                    (t9-10 (the-as manipy s5-1) self 'manipy (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process s5-1 manipy-init (-> self root-override trans) (-> self entity) *robotboss-redeco-sg* #f)
-                  (-> s5-1 ppointer)
-                  )
-                )
-              )
+       (let ((gp-1 (manipy-spawn (-> self root-override trans) (-> self entity) *robotboss-redeco-sg* #f :to self)))
          (send-event (ppointer->process (-> self parent)) 'flash 255.0)
          (send-event (ppointer->process gp-1) 'anim-mode 'play1)
          (send-event (ppointer->process gp-1) 'rot-quat (-> self root-override quat))
@@ -1848,8 +1696,7 @@
     (robotboss-position)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
@@ -1873,14 +1720,10 @@
         )
       (label cfg-24)
       (set! (-> self state-time) (-> *display* game-frame-counter))
-      (let* ((f30-0 (-> self dda red-shot-time-min))
-             (f28-0 (-> self dda red-shot-time-rnd))
-             (v1-65 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-             (v1-66 (the-as number (logior #x3f800000 v1-65)))
-             )
-        (set! (-> self till-next-shot)
-              (the int (+ f30-0 (the float (the int (* f28-0 (+ -1.0 (the-as float v1-66)))))))
-              )
+      (let ((f30-0 (-> self dda red-shot-time-min))
+            (f28-0 (-> self dda red-shot-time-rnd))
+            )
+        (set! (-> self till-next-shot) (the int (+ f30-0 (the float (the int (* f28-0 (rand-float-gen)))))))
         )
       (when (not (robotboss-is-red-hit))
         (ja-channel-push! 1 (seconds 0.2))
@@ -1902,12 +1745,10 @@
         (stop! (-> self looping-sound 2))
         )
       (when (not (ja-group? robotboss-red-last-hit-ja))
-        (let* ((v1-120 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-               (v1-121 (the-as number (logior #x3f800000 v1-120)))
-               (f30-1 (+ -1.0 (the-as float v1-121)))
-               (gp-1 (new 'stack-no-clear 'redshot-launch-array))
-               (s5-0 (-> self dda red-shots-min))
-               )
+        (let ((f30-1 (rand-float-gen))
+              (gp-1 (new 'stack-no-clear 'redshot-launch-array))
+              (s5-0 (-> self dda red-shots-min))
+              )
           (robotboss-yellow-eco-on)
           (robotboss-redshot-fill-array gp-1)
           (robotboss-redshot (the-as redshot-launch-info (-> gp-1 info)) #t)
@@ -1921,10 +1762,7 @@
           )
         )
       (when (not (robotboss-is-red-hit))
-        (let* ((v1-135 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-               (v1-136 (the-as number (logior #x3f800000 v1-135)))
-               (f0-33 (+ -1.0 (the-as float v1-136)))
-               )
+        (let ((f0-33 (rand-float-gen)))
           (cond
             ((< 0.8333333 f0-33)
              (play-ambient (-> self ambient) "GOL-AM04" #t (the-as vector #f))
@@ -1964,16 +1802,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robotboss-red (robotboss)
-  :event
-  robotboss-handler
-  :enter
-  (behavior ()
+  :event robotboss-handler
+  :enter (behavior ()
     (set! (-> self old-loc quad) (-> self desired-loc quad))
     (set-vector! (-> self desired-loc) 8192.0 -40960.0 327680.0 1.0)
     (set! (-> self loc-t) 0.0)
@@ -1983,8 +1818,7 @@
     (set-setting! *setting-control* self 'sound-flava #f (the-as float 40.0) 48)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans robotboss-red-wait)
     (if (>= (-> self loc-t) 1.0)
         (go robotboss-red-wait)
@@ -1992,8 +1826,7 @@
     (robotboss-position)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
@@ -2019,28 +1852,23 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robotboss-green-dark-bomb-wait (robotboss)
-  :event
-  robotboss-bomb-handler
-  :enter
-  (behavior ()
+  :event robotboss-bomb-handler
+  :enter (behavior ()
     (set! (-> self children-spawned) 0)
     0
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self ignore-camera) #f)
     (set! (-> self des-cam-entity) #f)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans robotboss-red)
     (if (and (< (-> self children-spawned) 0)
              (or (not *target*) (!= (-> *target* control unknown-surface00 name) 'launch-jump))
@@ -2050,8 +1878,7 @@
     (robotboss-position)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
@@ -2082,14 +1909,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robotboss-green-dark-bomb (robotboss)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self old-loc quad) (-> self desired-loc quad))
     (set-vector! (-> self desired-loc) 16384.0 -81920.0 716800.0 1.0)
     (set! (-> self loc-t) 0.0)
@@ -2099,8 +1924,7 @@
     (play-ambient (-> self ambient) "MAI-AM01" #t (the-as vector #f))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans robotboss-green-dark-bomb-wait)
     (robotboss-position)
     (if (>= (-> self loc-t) 1.0)
@@ -2108,8 +1932,7 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja :group! robotboss-dark-reveal-green-ja)
     (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
@@ -2130,8 +1953,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; definition for function robotboss-greenshot
@@ -2145,25 +1967,19 @@
       (set! (-> s2-0 quad) (-> self entity extra trans quad))
       (set! (-> s2-0 y) (+ -40960.0 (-> s2-0 y)))
       (vector+! s2-0 s2-0 arg0)
-      (let ((s1-1 (get-process *default-dead-pool* greenshot #x4000)))
-        (when s1-1
-          (let ((t9-2 (method-of-type greenshot activate)))
-            (t9-2 (the-as greenshot s1-1) self 'greenshot (the-as pointer #x70004000))
-            )
-          (run-now-in-process s1-1 greenshot-init-by-other gp-0 s2-0 arg1 arg2)
-          (-> s1-1 ppointer)
-          )
-        )
+      (process-spawn greenshot gp-0 s2-0 arg1 arg2 :to self)
       )
     (when arg3
-      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-1
-          (let ((t9-5 (method-of-type part-tracker activate)))
-            (t9-5 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 640) 300 #f #f #f gp-0)
-          (-> s5-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 640)
+        300
+        #f
+        #f
+        #f
+        gp-0
+        :to *entity-pool*
         )
       (sound-play-by-name (static-sound-name "green-fire") (new-sound-id) 1024 0 0 1 #t)
       )
@@ -2173,8 +1989,7 @@
 
 ;; failed to figure out what this is:
 (defstate robotboss-green-wait (robotboss)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (ja-channel-push! 1 (seconds 0.2))
@@ -2197,10 +2012,7 @@
          )
        )
       (('hit-jak)
-       (let* ((v1-8 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-              (v1-9 (the-as number (logior #x3f800000 v1-8)))
-              (f0-2 (+ -1.0 (the-as float v1-9)))
-              )
+       (let ((f0-2 (rand-float-gen)))
          (cond
            ((< 0.75 f0-2)
             (play-ambient (-> self ambient) "GOL-AM10" #t (the-as vector #f))
@@ -2218,10 +2030,7 @@
          )
        )
       (('blob-died)
-       (let* ((v1-19 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-              (v1-20 (the-as number (logior #x3f800000 v1-19)))
-              (f0-5 (+ -1.0 (the-as float v1-20)))
-              )
+       (let ((f0-5 (rand-float-gen)))
          (cond
            ((< 0.75 f0-5)
             (play-ambient (-> self ambient) "MAI-AM02" #t (the-as vector #f))
@@ -2243,16 +2052,14 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (set! (-> self children-spawned) 0)
     (robotboss-setup-for-hits 2 5)
     (set! (-> self des-cam-entity) "camera-385")
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (let ((a0-1 (handle->process (-> self shot-attractor))))
       (if a0-1
           (deactivate a0-1)
@@ -2315,8 +2122,7 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans robotboss-green-dark-bomb)
     (cond
       ((and (>= (- (-> *display* game-frame-counter) (-> self state-time)) (seconds 0.4))
@@ -2362,20 +2168,12 @@
             (< (-> self children-spawned) 10)
             )
        (+! (-> self children-spawned) 1)
-       (let ((gp-0 (get-process *default-dead-pool* green-eco-lurker-gen #x4000)))
-         (when gp-0
-           (let ((t9-16 (method-of-type green-eco-lurker-gen activate)))
-             (t9-16 (the-as green-eco-lurker-gen gp-0) self 'green-eco-lurker-gen (the-as pointer #x70004000))
-             )
-           (run-now-in-process
-             gp-0
-             green-eco-lurker-gen-init-by-other
-             (-> self entity)
-             (-> self entity extra trans)
-             (-> self dda num-blobs)
-             )
-           (-> gp-0 ppointer)
-           )
+       (process-spawn
+         green-eco-lurker-gen
+         (-> self entity)
+         (-> self entity extra trans)
+         (-> self dda num-blobs)
+         :to self
          )
        (set! (-> self old-loc quad) (-> self desired-loc quad))
        (set-vector! (-> self desired-loc) 24576.0 0.0 655360.0 1.0)
@@ -2394,8 +2192,7 @@
     (robotboss-position)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
@@ -2419,16 +2216,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robotboss-green (robotboss)
-  :event
-  robotboss-handler
-  :enter
-  (behavior ()
+  :event robotboss-handler
+  :enter (behavior ()
     (set! (-> self old-loc quad) (-> self desired-loc quad))
     (set-vector! (-> self desired-loc) 24576.0 0.0 245760.0 1.0)
     (set! (-> self loc-t) 0.0)
@@ -2439,8 +2233,7 @@
     (set-setting! *setting-control* self 'sound-flava #f (the-as float 40.0) 47)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans robotboss-green-wait)
     (if (>= (-> self loc-t) 1.0)
         (go robotboss-green-wait)
@@ -2448,8 +2241,7 @@
     (robotboss-position)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
@@ -2475,28 +2267,23 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robotboss-blue-dark-bomb-wait (robotboss)
-  :event
-  robotboss-bomb-handler
-  :enter
-  (behavior ()
+  :event robotboss-bomb-handler
+  :enter (behavior ()
     (set! (-> self children-spawned) 0)
     0
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self ignore-camera) #f)
     (set! (-> self des-cam-entity) #f)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans robotboss-green)
     (if (and (< (-> self children-spawned) 0)
              (or (not *target*) (!= (-> *target* control unknown-surface00 name) 'launch-jump))
@@ -2506,8 +2293,7 @@
     (robotboss-position)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
@@ -2546,14 +2332,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robotboss-blue-dark-bomb (robotboss)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self old-loc quad) (-> self desired-loc quad))
     (set-vector! (-> self desired-loc) 16384.0 -118784.0 614400.0 1.0)
     (set! (-> self loc-t) 0.0)
@@ -2562,8 +2346,7 @@
     (set! (-> self desired-pool-y) -28672.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans robotboss-blue-dark-bomb-wait)
     (robotboss-position)
     (if (>= (-> self loc-t) 1.0)
@@ -2571,8 +2354,7 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja :group! robotboss-dark-reveal-ja)
     (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
@@ -2593,8 +2375,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; definition for function robotboss-blue-beam
@@ -2631,31 +2412,20 @@
                  (a2-0 (new 'stack-no-clear 'vector))
                  )
              (vector-! a2-0 gp-0 s4-0)
-             (when (>= (fill-and-probe-using-line-sphere
-                         *collide-cache*
-                         s4-0
-                         a2-0
-                         (the-as float 4096.0)
-                         (collide-kind target)
-                         self
-                         t2-0
-                         1
-                         )
-                       0.0
+             (if (>= (fill-and-probe-using-line-sphere
+                       *collide-cache*
+                       s4-0
+                       a2-0
+                       (the-as float 4096.0)
+                       (collide-kind target)
+                       self
+                       t2-0
+                       1
                        )
-               (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
-                 (set! (-> a1-13 from) self)
-                 (set! (-> a1-13 num-params) 2)
-                 (set! (-> a1-13 message) 'attack)
-                 (set! (-> a1-13 param 0) (the-as uint #f))
-                 (let ((v1-50 (new 'static 'attack-info :mask #xc0)))
-                   (set! (-> v1-50 shove-up) 10240.0)
-                   (set! (-> v1-50 shove-back) 30720.0)
-                   (set! (-> a1-13 param 1) (the-as uint v1-50))
-                   )
-                 (send-event-function *target* a1-13)
+                     0.0
+                     )
+                 (send-event *target* 'attack #f (static-attack-info ((shove-up (meters 2.5)) (shove-back (meters 7.5)))))
                  )
-               )
              )
            )
          )
@@ -2671,23 +2441,12 @@
        (spawn (-> self particle 1) gp-0)
        (when (and arg1 (nonzero? (-> self looping-sound 1)))
          (update! (-> self looping-sound 1))
-         (when (and *target*
-                    (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
-                    (>= 8192.0 (vector-vector-distance gp-0 (target-pos 0)))
-                    )
-           (let ((a1-16 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> a1-16 from) self)
-             (set! (-> a1-16 num-params) 2)
-             (set! (-> a1-16 message) 'attack)
-             (set! (-> a1-16 param 0) (the-as uint #f))
-             (let ((v1-80 (new 'static 'attack-info :mask #xc0)))
-               (set! (-> v1-80 shove-up) 10240.0)
-               (set! (-> v1-80 shove-back) 30720.0)
-               (set! (-> a1-16 param 1) (the-as uint v1-80))
-               )
-             (send-event-function *target* a1-16)
+         (if (and *target*
+                  (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+                  (>= 8192.0 (vector-vector-distance gp-0 (target-pos 0)))
+                  )
+             (send-event *target* 'attack #f (static-attack-info ((shove-up (meters 2.5)) (shove-back (meters 7.5)))))
              )
-           )
          )
        )
       ((nonzero? (-> self looping-sound 1))
@@ -2792,10 +2551,8 @@
 
 ;; failed to figure out what this is:
 (defstate robotboss-blue-wait (robotboss)
-  :event
-  robotboss-handler
-  :enter
-  (behavior ()
+  :event robotboss-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (robotboss-setup-for-hits 4 5)
     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
@@ -2818,8 +2575,7 @@
     (robotboss-yellow-eco-on)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (let ((a0-1 (handle->process (-> self shot-attractor))))
       (if a0-1
           (deactivate a0-1)
@@ -2876,8 +2632,7 @@
     (robotboss-cut-cam-exit)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (robotboss-always-trans robotboss-blue-dark-bomb)
     (robotboss-shooting-trans 9)
     (cond
@@ -2892,27 +2647,19 @@
        (set! (-> self blue-smoke) #t)
        (let ((gp-1 (new 'stack-no-clear 'vector)))
          (vector<-cspace! gp-1 (-> self node-list data 7))
-         (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-           (when s5-1
-             (let ((t9-9 (method-of-type part-tracker activate)))
-               (t9-9 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-               )
-             (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 644) 300 #f #f #f gp-1)
-             (-> s5-1 ppointer)
-             )
+         (process-spawn
+           part-tracker
+           :init part-tracker-init
+           (-> *part-group-id-table* 644)
+           300
+           #f
+           #f
+           #f
+           gp-1
+           :to *entity-pool*
            )
          )
-       (let* ((s5-2 (get-process *default-dead-pool* manipy #x4000))
-              (gp-2
-                (when s5-2
-                  (let ((t9-12 (method-of-type manipy activate)))
-                    (t9-12 (the-as manipy s5-2) self 'manipy (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process s5-2 manipy-init (-> self root-override trans) (-> self entity) *robotboss-blueeco-sg* #f)
-                  (-> s5-2 ppointer)
-                  )
-                )
-              )
+       (let ((gp-2 (manipy-spawn (-> self root-override trans) (-> self entity) *robotboss-blueeco-sg* #f :to self)))
          (send-event (ppointer->process (-> self parent)) 'flash 255.0)
          (send-event (ppointer->process gp-2) 'anim-mode 'play1)
          (send-event (ppointer->process gp-2) 'rot-quat (-> self root-override quat))
@@ -2933,10 +2680,7 @@
     (robotboss-blue-beam 8 #t)
     (robotboss-blue-beam 9 #f)
     (when (TODO-RENAME-10 (-> self ambient) (new 'stack-no-clear 'vector) (seconds 10) (the-as float 327680.0) self)
-      (let* ((v1-73 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-             (v1-74 (the-as number (logior #x3f800000 v1-73)))
-             (f0-2 (+ -1.0 (the-as float v1-74)))
-             )
+      (let ((f0-2 (rand-float-gen)))
         (cond
           ((< 0.8 f0-2)
            (play-ambient (-> self ambient) "GOL-AM02" #t (the-as vector #f))
@@ -2960,8 +2704,7 @@
     (robotboss-cut-cam (the-as float 5.0) (the-as float 50.0) (the-as int robotboss-blue-roar-ja))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.4))
     (ja-no-eval :group! robotboss-idle-blue-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -3007,8 +2750,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robotboss) transform-post)
+  :post (the-as (function none :behavior robotboss) transform-post)
   )
 
 ;; definition for method 11 of type robotboss

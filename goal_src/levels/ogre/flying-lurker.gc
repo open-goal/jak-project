@@ -8,9 +8,10 @@
 (declare-type flying-lurker process-drawable)
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/ogrecam-ag.gc")
-(import "goal_src/import/flying-lurker-ag.gc")
 (import "goal_src/import/plunger-lurker-ag.gc")
+(import "goal_src/import/flying-lurker-ag.gc")
 
 (defskelgroup *ogrecam-sg* ogrecam ogrecam-lod0-jg -1
               ((ogrecam-lod0-mg (meters 999999)))
@@ -43,8 +44,7 @@
               )
 
 (defstate plunger-lurker-plunge (plunger-lurker)
-  :code
-  (behavior ()
+  :code (behavior ()
     (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
     (logclear! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status bit-3) #t)
@@ -54,19 +54,10 @@
     (while (not (process-grab? *target*))
       (suspend)
       )
-    (let* ((gp-0 (get-process *default-dead-pool* manipy #x4000))
-           (gp-1
-             (ppointer->handle
-               (when gp-0
-                 (let ((t9-4 (method-of-type manipy activate)))
-                   (t9-4 (the-as manipy gp-0) self 'manipy (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process gp-0 manipy-init (-> self entity extra trans) (-> self entity) *ogrecam-sg* #f)
-                 (-> gp-0 ppointer)
-                 )
-               )
-             )
-           )
+    (let ((gp-1
+            (ppointer->handle (manipy-spawn (-> self entity extra trans) (-> self entity) *ogrecam-sg* #f :to self))
+            )
+          )
       (let ((s5-0 (the-as othercam (get-process *default-dead-pool* othercam #x4000))))
         (ppointer->handle (when s5-0
                             (let ((t9-7 (method-of-type othercam activate)))
@@ -109,8 +100,7 @@
           :name "plunger-lurker-blowup"
           :index 7
           :parts 4
-          :command-list
-          '((200 alive "tntbarrel-223")
+          :command-list '((200 alive "tntbarrel-223")
             (200 alive "tntbarrel-222")
             (200 alive "tntbarrel-221")
             (200 alive "tntbarrel-220")
@@ -164,17 +154,7 @@
     (process-release? *target*)
     (suspend)
     0
-    (let ((a1-15 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-15 from) self)
-      (set! (-> a1-15 num-params) 2)
-      (set! (-> a1-15 message) 'attack-invinc)
-      (set! (-> a1-15 param 0) (the-as uint #f))
-      (let ((a0-37 (new 'static 'attack-info :mask #x20)))
-        (set! (-> a0-37 mode) 'instant-death)
-        (set! (-> a1-15 param 1) (the-as uint a0-37))
-        )
-      (send-event-function *target* a1-15)
-      )
+    (send-event *target* 'attack-invinc #f (static-attack-info ((mode 'instant-death))))
     (cleanup-for-death self)
     (deactivate self)
     (loop
@@ -182,13 +162,11 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plunger-lurker) ja-post)
+  :post (the-as (function none :behavior plunger-lurker) ja-post)
   )
 
 (defstate plunger-lurker-flee (plunger-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'attack)
                        (let ((v0-0 #t))
@@ -199,8 +177,7 @@
               )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (-> self got-hit)
       (close-specific-task! (game-task plunger-lurker-hit) (task-status need-hint))
       (process-entity-status! self (entity-perm-status complete) #t)
@@ -211,22 +188,23 @@
         *entity-pool*
         (game-task none)
         )
-      (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when gp-0
-          (let ((t9-4 (method-of-type part-tracker activate)))
-            (t9-4 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process gp-0 part-tracker-init (-> *part-group-id-table* 474) -1 #f #f #f (-> self root trans))
-          (-> gp-0 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 474)
+        -1
+        #f
+        #f
+        #f
+        (-> self root trans)
+        :to *entity-pool*
         )
       (cleanup-for-death self)
       (deactivate self)
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :group! plunger-lurker-notice-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
@@ -242,13 +220,11 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plunger-lurker) ja-post)
+  :post (the-as (function none :behavior plunger-lurker) ja-post)
   )
 
 (defstate plunger-lurker-idle (plunger-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('plunge)
        (logclear! (-> self mask) (process-mask actor-pause))
@@ -256,8 +232,7 @@
        )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (spool-push *art-control* "plunger-lurker-blowup" 0 self -99.0)
     (when (and *target* (< (vector-vector-distance-squared (-> self root trans) (target-pos 0)) 6710886400.0))
       (logclear! (-> self mask) (process-mask actor-pause))
@@ -265,8 +240,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (ja-no-eval :group! plunger-lurker-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -276,13 +250,11 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plunger-lurker) ja-post)
+  :post (the-as (function none :behavior plunger-lurker) ja-post)
   )
 
 (defstate plunger-lurker-die (plunger-lurker)
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (deactivate self)
     (suspend)
@@ -459,8 +431,7 @@
   )
 
 (defstate flying-lurker-die (flying-lurker)
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (deactivate self)
     (none)
@@ -468,8 +439,7 @@
   )
 
 (defstate flying-lurker-sleep (flying-lurker)
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (logior! (-> self draw status) (draw-status hidden))
     (loop
@@ -607,8 +577,7 @@
   )
 
 (defstate flying-lurker-fly (flying-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'clone-and-kill-links)
@@ -709,14 +678,12 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (dummy-20 self)
     (when (not (movie?))
       (flying-lurker-calc-speed (meters 15.0) (meters 30.0) (meters 0.11666667) (meters 0.083333336))
@@ -748,8 +715,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (not (ja-group? flying-lurker-fly-ja))
         (ja-channel-push! 1 (seconds 0.2))
@@ -777,8 +743,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior flying-lurker) ja-post)
+  :post (the-as (function none :behavior flying-lurker) ja-post)
   )
 
 (defbehavior flying-lurker-handler flying-lurker ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -890,19 +855,10 @@
   (suspend)
   (kill-current-level-hint '() '() 'die)
   (suspend)
-  (let* ((gp-0 (get-process *default-dead-pool* manipy #x4000))
-         (gp-1
-           (ppointer->handle
-             (when gp-0
-               (let ((t9-5 (method-of-type manipy activate)))
-                 (t9-5 (the-as manipy gp-0) self 'manipy (the-as pointer #x70004000))
-                 )
-               (run-now-in-process gp-0 manipy-init (-> self entity extra trans) (-> self entity) *ogrecam-sg* #f)
-               (-> gp-0 ppointer)
-               )
-             )
-           )
-         )
+  (let ((gp-1
+          (ppointer->handle (manipy-spawn (-> self entity extra trans) (-> self entity) *ogrecam-sg* #f :to self))
+          )
+        )
     (let ((s5-0 (the-as othercam (get-process *default-dead-pool* othercam #x4000))))
       (ppointer->handle (when s5-0
                           (let ((t9-8 (method-of-type othercam activate)))
@@ -952,44 +908,36 @@
         )
     )
   (process-release? *target*)
-  (let ((gp-2 (get-process *default-dead-pool* process #x4000)))
-    (when gp-2
-      (let ((t9-18 (method-of-type process activate)))
-        (t9-18 gp-2 self 'process (the-as pointer #x70004000))
+  (process-spawn-function
+    process
+    (lambda :behavior process
+      ()
+      (let ((gp-0 (-> *display* base-frame-counter)))
+        (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 0.1))
+          (suspend)
+          )
         )
-      (run-next-time-in-process gp-2 (lambda :behavior process
-                                       ()
-                                       (let ((gp-0 (-> *display* base-frame-counter)))
-                                         (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 0.1))
-                                           (suspend)
-                                           )
-                                         )
-                                       (level-hint-spawn
-                                         (game-text-id assistant-voicebox-intro-ogre-race)
-                                         "asstvb24"
-                                         (the-as entity #f)
-                                         *entity-pool*
-                                         (game-task none)
-                                         )
-                                       (none)
-                                       )
-                                )
-      (-> gp-2 ppointer)
+      (level-hint-spawn
+        (game-text-id assistant-voicebox-intro-ogre-race)
+        "asstvb24"
+        (the-as entity #f)
+        *entity-pool*
+        (game-task none)
+        )
+      (none)
       )
+    :to self
     )
   (none)
   )
 
 (defstate flying-lurker-start (flying-lurker)
-  :event
-  flying-lurker-handler
-  :exit
-  (behavior ()
+  :event flying-lurker-handler
+  :exit (behavior ()
     (clear-pending-settings-from-process *setting-control* self 'allow-progress)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (play-movie?)
       (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
       (flying-lurker-play-intro)
@@ -1024,13 +972,11 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior flying-lurker) ja-post)
+  :post (the-as (function none :behavior flying-lurker) ja-post)
   )
 
 (defstate flying-lurker-clone (flying-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'die)
@@ -1116,21 +1062,18 @@
               )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (ja-channel-set! 0)
     (none)
     )
-  :code
-  (behavior ((arg0 handle) (arg1 string))
+  :code (behavior ((arg0 handle) (arg1 string))
     (clone-anim arg0 3 #t arg1)
     (none)
     )
   )
 
 (defstate flying-lurker-idle (flying-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('saw-player)
        (set! (-> self take-off) #t)
@@ -1195,21 +1138,18 @@
         )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (spool-push *art-control* "flying-lurker-intro" 0 self -99.0)
     (if (and (-> self take-off) (first?))
         (go flying-lurker-start)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars (gp-0 int) (f30-0 float))
     1.0
     0
@@ -1263,8 +1203,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior flying-lurker) ja-post)
+  :post (the-as (function none :behavior flying-lurker) ja-post)
   )
 
 (defmethod init-from-entity! flying-lurker ((obj flying-lurker) (arg0 entity-actor))

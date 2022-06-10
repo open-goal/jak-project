@@ -21,7 +21,6 @@ throw_error = False
 # list, it will remind you such a file was touched by making a root file
 # that will be picked up by git to shame you
 files_with_modifications = [
-  "target-util",
   "ambient",
   "viewer",
   "sunken-obs",
@@ -31,16 +30,19 @@ files_with_modifications = [
   "default-menu",
   "collide-shape",
   "cam-states",
-  "helix-water",
+  "misty-obs",
   "lavatube-energy",
-  "sage-finalboss-FIN",
+  "sage-finalboss",
   "progress",
   "entity",
   "ogreboss",
   "navigate",
   "ice-cube",
   "snow-bunny",
-  "citadel-sages"
+  "citadel-sages",
+  "racer-part",
+  "collectables-part",
+  "collectables"
 ]
 
 for file in files:

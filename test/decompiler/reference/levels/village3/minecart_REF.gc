@@ -42,14 +42,13 @@
 ;; failed to figure out what this is:
 (defstate idle (minecartsteel)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack))
                        (when (= (-> arg0 type) target)
                          (let ((a2-1 (new 'stack 'collide-overlap-result)))
                            (if (not (on-platform (-> self root-override) (-> *target* control) a2-1))
-                               (send-event arg0 'no-look-around 450)
+                               (send-event arg0 'no-look-around (seconds 1.5))
                                )
                            )
                          )
@@ -58,16 +57,13 @@
               )
       )
     )
-  :trans
-  (the-as (function none :behavior minecartsteel) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior minecartsteel) rider-trans)
+  :code (behavior ()
     (ja-channel-set! 1)
     (ja :group! (-> self anim))
     (loop
       (ja :num-func num-func-identity
-          :frame-num
-          (* (get-current-phase (-> self sync)) (the float (+ (-> (ja-group) data 0 length) -1)))
+          :frame-num (* (get-current-phase (-> self sync)) (the float (+ (-> (ja-group) data 0 length) -1)))
           )
       (let ((a1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4))))
         (update-trans! (-> self sound) a1-1)
@@ -77,8 +73,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior minecartsteel) rider-post)
+  :post (the-as (function none :behavior minecartsteel) rider-post)
   )
 
 ;; definition for function minecartsteel-initialize-by-other
@@ -153,14 +148,12 @@
 ;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! minecartsteel ((obj minecartsteel) (arg0 entity-actor))
   (dotimes (s4-0 4)
-    (let ((s3-0 (get-process *default-dead-pool* minecartsteel #x4000)))
-      (when s3-0
-        (let ((t9-1 (method-of-type minecartsteel activate)))
-          (t9-1 (the-as minecartsteel s3-0) obj 'minecartsteel (the-as pointer #x70004000))
-          )
-        (run-now-in-process s3-0 minecartsteel-initialize-by-other arg0 (* 0.2 (the float (+ s4-0 1))))
-        (-> s3-0 ppointer)
-        )
+    (process-spawn
+      minecartsteel
+      :init minecartsteel-initialize-by-other
+      arg0
+      (* 0.2 (the float (+ s4-0 1)))
+      :to obj
       )
     )
   (minecartsteel-initialize-by-other arg0 0.0)

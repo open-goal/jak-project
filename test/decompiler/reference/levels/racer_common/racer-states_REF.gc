@@ -3,8 +3,7 @@
 
 ;; failed to figure out what this is:
 (defstate target-racing-start (target)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (cond
       ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
        'racer
@@ -29,7 +28,8 @@
            )
           (('attack 'attack-or-shove 'attack-invinc)
            (let ((v1-27 (the-as attack-info (-> arg3 param 1))))
-             (if (not (and (logtest? (-> v1-27 mask) 32) (or (= (-> v1-27 mode) 'burn) (= (-> v1-27 mode) 'burnup))))
+             (if (not (and (logtest? (-> v1-27 mask) (attack-mask mode)) (or (= (-> v1-27 mode) 'burn) (= (-> v1-27 mode) 'burnup)))
+                      )
                  (target-attacked
                    arg2
                    (the-as attack-info (-> arg3 param 1))
@@ -87,8 +87,7 @@
         )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (when (not (or (= (-> self next-state name) 'target-racing)
                    (= (-> self next-state name) 'target-racing-jump)
                    (= (-> self next-state name) 'target-racing-bounce)
@@ -146,8 +145,7 @@
       )
     (none)
     )
-  :code
-  (behavior ((arg0 handle))
+  :code (behavior ((arg0 handle))
     (target-exit)
     (set! *display-profile* #f)
     (set! *display-entity-errors* #f)
@@ -237,20 +235,9 @@
     (set! (-> self racer surface-y) (-> self control trans y))
     (let ((s5-0 (-> self entity)))
       (set! (-> self entity) (-> self racer entity))
-      (let ((s4-0 (get-process *8k-dead-pool* manipy #x4000)))
-        (set! (-> self manipy)
-              (the-as
-                (pointer manipy)
-                (when s4-0
-                  (let ((t9-9 (method-of-type manipy activate)))
-                    (t9-9 (the-as manipy s4-0) self 'manipy (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process s4-0 manipy-init (-> self control trans) (-> self entity) *racer-sg* #f)
-                  (-> s4-0 ppointer)
-                  )
-                )
-              )
-        )
+      (set! (-> self manipy)
+            (manipy-spawn (-> self control trans) (-> self entity) *racer-sg* #f :from *8k-dead-pool* :to self)
+            )
       (set! (-> self entity) s5-0)
       )
     (when (-> self manipy)
@@ -312,8 +299,7 @@
     (go target-racing-get-on arg0)
     (none)
     )
-  :post
-  target-post
+  :post target-post
   )
 
 ;; definition for function target-racing-smack-check
@@ -342,21 +328,17 @@
 
 ;; failed to figure out what this is:
 (defstate target-racing (target)
-  :event
-  (-> target-racing-start event)
-  :enter
-  (behavior ()
+  :event (-> target-racing-start event)
+  :enter (behavior ()
     (set! (-> self control unknown-surface00) *racer-mods*)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (target-racing-center-anim)
     ((-> target-racing-start exit))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 0)
                                        (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-rel 1)
                                        )
@@ -400,8 +382,7 @@
     (racer-buzz (+ 0.45 (* 1.7 (fabs (-> self racer slide-shift-x)))))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((ja-group? (-> self draw art-group data 138))
        (ja-no-eval :num! (seek!))
@@ -522,8 +503,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (if (= (-> self next-state name) 'target-racing)
         (set! (-> self racer racing-time) (-> *display* base-frame-counter))
         )
@@ -534,10 +514,8 @@
 
 ;; failed to figure out what this is:
 (defstate target-racing-jump (target)
-  :event
-  (-> target-racing-start event)
-  :enter
-  (behavior ((arg0 float) (arg1 float) (arg2 symbol))
+  :event (-> target-racing-start event)
+  :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (set! (-> self racer shock-offsetv) 0.0)
     (sound-play-by-name (static-sound-name "zoomer-jump") (new-sound-id) 1024 0 0 1 #t)
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -570,15 +548,13 @@
         )
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self control root-prim prim-core action) (collide-action ca-15))
     (set! (-> self racer hop?) #f)
     ((-> target-racing-start exit))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (set! (-> self control unknown-float123)
           (fmax
             (-> self control unknown-float123)
@@ -647,8 +623,7 @@
     (racer-buzz 0.4)
     (none)
     )
-  :code
-  (behavior ((arg0 float) (arg1 float) (arg2 symbol))
+  :code (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (let ((a0-1 (if (< 0.1 (-> self racer hill-value))
                     'jump
                     )
@@ -658,16 +633,13 @@
       )
     (none)
     )
-  :post
-  (-> target-racing post)
+  :post (-> target-racing post)
   )
 
 ;; failed to figure out what this is:
 (defstate target-racing-bounce (target)
-  :event
-  (-> target-racing-start event)
-  :enter
-  (behavior ((arg0 float) (arg1 float) (arg2 symbol))
+  :event (-> target-racing-start event)
+  :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (logior! (-> self control root-prim prim-core action) (collide-action ca-15))
     (sound-play-by-name (static-sound-name "zoomer-jump") (new-sound-id) 1024 0 0 1 #t)
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -679,14 +651,12 @@
           )
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self control root-prim prim-core action) (collide-action ca-15))
     ((-> target-racing-start exit))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (set! (-> self control unknown-float123)
           (fmax
             (-> self control unknown-float123)
@@ -721,8 +691,7 @@
     (racer-buzz 0.4)
     (none)
     )
-  :code
-  (behavior ((arg0 float) (arg1 float) (arg2 symbol))
+  :code (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (target-racing-land-anim arg2)
     (when (not (ja-group? (-> self draw art-group data 123)))
       (ja-channel-push! 4 (seconds 0.1))
@@ -737,16 +706,13 @@
       )
     (none)
     )
-  :post
-  (-> target-racing post)
+  :post (-> target-racing post)
   )
 
 ;; failed to figure out what this is:
 (defstate target-racing-smack (target)
-  :event
-  (-> target-racing-start event)
-  :enter
-  (behavior ((arg0 float) (arg1 symbol))
+  :event (-> target-racing-start event)
+  :enter (behavior ((arg0 float) (arg1 symbol))
     (sound-play-by-name (static-sound-name "smack-surface") (new-sound-id) 1024 0 0 1 #t)
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.5))
     (set! (-> self racer heavy) arg1)
@@ -765,19 +731,16 @@
     0
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self racer heavy) #f)
     ((-> target-racing-start exit))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (set! (-> self racer turn-anim-targ) 0.0)
     (none)
     )
-  :code
-  (behavior ((arg0 float) (arg1 symbol))
+  :code (behavior ((arg0 float) (arg1 symbol))
     (sound-play-by-name (static-sound-name "zoomer-crash-2") (new-sound-id) 1024 0 0 1 #t)
     (ja-channel-push! 2 (seconds 0.05))
     (ja-no-eval :group! (-> self draw art-group data 136) :num! (seek!))
@@ -793,28 +756,23 @@
     (go target-racing)
     (none)
     )
-  :post
-  (-> target-racing post)
+  :post (-> target-racing post)
   )
 
 ;; failed to figure out what this is:
 (defstate target-racing-falling (target)
-  :event
-  (-> target-racing-start event)
-  :enter
-  (behavior ()
+  :event (-> target-racing-start event)
+  :enter (behavior ()
     (set! (-> self control unknown-surface00) *racer-air-mods*)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self control root-prim prim-core action) (collide-action ca-15))
     ((-> target-racing-start exit))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (logtest? (-> self control status) (cshape-moving-flags onsurf))
         (go target-racing)
         )
@@ -825,21 +783,17 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (target-racing-jump-anim #f (seconds 0.1))
     (none)
     )
-  :post
-  (-> target-racing post)
+  :post (-> target-racing post)
   )
 
 ;; failed to figure out what this is:
 (defstate target-racing-hit (target)
-  :event
-  target-generic-event-handler
-  :enter
-  (behavior ((arg0 handle) (arg1 attack-info))
+  :event target-generic-event-handler
+  :enter (behavior ((arg0 handle) (arg1 attack-info))
     (let ((v1-0 (-> self attack-info)))
       (set! (-> v1-0 attacker) arg0)
       (set! (-> v1-0 mode) 'generic)
@@ -864,16 +818,14 @@
       )
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (if (!= (-> self next-state name) 'target-racing-death)
         (logclear! (-> self state-flags) (state-flags sf03 sf15))
         )
     ((-> target-racing-start exit))
     (none)
     )
-  :code
-  (behavior ((arg0 handle) (arg1 attack-info))
+  :code (behavior ((arg0 handle) (arg1 attack-info))
     (target-timed-invulnerable (-> *TARGET-bank* hit-invulnerable-timeout) self)
     (when (!= (-> self attack-info mode) 'endlessfall)
       (dummy-10 (-> self skel effect) 'group-target-hit -1.0 -1)
@@ -932,16 +884,13 @@
     (go target-racing)
     (none)
     )
-  :post
-  target-no-stick-post
+  :post target-no-stick-post
   )
 
 ;; failed to figure out what this is:
 (defstate target-racing-death (target)
-  :event
-  (-> target-death event)
-  :exit
-  (behavior ()
+  :event (-> target-death event)
+  :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags sf15))
     (send-event (ppointer->process (-> self manipy)) 'draw #t)
     (send-event (ppointer->process (-> self manipy)) 'anim-mode 'clone-anim)
@@ -953,8 +902,7 @@
     (set! (-> self racer stick-off) #f)
     (none)
     )
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (local-vars (v1-154 symbol))
     (set! (-> self racer stick-off) #t)
     (set! (-> self neck flex-blend) 0.0)
@@ -966,14 +914,16 @@
        (send-event (ppointer->process (-> self manipy)) 'anim-mode 'loop)
        (send-event (ppointer->process (-> self manipy)) 'draw #f)
        (sound-play-by-name (static-sound-name "zoomer-explode") (new-sound-id) 1024 0 0 1 #t)
-       (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-         (when gp-1
-           (let ((t9-7 (method-of-type part-tracker activate)))
-             (t9-7 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-             )
-           (run-now-in-process gp-1 part-tracker-init (-> *part-group-id-table* 116) -1 #f #f #f (-> self control trans))
-           (-> gp-1 ppointer)
-           )
+       (process-spawn
+         part-tracker
+         :init part-tracker-init
+         (-> *part-group-id-table* 116)
+         -1
+         #f
+         #f
+         #f
+         (-> self control trans)
+         :to *entity-pool*
          )
        (send-event
          (ppointer->process (-> self manipy))
@@ -995,44 +945,32 @@
                (vector-normalize! (-> gp-0 fountain-rand-transv-lo) (* 12288.0 f30-0))
                )
              (vector+! (-> gp-0 fountain-rand-transv-lo) (-> gp-0 fountain-rand-transv-lo) (-> s5-0 0 control trans))
-             (let ((s5-1 (get-process *default-dead-pool* joint-exploder #x4000)))
-               (when s5-1
-                 (let ((t9-5 (method-of-type joint-exploder activate)))
-                   (t9-5 (the-as joint-exploder s5-1) self 'joint-exploder (the-as pointer #x70004000))
+             (process-spawn
+               joint-exploder
+               *racer-explode-sg*
+               24
+               gp-0
+               (new 'static 'joint-exploder-static-params
+                 :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 17 :parent-joint-index -1)
+                   (new 'static 'joint-exploder-static-joint-params :joint-index 18 :parent-joint-index -1)
                    )
-                 (run-now-in-process
-                   s5-1
-                   joint-exploder-init-by-other
-                   *racer-explode-sg*
-                   24
-                   gp-0
-                   (new 'static 'joint-exploder-static-params
-                     :joints
-                     (new
-                       'static
-                       'boxed-array
-                       :type joint-exploder-static-joint-params :length 16 :allocated-length 16
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 17 :parent-joint-index -1)
-                       (new 'static 'joint-exploder-static-joint-params :joint-index 18 :parent-joint-index -1)
-                       )
-                     )
-                   )
-                 (-> s5-1 ppointer)
                  )
+               :to self
                )
              )
            )
@@ -1068,14 +1006,16 @@
        )
       (('melt)
        (sound-play-by-name (static-sound-name "zoomer-melt") (new-sound-id) 1024 0 0 1 #t)
-       (let ((gp-5 (get-process *default-dead-pool* part-tracker #x4000)))
-         (when gp-5
-           (let ((t9-29 (method-of-type part-tracker activate)))
-             (t9-29 (the-as part-tracker gp-5) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-             )
-           (run-now-in-process gp-5 part-tracker-init (-> *part-group-id-table* 32) -1 #f #f #f (-> self control trans))
-           (-> gp-5 ppointer)
-           )
+       (process-spawn
+         part-tracker
+         :init part-tracker-init
+         (-> *part-group-id-table* 32)
+         -1
+         #f
+         #f
+         #f
+         (-> self control trans)
+         :to *entity-pool*
          )
        (clear-collide-with-as (-> self control))
        (set! (-> self post-hook) target-no-ja-move-post)
@@ -1152,18 +1092,14 @@
     (go target-stance)
     (none)
     )
-  :post
-  target-racing-post
+  :post target-racing-post
   )
 
 ;; failed to figure out what this is:
 (defstate target-racing-get-on (target)
-  :event
-  target-generic-event-handler
-  :exit
-  (-> target-racing-start exit)
-  :code
-  (behavior ((arg0 handle))
+  :event target-generic-event-handler
+  :exit (-> target-racing-start exit)
+  :code (behavior ((arg0 handle))
     (set! (-> self control transv quad) (the-as uint128 0))
     (set! (-> self alt-cam-pos quad) (-> (&-> (-> self control) unknown-qword00) 0))
     (logior! (-> self state-flags) (state-flags sf10))
@@ -1241,38 +1177,12 @@
                 (= (-> *target* current-level name) 'firecanyon)
                 (= (-> *target* current-level name) 'citadel)
                 )
-        (let ((gp-3 (get-process *default-dead-pool* hud-bike-heat #x4000)))
-          (set! (-> *hud-parts* bike-heat)
-                (the-as
-                  (pointer hud-bike-heat)
-                  (when gp-3
-                    (let ((t9-23 (method-of-type hud-bike-heat activate)))
-                      (t9-23 (the-as hud-bike-heat gp-3) self 'hud-bike-heat (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process gp-3 hud-init-by-other 0)
-                    (-> gp-3 ppointer)
-                    )
-                  )
-                )
-          )
+        (set! (-> *hud-parts* bike-heat) (process-spawn hud-bike-heat :init hud-init-by-other 0 :to self))
         (set! (-> *hud-parts* buzzers 0 next-y-offset) -120)
         (set! (-> *hud-parts* buzzers 0 y-sgn) 0)
         0
         )
-      (let ((gp-4 (get-process *default-dead-pool* hud-bike-speed #x4000)))
-        (set! (-> *hud-parts* bike-speed)
-              (the-as
-                (pointer hud-bike-speed)
-                (when gp-4
-                  (let ((t9-26 (method-of-type hud-bike-speed activate)))
-                    (t9-26 (the-as hud-bike-speed gp-4) self 'hud-bike-speed (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process gp-4 hud-init-by-other 0)
-                  (-> gp-4 ppointer)
-                  )
-                )
-              )
-        )
+      (set! (-> *hud-parts* bike-speed) (process-spawn hud-bike-speed :init hud-init-by-other 0 :to self))
       (set! (-> *hud-parts* power 0 next-y-offset) -120)
       (set! (-> *hud-parts* power 0 y-sgn) 0)
       0
@@ -1280,8 +1190,7 @@
     (go target-racing)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector))
           (f30-0 (fmin 1.0 (* 0.0044444446 (the float (- (-> *display* base-frame-counter) (-> self state-time))))))
           )
@@ -1332,12 +1241,9 @@
 
 ;; failed to figure out what this is:
 (defstate target-racing-get-off (target)
-  :event
-  target-generic-event-handler
-  :exit
-  (-> target-racing-start exit)
-  :code
-  (behavior ((arg0 handle))
+  :event target-generic-event-handler
+  :exit (-> target-racing-start exit)
+  :code (behavior ((arg0 handle))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self control unknown-surface00) *racer-mods*)
     (let ((a0-2 (-> *hud-parts* bike-speed)))
@@ -1371,18 +1277,14 @@
     (go target-racing-get-off-jump arg0)
     (none)
     )
-  :post
-  target-racing-post
+  :post target-racing-post
   )
 
 ;; failed to figure out what this is:
 (defstate target-racing-get-off-jump (target)
-  :event
-  target-generic-event-handler
-  :exit
-  (-> target-racing-start exit)
-  :code
-  (behavior ((arg0 handle))
+  :event target-generic-event-handler
+  :exit (-> target-racing-start exit)
+  :code (behavior ((arg0 handle))
     (sound-play-by-name (static-sound-name "zoomer-stop") (new-sound-id) 1024 0 0 1 #t)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self control transv quad) (the-as uint128 0))
@@ -1434,8 +1336,7 @@
     (go target-racing-get-off-hit-ground #f)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (let* ((f0-2 (deg-diff (-> self racer front-rot) (-> *RACER-bank* default-front-blade)))
            (f0-5 (if (< 0.0 f0-2)
                      (fmax 5461.3335 (* 4.0 f0-2))
@@ -1513,18 +1414,14 @@
 
 ;; failed to figure out what this is:
 (defstate target-racing-get-off-hit-ground (target)
-  :event
-  target-standard-event-handler
-  :enter
-  (-> target-hit-ground enter)
-  :trans
-  (behavior ()
+  :event target-standard-event-handler
+  :enter (-> target-hit-ground enter)
+  :trans (behavior ()
     (logior! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     ((-> target-hit-ground trans))
     (none)
     )
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (ja-channel-set! 1)
     (ja-no-eval :group! (-> self draw art-group data 35) :num! (seek!) :frame-num (ja-aframe 42.0 0))
     (until (ja-done? 0)
@@ -1534,8 +1431,7 @@
     (go target-stance)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (hide-hud)
     (target-post)
     (none)
@@ -1544,8 +1440,7 @@
 
 ;; failed to figure out what this is:
 (defstate target-racing-grab (target)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (cond
       ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
        (-> self state name)
@@ -1565,24 +1460,21 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self control unknown-surface00) *grab-mods*)
     (set! (-> self neck flex-blend) 0.0)
     (logior! (-> self state-flags) (state-flags sf04 sf08))
     (set! (-> self racer stick-off) #t)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self racer stick-off) #f)
     (logclear! (-> self state-flags) (state-flags sf04 sf08))
     (logclear! (-> self water flags) (water-flags wt16))
     ((-> target-racing-start exit))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (not (ja-group? (-> self draw art-group data 123)))
       (ja-channel-push! 4 (seconds 0.1))
       (ja :group! (-> self draw art-group data 123) :num! (identity (ja-aframe (-> self racer turn-anim-frame) 0)))
@@ -1597,23 +1489,19 @@
       )
     (none)
     )
-  :post
-  target-racing-post
+  :post target-racing-post
   )
 
 ;; failed to figure out what this is:
 (defstate target-racing-clone-anim (target)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (if (and (= arg2 'trans) (= (-> arg3 param 0) 'restore))
         (set! (-> self control unknown-uint20) (the-as uint #f))
         )
     ((-> target-racing-grab event) arg0 arg1 arg2 arg3)
     )
-  :enter
-  (-> target-clone-anim enter)
-  :exit
-  (behavior ()
+  :enter (-> target-clone-anim enter)
+  :exit (behavior ()
     (set! (-> self control unknown-vector11 y) (the-as float (-> self control unknown-uint20)))
     (set! (-> self control unknown-vector12 y) (-> self control unknown-vector11 y))
     (send-event (ppointer->process (-> self sidekick)) 'matrix #f)
@@ -1622,8 +1510,7 @@
     (vector-reset! (-> self control transv))
     (none)
     )
-  :code
-  (behavior ((arg0 handle))
+  :code (behavior ((arg0 handle))
     (set! (-> self control unknown-uint20) (the-as uint (-> self control unknown-vector11 y)))
     (set! (-> self control unknown-vector11 y) 0.0)
     (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
@@ -1631,8 +1518,7 @@
     (go target-racing)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (racer-sounds)
     (seek! (-> self racer heat) 0.0 (* (-> *RACER-bank* surface-heat-inc) (-> *display* seconds-per-frame)))
     (vector+! (-> self racer bike-trans) (-> self control trans) (-> self control unknown-vector12))

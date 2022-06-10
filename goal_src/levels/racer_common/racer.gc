@@ -9,6 +9,7 @@
 (define-extern blocking-plane-spawn (function curve-control none))
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/racer-ag.gc")
 
 (if (not (nmember "racerp" *kernel-packages*))
@@ -63,10 +64,8 @@
 
 (define *racer-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
-                                           :center
-                                           (new 'static 'vector :w (the-as float #xa))
-                                           :shadow-dir
-                                           (new 'static 'vector :y -1.0 :w 614400.0)
+                                           :center (new 'static 'vector :w (the-as float #xa))
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 614400.0)
                                            :bot-plane (new 'static 'plane :y 1.0 :w 81920.0)
                                            :top-plane (new 'static 'plane :y 1.0 :w 2048.0)
                                            )
@@ -84,8 +83,7 @@
 
 (defstate wait-for-start (racer)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-1 structure))
     (let ((v1-0 arg2))
       (the-as
@@ -116,15 +114,13 @@
         )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self root-override root-prim prim-core action) (collide-action))
     (set! (-> self root-override root-prim prim-core offense) (collide-offense no-offense))
     0
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (label cfg-0)
     (case (-> self condition)
       ((2)
@@ -214,18 +210,14 @@
 
 (defstate idle (racer)
   :virtual #t
-  :event
-  (-> (method-of-type racer wait-for-start) event)
-  :enter
-  (behavior ()
+  :event (-> (method-of-type racer wait-for-start) event)
+  :enter (behavior ()
     (blocking-plane-destroy)
     (blocking-plane-spawn (-> self path-target))
     (none)
     )
-  :exit
-  (-> (method-of-type racer wait-for-start) exit)
-  :code
-  (behavior ()
+  :exit (-> (method-of-type racer wait-for-start) exit)
+  :code (behavior ()
     (ja-channel-set! 1)
     (ja :group! (-> self draw art-group data 3))
     (set! (-> self root-override root-prim prim-core action) (collide-action solid ca-11))
@@ -272,14 +264,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior racer) ja-post)
+  :post (the-as (function none :behavior racer) ja-post)
   )
 
 (defstate pickup (racer)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('draw)
        (ja-channel-set! 1)
@@ -310,13 +300,11 @@
        )
       )
     )
-  :enter
-  (behavior ((arg0 (state collectable)))
+  :enter (behavior ((arg0 (state collectable)))
     ((the-as (function none :behavior racer) (-> arg0 enter)))
     (none)
     )
-  :code
-  (behavior ((arg0 (state collectable)))
+  :code (behavior ((arg0 (state collectable)))
     (ja-channel-set! 0)
     (ja-post)
     (while (zero? (ja-group-size))
@@ -359,8 +347,7 @@
 
 (defstate wait-for-return (racer)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (if (and (or (= arg2 'touch) (= arg2 'attack)) (and (!= (-> self condition) 4) (send-event *target* 'end-mode)))
         (go-virtual pickup (the-as (state collectable) (method-of-object self idle)))
         )
@@ -387,14 +374,12 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (blocking-plane-destroy)
     (blocking-plane-spawn (the-as curve-control (-> self path-racer)))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 0)
     (ja-post)
     (loop

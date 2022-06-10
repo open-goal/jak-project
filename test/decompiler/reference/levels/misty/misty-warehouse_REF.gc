@@ -38,8 +38,7 @@
 
 ;; failed to figure out what this is:
 (defstate silostep-idle (silostep)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (go silostep-camera)
@@ -49,8 +48,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja :group! (-> self draw art-group data 2) :num! min)
     (transform-post)
     (loop
@@ -58,52 +56,43 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior silostep) ja-post)
+  :post (the-as (function none :behavior silostep) ja-post)
   )
 
 ;; definition for function misty-camera-view
 ;; INFO: Return type mismatch int vs none.
 (defbehavior misty-camera-view silostep ()
-  (let ((gp-0 (get-process *default-dead-pool* camera-tracker #x4000)))
-    (set! (-> self cam-tracker)
-          (ppointer->handle (when gp-0
-                              (let ((t9-1 (method-of-type camera-tracker activate)))
-                                (t9-1 (the-as camera-tracker gp-0) self 'camera-tracker (the-as pointer #x70004000))
+  (set! (-> self cam-tracker)
+        (ppointer->handle (process-spawn
+                            camera-tracker
+                            :init camera-tracker-init
+                            (lambda :behavior camera-tracker
+                              ()
+                              (while (not (process-grab? *target*))
+                                (suspend)
                                 )
-                              (run-now-in-process
-                                gp-0
-                                camera-tracker-init
-                                (lambda :behavior camera-tracker
-                                  ()
-                                  (while (not (process-grab? *target*))
-                                    (suspend)
-                                    )
-                                  (camera-change-to "camera-160" 150 #f)
-                                  (let ((gp-0 (-> *display* base-frame-counter)))
-                                    (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 3))
-                                      (suspend)
-                                      )
-                                    )
-                                  (while (not (process-release? (handle->process (-> self grab-target))))
-                                    (suspend)
-                                    )
-                                  (camera-change-to (the-as string 'base) 150 #f)
-                                  (none)
+                              (camera-change-to "camera-160" 150 #f)
+                              (let ((gp-0 (-> *display* base-frame-counter)))
+                                (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 3))
+                                  (suspend)
                                   )
                                 )
-                              (-> gp-0 ppointer)
+                              (while (not (process-release? (handle->process (-> self grab-target))))
+                                (suspend)
+                                )
+                              (camera-change-to (the-as string 'base) 150 #f)
+                              (none)
                               )
+                            :to self
                             )
-          )
-    )
+                          )
+        )
   (none)
   )
 
 ;; failed to figure out what this is:
 (defstate silostep-camera (silostep)
-  :code
-  (behavior ()
+  :code (behavior ()
     (misty-camera-view)
     (let* ((gp-0 (get-task-control (game-task misty-warehouse)))
            (v1-1 (get-reminder gp-0 0))
@@ -121,14 +110,12 @@
     (go silostep-rise #f)
     (none)
     )
-  :post
-  (the-as (function none :behavior silostep) ja-post)
+  :post (the-as (function none :behavior silostep) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate silostep-rise (silostep)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status complete) #t)
     (when (not arg0)
       (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! (-> self anim-limit)) :frame-num 0.0)
@@ -147,8 +134,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior silostep) #f)
+  :post (the-as (function none :behavior silostep) #f)
   )
 
 ;; definition for method 11 of type silostep

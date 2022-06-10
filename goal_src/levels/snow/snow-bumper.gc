@@ -11,6 +11,7 @@
 
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/snow-bumper-ag.gc")
 
 (deftype snow-bumper (process-drawable)
@@ -47,13 +48,11 @@
   :id 519
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 1893 :fade-after (meters 90) :falloff-to (meters 90) :period 25 :length 10))
+  :parts ((sp-item 1893 :fade-after (meters 90) :falloff-to (meters 90) :period 25 :length 10))
   )
 
 (defpart 1893
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 15.0)
     (sp-flt spt-y (meters 1.5))
     (sp-flt spt-z (meters 0))
@@ -80,13 +79,11 @@
   :id 520
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 1895))
+  :parts ((sp-item 1895))
   )
 
 (defpart 1895
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 16.0)
     (sp-flt spt-x (meters 5.5))
     (sp-flt spt-y (meters 1.5))
@@ -108,70 +105,54 @@
   )
 
 (defmethod shove-player snow-bumper ((obj snow-bumper) (arg0 process-drawable))
-  (with-pp
-    (let ((s5-0 (new 'stack-no-clear 'vector)))
-      (vector-! s5-0 (-> arg0 root trans) (-> obj root trans))
-      (set! (-> s5-0 y) 0.0)
-      (vector-normalize! s5-0 1.0)
-      (let* ((f0-3 (atan (-> s5-0 x) (-> s5-0 z)))
-             (f30-0 (-> obj base-shove-ry))
-             (f28-0 (-> obj max-shove-diff-ry))
-             (f0-4 (deg- f0-3 f30-0))
-             )
-        (when (< f28-0 (fabs f0-4))
-          (let ((f30-1 (if (>= f0-4 0.0)
-                           (+ f30-0 f28-0)
-                           (- f30-0 f28-0)
-                           )
-                       )
-                )
-            (set-vector! s5-0 (sin f30-1) 0.0 (cos f30-1) 1.0)
-            )
-          )
-        )
-      (let ((f0-12 (+ -16384.0 (atan (-> s5-0 x) (-> s5-0 z)))))
-        (set! (-> *part-id-table* 1895 init-specs 17 initial-valuef) (+ -4096.0 f0-12))
-        )
-      (spawn (-> obj part2) (-> obj root trans))
-      (let ((s3-1 (new 'stack-no-clear 'vector)))
-        (vector-normalize-copy! s3-1 s5-0 32768.0)
-        (vector+! s3-1 s3-1 (-> obj root trans))
-        (vector-! s5-0 s3-1 (-> arg0 root trans))
-        )
-      (let ((f30-3 (vector-xz-length s5-0)))
-        (vector-normalize! s5-0 1.0)
-        (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-12 from) pp)
-          (set! (-> a1-12 num-params) 2)
-          (set! (-> a1-12 message) 'shove)
-          (set! (-> a1-12 param 0) (the-as uint #f))
-          (let ((v1-16 (new 'static 'attack-info :mask #xc2)))
-            (set! (-> v1-16 vector quad) (-> s5-0 quad))
-            (set! (-> v1-16 shove-up) 4096.0)
-            (set! (-> v1-16 shove-back) f30-3)
-            (set! (-> a1-12 param 1) (the-as uint v1-16))
-            )
-          (if (send-event-function *target* a1-12)
-              (set! (-> obj last-shoved-player-time) (-> *display* base-frame-counter))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (vector-! s5-0 (-> arg0 root trans) (-> obj root trans))
+    (set! (-> s5-0 y) 0.0)
+    (vector-normalize! s5-0 1.0)
+    (let* ((f0-3 (atan (-> s5-0 x) (-> s5-0 z)))
+           (f30-0 (-> obj base-shove-ry))
+           (f28-0 (-> obj max-shove-diff-ry))
+           (f0-4 (deg- f0-3 f30-0))
+           )
+      (when (< f28-0 (fabs f0-4))
+        (let ((f30-1 (if (>= f0-4 0.0)
+                         (+ f30-0 f28-0)
+                         (- f30-0 f28-0)
+                         )
+                     )
               )
+          (set-vector! s5-0 (sin f30-1) 0.0 (cos f30-1) 1.0)
           )
         )
       )
-    (none)
+    (let ((f0-12 (+ -16384.0 (atan (-> s5-0 x) (-> s5-0 z)))))
+      (set! (-> *part-id-table* 1895 init-specs 17 initial-valuef) (+ -4096.0 f0-12))
+      )
+    (spawn (-> obj part2) (-> obj root trans))
+    (let ((s3-1 (new 'stack-no-clear 'vector)))
+      (vector-normalize-copy! s3-1 s5-0 32768.0)
+      (vector+! s3-1 s3-1 (-> obj root trans))
+      (vector-! s5-0 s3-1 (-> arg0 root trans))
+      )
+    (let ((f30-3 (vector-xz-length s5-0)))
+      (vector-normalize! s5-0 1.0)
+      (if (send-event *target* 'shove #f (static-attack-info ((vector s5-0) (shove-up (meters 1)) (shove-back f30-3))))
+          (set! (-> obj last-shoved-player-time) (-> *display* base-frame-counter))
+          )
+      )
     )
+  (none)
   )
 
 (defstate snow-bumper-active-far-idle (snow-bumper)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target* (>= 135895450000.0 (vector-vector-xz-distance-squared (-> self root trans) (target-pos 0))))
         (go snow-bumper-active-close-idle)
         )
     0
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
     (suspend)
     (loop
@@ -183,8 +164,7 @@
   )
 
 (defstate snow-bumper-active-close-idle (snow-bumper)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('touch 'attack 'bonk)
        (when (= (-> arg0 type) target)
@@ -204,8 +184,7 @@
        )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (cond
       (*target*
         (let* ((gp-0 (target-pos 0))
@@ -232,8 +211,7 @@
     (update! (-> self sound))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
     (suspend)
     (loop
@@ -245,16 +223,13 @@
   )
 
 (defstate snow-bumper-deactivate (snow-bumper)
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (stop! (-> self sound))
     (logior! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :trans
-  (the-as (function none :behavior snow-bumper) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior snow-bumper) rider-trans)
+  :code (behavior ()
     (local-vars (sv-16 symbol))
     (logclear! (-> self mask) (process-mask actor-pause))
     (sound-play-by-name (static-sound-name "bumper-pwr-dwn") (new-sound-id) 1024 0 0 1 #t)
@@ -285,13 +260,11 @@
     (go snow-bumper-inactive-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior snow-bumper) rider-post)
+  :post (the-as (function none :behavior snow-bumper) rider-post)
   )
 
 (defstate snow-bumper-spawn-fuel-cell (snow-bumper)
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 1)
     (ja :group! snow-bumper-collapse-ja :num! max)
     (transform-post)
@@ -314,8 +287,7 @@
   )
 
 (defstate snow-bumper-inactive-idle (snow-bumper)
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self root nav-radius) 6963.2)
     (ja-channel-set! 1)
     (ja :group! snow-bumper-collapse-ja :num! max)

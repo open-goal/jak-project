@@ -133,16 +133,14 @@
   :id 538
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 16)
-  :parts
-  ((sp-item 1928 :fade-after (meters 70) :falloff-to (meters 70))
+  :parts ((sp-item 1928 :fade-after (meters 70) :falloff-to (meters 70))
     (sp-item 1929 :fade-after (meters 70) :falloff-to (meters 70))
     )
   )
 
 ;; failed to figure out what this is:
 (defpart 1929
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
     (sp-flt spt-num 16.0)
     (sp-rnd-flt spt-x (meters -2) (meters 4) 1.0)
     (sp-rnd-flt spt-y (meters 0.5) (meters 1) 1.0)
@@ -167,8 +165,7 @@
 
 ;; failed to figure out what this is:
 (defpart 1928
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 32.0)
     (sp-rnd-flt spt-x (meters -2) (meters 4) 1.0)
     (sp-rnd-flt spt-y (meters 0.5) (meters 1) 1.0)
@@ -199,14 +196,12 @@
   :id 539
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 16)
-  :parts
-  ((sp-item 1930 :fade-after (meters 70) :falloff-to (meters 70)))
+  :parts ((sp-item 1930 :fade-after (meters 70) :falloff-to (meters 70)))
   )
 
 ;; failed to figure out what this is:
 (defpart 1930
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
     (sp-rnd-flt spt-num 1.0 2.0 1.0)
     (sp-rnd-flt spt-x (meters -0.25) (meters 0.5) 1.0)
     (sp-rnd-flt spt-z (meters -0.25) (meters 0.5) 1.0)
@@ -242,10 +237,8 @@
 
 ;; failed to figure out what this is:
 (defstate yeti-slave-appear-jump-up (yeti-slave)
-  :event
-  yeti-slave-default-event-handler
-  :enter
-  (behavior ()
+  :event yeti-slave-default-event-handler
+  :enter (behavior ()
     (nav-enemy-neck-control-inactive)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (if (-> self nav-info move-to-ground)
@@ -260,8 +253,7 @@
     (set! (-> self collide-info transv y) (rand-vu-float-range 102400.0 114688.0))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (and (< (-> self collide-info trans y) (-> self ground-y)) (< (-> self collide-info transv y) 0.0))
       (set! (-> self collide-info trans y) (-> self ground-y))
       (set! (-> self collide-info transv quad) (-> *null-vector* quad))
@@ -276,8 +268,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (ja-no-eval :group! yeti-jump-ja :num! (seek!) :frame-num (ja-aframe 10.0 0))
     (until (ja-done? 0)
@@ -289,16 +280,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior yeti-slave) nav-enemy-falling-post)
+  :post (the-as (function none :behavior yeti-slave) nav-enemy-falling-post)
   )
 
 ;; failed to figure out what this is:
 (defstate yeti-slave-appear-land (yeti-slave)
-  :event
-  yeti-slave-default-event-handler
-  :code
-  (behavior ()
+  :event yeti-slave-default-event-handler
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.05))
     (ja-no-eval :group! yeti-jump-land-ja :num! (seek! max 0.5) :frame-num 0.0)
     (until (ja-done? 0)
@@ -311,31 +299,26 @@
         )
     (none)
     )
-  :post
-  (the-as (function none :behavior yeti-slave) ja-post)
+  :post (the-as (function none :behavior yeti-slave) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate yeti-slave-show-anims (yeti-slave)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     0
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     0
     (none)
     )
-  :post
-  (the-as (function none :behavior yeti-slave) transform-post)
+  :post (the-as (function none :behavior yeti-slave) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-patrol (yeti-slave)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((ja-group? yeti-give-up-hop-ja)
        (ja-channel-push! 1 (seconds 0.15))
@@ -387,15 +370,13 @@
 ;; failed to figure out what this is:
 (defstate nav-enemy-chase (yeti-slave)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
       (cond
         ((ja-group? yeti-jump-land-ja)
          (ja-no-eval :num! (seek!))
          (ja-channel-push! 1 (seconds 0.17))
-         (ja-no-eval :group!
-                     (-> self draw art-group data (-> self nav-info run-anim))
+         (ja-no-eval :group! (-> self draw art-group data (-> self nav-info run-anim))
                      :num! (seek! max f30-0)
                      :frame-num 0.0
                      )
@@ -423,8 +404,7 @@
 ;; failed to figure out what this is:
 (defstate nav-enemy-stare (yeti-slave)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self turn-time) (seconds 0.2))
     (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
       (when (or (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
@@ -476,8 +456,7 @@
 ;; failed to figure out what this is:
 (defstate nav-enemy-give-up (yeti-slave)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self rotate-speed) 218453.33)
     (set! (-> self turn-time) (seconds 0.5))
     (ja-channel-push! 1 (seconds 0.15))
@@ -517,12 +496,10 @@
 ;; failed to figure out what this is:
 (defstate nav-enemy-jump-land (yeti-slave)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (ja-channel-push! 1 (seconds 0.075))
-    (ja-no-eval :group!
-                (-> self draw art-group data (-> self nav-info jump-land-anim))
+    (ja-no-eval :group! (-> self draw art-group data (-> self nav-info jump-land-anim))
                 :num! (seek! (ja-aframe 32.0 0) 0.5)
                 :frame-num 0.0
                 )
@@ -690,8 +667,7 @@
 
 ;; failed to figure out what this is:
 (defstate yeti-first-time-start (yeti)
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when *target*
         (when (>= (-> self first-time-spawn-dist) (vector-vector-xz-distance (target-pos 0) (-> self root trans)))
@@ -707,8 +683,7 @@
 
 ;; failed to figure out what this is:
 (defstate yeti-resuming-start (yeti)
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 0))
       (let ((v1-0 (the-as (pointer process-tree) (-> self child-process))))
         (while v1-0
@@ -725,15 +700,7 @@
           (if (not (TODO-RENAME-20 self s5-0 s4-0))
               (go yeti-idle)
               )
-          (let ((s3-0 (get-process *default-dead-pool* yeti-slave #x4000)))
-            (when s3-0
-              (let ((t9-3 (method-of-type yeti-slave activate)))
-                (t9-3 (the-as yeti-slave s3-0) self 'yeti-slave (the-as pointer #x70004000))
-                )
-              (run-now-in-process s3-0 yeti-slave-init-by-other (-> self entity) self s5-0 s4-0 #t)
-              (-> s3-0 ppointer)
-              )
-            )
+          (process-spawn yeti-slave (-> self entity) self s5-0 s4-0 #t :to self)
           )
         (+! gp-0 1)
         )
@@ -745,8 +712,7 @@
 
 ;; failed to figure out what this is:
 (defstate yeti-idle (yeti)
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (cond
         ((zero? (-> self spawn-delay))
@@ -771,15 +737,7 @@
                   (s5-0 (new 'stack-no-clear 'vector))
                   )
               (when (TODO-RENAME-20 self gp-0 s5-0)
-                (let ((s4-0 (get-process *default-dead-pool* yeti-slave #x4000)))
-                  (when s4-0
-                    (let ((t9-3 (method-of-type yeti-slave activate)))
-                      (t9-3 (the-as yeti-slave s4-0) self 'yeti-slave (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process s4-0 yeti-slave-init-by-other (-> self entity) self gp-0 s5-0 #f)
-                    (-> s4-0 ppointer)
-                    )
-                  )
+                (process-spawn yeti-slave (-> self entity) self gp-0 s5-0 #f :to self)
                 (set! (-> self spawn-delay) 0)
                 0
                 )

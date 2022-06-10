@@ -6,6 +6,7 @@
 ;; dgos: JUN, JUNGLE, L1
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/hopper-ag.gc")
 
 (deftype hopper (nav-enemy)
@@ -110,13 +111,11 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-idle (hopper)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior hopper)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (loop
       (dotimes (gp-0 3)
@@ -138,20 +137,17 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-patrol (hopper)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior hopper)
     nav-enemy-jump-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (zero? (logand (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate)))
         ((-> (method-of-type nav-enemy nav-enemy-patrol) trans))
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (vector-reset! (-> self collide-info transv))
     (set! (-> self jump-length) 16384.0)
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
@@ -195,19 +191,16 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior hopper) nav-enemy-jump-post)
+  :post (the-as (function none :behavior hopper) nav-enemy-jump-post)
   )
 
 (defstate nav-enemy-notice (hopper)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior hopper)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual nav-enemy-chase)
     (none)
     )
@@ -215,20 +208,17 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-chase (hopper)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior hopper)
     nav-enemy-jump-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (zero? (logand (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate)))
         ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (vector-reset! (-> self collide-info transv))
     (set! (-> self jump-length) 32768.0)
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
@@ -267,19 +257,16 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior hopper) nav-enemy-jump-post)
+  :post (the-as (function none :behavior hopper) nav-enemy-jump-post)
   )
 
 (defstate nav-enemy-stop-chase (hopper)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior hopper)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual nav-enemy-stare)
     (none)
     )

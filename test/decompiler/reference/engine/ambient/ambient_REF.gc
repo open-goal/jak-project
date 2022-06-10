@@ -265,15 +265,7 @@
   (let ((s3-1 (level-hint-task-process arg2 (the-as uint128 arg0) arg1)))
     (when (!= s3-1 -1)
       (kill-current-level-hint '() '() 'exit)
-      (let ((s2-0 (get-process *default-dead-pool* level-hint #x4000)))
-        (when s2-0
-          (let ((t9-4 (method-of-type level-hint activate)))
-            (t9-4 (the-as level-hint s2-0) arg3 'level-hint (the-as pointer #x70004000))
-            )
-          (run-now-in-process s2-0 level-hint-init-by-other s3-1 arg1 arg2)
-          (-> s2-0 ppointer)
-          )
-        )
+      (process-spawn level-hint s3-1 arg1 arg2 :to arg3)
       )
     )
   0
@@ -289,15 +281,7 @@
      )
     )
   (the-as object (and (not *hint-semaphore*)
-                      (let ((s2-0 (get-process *default-dead-pool* level-hint #x4000)))
-                        (when s2-0
-                          (let ((t9-2 (method-of-type level-hint activate)))
-                            (t9-2 (the-as level-hint s2-0) arg2 'level-hint (the-as pointer #x70004000))
-                            )
-                          (run-now-in-process s2-0 ambient-hint-init-by-other arg0 arg1 arg3)
-                          (-> s2-0 ppointer)
-                          )
-                        )
+                      (process-spawn level-hint :init ambient-hint-init-by-other arg0 arg1 arg3 :to arg2)
                       )
           )
   )
@@ -424,8 +408,7 @@
 
 ;; failed to figure out what this is:
 (defstate level-hint-normal (level-hint)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'exit)
@@ -438,15 +421,13 @@
               )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (if (= (ppointer->process *hint-semaphore*) self)
         (set! *hint-semaphore* (the-as (pointer level-hint) #f))
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((= (-> self text-id-to-display) (game-text-id zero))
        (if *debug-segment*
@@ -487,8 +468,7 @@
 
 ;; failed to figure out what this is:
 (defstate level-hint-sidekick (level-hint)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'exit)
@@ -506,8 +486,7 @@
               )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (if (nonzero? (-> self sound-id))
         (sound-stop (-> self sound-id))
         )
@@ -520,8 +499,7 @@
     (send-event (handle->process (-> self voicebox)) 'die)
     (none)
     )
-  :code
-  (behavior ((arg0 string))
+  :code (behavior ((arg0 string))
     (when (and (-> *setting-control* current play-hints) (< 0.0 (-> *setting-control* current dialog-volume)))
       (case (-> self mode)
         (('voicebox)
@@ -570,10 +548,8 @@
 
 ;; failed to figure out what this is:
 (defstate level-hint-ambient-sound (level-hint)
-  :event
-  (-> level-hint-sidekick event)
-  :exit
-  (behavior ()
+  :event (-> level-hint-sidekick event)
+  :exit (behavior ()
     (if (nonzero? (-> self sound-id))
         (sound-stop (-> self sound-id))
         )
@@ -584,8 +560,7 @@
         )
     (none)
     )
-  :code
-  (behavior ((arg0 string))
+  :code (behavior ((arg0 string))
     (while (not *sound-player-enable*)
       (suspend)
       )
@@ -635,10 +610,8 @@
 
 ;; failed to figure out what this is:
 (defstate level-hint-error (level-hint)
-  :event
-  (-> level-hint-normal event)
-  :code
-  (behavior ((arg0 string) (arg1 string))
+  :event (-> level-hint-normal event)
+  :code (behavior ((arg0 string) (arg1 string))
     (clear-pending-settings-from-process *setting-control* self 'hint)
     (let ((s4-0 (-> *display* base-frame-counter)))
       (until (>= (- (-> *display* base-frame-counter) s4-0) (seconds 1))
@@ -670,8 +643,7 @@
 
 ;; failed to figure out what this is:
 (defstate level-hint-exit (level-hint)
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (= (ppointer->process *hint-semaphore*) self)
         (set! *hint-semaphore* (the-as (pointer level-hint) #f))
         )
@@ -738,15 +710,7 @@
          )
         ((!= s5-0 -1)
          (kill-current-level-hint '() '() 'exit)
-         (let ((s4-0 (get-process *default-dead-pool* level-hint #x4000)))
-           (when s4-0
-             (let ((t9-8 (method-of-type level-hint activate)))
-               (t9-8 (the-as level-hint s4-0) pp 'level-hint (the-as pointer #x70004000))
-               )
-             (run-now-in-process s4-0 level-hint-init-by-other s5-0 #f (-> arg0 ambient))
-             (-> s4-0 ppointer)
-             )
-           )
+         (process-spawn level-hint s5-0 #f (-> arg0 ambient) :to pp)
          )
         )
       )

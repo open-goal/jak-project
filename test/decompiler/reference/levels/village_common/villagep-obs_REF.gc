@@ -46,14 +46,10 @@
 
 ;; failed to figure out what this is:
 (defstate target-warp-in (target)
-  :event
-  target-generic-event-handler
-  :enter
-  (-> target-warp-out enter)
-  :exit
-  (-> target-warp-out exit)
-  :trans
-  (behavior ()
+  :event target-generic-event-handler
+  :enter (-> target-warp-out enter)
+  :exit (-> target-warp-out exit)
+  :trans (behavior ()
     (set! (-> self control transv x)
           (- (-> self control unknown-vector103 x) (-> self control unknown-vector102 x))
           )
@@ -66,8 +62,7 @@
         )
     (none)
     )
-  :code
-  (behavior ((arg0 vector) (arg1 vector))
+  :code (behavior ((arg0 vector) (arg1 vector))
     (clear-collide-with-as (-> self control))
     (ja-channel-set! 0)
     (vector-reset! (-> self control transv))
@@ -121,23 +116,20 @@
     (target-falling-anim -1 (seconds 0.33))
     (none)
     )
-  :post
-  target-no-move-post
+  :post target-no-move-post
   )
 
 ;; failed to figure out what this is:
 (defstate idle (warp-gate)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('hide)
        (go-virtual hidden)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (clear-pending-settings-from-process *setting-control* self 'allow-progress)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (loop
@@ -259,16 +251,14 @@
 ;; failed to figure out what this is:
 (defstate active (warp-gate)
   :virtual #t
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
     (copy-settings-from-target! *setting-control*)
     (sound-play-by-name (static-sound-name "start-options") (new-sound-id) 1024 0 0 1 #t)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (or (and (cpad-pressed? 0 triangle)
                    (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
                    (process-release? *target*)
@@ -298,8 +288,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars (sv-112 int) (sv-128 int) (sv-144 int))
     (let ((gp-0 (get-next-slot-up self (+ (-> self level-slot) -1))))
       0
@@ -441,8 +430,7 @@
 ;; failed to figure out what this is:
 (defstate hidden (warp-gate)
   :virtual #t
-  :code
-  (the-as (function none :behavior warp-gate) anim-loop)
+  :code (the-as (function none :behavior warp-gate) anim-loop)
   )
 
 ;; definition for function warp-gate-init-by-other
@@ -692,8 +680,7 @@
 ;; failed to figure out what this is:
 (defstate basebutton-up-idle (warp-gate-switch)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('touch 'attack)
        (when (pressable? self)
@@ -709,8 +696,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((t9-0 (-> (method-of-type basebutton basebutton-up-idle) enter)))
       (if t9-0
@@ -719,8 +705,7 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) self)
       (set! (-> a1-0 num-params) 0)
@@ -815,8 +800,7 @@
 ;; failed to figure out what this is:
 (defstate basebutton-down-idle (warp-gate-switch)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('hide)
        (send-event (handle->process (-> self warp)) arg2)
@@ -826,21 +810,9 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (let ((gp-0 (get-process *default-dead-pool* warp-gate #x4000)))
-      (set! (-> self warp)
-            (ppointer->handle (when gp-0
-                                (let ((t9-1 (method-of-type warp-gate activate)))
-                                  (t9-1 (the-as warp-gate gp-0) self 'warp-gate (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process gp-0 warp-gate-init-by-other (-> self notify-actor extra trans))
-                                (-> gp-0 ppointer)
-                                )
-                              )
-            )
-      )
+    (set! (-> self warp) (ppointer->handle (process-spawn warp-gate (-> self notify-actor extra trans) :to self)))
     (process-entity-status! self (entity-perm-status complete) #t)
     (let ((t9-4 (-> (method-of-type basebutton basebutton-down-idle) enter)))
       (if t9-4
@@ -849,8 +821,7 @@
       )
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (let ((a0-1 (handle->process (-> self warp))))
       (if a0-1
           (deactivate a0-1)
@@ -863,8 +834,7 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 60))
       (case (-> self entity extra perm task)
         (((game-task training-door))
@@ -894,8 +864,7 @@
 ;; failed to figure out what this is:
 (defstate basebutton-going-down (warp-gate-switch)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (sound-play-by-name (static-sound-name "warpgate-butt") (new-sound-id) 1024 0 0 1 #t)
     (sound-play-by-name (static-sound-name "warpgate-act") (new-sound-id) 1024 0 0 1 #t)
     (let ((gp-2 (entity-actor-count (-> self entity) 'trigger-actor)))
@@ -984,8 +953,7 @@
 ;; failed to figure out what this is:
 (defstate idle (village-cam)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars (v1-18 symbol))
     (loop
       (let ((v1-5
@@ -1110,33 +1078,25 @@
                         *entity-pool*
                         (game-task none)
                         )
-                      (let ((s5-0 (get-process *default-dead-pool* pov-camera #x4000)))
-                        (when s5-0
-                          (let ((t9-23 (method-of-type pov-camera activate)))
-                            (t9-23 (the-as pov-camera s5-0) self 'pov-camera (the-as pointer #x70004000))
-                            )
-                          (run-now-in-process
-                            s5-0
-                            pov-camera-init-by-other
-                            (-> self entity extra trans)
-                            *village-cam-sg*
-                            "firecanyon-cam"
-                            0
-                            #f
-                            '((0 want-force-vis village1 #t)
-                              (0 alive "money-2669")
-                              (0 alive "money-2670")
-                              (0 alive "money-2671")
-                              (0 alive "money-2672")
-                              (0 alive "money-2673")
-                              (0 alive "money-2674")
-                              (0 alive "money-2675")
-                              (0 alive "money-2677")
-                              (0 alive "money-2678")
-                              )
-                            )
-                          (-> s5-0 ppointer)
+                      (process-spawn
+                        pov-camera
+                        (-> self entity extra trans)
+                        *village-cam-sg*
+                        "firecanyon-cam"
+                        0
+                        #f
+                        '((0 want-force-vis village1 #t)
+                          (0 alive "money-2669")
+                          (0 alive "money-2670")
+                          (0 alive "money-2671")
+                          (0 alive "money-2672")
+                          (0 alive "money-2673")
+                          (0 alive "money-2674")
+                          (0 alive "money-2675")
+                          (0 alive "money-2677")
+                          (0 alive "money-2678")
                           )
+                        :to self
                         )
                       )
                      ((= v1-84 1)
@@ -1147,33 +1107,25 @@
                         *entity-pool*
                         (game-task none)
                         )
-                      (let ((s5-1 (get-process *default-dead-pool* pov-camera #x4000)))
-                        (when s5-1
-                          (let ((t9-27 (method-of-type pov-camera activate)))
-                            (t9-27 (the-as pov-camera s5-1) self 'pov-camera (the-as pointer #x70004000))
-                            )
-                          (run-now-in-process
-                            s5-1
-                            pov-camera-init-by-other
-                            (-> self entity extra trans)
-                            *village-cam-sg*
-                            "firecanyon-alt-cam"
-                            0
-                            #f
-                            '((0 want-force-vis village1 #t)
-                              (0 alive "money-2669")
-                              (0 alive "money-2670")
-                              (0 alive "money-2671")
-                              (0 alive "money-2672")
-                              (0 alive "money-2673")
-                              (0 alive "money-2674")
-                              (0 alive "money-2675")
-                              (0 alive "money-2677")
-                              (0 alive "money-2678")
-                              )
-                            )
-                          (-> s5-1 ppointer)
+                      (process-spawn
+                        pov-camera
+                        (-> self entity extra trans)
+                        *village-cam-sg*
+                        "firecanyon-alt-cam"
+                        0
+                        #f
+                        '((0 want-force-vis village1 #t)
+                          (0 alive "money-2669")
+                          (0 alive "money-2670")
+                          (0 alive "money-2671")
+                          (0 alive "money-2672")
+                          (0 alive "money-2673")
+                          (0 alive "money-2674")
+                          (0 alive "money-2675")
+                          (0 alive "money-2677")
+                          (0 alive "money-2678")
                           )
+                        :to self
                         )
                       )
                      )
@@ -1192,24 +1144,7 @@
                    *entity-pool*
                    (game-task none)
                    )
-                 (let ((gp-1 (get-process *default-dead-pool* pov-camera #x4000)))
-                   (when gp-1
-                     (let ((t9-33 (method-of-type pov-camera activate)))
-                       (t9-33 (the-as pov-camera gp-1) self 'pov-camera (the-as pointer #x70004000))
-                       )
-                     (run-now-in-process
-                       gp-1
-                       pov-camera-init-by-other
-                       (-> self entity extra trans)
-                       *village-cam-sg*
-                       "vi2-button-cam"
-                       0
-                       #f
-                       '()
-                       )
-                     (-> gp-1 ppointer)
-                     )
-                   )
+                 (process-spawn pov-camera (-> self entity extra trans) *village-cam-sg* "vi2-button-cam" 0 #f '() :to self)
                  )
                )
               ((= v1-79 3)
@@ -1221,24 +1156,7 @@
                    *entity-pool*
                    (game-task none)
                    )
-                 (let ((gp-2 (get-process *default-dead-pool* pov-camera #x4000)))
-                   (when gp-2
-                     (let ((t9-38 (method-of-type pov-camera activate)))
-                       (t9-38 (the-as pov-camera gp-2) self 'pov-camera (the-as pointer #x70004000))
-                       )
-                     (run-now-in-process
-                       gp-2
-                       pov-camera-init-by-other
-                       (-> self entity extra trans)
-                       *village-cam-sg*
-                       "vi3-button-cam"
-                       0
-                       #f
-                       '()
-                       )
-                     (-> gp-2 ppointer)
-                     )
-                   )
+                 (process-spawn pov-camera (-> self entity extra trans) *village-cam-sg* "vi3-button-cam" 0 #f '() :to self)
                  )
                )
               )

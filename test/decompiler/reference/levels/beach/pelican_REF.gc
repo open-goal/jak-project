@@ -231,8 +231,7 @@
 
 ;; failed to figure out what this is:
 (defstate pelican-circle (pelican)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as
         object
@@ -256,8 +255,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (while (-> self child)
       (deactivate (-> self child 0))
       )
@@ -265,17 +263,7 @@
     (let ((gp-0 (-> self path-vector)))
       (eval-path-curve-div! (-> self path-dive0) gp-0 4.5 'interp)
       (set! (-> gp-0 y) (+ -4505.6 (-> gp-0 y)))
-      (let* ((s5-0 (get-process *default-dead-pool* manipy #x4000))
-             (v1-8
-               (when s5-0
-                 (let ((t9-3 (method-of-type manipy activate)))
-                   (t9-3 (the-as manipy s5-0) self 'manipy (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process s5-0 manipy-init gp-0 (-> self entity) *fuel-cell-sg* (new 'static 'vector :w 4915.2))
-                 (-> s5-0 ppointer)
-                 )
-               )
-             )
+      (let ((v1-8 (manipy-spawn gp-0 (-> self entity) *fuel-cell-sg* (new 'static 'vector :w 4915.2) :to self)))
         (set! (-> self fuel-cell) (ppointer->handle v1-8))
         (if v1-8
             (send-event
@@ -299,8 +287,7 @@
     (set-roll-to-grav-2! (-> self root-override) -2730.6667)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (pelican-path-update 728177.75 30 1.0 (/ (-> self path-max) (path-distance (-> self path))) #f)
     (let ((f0-3 (+ (-> self path-pos) (* (-> self path-speed) (-> *display* seconds-per-frame))))
           (f1-2 (-> self path-max))
@@ -310,60 +297,53 @@
     (when (and (and *target* (>= 81920.0 (vector-vector-xz-distance (-> self path-vector) (-> *target* control trans))))
                (not (handle->process (-> self cam-tracker)))
                )
-      (let ((gp-1 (get-process *default-dead-pool* camera-tracker #x4000)))
-        (set! (-> self cam-tracker)
-              (ppointer->handle (when gp-1
-                                  (let ((t9-4 (method-of-type camera-tracker activate)))
-                                    (t9-4 (the-as camera-tracker gp-1) self 'camera-tracker (the-as pointer #x70004000))
+      (set! (-> self cam-tracker)
+            (ppointer->handle (process-spawn
+                                camera-tracker
+                                :init camera-tracker-init
+                                (lambda :behavior camera-tracker
+                                  ()
+                                  (local-vars
+                                    (a0-6 process-tree)
+                                    (a1-5 event-message-block)
+                                    (t9-6 (function process-tree event-message-block object))
                                     )
-                                  (run-now-in-process
-                                    gp-1
-                                    camera-tracker-init
-                                    (lambda :behavior camera-tracker
-                                      ()
-                                      (local-vars
-                                        (a0-6 process-tree)
-                                        (a1-5 event-message-block)
-                                        (t9-6 (function process-tree event-message-block object))
-                                        )
-                                      (while (not (process-grab? *target*))
-                                        (suspend)
-                                        )
-                                      (send-event (ppointer->process (-> self parent)) 'position 4.0)
-                                      (send-event (ppointer->process (-> self parent)) 'dive)
-                                      (suspend)
-                                      (suspend)
-                                      (send-event *camera* 'blend-from-as-fixed)
-                                      (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 0))
-                                      (camera-change-to "camera-215" 0 #f)
-                                      (until (t9-6 a0-6 a1-5)
-                                        (suspend)
-                                        (set! a1-5 (new 'stack-no-clear 'event-message-block))
-                                        (set! (-> a1-5 from) self)
-                                        (set! (-> a1-5 num-params) 0)
-                                        (set! (-> a1-5 message) 'got-cell?)
-                                        (set! t9-6 send-event-function)
-                                        (set! a0-6 (ppointer->process (-> self parent)))
-                                        )
-                                      (send-event *camera* 'point-of-interest #f)
-                                      (while (!= (-> self message) 'release)
-                                        (suspend)
-                                        )
-                                      (set! (-> self message) #f)
-                                      (while (not (process-release? (handle->process (-> self grab-target))))
-                                        (suspend)
-                                        )
-                                      (send-event *camera* 'blend-from-as-fixed)
-                                      (camera-look-at (the-as pair *target*) (the-as uint 0))
-                                      (camera-change-to (the-as string 'base) 150 #f)
-                                      (none)
-                                      )
+                                  (while (not (process-grab? *target*))
+                                    (suspend)
                                     )
-                                  (-> gp-1 ppointer)
+                                  (send-event (ppointer->process (-> self parent)) 'position 4.0)
+                                  (send-event (ppointer->process (-> self parent)) 'dive)
+                                  (suspend)
+                                  (suspend)
+                                  (send-event *camera* 'blend-from-as-fixed)
+                                  (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 0))
+                                  (camera-change-to "camera-215" 0 #f)
+                                  (until (t9-6 a0-6 a1-5)
+                                    (suspend)
+                                    (set! a1-5 (new 'stack-no-clear 'event-message-block))
+                                    (set! (-> a1-5 from) self)
+                                    (set! (-> a1-5 num-params) 0)
+                                    (set! (-> a1-5 message) 'got-cell?)
+                                    (set! t9-6 send-event-function)
+                                    (set! a0-6 (ppointer->process (-> self parent)))
+                                    )
+                                  (send-event *camera* 'point-of-interest #f)
+                                  (while (!= (-> self message) 'release)
+                                    (suspend)
+                                    )
+                                  (set! (-> self message) #f)
+                                  (while (not (process-release? (handle->process (-> self grab-target))))
+                                    (suspend)
+                                    )
+                                  (send-event *camera* 'blend-from-as-fixed)
+                                  (camera-look-at (the-as pair *target*) (the-as uint 0))
+                                  (camera-change-to (the-as string 'base) 150 #f)
+                                  (none)
                                   )
+                                :to self
                                 )
-              )
-        )
+                              )
+            )
       (set! (-> self draw force-lod) 0)
       0
       )
@@ -376,8 +356,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (suspend)
     (send-event (-> self fuel-cell process 0) 'trans-hook fuel-cell-animate)
     (pelican-fly
@@ -386,14 +365,12 @@
       )
     (none)
     )
-  :post
-  pelican-post
+  :post pelican-post
   )
 
 ;; failed to figure out what this is:
 (defstate pelican-dive (pelican)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'got-cell?)
@@ -406,8 +383,7 @@
               )
       )
     )
-  :enter
-  (behavior ((arg0 path-control) (arg1 curve-control) (arg2 time-frame))
+  :enter (behavior ((arg0 path-control) (arg1 curve-control) (arg2 time-frame))
     (init! (-> self query) (the-as string #f) 40 150 25 #t (the-as string #f))
     (set! (-> self state-object) #f)
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -435,13 +411,11 @@
     0
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self draw force-lod) -1)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not (handle->process (-> self fuel-cell)))
         (go pelican-fly-to-end (-> self path-to-nest2) (-> *PELICAN-bank* run-away-time))
         )
@@ -452,21 +426,13 @@
         )
     (none)
     )
-  :code
-  (behavior ((arg0 path-control) (arg1 curve-control) (arg2 time-frame))
+  :code (behavior ((arg0 path-control) (arg1 curve-control) (arg2 time-frame))
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! pelican-swoop-ja :num! (seek! (ja-aframe 48.0 0) 0.5) :frame-num 0.0)
     (until (ja-done? 0)
       (ja-blend-eval)
       (let ((gp-1 (handle->process (-> self fuel-cell))))
-        (when (and gp-1 (>= (-> self path-pos) 3.8) (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-                                                      (set! (-> a1-5 from) self)
-                                                      (set! (-> a1-5 num-params) 1)
-                                                      (set! (-> a1-5 message) 'query)
-                                                      (set! (-> a1-5 param 0) (the-as uint 'grab))
-                                                      (not (send-event-function gp-1 a1-5))
-                                                      )
-                   )
+        (when (and gp-1 (>= (-> self path-pos) 3.8) (not (send-event gp-1 'query 'grab)))
           (level-hint-spawn (game-text-id zero) (the-as string #f) (-> self entity) *entity-pool* (game-task none))
           (send-event gp-1 'grab self)
           (send-event gp-1 'draw #f)
@@ -487,22 +453,19 @@
     (anim-loop)
     (none)
     )
-  :post
-  pelican-post
+  :post pelican-post
   )
 
 ;; failed to figure out what this is:
 (defstate pelican-to-nest (pelican)
-  :enter
-  (behavior ((arg0 path-control) (arg1 int))
+  :enter (behavior ((arg0 path-control) (arg1 int))
     (set! (-> self path) arg0)
     (set! (-> self path-pos) 0.0)
     (set! (-> self path-max) (the float (+ (-> self path curve num-cverts) -1)))
     (set! (-> self path-speed) (/ (* 300.0 (-> self path-max)) (the float arg1)))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (pelican-path-update 546133.3 30 0.0 0.0 #f)
     (seek! (-> self path-pos) (-> self path-max) (* (-> self path-speed) (-> *display* seconds-per-frame)))
     (if (= (-> self path-pos) (-> self path-max))
@@ -510,8 +473,7 @@
         )
     (none)
     )
-  :code
-  (behavior ((arg0 path-control) (arg1 int))
+  :code (behavior ((arg0 path-control) (arg1 int))
     (pelican-fly
       (the-as (function pelican int) (lambda () 1))
       (lambda ((arg0 pelican)) (if (and (>= (-> arg0 path-pos) 4.0) (>= 6.0 (-> arg0 path-pos)))
@@ -522,14 +484,12 @@
       )
     (none)
     )
-  :post
-  pelican-post
+  :post pelican-post
   )
 
 ;; failed to figure out what this is:
 (defstate pelican-wait-at-nest (pelican)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as
         object
@@ -580,8 +540,7 @@
         )
       )
     )
-  :enter
-  (behavior ((arg0 symbol))
+  :enter (behavior ((arg0 symbol))
     (set! (-> self path) (-> self path-from-nest0))
     (set! (-> self path-pos) 0.0)
     (set! (-> self path-max) (the float (+ (-> self path curve num-cverts) -1)))
@@ -613,15 +572,13 @@
         )
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (if (nonzero? (-> self neck))
         (set-mode! (-> self neck) (joint-mod-handler-mode flex-blend))
         )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((a1-0 (-> self state-vector))
           (gp-0 (new 'stack-no-clear 'vector))
           )
@@ -634,8 +591,7 @@
     (spool-push *art-control* "pelican-spit-ext" 0 self -99.0)
     (none)
     )
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (cond
       (arg0
         (ja-channel-set! 1)
@@ -675,8 +631,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (when *target*
       (if *target*
           (look-at-enemy! (-> *target* neck) (the-as vector (-> self root-override root-prim prim-core)) 'nothing self)
@@ -692,24 +647,13 @@
 
 ;; failed to figure out what this is:
 (defstate pelican-spit (pelican)
-  :event
-  (-> pelican-circle event)
-  :code
-  (behavior ()
+  :event (-> pelican-circle event)
+  :code (behavior ()
     (local-vars (v1-21 symbol) (v1-31 symbol))
-    (let* ((gp-0 (get-process *default-dead-pool* manipy #x4000))
-           (gp-1
-             (ppointer->handle
-               (when gp-0
-                 (let ((t9-1 (method-of-type manipy activate)))
-                   (t9-1 (the-as manipy gp-0) self 'manipy (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process gp-0 manipy-init (-> self entity extra trans) (-> self entity) *beachcam-sg* #f)
-                 (-> gp-0 ppointer)
-                 )
-               )
-             )
-           )
+    (let ((gp-1
+            (ppointer->handle (manipy-spawn (-> self entity extra trans) (-> self entity) *beachcam-sg* #f :to self))
+            )
+          )
       (let ((s5-0 (get-process *default-dead-pool* othercam #x4000)))
         (ppointer->handle (when s5-0
                             (let ((t9-4 (method-of-type othercam activate)))
@@ -720,18 +664,11 @@
                             )
                           )
         )
-      (let* ((s5-1 (get-process *default-dead-pool* fuel-cell #x4000))
-             (s4-0 (ppointer->handle (when s5-1
-                                       (let ((t9-7 (method-of-type fuel-cell activate)))
-                                         (t9-7 (the-as fuel-cell s5-1) self 'fuel-cell (the-as pointer #x70004000))
-                                         )
-                                       (run-now-in-process s5-1 fuel-cell-init-as-clone (process->handle self) 0)
-                                       (-> s5-1 ppointer)
-                                       )
-                                     )
-                   )
-             (s5-2 (new 'stack-no-clear 'quaternion))
-             )
+      (let ((s4-0
+              (ppointer->handle (process-spawn fuel-cell :init fuel-cell-init-as-clone (process->handle self) 0 :to self))
+              )
+            (s5-2 (new 'stack-no-clear 'quaternion))
+            )
         (quaternion-copy! s5-2 (-> self root-override quat))
         (until v1-21
           (suspend)
@@ -743,8 +680,7 @@
             :name "pelican-spit-ext"
             :index 11
             :parts 2
-            :command-list
-            '((10 send-event camera 'teleport-to-vector-start-string (static-vectorm -179 16 -421)))
+            :command-list '((10 send-event camera 'teleport-to-vector-start-string (static-vectorm -179 16 -421)))
             )
           (the-as art-joint-anim pelican-sleep-ja)
           (the-as art-joint-anim #f)
@@ -763,31 +699,26 @@
         (quaternion-copy! (-> self root-override quat) s5-2)
         )
       )
-    (let ((gp-2 (get-process *default-dead-pool* process #x4000)))
-      (when gp-2
-        (let ((t9-18 (method-of-type process activate)))
-          (t9-18 gp-2 self 'process (the-as pointer #x70004000))
+    (process-spawn-function
+      process
+      (lambda :behavior pelican
+        ()
+        (while (or (-> *setting-control* current ambient)
+                   (-> *setting-control* current movie)
+                   (-> *setting-control* current hint)
+                   )
+          (suspend)
           )
-        (run-next-time-in-process gp-2 (lambda :behavior pelican
-                                         ()
-                                         (while (or (-> *setting-control* current ambient)
-                                                    (-> *setting-control* current movie)
-                                                    (-> *setting-control* current hint)
-                                                    )
-                                           (suspend)
-                                           )
-                                         (level-hint-spawn
-                                           (game-text-id beach-pelican-quick-get-cell)
-                                           "sksp0027"
-                                           (the-as entity #f)
-                                           *entity-pool*
-                                           (game-task none)
-                                           )
-                                         (none)
-                                         )
-                                  )
-        (-> gp-2 ppointer)
+        (level-hint-spawn
+          (game-text-id beach-pelican-quick-get-cell)
+          "sksp0027"
+          (the-as entity #f)
+          *entity-pool*
+          (game-task none)
+          )
+        (none)
         )
+      :to self
       )
     (let ((gp-3 (handle->process (-> self fuel-cell))))
       (when gp-3
@@ -834,8 +765,7 @@
     (go pelican-from-nest)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (if (not (ja-group? pelican-sleep-ja))
         (quaternion-identity! (-> self root-override quat))
         )
@@ -846,13 +776,11 @@
 
 ;; failed to figure out what this is:
 (defstate pelican-from-nest (pelican)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self path-pos) 1.5)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (pelican-path-update 131072.0 150 0.0 0.0 #f)
     (seek! (-> self path-pos) (-> self path-max) (* (-> self path-speed) (-> *display* seconds-per-frame)))
     (if (= (-> self path-pos) (-> self path-max))
@@ -860,22 +788,19 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (pelican-fly
       (the-as (function pelican int) (lambda () (rand-vu-int-range 2 4)))
       (the-as (function pelican int) zero-func)
       )
     (none)
     )
-  :post
-  pelican-post
+  :post pelican-post
   )
 
 ;; failed to figure out what this is:
 (defstate pelican-fly-to-end (pelican)
-  :enter
-  (behavior ((arg0 path-control) (arg1 time-frame))
+  :enter (behavior ((arg0 path-control) (arg1 time-frame))
     (process-entity-status! self (entity-perm-status complete) #t)
     (let ((v1-2 (-> self entity extra perm)))
       (logior! (-> v1-2 status) (entity-perm-status user-set-from-cstage))
@@ -894,8 +819,7 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (pelican-path-update 546133.3 30 0.0 0.0 #f)
     (seek! (-> self path-pos) (-> self path-max) (* (-> self path-speed) (-> *display* seconds-per-frame)))
     (if (= (-> self path-pos) (-> self path-max))
@@ -914,8 +838,7 @@
       )
     (none)
     )
-  :code
-  (behavior ((arg0 path-control) (arg1 time-frame))
+  :code (behavior ((arg0 path-control) (arg1 time-frame))
     (pelican-fly
       (the-as (function pelican int) (lambda () 1))
       (lambda ((arg0 pelican)) (if (and (>= (-> arg0 path-pos) 4.0) (>= 6.0 (-> arg0 path-pos)))
@@ -926,14 +849,12 @@
       )
     (none)
     )
-  :post
-  pelican-post
+  :post pelican-post
   )
 
 ;; failed to figure out what this is:
 (defstate pelican-wait-at-end (pelican)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (cleanup-for-death self)
     (none)
     )
@@ -941,31 +862,23 @@
 
 ;; failed to figure out what this is:
 (defstate pelican-explode (pelican)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (let ((v1-2 (-> self entity extra perm)))
       (logior! (-> v1-2 status) (entity-perm-status user-set-from-cstage))
       (set! (-> v1-2 user-int8 0) 5)
       )
     (when (not arg0)
       (sound-play-by-name (static-sound-name "scrate-break") (new-sound-id) 1024 0 0 1 #t)
-      (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when gp-1
-          (let ((t9-3 (method-of-type part-tracker activate)))
-            (t9-3 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process
-            gp-1
-            part-tracker-init
-            (-> *part-group-id-table* 71)
-            -1
-            #f
-            #f
-            #f
-            (-> self root-override trans)
-            )
-          (-> gp-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 71)
+        -1
+        #f
+        #f
+        #f
+        (-> self root-override trans)
+        :to *entity-pool*
         )
       )
     (let ((gp-2 (new-stack-vector0)))
@@ -997,8 +910,7 @@
     (anim-loop)
     (none)
     )
-  :post
-  (the-as (function none :behavior pelican) ja-post)
+  :post (the-as (function none :behavior pelican) ja-post)
   )
 
 ;; definition for method 11 of type pelican
@@ -1053,23 +965,15 @@
      (go pelican-wait-at-nest #t)
      )
     ((2)
-     (let* ((s4-1 (get-process *default-dead-pool* manipy #x4000))
-            (s5-2 (when s4-1
-                    (let ((t9-15 (method-of-type manipy activate)))
-                      (t9-15 (the-as manipy s4-1) obj 'manipy (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process
-                      s4-1
-                      manipy-init
-                      (-> obj root-override trans)
-                      (-> obj entity)
-                      *fuel-cell-sg*
-                      (new 'static 'vector :w 4915.2)
-                      )
-                    (-> s4-1 ppointer)
-                    )
-                  )
-            )
+     (let ((s5-2 (manipy-spawn
+                   (-> obj root-override trans)
+                   (-> obj entity)
+                   *fuel-cell-sg*
+                   (new 'static 'vector :w 4915.2)
+                   :to obj
+                   )
+                 )
+           )
        (set! (-> obj fuel-cell) (the-as handle (if s5-2
                                                    (ppointer->handle s5-2)
                                                    (the-as int #f)

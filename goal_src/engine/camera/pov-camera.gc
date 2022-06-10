@@ -32,8 +32,7 @@
 
 (defstate pov-camera-startup (pov-camera)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual pov-camera-start-playing)
     (none)
     )
@@ -41,8 +40,7 @@
 
 (defstate pov-camera-start-playing (pov-camera)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
     (while (not (target-grabbed? self))
       (suspend)
@@ -53,16 +51,7 @@
             (set! gp-0 (+ (-> v1-7 number) 1))
             )
         )
-      (let* ((s5-0 (get-process *default-dead-pool* othercam #x4000))
-             (v1-10 (when s5-0
-                      (let ((t9-3 (method-of-type othercam activate)))
-                        (t9-3 (the-as othercam s5-0) self 'othercam (the-as pointer #x70004000))
-                        )
-                      (run-now-in-process s5-0 othercam-init-by-other self gp-0 #t #t)
-                      (-> s5-0 ppointer)
-                      )
-                    )
-             )
+      (let ((v1-10 (process-spawn othercam self gp-0 #t #t :to self)))
         (send-event (ppointer->process v1-10) 'mask (-> self mask-to-clear))
         )
       )
@@ -91,8 +80,7 @@
 
 (defstate pov-camera-playing (pov-camera)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('abort)
        (when (logtest? (-> self flags) (pov-camera-flag notify-of-abort))
@@ -104,16 +92,14 @@
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self debounce-start-time) (-> *display* base-frame-counter))
     (if (= (-> self anim-name type) string)
         (backup-load-state-and-set-cmds *load-state* (-> self command-list))
         )
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (if (= (-> self anim-name type) string)
         (restore-load-state-and-cleanup *load-state*)
         )
@@ -121,8 +107,7 @@
     (clear-pending-settings-from-process *setting-control* self 'sfx-volume)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (push-setting! *setting-control* self 'music-volume 'rel (-> self music-volume-movie) 0)
     (push-setting! *setting-control* self 'sfx-volume 'rel (-> self sfx-volume-movie) 0)
     (cond
@@ -146,8 +131,7 @@
     (go-virtual pov-camera-done-playing)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (if (= (-> self anim-name type) string)
         (execute-commands-up-to *load-state* (ja-aframe-num 0))
         )
@@ -158,13 +142,11 @@
 
 (defstate pov-camera-abort (pov-camera)
   :virtual #t
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (logior! (-> self flags) (pov-camera-flag allow-abort))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set-blackout-frames (seconds 0.035))
     (suspend)
     (suspend)
@@ -175,8 +157,7 @@
 
 (defstate pov-camera-done-playing (pov-camera)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (while (begin self (not ((method-of-object self target-released?))))
       (suspend)
       )

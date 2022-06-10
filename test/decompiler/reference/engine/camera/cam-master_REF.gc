@@ -595,15 +595,9 @@
     (set! (-> self stringCliffHeight) 163840.0)
     (send-event *camera* 'point-of-interest #f)
     (set! (-> *camera-combiner* tracking point-of-interest-blend target) 0.0)
-    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-1 from) self)
-      (set! (-> a1-1 num-params) 1)
-      (set! (-> a1-1 message) 'query-state)
-      (set! (-> a1-1 param 0) (the-as uint *camera-base-mode*))
-      (if (not (send-event-function *camera* a1-1))
-          (send-event *camera* 'change-state *camera-base-mode* 450)
-          )
-      )
+    (if (not (send-event *camera* 'query-state *camera-base-mode*))
+        (send-event *camera* 'change-state *camera-base-mode* (seconds 1.5))
+        )
     (set! (-> *camera-combiner* tracking tilt-adjust target) (-> *CAMERA-bank* default-tilt-adjust))
     (send-event *camera* 'clear-slave-option #x10000)
     )
@@ -633,15 +627,9 @@
       (set! (-> self stringMaxLength) (-> *CAMERA-bank* default-string-max-z))
       )
   (set! (-> self stringCliffHeight) (cam-slave-get-float arg0 'stringCliffHeight 163840.0))
-  (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-7 from) self)
-    (set! (-> a1-7 num-params) 1)
-    (set! (-> a1-7 message) 'query-state)
-    (set! (-> a1-7 param 0) (the-as uint *camera-base-mode*))
-    (if (not (send-event-function *camera* a1-7))
-        (send-event *camera* 'change-state *camera-base-mode* 450)
-        )
-    )
+  (if (not (send-event *camera* 'query-state *camera-base-mode*))
+      (send-event *camera* 'change-state *camera-base-mode* (seconds 1.5))
+      )
   (if (logtest? #x10000 (cam-slave-get-flags (-> self cam-entity) 'flags))
       (send-event *camera* 'set-slave-option #x10000)
       )
@@ -807,90 +795,82 @@
 
 ;; definition for function master-check-regions
 (defbehavior master-check-regions camera-master ()
-  (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 1)
-    (set! (-> a1-0 message) 'query-state)
-    (set! (-> a1-0 param 0) (the-as uint cam-eye))
-    (cond
-      ((send-event-function *camera* a1-0)
-       #f
-       )
-      ((or (not *target*) (logtest? (-> self master-options) 1))
-       (master-unset-region)
-       )
-      ((and (logtest? (-> self master-options) 4)
-            (not (-> self on-ground))
-            (or (not (-> self cam-entity)) (zero? (logand #x20000 (cam-slave-get-flags (-> self cam-entity) 'flags))))
-            )
-       #f
-       )
-      ((and (-> self cam-entity)
-            (not (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 0.0 'cutoutvol))
-            (or (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'pvol)
-                (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'vol)
-                (and (not ((method-of-type res-lump get-property-data)
-                           (-> self cam-entity)
-                           'pvol
-                           'exact
-                           0.0
-                           (the-as pointer #f)
-                           (the-as (pointer res-tag) #f)
-                           *res-static-buf*
-                           )
-                          )
-                     (not ((method-of-type res-lump get-property-data)
-                           (-> self cam-entity)
-                           'vol
-                           'exact
-                           0.0
-                           (the-as pointer #f)
-                           (the-as (pointer res-tag) #f)
-                           *res-static-buf*
-                           )
-                          )
-                     )
-                )
-            )
-       #f
-       )
-      (else
-        (let ((v1-17 (-> *camera-engine* alive-list next0)))
-          *camera-engine*
-          (let ((gp-5 (-> v1-17 next0)))
-            (while (!= v1-17 (-> *camera-engine* alive-list-end))
-              (let ((s5-1 (-> (the-as connection v1-17) param1)))
-                (when (and (not (in-cam-entity-volume? (target-pos 0) (the-as entity s5-1) 1024.0 'cutoutvol))
-                           (in-cam-entity-volume? (target-pos 0) (the-as entity s5-1) 0.0 'vol)
-                           )
-                  (if (master-switch-to-entity (the-as entity s5-1))
-                      (return #t)
-                      )
-                  )
-                )
-              (set! v1-17 gp-5)
-              *camera-engine*
-              (set! gp-5 (-> gp-5 next0))
+  (cond
+    ((send-event *camera* 'query-state cam-eye)
+     #f
+     )
+    ((or (not *target*) (logtest? (-> self master-options) 1))
+     (master-unset-region)
+     )
+    ((and (logtest? (-> self master-options) 4)
+          (not (-> self on-ground))
+          (or (not (-> self cam-entity)) (zero? (logand #x20000 (cam-slave-get-flags (-> self cam-entity) 'flags))))
+          )
+     #f
+     )
+    ((and (-> self cam-entity)
+          (not (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 0.0 'cutoutvol))
+          (or (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'pvol)
+              (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'vol)
+              (and (not ((method-of-type res-lump get-property-data)
+                         (-> self cam-entity)
+                         'pvol
+                         'exact
+                         0.0
+                         (the-as pointer #f)
+                         (the-as (pointer res-tag) #f)
+                         *res-static-buf*
+                         )
+                        )
+                   (not ((method-of-type res-lump get-property-data)
+                         (-> self cam-entity)
+                         'vol
+                         'exact
+                         0.0
+                         (the-as pointer #f)
+                         (the-as (pointer res-tag) #f)
+                         *res-static-buf*
+                         )
+                        )
+                   )
               )
+          )
+     #f
+     )
+    (else
+      (let ((v1-17 (-> *camera-engine* alive-list next0)))
+        *camera-engine*
+        (let ((gp-5 (-> v1-17 next0)))
+          (while (!= v1-17 (-> *camera-engine* alive-list-end))
+            (let ((s5-1 (-> (the-as connection v1-17) param1)))
+              (when (and (not (in-cam-entity-volume? (target-pos 0) (the-as entity s5-1) 1024.0 'cutoutvol))
+                         (in-cam-entity-volume? (target-pos 0) (the-as entity s5-1) 0.0 'vol)
+                         )
+                (if (master-switch-to-entity (the-as entity s5-1))
+                    (return #t)
+                    )
+                )
+              )
+            (set! v1-17 gp-5)
+            *camera-engine*
+            (set! gp-5 (-> gp-5 next0))
             )
           )
-        (master-unset-region)
         )
+      (master-unset-region)
       )
     )
   )
 
 ;; failed to figure out what this is:
 (defstate cam-master-active (camera-master)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (if (and (nonzero? camera-master-debug) *debug-segment*)
         (add-connection *debug-engine* self camera-master-debug self #f #f)
         )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (not (paused?))
       (vector-negate!
         (-> self local-down)
@@ -900,8 +880,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (if (and *dproc* *debug-segment*)
           (add-frame
@@ -918,15 +897,9 @@
       (master-track-target)
       (set! (-> last-try-to-look-at-data horz) 0.0)
       (set! (-> last-try-to-look-at-data vert) 0.0)
-      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-1 from) self)
-        (set! (-> a1-1 num-params) 1)
-        (set! (-> a1-1 message) 'slave-option?)
-        (set! (-> a1-1 param 0) (the-as uint #x4000))
-        (when (send-event-function *camera* a1-1)
-          (set! (-> self string-min target y) 18432.0)
-          (set! (-> self string-max target y) 18432.041)
-          )
+      (when (send-event *camera* 'slave-option? #x4000)
+        (set! (-> self string-min target y) 18432.0)
+        (set! (-> self string-max target y) 18432.041)
         )
       (when (not (paused?))
         (update! (-> self string-min) (the-as vector #f))
@@ -975,8 +948,7 @@
 
 ;; failed to figure out what this is:
 (defstate list-keeper-active (camera-master)
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (change-to-last-brother self)
       (suspend)
@@ -1033,34 +1005,18 @@
     )
   (set! (-> self pov-handle) (the-as handle #f))
   (set! (-> self pov-bone) 0)
-  (let ((gp-1 (get-process *camera-dead-pool* list-keeper #x4000)))
-    (cond
-      ((when gp-1
-         (let ((t9-5 (method-of-type list-keeper activate)))
-           (t9-5 (the-as list-keeper gp-1) self 'list-keeper (the-as pointer #x70004000))
-           )
-         (run-next-time-in-process gp-1 list-keeper-init)
-         (-> gp-1 ppointer)
-         )
-       )
-      (else
-        (format 0 "ERROR <GMJ>: master camera list keeper failed to activate~%")
-        )
+  (cond
+    ((process-spawn-function list-keeper list-keeper-init :from *camera-dead-pool* :to self)
+     )
+    (else
+      (format 0 "ERROR <GMJ>: master camera list keeper failed to activate~%")
       )
     )
-  (let ((gp-2 (get-process *camera-dead-pool* camera-slave #x4000)))
-    (cond
-      ((when gp-2
-         (let ((t9-9 (method-of-type camera-slave activate)))
-           (t9-9 (the-as camera-slave gp-2) self 'camera-slave (the-as pointer #x70004000))
-           )
-         (run-next-time-in-process gp-2 cam-slave-init cam-free-floating #f)
-         (-> gp-2 ppointer)
-         )
-       )
-      (else
-        (format 0 "ERROR <GMJ>: first slave failed to activate~%")
-        )
+  (cond
+    ((process-spawn-function camera-slave cam-slave-init cam-free-floating #f :from *camera-dead-pool* :to self)
+     )
+    (else
+      (format 0 "ERROR <GMJ>: first slave failed to activate~%")
       )
     )
   (set! (-> self water-drip) (create-launch-control group-rain-screend-drop self))

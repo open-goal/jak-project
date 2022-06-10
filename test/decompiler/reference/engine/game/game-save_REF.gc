@@ -1164,14 +1164,12 @@
   :id 656
   :flags (screen-space)
   :bounds (static-bspherem 0 0 0 100)
-  :parts
-  ((sp-item 2662))
+  :parts ((sp-item 2662))
   )
 
 ;; failed to figure out what this is:
 (defpart 2662
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x6b :page #x1cf))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x6b :page #x1cf))
     (sp-flt spt-num 1.0)
     (sp-flt spt-scale-x (meters 1.5))
     (sp-copy-from-other spt-scale-y -4)
@@ -1384,8 +1382,7 @@ auto-save-post
 ;; failed to figure out what this is:
 (defstate get-heap (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* real-frame-counter))
     (let ((a0-1 (reserve-alloc *art-control*)))
       (while (not a0-1)
@@ -1400,15 +1397,13 @@ auto-save-post
     (go-virtual get-card)
     (none)
     )
-  :post
-  auto-save-post
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
 (defstate get-card (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (label cfg-0)
     (mc-get-slot-info (-> self slot) (-> self info))
     (when (zero? (-> self info known))
@@ -1455,15 +1450,13 @@ auto-save-post
       )
     (none)
     )
-  :post
-  auto-save-post
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
 (defstate format-card (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (zero? (-> self info formatted))
       (label cfg-1)
       (set! (-> self result) (mc-format (-> self card)))
@@ -1499,15 +1492,13 @@ auto-save-post
     (go-virtual done)
     (none)
     )
-  :post
-  auto-save-post
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
 (defstate unformat-card (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (nonzero? (-> self info formatted))
       (label cfg-1)
       (set! (-> self result) (mc-unformat (-> self card)))
@@ -1534,15 +1525,13 @@ auto-save-post
     (go-virtual done)
     (none)
     )
-  :post
-  auto-save-post
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
 (defstate create-file (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((zero? (-> self info formatted))
        (go-virtual error (mc-status-code no-format))
@@ -1588,15 +1577,13 @@ auto-save-post
     (go-virtual done)
     (none)
     )
-  :post
-  auto-save-post
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
 (defstate save (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((zero? (-> self info formatted))
        (go-virtual error (mc-status-code no-format))
@@ -1660,15 +1647,13 @@ auto-save-post
     (go-virtual done)
     (none)
     )
-  :post
-  auto-save-post
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
 (defstate restore (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars (gp-0 object))
     (cond
       ((zero? (-> self info formatted))
@@ -1737,15 +1722,13 @@ auto-save-post
     (go-virtual done)
     (none)
     )
-  :post
-  auto-save-post
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
 (defstate error (auto-save)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'progress-allowed?)
@@ -1758,8 +1741,7 @@ auto-save-post
               )
       )
     )
-  :code
-  (behavior ((arg0 mc-status-code))
+  :code (behavior ((arg0 mc-status-code))
     (if (-> self buffer)
         (reserve-free *art-control* (-> self buffer))
         )
@@ -1855,15 +1837,13 @@ auto-save-post
       )
     (none)
     )
-  :post
-  auto-save-post
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
 (defstate done (auto-save)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (and (-> self buffer) (-> *art-control* reserve-buffer))
         (reserve-free *art-control* (-> self buffer))
         )
@@ -1896,22 +1876,13 @@ auto-save-post
       )
     (none)
     )
-  :post
-  auto-save-post
+  :post auto-save-post
   )
 
 ;; definition for function auto-save-command
 ;; INFO: Return type mismatch (pointer process) vs none.
 (defun auto-save-command ((arg0 symbol) (arg1 int) (arg2 int) (arg3 process-tree))
-  (let ((s2-0 (get-process *default-dead-pool* auto-save #x4000)))
-    (when s2-0
-      (let ((t9-1 (method-of-type auto-save activate)))
-        (t9-1 (the-as auto-save s2-0) *default-pool* 'auto-save (&-> *dram-stack* 14336))
-        )
-      (run-now-in-process s2-0 auto-save-init-by-other arg0 arg3 arg1 arg2)
-      (-> s2-0 ppointer)
-      )
-    )
+  (process-spawn auto-save arg0 arg3 arg1 arg2 :stack *kernel-dram-stack*)
   (none)
   )
 

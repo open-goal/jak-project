@@ -421,10 +421,9 @@
   )
 
 (defstate process-drawable-art-error (process-drawable)
-  :code
-  (behavior ((arg0 string))
+  :code (behavior ((arg0 string))
     (logior! (-> self entity extra perm status) (entity-perm-status bit-1))
-    (while #t
+    (loop
       (when *display-entity-errors*
         (let ((s5-0 add-debug-text-3d)
               (s4-0 #t)
@@ -450,10 +449,8 @@
 (define-extern ja-post (function none :behavior process-drawable))
 (define-extern anim-loop (function none :behavior process-drawable))
 (defstate process-drawable-idle (process-drawable)
-  :code
-  anim-loop
-  :post
-  ja-post
+  :code anim-loop
+  :post ja-post
   )
 
 ;; WARN: Stack slot offset 20 signed mismatch
@@ -474,15 +471,7 @@
                 )
               )
         )
-    (let ((s4-0 (load-to-heap-by-name
-                  (-> s1-0 art-group)
-                  (-> arg0 art-group-name)
-                  #f
-                  global
-                  (-> arg0 version)
-                  )
-                )
-          )
+    (let ((s4-0 (load-to-heap-by-name (-> s1-0 art-group) (-> arg0 art-group-name) #f global (-> arg0 version))))
       (when (or (zero? s4-0) (or (not s4-0) (!= (-> s4-0 type) art-group)))
         (go process-drawable-art-error "art-group")
         (set! s3-0 (the-as draw-control #f))
@@ -1181,7 +1170,7 @@
 
 (defbehavior anim-loop process-drawable ()
   (logior! (-> self mask) (process-mask sleep-code))
-  (while #t
+  (loop
     (nop!)
     (suspend)
     )

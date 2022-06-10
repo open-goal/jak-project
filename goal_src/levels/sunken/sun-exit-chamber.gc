@@ -9,9 +9,10 @@
 (declare-type exit-chamber-button basebutton)
 
 ;; DECOMP BEGINS
+
+(import "goal_src/import/exit-chamber-ag.gc")
 (import "goal_src/import/blue-eco-charger-ag.gc")
 (import "goal_src/import/blue-eco-charger-orb-ag.gc")
-(import "goal_src/import/exit-chamber-ag.gc")
 
 (deftype blue-eco-charger-orb (process-drawable)
   ((parent-process  (pointer blue-eco-charger)         :offset         12)
@@ -125,13 +126,11 @@
   :duration 900
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 64)
-  :parts
-  ((sp-item 2512 :flags (is-3d)))
+  :parts ((sp-item 2512 :flags (is-3d)))
   )
 
 (defpart 2513
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
     (sp-func spt-birth-func 'birth-func-ocean-height)
     (sp-flt spt-num 0.25)
     (sp-rnd-flt spt-x (meters 5) (meters 3) 1.0)
@@ -157,13 +156,11 @@
   )
 
 (defpart 2514
-  :init-specs
-  ((sp-flt spt-fade-a -0.094814815))
+  :init-specs ((sp-flt spt-fade-a -0.094814815))
   )
 
 (defpart 2512
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
     (sp-func spt-birth-func 'birth-func-ocean-height)
     (sp-flt spt-num 0.5)
     (sp-rnd-flt spt-x (meters 6) (meters 4) 1.0)
@@ -200,8 +197,7 @@
   )
 
 (defstate blue-eco-charger-orb-idle (blue-eco-charger-orb)
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self root trans quad) (-> self rest-pos quad))
     (loop
       (let ((f0-0 (-> self parent-process 0 open-level)))
@@ -213,13 +209,11 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior blue-eco-charger-orb) ja-post)
+  :post (the-as (function none :behavior blue-eco-charger-orb) ja-post)
   )
 
 (defstate blue-eco-charger-orb-active (blue-eco-charger-orb)
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars (at-0 int))
     (rlet ((vf0 :class vf)
            (vf1 :class vf)
@@ -297,8 +291,7 @@
       (none)
       )
     )
-  :post
-  (the-as (function none :behavior blue-eco-charger-orb) ja-post)
+  :post (the-as (function none :behavior blue-eco-charger-orb) ja-post)
   )
 
 (defbehavior blue-eco-charger-orb-init-by-other blue-eco-charger-orb ((arg0 entity) (arg1 blue-eco-charger-orb))
@@ -349,27 +342,19 @@
 
 (defmethod dummy-20 blue-eco-charger ((obj blue-eco-charger))
   (and (and *target* (>= 16384.0 (vector-vector-distance (-> obj root-override trans) (-> *target* control trans))))
-       (send-event *target* 'query 'powerup 3)
+       (send-event *target* 'query 'powerup (pickup-type eco-blue))
        )
   )
 
 (defstate blue-eco-charger-idle (blue-eco-charger)
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self open-level) 0.0)
     (ja-channel-set! 1)
     (ja :group! (-> self draw art-group data 2) :num! min)
     (loop
       (when (logtest? (-> self draw status) (draw-status was-drawn))
         (if (and (and *target* (>= 16384.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
-                 (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-                   (set! (-> a1-2 from) self)
-                   (set! (-> a1-2 num-params) 2)
-                   (set! (-> a1-2 message) 'query)
-                   (set! (-> a1-2 param 0) (the-as uint 'powerup))
-                   (set! (-> a1-2 param 1) (the-as uint 3))
-                   (not (send-event-function *target* a1-2))
-                   )
+                 (not (send-event *target* 'query 'powerup (pickup-type eco-blue)))
                  )
             (level-hint-spawn
               (game-text-id sunken-blue-eco-charger-hint)
@@ -391,13 +376,11 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior blue-eco-charger) ja-post)
+  :post (the-as (function none :behavior blue-eco-charger) ja-post)
   )
 
 (defstate blue-eco-charger-open (blue-eco-charger)
-  :enter
-  (behavior ((arg0 symbol))
+  :enter (behavior ((arg0 symbol))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (if arg0
         (sound-play-by-name (static-sound-name "blue-eco-start") (new-sound-id) 1024 0 0 1 #t)
@@ -405,16 +388,14 @@
     (dummy-21 self #t)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (dummy-20 self)
         (set! (-> self state-time) (-> *display* base-frame-counter))
         )
     (update! (-> self sound))
     (none)
     )
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
@@ -443,18 +424,15 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior blue-eco-charger) ja-post)
+  :post (the-as (function none :behavior blue-eco-charger) ja-post)
   )
 
 (defstate blue-eco-charger-stuck-open (blue-eco-charger)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (update! (-> self sound))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
@@ -464,13 +442,11 @@
   )
 
 (defstate blue-eco-charger-close (blue-eco-charger)
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (stop! (-> self sound))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek! 0.0))
     (while (not (ja-done? 0))
       (when (dummy-20 self)
@@ -489,8 +465,7 @@
     (go blue-eco-charger-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior blue-eco-charger) ja-post)
+  :post (the-as (function none :behavior blue-eco-charger) ja-post)
   )
 
 (defmethod init-from-entity! blue-eco-charger ((obj blue-eco-charger) (arg0 entity-actor))
@@ -531,15 +506,7 @@
   (set! (-> obj master) (entity-actor-lookup arg0 'alt-actor 0))
   (set! (-> obj link) (new 'process 'actor-link-info obj))
   (set! (-> obj charger-id) (+ (actor-count-before (-> obj link)) 1))
-  (let ((s5-1 (get-process *default-dead-pool* blue-eco-charger-orb #x4000)))
-    (when s5-1
-      (let ((t9-17 (method-of-type blue-eco-charger-orb activate)))
-        (t9-17 (the-as blue-eco-charger-orb s5-1) obj 'blue-eco-charger-orb (the-as pointer #x70004000))
-        )
-      (run-now-in-process s5-1 blue-eco-charger-orb-init-by-other (-> obj entity) obj)
-      (-> s5-1 ppointer)
-      )
-    )
+  (process-spawn blue-eco-charger-orb (-> obj entity) obj :to obj)
   (set! (-> obj sound)
         (new 'process 'ambient-sound (static-sound-spec "blue-eco-charg" :fo-max 35) (-> obj root-override trans))
         )
@@ -576,8 +543,7 @@
   )
 
 (defpart 2515
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x9 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x9 :page #x2))
     (sp-flt spt-num 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.6) (meters 0.2) 1.0)
     (sp-rnd-flt spt-scale-y (meters 0.3) (meters 0.1) 1.0)
@@ -678,8 +644,7 @@
   )
 
 (defstate exit-chamber-charger-puzzle (exit-chamber)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 object))
     (case arg2
       (('notify)
@@ -712,13 +677,11 @@
        )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (if (>= 214228270000.0 (vector-vector-distance-squared (camera-pos) (-> self root-override trans)))
           (logclear! (-> self draw status) (draw-status hidden))
@@ -728,30 +691,20 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior exit-chamber) ja-post)
+  :post (the-as (function none :behavior exit-chamber) ja-post)
   )
 
 (defstate exit-chamber-charger-puzzle-beaten (exit-chamber)
-  :code
-  (behavior ()
-    (let ((gp-0 (get-process *default-dead-pool* pov-camera #x4000)))
-      (when gp-0
-        (let ((t9-1 (method-of-type pov-camera activate)))
-          (t9-1 (the-as pov-camera gp-0) self 'pov-camera (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-0
-          pov-camera-init-by-other
-          (-> self root-override trans)
-          *sunkencam-sg*
-          "exit-chamber-door-open"
-          0
-          #f
-          '()
-          )
-        (-> gp-0 ppointer)
-        )
+  :code (behavior ()
+    (process-spawn
+      pov-camera
+      (-> self root-override trans)
+      *sunkencam-sg*
+      "exit-chamber-door-open"
+      0
+      #f
+      '()
+      :to self
       )
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 2.5))
@@ -764,8 +717,7 @@
   )
 
 (defstate exit-chamber-idle-in-sunken (exit-chamber)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-1 object))
     (case arg2
       (('trigger)
@@ -788,13 +740,11 @@
        )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (save-reminder (get-task-control (game-task sunken-room)) 1 0)
     (set! (-> self wave-scale) 0.0)
     (if (-> self door)
@@ -815,20 +765,17 @@
   )
 
 (defstate exit-chamber-rise (exit-chamber)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self move-player?) #f)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not (-> self move-player?))
         (rider-trans)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (aybabtu 2)
     (let ((v1-1 (handle->process (-> self fcell-handle))))
       (if v1-1
@@ -944,8 +891,7 @@
     (go exit-chamber-idle-in-village #f)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (if (-> self move-player?)
         (transform-post)
         (rider-post)
@@ -956,8 +902,7 @@
   )
 
 (defstate exit-chamber-idle-in-village (exit-chamber)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (go exit-chamber-lower)
@@ -977,19 +922,16 @@
        )
       )
     )
-  :enter
-  (behavior ((arg0 symbol))
+  :enter (behavior ((arg0 symbol))
     (set! (-> self mask) (logior (process-mask platform) (-> self mask)))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self mask) (process-mask platform))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (rider-trans)
     (when *target*
       (let ((f30-0 (vector-vector-xz-distance (target-pos 0) (-> self last-pos))))
@@ -1013,8 +955,7 @@
       )
     (none)
     )
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (set! (-> self move-player?) #f)
     (set! (-> self wave-scale) 1.0)
     (save-reminder (get-task-control (game-task sunken-room)) 2 0)
@@ -1033,8 +974,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (rider-post)
     (dummy-23 self #t)
     (if (and *target* (>= (vector-vector-xz-distance (target-pos 0) (-> self last-pos)) 40960.0))
@@ -1045,8 +985,7 @@
   )
 
 (defstate exit-chamber-lower (exit-chamber)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self move-player?) #t)
     (let ((v1-2 (handle->process (-> self fcell-handle))))
       (if v1-2
@@ -1055,8 +994,7 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not (-> self move-player?))
         (rider-trans)
         )
@@ -1064,27 +1002,20 @@
     (dummy-20 self (-> self wave-scale))
     (none)
     )
-  :code
-  (behavior ()
-    (let* ((gp-0 (get-process *default-dead-pool* sunkencam #x4000))
-           (v1-1 (when gp-0
-                   (let ((t9-1 (method-of-type sunkencam activate)))
-                     (t9-1 (the-as sunkencam gp-0) self 'sunkencam (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     gp-0
-                     pov-camera-init-by-other
-                     (-> self root-override trans)
-                     *sunkencam-sg*
-                     "qbert-show-door-open"
-                     0
-                     #f
-                     '()
-                     )
-                   (-> gp-0 ppointer)
-                   )
-                 )
-           )
+  :code (behavior ()
+    (let ((v1-1 (process-spawn
+                  sunkencam
+                  :init pov-camera-init-by-other
+                  (-> self root-override trans)
+                  *sunkencam-sg*
+                  "qbert-show-door-open"
+                  0
+                  #f
+                  '()
+                  :to self
+                  )
+                )
+          )
       (set! (-> (the-as sunkencam (-> v1-1 0)) seq) (the-as uint 1))
       )
     (load-state-want-display-level 'sunken 'display)
@@ -1150,8 +1081,7 @@
     (go exit-chamber-idle-in-sunken)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (if (-> self move-player?)
         (transform-post)
         (rider-post)
@@ -1257,35 +1187,11 @@
              )
             )
           )
-        (let ((s0-1 (get-process *default-dead-pool* sun-iris-door #x4000)))
-          (set! (-> obj door)
-                (the-as
-                  (pointer sun-iris-door)
-                  (when s0-1
-                    (let ((t9-23 (method-of-type sun-iris-door activate)))
-                      (t9-23 (the-as sun-iris-door s0-1) obj 'sun-iris-door (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process s0-1 sun-iris-door-init-by-other (-> s3-1 vector) (-> s3-1 vector 1) s1-3)
-                    (-> s0-1 ppointer)
-                    )
-                  )
-                )
-          )
+        (set! (-> obj door) (process-spawn sun-iris-door (-> s3-1 vector) (-> s3-1 vector 1) s1-3 :to obj))
         )
-      (let ((s1-4 (get-process *default-dead-pool* exit-chamber-button #x4000)))
-        (set! (-> obj button)
-              (the-as
-                (pointer exit-chamber-button)
-                (when s1-4
-                  (let ((t9-26 (method-of-type exit-chamber-button activate)))
-                    (t9-26 (the-as exit-chamber-button s1-4) obj 'exit-chamber-button (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process s1-4 exit-chamber-button-init-by-other (-> s3-1 vector 2) (-> s3-1 vector 3) arg0 #f)
-                  (-> s1-4 ppointer)
-                  )
-                )
-              )
-        )
+      (set! (-> obj button)
+            (process-spawn exit-chamber-button (-> s3-1 vector 2) (-> s3-1 vector 3) arg0 #f :to obj)
+            )
       (set! (-> obj sound) (new
                              'process
                              'ambient-sound

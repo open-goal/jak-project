@@ -6,6 +6,7 @@
 ;; dgos: L1, SNO
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/ram-ag.gc")
 
 (defskelgroup *ram-sg* ram ram-lod0-jg ram-cock-ja
@@ -18,13 +19,11 @@
   :id 526
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 1921) (sp-item 1922 :fade-after (meters 60) :falloff-to (meters 60)))
+  :parts ((sp-item 1921) (sp-item 1922 :fade-after (meters 60) :falloff-to (meters 60)))
   )
 
 (defpart 1920
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-rnd-flt spt-num 64.0 16.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.2) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -45,8 +44,7 @@
   )
 
 (defpart 1922
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 8.0)
     (sp-rnd-flt spt-scale-x (meters 3) (meters 3) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -68,8 +66,7 @@
   )
 
 (defpart 1921
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
     (sp-flt spt-num 1.0)
     (sp-rnd-flt spt-scale-x (meters 6) (meters 1) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -88,13 +85,11 @@
   :id 527
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 1923 :fade-after (meters 70) :falloff-to (meters 70)))
+  :parts ((sp-item 1923 :fade-after (meters 70) :falloff-to (meters 70)))
   )
 
 (defpart 1923
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 1.0)
     (sp-rnd-flt spt-x (meters -0.5) (meters 1) 1.0)
     (sp-rnd-flt spt-z (meters -0.5) (meters 1) 1.0)
@@ -185,46 +180,36 @@
   )
 
 (defstate ram-idle (ram)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('touch 'attack)
-       (when ((method-of-type touching-shapes-entry prims-touching?)
-              (the-as touching-shapes-entry (-> arg3 param 0))
-              (-> self root-override)
-              (the-as uint 1)
-              )
-         (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-3 from) self)
-           (set! (-> a1-3 num-params) 2)
-           (set! (-> a1-3 message) 'attack)
-           (set! (-> a1-3 param 0) (-> arg3 param 0))
-           (let ((v1-7 (new 'static 'attack-info :mask #xc0)))
-             (set! (-> v1-7 shove-up) 2048.0)
-             (set! (-> v1-7 shove-back) 8192.0)
-             (set! (-> a1-3 param 1) (the-as uint v1-7))
+       (if ((method-of-type touching-shapes-entry prims-touching?)
+            (the-as touching-shapes-entry (-> arg3 param 0))
+            (-> self root-override)
+            (the-as uint 1)
+            )
+           (send-event
+             arg0
+             'attack
+             (-> arg3 param 0)
+             (static-attack-info ((shove-up (meters 0.5)) (shove-back (meters 2))))
              )
-           (send-event-function arg0 a1-3)
            )
-         )
        )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (rider-trans)
     (if (-> self give-fuel-cell-anim)
         (spool-push *art-control* (-> self give-fuel-cell-anim name) 0 self -99.0)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars (sv-16 symbol))
     (ja-channel-push! 1 (seconds 0.075))
     (loop
@@ -266,13 +251,11 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior ram) rider-post)
+  :post (the-as (function none :behavior ram) rider-post)
   )
 
 (defstate ram-fun-idle (ram)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('notify)
        (when (= (-> arg0 type) ram-boss)
@@ -283,15 +266,13 @@
        )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (-> self give-fuel-cell-anim)
         (spool-push *art-control* (-> self give-fuel-cell-anim name) 0 self -99.0)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (-> self give-fuel-cell?)
         (go ram-give-fuel-cell)
         )
@@ -306,8 +287,7 @@
   )
 
 (defstate ram-give-fuel-cell (ram)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('notify)
        (if (and (= (-> arg0 type) snowcam) (= (-> arg3 param 0) 'die))
@@ -316,14 +296,12 @@
        )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (logior! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self give-fuel-cell?) #f)
     (ja-channel-push! 1 0)
     (ja :group! (-> self draw art-group data 6) :num! min)
@@ -484,27 +462,11 @@
         ((and (not s3-1) (has-nav-mesh? arg0))
          (cond
            (s4-1
-             (let ((s5-1 (get-process *default-dead-pool* ram-boss #x4000)))
-               (when s5-1
-                 (let ((t9-28 (method-of-type ram-boss activate)))
-                   (t9-28 (the-as ram-boss s5-1) obj 'ram-boss (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process s5-1 ram-boss-init-by-other (-> obj entity) obj #t)
-                 (-> s5-1 ppointer)
-                 )
-               )
+             (process-spawn ram-boss (-> obj entity) obj #t :to obj)
              (go ram-fun-idle)
              )
            (else
-             (let ((s5-2 (get-process *default-dead-pool* ram-boss #x4000)))
-               (when s5-2
-                 (let ((t9-32 (method-of-type ram-boss activate)))
-                   (t9-32 (the-as ram-boss s5-2) obj 'ram-boss (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process s5-2 ram-boss-init-by-other (-> obj entity) obj #f)
-                 (-> s5-2 ppointer)
-                 )
-               )
+             (process-spawn ram-boss (-> obj entity) obj #f :to obj)
              (go ram-idle)
              )
            )

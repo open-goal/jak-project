@@ -7,6 +7,7 @@
 
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/generic-button-ag.gc")
 
 (deftype basebutton (process-drawable)
@@ -65,8 +66,7 @@
 
 (defstate basebutton-startup (basebutton)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (-> self down?)
         (go-virtual basebutton-down-idle)
         (go-virtual basebutton-up-idle)
@@ -77,8 +77,7 @@
 
 (defstate basebutton-up-idle (basebutton)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('attack)
        (case (-> arg3 param 1)
@@ -98,22 +97,18 @@
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (press! self #f)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (-> self move-to?)
         (rider-trans)
         )
     (none)
     )
-  :code
-  (the-as (function none :behavior basebutton) anim-loop)
-  :post
-  (behavior ()
+  :code (the-as (function none :behavior basebutton) anim-loop)
+  :post (behavior ()
     (when (-> self move-to?)
       (set! (-> self move-to?) #f)
       (set! (-> self root-override trans quad) (-> self move-to-pos quad))
@@ -126,8 +121,7 @@
 
 (defstate basebutton-going-down (basebutton)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('untrigger)
        (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
@@ -138,15 +132,12 @@
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (press! self #t)
     (none)
     )
-  :trans
-  (the-as (function none :behavior basebutton) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior basebutton) rider-trans)
+  :code (behavior ()
     (ja-no-eval :num! (seek! max (-> self anim-speed)))
     (until (ja-done? 0)
       (suspend)
@@ -156,8 +147,7 @@
     (go-virtual basebutton-down-idle)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (when (-> self move-to?)
       (set! (-> self move-to?) #f)
       (set! (-> self root-override trans quad) (-> self move-to-pos quad))
@@ -170,8 +160,7 @@
 
 (defstate basebutton-down-idle (basebutton)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('untrigger)
        (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
@@ -182,20 +171,17 @@
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (press! self #t)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (-> self move-to?)
         (rider-trans)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (cond
       ((= (-> self timeout) 0.0)
@@ -212,8 +198,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (when (-> self move-to?)
       (set! (-> self move-to?) #f)
       (set! (-> self root-override trans quad) (-> self move-to-pos quad))
@@ -226,8 +211,7 @@
 
 (defstate basebutton-going-up (basebutton)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('move-to)
        (move-to-vec-or-quat! self (the-as vector (-> arg3 param 0)) (the-as quaternion (-> arg3 param 1)))
@@ -238,15 +222,12 @@
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (press! self #f)
     (none)
     )
-  :trans
-  (the-as (function none :behavior basebutton) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior basebutton) rider-trans)
+  :code (behavior ()
     (ja-no-eval :num! (seek! 0.0 (-> self anim-speed)))
     (until (ja-done? 0)
       (suspend)
@@ -256,8 +237,7 @@
     (go-virtual basebutton-up-idle)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (when (-> self move-to?)
       (set! (-> self move-to?) #f)
       (set! (-> self root-override trans quad) (-> self move-to-pos quad))
@@ -465,10 +445,7 @@
   (none)
   )
 
-(define *warp-info* (the-as (array string) (new
-                                             'static
-                                             'boxed-array
-                                             :type string :length 5 :allocated-length 5
+(define *warp-info* (the-as (array string) (new 'static 'boxed-array :type string
                                              "training-warp"
                                              "village1-warp"
                                              "village2-warp"
@@ -499,13 +476,11 @@
 
 (defstate use (warp-gate)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (send-event *camera* 'joystick 0.0 0.0)
     (none)
     )
-  :code
-  (behavior ((arg0 int) (arg1 level))
+  :code (behavior ((arg0 int) (arg1 level))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (when (not arg1)
       (process-release? *target*)
@@ -523,16 +498,8 @@
       (set! (-> s4-0 param 2) (the-as uint (target-pos 0)))
       (send-event-function *target* s4-0)
       )
-    ;; NOTE : added case for "training" here. in the original game, the training level does NOT come
-    ;; with its own code for warp gates and buttons, and uses the villagep-obs imported from village1
-    ;; instead. opengoal loads files different enough that warp from training to anywhere except village1
-    ;; crashes the game due to running unlinked code. the original game also crashes, but it is not consistent.
-    ;; the citadel/lavatube case makes it so we wait until it's safe to unload both levels in the heaps,
-    ;; since the citadel warp gate is located in both levels at once (visually lavatube, technically citadel)
-    ;; we add "training" to the list here so that the training warp gate waits until it's safe to
-    ;; dispose the old code from memory.
     (case (-> self level)
-      (('citadel 'lavatube 'training)  
+      (('citadel 'lavatube)
        (while (and *target* (zero? (logand (-> *target* draw status) (draw-status hidden))))
          (suspend)
          )
@@ -580,8 +547,7 @@
         )
 
 (defstate target-warp-out (target)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('death-end)
        (let ((v0-0 (the-as object (logior (-> self draw status) (draw-status hidden)))))
@@ -594,8 +560,7 @@
         )
       )
     )
-  :enter
-  (behavior ((arg0 vector) (arg1 vector))
+  :enter (behavior ((arg0 vector) (arg1 vector))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     (set! (-> self control unknown-surface00) *warp-jump-mods*)
@@ -608,13 +573,11 @@
     (set! (-> self alt-cam-pos quad) (-> arg1 quad))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags sf10))
     (none)
     )
-  :code
-  (behavior ((arg0 vector) (arg1 vector))
+  :code (behavior ((arg0 vector) (arg1 vector))
     (send-event *camera* 'change-state cam-fixed 0)
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! eichar-duck-high-jump-ja :num! (seek! (ja-aframe 16.0 0)) :frame-num 0.0)
@@ -703,8 +666,7 @@
     (anim-loop)
     (none)
     )
-  :post
-  target-no-stick-post
+  :post target-no-stick-post
   )
 
 

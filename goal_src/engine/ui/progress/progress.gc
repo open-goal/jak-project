@@ -329,7 +329,7 @@
 
 (define *progress-save-info* (new 'global 'mc-slot-info))
 
-(defmacro progress-make-manipy-icon (obj &key skel
+(defmacro progress-make-icon (obj &key skel
                                          &key x
                                          &key y
                                          &key z
@@ -339,7 +339,7 @@
   `(when (< (-> ,obj nb-of-icons) 6)
     (let ((icon-idx (-> ,obj nb-of-icons)))
      (set! (-> ,obj icons icon-idx) (new 'static 'hud-icon))
-     (let ((new-manipy (process-new manipy manipy-init (new 'static 'vector :w 1.0) #f ,skel #f
+     (let ((new-manipy (manipy-spawn (new 'static 'vector :w 1.0) #f ,skel #f
                         :to ,obj
                         :stack *scratch-memory-top*
                         )))
@@ -369,48 +369,24 @@
   )
 
 (defmethod initialize-icons progress ((obj progress))
-  (progress-make-manipy-icon obj :skel *fuelcell-naked-sg*
-                                 :x 256
-                                 :y 77
-                                 :z (meters 0.5)
-                                 :scale-x 0.006
-                                 :scale-y 0.006
-                                 )
-  (progress-make-manipy-icon obj :skel *fuelcell-naked-sg*
-                                 :x 256
-                                 :y 77
-                                 :z (meters 0.5)
-                                 :scale-x 0.006
-                                 :scale-y 0.006
-                                 )
-  (progress-make-manipy-icon obj :skel *fuelcell-naked-sg*
-                                 :x 256
-                                 :y 77
-                                 :z (meters 0.5)
-                                 :scale-x 0.006
-                                 :scale-y 0.006
-                                 )
-  (progress-make-manipy-icon obj :skel *fuelcell-naked-sg*
-                                 :x 256
-                                 :y 77
-                                 :z (meters 0.5)
-                                 :scale-x 0.006
-                                 :scale-y 0.006
-                                 )
-  (progress-make-manipy-icon obj :skel *money-sg*
-                                 :x -320
-                                 :y 253
-                                 :z (meters 17)
-                                 :scale-x 0.013
-                                 :scale-y -0.015
-                                 )
-  (progress-make-manipy-icon obj :skel *money-sg*
-                                 :x -320
-                                 :y 253
-                                 :z (meters 0.25)
-                                 :scale-x 0.008
-                                 :scale-y -0.009
-                                 )
+  (progress-make-icon obj :skel *fuelcell-naked-sg*
+                                 :x 256 :y 77 :z (meters 0.5)
+                                 :scale-x 0.006 :scale-y 0.006)
+  (progress-make-icon obj :skel *fuelcell-naked-sg*
+                                 :x 256 :y 77 :z (meters 0.5)
+                                 :scale-x 0.006 :scale-y 0.006)
+  (progress-make-icon obj :skel *fuelcell-naked-sg*
+                                 :x 256 :y 77 :z (meters 0.5)
+                                 :scale-x 0.006 :scale-y 0.006)
+  (progress-make-icon obj :skel *fuelcell-naked-sg*
+                                 :x 256 :y 77 :z (meters 0.5)
+                                 :scale-x 0.006 :scale-y 0.006)
+  (progress-make-icon obj :skel *money-sg*
+                                 :x -320 :y 253 :z (meters 17)
+                                 :scale-x 0.013 :scale-y -0.015)
+  (progress-make-icon obj :skel *money-sg*
+                                 :x -320 :y 253 :z (meters 0.25)
+                                 :scale-x 0.008 :scale-y -0.009)
   (send-event (ppointer->process (-> obj icons 1 icon)) 'set-frame-num 2.5)
   (send-event (ppointer->process (-> obj icons 2 icon)) 'set-frame-num 10.0)
   (send-event (ppointer->process (-> obj icons 3 icon)) 'set-frame-num 15.5)
@@ -608,18 +584,7 @@
          (make-levels-with-tasks-available-to-progress)
          (disable-level-text-file-loading)
          (set! (-> *progress-state* starting-state) screen)
-         (let ((s4-0 (get-process *default-dead-pool* progress #x4000)))
-           (set! *progress-process*
-                 (the-as (pointer progress) (when s4-0
-                                              (let ((t9-5 (method-of-type progress activate)))
-                                                (t9-5 (the-as progress s4-0) creator 'progress (&-> *progress-stack* 14336))
-                                                )
-                                              (run-now-in-process s4-0 progress-init-by-other)
-                                              (-> s4-0 ppointer)
-                                              )
-                                            )
-                 )
-           )
+         (set! *progress-process* (process-spawn progress :to creator :stack *progress-stack-top*))
          (let ((s5-1 *progress-process*))
            (set! (-> s5-1 0 completion-percentage) (calculate-completion (-> s5-1 0)))
            (set! *master-mode* 'progress)

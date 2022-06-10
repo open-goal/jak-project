@@ -6,6 +6,7 @@
 ;; dgos: CIT, L1, SNO
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/snow-bunny-ag.gc")
 
 (deftype snow-bunny (nav-enemy)
@@ -111,18 +112,11 @@
      (go-virtual nav-enemy-die)
      )
     (('touch)
-     (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-5 from) self)
-       (set! (-> a1-5 num-params) 2)
-       (set! (-> a1-5 message) 'attack)
-       (set! (-> a1-5 param 0) (-> arg3 param 0))
-       (set! (-> a1-5 param 1) (the-as uint (new 'static 'attack-info)))
-       (when (send-event-function arg0 a1-5)
-         (set! (-> self touch-time) (-> *display* base-frame-counter))
-         (set-collide-offense (-> self collide-info) 2 (collide-offense no-offense))
-         (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
-         (go-virtual snow-bunny-attack)
-         )
+     (when (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+       (set! (-> self touch-time) (-> *display* base-frame-counter))
+       (set-collide-offense (-> self collide-info) 2 (collide-offense no-offense))
+       (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
+       (go-virtual snow-bunny-attack)
        )
      )
     (('jump)
@@ -320,19 +314,16 @@
 
 (defstate snow-bunny-tune-spheres (snow-bunny)
   :virtual override
-  :code
-  (behavior ()
+  :code (behavior ()
     0
     (none)
     )
-  :post
-  (the-as (function none :behavior snow-bunny) transform-post)
+  :post (the-as (function none :behavior snow-bunny) transform-post)
   )
 
 (defstate nav-enemy-idle (snow-bunny)
   :virtual #t
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (dummy-76 self #f)
     (let ((t9-1 (-> (method-of-type nav-enemy nav-enemy-idle) enter)))
       (if t9-1
@@ -341,13 +332,10 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (ja :group!
-        (-> self draw art-group data (-> self nav-info idle-anim))
-        :num!
-        (identity (rand-vu-float-range 0.0 (the float (+ (-> (ja-group) data 0 length) -1))))
+    (ja :group! (-> self draw art-group data (-> self nav-info idle-anim))
+        :num! (identity (rand-vu-float-range 0.0 (the float (+ (-> (ja-group) data 0 length) -1))))
         )
     (let ((f30-0 (nav-enemy-rnd-float-range 0.75 1.25)))
       (loop
@@ -361,12 +349,9 @@
 
 (defstate nav-enemy-patrol (snow-bunny)
   :virtual #t
-  :enter
-  (the-as (function none :behavior snow-bunny) #f)
-  :trans
-  (the-as (function none :behavior snow-bunny) #f)
-  :code
-  (behavior ()
+  :enter (the-as (function none :behavior snow-bunny) #f)
+  :trans (the-as (function none :behavior snow-bunny) #f)
+  :code (behavior ()
     (go-virtual snow-bunny-nav-resume)
     (none)
     )
@@ -374,8 +359,7 @@
 
 (defstate snow-bunny-nav-resume (snow-bunny)
   :virtual override
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       (*target*
         (let ((f0-0 (vector-vector-distance (target-pos 0) (-> self collide-info trans))))
@@ -405,10 +389,8 @@
 
 (defstate snow-bunny-patrol-idle (snow-bunny)
   :virtual override
-  :event
-  snow-bunny-default-event-handler
-  :enter
-  (behavior ()
+  :event snow-bunny-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (dummy-76 self #f)
     (set! (-> self nav flags) (logior (nav-control-flags navcf19) (-> self nav flags)))
@@ -417,8 +399,7 @@
     (set! (-> self state-timeout) (seconds 0.1))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (dummy-57 self)
         (go-virtual snow-bunny-defend)
         )
@@ -438,8 +419,7 @@
     (dummy-58 self)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (nav-enemy-rnd-int-count 3)))
       (when (and (not (-> self patrol-hop-failed?)) (zero? gp-0))
         (if (dummy-53 self)
@@ -449,10 +429,8 @@
       (set! (-> self patrol-hop-failed?) #f)
       (let ((gp-2 (min gp-0 (nav-enemy-rnd-int-count 3))))
         (ja-channel-push! 1 (seconds 0.1))
-        (ja :group!
-            (-> self draw art-group data (-> self nav-info idle-anim))
-            :num!
-            (identity (rand-vu-float-range 0.0 (the float (+ (-> (ja-group) data 0 length) -1))))
+        (ja :group! (-> self draw art-group data (-> self nav-info idle-anim))
+            :num! (identity (rand-vu-float-range 0.0 (the float (+ (-> (ja-group) data 0 length) -1))))
             )
         (loop
           (let ((s5-1 (-> *display* base-frame-counter)))
@@ -476,8 +454,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior snow-bunny) nav-enemy-simple-post)
+  :post (the-as (function none :behavior snow-bunny) nav-enemy-simple-post)
   )
 
 (defmethod dummy-51 snow-bunny ((obj snow-bunny) (arg0 vector) (arg1 vector))
@@ -605,10 +582,8 @@
 
 (defstate snow-bunny-patrol-hop (snow-bunny)
   :virtual override
-  :event
-  snow-bunny-default-event-handler
-  :enter
-  (behavior ()
+  :event snow-bunny-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (when (not (dummy-54 self))
       (set! (-> self patrol-hop-failed?) #t)
@@ -624,19 +599,16 @@
     (set! (-> self turn-time) (seconds 0.1))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (logclear! (-> self collide-info nav-flags) (nav-flags navf1))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (dummy-58 self)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (snow-bunny-execute-jump)
     (if (-> self using-jump-event?)
         (set-current-poly! (-> self nav) (dummy-16 (-> self nav) (-> self collide-info trans)))
@@ -649,16 +621,13 @@
         )
     (none)
     )
-  :post
-  (the-as (function none :behavior snow-bunny) nav-enemy-jump-post)
+  :post (the-as (function none :behavior snow-bunny) nav-enemy-jump-post)
   )
 
 (defstate nav-enemy-notice (snow-bunny)
   :virtual #t
-  :event
-  snow-bunny-default-event-handler
-  :enter
-  (behavior ()
+  :event snow-bunny-default-event-handler
+  :enter (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
     (nav-enemy-neck-control-look-at)
     (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
@@ -669,19 +638,15 @@
     (set-vector! (-> self collide-info transv) 0.0 (nav-enemy-rnd-float-range 102400.0 131072.0) 0.0 1.0)
     (none)
     )
-  :exit
-  (the-as (function none :behavior snow-bunny) #f)
-  :trans
-  (behavior ()
+  :exit (the-as (function none :behavior snow-bunny) #f)
+  :trans (behavior ()
     (dummy-58 self)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-      (ja-no-eval :group!
-                  (-> self draw art-group data (-> self nav-info notice-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self nav-info notice-anim))
                   :num! (seek! (ja-aframe 8.0 0) f30-0)
                   :frame-num 0.0
                   )
@@ -710,8 +675,7 @@
         (suspend)
         )
       (ja-channel-push! 1 (seconds 0.075))
-      (ja-no-eval :group!
-                  (-> self draw art-group data (-> self notice-land-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self notice-land-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
@@ -723,25 +687,19 @@
     (go-virtual nav-enemy-chase)
     (none)
     )
-  :post
-  (the-as (function none :behavior snow-bunny) nav-enemy-simple-post)
+  :post (the-as (function none :behavior snow-bunny) nav-enemy-simple-post)
   )
 
 (defstate nav-enemy-chase (snow-bunny)
   :virtual #t
-  :event
-  (the-as (function process int symbol event-message-block object :behavior snow-bunny) #f)
-  :exit
-  (the-as (function none :behavior snow-bunny) #f)
-  :trans
-  (the-as (function none :behavior snow-bunny) #f)
-  :code
-  (behavior ()
+  :event (the-as (function process int symbol event-message-block object :behavior snow-bunny) #f)
+  :exit (the-as (function none :behavior snow-bunny) #f)
+  :trans (the-as (function none :behavior snow-bunny) #f)
+  :code (behavior ()
     (go-virtual snow-bunny-chase-hop)
     (none)
     )
-  :post
-  (the-as (function none :behavior snow-bunny) #f)
+  :post (the-as (function none :behavior snow-bunny) #f)
   )
 
 (defmethod dummy-52 snow-bunny ((obj snow-bunny))
@@ -814,10 +772,8 @@
 
 (defstate snow-bunny-chase-hop (snow-bunny)
   :virtual override
-  :event
-  snow-bunny-default-event-handler
-  :enter
-  (behavior ()
+  :event snow-bunny-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self should-retreat?) #f)
     (if (or (not *target*) (logtest? (-> *target* state-flags) (state-flags sf07)))
@@ -840,22 +796,19 @@
     (set! (-> self turn-time) (seconds 0.1))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (logclear! (-> self collide-info nav-flags) (nav-flags navf1))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (dummy-57 self)
         (set! (-> self should-retreat?) #t)
         )
     (dummy-58 self)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (snow-bunny-execute-jump)
     (if (-> self using-jump-event?)
         (set-current-poly! (-> self nav) (dummy-16 (-> self nav) (-> self collide-info trans)))
@@ -866,14 +819,12 @@
     (go-virtual snow-bunny-chase-hop)
     (none)
     )
-  :post
-  (the-as (function none :behavior snow-bunny) nav-enemy-jump-post)
+  :post (the-as (function none :behavior snow-bunny) nav-enemy-jump-post)
   )
 
 (defstate snow-bunny-defend (snow-bunny)
   :virtual override
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (= (-> self defense) 1)
         (go-virtual snow-bunny-retreat-hop)
         (go-virtual snow-bunny-lunge)
@@ -1087,10 +1038,8 @@
 
 (defstate snow-bunny-retreat-hop (snow-bunny)
   :virtual override
-  :event
-  snow-bunny-default-event-handler
-  :enter
-  (behavior ()
+  :event snow-bunny-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (if (not *target*)
         (go-virtual nav-enemy-patrol)
@@ -1123,19 +1072,16 @@
     (set! (-> self turn-time) (seconds 0.1))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (logclear! (-> self collide-info nav-flags) (nav-flags navf1))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (dummy-58 self)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (snow-bunny-execute-jump)
     (if (-> self using-jump-event?)
         (set-current-poly! (-> self nav) (dummy-16 (-> self nav) (-> self collide-info trans)))
@@ -1143,22 +1089,18 @@
     (go-virtual snow-bunny-retreat-hop)
     (none)
     )
-  :post
-  (the-as (function none :behavior snow-bunny) nav-enemy-jump-post)
+  :post (the-as (function none :behavior snow-bunny) nav-enemy-jump-post)
   )
 
 (defstate snow-bunny-lunge (snow-bunny)
   :virtual override
-  :event
-  snow-bunny-default-event-handler
-  :enter
-  (behavior ()
+  :event snow-bunny-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (dummy-76 self #f)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not *target*)
         (go-virtual nav-enemy-patrol)
         )
@@ -1178,8 +1120,7 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (loop
       (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim)) :num! (seek!) :frame-num 0.0)
@@ -1190,23 +1131,19 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior snow-bunny) nav-enemy-simple-post)
+  :post (the-as (function none :behavior snow-bunny) nav-enemy-simple-post)
   )
 
 (defstate snow-bunny-attack (snow-bunny)
   :virtual override
-  :event
-  snow-bunny-default-event-handler
-  :enter
-  (behavior ()
+  :event snow-bunny-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set-vector! (-> self collide-info transv) 0.0 0.0 0.0 1.0)
     (dummy-76 self #t)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when *target*
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (vector-! gp-0 (target-pos 0) (-> self collide-info trans))
@@ -1225,8 +1162,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (ja-no-eval :group! (-> self draw art-group data (-> self attack-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -1239,8 +1175,7 @@
     (go-virtual snow-bunny-retreat-hop)
     (none)
     )
-  :post
-  (the-as (function none :behavior snow-bunny) nav-enemy-simple-post)
+  :post (the-as (function none :behavior snow-bunny) nav-enemy-simple-post)
   )
 
 

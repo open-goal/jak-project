@@ -8,9 +8,10 @@
 (define-extern power-left type)
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/power-left-ag.gc")
-(import "goal_src/import/powercellalt-ag.gc")
 (import "goal_src/import/power-right-ag.gc")
+(import "goal_src/import/powercellalt-ag.gc")
 
 (deftype fin-door (process-hidden)
   ()
@@ -51,16 +52,14 @@
 
 (defstate idle (final-door)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('open)
        (go-virtual open #f)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
@@ -71,8 +70,7 @@
 
 (defstate open (final-door)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'brightness)
                        (let ((f0-0 (the-as float (-> arg3 param 0)))
@@ -91,8 +89,7 @@
               )
       )
     )
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (case (-> self type)
       ((power-left)
        (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max 0.353) :frame-num 0.0)
@@ -165,8 +162,7 @@
 
 (defstate idle (power-left)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-post)
     (loop
       (if (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
@@ -224,8 +220,7 @@
 
 (defstate jump (powercellalt)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (sound-play-by-name (static-sound-name "cell-prize") (new-sound-id) 1024 0 0 1 #t)
     (let ((gp-1 (new 'stack 'trajectory)))
       (set! (-> self base y) (-> self jump-pos y))
@@ -247,23 +242,16 @@
     (set! (-> self base quad) (-> self root-override trans quad))
     (transform-post)
     (sound-play-by-name (static-sound-name "land-pcmetal") (new-sound-id) 1024 3048 0 1 #t)
-    (let ((gp-3 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-3
-        (let ((t9-12 (method-of-type part-tracker activate)))
-          (t9-12 (the-as part-tracker gp-3) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-3
-          part-tracker-init
-          (-> *part-group-id-table* 4)
-          -1
-          #f
-          #f
-          #f
-          (-> self root-override root-prim prim-core)
-          )
-        (-> gp-3 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 4)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override root-prim prim-core)
+      :to *entity-pool*
       )
     (go-virtual idle)
     (none)
@@ -272,8 +260,7 @@
 
 (defstate idle (powercellalt)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (vector<-cspace!
         (-> self root-override trans)
@@ -318,33 +305,28 @@
   )
 
 (defstate target-final-door (target)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     ((-> target-grab event) arg0 arg1 arg2 arg3)
     )
-  :enter
-  (behavior ((arg0 basic) (arg1 handle))
+  :enter (behavior ((arg0 basic) (arg1 handle))
     (send-event *camera* 'change-to-entity-by-name "camera-403")
     (set! (-> self control unknown-surface00) *empty-mods*)
     (logior! (-> self state-flags) (state-flags sf04 sf08))
     (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
     (none)
     )
-  :exit
-  (behavior ()
-    (send-event *camera* 'change-state *camera-base-mode* 60)
+  :exit (behavior ()
+    (send-event *camera* 'change-state *camera-base-mode* (seconds 0.2))
     (logclear! (-> self state-flags) (state-flags sf04 sf08))
     (target-exit)
     (clear-pending-settings-from-process *setting-control* self 'allow-progress)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (set-letterbox-frames (seconds 0.017))
     (none)
     )
-  :code
-  (behavior ((arg0 basic) (arg1 handle))
+  :code (behavior ((arg0 basic) (arg1 handle))
     (local-vars (sv-144 process) (sv-160 vector) (sv-176 process) (sv-192 vector))
     (let ((a0-2 (get-task-control (game-task finalboss-movies))))
       (save-reminder a0-2 (logior (get-reminder a0-2 0) 2) 0)
@@ -432,8 +414,7 @@
     (go target-stance)
     (none)
     )
-  :post
-  target-no-stick-post
+  :post target-no-stick-post
   )
 
 

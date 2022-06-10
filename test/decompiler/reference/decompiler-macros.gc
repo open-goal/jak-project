@@ -953,6 +953,11 @@
   `(set! ,place (seekl ,place ,target ,rate))
   )
 
+(defmacro rand-float-gen (&key (gen *random-generator*))
+  "Generate a float from [0, 1)"
+  `(+ -1.0 (the-as float (logior #x3f800000 (/ (rand-uint31-gen ,gen) 256))))
+  )
+
 ;; gsound-h
 (defmacro sound-vol (vol)
   "convert to sound volume units"
@@ -1117,6 +1122,74 @@
                       &key (dist #f)
                       )
   `(ja :eval? #f :chan ,chan :group! ,group! :num! ,num! :param0 ,param0 :param1 ,param1 :num-func ,num-func :frame-num ,frame-num :frame-interp ,frame-interp :dist ,dist)
+  )
+
+;; gkernel-h
+
+(defconstant *scratch-memory-top* (the pointer #x70004000))
+(defconstant DPROCESS_STACK_SIZE #x8000)
+
+;; gkernel
+
+(defconstant *kernel-dram-stack* (&+ *dram-stack* DPROCESS_STACK_SIZE))
+
+;; gstate
+(defmacro process-spawn-function (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
+  "Start a new process that runs a function on its main thread.
+   Returns a pointer to the new process (or #f? on error)."
+
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(quote ,proc-type)) ,stack)
+          (run-next-time-in-process ,new-proc ,func ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )
+
+(defmacro process-spawn (proc-type &key (init #f) &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
+  "Start a new process and run an init function on it.
+   Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
+
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(quote ,proc-type)) ,stack)
+          (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )
+
+;; generic-obs
+
+(defmacro manipy-spawn (trans entity skel arg &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*))
+  `(process-spawn manipy :init manipy-init ,trans ,entity ,skel ,arg :from ,from :to ,to :name ,name :stack-size ,stack-size :stack ,stack)
+  )
+
+;; game-h
+(defmacro static-attack-info (&key (mask ()) &rest args)
+  (when (!= (length args) 1)
+      (error "static-attack-info can only have 1 arg"))
+  (let ((mask-actual mask)
+        (arg (car args))
+        )
+    (when (not (null? (assoc 'shove-up arg))) (cons! mask-actual 'shove-up))
+    (when (not (null? (assoc 'shove-back arg))) (cons! mask-actual 'shove-back))
+    (when (not (null? (assoc 'mode arg))) (cons! mask-actual 'mode))
+    (when (not (null? (assoc 'vector arg))) (cons! mask-actual 'vector))
+    (when (not (null? (assoc 'angle arg))) (cons! mask-actual 'angle))
+    (when (not (null? (assoc 'control arg))) (cons! mask-actual 'control))
+    `(let ((atk (new 'static 'attack-info :mask (attack-mask ,@mask-actual))))
+        ,@(apply (lambda (x) (if (eq? (car x) 'vector)
+                                 `(vector-copy! (-> atk ,(car x)) ,(cadr x))
+                                 `(set! (-> atk ,(car x)) ,(cadr x))
+                                )) arg)
+        atk)
+    )
   )
 
 

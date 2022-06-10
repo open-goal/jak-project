@@ -9,6 +9,7 @@
 (define-extern *shover* shover) ;; unknown type
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/shover-ag.gc")
 
 (deftype shover (process-drawable)
@@ -31,8 +32,7 @@
               )
 
 (defstate shover-idle (shover)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('touch 'attack)
        (when (= (-> arg0 type) target)
@@ -51,51 +51,36 @@
                *entity-pool*
                (game-task none)
                )
-             (cond
-               ((or (= (-> *target* control unknown-surface00 mode) 'air)
-                    (>= (+ (-> *display* base-frame-counter) (seconds -0.2)) (-> *target* control unknown-dword11))
-                    (< 0.75 (-> *target* control poly-normal y))
-                    )
-                (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-                  (set! (-> a1-6 from) self)
-                  (set! (-> a1-6 num-params) 2)
-                  (set! (-> a1-6 message) 'attack-or-shove)
-                  (set! (-> a1-6 param 0) (-> arg3 param 0))
-                  (let ((v1-22 (new 'static 'attack-info :mask #xa2)))
-                    (set! (-> v1-22 mode) 'burn)
-                    (set! (-> v1-22 vector quad) (-> s4-0 vector quad))
-                    (set! (-> v1-22 shove-up) (-> s4-0 shove-up))
-                    (set! (-> a1-6 param 1) (the-as uint v1-22))
-                    )
-                  (send-event-function arg0 a1-6)
-                  )
-                )
-               (else
-                 (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-                   (set! (-> a1-7 from) self)
-                   (set! (-> a1-7 num-params) 2)
-                   (set! (-> a1-7 message) 'attack-or-shove)
-                   (set! (-> a1-7 param 0) (-> arg3 param 0))
-                   (let ((v1-26 (new 'static 'attack-info :mask #x8e2)))
-                     (set! (-> v1-26 mode) 'burn)
-                     (set! (-> v1-26 shove-up) 0.0)
-                     (set! (-> v1-26 shove-back) 8192.0)
-                     (set! (-> v1-26 vector quad) (-> *target* control poly-normal quad))
-                     (set! (-> v1-26 angle) 'shove)
-                     (set! (-> a1-7 param 1) (the-as uint v1-26))
+             (if (or (= (-> *target* control unknown-surface00 mode) 'air)
+                     (>= (+ (-> *display* base-frame-counter) (seconds -0.2)) (-> *target* control unknown-dword11))
+                     (< 0.75 (-> *target* control poly-normal y))
                      )
-                   (send-event-function arg0 a1-7)
+                 (send-event
+                   arg0
+                   'attack-or-shove
+                   (-> arg3 param 0)
+                   (static-attack-info ((mode 'burn) (vector (-> s4-0 vector)) (shove-up (-> s4-0 shove-up))))
+                   )
+                 (send-event
+                   arg0
+                   'attack-or-shove
+                   (-> arg3 param 0)
+                   (static-attack-info ((mode 'burn)
+                                        (shove-up (meters 0))
+                                        (shove-back (meters 2))
+                                        (vector (-> *target* control poly-normal))
+                                        (angle 'shove)
+                                        )
+                                       )
                    )
                  )
-               )
              )
            )
          )
        )
       )
     )
-  :code
-  (the-as (function none :behavior shover) anim-loop)
+  :code (the-as (function none :behavior shover) anim-loop)
   )
 
 (defmethod init-from-entity! shover ((obj shover) (arg0 entity-actor))

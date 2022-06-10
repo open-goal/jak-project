@@ -6,22 +6,21 @@
 ;; dgos: GAME, COMMON, L1
 
 ;; DECOMP BEGINS
-(import "goal_src/import/plat-jungleb-ag.gc")
-(import "goal_src/import/plat-ag.gc")
+
 (import "goal_src/import/plat-sunken-ag.gc")
+(import "goal_src/import/plat-ag.gc")
+(import "goal_src/import/plat-jungleb-ag.gc")
 
 (defpartgroup group-standard-plat
   :id 107
   :bounds (static-bspherem 0 -12 0 14)
-  :parts
-  ((sp-item 363 :fade-after (meters 60) :falloff-to (meters 60))
+  :parts ((sp-item 363 :fade-after (meters 60) :falloff-to (meters 60))
     (sp-item 364 :fade-after (meters 160) :falloff-to (meters 160))
     )
   )
 
 (defpart 363
-  :init-specs
-  ((sp-flt spt-num 1.5)
+  :init-specs ((sp-flt spt-num 1.5)
     (sp-flt spt-y (meters 1))
     (sp-int spt-rot-x 5)
     (sp-flt spt-r 5324.8)
@@ -38,8 +37,7 @@
   )
 
 (defpart 364
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 2.0)
     (sp-flt spt-y (meters 1.5))
     (sp-rnd-flt spt-scale-x (meters 2) (meters 1) 1.0)
@@ -181,8 +179,7 @@
 
 (defstate plat-startup (plat)
   :virtual #t
-  :code
-  (behavior ((arg0 plat))
+  :code (behavior ((arg0 plat))
     (cond
       ((logtest? (-> self path flags) (path-control-flag not-found))
        (go-virtual plat-idle)
@@ -200,15 +197,12 @@
 
 (defstate plat-idle (plat)
   :virtual #t
-  :event
-  (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
-  :trans
-  (behavior ()
+  :event (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
+  :trans (behavior ()
     (dummy-20 self)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (plat-trans)
     (rider-post)
     (suspend)
@@ -232,15 +226,12 @@
 
 (defstate plat-path-active (plat)
   :virtual #t
-  :event
-  (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
-  :exit
-  (behavior ()
+  :event (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
+  :exit (behavior ()
     (sound-stop (-> self sound-id))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (set! (-> self path-pos) (if (logtest? (-> self fact options) (fact-options wrap-phase))
                                  (get-current-phase (-> self sync))
                                  (get-current-phase-with-mirror (-> self sync))
@@ -261,10 +252,8 @@
     (plat-trans)
     (none)
     )
-  :code
-  (the-as (function plat none :behavior plat) anim-loop)
-  :post
-  (the-as (function none :behavior plat) plat-post)
+  :code (the-as (function plat none :behavior plat) anim-loop)
+  :post (the-as (function none :behavior plat) plat-post)
   )
 
 (defmethod init-from-entity! plat ((obj plat) (arg0 entity-actor))

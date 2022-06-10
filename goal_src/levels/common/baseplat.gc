@@ -201,10 +201,8 @@ eco-door-event-handler
 
 (defstate door-closed (eco-door)
   :virtual #t
-  :event
-  eco-door-event-handler
-  :code
-  (behavior ()
+  :event eco-door-event-handler
+  :code (behavior ()
     (ja :num-func num-func-identity :frame-num 0.0)
     (suspend)
     (update-transforms! (-> self root-override))
@@ -217,14 +215,7 @@ eco-door-event-handler
         (dummy-26 self)
         (if (and (not (-> self locked))
                  (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
-                     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                       (set! (-> a1-1 from) self)
-                       (set! (-> a1-1 num-params) 2)
-                       (set! (-> a1-1 message) 'query)
-                       (set! (-> a1-1 param 0) (the-as uint 'powerup))
-                       (set! (-> a1-1 param 1) (the-as uint 3))
-                       (send-event-function *target* a1-1)
-                       )
+                     (send-event *target* 'query 'powerup (pickup-type eco-blue))
                      (and (-> self one-way) (< (vector4-dot (-> self out-dir) (target-pos 0)) -8192.0))
                      )
                  )
@@ -240,13 +231,11 @@ eco-door-event-handler
 
 (defstate door-opening (eco-door)
   :virtual #t
-  :event
-  eco-door-event-handler
-  :code
-  (behavior ()
+  :event eco-door-event-handler
+  :code (behavior ()
     (let ((gp-0
             (and (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
-                 (send-event *target* 'query 'powerup 3)
+                 (send-event *target* 'query 'powerup (pickup-type eco-blue))
                  )
             )
           )
@@ -274,16 +263,13 @@ eco-door-event-handler
     (go-virtual door-open)
     (none)
     )
-  :post
-  (the-as (function none :behavior eco-door) transform-post)
+  :post (the-as (function none :behavior eco-door) transform-post)
   )
 
 (defstate door-open (eco-door)
   :virtual #t
-  :event
-  eco-door-event-handler
-  :code
-  (behavior ()
+  :event eco-door-event-handler
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (process-entity-status! self (entity-perm-status complete) #t)
     (clear-collide-with-as (-> self root-override))
@@ -315,10 +301,8 @@ eco-door-event-handler
 
 (defstate door-closing (eco-door)
   :virtual #t
-  :event
-  eco-door-event-handler
-  :code
-  (behavior ()
+  :event eco-door-event-handler
+  :code (behavior ()
     (restore-collide-with-as (-> self root-override))
     (logclear! (-> self draw status) (draw-status hidden))
     (let ((gp-0 (new 'stack 'overlaps-others-params)))
@@ -339,8 +323,7 @@ eco-door-event-handler
     (go-virtual door-closed)
     (none)
     )
-  :post
-  (the-as (function none :behavior eco-door) transform-post)
+  :post (the-as (function none :behavior eco-door) transform-post)
   )
 
 (defmethod dummy-26 eco-door ((obj eco-door))

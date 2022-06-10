@@ -322,7 +322,7 @@
               'shove
               )
           )
-    (set! (-> s5-0 mask) (the-as uint 2248))
+    (set! (-> s5-0 mask) (attack-mask attacker shove-back shove-up angle))
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.1))
     (go arg3 'shove s5-0)
     )
@@ -342,7 +342,7 @@
   (when (zero? (logand (-> self state-flags) (state-flags sf03)))
     (cond
       ((or (logtest? (-> self state-flags) (state-flags sf04 sf05 sf06))
-           (and (logtest? (-> arg1 mask) 32)
+           (and (logtest? (-> arg1 mask) (attack-mask mode))
                 (= (-> arg1 mode) 'darkeco)
                 (and (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                           (>= (-> self fact-info-target eco-level) 1.0)
@@ -381,18 +381,18 @@
             )
         (when a1-2
           (get-intersect-point (-> self attack-info-rec intersection) a1-2 (-> self control) arg3)
-          (logior! (-> self attack-info-rec mask) 4)
+          (logior! (-> self attack-info-rec mask) (attack-mask intersection))
           )
         )
       )
     (set! (-> self attack-info-rec prev-state) (-> self state))
-    (logior! (-> self attack-info-rec mask) 8192)
-    (when (zero? (logand (-> self attack-info-rec mask) 8))
+    (logior! (-> self attack-info-rec mask) (attack-mask atki13))
+    (when (zero? (logand (-> self attack-info-rec mask) (attack-mask attacker)))
       (set! (-> self attack-info-rec attacker) (process->handle arg2))
-      (logior! (-> self attack-info-rec mask) 8)
+      (logior! (-> self attack-info-rec mask) (attack-mask attacker))
       )
     (cond
-      ((and (logtest? (-> self attack-info-rec mask) 32)
+      ((and (logtest? (-> self attack-info-rec mask) (attack-mask mode))
             (and (= (-> self attack-info-rec mode) 'damage)
                  (not (and (= (-> self game mode) 'play) (>= 1.0 (-> self fact-info-target health))))
                  )
@@ -403,29 +403,22 @@
          (- (-> *FACT-bank* health-single-inc))
          (the-as handle #f)
          )
-       (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-         (when gp-1
-           (let ((t9-5 (method-of-type part-tracker activate)))
-             (t9-5 (the-as part-tracker gp-1) self 'part-tracker (the-as pointer #x70004000))
+       (process-spawn
+         part-tracker
+         :init part-tracker-init
+         (-> *part-group-id-table* 1)
+         -1
+         #f
+         #f
+         #f
+         (if (logtest? (-> self attack-info-rec mask) (attack-mask intersection))
+             (-> self attack-info-rec intersection)
+             (-> self control root-prim prim-core)
              )
-           (run-now-in-process
-             gp-1
-             part-tracker-init
-             (-> *part-group-id-table* 1)
-             -1
-             #f
-             #f
-             #f
-             (if (logtest? (-> self attack-info-rec mask) 4)
-                 (-> self attack-info-rec intersection)
-                 (-> self control root-prim prim-core)
-                 )
-             )
-           (-> gp-1 ppointer)
-           )
+         :to self
          )
        (target-timed-invulnerable
-         (if (logtest? (-> self attack-info-rec mask) 16)
+         (if (logtest? (-> self attack-info-rec mask) (attack-mask invinc-time))
              (-> self attack-info-rec invinc-time)
              (-> *TARGET-bank* hit-invulnerable-timeout)
              )
@@ -810,9 +803,9 @@
     (('shove)
      (when (!= (-> self next-state name) 'target-hit)
        (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> arg3 param 1)) 104)
-       (when (zero? (logand (-> self attack-info-rec mask) 8))
+       (when (zero? (logand (-> self attack-info-rec mask) (attack-mask attacker)))
          (set! (-> self attack-info-rec attacker) (process->handle arg0))
-         (logior! (-> self attack-info-rec mask) 8)
+         (logior! (-> self attack-info-rec mask) (attack-mask attacker))
          )
        (go target-hit 'shove (-> self attack-info-rec))
        )

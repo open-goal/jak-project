@@ -8,6 +8,7 @@
 (declare-type springbox process-drawable)
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/bounceytarp-ag.gc")
 
 (deftype springbox (process-drawable)
@@ -34,21 +35,12 @@
               )
 
 (defstate bouncer-wait (springbox)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('bonk)
-       (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-3 from) self)
-         (set! (-> a1-3 num-params) 3)
-         (set! (-> a1-3 message) 'jump)
-         (set! (-> a1-3 param 0) (the-as uint (-> self spring-height)))
-         (set! (-> a1-3 param 1) (the-as uint (-> self spring-height)))
-         (set! (-> a1-3 param 2) (the-as uint #f))
-         (when (send-event-function arg0 a1-3)
-           (sound-play-by-name (static-sound-name "trampoline") (new-sound-id) 1024 0 0 1 #t)
-           (go bouncer-fire)
-           )
+       (when (send-event arg0 'jump (-> self spring-height) (-> self spring-height) #f)
+         (sound-play-by-name (static-sound-name "trampoline") (new-sound-id) 1024 0 0 1 #t)
+         (go bouncer-fire)
          )
        )
       (('touch)
@@ -64,8 +56,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja :group! (-> self draw art-group data 2) :num! min)
     (transform-post)
     (loop
@@ -77,8 +68,7 @@
   )
 
 (defstate bouncer-smush (springbox)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('touch)
        (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -89,8 +79,7 @@
         )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self smush) 0.0)
     (loop
@@ -115,13 +104,11 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior springbox) transform-post)
+  :post (the-as (function none :behavior springbox) transform-post)
   )
 
 (defstate bouncer-fire (springbox)
-  :code
-  (behavior ()
+  :code (behavior ()
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
     (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num (ja-aframe 6.0 0))
     (until (ja-done? 0)
@@ -131,8 +118,7 @@
     (go bouncer-wait)
     (none)
     )
-  :post
-  (the-as (function none :behavior springbox) transform-post)
+  :post (the-as (function none :behavior springbox) transform-post)
   )
 
 (defmethod init-from-entity! springbox ((obj springbox) (arg0 entity-actor))

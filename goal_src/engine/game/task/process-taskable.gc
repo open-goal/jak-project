@@ -301,8 +301,7 @@
 
 (defstate release (process-taskable)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (process-release? *target*)
       (send-event *target* 'trans 'restore (-> self old-target-pos))
       (if (should-display? self)
@@ -314,16 +313,13 @@
     ((-> self cur-trans-hook))
     (none)
     )
-  :code
-  process-taskable-anim-loop
-  :post
-  (the-as (function none :behavior process-taskable) ja-post)
+  :code process-taskable-anim-loop
+  :post (the-as (function none :behavior process-taskable) ja-post)
   )
 
 (defstate give-cell (process-taskable)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (cond
       ((nonzero? (-> self cell-for-task))
        (let ((gp-0 (handle->process (-> self cell-x))))
@@ -350,21 +346,17 @@
     ((-> self cur-trans-hook))
     (none)
     )
-  :code
-  process-taskable-anim-loop
-  :post
-  (the-as (function none :behavior process-taskable) ja-post)
+  :code process-taskable-anim-loop
+  :post (the-as (function none :behavior process-taskable) ja-post)
   )
 
 (defstate lose (process-taskable)
   :virtual #t
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 5))
              (or (not *target*)
                  (< 20480.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
@@ -375,35 +367,22 @@
     ((-> self cur-trans-hook))
     (none)
     )
-  :code
-  process-taskable-anim-loop
-  :post
-  (the-as (function none :behavior process-taskable) ja-post)
+  :code process-taskable-anim-loop
+  :post (the-as (function none :behavior process-taskable) ja-post)
   )
 
 (defstate enter-playing (process-taskable)
   :virtual #t
-  :code
-  process-taskable-anim-loop
-  :post
-  (the-as (function none :behavior process-taskable) ja-post)
+  :code process-taskable-anim-loop
+  :post (the-as (function none :behavior process-taskable) ja-post)
   )
 
 (defbehavior process-taskable-play-anim-enter process-taskable ()
   (init! (-> self query) (the-as string #f) 40 150 25 #t (the-as string #f))
   (logior! (-> self skel status) (janim-status blerc))
-  (let ((gp-0 (get-process *default-dead-pool* othercam #x4000)))
-    (set! (-> self camera)
-          (ppointer->handle (when gp-0
-                              (let ((t9-2 (method-of-type othercam activate)))
-                                (t9-2 (the-as othercam gp-0) self 'othercam (the-as pointer #x70004000))
-                                )
-                              (run-now-in-process gp-0 othercam-init-by-other self (-> self cam-joint-index) #f #t)
-                              (-> gp-0 ppointer)
-                              )
-                            )
-          )
-    )
+  (set! (-> self camera)
+        (ppointer->handle (process-spawn othercam self (-> self cam-joint-index) #f #t :to self))
+        )
   (set! (-> self cell-for-task) (game-task none))
   (set! (-> self skippable) #f)
   (set! (-> self blend-on-exit) #f)
@@ -434,37 +413,23 @@
 
 (defbehavior process-taskable-play-anim-code process-taskable ((arg0 art-joint-anim) (arg1 basic))
   (when (nonzero? (-> self cell-for-task))
-    (cond
-      ((name= (-> self state name) "play-anim")
-       (let ((s4-0 (get-process *default-dead-pool* fuel-cell #x4000)))
-         (set! (-> self cell-x)
-               (ppointer->handle
-                 (when s4-0
-                   (let ((t9-2 (method-of-type fuel-cell activate)))
-                     (t9-2 (the-as fuel-cell s4-0) self 'fuel-cell (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process s4-0 fuel-cell-init-as-clone (process->handle self) (-> self cell-for-task))
-                   (-> s4-0 ppointer)
-                   )
-                 )
-               )
-         )
-       )
-      (else
+    (if (name= (-> self state name) "play-anim")
+        (set! (-> self cell-x) (ppointer->handle (process-spawn
+                                                   fuel-cell
+                                                   :init fuel-cell-init-as-clone
+                                                   (process->handle self)
+                                                   (-> self cell-for-task)
+                                                   :to self
+                                                   )
+                                                 )
+              )
         (format #t "ERROR<GMJ>: ~S ~S trying to give cell on release~%" (-> self name) (-> self state name))
         )
-      )
     )
   (cond
     ((and arg1 (type-type? (-> arg1 type) spool-anim))
      (when *target*
-       (while (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
-                (set! (-> a1-9 from) self)
-                (set! (-> a1-9 num-params) 1)
-                (set! (-> a1-9 message) 'clone-anim)
-                (set! (-> a1-9 param 0) (the-as uint self))
-                (not (send-event-function *target* a1-9))
-                )
+       (while (not (send-event *target* 'clone-anim self))
          (spool-push *art-control* (-> (the-as spool-anim arg1) name) 0 self -99.0)
          (format #t "WARNING: ~A stall on not cloning.~%" (-> self name))
          (suspend)
@@ -541,18 +506,14 @@
 
 (defstate play-accept (process-taskable)
   :virtual #t
-  :enter
-  (the-as (function none :behavior process-taskable) process-taskable-play-anim-enter)
-  :exit
-  process-taskable-play-anim-exit
-  :trans
-  (behavior ()
+  :enter (the-as (function none :behavior process-taskable) process-taskable-play-anim-enter)
+  :exit process-taskable-play-anim-exit
+  :trans (behavior ()
     (process-taskable-play-anim-trans)
     ((-> self cur-trans-hook))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-taskable-play-anim-code (the-as art-joint-anim (get-art-elem self)) (get-accept-anim self #t))
     (while (not (process-release? *target*))
       (suspend)
@@ -560,36 +521,29 @@
     (go-virtual enter-playing)
     (none)
     )
-  :post
-  (the-as (function none :behavior process-taskable) ja-post)
+  :post (the-as (function none :behavior process-taskable) ja-post)
   )
 
 (defstate play-reject (process-taskable)
   :virtual #t
-  :enter
-  (the-as (function none :behavior process-taskable) process-taskable-play-anim-enter)
-  :exit
-  process-taskable-play-anim-exit
-  :trans
-  (behavior ()
+  :enter (the-as (function none :behavior process-taskable) process-taskable-play-anim-enter)
+  :exit process-taskable-play-anim-exit
+  :trans (behavior ()
     (process-taskable-play-anim-trans)
     ((-> self cur-trans-hook))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-taskable-play-anim-code (the-as art-joint-anim (get-art-elem self)) (get-reject-anim self #t))
     (go-virtual release)
     (none)
     )
-  :post
-  (the-as (function none :behavior process-taskable) ja-post)
+  :post (the-as (function none :behavior process-taskable) ja-post)
   )
 
 (defstate query (process-taskable)
   :virtual #t
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (init!
       (-> self query)
       (lookup-text! *common-text* (game-text-id confirm-play) #f)
@@ -601,10 +555,8 @@
       )
     (none)
     )
-  :exit
-  process-taskable-play-anim-exit
-  :trans
-  (behavior ()
+  :exit process-taskable-play-anim-exit
+  :trans (behavior ()
     (case (current-status (-> self tasks))
       (((task-status need-reminder-a))
        (case (get-response (-> self query))
@@ -635,16 +587,13 @@
     ((-> self cur-trans-hook))
     (none)
     )
-  :code
-  process-taskable-anim-loop
-  :post
-  (the-as (function none :behavior process-taskable) ja-post)
+  :code process-taskable-anim-loop
+  :post (the-as (function none :behavior process-taskable) ja-post)
   )
 
 (defstate play-anim (process-taskable)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('shadow)
        (cond
@@ -672,12 +621,9 @@
        )
       )
     )
-  :enter
-  (the-as (function none :behavior process-taskable) process-taskable-play-anim-enter)
-  :exit
-  process-taskable-play-anim-exit
-  :trans
-  (behavior ()
+  :enter (the-as (function none :behavior process-taskable) process-taskable-play-anim-enter)
+  :exit process-taskable-play-anim-exit
+  :trans (behavior ()
     (process-taskable-play-anim-trans)
     (let ((a3-0 (handle->process (-> self cell-x))))
       (if a3-0
@@ -687,14 +633,12 @@
     ((-> self cur-trans-hook))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-taskable-play-anim-code (the-as art-joint-anim (get-art-elem self)) (play-anim! self #t))
     (dummy-38 self)
     (none)
     )
-  :post
-  (the-as (function none :behavior process-taskable) ja-post)
+  :post (the-as (function none :behavior process-taskable) ja-post)
   )
 
 (defbehavior process-taskable-clean-up-after-talking process-taskable ()
@@ -759,20 +703,16 @@
 
 (defstate hidden (process-taskable)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior process-taskable)
     process-taskable-hide-handler
     )
-  :enter
-  (the-as (function none :behavior process-taskable) process-taskable-hide-enter)
-  :exit
-  (behavior ()
+  :enter (the-as (function none :behavior process-taskable) process-taskable-hide-enter)
+  :exit (behavior ()
     (process-taskable-hide-exit (= (-> self next-state name) 'hidden))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
         (process-entity-status! self (entity-perm-status bit-3) #f)
         )
@@ -781,8 +721,7 @@
         )
     (none)
     )
-  :code
-  (the-as (function none :behavior process-taskable) anim-loop)
+  :code (the-as (function none :behavior process-taskable) anim-loop)
   )
 
 ;; WARN: disable def twice: 4. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
@@ -799,20 +738,16 @@
 
 (defstate hidden-other (process-taskable)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior process-taskable)
     process-taskable-hide-handler
     )
-  :enter
-  (the-as (function none :behavior process-taskable) process-taskable-hide-enter)
-  :exit
-  (behavior ()
+  :enter (the-as (function none :behavior process-taskable) process-taskable-hide-enter)
+  :exit (behavior ()
     (process-taskable-hide-exit (= (-> self next-state name) 'hidden-other))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
         (process-entity-status! self (entity-perm-status bit-3) #f)
         )
@@ -829,14 +764,12 @@
       )
     (none)
     )
-  :code
-  (the-as (function none :behavior process-taskable) anim-loop)
+  :code (the-as (function none :behavior process-taskable) anim-loop)
   )
 
 (defstate be-clone (process-taskable)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as shadow-geo (cond
                            ((= v1-0 'shadow)
@@ -875,15 +808,13 @@
               )
       )
     )
-  :enter
-  (behavior ((arg0 handle))
+  :enter (behavior ((arg0 handle))
     (logior! (-> self skel status) (janim-status blerc))
     (logclear! (-> self mask) (process-mask actor-pause))
     (set-vector! (-> self draw bounds) 0.0 (-> self draw-bounds-y-offset) 0.0 (-> self draw bounds w))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self skel status) (janim-status blerc spool))
     (logior! (-> self mask) (process-mask actor-pause))
     (let ((v1-6 (-> self entity extra trans)))
@@ -894,14 +825,12 @@
     (ja-channel-set! 0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (draw-npc-shadow self)
     ((-> self cur-trans-hook))
     (none)
     )
-  :code
-  (behavior ((arg0 handle))
+  :code (behavior ((arg0 handle))
     (clone-anim arg0 (-> self center-joint-index) #t "")
     (format #t "ERROR<GMJ>: handle invalid while ~S is cloning~%" (-> self name))
     (go-virtual hidden)
@@ -915,63 +844,56 @@
 
 (defstate idle (process-taskable)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((= v1-0 'attack)
-                        (the-as symbol (when (-> self bounce-away)
-                                         (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                                           (set! (-> a1-3 from) self)
-                                           (set! (-> a1-3 num-params) 2)
-                                           (set! (-> a1-3 message) 'shove)
-                                           (set! (-> a1-3 param 0) (the-as uint #f))
-                                           (let ((v1-4 (new 'static 'attack-info :mask #xc0)))
-                                             (set! (-> v1-4 shove-back) 12288.0)
-                                             (set! (-> v1-4 shove-up) 4096.0)
-                                             (set! (-> a1-3 param 1) (the-as uint v1-4))
-                                             )
-                                           (the-as symbol (send-event-function arg0 a1-3))
-                                           )
-                                         )
-                                )
-                        )
-                       ((= v1-0 'touch)
-                        (the-as symbol (send-shove-back
-                                         (-> self root-override)
-                                         arg0
-                                         (the-as touching-shapes-entry (-> arg3 param 0))
-                                         0.7
-                                         6144.0
-                                         16384.0
-                                         )
-                                )
-                        )
-                       ((= v1-0 'clone)
-                        (the-as symbol (go-virtual be-clone (the-as handle (-> arg3 param 0))))
-                        )
-                       ((= v1-0 'play-anim)
-                        (logclear! (-> self mask) (process-mask actor-pause))
-                        (let ((v0-0 #t))
-                          (set! (-> self been-kicked) v0-0)
-                          v0-0
-                          )
-                        )
-                       ((= v1-0 'hidden-other)
-                        (the-as symbol (go-virtual hidden-other))
-                        )
-                       )
-              )
+      (the-as
+        object
+        (cond
+          ((= v1-0 'attack)
+           (the-as
+             symbol
+             (if (-> self bounce-away)
+                 (the-as
+                   symbol
+                   (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 3)) (shove-up (meters 1)))))
+                   )
+                 )
+             )
+           )
+          ((= v1-0 'touch)
+           (the-as symbol (send-shove-back
+                            (-> self root-override)
+                            arg0
+                            (the-as touching-shapes-entry (-> arg3 param 0))
+                            0.7
+                            6144.0
+                            16384.0
+                            )
+                   )
+           )
+          ((= v1-0 'clone)
+           (the-as symbol (go-virtual be-clone (the-as handle (-> arg3 param 0))))
+           )
+          ((= v1-0 'play-anim)
+           (logclear! (-> self mask) (process-mask actor-pause))
+           (let ((v0-0 #t))
+             (set! (-> self been-kicked) v0-0)
+             v0-0
+             )
+           )
+          ((= v1-0 'hidden-other)
+           (the-as symbol (go-virtual hidden-other))
+           )
+          )
+        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (process-taskable-clean-up-after-talking)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (cond
       ((or (= (-> self next-state name) 'dead-state) (= (-> self next-state name) 'idle))
        (process-entity-status! self (entity-perm-status bit-3) #f)
@@ -988,8 +910,7 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
       (logior! (-> self mask) (process-mask actor-pause))
       (process-entity-status! self (entity-perm-status bit-3) #f)
@@ -1077,10 +998,8 @@
     ((-> self cur-trans-hook))
     (none)
     )
-  :code
-  process-taskable-anim-loop
-  :post
-  (behavior ()
+  :code process-taskable-anim-loop
+  :post (behavior ()
     (when *target*
       (when (!= (-> self neck-joint-index) -1)
         (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -1216,8 +1135,7 @@
   )
 
 (defstate othercam-running (othercam)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 object))
     (case arg2
       (('die)
@@ -1260,8 +1178,7 @@
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (hide-hud-quick)
     (case (-> self spooling?)
       (('logo)
@@ -1287,14 +1204,12 @@
     (copy-settings-from-target! *setting-control*)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (clear-pending-settings-from-process *setting-control* self 'process-mask)
     (copy-settings-from-target! *setting-control*)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (let ((s2-0 (-> self hand process 0)))
         (when (not s2-0)

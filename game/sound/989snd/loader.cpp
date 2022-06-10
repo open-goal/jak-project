@@ -43,6 +43,8 @@ u32 loader::read_music_bank(SoundBankData* data) {
   bank->bank_name = data->BankID;
   m_soundbanks.emplace(handle, std::move(bank));
 
+  fmt::print("Loaded music bank {:.4}\n", (char*)&data->BankID);
+
   return handle;
 }
 
@@ -176,6 +178,7 @@ void loader::load_samples(u32 bank_id, std::unique_ptr<u8[]> samples) {
 }
 
 void loader::unload_bank(u32 id) {
+  fmt::print("Deleting bank {}\n", id);
   for (auto it = m_midi_chunks.begin(); it != m_midi_chunks.end();) {
     bool del = false;
     // FIXME delete midi
