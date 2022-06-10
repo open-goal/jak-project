@@ -100,8 +100,7 @@
 
 ;; failed to figure out what this is:
 (defstate billy-snack-eat (billy-snack)
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja :group! farthy-snack-eat-ja)
     (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -114,22 +113,19 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior billy-snack) ja-post)
+  :post (the-as (function none :behavior billy-snack) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate billy-snack-idle (billy-snack)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('eat)
        (go billy-snack-eat)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -139,8 +135,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior billy-snack) ja-post)
+  :post (the-as (function none :behavior billy-snack) ja-post)
   )
 
 ;; definition for function billy-snack-init-by-other
@@ -193,20 +188,17 @@
 ;; failed to figure out what this is:
 (defstate nav-enemy-idle (billy-rat)
   :virtual #t
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (go-virtual nav-enemy-chase)
     (none)
     )
-  :post
-  (the-as (function none :behavior billy-rat) nav-enemy-common-post)
+  :post (the-as (function none :behavior billy-rat) nav-enemy-common-post)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-die (billy-rat)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (nav-enemy-fall-and-play-death-anim
       (the-as art-joint-anim (-> self draw art-group data (-> self nav-info die-anim)))
       1.0
@@ -222,13 +214,11 @@
 
 ;; failed to figure out what this is:
 (defstate billy-rat-eat (billy-rat)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (seek-to-point-toward-point! (-> self collide-info) (-> self destination) 131072.0 (seconds 0.01))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (send-event (handle->process (-> self snack)) 'eat)
     (sound-play-by-name (static-sound-name "rat-gulp") (new-sound-id) 1024 0 0 1 #t)
     (ja-channel-push! 1 (seconds 0.05))
@@ -243,25 +233,21 @@
     (go-virtual nav-enemy-chase)
     (none)
     )
-  :post
-  (the-as (function none :behavior billy-rat) nav-enemy-simple-post)
+  :post (the-as (function none :behavior billy-rat) nav-enemy-simple-post)
   )
 
 ;; failed to figure out what this is:
 (defstate billy-rat-salivate (billy-rat)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior billy-rat)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (dotimes (gp-0 1)
       (sound-play-by-name (static-sound-name "rat-eat") (new-sound-id) 1024 0 0 1 #t)
       (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-        (ja-no-eval :group!
-                    (-> self draw art-group data (-> self nav-info victory-anim))
+        (ja-no-eval :group! (-> self draw art-group data (-> self nav-info victory-anim))
                     :num! (seek! max f30-0)
                     :frame-num 0.0
                     )
@@ -278,15 +264,13 @@
         )
     (none)
     )
-  :post
-  (the-as (function none :behavior billy-rat) nav-enemy-simple-post)
+  :post (the-as (function none :behavior billy-rat) nav-enemy-simple-post)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-victory (billy-rat)
   :virtual #t
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (let ((t9-1 (-> (the-as (state nav-enemy) (find-parent-method billy-rat 33)) enter)))
       (if t9-1
           (t9-1)
@@ -306,8 +290,7 @@
 ;; failed to figure out what this is:
 (defstate nav-enemy-stare (billy-rat)
   :virtual #t
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (go-virtual nav-enemy-chase)
     (none)
     )
@@ -316,8 +299,7 @@
 ;; failed to figure out what this is:
 (defstate nav-enemy-chase (billy-rat)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (set! (-> self speed-scale) (-> self billy 0 rat-speed))
     (if (or (logtest? (nav-control-flags navcf19) (-> self nav flags))
             (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self chase-rest-time))
@@ -326,8 +308,7 @@
         )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (swamp-rat-update-wiggle-target (-> self destination))
     (nav-enemy-travel-post)
     (none)
@@ -391,15 +372,7 @@
            (eval-path-curve-div! (-> obj path-snacks) s5-1 (the float s4-0) 'exact)
            (set! (-> s5-1 x) (+ -40960.0 (-> s5-1 x)))
            (set! (-> s5-1 z) (+ 20480.0 (-> s5-1 z)))
-           (let ((s3-0 (get-process *default-dead-pool* manipy #x4000)))
-             (when s3-0
-               (let ((t9-4 (method-of-type manipy activate)))
-                 (t9-4 (the-as manipy s3-0) obj 'manipy (the-as pointer #x70004000))
-                 )
-               (run-now-in-process s3-0 manipy-init s5-1 (-> obj entity) *farthy-snack-sg* #f)
-               (-> s3-0 ppointer)
-               )
-             )
+           (manipy-spawn s5-1 (-> obj entity) *farthy-snack-sg* #f :to obj)
            )
          )
        )
@@ -407,8 +380,7 @@
        :name "billy-introduction"
        :index 5
        :parts 14
-       :command-list
-       '((0 kill "swamp-blimp-3")
+       :command-list '((0 kill "swamp-blimp-3")
          (0 kill "swamp-tetherrock-14")
          (0 kill "swamp-tetherrock-15")
          (0 kill "flutflut-3")
@@ -449,8 +421,7 @@
        :name "billy-reminder-1"
        :index 8
        :parts 2
-       :command-list
-       '((0 kill "swamp-blimp-3")
+       :command-list '((0 kill "swamp-blimp-3")
          (0 kill "swamp-tetherrock-14")
          (0 kill "swamp-tetherrock-15")
          (0 kill "flutflut-3")
@@ -484,8 +455,7 @@
        :name "billy-resolution"
        :index 9
        :parts 2
-       :command-list
-       '((0 kill "swamp-blimp-3")
+       :command-list '((0 kill "swamp-blimp-3")
          (0 kill "swamp-tetherrock-14")
          (0 kill "swamp-tetherrock-15")
          (0 kill "flutflut-3")
@@ -567,8 +537,7 @@
 
 ;; failed to figure out what this is:
 (defstate billy-done (billy)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'billy-rat-needs-destination)
                        (let* ((gp-0 arg0)
@@ -586,8 +555,7 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (init!
       (-> self query)
       (lookup-text! *common-text* (game-text-id play-again?) #f)
@@ -611,10 +579,7 @@
       (let ((a0-24 (get-reminder (-> self tasks) 0)))
         (save-reminder (-> self tasks) (seekl a0-24 255 1) 0)
         )
-      (let* ((v1-49 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-             (v1-50 (the-as number (logior #x3f800000 v1-49)))
-             (f0-2 (+ -1.0 (the-as float v1-50)))
-             )
+      (let ((f0-2 (rand-float-gen)))
         (cond
           ((< 0.75 f0-2)
            (play-ambient (-> self ambient) "BIL-TA04" #t (the-as vector #f))
@@ -633,15 +598,13 @@
       )
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (billy-kill-all-but-farthy)
     (send-event *camera* 'change-target *target*)
     (send-event *camera* 'change-state *camera-base-mode* 0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (cond
       ((> (-> self num-snacks) 0)
        (when (process-grab? *target*)
@@ -671,10 +634,8 @@
     (spool-push *art-control* "billy-reject" 0 self -99.0)
     (none)
     )
-  :code
-  (the-as (function none :behavior billy) process-taskable-anim-loop)
-  :post
-  (behavior ()
+  :code (the-as (function none :behavior billy) process-taskable-anim-loop)
+  :post (behavior ()
     (ja-post)
     (none)
     )
@@ -857,17 +818,9 @@
           )
       (get-random-point (-> self path-starts) gp-0)
       (get-random-point (-> self path-waypts) s5-0)
-      (let ((s4-0 (get-process *default-dead-pool* billy-rat #x4000)))
-        (if (when s4-0
-              (let ((t9-4 (method-of-type billy-rat activate)))
-                (t9-4 (the-as billy-rat s4-0) self 'billy-rat (the-as pointer #x70004000))
-                )
-              (run-now-in-process s4-0 billy-rat-init-by-other self gp-0 s5-0)
-              (-> s4-0 ppointer)
-              )
-            (+! (-> self num-rats) 1)
-            )
-        )
+      (if (process-spawn billy-rat self gp-0 s5-0 :to self)
+          (+! (-> self num-rats) 1)
+          )
       )
     )
   0
@@ -876,14 +829,11 @@
 
 ;; failed to figure out what this is:
 (defstate billy-playing (billy)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('billy-rat-die)
        (+! (-> self num-rats) -1)
-       (let* ((v1-4 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-              (v1-5 (the-as number (logior #x3f800000 v1-4)))
-              (f0-2 (+ -1.0 (the-as float v1-5)))
+       (let* ((f0-2 (rand-float-gen))
               (f0-3 (* 3.0 f0-2))
               )
          (cond
@@ -919,10 +869,7 @@
                     )
               )
          (when gp-0
-           (let* ((v1-15 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                  (v1-16 (the-as number (logior #x3f800000 v1-15)))
-                  (f0-6 (+ -1.0 (the-as float v1-16)))
-                  )
+           (let ((f0-6 (rand-float-gen)))
              (cond
                ((< 0.75 f0-6)
                 (play-ambient (-> self ambient) "BIL-TA01" #t (the-as vector #f))
@@ -1004,8 +951,7 @@
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (push-setting! *setting-control* self 'music 'danger 0.0 0)
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self root-override))
@@ -1018,17 +964,9 @@
     (let ((gp-1 (new 'stack-no-clear 'vector)))
       (dotimes (s5-1 (+ (the int (the float (+ (-> self path-snacks curve num-cverts) -1))) 1))
         (eval-path-curve-div! (-> self path-snacks) gp-1 (the float s5-1) 'exact)
-        (let ((s4-1 (get-process *default-dead-pool* billy-snack #x4000)))
-          (if (when s4-1
-                (let ((t9-7 (method-of-type billy-snack activate)))
-                  (t9-7 (the-as billy-snack s4-1) self 'billy-snack (the-as pointer #x70004000))
-                  )
-                (run-now-in-process s4-1 billy-snack-init-by-other gp-1)
-                (-> s4-1 ppointer)
-                )
-              (+! (-> self num-snacks) 1)
-              )
-          )
+        (if (process-spawn billy-snack gp-1 :to self)
+            (+! (-> self num-snacks) 1)
+            )
         )
       )
     (backup-load-state-and-set-cmds *load-state* '())
@@ -1066,22 +1004,19 @@
       )
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (restore-collide-with-as (-> self root-override))
     (restore-load-state-and-cleanup *load-state*)
     (set! (-> *ACTOR-bank* birth-max) 1000)
     (clear-pending-settings-from-process *setting-control* self 'music)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (spool-push *art-control* "billy-resolution" 0 self -99.0)
     (spool-push *art-control* "billy-reject" 0 self -99.0)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (billy-game-update)
       (if (or (zero? (-> self num-snacks))
@@ -1094,8 +1029,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (ja-post)
     (none)
     )
@@ -1104,23 +1038,16 @@
 ;; failed to figure out what this is:
 (defstate enter-playing (billy)
   :virtual #t
-  :trans
-  (behavior ()
-    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-0 from) self)
-      (set! (-> a1-0 num-params) 1)
-      (set! (-> a1-0 message) 'change-mode)
-      (set! (-> a1-0 param 0) (the-as uint 'billy))
-      (when (send-event-function *target* a1-0)
-        (send-event *target* 'trans 'reset)
-        (let ((v1-8 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
-          (cond
-            (v1-8
-              (move-to-point! (-> *target* control) (-> v1-8 extra trans))
-              (go billy-playing)
-              )
-            (else
-              )
+  :trans (behavior ()
+    (when (send-event *target* 'change-mode 'billy)
+      (send-event *target* 'trans 'reset)
+      (let ((v1-8 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
+        (cond
+          (v1-8
+            (move-to-point! (-> *target* control) (-> v1-8 extra trans))
+            (go billy-playing)
+            )
+          (else
             )
           )
         )
@@ -1132,10 +1059,7 @@
 ;; definition for method 43 of type billy
 (defmethod TODO-RENAME-43 billy ((obj billy))
   (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
-    (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-4 (the-as number (logior #x3f800000 v1-3)))
-           (f30-0 (+ -1.0 (the-as float v1-4)))
-           )
+    (let ((f30-0 (rand-float-gen)))
       (cond
         ((< 0.9411765 f30-0)
          (play-ambient (-> obj ambient) "BIL-AM01" #f (-> obj root-override trans))
@@ -1199,8 +1123,7 @@
 ;; failed to figure out what this is:
 (defstate play-anim (billy)
   :virtual #t
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (billy-kill-all-but-farthy)
     ((-> (method-of-type process-taskable play-anim) exit))
     (none)
@@ -1210,8 +1133,7 @@
 ;; failed to figure out what this is:
 (defstate idle (billy)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (!= (ja-group) (get-art-elem self))
         (ja-channel-push! 1 (seconds 0.2))
         )
@@ -1262,19 +1184,9 @@
       )
     )
   (set! (-> obj path) (-> obj path-snacks))
-  (let ((s5-1 (get-process *default-dead-pool* manipy #x4000)))
-    (set! (-> obj farthy)
-          (ppointer->handle
-            (when s5-1
-              (let ((t9-4 (method-of-type manipy activate)))
-                (t9-4 (the-as manipy s5-1) obj 'manipy (the-as pointer #x70004000))
-                )
-              (run-now-in-process s5-1 manipy-init (-> obj root-override trans) (-> obj entity) *billy-sidekick-sg* #f)
-              (-> s5-1 ppointer)
-              )
-            )
-          )
-    )
+  (set! (-> obj farthy)
+        (ppointer->handle (manipy-spawn (-> obj root-override trans) (-> obj entity) *billy-sidekick-sg* #f :to obj))
+        )
   (send-event (handle->process (-> obj farthy)) 'center-joint 3)
   (send-event (handle->process (-> obj farthy)) 'anim-mode 'clone-anim)
   (dummy-42 obj)

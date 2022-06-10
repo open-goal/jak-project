@@ -609,19 +609,19 @@
   (let ((bsp-hdr (-> *level* log-in-level-bsp)))
     (when bsp-hdr
       (let* ((table-size (-> bsp-hdr texture-remap-table-len))   ;; in 64-bit entries
-             (table-data-start (-> bsp-hdr texture-remap-table))
-             (table-data-ptr table-data-start) 
+             (table-data-ptr (-> bsp-hdr texture-remap-table))
+             (table-data-start table-data-ptr) 
              (mask1 (the-as uint #xfffffff8)) ;; mask for table entry addresses
              (masked-tex-id (logand (the-as uint #xffffff00) tex-id)) ;; bits of tex-id we care about
-             (table-data-end (&+ table-data-ptr (* table-size 8)))
+             (table-data-end (&+ table-data-start (* table-size 8)))
              )
         ;; top of binary search
         (label cfg-2)
         ;; if we didn't find anything, quit
-        (b! (= table-data-start table-data-end) cfg-8)
+        (b! (= table-data-ptr table-data-end) cfg-8)
 
         ;; find the middle entry.
-        (let ((midpoint (logand (/ (+ (the-as int table-data-start) (the-as int table-data-end)) 2)
+        (let ((midpoint (logand (/ (+ (the-as int table-data-ptr) (the-as int table-data-end)) 2)
                                 mask1
                                 )
                 )
@@ -641,7 +641,7 @@
           (label cfg-6)
           (b! #t cfg-2
            :delay
-           (set! table-data-start (the-as (pointer uint64) (+ (the-as int midpoint) 8)))
+           (set! table-data-ptr (the-as (pointer uint64) (+ (the-as int midpoint) 8)))
            )
 
           ;; exact match

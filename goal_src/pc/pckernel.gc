@@ -33,6 +33,7 @@
 (define *collision-wireframe* #f)
 (define *collision-mode* (pc-collision-mode mode))
 
+;; todo
 (defenum pc-pat-skip-hack
   :bitfield #t
   (noentity 0)
@@ -166,6 +167,11 @@
     )
 
   (pc-sound-set-flava-hack (-> obj flava-hack))
+  (let ((fade-hack 0))
+    (unless (-> obj music-fadein?) (logior! fade-hack 1))
+    (unless (-> obj music-fadeout?) (logior! fade-hack 2))
+    (pc-sound-set-fade-hack fade-hack)
+    )
 
   (none))
 
@@ -464,7 +470,7 @@
         (return (logtest? (-> *pc-settings* secrets music i flava-mask) (ash 1 flava-idx)))))
   #f)
 
-(defun print-music-log ((out object))
+(defun-debug print-music-log ((out object))
   "prints the *pc-settings* music log."
   
   (dotimes (i PC_MUSIC_LOG_LENGTH)
@@ -710,6 +716,8 @@
                 (("third-camera-v-inverted?") (set! (-> obj third-camera-v-inverted?) (file-stream-read-symbol file)))
                 (("money-starburst?") (set! (-> obj money-starburst?) (file-stream-read-symbol file)))
                 (("extra-hud?") (set! (-> obj extra-hud?) (file-stream-read-symbol file)))
+                (("music-fadein?") (set! (-> obj music-fadein?) (file-stream-read-symbol file)))
+                (("music-fadeout?") (set! (-> obj music-fadeout?) (file-stream-read-symbol file)))
                 (("scenes-seen")
                   (dotimes (i PC_SPOOL_LOG_LENGTH)
                     (set! (-> obj scenes-seen i) (file-stream-read-int file))
@@ -806,7 +814,6 @@
 
     (format file "  (stick-deadzone ~f)~%" (-> obj stick-deadzone))
 
-    (format file "  (extra-hud? ~A)~%" (-> obj extra-hud?))
     (format file "  (ps2-read-speed? ~A)~%" (-> obj ps2-read-speed?))
     (format file "  (ps2-parts? ~A)~%" (-> obj ps2-parts?))
     (format file "  (ps2-music? ~A)~%" (-> obj ps2-music?))
@@ -823,6 +830,9 @@
     (format file "  (third-camera-v-inverted? ~A)~%" (-> obj third-camera-v-inverted?))
     (format file "  (money-starburst? ~A)~%" (-> obj money-starburst?))
     (format file "  (force-actors? ~A)~%" (-> obj force-actors?))
+    (format file "  (extra-hud? ~A)~%" (-> obj extra-hud?))
+    (format file "  (music-fadein? ~A)~%" (-> obj music-fadein?))
+    (format file "  (music-fadeout? ~A)~%" (-> obj music-fadeout?))
     (format file "  (subtitles? ~A)~%" (-> obj subtitles?))
     (format file "  (hinttitles? ~A)~%" (-> obj hinttitles?))
     (format file "  (subtitle-language ~D)~%" (-> obj subtitle-language))

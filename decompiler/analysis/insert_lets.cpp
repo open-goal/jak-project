@@ -1,8 +1,12 @@
 #include <algorithm>
 #include <array>
 #include <limits>
+#include <tuple>
 
+#include "common/util/Assert.h"
+#include "common/util/print_float.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
+#include "decompiler/IR2/bitfields.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "insert_lets.h"
 
@@ -36,6 +40,8 @@ If the previous let variables appear in the definition of new one, make the let 
  */
 
 namespace {
+FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats);
+
 std::vector<Form*> path_up_tree(Form* in, const Env&) {
   std::vector<Form*> path;
 
@@ -121,10 +127,9 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
 
   // still have to check body for the increment and have to check that the lt operates on the right
   // thing.
-  Matcher while_matcher =
-      Matcher::while_loop(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::LT),
-                                      {Matcher::any_reg(0), Matcher::any(1)}),
-                          Matcher::any(2));
+  Matcher while_matcher = Matcher::while_loop(
+      Matcher::op_fixed(FixedOperatorKind::LT, {Matcher::any_reg(0), Matcher::any(1)}),
+      Matcher::any(2));
 
   auto mr = match(while_matcher, in->body());
   if (!mr.matched) {
@@ -142,14 +147,10 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
   auto body = mr.maps.forms.at(2);
   auto last_in_body = body->elts().back();
 
-  // kind hacky
-  Form fake_form;
-  fake_form.elts().push_back(last_in_body);
-  Matcher increment_matcher =
-      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION_IN_PLACE),
-                  {Matcher::any_reg(0), Matcher::integer(1)});
+  Matcher increment_matcher = Matcher::op_fixed(FixedOperatorKind::ADDITION_IN_PLACE,
+                                                {Matcher::any_reg(0), Matcher::integer(1)});
 
-  auto int_mr = match(increment_matcher, &fake_form);
+  auto int_mr = match(increment_matcher, last_in_body);
   if (!int_mr.matched) {
     return nullptr;
   }
@@ -170,13 +171,151 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
                                                 mr.maps.forms.at(1), body);
 }
 
-FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& pool) {
+std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
+    const Matcher& matcher,
+    FormElement* in,
+    const Env& env,
+    FormPool& pool,
+    std::function<Form*(FormElement*, const MatchResult&, const Env&, FormPool&)> func,
+    const TypeSpec* const strip_cast) {
+  auto mr = match(matcher, in);
+
+  // TODO check forbidden form
+  if (!mr.matched) {
+    auto as_set = dynamic_cast<SetFormFormElement*>(in);
+    if (as_set) {
+      auto sub_res = rewrite_shelled_return_form(matcher, as_set->src()->try_as_single_element(),
+                                                 env, pool, func, strip_cast);
+
+      if (std::get<0>(sub_res).matched) {
+        if (std::get<2>(sub_res) && strip_cast) {
+          // strip lowest-level (pointer <type>) cast.
+          if (as_set->cast_for_set() && env.dts->ts.tc(*as_set->cast_for_set(), *strip_cast)) {
+            as_set->set_cast_for_set({});
+          }
+          if (as_set->cast_for_define() &&
+              env.dts->ts.tc(*as_set->cast_for_define(), *strip_cast)) {
+            as_set->set_cast_for_define({});
+          }
+        }
+        return {std::get<0>(sub_res),
+                pool.form<SetFormFormElement>(as_set->dst(), std::get<1>(sub_res),
+                                              as_set->cast_for_set(), as_set->cast_for_define()),
+                false};
+      }
+    }
+
+    auto as_cast = dynamic_cast<CastElement*>(in);
+    if (as_cast) {
+      auto sub_res = rewrite_shelled_return_form(
+          matcher, as_cast->source()->try_as_single_element(), env, pool, func, strip_cast);
+
+      if (std::get<0>(sub_res).matched) {
+        if (std::get<2>(sub_res) && strip_cast && env.dts->ts.tc(as_cast->type(), *strip_cast)) {
+          // strip lowest-level (pointer <type>) cast instead.
+          return {std::get<0>(sub_res), std::get<1>(sub_res), false};
+        }
+        return {std::get<0>(sub_res),
+                pool.form<CastElement>(as_cast->type(), std::get<1>(sub_res), as_cast->numeric()),
+                false};
+      }
+    }
+
+    auto as_gen = dynamic_cast<GenericElement*>(in);
+    if (as_gen) {
+      int i = 0;
+      int m = as_gen->elts().size();
+      for (; i < m; ++i) {
+        auto sub_res = rewrite_shelled_return_form(
+            matcher, as_gen->elts().at(i)->try_as_single_element(), env, pool, func, strip_cast);
+
+        if (std::get<0>(sub_res).matched) {
+          std::vector<Form*> shell_args;
+          for (int ii = 0; ii < m; ++ii) {
+            if (ii == i) {
+              shell_args.push_back(std::get<1>(sub_res));
+            } else {
+              shell_args.push_back(as_gen->elts().at(ii));
+            }
+          }
+
+          return {std::get<0>(sub_res), pool.form<GenericElement>(as_gen->op(), shell_args), false};
+        }
+      }
+    }
+
+    auto as_cond_ne = dynamic_cast<CondNoElseElement*>(in);
+    if (as_cond_ne) {
+      auto sub_res = rewrite_shelled_return_form(
+          matcher, as_cond_ne->entries.at(0).condition->try_as_single_element(), env, pool, func,
+          strip_cast);
+
+      if (std::get<0>(sub_res).matched) {
+        as_cond_ne->entries.at(0).condition = std::get<1>(sub_res);
+        return {std::get<0>(sub_res), pool.form<CondNoElseElement>(as_cond_ne->entries), false};
+      }
+    }
+
+    auto as_cond_e = dynamic_cast<CondWithElseElement*>(in);
+    if (as_cond_e) {
+      auto sub_res = rewrite_shelled_return_form(
+          matcher, as_cond_e->entries.at(0).condition->try_as_single_element(), env, pool, func,
+          strip_cast);
+
+      if (std::get<0>(sub_res).matched) {
+        as_cond_e->entries.at(0).condition = std::get<1>(sub_res);
+        return {std::get<0>(sub_res),
+                pool.form<CondWithElseElement>(as_cond_e->entries, as_cond_e->else_ir), false};
+      }
+    }
+
+    auto as_while = dynamic_cast<WhileElement*>(in);
+    if (as_while) {
+      auto sub_res = rewrite_shelled_return_form(
+          matcher, as_while->condition->try_as_single_element(), env, pool, func, strip_cast);
+
+      if (std::get<0>(sub_res).matched) {
+        return {std::get<0>(sub_res), pool.form<WhileElement>(std::get<1>(sub_res), as_while->body),
+                false};
+      }
+    }
+
+    auto as_counter = dynamic_cast<CounterLoopElement*>(in);
+    if (as_counter) {
+      auto sub_res =
+          rewrite_shelled_return_form(matcher, as_counter->counter_value()->try_as_single_element(),
+                                      env, pool, func, strip_cast);
+
+      if (std::get<0>(sub_res).matched) {
+        return {std::get<0>(sub_res),
+                pool.form<CounterLoopElement>(as_counter->kind(), as_counter->var_init(),
+                                              as_counter->var_check(), as_counter->var_inc(),
+                                              std::get<1>(sub_res), as_counter->body()),
+                false};
+      }
+    }
+
+    return {mr, nullptr, false};
+  }
+
+  auto new_f = func(in, mr, env, pool);
+  if (!new_f) {
+    mr.matched = false;
+  }
+  return {mr, new_f, true};
+}
+
+FormElement* rewrite_as_send_event(LetElement* in,
+                                   const Env& env,
+                                   FormPool& pool,
+                                   LetRewriteStats& stats) {
   if (in->entries().size() != 1) {
     return nullptr;
   }
 
   // (let ((block-var (new 'stack-no-clear 'event-message-block))
   auto block_var = in->entries().at(0).dest;
+  const auto& block_var_reg = block_var.reg();
   auto block_var_name = env.get_variable_name(block_var);
   auto block_src = in->entries().at(0).src->try_as_element<StackStructureDefElement>();
   if (!block_src) {
@@ -201,27 +340,20 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
   ////////////////////////////////////////////////////////
   // (set! (-> block-var from) <something>)
   bool not_proc = false;
-  Matcher set_from_matcher =
-      Matcher::set(Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("from")}),
-                   Matcher::any_reg(1));
-  Form set_from_hack_body;
-  set_from_hack_body.elts().push_back(body->at(0));
-  auto from_mr = match(set_from_matcher, &set_from_hack_body);
+  Matcher set_from_matcher = Matcher::set(
+      Matcher::deref(Matcher::reg(block_var_reg), false, {DerefTokenMatcher::string("from")}),
+      Matcher::any_reg(1));
+  auto from_mr = match(set_from_matcher, body->at(0));
   if (!from_mr.matched) {
     // initial matcher failed. try more advanced "from" matcher now.
     Matcher set_from_form_matcher = Matcher::set(
         Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("from")}),
         Matcher::any(1));
-    from_mr = match(set_from_form_matcher, &set_from_hack_body);
+    from_mr = match(set_from_form_matcher, body->at(0));
     if (!from_mr.matched) {
       return nullptr;
     }
     not_proc = true;
-  }
-
-  if (env.get_variable_name(*from_mr.maps.regs.at(0)) != block_var_name) {
-    // fmt::print(" fail: from2\n");
-    return nullptr;
   }
 
   // if we couldnt match with simple reg matching that means it's a more complex form.
@@ -236,17 +368,11 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
   ////////////////////////////////////////////////////////
   // (set! (-> a1-14 num-params) param-count) where param-count is a constant integer
   Matcher set_num_params_matcher = Matcher::set(
-      Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("num-params")}),
+      Matcher::deref(Matcher::reg(block_var_reg), false, {DerefTokenMatcher::string("num-params")}),
       Matcher::any_integer(1));
-  Form set_num_params_hack_body;
-  set_num_params_hack_body.elts().push_back(body->at(1));
-  auto num_params_mr = match(set_num_params_matcher, &set_num_params_hack_body);
+  auto num_params_mr = match(set_num_params_matcher, body->at(1));
   if (!num_params_mr.matched) {
     // fmt::print(" fail: pc1\n");
-    return nullptr;
-  }
-  if (env.get_variable_name(*num_params_mr.maps.regs.at(0)) != block_var_name) {
-    // fmt::print(" fail: pc2\n");
     return nullptr;
   }
   int param_count = num_params_mr.maps.ints.at(1);
@@ -259,17 +385,11 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
   ////////////////////////////////////////////////////////
   // (set! (-> a1-14 message) the-message-name)
   Matcher set_message_matcher = Matcher::set(
-      Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("message")}),
+      Matcher::deref(Matcher::reg(block_var_reg), false, {DerefTokenMatcher::string("message")}),
       Matcher::any(1));
-  Form set_message_hack_body;
-  set_message_hack_body.elts().push_back(body->at(2));
-  auto set_message_mr = match(set_message_matcher, &set_message_hack_body);
+  auto set_message_mr = match(set_message_matcher, body->at(2));
   if (!set_message_mr.matched) {
     // fmt::print(" fail: msg1\n");
-    return nullptr;
-  }
-  if (env.get_variable_name(*set_message_mr.maps.regs.at(0)) != block_var_name) {
-    // fmt::print(" fail: msg2\n");
     return nullptr;
   }
   Form* message_name = set_message_mr.maps.forms.at(1);
@@ -278,20 +398,22 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
   // (set! (-> a1-14 param X) the-param-value)
   std::vector<Form*> param_values;
   for (int param_idx = 0; param_idx < param_count; param_idx++) {
+    auto as_let = dynamic_cast<LetElement*>(body->at(3 + param_idx));
+    if (as_let) {
+      auto rewritten = rewrite_let(as_let, env, pool, stats);
+      if (rewritten) {
+        body->at(3 + param_idx) = rewritten;
+        rewritten->parent_form = body;
+      }
+    }
     auto set_form = body->at(3 + param_idx);
     Matcher set_param_matcher = Matcher::set(
-        Matcher::deref(Matcher::any_reg(0), false,
+        Matcher::deref(Matcher::reg(block_var_reg), false,
                        {DerefTokenMatcher::string("param"), DerefTokenMatcher::integer(param_idx)}),
         Matcher::any(1));
-    Form set_param_hack_body;
-    set_param_hack_body.elts().push_back(set_form);
-    auto set_param_mr = match(set_param_matcher, &set_param_hack_body);
+    auto set_param_mr = match(set_param_matcher, set_form);
     if (!set_param_mr.matched) {
       // fmt::print(" fail: pv {} 1: {}\n", param_idx, set_form->to_string(env));
-      return nullptr;
-    }
-    if (env.get_variable_name(*set_param_mr.maps.regs.at(0)) != block_var_name) {
-      // fmt::print(" fail: pv {} 2\n", param_idx);
       return nullptr;
     }
 
@@ -301,50 +423,73 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
     if (param_val_cast && param_val_cast->type() == TypeSpec("uint")) {
       param_val = param_val_cast->source();
     }
+
+    // fancy casting if necessary
+    if (param_val->to_form(env).is_int()) {
+      auto msg_str = message_name->to_string(env);
+      auto val = param_val->to_form(env).as_int();
+      if (val &&
+          ((param_idx == 1 && (msg_str == "'change-state" || msg_str == "'change-state-no-go" ||
+                               msg_str == "'art-joint-anim")) ||
+           (param_idx == 0 && (msg_str == "'no-look-around" || msg_str == "'no-load-wait" ||
+                               msg_str == "'force-blend")))) {
+        param_val = pool.form<GenericElement>(
+            GenericOperator::make_function(pool.form<ConstantTokenElement>("seconds")),
+            pool.form<ConstantTokenElement>(seconds_to_string(param_val->to_form(env).as_int())));
+      } else if (param_idx == 1) {
+        auto parm0_str = param_values.at(0)->to_string(env);
+        if (parm0_str == "'powerup" || parm0_str == "'pickup") {
+          auto enum_ts = env.dts->ts.try_enum_lookup("pickup-type");
+          if (enum_ts) {
+            param_val = cast_to_int_enum(enum_ts, pool, env, param_val->to_form(env).as_int());
+          }
+        }
+      }
+    }
+
     param_values.push_back(param_val);
   }
 
   ////////////////////////////////////////////////////////
   // (send-event-function <dest> <block-var>)
   Matcher call_matcher = Matcher::op(GenericOpMatcher::func(Matcher::symbol("send-event-function")),
-                                     {Matcher::any(0), Matcher::any_reg(1)});
-  Form call_hack_body;
-  call_hack_body.elts().push_back(body->at(3 + param_count));
-  auto call_mr = match(call_matcher, &call_hack_body);
-  if (!call_mr.matched) {
-    // fmt::print(" fail: call1: {}\n", body->at(3 + param_count)->to_string(env));
+                                     {Matcher::any(0), Matcher::reg(block_var_reg)});
+  auto mr_with_shell = rewrite_shelled_return_form(
+      call_matcher, body->at(3 + param_count), env, pool,
+      [&](FormElement* s_in, const MatchResult& mr, const Env& env, FormPool& pool) {
+        Form* send_destination = mr.maps.forms.at(0);
+
+        // time to build the macro!
+        std::vector<Form*> macro_args = {send_destination, message_name};
+        if (not_proc) {
+          // something was going on with from. build :from key.
+          macro_args.push_back(pool.form<ConstantTokenElement>(":from"));
+          // fill in the value for it
+          if (from_mr.maps.forms.find(1) != from_mr.maps.forms.end()) {
+            // matched some form. we can just copy it.
+            macro_args.push_back(from_mr.maps.forms.at(1));
+          } else {
+            // matched reg but it wasnt s6
+            macro_args.push_back(alloc_var_form(*from_mr.maps.regs.at(1), pool));
+          }
+        }
+        for (int i = 0; i < param_count; i++) {
+          macro_args.push_back(param_values.at(i));
+        }
+
+        auto oper = GenericOperator::make_fixed(FixedOperatorKind::SEND_EVENT);
+        return pool.form<GenericElement>(oper, macro_args);
+      },
+      nullptr);
+
+  if (!std::get<0>(mr_with_shell).matched) {
+    lg::error("shell match failed, dont know this form: {}",
+              body->at(3 + param_count)->to_string(env));
     return nullptr;
   }
 
-  if (env.get_variable_name(*call_mr.maps.regs.at(1)) != block_var_name) {
-    // fmt::print(" fail: call2\n");
-    return nullptr;
-  }
-
-  Form* send_destination = call_mr.maps.forms.at(0);
-
-  // time to build the macro!
-  std::vector<Form*> macro_args = {send_destination, message_name};
-  if (not_proc) {
-    // something was going on with from. build :from key.
-    macro_args.push_back(pool.form<ConstantTokenElement>(":from"));
-    // fill in the value for it
-    if (from_mr.maps.forms.find(1) != from_mr.maps.forms.end()) {
-      // matched some form. we can just copy it.
-      macro_args.push_back(from_mr.maps.forms.at(1));
-    } else {
-      // matched reg but it wasnt s6
-      macro_args.push_back(alloc_var_form(*from_mr.maps.regs.at(1), pool));
-    }
-  }
-  for (int i = 0; i < param_count; i++) {
-    macro_args.push_back(param_values.at(i));
-  }
-
-  auto oper = GenericOperator::make_fixed(FixedOperatorKind::SEND_EVENT);
-  return pool.alloc_element<GenericElement>(oper, macro_args);
-
-  return nullptr;
+  auto elt = std::get<1>(mr_with_shell)->try_as_single_element();
+  return elt;
 }
 
 FormElement* rewrite_as_countdown(LetElement* in, const Env& env, FormPool& pool) {
@@ -392,14 +537,10 @@ FormElement* rewrite_as_countdown(LetElement* in, const Env& env, FormPool& pool
   auto body = mr.maps.forms.at(2);
   auto first_in_body = body->elts().front();
 
-  // kind hacky
-  Form fake_form;
-  fake_form.elts().push_back(first_in_body);
-  Matcher increment_matcher =
-      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION_IN_PLACE),
-                  {Matcher::any_reg(0), Matcher::integer(-1)});
+  Matcher increment_matcher = Matcher::op_fixed(FixedOperatorKind::ADDITION_IN_PLACE,
+                                                {Matcher::any_reg(0), Matcher::integer(-1)});
 
-  auto int_mr = match(increment_matcher, &fake_form);
+  auto int_mr = match(increment_matcher, first_in_body);
   if (!int_mr.matched) {
     return nullptr;
   }
@@ -438,8 +579,7 @@ FormElement* fix_up_abs(LetElement* in, const Env& env, FormPool& pool) {
 
   Form* src = in->entries().at(0).src;
 
-  auto body_matcher =
-      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ABS), {Matcher::any_reg(0)});
+  auto body_matcher = Matcher::op_fixed(FixedOperatorKind::ABS, {Matcher::any_reg(0)});
   auto mr = match(body_matcher, in->body());
   if (!mr.matched) {
     return nullptr;
@@ -492,8 +632,7 @@ FormElement* fix_up_abs_2(LetElement* in, const Env& env, FormPool& pool) {
     return nullptr;
   }
 
-  auto matcher =
-      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ABS), {Matcher::any_reg(0)});
+  auto matcher = Matcher::op_fixed(FixedOperatorKind::ABS, {Matcher::any_reg(0)});
 
   auto mr = match(matcher, first_as_set->src());
   if (!mr.matched) {
@@ -664,8 +803,8 @@ FormElement* rewrite_as_case_no_else(LetElement* in, const Env& env, FormPool& p
 
   for (auto& e : cond->entries) {
     // first, lets see if its just (= case_var <expr>)
-    auto single_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::EQ),
-                                      {Matcher::any_reg(0), Matcher::any(1)});
+    auto single_matcher =
+        Matcher::op_fixed(FixedOperatorKind::EQ, {Matcher::any_reg(0), Matcher::any(1)});
 
     auto single_matcher_result = match(single_matcher, e.condition);
 
@@ -739,8 +878,8 @@ FormElement* rewrite_as_case_with_else(LetElement* in, const Env& env, FormPool&
 
   for (auto& e : cond->entries) {
     // first, lets see if its just (= case_var <expr>)
-    auto single_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::EQ),
-                                      {Matcher::any_reg(0), Matcher::any(1)});
+    auto single_matcher =
+        Matcher::op_fixed(FixedOperatorKind::EQ, {Matcher::any_reg(0), Matcher::any(1)});
 
     auto single_matcher_result = match(single_matcher, e.condition);
 
@@ -834,19 +973,13 @@ Form* match_ja_set(const Env& env,
   return mr.maps.forms.at(1);
 }
 
-void ja_push_form_to_args(const Env& env,
-                          FormPool& pool,
+void ja_push_form_to_args(FormPool& pool,
                           std::vector<Form*>& args,
                           Form* form,
                           const std::string& key_name) {
   if (form) {
-    auto text = form->to_form(env).print();
-    if (text.length() > 50) {
-      args.push_back(pool.form<ConstantTokenElement>(fmt::format(":{}", key_name)));
-      args.push_back(form);
-    } else {
-      args.push_back(pool.form<ConstantTokenElement>(fmt::format(":{} {}", key_name, text)));
-    }
+    args.push_back(pool.form<ConstantTokenElement>(fmt::format(":{}", key_name)));
+    args.push_back(form);
   }
 }
 
@@ -873,8 +1006,6 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   if (in->entries().size() != 1) {
     return nullptr;
   }
-
-  auto test = in->to_form(env).print();
 
   // look for setting a var to (-> self skel root-channel ,channel).
   // yes, channel is actually not always just 0!
@@ -974,7 +1105,7 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   auto form_fg = set_fg ? set_fg : arg_group;
   auto matcher_max_num = Matcher::cast(
       "float",
-      Matcher::fixed_op(
+      Matcher::op_fixed(
           FixedOperatorKind::ADDITION,
           {form_fg
                ? Matcher::deref(Matcher::any(1), false,
@@ -992,13 +1123,13 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   // check the channel arg
   auto channel_arg = channel_form->to_form(env);
   if (!channel_arg.is_int(0)) {
-    ja_push_form_to_args(env, pool, args, channel_form, "chan");
+    ja_push_form_to_args(pool, args, channel_form, "chan");
   }
 
   if (func_status != NO_FUNC) {
     // check the group! arg
     if (form_fg) {
-      ja_push_form_to_args(env, pool, args, strip_cast("art-joint-anim", form_fg), "group!");
+      ja_push_form_to_args(pool, args, strip_cast("art-joint-anim", form_fg), "group!");
     }
 
     const std::string prelim_num =
@@ -1094,9 +1225,9 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
       num_form = pool.form<ConstantTokenElement>(prelim_num);
     }
 
-    ja_push_form_to_args(env, pool, args, num_form, "num!");
+    ja_push_form_to_args(pool, args, num_form, "num!");
   } else if (form_fg) {
-    ja_push_form_to_args(env, pool, args, strip_cast("art-joint-anim", form_fg), "group!");
+    ja_push_form_to_args(pool, args, strip_cast("art-joint-anim", form_fg), "group!");
   }
 
   if (set_fn) {
@@ -1108,13 +1239,13 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   }
 
   // other generic args
-  ja_push_form_to_args(env, pool, args, set_fi, "frame-interp");
-  ja_push_form_to_args(env, pool, args, set_dist, "dist");
-  // ja_push_form_to_args(env, pool, args, form_fg, "frame-group");
-  ja_push_form_to_args(env, pool, args, set_p0, "param0");
-  ja_push_form_to_args(env, pool, args, set_p1, "param1");
-  ja_push_form_to_args(env, pool, args, set_nf, "num-func");
-  ja_push_form_to_args(env, pool, args, set_fn, "frame-num");
+  ja_push_form_to_args(pool, args, set_fi, "frame-interp");
+  ja_push_form_to_args(pool, args, set_dist, "dist");
+  // ja_push_form_to_args(pool, args, form_fg, "frame-group");
+  ja_push_form_to_args(pool, args, set_p0, "param0");
+  ja_push_form_to_args(pool, args, set_p1, "param1");
+  ja_push_form_to_args(pool, args, set_nf, "num-func");
+  ja_push_form_to_args(pool, args, set_fn, "frame-num");
 
   // TODO
   if (set_fn2) {
@@ -1124,7 +1255,8 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
     return nullptr;
   }
   if (set_p0 || set_p1) {
-    lg::error("[{}] JA MACRO ERROR something still using params: {}", env.func->name(), test);
+    lg::error("[{}] JA MACRO ERROR something still using params: {}", env.func->name(),
+              in->to_form(env).print());
     ASSERT(false);
     return nullptr;
   }
@@ -1133,6 +1265,320 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
       GenericOperator::make_function(
           pool.form<ConstantTokenElement>(func_status == NO_EVAL ? "ja-no-eval" : "ja")),
       args);
+}
+
+FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
+  // this function checks for the process-spawn macros.
+  // it uses recursive form scanning to wrap the macro inside a potential "shell"
+  // which means this is probably slow and bad
+
+  auto is_full_let = in->entries().size() == 1 && in->body()->size() == 1;
+  if (!(is_full_let || (in->entries().size() == 2))) {
+    return nullptr;
+  }
+
+  auto test = in->to_form(env).print();
+
+  // look for setting a var to (get-process *default-dead-pool* logo-slave #x4000)
+  auto ra = in->entries().at(0).dest;
+  auto var = env.get_variable_name(ra);
+  auto mr_get_proc = match(
+      Matcher::func("get-process", {Matcher::any(0), Matcher::any_symbol(1), Matcher::any(2)}),
+      in->entries().at(0).src);
+  if (!mr_get_proc.matched) {
+    return nullptr;
+  }
+
+  const auto& proc_type = mr_get_proc.maps.strings.at(1);
+  auto macro_form =
+      is_full_let ? in->body()->at(0) : in->entries().at(1).src->try_as_single_element();
+
+  auto cast_type = TypeSpec("pointer", {TypeSpec(proc_type)});
+  auto mr_with_shell = rewrite_shelled_return_form(
+      Matcher::if_no_else(
+          Matcher::op(GenericOpMatcher::condition(IR2_Condition::Kind::TRUTHY),
+                      {Matcher::reg(ra.reg())}),
+          Matcher::begin(
+              {Matcher::any(0),
+               Matcher::func_with_rest(
+                   Matcher::match_or({Matcher::constant_token("run-now-in-process"),
+                                      Matcher::constant_token("run-next-time-in-process")}),
+                   {Matcher::reg(ra.reg()), Matcher::any(1)}),
+               Matcher::any(2)})),
+      macro_form, env, pool,
+      [&](FormElement* s_in, const MatchResult& mr, const Env& env, FormPool& pool) {
+        auto as_when = dynamic_cast<CondNoElseElement*>(s_in);
+        const auto& when_body = as_when->entries.front().body->elts();
+
+        // there's a let with an activate inside it that we want to check first
+        auto as_let = dynamic_cast<LetElement*>(when_body.at(0));
+        if (!as_let || as_let->entries().size() != 1 || as_let->body()->size() != 1) {
+          return (Form*)nullptr;
+        }
+
+        auto as_func = dynamic_cast<GenericElement*>(when_body.at(1));
+        if (!as_func) {
+          return (Form*)nullptr;
+        }
+        bool is_next_time =
+            as_func->op().func()->to_form(env).is_symbol("run-next-time-in-process");
+
+        auto has_unused_let = dynamic_cast<LetElement*>(when_body.at(2));
+        auto matcher_unused_let =
+            Matcher::deref(Matcher::reg(ra.reg()), false, {DerefTokenMatcher::string("ppointer")});
+        if (has_unused_let) {
+          auto new_pptr = rewrite_empty_let(has_unused_let, env, pool);
+          if (!new_pptr || !match(matcher_unused_let, new_pptr).matched) {
+            return (Form*)nullptr;
+          }
+        } else if (!match(matcher_unused_let, when_body.at(2)).matched) {
+          return (Form*)nullptr;
+        }
+
+        auto mr_activate_func = match(
+            Matcher::op_fixed(FixedOperatorKind::METHOD_OF_TYPE,
+                              {Matcher::symbol(proc_type), Matcher::constant_token("activate")}),
+            as_let->entries().at(0).src);
+
+        if (!mr_activate_func.matched) {
+          return (Form*)nullptr;
+        }
+
+        auto activate_func_ra = as_let->entries().at(0).dest;
+
+        auto mr_ac_call =
+            match(Matcher::func(
+                      Matcher::reg(activate_func_ra.reg()),
+                      {proc_type == "process" ? Matcher::reg(ra.reg())
+                                              : Matcher::cast(proc_type, Matcher::reg(ra.reg())),
+                       Matcher::any(0), Matcher::any(1), Matcher::any(2)}),
+                  as_let->body()->at(0));
+
+        if (!mr_ac_call.matched) {
+          return (Form*)nullptr;
+        }
+
+        // ok done checking that stuff, now make the macro!
+        // once again, I should just make a new element for it. but... so lazy...
+
+        std::string head = is_next_time ? "process-spawn-function" : "process-spawn";
+        std::vector<Form*> args;
+
+        // type and init func
+        if (is_next_time) {
+          args.push_back(pool.form<ConstantTokenElement>(proc_type));
+          args.push_back(as_func->elts().at(1));
+        } else {
+          auto init_func = as_func->elts().at(1)->to_form(env);
+          if (init_func.is_symbol("manipy-init") && proc_type == "manipy") {
+            head = "manipy-spawn";
+          } else {
+            args.push_back(pool.form<ConstantTokenElement>(proc_type));
+            if (!init_func.is_symbol(fmt::format("{}-init-by-other", proc_type))) {
+              ja_push_form_to_args(pool, args, as_func->elts().at(1), "init");
+            }
+          }
+        }
+
+        // args
+        // this would be a great place to do some hacky stuff! hmm, maybe i will...
+        for (int i = 2; i < as_func->elts().size(); ++i) {
+          args.push_back(as_func->elts().at(i));
+        }
+
+        if (mr_ac_call.maps.forms.at(1)->to_string(env) != fmt::format("'{}", proc_type)) {
+          ja_push_form_to_args(pool, args, mr_ac_call.maps.forms.at(1), "name");
+        }
+        if (!mr_get_proc.maps.forms.at(0)->to_form(env).is_symbol("*default-dead-pool*")) {
+          args.push_back(pool.form<ConstantTokenElement>(":from"));
+          args.push_back(mr_get_proc.maps.forms.at(0));
+        }
+        if (!mr_ac_call.maps.forms.at(0)->to_form(env).is_symbol("*default-pool*")) {
+          args.push_back(pool.form<ConstantTokenElement>(":to"));
+          args.push_back(mr_ac_call.maps.forms.at(0));
+        }
+        auto stack_arg = mr_ac_call.maps.forms.at(2)->to_string(env);
+        if (stack_arg == "(&-> *dram-stack* 14336)") {
+          // special case!
+          ja_push_form_to_args(pool, args, pool.form<ConstantTokenElement>("*kernel-dram-stack*"),
+                               "stack");
+        } else if (stack_arg != "(the-as pointer #x70004000)") {
+          ja_push_form_to_args(pool, args, mr_ac_call.maps.forms.at(2), "stack");
+        }
+        if (!mr_get_proc.maps.forms.at(2)->to_form(env).is_int(0x4000)) {
+          ja_push_form_to_args(pool, args, mr_get_proc.maps.forms.at(2), "stack-size");
+        }
+
+        return pool.form<GenericElement>(
+            GenericOperator::make_function(pool.form<ConstantTokenElement>(head)), args);
+      },
+      &cast_type);
+
+  if (!std::get<0>(mr_with_shell).matched) {
+    lg::error("shell match failed, dont know this form: {}", macro_form->to_string(env));
+    return nullptr;
+  }
+
+  if (!is_full_let) {
+    // we're actually just editing entries in a let here.
+
+    // delete us.
+    in->entries().erase(in->entries().begin());
+    // set the value of the new first entry to the macro
+    in->entries().at(0).src = std::get<1>(mr_with_shell);
+    in->entries().at(0).src->parent_element = in;
+
+    // return us but modified?
+    return in;
+  }
+
+  auto elt = std::get<1>(mr_with_shell)->try_as_single_element();
+  ASSERT(elt);
+  return elt;
+}
+
+FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool) {
+  // this function checks for the static-attack-info macro.
+
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  auto test = in->to_form(env).print();
+
+  // (let ((block-var (new 'static 'attack-info))
+  auto block_src = in->entries().at(0).src->try_as_element<DecompiledDataElement>();
+  if (!block_src) {
+    return nullptr;
+  }
+
+  auto e = block_src->label_info();
+  if (e && (*e).result_type != TypeSpec("attack-info")) {
+    return nullptr;
+  }
+
+  const auto& label = block_src->label();
+  const auto& words = env.file->words_by_seg.at(label.target_segment);
+  u32 mask = words.at((label.offset + 64) / 4).data;
+  u32 mask_implicit = 0;
+
+  auto block_var = in->entries().at(0).dest;
+  const auto& block_var_reg = block_var.reg();
+  auto block_var_name = env.get_variable_name(block_var);
+
+  const static std::map<std::string, std::pair<int, bool>> possible_args = {
+      {"vector", {1, true}},    {"mode", {5, false}},     {"shove-back", {6, false}},
+      {"shove-up", {7, false}}, {"control", {10, false}}, {"angle", {11, false}}};
+
+  std::vector<std::pair<std::string, Form*>> args_in_info;
+  for (int i = 0; i < in->body()->size() - 1; ++i) {
+    auto s_elt = dynamic_cast<SetFormFormElement*>(in->body()->at(i));
+    if (!s_elt) {
+      lg::error("attack info err elt {} not a set!: {}", i, in->body()->at(i)->to_string(env));
+      return nullptr;
+    }
+
+    auto d_elt = s_elt->dst()->try_as_element<DerefElement>();
+    if (!d_elt) {
+      lg::error("attack info err elt {} dst not a deref: {}", i, s_elt->dst()->to_string(env));
+      return nullptr;
+    }
+    if (d_elt->tokens().size() != 1 && d_elt->tokens().size() != 2) {
+      lg::error("attack info err elt {} invalid token len: {}", i, d_elt->to_string(env));
+      return nullptr;
+    }
+    if (d_elt->tokens().at(0).kind() != DerefToken::Kind::FIELD_NAME) {
+      lg::error("attack info err elt {} invalid token kind: {}", i, d_elt->to_string(env));
+      return nullptr;
+    }
+    const auto& field_name = d_elt->tokens().at(0).field_name();
+    auto arg_it = possible_args.find(field_name);
+    if (arg_it == possible_args.end()) {
+      lg::error("attack info unknown field {}", field_name);
+      return nullptr;
+    }
+    if (arg_it->second.second &&
+        (d_elt->tokens().size() != 2 || d_elt->tokens().at(1).field_name() != "quad")) {
+      lg::error("attack info err elt {} invalid vector field: {}", i, d_elt->to_string(env));
+      return nullptr;
+    } else if (!arg_it->second.second && d_elt->tokens().size() != 1) {
+      lg::error("attack info err elt {} invalid field: {}", i, d_elt->to_string(env));
+      break;
+    }
+
+    if (arg_it->second.second) {
+      auto d_src = s_elt->src()->try_as_element<DerefElement>();
+      if (d_src) {
+        if (d_src->tokens().size() == 1 && d_src->tokens().at(0).is_field_name("quad")) {
+          args_in_info.push_back({field_name, d_src->base()});
+        } else {
+          d_src->tokens().pop_back();
+          args_in_info.push_back({field_name, s_elt->src()});
+        }
+      }
+    } else {
+      if ((field_name == "shove-back" || field_name == "shove-up") &&
+          s_elt->src()->to_form(env).is_float()) {
+        args_in_info.push_back(
+            {field_name, pool.form<GenericElement>(GenericOperator::make_function(
+                                                       pool.form<ConstantTokenElement>("meters")),
+                                                   pool.form<ConstantTokenElement>(meters_to_string(
+                                                       s_elt->src()->to_form(env).as_float())))});
+      } else {
+        args_in_info.push_back({field_name, s_elt->src()});
+      }
+    }
+    mask_implicit |= 1 << arg_it->second.first;
+  }
+
+  if ((mask & mask_implicit) != mask_implicit) {
+    lg::error("attack info bad mask: #x{:x} but needed #x{:x}", mask, mask_implicit);
+    ASSERT(false);
+    return nullptr;
+  }
+  mask ^= mask_implicit;
+
+  // (static-attack-info :mask <mask> etc)
+  auto mr_with_shell = rewrite_shelled_return_form(
+      Matcher::reg(block_var_reg), in->body()->at(in->body()->size() - 1), env, pool,
+      [&](FormElement* s_in, const MatchResult& mr, const Env& env, FormPool& pool) {
+        // time to build the macro!
+        std::vector<Form*> macro_args;
+
+        if (mask) {
+          ja_push_form_to_args(
+              pool, macro_args,
+              decompiler::cast_to_bitfield_enum(env.dts->ts.try_enum_lookup("attack-mask"), pool,
+                                                env, mask, true),
+              "mask");
+        }
+
+        if (args_in_info.size() > 0) {
+          std::vector<Form*> info_args;
+          for (auto& [name, val] : args_in_info) {
+            info_args.push_back(pool.form<GenericElement>(
+                GenericOperator::make_function(pool.form<ConstantTokenElement>(name)), val));
+          }
+          auto head = GenericOperator::make_function(info_args.at(0));
+          info_args.erase(info_args.begin());
+          macro_args.push_back(pool.form<GenericElement>(head, info_args));
+        }
+
+        return pool.form<GenericElement>(
+            GenericOperator::make_function(pool.form<ConstantTokenElement>("static-attack-info")),
+            macro_args);
+      },
+      nullptr);
+
+  if (!std::get<0>(mr_with_shell).matched) {
+    lg::error("shell match failed, dont know this form: {}",
+              in->body()->at(in->body()->size() - 1)->to_string(env));
+    return nullptr;
+  }
+
+  auto elt = std::get<1>(mr_with_shell)->try_as_single_element();
+  ASSERT(elt);
+  return elt;
 }
 
 /*!
@@ -1163,7 +1609,7 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
     return as_dotimes;
   }
 
-  auto as_send_event = rewrite_as_send_event(in, env, pool);
+  auto as_send_event = rewrite_as_send_event(in, env, pool, stats);
   if (as_send_event) {
     stats.send_event++;
     return as_send_event;
@@ -1205,8 +1651,104 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
     return as_abs;
   }
 
+  auto as_proc_new = rewrite_proc_new(in, env, pool);
+  if (as_proc_new) {
+    stats.proc_new++;
+    return as_proc_new;
+  }
+
+  auto as_attack_info = rewrite_attack_info(in, env, pool);
+  if (as_attack_info) {
+    stats.attack_info++;
+    return as_attack_info;
+  }
+
   // nothing matched.
   return nullptr;
+}
+
+FormElement* rewrite_rand_float_gen(LetElement* in, const Env& env, FormPool& pool) {
+  // this function checks for the (rand-float-gen) macro
+
+  bool ret_in_body = in->entries().size() == 2;
+
+  if (ret_in_body && in->body()->size() != 1) {
+    return nullptr;
+  }
+
+  auto test = in->to_string(env);
+
+  auto mr_div = match(
+      Matcher::op_fixed(FixedOperatorKind::DIVISION,
+                        {Matcher::cast("int", Matcher::func(Matcher::symbol("rand-uint31-gen"),
+                                                            {Matcher::any(0)})),
+                         Matcher::integer(256)}),
+      in->entries().at(0).src);
+  if (!mr_div.matched) {
+    return nullptr;
+  }
+
+  const auto& reg1 = in->entries().at(0).dest.reg();
+  auto gen = mr_div.maps.forms.at(0);
+  if (gen->to_form(env).is_symbol("*random-generator*")) {
+    gen = nullptr;
+  }
+
+  auto mr_or =
+      match(Matcher::cast("number",
+                          Matcher::op_fixed(FixedOperatorKind::LOGIOR,
+                                            {Matcher::integer(0x3f800000), Matcher::reg(reg1)})),
+            in->entries().at(1).src);
+  if (!mr_or.matched) {
+    return nullptr;
+  }
+
+  const auto& reg2 = in->entries().at(1).dest.reg();
+
+  auto matcher_res =
+      Matcher::op_fixed(FixedOperatorKind::ADDITION, {Matcher::single(-1.f), Matcher::reg(reg2)});
+
+  if (!ret_in_body) {
+    // simpler case
+
+    auto mr_res = match(matcher_res, in->entries().at(2).src);
+
+    if (!mr_res.matched) {
+      return nullptr;
+    }
+
+    // delete us.
+    in->entries().erase(in->entries().begin());
+    in->entries().erase(in->entries().begin());
+
+    auto head = GenericOperator::make_function(pool.form<ConstantTokenElement>("rand-float-gen"));
+
+    // set the value of the new first entry to the macro
+    in->entries().at(0).src =
+        gen ? pool.form<GenericElement>(head, gen) : pool.form<GenericElement>(head);
+
+    // return us but modified?
+    in->clear_let_star();
+    return in;
+  } else {
+    auto mr_res = rewrite_shelled_return_form(
+        matcher_res, in->body()->at(0), env, pool,
+        [&](FormElement* s_in, const MatchResult& mr, const Env& env, FormPool& pool) {
+          auto head =
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("rand-float-gen"));
+          return gen ? pool.form<GenericElement>(head, gen) : pool.form<GenericElement>(head);
+        },
+        nullptr);
+
+    if (!std::get<0>(mr_res).matched) {
+      lg::error("shell match failed, dont know this form: {}", in->body()->at(0)->to_string(env));
+      return nullptr;
+    }
+
+    auto elt = std::get<1>(mr_res)->try_as_single_element();
+    elt->parent_form = in->parent_form;
+    return elt;
+  }
 }
 
 FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, FormPool& pool) {
@@ -1297,10 +1839,28 @@ FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, For
   return in;
 }
 
-FormElement* rewrite_multi_let(LetElement* in, const Env& env, FormPool& pool) {
+FormElement* rewrite_multi_let(LetElement* in,
+                               const Env& env,
+                               FormPool& pool,
+                               LetRewriteStats& stats) {
+  if (in->entries().size() >= 2) {
+    auto as_rand_float_gen = rewrite_rand_float_gen(in, env, pool);
+    if (as_rand_float_gen) {
+      stats.rand_float_gen++;
+      return as_rand_float_gen;
+    }
+
+    auto as_proc_new = rewrite_proc_new(in, env, pool);
+    if (as_proc_new) {
+      stats.proc_new++;
+      return as_proc_new;
+    }
+  }
+
   if (in->entries().size() >= 6) {
     auto as_vector_dot = rewrite_multi_let_as_vector_dot(in, env, pool);
     if (as_vector_dot) {
+      stats.vector_dot++;
       return as_vector_dot;
     }
   }
@@ -1625,6 +2185,17 @@ LetStats insert_lets(const Function& func,
         }
 
         for (auto& e : inner_let->entries()) {
+          as_let->add_entry(e);
+        }
+
+        as_let->set_body(inner_let->body());
+
+        // rewrite:
+        form->at(idx) = rewrite_multi_let(as_let, env, pool, let_rewrite_stats);
+        ASSERT(form->at(idx)->parent_form == form);
+
+        // check star
+        for (auto& e : inner_let->entries()) {
           if (!as_let->is_star()) {
             RegAccessSet used;
             e.src->collect_vars(used, true);
@@ -1639,14 +2210,8 @@ LetStats insert_lets(const Function& func,
               }
             }
           }
-          as_let->add_entry(e);
         }
 
-        as_let->set_body(inner_let->body());
-
-        // rewrite:
-        form->at(idx) = rewrite_multi_let(as_let, env, pool);
-        ASSERT(form->at(idx)->parent_form == form);
         changed = true;
       }
     });

@@ -179,60 +179,53 @@
 
 ;; definition for function dm-cam-render-float
 (defun dm-cam-render-float ((arg0 int) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
-  (with-pp
-    (when (= arg1 (debug-menu-msg press))
-      (cond
-        ((zero? (/ arg0 8))
-         (when *math-camera*
-           (set! (-> *math-camera* fov) (* 182.04445 arg2))
-           (update-math-camera
-             *math-camera*
-             (-> *setting-control* current video-mode)
-             (-> *setting-control* current aspect-ratio)
-             )
-           )
-         )
-        ((= (/ arg0 8) 1)
-         (if *camera*
-             (send-event *camera* 'set-fov (* 182.04445 arg2))
-             )
-         )
-        )
-      )
+  (when (= arg1 (debug-menu-msg press))
     (cond
       ((zero? (/ arg0 8))
-       (cond
-         (*math-camera*
-           (* 0.005493164 (-> *math-camera* fov))
-           )
-         (else
-           (empty)
-           arg3
+       (when *math-camera*
+         (set! (-> *math-camera* fov) (* 182.04445 arg2))
+         (update-math-camera
+           *math-camera*
+           (-> *setting-control* current video-mode)
+           (-> *setting-control* current aspect-ratio)
            )
          )
        )
       ((= (/ arg0 8) 1)
-       (cond
-         (*camera*
-           (let ((f30-0 0.005493164)
-                 (a1-3 (new 'stack-no-clear 'event-message-block))
-                 )
-             (set! (-> a1-3 from) pp)
-             (set! (-> a1-3 num-params) 0)
-             (set! (-> a1-3 message) 'query-fov)
-             (* f30-0 (the-as float (send-event-function *camera* a1-3)))
-             )
+       (if *camera*
+           (send-event *camera* 'set-fov (* 182.04445 arg2))
            )
-         (else
-           (empty)
-           arg3
-           )
+       )
+      )
+    )
+  (cond
+    ((zero? (/ arg0 8))
+     (cond
+       (*math-camera*
+         (* 0.005493164 (-> *math-camera* fov))
+         )
+       (else
+         (empty)
+         arg3
          )
        )
-      (else
-        (empty)
-        arg3
-        )
+     )
+    ((= (/ arg0 8) 1)
+     (cond
+       (*camera*
+         (let ((f30-0 0.005493164))
+           (* f30-0 (the-as float (send-event *camera* 'query-fov)))
+           )
+         )
+       (else
+         (empty)
+         arg3
+         )
+       )
+     )
+    (else
+      (empty)
+      arg3
       )
     )
   )
@@ -3145,19 +3138,10 @@
 
 ;; definition for function dm-task-get-money
 (defun dm-task-get-money ((arg0 int) (arg1 debug-menu-msg))
-  (with-pp
-    (if (= arg1 (debug-menu-msg press))
-        (send-event *target* 'get-pickup 5 (-> *GAME-bank* money-task-inc))
-        )
-    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-2 from) pp)
-      (set! (-> a1-2 num-params) 2)
-      (set! (-> a1-2 message) 'query)
-      (set! (-> a1-2 param 0) (the-as uint 'pickup))
-      (set! (-> a1-2 param 1) (the-as uint 5))
-      (>= (the-as float (send-event-function *target* a1-2)) (-> *GAME-bank* money-task-inc))
+  (if (= arg1 (debug-menu-msg press))
+      (send-event *target* 'get-pickup 5 (-> *GAME-bank* money-task-inc))
       )
-    )
+  (>= (the-as float (send-event *target* 'query 'pickup (pickup-type money))) (-> *GAME-bank* money-task-inc))
   )
 
 ;; definition for function dm-give-all-cells

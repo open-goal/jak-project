@@ -8,6 +8,7 @@
 (declare-type cave-trap process-drawable)
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/baby-spider-ag.gc")
 
 (deftype baby-spider-spawn-params (structure)
@@ -300,10 +301,8 @@ baby-spider-default-event-handler
   )
 
 (defstate baby-spider-hatching (baby-spider)
-  :event
-  baby-spider-default-event-handler
-  :code
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :code (behavior ()
     (ja-channel-push! 1 0)
     (ja-no-eval :group! baby-spider-birth-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -316,15 +315,12 @@ baby-spider-default-event-handler
     (go baby-spider-resume)
     (none)
     )
-  :post
-  (the-as (function none :behavior baby-spider) nav-enemy-simple-post)
+  :post (the-as (function none :behavior baby-spider) nav-enemy-simple-post)
   )
 
 (defstate baby-spider-resume (baby-spider)
-  :event
-  baby-spider-default-event-handler
-  :code
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :code (behavior ()
     (cond
       ((not *target*)
        (go-virtual nav-enemy-idle)
@@ -350,10 +346,8 @@ baby-spider-default-event-handler
 
 (defstate nav-enemy-idle (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :enter
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :enter (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (set! (-> gp-0 quad) (-> self collide-info trans quad))
       (let ((t9-0 (-> (method-of-type nav-enemy nav-enemy-idle) enter)))
@@ -367,8 +361,7 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -379,8 +372,7 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (ja-post)
     (none)
     )
@@ -388,10 +380,8 @@ baby-spider-default-event-handler
 
 (defstate nav-enemy-patrol (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -402,12 +392,10 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
       (loop
-        (ja-no-eval :group!
-                    (-> self draw art-group data (-> self nav-info walk-anim))
+        (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim))
                     :num! (seek! max f30-0)
                     :frame-num 0.0
                     )
@@ -423,10 +411,8 @@ baby-spider-default-event-handler
 
 (defstate nav-enemy-notice (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -437,8 +423,7 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (loop!))
     (ja-channel-push! 1 (seconds 0.17))
     (ja-no-eval :group! baby-spider-notice-ja :num! (seek!) :frame-num 0.0)
@@ -455,10 +440,8 @@ baby-spider-default-event-handler
 
 (defstate nav-enemy-chase (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -472,8 +455,7 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self target-nav-time) (-> *display* base-frame-counter))
     (set! (-> self wiggle-time) (+ (-> *display* base-frame-counter) (seconds -10)))
     (set! (-> self wiggle-angle) 0.0)
@@ -490,8 +472,7 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (dummy-52 self (target-pos 0))
     (nav-enemy-travel-post)
     (none)
@@ -500,10 +481,8 @@ baby-spider-default-event-handler
 
 (defstate nav-enemy-stop-chase (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -514,16 +493,13 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (-> (method-of-type nav-enemy nav-enemy-stop-chase) code)
+  :code (-> (method-of-type nav-enemy nav-enemy-stop-chase) code)
   )
 
 (defstate nav-enemy-stare (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -534,8 +510,7 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self rotate-speed) 1456355.5)
     (set! (-> self turn-time) (seconds 0.075))
     (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
@@ -567,10 +542,8 @@ baby-spider-default-event-handler
 
 (defstate nav-enemy-give-up (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -581,8 +554,7 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (ja-no-eval :group! baby-spider-idle-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -609,10 +581,8 @@ baby-spider-default-event-handler
 
 (defstate nav-enemy-attack (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -623,8 +593,7 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (ja-no-eval :group! baby-spider-idle-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -638,10 +607,8 @@ baby-spider-default-event-handler
 
 (defstate nav-enemy-victory (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -652,19 +619,16 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (-> (method-of-type nav-enemy nav-enemy-victory) code)
+  :code (-> (method-of-type nav-enemy nav-enemy-victory) code)
   )
 
 (defstate nav-enemy-die (baby-spider)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior baby-spider)
     process-drawable-death-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (let ((v1-0 (-> self event-death)))
       (if v1-0
           (send-event (ppointer->process (-> self parent)) v1-0)
@@ -682,10 +646,8 @@ baby-spider-default-event-handler
   )
 
 (defstate baby-spider-die-fast (baby-spider)
-  :event
-  baby-spider-default-event-handler
-  :code
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :code (behavior ()
     (cleanup-for-death self)
     (let ((v1-2 (-> self event-death)))
       (if v1-2

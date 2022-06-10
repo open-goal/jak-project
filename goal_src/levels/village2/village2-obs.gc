@@ -7,17 +7,18 @@
 
 
 ;; DECOMP BEGINS
-(import "goal_src/import/medres-village2-ag.gc")
-(import "goal_src/import/pontoonten-ag.gc")
-(import "goal_src/import/exit-chamber-dummy-ag.gc")
-(import "goal_src/import/ceilingflag-ag.gc")
-(import "goal_src/import/allpontoons-ag.gc")
-(import "goal_src/import/ogreboss-village2-ag.gc")
-(import "goal_src/import/medres-rolling-ag.gc")
+
 (import "goal_src/import/pontoonfive-ag.gc")
-(import "goal_src/import/fireboulder-ag.gc")
-(import "goal_src/import/medres-rolling1-ag.gc")
+(import "goal_src/import/allpontoons-ag.gc")
+(import "goal_src/import/medres-village2-ag.gc")
+(import "goal_src/import/exit-chamber-dummy-ag.gc")
 (import "goal_src/import/village2cam-ag.gc")
+(import "goal_src/import/fireboulder-ag.gc")
+(import "goal_src/import/ogreboss-village2-ag.gc")
+(import "goal_src/import/ceilingflag-ag.gc")
+(import "goal_src/import/medres-rolling1-ag.gc")
+(import "goal_src/import/medres-rolling-ag.gc")
+(import "goal_src/import/pontoonten-ag.gc")
 
 (deftype village2cam (pov-camera)
   ((seq uint64  :offset-assert 224)
@@ -41,8 +42,7 @@
 
 (defstate pov-camera-playing (village2cam)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((v1-0 (-> self seq)))
       (cond
         ((zero? v1-0)
@@ -112,27 +112,23 @@
 
 
 (defstate pontoon-hidden (pontoon)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (clear-collide-with-as (-> self root-overlay))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (restore-collide-with-as (-> self root-overlay))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (task-closed? (the-as game-task (-> self task)) (task-status need-resolution))
         (go-virtual rigid-body-platform-idle)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (suspend)
       )
@@ -141,8 +137,7 @@
   )
 
 (defstate pontoon-die (pontoon)
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (deactivate self)
     (none)
@@ -151,8 +146,7 @@
 
 (defstate rigid-body-platform-float (pontoon)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'die)
@@ -170,8 +164,7 @@
 
 (defstate rigid-body-platform-idle (pontoon)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'die)
                        (cleanup-for-death self)
@@ -424,13 +417,11 @@
   :id 563
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 2841 :flags (is-3d) :period 900 :length 5) (sp-item 2842 :flags (is-3d) :period 900 :length 5))
+  :parts ((sp-item 2841 :flags (is-3d) :period 900 :length 5) (sp-item 2842 :flags (is-3d) :period 900 :length 5))
   )
 
 (defpart 2841
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
     (sp-flt spt-num 8.0)
     (sp-rnd-flt spt-x (meters 0) (meters 9) 1.0)
     (sp-flt spt-y (meters 0.1))
@@ -455,13 +446,11 @@
   )
 
 (defpart 2843
-  :init-specs
-  ((sp-flt spt-fade-a -0.094814815))
+  :init-specs ((sp-flt spt-fade-a -0.094814815))
   )
 
 (defpart 2842
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
     (sp-flt spt-num 8.0)
     (sp-rnd-flt spt-x (meters 8) (meters 8) 1.0)
     (sp-flt spt-y (meters 0.1))
@@ -505,8 +494,7 @@
               )
 
 (defstate allpontoons-be-clone (allpontoons)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'end-mode)
                        (cleanup-for-death self)
@@ -515,19 +503,16 @@
               )
       )
     )
-  :enter
-  (behavior ((arg0 handle))
+  :enter (behavior ((arg0 handle))
     (logclear! (-> self draw status) (draw-status hidden))
     (logclear! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (>= (ja-aframe-num 0) 500.0)
       (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
       (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4)))
@@ -538,8 +523,7 @@
       )
     (none)
     )
-  :code
-  (behavior ((arg0 handle))
+  :code (behavior ((arg0 handle))
     (clone-anim arg0 3 #t "")
     (cleanup-for-death self)
     (deactivate self)
@@ -548,21 +532,18 @@
   )
 
 (defstate allpontoons-idle (allpontoons)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('clone)
        (go allpontoons-be-clone (the-as handle (-> arg3 param 0)))
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (and (nonzero? (-> self task)) (task-closed? (the-as game-task (-> self task)) (task-status need-resolution)))
         (cleanup-for-death self)
@@ -668,8 +649,7 @@
   )
 
 (defstate fireboulder-hover (fireboulder)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (fireboulder-disable-blocking-collision)
     (ja-channel-set! 1)
     (ja :group! (-> self draw art-group data 3))
@@ -686,19 +666,16 @@
     (set! (-> self draw bounds w) 24576.0)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (stop! (-> self sound))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (fireboulder-hover-stuff)
     (update! (-> self sound))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -713,34 +690,28 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior fireboulder) transform-post)
+  :post (the-as (function none :behavior fireboulder) transform-post)
   )
 
 (defstate fireboulder-be-clone (fireboulder)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('stop-cloning)
        (go fireboulder-hover)
        )
       )
     )
-  :enter
-  (behavior ((arg0 handle))
+  :enter (behavior ((arg0 handle))
     (logclear! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (logclear! (-> self skel status) (janim-status spool))
     (none)
     )
-  :trans
-  (the-as (function none :behavior fireboulder) fireboulder-hover-stuff)
-  :code
-  (behavior ((arg0 handle))
+  :trans (the-as (function none :behavior fireboulder) fireboulder-hover-stuff)
+  :code (behavior ((arg0 handle))
     (clone-anim arg0 3 #t "")
     (format 0 "ERROR<GMJ>: fireboulder-be-clone ended~%")
     (cleanup-for-death self)
@@ -750,16 +721,14 @@
   )
 
 (defstate fireboulder-idle (fireboulder)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('clone)
        (go fireboulder-be-clone (the-as handle (-> arg3 param 0)))
        )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (let ((a0-1 (handle->process (-> self tracker))))
       (if a0-1
           (deactivate a0-1)
@@ -767,8 +736,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
     (loop
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
@@ -782,28 +750,19 @@
                  )
            )
           (else
-            (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-              (set! (-> self tracker)
-                    (ppointer->handle
-                      (when gp-0
-                        (let ((t9-3 (method-of-type part-tracker activate)))
-                          (t9-3 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-                          )
-                        (run-now-in-process
-                          gp-0
-                          part-tracker-init
-                          (-> *part-group-id-table* 271)
-                          -1
-                          #f
-                          #f
-                          #f
-                          (-> self root-override trans)
-                          )
-                        (-> gp-0 ppointer)
-                        )
-                      )
-                    )
-              )
+            (set! (-> self tracker) (ppointer->handle (process-spawn
+                                                        part-tracker
+                                                        :init part-tracker-init
+                                                        (-> *part-group-id-table* 271)
+                                                        -1
+                                                        #f
+                                                        #f
+                                                        #f
+                                                        (-> self root-override trans)
+                                                        :to *entity-pool*
+                                                        )
+                                                      )
+                  )
             )
           )
         (suspend)
@@ -812,8 +771,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior fireboulder) ja-post)
+  :post (the-as (function none :behavior fireboulder) ja-post)
   )
 
 (defmethod init-from-entity! fireboulder ((obj fireboulder) (arg0 entity-actor))
@@ -896,8 +854,7 @@
               )
 
 (defstate ceilingflag-idle (ceilingflag)
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -907,8 +864,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior ceilingflag) ja-post)
+  :post (the-as (function none :behavior ceilingflag) ja-post)
   )
 
 (defmethod init-from-entity! ceilingflag ((obj ceilingflag) (arg0 entity-actor))
@@ -956,8 +912,7 @@
   )
 
 (defstate exit-chamber-dummy-wait-to-appear (exit-chamber-dummy)
-  :code
-  (behavior ()
+  :code (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (while (not (skip-reminder? self))
       (suspend)
@@ -978,8 +933,7 @@
   )
 
 (defstate exit-chamber-dummy-idle (exit-chamber-dummy)
-  :code
-  (behavior ()
+  :code (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (let ((gp-0 0))
       (while (< gp-0 2)
@@ -1012,8 +966,7 @@
     (go exit-chamber-dummy-wait-to-appear)
     (none)
     )
-  :post
-  (the-as (function none :behavior exit-chamber-dummy) ja-post)
+  :post (the-as (function none :behavior exit-chamber-dummy) ja-post)
   )
 
 (defmethod init-from-entity! exit-chamber-dummy ((obj exit-chamber-dummy) (arg0 entity-actor))
@@ -1061,15 +1014,13 @@
   :id 564
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 2319 :fade-after (meters 200) :falloff-to (meters 200))
+  :parts ((sp-item 2319 :fade-after (meters 200) :falloff-to (meters 200))
     (sp-item 2320 :fade-after (meters 200) :falloff-to (meters 200))
     )
   )
 
 (defpart 2320
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 0.5)
     (sp-rnd-flt spt-x (meters -1) (meters 2) 1.0)
     (sp-rnd-flt spt-y (meters -1) (meters 2) 1.0)
@@ -1096,8 +1047,7 @@
   )
 
 (defpart 2319
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 0.5)
     (sp-rnd-flt spt-x (meters -1) (meters 2) 1.0)
     (sp-rnd-flt spt-y (meters -1) (meters 2) 1.0)
@@ -1127,13 +1077,11 @@
   :duration 900
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 64)
-  :parts
-  ((sp-item 2287 :period 900 :length 40))
+  :parts ((sp-item 2287 :period 900 :length 40))
   )
 
 (defpart 2287
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 12.0)
     (sp-rnd-flt spt-y (meters 1) (meters 3) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.4) (meters 0.1) 1.0)
@@ -1155,16 +1103,14 @@
   :duration 900
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 64)
-  :parts
-  ((sp-item 2288 :period 900 :length 20)
+  :parts ((sp-item 2288 :period 900 :length 20)
     (sp-item 2321 :flags (is-3d) :period 900 :length 10)
     (sp-item 2322 :flags (is-3d) :period 900 :length 10)
     )
   )
 
 (defpart 2321
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
     (sp-flt spt-num 8.0)
     (sp-rnd-flt spt-x (meters 0) (meters 9) 1.0)
     (sp-rnd-flt spt-scale-x (meters 16) (meters 8) 1.0)
@@ -1188,13 +1134,11 @@
   )
 
 (defpart 2323
-  :init-specs
-  ((sp-flt spt-fade-a -0.094814815))
+  :init-specs ((sp-flt spt-fade-a -0.094814815))
   )
 
 (defpart 2322
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
     (sp-flt spt-num 8.0)
     (sp-rnd-flt spt-x (meters 8) (meters 8) 1.0)
     (sp-rnd-flt spt-scale-x (meters 4.5) (meters 3.5) 1.0)
@@ -1218,8 +1162,7 @@
   )
 
 (defpart 2288
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
     (sp-rnd-flt spt-y (meters 0) (meters 1) 1.0)
     (sp-rnd-flt spt-scale-x (meters 12) (meters 6) 1.0)
@@ -1259,14 +1202,16 @@
       (set! (-> gp-0 quad) (-> self draw origin quad))
       (set! (-> gp-0 y) (+ 2048.0 (-> gp-0 y)))
       (sound-play-by-name (static-sound-name "boulder-splash") (new-sound-id) 1024 0 0 1 #t)
-      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-1
-          (let ((t9-5 (method-of-type part-tracker activate)))
-            (t9-5 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 552) -1 #f #f #f gp-0)
-          (-> s5-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 552)
+        -1
+        #f
+        #f
+        #f
+        gp-0
+        :to *entity-pool*
         )
       )
     (send-event self 'trans-hook nothing)
@@ -1282,14 +1227,16 @@
       (set! (-> gp-0 quad) (-> self draw origin quad))
       (set! (-> gp-0 y) (+ 2048.0 (-> gp-0 y)))
       (sound-play-by-name (static-sound-name "boulder-splash") (new-sound-id) 1024 0 0 1 #t)
-      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-1
-          (let ((t9-5 (method-of-type part-tracker activate)))
-            (t9-5 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 552) -1 #f #f #f gp-0)
-          (-> s5-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 552)
+        -1
+        #f
+        #f
+        #f
+        gp-0
+        :to *entity-pool*
         )
       )
     (send-event self 'trans-hook nothing)
@@ -1305,14 +1252,16 @@
       (set! (-> gp-0 quad) (-> self draw origin quad))
       (set! (-> gp-0 y) (+ 2048.0 (-> gp-0 y)))
       (sound-play-by-name (static-sound-name "v2ogre-boulder") (new-sound-id) 1024 0 0 1 #t)
-      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-1
-          (let ((t9-5 (method-of-type part-tracker activate)))
-            (t9-5 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 551) -1 #f #f #f gp-0)
-          (-> s5-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 551)
+        -1
+        #f
+        #f
+        #f
+        gp-0
+        :to *entity-pool*
         )
       )
     (send-event self 'trans-hook boulder2-trans-2)
@@ -1328,14 +1277,16 @@
       (set! (-> gp-0 quad) (-> self draw origin quad))
       (set! (-> gp-0 y) (+ 2048.0 (-> gp-0 y)))
       (sound-play-by-name (static-sound-name "boulder-splash") (new-sound-id) 1024 0 0 1 #t)
-      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-1
-          (let ((t9-5 (method-of-type part-tracker activate)))
-            (t9-5 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 552) -1 #f #f #f gp-0)
-          (-> s5-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 552)
+        -1
+        #f
+        #f
+        #f
+        gp-0
+        :to *entity-pool*
         )
       )
     (send-event self 'trans-hook nothing)
@@ -1351,14 +1302,16 @@
       (set! (-> gp-0 quad) (-> self draw origin quad))
       (set! (-> gp-0 y) (+ 2048.0 (-> gp-0 y)))
       (sound-play-by-name (static-sound-name "v2ogre-boulder") (new-sound-id) 1024 0 0 1 #t)
-      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-1
-          (let ((t9-5 (method-of-type part-tracker activate)))
-            (t9-5 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 551) -1 #f #f #f gp-0)
-          (-> s5-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 551)
+        -1
+        #f
+        #f
+        #f
+        gp-0
+        :to *entity-pool*
         )
       )
     (send-event self 'trans-hook boulder3-trans-2)
@@ -1374,14 +1327,16 @@
       (set! (-> gp-0 quad) (-> self draw origin quad))
       (set! (-> gp-0 y) (+ 2048.0 (-> gp-0 y)))
       (sound-play-by-name (static-sound-name "boulder-splash") (new-sound-id) 1024 0 0 1 #t)
-      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-1
-          (let ((t9-5 (method-of-type part-tracker activate)))
-            (t9-5 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 552) -1 #f #f #f gp-0)
-          (-> s5-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 552)
+        -1
+        #f
+        #f
+        #f
+        gp-0
+        :to *entity-pool*
         )
       )
     (send-event self 'trans-hook nothing)
@@ -1397,14 +1352,16 @@
       (set! (-> gp-0 quad) (-> self draw origin quad))
       (set! (-> gp-0 y) (+ 2048.0 (-> gp-0 y)))
       (sound-play-by-name (static-sound-name "v2ogre-boulder") (new-sound-id) 1024 0 0 1 #t)
-      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-1
-          (let ((t9-5 (method-of-type part-tracker activate)))
-            (t9-5 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 551) -1 #f #f #f gp-0)
-          (-> s5-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 551)
+        -1
+        #f
+        #f
+        #f
+        gp-0
+        :to *entity-pool*
         )
       )
     (send-event self 'trans-hook boulder4-trans-3)
@@ -1420,14 +1377,16 @@
       (set! (-> gp-0 quad) (-> self draw origin quad))
       (set! (-> gp-0 y) (+ 2048.0 (-> gp-0 y)))
       (sound-play-by-name (static-sound-name "v2ogre-boulder") (new-sound-id) 1024 0 0 1 #t)
-      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-1
-          (let ((t9-5 (method-of-type part-tracker activate)))
-            (t9-5 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 part-tracker-init (-> *part-group-id-table* 551) -1 #f #f #f gp-0)
-          (-> s5-1 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 551)
+        -1
+        #f
+        #f
+        #f
+        gp-0
+        :to *entity-pool*
         )
       )
     (send-event self 'trans-hook boulder4-trans-2)
@@ -1437,23 +1396,11 @@
   )
 
 (defstate ogreboss-village2-throw (ogreboss-village2)
-  :trans
-  ogreboss-village2-trans
-  :code
-  (behavior ()
-    (let ((gp-0 (get-process *default-dead-pool* manipy #x4000)))
-      (set! (-> self boulder)
-            (ppointer->handle
-              (when gp-0
-                (let ((t9-1 (method-of-type manipy activate)))
-                  (t9-1 (the-as manipy gp-0) self 'manipy (the-as pointer #x70004000))
-                  )
-                (run-now-in-process gp-0 manipy-init (-> self entity extra trans) (-> self entity) *fireboulder-sg* #f)
-                (-> gp-0 ppointer)
-                )
-              )
-            )
-      )
+  :trans ogreboss-village2-trans
+  :code (behavior ()
+    (set! (-> self boulder)
+          (ppointer->handle (manipy-spawn (-> self entity extra trans) (-> self entity) *fireboulder-sg* #f :to self))
+          )
     (send-event (handle->process (-> self boulder)) 'anim-mode 'play1)
     (send-event (handle->process (-> self boulder)) 'art-joint-anim "fireboulder-pre-throw" 0)
     (send-event (handle->process (-> self boulder)) 'draw #t)
@@ -1476,10 +1423,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (let* ((v1-72 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-73 (the-as number (logior #x3f800000 v1-72)))
-           (f0-9 (+ -1.0 (the-as float v1-73)))
-           )
+    (let ((f0-9 (rand-float-gen)))
       (cond
         ((< 0.75 f0-9)
          (send-event (handle->process (-> self boulder)) 'art-joint-anim "fireboulder-boulder1" 0)
@@ -1508,15 +1452,12 @@
     (go ogreboss-village2-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior ogreboss-village2) ja-post)
+  :post (the-as (function none :behavior ogreboss-village2) ja-post)
   )
 
 (defstate ogreboss-village2-idle (ogreboss-village2)
-  :trans
-  ogreboss-village2-trans
-  :code
-  (behavior ()
+  :trans ogreboss-village2-trans
+  :code (behavior ()
     (loop
       (ja-channel-push! 1 (seconds 0.1))
       (let ((v1-0 (rand-vu-int-range 0 2)))
@@ -1569,10 +1510,7 @@
             )
           )
         )
-      (let* ((v1-104 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-             (v1-105 (the-as number (logior #x3f800000 v1-104)))
-             (f0-33 (+ -1.0 (the-as float v1-105)))
-             )
+      (let ((f0-33 (rand-float-gen)))
         (cond
           ((< 0.6666667 f0-33)
            (ja-channel-push! 1 (seconds 0.2))
@@ -1590,8 +1528,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior ogreboss-village2) ja-post)
+  :post (the-as (function none :behavior ogreboss-village2) ja-post)
   )
 
 (defmethod init-from-entity! ogreboss-village2 ((obj ogreboss-village2) (arg0 entity-actor))
@@ -1648,8 +1585,7 @@
                                     :count 3
                                     :converted #f
                                     :normal-scale 6.0
-                                    :wave
-                                    (new 'static 'inline-array ripple-wave 4
+                                    :wave (new 'static 'inline-array ripple-wave 4
                                       (new 'static 'ripple-wave :scale 7.0 :xdiv 1 :speed 6.0)
                                       (new 'static 'ripple-wave :scale 7.0 :xdiv -1 :zdiv 1 :speed 6.0)
                                       (new 'static 'ripple-wave :scale 3.0 :xdiv 5 :zdiv 3 :speed 3.0)

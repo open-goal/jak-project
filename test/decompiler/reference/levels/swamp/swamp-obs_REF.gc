@@ -13,8 +13,7 @@
   :duration 5
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 1325 :fade-after (meters 120) :falloff-to (meters 120))
+  :parts ((sp-item 1325 :fade-after (meters 120) :falloff-to (meters 120))
     (sp-item 1326 :fade-after (meters 120) :falloff-to (meters 120))
     (sp-item 1327 :fade-after (meters 60) :falloff-to (meters 60))
     )
@@ -22,8 +21,7 @@
 
 ;; failed to figure out what this is:
 (defpart 1325
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
     (sp-rnd-int-flt spt-x (meters -2) 2 8192.0)
     (sp-flt spt-y (meters 0.75))
@@ -49,14 +47,12 @@
 
 ;; failed to figure out what this is:
 (defpart 1328
-  :init-specs
-  ((sp-flt spt-fade-a -0.32))
+  :init-specs ((sp-flt spt-fade-a -0.32))
   )
 
 ;; failed to figure out what this is:
 (defpart 1326
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
     (sp-rnd-int-flt spt-x (meters -2) 2 8192.0)
     (sp-flt spt-y (meters -0.75))
@@ -82,8 +78,7 @@
 
 ;; failed to figure out what this is:
 (defpart 1327
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
     (sp-flt spt-num 8.0)
     (sp-rnd-int-flt spt-x (meters -2) 2 8192.0)
     (sp-flt spt-y (meters 0.25))
@@ -114,8 +109,7 @@
   :duration 5
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 1325 :fade-after (meters 120) :falloff-to (meters 120))
+  :parts ((sp-item 1325 :fade-after (meters 120) :falloff-to (meters 120))
     (sp-item 1326 :fade-after (meters 120) :falloff-to (meters 120))
     )
   )
@@ -204,10 +198,8 @@
 
 ;; failed to figure out what this is:
 (defstate swamp-spike-idle (swamp-spike)
-  :event
-  swamp-spike-default-event-handler
-  :code
-  (behavior ()
+  :event swamp-spike-default-event-handler
+  :code (behavior ()
     (set! (-> self dangerous) #f)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (new 'stack-no-clear 'vector)
@@ -242,26 +234,19 @@
                 (suspend)
                 (ja :num! (seek!))
                 )
-              (when (logtest? (-> self draw status) (draw-status was-drawn))
-                (let ((s5-3 (get-process *default-dead-pool* part-tracker #x4000)))
-                  (when s5-3
-                    (let ((t9-11 (method-of-type part-tracker activate)))
-                      (t9-11 (the-as part-tracker s5-3) self 'part-tracker (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process
-                      s5-3
-                      part-tracker-init
-                      (-> *part-group-id-table* 289)
-                      -1
-                      swamp-spike-set-particle-rotation-callback
-                      (-> self ppointer)
-                      #f
-                      (-> self root-override trans)
-                      )
-                    (-> s5-3 ppointer)
+              (if (logtest? (-> self draw status) (draw-status was-drawn))
+                  (process-spawn
+                    part-tracker
+                    :init part-tracker-init
+                    (-> *part-group-id-table* 289)
+                    -1
+                    swamp-spike-set-particle-rotation-callback
+                    (-> self ppointer)
+                    #f
+                    (-> self root-override trans)
+                    :to self
                     )
                   )
-                )
               (set! (-> self dangerous) #t)
               (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
@@ -274,26 +259,19 @@
               (until (< (get-current-phase (-> self sync)) 0.5)
                 (suspend)
                 )
-              (when (logtest? (-> self draw status) (draw-status was-drawn))
-                (let ((s5-4 (get-process *default-dead-pool* part-tracker #x4000)))
-                  (when s5-4
-                    (let ((t9-18 (method-of-type part-tracker activate)))
-                      (t9-18 (the-as part-tracker s5-4) self 'part-tracker (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process
-                      s5-4
-                      part-tracker-init
-                      (-> *part-group-id-table* 290)
-                      -1
-                      swamp-spike-set-particle-rotation-callback
-                      (-> self ppointer)
-                      #f
-                      (-> self root-override trans)
-                      )
-                    (-> s5-4 ppointer)
+              (if (logtest? (-> self draw status) (draw-status was-drawn))
+                  (process-spawn
+                    part-tracker
+                    :init part-tracker-init
+                    (-> *part-group-id-table* 290)
+                    -1
+                    swamp-spike-set-particle-rotation-callback
+                    (-> self ppointer)
+                    #f
+                    (-> self root-override trans)
+                    :to self
                     )
                   )
-                )
               (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
@@ -306,14 +284,12 @@
       )
     (none)
     )
-  :post
-  swamp-spike-post
+  :post swamp-spike-post
   )
 
 ;; failed to figure out what this is:
 (defstate swamp-spike-gate-up (swampgate)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'trigger)
                        (let ((v0-0 #t))
@@ -324,31 +300,23 @@
               )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (ja :group! (-> self draw art-group data 4))
     (until (-> self open-gate)
       (ja :num-func num-func-identity :frame-num 0.0)
       (suspend)
       )
-    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-0
-        (let ((t9-1 (method-of-type part-tracker activate)))
-          (t9-1 (the-as part-tracker gp-0) self 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-0
-          part-tracker-init
-          (-> *part-group-id-table* 290)
-          -1
-          swamp-spike-set-particle-rotation-callback
-          (-> self ppointer)
-          #f
-          (-> self root-override trans)
-          )
-        (-> gp-0 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 290)
+      -1
+      swamp-spike-set-particle-rotation-callback
+      (-> self ppointer)
+      #f
+      (-> self root-override trans)
+      :to self
       )
     (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -358,20 +326,17 @@
     (go swamp-spike-gate-down)
     (none)
     )
-  :post
-  (the-as (function none :behavior swampgate) swamp-spike-post)
+  :post (the-as (function none :behavior swampgate) swamp-spike-post)
   )
 
 ;; failed to figure out what this is:
 (defstate swamp-spike-gate-down (swampgate)
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
     (cleanup-for-death self)
     (none)
     )
-  :post
-  (the-as (function none :behavior swampgate) swamp-spike-post)
+  :post (the-as (function none :behavior swampgate) swamp-spike-post)
   )
 
 ;; definition for method 20 of type swamp-spike
@@ -496,8 +461,7 @@
 
 ;; failed to figure out what this is:
 (defstate balance-plat-idle (balance-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'grow)
                        (let ((v0-0 #t))
@@ -508,17 +472,15 @@
               )
       )
     )
-  :trans
-  (the-as (function none :behavior balance-plat) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior balance-plat) rider-trans)
+  :code (behavior ()
     (loop
       (let ((f30-0 (* -0.025 (+ (-> self y-offset) (-> self y-travel))))
             (f28-0 (* -0.025 (- (-> self y-offset) (-> self y-travel))))
             )
         (cond
           ((and (-> self root-override riders) (nonzero? (-> self root-override riders num-riders)))
-           (send-event *target* 'no-look-around 75)
+           (send-event *target* 'no-look-around (seconds 0.25))
            (set! (-> self y-accel) (fmin 4.096 (fmax -4.096 (+ -0.2048 (-> self y-accel)))))
            (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (-> self y-accel)))))
            (send-to-all-after (-> self link) 'grow)
@@ -551,8 +513,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior balance-plat) rider-post)
+  :post (the-as (function none :behavior balance-plat) rider-post)
   )
 
 ;; definition for method 11 of type balance-plat
@@ -620,8 +581,7 @@
   :duration 300
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 1330 :period 1500 :length 5)
+  :parts ((sp-item 1330 :period 1500 :length 5)
     (sp-item 1331 :period 1500 :length 5)
     (sp-item 1332 :period 1500 :length 15)
     )
@@ -629,8 +589,7 @@
 
 ;; failed to figure out what this is:
 (defpart 1331
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
     (sp-flt spt-num 1.0)
     (sp-flt spt-scale-x (meters 15))
     (sp-copy-from-other spt-scale-y -4)
@@ -646,8 +605,7 @@
 
 ;; failed to figure out what this is:
 (defpart 1330
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
     (sp-rnd-flt spt-num 16.0 16.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.3) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -671,8 +629,7 @@
 
 ;; failed to figure out what this is:
 (defpart 1332
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
     (sp-rnd-flt spt-y (meters 0.5) (meters 1) 1.0)
     (sp-rnd-flt spt-scale-x (meters 2.5) (meters 1.5) 1.0)
@@ -697,8 +654,7 @@
 
 ;; failed to figure out what this is:
 (defpart 1333
-  :init-specs
-  ((sp-flt spt-fade-a -0.2))
+  :init-specs ((sp-flt spt-fade-a -0.2))
   )
 
 ;; failed to figure out what this is:
@@ -709,31 +665,30 @@
 
 ;; failed to figure out what this is:
 (defstate swamp-rock-break (swamp-rock)
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
     (sound-play-by-name (static-sound-name "rock-break") (new-sound-id) 1024 0 0 1 #t)
-    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-1
-        (let ((t9-4 (method-of-type part-tracker activate)))
-          (t9-4 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process gp-1 part-tracker-init (-> *part-group-id-table* 291) -1 #f #f #f (-> self root trans))
-        (-> gp-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 291)
+      -1
+      #f
+      #f
+      #f
+      (-> self root trans)
+      :to *entity-pool*
       )
     (cleanup-for-death self)
     (deactivate self)
     (none)
     )
-  :post
-  (the-as (function none :behavior swamp-rock) ja-post)
+  :post (the-as (function none :behavior swamp-rock) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate swamp-rock-idle (swamp-rock)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('attack)
        (if (and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
@@ -742,8 +697,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
     (loop
       (logior! (-> self mask) (process-mask sleep))
@@ -890,32 +844,27 @@
 ;; failed to figure out what this is:
 (defstate rigid-body-platform-idle (tar-plat)
   :virtual #t
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (ja-channel-set! 0)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior tar-plat) ja-post)
+  :post (the-as (function none :behavior tar-plat) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate rigid-body-platform-float (tar-plat)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior tar-plat)
     rigid-body-platform-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (cond
       ((or (not *target*) (< (-> self info idle-distance)
                              (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
@@ -934,8 +883,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (ja :group! (-> self draw art-group data 3))
     (ja :num-func num-func-identity :frame-num 0.0)
@@ -944,8 +892,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior tar-plat) rigid-body-platform-post)
+  :post (the-as (function none :behavior tar-plat) rigid-body-platform-post)
   )
 
 ;; definition for method 30 of type tar-plat
@@ -1087,23 +1034,14 @@
 ;; failed to figure out what this is:
 (defstate battlecontroller-play-intro-camera (swamp-battlecontroller)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (suspend)
     (process-drawable-delay-player (seconds 1))
-    (let* ((gp-0 (get-process *default-dead-pool* pov-camera #x4000))
-           (gp-1
-             (ppointer->handle
-               (when gp-0
-                 (let ((t9-2 (method-of-type pov-camera activate)))
-                   (t9-2 (the-as pov-camera gp-0) self 'pov-camera (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process gp-0 pov-camera-init-by-other (-> self root trans) *swampcam-sg* "swamp-ambush" 0 #f '())
-                 (-> gp-0 ppointer)
-                 )
-               )
-             )
-           )
+    (let ((gp-1 (ppointer->handle
+                  (process-spawn pov-camera (-> self root trans) *swampcam-sg* "swamp-ambush" 0 #f '() :to self)
+                  )
+                )
+          )
       (while (handle->process (the-as handle gp-1))
         (suspend)
         )
@@ -1116,8 +1054,7 @@
 ;; failed to figure out what this is:
 (defstate battlecontroller-die (swamp-battlecontroller)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
     ((the-as
        (function none :behavior battlecontroller)

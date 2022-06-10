@@ -6,6 +6,7 @@
 ;; dgos: BEA, L1
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/bird-lady-beach-ag.gc")
 
 (deftype bird-lady-beach (process-taskable)
@@ -27,8 +28,7 @@
 
 (defstate idle (bird-lady-beach)
   :virtual #t
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (when (not (should-display? self))
       (let ((a0-2 (handle->process (-> self flutflut))))
         (if a0-2
@@ -53,42 +53,21 @@
      (when arg0
        (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
        (close-current! (-> obj tasks))
-       (let ((s5-1 (get-process *default-dead-pool* manipy #x4000)))
-         (set! (-> obj flutflut)
-               (ppointer->handle
-                 (when s5-1
-                   (let ((t9-4 (method-of-type manipy activate)))
-                     (t9-4 (the-as manipy s5-1) obj 'manipy (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process s5-1 manipy-init (-> obj root-override trans) (-> obj entity) *flutflut-naked-sg* #f)
-                   (-> s5-1 ppointer)
-                   )
-                 )
-               )
-         )
+       (set! (-> obj flutflut)
+             (ppointer->handle (manipy-spawn (-> obj root-override trans) (-> obj entity) *flutflut-naked-sg* #f :to obj))
+             )
        (send-event (handle->process (-> obj flutflut)) 'anim-mode 'clone-anim)
        (send-event (handle->process (-> obj flutflut)) 'blend-shape #t)
-       (let ((s5-2 (get-process *default-dead-pool* manipy #x4000)))
-         (set! (-> obj egg)
-               (ppointer->handle
-                 (when s5-2
-                   (let ((t9-9 (method-of-type manipy activate)))
-                     (t9-9 (the-as manipy s5-2) obj 'manipy (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process s5-2 manipy-init (-> obj root-override trans) (-> obj entity) *flutflutegg-sg* #f)
-                   (-> s5-2 ppointer)
-                   )
-                 )
-               )
-         )
+       (set! (-> obj egg)
+             (ppointer->handle (manipy-spawn (-> obj root-override trans) (-> obj entity) *flutflutegg-sg* #f :to obj))
+             )
        (send-event (handle->process (-> obj egg)) 'anim-mode 'clone-anim)
        )
      (new 'static 'spool-anim
        :name "bird-lady-beach-resolution"
        :index 4
        :parts 10
-       :command-list
-       '((141 joint "cameraB") (535 joint "camera") (696 joint "cameraB") (758 joint "camera") (813 joint "cameraB"))
+       :command-list '((141 joint "cameraB") (535 joint "camera") (696 joint "cameraB") (758 joint "camera") (813 joint "cameraB"))
        )
      )
     (else

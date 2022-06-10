@@ -203,7 +203,11 @@ Form* cast_to_int_enum(const EnumType* type_info,
                        Form* in);
 
 Form* cast_to_int_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in);
-Form* cast_to_bitfield_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in);
+Form* cast_to_bitfield_enum(const EnumType* type_info,
+                            FormPool& pool,
+                            const Env& env,
+                            s64 in,
+                            bool no_head = false);
 
 std::optional<u64> get_goal_integer_constant(Form* in, const Env&);
 

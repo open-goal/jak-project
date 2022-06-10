@@ -7,14 +7,12 @@
 (defpartgroup group-seagull-takeoff
   :id 160
   :bounds (static-bspherem 0 -12 0 14)
-  :parts
-  ((sp-item 663 :fade-after (meters 20)))
+  :parts ((sp-item 663 :fade-after (meters 20)))
   )
 
 ;; failed to figure out what this is:
 (defpart 665
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 1.0)
     (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -380,8 +378,7 @@
 
 ;; failed to figure out what this is:
 (defstate seagull-idle (seagull)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (let* ((v1-0 (-> self flock))
            (f30-0 (dummy-16
                     (if v1-0
@@ -392,17 +389,14 @@
                   )
            (f28-0 21845.334)
            (f26-0 -0.5)
-           (v1-5 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-6 (the-as number (logior #x3f800000 v1-5)))
            )
       (set! (-> self heading)
-            (the float (sar (shl (the int (+ f30-0 (* f28-0 (+ f26-0 (+ -1.0 (the-as float v1-6)))))) 48) 48))
+            (the float (sar (shl (the int (+ f30-0 (* f28-0 (+ f26-0 (rand-float-gen))))) 48) 48))
             )
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (nonzero? (-> self scared))
       (+! (-> self scared) -1)
       (when (zero? (-> self scared))
@@ -426,8 +420,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self root-override trans y) (+ 20480.0 (-> self root-override trans y)))
     (move-to-ground (-> self root-override) 40960.0 40960.0 #t (collide-kind background))
     (update-transforms! (-> self root-override))
@@ -510,8 +503,7 @@
       )
     (none)
     )
-  :post
-  seagull-post
+  :post seagull-post
   )
 
 ;; definition for method 20 of type seagull
@@ -539,26 +531,20 @@
 ;; definition for method 26 of type seagull
 (defmethod dummy-26 seagull ((obj seagull))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (let* ((f30-0 -4096.0)
-           (f28-0 8192.0)
-           (v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-2 (the-as number (logior #x3f800000 v1-1)))
-           )
-      (set! (-> s5-0 x) (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-2))) (-> obj flock 0 target x)))
+    (let ((f30-0 -4096.0)
+          (f28-0 8192.0)
+          )
+      (set! (-> s5-0 x) (+ f30-0 (* f28-0 (rand-float-gen)) (-> obj flock 0 target x)))
       )
-    (let* ((f30-1 -4096.0)
-           (f28-1 8192.0)
-           (v1-7 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-8 (the-as number (logior #x3f800000 v1-7)))
-           )
-      (set! (-> s5-0 y) (+ f30-1 (* f28-1 (+ -1.0 (the-as float v1-8))) (-> obj flock 0 target y)))
+    (let ((f30-1 -4096.0)
+          (f28-1 8192.0)
+          )
+      (set! (-> s5-0 y) (+ f30-1 (* f28-1 (rand-float-gen)) (-> obj flock 0 target y)))
       )
-    (let* ((f30-2 -4096.0)
-           (f28-2 8192.0)
-           (v1-13 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-14 (the-as number (logior #x3f800000 v1-13)))
-           )
-      (set! (-> s5-0 z) (+ f30-2 (* f28-2 (+ -1.0 (the-as float v1-14))) (-> obj flock 0 target z)))
+    (let ((f30-2 -4096.0)
+          (f28-2 8192.0)
+          )
+      (set! (-> s5-0 z) (+ f30-2 (* f28-2 (rand-float-gen)) (-> obj flock 0 target z)))
       )
     (vector-! s5-0 s5-0 (-> obj root-override trans))
     (vector-float*! s5-0 s5-0 0.9)
@@ -637,16 +623,14 @@
 
 ;; failed to figure out what this is:
 (defstate seagull-takeoff (seagull)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (< (+ (-> *display* base-frame-counter) (seconds -2)) (-> self part-time))
       (-> self part)
       (-> self root-override root-prim prim-core)
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self part-time) (-> *display* base-frame-counter))
     (ja-no-eval :group! seagull-takeoff-ja :num! (seek! (ja-aframe 4.0 0)) :frame-num (ja-aframe 1.0 0))
     (until (ja-done? 0)
@@ -689,22 +673,19 @@
     (go seagull-flying)
     (none)
     )
-  :post
-  seagull-post
+  :post seagull-post
   )
 
 ;; failed to figure out what this is:
 (defstate seagull-flying (seagull)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (< (+ (-> *display* base-frame-counter) (seconds -2)) (-> self part-time))
       (-> self part)
       (-> self root-override root-prim prim-core)
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self max-tilt) 1820.4445)
     (let ((gp-0 0))
       (loop
@@ -885,22 +866,19 @@
       )
     (none)
     )
-  :post
-  seagull-post
+  :post seagull-post
   )
 
 ;; failed to figure out what this is:
 (defstate seagull-soaring (seagull)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (< (+ (-> *display* base-frame-counter) (seconds -2)) (-> self part-time))
       (-> self part)
       (-> self root-override root-prim prim-core)
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self max-tilt) 4551.1113)
     (loop
@@ -1050,14 +1028,12 @@
       )
     (none)
     )
-  :post
-  seagull-post
+  :post seagull-post
   )
 
 ;; failed to figure out what this is:
 (defstate seagull-landing (seagull)
-  :code
-  (behavior ((arg0 float))
+  :code (behavior ((arg0 float))
     (let ((s5-0 (new 'stack 'collide-tri-result)))
       0.0
       (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -1206,8 +1182,7 @@
     (go seagull-idle)
     (none)
     )
-  :post
-  seagull-post
+  :post seagull-post
   )
 
 ;; definition for function seagull-reaction
@@ -1267,12 +1242,10 @@
   (set! (-> self flock) (the-as (pointer seagullflock) (process->ppointer arg2)))
   (set! (-> self heading) 0.0)
   (set! (-> self tilt) 0.0)
-  (let* ((f30-0 51200.0)
-         (f28-0 20480.0)
-         (v1-23 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-         (v1-24 (the-as number (logior #x3f800000 v1-23)))
-         )
-    (set! (-> self thrust) (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-24)))))
+  (let ((f30-0 51200.0)
+        (f28-0 20480.0)
+        )
+    (set! (-> self thrust) (+ f30-0 (* f28-0 (rand-float-gen))))
     )
   (set! (-> self teleport) #f)
   (go seagull-idle)
@@ -1373,8 +1346,7 @@
 
 ;; failed to figure out what this is:
 (defstate seagullflock-at-waterfall (seagullflock)
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars
       (a0-2 process)
       (a1-0 event-message-block)
@@ -1433,8 +1405,7 @@
 
 ;; failed to figure out what this is:
 (defstate seagullflock-idle (seagullflock)
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (if (> (-> self teleport-frames) 0)
           (go seagullflock-at-waterfall)
@@ -1500,16 +1471,7 @@
   (if (= (-> obj birds) 64)
       (return (the-as (pointer process) #f))
       )
-  (let* ((s4-0 (get-process *default-dead-pool* seagull #x4000))
-         (v0-0 (when s4-0
-                 (let ((t9-1 (method-of-type seagull activate)))
-                   (t9-1 (the-as seagull s4-0) obj 'seagull (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process s4-0 seagull-init-by-other arg0 (-> obj birds) obj)
-                 (-> s4-0 ppointer)
-                 )
-               )
-         )
+  (let ((v0-0 (process-spawn seagull arg0 (-> obj birds) obj :to obj)))
     (set! (-> obj bird (-> obj birds)) (the-as (pointer seagull) v0-0))
     (+! (-> obj birds) 1)
     v0-0

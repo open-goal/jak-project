@@ -51,170 +51,143 @@
 
 ;; definition for method 32 of type sage-villagec
 (defmethod play-anim! sage-villagec ((obj sage-villagec) (arg0 symbol))
-  (with-pp
-    (set! (-> obj talk-message) (game-text-id press-to-talk-to-sage))
-    (case (current-status (-> obj tasks))
-      (((task-status unknown) (task-status need-hint) (task-status need-introduction))
-       (if (not arg0)
-           (set! (-> obj will-talk) #t)
-           )
-       (case (current-task (-> obj tasks))
-         (((game-task village3-button))
-          (when arg0
-            (close-status! (-> obj tasks) (task-status need-introduction))
-            (send-event (-> obj assistant extra process) 'clone (process->handle obj))
-            (let ((s5-1 (get-process *default-dead-pool* manipy #x4000)))
-              (set! (-> obj evilbro)
-                    (ppointer->handle
-                      (when s5-1
-                        (let ((t9-5 (method-of-type manipy activate)))
-                          (t9-5 (the-as manipy s5-1) obj 'manipy (the-as pointer #x70004000))
-                          )
-                        (run-now-in-process s5-1 manipy-init (-> obj root-override trans) (-> obj entity) *evilbro-village3-sg* #f)
-                        (-> s5-1 ppointer)
-                        )
-                      )
-                    )
-              )
-            (send-event (handle->process (-> obj evilbro)) 'anim-mode 'clone-anim)
-            (send-event (handle->process (-> obj evilbro)) 'blend-shape #t)
-            (send-event (handle->process (-> obj evilbro)) 'center-joint 3)
-            (let ((s5-2 (get-process *default-dead-pool* manipy #x4000)))
-              (set! (-> obj evilsis)
-                    (ppointer->handle
-                      (when s5-2
-                        (let ((t9-11 (method-of-type manipy activate)))
-                          (t9-11 (the-as manipy s5-2) obj 'manipy (the-as pointer #x70004000))
-                          )
-                        (run-now-in-process s5-2 manipy-init (-> obj root-override trans) (-> obj entity) *evilsis-village3-sg* #f)
-                        (-> s5-2 ppointer)
-                        )
-                      )
-                    )
-              )
-            (send-event (handle->process (-> obj evilsis)) 'anim-mode 'clone-anim)
-            (send-event (handle->process (-> obj evilsis)) 'blend-shape #t)
-            (send-event (handle->process (-> obj evilsis)) 'center-joint 3)
-            (set! (-> obj draw bounds w) 40960.0)
-            )
-          (new 'static 'spool-anim
-            :name "sage-village3-introduction"
-            :index 8
-            :parts 58
-            :command-list
-            '((206 joint "cameraB")
-              (268 joint "camera")
-              (321 joint "cameraB")
-              (415 joint "camera")
-              (502 joint "cameraB")
-              (655 joint "camera")
-              (864 joint "cameraB")
-              (958 joint "camera")
-              (1178 joint "cameraB")
-              (1295 joint "camera")
-              (1377 joint "cameraB")
-              (1683 joint "camera")
-              (2066 joint "cameraB")
-              (2209 joint "camera")
-              (2389 joint "cameraB")
-              (2707 joint "camera")
-              (2769 joint "cameraB")
-              (2901 joint "camera")
-              (3021 joint "cameraB")
-              (3158 joint "camera")
-              (3301 joint "cameraB")
-              (3533 joint "camera")
-              (3632 joint "cameraB")
-              (3692 joint "camera")
-              (3780 joint "cameraB")
-              (3818 joint "camera")
-              (4188 joint "cameraB")
-              (4324 joint "camera")
-              (4462 joint "cameraB")
-              (4542 joint "camera")
-              )
-            )
-          )
-         (((game-task cave-dark-crystals))
-          (when arg0
-            (let* ((s5-3 (-> obj tasks))
-                   (s4-0 (method-of-object s5-3 save-reminder))
-                   (a1-18 (new 'stack-no-clear 'event-message-block))
-                   )
-              (set! (-> a1-18 from) pp)
-              (set! (-> a1-18 num-params) 2)
-              (set! (-> a1-18 message) 'query)
-              (set! (-> a1-18 param 0) (the-as uint 'pickup))
-              (set! (-> a1-18 param 1) (the-as uint 6))
-              (s4-0 s5-3 (the int (the-as float (send-event-function *target* a1-18))) 1)
-              )
-            (close-status! (-> obj tasks) (task-status need-introduction))
-            )
-          (new 'static 'spool-anim
-            :name "sage-village3-introduction-dark-eco"
-            :index 4
-            :parts 9
-            :command-list
-            '((111 joint "cameraB") (189 joint "camera") (455 joint "cameraB") (638 joint "camera") (753 joint "cameraB"))
-            )
-          )
-         (else
-           (if arg0
-               (close-specific-task! (game-task snow-ram) (task-status need-introduction))
-               )
-           (new 'static 'spool-anim
-             :name "sage-village3-introduction-rams"
-             :index 6
-             :parts 6
-             :command-list
-             '((155 joint "cameraB") (370 joint "camera"))
-             )
-           )
+  (set! (-> obj talk-message) (game-text-id press-to-talk-to-sage))
+  (case (current-status (-> obj tasks))
+    (((task-status unknown) (task-status need-hint) (task-status need-introduction))
+     (if (not arg0)
+         (set! (-> obj will-talk) #t)
          )
-       )
-      (((task-status need-reminder-a) (task-status need-reminder))
-       (set! (-> obj skippable) #t)
-       (let ((s4-1 (+ (get-reminder (-> obj tasks) 0) 1)))
-         (if (< (the-as uint 1) (the-as uint s4-1))
-             (set! s4-1 0)
-             )
-         (countdown (s3-0 2)
-           (cond
-             ((zero? s4-1)
-              (if (!= (get-task-status (game-task cave-dark-crystals)) (task-status need-reminder))
-                  (set! s4-1 1)
+     (case (current-task (-> obj tasks))
+       (((game-task village3-button))
+        (when arg0
+          (close-status! (-> obj tasks) (task-status need-introduction))
+          (send-event (-> obj assistant extra process) 'clone (process->handle obj))
+          (set! (-> obj evilbro)
+                (ppointer->handle
+                  (manipy-spawn (-> obj root-override trans) (-> obj entity) *evilbro-village3-sg* #f :to obj)
                   )
-              )
-             (else
-               (if (not (or (= (get-task-status (game-task snow-ram)) (task-status need-reminder))
-                            (= (get-task-status (game-task snow-ram)) (task-status need-reminder-a))
-                            )
-                        )
-                   (set! s4-1 0)
-                   )
-               )
-             )
-           )
+                )
+          (send-event (handle->process (-> obj evilbro)) 'anim-mode 'clone-anim)
+          (send-event (handle->process (-> obj evilbro)) 'blend-shape #t)
+          (send-event (handle->process (-> obj evilbro)) 'center-joint 3)
+          (set! (-> obj evilsis)
+                (ppointer->handle
+                  (manipy-spawn (-> obj root-override trans) (-> obj entity) *evilsis-village3-sg* #f :to obj)
+                  )
+                )
+          (send-event (handle->process (-> obj evilsis)) 'anim-mode 'clone-anim)
+          (send-event (handle->process (-> obj evilsis)) 'blend-shape #t)
+          (send-event (handle->process (-> obj evilsis)) 'center-joint 3)
+          (set! (-> obj draw bounds w) 40960.0)
+          )
+        (new 'static 'spool-anim
+          :name "sage-village3-introduction"
+          :index 8
+          :parts 58
+          :command-list '((206 joint "cameraB")
+            (268 joint "camera")
+            (321 joint "cameraB")
+            (415 joint "camera")
+            (502 joint "cameraB")
+            (655 joint "camera")
+            (864 joint "cameraB")
+            (958 joint "camera")
+            (1178 joint "cameraB")
+            (1295 joint "camera")
+            (1377 joint "cameraB")
+            (1683 joint "camera")
+            (2066 joint "cameraB")
+            (2209 joint "camera")
+            (2389 joint "cameraB")
+            (2707 joint "camera")
+            (2769 joint "cameraB")
+            (2901 joint "camera")
+            (3021 joint "cameraB")
+            (3158 joint "camera")
+            (3301 joint "cameraB")
+            (3533 joint "camera")
+            (3632 joint "cameraB")
+            (3692 joint "camera")
+            (3780 joint "cameraB")
+            (3818 joint "camera")
+            (4188 joint "cameraB")
+            (4324 joint "camera")
+            (4462 joint "cameraB")
+            (4542 joint "camera")
+            )
+          )
+        )
+       (((game-task cave-dark-crystals))
+        (when arg0
+          (let* ((s5-3 (-> obj tasks))
+                 (s4-0 (method-of-object s5-3 save-reminder))
+                 )
+            (s4-0 s5-3 (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 1)
+            )
+          (close-status! (-> obj tasks) (task-status need-introduction))
+          )
+        (new 'static 'spool-anim
+          :name "sage-village3-introduction-dark-eco"
+          :index 4
+          :parts 9
+          :command-list '((111 joint "cameraB") (189 joint "camera") (455 joint "cameraB") (638 joint "camera") (753 joint "cameraB"))
+          )
+        )
+       (else
          (if arg0
-             (save-reminder (-> obj tasks) s4-1 0)
+             (close-specific-task! (game-task snow-ram) (task-status need-introduction))
              )
-         (if (zero? s4-1)
-             (new 'static 'spool-anim :name "sage-village3-reminder-1-dark-eco" :index 5 :parts 2 :command-list '())
-             (new 'static 'spool-anim :name "sage-village3-reminder-1-rams" :index 7 :parts 3 :command-list '())
-             )
+         (new 'static 'spool-anim
+           :name "sage-village3-introduction-rams"
+           :index 6
+           :parts 6
+           :command-list '((155 joint "cameraB") (370 joint "camera"))
+           )
          )
        )
-      (else
-        (if arg0
-            (format
-              0
-              "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-              (-> obj name)
-              (task-status->string (current-status (-> obj tasks)))
-              )
+     )
+    (((task-status need-reminder-a) (task-status need-reminder))
+     (set! (-> obj skippable) #t)
+     (let ((s4-1 (+ (get-reminder (-> obj tasks) 0) 1)))
+       (if (< (the-as uint 1) (the-as uint s4-1))
+           (set! s4-1 0)
+           )
+       (countdown (s3-0 2)
+         (cond
+           ((zero? s4-1)
+            (if (!= (get-task-status (game-task cave-dark-crystals)) (task-status need-reminder))
+                (set! s4-1 1)
+                )
             )
-        (get-art-elem obj)
-        )
+           (else
+             (if (not (or (= (get-task-status (game-task snow-ram)) (task-status need-reminder))
+                          (= (get-task-status (game-task snow-ram)) (task-status need-reminder-a))
+                          )
+                      )
+                 (set! s4-1 0)
+                 )
+             )
+           )
+         )
+       (if arg0
+           (save-reminder (-> obj tasks) s4-1 0)
+           )
+       (if (zero? s4-1)
+           (new 'static 'spool-anim :name "sage-village3-reminder-1-dark-eco" :index 5 :parts 2 :command-list '())
+           (new 'static 'spool-anim :name "sage-village3-reminder-1-rams" :index 7 :parts 3 :command-list '())
+           )
+       )
+     )
+    (else
+      (if arg0
+          (format
+            0
+            "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+            (-> obj name)
+            (task-status->string (current-status (-> obj tasks)))
+            )
+          )
+      (get-art-elem obj)
       )
     )
   )
@@ -233,10 +206,7 @@
 ;; definition for method 43 of type sage-villagec
 (defmethod TODO-RENAME-43 sage-villagec ((obj sage-villagec))
   (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
-    (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-4 (the-as number (logior #x3f800000 v1-3)))
-           (f0-2 (+ -1.0 (the-as float v1-4)))
-           )
+    (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.875 f0-2)
          (play-ambient (-> obj ambient) "SAGELP31" #f (-> obj root-override trans))
@@ -276,8 +246,7 @@
 ;; failed to figure out what this is:
 (defstate idle (sage-villagec)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (case (get-task-status (game-task village3-button))
       (((task-status need-introduction))
        (send-event self 'play-anim)
@@ -291,8 +260,7 @@
 ;; failed to figure out what this is:
 (defstate play-anim (sage-villagec)
   :virtual #t
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self draw bounds w) 10240.0)
     (send-event (-> self assistant extra process) 'end-mode)
     (let ((a0-2 (handle->process (-> self evilbro))))

@@ -7,8 +7,9 @@
 (declare-type muse nav-enemy)
 
 ;; DECOMP BEGINS
-(import "goal_src/import/sculptor-ag.gc")
+
 (import "goal_src/import/sculptor-muse-ag.gc")
+(import "goal_src/import/sculptor-ag.gc")
 
 (deftype sculptor (process-taskable)
   ((muse handle  :offset-assert 384)
@@ -71,21 +72,11 @@
   )
 
 (defbehavior muse-to-idle sculptor ((arg0 muse))
-  (when (not (handle->process (-> arg0 incomming-attack-id)))
-    (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
+  (if (not (handle->process (-> arg0 incomming-attack-id)))
       (set! (-> arg0 incomming-attack-id)
-            (ppointer->handle
-              (when s5-0
-                (let ((t9-1 (method-of-type manipy activate)))
-                  (t9-1 (the-as manipy s5-0) arg0 'manipy (the-as pointer #x70004000))
-                  )
-                (run-now-in-process s5-0 manipy-init (-> arg0 collide-info trans) (-> arg0 entity) *sculptor-muse-sg* #f)
-                (-> s5-0 ppointer)
-                )
-              )
+            (ppointer->handle (manipy-spawn (-> arg0 collide-info trans) (-> arg0 entity) *sculptor-muse-sg* #f :to arg0))
             )
       )
-    )
   (let ((v1-11 (handle->process (-> arg0 incomming-attack-id))))
     (if v1-11
         (set! (-> (the-as muse v1-11) draw light-index) (the-as uint 3))
@@ -99,8 +90,7 @@
 
 (defstate give-cell (sculptor)
   :virtual #t
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (muse-to-idle (the-as muse self))
     (none)
     )
@@ -116,8 +106,7 @@
        :name "sculptor-introduction"
        :index 16
        :parts 14
-       :command-list
-       '((0 display-level beach special)
+       :command-list '((0 display-level beach special)
          (0 kill "med-res-level-2")
          (0 kill "med-res-level-4")
          (0 kill "med-res-level-6")
@@ -145,19 +134,9 @@
      (when arg0
        (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
        (close-current! (-> obj tasks))
-       (let ((s5-1 (get-process *default-dead-pool* manipy #x4000)))
-         (set! (-> obj muse)
-               (ppointer->handle
-                 (when s5-1
-                   (let ((t9-5 (method-of-type manipy activate)))
-                     (t9-5 (the-as manipy s5-1) obj 'manipy (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process s5-1 manipy-init (-> obj root-override trans) (-> obj entity) *sculptor-muse-sg* #f)
-                   (-> s5-1 ppointer)
-                   )
-                 )
-               )
-         )
+       (set! (-> obj muse)
+             (ppointer->handle (manipy-spawn (-> obj root-override trans) (-> obj entity) *sculptor-muse-sg* #f :to obj))
+             )
        (let ((v1-18 (handle->process (-> obj muse))))
          (if v1-18
              (set! (-> (the-as muse v1-18) draw light-index) (the-as uint 3))
@@ -170,8 +149,7 @@
        :name "sculptor-resolution"
        :index 18
        :parts 4
-       :command-list
-       '((51 joint "cameraB") (87 joint "camera"))
+       :command-list '((51 joint "cameraB") (87 joint "camera"))
        )
      )
     (else
@@ -201,10 +179,7 @@
 
 (defmethod TODO-RENAME-43 sculptor ((obj sculptor))
   (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
-    (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-4 (the-as number (logior #x3f800000 v1-3)))
-           (f0-2 (+ -1.0 (the-as float v1-4)))
-           )
+    (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.85714287 f0-2)
          (play-ambient (-> obj ambient) "SCU-LO01" #f (-> obj root-override trans))
@@ -234,8 +209,7 @@
 
 (defstate idle (sculptor)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (!= (ja-group) (get-art-elem self))
       (ja-channel-push! 1 (seconds 0.2))
       (ja :group! (get-art-elem self))
@@ -276,10 +250,7 @@
                  )
                )
              )
-           (let* ((v1-97 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                  (v1-98 (the-as number (logior #x3f800000 v1-97)))
-                  (f30-1 (+ -1.0 (the-as float v1-98)))
-                  )
+           (let ((f30-1 (rand-float-gen)))
              (ja-no-eval :group! sculptor-small-to-looking-ja :num! (seek!) :frame-num 0.0)
              (until (ja-done? 0)
                (suspend)
@@ -345,11 +316,7 @@
                    )
                  )
                )
-             (let* ((v1-316 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                    (v1-317 (the-as number (logior #x3f800000 v1-316)))
-                    )
-               (< (+ -1.0 (the-as float v1-317)) 0.5)
-               )
+             (< (rand-float-gen) 0.5)
              )
            (ja-no-eval :group! sculptor-sigh-ja :num! (seek!) :frame-num 0.0)
            (until (ja-done? 0)

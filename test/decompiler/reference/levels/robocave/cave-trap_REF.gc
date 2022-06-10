@@ -61,8 +61,7 @@
 
 ;; failed to figure out what this is:
 (defstate spider-vent-idle (spider-vent)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 object))
     (case arg2
       (('can-spawn?)
@@ -76,8 +75,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
@@ -151,68 +149,61 @@
 ;; definition for method 20 of type cave-trap
 ;; Used lq/sq
 (defmethod TODO-RENAME-20 cave-trap ((obj cave-trap))
-  (with-pp
-    (set! (-> obj last-spawn-time) (-> *display* base-frame-counter))
-    (set! (-> obj spawn-delay) (rand-vu-int-range (seconds 0.1) (seconds 0.5)))
-    (let ((s5-0 (new 'stack-no-clear 'spawn-baby-spider-work)))
-      (let ((s4-0 (new 'stack-no-clear 'vector)))
-        (dotimes (v1-2 4)
-          (set! (-> s5-0 best v1-2 index) -1)
-          )
-        (set! (-> s4-0 quad) (-> (matrix-local->world #f #f) vector 2 quad))
-        (set! (-> s4-0 y) 0.0)
-        (vector-normalize! s4-0 102400.0)
-        (vector+! s4-0 s4-0 (camera-pos))
-        (set! (-> s4-0 y) (-> (target-pos 0) y))
-        (dotimes (s3-2 (-> obj alt-actors length))
-          (let* ((v1-10 (-> obj alt-actors s3-2))
-                 (s1-0 (if v1-10
-                           (-> v1-10 extra process)
-                           )
-                       )
-                 (s2-2 (if (and (nonzero? s1-0) (type-type? (-> s1-0 type) process-drawable))
-                           s1-0
-                           )
-                       )
-                 )
-            (when s2-2
-              (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-                (set! (-> a1-6 from) pp)
-                (set! (-> a1-6 num-params) 0)
-                (set! (-> a1-6 message) 'can-spawn?)
-                (when (send-event-function s2-2 a1-6)
-                  (let ((f30-0 (vector-vector-distance s4-0 (-> (the-as process-drawable s2-2) root trans)))
-                        (a0-12 (new 'stack-no-clear 'sphere))
-                        )
-                    (let ((v1-16 (-> s5-0 best 3)))
-                      (when (or (< (-> v1-16 index) 0) (< f30-0 (-> v1-16 dist)))
-                        (set! (-> v1-16 index) s3-2)
-                        (set! (-> v1-16 dist) f30-0)
+  (set! (-> obj last-spawn-time) (-> *display* base-frame-counter))
+  (set! (-> obj spawn-delay) (rand-vu-int-range (seconds 0.1) (seconds 0.5)))
+  (let ((s5-0 (new 'stack-no-clear 'spawn-baby-spider-work)))
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (dotimes (v1-2 4)
+        (set! (-> s5-0 best v1-2 index) -1)
+        )
+      (set! (-> s4-0 quad) (-> (matrix-local->world #f #f) vector 2 quad))
+      (set! (-> s4-0 y) 0.0)
+      (vector-normalize! s4-0 102400.0)
+      (vector+! s4-0 s4-0 (camera-pos))
+      (set! (-> s4-0 y) (-> (target-pos 0) y))
+      (dotimes (s3-2 (-> obj alt-actors length))
+        (let* ((v1-10 (-> obj alt-actors s3-2))
+               (s1-0 (if v1-10
+                         (-> v1-10 extra process)
+                         )
+                     )
+               (s2-2 (if (and (nonzero? s1-0) (type-type? (-> s1-0 type) process-drawable))
+                         s1-0
+                         )
+                     )
+               )
+          (when s2-2
+            (when (send-event s2-2 'can-spawn?)
+              (let ((f30-0 (vector-vector-distance s4-0 (-> (the-as process-drawable s2-2) root trans)))
+                    (a0-12 (new 'stack-no-clear 'sphere))
+                    )
+                (let ((v1-16 (-> s5-0 best 3)))
+                  (when (or (< (-> v1-16 index) 0) (< f30-0 (-> v1-16 dist)))
+                    (set! (-> v1-16 index) s3-2)
+                    (set! (-> v1-16 dist) f30-0)
+                    )
+                  )
+                (set! (-> a0-12 quad) (-> (the-as process-drawable s2-2) root trans quad))
+                (set! (-> a0-12 w) 4096.0)
+                (when (sphere-in-view-frustum? a0-12)
+                  (let ((v1-18 (-> s5-0 best 2)))
+                    (when (or (< (-> v1-18 index) 0) (< f30-0 (-> v1-18 dist)))
+                      (set! (-> v1-18 index) s3-2)
+                      (set! (-> v1-18 dist) f30-0)
+                      )
+                    )
+                  (when (>= 40960.0 f30-0)
+                    (let ((v1-19 (-> s5-0 best 1)))
+                      (when (or (< (-> v1-19 index) 0) (< f30-0 (-> v1-19 dist)))
+                        (set! (-> v1-19 index) s3-2)
+                        (set! (-> v1-19 dist) f30-0)
                         )
                       )
-                    (set! (-> a0-12 quad) (-> (the-as process-drawable s2-2) root trans quad))
-                    (set! (-> a0-12 w) 4096.0)
-                    (when (sphere-in-view-frustum? a0-12)
-                      (let ((v1-18 (-> s5-0 best 2)))
-                        (when (or (< (-> v1-18 index) 0) (< f30-0 (-> v1-18 dist)))
-                          (set! (-> v1-18 index) s3-2)
-                          (set! (-> v1-18 dist) f30-0)
-                          )
-                        )
-                      (when (>= 40960.0 f30-0)
-                        (let ((v1-19 (-> s5-0 best 1)))
-                          (when (or (< (-> v1-19 index) 0) (< f30-0 (-> v1-19 dist)))
-                            (set! (-> v1-19 index) s3-2)
-                            (set! (-> v1-19 dist) f30-0)
-                            )
-                          )
-                        (when (= (-> s2-2 type) spider-egg)
-                          (let ((v1-21 (-> s5-0 best)))
-                            (when (or (< (-> v1-21 0 index) 0) (< f30-0 (-> v1-21 0 dist)))
-                              (set! (-> v1-21 0 index) s3-2)
-                              (set! (-> v1-21 0 dist) f30-0)
-                              )
-                            )
+                    (when (= (-> s2-2 type) spider-egg)
+                      (let ((v1-21 (-> s5-0 best)))
+                        (when (or (< (-> v1-21 0 index) 0) (< f30-0 (-> v1-21 0 dist)))
+                          (set! (-> v1-21 0 index) s3-2)
+                          (set! (-> v1-21 0 dist) f30-0)
                           )
                         )
                       )
@@ -223,63 +214,45 @@
             )
           )
         )
-      (dotimes (s4-1 4)
-        (let ((v1-29 (-> s5-0 best s4-1 index)))
-          (when (>= v1-29 0)
-            (let* ((v1-32 (-> obj alt-actors v1-29))
-                   (s2-3 (if v1-32
-                             (-> v1-32 extra process)
-                             )
-                         )
-                   (s3-3 (if (and (nonzero? s2-3) (type-type? (-> s2-3 type) process-drawable))
-                             s2-3
-                             )
-                         )
-                   (s2-4 (new 'stack-no-clear 'vector))
-                   (s1-1 (new 'stack-no-clear 'baby-spider-spawn-params))
-                   )
-              (vector-! s2-4 (target-pos 0) (-> (the-as process-drawable s3-3) root trans))
-              (vector-normalize! s2-4 1.0)
-              (init! s1-1 (= (-> s3-3 type) spider-egg) #t #t #t 7 1 'untrigger)
-              (let* ((s0-2 (get-process *default-dead-pool* baby-spider #x4000))
-                     (v1-40 (when s0-2
-                              (let ((t9-14 (method-of-type baby-spider activate)))
-                                (t9-14 (the-as baby-spider s0-2) obj 'baby-spider (the-as pointer #x70004000))
-                                )
-                              (run-now-in-process
-                                s0-2
-                                baby-spider-init-by-other
-                                obj
-                                (-> (the-as process-drawable s3-3) root trans)
-                                s2-4
-                                s1-1
-                                )
-                              (-> s0-2 ppointer)
-                              )
-                            )
-                     )
-                (when v1-40
-                  (set! (-> (the-as baby-spider (-> v1-40 0)) die-if-not-visible?) #t)
-                  (+! (-> obj spider-count) 1)
-                  (send-event s3-3 'notify-spawned)
-                  (return #f)
-                  )
+      )
+    (dotimes (s4-1 4)
+      (let ((v1-29 (-> s5-0 best s4-1 index)))
+        (when (>= v1-29 0)
+          (let* ((v1-32 (-> obj alt-actors v1-29))
+                 (s2-3 (if v1-32
+                           (-> v1-32 extra process)
+                           )
+                       )
+                 (s3-3 (if (and (nonzero? s2-3) (type-type? (-> s2-3 type) process-drawable))
+                           s2-3
+                           )
+                       )
+                 (s2-4 (new 'stack-no-clear 'vector))
+                 (s1-1 (new 'stack-no-clear 'baby-spider-spawn-params))
+                 )
+            (vector-! s2-4 (target-pos 0) (-> (the-as process-drawable s3-3) root trans))
+            (vector-normalize! s2-4 1.0)
+            (init! s1-1 (= (-> s3-3 type) spider-egg) #t #t #t 7 1 'untrigger)
+            (let ((v1-40 (process-spawn baby-spider obj (-> (the-as process-drawable s3-3) root trans) s2-4 s1-1 :to obj)))
+              (when v1-40
+                (set! (-> (the-as baby-spider (-> v1-40 0)) die-if-not-visible?) #t)
+                (+! (-> obj spider-count) 1)
+                (send-event s3-3 'notify-spawned)
+                (return #f)
                 )
               )
             )
           )
         )
       )
-    #f
     )
+  #f
   )
 
 ;; failed to figure out what this is:
 (defstate cave-trap-idle (cave-trap)
-  :event
-  cave-trap-default-event-handler
-  :trans
-  (behavior ()
+  :event cave-trap-default-event-handler
+  :trans (behavior ()
     (when *target*
       (let* ((gp-0 (target-pos 0))
              (f0-0 (vector-vector-xz-distance (-> self root-override trans) (target-pos 0)))
@@ -287,7 +260,7 @@
              )
         (when (and (>= 61440.0 f1-1) (>= f1-1 -16384.0))
           (when (>= 274432.0 f0-0)
-            (when (or (>= 188416.0 f0-0) (send-event *target* 'query 'powerup 1))
+            (when (or (>= 188416.0 f0-0) (send-event *target* 'query 'powerup (pickup-type eco-yellow)))
               (level-hint-spawn
                 (game-text-id cave-trap-nest-hint)
                 "sksp0341"
@@ -304,8 +277,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
@@ -315,15 +287,12 @@
 
 ;; failed to figure out what this is:
 (defstate cave-trap-active (cave-trap)
-  :event
-  cave-trap-default-event-handler
-  :enter
-  (behavior ()
+  :event cave-trap-default-event-handler
+  :enter (behavior ()
     (set! (-> self spawn-delay) (seconds 0.5))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (cond
       (*target*
         (let* ((gp-0 (target-pos 0))
@@ -347,8 +316,7 @@
     0
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
@@ -358,10 +326,8 @@
 
 ;; failed to figure out what this is:
 (defstate cave-trap-give-up (cave-trap)
-  :event
-  cave-trap-default-event-handler
-  :code
-  (behavior ()
+  :event cave-trap-default-event-handler
+  :code (behavior ()
     (suspend)
     (go cave-trap-idle)
     (none)

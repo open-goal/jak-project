@@ -8,6 +8,7 @@
 #include "kscheme.h"
 #include "kdgo.h"
 #include "game/sound/989snd/ame_handler.h"
+#include "game/overlord/srpc.h"
 #include "common/common_types.h"
 
 /*!
@@ -21,10 +22,14 @@ void InitSound() {}
 void ShutdownSound() {}
 
 /*!
- * PC port function
+ * PC port functions
  */
 void set_flava_hack(u64 val) {
   snd::SoundFlavaHack = val;
+}
+
+void set_fade_hack(u64 val) {
+  gMusicFadeHack = val;
 }
 
 /*!
@@ -35,5 +40,8 @@ void InitSoundScheme() {
   make_function_symbol_from_c("rpc-busy?", (void*)RpcBusy);
   make_function_symbol_from_c("test-load-dgo-c", (void*)LoadDGOTest);
   make_stack_arg_function_symbol_from_c("rpc-call", (void*)RpcCall_wrapper);
+
+  // PC port interns
   make_function_symbol_from_c("pc-sound-set-flava-hack", (void*)set_flava_hack);
+  make_function_symbol_from_c("pc-sound-set-fade-hack", (void*)set_fade_hack);
 }

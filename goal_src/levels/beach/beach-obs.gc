@@ -8,15 +8,16 @@
 (define-extern spawn-flying-rock (function vector vector float entity none))
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/ecoventrock-ag.gc")
+(import "goal_src/import/beachcam-ag.gc")
 (import "goal_src/import/windmill-one-ag.gc")
 (import "goal_src/import/kickrock-ag.gc")
+(import "goal_src/import/harvester-ag.gc")
 (import "goal_src/import/flutflutegg-ag.gc")
+(import "goal_src/import/grottopole-ag.gc")
 (import "goal_src/import/flutflut-ag.gc")
 (import "goal_src/import/bladeassm-ag.gc")
-(import "goal_src/import/harvester-ag.gc")
-(import "goal_src/import/grottopole-ag.gc")
-(import "goal_src/import/beachcam-ag.gc")
 
 (defskelgroup *beachcam-sg* beachcam beachcam-lod0-jg beachcam-anim-ja
               ((beachcam-lod0-mg (meters 999999)))
@@ -44,13 +45,11 @@
               )
 
 (defstate windmill-one-idle (windmill-one)
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (sound-stop (-> self sound-id))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (rider-trans)
     (let ((t2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4))))
       (if (!= (+ (-> t2-0 x) (-> t2-0 y) (-> t2-0 z)) 0.0)
@@ -59,8 +58,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max 0.5) :frame-num 0.0)
       (until (ja-done? 0)
@@ -70,8 +68,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior windmill-one) rider-post)
+  :post (the-as (function none :behavior windmill-one) rider-post)
   )
 
 (defmethod init-from-entity! windmill-one ((obj windmill-one) (arg0 entity-actor))
@@ -127,8 +124,7 @@
   :id 155
   :flags (use-local-clock)
   :bounds (static-bspherem 0 -12 0 14)
-  :parts
-  ((sp-item 539 :period 1500 :length 15)
+  :parts ((sp-item 539 :period 1500 :length 15)
     (sp-item 539 :period 1500 :length 30)
     (sp-item 539 :period 1500 :length 45)
     (sp-item 539 :period 1500 :length 75)
@@ -139,8 +135,7 @@
   )
 
 (defpart 539
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
     (sp-flt spt-num 0.5)
     (sp-rnd-flt spt-x (meters -9) (meters 18) 1.0)
     (sp-flt spt-y (meters -6))
@@ -163,8 +158,7 @@
   )
 
 (defpart 540
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 12.0)
     (sp-flt spt-y (meters -7))
     (sp-rnd-flt spt-scale-x (meters 3) (meters 4.5) 1.0)
@@ -189,13 +183,11 @@
   )
 
 (defpart 541
-  :init-specs
-  ((sp-flt spt-fade-a 0.0) (sp-int-plain-rnd spt-next-time 450 239 1) (sp-launcher-by-id spt-next-launcher 542))
+  :init-specs ((sp-flt spt-fade-a 0.0) (sp-int-plain-rnd spt-next-time 450 239 1) (sp-launcher-by-id spt-next-launcher 542))
   )
 
 (defpart 542
-  :init-specs
-  ((sp-flt spt-fade-a -0.14222223))
+  :init-specs ((sp-flt spt-fade-a -0.14222223))
   )
 
 (deftype grottopole (process-drawable)
@@ -224,8 +216,7 @@
               )
 
 (defstate grottopole-idle (grottopole)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (when (= (-> arg0 type) target)
       (case arg2
         (('attack)
@@ -269,8 +260,7 @@
         )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (ja :group! (-> self draw art-group data 3) :num! min)
     (transform-post)
@@ -322,8 +312,7 @@
   )
 
 (defstate grottopole-moving-up (grottopole)
-  :code
-  (behavior ()
+  :code (behavior ()
     (+! (-> self position) 1)
     (let ((v1-4 (-> self entity extra perm)))
       (logior! (-> v1-4 status) (entity-perm-status user-set-from-cstage))
@@ -333,13 +322,11 @@
     (go grottopole-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior grottopole) transform-post)
+  :post (the-as (function none :behavior grottopole) transform-post)
   )
 
 (defstate grottopole-moving-down (grottopole)
-  :code
-  (behavior ()
+  :code (behavior ()
     (+! (-> self position) -1)
     (let ((v1-4 (-> self entity extra perm)))
       (logior! (-> v1-4 status) (entity-perm-status user-set-from-cstage))
@@ -349,8 +336,7 @@
     (go grottopole-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior grottopole) transform-post)
+  :post (the-as (function none :behavior grottopole) transform-post)
   )
 
 (defmethod init-from-entity! grottopole ((obj grottopole) (arg0 entity-actor))
@@ -430,8 +416,7 @@
   :duration 600
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 543 :period 1500 :length 5)
+  :parts ((sp-item 543 :period 1500 :length 5)
     (sp-item 544 :period 1500 :length 5)
     (sp-item 545 :period 1500 :length 5)
     (sp-item 546 :period 1500 :length 5)
@@ -441,8 +426,7 @@
   )
 
 (defpart 547
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
     (sp-flt spt-num 1.0)
     (sp-flt spt-scale-x (meters 15))
     (sp-copy-from-other spt-scale-y -4)
@@ -457,8 +441,7 @@
   )
 
 (defpart 543
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
     (sp-rnd-flt spt-num 4.0 6.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.3) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -481,8 +464,7 @@
   )
 
 (defpart 544
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
     (sp-rnd-flt spt-num 4.0 6.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.3) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -505,8 +487,7 @@
   )
 
 (defpart 545
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
     (sp-rnd-flt spt-num 4.0 6.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.3) 1.0)
     (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
@@ -529,16 +510,14 @@
   )
 
 (defpart 549
-  :init-specs
-  ((sp-flt spt-vel-y (meters 0.026666667))
+  :init-specs ((sp-flt spt-vel-y (meters 0.026666667))
     (sp-rnd-int-flt spt-rotvel-z (degrees -1.2) 1 436.90668)
     (sp-flt spt-fade-a -1.0666667)
     )
   )
 
 (defpart 548
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
     (sp-rnd-flt spt-y (meters 0.5) (meters 1) 1.0)
     (sp-rnd-flt spt-scale-x (meters 2.5) (meters 1.5) 1.0)
@@ -562,13 +541,11 @@
   )
 
 (defpart 550
-  :init-specs
-  ((sp-flt spt-fade-a -0.2))
+  :init-specs ((sp-flt spt-fade-a -0.2))
   )
 
 (defstate ecoventrock-idle (ecoventrock)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('attack)
        (sound-play-by-name (static-sound-name "cannon-shot") (new-sound-id) 1024 0 0 1 #t)
@@ -577,8 +554,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
     (loop
       (logior! (-> self mask) (process-mask sleep))
@@ -589,18 +565,15 @@
   )
 
 (defstate ecoventrock-break (ecoventrock)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior ecoventrock)
     process-drawable-fuel-cell-handler
     )
-  :enter
-  (behavior ((arg0 symbol))
+  :enter (behavior ((arg0 symbol))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (local-vars (sv-128 symbol))
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self root-override))
@@ -615,23 +588,16 @@
         )
       )
     (when (not arg0)
-      (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-0
-          (let ((t9-7 (method-of-type part-tracker activate)))
-            (t9-7 (the-as part-tracker s5-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process
-            s5-0
-            part-tracker-init
-            (-> *part-group-id-table* 156)
-            -1
-            #f
-            #f
-            #f
-            (-> self root-override root-prim prim-core)
-            )
-          (-> s5-0 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 156)
+        -1
+        #f
+        #f
+        #f
+        (-> self root-override root-prim prim-core)
+        :to *entity-pool*
         )
       (let* ((s5-1 (-> self root-override trans))
              (v1-14 (target-pos 0))
@@ -691,24 +657,8 @@
                     )
                   (else
                     (ambient-hint-spawn "gamcam10" (the-as vector #f) *entity-pool* 'camera)
-                    (let ((gp-2 (get-process *default-dead-pool* pov-camera #x4000)))
-                      (ppointer->handle (when gp-2
-                                          (let ((t9-23 (method-of-type pov-camera activate)))
-                                            (t9-23 (the-as pov-camera gp-2) self 'pov-camera (the-as pointer #x70004000))
-                                            )
-                                          (run-now-in-process
-                                            gp-2
-                                            pov-camera-init-by-other
-                                            (-> self root-override trans)
-                                            *beachcam-sg*
-                                            (-> self name)
-                                            0
-                                            #f
-                                            '()
-                                            )
-                                          (-> gp-2 ppointer)
-                                          )
-                                        )
+                    (ppointer->handle
+                      (process-spawn pov-camera (-> self root-override trans) *beachcam-sg* (-> self name) 0 #f '() :to self)
                       )
                     )
                   )
@@ -779,13 +729,11 @@
               )
 
 (defstate flying-rock-rolling (flying-rock)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 #f)
           (f30-0 0.99)
           (s5-0 0)
@@ -859,8 +807,7 @@
     (go flying-rock-idle)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
         (go flying-rock-idle)
         )
@@ -870,8 +817,7 @@
   )
 
 (defstate flying-rock-idle (flying-rock)
-  :code
-  (behavior ()
+  :code (behavior ()
     (clear-collide-with-as (-> self root-override))
     (while (or (logtest? (-> self draw status) (draw-status was-drawn))
                (and *target*
@@ -883,8 +829,7 @@
     (deactivate self)
     (none)
     )
-  :post
-  (the-as (function none :behavior flying-rock) ja-post)
+  :post (the-as (function none :behavior flying-rock) ja-post)
   )
 
 (defbehavior flying-rock-init-by-other flying-rock ((arg0 vector) (arg1 vector) (arg2 float) (arg3 entity))
@@ -929,15 +874,7 @@
   )
 
 (defun spawn-flying-rock ((arg0 vector) (arg1 vector) (arg2 float) (arg3 entity))
-  (let ((s2-0 (get-process *default-dead-pool* flying-rock #x4000)))
-    (when s2-0
-      (let ((t9-1 (method-of-type flying-rock activate)))
-        (t9-1 (the-as flying-rock s2-0) *entity-pool* 'flying-rock (the-as pointer #x70004000))
-        )
-      (run-now-in-process s2-0 flying-rock-init-by-other arg0 arg1 arg2 arg3)
-      (-> s2-0 ppointer)
-      )
-    )
+  (process-spawn flying-rock arg0 arg1 arg2 arg3 :to *entity-pool*)
   0
   (none)
   )
@@ -963,8 +900,7 @@
               )
 
 (defstate bladeassm-idle (bladeassm)
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (+! (-> self angle) (* 3640.889 (-> *display* seconds-per-frame)))
       (set! (-> self angle) (the float (sar (shl (the int (-> self angle)) 48) 48)))
@@ -1094,8 +1030,7 @@
   )
 
 (defstate flutflutegg-idle (flutflutegg)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (when (and (= arg2 'attack)
                (or (= (-> arg3 param 1) 'punch) (= (-> arg3 param 1) 'spin) (= (-> arg3 param 1) 'spin-air))
                (!= (-> self incomming-attack-id) (-> arg3 param 2))
@@ -1120,8 +1055,7 @@
       (go flutflutegg-physics)
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let* ((gp-0 (TODO-RENAME-10 (-> self ambient) (new 'stack-no-clear 'vector) (seconds 3) 368640.0 self))
            (v1-2 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
            (v1-3 (the-as number (logior #x3f800000 v1-2)))
@@ -1179,8 +1113,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-post)
     (loop
       (suspend)
@@ -1190,8 +1123,7 @@
   )
 
 (defstate flutflutegg-physics (flutflutegg)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (the-as
       object
       (when (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
@@ -1219,8 +1151,7 @@
         )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (loop
       (+! (-> self pos) (* (-> self vel) (-> *display* seconds-per-frame)))
@@ -1247,45 +1178,36 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior flutflutegg) ja-post)
+  :post (the-as (function none :behavior flutflutegg) ja-post)
   )
 
 (defstate flutflutegg-physics-fall (flutflutegg)
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars (v1-25 symbol))
-    (let ((gp-0 (get-process *default-dead-pool* camera-tracker #x4000)))
-      (when gp-0
-        (let ((t9-1 (method-of-type camera-tracker activate)))
-          (t9-1 (the-as camera-tracker gp-0) self 'camera-tracker (the-as pointer #x70004000))
+    (process-spawn
+      camera-tracker
+      :init camera-tracker-init
+      (lambda :behavior camera-tracker
+        ()
+        (while (not (process-grab? *target*))
+          (suspend)
           )
-        (run-now-in-process
-          gp-0
-          camera-tracker-init
-          (lambda :behavior camera-tracker
-            ()
-            (while (not (process-grab? *target*))
-              (suspend)
-              )
-            (camera-change-to "camera-135" 0 #f)
-            (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 9))
-            (let ((gp-0 (-> *display* base-frame-counter)))
-              (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 4))
-                (suspend)
-                )
-              )
-            (while (not (process-release? (handle->process (-> self grab-target))))
-              (suspend)
-              )
-            (camera-look-at (the-as pair *target*) (the-as uint 0))
-            (send-event *camera* 'blend-from-as-fixed)
-            (camera-change-to (the-as string 'base) 75 #f)
-            (none)
+        (camera-change-to "camera-135" 0 #f)
+        (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 9))
+        (let ((gp-0 (-> *display* base-frame-counter)))
+          (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 4))
+            (suspend)
             )
           )
-        (-> gp-0 ppointer)
+        (while (not (process-release? (handle->process (-> self grab-target))))
+          (suspend)
+          )
+        (camera-look-at (the-as pair *target*) (the-as uint 0))
+        (send-event *camera* 'blend-from-as-fixed)
+        (camera-change-to (the-as string 'base) 75 #f)
+        (none)
         )
+      :to self
       )
     (close-specific-task! (game-task beach-flutflut) (task-status need-reminder))
     (loop
@@ -1321,13 +1243,11 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior flutflutegg) ja-post)
+  :post (the-as (function none :behavior flutflutegg) ja-post)
   )
 
 (defstate flutflutegg-break (flutflutegg)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (when arg0
       (set-vector! (-> self root-override trans) -231190.94 64559.105 -1164727.5 1.0)
       (quaternion-axis-angle! (-> self root-override quat) 0.0 1.0 0.0 -18204.445)
@@ -1378,8 +1298,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior flutflutegg) ja-post)
+  :post (the-as (function none :behavior flutflutegg) ja-post)
   )
 
 (defmethod init-from-entity! flutflutegg ((obj flutflutegg) (arg0 entity-actor))
@@ -1457,8 +1376,7 @@
               )
 
 (defstate harvester-idle (harvester)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('update)
        (if (and (-> self alt-actor) (logtest? (-> self alt-actor extra perm status) (entity-perm-status complete)))
@@ -1467,8 +1385,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (and (-> self alt-actor) (logtest? (-> self alt-actor extra perm status) (entity-perm-status complete)))
         (go harvester-inflate #t)
         )
@@ -1483,8 +1400,7 @@
   )
 
 (defstate harvester-inflate (harvester)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (when (not arg0)
       (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -1501,8 +1417,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior harvester) ja-post)
+  :post (the-as (function none :behavior harvester) ja-post)
   )
 
 (defmethod init-from-entity! harvester ((obj harvester) (arg0 entity-actor))
@@ -1584,38 +1499,23 @@
   (with-pp
     (let ((gp-0 (entity-actor-lookup (-> pp entity) 'alt-actor 0)))
       (when gp-0
-        (let* ((s5-0 (get-process *default-dead-pool* pov-camera #x4000))
-               (gp-1
-                 (ppointer->handle
-                   (when s5-0
-                     (let ((t9-2 (method-of-type pov-camera activate)))
-                       (t9-2 (the-as pov-camera s5-0) pp 'pov-camera (the-as pointer #x70004000))
-                       )
-                     (run-now-in-process
-                       s5-0
-                       pov-camera-init-by-other
-                       (-> gp-0 extra trans)
-                       *beachcam-sg*
-                       (new 'static 'spool-anim :name "beachcam-cannon" :index 3 :parts 1 :command-list '())
-                       0
-                       #f
-                       '()
-                       )
-                     (-> s5-0 ppointer)
-                     )
-                   )
-                 )
-               (s5-1 (get-process *default-dead-pool* fuel-cell #x4000))
-               (s5-2
-                 (ppointer->handle (when s5-1
-                                     (let ((t9-5 (method-of-type fuel-cell activate)))
-                                       (t9-5 (the-as fuel-cell s5-1) pp 'fuel-cell (the-as pointer #x70004000))
-                                       )
-                                     (run-now-in-process s5-1 fuel-cell-init-as-clone gp-1 (-> pp entity extra perm task))
-                                     (-> s5-1 ppointer)
+        (let* ((gp-1
+                 (ppointer->handle (process-spawn
+                                     pov-camera
+                                     (-> gp-0 extra trans)
+                                     *beachcam-sg*
+                                     (new 'static 'spool-anim :name "beachcam-cannon" :index 3 :parts 1 :command-list '())
+                                     0
+                                     #f
+                                     '()
+                                     :to pp
                                      )
                                    )
                  )
+               (s5-2 (ppointer->handle
+                       (process-spawn fuel-cell :init fuel-cell-init-as-clone gp-1 (-> pp entity extra perm task) :to pp)
+                       )
+                     )
                )
           (let ((v1-13 (handle->process gp-1)))
             (if v1-13

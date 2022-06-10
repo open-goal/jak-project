@@ -142,21 +142,15 @@
           (return (the-as object #t))
           )
         (when (= (-> arg0 type) target)
-          (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-9 from) self)
-            (set! (-> a1-9 num-params) 2)
-            (set! (-> a1-9 message) 'attack)
-            (set! (-> a1-9 param 0) (-> arg3 param 0))
-            (let ((v1-19 (new 'static 'attack-info :mask #xc0)))
-              (set! (-> v1-19 shove-up) 6144.0)
-              (set! (-> v1-19 shove-back) 10240.0)
-              (set! (-> a1-9 param 1) (the-as uint v1-19))
-              )
-            (when (send-event-function arg0 a1-9)
-              (set! (-> self hit-player?) #t)
-              (set! (-> self hit-player-time) (-> *display* base-frame-counter))
-              (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
-              )
+          (when (send-event
+                  arg0
+                  'attack
+                  (-> arg3 param 0)
+                  (static-attack-info ((shove-up (meters 1.5)) (shove-back (meters 2.5))))
+                  )
+            (set! (-> self hit-player?) #t)
+            (set! (-> self hit-player-time) (-> *display* base-frame-counter))
+            (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
             )
           )
         )
@@ -624,10 +618,8 @@
 
 ;; failed to figure out what this is:
 (defstate puffer-idle (puffer)
-  :event
-  puffer-default-event-handler
-  :enter
-  (behavior ()
+  :event puffer-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self attacking?) #f)
     (shut-down! (-> self neck))
@@ -637,8 +629,7 @@
     0
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (if (and (and *target* (>= (-> self fact-info-override idle-distance)
                                  (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
@@ -654,16 +645,13 @@
       )
     (none)
     )
-  :post
-  puffer-post
+  :post puffer-post
   )
 
 ;; failed to figure out what this is:
 (defstate puffer-patrol (puffer)
-  :event
-  puffer-default-event-handler
-  :enter
-  (behavior ()
+  :event puffer-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self attacking?) #f)
     (set! (-> self reaction-delay) (rand-vu-int-range (seconds 0.1) (seconds 0.35)))
@@ -675,8 +663,7 @@
     (set! (-> self last-on-screen-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and (not (and *target* (>= (-> self fact-info-override idle-distance)
                                     (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                                     )
@@ -724,38 +711,32 @@
     (dummy-28 self)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (dummy-26 self)
       (suspend)
       )
     (none)
     )
-  :post
-  puffer-post
+  :post puffer-post
   )
 
 ;; failed to figure out what this is:
 (defstate puffer-attack (puffer)
-  :event
-  puffer-default-event-handler
-  :enter
-  (behavior ()
+  :event puffer-default-event-handler
+  :enter (behavior ()
     (set! (-> self attacking?) #t)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self travel-turn-speed) 21845.334)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (shut-down! (-> self neck))
     (set! (-> self attacking?) #f)
     (set! (-> self travel-turn-speed) 16384.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not (dummy-25 self (-> self give-up-dist)))
         (go puffer-patrol)
         )
@@ -779,22 +760,19 @@
     (dummy-28 self)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (dummy-26 self)
       (suspend)
       )
     (none)
     )
-  :post
-  puffer-post
+  :post puffer-post
   )
 
 ;; failed to figure out what this is:
 (defstate puffer-die (puffer)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as
         uint
@@ -812,8 +790,7 @@
         )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (shut-down! (-> self neck))
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -826,8 +803,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior puffer) ja-post)
+  :post (the-as (function none :behavior puffer) ja-post)
   )
 
 ;; definition for method 21 of type puffer

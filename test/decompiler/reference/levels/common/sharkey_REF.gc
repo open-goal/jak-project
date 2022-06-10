@@ -10,8 +10,7 @@
   :linger-duration 780
   :flags (use-local-clock)
   :bounds (static-bspherem 0 -12 0 14)
-  :parts
-  ((sp-item 124 :flags (is-3d) :period 900 :length 63)
+  :parts ((sp-item 124 :flags (is-3d) :period 900 :length 63)
     (sp-item 125 :period 900 :length 15)
     (sp-item 126 :flags (is-3d) :period 900 :length 15)
     (sp-item 127 :flags (is-3d) :period 900 :length 15)
@@ -192,14 +191,8 @@ nav-enemy-default-event-handler
 (defbehavior sharkey-notice-player? sharkey ()
   (if *target*
       (and (< (- (-> *target* control trans y) (-> self y-max)) 0.0)
-           (let ((gp-0 'racer)
-                 (a1-0 (new 'stack-no-clear 'event-message-block))
-                 )
-             (set! (-> a1-0 from) self)
-             (set! (-> a1-0 num-params) 1)
-             (set! (-> a1-0 message) 'query)
-             (set! (-> a1-0 param 0) (the-as uint 'mode))
-             (!= gp-0 (send-event-function *target* a1-0))
+           (let ((gp-0 'racer))
+             (!= gp-0 (send-event *target* 'query 'mode))
              )
            (nav-enemy-test-point-near-nav-mesh? (-> *target* control shadow-pos))
            )
@@ -264,24 +257,20 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-idle (sharkey)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior sharkey)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf0))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (cond
       ((-> self enable-patrol)
        (if (and (and *target* (>= (-> self enemy-info idle-distance)
@@ -318,8 +307,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (ja :group! (-> self draw art-group data (-> self nav-info idle-anim)))
     (ja :num-func num-func-identity :frame-num 0.0)
@@ -335,32 +323,27 @@ nav-enemy-default-event-handler
     (anim-loop)
     (none)
     )
-  :post
-  (the-as (function none :behavior sharkey) #f)
+  :post (the-as (function none :behavior sharkey) #f)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-patrol (sharkey)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior sharkey)
     nav-enemy-default-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (sharkey-notice-player?)
         (go-virtual nav-enemy-chase)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (set! (-> self nav target-pos quad) (-> self spawn-point quad))
     (loop
-      (ja-no-eval :group!
-                  (-> self draw art-group data (-> self nav-info walk-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim))
                   :num! (seek! max (-> self anim-speed))
                   :frame-num 0.0
                   )
@@ -382,8 +365,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (nav-enemy-travel-post)
     (none)
     )
@@ -392,18 +374,15 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-notice (sharkey)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior sharkey)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (go-virtual nav-enemy-chase)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual nav-enemy-chase)
     (none)
     )
@@ -422,13 +401,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-attack (sharkey)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior sharkey)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector))
           (s5-0 (new 'stack-no-clear 'vector))
           )
@@ -447,61 +424,50 @@ nav-enemy-default-event-handler
         (ja :num! (seek! (ja-aframe 3.0 0) 2.0))
         )
       )
-    (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-7 from) self)
-      (set! (-> a1-7 num-params) 2)
-      (set! (-> a1-7 message) 'attack-invinc)
-      (set! (-> a1-7 param 0) (the-as uint #f))
-      (let ((a0-15 (new 'static 'attack-info :mask #x20)))
-        (set! (-> a0-15 mode) 'sharkey)
-        (set! (-> a1-7 param 1) (the-as uint a0-15))
-        )
-      (when (send-event-function *target* a1-7)
-        (logclear! (-> self mask) (process-mask enemy))
-        (vector-float*! (-> self collide-info transv) (-> self collide-info transv) 8.0)
-        (set! (-> self state-time) (-> *display* base-frame-counter))
-        (let ((f30-0 -409600.0)
-              (f28-0 (-> self collide-info transv y))
-              (f26-0 (-> self collide-info trans y))
+    (when (send-event *target* 'attack-invinc #f (static-attack-info ((mode 'sharkey))))
+      (logclear! (-> self mask) (process-mask enemy))
+      (vector-float*! (-> self collide-info transv) (-> self collide-info transv) 8.0)
+      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (let ((f30-0 -409600.0)
+            (f28-0 (-> self collide-info transv y))
+            (f26-0 (-> self collide-info trans y))
+            )
+        (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
+          (ja-no-eval :group! sharkey-chomp-ja :num! (seek!) :frame-num (ja-aframe 3.0 0))
+          (until (ja-done? 0)
+            (+! f28-0 (* f30-0 (-> *display* seconds-per-frame)))
+            (+! f26-0 (* f28-0 (-> *display* seconds-per-frame)))
+            (set! (-> self collide-info transv y) f28-0)
+            (when (< (-> self collide-info trans y) (-> self water height))
+              (set! f28-0 (* 0.9 f28-0))
+              (vector-float*! (-> self collide-info transv) (-> self collide-info transv) 0.9)
               )
-          (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
-            (ja-no-eval :group! sharkey-chomp-ja :num! (seek!) :frame-num (ja-aframe 3.0 0))
-            (until (ja-done? 0)
-              (+! f28-0 (* f30-0 (-> *display* seconds-per-frame)))
-              (+! f26-0 (* f28-0 (-> *display* seconds-per-frame)))
-              (set! (-> self collide-info transv y) f28-0)
-              (when (< (-> self collide-info trans y) (-> self water height))
-                (set! f28-0 (* 0.9 f28-0))
-                (vector-float*! (-> self collide-info transv) (-> self collide-info transv) 0.9)
-                )
-              (vector-normalize-copy! (-> self dir) (-> self collide-info transv) 1.0)
-              (forward-up->quaternion (-> self collide-info quat) (-> self dir) *up-vector*)
-              (integrate-for-enemy-with-move-to-ground!
-                (-> self collide-info)
-                (-> self collide-info transv)
-                (collide-kind background)
-                8192.0
-                #t
-                #f
-                #f
-                )
-              (set! (-> self collide-info trans y) f26-0)
-              (suspend)
-              (ja :num! (seek!))
+            (vector-normalize-copy! (-> self dir) (-> self collide-info transv) 1.0)
+            (forward-up->quaternion (-> self collide-info quat) (-> self dir) *up-vector*)
+            (integrate-for-enemy-with-move-to-ground!
+              (-> self collide-info)
+              (-> self collide-info transv)
+              (collide-kind background)
+              8192.0
+              #t
+              #f
+              #f
               )
+            (set! (-> self collide-info trans y) f26-0)
+            (suspend)
+            (ja :num! (seek!))
             )
           )
-        (send-event *target* 'end-mode)
-        (set! (-> self mask) (logior (process-mask enemy) (-> self mask)))
         )
+      (send-event *target* 'end-mode)
+      (set! (-> self mask) (logior (process-mask enemy) (-> self mask)))
       )
     (sharkey-reset-position)
     (logior! (-> self draw status) (draw-status hidden))
     (go-virtual nav-enemy-idle)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (nav-enemy-simple-post)
     (none)
     )
@@ -510,18 +476,15 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-chase (sharkey)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior sharkey)
     nav-enemy-default-event-handler
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (sound-stop (-> self sound-id))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not *target*)
         (go-virtual nav-enemy-patrol)
         )
@@ -571,14 +534,12 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self player-water-time) (-> *display* base-frame-counter))
     (ja-channel-push! 1 (seconds 0.17))
     (sound-play-by-name (static-sound-name "bigshark-idle") (new-sound-id) 1024 0 0 1 #t)
     (loop
-      (ja-no-eval :group!
-                  (-> self draw art-group data (-> self nav-info run-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self nav-info run-anim))
                   :num! (seek! max (-> self anim-speed))
                   :frame-num 0.0
                   )
@@ -590,8 +551,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (sharkey-get-player-position (-> self nav target-pos))
     (nav-enemy-travel-post)
     (let* ((f3-0 (vector-vector-distance (-> self collide-info trans) (-> self nav target-pos)))
@@ -615,17 +575,14 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (sharkey)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior sharkey)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.17))
     (loop
-      (ja-no-eval :group!
-                  (-> self draw art-group data (-> self nav-info walk-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim))
                   :num! (seek! max (-> self anim-speed))
                   :frame-num 0.0
                   )
@@ -643,13 +600,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-stare (sharkey)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior sharkey)
     nav-enemy-default-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (TODO-RENAME-46 self (-> self nav-info notice-distance))
         (go-virtual nav-enemy-chase)
         )
@@ -658,8 +613,7 @@ nav-enemy-default-event-handler
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.17))
     (ja :group! (-> self draw art-group data (-> self nav-info idle-anim)))
     (ja :num-func num-func-identity :frame-num 0.0)
@@ -676,17 +630,14 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-victory (sharkey)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior sharkey)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (dotimes (gp-0 3)
-      (ja-no-eval :group!
-                  (-> self draw art-group data (-> self nav-info victory-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self nav-info victory-anim))
                   :num! (seek! max (-> self anim-speed))
                   :frame-num 0.0
                   )

@@ -483,8 +483,7 @@
             (type-type? (-> (handle->process source-handle) type) vent)
             )
        cfg-80
-       :delay
-       (nop!)
+       :delay (nop!)
        )
      (-> obj health)
      )
@@ -600,20 +599,24 @@
        (when (= kind (pickup-type eco-blue))
          (when (= eco-lev 0.0)
            (let ((s5-1 (-> obj process)))
-             (let* ((s3-5 (get-process *default-dead-pool* touch-tracker #x4000))
-                    (s4-3
-                      (when s3-5
-                        (let ((t9-28 (method-of-type touch-tracker activate)))
-                          (t9-28 (the-as touch-tracker s3-5) s5-1 'touch-tracker (the-as pointer #x70004000))
-                          )
-                        (run-now-in-process s3-5 touch-tracker-init (-> s5-1 root trans) (-> *FACT-bank* suck-bounce-dist) 300)
-                        (-> s3-5 ppointer)
-                        )
-                      )
-                    )
+             (let ((s4-3
+                     (process-spawn
+                       touch-tracker
+                       :init touch-tracker-init
+                       (-> s5-1 root trans)
+                       (-> *FACT-bank* suck-bounce-dist)
+                       300
+                       :to s5-1
+                       )
+                     )
+                   )
                (send-event (ppointer->process s4-3) 'target s5-1)
                (send-event (ppointer->process s4-3) 'event 'eco-blue)
-               (send-event (ppointer->process s4-3) 'exit (lambda () (send-event *target* 'query 'powerup 3)))
+               (send-event
+                 (ppointer->process s4-3)
+                 'exit
+                 (lambda () (send-event *target* 'query 'powerup (pickup-type eco-blue)))
+                 )
                (send-event
                  (ppointer->process s4-3)
                  'eval
@@ -626,26 +629,20 @@
                    )
                  )
                )
-             (let ((s4-4 (get-process *4k-dead-pool* process #x4000)))
-               (when s4-4
-                 (let ((t9-35 (method-of-type process activate)))
-                   (t9-35 s4-4 s5-1 'process (the-as pointer #x70004000))
-                   )
-                 (run-next-time-in-process
-                   s4-4
-                   (lambda ((arg0 process-drawable))
-                     (let ((s5-0 (-> *display* base-frame-counter)))
-                       (until (>= (- (-> *display* base-frame-counter) s5-0) (seconds 0.6))
-                         (send-event arg0 'effect 'eco-blue)
-                         (suspend)
-                         )
-                       )
-                     (none)
+             (process-spawn-function
+               process
+               (lambda ((arg0 process-drawable))
+                 (let ((s5-0 (-> *display* base-frame-counter)))
+                   (until (>= (- (-> *display* base-frame-counter) s5-0) (seconds 0.6))
+                     (send-event arg0 'effect 'eco-blue)
+                     (suspend)
                      )
-                   s5-1
                    )
-                 (-> s4-4 ppointer)
+                 (none)
                  )
+               s5-1
+               :from *4k-dead-pool*
+               :to s5-1
                )
              )
            )

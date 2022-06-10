@@ -11,6 +11,7 @@
 
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/driller-lurker-ag.gc")
 
 (deftype driller-lurker (process-drawable)
@@ -79,10 +80,8 @@
 
 (define *driller-lurker-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
-                                           :center
-                                           (new 'static 'vector :w (the-as float #x9))
-                                           :shadow-dir
-                                           (new 'static 'vector :y -1.0 :w 614400.0)
+                                           :center (new 'static 'vector :w (the-as float #x9))
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 614400.0)
                                            :bot-plane (new 'static 'plane :y 1.0 :w 4096.0)
                                            :top-plane (new 'static 'plane :y 1.0 :w -2048.0)
                                            :fade-dist 245760.0
@@ -94,8 +93,7 @@
   :id 331
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 728 :fade-after (meters 80) :falloff-to (meters 80))
+  :parts ((sp-item 728 :fade-after (meters 80) :falloff-to (meters 80))
     (sp-item 2075 :fade-after (meters 60) :falloff-to (meters 60))
     (sp-item 2076 :fade-after (meters 60) :falloff-to (meters 60))
     (sp-item 2077 :fade-after (meters 40) :falloff-to (meters 40))
@@ -103,8 +101,7 @@
   )
 
 (defpart 728
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 4.0)
     (sp-rnd-flt spt-x (meters -0.5) (meters 1) 1.0)
     (sp-rnd-flt spt-y (meters -0.5) (meters 1) 1.0)
@@ -131,8 +128,7 @@
   )
 
 (defpart 2075
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 4.0)
     (sp-rnd-flt spt-x (meters -0.5) (meters 1) 1.0)
     (sp-rnd-flt spt-y (meters -0.5) (meters 1) 1.0)
@@ -159,8 +155,7 @@
   )
 
 (defpart 2076
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
     (sp-flt spt-num 4.0)
     (sp-rnd-flt spt-x (meters -0.5) (meters 1) 1.0)
     (sp-rnd-flt spt-y (meters -0.5) (meters 1) 1.0)
@@ -186,13 +181,11 @@
   )
 
 (defpart 2078
-  :init-specs
-  ((sp-flt spt-fade-a -1.7066667))
+  :init-specs ((sp-flt spt-fade-a -1.7066667))
   )
 
 (defpart 2077
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
     (sp-rnd-flt spt-num 8.0 8.0 1.0)
     (sp-rnd-flt spt-x (meters -0.5) (meters 1) 1.0)
     (sp-rnd-flt spt-y (meters -0.5) (meters 1) 1.0)
@@ -265,25 +258,19 @@
                     )
                   (cond
                     ((or s2-0 (not s3-0))
-                     (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-                       (set! (-> a1-6 from) self)
-                       (set! (-> a1-6 num-params) 2)
-                       (set! (-> a1-6 message) 'attack)
-                       (set! (-> a1-6 param 0) (-> arg3 param 0))
-                       (let ((v1-34 (new 'static 'attack-info :mask #xc0)))
-                         (set! (-> v1-34 shove-up) 8192.0)
-                         (set! (-> v1-34 shove-back) 12288.0)
-                         (set! (-> a1-6 param 1) (the-as uint v1-34))
-                         )
-                       (when (send-event-function arg0 a1-6)
-                         (set! (-> self hit-player?) #t)
-                         (set! (-> self hit-player-time) (-> *display* base-frame-counter))
-                         (set-collide-offense (-> self root-overeride) 2 (collide-offense no-offense))
-                         (let ((v1-39 (-> self mode)))
-                           (if (or (zero? v1-39) (= v1-39 1) (= v1-39 2))
-                               (go driller-lurker-chase #t)
-                               )
-                           )
+                     (when (send-event
+                             arg0
+                             'attack
+                             (-> arg3 param 0)
+                             (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3))))
+                             )
+                       (set! (-> self hit-player?) #t)
+                       (set! (-> self hit-player-time) (-> *display* base-frame-counter))
+                       (set-collide-offense (-> self root-overeride) 2 (collide-offense no-offense))
+                       (let ((v1-39 (-> self mode)))
+                         (if (or (zero? v1-39) (= v1-39 1) (= v1-39 2))
+                             (go driller-lurker-chase #t)
+                             )
                          )
                        )
                      )
@@ -314,25 +301,19 @@
      )
     ((= arg2 'touch)
      (when (= (-> arg0 type) target)
-       (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-11 from) self)
-         (set! (-> a1-11 num-params) 2)
-         (set! (-> a1-11 message) 'attack)
-         (set! (-> a1-11 param 0) (-> arg3 param 0))
-         (let ((v1-57 (new 'static 'attack-info :mask #xc0)))
-           (set! (-> v1-57 shove-up) 8192.0)
-           (set! (-> v1-57 shove-back) 12288.0)
-           (set! (-> a1-11 param 1) (the-as uint v1-57))
-           )
-         (when (send-event-function arg0 a1-11)
-           (set! (-> self hit-player?) #t)
-           (set! (-> self hit-player-time) (-> *display* base-frame-counter))
-           (set-collide-offense (-> self root-overeride) 2 (collide-offense no-offense))
-           (let ((v1-62 (-> self mode)))
-             (if (or (zero? v1-62) (= v1-62 1) (= v1-62 2))
-                 (go driller-lurker-chase #t)
-                 )
-             )
+       (when (send-event
+               arg0
+               'attack
+               (-> arg3 param 0)
+               (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3))))
+               )
+         (set! (-> self hit-player?) #t)
+         (set! (-> self hit-player-time) (-> *display* base-frame-counter))
+         (set-collide-offense (-> self root-overeride) 2 (collide-offense no-offense))
+         (let ((v1-62 (-> self mode)))
+           (if (or (zero? v1-62) (= v1-62 1) (= v1-62 2))
+               (go driller-lurker-chase #t)
+               )
            )
          )
        )
@@ -642,41 +623,34 @@
   )
 
 (defstate driller-lurker-debug-play-anims (driller-lurker)
-  :code
-  (behavior ()
+  :code (behavior ()
     0
     (none)
     )
-  :post
-  (the-as (function none :behavior driller-lurker) transform-post)
+  :post (the-as (function none :behavior driller-lurker) transform-post)
   )
 
 (defstate driller-lurker-idle-drilling (driller-lurker)
-  :event
-  driller-lurker-default-event-handler
-  :enter
-  (behavior ()
+  :event driller-lurker-default-event-handler
+  :enter (behavior ()
     (set! (-> self mode) (the-as uint 1))
     (set! (-> self targ-path-speed) 0.0)
     (set! (-> self path-speed) 0.0)
     (shut-down! (-> self neck))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (stop! (-> self sound2))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (dummy-25 self)
         (go driller-lurker-chase #t)
         )
     (dummy-20 self #t (the-as target #f))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (update-trans! (-> self sound2) (-> self root-overeride trans))
     (loop
       (set! (-> self timeout) (rand-vu-int-range 4 8))
@@ -708,15 +682,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior driller-lurker) transform-post)
+  :post (the-as (function none :behavior driller-lurker) transform-post)
   )
 
 (defstate driller-lurker-patrol (driller-lurker)
-  :event
-  driller-lurker-default-event-handler
-  :enter
-  (behavior ()
+  :event driller-lurker-default-event-handler
+  :enter (behavior ()
     (set! (-> self mode) (the-as uint 2))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self timeout) (rand-vu-int-range 900 3600))
@@ -727,16 +698,14 @@
     (shut-down! (-> self neck))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (dummy-25 self)
         (go driller-lurker-chase #t)
         )
     (dummy-20 self #t (the-as target #f))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 2 (seconds 0.2))
     (ja :group! driller-lurker-walk-ja :num! min)
     (ja :chan 1 :group! driller-lurker-walk-up-ja :num! (chan 0) :frame-interp (-> self up-blend))
@@ -757,31 +726,26 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior driller-lurker) transform-post)
+  :post (the-as (function none :behavior driller-lurker) transform-post)
   )
 
 (defstate driller-lurker-patrol-pause (driller-lurker)
-  :event
-  driller-lurker-default-event-handler
-  :enter
-  (behavior ()
+  :event driller-lurker-default-event-handler
+  :enter (behavior ()
     (set! (-> self mode) (the-as uint 2))
     (set! (-> self path-speed) 0.0)
     (set! (-> self targ-path-speed) 0.0)
     (shut-down! (-> self neck))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (dummy-25 self)
         (go driller-lurker-chase #t)
         )
     (dummy-20 self #t (the-as target #f))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self timeout) (rand-vu-int-range 2 4))
     (let ((s5-0 -1))
       (dotimes (gp-0 (-> self timeout))
@@ -821,15 +785,12 @@
     (go driller-lurker-patrol)
     (none)
     )
-  :post
-  (the-as (function none :behavior driller-lurker) transform-post)
+  :post (the-as (function none :behavior driller-lurker) transform-post)
   )
 
 (defstate driller-lurker-chase (driller-lurker)
-  :event
-  driller-lurker-default-event-handler
-  :enter
-  (behavior ((arg0 symbol))
+  :event driller-lurker-default-event-handler
+  :enter (behavior ((arg0 symbol))
     (if arg0
         (set! (-> self started-chasing-time) (-> *display* base-frame-counter))
         )
@@ -838,8 +799,7 @@
     (set! (-> self targ-path-speed) 23552.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (dummy-24 self)
         (go driller-lurker-attack)
         )
@@ -875,8 +835,7 @@
     (dummy-20 self #f (the-as target #t))
     (none)
     )
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (ja-channel-push! 2 (seconds 0.2))
     (ja :group! driller-lurker-run-ja :num! min)
     (ja :chan 1 :group! driller-lurker-run-up-ja :num! (chan 0) :frame-interp (-> self up-blend))
@@ -892,23 +851,19 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior driller-lurker) transform-post)
+  :post (the-as (function none :behavior driller-lurker) transform-post)
   )
 
 (defstate driller-lurker-attack (driller-lurker)
-  :event
-  driller-lurker-default-event-handler
-  :enter
-  (behavior ()
+  :event driller-lurker-default-event-handler
+  :enter (behavior ()
     (set! (-> self mode) (the-as uint 4))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self path-speed) 0.0)
     (set! (-> self targ-path-speed) 0.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (cond
       ((dummy-24 self)
        (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -925,8 +880,7 @@
     (dummy-20 self #f (the-as target #t))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 2 (seconds 0.2))
     (ja :group! driller-lurker-attack-ja :num! min)
     (ja :chan 1 :group! driller-lurker-attack-up-ja :num! (chan 0) :frame-interp (-> self up-blend))
@@ -942,28 +896,23 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior driller-lurker) transform-post)
+  :post (the-as (function none :behavior driller-lurker) transform-post)
   )
 
 (defstate driller-lurker-jammed-standing (driller-lurker)
-  :event
-  driller-lurker-default-event-handler
-  :enter
-  (behavior ()
+  :event driller-lurker-default-event-handler
+  :enter (behavior ()
     (set! (-> self mode) (the-as uint 5))
     (set! (-> self path-speed) 0.0)
     (set! (-> self targ-path-speed) 0.0)
     (shut-down! (-> self neck))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (dummy-20 self #f (the-as target #f))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! driller-lurker-drill-jams-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -983,18 +932,15 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior driller-lurker) transform-post)
+  :post (the-as (function none :behavior driller-lurker) transform-post)
   )
 
 (defstate driller-lurker-die (driller-lurker)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior driller-lurker)
     process-drawable-death-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (shut-down! (-> self neck))
     (logclear! (-> self mask) (process-mask actor-pause))
     (ja-channel-push! 1 (seconds 0.2))
@@ -1011,8 +957,7 @@
     (cleanup-for-death self)
     (none)
     )
-  :post
-  (the-as (function none :behavior driller-lurker) ja-post)
+  :post (the-as (function none :behavior driller-lurker) ja-post)
   )
 
 (defmethod relocate driller-lurker ((obj driller-lurker) (arg0 int))
@@ -1151,8 +1096,7 @@
             arg0
             'driller-lurker
             (pointer float)
-            :tag-ptr
-            (the-as (pointer res-tag) (new 'stack-no-clear 'vector))
+            :tag-ptr (the-as (pointer res-tag) (new 'stack-no-clear 'vector))
             )
           )
         )

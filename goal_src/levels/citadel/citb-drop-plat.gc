@@ -6,6 +6,7 @@
 ;; dgos: CIT
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/citb-drop-plat-ag.gc")
 
 (defskelgroup *citb-drop-plat-sg* citb-drop-plat citb-drop-plat-lod0-jg citb-drop-plat-idle-ja
@@ -62,22 +63,20 @@
 
 
 (defstate drop-plat-idle (drop-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('drop)
        (logclear! (-> self mask) (process-mask actor-pause))
        (go drop-plat-drop)
        )
       (('touch 'attack)
-       (send-event *target* 'no-look-around 300)
+       (send-event *target* 'no-look-around (seconds 1))
        (send-event (ppointer->process (-> self parent)) 'player-stepped (-> self color))
        #f
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (suspend)
     (update-transforms! (-> self root-override))
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -90,8 +89,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior drop-plat) ja-post)
+  :post (the-as (function none :behavior drop-plat) ja-post)
   )
 
 (defbehavior drop-plat-set-fade drop-plat ()
@@ -110,16 +108,14 @@
   )
 
 (defstate drop-plat-spawn (drop-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('drop)
        (go drop-plat-die)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self root-override trans y)
           (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y))
           )
@@ -142,16 +138,14 @@
   )
 
 (defstate drop-plat-rise (drop-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('drop)
        (go drop-plat-drop)
        )
       )
     )
-  :code
-  (behavior ((arg0 draw-control))
+  :code (behavior ((arg0 draw-control))
     (set! (-> self interp) 1.0)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self spin-angle) 0.0)
@@ -186,8 +180,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'quaternion)))
       (quaternion-vector-angle! gp-0 (-> self spin-axis) (-> self spin-angle))
       (quaternion*! (-> self root-override quat) (-> (the-as process-drawable (-> self parent 0)) root quat) gp-0)
@@ -199,8 +192,7 @@
   )
 
 (defstate drop-plat-drop (drop-plat)
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (= (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root-override trans y))
       (set! (-> self state-time) (-> *display* base-frame-counter))
       (sound-play-by-name (static-sound-name "bridge-piece-dn") (new-sound-id) 1024 0 0 1 #t)
@@ -230,8 +222,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'quaternion)))
       (quaternion-vector-angle! gp-0 (-> self spin-axis) (-> self spin-angle))
       (quaternion*! (-> self root-override quat) (-> (the-as process-drawable (-> self parent 0)) root quat) gp-0)
@@ -243,8 +234,7 @@
   )
 
 (defstate drop-plat-die (drop-plat)
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (none)
     )
@@ -469,16 +459,14 @@
   )
 
 (defstate citb-drop-plat-idle (citb-drop-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (go citb-drop-plat-active)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (citb-drop-plat-drop-all-children)
     (loop
       (suspend)
@@ -488,8 +476,7 @@
   )
 
 (defstate citb-drop-plat-active (citb-drop-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'player-stepped)
@@ -505,8 +492,7 @@
               )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (citb-drop-plat-spawn-children)
     (loop
