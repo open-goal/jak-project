@@ -49,8 +49,7 @@
 
 ;; failed to figure out what this is:
 (defstate teetertotter-idle (teetertotter)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('attack)
        (case (-> arg3 param 1)
@@ -77,76 +76,56 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja :group! (-> self draw art-group data 4) :num! min)
     (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior teetertotter) transform-post)
+  :post (the-as (function none :behavior teetertotter) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate teetertotter-launch (teetertotter)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (the-as object (when (= arg2 'touch)
-                     (when (and ((method-of-type touching-shapes-entry prims-touching?)
-                                 (the-as touching-shapes-entry (-> arg3 param 0))
-                                 (the-as collide-shape-moving (-> self root))
-                                 (the-as uint 1)
-                                 )
-                                (-> self rock-is-dangerous)
-                                )
-                       (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-                         (set! (-> a1-2 from) self)
-                         (set! (-> a1-2 num-params) 2)
-                         (set! (-> a1-2 message) 'attack)
-                         (set! (-> a1-2 param 0) (-> arg3 param 0))
-                         (let ((a0-2 (new 'static 'attack-info :mask #x20)))
-                           (set! (-> a0-2 mode) 'deadly)
-                           (set! (-> a1-2 param 1) (the-as uint a0-2))
-                           )
-                         (send-event-function arg0 a1-2)
-                         )
-                       )
-                     (when (and ((method-of-type touching-shapes-entry prims-touching?)
-                                 (the-as touching-shapes-entry (-> arg3 param 0))
-                                 (the-as collide-shape-moving (-> self root))
-                                 (the-as uint 2)
-                                 )
-                                (target-on-end-of-teetertotter? self)
-                                (not (-> self launched-player))
-                                (-> self in-launch-window)
-                                )
-                       (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-                         (set! (-> a1-4 from) self)
-                         (set! (-> a1-4 num-params) 2)
-                         (set! (-> a1-4 message) 'shove)
-                         (set! (-> a1-4 param 0) (the-as uint #f))
-                         (let ((v1-16 (new 'static 'attack-info :mask #xcc0)))
-                           (set! (-> v1-16 shove-back) 0.0)
-                           (set! (-> v1-16 shove-up) 53248.0)
-                           (set! (-> v1-16 angle) 'jump)
-                           (set! (-> v1-16 control) 1.0)
-                           (set! (-> a1-4 param 1) (the-as uint v1-16))
-                           )
-                         (when (send-event-function arg0 a1-4)
-                           (let ((v0-0 #t))
-                             (set! (-> self launched-player) v0-0)
-                             v0-0
-                             )
-                           )
-                         )
-                       )
-                     )
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (the-as
+      object
+      (when (= arg2 'touch)
+        (if (and ((method-of-type touching-shapes-entry prims-touching?)
+                  (the-as touching-shapes-entry (-> arg3 param 0))
+                  (the-as collide-shape-moving (-> self root))
+                  (the-as uint 1)
+                  )
+                 (-> self rock-is-dangerous)
+                 )
+            (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'deadly))))
             )
+        (when (and ((method-of-type touching-shapes-entry prims-touching?)
+                    (the-as touching-shapes-entry (-> arg3 param 0))
+                    (the-as collide-shape-moving (-> self root))
+                    (the-as uint 2)
+                    )
+                   (target-on-end-of-teetertotter? self)
+                   (not (-> self launched-player))
+                   (-> self in-launch-window)
+                   )
+          (when (send-event
+                  arg0
+                  'shove
+                  #f
+                  (static-attack-info ((shove-back (meters 0)) (shove-up (meters 13)) (angle 'jump) (control 1.0)))
+                  )
+            (let ((v0-0 #t))
+              (set! (-> self launched-player) v0-0)
+              v0-0
+              )
+            )
+          )
+        )
+      )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self launched-player) #f)
     (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -162,14 +141,12 @@
     (go teetertotter-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior teetertotter) rider-post)
+  :post (the-as (function none :behavior teetertotter) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate teetertotter-bend (teetertotter)
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
@@ -178,8 +155,7 @@
     (go teetertotter-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior teetertotter) rider-post)
+  :post (the-as (function none :behavior teetertotter) rider-post)
   )
 
 ;; definition for method 11 of type teetertotter

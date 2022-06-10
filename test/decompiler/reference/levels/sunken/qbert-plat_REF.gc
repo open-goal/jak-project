@@ -141,16 +141,14 @@
 
 ;; failed to figure out what this is:
 (defstate qbert-plat-on-mimic (qbert-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('die)
        (go qbert-plat-on-die)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set-vector! (-> self draw color-emissive) 0.0 0.0 1.0 0.0)
     (loop
       (let ((gp-0 (-> self parent)))
@@ -169,14 +167,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior qbert-plat) ja-post)
+  :post (the-as (function none :behavior qbert-plat) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate qbert-plat-on-die (qbert-plat)
-  :code
-  (behavior ()
+  :code (behavior ()
     '()
     (none)
     )
@@ -240,15 +236,7 @@
           (set! (-> obj on?) v1-3)
           (cond
             (v1-3
-              (let ((s5-0 (get-process *default-dead-pool* qbert-plat-on #x4000)))
-                (when s5-0
-                  (let ((t9-2 (method-of-type qbert-plat-on activate)))
-                    (t9-2 (the-as qbert-plat-on s5-0) obj 'qbert-plat-on (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process s5-0 qbert-plat-on-init-by-other (-> obj entity) obj)
-                  (-> s5-0 ppointer)
-                  )
-                )
+              (process-spawn qbert-plat-on (-> obj entity) obj :to obj)
               (sound-play-by-name (static-sound-name "plat-light-on") (new-sound-id) 1024 0 0 1 #t)
               )
             (else
@@ -269,8 +257,7 @@
 
 ;; failed to figure out what this is:
 (defstate qbert-plat-wait-for-master (qbert-plat)
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (let ((v1-0 (-> self master)))
         (when (if v1-0
@@ -286,40 +273,33 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior qbert-plat) ja-post)
+  :post (the-as (function none :behavior qbert-plat) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate rigid-body-platform-idle (qbert-plat)
   :virtual #t
-  :event
-  qbert-plat-event-handler
-  :code
-  (behavior ()
+  :event qbert-plat-event-handler
+  :code (behavior ()
     (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior qbert-plat) ja-post)
+  :post (the-as (function none :behavior qbert-plat) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate rigid-body-platform-float (qbert-plat)
   :virtual #t
-  :event
-  qbert-plat-event-handler
-  :exit
-  (behavior ()
+  :event qbert-plat-event-handler
+  :exit (behavior ()
     (if (-> self on?)
         (logior! (-> self draw status) (draw-status hidden))
         )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     ((-> (method-of-type rigid-body-platform rigid-body-platform-float) trans))
     (let* ((v1-5 (-> self root-overlay riders))
@@ -334,8 +314,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     ((the-as
        (function none :behavior qbert-plat)
        (-> (method-of-type rigid-body-platform rigid-body-platform-float) post)
@@ -453,8 +432,7 @@
 
 ;; failed to figure out what this is:
 (defstate qbert-plat-master-idle (qbert-plat-master)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (start-hint-timer (game-text-id sunken-qbert-plat-hint))
@@ -489,8 +467,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (not (-> self puzzle-beaten?))
         (when (task-complete? *game-info* (game-task sunken-platforms))
@@ -617,8 +594,7 @@
 
 ;; failed to figure out what this is:
 (defstate qbert-plat-master-do-door (qbert-plat-master)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (when (not (-> self play-door-cam?))
       (cond
         (arg0
@@ -692,48 +668,14 @@
     (cond
       (arg0
         (ambient-hint-spawn "gamcam08" (the-as vector #f) *entity-pool* 'camera)
-        (let ((s5-0 (get-process *default-dead-pool* pov-camera #x4000)))
-          (when s5-0
-            (let ((t9-7 (method-of-type pov-camera activate)))
-              (t9-7 (the-as pov-camera s5-0) self 'pov-camera (the-as pointer #x70004000))
-              )
-            (run-now-in-process
-              s5-0
-              pov-camera-init-by-other
-              (-> self root trans)
-              *sunkencam-sg*
-              "qbert-show-door-open"
-              0
-              #f
-              '()
-              )
-            (-> s5-0 ppointer)
-            )
-          )
+        (process-spawn pov-camera (-> self root trans) *sunkencam-sg* "qbert-show-door-open" 0 #f '() :to self)
         (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1.4))
           (suspend)
           )
         )
       (else
         (ambient-hint-spawn "gamcam07" (the-as vector #f) *entity-pool* 'camera)
-        (let ((s5-1 (get-process *default-dead-pool* pov-camera #x4000)))
-          (when s5-1
-            (let ((t9-11 (method-of-type pov-camera activate)))
-              (t9-11 (the-as pov-camera s5-1) self 'pov-camera (the-as pointer #x70004000))
-              )
-            (run-now-in-process
-              s5-1
-              pov-camera-init-by-other
-              (-> self root trans)
-              *sunkencam-sg*
-              "qbert-show-door-close"
-              0
-              #f
-              '()
-              )
-            (-> s5-1 ppointer)
-            )
-          )
+        (process-spawn pov-camera (-> self root trans) *sunkencam-sg* "qbert-show-door-close" 0 #f '() :to self)
         (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
           (suspend)
           )
@@ -813,8 +755,7 @@
 
 ;; failed to figure out what this is:
 (defstate qbert-plat-master-wait-for-door (qbert-plat-master)
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (let* ((v1-0 (-> self door))
              (gp-0 (if v1-0

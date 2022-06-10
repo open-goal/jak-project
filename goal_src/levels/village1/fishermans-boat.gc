@@ -8,9 +8,10 @@
 (declare-type fishermans-boat rigid-body-platform)
 
 ;; DECOMP BEGINS
+
+(import "goal_src/import/evilbro-ag.gc")
 (import "goal_src/import/fishermans-boat-ag.gc")
 (import "goal_src/import/evilsis-ag.gc")
-(import "goal_src/import/evilbro-ag.gc")
 
 (define *fishermans-boat-constants* (new 'static 'rigid-body-platform-constants
                                       :drag-factor 2.0
@@ -656,8 +657,7 @@
   )
 
 (defpart 2896
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xa :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xa :page #x2))
     (sp-flt spt-num 0.06)
     (sp-flt spt-x (meters 10))
     (sp-rnd-flt spt-scale-x (meters 1.5) (meters 3) 1.0)
@@ -758,17 +758,7 @@
 (defbehavior fishermans-boat-post fishermans-boat ()
   (when (and *target* (-> self kill-player))
     (set! (-> self kill-player) #f)
-    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-0 from) self)
-      (set! (-> a1-0 num-params) 2)
-      (set! (-> a1-0 message) 'attack)
-      (set! (-> a1-0 param 0) (the-as uint #f))
-      (let ((a0-0 (new 'static 'attack-info :mask #x20)))
-        (set! (-> a0-0 mode) 'endlessfall)
-        (set! (-> a1-0 param 1) (the-as uint a0-0))
-        )
-      (when (send-event-function *target* a1-0)
-        )
+    (when (send-event *target* 'attack #f (static-attack-info ((mode 'endlessfall))))
       )
     )
   (when (and *target* (-> self ignition))
@@ -906,18 +896,15 @@
   )
 
 (defstate fishermans-boat-docked-village (fishermans-boat)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior fishermans-boat)
     rigid-body-platform-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (fishermans-boat-leave-dock?)
         (go fishermans-boat-ride-to-misty)
         )
@@ -927,14 +914,12 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self anim) (new 'static 'spool-anim
                            :name "fishermans-boat-ride-to-misty"
                            :index 15
                            :parts 3
-                           :command-list
-                           '((0 want-levels village1 misty)
+                           :command-list '((0 want-levels village1 misty)
                              (0 shadow target #f)
                              (0 shadow sidekick #f)
                              (250 display-level misty display)
@@ -953,13 +938,11 @@
     (anim-loop)
     (none)
     )
-  :post
-  fishermans-boat-post
+  :post fishermans-boat-post
   )
 
 (defstate fishermans-boat-leaving-village (fishermans-boat)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (< 614400.0 (vector-vector-xz-distance (-> self root-overlay trans) (-> self dock-point)))
       (load-state-want-display-level 'village1 'special)
       (load-state-want-display-level 'misty 'display)
@@ -970,34 +953,26 @@
     (rider-trans)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (load-state-want-levels 'village1 'misty)
-    (let ((gp-0 (get-process *default-dead-pool* camera-tracker #x4000)))
-      (set! (-> self cam-tracker)
-            (ppointer->handle (when gp-0
-                                (let ((t9-2 (method-of-type camera-tracker activate)))
-                                  (t9-2 (the-as camera-tracker gp-0) self 'camera-tracker (the-as pointer #x70004000))
+    (set! (-> self cam-tracker)
+          (ppointer->handle (process-spawn
+                              camera-tracker
+                              :init camera-tracker-init
+                              (lambda :behavior fishermans-boat
+                                ()
+                                (camera-change-to "camera-282" 0 #f)
+                                (while (!= (-> self rbody lin-momentum-damping-factor) 'release)
+                                  (suspend)
                                   )
-                                (run-now-in-process
-                                  gp-0
-                                  camera-tracker-init
-                                  (lambda :behavior fishermans-boat
-                                    ()
-                                    (camera-change-to "camera-282" 0 #f)
-                                    (while (!= (-> self rbody lin-momentum-damping-factor) 'release)
-                                      (suspend)
-                                      )
-                                    (set! (-> self rbody lin-momentum-damping-factor) (the-as float #f))
-                                    (camera-change-to (the-as string 'base) 0 #f)
-                                    (none)
-                                    )
-                                  )
-                                (-> gp-0 ppointer)
+                                (set! (-> self rbody lin-momentum-damping-factor) (the-as float #f))
+                                (camera-change-to (the-as string 'base) 0 #f)
+                                (none)
                                 )
+                              :to self
                               )
-            )
-      )
+                            )
+          )
     (send-event (handle->process (-> self cam-tracker)) 'border #t)
     (send-event (handle->process (-> self cam-tracker)) 'mask #x20800)
     (fishermans-boat-set-path-point 0)
@@ -1007,13 +982,11 @@
       )
     (none)
     )
-  :post
-  fishermans-boat-post
+  :post fishermans-boat-post
   )
 
 (defstate fishermans-boat-entering-village (fishermans-boat)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (fishermans-boat-enter-dock?)
       (set! (-> self waiting-for-player) #f)
       (when #t
@@ -1028,8 +1001,7 @@
     (rider-trans)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (load-state-want-levels 'village1 'beach)
     (load-state-want-vis 'vi1)
     (fishermans-boat-set-dock-point 0)
@@ -1037,23 +1009,19 @@
     (anim-loop)
     (none)
     )
-  :post
-  fishermans-boat-post
+  :post fishermans-boat-post
   )
 
 (defstate fishermans-boat-docked-misty (fishermans-boat)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior fishermans-boat)
     rigid-body-platform-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (fishermans-boat-leave-dock?)
         (go fishermans-boat-ride-to-village1)
         )
@@ -1063,15 +1031,13 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (if #t
         (set! (-> self anim) (new 'static 'spool-anim
                                :name "fishermans-boat-ride-to-village1"
                                :index 16
                                :parts 3
-                               :command-list
-                               '((0 want-levels village1 misty)
+                               :command-list '((0 want-levels village1 misty)
                                  (0 shadow target #f)
                                  (0 shadow sidekick #f)
                                  (250 display-level village1 display)
@@ -1089,8 +1055,7 @@
                                :name "fishermans-boat-ride-to-village1-alt"
                                :index 17
                                :parts 12
-                               :command-list
-                               '((0 want-levels village1 misty)
+                               :command-list '((0 want-levels village1 misty)
                                  (105 want-levels village1 intro)
                                  (150 display-level intro display)
                                  (150 want-vis int)
@@ -1116,13 +1081,11 @@
     (anim-loop)
     (none)
     )
-  :post
-  fishermans-boat-post
+  :post fishermans-boat-post
   )
 
 (defstate fishermans-boat-leaving-misty (fishermans-boat)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (< 409600.0 (vector-vector-xz-distance (-> self root-overlay trans) (-> self dock-point)))
       (load-state-want-force-vis 'village1 #t)
       (load-state-want-display-level 'village1 'display)
@@ -1133,33 +1096,25 @@
     (rider-trans)
     (none)
     )
-  :code
-  (behavior ()
-    (let ((gp-0 (get-process *default-dead-pool* camera-tracker #x4000)))
-      (set! (-> self cam-tracker)
-            (ppointer->handle (when gp-0
-                                (let ((t9-1 (method-of-type camera-tracker activate)))
-                                  (t9-1 (the-as camera-tracker gp-0) self 'camera-tracker (the-as pointer #x70004000))
+  :code (behavior ()
+    (set! (-> self cam-tracker)
+          (ppointer->handle (process-spawn
+                              camera-tracker
+                              :init camera-tracker-init
+                              (lambda :behavior fishermans-boat
+                                ()
+                                (camera-change-to "camera-287" 0 #f)
+                                (while (!= (-> self rbody lin-momentum-damping-factor) 'release)
+                                  (suspend)
                                   )
-                                (run-now-in-process
-                                  gp-0
-                                  camera-tracker-init
-                                  (lambda :behavior fishermans-boat
-                                    ()
-                                    (camera-change-to "camera-287" 0 #f)
-                                    (while (!= (-> self rbody lin-momentum-damping-factor) 'release)
-                                      (suspend)
-                                      )
-                                    (set! (-> self rbody lin-momentum-damping-factor) (the-as float #f))
-                                    (camera-change-to (the-as string 'base) 0 #f)
-                                    (none)
-                                    )
-                                  )
-                                (-> gp-0 ppointer)
+                                (set! (-> self rbody lin-momentum-damping-factor) (the-as float #f))
+                                (camera-change-to (the-as string 'base) 0 #f)
+                                (none)
                                 )
+                              :to self
                               )
-            )
-      )
+                            )
+          )
     (send-event (handle->process (-> self cam-tracker)) 'border #t)
     (send-event (handle->process (-> self cam-tracker)) 'mask #x20800)
     (fishermans-boat-set-path-point 4)
@@ -1169,13 +1124,11 @@
       )
     (none)
     )
-  :post
-  fishermans-boat-post
+  :post fishermans-boat-post
   )
 
 (defstate fishermans-boat-entering-misty (fishermans-boat)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (fishermans-boat-enter-dock?)
       (set! (-> self waiting-for-player) #f)
       (level-hint-spawn
@@ -1194,8 +1147,7 @@
     (rider-trans)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set-continue! *game-info* "misty-start")
     (fishermans-boat-set-dock-point 4)
     (fishermans-boat-set-path-point 2)
@@ -1204,19 +1156,16 @@
       )
     (none)
     )
-  :post
-  fishermans-boat-post
+  :post fishermans-boat-post
   )
 
 (defstate fishermans-boat-player-control (fishermans-boat)
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (send-event *camera* 'change-state *camera-base-mode* 0)
     (set! (-> self auto-pilot) #t)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (nth-point (-> self boat-path) 0 gp-0)
       (if (< (vector-vector-xz-distance (-> self root-overlay trans) gp-0) 614400.0)
@@ -1230,8 +1179,7 @@
     0
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (send-event (handle->process (-> self cam-tracker)) 'message 'release)
     (suspend)
     (send-event *camera* 'change-state cam-stick 0)
@@ -1243,8 +1191,7 @@
       )
     (none)
     )
-  :post
-  fishermans-boat-post
+  :post fishermans-boat-post
   )
 
 (defbehavior fishermans-boat-set-throttle-by-speed fishermans-boat ((arg0 float))
@@ -1260,20 +1207,17 @@
   )
 
 (defstate fishermans-boat-measurements (fishermans-boat)
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self measure-parameters) #f)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (cpad-pressed? 1 square)
         (go fishermans-boat-player-control)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self auto-pilot) #f)
     (let ((gp-0 (new 'stack-no-clear 'vector))
           (s5-0 1)
@@ -1311,8 +1255,7 @@
     (go fishermans-boat-player-control)
     (none)
     )
-  :post
-  fishermans-boat-post
+  :post fishermans-boat-post
   )
 
 (defmethod relocate fishermans-boat ((obj fishermans-boat) (arg0 int))
@@ -1500,60 +1443,44 @@
   )
 
 (defstate fishermans-boat-ride-to-misty (fishermans-boat)
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self propeller enable) #f)
     (quaternion-identity! (-> self root-overlay quat))
     (set! (-> self root-overlay trans quad) (-> self entity extra trans quad))
     (set! (-> self player-riding) #f)
     (set! (-> self auto-pilot) #f)
-    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-0 from) self)
-      (set! (-> a1-0 num-params) 1)
-      (set! (-> a1-0 message) 'clone-anim)
-      (set! (-> a1-0 param 0) (the-as uint self))
-      (when (send-event-function *target* a1-0)
-        (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
-        (send-event *target* 'blend-shape #t)
-        (let* ((gp-0 (get-process *default-dead-pool* othercam #x4000))
-               (v1-20 (when gp-0
-                        (let ((t9-5 (method-of-type othercam activate)))
-                          (t9-5 (the-as othercam gp-0) self 'othercam (the-as pointer #x70004000))
-                          )
-                        (run-now-in-process gp-0 othercam-init-by-other self 5 #f #t)
-                        (-> gp-0 ppointer)
-                        )
-                      )
-               )
-          (send-event (ppointer->process v1-20) 'mask 2048)
-          )
-        (set! (-> self draw force-lod) 0)
-        (ja-play-spooled-anim
-          (-> self anim)
-          (the-as art-joint-anim fishermans-boat-idle-ja)
-          (the-as art-joint-anim #f)
-          (the-as (function process-drawable symbol) false-func)
-          )
-        (set! (-> self draw force-lod) -1)
-        (send-event *target* 'blend-shape #f)
-        (ja-channel-set! 1)
-        (ja :group! fishermans-boat-idle-ja)
-        (vector<-cspace! (-> self root-overlay trans) (-> self node-list data 3))
-        (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
-        (fishermans-boat-reset-physics)
-        (transform-post)
-        (when *target*
-          (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
-          (send-event *target* 'trans 'restore (-> self old-target-pos))
-          (send-event *target* 'end-mode)
-          (update-transforms! (-> self root-overlay))
-          (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
-          (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
-          (suspend)
-          (send-event *camera* 'teleport-to-other-start-string)
-          )
-        (set-continue! *game-info* "misty-start")
+    (when (send-event *target* 'clone-anim self)
+      (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
+      (send-event *target* 'blend-shape #t)
+      (let ((v1-20 (process-spawn othercam self 5 #f #t :to self)))
+        (send-event (ppointer->process v1-20) 'mask 2048)
         )
+      (set! (-> self draw force-lod) 0)
+      (ja-play-spooled-anim
+        (-> self anim)
+        (the-as art-joint-anim fishermans-boat-idle-ja)
+        (the-as art-joint-anim #f)
+        (the-as (function process-drawable symbol) false-func)
+        )
+      (set! (-> self draw force-lod) -1)
+      (send-event *target* 'blend-shape #f)
+      (ja-channel-set! 1)
+      (ja :group! fishermans-boat-idle-ja)
+      (vector<-cspace! (-> self root-overlay trans) (-> self node-list data 3))
+      (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
+      (fishermans-boat-reset-physics)
+      (transform-post)
+      (when *target*
+        (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
+        (send-event *target* 'trans 'restore (-> self old-target-pos))
+        (send-event *target* 'end-mode)
+        (update-transforms! (-> self root-overlay))
+        (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
+        (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
+        (suspend)
+        (send-event *camera* 'teleport-to-other-start-string)
+        )
+      (set-continue! *game-info* "misty-start")
       )
     (set! (-> self waiting-for-player) #t)
     (set! (-> self ignition) #f)
@@ -1561,43 +1488,37 @@
     (set! (-> self propeller enable) #t)
     (fishermans-boat-play-sounds)
     (copy-settings-from-target! *setting-control*)
-    (let ((gp-1 (get-process *default-dead-pool* process #x4000)))
-      (when gp-1
-        (let ((t9-25 (method-of-type process activate)))
-          (t9-25 gp-1 self 'process (the-as pointer #x70004000))
+    (process-spawn-function
+      process
+      (lambda :behavior fishermans-boat
+        ()
+        (let ((gp-0 (-> *display* base-frame-counter)))
+          (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1))
+            (suspend)
+            )
           )
-        (run-next-time-in-process gp-1 (lambda :behavior fishermans-boat
-                                         ()
-                                         (let ((gp-0 (-> *display* base-frame-counter)))
-                                           (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1))
-                                             (suspend)
-                                             )
-                                           )
-                                         (while (or (-> *setting-control* current ambient)
-                                                    (-> *setting-control* current hint)
-                                                    (-> *setting-control* current movie)
-                                                    )
-                                           (suspend)
-                                           )
-                                         (suspend)
-                                         (level-hint-spawn
-                                           (game-text-id misty-daxter-scared)
-                                           "sksp0060"
-                                           (the-as entity #f)
-                                           *entity-pool*
-                                           (game-task none)
-                                           )
-                                         (none)
-                                         )
-                                  )
-        (-> gp-1 ppointer)
+        (while (or (-> *setting-control* current ambient)
+                   (-> *setting-control* current hint)
+                   (-> *setting-control* current movie)
+                   )
+          (suspend)
+          )
+        (suspend)
+        (level-hint-spawn
+          (game-text-id misty-daxter-scared)
+          "sksp0060"
+          (the-as entity #f)
+          *entity-pool*
+          (game-task none)
+          )
+        (none)
         )
+      :to self
       )
     (go fishermans-boat-docked-misty)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (ja-post)
     (fishermans-boat-spawn-particles 81920.0)
     (fishermans-boat-play-sounds)
@@ -1606,8 +1527,7 @@
   )
 
 (defstate fishermans-boat-ride-to-village1 (fishermans-boat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as
         object
@@ -1616,19 +1536,9 @@
            (when (= (level-status *level* 'intro) 'active)
              (let ((gp-1 (entity-by-name "evilbro-2")))
                (when gp-1
-                 (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
-                   (set! (-> self evilbro)
-                         (ppointer->handle
-                           (when s5-0
-                             (let ((t9-3 (method-of-type manipy activate)))
-                               (t9-3 (the-as manipy s5-0) self 'manipy (the-as pointer #x70004000))
-                               )
-                             (run-now-in-process s5-0 manipy-init (-> self root-overlay trans) gp-1 *fb-evilbro-sg* #f)
-                             (-> s5-0 ppointer)
-                             )
-                           )
-                         )
-                   )
+                 (set! (-> self evilbro)
+                       (ppointer->handle (manipy-spawn (-> self root-overlay trans) gp-1 *fb-evilbro-sg* #f :to self))
+                       )
                  (send-event (handle->process (-> self evilbro)) 'anim-mode 'clone-anim)
                  (send-event (handle->process (-> self evilbro)) 'blend-shape #t)
                  (send-event (handle->process (-> self evilbro)) 'center-joint 3)
@@ -1636,19 +1546,9 @@
                )
              (let ((gp-2 (entity-by-name "evilsis-2")))
                (when gp-2
-                 (let ((s5-1 (get-process *default-dead-pool* manipy #x4000)))
-                   (set! (-> self evilsis)
-                         (ppointer->handle
-                           (when s5-1
-                             (let ((t9-10 (method-of-type manipy activate)))
-                               (t9-10 (the-as manipy s5-1) self 'manipy (the-as pointer #x70004000))
-                               )
-                             (run-now-in-process s5-1 manipy-init (-> self root-overlay trans) gp-2 *fb-evilsis-sg* #f)
-                             (-> s5-1 ppointer)
-                             )
-                           )
-                         )
-                   )
+                 (set! (-> self evilsis)
+                       (ppointer->handle (manipy-spawn (-> self root-overlay trans) gp-2 *fb-evilsis-sg* #f :to self))
+                       )
                  (send-event (handle->process (-> self evilsis)) 'anim-mode 'clone-anim)
                  (send-event (handle->process (-> self evilsis)) 'blend-shape #t)
                  (send-event (handle->process (-> self evilsis)) 'center-joint 3)
@@ -1672,8 +1572,7 @@
         )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self propeller enable) #f)
     (set! (-> self evilbro) (the-as handle #f))
     (set! (-> self evilsis) (the-as handle #f))
@@ -1681,53 +1580,38 @@
     (set! (-> self root-overlay trans quad) (-> self entity extra trans quad))
     (set! (-> self player-riding) #f)
     (set! (-> self auto-pilot) #f)
-    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-0 from) self)
-      (set! (-> a1-0 num-params) 1)
-      (set! (-> a1-0 message) 'clone-anim)
-      (set! (-> a1-0 param 0) (the-as uint self))
-      (when (send-event-function *target* a1-0)
-        (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
-        (send-event *target* 'blend-shape #t)
-        (let* ((gp-0 (get-process *default-dead-pool* othercam #x4000))
-               (v1-20 (when gp-0
-                        (let ((t9-5 (method-of-type othercam activate)))
-                          (t9-5 (the-as othercam gp-0) self 'othercam (the-as pointer #x70004000))
-                          )
-                        (run-now-in-process gp-0 othercam-init-by-other self 5 #f #t)
-                        (-> gp-0 ppointer)
-                        )
-                      )
-               )
-          (send-event (ppointer->process v1-20) 'mask 2048)
-          )
-        (set! (-> self draw force-lod) 0)
-        (ja-play-spooled-anim
-          (-> self anim)
-          (the-as art-joint-anim fishermans-boat-idle-ja)
-          (the-as art-joint-anim #f)
-          (the-as (function process-drawable symbol) false-func)
-          )
-        (set! (-> self draw force-lod) -1)
-        (send-event *target* 'blend-shape #f)
-        (ja-channel-set! 1)
-        (ja :group! fishermans-boat-idle-ja)
-        (vector<-cspace! (-> self root-overlay trans) (-> self node-list data 3))
-        (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
-        (fishermans-boat-reset-physics)
-        (transform-post)
-        (when *target*
-          (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
-          (send-event *target* 'trans 'restore (-> self old-target-pos))
-          (send-event *target* 'end-mode)
-          (update-transforms! (-> self root-overlay))
-          (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
-          (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
-          (suspend)
-          (send-event *camera* 'teleport-to-other-start-string)
-          )
-        (set-continue! *game-info* "village1-hut")
+    (when (send-event *target* 'clone-anim self)
+      (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
+      (send-event *target* 'blend-shape #t)
+      (let ((v1-20 (process-spawn othercam self 5 #f #t :to self)))
+        (send-event (ppointer->process v1-20) 'mask 2048)
         )
+      (set! (-> self draw force-lod) 0)
+      (ja-play-spooled-anim
+        (-> self anim)
+        (the-as art-joint-anim fishermans-boat-idle-ja)
+        (the-as art-joint-anim #f)
+        (the-as (function process-drawable symbol) false-func)
+        )
+      (set! (-> self draw force-lod) -1)
+      (send-event *target* 'blend-shape #f)
+      (ja-channel-set! 1)
+      (ja :group! fishermans-boat-idle-ja)
+      (vector<-cspace! (-> self root-overlay trans) (-> self node-list data 3))
+      (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
+      (fishermans-boat-reset-physics)
+      (transform-post)
+      (when *target*
+        (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
+        (send-event *target* 'trans 'restore (-> self old-target-pos))
+        (send-event *target* 'end-mode)
+        (update-transforms! (-> self root-overlay))
+        (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
+        (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
+        (suspend)
+        (send-event *camera* 'teleport-to-other-start-string)
+        )
+      (set-continue! *game-info* "village1-hut")
       )
     (set! (-> self waiting-for-player) #t)
     (set! (-> self ignition) #f)
@@ -1738,8 +1622,7 @@
     (go fishermans-boat-docked-village)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (ja-post)
     (fishermans-boat-spawn-particles 81920.0)
     (fishermans-boat-play-sounds)

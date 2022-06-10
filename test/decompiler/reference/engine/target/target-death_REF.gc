@@ -39,10 +39,8 @@
 
 ;; failed to figure out what this is:
 (defstate target-continue (target)
-  :event
-  target-generic-event-handler
-  :exit
-  (behavior ()
+  :event target-generic-event-handler
+  :exit (behavior ()
     (set! (-> *load-boundary-target* 0 quad) (-> (camera-pos) quad))
     (set! (-> *load-boundary-target* 1 quad) (-> (target-pos 0) quad))
     (set! (-> *load-boundary-target* 2 quad) (-> *load-boundary-target* 0 quad))
@@ -60,8 +58,7 @@
     (clear-pending-settings-from-process *setting-control* self 'music)
     (none)
     )
-  :code
-  (behavior ((arg0 continue-point))
+  :code (behavior ((arg0 continue-point))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (if (-> *art-control* reserve-buffer)
         (reserve-free *art-control* (-> *art-control* reserve-buffer heap))
@@ -239,44 +236,36 @@
        )
       ((logtest? (-> arg0 flags) (continue-flags sage-demo-convo))
        (set-blackout-frames (seconds 1))
-       (let ((s5-5 (get-process *default-dead-pool* process #x4000)))
-         (when s5-5
-           (let ((t9-60 (method-of-type process activate)))
-             (t9-60 s5-5 *default-pool* 'process (the-as pointer #x70004000))
-             )
-           (run-next-time-in-process
-             s5-5
-             (lambda ()
-               (local-vars (v1-10 basic))
-               (let ((gp-0 (entity-by-name "sage-23")))
-                 (when gp-0
-                   (set-blackout-frames (seconds 100))
-                   (entity-birth-no-kill gp-0)
-                   (suspend)
-                   (suspend)
-                   (send-event
-                     (if gp-0
-                         (-> gp-0 extra process)
-                         )
-                     'play-anim
+       (process-spawn-function
+         process
+         (lambda ()
+           (local-vars (v1-10 basic))
+           (let ((gp-0 (entity-by-name "sage-23")))
+             (when gp-0
+               (set-blackout-frames (seconds 100))
+               (entity-birth-no-kill gp-0)
+               (suspend)
+               (suspend)
+               (send-event
+                 (if gp-0
+                     (-> gp-0 extra process)
                      )
-                   )
+                 'play-anim
                  )
-               (let ((gp-1 (-> *display* base-frame-counter)))
-                 (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 2))
-                   (suspend)
-                   )
-                 )
-               (until (not v1-10)
-                 (suspend)
-                 (set! v1-10 (and *target* (logtest? (-> *target* state-flags) (state-flags sf08))))
-                 )
-               (set! (-> *cpad-list* cpads 0 change-time) (-> *display* base-frame-counter))
-               (reset-actors 'dead)
-               (start 'play (get-continue-by-name *game-info* "misty-start"))
                )
              )
-           (-> s5-5 ppointer)
+           (let ((gp-1 (-> *display* base-frame-counter)))
+             (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 2))
+               (suspend)
+               )
+             )
+           (until (not v1-10)
+             (suspend)
+             (set! v1-10 (and *target* (logtest? (-> *target* state-flags) (state-flags sf08))))
+             )
+           (set! (-> *cpad-list* cpads 0 change-time) (-> *display* base-frame-counter))
+           (reset-actors 'dead)
+           (start 'play (get-continue-by-name *game-info* "misty-start"))
            )
          )
        )
@@ -454,15 +443,7 @@
         (when (and s5-8 (not (null? (-> s5-8 continues))))
           (format 0 "~A ~A ~A~%" (-> arg0 level) (-> s5-8 name) (car (-> s5-8 continues)))
           (inspect global)
-          (let ((gp-1 (get-process *default-dead-pool* process #x4000)))
-            (when gp-1
-              (let ((t9-104 (method-of-type process activate)))
-                (t9-104 gp-1 *default-pool* 'process (the-as pointer #x70004000))
-                )
-              (run-next-time-in-process gp-1 (lambda ((arg0 continue-point)) (start 'play arg0)) (car (-> s5-8 continues)))
-              (-> gp-1 ppointer)
-              )
-            )
+          (process-spawn-function process (lambda ((arg0 continue-point)) (start 'play arg0)) (car (-> s5-8 continues)))
           )
         )
       )
@@ -473,8 +454,7 @@
     (go target-stance)
     (none)
     )
-  :post
-  target-no-move-post
+  :post target-no-move-post
   )
 
 ;; definition for symbol *smack-mods*, type surface
@@ -500,8 +480,7 @@
                        :alignv 1.0
                        :slope-up-traction 1.0
                        :align-speed 1.0
-                       :mult-hook
-                       (lambda :behavior target
+                       :mult-hook (lambda :behavior target
                          ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
                          (when (= arg3 1)
                            (let ((f30-0 (-> self control unknown-float40))
@@ -547,8 +526,7 @@
     :alignv 1.0
     :slope-up-traction 1.0
     :align-speed 1.0
-    :mult-hook
-    (lambda :behavior target
+    :mult-hook (lambda :behavior target
       ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
       (when (= arg3 1)
         (let ((f30-0 (-> self control unknown-float40))
@@ -587,26 +565,19 @@
 ;; definition for function target-hit-effect
 ;; INFO: Return type mismatch int vs none.
 (defbehavior target-hit-effect target ((arg0 attack-info))
-  (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-    (when s5-0
-      (let ((t9-1 (method-of-type part-tracker activate)))
-        (t9-1 (the-as part-tracker s5-0) self 'part-tracker (the-as pointer #x70004000))
+  (process-spawn
+    part-tracker
+    :init part-tracker-init
+    (-> *part-group-id-table* 1)
+    -1
+    #f
+    #f
+    #f
+    (if (logtest? (-> arg0 mask) (attack-mask intersection))
+        (-> arg0 intersection)
+        (-> self control root-prim prim-core)
         )
-      (run-now-in-process
-        s5-0
-        part-tracker-init
-        (-> *part-group-id-table* 1)
-        -1
-        #f
-        #f
-        #f
-        (if (logtest? (-> arg0 mask) 4)
-            (-> arg0 intersection)
-            (-> self control root-prim prim-core)
-            )
-        )
-      (-> s5-0 ppointer)
-      )
+    :to self
     )
   (let ((v1-9 (-> arg0 mode)))
     (cond
@@ -628,15 +599,7 @@
     )
   (case (-> arg0 mode)
     (('burn 'burnup)
-     (let ((gp-1 (get-process *default-dead-pool* process #x4000)))
-       (when gp-1
-         (let ((t9-10 (method-of-type process activate)))
-           (t9-10 gp-1 self 'process (the-as pointer #x70004000))
-           )
-         (run-next-time-in-process gp-1 process-drawable-burn-effect 1200)
-         (-> gp-1 ppointer)
-         )
-       )
+     (process-spawn-function process process-drawable-burn-effect 1200 :to self)
      )
     (('tar)
      (sound-play-by-name (static-sound-name "get-burned") (new-sound-id) 1024 0 0 1 #t)
@@ -717,7 +680,7 @@
   (let ((s5-0 #f))
     (if (and (!= (-> arg0 angle) 'front)
              (!= (-> arg0 angle) 'shove)
-             (logtest? (-> arg0 mask) 2)
+             (logtest? (-> arg0 mask) (attack-mask vector))
              (!= (-> arg0 shove-back) 0.0)
              )
         (forward-up-nopitch->quaternion (-> self control dir-targ) arg1 (-> self control dynam gravity-normal))
@@ -730,7 +693,7 @@
        (set! (-> self control unknown-surface00) *smack-up-mods*)
        )
       (('front)
-       (if (and (logtest? (-> arg0 mask) 2) (!= (-> arg0 shove-back) 0.0))
+       (if (and (logtest? (-> arg0 mask) (attack-mask vector)) (!= (-> arg0 shove-back) 0.0))
            (forward-up-nopitch->quaternion
              (-> self control dir-targ)
              (vector-negate! (new 'stack-no-clear 'vector) arg1)
@@ -859,10 +822,8 @@
 
 ;; failed to figure out what this is:
 (defstate target-hit (target)
-  :event
-  target-standard-event-handler
-  :exit
-  (behavior ()
+  :event target-standard-event-handler
+  :exit (behavior ()
     (let ((gp-0 (new-stack-vector0))
           (f30-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
           )
@@ -887,8 +848,7 @@
     (target-exit)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (= *cheat-mode* 'debug)
       (when (and (not *pause-lock*) (cpad-hold? (-> self control unknown-cpad-info00 number) r2))
         (pickup-collectable! (-> self fact-info-target) (pickup-type eco-green) (the-as float 1.0) (the-as handle #f))
@@ -897,8 +857,7 @@
       )
     (none)
     )
-  :code
-  (behavior ((arg0 symbol) (arg1 attack-info))
+  :code (behavior ((arg0 symbol) (arg1 attack-info))
     (logclear! (-> self water flags) (water-flags wt16))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((gp-0 (-> self attack-info)))
@@ -923,7 +882,7 @@
            )
           )
         (combine! gp-0 arg1)
-        (when (zero? (logand (-> gp-0 mask) 2))
+        (when (zero? (logand (-> gp-0 mask) (attack-mask vector)))
           (vector-z-quaternion! (-> gp-0 vector) (-> self control unknown-quaternion00))
           (vector-xz-normalize! (-> gp-0 vector) (- (fabs (-> gp-0 shove-back))))
           (set! (-> gp-0 vector y) (-> gp-0 shove-up))
@@ -1027,17 +986,13 @@
     (go target-hit-ground #f)
     (none)
     )
-  :post
-  target-post
+  :post target-post
   )
 
 ;; definition for symbol *death-spool-array*, type (array spool-anim)
 (define *death-spool-array*
   (the-as (array spool-anim)
-    (new
-      'static
-      'boxed-array
-      :type spool-anim :length 11 :allocated-length 11
+    (new 'static 'boxed-array :type spool-anim
       (new 'static 'spool-anim :name "death-0181" :index 3 :parts 1 :command-list '())
       (new 'static 'spool-anim :name "death-0182" :index 4 :parts 1 :command-list '())
       (new 'static 'spool-anim :name "death-0184" :index 5 :parts 1 :command-list '())
@@ -1098,8 +1053,7 @@
 
 ;; failed to figure out what this is:
 (defstate target-death (target)
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags sf03 sf15))
     (target-exit)
     (clear-pending-settings-from-process *setting-control* self 'process-mask)
@@ -1110,21 +1064,12 @@
     (set! (-> self control dynam gravity-length) (-> self control unknown-dynamics00 gravity-length))
     (none)
     )
-  :trans
-  (-> target-hit trans)
-  :code
-  (behavior ((arg0 symbol))
+  :trans (-> target-hit trans)
+  :code (behavior ((arg0 symbol))
     (set! (-> self control unknown-uint20) (the-as uint #f))
-    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-0 from) self)
-      (set! (-> a1-0 num-params) 2)
-      (set! (-> a1-0 message) 'target)
-      (set! (-> a1-0 param 0) (the-as uint 'die))
-      (set! (-> a1-0 param 1) (the-as uint arg0))
-      (set! (-> self control unknown-int21)
-            (the-as int (send-event-function (handle->process (-> self attack-info attacker)) a1-0))
-            )
-      )
+    (set! (-> self control unknown-int21)
+          (the-as int (send-event (handle->process (-> self attack-info attacker)) 'target 'die arg0))
+          )
     (set! (-> self neck flex-blend) 0.0)
     (target-timed-invulnerable-off self)
     (set-setting! *setting-control* self 'process-mask 'set (the-as float 0.0) #x14a0000)
@@ -1186,26 +1131,30 @@
        (cond
          ((= arg0 'dark-eco-pool)
           (sound-play-by-name (static-sound-name "death-darkeco") (new-sound-id) 1024 0 0 1 #t)
-          (let ((gp-6 (get-process *default-dead-pool* part-tracker #x4000)))
-            (when gp-6
-              (let ((t9-21 (method-of-type part-tracker activate)))
-                (t9-21 (the-as part-tracker gp-6) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-                )
-              (run-now-in-process gp-6 part-tracker-init (-> *part-group-id-table* 31) -1 #f #f #f (-> self control trans))
-              (-> gp-6 ppointer)
-              )
+          (process-spawn
+            part-tracker
+            :init part-tracker-init
+            (-> *part-group-id-table* 31)
+            -1
+            #f
+            #f
+            #f
+            (-> self control trans)
+            :to *entity-pool*
             )
           )
          ((or (= arg0 'lava) (= arg0 'melt))
           (sound-play-by-name (static-sound-name "death-melt") (new-sound-id) 1024 0 0 1 #t)
-          (let ((gp-8 (get-process *default-dead-pool* part-tracker #x4000)))
-            (when gp-8
-              (let ((t9-26 (method-of-type part-tracker activate)))
-                (t9-26 (the-as part-tracker gp-8) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-                )
-              (run-now-in-process gp-8 part-tracker-init (-> *part-group-id-table* 32) -1 #f #f #f (-> self control trans))
-              (-> gp-8 ppointer)
-              )
+          (process-spawn
+            part-tracker
+            :init part-tracker-init
+            (-> *part-group-id-table* 32)
+            -1
+            #f
+            #f
+            #f
+            (-> self control trans)
+            :to *entity-pool*
             )
           )
          )
@@ -1341,23 +1290,16 @@
          )
        )
       (('burn 'burnup)
-       (let ((gp-15 (get-process *default-dead-pool* part-tracker #x4000)))
-         (when gp-15
-           (let ((t9-52 (method-of-type part-tracker activate)))
-             (t9-52 (the-as part-tracker gp-15) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-             )
-           (run-now-in-process
-             gp-15
-             part-tracker-init
-             (-> *part-group-id-table* 708)
-             -1
-             #f
-             #f
-             #f
-             (-> self control trans)
-             )
-           (-> gp-15 ppointer)
-           )
+       (process-spawn
+         part-tracker
+         :init part-tracker-init
+         (-> *part-group-id-table* 708)
+         -1
+         #f
+         #f
+         #f
+         (-> self control trans)
+         :to *entity-pool*
          )
        (target-death-anim (the-as spool-anim #f))
        )
@@ -1405,19 +1347,11 @@
             (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
             (send-event (ppointer->process (-> self sidekick)) 'shadow #f)
             (send-event self 'blend-shape #t)
-            (let* ((s5-7 (get-process *default-dead-pool* pov-camera #x4000))
-                   (s5-8
-                     (ppointer->handle
-                       (when s5-7
-                         (let ((t9-68 (method-of-type pov-camera activate)))
-                           (t9-68 (the-as pov-camera s5-7) *target-pool* 'pov-camera (the-as pointer #x70004000))
-                           )
-                         (run-now-in-process s5-7 pov-camera-init-by-other (-> self control trans) *deathcam-sg* gp-18 4 self '())
-                         (-> s5-7 ppointer)
-                         )
-                       )
-                     )
-                   )
+            (let ((s5-8 (ppointer->handle
+                          (process-spawn pov-camera (-> self control trans) *deathcam-sg* gp-18 4 self '() :to *target-pool*)
+                          )
+                        )
+                  )
               (send-event (handle->process s5-8) 'music-movie-volume 0.0)
               (send-event (handle->process s5-8) 'sfx-movie-volume 50.0)
               (set! (-> self post-hook) target-no-ja-move-post)
@@ -1445,6 +1379,5 @@
     (anim-loop)
     (none)
     )
-  :post
-  target-no-stick-post
+  :post target-no-stick-post
   )

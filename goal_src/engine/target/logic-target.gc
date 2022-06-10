@@ -1116,24 +1116,14 @@
         )
     )
   (let ((v1-146 (-> self current-level)))
-    (when (and (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 2))
-               (and v1-146
-                    (< (-> self control trans y) (-> v1-146 info bottom-height))
-                    (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
-                    )
-               )
-      (let ((a1-32 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-32 from) self)
-        (set! (-> a1-32 num-params) 2)
-        (set! (-> a1-32 message) 'attack-invinc)
-        (set! (-> a1-32 param 0) (the-as uint #f))
-        (let ((a0-102 (new 'static 'attack-info :mask #x20)))
-          (set! (-> a0-102 mode) 'endlessfall)
-          (set! (-> a1-32 param 1) (the-as uint a0-102))
-          )
-        (send-event-function self a1-32)
+    (if (and (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 2))
+             (and v1-146
+                  (< (-> self control trans y) (-> v1-146 info bottom-height))
+                  (not (and (= *cheat-mode* 'debug) (cpad-hold? (-> self control unknown-cpad-info00 number) r2)))
+                  )
+             )
+        (send-event self 'attack-invinc #f (static-attack-info ((mode 'endlessfall))))
         )
-      )
     )
   0
   (none)
@@ -2042,18 +2032,7 @@
   (set! (-> self control unknown-vector52 quad) (-> self control trans quad))
   (set! (-> self control unknown-vector52 y) (+ -819200.0 (-> self control unknown-vector52 y)))
   (set! (-> self align) (new 'process 'align-control self))
-  (let ((s5-1 (get-process *16k-dead-pool* sidekick #x4000)))
-    (set! (-> self sidekick)
-          (the-as (pointer sidekick) (when s5-1
-                                       (let ((t9-37 (method-of-type sidekick activate)))
-                                         (t9-37 (the-as sidekick s5-1) self 'sidekick (the-as pointer #x70004000))
-                                         )
-                                       (run-now-in-process s5-1 init-sidekick)
-                                       (-> s5-1 ppointer)
-                                       )
-                  )
-          )
-    )
+  (set! (-> self sidekick) (process-spawn sidekick :init init-sidekick :from *16k-dead-pool* :to self))
   (set! (-> self manipy) (the-as (pointer manipy) #f))
   (set! (-> self event-hook) target-generic-event-handler)
   (set! (-> self current-level) #f)
@@ -2081,17 +2060,16 @@
   (set! (-> *level* border?) #f)
   (set! (-> *setting-control* default border-mode) #f)
   (stop arg0)
-  (let* ((s5-0 (get-process *target-dead-pool* target #x4000))
-         (v1-3 (when s5-0
-                 (let ((t9-2 (method-of-type target activate)))
-                   ;; note: this constant must be DPROCESS_STACK_SIZE
-                   (t9-2 (the-as target s5-0) *target-pool* 'target (&-> *dram-stack* DPROCESS_STACK_SIZE))
-                   )
-                 (run-now-in-process s5-0 init-target arg1)
-                 (-> s5-0 ppointer)
-                 )
-               )
-         )
+  (let ((v1-3 (process-spawn
+                target
+                :init init-target
+                arg1
+                :from *target-dead-pool*
+                :to *target-pool*
+                :stack *kernel-dram-stack*
+                )
+              )
+        )
     (if v1-3
         (set! *target* (the-as target (-> v1-3 0 self)))
         (set! *target* #f)

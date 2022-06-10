@@ -1323,6 +1323,8 @@
   (ps2-options                  #x1020)
   (ps2-load-speed               #x1021)
   (ps2-parts                    #x1022)
+  (music-fadeout                #x1023)
+  (music-fadein                 #x1024)
   (discord-rpc                  #x1030)
   (display-mode                 #x1031)
   (windowed                     #x1032)
@@ -10740,13 +10742,32 @@
     )
   )
 
+(defenum attack-mask
+  :bitfield #t
+  :type uint32
+  (trans)
+  (vector)
+  (intersection)
+  (attacker)
+  (invinc-time)
+  (mode)
+  (shove-back)
+  (shove-up)
+  (speed)
+  (dist)
+  (control)
+  (angle)
+  (rotate-to)
+  (atki13)
+  )
+
 (deftype attack-info (structure)
   ((trans        vector :inline :offset-assert 0)
    (vector       vector :inline :offset-assert 16)
    (intersection vector :inline :offset-assert 32)
    (attacker     handle         :offset-assert 48)
-   (invinc-time  time-frame        :offset-assert 56)
-   (mask         uint32         :offset-assert 64)
+   (invinc-time  time-frame     :offset-assert 56)
+   (mask         attack-mask    :offset-assert 64)
    (mode         symbol         :offset-assert 68)
    (shove-back   meters         :offset-assert 72)
    (shove-up     meters         :offset-assert 76)
@@ -10760,7 +10781,6 @@
   :method-count-assert 10
   :size-assert         #x68
   :flag-assert         #xa00000068
-  ;; field handle is likely a value type
   (:methods
     (combine! (_type_ attack-info) none 9)
     )
@@ -26451,7 +26471,7 @@
 (define-extern robotboss-yellow-eco-off (function entity-perm-status :behavior robotboss))
 (define-extern robotboss-greenshot (function vector float int symbol none :behavior robotboss))
 (define-extern robotboss-handler (function process int symbol event-message-block object :behavior robotboss))
-(define-extern robotboss-darkecobomb (function vector float (pointer process) :behavior robotboss))
+(define-extern robotboss-darkecobomb (function vector float (pointer part-tracker) :behavior robotboss))
 (define-extern robotboss-is-red-hit (function symbol :behavior robotboss))
 (define-extern robotboss-redshot-fill-array (function redshot-launch-array none :behavior robotboss))
 (define-extern robotboss-redshot (function redshot-launch-info symbol sound-id :behavior robotboss)) ;; run-func-in-process edge-case
@@ -28874,8 +28894,8 @@
 ;; - Functions
 
 (define-extern keg-conveyor-paddle-init-by-other (function keg-conveyor-paddle none :behavior keg-conveyor-paddle))
-(define-extern keg-conveyor-spawn-keg (function keg-conveyor (pointer process))) ;; VERY likely a keg
-(define-extern keg-conveyor-spawn-bouncing-keg (function keg-conveyor (pointer process))) ;; VERY likely a keg
+(define-extern keg-conveyor-spawn-keg (function keg-conveyor (pointer keg)))
+(define-extern keg-conveyor-spawn-bouncing-keg (function keg-conveyor (pointer keg)))
 (define-extern keg-init-by-other (function keg int none :behavior keg))
 (define-extern keg-bounce-set-particle-rotation-callback (function part-tracker none))
 (define-extern keg-update-smush (function keg float none))
@@ -29060,7 +29080,7 @@
 ;; - Functions
 
 (define-extern orient-to-face-target (function quaternion :behavior quicksandlurker))
-(define-extern quicksandlurker-spit (function (pointer process) :behavior quicksandlurker))
+(define-extern quicksandlurker-spit (function (pointer part-tracker) :behavior quicksandlurker))
 (define-extern spawn-quicksandlurker-missile (function process vector vector entity none))
 (define-extern quicksandlurker-check-hide-transition (function none :behavior quicksandlurker))
 (define-extern inc-angle (function (pointer float) float float))
@@ -30241,7 +30261,7 @@
 ;; - Functions
 
 (define-extern swamp-rat-nest-check-dummy (function none :behavior swamp-rat-nest))
-(define-extern swamp-rat-nest-spawn-rat (function (pointer process) :behavior swamp-rat-nest)) ;; this needs a t2 symbol arg to pass to swamp-rat-init-from-other...but
+(define-extern swamp-rat-nest-spawn-rat (function (pointer swamp-rat) :behavior swamp-rat-nest)) ;; this needs a t2 symbol arg to pass to swamp-rat-init-from-other...but
 (define-extern swamp-rat-nest-dummy-init-by-other (function swamp-rat-nest-dummy none :behavior swamp-rat-nest-dummy))
 (define-extern swamp-rat-nest-pick-spawn-joint (function int :behavior swamp-rat-nest))
 (define-extern swamp-rat-nest-dummy-take-damage (function int none :behavior swamp-rat-nest-dummy))

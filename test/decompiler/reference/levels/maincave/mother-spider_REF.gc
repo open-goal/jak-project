@@ -53,14 +53,12 @@
   :id 614
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 2477))
+  :parts ((sp-item 2477))
   )
 
 ;; failed to figure out what this is:
 (defpart 2477
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-rnd-flt spt-num 0.0 1.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.35) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -81,8 +79,7 @@
 
 ;; failed to figure out what this is:
 (defstate mother-spider-leg-flying (mother-spider-leg)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (local-vars (at-0 int))
     (rlet ((vf0 :class vf)
            (vf1 :class vf)
@@ -144,8 +141,7 @@
       (none)
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 0)
     (let ((f30-0 (rand-vu-float-range 0.2 0.7)))
       (dotimes (gp-0 3)
@@ -164,22 +160,19 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior mother-spider-leg) ja-post)
+  :post (the-as (function none :behavior mother-spider-leg) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate wait-for-children (mother-spider)
-  :code
-  (behavior ()
+  :code (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (until (not (-> self child))
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior mother-spider) ja-post)
+  :post (the-as (function none :behavior mother-spider) ja-post)
   )
 
 ;; definition for function mother-spider-leg-init-by-other
@@ -221,14 +214,12 @@
   :id 618
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 2498 :period 90 :length 30))
+  :parts ((sp-item 2498 :period 90 :length 30))
   )
 
 ;; failed to figure out what this is:
 (defpart 2498
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
     (sp-rnd-flt spt-num 1.0 2.0 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.35) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -294,26 +285,20 @@
      )
     (('touch)
      (when (= (-> arg0 type) target)
-       (let ((a1-15 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-15 from) self)
-         (set! (-> a1-15 num-params) 2)
-         (set! (-> a1-15 message) 'attack)
-         (set! (-> a1-15 param 0) (-> arg3 param 0))
-         (let ((v1-18 (new 'static 'attack-info :mask #xc0)))
-           (set! (-> v1-18 shove-up) 2048.0)
-           (set! (-> v1-18 shove-back) 8192.0)
-           (set! (-> a1-15 param 1) (the-as uint v1-18))
-           )
-         (when (send-event-function arg0 a1-15)
-           (let ((gp-2 (new 'stack-no-clear 'vector)))
-             (let ((v1-20 (target-pos 0)))
-               (vector-! gp-2 (-> self root-override trans) v1-20)
+       (when (send-event
+               arg0
+               'attack
+               (-> arg3 param 0)
+               (static-attack-info ((shove-up (meters 0.5)) (shove-back (meters 2))))
                )
-             (set! (-> gp-2 y) 0.0)
-             (vector-normalize! gp-2 1.0)
-             (set! (-> self thread-vel) (+ -8192.0 (-> self thread-vel)))
-             (TODO-RENAME-21 self gp-2 40960.0 #f)
+         (let ((gp-2 (new 'stack-no-clear 'vector)))
+           (let ((v1-20 (target-pos 0)))
+             (vector-! gp-2 (-> self root-override trans) v1-20)
              )
+           (set! (-> gp-2 y) 0.0)
+           (vector-normalize! gp-2 1.0)
+           (set! (-> self thread-vel) (+ -8192.0 (-> self thread-vel)))
+           (TODO-RENAME-21 self gp-2 40960.0 #f)
            )
          )
        )
@@ -373,15 +358,7 @@
   (let ((s3-0 (new 'stack-no-clear 'baby-spider-spawn-params)))
     (init! s3-0 arg2 #f #t #f 7 1 'untrigger)
     (set-delay! s3-0 (seconds 9))
-    (let ((s2-0 (get-process *default-dead-pool* baby-spider #x4000)))
-      (when s2-0
-        (let ((t9-3 (method-of-type baby-spider activate)))
-          (t9-3 (the-as baby-spider s2-0) obj 'baby-spider (the-as pointer #x70004000))
-          )
-        (run-now-in-process s2-0 baby-spider-init-by-other obj arg0 arg1 s3-0)
-        (-> s2-0 ppointer)
-        )
-      )
+    (process-spawn baby-spider obj arg0 arg1 s3-0 :to obj)
     )
   (let ((v0-5 (+ (-> obj baby-count) 1)))
     (set! (-> obj baby-count) v0-5)
@@ -847,8 +824,7 @@
 
 ;; failed to figure out what this is:
 (defstate mother-spider-idle (mother-spider)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (let ((v1-1 (-> self draw shadow-ctrl)))
       (logior! (-> v1-1 settings flags) (shadow-flags shdf05))
       )
@@ -861,23 +837,20 @@
     (logior! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (restore-collide-with-as (-> self root-override))
     (set! (-> self skel postbind-function) mother-spider-full-joint-callback)
     (logclear! (-> self mask) (process-mask actor-pause))
     (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (grab-player? self)
         (go mother-spider-traveling (the-as uint 1))
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
@@ -888,10 +861,8 @@
 
 ;; failed to figure out what this is:
 (defstate mother-spider-traveling (mother-spider)
-  :event
-  mother-spider-default-event-handler
-  :enter
-  (behavior ((arg0 uint))
+  :event mother-spider-default-event-handler
+  :enter (behavior ((arg0 uint))
     (is-player-stuck? self)
     (let ((v1-2 arg0))
       (cond
@@ -928,8 +899,7 @@
     (set! (-> self going-up?) (< (-> self targ-dist-from-anchor) (-> self dist-from-anchor)))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((gp-0 (is-player-stuck? self))
           (v1-1 (-> self mode))
           )
@@ -984,8 +954,7 @@
     (TODO-RENAME-29 self #t #t)
     (none)
     )
-  :code
-  (behavior ((arg0 uint))
+  :code (behavior ((arg0 uint))
     (local-vars (v1-12 symbol) (v1-28 symbol))
     (ja-channel-push! 1 (seconds 0.1))
     (ja :group! mother-spider-lowering-ja :num! min)
@@ -1012,29 +981,24 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior mother-spider) transform-post)
+  :post (the-as (function none :behavior mother-spider) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate mother-spider-stop-traveling (mother-spider)
-  :event
-  mother-spider-default-event-handler
-  :enter
-  (behavior ()
+  :event mother-spider-default-event-handler
+  :enter (behavior ()
     (set! (-> self hit?) #f)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (-> self hit?)
         (go mother-spider-hit-while-tracking)
         )
     (TODO-RENAME-29 self #t #t)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! mother-spider-stopped-lowering-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -1058,23 +1022,19 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior mother-spider) transform-post)
+  :post (the-as (function none :behavior mother-spider) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate mother-spider-tracking (mother-spider)
-  :event
-  mother-spider-default-event-handler
-  :enter
-  (behavior ()
+  :event mother-spider-default-event-handler
+  :enter (behavior ()
     (set! (-> self hit?) #f)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self last-player-in-air-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (-> self hit?)
         (go mother-spider-hit-while-tracking)
         )
@@ -1137,8 +1097,7 @@
     (TODO-RENAME-29 self #t #t)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((ja-group? mother-spider-idle-ja)
        (ja-no-eval :num! (seek!))
@@ -1160,21 +1119,17 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior mother-spider) transform-post)
+  :post (the-as (function none :behavior mother-spider) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate mother-spider-hit-while-tracking (mother-spider)
-  :event
-  mother-spider-default-event-handler
-  :enter
-  (behavior ()
+  :event mother-spider-default-event-handler
+  :enter (behavior ()
     (set! (-> self hit?) #f)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (-> self hit?)
         (go mother-spider-hit-while-tracking)
         )
@@ -1185,8 +1140,7 @@
     (TODO-RENAME-29 self #t #t)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! mother-spider-takes-hit-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -1203,30 +1157,25 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior mother-spider) transform-post)
+  :post (the-as (function none :behavior mother-spider) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate mother-spider-spit (mother-spider)
-  :event
-  mother-spider-default-event-handler
-  :enter
-  (behavior ()
+  :event mother-spider-default-event-handler
+  :enter (behavior ()
     (set! (-> self hit?) #f)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (-> self hit?)
         (go mother-spider-hit-while-tracking)
         )
     (TODO-RENAME-29 self #t #t)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.25))
     (let ((gp-0 #f))
       (ja-no-eval :group! mother-spider-spit-ja :num! (seek! max 1.5) :frame-num 0.0)
@@ -1251,14 +1200,15 @@
                 (vector-normalize! s5-0 1.0)
                 (vector-deg-seek s5-0 s2-0 s5-0 6371.5557)
                 (vector-normalize-copy! s3-0 s5-0 32768.0)
-                (let ((gp-1 (get-process *default-dead-pool* mother-spider-proj #x4000)))
-                  (when gp-1
-                    (let ((t9-12 (method-of-type mother-spider-proj activate)))
-                      (t9-12 (the-as mother-spider-proj gp-1) self 'mother-spider-proj (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process gp-1 projectile-init-by-other (-> self entity) s4-0 s3-0 0 (process->handle *target*))
-                    (-> gp-1 ppointer)
-                    )
+                (process-spawn
+                  mother-spider-proj
+                  :init projectile-init-by-other
+                  (-> self entity)
+                  s4-0
+                  s3-0
+                  0
+                  (process->handle *target*)
+                  :to self
                   )
                 (set! gp-0 #t)
                 (set! (-> self last-spit-time) (-> *display* base-frame-counter))
@@ -1285,22 +1235,18 @@
         )
     (none)
     )
-  :post
-  (the-as (function none :behavior mother-spider) transform-post)
+  :post (the-as (function none :behavior mother-spider) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate mother-spider-birthing (mother-spider)
-  :event
-  mother-spider-default-event-handler
-  :enter
-  (behavior ()
+  :event mother-spider-default-event-handler
+  :enter (behavior ()
     (set! (-> self hit?) #f)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (-> self hit?)
         (go mother-spider-hit-while-birthing)
         )
@@ -1324,8 +1270,7 @@
     (TODO-RENAME-29 self #t #t)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((ja-group? mother-spider-idle-ja)
        (ja-no-eval :num! (seek!))
@@ -1347,22 +1292,18 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior mother-spider) transform-post)
+  :post (the-as (function none :behavior mother-spider) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate mother-spider-birth-baby (mother-spider)
-  :event
-  mother-spider-default-event-handler
-  :enter
-  (behavior ()
+  :event mother-spider-default-event-handler
+  :enter (behavior ()
     (set! (-> self hit?) #f)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (-> self hit?)
         (go mother-spider-hit-while-birthing)
         )
@@ -1375,8 +1316,7 @@
     (TODO-RENAME-29 self #t #t)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.25))
     (let ((gp-0 #f))
       (ja-no-eval :group! mother-spider-birth-ja :num! (seek! max 1.4) :frame-num 0.0)
@@ -1387,22 +1327,7 @@
                 (s4-0 (new 'stack-no-clear 'vector))
                 )
             (when (TODO-RENAME-20 self s5-0 s4-0)
-              (let ((s3-0 (get-process *default-dead-pool* mother-spider-egg #x4000)))
-                (when s3-0
-                  (let ((t9-5 (method-of-type mother-spider-egg activate)))
-                    (t9-5 (the-as mother-spider-egg s3-0) self 'mother-spider-egg (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process
-                    s3-0
-                    mother-spider-egg-init-by-other
-                    (-> self entity)
-                    (-> self root-override trans)
-                    s5-0
-                    s4-0
-                    )
-                  (-> s3-0 ppointer)
-                  )
-                )
+              (process-spawn mother-spider-egg (-> self entity) (-> self root-override trans) s5-0 s4-0 :to self)
               (+! (-> self baby-count) 1)
               (+! (-> self birthing-counter) -1)
               (sound-play-by-name (static-sound-name "lay-eggs") (new-sound-id) 1024 0 0 1 #t)
@@ -1416,8 +1341,7 @@
     (go mother-spider-birthing)
     (none)
     )
-  :post
-  (the-as (function none :behavior mother-spider) transform-post)
+  :post (the-as (function none :behavior mother-spider) transform-post)
   )
 
 ;; definition for method 20 of type mother-spider
@@ -1572,15 +1496,12 @@
 
 ;; failed to figure out what this is:
 (defstate mother-spider-hit-while-birthing (mother-spider)
-  :event
-  mother-spider-default-event-handler
-  :enter
-  (behavior ()
+  :event mother-spider-default-event-handler
+  :enter (behavior ()
     (set! (-> self hit?) #f)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (-> self hit?)
         (go mother-spider-hit-while-birthing)
         )
@@ -1590,8 +1511,7 @@
     (TODO-RENAME-29 self #t #t)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! mother-spider-takes-hit-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -1608,16 +1528,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior mother-spider) transform-post)
+  :post (the-as (function none :behavior mother-spider) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate mother-spider-die-from-uppercut (mother-spider)
-  :event
-  mother-spider-death-event-handler
-  :enter
-  (behavior ()
+  :event mother-spider-death-event-handler
+  :enter (behavior ()
     (shut-down! (-> self neck))
     (set! (-> self thread-speed) 122880.0)
     (set! (-> self targ-dist-from-anchor) (+ -24576.0 (-> self dist-from-anchor)))
@@ -1639,15 +1556,7 @@
             (set! (-> s1-0 quad) (-> s2-0 quad))
             (set! (-> s1-0 y) (+ 0.3 (-> s1-0 y)))
             (vector-normalize! s1-0 1.0)
-            (let ((s0-1 (get-process *default-dead-pool* mother-spider-leg #x4000)))
-              (when s0-1
-                (let ((t9-6 (method-of-type mother-spider-leg activate)))
-                  (t9-6 (the-as mother-spider-leg s0-1) self 'mother-spider-leg (the-as pointer #x70004000))
-                  )
-                (run-now-in-process s0-1 mother-spider-leg-init-by-other self s3-0 s2-0 s1-0)
-                (-> s0-1 ppointer)
-                )
-              )
+            (process-spawn mother-spider-leg self s3-0 s2-0 s1-0 :to self)
             )
           (+! s5-0 1)
           )
@@ -1655,13 +1564,11 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (TODO-RENAME-29 self #f #f)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((v1-2 (-> self entity extra perm)))
       (logior! (-> v1-2 status) (entity-perm-status user-set-from-cstage))
       (set! (-> v1-2 user-int8 0) 1)
@@ -1677,21 +1584,17 @@
     (go mother-spider-die-wait-for-children)
     (none)
     )
-  :post
-  (the-as (function none :behavior mother-spider) ja-post)
+  :post (the-as (function none :behavior mother-spider) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate mother-spider-die (mother-spider)
-  :event
-  mother-spider-death-event-handler
-  :trans
-  (behavior ()
+  :event mother-spider-death-event-handler
+  :trans (behavior ()
     (TODO-RENAME-29 self #f #f)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((v1-2 (-> self entity extra perm)))
       (logior! (-> v1-2 status) (entity-perm-status user-set-from-cstage))
       (set! (-> v1-2 user-int8 0) 1)
@@ -1708,16 +1611,13 @@
     (go mother-spider-die-wait-for-children)
     (none)
     )
-  :post
-  (the-as (function none :behavior mother-spider) ja-post)
+  :post (the-as (function none :behavior mother-spider) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate mother-spider-die-wait-for-children (mother-spider)
-  :event
-  mother-spider-death-event-handler
-  :code
-  (behavior ()
+  :event mother-spider-death-event-handler
+  :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
     (clear-collide-with-as (-> self root-override))
     (set! (-> self skel postbind-function) #f)

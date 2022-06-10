@@ -6,6 +6,7 @@
 ;; dgos: GAME, COMMON, L1
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/plat-button-ag.gc")
 
 (deftype plat-button (process-drawable)
@@ -57,8 +58,7 @@
 
 (defstate plat-button-idle (plat-button)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('touch)
        (when (can-activate? self)
@@ -79,8 +79,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (can-activate? self)))
       (if gp-0
           (ja-no-eval :num! (seek! 0.0))
@@ -116,8 +115,7 @@
 
 (defstate plat-button-teleport-to-other-end (plat-button)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((f0-0 1.0))
       (if (>= (-> self path-pos) 0.5)
           (set! f0-0 0.0)
@@ -137,10 +135,8 @@
 
 (defstate plat-button-pressed (plat-button)
   :virtual #t
-  :trans
-  (the-as (function none :behavior plat-button) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior plat-button) rider-trans)
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (until (ja-done? 0)
       (suspend)
@@ -154,8 +150,7 @@
         )
     (none)
     )
-  :post
-  (the-as (function none :behavior plat-button) rider-post)
+  :post (the-as (function none :behavior plat-button) rider-post)
   )
 
 (defbehavior plat-button-camera-on plat-button ()
@@ -176,30 +171,26 @@
 
 (defstate plat-button-move-downward (plat-button)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (the-as object (when (or (= arg2 'touch) (= arg2 'attack))
                      (set! (-> self state-time) (-> *display* base-frame-counter))
                      #f
                      )
             )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (plat-button-camera-on)
     (set-setting! *setting-control* self 'allow-look-around #f 0.0 0)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (plat-button-camera-off)
     (clear-pending-settings-from-process *setting-control* self 'allow-look-around)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (= (-> self path-pos) 1.0)
         (go-virtual plat-button-at-end)
         )
@@ -248,38 +239,32 @@
         )
     (none)
     )
-  :code
-  (the-as (function none :behavior plat-button) anim-loop)
-  :post
-  (the-as (function none :behavior plat-button) rider-post)
+  :code (the-as (function none :behavior plat-button) anim-loop)
+  :post (the-as (function none :behavior plat-button) rider-post)
   )
 
 (defstate plat-button-move-upward (plat-button)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (the-as object (when (or (= arg2 'touch) (= arg2 'attack))
                      (set! (-> self state-time) (-> *display* base-frame-counter))
                      #f
                      )
             )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (plat-button-camera-on)
     (set-setting! *setting-control* self 'allow-look-around #f 0.0 0)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (plat-button-camera-off)
     (clear-pending-settings-from-process *setting-control* self 'allow-look-around)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (= (-> self path-pos) 0.0)
         (go-virtual plat-button-at-end)
         )
@@ -328,16 +313,13 @@
         )
     (none)
     )
-  :code
-  (the-as (function none :behavior plat-button) anim-loop)
-  :post
-  (the-as (function none :behavior plat-button) rider-post)
+  :code (the-as (function none :behavior plat-button) anim-loop)
+  :post (the-as (function none :behavior plat-button) rider-post)
   )
 
 (defstate plat-button-at-end (plat-button)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (-> self allow-auto-kill)
         (process-entity-status! self (entity-perm-status bit-3) #f)
         )

@@ -66,17 +66,9 @@
 (defbehavior spiderwebs-default-event-handler spiderwebs ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('bonk)
-     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-1 from) self)
-       (set! (-> a1-1 num-params) 3)
-       (set! (-> a1-1 message) 'jump)
-       (set! (-> a1-1 param 0) (the-as uint (-> self spring-height)))
-       (set! (-> a1-1 param 1) (the-as uint (-> self spring-height)))
-       (set! (-> a1-1 param 2) (the-as uint *spider-jump-mods*))
-       (if (send-event-function arg0 a1-1)
-           (go spiderwebs-bounce)
-           )
-       )
+     (if (send-event arg0 'jump (-> self spring-height) (-> self spring-height) *spider-jump-mods*)
+         (go spiderwebs-bounce)
+         )
      )
     (('touch)
      (when (= (-> arg0 type) target)
@@ -106,10 +98,8 @@
 
 ;; failed to figure out what this is:
 (defstate spiderwebs-idle (spiderwebs)
-  :event
-  spiderwebs-default-event-handler
-  :code
-  (behavior ()
+  :event spiderwebs-default-event-handler
+  :code (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (ja :group! spiderwebs-bounce-ja :num! min)
     (transform-post)
@@ -123,8 +113,7 @@
 
 ;; failed to figure out what this is:
 (defstate spiderwebs-bounce (spiderwebs)
-  :code
-  (behavior ()
+  :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
     (sound-play-by-name (static-sound-name "web-tramp") (new-sound-id) 1024 0 0 1 #t)
     (ja-no-eval :group! spiderwebs-bounce-ja :num! (seek! (ja-aframe 10.0 0)) :frame-num 0.0)
@@ -141,8 +130,7 @@
     (go spiderwebs-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior spiderwebs) transform-post)
+  :post (the-as (function none :behavior spiderwebs) transform-post)
   )
 
 ;; definition for method 11 of type spiderwebs

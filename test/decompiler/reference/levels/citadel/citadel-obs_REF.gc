@@ -90,8 +90,7 @@
 ;; failed to figure out what this is:
 (defstate idle (citb-arm-section)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector))
           (s5-0 (new 'stack-no-clear 'vector))
           )
@@ -122,8 +121,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-arm-section) ja-post)
+  :post (the-as (function none :behavior citb-arm-section) ja-post)
   )
 
 ;; definition for method 20 of type citb-arm-section
@@ -188,10 +186,8 @@
 ;; failed to figure out what this is:
 (defstate idle (citb-arm)
   :virtual #t
-  :trans
-  (the-as (function none :behavior citb-arm) rider-trans)
-  :post
-  (behavior ()
+  :trans (the-as (function none :behavior citb-arm) rider-trans)
+  :post (behavior ()
     (if (logtest? (-> self draw status) (draw-status hidden))
         (clear-collide-with-as (-> self root-override))
         (restore-collide-with-as (-> self root-override))
@@ -486,20 +482,17 @@
 
 ;; failed to figure out what this is:
 (defstate citb-disc-idle (citb-disc)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'touch)
-                       (send-event arg0 'no-look-around 75)
+                       (send-event arg0 'no-look-around (seconds 0.25))
                        #f
                        )
               )
       )
     )
-  :trans
-  (the-as (function none :behavior citb-disc) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior citb-disc) rider-trans)
+  :code (behavior ()
     (loop
       (update! (-> self sound))
       (quaternion-axis-angle!
@@ -513,8 +506,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-disc) rider-post)
+  :post (the-as (function none :behavior citb-disc) rider-post)
   )
 
 ;; definition for method 20 of type citb-disc
@@ -841,8 +833,7 @@
 ;; failed to figure out what this is:
 (defstate plat-path-active (citb-launcher)
   :virtual #t
-  :post
-  (behavior ()
+  :post (behavior ()
     (let ((t9-0 (-> (method-of-type plat plat-path-active) post)))
       (if t9-0
           ((the-as (function none :behavior citb-launcher) t9-0))
@@ -869,20 +860,8 @@
 (defmethod dummy-26 citb-launcher ((obj citb-launcher))
   (let ((f30-0 (res-lump-float (-> obj entity) 'spring-height :default 163840.0))
         (s5-0 (res-lump-value (-> obj entity) 'mode uint128))
-        (s4-0 (get-process *default-dead-pool* launcher #x4000))
         )
-    (set! (-> obj launcher)
-          (the-as
-            (pointer launcher)
-            (when s4-0
-              (let ((t9-3 (method-of-type launcher activate)))
-                (t9-3 (the-as launcher s4-0) obj 'launcher (the-as pointer #x70004000))
-                )
-              (run-now-in-process s4-0 launcher-init-by-other (-> obj root-override trans) f30-0 s5-0 81920.0)
-              (-> s4-0 ppointer)
-              )
-            )
-          )
+    (set! (-> obj launcher) (process-spawn launcher (-> obj root-override trans) f30-0 s5-0 81920.0 :to obj))
     )
   (set! (-> obj root-override root-prim local-sphere w) 18432.0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -978,8 +957,7 @@
 
 ;; failed to figure out what this is:
 (defstate citb-robotboss-idle (citb-robotboss)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (sv-96 int) (sv-112 int))
     (the-as object (cond
                      ((= arg2 'shield-off)
@@ -1013,188 +991,61 @@
                           (s4-0 (the-as sound-name s3-0) s2-0 s1-0 s0-0 sv-96 sv-112 (the-as symbol t2-1))
                           )
                         )
-                      (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                        (set! (-> a1-3 from) self)
-                        (set! (-> a1-3 num-params) 2)
-                        (set! (-> a1-3 message) 'shove)
-                        (set! (-> a1-3 param 0) (-> arg3 param 0))
-                        (let ((v1-21 (new 'static 'attack-info :mask #xc0)))
-                          (set! (-> v1-21 shove-up) 8192.0)
-                          (set! (-> v1-21 shove-back) 12288.0)
-                          (set! (-> a1-3 param 1) (the-as uint v1-21))
-                          )
-                        (the-as symbol (send-event-function arg0 a1-3))
-                        )
+                      (the-as symbol (send-event
+                                       arg0
+                                       'shove
+                                       (-> arg3 param 0)
+                                       (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3))))
+                                       )
+                              )
                       )
                      )
             )
     )
-  :code
-  (behavior ()
-    (let* ((s5-0 (get-process *default-dead-pool* manipy #x4000))
-           (gp-0 (when s5-0
-                   (let ((t9-1 (method-of-type manipy activate)))
-                     (t9-1 (the-as manipy s5-0) self 'manipy (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     s5-0
-                     manipy-init
-                     (-> self root-override trans)
-                     (-> self entity)
-                     *citb-robotboss-nose-sg*
-                     #f
-                     )
-                   (-> s5-0 ppointer)
-                   )
-                 )
-           )
+  :code (behavior ()
+    (let ((gp-0 (manipy-spawn (-> self root-override trans) (-> self entity) *citb-robotboss-nose-sg* #f :to self)))
       (send-event (ppointer->process gp-0) 'anim-mode 'loop)
       (send-event (ppointer->process gp-0) 'art-joint-anim "citb-robotboss-nose-idle" 0)
       (send-event (ppointer->process gp-0) 'draw #t)
       )
-    (let* ((s5-1 (get-process *default-dead-pool* manipy #x4000))
-           (gp-1 (when s5-1
-                   (let ((t9-7 (method-of-type manipy activate)))
-                     (t9-7 (the-as manipy s5-1) self 'manipy (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     s5-1
-                     manipy-init
-                     (-> self root-override trans)
-                     (-> self entity)
-                     *citb-robotboss-head-sg*
-                     #f
-                     )
-                   (-> s5-1 ppointer)
-                   )
-                 )
-           )
+    (let ((gp-1 (manipy-spawn (-> self root-override trans) (-> self entity) *citb-robotboss-head-sg* #f :to self)))
       (send-event (ppointer->process gp-1) 'anim-mode 'loop)
       (send-event (ppointer->process gp-1) 'art-joint-anim "citb-robotboss-head-idle" 0)
       (send-event (ppointer->process gp-1) 'draw #t)
       )
-    (let* ((s5-2 (get-process *default-dead-pool* manipy #x4000))
-           (gp-2 (when s5-2
-                   (let ((t9-13 (method-of-type manipy activate)))
-                     (t9-13 (the-as manipy s5-2) self 'manipy (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     s5-2
-                     manipy-init
-                     (-> self root-override trans)
-                     (-> self entity)
-                     *citb-robotboss-gun-sg*
-                     #f
-                     )
-                   (-> s5-2 ppointer)
-                   )
-                 )
-           )
+    (let ((gp-2 (manipy-spawn (-> self root-override trans) (-> self entity) *citb-robotboss-gun-sg* #f :to self)))
       (send-event (ppointer->process gp-2) 'anim-mode 'loop)
       (send-event (ppointer->process gp-2) 'art-joint-anim "citb-robotboss-gun-idle" 0)
       (send-event (ppointer->process gp-2) 'draw #t)
       )
-    (let* ((s5-3 (get-process *default-dead-pool* manipy #x4000))
-           (gp-3 (when s5-3
-                   (let ((t9-19 (method-of-type manipy activate)))
-                     (t9-19 (the-as manipy s5-3) self 'manipy (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     s5-3
-                     manipy-init
-                     (-> self root-override trans)
-                     (-> self entity)
-                     *citb-robotboss-leftshoulder-sg*
-                     #f
-                     )
-                   (-> s5-3 ppointer)
-                   )
-                 )
-           )
+    (let ((gp-3
+            (manipy-spawn (-> self root-override trans) (-> self entity) *citb-robotboss-leftshoulder-sg* #f :to self)
+            )
+          )
       (send-event (ppointer->process gp-3) 'anim-mode 'loop)
       (send-event (ppointer->process gp-3) 'art-joint-anim "citb-robotboss-leftshoulder-idle" 0)
       (send-event (ppointer->process gp-3) 'draw #t)
       )
-    (let* ((s5-4 (get-process *default-dead-pool* manipy #x4000))
-           (gp-4 (when s5-4
-                   (let ((t9-25 (method-of-type manipy activate)))
-                     (t9-25 (the-as manipy s5-4) self 'manipy (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     s5-4
-                     manipy-init
-                     (-> self root-override trans)
-                     (-> self entity)
-                     *citb-robotboss-rightshoulder-sg*
-                     #f
-                     )
-                   (-> s5-4 ppointer)
-                   )
-                 )
-           )
+    (let ((gp-4
+            (manipy-spawn (-> self root-override trans) (-> self entity) *citb-robotboss-rightshoulder-sg* #f :to self)
+            )
+          )
       (send-event (ppointer->process gp-4) 'anim-mode 'loop)
       (send-event (ppointer->process gp-4) 'art-joint-anim "citb-robotboss-rightshoulder-idle" 0)
       (send-event (ppointer->process gp-4) 'draw #t)
       )
-    (let* ((s5-5 (get-process *default-dead-pool* manipy #x4000))
-           (gp-5 (when s5-5
-                   (let ((t9-31 (method-of-type manipy activate)))
-                     (t9-31 (the-as manipy s5-5) self 'manipy (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     s5-5
-                     manipy-init
-                     (-> self root-override trans)
-                     (-> self entity)
-                     *citb-robotboss-leftarm-sg*
-                     #f
-                     )
-                   (-> s5-5 ppointer)
-                   )
-                 )
-           )
+    (let ((gp-5 (manipy-spawn (-> self root-override trans) (-> self entity) *citb-robotboss-leftarm-sg* #f :to self)))
       (send-event (ppointer->process gp-5) 'anim-mode 'loop)
       (send-event (ppointer->process gp-5) 'art-joint-anim "citb-robotboss-leftarm-idle" 0)
       (send-event (ppointer->process gp-5) 'draw #t)
       )
-    (let* ((s5-6 (get-process *default-dead-pool* manipy #x4000))
-           (gp-6 (when s5-6
-                   (let ((t9-37 (method-of-type manipy activate)))
-                     (t9-37 (the-as manipy s5-6) self 'manipy (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     s5-6
-                     manipy-init
-                     (-> self root-override trans)
-                     (-> self entity)
-                     *citb-robotboss-rightarm-sg*
-                     #f
-                     )
-                   (-> s5-6 ppointer)
-                   )
-                 )
-           )
+    (let ((gp-6 (manipy-spawn (-> self root-override trans) (-> self entity) *citb-robotboss-rightarm-sg* #f :to self))
+          )
       (send-event (ppointer->process gp-6) 'anim-mode 'loop)
       (send-event (ppointer->process gp-6) 'art-joint-anim "citb-robotboss-rightarm-idle" 0)
       (send-event (ppointer->process gp-6) 'draw #t)
       )
-    (let* ((s5-7 (get-process *default-dead-pool* manipy #x4000))
-           (gp-7 (when s5-7
-                   (let ((t9-43 (method-of-type manipy activate)))
-                     (t9-43 (the-as manipy s5-7) self 'manipy (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     s5-7
-                     manipy-init
-                     (-> self root-override trans)
-                     (-> self entity)
-                     *citb-robotboss-belly-sg*
-                     #f
-                     )
-                   (-> s5-7 ppointer)
-                   )
-                 )
-           )
+    (let ((gp-7 (manipy-spawn (-> self root-override trans) (-> self entity) *citb-robotboss-belly-sg* #f :to self)))
       (send-event (ppointer->process gp-7) 'anim-mode 'loop)
       (send-event (ppointer->process gp-7) 'art-joint-anim "citb-robotboss-belly-idle" 0)
       (send-event (ppointer->process gp-7) 'draw #t)
@@ -1210,14 +1061,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-robotboss) ja-post)
+  :post (the-as (function none :behavior citb-robotboss) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-robotboss-die (citb-robotboss)
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (deactivate self)
     (none)
@@ -1306,16 +1155,14 @@
 
 ;; failed to figure out what this is:
 (defstate citb-coil-idle (citb-coil)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (go citb-coil-break)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -1325,8 +1172,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (spawn (-> self part) (-> self root trans))
     (ja-post)
     (none)
@@ -1335,8 +1181,7 @@
 
 ;; failed to figure out what this is:
 (defstate citb-coil-break (citb-coil)
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
@@ -1347,14 +1192,12 @@
     (go citb-coil-broken)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-coil) ja-post)
+  :post (the-as (function none :behavior citb-coil) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-coil-broken (citb-coil)
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
@@ -1366,8 +1209,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-coil) ja-post)
+  :post (the-as (function none :behavior citb-coil) ja-post)
   )
 
 ;; definition for method 11 of type citb-coil
@@ -1432,10 +1274,8 @@
 
 ;; failed to figure out what this is:
 (defstate citb-hose-idle (citb-hose)
-  :event
-  citb-hose-event-handler
-  :code
-  (behavior ()
+  :event citb-hose-event-handler
+  :code (behavior ()
     (loop
       (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -1445,16 +1285,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-hose) ja-post)
+  :post (the-as (function none :behavior citb-hose) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-hose-spawn (citb-hose)
-  :event
-  citb-hose-event-handler
-  :code
-  (behavior ()
+  :event citb-hose-event-handler
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -1464,16 +1301,13 @@
     (go citb-hose-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-hose) ja-post)
+  :post (the-as (function none :behavior citb-hose) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-hose-die (citb-hose)
-  :event
-  citb-hose-event-handler
-  :code
-  (behavior ()
+  :event citb-hose-event-handler
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
@@ -1484,8 +1318,7 @@
     (anim-loop)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-hose) ja-post)
+  :post (the-as (function none :behavior citb-hose) ja-post)
   )
 
 ;; definition for method 11 of type citb-hose
@@ -1704,8 +1537,7 @@
 
 ;; failed to figure out what this is:
 (defstate citb-generator-idle (citb-generator)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('attack)
        (if (-> self mushroom)
@@ -1719,13 +1551,11 @@
        )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (stop! (-> self sound))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (lods-assign! (-> self draw) (-> self normal-look))
     (update-transforms! (-> self root-override))
     (loop
@@ -1759,14 +1589,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-generator) ja-post)
+  :post (the-as (function none :behavior citb-generator) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-generator-break (citb-generator)
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (entity-actor-count (-> self entity) 'open-actor)))
       (dotimes (s5-0 gp-0)
         (let ((s4-0 (entity-actor-lookup (-> self entity) 'open-actor s5-0))
@@ -1799,36 +1627,27 @@
         )
       )
     (process-entity-status! self (entity-perm-status complete) #t)
-    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-1
-        (let ((t9-7 (method-of-type part-tracker activate)))
-          (t9-7 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-1
-          part-tracker-init
-          (-> *part-group-id-table* 598)
-          -1
-          #f
-          #f
-          #f
-          (-> self root-override trans)
-          )
-        (-> gp-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 598)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override trans)
+      :to *entity-pool*
       )
     (sound-play-by-name (static-sound-name "sagecage-open") (new-sound-id) 1024 0 0 1 #t)
     (go citb-generator-broken)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-generator) ja-post)
+  :post (the-as (function none :behavior citb-generator) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-generator-broken (citb-generator)
-  :code
-  (behavior ()
+  :code (behavior ()
     (lods-assign! (-> self draw) (-> self broken-look))
     (update-transforms! (-> self root-override))
     (cond
@@ -1848,8 +1667,7 @@
     (anim-loop)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (spawn (-> self part-broken) (-> self root-override trans))
     (ja-post)
     (none)
@@ -1971,8 +1789,7 @@
 
 ;; failed to figure out what this is:
 (defstate citadelcam-idle (citadelcam)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (when (and (task-complete? *game-info* (game-task citadel-sage-blue))
@@ -1985,8 +1802,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (anim-loop)
     (none)
@@ -1995,8 +1811,7 @@
 
 ;; failed to figure out what this is:
 (defstate citadelcam-stair-plats (citadelcam)
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (entity-actor-count (-> self entity) 'trigger-actor)))
       (dotimes (s5-0 gp-0)
         (let ((s4-0 (entity-actor-lookup (-> self entity) 'trigger-actor s5-0))
@@ -2028,28 +1843,12 @@
           )
         )
       )
-    (let* ((gp-1 (get-process *default-dead-pool* pov-camera #x4000))
-           (gp-2
-             (ppointer->handle
-               (when gp-1
-                 (let ((t9-6 (method-of-type pov-camera activate)))
-                   (t9-6 (the-as pov-camera gp-1) self 'pov-camera (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process
-                   gp-1
-                   pov-camera-init-by-other
-                   (-> self root trans)
-                   *citadelcam-sg*
-                   "citadelcam-stair-plats"
-                   0
-                   #f
-                   '()
-                   )
-                 (-> gp-1 ppointer)
-                 )
-               )
-             )
-           )
+    (let ((gp-2
+            (ppointer->handle
+              (process-spawn pov-camera (-> self root trans) *citadelcam-sg* "citadelcam-stair-plats" 0 #f '() :to self)
+              )
+            )
+          )
       (while (handle->process (the-as handle gp-2))
         (suspend)
         )
@@ -2096,8 +1895,7 @@
 ;; failed to figure out what this is:
 (defstate battlecontroller-play-intro-camera (citb-battlecontroller)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (level-hint-spawn
       (game-text-id citadel-lurker-bunny-alert)
       "sksp0383"
@@ -2106,26 +1904,19 @@
       (game-task none)
       )
     (suspend)
-    (let* ((gp-0 (get-process *default-dead-pool* pov-camera #x4000))
-           (gp-1 (ppointer->handle (when gp-0
-                                     (let ((t9-2 (method-of-type pov-camera activate)))
-                                       (t9-2 (the-as pov-camera gp-0) self 'pov-camera (the-as pointer #x70004000))
-                                       )
-                                     (run-now-in-process
-                                       gp-0
-                                       pov-camera-init-by-other
-                                       (-> (entity-by-name "citadelcam-1") extra trans)
-                                       *citadelcam-sg*
-                                       "citadel-bunnies"
-                                       0
-                                       #f
-                                       '()
-                                       )
-                                     (-> gp-0 ppointer)
-                                     )
-                                   )
-                 )
-           )
+    (let ((gp-1 (ppointer->handle (process-spawn
+                                    pov-camera
+                                    (-> (entity-by-name "citadelcam-1") extra trans)
+                                    *citadelcam-sg*
+                                    "citadel-bunnies"
+                                    0
+                                    #f
+                                    '()
+                                    :to self
+                                    )
+                                  )
+                )
+          )
       (send-event (handle->process (the-as handle gp-1)) 'mask 2048)
       (while (handle->process (the-as handle gp-1))
         (logclear! (-> *target* state-flags) (state-flags sf04))
@@ -2140,8 +1931,7 @@
 ;; failed to figure out what this is:
 (defstate battlecontroller-die (citb-battlecontroller)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
     (let ((t9-2 (-> (the-as (state battlecontroller) (find-parent-method citb-battlecontroller 26)) code)))
       (if t9-2

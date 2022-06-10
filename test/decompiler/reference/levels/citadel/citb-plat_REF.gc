@@ -70,8 +70,7 @@
 ;; failed to figure out what this is:
 (defstate citb-base-plat-idle (citb-base-plat)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target* (>= (-> self idle-distance)
                           (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                           )
@@ -80,17 +79,14 @@
         )
     (none)
     )
-  :code
-  (the-as (function none :behavior citb-base-plat) anim-loop)
-  :post
-  (the-as (function none :behavior citb-base-plat) ja-post)
+  :code (the-as (function none :behavior citb-base-plat) anim-loop)
+  :post (the-as (function none :behavior citb-base-plat) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-base-plat-active (citb-base-plat)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (or (not *target*) (< (+ 8192.0 (-> self idle-distance))
                               (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                               )
@@ -100,10 +96,8 @@
     (rider-trans)
     (none)
     )
-  :code
-  (the-as (function none :behavior citb-base-plat) anim-loop)
-  :post
-  (the-as (function none :behavior citb-base-plat) rider-post)
+  :code (the-as (function none :behavior citb-base-plat) anim-loop)
+  :post (the-as (function none :behavior citb-base-plat) rider-post)
   )
 
 ;; definition for method 21 of type citb-base-plat
@@ -244,8 +238,7 @@
 ;; failed to figure out what this is:
 (defstate plat-path-active (citb-plat)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (set! (-> self path-pos) (if (logtest? (-> self fact options) (fact-options wrap-phase))
                                  (get-current-phase (-> self sync))
                                  (get-current-phase-with-mirror (-> self sync))
@@ -358,8 +351,7 @@
 ;; failed to figure out what this is:
 (defstate citb-base-plat-idle (citb-stair-plat)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'trigger)
                        (logclear! (-> self mask) (process-mask actor-pause))
@@ -371,10 +363,8 @@
               )
       )
     )
-  :trans
-  (the-as (function none :behavior citb-stair-plat) #f)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior citb-stair-plat) #f)
+  :code (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (while (not (-> self rise))
       (suspend)
@@ -405,17 +395,14 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-stair-plat) #f)
+  :post (the-as (function none :behavior citb-stair-plat) #f)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-base-plat-active (citb-stair-plat)
   :virtual #t
-  :trans
-  (the-as (function none :behavior citb-stair-plat) #f)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior citb-stair-plat) #f)
+  :code (behavior ()
     (set! (-> self root-override trans y) (-> self rise-height))
     (suspend)
     (update-transforms! (-> self root-override))
@@ -423,8 +410,7 @@
     (anim-loop)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-stair-plat) ja-post)
+  :post (the-as (function none :behavior citb-stair-plat) ja-post)
   )
 
 ;; definition for method 22 of type citb-stair-plat
@@ -563,56 +549,49 @@
 ;; failed to figure out what this is:
 (defstate rigid-body-platform-idle (citb-chain-plat)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
       (set! (-> self state-time) (-> *display* base-frame-counter))
       (if (and (and *target* (>= (-> self info idle-distance)
                                  (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
                                  )
                     )
-               (send-event *target* 'query 'powerup 3)
+               (send-event *target* 'query 'powerup (pickup-type eco-blue))
                )
           (go-virtual rigid-body-platform-float)
           )
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (anim-loop)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-chain-plat) ja-post)
+  :post (the-as (function none :behavior citb-chain-plat) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate rigid-body-platform-float (citb-chain-plat)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior citb-chain-plat)
     rigid-body-platform-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (stop! (-> self sound))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (cond
       ((and (and *target* (>= (-> self info idle-distance)
                               (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
                               )
                  )
-            (send-event *target* 'query 'powerup 3)
+            (send-event *target* 'query 'powerup (pickup-type eco-blue))
             )
        (when (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
          (if (rand-vu-percent? 0.05)
@@ -634,21 +613,17 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (anim-loop)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-chain-plat) rigid-body-platform-post)
+  :post (the-as (function none :behavior citb-chain-plat) rigid-body-platform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-chain-plat-settle (citb-chain-plat)
-  :trans
-  (the-as (function none :behavior citb-chain-plat) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior citb-chain-plat) rider-trans)
+  :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector))
           (s5-0 (new 'stack-no-clear 'quaternion))
           )
@@ -676,8 +651,7 @@
     (go-virtual rigid-body-platform-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-chain-plat) rider-post)
+  :post (the-as (function none :behavior citb-chain-plat) rider-post)
   )
 
 ;; definition for method 30 of type citb-chain-plat
@@ -765,10 +739,8 @@
 ;; failed to figure out what this is:
 (defstate citb-base-plat-active (citb-rotatebox)
   :virtual #t
-  :trans
-  (the-as (function none :behavior citb-rotatebox) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior citb-rotatebox) rider-trans)
+  :code (behavior ()
     (loop
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -849,8 +821,7 @@
 ;; failed to figure out what this is:
 (defstate citb-base-plat-active (citb-donut)
   :virtual #t
-  :post
-  (behavior ()
+  :post (behavior ()
     (update! (-> self sound))
     (quaternion-axis-angle!
       (-> self root-override quat)
@@ -930,8 +901,7 @@
 ;; failed to figure out what this is:
 (defstate plat-path-active (citb-stopbox)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (set! (-> self path-pos) (get-current-phase (-> self sync)))
     (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
     (if (< (vector-vector-distance (-> self root-override trans) (ear-trans)) 81920.0)
@@ -1030,8 +1000,7 @@
 
 ;; failed to figure out what this is:
 (defstate citb-firehose-idle (citb-firehose)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target* (>= (-> self idle-distance)
                           (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                           )
@@ -1040,21 +1009,18 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-firehose) ja-post)
+  :post (the-as (function none :behavior citb-firehose) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-firehose-active (citb-firehose)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (or (not *target*) (< (+ 8192.0 (-> self idle-distance))
                               (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                               )
@@ -1071,15 +1037,13 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-firehose) ja-post)
+  :post (the-as (function none :behavior citb-firehose) ja-post)
   )
 
 ;; definition for function citb-firehose-blast-particles
@@ -1105,28 +1069,19 @@
 
 ;; failed to figure out what this is:
 (defstate citb-firehose-blast (citb-firehose)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('touch)
-       (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-2 from) self)
-         (set! (-> a1-2 num-params) 2)
-         (set! (-> a1-2 message) 'attack)
-         (set! (-> a1-2 param 0) (-> arg3 param 0))
-         (let ((v1-4 (new 'static 'attack-info :mask #xe0)))
-           (set! (-> v1-4 mode) 'damage)
-           (set! (-> v1-4 shove-back) 24576.0)
-           (set! (-> v1-4 shove-up) 12288.0)
-           (set! (-> a1-2 param 1) (the-as uint v1-4))
-           )
-         (send-event-function arg0 a1-2)
+       (send-event
+         arg0
+         'attack
+         (-> arg3 param 0)
+         (static-attack-info ((mode 'damage) (shove-back (meters 6)) (shove-up (meters 3))))
          )
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
@@ -1162,8 +1117,7 @@
     (go citb-firehose-active)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-firehose) transform-post)
+  :post (the-as (function none :behavior citb-firehose) transform-post)
   )
 
 ;; definition for method 11 of type citb-firehose
@@ -1247,8 +1201,7 @@
 
 ;; failed to figure out what this is:
 (defstate citb-exit-plat-idle (citb-exit-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (let ((v1-3 (-> self entity extra perm)))
@@ -1259,8 +1212,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (clear-collide-with-as (-> self root-override))
     (loop
@@ -1272,10 +1224,8 @@
 
 ;; failed to figure out what this is:
 (defstate citb-exit-plat-rise (citb-exit-plat)
-  :trans
-  (the-as (function none :behavior citb-exit-plat) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior citb-exit-plat) rider-trans)
+  :code (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (restore-collide-with-as (-> self root-override))
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -1291,8 +1241,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-exit-plat) rider-post)
+  :post (the-as (function none :behavior citb-exit-plat) rider-post)
   )
 
 ;; definition for function citb-exit-plat-move-player
@@ -1320,8 +1269,7 @@
 ;; failed to figure out what this is:
 (defstate plat-button-move-downward (citb-exit-plat)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (set! (-> gp-0 quad) (-> self root-override trans quad))
       (let ((t9-1 (-> (the-as (state plat-button) (find-parent-method citb-exit-plat 23)) trans)))
@@ -1333,15 +1281,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-exit-plat) transform-post)
+  :post (the-as (function none :behavior citb-exit-plat) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plat-button-move-upward (citb-exit-plat)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (set! (-> gp-0 quad) (-> self root-override trans quad))
       (let ((t9-1 (-> (the-as (state plat-button) (find-parent-method citb-exit-plat 24)) trans)))
@@ -1353,8 +1299,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-exit-plat) transform-post)
+  :post (the-as (function none :behavior citb-exit-plat) transform-post)
   )
 
 ;; definition for method 26 of type citb-exit-plat

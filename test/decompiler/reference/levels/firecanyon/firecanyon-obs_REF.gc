@@ -31,14 +31,12 @@
   :id 227
   :duration 5
   :bounds (static-bspherem 0 0 0 15)
-  :parts
-  ((sp-item 1006) (sp-item 1007) (sp-item 1008))
+  :parts ((sp-item 1006) (sp-item 1007) (sp-item 1008))
   )
 
 ;; failed to figure out what this is:
 (defpart 1007
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 8.0)
     (sp-rnd-flt spt-x (meters -1) (meters 2) 1.0)
     (sp-rnd-flt spt-y (meters 1) (meters 2) 1.0)
@@ -59,8 +57,7 @@
 
 ;; failed to figure out what this is:
 (defpart 1008
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
     (sp-flt spt-y (meters 2))
     (sp-rnd-flt spt-scale-x (meters 0.5) (meters 1) 1.0)
@@ -84,8 +81,7 @@
 
 ;; failed to figure out what this is:
 (defpart 1006
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
     (sp-flt spt-num 1.0)
     (sp-flt spt-y (meters 2))
     (sp-flt spt-scale-x (meters 12))
@@ -103,29 +99,21 @@
 
 ;; failed to figure out what this is:
 (defstate balloon-popping (balloon)
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self root-override))
     (ja-post)
     (sound-play-by-name (static-sound-name "cool-balloon") (new-sound-id) 1024 0 0 1 #t)
-    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-1
-        (let ((t9-6 (method-of-type part-tracker activate)))
-          (t9-6 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-1
-          part-tracker-init
-          (-> *part-group-id-table* 227)
-          -1
-          #f
-          #f
-          #f
-          (-> self root-override trans)
-          )
-        (-> gp-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 227)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override trans)
+      :to *entity-pool*
       )
     (suspend)
     (cleanup-for-death self)
@@ -136,8 +124,7 @@
 
 ;; failed to figure out what this is:
 (defstate balloon-idle (balloon)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('attack)
        (send-event arg0 'heat -10.0)
@@ -145,8 +132,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
     (loop
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
@@ -157,8 +143,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior balloon) ja-post)
+  :post (the-as (function none :behavior balloon) ja-post)
   )
 
 ;; definition for method 11 of type balloon
@@ -217,8 +202,7 @@
 
 ;; failed to figure out what this is:
 (defstate spike-up (spike)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (if (= v1-0 'go-spike-up)
                          #t
@@ -226,26 +210,20 @@
               )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (nonzero? (-> self num-alts))
       (let ((s5-0 (/ (-> self num-alts) 2))
             (gp-0 #t)
             )
         (while (< s5-0 (+ (-> self num-alts) -1))
           (let ((v1-2 (entity-actor-lookup (-> self entity) 'alt-actor s5-0)))
-            (if (and v1-2 (-> v1-2 extra process) (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                                                    (set! (-> a1-1 from) self)
-                                                    (set! (-> a1-1 num-params) 0)
-                                                    (set! (-> a1-1 message) 'go-spike-up)
-                                                    (not (send-event-function
-                                                           (if v1-2
-                                                               (-> v1-2 extra process)
-                                                               )
-                                                           a1-1
-                                                           )
+            (if (and v1-2 (-> v1-2 extra process) (not (send-event
+                                                         (if v1-2
+                                                             (-> v1-2 extra process)
+                                                             )
+                                                         'go-spike-up
                                                          )
-                                                    )
+                                                       )
                      )
                 (set! gp-0 #f)
                 )
@@ -260,8 +238,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (transform-post)
@@ -277,8 +254,7 @@
 
 ;; failed to figure out what this is:
 (defstate spike-down (spike)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'go-spike-up)
                        (go spike-up)
@@ -287,26 +263,20 @@
               )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (nonzero? (-> self num-alts))
       (let ((s5-0 0)
             (gp-0 #t)
             )
         (while (< s5-0 (/ (-> self num-alts) 2))
           (let ((v1-1 (entity-actor-lookup (-> self entity) 'alt-actor s5-0)))
-            (if (and v1-1 (-> v1-1 extra process) (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                                                    (set! (-> a1-1 from) self)
-                                                    (set! (-> a1-1 num-params) 0)
-                                                    (set! (-> a1-1 message) 'go-spike-up)
-                                                    (not (send-event-function
-                                                           (if v1-1
-                                                               (-> v1-1 extra process)
-                                                               )
-                                                           a1-1
-                                                           )
+            (if (and v1-1 (-> v1-1 extra process) (not (send-event
+                                                         (if v1-1
+                                                             (-> v1-1 extra process)
+                                                             )
+                                                         'go-spike-up
                                                          )
-                                                    )
+                                                       )
                      )
                 (set! gp-0 #f)
                 )
@@ -321,8 +291,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
     (loop
       (suspend)
@@ -333,16 +302,9 @@
 
 ;; failed to figure out what this is:
 (defstate spike-idle (spike)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (and *target*
-               (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-                 (set! (-> a1-0 from) self)
-                 (set! (-> a1-0 num-params) 1)
-                 (set! (-> a1-0 message) 'query)
-                 (set! (-> a1-0 param 0) (the-as uint 'mode))
-                 (= (send-event-function *target* a1-0) 'racer)
-                 )
+               (= (send-event *target* 'query 'mode) 'racer)
                (< (vector-vector-distance (-> self root-override trans) (target-pos 0)) 225280.0)
                )
       (sound-play-by-name (static-sound-name "magma-rock") (new-sound-id) 1024 0 0 1 #t)
@@ -352,11 +314,7 @@
           ((>= 1 v1-8)
            (go spike-up)
            )
-          ((let* ((v1-11 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                  (v1-12 (the-as number (logior #x3f800000 v1-11)))
-                  )
-             (< (+ -1.0 (the-as float v1-12)) 0.5)
-             )
+          ((< (rand-float-gen) 0.5)
            (go spike-down)
            )
           (else
@@ -367,8 +325,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
     (loop
       (suspend)
@@ -475,8 +432,7 @@
   :duration 600
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 12)
-  :parts
-  ((sp-item 2100 :period 600 :length 5)
+  :parts ((sp-item 2100 :period 600 :length 5)
     (sp-item 2101 :period 600 :length 40)
     (sp-item 2102 :period 600 :length 20)
     (sp-item 2103 :period 600 :length 20)
@@ -550,8 +506,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2104
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
     (sp-flt spt-num 32.0)
     (sp-rnd-flt spt-x (meters -2) (meters 4) 1.0)
     (sp-rnd-flt spt-y (meters 1) (meters 2) 1.0)
@@ -571,8 +526,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2101
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 12.0)
     (sp-rnd-flt spt-y (meters 1) (meters 3) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.4) (meters 0.8) 1.0)
@@ -598,14 +552,12 @@
 
 ;; failed to figure out what this is:
 (defpart 2105
-  :init-specs
-  ((sp-flt spt-fade-a -1.0666667))
+  :init-specs ((sp-flt spt-fade-a -1.0666667))
   )
 
 ;; failed to figure out what this is:
 (defpart 2103
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 12.0)
     (sp-rnd-flt spt-y (meters 1) (meters 3) 1.0)
     (sp-flt spt-scale-x (meters 0.3))
@@ -624,8 +576,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2100
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
     (sp-flt spt-num 1.0)
     (sp-flt spt-y (meters 2))
     (sp-flt spt-scale-x (meters 24))
@@ -642,8 +593,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2102
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
     (sp-rnd-flt spt-y (meters 1) (meters 3) 1.0)
     (sp-rnd-flt spt-scale-x (meters 3) (meters 1.5) 1.0)
@@ -671,29 +621,21 @@
 ;; failed to figure out what this is:
 (defstate die (crate-darkeco-cluster)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self root-override))
     (ja-post)
     (sound-play-by-name (static-sound-name "dcrate-break") (new-sound-id) 1024 0 0 1 #t)
-    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-1
-        (let ((t9-6 (method-of-type part-tracker activate)))
-          (t9-6 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-1
-          part-tracker-init
-          (-> *part-group-id-table* 228)
-          -1
-          #f
-          #f
-          #f
-          (-> self root-override trans)
-          )
-        (-> gp-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 228)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override trans)
+      :to *entity-pool*
       )
     (suspend)
     (cleanup-for-death self)
@@ -705,27 +647,15 @@
 ;; failed to figure out what this is:
 (defstate idle (crate-darkeco-cluster)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('attack 'touch)
-       (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-3 from) self)
-         (set! (-> a1-3 num-params) 2)
-         (set! (-> a1-3 message) 'attack)
-         (set! (-> a1-3 param 0) (-> arg3 param 0))
-         (let ((a2-2 (new 'static 'attack-info :mask #x20)))
-           (set! (-> a2-2 mode) 'darkeco)
-           (set! (-> a1-3 param 1) (the-as uint a2-2))
-           )
-         (send-event-function arg0 a1-3)
-         )
+       (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'darkeco))))
        (go-virtual die)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
     (logior! (-> self mask) (process-mask sleep))
     (suspend)

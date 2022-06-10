@@ -7,64 +7,36 @@
 
 ;; DECOMP BEGINS
 
-(define *eye-work*
-        (new 'static 'eye-work
-             :sprite-tmpl
-             (new 'static 'dma-gif-packet
-                  :dma-vif (new 'static 'dma-packet
-                                :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                                :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                                )
-                  :gif0 (new 'static 'gif-tag64
-                             :nloop #x1
-                             :eop #x1
-                             :pre #x1
-                             :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :fst #x1)
-                             :nreg #x5
-                             )
-                  :gif1 (new 'static 'gif-tag-regs
-                             :regs0 (gif-reg-id rgbaq)
-                             :regs1 (gif-reg-id uv)
-                             :regs2 (gif-reg-id xyz2)
-                             :regs3 (gif-reg-id uv)
-                             :regs4 (gif-reg-id xyz2)
-                             )
-                  )
-             :sprite-tmpl2
-             (new 'static 'dma-gif-packet
-                  :dma-vif (new 'static 'dma-packet
-                                :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                                :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                                )
-                  :gif0 (new 'static 'gif-tag64
-                             :nloop #x1
-                             :eop #x1
-                             :pre #x1
-                             :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :abe #x1 :fst #x1)
-                             :nreg #x5
-                             )
-                  :gif1 (new 'static 'gif-tag-regs
-                             :regs0 (gif-reg-id rgbaq)
-                             :regs1 (gif-reg-id uv)
-                             :regs2 (gif-reg-id xyz2)
-                             :regs3 (gif-reg-id uv)
-                             :regs4 (gif-reg-id xyz2)
-                             )
-                  )
-             :adgif-tmpl
-             (new 'static 'dma-gif-packet
-                  :dma-vif (new 'static 'dma-packet
-                                :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                                :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                                )
-                  :gif0 (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)
-                  :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
-                  )
-             :blink-table
-             (new 'static 'array float 10 0.0 0.667 0.9 1.0 1.0 1.0 1.0 0.333 0.1 0.0)
-             )
+(define *eye-work* (new 'static 'eye-work
+                     :sprite-tmpl (new 'static 'dma-gif-packet
+                       :dma-vif (new 'static 'dma-packet
+                         :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                         :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+                         )
+                       :gif (new 'static 'array uint64 2 #x508b400000008001 #x53531)
+                       )
+                     :sprite-tmpl2 (new 'static 'dma-gif-packet
+                       :dma-vif (new 'static 'dma-packet
+                         :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                         :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+                         )
+                       :gif (new 'static 'array uint64 2 #x50ab400000008001 #x53531)
+                       )
+                     :adgif-tmpl (new 'static 'dma-gif-packet
+                       :dma-vif (new 'static 'dma-packet
+                         :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                         :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+                         )
+                       :gif (new 'static 'array uint64 2 #x1000000000008005 #xe)
+                       )
+                     :blink-table (new 'static 'array float 10 0.0 0.667 0.9 1.0 1.0 1.0 1.0 0.333 0.1 0.0)
+                     )
         )
 
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
 (defun render-eyes ((arg0 dma-buffer) (arg1 eye-control) (arg2 int))
   (local-vars (sv-16 float))
   (let ((s4-0 32)
@@ -201,7 +173,6 @@
                  (a3-9 (the int (+ f28-0 f0-6)))
                  (t1-0 (the int (+ f26-0 f0-6)))
                  )
-            ;; (format 0 "eye: ~f ~f~%" f28-0 f26-0)
             (set! (-> a1-25 0 quad) (-> *eye-work* sprite-tmpl dma-vif quad))
             (set! (-> a1-25 1 quad) (-> *eye-work* sprite-tmpl quad 1))
             (set-vector! (-> a1-25 2) 128 128 128 128)
@@ -1115,7 +1086,6 @@
   (none)
   )
 
-;; definition for function get-eye-block
 (defun get-eye-block ((arg0 int) (arg1 int))
   (#when PC_PORT
     ;; hack to make this easier to figure out on the PC side.
@@ -1128,7 +1098,6 @@
     )
   )
 
-;; definition for function convert-eye-data
 (defun convert-eye-data ((arg0 eye) (arg1 uint))
   (local-vars
     (v0-0 float)
@@ -1159,9 +1128,7 @@
     )
   )
 
-;; definition for function merc-eye-anim
-;; INFO: Return type mismatch int vs none.
-(defun merc-eye-anim ((arg0 manipy))
+(defun merc-eye-anim ((arg0 process-drawable))
   (let* ((s5-0 (-> arg0 draw mgeo header eye-ctrl))
          (a0-1 (-> arg0 skel root-channel 0))
          (s4-0 (-> a0-1 frame-group))

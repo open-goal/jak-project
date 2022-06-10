@@ -15,17 +15,9 @@
 (defun yakow-cam ()
   (with-pp
     (let ((gp-0 (entity-actor-lookup (-> pp entity) 'alt-actor 0)))
-      (when gp-0
-        (let ((s5-0 (get-process *default-dead-pool* pov-camera #x4000)))
-          (when s5-0
-            (let ((t9-2 (method-of-type pov-camera activate)))
-              (t9-2 (the-as pov-camera s5-0) pp 'pov-camera (the-as pointer #x70004000))
-              )
-            (run-now-in-process s5-0 pov-camera-init-by-other (-> gp-0 extra trans) *village1cam-sg* "anim" 0 #f '())
-            (-> s5-0 ppointer)
-            )
+      (if gp-0
+          (process-spawn pov-camera (-> gp-0 extra trans) *village1cam-sg* "anim" 0 #f '() :to pp)
           )
-        )
       )
     (none)
     )
@@ -520,16 +512,13 @@ yakow-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate yakow-idle (yakow)
-  :event
-  yakow-default-event-handler
-  :enter
-  (behavior ()
+  :event yakow-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self travel-speed) 0.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> *YAKOW-bank* default-patrol-time))
              (and *target* (>= (-> self fact-override idle-distance)
                                (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
@@ -541,8 +530,7 @@ yakow-default-event-handler
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.15))
     (loop
       (cond
@@ -572,35 +560,28 @@ yakow-default-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior yakow) ja-post)
+  :post (the-as (function none :behavior yakow) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate yakow-notice (yakow)
-  :event
-  yakow-default-event-handler
-  :enter
-  (behavior ()
+  :event yakow-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self travel-speed) 0.0)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go yakow-run-away)
     (none)
     )
-  :post
-  yakow-simple-post
+  :post yakow-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate yakow-walk-to (yakow)
-  :event
-  yakow-default-event-handler
-  :enter
-  (behavior ((arg0 vector))
+  :event yakow-default-event-handler
+  :enter (behavior ((arg0 vector))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (logior! (-> self nav flags) (nav-control-flags navcf10))
     (set! (-> self nav destination-pos quad) (-> arg0 quad))
@@ -608,8 +589,7 @@ yakow-default-event-handler
     (set! (-> self turn-time) (-> *YAKOW-bank* walk-turn-time))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> *YAKOW-bank* default-patrol-time))
              (not (-> self in-pen))
              (and *target*
@@ -638,10 +618,8 @@ yakow-default-event-handler
       )
     (none)
     )
-  :code
-  (the-as (function vector none :behavior yakow) yakow-blend-walk-run)
-  :post
-  (behavior ()
+  :code (the-as (function vector none :behavior yakow) yakow-blend-walk-run)
+  :post (behavior ()
     (dummy-19
       (-> self nav)
       (-> self nav target-pos)
@@ -659,10 +637,8 @@ yakow-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate yakow-graze (yakow)
-  :event
-  yakow-default-event-handler
-  :enter
-  (behavior ()
+  :event yakow-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self travel-speed) 0.0)
     (set! (-> self grazing) #t)
@@ -676,8 +652,7 @@ yakow-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (while (< 546.13336 (fabs (deg-diff (-> self dest-rot) (y-angle (-> self root-override)))))
       (if (not (ja-group? yakow-walk-ja))
           (ja-channel-push! 1 (seconds 0.075))
@@ -705,16 +680,13 @@ yakow-default-event-handler
       )
     (none)
     )
-  :post
-  yakow-simple-post
+  :post yakow-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate yakow-graze-kicked (yakow)
-  :event
-  (the-as (function process int symbol event-message-block object :behavior yakow) #f)
-  :code
-  (behavior ()
+  :event (the-as (function process int symbol event-message-block object :behavior yakow) #f)
+  :code (behavior ()
     (ja-no-eval :group! yakow-kicked-in-place-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
@@ -723,24 +695,20 @@ yakow-default-event-handler
     (go yakow-graze)
     (none)
     )
-  :post
-  yakow-simple-post
+  :post yakow-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate yakow-run-away (yakow)
-  :event
-  yakow-default-event-handler
-  :enter
-  (behavior ()
+  :event yakow-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (logior! (-> self nav flags) (nav-control-flags navcf10))
     (set! (-> self rotate-speed) (-> *YAKOW-bank* run-rotate-speed))
     (set! (-> self turn-time) (-> *YAKOW-bank* run-turn-time))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (or (not *target*) (< (-> *YAKOW-bank* safe-distance)
                                 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                                 )
@@ -774,18 +742,14 @@ yakow-default-event-handler
       )
     (none)
     )
-  :code
-  yakow-blend-walk-run
-  :post
-  yakow-run-post
+  :code yakow-blend-walk-run
+  :post yakow-run-post
   )
 
 ;; failed to figure out what this is:
 (defstate yakow-kicked (yakow)
-  :event
-  (the-as (function process int symbol event-message-block object :behavior yakow) #f)
-  :enter
-  (behavior ()
+  :event (the-as (function process int symbol event-message-block object :behavior yakow) #f)
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (if (-> self grazing)
         (go yakow-graze-kicked)
@@ -798,13 +762,11 @@ yakow-default-event-handler
           )
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     '()
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
         (seek!
           (-> self travel-speed)
@@ -815,8 +777,7 @@ yakow-default-event-handler
     0
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self enable-turn-around) #t)
     1.0
     (suspend)
@@ -855,16 +816,13 @@ yakow-default-event-handler
     (go yakow-run-away)
     (none)
     )
-  :post
-  yakow-run-post
+  :post yakow-run-post
   )
 
 ;; failed to figure out what this is:
 (defstate yakow-die (yakow)
-  :event
-  (the-as (function process int symbol event-message-block object :behavior yakow) #f)
-  :code
-  (behavior ()
+  :event (the-as (function process int symbol event-message-block object :behavior yakow) #f)
+  :code (behavior ()
     (let ((v1-1 (-> self root-override root-prim)))
       (set! (-> v1-1 collide-with) (collide-kind))
       (set! (-> v1-1 prim-core collide-as) (collide-kind))

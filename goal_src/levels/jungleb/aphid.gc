@@ -6,6 +6,7 @@
 ;; dgos: JUB, L1
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/aphid-lurker-ag.gc")
 
 (deftype aphid (nav-enemy)
@@ -53,10 +54,8 @@
 
 (defstate nav-enemy-chase (aphid)
   :virtual #t
-  :exit
-  aphid-vulnerable
-  :code
-  (behavior ()
+  :exit aphid-vulnerable
+  :code (behavior ()
     (let ((gp-0 (cond
                   ((>= (-> self try) 15)
                    450
@@ -122,8 +121,7 @@
 
 (defstate nav-enemy-stare (aphid)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self turn-time) (seconds 0.2))
     (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
       (when (or (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
@@ -168,8 +166,7 @@
 
 (defstate nav-enemy-give-up (aphid)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self rotate-speed) 218453.33)
     (set! (-> self turn-time) (seconds 0.5))
     (ja-channel-push! 1 (seconds 0.15))
@@ -308,12 +305,7 @@
   (set! (-> self entity) (-> arg0 entity))
   (TODO-RENAME-48 self)
   (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf12))
-  (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-3 from) self)
-    (set! (-> a1-3 num-params) 0)
-    (set! (-> a1-3 message) 'try)
-    (set! (-> self try) (the-as int (send-event-function (ppointer->process (-> self parent)) a1-3)))
-    )
+  (set! (-> self try) (the-as int (send-event (ppointer->process (-> self parent)) 'try)))
   (go-virtual nav-enemy-chase)
   (none)
   )

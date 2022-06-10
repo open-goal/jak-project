@@ -12,14 +12,12 @@
   :linger-duration 600
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 12)
-  :parts
-  ((sp-item 2014 :fade-after (meters 100) :falloff-to (meters 100)))
+  :parts ((sp-item 2014 :fade-after (meters 100) :falloff-to (meters 100)))
   )
 
 ;; failed to figure out what this is:
 (defpart 2014
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 12.0)
     (sp-rnd-flt spt-x (meters -3) (meters 6) 1.0)
     (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
@@ -172,41 +170,25 @@
 ;; INFO: Return type mismatch none vs object.
 (defbehavior keg-event-handler keg ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (let ((v1-0 arg2))
-    (the-as
-      object
-      (when (or (= v1-0 'touch) (= v1-0 'attack))
-        (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-3 from) self)
-          (set! (-> a1-3 num-params) 2)
-          (set! (-> a1-3 message) 'attack)
-          (set! (-> a1-3 param 0) (-> arg3 param 0))
-          (set! (-> a1-3 param 1) (the-as uint (new 'static 'attack-info)))
-          (when (send-event-function arg0 a1-3)
-            (sound-play-by-name (static-sound-name "icrate-break") (new-sound-id) 1024 0 0 1 #t)
-            (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-              (when gp-1
-                (let ((t9-4 (method-of-type part-tracker activate)))
-                  (t9-4 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-                  )
-                (run-now-in-process
-                  gp-1
-                  part-tracker-init
-                  (-> *part-group-id-table* 71)
-                  20
-                  #f
-                  #f
-                  #f
-                  (-> self root-override trans)
-                  )
-                (-> gp-1 ppointer)
-                )
-              )
-            (sound-stop (-> self sound-id))
-            (deactivate self)
+    (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack))
+                     (when (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+                       (sound-play-by-name (static-sound-name "icrate-break") (new-sound-id) 1024 0 0 1 #t)
+                       (process-spawn
+                         part-tracker
+                         :init part-tracker-init
+                         (-> *part-group-id-table* 71)
+                         20
+                         #f
+                         #f
+                         #f
+                         (-> self root-override trans)
+                         :to *entity-pool*
+                         )
+                       (sound-stop (-> self sound-id))
+                       (deactivate self)
+                       )
+                     )
             )
-          )
-        )
-      )
     )
   )
 
@@ -234,16 +216,14 @@
 
 ;; failed to figure out what this is:
 (defstate keg-on-paddle (keg)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('detach)
        (go keg-paddle-to-path)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> (the-as keg (-> self parent 0)) sync-offset) (the-as float (process->ppointer self)))
     (ja :num-func num-func-identity :frame-num 0.0)
     (loop
@@ -257,16 +237,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior keg) keg-post)
+  :post (the-as (function none :behavior keg) keg-post)
   )
 
 ;; failed to figure out what this is:
 (defstate keg-paddle-to-path (keg)
-  :event
-  keg-event-handler
-  :code
-  (behavior ()
+  :event keg-event-handler
+  :code (behavior ()
     (let ((gp-0 (new-stack-vector0)))
       (set! (-> gp-0 quad) (-> self root-override trans quad))
       (let ((s5-0
@@ -296,16 +273,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior keg) keg-post)
+  :post (the-as (function none :behavior keg) keg-post)
   )
 
 ;; failed to figure out what this is:
 (defstate keg-on-path (keg)
-  :event
-  keg-event-handler
-  :code
-  (behavior ()
+  :event keg-event-handler
+  :code (behavior ()
     (local-vars (sv-48 float) (sv-64 float) (sv-80 float) (sv-96 float) (sv-112 float))
     (let ((gp-0 (new-stack-vector0))
           (s5-0 (new 'stack 'vector3s))
@@ -386,23 +360,16 @@
                     (activate! (-> self smush) -0.15 90 150 1.0 1.0)
                     (set! sv-64 f24-0)
                     (sound-play-by-name (static-sound-name "barrel-bounce") (new-sound-id) 819 0 0 1 #t)
-                    (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
-                      (when s4-1
-                        (let ((t9-12 (method-of-type part-tracker activate)))
-                          (t9-12 (the-as part-tracker s4-1) self 'part-tracker (the-as pointer #x70004000))
-                          )
-                        (run-now-in-process
-                          s4-1
-                          part-tracker-init
-                          (-> *part-group-id-table* 197)
-                          -1
-                          keg-bounce-set-particle-rotation-callback
-                          (-> self ppointer)
-                          #f
-                          (-> self root-override trans)
-                          )
-                        (-> s4-1 ppointer)
-                        )
+                    (process-spawn
+                      part-tracker
+                      :init part-tracker-init
+                      (-> *part-group-id-table* 197)
+                      -1
+                      keg-bounce-set-particle-rotation-callback
+                      (-> self ppointer)
+                      #f
+                      (-> self root-override trans)
+                      :to self
                       )
                     )
                   (let ((f0-39 (update! (-> self smush))))
@@ -423,16 +390,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior keg) keg-post)
+  :post (the-as (function none :behavior keg) keg-post)
   )
 
 ;; failed to figure out what this is:
 (defstate keg-in-chute (keg)
-  :event
-  keg-event-handler
-  :code
-  (behavior ()
+  :event keg-event-handler
+  :code (behavior ()
     (let ((gp-0 (TODO-RENAME-12
                   (-> (the-as process-drawable (-> self parent 0)) path)
                   (new-stack-vector0)
@@ -467,22 +431,18 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior keg) keg-post)
+  :post (the-as (function none :behavior keg) keg-post)
   )
 
 ;; failed to figure out what this is:
 (defstate keg-die (keg)
-  :event
-  (the-as (function process int symbol event-message-block object :behavior keg) #f)
-  :code
-  (behavior ()
+  :event (the-as (function process int symbol event-message-block object :behavior keg) #f)
+  :code (behavior ()
     (sound-stop (-> self sound-id))
     (cleanup-for-death self)
     (none)
     )
-  :post
-  (the-as (function none :behavior keg) transform-post)
+  :post (the-as (function none :behavior keg) transform-post)
   )
 
 ;; definition for function keg-init-by-other
@@ -541,40 +501,25 @@
   )
 
 ;; definition for function keg-conveyor-spawn-keg
+;; INFO: Return type mismatch (pointer process) vs (pointer keg).
 (defun keg-conveyor-spawn-keg ((arg0 keg-conveyor))
-  (let ((s5-0 (get-process *default-dead-pool* keg #x4000)))
-    (when s5-0
-      (let ((t9-1 (method-of-type keg activate)))
-        (t9-1 (the-as keg s5-0) arg0 'keg (the-as pointer #x70004000))
-        )
-      (run-now-in-process s5-0 keg-init-by-other arg0 0)
-      (-> s5-0 ppointer)
-      )
-    )
+  (process-spawn keg arg0 0 :to arg0)
   )
 
 ;; definition for function keg-conveyor-spawn-bouncing-keg
+;; INFO: Return type mismatch (pointer process) vs (pointer keg).
 (defun keg-conveyor-spawn-bouncing-keg ((arg0 keg-conveyor))
-  (let ((s5-0 (get-process *default-dead-pool* keg #x4000)))
-    (when s5-0
-      (let ((t9-1 (method-of-type keg activate)))
-        (t9-1 (the-as keg s5-0) arg0 'keg (the-as pointer #x70004000))
-        )
-      (run-now-in-process s5-0 keg-init-by-other arg0 1)
-      (-> s5-0 ppointer)
-      )
-    )
+  (process-spawn keg arg0 1 :to arg0)
   )
 
 ;; definition for symbol *keg-conveyor-keg-spawn-table*, type (array int8)
 (define *keg-conveyor-keg-spawn-table*
-  (the-as (array int8) (new 'static 'boxed-array :type int8 :length 6 :allocated-length 6 1 2 1 1 2 1))
+  (the-as (array int8) (new 'static 'boxed-array :type int8 1 2 1 1 2 1))
   )
 
 ;; failed to figure out what this is:
 (defstate keg-conveyor-idle (keg-conveyor)
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja :num-func num-func-identity :frame-num 0.0)
     0.0
     (loop
@@ -582,14 +527,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior keg-conveyor) ja-post)
+  :post (the-as (function none :behavior keg-conveyor) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate keg-conveyor-paddle-idle (keg-conveyor-paddle)
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((f30-0 57.0)
           (gp-0 0)
           (s5-0 (length *keg-conveyor-keg-spawn-table*))
@@ -651,8 +594,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior keg-conveyor-paddle) transform-post)
+  :post (the-as (function none :behavior keg-conveyor-paddle) transform-post)
   )
 
 ;; definition for function keg-conveyor-paddle-init-by-other
@@ -730,15 +672,7 @@
       )
     (vector+! (-> obj root trans) (-> obj root trans) s5-1)
     )
-  (let ((s5-2 (get-process *default-dead-pool* keg-conveyor-paddle #x4000)))
-    (when s5-2
-      (let ((t9-11 (method-of-type keg-conveyor-paddle activate)))
-        (t9-11 (the-as keg-conveyor-paddle s5-2) obj 'keg-conveyor-paddle (the-as pointer #x70004000))
-        )
-      (run-now-in-process s5-2 keg-conveyor-paddle-init-by-other obj)
-      (-> s5-2 ppointer)
-      )
-    )
+  (process-spawn keg-conveyor-paddle obj :to obj)
   (go keg-conveyor-idle)
   (none)
   )

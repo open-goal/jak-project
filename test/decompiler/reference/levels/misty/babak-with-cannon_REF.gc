@@ -33,13 +33,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-idle (babak-with-cannon)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     nav-enemy-default-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and (and *target* (>= (-> self enemy-info idle-distance)
                                (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
                                )
@@ -50,8 +48,7 @@ nav-enemy-default-event-handler
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -62,20 +59,17 @@ nav-enemy-default-event-handler
     (anim-loop)
     (none)
     )
-  :post
-  (the-as (function none :behavior babak-with-cannon) #f)
+  :post (the-as (function none :behavior babak-with-cannon) #f)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-patrol (babak-with-cannon)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     nav-enemy-default-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
       (let ((f30-0 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
         (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
@@ -102,26 +96,22 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :code
-  (-> (method-of-type babak nav-enemy-patrol) code)
+  :code (-> (method-of-type babak nav-enemy-patrol) code)
   )
 
 ;; failed to figure out what this is:
 (defstate babak-run-to-cannon (babak)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self nav destination-pos quad) (-> self entity extra trans quad))
     (set! (-> self nav target-pos quad) (-> self entity extra trans quad))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (nav-enemy-notice-player?)
         (go-virtual nav-enemy-chase)
         )
@@ -130,8 +120,7 @@ nav-enemy-default-event-handler
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (loop
       (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
@@ -142,8 +131,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (nav-enemy-travel-post)
     (none)
     )
@@ -204,18 +192,15 @@ nav-enemy-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate babak-with-cannon-jump-onto-cannon (babak-with-cannon)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     nav-enemy-jump-event-handler
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
     (set! (-> self turn-time) (-> self nav-info run-turn-time))
@@ -277,24 +262,20 @@ nav-enemy-default-event-handler
     (go babak-with-cannon-shooting)
     (none)
     )
-  :post
-  (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
+  :post (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
   )
 
 ;; failed to figure out what this is:
 (defstate babak-with-cannon-jump-off-cannon (babak-with-cannon)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     nav-enemy-jump-event-handler
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (nav-enemy-initialize-jump (-> self entity extra trans))
     (nav-enemy-neck-control-look-at)
@@ -316,19 +297,16 @@ nav-enemy-default-event-handler
     (go-virtual nav-enemy-jump-land)
     (none)
     )
-  :post
-  (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
+  :post (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
   )
 
 ;; failed to figure out what this is:
 (defstate babak-with-cannon-shooting (babak-with-cannon)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((v1-2 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
       (if v1-2
@@ -337,8 +315,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (let ((v1-0 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
       (if v1-0
           (logclear! (-> v1-0 extra perm status) (entity-perm-status complete))
@@ -346,8 +323,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((f0-1 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
       (if (and (< -40960.0 f0-1)
                (and (and *target*
@@ -361,27 +337,23 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (suspend)
       )
     (none)
     )
-  :post
-  babak-with-cannon-ride-cannon-post
+  :post babak-with-cannon-ride-cannon-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-die (babak-with-cannon)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     nav-enemy-default-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target* (= (-> *target* current-level name) 'beach))
         (spool-push *art-control* "beachcam-cannon" 0 self -1.0)
         )
@@ -400,13 +372,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-fuel-cell (babak-with-cannon)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     process-drawable-fuel-cell-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self collide-info))
     (ja-post)

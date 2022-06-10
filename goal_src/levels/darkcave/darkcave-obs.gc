@@ -8,6 +8,7 @@
 ; (define-extern *cavecrystal-sg* skeleton-group)
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/cavecrystal-ag.gc")
 
 (deftype cavecrystal (process-drawable)
@@ -94,16 +95,14 @@
   )
 
 (defstate cavecrystal-idle (cavecrystal)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('attack)
        (go cavecrystal-active)
        )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target* (>= 40960.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
         (level-hint-spawn
           (game-text-id darkcave-light-crystal-hint)
@@ -116,8 +115,7 @@
     (update-connected-crystals! self)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
@@ -126,8 +124,7 @@
   )
 
 (defstate cavecrystal-active (cavecrystal)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'attack)
                        (let ((v1-1 (-> arg3 param 2)))
@@ -146,23 +143,20 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
     (set! (-> self activated-time) (-> *display* game-frame-counter))
     (set! (-> self prev-compute-glow-time) (-> *display* game-frame-counter))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (stop! (-> self sound))
     (if (not (-> self is-master?))
         (logior! (-> self mask) (process-mask actor-pause))
         )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((f30-0 (compute-glow self)))
       (set! (-> self glow-u) f30-0)
       (let ((gp-0 (new 'stack-no-clear 'vector))
@@ -201,8 +195,7 @@
     (update! (-> self sound))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0

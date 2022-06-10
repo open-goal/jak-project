@@ -92,23 +92,16 @@
 
 ;; failed to figure out what this is:
 (defstate swingpole-stance (swingpole)
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (and *target*
                  (< (vector-vector-distance (-> self root trans) (-> *target* control unknown-vector90)) (-> self range))
                  (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-6))
                  (< (-> *target* control unknown-vector90 y) (+ (-> self root trans y) (* 0.5 (-> self range))))
                  )
-        (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-1 from) self)
-          (set! (-> a1-1 num-params) 1)
-          (set! (-> a1-1 message) 'pole-grab)
-          (set! (-> a1-1 param 0) (the-as uint self))
-          (if (send-event-function *target* a1-1)
-              (go swingpole-active)
-              )
-          )
+        (if (send-event *target* 'pole-grab self)
+            (go swingpole-active)
+            )
         )
       (suspend)
       )
@@ -118,8 +111,7 @@
 
 ;; failed to figure out what this is:
 (defstate swingpole-active (swingpole)
-  :code
-  (behavior ()
+  :code (behavior ()
     (suspend)
     (while (and *target* (= (handle->process (-> *target* control unknown-handle10)) self))
       (suspend)
@@ -157,8 +149,7 @@
 ;; failed to figure out what this is:
 (defstate die (process-hidden)
   :virtual #t
-  :code
-  (the-as (function none :behavior process-hidden) nothing)
+  :code (the-as (function none :behavior process-hidden) nothing)
   )
 
 ;; definition for method 11 of type process-hidden
@@ -252,8 +243,7 @@
 
 ;; failed to figure out what this is:
 (defstate manipy-idle (manipy)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 none))
     (let ((v1-0 arg2))
       (the-as
@@ -455,8 +445,7 @@
         )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (!= (-> self cur-trans-hook) (-> self new-trans-hook))
         (set! (-> self cur-trans-hook) (-> self new-trans-hook))
         )
@@ -491,8 +480,7 @@
     ((-> self cur-trans-hook))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logclear! (-> self mask) (process-mask heap-shrunk))
     (loop
       ((-> self cur-post-hook))
@@ -509,8 +497,7 @@
          )
         (('copy-parent)
          (ja :num-func num-func-identity
-             :frame-num
-             (-> (the-as process-drawable (ppointer->process (-> self parent))) skel root-channel 0 frame-num)
+             :frame-num (-> (the-as process-drawable (ppointer->process (-> self parent))) skel root-channel 0 frame-num)
              )
          )
         (('clone-parent)
@@ -655,8 +642,7 @@
 
 ;; failed to figure out what this is:
 (defstate part-tracker-process (part-tracker)
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self start-time) (-> *display* base-frame-counter))
     (while (< (- (-> *display* base-frame-counter) (-> self start-time)) (-> self duration))
       (let ((gp-0 (handle->process (-> self target))))
@@ -887,16 +873,7 @@
 ;; INFO: Return type mismatch object vs symbol.
 (defbehavior process-release? process ((arg0 process))
   (let ((gp-0 (command-get-process arg0 *target*)))
-    (the-as symbol (if (and gp-0
-                            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                              (set! (-> a1-1 from) self)
-                              (set! (-> a1-1 num-params) 1)
-                              (set! (-> a1-1 message) 'query)
-                              (set! (-> a1-1 param 0) (the-as uint 'mode))
-                              (send-event-function gp-0 a1-1)
-                              )
-                            'target-grab
-                            )
+    (the-as symbol (if (and gp-0 (send-event gp-0 'query 'mode) 'target-grab)
                        (send-event gp-0 'end-mode)
                        #t
                        )
@@ -1176,8 +1153,7 @@
 
 ;; failed to figure out what this is:
 (defstate camera-tracker-process (camera-tracker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 uint))
     (let ((v1-0 arg2))
       (the-as object (cond
@@ -1200,8 +1176,7 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (if (-> self entity-override)
         (dummy-30 (-> self entity-override) (entity-perm-status bit-3) #t)
         )
@@ -1213,16 +1188,14 @@
     (hide-hud-quick)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (if (-> self entity-override)
         (dummy-30 (-> self entity-override) (entity-perm-status bit-3) #f)
         )
     (send-event *camera* 'clear-entity)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((-> self script-func)
        ((-> self script-func))
@@ -1316,8 +1289,7 @@
 
 ;; failed to figure out what this is:
 (defstate med-res-level-idle (med-res-level)
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars (v1-37 float))
     (rlet ((vf0 :class vf)
            (vf16 :class vf)
@@ -1369,8 +1341,7 @@
       (none)
       )
     )
-  :post
-  (the-as (function none :behavior med-res-level) ja-post)
+  :post (the-as (function none :behavior med-res-level) ja-post)
   )
 
 ;; definition for symbol *lev-string*, type string
@@ -1451,8 +1422,7 @@
 
 ;; failed to figure out what this is:
 (defstate part-spawner-active (part-spawner)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('stop)
        (process-entity-status! self (entity-perm-status complete) #t)
@@ -1472,8 +1442,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (-> self enable)
         (spawn (-> self part) (-> self root trans))
@@ -1589,8 +1558,7 @@
 (defpartgroup group-beach-launcher
   :id 37
   :bounds (static-bspherem 0 3 0 5)
-  :parts
-  ((sp-item 45 :fade-after (meters 100) :falloff-to (meters 100))
+  :parts ((sp-item 45 :fade-after (meters 100) :falloff-to (meters 100))
     (sp-item 46 :fade-after (meters 70) :falloff-to (meters 100) :flags (is-3d))
     (sp-item 47 :fade-after (meters 70) :falloff-to (meters 100) :flags (is-3d))
     (sp-item 48 :fade-after (meters 50) :falloff-to (meters 80))
@@ -1600,8 +1568,7 @@
 
 ;; failed to figure out what this is:
 (defpart 45
-  :init-specs
-  ((sp-flt spt-num 1.5)
+  :init-specs ((sp-flt spt-num 1.5)
     (sp-flt spt-x (meters 1.5))
     (sp-flt spt-y (meters -0.5))
     (sp-int spt-rot-x 5)
@@ -1619,14 +1586,12 @@
 
 ;; failed to figure out what this is:
 (defpart 50
-  :init-specs
-  ((sp-flt spt-fade-b -4.551111))
+  :init-specs ((sp-flt spt-fade-b -4.551111))
   )
 
 ;; failed to figure out what this is:
 (defpart 46
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 1.0)
     (sp-rnd-flt spt-x (meters 0) (meters 1.8) 1.0)
     (sp-flt spt-scale-x (meters 0.2))
@@ -1647,8 +1612,7 @@
 
 ;; failed to figure out what this is:
 (defpart 47
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 2.0)
     (sp-rnd-flt spt-x (meters 1.8) (meters 1) 1.0)
     (sp-flt spt-scale-x (meters 0.2))
@@ -1669,8 +1633,7 @@
 
 ;; failed to figure out what this is:
 (defpart 48
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
     (sp-flt spt-num 1.5)
     (sp-rnd-flt spt-x (meters 2.9) (meters 2.5) 1.0)
     (sp-flt spt-y (meters -0.5))
@@ -1695,8 +1658,7 @@
 
 ;; failed to figure out what this is:
 (defpart 49
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 0.5)
     (sp-rnd-flt spt-x (meters 2.9) (meters 2.5) 1.0)
     (sp-flt spt-y (meters -0.5))
@@ -1723,16 +1685,14 @@
 
 ;; failed to figure out what this is:
 (defpart 51
-  :init-specs
-  ((sp-flt spt-fade-a -0.18))
+  :init-specs ((sp-flt spt-fade-a -0.18))
   )
 
 ;; failed to figure out what this is:
 (defpartgroup group-jungle-launcher
   :id 38
   :bounds (static-bspherem 0 3 0 5)
-  :parts
-  ((sp-item 45 :fade-after (meters 100) :falloff-to (meters 100))
+  :parts ((sp-item 45 :fade-after (meters 100) :falloff-to (meters 100))
     (sp-item 52 :fade-after (meters 70) :falloff-to (meters 100) :flags (is-3d))
     (sp-item 53 :fade-after (meters 70) :falloff-to (meters 100) :flags (is-3d))
     (sp-item 54 :fade-after (meters 70) :falloff-to (meters 100))
@@ -1741,8 +1701,7 @@
 
 ;; failed to figure out what this is:
 (defpart 52
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 1.0)
     (sp-rnd-flt spt-x (meters 0) (meters 1.4) 1.0)
     (sp-flt spt-scale-x (meters 0.2))
@@ -1763,8 +1722,7 @@
 
 ;; failed to figure out what this is:
 (defpart 53
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 2.0)
     (sp-rnd-flt spt-x (meters 1.4) (meters 0.9) 1.0)
     (sp-flt spt-scale-x (meters 0.2))
@@ -1785,8 +1743,7 @@
 
 ;; failed to figure out what this is:
 (defpart 54
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 0.5)
     (sp-rnd-flt spt-x (meters 2.9) (meters 2.5) 1.0)
     (sp-flt spt-y (meters -0.5))
@@ -1815,8 +1772,7 @@
 (defpartgroup group-swamp-launcher
   :id 39
   :bounds (static-bspherem 0 3 0 5)
-  :parts
-  ((sp-item 45 :fade-after (meters 100) :falloff-to (meters 100))
+  :parts ((sp-item 45 :fade-after (meters 100) :falloff-to (meters 100))
     (sp-item 46 :fade-after (meters 70) :falloff-to (meters 100) :flags (is-3d))
     (sp-item 47 :fade-after (meters 70) :falloff-to (meters 100) :flags (is-3d))
     (sp-item 55 :fade-after (meters 70) :falloff-to (meters 100))
@@ -1825,8 +1781,7 @@
 
 ;; failed to figure out what this is:
 (defpart 55
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 0.5)
     (sp-rnd-flt spt-x (meters 2.9) (meters 2.5) 1.0)
     (sp-flt spt-y (meters -0.5))
@@ -1873,8 +1828,7 @@
 
 ;; failed to figure out what this is:
 (defstate cam-launcher-shortfall (camera-slave)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('teleport)
        #f
@@ -1884,8 +1838,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
@@ -1906,22 +1859,20 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (zero? (logand (-> *camera* master-options) 2))
         (cam-slave-go cam-free-floating)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (-> *display* base-frame-counter)))
       (loop
         (when (not (paused?))
           (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
           (send-event *camera* 'teleport)
           (if (and (-> *camera* on-ground) (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1)))
-              (send-event *camera* 'change-state *camera-base-mode* 150)
+              (send-event *camera* 'change-state *camera-base-mode* (seconds 0.5))
               )
           )
         (suspend)
@@ -1950,8 +1901,7 @@
 
 ;; failed to figure out what this is:
 (defstate cam-launcher-longfall (camera-slave)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('teleport)
        #f
@@ -1961,8 +1911,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (new 'stack-no-clear 'vector)
       (vector-negate! (-> self view-flat) (-> self tracking inv-mat vector 2))
@@ -1976,16 +1925,14 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (zero? (logand (-> *camera* master-options) 2))
         (cam-slave-go cam-free-floating)
         )
     (cam-launcher-long-joystick)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (-> *display* base-frame-counter)))
       (loop
         (when (not (paused?))
@@ -2029,7 +1976,7 @@
           (set! (-> self trans z) (-> *camera* tpos-curr z))
           (vector+! (-> self trans) (-> self trans) (-> self view-flat))
           (if (and (-> *camera* on-ground) (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1)))
-              (send-event *camera* 'change-state *camera-base-mode* 150)
+              (send-event *camera* 'change-state *camera-base-mode* (seconds 0.5))
               )
           )
         (vector-reset! (-> self tracking follow-off))
@@ -2050,8 +1997,7 @@
 
 ;; failed to figure out what this is:
 (defstate launcher-idle (launcher)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('instant-death)
        (go launcher-deactivated)
@@ -2062,46 +2008,25 @@
        )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (and *target* (>= (-> self active-distance)
                             (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                             )
                )
-      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-1 from) self)
-        (set! (-> a1-1 num-params) 2)
-        (set! (-> a1-1 message) 'query)
-        (set! (-> a1-1 param 0) (the-as uint 'powerup))
-        (set! (-> a1-1 param 1) (the-as uint 3))
-        (cond
-          ((send-event-function *target* a1-1)
-           (go launcher-active)
-           )
-          (else
-            (let ((gp-0 'target-launch)
-                  (a1-2 (new 'stack-no-clear 'event-message-block))
-                  )
-              (set! (-> a1-2 from) self)
-              (set! (-> a1-2 num-params) 1)
-              (set! (-> a1-2 message) 'query)
-              (set! (-> a1-2 param 0) (the-as uint 'mode))
-              (if (= (send-event-function *target* a1-2) gp-0)
-                  (send-event *target* 'end-mode)
-                  )
-              )
+      (cond
+        ((send-event *target* 'query 'powerup (pickup-type eco-blue))
+         (go launcher-active)
+         )
+        (else
+          (let ((gp-0 'target-launch))
+            (if (= (send-event *target* 'query 'mode) gp-0)
+                (send-event *target* 'end-mode)
+                )
             )
           )
         )
       (if (and (and *target* (>= 32768.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
-               (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-                 (set! (-> a1-5 from) self)
-                 (set! (-> a1-5 num-params) 2)
-                 (set! (-> a1-5 message) 'query)
-                 (set! (-> a1-5 param 0) (the-as uint 'powerup))
-                 (set! (-> a1-5 param 1) (the-as uint 3))
-                 (not (send-event-function *target* a1-5))
-                 )
+               (not (send-event *target* 'query 'powerup (pickup-type eco-blue)))
                )
           (level-hint-spawn
             (game-text-id daxter-launcher-no-eco)
@@ -2114,14 +2039,12 @@
       )
     (none)
     )
-  :code
-  (the-as (function none :behavior launcher) anim-loop)
+  :code (the-as (function none :behavior launcher) anim-loop)
   )
 
 ;; failed to figure out what this is:
 (defstate launcher-active (launcher)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (when (or (= arg2 'touch) (= arg2 'attack))
       (set! (-> self state-time) (-> *display* base-frame-counter))
       (send-event arg0 'launch (-> self spring-height) (-> self camera) (-> self dest) (-> self seek-time))
@@ -2136,8 +2059,7 @@
        )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (let ((v1-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> v1-0 command) (sound-command set-param))
       (set! (-> v1-0 id) (-> self sound-id))
@@ -2149,20 +2071,12 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (or (or (not *target*) (< (-> self active-distance)
                                   (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                                   )
                 )
-            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-              (set! (-> a1-1 from) self)
-              (set! (-> a1-1 num-params) 2)
-              (set! (-> a1-1 message) 'query)
-              (set! (-> a1-1 param 0) (the-as uint 'powerup))
-              (set! (-> a1-1 param 1) (the-as uint 3))
-              (not (send-event-function *target* a1-1))
-              )
+            (not (send-event *target* 'query 'powerup (pickup-type eco-blue)))
             )
         (go launcher-idle)
         )
@@ -2178,8 +2092,7 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (sound-play-by-name (static-sound-name "launch-start") (new-sound-id) 1024 0 0 1 #t)
     (anim-loop)
     (none)
@@ -2188,8 +2101,7 @@
 
 ;; failed to figure out what this is:
 (defstate launcher-deactivated (launcher)
-  :code
-  (the-as (function none :behavior launcher) anim-loop)
+  :code (the-as (function none :behavior launcher) anim-loop)
   )
 
 ;; definition for method 11 of type launcher
@@ -2318,8 +2230,7 @@
 
 ;; failed to figure out what this is:
 (defstate touch-tracker-idle (touch-tracker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 none))
     (let ((v1-0 arg2))
       (the-as object (cond
@@ -2330,24 +2241,19 @@
                               ((= (-> self event) 'attack)
                                (cond
                                  ((= (-> arg0 type) target)
-                                  (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-                                    (set! (-> a1-2 from) (the-as process v1-1))
-                                    (set! (-> a1-2 num-params) 2)
-                                    (set! (-> a1-2 message) (-> self event))
-                                    (set! (-> a1-2 param 0) (the-as uint #f))
-                                    (let ((a2-2 (new 'static 'attack-info :mask #x20)))
-                                      (set! (-> a2-2 mode) (the-as symbol (-> self event-mode)))
-                                      (set! (-> a1-2 param 1) (the-as uint a2-2))
-                                      )
-                                    (send-event-function arg0 a1-2)
+                                  (send-event
+                                    arg0
+                                    (-> self event)
+                                    :from (the-as process v1-1)
+                                    #f
+                                    (static-attack-info ((mode (the-as symbol (-> self event-mode)))))
                                     )
                                   )
                                  ((= (-> v1-1 type) target)
                                   (send-event
                                     arg0
                                     (-> self event)
-                                    :from
-                                    (the-as process v1-1)
+                                    :from (the-as process v1-1)
                                     #f
                                     (-> self event-mode)
                                     (-> *target* control unknown-dword50)
@@ -2421,8 +2327,7 @@
               )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (while ((-> self run-function))
       (let* ((gp-0 (handle->process (-> self target)))
@@ -2579,8 +2484,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2528
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xc :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xc :page #x2))
     (sp-func spt-birth-func 'birth-func-set-quat)
     (sp-flt spt-num 1.0)
     (sp-rnd-flt spt-scale-x (meters 2) (meters 0.5) 1.0)

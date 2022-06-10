@@ -5,10 +5,8 @@
 
 ;; failed to figure out what this is:
 (defstate fuel-cell-spline-slider (fuel-cell)
-  :trans
-  (the-as (function none :behavior fuel-cell) hide-hud-quick)
-  :code
-  (behavior ((arg0 handle) (arg1 float) (arg2 float))
+  :trans (the-as (function none :behavior fuel-cell) hide-hud-quick)
+  :code (behavior ((arg0 handle) (arg1 float) (arg2 float))
     (logclear! (-> self mask) (process-mask actor-pause))
     (ja :group! (-> self draw art-group data 2))
     (if *target*
@@ -324,8 +322,7 @@
 
 ;; failed to figure out what this is:
 (defstate robber-debug (robber)
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -354,14 +351,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) ja-post)
+  :post (the-as (function none :behavior robber) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-dead (robber)
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (deactivate self)
     (none)
@@ -370,13 +365,11 @@
 
 ;; failed to figure out what this is:
 (defstate robber-die (robber)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior robber)
     process-drawable-death-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 #t))
       (when (robber-task-complete?)
         (let ((v1-3 (-> self entity extra perm)))
@@ -390,21 +383,15 @@
                               -163840.0
                               )
                           )
-                   (s5-0 (get-process *default-dead-pool* fuel-cell #x4000))
                    )
-               (when s5-0
-                 (let ((t9-2 (method-of-type fuel-cell activate)))
-                   (t9-2 (the-as fuel-cell s5-0) self 'fuel-cell (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process
-                   s5-0
-                   fuel-cell-init-as-spline-slider
-                   (process->handle self)
-                   (-> self curve-position)
-                   f30-0
-                   (-> self entity extra perm task)
-                   )
-                 (-> s5-0 ppointer)
+               (process-spawn
+                 fuel-cell
+                 :init fuel-cell-init-as-spline-slider
+                 (process->handle self)
+                 (-> self curve-position)
+                 f30-0
+                 (-> self entity extra perm task)
+                 :to self
                  )
                )
              )
@@ -444,16 +431,13 @@
     (go robber-dead)
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-got-away (robber)
-  :event
-  robber-event-handler
-  :trans
-  (behavior ()
+  :event robber-event-handler
+  :trans (behavior ()
     (if (and (not (and *target*
                        (>= 204800.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
                        )
@@ -469,8 +453,7 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (not (ja-group? (-> self draw art-group data 7)))
       (ja-channel-push! 1 (seconds 0.2))
       (ja :group! (-> self draw art-group data 7))
@@ -486,26 +469,21 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-tired (robber)
-  :event
-  robber-event-handler
-  :enter
-  (behavior ()
+  :event robber-event-handler
+  :enter (behavior ()
     (set! (-> self y-offset-desired) -12288.0)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self y-offset-desired) 0.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not (and *target*
                   (>= 163840.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
                   )
@@ -514,8 +492,7 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (not (ja-group? (-> self draw art-group data 7)))
         (ja-channel-push! 1 (seconds 0.2))
@@ -551,23 +528,19 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-flee (robber)
-  :event
-  robber-event-handler
-  :enter
-  (behavior ()
+  :event robber-event-handler
+  :enter (behavior ()
     (set! (-> self near-timer) 3000)
     (set! (-> self far-time) (-> *display* base-frame-counter))
     (set! (-> self y-offset-desired) 0.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not (and *target*
                   (>= 163840.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
                   )
@@ -591,8 +564,7 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (not (ja-group? (-> self draw art-group data 7)))
         (ja-channel-push! 1 (seconds 0.2))
@@ -628,21 +600,17 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-idle (robber)
-  :event
-  robber-event-handler
-  :enter
-  (behavior ()
+  :event robber-event-handler
+  :enter (behavior ()
     (set! (-> self speed) 0.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target*
              (>= 122880.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
              )
@@ -652,8 +620,7 @@
     (robber-move)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (loop
       (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek!) :frame-num 0.0)
@@ -664,16 +631,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-initial-notice (robber)
-  :event
-  robber-event-handler
-  :trans
-  (behavior ()
+  :event robber-event-handler
+  :trans (behavior ()
     (when (logtest? (-> self draw status) (draw-status was-drawn))
       (if (and *target*
                (>= 163840.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
@@ -694,8 +658,7 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (TODO-RENAME-14 (-> self path) (-> self tangent) (-> self curve-position))
     (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (-> self root-override trans) (target-pos 0)))
           (f0-1 6.826667)
@@ -719,21 +682,17 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-initial (robber)
-  :event
-  robber-event-handler
-  :enter
-  (behavior ()
+  :event robber-event-handler
+  :enter (behavior ()
     (set! (-> self speed) 0.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target*
              (>= 122880.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
              )
@@ -742,8 +701,7 @@
     (robber-move)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (loop
       (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
@@ -754,8 +712,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; definition for method 11 of type robber

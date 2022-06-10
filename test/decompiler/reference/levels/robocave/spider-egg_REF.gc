@@ -50,8 +50,7 @@
 
 ;; failed to figure out what this is:
 (defstate spider-egg-idle (spider-egg)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 none))
     (let ((v1-0 arg2))
       (the-as object (cond
@@ -79,21 +78,18 @@
               )
       )
     )
-  :enter
-  (behavior ((arg0 symbol))
+  :enter (behavior ((arg0 symbol))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
       (cond
         (arg0
           (ja-channel-set! 1)
           (ja-no-eval :group! spider-egg-idle-ja
                       :num! (seek! max f30-0)
-                      :frame-num
-                      (rand-vu-float-range 0.0 (the float (+ (-> (ja-group) data 0 length) -1)))
+                      :frame-num (rand-vu-float-range 0.0 (the float (+ (-> (ja-group) data 0 length) -1)))
                       )
           (until (ja-done? 0)
             (suspend)
@@ -125,14 +121,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior spider-egg) ja-post)
+  :post (the-as (function none :behavior spider-egg) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate spider-egg-hatch (spider-egg)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 symbol))
     (case arg2
       (('can-spawn?)
@@ -141,28 +135,20 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (logclear! (-> self mask) (process-mask actor-pause))
     (clear-collide-with-as (-> self root-override))
-    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-0
-        (let ((t9-3 (method-of-type part-tracker activate)))
-          (t9-3 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-0
-          part-tracker-init
-          (-> *part-group-id-table* 324)
-          -1
-          #f
-          #f
-          #f
-          (-> self root-override trans)
-          )
-        (-> gp-0 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 324)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override trans)
+      :to *entity-pool*
       )
     (lods-assign! (-> self draw) (-> self broken-look))
     (ja-channel-push! 1 (seconds 0.2))
@@ -177,14 +163,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior spider-egg) ja-post)
+  :post (the-as (function none :behavior spider-egg) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate spider-egg-die (spider-egg)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 symbol))
     (case arg2
       (('can-spawn?)
@@ -193,8 +177,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (logclear! (-> self mask) (process-mask actor-pause))
     (when (-> self notify-actor)
@@ -215,23 +198,16 @@
           )
         )
       )
-    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-0
-        (let ((t9-3 (method-of-type part-tracker activate)))
-          (t9-3 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-0
-          part-tracker-init
-          (-> *part-group-id-table* 325)
-          -1
-          #f
-          #f
-          #f
-          (-> self root-override trans)
-          )
-        (-> gp-0 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 325)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override trans)
+      :to *entity-pool*
       )
     (lods-assign! (-> self draw) (-> self broken-look))
     (ja-channel-push! 1 (seconds 0.1))
@@ -247,8 +223,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior spider-egg) ja-post)
+  :post (the-as (function none :behavior spider-egg) ja-post)
   )
 
 ;; definition for method 11 of type spider-egg

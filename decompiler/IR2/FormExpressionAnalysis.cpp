@@ -1777,10 +1777,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
                          Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::LOGAND),
                                      {Matcher::any(a_form), lognot_submatchers})});
 
-  Form hack_form;
-  hack_form.elts().push_back(element);
-
-  auto mr = match(logclear_matcher, &hack_form);
+  auto mr = match(logclear_matcher, element);
   if (mr.matched) {
     result->push_back(pool.alloc_element<GenericElement>(
         GenericOperator::make_fixed(FixedOperatorKind::LOGCLEAR),
@@ -1798,7 +1795,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
             Matcher::integer(32)}),
        Matcher::op_fixed(FixedOperatorKind::ASM_SLLV_R0, {Matcher::any_reg(1)})});
 
-  auto handle_mr = match(make_handle_matcher, &hack_form);
+  auto handle_mr = match(make_handle_matcher, element);
   if (handle_mr.matched) {
     auto var_a = handle_mr.maps.regs.at(0).value();
     auto var_b = handle_mr.maps.regs.at(1).value();
@@ -2572,10 +2569,7 @@ bool try_to_rewrite_vector_inline_ctor(const Env& env,
     auto matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false, token_matchers),
                                 Matcher::cast("uint128", Matcher::integer(0)));
 
-    Form hack;
-    hack.elts().push_back(elt);
-    auto mr = match(matcher, &hack);
-
+    auto mr = match(matcher, elt);
     if (mr.matched) {
       if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
         return false;
@@ -2631,10 +2625,7 @@ bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack
                           DerefTokenMatcher::string("quad")}),
           Matcher::cast("uint128", Matcher::integer(0)));
 
-      Form hack;
-      hack.elts().push_back(elt);
-      auto mr = match(matcher, &hack);
-
+      auto mr = match(matcher, elt);
       if (mr.matched) {
         if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
           return false;
@@ -3489,7 +3480,7 @@ Form* try_rewrite_as_ja_group(CondNoElseElement* value,
   auto body = value->entries[0].body;
 
   // safe to look for a reg directly here.
-  auto condition_matcher = Matcher::fixed_op(
+  auto condition_matcher = Matcher::op_fixed(
       FixedOperatorKind::GT, {Matcher::deref(Matcher::s6(), false,
                                              {DerefTokenMatcher::string("skel"),
                                               DerefTokenMatcher::string("active-channels")}),
@@ -4948,8 +4939,8 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
 
   // (+ (* method-id 4) (the-as int child-type))
   auto mult_matcher =
-      Matcher::fixed_op(FixedOperatorKind::MULTIPLICATION, {reg0_matcher, Matcher::integer(4)});
-  auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {mult_matcher, reg1_matcher});
+      Matcher::op_fixed(FixedOperatorKind::MULTIPLICATION, {reg0_matcher, Matcher::integer(4)});
+  auto matcher = Matcher::op_fixed(FixedOperatorKind::ADDITION, {mult_matcher, reg1_matcher});
   auto match_result = match(matcher, new_val);
   if (!match_result.matched) {
     throw std::runtime_error("Could not match DynamicMethodAccess values: " +
@@ -4989,8 +4980,8 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
 
       // (&+ data-ptr <idx>)
       auto matcher = Matcher::match_or(
-          {Matcher::fixed_op(FixedOperatorKind::ADDITION, {base_matcher, offset_matcher}),
-           Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {base_matcher, offset_matcher})});
+          {Matcher::op_fixed(FixedOperatorKind::ADDITION, {base_matcher, offset_matcher}),
+           Matcher::op_fixed(FixedOperatorKind::ADDITION_PTR, {base_matcher, offset_matcher})});
 
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
@@ -5024,17 +5015,17 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
                              Matcher::cast("uint", Matcher::any(0)), Matcher::any(0)});
       auto reg1_matcher =
           Matcher::match_or({Matcher::cast("uint", Matcher::any(1)), Matcher::any(1)});
-      auto mult_matcher = Matcher::fixed_op(FixedOperatorKind::MULTIPLICATION,
+      auto mult_matcher = Matcher::op_fixed(FixedOperatorKind::MULTIPLICATION,
                                             {reg1_matcher, Matcher::integer(m_expected_stride)});
       mult_matcher = Matcher::match_or({Matcher::cast("uint", mult_matcher), mult_matcher});
       auto matcher = Matcher::match_or(
-          {Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, mult_matcher}),
-           Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {reg0_matcher, mult_matcher})});
+          {Matcher::op_fixed(FixedOperatorKind::ADDITION, {reg0_matcher, mult_matcher}),
+           Matcher::op_fixed(FixedOperatorKind::ADDITION_PTR, {reg0_matcher, mult_matcher})});
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
         matcher = Matcher::match_or(
-            {Matcher::fixed_op(FixedOperatorKind::ADDITION, {mult_matcher, reg0_matcher}),
-             Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {mult_matcher, reg0_matcher})});
+            {Matcher::op_fixed(FixedOperatorKind::ADDITION, {mult_matcher, reg0_matcher}),
+             Matcher::op_fixed(FixedOperatorKind::ADDITION_PTR, {mult_matcher, reg0_matcher})});
         match_result = match(matcher, new_val);
         if (!match_result.matched) {
           result->push_back(this);
@@ -5107,7 +5098,7 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       auto reg1_matcher =
           Matcher::match_or({Matcher::cast("int", Matcher::any(1)),
                              Matcher::cast("uint", Matcher::any(1)), Matcher::any(1)});
-      auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, reg1_matcher});
+      auto matcher = Matcher::op_fixed(FixedOperatorKind::ADDITION, {reg0_matcher, reg1_matcher});
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
         throw std::runtime_error("Could not match ArrayFieldAccess (stride 1) values: " +
@@ -5135,18 +5126,18 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       auto reg1_matcher =
           Matcher::match_or({Matcher::cast("uint", Matcher::any(1)),
                              Matcher::cast("int", Matcher::any(1)), Matcher::any(1)});
-      auto mult_matcher = Matcher::fixed_op(FixedOperatorKind::MULTIPLICATION,
+      auto mult_matcher = Matcher::op_fixed(FixedOperatorKind::MULTIPLICATION,
                                             {reg0_matcher, Matcher::integer(m_expected_stride)});
       mult_matcher = Matcher::match_or({Matcher::cast("uint", mult_matcher), mult_matcher});
-      auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {mult_matcher, reg1_matcher});
-      matcher = Matcher::match_or({matcher, Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR,
+      auto matcher = Matcher::op_fixed(FixedOperatorKind::ADDITION, {mult_matcher, reg1_matcher});
+      matcher = Matcher::match_or({matcher, Matcher::op_fixed(FixedOperatorKind::ADDITION_PTR,
                                                               {reg1_matcher, mult_matcher})});
       auto match_result = match(matcher, new_val);
       Form* idx = nullptr;
       Form* base = nullptr;
       // TODO - figure out why it sometimes happens the other way.
       if (!match_result.matched) {
-        matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg1_matcher, mult_matcher});
+        matcher = Matcher::op_fixed(FixedOperatorKind::ADDITION, {reg1_matcher, mult_matcher});
         match_result = match(matcher, new_val);
         if (!match_result.matched) {
           throw std::runtime_error("Could not match ArrayFieldAccess (stride power of 2) values: " +

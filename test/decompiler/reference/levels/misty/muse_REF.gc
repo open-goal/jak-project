@@ -228,13 +228,11 @@ nav-enemy-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate muse-idle (muse)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior muse)
     nav-enemy-default-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (seek! (-> self sprint-distance) 61440.0 (* 8192.0 (-> *display* seconds-per-frame)))
     (if (and *target* (>= 102400.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
         (level-hint-spawn (game-text-id zero) (the-as string #f) (-> self entity) *entity-pool* (game-task none))
@@ -244,8 +242,7 @@ nav-enemy-default-event-handler
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (ja-group? muse-run-ja)
       (ja-channel-push! 1 (seconds 0.1))
       (ja-no-eval :num! (loop!))
@@ -267,25 +264,21 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior muse) ja-post)
+  :post (the-as (function none :behavior muse) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-chase (muse)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior muse)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (cond
       ((or (not *target*)
            (< 102400.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans)))
@@ -309,8 +302,7 @@ nav-enemy-default-event-handler
     (muse-check-dest-point)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((ja-group? muse-idle-ja)
        (ja-channel-push! 1 (seconds 0.1))
@@ -333,8 +325,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (set! (-> self nav destination-pos quad) (-> self dest-point quad))
     (dummy-19
       (-> self nav)
@@ -354,31 +345,26 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-jump (muse)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior muse)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     ((-> (method-of-type nav-enemy nav-enemy-jump) enter))
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
     (none)
     )
-  :code
-  (-> (method-of-type nav-enemy nav-enemy-jump) code)
+  :code (-> (method-of-type nav-enemy nav-enemy-jump) code)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-jump-land (muse)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior muse)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (ja-channel-push! 1 (seconds 0.075))
     (ja-no-eval :group! muse-run-ja :num! (seek! max 0.8) :frame-num (ja-aframe 6.0 0))
@@ -394,114 +380,96 @@ nav-enemy-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate muse-caught (muse)
-  :event
-  (the-as (function process int symbol event-message-block object :behavior muse) #f)
-  :trans
-  (behavior ()
+  :event (the-as (function process int symbol event-message-block object :behavior muse) #f)
+  :trans (behavior ()
     (spool-push *art-control* (-> self anim name) 0 self -1.0)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (sound-play-by-name (static-sound-name "money-pickup") (new-sound-id) 1024 0 0 1 #t)
     (close-specific-task! (game-task misty-muse) (task-status need-reminder))
     (process-entity-status! self (entity-perm-status dead) #t)
     (suspend)
-    (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-3 from) self)
-      (set! (-> a1-3 num-params) 1)
-      (set! (-> a1-3 message) 'clone-anim)
-      (set! (-> a1-3 param 0) (the-as uint self))
-      (when (send-event-function *target* a1-3)
-        (set-blackout-frames (seconds 10))
-        (let ((gp-1 (res-lump-struct (-> self entity) 'movie-pos vector)))
-          (cond
-            (gp-1
-              (move-to-point! (-> self collide-info) gp-1)
-              (set-yaw-angle-clear-roll-pitch! (-> self collide-info) (-> gp-1 w))
-              )
-            (else
-              (move-to-point! (-> self collide-info) (-> *target* control trans))
-              (quaternion-copy! (-> self collide-info quat) (-> *target* control quat))
-              (move-to-ground (-> self collide-info) 40960.0 40960.0 #f (collide-kind background))
-              )
-            )
-          )
-        (send-event *target* 'trans 'save (-> self old-target-pos))
-        (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
-        (send-event *target* 'blend-shape #t)
-        (if (!= *kernel-boot-message* 'play)
-            (set! (-> self trans-hook)
-                  (lambda :behavior muse () (spool-push *art-control* (-> self victory-anim name) 0 self -1.0) (none))
-                  )
-            )
-        (push-setting! *setting-control* self 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
-        (push-setting! *setting-control* self 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
-        (push-setting!
-          *setting-control*
-          self
-          'ambient-volume
-          'rel
-          (-> *setting-control* current ambient-volume-movie)
-          0
-          )
-        (logclear! (-> self mask) (process-mask enemy))
-        (let ((gp-2 (get-process *default-dead-pool* othercam #x4000)))
-          (when gp-2
-            (let ((t9-19 (method-of-type othercam activate)))
-              (t9-19 (the-as othercam gp-2) self 'othercam (the-as pointer #x70004000))
-              )
-            (run-now-in-process gp-2 othercam-init-by-other self 3 #f #t)
-            (-> gp-2 ppointer)
-            )
-          )
-        (auto-save-command 'auto-save 0 0 *default-pool*)
-        (ja-play-spooled-anim
-          (-> self anim)
-          (the-as art-joint-anim muse-idle-ja)
-          (the-as art-joint-anim muse-idle-ja)
-          (the-as (function process-drawable symbol) false-func)
-          )
-        (clear-pending-settings-from-process *setting-control* self 'music-volume)
-        (clear-pending-settings-from-process *setting-control* self 'sfx-volume)
-        (clear-pending-settings-from-process *setting-control* self 'ambient-volume)
-        (send-event *target* 'blend-shape #f)
+    (when (send-event *target* 'clone-anim self)
+      (set-blackout-frames (seconds 10))
+      (let ((gp-1 (res-lump-struct (-> self entity) 'movie-pos vector)))
         (cond
-          ((!= *kernel-boot-message* 'play)
-           (set-blackout-frames 0)
-           (ja-channel-set! 0)
-           (ja-post)
-           (clear-collide-with-as (-> self collide-info))
-           (send-event *target* 'trans 'reset)
-           (let ((gp-4 (ppointer->handle (birth-pickup-at-point
-                                           (target-pos 0)
-                                           (pickup-type fuel-cell)
-                                           (the float (-> self entity extra perm task))
-                                           #f
-                                           self
-                                           (the-as fact-info #f)
-                                           )
+          (gp-1
+            (move-to-point! (-> self collide-info) gp-1)
+            (set-yaw-angle-clear-roll-pitch! (-> self collide-info) (-> gp-1 w))
+            )
+          (else
+            (move-to-point! (-> self collide-info) (-> *target* control trans))
+            (quaternion-copy! (-> self collide-info quat) (-> *target* control quat))
+            (move-to-ground (-> self collide-info) 40960.0 40960.0 #f (collide-kind background))
+            )
+          )
+        )
+      (send-event *target* 'trans 'save (-> self old-target-pos))
+      (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
+      (send-event *target* 'blend-shape #t)
+      (if (!= *kernel-boot-message* 'play)
+          (set! (-> self trans-hook)
+                (lambda :behavior muse () (spool-push *art-control* (-> self victory-anim name) 0 self -1.0) (none))
+                )
+          )
+      (push-setting! *setting-control* self 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
+      (push-setting! *setting-control* self 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
+      (push-setting!
+        *setting-control*
+        self
+        'ambient-volume
+        'rel
+        (-> *setting-control* current ambient-volume-movie)
+        0
+        )
+      (logclear! (-> self mask) (process-mask enemy))
+      (process-spawn othercam self 3 #f #t :to self)
+      (auto-save-command 'auto-save 0 0 *default-pool*)
+      (ja-play-spooled-anim
+        (-> self anim)
+        (the-as art-joint-anim muse-idle-ja)
+        (the-as art-joint-anim muse-idle-ja)
+        (the-as (function process-drawable symbol) false-func)
+        )
+      (clear-pending-settings-from-process *setting-control* self 'music-volume)
+      (clear-pending-settings-from-process *setting-control* self 'sfx-volume)
+      (clear-pending-settings-from-process *setting-control* self 'ambient-volume)
+      (send-event *target* 'blend-shape #f)
+      (cond
+        ((!= *kernel-boot-message* 'play)
+         (set-blackout-frames 0)
+         (ja-channel-set! 0)
+         (ja-post)
+         (clear-collide-with-as (-> self collide-info))
+         (send-event *target* 'trans 'reset)
+         (let ((gp-4 (ppointer->handle (birth-pickup-at-point
+                                         (target-pos 0)
+                                         (pickup-type fuel-cell)
+                                         (the float (-> self entity extra perm task))
+                                         #f
+                                         self
+                                         (the-as fact-info #f)
                                          )
-                       )
-                 )
-             (send-event (handle->process (the-as handle gp-4)) 'pickup)
-             (while (handle->process (the-as handle gp-4))
-               (suspend)
+                                       )
+                     )
                )
+           (send-event (handle->process (the-as handle gp-4)) 'pickup)
+           (while (handle->process (the-as handle gp-4))
+             (suspend)
              )
            )
-          (else
-            (send-event *target* 'trans 'restore (-> self old-target-pos))
-            (set-blackout-frames 0)
-            (set-blackout-frames (seconds 0.1))
-            )
+         )
+        (else
+          (send-event *target* 'trans 'restore (-> self old-target-pos))
+          (set-blackout-frames 0)
+          (set-blackout-frames (seconds 0.1))
           )
         )
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (dummy-51 self)
     (level-hint-surpress!)
     (kill-current-level-hint '() '() 'exit)
@@ -611,8 +579,7 @@ nav-enemy-default-event-handler
                         :name "muse-victory"
                         :index 9
                         :parts 2
-                        :command-list
-                        '((1 blackout 0) (219 blackout 60))
+                        :command-list '((1 blackout 0) (219 blackout 60))
                         )
         )
   (set! (-> obj victory-anim) (fuel-cell-pick-anim obj))

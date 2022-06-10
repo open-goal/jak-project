@@ -205,10 +205,8 @@
 ;; definition for symbol *plant-boss-shadow-control*, type shadow-control
 (define *plant-boss-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
-                                           :center
-                                           (new 'static 'vector :w (the-as float #x2))
-                                           :shadow-dir
-                                           (new 'static 'vector :y -1.0 :w 409600.0)
+                                           :center (new 'static 'vector :w (the-as float #x2))
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 409600.0)
                                            :bot-plane (new 'static 'plane :y 1.0 :w 37683.2)
                                            :top-plane (new 'static 'plane :y 1.0 :w 4096.0)
                                            )
@@ -291,8 +289,7 @@
 
 ;; failed to figure out what this is:
 (defstate plant-boss-arm-idle (plant-boss-arm)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('hide 'die)
        (go plant-boss-arm-die (the-as symbol (-> arg3 param 0)))
@@ -302,8 +299,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 2)
     (ja :group! plant-boss-arms-idle-ja :num! min)
     (ja :chan 1 :group! plant-boss-arms-still-ja :num! min)
@@ -314,16 +310,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-arm-hit (plant-boss-arm)
-  :event
-  (-> plant-boss-arm-idle event)
-  :code
-  (behavior ((arg0 basic))
+  :event (-> plant-boss-arm-idle event)
+  :code (behavior ((arg0 basic))
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! plant-boss-arms-hit-ja :num! (seek! (ja-aframe (the-as float 90.0) 0)) :frame-num 0.0)
     (until (ja-done? 0)
@@ -340,14 +333,12 @@
     (go plant-boss-arm-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-arm-die (plant-boss-arm)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (let ((a0-1 (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) prims 0)))
       (set! (-> self root-override root-prim local-sphere w) 81920.0)
       (set! (-> (the-as collide-shape-prim-mesh a0-1) local-sphere w) 69632.0)
@@ -411,14 +402,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-back-arms-idle (plant-boss-arm)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (if (or (= arg2 'touch) (= arg2 'attack))
         (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
         )
@@ -431,8 +420,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (ja-no-eval :group! plant-boss-back-arms-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -442,16 +430,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-back-arms-hit (plant-boss-arm)
-  :event
-  (-> plant-boss-back-arms-idle event)
-  :code
-  (behavior ((arg0 symbol))
+  :event (-> plant-boss-back-arms-idle event)
+  :code (behavior ((arg0 symbol))
     (ja-channel-push! 1 (seconds 0.1))
     (cond
       ((or (= arg0 'spin) (= arg0 'spin-air))
@@ -485,14 +470,12 @@
     (go plant-boss-back-arms-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-back-arms-die (plant-boss-arm)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (cond
       (arg0
         (ja-channel-set! 1)
@@ -514,14 +497,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-vine-idle (plant-boss-arm)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('hide 'die)
        (go plant-boss-vine-die (the-as symbol (-> arg3 param 0)))
@@ -531,8 +512,7 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((f30-0 (rand-vu-float-range (the-as float 0.9) (the-as float 1.1))))
       (loop
         (ja-no-eval :group! plant-boss-vine-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
@@ -544,16 +524,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-vine-hit (plant-boss-arm)
-  :event
-  (-> plant-boss-vine-idle event)
-  :code
-  (behavior ((arg0 basic))
+  :event (-> plant-boss-vine-idle event)
+  :code (behavior ((arg0 basic))
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! plant-boss-vine-hit-ja :num! (seek! (ja-aframe (the-as float 45.0) 0)) :frame-num 0.0)
     (until (ja-done? 0)
@@ -570,14 +547,12 @@
     (go plant-boss-vine-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-vine-die (plant-boss-arm)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (when (not arg0)
       (let ((f30-0 (rand-vu-float-range (the-as float 0.0) (the-as float 1.0)))
             (gp-0 (-> *display* base-frame-counter))
@@ -597,22 +572,19 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-root-idle (plant-boss-arm)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('hide 'die)
        (go plant-boss-root-die (the-as symbol (-> arg3 param 0)))
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((f30-0 (rand-vu-float-range (the-as float 0.9) (the-as float 1.1))))
       (loop
         (ja-no-eval :group! plant-boss-root-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
@@ -624,14 +596,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-root-die (plant-boss-arm)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (when (not arg0)
       (let ((gp-0 (-> *display* base-frame-counter)))
         (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 4))
@@ -642,8 +612,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; definition for function plant-boss-arm-init
@@ -773,8 +742,7 @@
 
 ;; failed to figure out what this is:
 (defstate plant-boss-leaf-idle (plant-boss-leaf)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (go plant-boss-leaf-open (the-as symbol (-> arg3 param 0)))
@@ -784,8 +752,7 @@
        )
       )
     )
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (loop
       (case (-> self side)
         ((1)
@@ -810,14 +777,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-leaf) ja-post)
+  :post (the-as (function none :behavior plant-boss-leaf) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-leaf-open (plant-boss-leaf)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('kill)
        (go plant-boss-leaf-close)
@@ -827,10 +792,8 @@
        )
       )
     )
-  :trans
-  (the-as (function none :behavior plant-boss-leaf) rider-trans)
-  :code
-  (behavior ((arg0 symbol))
+  :trans (the-as (function none :behavior plant-boss-leaf) rider-trans)
+  :code (behavior ((arg0 symbol))
     (ja-no-eval :num! (loop!))
     (ja-channel-push! 1 (seconds 0.1))
     (case (-> self side)
@@ -872,14 +835,12 @@
     (go plant-boss-leaf-open-idle #f)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-leaf) rider-post)
+  :post (the-as (function none :behavior plant-boss-leaf) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-leaf-open-idle (plant-boss-leaf)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('kill)
        (set! (-> self state-object) #t)
@@ -898,10 +859,8 @@
        )
       )
     )
-  :trans
-  (the-as (function none :behavior plant-boss-leaf) rider-trans)
-  :code
-  (behavior ((arg0 symbol))
+  :trans (the-as (function none :behavior plant-boss-leaf) rider-trans)
+  :code (behavior ((arg0 symbol))
     (local-vars (v1-19 symbol))
     (set! (-> self state-object) arg0)
     (case (ja-group)
@@ -925,14 +884,12 @@
     (go plant-boss-leaf-close)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-leaf) rider-post)
+  :post (the-as (function none :behavior plant-boss-leaf) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-leaf-bounce (plant-boss-leaf)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('kill)
        (set! (-> self state-object) #t)
@@ -946,10 +903,8 @@
        )
       )
     )
-  :trans
-  (the-as (function none :behavior plant-boss-leaf) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior plant-boss-leaf) rider-trans)
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (case (-> self side)
       ((1)
@@ -972,24 +927,20 @@
     (go plant-boss-leaf-open-idle (-> self state-object))
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-leaf) rider-post)
+  :post (the-as (function none :behavior plant-boss-leaf) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-leaf-close (plant-boss-leaf)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('die)
        (go plant-boss-leaf-die (the-as basic (-> arg3 param 0)))
        )
       )
     )
-  :trans
-  (the-as (function none :behavior plant-boss-leaf) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior plant-boss-leaf) rider-trans)
+  :code (behavior ()
     (case (-> self side)
       ((1)
        (sound-play-by-name (static-sound-name "plant-leaf") (new-sound-id) 1024 0 0 1 #t)
@@ -1011,22 +962,19 @@
     (go plant-boss-leaf-idle #f)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-leaf) rider-post)
+  :post (the-as (function none :behavior plant-boss-leaf) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-leaf-die (plant-boss-leaf)
-  :code
-  (behavior ((arg0 basic))
+  :code (behavior ((arg0 basic))
     (loop
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-leaf) ja-post)
+  :post (the-as (function none :behavior plant-boss-leaf) ja-post)
   )
 
 ;; definition for function plant-boss-leaf-init
@@ -1065,8 +1013,7 @@
 
 ;; failed to figure out what this is:
 (defstate plant-boss-far-idle (plant-boss)
-  :code
-  (behavior ()
+  :code (behavior ()
     (clear-pending-settings-from-process *setting-control* self 'music)
     (let ((gp-0 (-> self child)))
       (while gp-0
@@ -1106,14 +1053,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss) ja-post)
+  :post (the-as (function none :behavior plant-boss) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-intro (plant-boss)
-  :code
-  (behavior ()
+  :code (behavior ()
     (set-setting! *setting-control* self 'music 'danger (the-as float 0.0) 0)
     (send-event *target* 'reset-pickup 'eco)
     (let ((v1-9 (-> self entity extra perm)))
@@ -1134,54 +1079,42 @@
     (set-mode! (-> self body) (joint-mod-handler-mode world-look-at))
     (b! #t cfg-17 :delay (nop!))
     (label cfg-5)
-    (when (not (handle->process (-> self cam-tracker)))
-      (let ((gp-1 (get-process *default-dead-pool* camera-tracker #x4000)))
+    (if (not (handle->process (-> self cam-tracker)))
         (set! (-> self cam-tracker)
-              (ppointer->handle (when gp-1
-                                  (let ((t9-9 (method-of-type camera-tracker activate)))
-                                    (t9-9 (the-as camera-tracker gp-1) self 'camera-tracker (the-as pointer #x70004000))
-                                    )
-                                  (run-now-in-process
-                                    gp-1
-                                    camera-tracker-init
-                                    (lambda :behavior camera-tracker
-                                      ()
-                                      (while (not (process-grab? *target*))
-                                        (suspend)
-                                        )
-                                      (ambient-hint-spawn "gamcam28" (the-as vector #f) *entity-pool* 'ambient)
-                                      (send-event *camera* 'blend-from-as-fixed)
-                                      (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 13))
-                                      (camera-change-to "camera-220" 0 #f)
-                                      (while (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-                                               (set! (-> a1-4 from) self)
-                                               (set! (-> a1-4 num-params) 0)
-                                               (set! (-> a1-4 message) 'intro-done?)
-                                               (not (send-event-function *camera* a1-4))
-                                               )
-                                        (suspend)
-                                        )
-                                      (camera-change-to "camera-222" 600 #f)
-                                      (let ((gp-0 (-> *display* base-frame-counter)))
-                                        (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 2))
-                                          (suspend)
-                                          )
-                                        )
-                                      (while (not (process-release? (handle->process (-> self grab-target))))
-                                        (suspend)
-                                        )
-                                      (send-event *camera* 'blend-from-as-fixed)
-                                      (camera-look-at (the-as pair *target*) (the-as uint 0))
-                                      (camera-change-to (the-as string 'base) 150 #f)
-                                      (none)
+              (ppointer->handle (process-spawn
+                                  camera-tracker
+                                  :init camera-tracker-init
+                                  (lambda :behavior camera-tracker
+                                    ()
+                                    (while (not (process-grab? *target*))
+                                      (suspend)
                                       )
+                                    (ambient-hint-spawn "gamcam28" (the-as vector #f) *entity-pool* 'ambient)
+                                    (send-event *camera* 'blend-from-as-fixed)
+                                    (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 13))
+                                    (camera-change-to "camera-220" 0 #f)
+                                    (while (not (send-event *camera* 'intro-done?))
+                                      (suspend)
+                                      )
+                                    (camera-change-to "camera-222" 600 #f)
+                                    (let ((gp-0 (-> *display* base-frame-counter)))
+                                      (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 2))
+                                        (suspend)
+                                        )
+                                      )
+                                    (while (not (process-release? (handle->process (-> self grab-target))))
+                                      (suspend)
+                                      )
+                                    (send-event *camera* 'blend-from-as-fixed)
+                                    (camera-look-at (the-as pair *target*) (the-as uint 0))
+                                    (camera-change-to (the-as string 'base) 150 #f)
+                                    (none)
                                     )
-                                  (-> gp-1 ppointer)
+                                  :to self
                                   )
                                 )
               )
         )
-      )
     (let ((v1-37 (-> self neck)))
       (set! (-> v1-37 blend) 0.0)
       )
@@ -1211,24 +1144,20 @@
     (go plant-boss-reset 0)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss) ja-post)
+  :post (the-as (function none :behavior plant-boss) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-idle (plant-boss)
-  :event
-  plant-boss-default-event-handler
-  :enter
-  (behavior ()
+  :event plant-boss-default-event-handler
+  :enter (behavior ()
     (set-setting! *setting-control* self 'music 'danger (the-as float 0.0) 0)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self body flex-blend) 0.0)
     (set! (-> self neck flex-blend) 1.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((f30-0 (vector-vector-distance (target-pos 0) (-> self root-override trans))))
       (if (< 409600.0 f30-0)
           (go plant-boss-far-idle)
@@ -1257,8 +1186,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((ja-group? plant-boss-main-reset-ja)
        (ja-channel-push! 1 (seconds 0.5))
@@ -1319,16 +1247,13 @@
       )
     (none)
     )
-  :post
-  plant-boss-post
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-spawn (plant-boss)
-  :event
-  plant-boss-default-event-handler
-  :enter
-  (behavior ()
+  :event plant-boss-default-event-handler
+  :enter (behavior ()
     (when (not (-> self try-inc))
       (let ((gp-0 (-> self entity extra perm)))
         (logior! (-> gp-0 status) (entity-perm-status user-set-from-cstage))
@@ -1357,8 +1282,7 @@
           )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((f0-0 (vector-vector-distance (target-pos 0) (-> self root-override trans))))
       (if (< 409600.0 f0-0)
           (go plant-boss-far-idle)
@@ -1383,33 +1307,22 @@
          )
        )
       ((>= (- (-> *display* base-frame-counter) (-> self aphid-spawn-time)) (seconds 1.4))
-       (let ((gp-1 (get-process *default-dead-pool* aphid #x4000)))
-         (when (when gp-1
-                 (let ((t9-5 (method-of-type aphid activate)))
-                   (t9-5 (the-as aphid gp-1) self 'aphid (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process gp-1 aphid-init-by-other self (-> self root-override trans) (target-pos 0))
-                 (-> gp-1 ppointer)
-                 )
-           (+! (-> self aphid-count) 1)
-           (seekl! (-> self want-aphid-count) 0 1)
-           (set! (-> self aphid-spawn-time) (-> *display* base-frame-counter))
-           )
+       (when (process-spawn aphid self (-> self root-override trans) (target-pos 0) :to self)
+         (+! (-> self aphid-count) 1)
+         (seekl! (-> self want-aphid-count) 0 1)
+         (set! (-> self aphid-spawn-time) (-> *display* base-frame-counter))
          )
        )
       )
     (none)
     )
-  :code
-  (-> plant-boss-idle code)
-  :post
-  plant-boss-post
+  :code (-> plant-boss-idle code)
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-vulnerable (plant-boss)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('attack)
        (when ((method-of-type touching-shapes-entry prims-touching?)
@@ -1417,17 +1330,11 @@
               (the-as collide-shape-moving (-> self root-override))
               (the-as uint 1)
               )
-         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-2 from) self)
-           (set! (-> a1-2 num-params) 2)
-           (set! (-> a1-2 message) 'shove)
-           (set! (-> a1-2 param 0) (-> arg3 param 0))
-           (let ((v1-6 (new 'static 'attack-info :mask #xc0)))
-             (set! (-> v1-6 shove-up) 8192.0)
-             (set! (-> v1-6 shove-back) 24576.0)
-             (set! (-> a1-2 param 1) (the-as uint v1-6))
-             )
-           (send-event-function arg0 a1-2)
+         (send-event
+           arg0
+           'shove
+           (-> arg3 param 0)
+           (static-attack-info ((shove-up (meters 2)) (shove-back (meters 6))))
            )
          (go plant-boss-hit (the-as symbol (-> arg3 param 1)))
          )
@@ -1437,8 +1344,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self body flex-blend) 0.0)
     (set! (-> self neck flex-blend) 0.0)
@@ -1447,8 +1353,7 @@
     (logior! (-> self attack-prim 0 prim-core action) (collide-action solid))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (send-event (ppointer->process (-> self leaf 1)) 'kill 0)
     (send-event (ppointer->process (-> self leaf 0)) 'kill 150)
     (set! (-> self attack-prim 0 local-sphere w) 16384.0)
@@ -1456,8 +1361,7 @@
     (logclear! (-> self attack-prim 0 prim-core action) (collide-action solid))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-push! 1 (seconds 0.25))
     (ja-no-eval :group! plant-boss-main-idle2vulnerable-ja
                 :num! (seek! (ja-aframe (the-as float 60.0) 0))
@@ -1513,14 +1417,12 @@
     (go plant-boss-spawn)
     (none)
     )
-  :post
-  plant-boss-post
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-attack (plant-boss)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('touch 'attack)
        (when (and ((method-of-type touching-shapes-entry prims-touching?)
@@ -1530,20 +1432,10 @@
                    )
                   (not (ja-group? plant-boss-main-vulnerable2idle-ja))
                   )
-         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-2 from) self)
-           (set! (-> a1-2 num-params) 2)
-           (set! (-> a1-2 message) 'attack-or-shove)
-           (set! (-> a1-2 param 0) (-> arg3 param 0))
-           (let ((a0-8 (new 'static 'attack-info :mask #x20)))
-             (set! (-> a0-8 mode) 'plant-boss)
-             (set! (-> a1-2 param 1) (the-as uint a0-8))
-             )
-           (when (send-event-function arg0 a1-2)
-             (let ((v0-1 (the-as object #t)))
-               (set! (-> self ate) (the-as symbol v0-1))
-               v0-1
-               )
+         (when (send-event arg0 'attack-or-shove (-> arg3 param 0) (static-attack-info ((mode 'plant-boss))))
+           (let ((v0-1 (the-as object #t)))
+             (set! (-> self ate) (the-as symbol v0-1))
+             v0-1
              )
            )
          )
@@ -1553,8 +1445,7 @@
         )
       )
     )
-  :code
-  (behavior ((arg0 int))
+  :code (behavior ((arg0 int))
     (local-vars (v1-64 symbol))
     (+! (-> self snap-count) 1)
     (set! (-> self ate) #f)
@@ -1605,16 +1496,13 @@
     (go plant-boss-reset arg0)
     (none)
     )
-  :post
-  plant-boss-post
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-eat (plant-boss)
-  :event
-  plant-boss-generic-event-handler
-  :exit
-  (behavior ()
+  :event plant-boss-generic-event-handler
+  :exit (behavior ()
     (logclear! (-> self skel status) (janim-status spool))
     (let ((a0-4 (handle->process (-> self camera))))
       (if a0-4
@@ -1623,8 +1511,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((f30-1 (the-as float (if (ja-group? plant-boss-main-attack-ja)
                                    (fmax 129.0 (ja-aframe-num 0))
                                    129.0
@@ -1647,18 +1534,7 @@
         (seek! (-> self energy) (the-as float 0.5) (* 0.2 (-> *display* seconds-per-frame)))
         (when (and (>= (ja-aframe-num 0) 175.0) (zero? gp-0))
           (set! gp-0 1)
-          (let ((s5-2 (get-process *default-dead-pool* othercam #x4000)))
-            (set! (-> self camera)
-                  (ppointer->handle (when s5-2
-                                      (let ((t9-11 (method-of-type othercam activate)))
-                                        (t9-11 (the-as othercam s5-2) self 'othercam (the-as pointer #x70004000))
-                                        )
-                                      (run-now-in-process s5-2 othercam-init-by-other self 28 #f #t)
-                                      (-> s5-2 ppointer)
-                                      )
-                                    )
-                  )
-            )
+          (set! (-> self camera) (ppointer->handle (process-spawn othercam self 28 #f #t :to self)))
           (logior! (-> self skel status) (janim-status spool))
           (ambient-hint-spawn "gamcam29" (the-as vector #f) *entity-pool* 'ambient)
           )
@@ -1685,16 +1561,13 @@
     (go plant-boss-idle)
     (none)
     )
-  :post
-  plant-boss-post
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-reset (plant-boss)
-  :event
-  (-> plant-boss-eat event)
-  :code
-  (behavior ((arg0 int))
+  :event (-> plant-boss-eat event)
+  :code (behavior ((arg0 int))
     (let ((gp-0 #f))
       (cond
         ((ja-group? plant-boss-main-intro-ja)
@@ -1736,16 +1609,13 @@
       )
     (none)
     )
-  :post
-  plant-boss-post
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-hit (plant-boss)
-  :event
-  (-> plant-boss-eat event)
-  :code
-  (behavior ((arg0 symbol))
+  :event (-> plant-boss-eat event)
+  :code (behavior ((arg0 symbol))
     (let ((s5-0 (-> self child)))
       (while s5-0
         (send-event (ppointer->process s5-0) 'hit arg0)
@@ -1800,16 +1670,13 @@
     (go plant-boss-spawn)
     (none)
     )
-  :post
-  plant-boss-post
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-dead (plant-boss)
-  :event
-  plant-boss-generic-event-handler
-  :code
-  (behavior ((arg0 symbol))
+  :event plant-boss-generic-event-handler
+  :code (behavior ((arg0 symbol))
     (logclear! (-> self mask) (process-mask actor-pause))
     (set! (-> self neck flex-blend) 0.0)
     (set! (-> self body flex-blend) 0.0)
@@ -1899,8 +1766,7 @@
     (go plant-boss-dead-idle)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (plant-boss-post)
     (do-push-aways! (-> self root-override))
     (none)
@@ -1909,8 +1775,7 @@
 
 ;; failed to figure out what this is:
 (defstate plant-boss-dead-idle (plant-boss)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('bonk)
        (go plant-boss-dead-bounce (lerp-scale
@@ -1927,8 +1792,7 @@
         )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 1)
     (ja :group! plant-boss-main-die-ja :num! max)
     (let ((gp-1 (-> *display* base-frame-counter)))
@@ -1948,12 +1812,9 @@
 
 ;; failed to figure out what this is:
 (defstate plant-boss-dead-bounce (plant-boss)
-  :event
-  plant-boss-generic-event-handler
-  :trans
-  (the-as (function none :behavior plant-boss) rider-trans)
-  :code
-  (behavior ((arg0 float))
+  :event plant-boss-generic-event-handler
+  :trans (the-as (function none :behavior plant-boss) rider-trans)
+  :code (behavior ((arg0 float))
     (let ((v1-2 (-> self entity extra perm)))
       (if (and (< 0.3 arg0) (and (not (handle->process (-> self money))) (< (-> v1-2 user-int8 1) 5)))
           (set! (-> self money) (ppointer->handle (birth-pickup-at-point
@@ -1979,8 +1840,7 @@
     (go plant-boss-dead-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss) rider-post)
+  :post (the-as (function none :behavior plant-boss) rider-post)
   )
 
 ;; definition for method 11 of type plant-boss
@@ -2047,211 +1907,120 @@
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *plant-boss-sg* '())
   (set! (-> obj draw shadow-ctrl) *plant-boss-shadow-control*)
-  (let ((s5-1 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-1
-      (let ((t9-18 (method-of-type plant-boss-arm activate)))
-        (t9-18 (the-as plant-boss-arm s5-1) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-1
-        plant-boss-arm-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x -24576.0 :z 8192.0 :w 1.0))
-        -8192.0
-        1
-        )
-      (-> s5-1 ppointer)
-      )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-arm-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x -24576.0 :z 8192.0 :w 1.0))
+    -8192.0
+    1
+    :to obj
     )
-  (let ((s5-2 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-2
-      (let ((t9-21 (method-of-type plant-boss-arm activate)))
-        (t9-21 (the-as plant-boss-arm s5-2) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-2
-        plant-boss-arm-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 24576.0 :z 8192.0 :w 1.0))
-        8192.0
-        0
-        )
-      (-> s5-2 ppointer)
-      )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-arm-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 24576.0 :z 8192.0 :w 1.0))
+    8192.0
+    0
+    :to obj
     )
-  (let ((s5-3 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-3
-      (let ((t9-24 (method-of-type plant-boss-arm activate)))
-        (t9-24 (the-as plant-boss-arm s5-3) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-3
-        plant-boss-back-arms-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :w 1.0))
-        0.0
-        2
-        )
-      (-> s5-3 ppointer)
-      )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-back-arms-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :w 1.0))
+    0.0
+    2
+    :to obj
     )
-  (let ((s5-4 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-4
-      (let ((t9-27 (method-of-type plant-boss-arm activate)))
-        (t9-27 (the-as plant-boss-arm s5-4) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-4
-        plant-boss-vine-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 38912.0 :z 8192.0 :w 1.0))
-        (new 'static 'vector :y 14563.556)
-        1.0
-        3
-        )
-      (-> s5-4 ppointer)
-      )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-vine-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 38912.0 :z 8192.0 :w 1.0))
+    (new 'static 'vector :y 14563.556)
+    1.0
+    3
+    :to obj
     )
-  (let ((s5-5 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-5
-      (let ((t9-30 (method-of-type plant-boss-arm activate)))
-        (t9-30 (the-as plant-boss-arm s5-5) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-5
-        plant-boss-vine-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x -40960.0 :z 8192.0 :w 1.0))
-        (new 'static 'vector :y -5461.3335)
-        1.0
-        3
-        )
-      (-> s5-5 ppointer)
-      )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-vine-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x -40960.0 :z 8192.0 :w 1.0))
+    (new 'static 'vector :y -5461.3335)
+    1.0
+    3
+    :to obj
     )
-  (let ((s5-6 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-6
-      (let ((t9-33 (method-of-type plant-boss-arm activate)))
-        (t9-33 (the-as plant-boss-arm s5-6) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-6
-        plant-boss-vine-init
-        (vector+!
-          (new-stack-vector0)
-          (-> obj root-override trans)
-          (new 'static 'vector :x -29491.2 :z -7168.0 :w 1.0)
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-vine-init
+    (vector+!
+      (new-stack-vector0)
+      (-> obj root-override trans)
+      (new 'static 'vector :x -29491.2 :z -7168.0 :w 1.0)
+      )
+    (new 'static 'vector :x -1820.4445 :y -11286.756)
+    0.8
+    3
+    :to obj
+    )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-vine-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 32768.0 :z -3072.0 :w 1.0))
+    (new 'static 'vector :x -910.2222 :y 22755.555)
+    0.8
+    3
+    :to obj
+    )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-root-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 18841.6 :z 4096.0 :w 1.0))
+    (new 'static 'vector :y -4096.0)
+    (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+    4
+    :to obj
+    )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-root-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x -18841.6 :z 4096.0 :w 1.0))
+    (new 'static 'vector :x 364.0889 :y 4096.0)
+    (new 'static 'vector :x 1.0 :y 1.25 :z 1.0)
+    4
+    :to obj
+    )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-root-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :z -2048.0 :w 1.0))
+    (new 'static 'vector :x 1820.4445)
+    (new 'static 'vector :x 0.9 :y 1.5 :z 1.0)
+    4
+    :to obj
+    )
+  (set! (-> obj leaf 0)
+        (process-spawn
+          plant-boss-leaf
+          :init plant-boss-leaf-init
+          (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :w 1.0))
+          0.0
+          0
+          :to obj
           )
-        (new 'static 'vector :x -1820.4445 :y -11286.756)
-        0.8
-        3
         )
-      (-> s5-6 ppointer)
-      )
-    )
-  (let ((s5-7 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-7
-      (let ((t9-36 (method-of-type plant-boss-arm activate)))
-        (t9-36 (the-as plant-boss-arm s5-7) obj 'plant-boss-arm (the-as pointer #x70004000))
+  (set! (-> obj leaf 1) (process-spawn
+                          plant-boss-leaf
+                          :init plant-boss-leaf-init
+                          (vector+!
+                            (new-stack-vector0)
+                            (-> obj root-override trans)
+                            (new 'static 'vector :x -13189.12 :y 2838.528 :z 12288.0 :w 1.0)
+                            )
+                          0.0
+                          1
+                          :to obj
+                          )
         )
-      (run-now-in-process
-        s5-7
-        plant-boss-vine-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 32768.0 :z -3072.0 :w 1.0))
-        (new 'static 'vector :x -910.2222 :y 22755.555)
-        0.8
-        3
-        )
-      (-> s5-7 ppointer)
-      )
-    )
-  (let ((s5-8 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-8
-      (let ((t9-39 (method-of-type plant-boss-arm activate)))
-        (t9-39 (the-as plant-boss-arm s5-8) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-8
-        plant-boss-root-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 18841.6 :z 4096.0 :w 1.0))
-        (new 'static 'vector :y -4096.0)
-        (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
-        4
-        )
-      (-> s5-8 ppointer)
-      )
-    )
-  (let ((s5-9 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-9
-      (let ((t9-42 (method-of-type plant-boss-arm activate)))
-        (t9-42 (the-as plant-boss-arm s5-9) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-9
-        plant-boss-root-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x -18841.6 :z 4096.0 :w 1.0))
-        (new 'static 'vector :x 364.0889 :y 4096.0)
-        (new 'static 'vector :x 1.0 :y 1.25 :z 1.0)
-        4
-        )
-      (-> s5-9 ppointer)
-      )
-    )
-  (let ((s5-10 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-10
-      (let ((t9-45 (method-of-type plant-boss-arm activate)))
-        (t9-45 (the-as plant-boss-arm s5-10) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-10
-        plant-boss-root-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :z -2048.0 :w 1.0))
-        (new 'static 'vector :x 1820.4445)
-        (new 'static 'vector :x 0.9 :y 1.5 :z 1.0)
-        4
-        )
-      (-> s5-10 ppointer)
-      )
-    )
-  (let ((s5-11 (get-process *default-dead-pool* plant-boss-leaf #x4000)))
-    (set! (-> obj leaf 0)
-          (the-as
-            (pointer plant-boss-leaf)
-            (when s5-11
-              (let ((t9-48 (method-of-type plant-boss-leaf activate)))
-                (t9-48 (the-as plant-boss-leaf s5-11) obj 'plant-boss-leaf (the-as pointer #x70004000))
-                )
-              (run-now-in-process
-                s5-11
-                plant-boss-leaf-init
-                (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :w 1.0))
-                0.0
-                0
-                )
-              (-> s5-11 ppointer)
-              )
-            )
-          )
-    )
-  (let ((s5-12 (get-process *default-dead-pool* plant-boss-leaf #x4000)))
-    (set! (-> obj leaf 1)
-          (the-as
-            (pointer plant-boss-leaf)
-            (when s5-12
-              (let ((t9-51 (method-of-type plant-boss-leaf activate)))
-                (t9-51 (the-as plant-boss-leaf s5-12) obj 'plant-boss-leaf (the-as pointer #x70004000))
-                )
-              (run-now-in-process
-                s5-12
-                plant-boss-leaf-init
-                (vector+!
-                  (new-stack-vector0)
-                  (-> obj root-override trans)
-                  (new 'static 'vector :x -13189.12 :y 2838.528 :z 12288.0 :w 1.0)
-                  )
-                0.0
-                1
-                )
-              (-> s5-12 ppointer)
-              )
-            )
-          )
-    )
   (set! (-> obj energy) 0.25)
   (set! (-> obj health) 3.0)
   (set! (-> obj cam-tracker) (the-as handle #f))

@@ -6,6 +6,7 @@
 ;; dgos: L1, SNO
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/snow-ball-ag.gc")
 
 (deftype snow-ball-shadow (process-drawable)
@@ -107,10 +108,8 @@
 
 (define *snow-ball-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
-                                           :center
-                                           (new 'static 'vector :w (the-as float #xa))
-                                           :shadow-dir
-                                           (new 'static 'vector :y -1.0 :w 245760.0)
+                                           :center (new 'static 'vector :w (the-as float #xa))
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 245760.0)
                                            :bot-plane (new 'static 'plane :y 1.0 :w 26624.0)
                                            :top-plane (new 'static 'plane :y 1.0)
                                            :fade-dist 819200.0
@@ -119,23 +118,20 @@
   )
 
 (defstate snow-ball-shadow-idle (snow-ball-shadow)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (set! (-> self root trans quad) (-> (the-as process-drawable (-> self parent 0)) root trans quad))
     (update-direction-from-time-of-day (-> self draw shadow-ctrl))
     0
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior snow-ball-shadow) ja-post)
+  :post (the-as (function none :behavior snow-ball-shadow) ja-post)
   )
 
 (defbehavior snow-ball-shadow-init-by-other snow-ball-shadow ()
@@ -328,74 +324,59 @@
   )
 
 (defmethod dummy-22 snow-ball-roller ((obj snow-ball-roller) (arg0 process-drawable))
-  (with-pp
-    (cond
-      ((< (+ 4096.0 (-> arg0 root trans y)) (-> obj root-override trans y))
-       (let ((f0-2 81920.0))
-         (+! (-> obj root-override transv y) f0-2)
-         (play-landing-sound obj f0-2)
-         )
+  (cond
+    ((< (+ 4096.0 (-> arg0 root trans y)) (-> obj root-override trans y))
+     (let ((f0-2 81920.0))
+       (+! (-> obj root-override transv y) f0-2)
+       (play-landing-sound obj f0-2)
        )
-      (else
-        (let ((f0-3 24576.0))
-          (+! (-> obj root-override transv y) f0-3)
-          (play-landing-sound obj f0-3)
-          )
+     )
+    (else
+      (let ((f0-3 24576.0))
+        (+! (-> obj root-override transv y) f0-3)
+        (play-landing-sound obj f0-3)
         )
       )
-    (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (let ((s3-0 (new 'stack-no-clear 'vector)))
-        (vector-! s4-0 (-> arg0 root trans) (-> obj root-override trans))
-        (set! (-> s4-0 y) 0.0)
-        (vector-normalize! s4-0 1.0)
-        (TODO-RENAME-14 (-> obj path) s3-0 (-> obj path-u))
-        (set! (-> s3-0 y) 0.0)
-        (vector-normalize! s3-0 1.0)
-        (let* ((f28-0 (atan (-> s4-0 x) (-> s4-0 z)))
-               (f30-0 (atan (-> s3-0 x) (-> s3-0 z)))
-               (f0-11 (deg- f28-0 f30-0))
-               )
-          (when (< (fabs f0-11) 10922.667)
-            (let ((f30-1 (+ f30-0 (if (>= f0-11 0.0)
-                                      10922.667
-                                      -10922.667
-                                      )
-                            )
-                         )
-                  )
-              (set-vector! s4-0 (sin f30-1) 0.0 (cos f30-1) 1.0)
-              )
-            )
-          )
-        )
-      (vector-normalize! s4-0 25600.0)
-      (vector+! s4-0 s4-0 (-> obj root-override trans))
-      (vector-! s4-0 s4-0 (-> arg0 root trans))
-      (set! (-> s4-0 y) 0.0)
-      (let ((f30-2 (vector-length s4-0)))
-        (vector-normalize! s4-0 1.0)
-        (let ((a1-17 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-17 from) pp)
-          (set! (-> a1-17 num-params) 2)
-          (set! (-> a1-17 message) 'attack)
-          (set! (-> a1-17 param 0) (the-as uint #f))
-          (let ((v1-20 (new 'static 'attack-info :mask #xc2)))
-            (set! (-> v1-20 vector quad) (-> s4-0 quad))
-            (set! (-> v1-20 shove-up) 12288.0)
-            (set! (-> v1-20 shove-back) f30-2)
-            (set! (-> a1-17 param 1) (the-as uint v1-20))
-            )
-          (send-event-function arg0 a1-17)
-          )
-        )
-      )
-    (none)
     )
+  (let ((s4-0 (new 'stack-no-clear 'vector)))
+    (let ((s3-0 (new 'stack-no-clear 'vector)))
+      (vector-! s4-0 (-> arg0 root trans) (-> obj root-override trans))
+      (set! (-> s4-0 y) 0.0)
+      (vector-normalize! s4-0 1.0)
+      (TODO-RENAME-14 (-> obj path) s3-0 (-> obj path-u))
+      (set! (-> s3-0 y) 0.0)
+      (vector-normalize! s3-0 1.0)
+      (let* ((f28-0 (atan (-> s4-0 x) (-> s4-0 z)))
+             (f30-0 (atan (-> s3-0 x) (-> s3-0 z)))
+             (f0-11 (deg- f28-0 f30-0))
+             )
+        (when (< (fabs f0-11) 10922.667)
+          (let ((f30-1 (+ f30-0 (if (>= f0-11 0.0)
+                                    10922.667
+                                    -10922.667
+                                    )
+                          )
+                       )
+                )
+            (set-vector! s4-0 (sin f30-1) 0.0 (cos f30-1) 1.0)
+            )
+          )
+        )
+      )
+    (vector-normalize! s4-0 25600.0)
+    (vector+! s4-0 s4-0 (-> obj root-override trans))
+    (vector-! s4-0 s4-0 (-> arg0 root trans))
+    (set! (-> s4-0 y) 0.0)
+    (let ((f30-2 (vector-length s4-0)))
+      (vector-normalize! s4-0 1.0)
+      (send-event arg0 'attack #f (static-attack-info ((vector s4-0) (shove-up (meters 3)) (shove-back f30-2))))
+      )
+    )
+  (none)
   )
 
 (defstate snow-ball-roller-idle (snow-ball-roller)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack))
                        (when (= (-> arg0 type) target)
@@ -409,14 +390,12 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self last-bounce-time) (-> *display* base-frame-counter))
     (snow-ball-roller-path-init)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self rolling-sound-enabled?) #f)
     (when (nonzero? (-> self rolling-sound-id))
       (sound-stop (-> self rolling-sound-id))
@@ -425,21 +404,18 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (snow-ball-roller-path-update)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior snow-ball-roller) transform-post)
+  :post (the-as (function none :behavior snow-ball-roller) transform-post)
   )
 
 (defbehavior snow-ball-roller-init-by-other snow-ball-roller ((arg0 entity-actor) (arg1 snow-ball) (arg2 float) (arg3 int) (arg4 (inline-array snow-ball-junction)))
@@ -491,15 +467,7 @@
       )
     )
   (set! (-> self delay-til-bounce) (rand-vu-int-range 900 2100))
-  (let ((gp-1 (get-process *default-dead-pool* snow-ball-shadow #x4000)))
-    (when gp-1
-      (let ((t9-11 (method-of-type snow-ball-shadow activate)))
-        (t9-11 (the-as snow-ball-shadow gp-1) self 'snow-ball-shadow (the-as pointer #x70004000))
-        )
-      (run-now-in-process gp-1 snow-ball-shadow-init-by-other)
-      (-> gp-1 ppointer)
-      )
-    )
+  (process-spawn snow-ball-shadow :to self)
   (go snow-ball-roller-idle)
   (none)
   )
@@ -552,8 +520,7 @@
   )
 
 (defstate snow-ball-idle (snow-ball)
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars (gp-0 int))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self delay-til-next) 0)
@@ -579,15 +546,7 @@
           (let ((s3-0 (/ (+ 98304.0 (rand-vu-float-range 0.0 32768.0)) (path-distance (-> self path gp-0)))))
             (dummy-14 self s5-0 s3-0 gp-0)
             (when (dummy-15 self s5-0 gp-0)
-              (let ((s4-1 (get-process *default-dead-pool* snow-ball-roller #x4000)))
-                (when s4-1
-                  (let ((t9-6 (method-of-type snow-ball-roller activate)))
-                    (t9-6 (the-as snow-ball-roller s4-1) self 'snow-ball-roller (the-as pointer #x70004000))
-                    )
-                  (run-now-in-process s4-1 snow-ball-roller-init-by-other (-> self entity) self s3-0 gp-0 s5-0)
-                  (-> s4-1 ppointer)
-                  )
-                )
+              (process-spawn snow-ball-roller (-> self entity) self s3-0 gp-0 s5-0 :to self)
               (set! (-> self state-time) (-> *display* base-frame-counter))
               (set! (-> self delay-til-next) (rand-vu-int-range 450 1650))
               (cond

@@ -3,10 +3,8 @@
 
 ;; failed to figure out what this is:
 (defstate target-demo (target)
-  :event
-  target-generic-event-handler
-  :code
-  (behavior ()
+  :event target-generic-event-handler
+  :code (behavior ()
     (if *time-of-day-proc*
         (set! (-> *time-of-day-proc* 0 hour) 12)
         )
@@ -134,24 +132,15 @@
           )
         )
       )
-    (let ((gp-17 (get-process *default-dead-pool* process #x4000)))
-      (when gp-17
-        (let ((t9-26 (method-of-type process activate)))
-          (t9-26 gp-17 *default-pool* 'process (the-as pointer #x70004000))
-          )
-        (run-next-time-in-process gp-17 (lambda ()
-                                          (set! (-> *setting-control* default bg-a) 0.0)
-                                          (start 'play (get-continue-by-name *game-info* "village1-demo-convo"))
-                                          )
-                                  )
-        (-> gp-17 ppointer)
-        )
-      )
+    (process-spawn-function process (lambda ()
+                                      (set! (-> *setting-control* default bg-a) 0.0)
+                                      (start 'play (get-continue-by-name *game-info* "village1-demo-convo"))
+                                      )
+                            )
     (loop
       (suspend)
       )
     (none)
     )
-  :post
-  target-no-move-post
+  :post target-no-move-post
   )

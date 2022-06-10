@@ -40,8 +40,7 @@
                 :name "sage-introduction-misty-cannon"
                 :index 8
                 :parts 12
-                :command-list
-                '((1 blackout 0)
+                :command-list '((1 blackout 0)
                   (100 want-levels village1 misty)
                   (261 joint "cameraB")
                   (521 joint "camera")
@@ -68,8 +67,7 @@
             :name "sage-intro-sequence-d1"
             :index 16
             :parts 17
-            :command-list
-            '((0 display-level misty #f)
+            :command-list '((0 display-level misty #f)
               (0 display-level village1 display)
               (0 want-vis vi1)
               (0 save)
@@ -124,14 +122,8 @@
           (when arg0
             (let* ((s5-1 (-> obj tasks))
                    (s4-0 (method-of-object s5-1 save-reminder))
-                   (a1-6 (new 'stack-no-clear 'event-message-block))
                    )
-              (set! (-> a1-6 from) pp)
-              (set! (-> a1-6 num-params) 2)
-              (set! (-> a1-6 message) 'query)
-              (set! (-> a1-6 param 0) (the-as uint 'pickup))
-              (set! (-> a1-6 param 1) (the-as uint 6))
-              (s4-0 s5-1 (the int (the-as float (send-event-function *target* a1-6))) 1)
+              (s4-0 s5-1 (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 1)
               )
             (close-status! (-> obj tasks) (task-status need-introduction))
             )
@@ -139,8 +131,7 @@
             :name "sage-intro-sequence-e"
             :index 14
             :parts 13
-            :command-list
-            '((0 want-levels village1 beach)
+            :command-list '((0 want-levels village1 beach)
               (0 blackout 0)
               (197 joint "cameraB")
               (361 joint "camera")
@@ -184,8 +175,7 @@
              :name "sage-introduction-misty-cannon"
              :index 8
              :parts 12
-             :command-list
-             '((0 want-levels village1 beach)
+             :command-list '((0 want-levels village1 beach)
                (261 joint "cameraB")
                (521 joint "camera")
                (776 joint "cameraB")
@@ -214,8 +204,7 @@
             :name "sage-reminder-1-misty-cannon"
             :index 9
             :parts 5
-            :command-list
-            '((86 joint "cameraB") (320 joint "camera"))
+            :command-list '((86 joint "cameraB") (320 joint "camera"))
             )
           )
          (else
@@ -223,8 +212,7 @@
              :name "sage-reminder-1-ecorocks"
              :index 11
              :parts 4
-             :command-list
-             '((0 want-levels village1 beach)
+             :command-list '((0 want-levels village1 beach)
                (245 display-level beach movie)
                (245 want-force-vis beach #t)
                (246 alive "ecoventrock-3")
@@ -251,19 +239,9 @@
          (set-setting! *setting-control* pp 'music-volume-movie 'abs 0.0 0)
          (copy-settings-from-target! *setting-control*)
          (close-status! (-> obj tasks) (task-status need-reward-speech))
-         (let ((s5-2 (get-process *default-dead-pool* manipy #x4000)))
-           (set! (-> obj assistant)
-                 (ppointer->handle
-                   (when s5-2
-                     (let ((t9-15 (method-of-type manipy activate)))
-                       (t9-15 (the-as manipy s5-2) obj 'manipy (the-as pointer #x70004000))
-                       )
-                     (run-now-in-process s5-2 manipy-init (-> obj root-override trans) (-> obj entity) *assistant-sg* #f)
-                     (-> s5-2 ppointer)
-                     )
-                   )
-                 )
-           )
+         (set! (-> obj assistant)
+               (ppointer->handle (manipy-spawn (-> obj root-override trans) (-> obj entity) *assistant-sg* #f :to obj))
+               )
          (send-event (handle->process (-> obj assistant)) 'anim-mode 'clone-anim)
          (send-event (handle->process (-> obj assistant)) 'blend-shape #t)
          (send-event (handle->process (-> obj assistant)) 'center-joint 3)
@@ -278,8 +256,7 @@
          :name "sage-intro-sequence-d2"
          :index 15
          :parts 20
-         :command-list
-         '((0 want-levels village1 beach)
+         :command-list '((0 want-levels village1 beach)
            (0 kill "assistant-11")
            (0 kill "reflector-middle-2")
            (0 kill "eco-11")
@@ -455,10 +432,7 @@
 (defmethod TODO-RENAME-43 sage ((obj sage))
   (let ((s5-0 (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)))
     (when s5-0
-      (let* ((v1-2 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-             (v1-3 (the-as number (logior #x3f800000 v1-2)))
-             (f0-2 (+ -1.0 (the-as float v1-3)))
-             )
+      (let ((f0-2 (rand-float-gen)))
         (cond
           ((< (-> s5-0 y) -12288.0)
            #f
@@ -487,8 +461,7 @@
 ;; failed to figure out what this is:
 (defstate idle (sage)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (case (get-task-status (game-task intro))
       (((task-status need-reward-speech))
        (if (process-grab? *target*)
@@ -499,8 +472,7 @@
     ((-> (method-of-type process-taskable idle) trans))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (!= (ja-group) (get-art-elem self))
         (ja-channel-push! 1 (seconds 0.2))
         )
@@ -539,8 +511,7 @@
 ;; failed to figure out what this is:
 (defstate play-anim (sage)
   :virtual #t
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self draw bounds w) 10240.0)
     (let ((a0-1 (handle->process (-> self assistant))))
       (if a0-1
@@ -557,8 +528,7 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (case (get-task-status (game-task intro))
       (((task-status need-reward-speech))
        (spool-push *art-control* "sage-intro-sequence-d2" 0 self -1.0)

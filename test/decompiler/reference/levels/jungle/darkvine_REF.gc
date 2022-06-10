@@ -67,14 +67,12 @@
   :duration 150
   :flags (use-local-clock)
   :bounds (static-bspherem 0 2 0 3)
-  :parts
-  ((sp-item 800) (sp-item 801) (sp-item 802))
+  :parts ((sp-item 800) (sp-item 801) (sp-item 802))
   )
 
 ;; failed to figure out what this is:
 (defpart 800
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
     (sp-flt spt-num 0.8)
     (sp-rnd-flt spt-x (meters 0) (meters 0.5) 1.0)
     (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
@@ -97,8 +95,7 @@
 
 ;; failed to figure out what this is:
 (defpart 802
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
     (sp-flt spt-num 0.25)
     (sp-rnd-flt spt-x (meters 0) (meters 0.6) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.025) (meters 0.2) 1.0)
@@ -120,8 +117,7 @@
 
 ;; failed to figure out what this is:
 (defpart 801
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x17 :page #x2))
     (sp-flt spt-num 0.5)
     (sp-rnd-flt spt-x (meters 0) (meters 0.6) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.3) (meters 0.4) 1.0)
@@ -151,16 +147,9 @@
                      ((= v1-0 'touch)
                       (do-push-aways! (-> self root-override))
                       (when (-> self dangerous)
-                        (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                          (set! (-> a1-1 from) self)
-                          (set! (-> a1-1 num-params) 2)
-                          (set! (-> a1-1 message) 'attack)
-                          (set! (-> a1-1 param 0) (-> arg3 param 0))
-                          (set! (-> a1-1 param 1) (the-as uint (new 'static 'attack-info)))
-                          (if (send-event-function arg0 a1-1)
-                              (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
-                              )
-                          )
+                        (if (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+                            (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
+                            )
                         )
                       )
                      ((= v1-0 'attack)
@@ -186,10 +175,8 @@
 
 ;; failed to figure out what this is:
 (defstate darkvine-idle (darkvine)
-  :event
-  darkvine-event-handler
-  :code
-  (behavior ()
+  :event darkvine-event-handler
+  :code (behavior ()
     (set! (-> self dangerous) #t)
     (set! (-> self vulnerable) #t)
     (let ((f30-0 0.0))
@@ -214,8 +201,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (when (and (-> self hit-player)
                (or (not *target*) (>= (- (-> *display* base-frame-counter) (-> self touch-time)) (seconds 0.05)))
                )
@@ -237,10 +223,8 @@
 
 ;; failed to figure out what this is:
 (defstate darkvine-retreat (darkvine)
-  :event
-  darkvine-event-handler
-  :code
-  (behavior ()
+  :event darkvine-event-handler
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self dangerous) #f)
     (set! (-> self vulnerable) #f)
@@ -265,23 +249,16 @@
         (suspend)
         )
       )
-    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-1
-        (let ((t9-7 (method-of-type part-tracker activate)))
-          (t9-7 (the-as part-tracker gp-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          gp-1
-          part-tracker-init
-          (-> *part-group-id-table* 175)
-          -1
-          #f
-          #f
-          #f
-          (-> self root-override trans)
-          )
-        (-> gp-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 175)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override trans)
+      :to *entity-pool*
       )
     (let ((gp-2 (-> *display* base-frame-counter)))
       (until (>= (- (-> *display* base-frame-counter) gp-2) (seconds 0.5))
@@ -299,14 +276,12 @@
     (go darkvine-idle)
     (none)
     )
-  :post
-  (-> darkvine-idle post)
+  :post (-> darkvine-idle post)
   )
 
 ;; failed to figure out what this is:
 (defstate darkvine-die (darkvine)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (logclear! (-> self mask) (process-mask actor-pause))
     (if arg0
         (ja-channel-set! 1)
@@ -321,8 +296,7 @@
     (anim-loop)
     (none)
     )
-  :post
-  (-> darkvine-idle post)
+  :post (-> darkvine-idle post)
   )
 
 ;; definition for method 11 of type darkvine

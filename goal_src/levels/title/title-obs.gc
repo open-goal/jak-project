@@ -6,13 +6,14 @@
 ;; dgos: TIT
 
 ;; DECOMP BEGINS
+
 (import "goal_src/import/logo-cam-ag.gc")
 (import "goal_src/import/logo-black-ag.gc")
-(import "goal_src/import/logo-volumes-ag.gc")
-(import "goal_src/import/ndi-volumes-ag.gc")
 (import "goal_src/import/logo-ag.gc")
-(import "goal_src/import/ndi-ag.gc")
+(import "goal_src/import/logo-volumes-ag.gc")
 (import "goal_src/import/ndi-cam-ag.gc")
+(import "goal_src/import/ndi-ag.gc")
+(import "goal_src/import/ndi-volumes-ag.gc")
 
 (deftype logo (process-drawable)
   ((camera      handle      :offset-assert 176)
@@ -114,8 +115,7 @@
 
 (defstate idle (logo-slave)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 uint))
     (let ((v1-0 arg2))
       (the-as object (cond
@@ -141,8 +141,7 @@
               )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-post)
     (loop
       (clone-anim-once
@@ -187,8 +186,7 @@
 
 (defstate startup (logo)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (if (= v1-0 'update)
                          (clear-pending-settings-from-process *setting-control* self 'process-mask)
@@ -196,8 +194,7 @@
               )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (let ((a0-0 (-> self anim)))
       (when (nonzero? a0-0)
         (ja-abort-spooled-anim a0-0 (the-as art-joint-anim #f) -1)
@@ -212,8 +209,7 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not (none-reserved? *art-control*))
         (go-virtual hidden)
         )
@@ -222,84 +218,43 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (while (!= (file-status *art-control* (-> self next-anim name) 0) 'active)
       (set-blackout-frames (seconds 0.05))
       (suspend)
       )
     (set! (-> *setting-control* current bg-a) 1.0)
     (set-setting! *setting-control* self 'bg-a 'abs 0.0 0)
-    (let ((gp-1 (get-process *default-dead-pool* logo-slave #x4000)))
-      (set! (-> self camera-anim)
-            (ppointer->handle (when gp-1
-                                (let ((t9-4 (method-of-type logo-slave activate)))
-                                  (t9-4 (the-as logo-slave gp-1) self 'logo-slave (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process gp-1 logo-slave-init-by-other (-> self entity) *logo-cam-sg*)
-                                (-> gp-1 ppointer)
-                                )
-                              )
-            )
-      )
-    (let ((gp-2 (get-process *default-dead-pool* othercam #x4000)))
-      (set! (-> self camera)
-            (ppointer->handle
-              (when gp-2
-                (let ((t9-7 (method-of-type othercam activate)))
-                  (t9-7 (the-as othercam gp-2) (handle->process (-> self camera-anim)) 'othercam (the-as pointer #x70004000))
-                  )
-                (run-now-in-process gp-2 othercam-init-by-other (handle->process (-> self camera-anim)) 4 #t 'logo)
-                (-> gp-2 ppointer)
-                )
+    (set! (-> self camera-anim)
+          (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-cam-sg* :to self))
+          )
+    (set! (-> self camera)
+          (ppointer->handle
+            (process-spawn
+              othercam
+              (handle->process (-> self camera-anim))
+              4
+              #t
+              'logo
+              :to (handle->process (-> self camera-anim))
               )
             )
-      )
+          )
     (send-event (handle->process (-> self camera)) 'mask 0)
     (case (scf-get-territory)
       ((2)
-       (let ((gp-3 (get-process *default-dead-pool* logo-slave #x4000)))
-         (set! (-> self volumes)
-               (ppointer->handle
-                 (when gp-3
-                   (let ((t9-12 (method-of-type logo-slave activate)))
-                     (t9-12 (the-as logo-slave gp-3) self 'logo-slave (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process gp-3 logo-slave-init-by-other (-> self entity) *logo-volumes-japan-sg*)
-                   (-> gp-3 ppointer)
-                   )
-                 )
-               )
-         )
+       (set! (-> self volumes)
+             (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-volumes-japan-sg* :to self))
+             )
        )
       (else
-        (let ((gp-4 (get-process *default-dead-pool* logo-slave #x4000)))
-          (set! (-> self volumes)
-                (ppointer->handle (when gp-4
-                                    (let ((t9-15 (method-of-type logo-slave activate)))
-                                      (t9-15 (the-as logo-slave gp-4) self 'logo-slave (the-as pointer #x70004000))
-                                      )
-                                    (run-now-in-process gp-4 logo-slave-init-by-other (-> self entity) *logo-volumes-sg*)
-                                    (-> gp-4 ppointer)
-                                    )
-                                  )
-                )
-          )
+        (set! (-> self volumes)
+              (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-volumes-sg* :to self))
+              )
         )
       )
     (send-event (handle->process (-> self volumes)) 'origin-joint-index 3)
-    (let ((gp-5 (get-process *default-dead-pool* logo-slave #x4000)))
-      (set! (-> self black)
-            (ppointer->handle (when gp-5
-                                (let ((t9-19 (method-of-type logo-slave activate)))
-                                  (t9-19 (the-as logo-slave gp-5) self 'logo-slave (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process gp-5 logo-slave-init-by-other (-> self entity) *logo-black-sg*)
-                                (-> gp-5 ppointer)
-                                )
-                              )
-            )
-      )
+    (set! (-> self black) (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-black-sg* :to self)))
     (send-event (handle->process (-> self black)) 'origin-joint-index 3)
     (set! (-> self anim) (-> self next-anim))
     (set! (-> self next-anim)
@@ -307,8 +262,7 @@
             :name "logo-intro-2"
             :index 7
             :parts 15
-            :command-list
-            '((260 want-force-inside village1 #t)
+            :command-list '((260 want-force-inside village1 #t)
               (261 kill "sage-23")
               (261 kill "assistant-11")
               (261 kill "explorer-4")
@@ -357,8 +311,7 @@
             :name "logo-loop"
             :index 9
             :parts 17
-            :command-list
-            '((61 kill "sage-23")
+            :command-list '((61 kill "sage-23")
               (61 kill "assistant-11")
               (61 kill "explorer-4")
               ((new 'static 'bfloat :data 61.5) kill "farmer-3")
@@ -386,8 +339,7 @@
     (go-virtual idle)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (if *progress-process*
         (logior! (-> self draw status) (draw-status skip-bones))
         (logclear! (-> self draw status) (draw-status skip-bones))
@@ -425,29 +377,25 @@
 
 (defstate idle (logo)
   :virtual #t
-  :exit
-  (-> (method-of-type logo startup) exit)
-  :trans
-  (-> (method-of-type logo startup) trans)
-  :code
-  (behavior ()
+  :exit (-> (method-of-type logo startup) exit)
+  :trans (-> (method-of-type logo startup) trans)
+  :code (behavior ()
     (loop
       (set! (-> self anim) (-> self next-anim))
-      (when (not (handle->process (-> self camera)))
-        (let ((gp-0 (get-process *default-dead-pool* othercam #x4000)))
+      (if (not (handle->process (-> self camera)))
           (set! (-> self camera)
                 (ppointer->handle
-                  (when gp-0
-                    (let ((t9-1 (method-of-type othercam activate)))
-                      (t9-1 (the-as othercam gp-0) (handle->process (-> self camera-anim)) 'othercam (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process gp-0 othercam-init-by-other (handle->process (-> self camera-anim)) 4 #t 'logo)
-                    (-> gp-0 ppointer)
+                  (process-spawn
+                    othercam
+                    (handle->process (-> self camera-anim))
+                    4
+                    #t
+                    'logo
+                    :to (handle->process (-> self camera-anim))
                     )
                   )
                 )
           )
-        )
       (set! *spawn-actors* #f)
       (ja-channel-set! 1)
       (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
@@ -466,21 +414,18 @@
       )
     (none)
     )
-  :post
-  (-> (method-of-type logo startup) post)
+  :post (-> (method-of-type logo startup) post)
   )
 
 (defstate hidden (logo)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (nonzero? (-> self next-anim))
         (spool-push *art-control* (-> self next-anim name) 0 self -1.0)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 0)
     (ja-post)
     (let ((gp-0 *master-mode*))
@@ -507,8 +452,7 @@
 
 (defstate ndi (logo)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (if (= v1-0 'blackout)
                          (set-setting! *setting-control* self 'bg-a 'abs 1.0 0)
@@ -516,8 +460,7 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set-setting! *setting-control* self 'bg-a 'abs 0.0 0)
     (copy-settings-from-target! *setting-control*)
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -527,14 +470,12 @@
     (set! (-> self done?) #f)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     ((-> (method-of-type logo startup) exit))
     (set-blackout-frames (seconds 0.035))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     ((-> (method-of-type logo startup) trans))
     (if (and *debug-segment*
              (cpad-pressed? 0 start circle x)
@@ -568,78 +509,36 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (while (!= (file-status *art-control* (-> self next-anim name) 0) 'active)
       (set-blackout-frames (seconds 0.05))
       (suspend)
       )
     (set! (-> *setting-control* current bg-a) 1.0)
-    (let ((gp-1 (get-process *default-dead-pool* logo-slave #x4000)))
-      (set! (-> self camera-anim)
-            (ppointer->handle (when gp-1
-                                (let ((t9-3 (method-of-type logo-slave activate)))
-                                  (t9-3 (the-as logo-slave gp-1) self 'logo-slave (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process gp-1 logo-slave-init-by-other (-> self entity) *ndi-cam-sg*)
-                                (-> gp-1 ppointer)
-                                )
-                              )
-            )
-      )
-    (let ((gp-2 (get-process *default-dead-pool* othercam #x4000)))
-      (set! (-> self camera)
-            (ppointer->handle
-              (when gp-2
-                (let ((t9-6 (method-of-type othercam activate)))
-                  (t9-6 (the-as othercam gp-2) (handle->process (-> self camera-anim)) 'othercam (the-as pointer #x70004000))
-                  )
-                (run-now-in-process gp-2 othercam-init-by-other (handle->process (-> self camera-anim)) 3 #t 'logo)
-                (-> gp-2 ppointer)
-                )
+    (set! (-> self camera-anim)
+          (ppointer->handle (process-spawn logo-slave (-> self entity) *ndi-cam-sg* :to self))
+          )
+    (set! (-> self camera)
+          (ppointer->handle
+            (process-spawn
+              othercam
+              (handle->process (-> self camera-anim))
+              3
+              #t
+              'logo
+              :to (handle->process (-> self camera-anim))
               )
             )
-      )
+          )
     (send-event (handle->process (-> self camera)) 'mask 0)
-    (let ((gp-3 (get-process *default-dead-pool* logo-slave #x4000)))
-      (set! (-> self volumes)
-            (ppointer->handle (when gp-3
-                                (let ((t9-10 (method-of-type logo-slave activate)))
-                                  (t9-10 (the-as logo-slave gp-3) self 'logo-slave (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process gp-3 logo-slave-init-by-other (-> self entity) *ndi-volumes-sg*)
-                                (-> gp-3 ppointer)
-                                )
-                              )
-            )
-      )
+    (set! (-> self volumes)
+          (ppointer->handle (process-spawn logo-slave (-> self entity) *ndi-volumes-sg* :to self))
+          )
     (send-event (handle->process (-> self volumes)) 'origin-joint-index 3)
-    (let ((gp-4 (get-process *default-dead-pool* logo-slave #x4000)))
-      (set! (-> self target)
-            (ppointer->handle (when gp-4
-                                (let ((t9-14 (method-of-type logo-slave activate)))
-                                  (t9-14 (the-as logo-slave gp-4) self 'logo-slave (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process gp-4 logo-slave-init-by-other #f *jchar-sg*)
-                                (-> gp-4 ppointer)
-                                )
-                              )
-            )
-      )
+    (set! (-> self target) (ppointer->handle (process-spawn logo-slave #f *jchar-sg* :to self)))
     (send-event (handle->process (-> self target)) 'blend-shape #t)
     (send-event (handle->process (-> self target)) 'origin-joint-index 33)
-    (let ((gp-5 (get-process *default-dead-pool* logo-slave #x4000)))
-      (set! (-> self sidekick)
-            (ppointer->handle (when gp-5
-                                (let ((t9-19 (method-of-type logo-slave activate)))
-                                  (t9-19 (the-as logo-slave gp-5) self 'logo-slave (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process gp-5 logo-slave-init-by-other #f *sidekick-sg*)
-                                (-> gp-5 ppointer)
-                                )
-                              )
-            )
-      )
+    (set! (-> self sidekick) (ppointer->handle (process-spawn logo-slave #f *sidekick-sg* :to self)))
     (send-event (handle->process (-> self sidekick)) 'blend-shape #t)
     (send-event (handle->process (-> self sidekick)) 'origin-joint-index 6)
     (set! (-> self anim) (-> self next-anim))
@@ -655,8 +554,7 @@
     (anim-loop)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (ja-post)
     (none)
     )
@@ -686,8 +584,7 @@
                                  :name "logo-intro"
                                  :index 5
                                  :parts 3
-                                 :command-list
-                                 '((0 want-levels title village1)
+                                 :command-list '((0 want-levels title village1)
                                    (5 display-level village1 special)
                                    (5 want-vis vi1)
                                    (5 want-force-inside village1 #t)
@@ -747,10 +644,8 @@
   )
 
 (defstate target-title (target)
-  :event
-  target-generic-event-handler
-  :enter
-  (behavior ()
+  :event target-generic-event-handler
+  :enter (behavior ()
     (set-setting! *setting-control* self 'music-volume 'abs 0.0 0)
     (set-setting! *setting-control* self 'sfx-volume 'abs 0.0 0)
     (set-setting! *setting-control* self 'ambient-volume 'abs 0.0 0)
@@ -765,8 +660,7 @@
     (send-event *camera* 'change-state cam-fixed 0)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (when (not (or (= (-> self next-state name) 'target-title-play) (= (-> self next-state name) 'target-title-wait)))
       (if (-> self manipy)
           (deactivate (-> self manipy 0))
@@ -774,15 +668,13 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (hide-hud-quick)
     (spool-push *art-control* "ndi-intro" 0 self -1.0)
     (sound-group-pause (the-as uint 2))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (the-as handle #f)))
       (case (scf-get-territory)
         ((2)
@@ -845,16 +737,7 @@
       )
     (label cfg-41)
     (let ((gp-3 (entity-by-name "logo-1")))
-      (let* ((s5-3 (get-process *default-dead-pool* logo #x4000))
-             (v1-53 (when s5-3
-                      (let ((t9-17 (method-of-type logo activate)))
-                        (t9-17 (the-as logo s5-3) self 'logo (the-as pointer #x70004000))
-                        )
-                      (run-now-in-process s5-3 logo-init-by-other gp-3 (-> gp-3 extra trans) 'ndi)
-                      (-> s5-3 ppointer)
-                      )
-                    )
-             )
+      (let ((v1-53 (process-spawn logo gp-3 (-> gp-3 extra trans) 'ndi :to self)))
         (set! (-> self manipy) (the-as (pointer manipy) v1-53))
         (let ((s5-4 (ppointer->handle v1-53)))
           (while (handle->process (the-as handle s5-4))
@@ -862,29 +745,18 @@
             )
           )
         )
-      (let ((s5-5 (get-process *default-dead-pool* logo #x4000)))
-        (set! (-> self manipy)
-              (the-as (pointer manipy) (when s5-5
-                                         (let ((t9-20 (method-of-type logo activate)))
-                                           (t9-20 (the-as logo s5-5) self 'logo (the-as pointer #x70004000))
-                                           )
-                                         (run-now-in-process s5-5 logo-init-by-other gp-3 (-> gp-3 extra trans) 'logo)
-                                         (-> s5-5 ppointer)
-                                         )
-                      )
-              )
-        )
+      (set! (-> self manipy)
+            (the-as (pointer manipy) (process-spawn logo gp-3 (-> gp-3 extra trans) 'logo :to self))
+            )
       )
     (go target-title-play)
     (none)
     )
-  :post
-  target-no-move-post
+  :post target-no-move-post
   )
 
 (defstate target-title-play (target)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'wait)
@@ -900,25 +772,19 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set-setting! *setting-control* self 'allow-pause #f 0.0 0)
     (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
     (none)
     )
-  :exit
-  (-> target-title exit)
-  :trans
-  (the-as (function none :behavior target) hide-hud-quick)
-  :code
-  (the-as (function none :behavior target) anim-loop)
-  :post
-  target-no-move-post
+  :exit (-> target-title exit)
+  :trans (the-as (function none :behavior target) hide-hud-quick)
+  :code (the-as (function none :behavior target) anim-loop)
+  :post target-no-move-post
   )
 
 (defstate target-title-wait (target)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'play)
@@ -934,8 +800,7 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (clear-pending-settings-from-process *setting-control* self 'ambient-volume)
     (clear-pending-settings-from-process *setting-control* self 'sfx-volume)
     (clear-pending-settings-from-process *setting-control* self 'music-volume)
@@ -947,8 +812,7 @@
       )
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (when *time-of-day-proc*
       (set! (-> *time-of-day-proc* 0 time-ratio) 300.0)
       (set! *time-of-day-fast* #f)
@@ -957,8 +821,7 @@
     ((-> target-title exit))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (hide-hud-quick)
     (if (cpad-pressed? 0 start)
         (activate-progress *dproc* (progress-screen title))
@@ -980,10 +843,8 @@
       )
     (none)
     )
-  :code
-  (the-as (function none :behavior target) anim-loop)
-  :post
-  target-no-move-post
+  :code (the-as (function none :behavior target) anim-loop)
+  :post target-no-move-post
   )
 
 

@@ -6,9 +6,10 @@
 ;; dgos: FIN, L1
 
 ;; DECOMP BEGINS
-(import "goal_src/import/redring-ag.gc")
+
 (import "goal_src/import/darkecobomb-ag.gc")
 (import "goal_src/import/greenshot-ag.gc")
+(import "goal_src/import/redring-ag.gc")
 
 (deftype torus (structure)
   ((origin           vector :inline :offset-assert   0)
@@ -212,14 +213,12 @@
   )
 
 (defstate arcing-shot-debug-trajectory (arcing-shot)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (arcing-shot-setup (camera-pos) (-> self entity extra trans) 40960.0)
     (arcing-shot-draw)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (format *stdcon* "debug trajectory~%")
       (suspend)
@@ -253,29 +252,21 @@
               )
 
 (defstate darkecobomb-explode (darkecobomb)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (send-event *target* 'reset-pickup 'eco)
     (sound-play-by-name (static-sound-name "explod-bomb") (new-sound-id) 1024 0 0 1 #f)
     (activate! *camera-smush-control* 819.2 37 600 1.0 0.995)
     (send-event (ppointer->process (-> self parent)) 'flash 255.0)
-    (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when s5-1
-        (let ((t9-6 (method-of-type part-tracker activate)))
-          (t9-6 (the-as part-tracker s5-1) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-          )
-        (run-now-in-process
-          s5-1
-          part-tracker-init
-          (-> *part-group-id-table* 619)
-          900
-          #f
-          #f
-          #f
-          (-> self root-override trans)
-          )
-        (-> s5-1 ppointer)
-        )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 619)
+      900
+      #f
+      #f
+      #f
+      (-> self root-override trans)
+      :to *entity-pool*
       )
     (logior! (-> self draw status) (draw-status hidden))
     (cond
@@ -295,17 +286,7 @@
        (if *target*
            (logclear! (-> *target* mask) (process-mask sleep))
            )
-       (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-12 from) self)
-         (set! (-> a1-12 num-params) 2)
-         (set! (-> a1-12 message) 'attack-invinc)
-         (set! (-> a1-12 param 0) (the-as uint #f))
-         (let ((a0-21 (new 'static 'attack-info :mask #x20)))
-           (set! (-> a0-21 mode) 'instant-death)
-           (set! (-> a1-12 param 1) (the-as uint a0-21))
-           )
-         (send-event-function *target* a1-12)
-         )
+       (send-event *target* 'attack-invinc #f (static-attack-info ((mode 'instant-death))))
        )
       (else
         (send-event (ppointer->process (-> self parent)) 'bomb-done)
@@ -314,8 +295,7 @@
     (deactivate self)
     (none)
     )
-  :post
-  (the-as (function none :behavior darkecobomb) ja-post)
+  :post (the-as (function none :behavior darkecobomb) ja-post)
   )
 
 (defbehavior darkecobomb-handler darkecobomb ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -334,21 +314,17 @@
   )
 
 (defstate darkecobomb-countdown (darkecobomb)
-  :event
-  darkecobomb-handler
-  :enter
-  (behavior ()
+  :event darkecobomb-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (set! (-> self next-tick) 0.9)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (stop! (-> self sound))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (darkecobomb-explode-if-player-high-enough)
     (let ((f0-1
             (fmax
@@ -363,23 +339,16 @@
         (set! (-> self anim-speed) (+ 1.0 f1-5))
         )
       (when (< (cos (* 16384.0 (- 1.0 f0-1))) (-> self next-tick))
-        (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-          (when gp-0
-            (let ((t9-3 (method-of-type part-tracker activate)))
-              (t9-3 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-              )
-            (run-now-in-process
-              gp-0
-              part-tracker-init
-              (-> *part-group-id-table* 663)
-              150
-              #f
-              #f
-              #f
-              (-> self root-override trans)
-              )
-            (-> gp-0 ppointer)
-            )
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          (-> *part-group-id-table* 663)
+          150
+          #f
+          #f
+          #f
+          (-> self root-override trans)
+          :to *entity-pool*
           )
         (set! (-> self next-tick) (+ -0.06 (-> self next-tick)))
         (sound-play-by-name (static-sound-name "robo-warning") (new-sound-id) 1024 0 0 1 #t)
@@ -396,8 +365,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (sound-play-by-name (static-sound-name "bomb-open") (new-sound-id) 1024 0 0 1 #t)
     (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -414,29 +382,24 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior darkecobomb) transform-post)
+  :post (the-as (function none :behavior darkecobomb) transform-post)
   )
 
 (defstate darkecobomb-land (darkecobomb)
-  :event
-  darkecobomb-handler
-  :enter
-  (behavior ()
+  :event darkecobomb-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     0
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (darkecobomb-explode-if-player-high-enough)
     (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (seconds 0.5))
         (go darkecobomb-countdown)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
@@ -451,18 +414,15 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior darkecobomb) transform-post)
+  :post (the-as (function none :behavior darkecobomb) transform-post)
   )
 
 (defstate darkecobomb-idle (darkecobomb)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (arcing-shot-calculate
       (-> self root-override trans)
       (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time)))
@@ -472,8 +432,7 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
@@ -488,8 +447,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior darkecobomb) transform-post)
+  :post (the-as (function none :behavior darkecobomb) transform-post)
   )
 
 (defbehavior darkecobomb-init-by-other darkecobomb ((arg0 vector) (arg1 vector) (arg2 float) (arg3 time-frame) (arg4 float))
@@ -543,13 +501,11 @@
               )
 
 (defstate greenshot-idle (greenshot)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (arcing-shot-calculate
       (-> self root-override trans)
       (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time)))
@@ -560,8 +516,7 @@
     (spawn (-> self part) (-> self root-override trans))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -571,8 +526,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior greenshot) transform-post)
+  :post (the-as (function none :behavior greenshot) transform-post)
   )
 
 (defbehavior greenshot-init-by-other greenshot ((arg0 vector) (arg1 vector) (arg2 float) (arg3 time-frame))
@@ -678,8 +632,7 @@
   )
 
 (defstate redshot-explode (redshot)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (sound-play-by-name (static-sound-name "red-explode") (new-sound-id) 1024 0 0 1 #t)
     (logclear! (-> self draw status) (draw-status hidden))
@@ -688,48 +641,29 @@
     (set! (-> self ring origin quad) (-> self root-override trans quad))
     (+! (-> self ring origin y) (-> self ring radius-secondary))
     (set-vector! (-> self ring axis) 0.0 1.0 0.0 1.0)
-    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (set! (-> self part-track)
-            (ppointer->handle (when gp-1
-                                (let ((t9-4 (method-of-type part-tracker activate)))
-                                  (t9-4 (the-as part-tracker gp-1) self 'part-tracker (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process
-                                  gp-1
-                                  part-tracker-init
-                                  (-> *part-group-id-table* 648)
-                                  -1
-                                  redshot-particle-callback
-                                  (-> self ppointer)
-                                  #f
-                                  (-> self root-override trans)
-                                  )
-                                (-> gp-1 ppointer)
-                                )
-                              )
-            )
-      )
+    (set! (-> self part-track) (ppointer->handle (process-spawn
+                                                   part-tracker
+                                                   :init part-tracker-init
+                                                   (-> *part-group-id-table* 648)
+                                                   -1
+                                                   redshot-particle-callback
+                                                   (-> self ppointer)
+                                                   #f
+                                                   (-> self root-override trans)
+                                                   :to self
+                                                   )
+                                                 )
+          )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (set! (-> self ring radius-primary)
           (* 204.8 (the float (- (-> *display* game-frame-counter) (-> self state-time))))
           )
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (when (dummy-11 (-> self ring) gp-0)
         (vector-normalize! gp-0 16384.0)
-        (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-2 from) self)
-          (set! (-> a1-2 num-params) 2)
-          (set! (-> a1-2 message) 'attack)
-          (set! (-> a1-2 param 0) (the-as uint #f))
-          (let ((v1-8 (new 'static 'attack-info :mask #x2)))
-            (set! (-> v1-8 vector quad) (-> gp-0 quad))
-            (set! (-> a1-2 param 1) (the-as uint v1-8))
-            )
-          (send-event-function *target* a1-2)
-          )
+        (send-event *target* 'attack #f (static-attack-info ((vector gp-0))))
         (send-event (ppointer->process (-> self parent)) 'hit-jak)
         )
       )
@@ -754,16 +688,14 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (ja :num-func num-func-identity :frame-num (* 0.000016276043 (-> self ring radius-primary)))
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior redshot) transform-post)
+  :post (the-as (function none :behavior redshot) transform-post)
   )
 
 (defbehavior redshot-handler redshot ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -775,15 +707,12 @@
   )
 
 (defstate redshot-wait (redshot)
-  :event
-  redshot-handler
-  :enter
-  (behavior ()
+  :event redshot-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (redshot-trans (- (-> self stall-time) (- (-> *display* game-frame-counter) (-> self state-time))))
     (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self stall-time))
         (go redshot-explode)
@@ -791,27 +720,22 @@
     (spawn (-> self shot-particle) (-> self root-override trans))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior redshot) transform-post)
+  :post (the-as (function none :behavior redshot) transform-post)
   )
 
 (defstate redshot-idle (redshot)
-  :event
-  redshot-handler
-  :enter
-  (behavior ()
+  :event redshot-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (redshot-trans (seconds 5))
     (arcing-shot-calculate
       (-> self root-override trans)
@@ -823,15 +747,13 @@
     (spawn (-> self shot-particle) (-> self root-override trans))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior redshot) transform-post)
+  :post (the-as (function none :behavior redshot) transform-post)
   )
 
 (defbehavior redshot-init-by-other redshot ((arg0 vector) (arg1 vector) (arg2 float) (arg3 time-frame) (arg4 time-frame) (arg5 int))
@@ -886,34 +808,21 @@
 
 
 (defstate yellowshot-idle (yellowshot)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('touch 'attack)
        (when (= (-> arg0 type) target)
-         (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-3 from) self)
-           (set! (-> a1-3 num-params) 2)
-           (set! (-> a1-3 message) 'attack)
-           (set! (-> a1-3 param 0) (-> arg3 param 0))
-           (let ((a0-2 (new 'static 'attack-info :mask #x20)))
-             (set! (-> a0-2 mode) 'generic)
-             (set! (-> a1-3 param 1) (the-as uint a0-2))
-             )
-           (send-event-function *target* a1-3)
-           )
+         (send-event *target* 'attack (-> arg3 param 0) (static-attack-info ((mode 'generic))))
          (send-event (ppointer->process (-> self parent)) 'hit-jak)
          )
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (arcing-shot-calculate
       (-> self root-override trans)
       (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time)))
@@ -925,15 +834,13 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior yellowshot) transform-post)
+  :post (the-as (function none :behavior yellowshot) transform-post)
   )
 
 (defbehavior yellowshot-init-by-other yellowshot ((arg0 vector) (arg1 vector) (arg2 float) (arg3 time-frame))
