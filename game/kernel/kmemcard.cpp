@@ -1641,13 +1641,10 @@ void MC_get_status(s32 /*slot*/, Ptr<mc_slot_info> info) {
 //        }
 //
 //        u32 current_save_count = headers[bank]->save_count;
-//        memcpy(op.data_ptr.c(), op.data_ptr.c() + bank * BANK_TOTAL_SIZE + sizeof(McHeader), BANK_SIZE);
-//        mc_last_file = op.param2;
-//        mc_files[op.param2].most_recent_save_count = current_save_count;
-//        mc_files[op.param2].last_saved_bank = bank;
-//        op.operation = MemoryCardOperationKind::NO_OP;
-//        op.result = McStatusCode::OK;
-//        mc_print("load succeeded");
+//        memcpy(op.data_ptr.c(), op.data_ptr.c() + bank * BANK_TOTAL_SIZE + sizeof(McHeader),
+//        BANK_SIZE); mc_last_file = op.param2; mc_files[op.param2].most_recent_save_count =
+//        current_save_count; mc_files[op.param2].last_saved_bank = bank; op.operation =
+//        MemoryCardOperationKind::NO_OP; op.result = McStatusCode::OK; mc_print("load succeeded");
 //      }
 //    }
 //  }
