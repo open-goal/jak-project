@@ -403,6 +403,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
       auto rewritten = rewrite_let(as_let, env, pool, stats);
       if (rewritten) {
         body->at(3 + param_idx) = rewritten;
+        rewritten->parent_form = body;
       }
     }
     auto set_form = body->at(3 + param_idx);
@@ -1425,12 +1426,14 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
     in->entries().erase(in->entries().begin());
     // set the value of the new first entry to the macro
     in->entries().at(0).src = std::get<1>(mr_with_shell);
+    in->entries().at(0).src->parent_element = in;
 
     // return us but modified?
     return in;
   }
 
   auto elt = std::get<1>(mr_with_shell)->try_as_single_element();
+  ASSERT(elt);
   return elt;
 }
 
@@ -1530,6 +1533,7 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
 
   if ((mask & mask_implicit) != mask_implicit) {
     lg::error("attack info bad mask: #x{:x} but needed #x{:x}", mask, mask_implicit);
+    ASSERT(false);
     return nullptr;
   }
   mask ^= mask_implicit;
@@ -1573,6 +1577,7 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
   }
 
   auto elt = std::get<1>(mr_with_shell)->try_as_single_element();
+  ASSERT(elt);
   return elt;
 }
 
