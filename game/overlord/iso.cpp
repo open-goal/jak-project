@@ -412,11 +412,14 @@ u32 ISOThread() {
           ReturnMessage(msg_from_mbx);
         } break;
         case LOAD_MUSIC: {
+          // NOTE: this check has been removed. there doesn't seem to be any issues with this, and
+          // it fixes some other issues. there doesn't appear to be any extra safety from it either
+
           // if there's an in progress vag command, try again.
-          if (in_progress_vag_command && !in_progress_vag_command->paused) {
-            SendMbx(iso_mbx, msg_from_mbx);
-            break;
-          }
+          // if (in_progress_vag_command && !in_progress_vag_command->paused) {
+          //   SendMbx(iso_mbx, msg_from_mbx);
+          //   break;
+          // }
 
           auto buff = TryAllocateBuffer(BUFFER_PAGE_SIZE);
           if (!buff) {
@@ -641,6 +644,11 @@ u32 ISOThread() {
     ProcessMessageData();
 
     if (!read_buffer) {
+      // HACK!! sometimes when we want to exit, some other threads will wait for stuff to be loaded
+      // in such cases, we continue running until we're the last thread alive when it's safe to die
+      if (ThreadWantsExit(GetThreadId()) && OnlyThreadAlive(GetThreadId())) {
+        return 0;
+      }
       // didn't actually start a read, just delay for a bit I guess.
       DelayThread(100);
     } else {

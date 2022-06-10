@@ -105,6 +105,21 @@ void IOP_Kernel::WakeupThread(s32 id) {
   // todo, should we ever switch directly to that thread?
 }
 
+bool IOP_Kernel::OnlyThreadAlive(s32 thid) {
+  bool yes = false;
+  for (u64 i = 0; i < threads.size(); i++) {
+    if (threads[i].started && !threads[i].done) {
+      if (i != thid) {
+        return false;
+      }
+      if (i == thid) {
+        yes = true;
+      }
+    }
+  }
+  return yes;
+}
+
 /*!
  * Dispatch all IOP threads.
  */

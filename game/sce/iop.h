@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef JAK1_IOP_H
-#define JAK1_IOP_H
-
 #include "common/common_types.h"
 
 #define SMEM_Low (0)
@@ -101,6 +98,9 @@ void DelayThread(u32 usec);
 s32 CreateThread(ThreadParam* param);
 s32 StartThread(s32 thid, u32 arg);
 s32 WakeupThread(s32 thid);
+// kind of a hack
+bool ThreadWantsExit(s32 thid);
+bool OnlyThreadAlive(s32 thid);
 
 void sceSifInitRpc(int mode);
 void sceSifInitRpc(unsigned int mode);
@@ -143,5 +143,3 @@ void LIBRARY_INIT();
 void LIBRARY_register(::IOP* i);
 void LIBRARY_kill();
 }  // namespace iop
-
-#endif  // JAK1_IOP_H
