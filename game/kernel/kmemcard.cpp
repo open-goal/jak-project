@@ -219,7 +219,7 @@ void pc_update_card() {
       if (file_is_present(file, 1)) {
         auto bankname2 = file_util::get_user_memcard_dir() / filename[1 + 4 + file * 2];
         auto bankdata2 = file_util::read_binary_file(bankname2.string());
-        auto header2 = reinterpret_cast<McHeader*>(bankdata.data());
+        auto header2 = reinterpret_cast<McHeader*>(bankdata2.data());
 
         if (header2->save_count > header1->save_count) {
           // use most recent bank here.
