@@ -15,6 +15,7 @@
 #include "decompiler/analysis/find_defstates.h"
 #include "decompiler/analysis/variable_naming.h"
 #include "decompiler/analysis/cfg_builder.h"
+#include "decompiler/analysis/analyze_inspect_method.h"
 #include "decompiler/analysis/final_output.h"
 #include "decompiler/analysis/expression_build.h"
 #include "decompiler/analysis/inline_asm_rewrite.h"
@@ -101,7 +102,9 @@ void ObjectFileDB::analyze_functions_ir2(
       data.full_output = ir2_final_out(data, imports, {});
     }
 
-    for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
+    if (!config.generate_all_types) {
+      for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
+    }
 
     fmt::print("Done in {:.2f}ms\n", file_timer.getMs());
   });
@@ -278,6 +281,52 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
   lg::info("{:4d} logins  {:.2f}%\n", total_top_levels, 100.f * total_top_levels / total_functions);
 }
 
+void ObjectFileDB::ir2_analyze_all_types(const std::string& output_file,
+                                         const std::optional<std::string>& previous_game_types,
+                                         const std::unordered_set<std::string>& bad_types) {
+  struct PerObject {
+    std::string object_name;
+    std::vector<std::string> type_defs;
+    std::string symbol_defs;
+  };
+
+  std::vector<PerObject> per_object;
+
+  TypeSystem scratch_ts;
+  DecompilerTypeSystem previous_game_ts;
+  if (previous_game_types) {
+    previous_game_ts.parse_type_defs({*previous_game_types});
+  }
+
+  for_each_obj([&](ObjectFileData& data) {
+    auto& object_result = per_object.emplace_back();
+    object_result.object_name = data.to_unique_name();
+
+    for_each_function_def_order_in_obj(data, [&](Function& f, int) {
+      if (f.is_inspect_method && bad_types.find(f.guessed_name.type_name) == bad_types.end()) {
+        object_result.type_defs.push_back(inspect_inspect_method(
+            f, f.guessed_name.type_name, dts, data.linked_data, scratch_ts, previous_game_ts.ts));
+      }
+    });
+  });
+
+  std::string result;
+  result += ";; All Types\n\n";
+
+  for (auto& obj : per_object) {
+    result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
+    result += fmt::format(";; {:30s} ;;\n", obj.object_name);
+    result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
+    for (auto& t : obj.type_defs) {
+      result += t;
+      result += "\n";
+    }
+    result += "\n";
+  }
+
+  file_util::write_text_file(output_file, result);
+}
+
 /*!
  * Initial Function Analysis Pass to build the control flow graph.
  * - Find basic blocks
@@ -320,7 +369,7 @@ void ObjectFileDB::ir2_basic_block_pass(int seg, const Config& config, ObjectFil
         asm_br_blocks = asm_lookup->second;
       }
 
-      func.cfg = build_cfg(data.linked_data, seg, func, hack, asm_br_blocks);
+      func.cfg = build_cfg(data.linked_data, seg, func, hack, asm_br_blocks, config.game_version);
       if (!func.cfg->is_fully_resolved()) {
         lg::warn("Function {} from {} failed to build control flow graph!", func.name(),
                  data.to_unique_name());
@@ -546,23 +595,6 @@ void ObjectFileDB::ir2_cfg_build_pass(int seg, ObjectFileData& data) {
   });
 }
 
-// void ObjectFileDB::ir2_store_current_forms(int seg) {
-//  Timer timer;
-//  int total = 0;
-//
-//  for_each_function_in_seg(seg, [&](Function& func, ObjectFileData& data) {
-//    (void)data;
-//
-//    if (func.ir2.top_form) {
-//      total++;
-//      func.ir2.debug_form_string =
-//          pretty_print::to_string(func.ir2.top_form->to_form(func.ir2.env));
-//    }
-//  });
-//
-//  lg::info("Stored debug forms for {} functions in {:.2f} ms\n", total, timer.getMs());
-//}
-//
 void ObjectFileDB::ir2_build_expressions(int seg, const Config& config, ObjectFileData& data) {
   for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
     (void)data;

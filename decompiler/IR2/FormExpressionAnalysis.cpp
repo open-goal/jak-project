@@ -706,10 +706,26 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
       result->push_back(x);
     }
   } else {
+    auto frm = pool.alloc_sequence_form(nullptr, src_fes);
+    if (src_fes.size() == 1) {
+      auto int_constant = get_goal_integer_constant(frm, env);
+
+      fmt::print("Got 1: {}\n", frm->to_string(env));
+      if (int_constant && (*int_constant <= UINT32_MAX)) {
+
+        float flt;
+
+        memcpy(&flt, &int_constant.value(), sizeof(float));
+        fmt::print("Got 2: {}\n", flt);
+
+        result->push_back(pool.alloc_element<ConstantFloatElement>(flt));
+        return;
+      }
+    }
     // converting something else to an FPR, put an expression around it.
     result->push_back(pool.alloc_element<GenericElement>(
         GenericOperator::make_fixed(FixedOperatorKind::GPR_TO_FPR),
-        pool.alloc_sequence_form(nullptr, src_fes)));
+        frm));
   }
 }
 

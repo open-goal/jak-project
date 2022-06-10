@@ -925,47 +925,6 @@ bool is_op_3(AtomicOp* op,
   return true;
 }
 
-bool is_op_2(AtomicOp* op,
-             MatchParam<SimpleExpression::Kind> kind,
-             MatchParam<Register> dst,
-             MatchParam<Register> src0,
-             Register* dst_out = nullptr,
-             Register* src0_out = nullptr) {
-  // should be a set reg to int math 2 ir
-  auto set = dynamic_cast<SetVarOp*>(op);
-  if (!set) {
-    return false;
-  }
-
-  // destination should be a register
-  auto dest = set->dst();
-  if (dst != dest.reg()) {
-    return false;
-  }
-
-  auto math = set->src();
-  if (kind != math.kind()) {
-    return false;
-  }
-
-  auto arg = math.get_arg(0);
-
-  if (!arg.is_var() || src0 != arg.var().reg()) {
-    return false;
-  }
-
-  // it's a match!
-  if (dst_out) {
-    *dst_out = dest.reg();
-  }
-
-  if (src0_out) {
-    *src0_out = arg.var().reg();
-  }
-
-  return true;
-}
-
 bool is_op_2(FormElement* ir,
              MatchParam<SimpleExpression::Kind> kind,
              MatchParam<Register> dst,

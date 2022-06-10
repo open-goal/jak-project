@@ -185,6 +185,10 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
         // GOAL is smart enough to use binary 0b0 as floating point 0.
         return TP_Type::make_from_ts("float");
       }
+      // new for jak 2:
+      if (in_type.is_integer_constant() && in_type.get_integer_constant() <= UINT32_MAX) {
+        return TP_Type::make_from_ts("float");
+      }
       return in_type;
     }
     case Kind::FPR_TO_GPR:
@@ -395,6 +399,9 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       }
 
       if (m_kind == Kind::RIGHT_SHIFT_ARITH) {
+        if (arg0_type.typespec().base_type() == "float") {
+          return TP_Type::make_from_ts(TypeSpec("float"));
+        }
         return TP_Type::make_from_ts(TypeSpec("int"));
       }
     } break;

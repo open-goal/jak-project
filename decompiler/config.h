@@ -114,6 +114,9 @@ struct Config {
 
   bool generate_symbol_definition_map = false;
 
+  bool generate_all_types = false;
+  std::optional<std::string> old_all_types_file;
+
   bool is_pal = false;
   std::string game_name;
   std::string expected_elf_name;
