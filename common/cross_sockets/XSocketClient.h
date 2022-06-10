@@ -19,9 +19,7 @@ class XSocketClient {
   bool connect();
   void disconnect();
 
-  bool is_connected() {
-    return client_socket != -1;
-  }
+  bool is_connected() { return client_socket != -1; }
 
  protected:
   int tcp_port;

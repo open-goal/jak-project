@@ -1,9 +1,9 @@
 #include "subtitles.h"
-#include <common/goos/ParseHelpers.h>
+#include "common/goos/ParseHelpers.h"
 #include "common/goos/Reader.h"
-#include <common/util/FileUtil.h>
+#include "common/util/FileUtil.h"
 #include "third-party/fmt/core.h"
-#include <common/util/json_util.h>
+#include "common/util/json_util.h"
 
 static const std::unordered_map<std::string, GameTextVersion> s_text_ver_enum_map = {
     {"jak1-v1", GameTextVersion::JAK1_V1}};
@@ -293,8 +293,8 @@ void parse_subtitle(const goos::Object& data,
 
 void GameSubtitleGroups::hydrate_from_asset_file() {
   std::string file_path = (file_util::get_jak_project_dir() / "game" / "assets" / "jak1" /
-                         "subtitle" / "subtitle-groups.json")
-                            .string();
+                           "subtitle" / "subtitle-groups.json")
+                              .string();
   auto config_str = file_util::read_text_file(file_path);
   auto group_data = parse_commented_json(config_str, file_path);
 

@@ -1,9 +1,7 @@
 #include "XSocketClient.h"
 
-#include "third-party/fmt/core.h"
-
 #include "common/cross_sockets/XSocket.h"
-#include <string> 
+#include <string>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -12,7 +10,8 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
-#include <common/nrepl/ReplServer.h>
+#include "common/nrepl/ReplServer.h"
+#include "third-party/fmt/core.h"
 
 XSocketClient::XSocketClient(int _tcp_port) {
   tcp_port = _tcp_port;

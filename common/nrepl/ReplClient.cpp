@@ -3,7 +3,7 @@
 #include "common/cross_sockets/XSocket.h"
 
 #include "third-party/fmt/core.h"
-#include <common/versions.h>
+#include "common/versions.h"
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -18,7 +18,7 @@ void ReplClient::eval(std::string form) {
     return;
   }
   // TODO - split this up into two writes
-  int dataLength = form.length();
+  u32 dataLength = form.length();
   ReplServerHeader header = {dataLength, ReplServerMessageType::EVAL};
 
   auto const ptr = reinterpret_cast<char*>(&header);
