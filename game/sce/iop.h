@@ -143,4 +143,3 @@ void LIBRARY_INIT();
 void LIBRARY_register(::IOP* i);
 void LIBRARY_kill();
 }  // namespace iop
-
