@@ -722,7 +722,7 @@
         bbox
         (-> target-ctrl root-prim collide-with)
         (-> target-ctrl process)
-        (new 'static 'pat-surface :skip #x1 :noentity #x1)
+        (new 'static 'pat-surface :noentity #x1)
         )
       )
     
@@ -824,188 +824,131 @@
 
 (defun target-attack-up ((arg0 target) (arg1 symbol) (arg2 symbol))
   "Handle an attack up. This launches the player in the air, forcing them back to a safe location."
-  (with-pp
-    ;; attempt to find a safe ground.
-    (let ((s4-0 (find-ground-point (-> arg0 control) (new 'stack-no-clear 'vector) 8192.0 40960.0)))
-      (set! s4-0 (cond
-                   (s4-0 ;; if we found it, use that
-                     s4-0
-                     )
-                   (else
-                     ;; failed to find it. Use the last known safe ground point instaed.
-                     (-> arg0 control last-known-safe-ground)
-                     )
+  ;; attempt to find a safe ground.
+  (let ((s4-0 (find-ground-point (-> arg0 control) (new 'stack-no-clear 'vector) (meters 2) (meters 10))))
+    (set! s4-0 (cond
+                 (s4-0 ;; if we found it, use that
+                   s4-0
                    )
-            )
-      (let* ((s2-1 (vector-! (new 'stack-no-clear 'vector) s4-0 (-> arg0 control trans))) ;; jump direction
-             (f30-1 (fmax 8192.0 (fmin 40960.0 (vector-xz-length s2-1))))                 ;; distance we should jump (limited)
-             )
-        ;; note: the above limit is the same as the limit passed into find-ground-point. So the limiting should only kick in
-        ;; if we use last safe ground.
-        (cond
-          ((< (fabs (vector-dot
-                      (-> arg0 control dynam gravity-normal)
-                      (vector-! (new 'stack-no-clear 'vector) s4-0 (-> arg0 control trans))
-                      )
+                 (else
+                   ;; failed to find it. Use the last known safe ground point instaed.
+                   (-> arg0 control last-known-safe-ground)
+                   )
+                 )
+          )
+    (let* ((s2-1 (vector-! (new 'stack-no-clear 'vector) s4-0 (-> arg0 control trans))) ;; jump direction
+           (f30-1 (fmax (meters 2) (fmin (meters 10) (vector-xz-length s2-1))))         ;; distance we should jump (limited)
+           )
+      ;; note: the above limit is the same as the limit passed into find-ground-point. So the limiting should only kick in
+      ;; if we use last safe ground.
+      (cond
+        ((< (fabs (vector-dot
+                    (-> arg0 control dynam gravity-normal)
+                    (vector-! (new 'stack-no-clear 'vector) s4-0 (-> arg0 control trans))
                     )
-              40960.0
+                  )
+            (meters 10)
+            )
+         ;; if we reach here, we have to jump up or down less than 10m.
+         ;; reduce our jump direction to within reasonable distance
+         (vector-xz-normalize! s2-1 f30-1)
+         ;; send an attack
+         ;; the shove is proportional to how high we jump (and has a min, so we at least get off the ground)
+         (send-event
+           arg0
+           arg1
+           #f
+           (static-attack-info
+             ((mode arg2)
+              (vector s2-1)
+              (shove-up
+                (+ (lerp-scale (meters 1) (meters 4) f30-1 (meters 1) (meters 10)) (fmax 0.0 (- (-> s4-0 y) (-> arg0 control trans y))))
+                )
+              (angle 'up)
               )
-           ;; if we reach here, we have to jump up or down less than 10m.
-           ;; reduce our jump direction to within reasonable distance
-           (vector-xz-normalize! s2-1 f30-1)
-           ;; send an attack
-           (let ((s1-0 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> s1-0 from) pp)
-             (set! (-> s1-0 num-params) 2)
-             (set! (-> s1-0 message) arg1)
-             (set! (-> s1-0 param 0) (the-as uint #f))
-             (let ((s3-1 (new 'static 'attack-info :mask #x8a2)))
-               (set! (-> s3-1 mode) arg2)
-               ;; go in the direction we determined.
-               (set! (-> s3-1 vector quad) (-> s2-1 quad))
-               ;; the shove is proportional to how high we jump (and has a min, so we at least get off the ground)
-               (set! (-> s3-1 shove-up)
-                     (+ (lerp-scale 4096.0 16384.0 f30-1 4096.0 40960.0) (fmax 0.0 (- (-> s4-0 y) (-> arg0 control trans y))))
-                     )
-               (set! (-> s3-1 angle) 'up)
-               (set! (-> s1-0 param 1) (the-as uint s3-1))
-               )
-             ;; shove!
-             (send-event-function arg0 s1-0)
              )
            )
-          (else
-            ;; the last safest place we jumped is too high. just launch jak in the air and hope for the best.
-            ;; fire canyon skip jumps
-            (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-              (set! (-> a1-6 from) pp)
-              (set! (-> a1-6 num-params) 2)
-              (set! (-> a1-6 message) arg1)
-              (set! (-> a1-6 param 0) (the-as uint #f))
-              (let ((v1-12 (new 'static 'attack-info :mask #xca2)))
-                (set! (-> v1-12 mode) arg2)
-                (set! (-> v1-12 vector quad) (-> (new 'static 'vector :y 40960.0 :w 1.0) quad))
-                (set! (-> v1-12 shove-up) 40960.0)
-                (set! (-> v1-12 angle) 'up)
-                (set! (-> v1-12 control) 1.0)
-                (set! (-> a1-6 param 1) (the-as uint v1-12))
-                )
-              (send-event-function arg0 a1-6)
-              )
-            )
+         )
+        (else
+          ;; the last safest place we jumped is too high. just launch jak in the air and hope for the best.
+          ;; fire canyon skip jumps
+          (send-event arg0 arg1 #f (static-attack-info ((mode arg2)
+                                                        (vector (new 'static 'vector :y (meters 10) :w 1.0))
+                                                        (shove-up (meters 10))
+                                                        (angle 'up)
+                                                        (control 1.0)
+                                                        )
+                                                       )
+                      )
           )
         )
       )
-    (none)
     )
+  (none)
   )
 
 (defmethod set-and-handle-pat! collide-shape-moving ((obj collide-shape-moving) (arg0 pat-surface))
   "Handle landing on the given pat-surface. This is likely target-specific."
-  (with-pp
-    ;; set our pat
-    (set! (-> obj cur-pat) arg0)
-    (set! (-> obj poly-pat) arg0)
-    ;; set our surface
-    (case (-> arg0 material)
-      (((pat-material ice))
-       (set! (-> obj surf) *ice-surface*)
-       )
-      (((pat-material quicksand))
-       (set! (-> obj surf) *quicksand-surface*)
-       )
-      (((pat-material tube))
-       (set! (-> obj surf) *no-walk-surface*)
-       )
-      (((pat-material rotate))
-       (set! (-> obj surf) *rotate-surface*)
-       )
-      (else
-        (set! (-> obj surf) *standard-ground-surface*)
-        )
+  ;; set our pat
+  (set! (-> obj cur-pat) arg0)
+  (set! (-> obj poly-pat) arg0)
+  ;; set our surface
+  (case (-> arg0 material)
+    (((pat-material ice))
+     (set! (-> obj surf) *ice-surface*)
+     )
+    (((pat-material quicksand))
+     (set! (-> obj surf) *quicksand-surface*)
+     )
+    (((pat-material tube))
+     (set! (-> obj surf) *no-walk-surface*)
+     )
+    (((pat-material rotate))
+     (set! (-> obj surf) *rotate-surface*)
+     )
+    (else
+      (set! (-> obj surf) *standard-ground-surface*)
       )
-    
-    ;; ca-9 gets set whenever you get on the zoomer. If we are on the zoomer, just go to "race-track"
-    (if (logtest? (-> obj root-prim prim-core action) (collide-action ca-9))
-        (set! (-> obj surf) *race-track-surface*)
-        )
-
-    (when (nonzero? (-> arg0 event))
-      (case (-> arg0 event)
-        (((pat-event deadly))
-         ;; deadly. Send a deadly event
-         (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-3 from) pp)
-           (set! (-> a1-3 num-params) 2)
-           (set! (-> a1-3 message) 'attack)
-           (set! (-> a1-3 param 0) (the-as uint #f))
-           (let ((v1-19 (new 'static 'attack-info :mask #xa0)))
-             (set! (-> v1-19 mode) 'deadly)
-             (set! (-> v1-19 shove-up) 12288.0)
-             (set! (-> a1-3 param 1) (the-as uint v1-19))
-             )
-           (send-event-function (-> obj process) a1-3)
-           )
-         )
-        (((pat-event burn))
-         ;; burn. Send a burn event
-         (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-6 from) pp)
-           (set! (-> a1-6 num-params) 2)
-           (set! (-> a1-6 message) 'attack)
-           (set! (-> a1-6 param 0) (the-as uint #f))
-           (let ((v1-23 (new 'static 'attack-info :mask #xa0)))
-             (set! (-> v1-23 mode) 'burn)
-             (set! (-> v1-23 shove-up) 12288.0)
-             (set! (-> a1-6 param 1) (the-as uint v1-23))
-             )
-           (send-event-function (-> obj process) a1-6)
-           )
-         )
-        (((pat-event deadlyup))
-         ;; deadlyup. Launch!
-         (target-attack-up (the-as target (-> obj process)) 'attack-or-shove 'deadlyup)
-         )
-        (((pat-event burnup))
-         ;; burnup (like fire canyon lava).
-         ;; only send if we don't have ca-9 (on zoomer)
-         (if (zero? (logand (-> (the-as target (-> obj process)) control root-prim prim-core action) (collide-action ca-9)))
-             (target-attack-up (the-as target (-> obj process)) 'attack-or-shove 'burnup)
-             )
-         )
-        (((pat-event melt))
-         ;; just send melt
-         (let ((a1-15 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-15 from) pp)
-           (set! (-> a1-15 num-params) 2)
-           (set! (-> a1-15 message) 'attack-invinc)
-           (set! (-> a1-15 param 0) (the-as uint #f))
-           (let ((a2-8 (new 'static 'attack-info :mask #x20)))
-             (set! (-> a2-8 mode) 'melt)
-             (set! (-> a1-15 param 1) (the-as uint a2-8))
-             )
-           (send-event-function (-> obj process) a1-15)
-           )
-         )
-        (((pat-event endlessfall))
-         ;; endless pit death plane.
-         (let ((a1-17 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-17 from) pp)
-           (set! (-> a1-17 num-params) 2)
-           (set! (-> a1-17 message) 'attack-invinc)
-           (set! (-> a1-17 param 0) (the-as uint #f))
-           (let ((a2-9 (new 'static 'attack-info :mask #x20)))
-             (set! (-> a2-9 mode) 'endlessfall)
-             (set! (-> a1-17 param 1) (the-as uint a2-9))
-             )
-           (send-event-function (-> obj process) a1-17)
-           )
-         )
-        )
-      )
-    0
-    (none)
     )
+  
+  ;; ca-9 gets set whenever you get on the zoomer. If we are on the zoomer, just go to "race-track"
+  (if (logtest? (-> obj root-prim prim-core action) (collide-action ca-9))
+      (set! (-> obj surf) *race-track-surface*)
+      )
+
+  (when (nonzero? (-> arg0 event))
+    (case (-> arg0 event)
+      (((pat-event deadly))
+       ;; deadly. Send a deadly event
+       (send-event (-> obj process) 'attack #f (static-attack-info ((mode 'deadly) (shove-up (meters 3)))))
+       )
+      (((pat-event burn))
+       ;; burn. Send a burn event
+       (send-event (-> obj process) 'attack #f (static-attack-info ((mode 'burn) (shove-up (meters 3)))))
+       )
+      (((pat-event deadlyup))
+       ;; deadlyup. Launch!
+       (target-attack-up (the-as target (-> obj process)) 'attack-or-shove 'deadlyup)
+       )
+      (((pat-event burnup))
+       ;; burnup (like fire canyon lava).
+       ;; only send if we don't have ca-9 (on zoomer)
+       (if (zero? (logand (-> (the-as target (-> obj process)) control root-prim prim-core action) (collide-action ca-9)))
+           (target-attack-up (the-as target (-> obj process)) 'attack-or-shove 'burnup)
+           )
+       )
+      (((pat-event melt))
+       ;; just send melt
+       (send-event (-> obj process) 'attack-invinc #f (static-attack-info ((mode 'melt))))
+       )
+      (((pat-event endlessfall))
+       ;; endless pit death plane.
+       (send-event (-> obj process) 'attack-invinc #f (static-attack-info ((mode 'endlessfall))))
+       )
+      )
+    )
+  0
+  (none)
   )
 
 (defun default-collision-reaction ((arg0 collide-shape-moving) (arg1 collide-shape-intersect) (arg2 vector) (arg3 vector))
