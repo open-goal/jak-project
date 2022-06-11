@@ -320,35 +320,42 @@
 
   (when *target*
 
-      ;; TODO green eco hack here as well
+      (with-pp (protect ((-> *target* fact-info-target eco-source))
+      ;; act as if this isnt a new source of eco to prevent spamming sounds. then restore the old source!
+      (if (< 0 (-> *target* fact-info-target eco-level))
+          (set! (-> *target* fact-info-target eco-source) (process->handle pp)))
+      ;; blue eco!
       (when (and (pc-cheats? obj eco-blue)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-blue))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
-        (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc)))
-
+        (protect ((-> *target* state-flags))
+        (logclear! (-> *target* state-flags) (state-flags sf15))
+        (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc))
+        ))
+      ;; yellow eco!
       (when (and (pc-cheats? obj eco-yellow)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-yellow))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
         (send-event *target* 'get-pickup (pickup-type eco-yellow) (-> *FACT-bank* eco-full-inc)))
-
+      ;; red eco!
       (when (and (pc-cheats? obj eco-red)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-red))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
         (send-event *target* 'get-pickup (pickup-type eco-red) (-> *FACT-bank* eco-full-inc)))
-
+      ;; green eco!
       (when (and (pc-cheats? obj eco-green)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-green))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
-       (with-pp
         (define-extern vent type)
-        (protect ((-> (the basic pp) type) (-> *target* control root-prim prim-core action))
-        (set! (-> (the basic pp) type) vent)
+        (protect ((-> pp type) (-> *target* control root-prim prim-core action))
+        (set! (-> pp type) vent)
         (logior! (-> *target* control root-prim prim-core action) #x200)
         (send-event *target* 'get-pickup (pickup-type eco-green) (-> *FACT-bank* eco-full-inc)))
-        ))
+        )
+      ))
 
       (when (pc-cheats? obj invinc)
-        (logior! (-> *target* state-flags) 16)
+        (logior! (-> *target* state-flags) (state-flags sf04))
         )
 
       )
