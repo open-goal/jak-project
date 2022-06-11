@@ -362,6 +362,10 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     m_small_profiler.draw(m_render_state.load_status_debug, stats);
   }
 
+  if (settings.draw_subtitle_editor_window) {
+    m_subtitle_editor.draw_window();
+  }
+
   if (settings.save_screenshot) {
     finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
                       settings.lbox_width_px, settings.lbox_height_px);

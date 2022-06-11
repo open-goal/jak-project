@@ -97,6 +97,11 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::EndMenu();
     }
 
+    if (ImGui::BeginMenu("Tools")) {
+      ImGui::MenuItem("Subtitle Editor", nullptr, &m_subtitle_editor);
+      ImGui::EndMenu();
+    }
+
     if (ImGui::BeginMenu("Screenshot")) {
       ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
       ImGui::InputText("File", m_screenshot_save_name, 50);

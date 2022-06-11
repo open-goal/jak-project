@@ -197,6 +197,11 @@ void DefaultMapping(MappingInfo& mapping) {
     }
   }
 
+  // TODO - these are different from the analog bindings above and cause
+  // the keyboard to be bound to controls regardless
+  //
+  // Need someway to toggle off -- where do we have access to the game's settings?
+
   // R1 / L1
   MapButton(mapping, Button::L1, 0, GLFW_KEY_Q);
   MapButton(mapping, Button::R1, 0, GLFW_KEY_O);
