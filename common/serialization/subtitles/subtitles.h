@@ -160,10 +160,10 @@ class GameSubtitleGroups {
   std::map<std::string, std::vector<std::string>> m_groups;
 
   void hydrate_from_asset_file();
-  std::string find_group(const std::string scene_name);
-  int find_group_index(const std::string group_name);
-  void remove_scene(const std::string group_name, const std::string scene_name);
-  void add_scene(const std::string group_name, const std::string scene_name);
+  std::string find_group(const std::string& scene_name);
+  int find_group_index(const std::string& group_name);
+  void remove_scene(const std::string& group_name, const std::string& scene_name);
+  void add_scene(const std::string& group_name, const std::string& scene_name);
 
   std::string group_order_key = "_groups";
   std::string uncategorized_group = "uncategorized";

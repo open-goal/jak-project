@@ -311,7 +311,7 @@ void GameSubtitleGroups::hydrate_from_asset_file() {
   }
 }
 
-std::string GameSubtitleGroups::find_group(const std::string scene_name) {
+std::string GameSubtitleGroups::find_group(const std::string& scene_name) {
   for (auto const& [group, scenes] : m_groups) {
     for (auto const& name : scenes) {
       if (name == scene_name) {
@@ -324,7 +324,7 @@ std::string GameSubtitleGroups::find_group(const std::string scene_name) {
   return uncategorized_group;
 }
 
-int GameSubtitleGroups::find_group_index(const std::string group_name) {
+int GameSubtitleGroups::find_group_index(const std::string& group_name) {
   auto it = find(m_group_order.begin(), m_group_order.end(), group_name);
   if (it != m_group_order.end()) {
     return it - m_group_order.begin();
@@ -333,13 +333,14 @@ int GameSubtitleGroups::find_group_index(const std::string group_name) {
   }
 }
 
-void GameSubtitleGroups::remove_scene(const std::string group_name, const std::string scene_name) {
+void GameSubtitleGroups::remove_scene(const std::string& group_name,
+                                      const std::string& scene_name) {
   // TODO - validate group_name
   m_groups[group_name].erase(
       std::remove(m_groups[group_name].begin(), m_groups[group_name].end(), scene_name),
       m_groups[group_name].end());
 }
-void GameSubtitleGroups::add_scene(const std::string group_name, const std::string scene_name) {
+void GameSubtitleGroups::add_scene(const std::string& group_name, const std::string& scene_name) {
   // TODO - validate group_name
   // TODO - don't add duplicates
   m_groups[group_name].push_back(scene_name);
