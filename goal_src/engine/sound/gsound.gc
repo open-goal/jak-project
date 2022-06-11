@@ -337,20 +337,16 @@
 
   `(with-pp
     (let ((proc (the process-drawable pp)))
-      ;(format 0 "get proc~%")
       (when (= ,sound-trans #t)
-        ;(format 0 "trans #t~%")
         (if (and proc
                  (type-type? (-> proc type) process-drawable)
                  (nonzero? (-> proc root)))
           (set! ,sound-trans (-> proc root trans))
           (set! ,sound-trans (the vector #f))
           )
-        ;(format 0 "trans is ~A~%" ,sound-trans)
         )
       )
 
-    ;(format 0 "convert~%" ,sound-trans)
     (sound-trans-convert (-> ,cmd parms trans) ,sound-trans)
     )
   )
@@ -359,37 +355,24 @@
   "Play a sound called name with the specified params"
 
   (local-vars (sv-16 int))
-  (with-pp
-   (set! sv-16 group)
-   (let ((sound-trans (the-as structure trans)))
+  (set! sv-16 group)
+  (let ((sound-trans (the-as vector trans)))
     (when *sound-player-enable*
-     (let ((cmd (the-as sound-rpc-play (get-sound-buffer-entry))))
-      (set! (-> cmd command) (sound-command play))
-      (set! (-> cmd id) id)
-      (set! (-> cmd name) name)
-      (set! (-> cmd parms mask) (sound-mask))
-      (set! (-> cmd parms group) (the-as uint sv-16))
-      (set! (-> cmd parms volume) vol)
-      (set! (-> cmd parms pitch-mod) pitch)
-      (set! (-> cmd parms bend) bend)
-      (let ((proc (the-as process-drawable pp)))
-       (when (= (the-as symbol sound-trans) #t)
-        (if
-         (and
-          proc
-          (type-type? (-> proc type) process-drawable)
-          (nonzero? (-> proc root))
-          )
-         (set! sound-trans (-> proc root trans))
-         (set! sound-trans #f)
-         )
+      (let ((cmd (the-as sound-rpc-play (get-sound-buffer-entry))))
+
+        (set! (-> cmd command) (sound-command play))
+        (set! (-> cmd id) id)
+        (set! (-> cmd name) name)
+        (set! (-> cmd parms mask) (sound-mask))
+        (set! (-> cmd parms group) (the-as uint sv-16))
+        (set! (-> cmd parms volume) vol)
+        (set! (-> cmd parms pitch-mod) pitch)
+        (set! (-> cmd parms bend) bend)
+
+        (sound-trans-from-process cmd sound-trans)
         )
-       )
-      (sound-trans-convert (-> cmd parms trans) (the-as vector sound-trans))
       )
-     )
     )
-   )
   id
   )
 

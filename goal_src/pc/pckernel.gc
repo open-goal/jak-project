@@ -90,7 +90,7 @@
 (defmethod commit-to-file pc-settings ((obj pc-settings))
   "commits the current settings to the file"
   ;; auto load settings if available
-  
+
   (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
   (pc-mkdir-file-path *pc-temp-string-1*)
   (write-to-file obj *pc-temp-string-1*)
@@ -320,44 +320,58 @@
 
   (when *target*
 
-      ;; TODO green eco hack here as well
+      (with-pp (protect ((-> *target* fact-info-target eco-source) *sound-player-enable*)
+      ;; act as if this isnt a new source of eco to prevent spamming sounds. then restore the old source!
+      (when (< 0 (-> *target* fact-info-target eco-level))
+          (set! (-> *target* fact-info-target eco-source) (process->handle pp))
+          (false! *sound-player-enable*)
+          )
+
+      ;; blue eco!
       (when (and (pc-cheats? obj eco-blue)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-blue))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
-        (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc)))
+        (protect ((-> *target* event-hook))
+          (set! (-> *target* event-hook) target-generic-event-handler)
+          (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc))
+          )
+        (send-event *target* 'boost (-> *FACT-bank* eco-single-inc)))
 
+      ;; yellow eco!
       (when (and (pc-cheats? obj eco-yellow)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-yellow))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
         (send-event *target* 'get-pickup (pickup-type eco-yellow) (-> *FACT-bank* eco-full-inc)))
 
+      ;; red eco!
       (when (and (pc-cheats? obj eco-red)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-red))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
         (send-event *target* 'get-pickup (pickup-type eco-red) (-> *FACT-bank* eco-full-inc)))
 
+      ;; green eco!
       (when (and (pc-cheats? obj eco-green)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-green))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
-       (with-pp
         (define-extern vent type)
-        (protect ((-> (the basic pp) type) (-> *target* control root-prim prim-core action))
-        (set! (-> (the basic pp) type) vent)
-        (logior! (-> *target* control root-prim prim-core action) #x200)
+        (protect ((-> pp type) (-> *target* control root-prim prim-core action))
+        (set! (-> pp type) vent)
+        (logior! (-> *target* control root-prim prim-core action) (collide-action ca-9))
         (send-event *target* 'get-pickup (pickup-type eco-green) (-> *FACT-bank* eco-full-inc)))
-        ))
+        )
+      ))
 
       (when (pc-cheats? obj invinc)
-        (logior! (-> *target* state-flags) 16)
+        (logior! (-> *target* state-flags) (state-flags sf04))
         )
 
       )
-      
+
   (if (pc-cheats? obj tunes)
       (set! (-> obj flava-hack) -1)
       (set! (-> obj flava-hack) 0)
       )
-  
+
   (logior! (-> obj cheats-known) (-> obj cheats))
   0)
 
@@ -365,7 +379,7 @@
 (defmethod add-to-music-log pc-settings ((obj pc-settings) (music symbol) (flava int))
   "add music and flava information to the music log.
    if music already exists, adds flava. if flava already exists, nothing happens."
-  
+
   ;; go through our music log
   (dotimes (i PC_MUSIC_LOG_LENGTH)
     (cond
@@ -383,15 +397,15 @@
       ;; something else. maybe the wrong entry, in which case nothing to do.
       )
     )
-  
+
   0)
 
 (defmethod update-music-log pc-settings ((obj pc-settings))
   "update music log settings."
-  
+
   ;; add whatever is playing to the music log.
   (add-to-music-log obj (-> *setting-control* current music) (the int (-> *setting-control* current sound-flava)))
-  
+
   ;; special cases. for example, npc's that despawn and you can't hear their music anymore.
   (if (task-closed? (game-task beach-ecorocks) (task-status need-introduction))
       (add-to-music-log obj 'village1 1))
@@ -428,7 +442,7 @@
       (add-to-music-log obj 'credits 1)
       (add-to-music-log obj 'credits 2)
       )
-  
+
   0)
 
 
@@ -472,12 +486,12 @@
 
 (defun-debug print-music-log ((out object))
   "prints the *pc-settings* music log."
-  
+
   (dotimes (i PC_MUSIC_LOG_LENGTH)
     (if (-> *pc-settings* secrets music i name)
         (format out "music log ~D: ~A (f #x~x)~%" i (-> *pc-settings* secrets music i name) (-> *pc-settings* secrets music i flava-mask)))
     )
-  
+
   0)
 
 
@@ -883,7 +897,7 @@
 
 (defmethod load-settings pc-settings ((obj pc-settings))
   "load"
-  
+
   (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
   (if (pc-filepath-exists? *pc-temp-string-1*)
     (begin
