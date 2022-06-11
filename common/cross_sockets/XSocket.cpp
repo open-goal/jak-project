@@ -34,6 +34,14 @@ int open_socket(int af, int type, int protocol) {
 #endif
 }
 
+int connect_socket(int socket, sockaddr* addr, int nameLen) {
+  int result = connect(socket, addr, nameLen);
+  if (result == -1) {
+    return -1;
+  }
+  return result;
+}
+
 #ifdef __linux
 int accept_socket(int socket, sockaddr* addr, socklen_t* addrLen) {
   return accept(socket, addr, addrLen);

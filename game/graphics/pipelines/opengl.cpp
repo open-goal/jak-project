@@ -219,6 +219,11 @@ std::string make_output_file_name(const std::string& file_name) {
 }
 }  // namespace
 
+static bool endsWith(std::string_view str, std::string_view suffix) {
+  return str.size() >= suffix.size() &&
+         0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
+}
+
 void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
   // wait for a copied chain.
   bool got_chain = false;
@@ -240,11 +245,17 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
     options.lbox_width_px = lbox_width;
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
+    options.draw_subtitle_editor_window = g_gfx_data->debug_gui.should_draw_subtitle_editor();
     options.save_screenshot = g_gfx_data->debug_gui.get_screenshot_flag();
     options.draw_small_profiler_window = g_gfx_data->debug_gui.small_profiler;
     options.pmode_alp_register = g_gfx_data->pmode_alp;
     if (options.save_screenshot) {
-      options.screenshot_path = make_output_file_name(g_gfx_data->debug_gui.screenshot_name());
+      // ensure the screenshot has an extension
+      std::string temp_path = g_gfx_data->debug_gui.screenshot_name();
+      if (endsWith(temp_path, ".png")) {
+        temp_path += ".png";
+      }
+      options.screenshot_path = make_output_file_name(temp_path);
     }
     if constexpr (run_dma_copy) {
       auto& chain = g_gfx_data->dma_copier.get_last_result();

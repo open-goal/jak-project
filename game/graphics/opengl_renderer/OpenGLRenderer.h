@@ -9,6 +9,7 @@
 #include "game/graphics/opengl_renderer/Profiler.h"
 #include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "game/graphics/opengl_renderer/CollideMeshRenderer.h"
+#include "game/tools/subtitles/subtitle_editor.h"
 
 struct RenderOptions {
   int window_height_px = 0;
@@ -18,6 +19,7 @@ struct RenderOptions {
   bool draw_render_debug_window = false;
   bool draw_profiler_window = false;
   bool draw_small_profiler_window = false;
+  bool draw_subtitle_editor_window = false;
 
   bool save_screenshot = false;
   std::string screenshot_path;
@@ -65,6 +67,7 @@ class OpenGLRenderer {
   SharedRenderState m_render_state;
   Profiler m_profiler;
   SmallProfiler m_small_profiler;
+  SubtitleEditor m_subtitle_editor;
 
   std::array<std::unique_ptr<BucketRenderer>, (int)BucketId::MAX_BUCKETS> m_bucket_renderers;
   std::array<BucketCategory, (int)BucketId::MAX_BUCKETS> m_bucket_categories;
