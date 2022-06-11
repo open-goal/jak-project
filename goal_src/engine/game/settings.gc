@@ -207,23 +207,24 @@
   obj
   )
 
-(defmethod push-setting! setting-control ((obj setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
-  "Set the setting. The set is linked to this process and will be reverted if the process dies"
+(defmethod add-setting setting-control ((obj setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
+  "add a setting for the process."
   (add-connection (-> obj engine) arg0 arg1 arg2 arg3 arg4)
   0
   (none)
   )
 
-(defmethod set-setting! setting-control ((obj setting-control) (arg0 process) (arg1 symbol) (arg2 symbol) (arg3 float) (arg4 int))
-  "Replace all settings from this process with this one."
-  (clear-pending-settings-from-process obj arg0 arg1)
+(defmethod set-setting setting-control ((obj setting-control) (arg0 process) (arg1 symbol) (arg2 symbol) (arg3 float) (arg4 int))
+  "(re-)sets a setting for the process."
+  (remove-setting obj arg0 arg1)
   (add-connection (-> obj engine) arg0 arg1 arg2 arg3 arg4)
   0
   (none)
   )
 
-(defmethod clear-pending-settings-from-process setting-control ((obj setting-control) (arg0 process) (arg1 symbol))
-  "Remove requests to change settings from the given process."
+(defmethod remove-setting setting-control ((obj setting-control) (arg0 process) (arg1 symbol))
+  "remove a setting from the specified process.
+   if arg1 = #t then remove ALL settings for that process"
   (when arg0
     (let ((s5-0 (-> obj engine))
           (s4-0 (-> arg0 connection-list next1))
@@ -243,7 +244,7 @@
   )
 
 
-(defmethod copy-settings-from-target! setting-control ((obj setting-control))
+(defmethod apply-settings setting-control ((obj setting-control))
   "Update the current settings. This only updates settings that are 'safe' to do multiple times per frame."
   (let ((gp-0 (-> obj current)))
     (let ((s5-0 (-> obj target)))
@@ -282,10 +283,10 @@
   )
 
 
-(defmethod update-per-frame-settings! setting-control ((obj setting-control))
+(defmethod update setting-control ((obj setting-control))
   "Do a per-frame update of all settings"
   ;; compute all settings
-  (copy-settings-from-target! obj)
+  (apply-settings obj)
   
   ;; now handle the special ones.
   (let ((gp-0 (-> obj current)))
