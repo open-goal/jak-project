@@ -146,7 +146,7 @@ int set_socket_timeout(int socket, long microSeconds) {
 int write_to_socket(int socket, const char* buf, int len) {
   int bytes_wrote = 0;
 #ifdef __linux
-  bytes_wrote = write(socket, buf, len);
+  bytes_wrote = send(socket, buf, len, MSG_NOSIGNAL);
 #elif _WIN32
   bytes_wrote = send(socket, buf, len, 0);
 #endif
