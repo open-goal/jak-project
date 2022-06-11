@@ -282,7 +282,7 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
     if (ImGui::TreeNode(
             fmt::format("{}-{}", scene_name, base_cutscenes ? m_base_language : m_current_language)
                 .c_str(),
-            scene_name.c_str())) {
+            "%s", scene_name.c_str())) {
       if (base_cutscenes || is_current_scene) {
         ImGui::PopStyleColor();
       }
@@ -313,8 +313,8 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
         ImGui::NewLine();
       }
       if (ImGui::BeginCombo("Sorting Group", scene_info.m_sorting_group.c_str())) {
-        for (int i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
-          const bool isSelected = (scene_info.m_sorting_group_idx == i);
+        for (size_t i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
+          const bool isSelected = (scene_info.m_sorting_group_idx == (int)i);
           if (ImGui::Selectable(m_subtitle_db.m_subtitle_groups->m_group_order[i].c_str(),
                                 isSelected)) {
             // Remove from current group
@@ -332,7 +332,7 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
         }
         ImGui::EndCombo();
       }
-      for (int i = 0; i < scene_info.m_lines.size(); i++) {
+      for (size_t i = 0; i < scene_info.m_lines.size(); i++) {
         auto& subtitleLine = scene_info.m_lines.at(i);
         std::string summary;
         if (subtitleLine.line_utf8.empty()) {
@@ -346,7 +346,7 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
         } else if (subtitleLine.offscreen) {
           ImGui::PushStyleColor(ImGuiCol_Text, m_offscreen_text_color);
         }
-        if (ImGui::TreeNode(fmt::format("{}", i).c_str(), summary.c_str())) {
+        if (ImGui::TreeNode(fmt::format("{}", i).c_str(), "%s", summary.c_str())) {
           if (subtitleLine.line_utf8.empty() || subtitleLine.offscreen) {
             ImGui::PopStyleColor();
           }
@@ -400,8 +400,8 @@ void SubtitleEditor::draw_current_cutscene() {
         ImGui::NewLine();
       }
       if (ImGui::BeginCombo("Sorting Group", m_current_scene->m_sorting_group.c_str())) {
-        for (int i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
-          const bool isSelected = (m_current_scene->m_sorting_group_idx == i);
+        for (size_t i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
+          const bool isSelected = (m_current_scene->m_sorting_group_idx == (int)i);
           if (ImGui::Selectable(m_subtitle_db.m_subtitle_groups->m_group_order[i].c_str(),
                                 isSelected)) {
             // Remove from current group
@@ -452,7 +452,7 @@ void SubtitleEditor::draw_current_cutscene() {
         }
       }
       ImGui::NewLine();
-      for (int i = 0; i < m_current_scene->m_lines.size(); i++) {
+      for (size_t i = 0; i < m_current_scene->m_lines.size(); i++) {
         auto& subtitleLine = m_current_scene->m_lines.at(i);
         std::string summary;
         if (subtitleLine.line_utf8.empty()) {
@@ -466,7 +466,7 @@ void SubtitleEditor::draw_current_cutscene() {
         } else if (subtitleLine.offscreen) {
           ImGui::PushStyleColor(ImGuiCol_Text, m_offscreen_text_color);
         }
-        if (ImGui::TreeNode(fmt::format("{}", i).c_str(), summary.c_str())) {
+        if (ImGui::TreeNode(fmt::format("{}", i).c_str(), "%s", summary.c_str())) {
           if (subtitleLine.line_utf8.empty() || subtitleLine.offscreen) {
             ImGui::PopStyleColor();
           }

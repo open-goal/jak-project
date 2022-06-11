@@ -456,7 +456,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
                                      {Matcher::any(0), Matcher::reg(block_var_reg)});
   auto mr_with_shell = rewrite_shelled_return_form(
       call_matcher, body->at(3 + param_count), env, pool,
-      [&](FormElement* s_in, const MatchResult& mr, const Env& env, FormPool& pool) {
+      [&](FormElement* /*s_in*/, const MatchResult& mr, const Env& /*env*/, FormPool& pool) {
         Form* send_destination = mr.maps.forms.at(0);
 
         // time to build the macro!
@@ -1306,7 +1306,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
                    {Matcher::reg(ra.reg()), Matcher::any(1)}),
                Matcher::any(2)})),
       macro_form, env, pool,
-      [&](FormElement* s_in, const MatchResult& mr, const Env& env, FormPool& pool) {
+      [&](FormElement* s_in, const MatchResult& /*mr*/, const Env& env, FormPool& pool) {
         auto as_when = dynamic_cast<CondNoElseElement*>(s_in);
         const auto& when_body = as_when->entries.front().body->elts();
 
@@ -1382,7 +1382,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
 
         // args
         // this would be a great place to do some hacky stuff! hmm, maybe i will...
-        for (int i = 2; i < as_func->elts().size(); ++i) {
+        for (size_t i = 2; i < as_func->elts().size(); ++i) {
           args.push_back(as_func->elts().at(i));
         }
 
@@ -1541,7 +1541,7 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
   // (static-attack-info :mask <mask> etc)
   auto mr_with_shell = rewrite_shelled_return_form(
       Matcher::reg(block_var_reg), in->body()->at(in->body()->size() - 1), env, pool,
-      [&](FormElement* s_in, const MatchResult& mr, const Env& env, FormPool& pool) {
+      [&](FormElement* /*s_in*/, const MatchResult& /*mr*/, const Env& env, FormPool& pool) {
         // time to build the macro!
         std::vector<Form*> macro_args;
 
@@ -1733,7 +1733,7 @@ FormElement* rewrite_rand_float_gen(LetElement* in, const Env& env, FormPool& po
   } else {
     auto mr_res = rewrite_shelled_return_form(
         matcher_res, in->body()->at(0), env, pool,
-        [&](FormElement* s_in, const MatchResult& mr, const Env& env, FormPool& pool) {
+        [&](FormElement* /*s_in*/, const MatchResult& /*mr*/, const Env& /*env*/, FormPool& pool) {
           auto head =
               GenericOperator::make_function(pool.form<ConstantTokenElement>("rand-float-gen"));
           return gen ? pool.form<GenericElement>(head, gen) : pool.form<GenericElement>(head);

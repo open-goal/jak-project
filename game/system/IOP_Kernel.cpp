@@ -109,10 +109,10 @@ bool IOP_Kernel::OnlyThreadAlive(s32 thid) {
   bool yes = false;
   for (u64 i = 0; i < threads.size(); i++) {
     if (threads[i].started && !threads[i].done) {
-      if (i != thid) {
+      if ((s32)i != thid) {
         return false;
       }
-      if (i == thid) {
+      if ((s32)i == thid) {
         yes = true;
       }
     }

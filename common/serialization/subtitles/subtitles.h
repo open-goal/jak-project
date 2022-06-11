@@ -92,7 +92,7 @@ class GameSubtitleSceneInfo {
     std::string speaker_utf8;
     bool offscreen;
 
-    bool operator<(const SubtitleLine& line) const { return (frame < line.frame); }
+    bool operator<(const SubtitleLine& other) const { return (frame < other.frame); }
   };
 
   GameSubtitleSceneInfo() {}

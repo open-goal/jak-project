@@ -252,7 +252,7 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
     if (options.save_screenshot) {
       // ensure the screenshot has an extension
       std::string temp_path = g_gfx_data->debug_gui.screenshot_name();
-      if (endsWith(temp_path, ".png")) {
+      if (!endsWith(temp_path, ".png")) {
         temp_path += ".png";
       }
       options.screenshot_path = make_output_file_name(temp_path);
