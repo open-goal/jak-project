@@ -2810,7 +2810,7 @@ std::optional<RegisterAccess> get_form_reg_acc(Form* in) {
     }
   }
 }
-}
+}  // namespace
 
 void FunctionCallElement::update_from_stack(const Env& env,
                                             FormPool& pool,
@@ -3048,7 +3048,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
             }
           }
 
-          new_form = pool.alloc_element<GenericElement>(GenericOperator::make_function(head), arg_forms);
+          new_form =
+              pool.alloc_element<GenericElement>(GenericOperator::make_function(head), arg_forms);
           result->push_back(new_form);
           ASSERT(!go_next_state);
           return;
