@@ -43,7 +43,6 @@ SubtitleEditor::SubtitleEditor() : m_repl(8181) {
   m_subtitle_db = load_subtitle_project();
   m_filter = m_filter_placeholder;
   m_filter_hints = m_filter_placeholder;
-  m_repl.connect();
 }
 
 void SubtitleEditor::repl_set_continue_point(const std::string_view& continue_point) {
@@ -150,7 +149,24 @@ void SubtitleEditor::draw_window() {
   draw_edit_options();
   draw_repl_options();
 
-  draw_current_cutscene();
+  if (!m_current_scene) {
+    ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
+  } else {
+    ImGui::PushStyleColor(ImGuiCol_Text, m_selected_text_color);
+  }
+  if (ImGui::TreeNode("Currently Selected Cutscene")) {
+    ImGui::PopStyleColor();
+    if (m_current_scene) {
+      draw_cutscene_options(*m_current_scene, true);
+    } else {
+      ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
+      ImGui::Text("Select a Scene from Below!");
+      ImGui::PopStyleColor();
+    }
+    ImGui::TreePop();
+  } else {
+    ImGui::PopStyleColor();
+  }
 
   if (ImGui::TreeNode("All Cutscenes")) {
     ImGui::InputText("New Scene Name", &m_new_scene_name);
@@ -279,6 +295,7 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
     if (base_cutscenes) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
     }
+
     if (ImGui::TreeNode(
             fmt::format("{}-{}", scene_name, base_cutscenes ? m_base_language : m_current_language)
                 .c_str(),
@@ -296,77 +313,7 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
           m_subtitle_db.m_banks.at(m_current_language)->add_scene(scene_info);
         }
       }
-      if (!m_repl.is_connected()) {
-        ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
-        ImGui::Text("REPL not connected, can't play!");
-        ImGui::PopStyleColor();
-      } else if (m_db.count(scene_info.m_name) > 0) {
-        if (ImGui::Button("Play Scene")) {
-          if (m_db.count(scene_info.m_name) == 1) {
-            repl_execute_cutscene_code(m_db[scene_info.m_name]);
-          }
-        }
-        ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
-        ImGui::TextWrapped("You may have to click twice, load times cause issues");
-        ImGui::PopStyleColor();
-        ImGui::NewLine();
-      }
-      if (ImGui::BeginCombo("Sorting Group", scene_info.m_sorting_group.c_str())) {
-        for (size_t i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
-          const bool isSelected = (scene_info.m_sorting_group_idx == (int)i);
-          if (ImGui::Selectable(m_subtitle_db.m_subtitle_groups->m_group_order[i].c_str(),
-                                isSelected)) {
-            // Remove from current group
-            m_subtitle_db.m_subtitle_groups->remove_scene(scene_info.m_sorting_group,
-                                                          scene_info.m_name);
-            // Add to new group
-            scene_info.m_sorting_group_idx = i;
-            scene_info.m_sorting_group = m_subtitle_db.m_subtitle_groups->m_group_order.at(i);
-            m_subtitle_db.m_subtitle_groups->add_scene(scene_info.m_sorting_group,
-                                                       scene_info.m_name);
-          }
-          if (isSelected) {
-            ImGui::SetItemDefaultFocus();
-          }
-        }
-        ImGui::EndCombo();
-      }
-      for (size_t i = 0; i < scene_info.m_lines.size(); i++) {
-        auto& subtitleLine = scene_info.m_lines.at(i);
-        std::string summary;
-        if (subtitleLine.line_utf8.empty()) {
-          summary = fmt::format("[{}] Clear Screen", subtitleLine.frame);
-        } else {
-          summary = fmt::format("[{}] {} - '{}...'", subtitleLine.frame, subtitleLine.speaker_utf8,
-                                subtitleLine.line_utf8.substr(0, 30));
-        }
-        if (subtitleLine.line_utf8.empty()) {
-          ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
-        } else if (subtitleLine.offscreen) {
-          ImGui::PushStyleColor(ImGuiCol_Text, m_offscreen_text_color);
-        }
-        if (ImGui::TreeNode(fmt::format("{}", i).c_str(), "%s", summary.c_str())) {
-          if (subtitleLine.line_utf8.empty() || subtitleLine.offscreen) {
-            ImGui::PopStyleColor();
-          }
-          ImGui::InputInt("Starting Frame", &subtitleLine.frame,
-                          ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
-          ImGui::InputText("Speaker", &subtitleLine.speaker_utf8,
-                           ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsUppercase);
-          ImGui::InputText("Text", &subtitleLine.line_utf8,
-                           ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsUppercase);
-          ImGui::Checkbox("Offscreen?", &subtitleLine.offscreen);
-          ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
-          if (ImGui::Button("Remove Line")) {
-            scene_info.m_lines.erase(scene_info.m_lines.begin() + i);
-          }
-          ImGui::PopStyleColor();
-          ImGui::TreePop();
-        } else if (subtitleLine.line_utf8.empty() || subtitleLine.offscreen) {
-          ImGui::PopStyleColor();
-        }
-      }
+      draw_cutscene_options(scene_info);
       ImGui::TreePop();
     } else if (base_cutscenes || is_current_scene) {
       ImGui::PopStyleColor();
@@ -374,126 +321,109 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
   }
 }
 
-void SubtitleEditor::draw_current_cutscene() {
-  if (!m_current_scene) {
-    ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
-  } else {
-    ImGui::PushStyleColor(ImGuiCol_Text, m_selected_text_color);
-  }
-  if (ImGui::TreeNode("Currently Selected Movie")) {
+void SubtitleEditor::draw_cutscene_options(GameSubtitleSceneInfo& scene, bool current_scene) {
+  if (!m_repl.is_connected()) {
+    ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
+    ImGui::Text("REPL not connected, can't play!");
     ImGui::PopStyleColor();
-    if (m_current_scene) {
-      if (!m_repl.is_connected()) {
-        ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
-        ImGui::Text("REPL not connected, can't play!");
-        ImGui::PopStyleColor();
-      } else if (m_db.count(m_current_scene->m_name) > 0) {
-        if (ImGui::Button("Play Scene")) {
-          if (m_db.count(m_current_scene->m_name) == 1) {
-            repl_execute_cutscene_code(m_db[m_current_scene->m_name]);
-          }
-        }
-        ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
-        ImGui::TextWrapped("You may have to click twice, load times cause issues");
-        ImGui::PopStyleColor();
-        ImGui::NewLine();
+  } else if (m_db.count(scene.m_name) > 0) {
+    if (ImGui::Button("Play Scene")) {
+      if (m_db.count(scene.m_name) == 1) {
+        repl_execute_cutscene_code(m_db[scene.m_name]);
       }
-      if (ImGui::BeginCombo("Sorting Group", m_current_scene->m_sorting_group.c_str())) {
-        for (size_t i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
-          const bool isSelected = (m_current_scene->m_sorting_group_idx == (int)i);
-          if (ImGui::Selectable(m_subtitle_db.m_subtitle_groups->m_group_order[i].c_str(),
-                                isSelected)) {
-            // Remove from current group
-            m_subtitle_db.m_subtitle_groups->remove_scene(m_current_scene->m_sorting_group,
-                                                          m_current_scene->m_name);
-            // Add to new group
-            m_current_scene->m_sorting_group_idx = i;
-            m_current_scene->m_sorting_group = m_subtitle_db.m_subtitle_groups->m_group_order.at(i);
-            m_subtitle_db.m_subtitle_groups->add_scene(m_current_scene->m_sorting_group,
-                                                       m_current_scene->m_name);
-          }
-          if (isSelected) {
-            ImGui::SetItemDefaultFocus();
-          }
-        }
-        ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
+    ImGui::TextWrapped("You may have to click twice, load times cause issues");
+    ImGui::PopStyleColor();
+    ImGui::NewLine();
+  }
+  if (ImGui::BeginCombo("Sorting Group", scene.m_sorting_group.c_str())) {
+    for (size_t i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
+      const bool isSelected = (scene.m_sorting_group_idx == (int)i);
+      if (ImGui::Selectable(m_subtitle_db.m_subtitle_groups->m_group_order[i].c_str(),
+                            isSelected)) {
+        // Remove from current group
+        m_subtitle_db.m_subtitle_groups->remove_scene(scene.m_sorting_group, scene.m_name);
+        // Add to new group
+        scene.m_sorting_group_idx = i;
+        scene.m_sorting_group = m_subtitle_db.m_subtitle_groups->m_group_order.at(i);
+        m_subtitle_db.m_subtitle_groups->add_scene(scene.m_sorting_group, scene.m_name);
       }
-      ImGui::InputInt("Frame Number", &m_current_scene_frame,
-                      ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
-      ImGui::InputText("Text", &m_current_scene_text,
-                       ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsUppercase);
-      ImGui::InputText("Speaker", &m_current_scene_speaker,
-                       ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsUppercase);
-      ImGui::Checkbox("Offscreen", &m_current_scene_offscreen);
-      bool rendered_text_entry_btn = false;
-      if (m_current_scene_frame < 0 || m_current_scene_text.empty() ||
-          m_current_scene_speaker.empty()) {
-        ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
-        ImGui::Text("Can't add a new text entry with the current fields!");
-        ImGui::PopStyleColor();
-      } else {
-        rendered_text_entry_btn = true;
-        if (ImGui::Button("Add Text Entry")) {
-          m_current_scene->add_line(m_current_scene_frame, "", m_current_scene_text, "",
-                                    m_current_scene_speaker, m_current_scene_offscreen);
-        }
+      if (isSelected) {
+        ImGui::SetItemDefaultFocus();
       }
-      if (m_current_scene_frame < 0) {
-        ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
-        ImGui::Text("Can't add a clear screen entry with the current fields!");
-        ImGui::PopStyleColor();
-      } else {
-        if (rendered_text_entry_btn) {
-          ImGui::SameLine();
-          if (ImGui::Button("Add Clear Screen Entry")) {
-            m_current_scene->add_line(m_current_scene_frame, "", "", "", "", false);
-          }
-        }
-      }
-      ImGui::NewLine();
-      for (size_t i = 0; i < m_current_scene->m_lines.size(); i++) {
-        auto& subtitleLine = m_current_scene->m_lines.at(i);
-        std::string summary;
-        if (subtitleLine.line_utf8.empty()) {
-          summary = fmt::format("[{}] Clear Screen", subtitleLine.frame);
-        } else {
-          summary = fmt::format("[{}] {} - '{}...'", subtitleLine.frame, subtitleLine.speaker_utf8,
-                                subtitleLine.line_utf8.substr(0, 30));
-        }
-        if (subtitleLine.line_utf8.empty()) {
-          ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
-        } else if (subtitleLine.offscreen) {
-          ImGui::PushStyleColor(ImGuiCol_Text, m_offscreen_text_color);
-        }
-        if (ImGui::TreeNode(fmt::format("{}", i).c_str(), "%s", summary.c_str())) {
-          if (subtitleLine.line_utf8.empty() || subtitleLine.offscreen) {
-            ImGui::PopStyleColor();
-          }
-          ImGui::InputInt("Starting Frame", &subtitleLine.frame,
-                          ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
-          ImGui::InputText("Speaker", &subtitleLine.speaker_utf8,
-                           ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsUppercase);
-          ImGui::InputText("Text", &subtitleLine.line_utf8,
-                           ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsUppercase);
-          ImGui::Checkbox("Offscreen?", &subtitleLine.offscreen);
-          ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
-          if (ImGui::Button("Remove Line")) {
-            m_current_scene->m_lines.erase(m_current_scene->m_lines.begin() + i);
-          }
-          ImGui::PopStyleColor();
-          ImGui::TreePop();
-        } else if (subtitleLine.line_utf8.empty() || subtitleLine.offscreen) {
-          ImGui::PopStyleColor();
-        }
-      }
+    }
+    ImGui::EndCombo();
+  }
+  if (current_scene) {
+    draw_new_cutscene_line_form();
+  }
+  for (size_t i = 0; i < scene.m_lines.size(); i++) {
+    auto& subtitleLine = scene.m_lines.at(i);
+    std::string summary;
+    if (subtitleLine.line_utf8.empty()) {
+      summary = fmt::format("[{}] Clear Screen", subtitleLine.frame);
     } else {
-      ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
-      ImGui::Text("Select a Scene from Below!");
+      summary = fmt::format("[{}] {} - '{}...'", subtitleLine.frame, subtitleLine.speaker_utf8,
+                            subtitleLine.line_utf8.substr(0, 30));
+    }
+    if (subtitleLine.line_utf8.empty()) {
+      ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
+    } else if (subtitleLine.offscreen) {
+      ImGui::PushStyleColor(ImGuiCol_Text, m_offscreen_text_color);
+    }
+    if (ImGui::TreeNode(fmt::format("{}", i).c_str(), "%s", summary.c_str())) {
+      if (subtitleLine.line_utf8.empty() || subtitleLine.offscreen) {
+        ImGui::PopStyleColor();
+      }
+      ImGui::InputInt("Starting Frame", &subtitleLine.frame,
+                      ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
+      ImGui::InputText("Speaker", &subtitleLine.speaker_utf8);
+      ImGui::InputText("Text", &subtitleLine.line_utf8);
+      ImGui::Checkbox("Offscreen?", &subtitleLine.offscreen);
+      ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
+      if (ImGui::Button("Remove Line")) {
+        scene.m_lines.erase(scene.m_lines.begin() + i);
+      }
+      ImGui::PopStyleColor();
+      ImGui::TreePop();
+    } else if (subtitleLine.line_utf8.empty() || subtitleLine.offscreen) {
       ImGui::PopStyleColor();
     }
-    ImGui::TreePop();
-  } else {
-    ImGui::PopStyleColor();
   }
+}
+
+void SubtitleEditor::draw_new_cutscene_line_form() {
+  ImGui::InputInt("Frame Number", &m_current_scene_frame,
+                  ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
+  ImGui::InputText("Text", &m_current_scene_text);
+  ImGui::InputText("Speaker", &m_current_scene_speaker);
+  ImGui::Checkbox("Offscreen", &m_current_scene_offscreen);
+  bool rendered_text_entry_btn = false;
+  if (m_current_scene_frame < 0 || m_current_scene_text.empty() ||
+      m_current_scene_speaker.empty()) {
+    ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
+    ImGui::Text("Can't add a new text entry with the current fields!");
+    ImGui::PopStyleColor();
+  } else {
+    rendered_text_entry_btn = true;
+    if (ImGui::Button("Add Text Entry")) {
+      m_current_scene->add_line(m_current_scene_frame, "", m_current_scene_text, "",
+                                m_current_scene_speaker, m_current_scene_offscreen);
+    }
+  }
+  if (m_current_scene_frame < 0) {
+    ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
+    ImGui::Text("Can't add a clear screen entry with the current fields!");
+    ImGui::PopStyleColor();
+  } else {
+    if (rendered_text_entry_btn) {
+      ImGui::SameLine();
+      if (ImGui::Button("Add Clear Screen Entry")) {
+        m_current_scene->add_line(m_current_scene_frame, "", "", "", "", false);
+      }
+    }
+  }
+  ImGui::NewLine();
 }

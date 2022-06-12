@@ -33,7 +33,8 @@ class SubtitleEditor {
 
   void draw_all_cutscene_groups();
   void draw_all_scenes(std::string group_name, bool base_cutscenes = false);
-  void draw_current_cutscene();
+  void draw_cutscene_options(GameSubtitleSceneInfo& scene, bool current_scene = false);
+  void draw_new_cutscene_line_form();
 
   GameSubtitleDB m_subtitle_db;
   std::map<std::string, SubtitleEditorDB::Entry> m_db = {};
