@@ -1175,7 +1175,7 @@
            (set! (-> a1-2 num-spheres) (the-as uint 6))
            (set! (-> a1-2 collide-with) (-> self control root-prim collide-with))
            (set! (-> a1-2 proc) #f)
-           (set! (-> a1-2 ignore-pat) (the-as uint 1))
+           (set! (-> a1-2 ignore-pat) (new 'static 'pat-surface :noentity #x1))
            (set! (-> a1-2 solid-only) #t)
            (when (not (fill-and-probe-using-spheres *collide-cache* a1-2))
              (remove-exit)
@@ -1309,7 +1309,7 @@
     (logclear! (-> self control root-prim prim-core action) (collide-action ca-3 ca-7))
     (vector-float*! (-> self control transv) (-> self control unknown-vector101) -40960.0)
     (when (and (< (- (-> *display* base-frame-counter) (-> self control rider-time)) (seconds 0.2))
-               (or (logtest? (-> self control unknown-surface01 flags) (surface-flags surf14))
+               (or (logtest? (-> self control unknown-surface01 flags) (surface-flags moving-ground))
                    (= (-> self control poly-pat material) (pat-material rotate))
                    )
                )
@@ -1467,7 +1467,7 @@
                              :slope-up-traction 1.0
                              :align-speed 1.0
                              :mode 'air
-                             :flags (surface-flags surf11)
+                             :flags (surface-flags jump)
                              )
         )
 
@@ -1878,7 +1878,7 @@
                 )
           (set! (-> self skel root-channel 1 frame-interp) f24-1)
           (ja :num! (loop! (/ (-> self control unknown-float01)
-                              (* 60.0 (/ (dummy-9 (-> self skel)) (-> *TARGET-bank* run-cycle-length)))
+                              (* 60.0 (/ (current-cycle-distance (-> self skel)) (-> *TARGET-bank* run-cycle-length)))
                               )
                            )
               )

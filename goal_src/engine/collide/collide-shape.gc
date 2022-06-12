@@ -23,7 +23,7 @@
   "Find the overlap between two collide shapes.  This is the main entry point for the overlap algorithm.
    The result is returned in arg1. The obj is collided _with_ arg0 (meaning obj uses its collide-with, arg0 uses colide-as).
    The best-dist is only valid if the result is #t (it should be negative then)"
-   
+
    ;; this method begins the recursive traversal through the tree of collide-shape-prims, starting with the
    ;; root of each shape.
   (local-vars (v1-3 collide-action) (v1-4 float) (a2-2 collide-action) (a3-2 collide-action))
@@ -36,7 +36,7 @@
          (vf5 :class vf)
          )
     (init-vf0-vector)
-    
+
     ;; reset the overlap result
     (let ((v1-0 arg1))
       (set! (-> v1-0 best-dist) 0.0)
@@ -62,11 +62,11 @@
         )
       ;; reject if non-solid
       (b! (zero? v1-3) cfg-8 :delay (nop!))
-      
+
       ;; if we're here, our collision types allow us to collide
       (.lvf vf1 (&-> a0-1 prim-core world-sphere quad))
       (.lvf vf2 (&-> a1-1 prim-core world-sphere quad))
-      
+
       ;; see if bsphere's overlap
       (.sub.vf vf3 vf1 vf2)
       (.add.w.vf vf4 vf1 vf2 :mask #b1000)
@@ -81,12 +81,12 @@
         (.mov v1-4 vf5)
         (b! (<= f0-1 v1-4) cfg-8) ;; they don't, fail!
         )
-      
+
       ;; our bsphere's overlap. We need a more detailed test to know for sure
       ;; this will dispatch a more specific method for a0-1.
       (should-push-away-test a0-1 a1-1 arg1)
       )
-    
+
     ;; return the result of the more detailed test.
     (let ((v0-1 (< (-> arg1 best-dist) 0.0)))
       (b! #t cfg-9 :delay (nop!))
@@ -234,7 +234,7 @@
 
 (defmethod should-push-away-test collide-shape-prim-mesh ((obj collide-shape-prim-mesh) (arg0 collide-shape-prim) (arg1 collide-overlap-result))
   "Collide a prim with a mesh. The prim must be a sphere or group of spheres"
-  
+
   ;; first, check the prim type
   (let ((v1-0 (-> arg0 prim-core prim-type)))
     (b! (nonzero? v1-0) cfg-2 :delay (nop!))
@@ -248,7 +248,7 @@
   (let ((s3-0 (-> obj mesh)))
     ;; if we don't have a mesh, then abort.
     (b! (not s3-0) cfg-11 :delay (nop!)) ;; empty-form
-    
+
     ;; we must put the mesh in the cache before we can collide.
     ;; NOTE: this is not the full collide-cache, but instead a smaller, simpler collide-mesh-cche.
     (let ((s2-0 *collide-mesh-cache*))
@@ -265,7 +265,7 @@
       ;; and remember the cache has this
       (set! (-> obj mesh-cache-id) (-> s2-0 id))
       )
-    
+
     ;; load this mesh into the cache.
     ;; strangely, they transform the entire mesh.
     (populate-cache!
@@ -367,7 +367,7 @@
           )
         )
       )
-    
+
     ;; make up a triangle.
     (let ((s4-1 (-> arg1 best-from-tri normal))
           (s3-0 (-> arg1 best-from-tri intersect))
@@ -391,7 +391,7 @@
         )
       )
     (b! #t cfg-13 :delay (nop!))
-    
+
     ;; Mesh. this is the same as the above function. start with populating the cache.
     (label cfg-5)
     (let ((s3-1 (-> (the-as collide-shape-prim-mesh arg0) mesh)))
@@ -691,7 +691,7 @@
   "Find somewhere safe to land. This is used to find where to bounce back the player if you jump on fire canyon.
    It's a nice example function for the collision system."
   (local-vars (direction-idx int) (sv-192 int))
-  
+
   ;; first, let's find our heading
   (let ((current-heading (if (< 819.2 (vector-xz-length (-> target-ctrl transv))) ;; if we're moving in the xz plane
                              (vector-y-angle (-> target-ctrl transv))             ;; use the direction we're moving
@@ -703,7 +703,7 @@
         (probe-dir (new 'stack-no-clear 'vector))
         (result-tri (new 'stack-no-clear 'collide-tri-result))
         )
-    
+
     ;; create a bounding box, centered around our current location.
     (let ((bbox (new 'stack-no-clear 'bounding-box)))
       (set! (-> ground-result w) 0.0)
@@ -715,7 +715,7 @@
       ;; except for in y (height). Look 10m down, and 5m up.
       (set! (-> bbox min y) (+ -40960.0 (-> current-pos y)))
       (set! (-> bbox max y) (+ 20480.0 (-> current-pos y)))
-      
+
       ;; fill the collide cache will all the triangles in bounding box.
       (fill-using-bounding-box
         *collide-cache*
@@ -725,7 +725,7 @@
         (new 'static 'pat-surface :noentity #x1)
         )
       )
-    
+
     ;; loop over 8 directions to check.
     (set! direction-idx 0)
     (while (< direction-idx 8)
@@ -738,19 +738,19 @@
                               )
                            )
             )
-        
+
         ;; this will count the number of hits we have in this direction.
         (set! sv-192 0)
-        
+
         ;; we don't know anything, so assume we can go the maximum length in this direction
         (let ((max-len-this-dir max-len))
           ;; but, if we did max-len bounce in this direction, we might hit some wall mid-bounce.
-          
+
           ;; start with a probe of max len, pointing straight forward.
           (set-vector! probe-dir 0.0 0.0 max-len 1.0)
           ;; rotate to point along our heading
           (vector-rotate-y! probe-dir probe-dir probe-heading)
-          
+
           ;; see how far we can go, 10m above the current target.
           ;; this is likely checking to see if we'll hit a wall mid-bounce
           (if (>= (probe-using-line-sphere
@@ -760,20 +760,20 @@
                     2048.0
                     (-> target-ctrl root-prim collide-with)
                     result-tri
-                    1
+                    (new 'static 'pat-surface :noentity #x1)
                     )
                   0.0
                   )
               (set! max-len-this-dir (+ -6144.0 (vector-vector-xz-distance current-pos (-> result-tri intersect))))
               )
-          
+
           ;; now, let's search between start-len and max-len-this-dir to see if there's somewhere safe to bounce.
           (let ((current-len start-len))
             (while (>= max-len-this-dir current-len)
               ;; probe heading
               (set-vector! probe-dir 0.0 0.0 current-len 1.0)
               (vector-rotate-y! probe-dir probe-dir probe-heading)
-              
+
               ;; put probe dir at the end of the probe
               (vector+! probe-dir current-pos probe-dir)
               ;; start 10m above the curren pos.
@@ -786,7 +786,7 @@
                           10240.0
                           (-> target-ctrl root-prim collide-with)
                           result-tri
-                          1
+                          (new 'static 'pat-surface :noentity #x1)
                           )
                         0.0
                         )
@@ -910,7 +910,7 @@
       (set! (-> obj surf) *standard-ground-surface*)
       )
     )
-  
+
   ;; ca-9 gets set whenever you get on the zoomer. If we are on the zoomer, just go to "race-track"
   (if (logtest? (-> obj root-prim prim-core action) (collide-action ca-9))
       (set! (-> obj surf) *race-track-surface*)
@@ -959,14 +959,14 @@
   (set! sv-72 (new 'stack-no-clear 'vector))
   (set! sv-80 0)
   (set! (-> sv-72 quad) (-> arg3 quad))
-  
+
   ;; move along the vector by the best move-vec
   ;; this will hit the best-tri
   (let ((a1-1 (new 'stack-no-clear 'vector)))
     (vector-float*! a1-1 (-> arg1 move-vec) (-> arg1 best-u))
     (move-by-vector! arg0 a1-1)
     )
-  
+
   ;; so handle hitting that tri
   (set-and-handle-pat! arg0 (-> arg1 best-tri pat))
   (vector-! sv-64 (the-as vector (-> arg1 best-from-prim prim-core)) (-> arg1 best-tri intersect))
@@ -980,8 +980,8 @@
   (if (= (-> arg1 best-u) 0.0)
       (move-by-vector! arg0 sv-68)
       )
-  
-  ;; 
+
+  ;;
   (set! (-> arg0 surface-normal quad) (-> sv-68 quad))
   (set! (-> arg0 poly-normal quad) (-> arg1 best-tri normal quad))
   (set! (-> arg0 surface-angle) (vector-dot sv-68 (-> arg0 dynam gravity-normal)))
@@ -1074,19 +1074,19 @@
 (defmethod step-collison! collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 vector) (arg2 float))
   "Take 1 step in the collision. Attempt to move at velocity of arg1, for arg2 of a step.
    The resulting velocity is stored in arg0. The amount of a step actually taken is returned."
-   
+
   (local-vars (sv-192 int))
   (let ((s5-0 (new 'stack 'collide-shape-intersect))
         (s2-0 (new 'stack-no-clear 'vector))
         )
-    
+
     ;; integrate our velocity, get the "move vector"
     ;; which is what we'd move if we hit nothing.
     (vector-float*! s2-0 arg1 (* arg2 (-> *display* seconds-per-frame)))
-    
+
     ;; initialize the collision data.
     (init! s5-0 s2-0)
-    
+
     ;; only if we have something in the collide cache, I guess.
     (let* ((s1-1 (-> obj root-prim))
            (v1-4 *collide-cache*)
@@ -1106,21 +1106,21 @@
         (set! s0-0 (-> (the-as (inline-array collide-cache-prim) s0-0) 1))
         )
       )
-    
+
     ;; now we've collided with everything. If we have a best-u of > 0, it means we can't do the full move.
     (let ((f30-0 (-> s5-0 best-u)))
       (cond
         ((>= f30-0 0.0)
          (let ((s2-1 (new 'stack-no-clear 'vector)))
-           
+
            ;; if debugging, remember our input velocity.
            (if *display-collision-marks*
                (set! (-> s2-1 quad) (-> arg1 quad))
                )
-           
+
            ;; do the collision reaction! this function should move the collide shape.
            (set! (-> obj prev-status) (the-as cshape-moving-flags ((-> obj reaction) obj s5-0 arg0 arg1)))
-           
+
            ;; debug draw collision marks.
            (when *display-collision-marks*
              (let ((t1-0 (-> *pat-mode-info* (-> s5-0 best-tri pat mode) hilite-color)))
@@ -1161,7 +1161,7 @@
                  )
              )
            )
-         
+
          ;; and return the step size we could take.
          (return f30-0)
          )
@@ -1214,16 +1214,16 @@
   It will process updates from hitting triangles with pat-surfaces
   It will update the touching list.
   It will update the current surface and surface flags."
-  
+
   ;; update the world-spheres for us and our children.
   (update-transforms! obj)
-  
+
   ;; remember our history
   (set! (-> obj trans-old 2 quad) (-> obj trans-old 1 quad))
   (set! (-> obj trans-old 1 quad) (-> obj trans-old 0 quad))
   (set! (-> obj trans-old 0 quad) (-> obj trans quad))
   (set! (-> obj prev-status) (-> obj status))
-  
+
   ;; setup
   (logclear! (-> obj status) (cshape-moving-flags
                                onsurf
@@ -1246,7 +1246,7 @@
   (set! (-> obj poly-normal quad) (-> obj dynam gravity-normal quad))
   (set! (-> obj coverage) 0.0)
   (set! (-> obj touch-angle) 0.0)
-  
+
   ;; we want to take a step of 1.0
   (let ((f30-0 1.0)
         (s4-0 0) ;; iterations
@@ -1256,7 +1256,7 @@
                      (not (and (= (-> arg0 x) 0.0) (= (-> arg0 y) 0.0) (= (-> arg0 z) 0.0))) ;; nonzero velocity
                      )
                 )
-      
+
       ;; note that in between step-collision! and update-from-step-szie, the touching list is in an invalid state.
       (let ((f28-0 (step-collison! obj arg0 arg0 f30-0))) ;; step forward!
         (update-from-step-size *touching-list* f28-0)     ;; update touching list.
@@ -1273,13 +1273,13 @@
   "Specialization of integrate and collide for the target"
   ;; time it
   (stopwatch-start (-> *collide-stats* total-target))
-  
+
   ;; check and correct massive velocity.
   (when (< 1638400.0 (vector-length arg0))
     (format 0 "WARNING: target vel is ~M m/s, reseting to zero.~%" (vector-length arg0))
     (vector-reset! arg0)
     )
-  
+
   ;; ???
   (set! (-> obj unknown-vector15 quad) (-> obj unknown-vector14 quad))
   (vector-matrix*! (-> obj unknown-vector14) (-> obj unknown-vector13) (-> obj unknown-matrix02))
@@ -1291,7 +1291,7 @@
         (s4-1 (new 'stack-no-clear 'vector))
         )
     (set! (-> s4-1 quad) (-> arg0 quad))
-    
+
     ;; call the normal integrate.
     (let ((t9-7 (method-of-type collide-shape-moving integrate-and-collide!)))
       (t9-7 obj s3-1)
@@ -1541,7 +1541,7 @@
                           arg1
                           (-> obj process)
                           sv-144
-                          1
+                          (new 'static 'pat-surface :noentity #x1)
                           )
                         )
                     )
@@ -1570,7 +1570,7 @@
           )
         )
       )
-    
+
     ;; if we need to collide with things.
     (when (logtest? (-> obj root-prim collide-with) (collide-kind cak-1 cak-2 cak-3 target))
       (let ((a1-7 (new 'stack-no-clear 'overlaps-others-params)))
@@ -1675,7 +1675,7 @@
          (vf2 :class vf)
          )
         (init-vf0-vector)
-        
+
         ;; scale the velocity, to see how far we can go, at max.
         (let ((a0-1 (new 'stack-no-clear 'vector)))
           (let ((v1-0 a0-1))
@@ -1688,9 +1688,9 @@
             (.mul.x.vf vf1 vf1 vf2 :mask #b111)
             (.svf (&-> v1-0 quad) vf1)
             )
-          
+
           ;; add a bonus size if we are target.
-          (let ((f0-2 (+ (vector-length a0-1) 
+          (let ((f0-2 (+ (vector-length a0-1)
                          (if (= (-> obj process type) target)
                              4096.0
                              0.0
@@ -2487,7 +2487,7 @@
          (vf5 :class vf)
          )
     (init-vf0-vector)
-    
+
     ;; kill the mesh cache
     (let* ((v1-0 *collide-mesh-cache*)
            (a0-1 (-> v1-0 id))
@@ -2499,10 +2499,10 @@
         (set! (-> v1-0 id) (the-as uint a0-2))
         )
       )
-    
+
     ;; loop over everything!
     (let ((s5-0 (-> obj root-prim collide-with)))
-      
+
       ;; we collide with target, so check the player list.
       (when (logtest? s5-0 (collide-kind target))
         (let ((v1-5 (-> *collide-player-list* alive-list next0)))
@@ -2524,7 +2524,7 @@
                             (let ((s1-0 (new 'stack-no-clear 'vector)))
                               (let ((v1-19 (new 'stack-no-clear 'vector)))
                                 (set! (-> v1-19 quad) (-> s3-0 trans quad))
-                                
+
                                 ;; this is... a bit of a hack.
                                 ;; this adjusts our collision to be within 0.7 - 1.4m of our base.
                                 ;; (note, this only applies for intermediate iterations of this loop)
@@ -2588,10 +2588,10 @@
             )
           )
         )
-      
-      
+
+
       (when (logtest? s5-0 (collide-kind cak-1 cak-2 cak-3))
-        
+
         (when (logtest? s5-0 (collide-kind cak-1))
           (let ((v1-38 (-> *collide-hit-by-player-list* alive-list next0)))
             *collide-hit-by-player-list*
@@ -2667,8 +2667,8 @@
               )
             )
           )
-        
-        
+
+
         (when (logtest? s5-0 (collide-kind cak-2))
           (let ((v1-70 (-> *collide-usually-hit-by-player-list* alive-list next0)))
             *collide-usually-hit-by-player-list*

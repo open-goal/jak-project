@@ -37,8 +37,6 @@
 ;; During a level load, the first texture-page loaded is TFRAG, which contains both "near" and "common" data.
 ;; TFRAG is the only known thing to use "near"
 
-;; Note: there is something weird going on with the zoomer hud texture.
-
 ;; On the DVD, textures are stored in "tpage files".  Each file contains:
 ;; - a texture-page object, describing the file
 ;; - a texture object per texture, describing each texture (possibly multiple textures, mipmapped textures are considered 1 "texture")
@@ -65,13 +63,13 @@
 ;; the first 0x24000 words are for level 0, and the last 0x24000 words are for level 1.
 ;; the stuff in the middle is shared and lazily loaded as needed.
 
-;; there are 5 texture uploads per frame:
+;; there are 5 texture uploads per frame per level:
 ;; - TFRAG
 ;; - PRIS
 ;; - SHRUB
 ;; - ALPHA
 ;; - WATER
-;; it is unknown how this works when drawing two levels.
+;; And also a single "common" texture upload for textures like HUD.
 
 ;; Generally, "dest" refers to a location in vram, specified in 32-bit words.
 ;; block-data is a pointer to EE memory containing texture data.
@@ -134,9 +132,7 @@
         (+ (-> arg0 data (mem-usage-id texture) count) (-> obj length)))
 
   ;; We subtract off the size of the textures. This makes the memory usage negative!
-  ;; I don't understand why this happens, but
-  ;;  - it matches the game (texture size shows up as negative in the debug menu)
-  ;;  - the game sizes seem correct.
+  ;; I don't see why this is correct.
   (let ((v1-7 (- (asize-of obj) (the-as int (shl (-> obj size) 2)))))
     ;; add 64-bytes for each entry, the size of texture.
     (dotimes (a0-6 (-> obj length))
@@ -562,7 +558,7 @@
   (allocate-defaults! obj)
   (set! (-> obj font-palette) (allocate-vram-words! obj 64))
 
-  ;; clear out common pages.
+  ;; mark the common page area as not-uploaded.
   (dotimes (v1-6 32)
     (set! (-> obj common-page v1-6) (the-as texture-page 0))
     )
@@ -979,6 +975,8 @@
 
 (defun upload-vram-pages-pris ((pool texture-pool) (segment texture-pool-segment) (page texture-page) (bucket-idx bucket-id) (needed-mask int))
   "Upload the entire texture page. If the needed-mask is not set, it will not upload those chunks.
+   Unlike other pages, it's pretty easy to determine a mask of needed textures - if you draw no cows, don't bother
+   uploading cow textures.
    Upload will be added to the given bucket for on-screen.
    The nth bit of the mask determines if the nth 16-kB chunk is needed in this upload.
    A 64-bit mask is enough to address the entire common segment, which is the only destination for PRIS textures."
@@ -1109,13 +1107,11 @@
     )
 
   ;; upload near data, and update the upload cache stuff.
-  ;; Doesn't this upload more than is needed, and also the shared texture memory?
-  ;; How does this avoid overwriting the TFRAG textures that might be in use by the
-  ;; currently rendering frame?
+  ;; I think this relies on "mode 2" uploads only being in the private area.
   (upload-now! page 2)
   (update-vram-pages pool (-> pool segment-near) page 2)
 
-  ;; our strategy is to remove the private memory from RAM.
+  ;; our strategy is to remove the private memory from RAM to save memory, now that it's in VRAM.
   ;; to avoid leaving an unused hole, we copy the shared data backward.
   ;; unfortunately, it would be too slow to do it now.
   ;; this function runs during level loading, during the login of the linked tpage file.
@@ -1208,7 +1204,7 @@
     (cond
       ((< (the-as uint NEAR_PRIVATE_WORDS) seg2-size)
        ;; we use the shared part. Kick out only the non-shared texture.
-       ;; it's on th end this time, so no mempcy like in near-allocate-0
+       ;; it's on the end this time, so no mempcy like in near-allocate-0
        (set! (-> page segment 2 size) (+ -147456 (the-as int seg2-size)))
        (set! (-> heap current)
         (&+ (-> page segment 2 block-data) (shl (-> page segment 2 size) 2))
@@ -1377,7 +1373,8 @@
     )
 
   (if (>= max-page-kind 0) ;; tfrag.
-      ;; login with near allocator.
+      ;; login the texture. If the texture isn't there, it will try to load it
+      ;; and allocate with the given allocation function.
       (let ((tfrag-dir-entry (texture-page-login
                               (-> id-array 0)
                               (if (= (-> level index) 1)
@@ -2068,7 +2065,8 @@
   )
 
 (defmethod relocate texture-page ((obj texture-page) (arg0 kheap) (arg1 (pointer uint8)))
-  "Add to VRAM and allocate links"
+  "Add to VRAM and allocate links.
+   This method is called by the GOAL linker when it loads a texture page."
   (tex-dbg "loaded tpage ~A~%" obj
            ;;(-> obj info file-name)
            ;;(-> obj info maya-file-name)
@@ -2171,7 +2169,7 @@
                              #f
                              )
                    )
-                 ;; and load it! The loado links but doesn't execute
+                 ;; and load it! The loado links but doesn't execute the relocate method.
                  (s2-0 (the-as texture-page (loado file-name heap)))
                  )
             ;; if we loaded, relocate!

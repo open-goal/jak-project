@@ -16,7 +16,7 @@
 ;; definition for symbol *target-shadow-control*, type shadow-control
 (define *target-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
-                                           :center (new 'static 'vector :w (the-as float #x2))
+                                           :flags (shadow-flags disable-fade)
                                            :shadow-dir (new 'static 'vector :x -0.4226 :y -0.9063 :w 409600.0)
                                            :bot-plane (new 'static 'plane :y 1.0 :w 37683.2)
                                            :top-plane (new 'static 'plane :y 1.0 :w 4096.0)
@@ -834,7 +834,7 @@
                 (< 0.866 (-> self control surface-angle))
                 )
            )
-       (and (zero? (logand (-> self control unknown-surface01 flags) (surface-flags surf06)))
+       (and (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-jump)))
             (zero? (logand (-> self state-flags) (state-flags sf11)))
             (case arg0
               (('target-wheel-flip)
@@ -875,7 +875,7 @@
                )
              )
     (when (and (< (- (-> *display* base-frame-counter) (-> self control rider-time)) (-> *TARGET-bank* ground-timeout))
-               (logtest? (-> self control unknown-surface01 flags) (surface-flags surf14))
+               (logtest? (-> self control unknown-surface01 flags) (surface-flags moving-ground))
                )
       (+! (-> self control transv x) (-> self control rider-last-move x))
       (+! (-> self control transv z) (-> self control rider-last-move z))
@@ -949,7 +949,7 @@
     (set! (-> gp-0 num-spheres) (the-as uint 2))
     (set! (-> gp-0 collide-with) (-> self control root-prim collide-with))
     (set! (-> gp-0 proc) #f)
-    (set! (-> gp-0 ignore-pat) (the-as uint 1))
+    (set! (-> gp-0 ignore-pat) (new 'static 'pat-surface :noentity #x1))
     (set! (-> gp-0 solid-only) #t)
     (if (fill-and-probe-using-spheres *collide-cache* gp-0)
         #f
@@ -973,7 +973,7 @@
                            )
                       )
                   )
-             (logtest? (-> self control unknown-surface01 flags) (surface-flags surf07 surf08))
+             (logtest? (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
              )
          )
      #f
@@ -1007,7 +1007,7 @@
 (defbehavior can-feet? target ()
   (cond
     ((or (logtest? (-> self state-flags) (state-flags sf12))
-         (logtest? (-> self control unknown-surface01 flags) (surface-flags surf07 surf09))
+         (logtest? (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf09))
          )
      #f
      )
