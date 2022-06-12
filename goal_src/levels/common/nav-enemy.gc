@@ -76,7 +76,7 @@
 (defmethod common-post nav-enemy ((obj nav-enemy))
   (when (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf8))
              (or (not *target*)
-                 (and (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+                 (and (zero? (logand (-> *target* state-flags) (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)))
                       (>= (- (-> *display* base-frame-counter) (-> obj touch-time)) (seconds 0.05))
                       )
                  )
@@ -251,7 +251,7 @@ nav-enemy-default-event-handler
   )
 
 (defbehavior nav-enemy-simple-post nav-enemy ()
-  (TODO-RENAME-9 (-> self align))
+  (compute-alignment! (-> self align))
   (nav-enemy-common-post)
   (update-transforms! (-> self collide-info))
   0
@@ -267,9 +267,9 @@ nav-enemy-default-event-handler
 (defmethod dummy-41 nav-enemy ((obj nav-enemy))
   (cond
     ((-> obj nav-info use-align)
-     (TODO-RENAME-11
+     (align-vel-and-quat-only!
        (-> obj align)
-       4
+       (align-opts adjust-xz-vel)
        (-> obj nav travel)
        (the-as int 1.0)
        1.0
@@ -352,7 +352,7 @@ nav-enemy-default-event-handler
 (defbehavior nav-enemy-travel-post nav-enemy ()
   (cond
     ((logtest? (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
-     (TODO-RENAME-9 (-> self align))
+     (compute-alignment! (-> self align))
      (dummy-40 self)
      (dummy-41 self)
      (TODO-RENAME-37 self)
@@ -481,13 +481,13 @@ nav-enemy-default-event-handler
 (defun nav-enemy-player-vulnerable? ()
   (the-as
     symbol
-    (and *target* (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15))))
+    (and *target* (zero? (logand (-> *target* state-flags) (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying))))
     )
   )
 
 (defmethod TODO-RENAME-46 nav-enemy ((obj nav-enemy) (arg0 float))
   (and *target*
-       (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+       (zero? (logand (-> *target* state-flags) (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)))
        (and (or (zero? (logand (-> obj nav-enemy-flags) (nav-enemy-flags navenmf12)))
                 (< (vector-vector-distance (target-pos 0) (-> obj collide-info trans)) arg0)
                 )
@@ -654,9 +654,9 @@ nav-enemy-default-event-handler
         (cond
           ((nonzero? (-> self align))
            (when (not s4-1)
-             (TODO-RENAME-9 (-> self align))
-             (TODO-RENAME-10 (-> self align) 4098 1.0 arg1 1.0)
-             (when (zero? (logand (-> self align flags) (align-flags algf00)))
+             (compute-alignment! (-> self align))
+             (align! (-> self align) (align-opts adjust-y-vel ignore-y-if-zero) 1.0 arg1 1.0)
+             (when (zero? (logand (-> self align flags) (align-flags disabled)))
                (let ((f0-6 (* (- (-> self align delta trans z)) (-> *display* frames-per-second))))
                  (set! (-> self collide-info transv x) (* (-> self hit-from-dir x) f0-6))
                  (set! (-> self collide-info transv z) (* (-> self hit-from-dir z) f0-6))
@@ -1026,7 +1026,7 @@ nav-enemy-default-event-handler
     (none)
     )
   :trans (behavior ()
-    (if (logtest? (-> *target* state-flags) (state-flags sf07))
+    (if (logtest? (-> *target* state-flags) (state-flags do-not-notice))
         (go-virtual nav-enemy-patrol)
         )
     (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
@@ -1102,7 +1102,7 @@ nav-enemy-default-event-handler
     )
   :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
-      (if (logtest? (-> *target* state-flags) (state-flags sf07))
+      (if (logtest? (-> *target* state-flags) (state-flags do-not-notice))
           (go-virtual nav-enemy-patrol)
           )
       (if (and (TODO-RENAME-46 self (-> self nav-info notice-distance)) (not (nav-enemy-frustrated?)))
@@ -1163,7 +1163,7 @@ nav-enemy-default-event-handler
     )
   :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
-      (if (logtest? (-> *target* state-flags) (state-flags sf07))
+      (if (logtest? (-> *target* state-flags) (state-flags do-not-notice))
           (go-virtual nav-enemy-patrol)
           )
       (cond
@@ -1521,7 +1521,7 @@ nav-enemy-default-event-handler
   )
 
 (defbehavior nav-enemy-jump-land-post nav-enemy ()
-  (TODO-RENAME-9 (-> self align))
+  (compute-alignment! (-> self align))
   (dummy-11 (-> self nav) (-> self nav target-pos))
   (seek! (-> self target-speed) (-> self nav-info run-travel-speed) 2048.0)
   (set! (-> self momentum-speed) (-> self target-speed))

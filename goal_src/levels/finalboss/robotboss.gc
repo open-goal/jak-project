@@ -32,7 +32,7 @@
 
 (defbehavior robotboss-cut-cam-exit robotboss ()
   (set! (-> self valid-frames) 0)
-  (if (and *target* (logtest? (-> *target* state-flags) (state-flags sf08)))
+  (if (and *target* (logtest? (-> *target* state-flags) (state-flags grabbed)))
       (process-release? *target*)
       )
   (logclear! (-> self skel status) (janim-status inited))
@@ -2339,7 +2339,7 @@
        (spawn (-> self particle 0) s4-0)
        (when (and arg1 (nonzero? (-> self looping-sound 0)))
          (update! (-> self looping-sound 0))
-         (when (and *target* (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15))))
+         (when (and *target* (zero? (logand (-> *target* state-flags) (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying))))
            (let ((t2-0 (new 'stack-no-clear 'collide-tri-result))
                  (a2-0 (new 'stack-no-clear 'vector))
                  )
@@ -2374,7 +2374,7 @@
        (when (and arg1 (nonzero? (-> self looping-sound 1)))
          (update! (-> self looping-sound 1))
          (if (and *target*
-                  (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+                  (zero? (logand (-> *target* state-flags) (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)))
                   (>= 8192.0 (vector-vector-distance gp-0 (target-pos 0)))
                   )
              (send-event *target* 'attack #f (static-attack-info ((shove-up (meters 2.5)) (shove-back (meters 7.5)))))
