@@ -892,11 +892,11 @@
   (set! sv-56 0)
   (set! spool-sound (new-sound-id))
   (backup-load-state-and-set-cmds *load-state* (-> arg0 command-list))
-  (set-setting! *setting-control* self 'spooling (the-as symbol (process->ppointer self)) 0.0 0)
+  (set-setting! 'spooling (the-as symbol (process->ppointer self)) 0.0 0)
   (logior! (-> self skel status) (janim-status inited drawn done))
   (kill-current-level-hint '() '() 'die)
   (level-hint-surpress!)
-  (copy-settings-from-target! *setting-control*)
+  (apply-settings *setting-control*)
   (when (or (handle->process (-> *art-control* spool-lock)) (!= *master-mode* 'game))
     (cond
       (arg1
@@ -1063,7 +1063,7 @@
   (if (zero? (logand (-> self skel status) (janim-status inited)))
     (logclear! (-> self skel status) (janim-status inited))
     )
-  (clear-pending-settings-from-process *setting-control* self 'spooling)
+  (remove-setting! 'spooling)
   (cond
    ((and arg1 (>= arg2 0))
     (ja-channel-push! 1 (seconds 0.1))

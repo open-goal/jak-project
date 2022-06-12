@@ -2792,6 +2792,26 @@ Form* get_set_next_state(FormElement* set_elt, const Env& env) {
 // FunctionCallElement
 ///////////////////
 
+namespace {
+
+std::optional<RegisterAccess> get_form_reg_acc(Form* in) {
+  auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(in->try_as_single_active_element());
+  if (as_simple_atom) {
+    if (as_simple_atom->atom().is_var()) {
+      return as_simple_atom->atom().var();
+    }
+  }
+
+  auto as_expr = dynamic_cast<SimpleExpressionElement*>(in->try_as_single_active_element());
+  if (as_expr && as_expr->expr().is_identity()) {
+    auto atom = as_expr->expr().get_arg(0);
+    if (atom.is_var()) {
+      return atom.var();
+    }
+  }
+}
+}  // namespace
+
 void FunctionCallElement::update_from_stack(const Env& env,
                                             FormPool& pool,
                                             FormStack& stack,
@@ -2980,9 +3000,56 @@ void FunctionCallElement::update_from_stack(const Env& env,
                          .at(0);
           // fmt::print("GOT: {}\n", pop->to_string(env));
           arg_forms.at(0) = pop;
+          auto head = mr.maps.forms.at(1);
 
-          new_form = pool.alloc_element<GenericElement>(
-              GenericOperator::make_function(mr.maps.forms.at(1)), arg_forms);
+          auto head_obj = head->to_form(env);
+          if (head_obj.is_symbol() && tp_type.method_from_type().base_type() == "setting-control" &&
+              arg_forms.at(0)->to_form(env).is_symbol("*setting-control*") &&
+              arg_forms.size() > 1) {
+            auto arg1_reg = get_form_reg_acc(arg_forms.at(1));
+            if (arg1_reg && arg1_reg->reg().is_s6()) {
+              std::string new_head;
+              if (head_obj.is_symbol("add-setting")) {
+                new_head = "add-setting!";
+              } else if (head_obj.is_symbol("set-setting")) {
+                new_head = "set-setting!";
+              } else if (head_obj.is_symbol("remove-setting")) {
+                new_head = "remove-setting!";
+              }
+              if (!new_head.empty()) {
+                auto oldp = head->parent_element;
+                head = pool.form<ConstantTokenElement>(new_head);
+                head->parent_element = oldp;
+                arg_forms.erase(arg_forms.begin());
+                arg_forms.erase(arg_forms.begin());
+                if (arg_forms.size() > 3) {
+                  auto argi = arg_forms.at(3);
+                  auto argi_o = argi->to_form(env);
+                  if (argi_o.is_int()) {
+                    auto argset = arg_forms.at(0)->to_string(env);
+                    if (argset == "'process-mask") {
+                      auto en = env.dts->ts.try_enum_lookup("process-mask");
+                      if (en) {
+                        arg_forms.at(3) =
+                            cast_to_bitfield_enum(env.dts->ts.try_enum_lookup("process-mask"), pool,
+                                                  env, argi_o.as_int());
+                      }
+                    } else if (argset == "'sound-flava") {
+                      auto en = env.dts->ts.try_enum_lookup("music-flava");
+                      if (en) {
+                        arg_forms.at(3) = cast_to_int_enum(
+                            env.dts->ts.try_enum_lookup("music-flava"), pool, env, argi_o.as_int());
+                      }
+                    }
+                  }
+                  arg_forms.at(3)->parent_element = argi->parent_element;
+                }
+              }
+            }
+          }
+
+          new_form =
+              pool.alloc_element<GenericElement>(GenericOperator::make_function(head), arg_forms);
           result->push_back(new_form);
           ASSERT(!go_next_state);
           return;

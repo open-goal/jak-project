@@ -1310,24 +1310,18 @@
          (set! (-> obj proj-stoked) #t)
          (let ((s5-0 (new 'stack-no-clear 'vector)))
            (set! (-> s5-0 quad) (the-as uint128 0))
-           (let* ((s4-0 (the-as ram-boss-proj (get-process *default-dead-pool* ram-boss-proj #x4000)))
-                  (v1-9 (when s4-0
-                          (let ((t9-1 (method-of-type ram-boss-proj activate)))
-                            (t9-1 s4-0 obj 'ram-boss-proj (the-as pointer #x70004000))
-                            )
-                          (run-now-in-process
-                            s4-0
-                            projectile-init-by-other
-                            (-> obj entity)
-                            (-> obj collide-info trans)
-                            s5-0
-                            0
-                            (process->handle *target*)
-                            )
-                          (-> s4-0 ppointer)
-                          )
-                        )
-                  )
+           (let ((v1-9 (process-spawn
+                         ram-boss-proj
+                         :init projectile-init-by-other
+                         (-> obj entity)
+                         (-> obj collide-info trans)
+                         s5-0
+                         0
+                         (process->handle *target*)
+                         :to obj
+                         )
+                       )
+                 )
              (set! (-> (the-as (pointer ram-boss-proj) v1-9) 0 notify-handle) (process->handle obj))
              )
            )
