@@ -2913,19 +2913,7 @@
 ;; definition for function anim-tester-start
 (defun anim-tester-start ()
   (anim-tester-stop)
-  (let ((gp-0 (get-process *16k-dead-pool* anim-tester #x4000)))
-    (set! *anim-tester*
-          (the-as (pointer anim-tester)
-            (when gp-0
-              (let ((t9-2 (method-of-type anim-tester activate)))
-                (t9-2 (the-as anim-tester gp-0) *default-pool* 'anim-tester (the-as pointer #x70004000))
-                )
-              ((the-as (function process function none) run-function-in-process) gp-0 initialize-anim-tester)
-              (-> gp-0 ppointer)
-              )
-            )
-          )
-    )
+  (set! *anim-tester* (process-spawn anim-tester :init initialize-anim-tester :from *16k-dead-pool*))
   (set! *camera-orbit-target* *anim-tester*)
   (send-event *camera* 'change-state cam-orbit 0)
   #f
