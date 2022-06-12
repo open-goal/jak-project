@@ -89,7 +89,7 @@
                            :alignv 1.0
                            :slope-up-traction 1.0
                            :align-speed 1.0
-                           :flags (surface-flags surf03)
+                           :flags (surface-flags no-turn-around)
                            )
         )
 
@@ -119,7 +119,7 @@
                            :slope-up-traction 1.0
                            :align-speed 1.0
                            :mode 'air
-                           :flags (surface-flags surf11)
+                           :flags (surface-flags jump)
                            )
         )
 
@@ -149,7 +149,7 @@
                                   :slope-up-traction 1.0
                                   :align-speed 1.0
                                   :mode 'air
-                                  :flags (surface-flags surf11)
+                                  :flags (surface-flags jump)
                                   )
         )
 
@@ -174,7 +174,7 @@
                                  :slope-up-traction 1.0
                                  :align-speed 1.0
                                  :mode 'attack
-                                 :flags (surface-flags surf03 surf04 surf12)
+                                 :flags (surface-flags no-turn-around no-rotate-toward-transv attacking)
                                  )
         )
 
@@ -200,7 +200,7 @@
                                  :slope-up-traction 1.0
                                  :align-speed 1.0
                                  :mode 'attack
-                                 :flags (surface-flags surf11 surf12)
+                                 :flags (surface-flags jump attacking)
                                  )
         )
 
@@ -767,7 +767,7 @@
           (set! f30-0 (seek f30-0 f0-13 (* 4.0 (-> *display* seconds-per-frame))))
           )
         (set! (-> self skel root-channel 1 frame-interp) f30-0)
-        (let* ((f0-16 (dummy-9 (-> self skel)))
+        (let* ((f0-16 (current-cycle-distance (-> self skel)))
                (f0-18 (/ (* 58.0 (-> self control unknown-float01)) (* 60.0 f0-16)))
                )
           (if (= (-> self control surf name) '*tar-surface*)
@@ -873,7 +873,8 @@
                       (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )
                   (zero? (logand (-> self state-flags) (state-flags sf12)))
-                  (zero? (logand (-> self control unknown-surface01 flags) (surface-flags surf07 surf08)))
+                  (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
+                         )
                   )
              )
         (go target-flut-air-attack (-> *FLUT-bank* air-attack-speed))
@@ -987,7 +988,8 @@
                        (pad-buttons square)
                        )
              (and (zero? (logand (-> self state-flags) (state-flags sf12)))
-                  (zero? (logand (-> self control unknown-surface01 flags) (surface-flags surf07 surf08)))
+                  (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
+                         )
                   (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword36))
                       (the-as time-frame (-> *TARGET-bank* stuck-timeout))
                       )

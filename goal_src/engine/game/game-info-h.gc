@@ -38,12 +38,19 @@
   :flag-assert #x900000004
   )
 
-;; the possible state for a level.
+;;;;;;;;;;;;;;;
+;; Load State
+;;;;;;;;;;;;;;;
+
+;; The load state system lets gameplay code control the loading state of the game.
+;; It is the interface to the code inside of level.gc that actually manages loads.
+
+;; the possible load state for a level.
 (deftype level-buffer-state (structure)
-  ((name          symbol :offset-assert 0) ;; level name
-   (display?      symbol :offset-assert 4) ;; should it be drawn?
-   (force-vis?    symbol :offset-assert 8) ;; ? should it have its vis loaded?
-   (force-inside? symbol :offset-assert 12) ;; ?
+  ((name          symbol :offset-assert 0)  ;; level name
+   (display?      symbol :offset-assert 4)  ;; should it be drawn?
+   (force-vis?    symbol :offset-assert 8)  ;; force everything to be visible.
+   (force-inside? symbol :offset-assert 12) ;; force player to be considered inside.
    )
   :pack-me
   :method-count-assert 9
@@ -51,11 +58,13 @@
   :flag-assert         #x900000010
   )
 
+;; This includes more state than just "loading" - it also has a list of commands to execute and
+;; other random state.
 (deftype load-state (basic)
-  ((want          level-buffer-state  2 :inline  :offset-assert 4)
-   (vis-nick      symbol     :offset-assert 36)
-   (command-list  pair       :offset-assert 40)
-   (object-name   symbol 256 :offset-assert 44)
+  ((want          level-buffer-state  2 :inline  :offset-assert 4) ;; the two levels we want loaded
+   (vis-nick      symbol     :offset-assert 36) ;; the vis file we have loaded
+   (command-list  pair       :offset-assert 40) ;; list of additional commands
+   (object-name   symbol 256 :offset-assert 44) ;; state of various in-game objects
    (object-status basic  256 :offset-assert 1068)
    )
   :method-count-assert 21
@@ -86,6 +95,10 @@
 
 (define-extern *load-state* load-state)
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Game Info
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defenum continue-flags
   :type uint32
@@ -151,22 +164,22 @@
    (text-ids-seen         bit-array                     :offset-assert 112)
    (level-opened          uint8                      32 :offset-assert 116)
    (hint-control          (array level-hint-control)    :offset-assert 148)
-   (task-hint-control     (array task-hint-control-group)                         :offset-assert 152)
+   (task-hint-control     (array task-hint-control-group) :offset-assert 152)
    (total-deaths          int32                         :offset-assert 156)
    (continue-deaths       int32                         :offset-assert 160)
    (fuel-cell-deaths      int32                         :offset-assert 164)
-   (game-start-time       time-frame                        :offset-assert 168)
-   (continue-time         time-frame                        :offset-assert 176)
-   (death-time            time-frame                        :offset-assert 184)
-   (hit-time              time-frame                        :offset-assert 192)
-   (fuel-cell-pickup-time time-frame                        :offset-assert 200)
-   (fuel-cell-time        (array time-frame)                :offset-assert 208)
-   (enter-level-time      (array time-frame)                :offset-assert 212)
-   (in-level-time         (array time-frame)                :offset-assert 216)
-   (blackout-time         time-frame                        :offset-assert 224)
-   (letterbox-time        time-frame                        :offset-assert 232) ;; time to turn off letterboxing, base-frame
-   (hint-play-time        time-frame                        :offset-assert 240)
-   (display-text-time     time-frame                        :offset-assert 248)
+   (game-start-time       time-frame                    :offset-assert 168)
+   (continue-time         time-frame                    :offset-assert 176)
+   (death-time            time-frame                    :offset-assert 184)
+   (hit-time              time-frame                    :offset-assert 192)
+   (fuel-cell-pickup-time time-frame                    :offset-assert 200)
+   (fuel-cell-time        (array time-frame)            :offset-assert 208)
+   (enter-level-time      (array time-frame)            :offset-assert 212)
+   (in-level-time         (array time-frame)            :offset-assert 216)
+   (blackout-time         time-frame                    :offset-assert 224)
+   (letterbox-time        time-frame                    :offset-assert 232) ;; time to turn off letterboxing, base-frame
+   (hint-play-time        time-frame                    :offset-assert 240)
+   (display-text-time     time-frame                    :offset-assert 248)
    (display-text-handle   handle                        :offset-assert 256)
    (death-movie-tick      int32                         :offset-assert 264)
    (want-auto-save        symbol                        :offset-assert 268)

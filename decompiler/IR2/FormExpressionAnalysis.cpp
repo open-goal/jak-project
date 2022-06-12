@@ -4021,6 +4021,24 @@ std::vector<Form*> cast_to_64_bit(const std::vector<Form*>& forms,
   }
   return result;
 }
+
+FormElement* try_make_nonzero_logtest(Form* in, FormPool& pool) {
+  /*
+ (defmacro logtest? (a b)
+   "does a have any of the bits in b?"
+   `(nonzero? (logand ,a ,b))
+   )
+ */
+  auto logand_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::LOGAND),
+                                    {Matcher::any(0), Matcher::any(1)});
+  auto mr_logand = match(logand_matcher, in);
+  if (mr_logand.matched) {
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::LOGTEST), mr_logand.maps.forms.at(0),
+        mr_logand.maps.forms.at(1));
+  }
+  return nullptr;
+}
 }  // namespace
 
 FormElement* ConditionElement::make_zero_check_generic(const Env& env,
@@ -4069,25 +4087,17 @@ FormElement* ConditionElement::make_zero_check_generic(const Env& env,
         std::vector<Form*>{source_forms.at(0), nice_constant});
   }
 
-  return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
-}
-
-FormElement* try_make_nonzero_logtest(Form* in, FormPool& pool) {
   /*
- (defmacro logtest? (a b)
-   "does a have any of the bits in b?"
-   `(nonzero? (logand ,a ,b))
-   )
- */
-  auto logand_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::LOGAND),
-                                    {Matcher::any(0), Matcher::any(1)});
-  auto mr_logand = match(logand_matcher, in);
-  if (mr_logand.matched) {
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::LOGTEST), mr_logand.maps.forms.at(0),
-        mr_logand.maps.forms.at(1));
+  auto as_logtest = try_make_nonzero_logtest(source_forms.at(0), pool);
+  if (as_logtest) {
+    auto logtest_form = pool.alloc_single_form(nullptr, as_logtest);
+    auto not_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
+    return not_form;
   }
-  return nullptr;
+   */
+
+  return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
 }
 
 FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {

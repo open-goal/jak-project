@@ -6464,7 +6464,7 @@
   ;; field param1 is a basic loaded with a signed load field param2 is a basic loaded with a signed load
   (:methods
     (new (symbol type basic) _type_ 0)
-    (dummy-9 (_type_ basic) _type_ 9)
+    (reset-and-assign-geo! (_type_ basic) _type_ 9)
     )
   )
 
@@ -9177,42 +9177,16 @@
 (defenum shadow-flags
   :bitfield #t
   :type int32
-  (shdf00)
-  (shdf01)
-  (shdf02)
+  (shdf00) ;; unused
+  (disable-fade)
+  (shdf02) ;; only set, never used.
   (shdf03)
-  (shdf04)
-  (shdf05)
-  (shdf06)
-  (shdf07)
-  (shdf08)
-  (shdf09)
-  (shdf10)
-  (shdf11)
-  (shdf12)
-  (shdf13)
-  (shdf14)
-  (shdf15)
-  (shdf16)
-  (shdf17)
-  (shdf18)
-  (shdf19)
-  (shdf20)
-  (shdf21)
-  (shdf22)
-  (shdf23)
-  (shdf24)
-  (shdf25)
-  (shdf26)
-  (shdf27)
-  (shdf28)
-  (shdf29)
-  (shdf30)
-  (shdf31)
+  (shdf04) ;; unused
+  (disable-draw)
   )
 
 (deftype shadow-settings (structure)
-  ((center        vector :inline :offset-assert 0)
+  ((center        vector :inline :offset-assert 0 :do-not-decompile)
    (flags         shadow-flags   :score 100 :offset 12)
    (shadow-dir    vector :inline :offset-assert 16)
    (dist-to-locus float          :offset 28)
@@ -9241,7 +9215,7 @@
     (set-offset-bit (shadow-control) int 10)
     (set-top-plane-offset (shadow-control float) int 11)
     (set-bottom-plane-offset (shadow-control float) int 12)
-    (dummy-13 (_type_) none 13)
+    (unused-13 (_type_) none 13)
     (update-direction-from-time-of-day (_type_) none 14)
     (collide-to-find-planes (_type_ vector float float float) none 15)
     )
@@ -9903,7 +9877,7 @@
   :flag-assert         #xb000000c0
   (:methods
     (new (symbol type int) _type_ 0)
-    (dummy-9 (_type_) float 9)
+    (current-cycle-distance (_type_) float 9)
     (debug-print-channels (_type_ symbol) int 10)
     )
   )
@@ -10221,38 +10195,33 @@
 (defenum surface-flags
   :bitfield #t
   :type uint32
-  (surf00)
-  (surf01)
-  (surf02)
-  (surf03)
-  (surf04)
-  (surf05)
-  (surf06)
-  (surf07)
-  (surf08)
-  (surf09)
-  (surf10)
-  (surf11)
-  (surf12)
-  (surf13)
-  (surf14)
-  (surf15)
-  (surf16)
-  (surf17)
-  (surf18)
-  (surf19)
-  (surf20)
-  (surf21)
-  (surf22)
-  (surf23)
-  (surf24)
-  (surf25)
-  (surf26)
-  (surf27)
-  (surf28)
-  (surf29)
-  (surf30)
-  (surf31)
+  (allow-look-around) ;; allows entering first person with triangle
+  (dive)              ;; set on all diving (dive, dive-bottom) surfaces
+  (surf02)            ;; unused
+  (no-turn-around)    ;; prevent "changed direction" animation from happening
+
+  ;; when jak is on a surface with this flag, the case where jak
+  ;; is forced to rotate in the direction he's traveling is
+  ;; never taken. It's used on ice (though it is not needed, the turn toward transv
+  ;; is disabled by not being in target-walk ever) and also used to prevent
+  ;; jak from spinning around when he shouldn't (like if he's knocked back)
+  (no-rotate-toward-transv)
+  ;; if jak should always be forced to rotate in the direction he's travelling.
+  ;; used for the slides and also the warp gate jump
+  (always-rotate-toward-transv)
+
+  ;; never set, but prevents jak from jumping (both normal and roll)
+  (prevent-jump)
+
+  ;; target is launch jumping (from a blue eco pad)
+  (prevent-attacks-during-launch-jump)
+  (surf08) ;; never set, prevents various attacks from being possible
+  (surf09) ;; another attack prevent
+  (allow-edge-grab) ;; if set, and jak is falling, turn on the ledge grab search.
+  (jump) ;; set on all jumps, used to prevent "on-grounds" in places
+  (attacking) ;; set on all attacks, but not actually used anywhere
+  (ducking)   ;; set on all ducks, but not actually used anywhere
+  (moving-ground) ;; unused, but would make sense if jak was on something moving
   )
 
 (deftype surface (basic)
@@ -10364,7 +10333,7 @@
   ((skip          uint8        :offset   0 :size   3 :do-not-decompile)
    (mode          pat-mode     :offset   3 :size   3)
    (material      pat-material :offset   6 :size   6)
-   (camera        uint8        :offset  12 :size   2)
+   (camera        uint8        :offset  12 :size   2 :do-not-decompile)
    (event         pat-event    :offset  14 :size   6)
    (noentity      uint8        :offset   0 :size   1)
    (nocamera      uint8        :offset   1 :size   1)
@@ -13046,7 +13015,7 @@
    (num-spheres  uint32  :offset-assert 4)
    (collide-with collide-kind  :offset-assert 8)
    (proc         process-drawable   :offset-assert 16)
-   (ignore-pat   uint32  :offset-assert 20) ;; flags / bitfield i bet
+   (ignore-pat   pat-surface  :offset-assert 20) ;; flags / bitfield i bet
    (solid-only   basic   :offset-assert 24) ;; probably a symbol
    )
   :method-count-assert 9
@@ -13146,15 +13115,15 @@
   :flag-assert         #x2100008670
   (:methods
     (debug-draw (_type_) none 9)
-    (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result int) float 10)
+    (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result pat-surface) float 10)
     (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
     (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface) float 12)
     (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
-    (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable int) none 14)
+    (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable pat-surface) none 14)
     (fill-using-spheres (_type_ collide-using-spheres-params) none 15)
     (fill-using-y-probe (_type_ vector float collide-kind process-drawable pat-surface) none 16)
     (initialize (_type_) none 17)
-    (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result int) float 18)
+    (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result pat-surface) float 18)
     (probe-using-spheres (_type_ collide-using-spheres-params) symbol 19)
     (probe-using-y-probe (_type_ vector float collide-kind collide-tri-result pat-surface) float 20)
     (fill-from-background (_type_ (function bsp-header int collide-list none) (function collide-cache object none)) none 21) ;; second functiom is method 28
@@ -19703,11 +19672,11 @@
 (define-extern cam-collision-record-save (function vector vector int symbol camera-slave none))
 (define-extern cam-string-move (function object :behavior camera-slave))
 (define-extern cam-dist-analog-input (function int float float))
-(define-extern cam-los-collide (function vector vector clip-travel-vector-to-mesh-return-info int symbol :behavior camera-slave))
+(define-extern cam-los-collide (function vector vector clip-travel-vector-to-mesh-return-info pat-surface symbol :behavior camera-slave))
 (define-extern dist-info-init (function collide-los-dist-info none))
 (define-extern los-cw-ccw (function (inline-array collide-cache-tri) vector vector float clip-travel-vector-to-mesh-return-info vector float symbol))
 (define-extern cam-debug-add-los-tri (function (inline-array collide-cache-tri) vector vector none))
-(define-extern cam-los-spline-collide (function vector vector vector float))
+(define-extern cam-los-spline-collide (function vector vector pat-surface float))
 (define-extern cam-los-setup-lateral (function clip-travel-vector-to-mesh-return-info vector vector symbol :behavior camera-slave))
 (define-extern slave-los-state->string (function slave-los-state string))
 (define-extern dist-info-print (function collide-los-dist-info string object))
@@ -21250,7 +21219,7 @@
 ;; - Types
 
 (deftype collide-puls-work (structure)
-  ((ignore-pat uint32                     :offset-assert 0)
+  ((ignore-pat pat-surface                :offset-assert 0)
    (tri-out    collide-tri-result         :offset-assert 4)
    (bsphere    sphere             :inline :offset-assert 16)
    (move-dist  vector             :inline :offset-assert 32)

@@ -6,13 +6,13 @@
 ;; dgos: GAME, ENGINE
 
 ;; this file contains types for the skeletal animation system.
-;; the "bones" are the actual things with positions/orientations/scales in the game world.
-;; the "joints" define how the bones are connected.
+;; the "bones" are the actual matrix data consumed by the renderers.
+;; the "joints" describe how bones are connected.
 ;; a "cspace" links together a bone, joint, and a way to control the joint (and bone)
 
 ;; There's three main container types:
 ;; - The cspace-array.  This contains references to the bones and the joints. (called node-list)
-;; - The skeleton: This contains the bones. (called skeleton)
+;; - The skeleton: This is an inline array of bones. (called skeleton)
 ;; - The joint-control (not in this file): this has the logic for running joint animations. (called skel)
 
 
@@ -21,7 +21,7 @@
   ((name      basic          :offset-assert 4)   ;; the joint's name (neckA, neckB, Rtoes, etc)
    (number    int32          :offset-assert 8)   ;; the joint's number in the cspace-array
    (parent    joint          :offset-assert 12)  ;; the parent joint (ex, Lshould has parent of chest)
-   (bind-pose matrix :inline :offset-assert 16)  ;; the bind pose, as a matrix. Unknown if used.
+   (bind-pose matrix :inline :offset-assert 16)  ;; the bind pose, as a matrix.
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -65,7 +65,7 @@
 
 ;; The "cspace" seems to be a system for linking bones and joints.
 ;; The tree structure matches the tree of joints.
-;; For example: (-> *target* node-list data 14 parent joint) is the same as 
+;; For example: (-> *target* node-list data 14 parent joint) is the same as
 ;;              (-> *target* node-list data 14 joint parent)
 ;; But, we appear to use bone indices here.
 ;; So the joint index is always 1 less than the node index.
@@ -91,7 +91,7 @@
   ;; params are loaded with signed loads.
   (:methods
     (new (symbol type basic) _type_ 0)
-    (dummy-9 (_type_ basic) _type_ 9)
+    (reset-and-assign-geo! (_type_ basic) _type_ 9)
     )
   )
 
