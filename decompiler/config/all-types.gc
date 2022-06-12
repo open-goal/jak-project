@@ -10386,21 +10386,20 @@
   (vent-valve 2)
   (wrap-phase 3)     ;; phase should wrap from 1 to 0 instead of mirroring.
   (fop4 4)           ;; unused?
-  (fop5 5)           ;; wait-for-cue after death?
-  (fop6 6)
-  (fop7 7)
+  (fop5 5)           ;; wait-for-cue after death? nothing sets this.
+  (instant-collect 6) ;; set on balloon lurker, puffer
+  (skip-jump-anim 7) ;; skips fuel cell "jump" animation
   (can-collect 8)
   (fade 9)
   (large 10)
-  (fop11 11)
+  (rqeuire-zoomer 11) ;; iron, but need to be riding zoomer to break it. unused?
   (powerup 12)
   ;; strengths
   (touch 13)
   (normal-attack 14)
   (strong-attack 15)
   (indestructible 16)
-
-  (fop17 17)         ;; unused
+  (fop17 17)         ;; engine doesn't check it, set on babak near jungleb exit and in robot room.
   (eco-blocked 18)
   (respawn 19)
   )
@@ -10510,59 +10509,46 @@
 (defenum align-flags
   :bitfield #t
   :type uint32
-  (algf00)
-  (algf01)
-  (algf02)
-  (algf03)
-  (algf04)
-  (algf05)
-  (algf06)
-  (algf07)
-  (algf08)
-  (algf09)
-  (algf10)
-  (algf11)
-  (algf12)
-  (algf13)
-  (algf14)
-  (algf15)
-  (algf16)
-  (algf17)
-  (algf18)
-  (algf19)
-  (algf20)
-  (algf21)
-  (algf22)
-  (algf23)
-  (algf24)
-  (algf25)
-  (algf26)
-  (algf27)
-  (algf28)
-  (algf29)
-  (algf30)
-  (algf31)
+  (disabled) ;; keep object velocity
+  )
+
+(defenum align-opts
+  :bitfield #t
+  :type uint32
+  (adjust-x-vel)
+  (adjust-y-vel)
+  (adjust-xz-vel)
+  (keep-other-velocities)
+  (adjust-quat) ;; 16
+  (alop0)
+  (alop1)
+  (alop2)
+  (alop3)
+  (alop4)
+  (alop5)
+  (no-gravity)
+  (ignore-y-if-zero)
   )
 
 (deftype align-control (basic)
-  ((flags       align-flags        :offset-assert 4)
-   (process     process-drawable   :offset-assert 8)
-   (frame-group art-joint-anim     :offset-assert 12)
-   (frame-num   float              :offset-assert 16)
-   (matrix      matrix     2 :inline :offset-assert 32)
-   (transform   transform  2 :inline :offset-assert 160)
-   (delta       transformq :inline :offset-assert 256)
-   (last-speed  meters             :offset-assert 304)
-   (align       transformq :inline :offset 160)
+  ((flags       align-flags                :offset-assert   4)
+   (process     process-drawable           :offset-assert   8)
+   (frame-group art-joint-anim             :offset-assert  12)
+   (frame-num   float                      :offset-assert  16)
+   (matrix      matrix           2 :inline :offset-assert  32)
+   (transform   transform        2 :inline :offset-assert 160)
+   (delta       transformq       :inline   :offset-assert 256)
+   (last-speed  meters                     :offset-assert 304)
+   (align       transformq       :inline   :offset        160)
    )
   :method-count-assert 14
   :size-assert         #x134
   :flag-assert         #xe00000134
   (:methods
     (new (symbol type process) _type_ :behavior process-drawable 0)
-    (TODO-RENAME-9 (_type_) transformq 9)
-    (TODO-RENAME-10 (_type_ int float float float) trsqv 10)
-    (TODO-RENAME-11 (_type_ int vector int float float) none 11) ;; 3rd arg is unused
+    (compute-alignment! (_type_) transformq 9)
+    (align! (_type_ align-opts float float float) trsqv 10)
+    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv 11) ;; 3rd arg is unused
     (first-transform (_type_) transform 12)
     (snd-transform (_type_) transform 13)
     )
@@ -10580,38 +10566,27 @@
 (defenum state-flags
   :bitfield #t
   :type uint32
-  (sf00)
-  (sf01)
-  (sf02)
-  (sf03)
-  (sf04)
-  (sf05)
-  (sf06)
-  (sf07)
-  (sf08)
-  (sf09)
-  (sf10)
-  (sf11)
-  (sf12)
-  (sf13)
-  (sf14)
-  (sf15)
-  (sf16)
-  (sf17)
-  (sf18)
-  (sf19)
-  (sf20)
-  (sf21)
-  (sf22)
-  (sf23)
-  (sf24)
-  (sf25)
-  (sf26)
-  (sf27)
-  (sf28)
-  (sf29)
-  (sf30)
-  (sf31)
+  (fade-out-particles) ;; set so particle callbacks can fade out before death
+  (dangerous)          ;; set on jak if he is "dangerous" (currently attacking)
+  (sf02)               ;; never sent, blocks tripping
+  (being-attacked)     ;; set when attacked
+  (invulnerable)       ;; set from the debug menu
+  (timed-invulnerable) ;; after being attacked
+  (invuln-powerup)     ;; unused invulnerable mode from powerup
+  (do-not-notice)      ;; enemies etc shouldn't notice jak
+  (grabbed)            ;; something else has "grabbed" control of jak
+  (first-person-mode)  ;; triangle, billy game
+  (use-alt-cam-pos)    ;; target-cam-pos should use an alternate position (jumping in warp gate, on to flutflut...)
+  (prevent-jump)       ;; target cannot do any jumps
+  (prevent-attack)     ;; target cannot do attacks
+  (prevent-duck)       ;; can't duck or roll
+  (remove-prevents)    ;; when set, removes the previous 3 prevents on the next frame.
+  (dying)                ;; set during death anim
+  (sf16)                 ;; unused
+  (has-saved-position)       ;; is there a saved position?
+  (looking-at-enemy)         ;; neck mod active to look at enemy
+  (falling-into-pool-of-bad) ;; falling into lava, dark eco, or melt
+  (flop-hit-ground)          ;; set when ground pound hit ground
   )
 
 (declare-type nav-control basic)
@@ -10647,7 +10622,7 @@
   (:methods
     (initialize-skeleton (_type_ skeleton-group pair) none 14)
     (initialize-skeleton-by-name (_type_ string object) _type_ 15)
-    (apply-alignment (_type_ int transformq vector) collide-shape 16)
+    (apply-alignment (_type_ align-opts transformq vector) collide-shape 16)
     (do-joint-math! (_type_) none 17)
     (cleanup-for-death (_type_) none 18)
     (evaluate-joint-control (_type_) none 19)
@@ -11731,7 +11706,7 @@
     (add-fg-prim-using-y-probe (_type_ collide-cache) none 14)
     (overlaps-others-test (_type_ overlaps-others-params collide-shape-prim) symbol 15)
     (overlaps-others-group (_type_ overlaps-others-params collide-shape-prim-group) symbol 16)
-    (dummy-17 () none 17)
+    (unused-17 () none 17)
     (collide-with-collide-cache-prim-mesh (_type_ collide-shape-intersect collide-cache-prim) none 18)
     (collide-with-collide-cache-prim-sphere (_type_ collide-shape-intersect collide-cache-prim) none 19)
     (add-to-bounding-box (_type_ collide-kind) symbol 20)

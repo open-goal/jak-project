@@ -38,11 +38,12 @@
 ;; The "new" system:
 ;;  - is the only way to collide with the background/water
 ;;  - uses "collide-cache"
-;;  - generally dumps stuff into the collide-cache, then uses collide-cache functions (not decompiled yet)
+;;  - generally dumps stuff into the collide-cache, then uses collide-cache functions
 ;;  - does not support a few of the weirder collision checks
 
 ;; There is some duplicate implemenations because both the new and old system collide
-;; foreground meshes.
+;; foreground meshes. The new system can just import foreground collision meshses
+;; into its collide cache.
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -59,7 +60,7 @@
 
 ;; Collide Resolve. (made up name)
 ;; Some objects (like Jak) do not move on fixed paths, and will be stopped by walls or other obstacles.
-;; This works on background and foreground objects, and uses the new system.
+;; This works on background and foreground objects, and uses the new system (it must, to handle background).
 ;; The fill-cache-integrate-and-collide! function should be called, which will fill the collide cache
 ;; and then do an iterative collision algorithm.
 ;; This will call the reaction function. The default "default-collision-reaction" function is in collide-shape.gc
@@ -229,7 +230,7 @@
 ;; Collision Primitive Base
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; These are the settings that can be set per primtive. 
+;; These are the settings that can be set per primtive.
 
 
 (defenum collide-kind
@@ -367,7 +368,7 @@
    (prim-core       collide-prim-core :inline :offset-assert 16)  ;; core data
    (local-sphere    vector            :inline :offset-assert 48)  ;; sphere, pre transform
    (collide-with    collide-kind              :offset-assert 64)  ;; things we can collide with
-   
+
    ;; overlays of core.
    (world-sphere    vector            :inline :offset 16)
    (collide-as      collide-kind              :offset 32)
@@ -389,7 +390,7 @@
     (add-fg-prim-using-y-probe (_type_ collide-cache) none 14)
     (overlaps-others-test (_type_ overlaps-others-params collide-shape-prim) symbol 15)
     (overlaps-others-group (_type_ overlaps-others-params collide-shape-prim-group) symbol 16)
-    (dummy-17 () none 17)
+    (unused-17 () none 17)
     (collide-with-collide-cache-prim-mesh (_type_ collide-shape-intersect collide-cache-prim) none 18)
     (collide-with-collide-cache-prim-sphere (_type_ collide-shape-intersect collide-cache-prim) none 19)
     (add-to-bounding-box (_type_ collide-kind) symbol 20)
@@ -797,9 +798,9 @@
 
 ;; These aren't real meshes, but are returned when you collide with the background or water.
 ;; Background and water collision work differently, but this allows these systems to pretend to be
-;; part of the foreground collision system.
+;; part of the old collision system.
 
-(define *collide-shape-prim-backgnd* 
+(define *collide-shape-prim-backgnd*
         (new 'static 'collide-shape-prim-mesh
              :cshape #f
              :prim-core
@@ -815,7 +816,7 @@
              )
         )
 
-(define *collide-shape-prim-water* 
+(define *collide-shape-prim-water*
         (new 'static 'collide-shape-prim-mesh
              :cshape #f
              :prim-core
