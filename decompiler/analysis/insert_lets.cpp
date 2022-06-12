@@ -483,8 +483,8 @@ FormElement* rewrite_as_send_event(LetElement* in,
       nullptr);
 
   if (!std::get<0>(mr_with_shell).matched) {
-    lg::error("shell match failed, dont know this form: {}",
-              body->at(3 + param_count)->to_string(env));
+    // lg::error("shell match failed, dont know this form: {}",
+    //           body->at(3 + param_count)->to_string(env));
     return nullptr;
   }
 
@@ -1415,7 +1415,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
       &cast_type);
 
   if (!std::get<0>(mr_with_shell).matched) {
-    lg::error("shell match failed, dont know this form: {}", macro_form->to_string(env));
+    // lg::error("shell match failed, dont know this form: {}", macro_form->to_string(env));
     return nullptr;
   }
 
@@ -1571,8 +1571,8 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
       nullptr);
 
   if (!std::get<0>(mr_with_shell).matched) {
-    lg::error("shell match failed, dont know this form: {}",
-              in->body()->at(in->body()->size() - 1)->to_string(env));
+    // lg::error("shell match failed, dont know this form: {}",
+    //           in->body()->at(in->body()->size() - 1)->to_string(env));
     return nullptr;
   }
 
@@ -1741,7 +1741,8 @@ FormElement* rewrite_rand_float_gen(LetElement* in, const Env& env, FormPool& po
         nullptr);
 
     if (!std::get<0>(mr_res).matched) {
-      lg::error("shell match failed, dont know this form: {}", in->body()->at(0)->to_string(env));
+      // lg::error("shell match failed, dont know this form: {}",
+      // in->body()->at(0)->to_string(env));
       return nullptr;
     }
 

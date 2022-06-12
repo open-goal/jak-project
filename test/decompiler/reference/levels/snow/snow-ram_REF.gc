@@ -219,7 +219,7 @@
     (ja-channel-push! 1 (seconds 0.075))
     (loop
       (sound-play-by-name (static-sound-name "set-ram") (new-sound-id) 1024 0 0 1 #t)
-      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
+      (ja-no-eval :group! ram-cock-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
@@ -227,7 +227,7 @@
       (let ((gp-1 #f))
         (sound-play-by-name (static-sound-name "slam-crash") (new-sound-id) 1024 0 0 1 #t)
         (logclear! (-> self mask) (process-mask actor-pause))
-        (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
+        (ja-no-eval :group! ram-release-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (let ((f30-0 (ja-aframe-num 0)))
             (when (and (not gp-1) (>= f30-0 61.0))
@@ -283,7 +283,7 @@
         (go ram-give-fuel-cell)
         )
     (ja-channel-push! 1 0)
-    (ja :group! (-> self draw art-group data 6) :num! min)
+    (ja :group! ram-idle-ja :num! min)
     (transform-post)
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
@@ -311,30 +311,24 @@
   :code (behavior ()
     (set! (-> self give-fuel-cell?) #f)
     (ja-channel-push! 1 0)
-    (ja :group! (-> self draw art-group data 6) :num! min)
+    (ja :group! ram-idle-ja :num! min)
     (transform-post)
     (when (and (not (task-complete? *game-info* (-> self entity extra perm task))) (-> self give-fuel-cell-anim))
       (logclear! (-> self mask) (process-mask actor-pause))
       (process-entity-status! self (entity-perm-status bit-3) #t)
-      (let* ((gp-1 (the-as snowcam (get-process *default-dead-pool* snowcam #x4000)))
-             (v1-14 (when gp-1
-                      (let ((t9-6 (method-of-type snowcam activate)))
-                        (t9-6 gp-1 self 'snowcam (the-as pointer #x70004000))
-                        )
-                      (run-now-in-process
-                        gp-1
-                        pov-camera-init-by-other
-                        (-> self root-override trans)
-                        *snowcam-sg*
-                        (-> self give-fuel-cell-anim)
-                        0
-                        self
-                        '()
-                        )
-                      (-> gp-1 ppointer)
-                      )
-                    )
-             )
+      (let ((v1-14 (process-spawn
+                     snowcam
+                     :init pov-camera-init-by-other
+                     (-> self root-override trans)
+                     *snowcam-sg*
+                     (-> self give-fuel-cell-anim)
+                     0
+                     self
+                     '()
+                     :to self
+                     )
+                   )
+            )
         (set! (-> (the-as (pointer snowcam) v1-14) 0 seq) (the-as uint 1))
         )
       (sound-play-by-name (static-sound-name "cell-prize") (new-sound-id) 1024 0 0 1 #t)

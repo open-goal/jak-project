@@ -194,7 +194,7 @@
 
 ;; definition for method 9 of type setting-control
 ;; INFO: Return type mismatch int vs none.
-(defmethod push-setting! setting-control ((obj setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
+(defmethod add-setting setting-control ((obj setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
   (add-connection (-> obj engine) arg0 arg1 arg2 arg3 arg4)
   0
   (none)
@@ -202,8 +202,8 @@
 
 ;; definition for method 10 of type setting-control
 ;; INFO: Return type mismatch int vs none.
-(defmethod set-setting! setting-control ((obj setting-control) (arg0 process) (arg1 symbol) (arg2 symbol) (arg3 float) (arg4 int))
-  (clear-pending-settings-from-process obj arg0 arg1)
+(defmethod set-setting setting-control ((obj setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
+  (remove-setting obj arg0 arg1)
   (add-connection (-> obj engine) arg0 arg1 arg2 arg3 arg4)
   0
   (none)
@@ -211,7 +211,7 @@
 
 ;; definition for method 11 of type setting-control
 ;; INFO: Return type mismatch int vs none.
-(defmethod clear-pending-settings-from-process setting-control ((obj setting-control) (arg0 process) (arg1 symbol))
+(defmethod remove-setting setting-control ((obj setting-control) (arg0 process) (arg1 symbol))
   (when arg0
     (let ((s5-0 (-> obj engine))
           (s4-0 (-> arg0 connection-list next1))
@@ -231,7 +231,7 @@
   )
 
 ;; definition for method 12 of type setting-control
-(defmethod copy-settings-from-target! setting-control ((obj setting-control))
+(defmethod apply-settings setting-control ((obj setting-control))
   (let ((gp-0 (-> obj current)))
     (let ((s5-0 (-> obj target)))
       (mem-copy! (the-as pointer s5-0) (the-as pointer (-> obj default)) 196)
@@ -263,8 +263,8 @@
   )
 
 ;; definition for method 13 of type setting-control
-(defmethod update-per-frame-settings! setting-control ((obj setting-control))
-  (copy-settings-from-target! obj)
+(defmethod update setting-control ((obj setting-control))
+  (apply-settings obj)
   (let ((gp-0 (-> obj current)))
     (let ((s5-1 (-> obj target)))
       (when *sound-player-enable*

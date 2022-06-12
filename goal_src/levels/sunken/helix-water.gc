@@ -289,27 +289,21 @@
           )
         )
       )
-    (let* ((gp-0 (the-as sunkencam (get-process *default-dead-pool* sunkencam #x4000)))
-           (v1-11
-             (when gp-0
-               (let ((t9-2 (method-of-type sunkencam activate)))
-                 (t9-2 gp-0 self 'sunkencam (the-as pointer #x70004000))
-                 )
-               (run-now-in-process
-                 gp-0
-                 pov-camera-init-by-other
-                 (-> self spawn-trans)
-                 *sunkencam-sg*
-                 "qbert-show-door-open"
-                 0
-                 #f
-                 '()
-                 )
-               (-> gp-0 ppointer-override)
-               )
-             )
-           )
-      (set! (-> v1-11 0 seq) (the-as uint 2))
+    (let ((v1-11
+            (process-spawn
+              sunkencam
+              :init pov-camera-init-by-other
+              (-> self spawn-trans)
+              *sunkencam-sg*
+              "qbert-show-door-open"
+              0
+              #f
+              '()
+              :to self
+              )
+            )
+          )
+      (set! (-> (the-as (pointer sunkencam) v1-11) 0 seq) (the-as uint 2))
       )
     (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-5 from) self)
@@ -624,7 +618,7 @@
                         (go helix-water-activated)
                         )
                        ((= v1-0 'music)
-                        (set-setting! *setting-control* self 'music 'danger 0.0 0)
+                        (set-setting! 'music 'danger 0.0 0)
                         )
                        )
               )
@@ -650,7 +644,7 @@
     (case arg2
       (('notify)
        (when (= (-> arg0 type) launcherdoor)
-         (clear-pending-settings-from-process *setting-control* self 'music)
+         (remove-setting! 'music)
          (go helix-water-idle)
          )
        )
