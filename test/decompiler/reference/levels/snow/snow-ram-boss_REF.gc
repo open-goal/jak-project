@@ -665,7 +665,12 @@
 ;; INFO: Return type mismatch vector vs none.
 ;; Used lq/sq
 (defmethod dummy-28 ram-boss-proj ((obj ram-boss-proj))
-  (when (and *target* (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15))))
+  (when (and *target*
+             (zero? (logand (-> *target* state-flags)
+                            (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                            )
+                    )
+             )
     (let ((gp-0 (-> obj target)))
       (set! (-> gp-0 quad) (-> (target-pos 0) quad))
       (set! (-> gp-0 y) (+ 4915.2 (-> gp-0 y)))
@@ -1717,7 +1722,10 @@
         )
       )
     (when (and (= (-> self proj-status) 2)
-               (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+               (zero? (logand (-> *target* state-flags)
+                              (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                              )
+                      )
                (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
                )
       (let ((gp-2 (new 'stack-no-clear 'vector))
@@ -1964,11 +1972,11 @@
     (none)
     )
   :post (behavior ()
-    (TODO-RENAME-9 (-> self align))
+    (compute-alignment! (-> self align))
     (dummy-11 (-> self nav) (-> self nav target-pos))
-    (TODO-RENAME-11
+    (align-vel-and-quat-only!
       (-> self align)
-      4
+      (align-opts adjust-xz-vel)
       (-> self nav travel)
       (the-as int 1.0)
       1.0
@@ -1978,7 +1986,7 @@
       (-> self collide-info transv)
       (compute-acc-due-to-gravity (-> self collide-info) (new-stack-vector0) 0.0)
       )
-    (TODO-RENAME-10 (-> self align) 16 1.0 1.0 1.0)
+    (align! (-> self align) (align-opts adjust-quat) 1.0 1.0 1.0)
     (integrate-for-enemy-with-move-to-ground!
       (-> self collide-info)
       (-> self collide-info transv)
