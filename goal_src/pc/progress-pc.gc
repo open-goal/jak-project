@@ -381,10 +381,15 @@
         
         (until (or done? (= (length *temp-options*) max-options))
           (countdown (i RESOLUTIONS)
-            (let ((thisr (the int (* mult (the float (-> *resolutions* i))))))
+            (let* ((thisr (the int (* mult (the float (-> *resolutions* i)))))
+                  (thisx (the int (* aspect (the float thisr))))
+                  (thisy thisr)
+                  )
               
-              (when (and (< (length *temp-options*) max-options) (<= thisr sy) (not skip?))
-                (add-resolution-option (* aspect (the float thisr)) thisr)
+              (when (and (not skip?) (< (length *temp-options*) max-options)
+                         (<= thisy sy) (<= thisx sx)
+                         (= aspect (/ (the float thisx) (the float thisy))))
+                (add-resolution-option thisx thisy)
                 ))
             (false! skip?)
             )
@@ -1030,7 +1035,7 @@
                (set! (-> obj next-display-state) (progress-screen invalid))
                )
               ((= (-> options (-> obj option-index) option-type) (game-option-type aspect-new))
-               ;; resolution button. change resolution!
+               ;; aspect ratio button.
                (let ((newx (the int (-> options (-> obj option-index) param1)))
                      (newy (the int (-> options (-> obj option-index) param2))))
                    (if (= (-> options (-> obj option-index) name) (game-text-id fit-to-screen))
