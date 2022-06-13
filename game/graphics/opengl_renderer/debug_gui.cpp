@@ -112,9 +112,9 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::Checkbox("Enable V-Sync", &m_vsync);
       ImGui::Separator();
       ImGui::Checkbox("Framelimiter", &framelimiter);
-      ImGui::InputFloat("Target FPS", &m_target_fps_text);
+      ImGui::InputFloat("Target FPS", &target_fps_input);
       if (ImGui::MenuItem("Apply")) {
-        target_fps = m_target_fps_text;
+        target_fps = target_fps_input;
       }
       ImGui::Separator();
       ImGui::Checkbox("Accurate Lag Mode", &experimental_accurate_lag);

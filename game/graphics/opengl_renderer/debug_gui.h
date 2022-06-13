@@ -50,6 +50,8 @@ class OpenGlDebugGui {
   bool should_advance_frame() { return m_frame_timer.should_advance_frame(); }
   bool should_gl_finish() { return m_frame_timer.do_gl_finish; }
 
+  void init_framerate_settings();
+
   bool get_screenshot_flag() {
     if (m_want_screenshot) {
       m_want_screenshot = false;
@@ -68,6 +70,7 @@ class OpenGlDebugGui {
   bool record_events = false;
   bool dump_events = false;
   bool want_reboot_in_debug = false;
+  bool m_vsync = true;
 
  private:
   FrameTimeRecorder m_frame_timer;
@@ -77,6 +80,5 @@ class OpenGlDebugGui {
   bool m_subtitle_editor = false;
   bool m_want_screenshot = false;
   char m_screenshot_save_name[256] = "screenshot.png";
-  bool m_vsync = true;
-  float m_target_fps_text = 60.0;
+  float target_fps_input = 60.f;
 };
