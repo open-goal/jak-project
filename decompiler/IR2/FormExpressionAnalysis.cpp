@@ -2809,6 +2809,8 @@ std::optional<RegisterAccess> get_form_reg_acc(Form* in) {
       return atom.var();
     }
   }
+
+  return {};
 }
 }  // namespace
 
