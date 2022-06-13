@@ -686,14 +686,11 @@
     (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (the int (* 300.0 (-> self muzzle-time))))
       (quaternion*! (-> self root-override quat) (-> self root-override quat) (-> self tumble-quat))
       (suspend)
-      (let ((f0-1
-              (fmin
-                1.0
-                (/ (the float (- (-> *display* base-frame-counter) (-> self state-time)))
-                   (the float (the int (* 300.0 (-> self muzzle-time))))
-                   )
-                )
-              )
+      (let ((f0-1 (fmin 1.0 (/ (the float (- (-> *display* base-frame-counter) (-> self state-time)))
+                               (the float (the int (* 300.0 (-> self muzzle-time))))
+                               )
+                        )
+                  )
             )
         (set! (-> self root-override scale x) (* 0.6 f0-1))
         (set! (-> self root-override scale y) (* 0.6 f0-1))
@@ -712,18 +709,7 @@
                   )
                )
           (set! (-> self sfx)
-                (the-as
-                  uint
-                  (sound-play-by-name
-                    (static-sound-name "sack-incoming")
-                    (new-sound-id)
-                    1024
-                    0
-                    0
-                    1
-                    (the-as symbol (-> self root-override trans))
-                    )
-                  )
+                (the-as uint (sound-play "sack-incoming" :position (the-as symbol (-> self root-override trans))))
                 )
           )
       (when (nonzero? (-> self sfx))
@@ -756,15 +742,7 @@
       0
       )
     (set! (-> self ground-time) (-> *display* base-frame-counter))
-    (sound-play-by-name
-      (static-sound-name "sack-land")
-      (new-sound-id)
-      1024
-      0
-      0
-      1
-      (the-as symbol (-> self root-override trans))
-      )
+    (sound-play "sack-land" :position (the-as symbol (-> self root-override trans)))
     (ja-no-eval :group! sack-hit-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
@@ -1135,7 +1113,7 @@
     (vector+! (-> obj hellmouth) (-> obj hellmouth) s3-0)
     (spawn-mistycannon-missile obj s3-0 s2-0 f30-0 arg1 f28-0 arg2 (-> obj entity))
     )
-  (sound-play-by-name (static-sound-name "cannon-shot") (new-sound-id) 1024 0 0 1 #t)
+  (sound-play "cannon-shot")
   (set! (-> obj part local-clock) 0)
   (set! (-> obj part-timer) (-> *display* base-frame-counter))
   (mistycannon-pick-random-target-point)
@@ -1614,7 +1592,7 @@
             (rotate! self f30-0)
             (tilt! self (- f28-0))
             (if (or (!= f30-0 0.0) (!= f28-0 0.0))
-                (sound-play-by-name (static-sound-name "telescope") (-> self aim-sound-id) 1024 0 0 1 #t)
+                (sound-play "telescope" :id (-> self aim-sound-id))
                 (sound-stop (-> self aim-sound-id))
                 )
             )
@@ -1639,15 +1617,7 @@
               (set! gp-0
                     (seekl gp-0 300 (the-as int (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))))
                     )
-              (sound-play-by-name
-                (static-sound-name "cannon-charge")
-                (-> self sound-id)
-                1024
-                (the int (* 1524.0 (* 0.008 (the float gp-0))))
-                0
-                1
-                #t
-                )
+              (sound-play "cannon-charge" :id (-> self sound-id) :pitch (* 0.008 (the float gp-0)))
               )
             (when (or (= gp-0 300)
                       (and (zero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x))) (nonzero? gp-0))
