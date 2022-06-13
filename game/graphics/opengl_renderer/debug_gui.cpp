@@ -117,7 +117,6 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
         target_fps = m_target_fps_text;
       }
       ImGui::Separator();
-      ImGui::Checkbox("Accurate Lag Mode", &experimental_accurate_lag);
       ImGui::Checkbox("Sleep in Frame Limiter", &sleep_in_frame_limiter);
       ImGui::EndMenu();
     }

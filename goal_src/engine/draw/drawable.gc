@@ -1276,8 +1276,8 @@
 (define *screen-shot* #f)
 (defun display-frame-start ((disp display) (new-frame-idx int) (odd-even int))
   "Set up a new frame. Call this before drawing anything.
-   new-frame-idx is the display frame that will be set up.
-   odd-even is the odd-even of the new frame"
+  new-frame-idx is the display frame that will be set up.
+  odd-even is the odd-even of the new frame"
 
 
   ;; due to a HW bug in the PS2, you must set this.
@@ -1292,7 +1292,7 @@
                             )
                          )
 
-          )
+                    )
         )
 
     (let ((float-time-ratio (/ (the float (timer-count (the-as timer-bank #x10000800))) (the float *ticks-per-frame*))))
@@ -1304,16 +1304,27 @@
       ;; if we actually do miss a frame, the time ratio will be around 2.
 
       (#when PC_PORT
+        (if (< float-time-ratio 3.3)
+            (set! time-ratio 3.0)
+            )
+        (if (< float-time-ratio 2.3)
+            (set! time-ratio 2.0)
+            )
         (if (< float-time-ratio 1.3)
             (set! time-ratio 1.0)
             )
+
+
         #|
         (if (> time-ratio 1.)
             (format #t "LAG ~f frames~%" (- time-ratio 1.))
             )
         |#
         )
+        ;; (format *stdcon* "time: ~f and ~f~%" time-ratio float-time-ratio)
       )
+
+
 
 
     ;; inform display system of our speed. This will adjust the scaling used in all physics calculations

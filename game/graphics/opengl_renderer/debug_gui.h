@@ -60,9 +60,8 @@ class OpenGlDebugGui {
 
   bool get_vsync_flag() { return m_vsync; }
 
-  bool framelimiter = false;
+  bool framelimiter = true;
   float target_fps = 60.f;
-  bool experimental_accurate_lag = false;
   bool sleep_in_frame_limiter = true;
   bool small_profiler = false;
   bool record_events = false;
@@ -77,6 +76,6 @@ class OpenGlDebugGui {
   bool m_subtitle_editor = false;
   bool m_want_screenshot = false;
   char m_screenshot_save_name[256] = "screenshot.png";
-  bool m_vsync = true;
+  bool m_vsync = false;
   float m_target_fps_text = 60.0;
 };

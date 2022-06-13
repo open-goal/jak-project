@@ -120,7 +120,7 @@ static int gl_init(GfxSettings& settings) {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);  // 4.3
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // core profile, not compat
-  // debug check
+  glfwWindowHint(GLFW_REFRESH_RATE, 60);
   if (settings.debug) {
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
   } else {
@@ -273,7 +273,6 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
     // should be fine to remove this mutex if the game actually waits for vsync to call
     // send_chain again. but let's be safe for now.
     std::unique_lock<std::mutex> lock(g_gfx_data->dma_mutex);
-    g_gfx_data->engine_timer.start();
     g_gfx_data->has_data_to_render = false;
     g_gfx_data->sync_cv.notify_all();
   }
@@ -447,18 +446,23 @@ static void gl_render_display(GfxDisplay* display) {
     glfwSwapInterval(req_vsync);
   }
 
+  g_gfx_data->last_engine_time = g_gfx_data->engine_timer.getSeconds();
+
   // actual vsync
   g_gfx_data->debug_gui.finish_frame();
   {
     auto p = scoped_prof("swap-buffers");
     glfwSwapBuffers(window);
   }
+
   if (g_gfx_data->debug_gui.framelimiter) {
     auto p = scoped_prof("frame-limiter");
-    g_gfx_data->frame_limiter.run(
-        g_gfx_data->debug_gui.target_fps, g_gfx_data->debug_gui.experimental_accurate_lag,
-        g_gfx_data->debug_gui.sleep_in_frame_limiter, g_gfx_data->last_engine_time);
+    g_gfx_data->frame_limiter.run(g_gfx_data->debug_gui.target_fps,
+                                  g_gfx_data->debug_gui.sleep_in_frame_limiter,
+                                  g_gfx_data->last_engine_time);
   }
+  g_gfx_data->engine_timer.start();
+
   g_gfx_data->debug_gui.start_frame();
   prof().instant_event("ROOT");
   update_global_profiler();
@@ -509,7 +513,6 @@ u32 gl_sync_path() {
     return 0;
   }
   std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
-  g_gfx_data->last_engine_time = g_gfx_data->engine_timer.getSeconds();
   if (!g_gfx_data->has_data_to_render) {
     return 0;
   }
