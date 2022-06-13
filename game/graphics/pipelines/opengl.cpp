@@ -166,11 +166,36 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
   glfwSetWindowIcon(window, 1, images);
   stbi_image_free(images[0].pixels);
   g_gfx_data = std::make_unique<GraphicsData>();
+
   gl_inited = true;
 
-  // enable vsync by default
-  // glfwSwapInterval(1);
-  glfwSwapInterval(settings.vsync);
+  // init framerate settings
+  GLFWmonitor* primary_monitor = glfwGetPrimaryMonitor();
+  if (primary_monitor) {
+    auto primary_monitor_video_mode = glfwGetVideoMode(primary_monitor);
+
+    if (primary_monitor_video_mode && primary_monitor_video_mode->refreshRate > 60) {
+      // Use the framelimiter by default and disable vsync
+      g_gfx_data->debug_gui.framelimiter = true;
+      g_gfx_data->debug_gui.m_vsync = false;
+      g_gfx_data->vsync_enabled = false;
+      glfwSwapInterval(false);
+    } else {
+      // enable vsync
+      g_gfx_data->debug_gui.framelimiter = false;
+      g_gfx_data->debug_gui.m_vsync = true;
+      g_gfx_data->vsync_enabled = true;
+      // glfwSwapInterval(1);
+      glfwSwapInterval(settings.vsync);
+    }
+  } else {
+    // enable vsync
+    g_gfx_data->debug_gui.framelimiter = false;
+    g_gfx_data->debug_gui.m_vsync = true;
+    g_gfx_data->vsync_enabled = true;
+    // glfwSwapInterval(1);
+    glfwSwapInterval(settings.vsync);
+  }
 
   SetDisplayCallbacks(window);
   Pad::initialize();
