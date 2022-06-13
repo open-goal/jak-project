@@ -637,7 +637,7 @@
     (t7-40 uint) (t7-41 uint) (t7-42 uint) (t7-43 uint) (t7-44 uint) (t7-45 uint) (t7-46 uint) (t7-47 uint) (t7-48 uint)
     (t7-49 uint) (t7-50 uint) (t7-51 uint) (t7-52 uint) (t7-53 uint) (t8-0 uint) (t8-1 int) (t8-2 uint) (t8-3 int)
     (t8-4 uint) (t8-5 int))
-  
+
   (set! r0 (the-as uint128 0))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -676,8 +676,19 @@
           (.lvf vf26 (&-> v1-0 hvdf-off quad))
           (.lvf vf27 (&-> v1-0 hvdf-off quad))
           )
-        (.add.w.vf vf26 vf26 vf0 :mask #b11)
-        (.add.w.vf vf26 vf26 vf0 :mask #b1)
+        ;; PC port modification: adjust shadow x to account for widescreen
+        (let ((shadow-x 2.)
+              (shadow-y 1.)
+              (correction (-> *video-parms* relative-x-scale))
+              (temp-vec (new-stack-vector0)))
+          (set! (-> temp-vec quad) (-> *math-camera* hvdf-off quad))
+          (+! (-> temp-vec x) (* correction shadow-x))
+          (+! (-> temp-vec y) shadow-y)
+          (.lvf vf26 (&-> temp-vec quad))
+          )
+        ;; original version
+        ; (.add.w.vf vf26 vf26 vf0 :mask #b11)
+        ; (.add.w.vf vf26 vf26 vf0 :mask #b1)
         (let ((v1-1 (-> arg2 mat)))
           (.lvf vf25 (&-> arg2 context-vec quad))
           (.lvf vf23 (&-> arg2 origin quad))
