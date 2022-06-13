@@ -33,7 +33,10 @@ class SubtitleEditor {
 
   void draw_all_cutscene_groups();
   void draw_all_scenes(std::string group_name, bool base_cutscenes = false);
-  void draw_current_cutscene();
+  void draw_subtitle_options(GameSubtitleSceneInfo& scene, bool current_scene = false);
+  void draw_new_cutscene_line_form();
+  void draw_all_hint_groups();
+  void draw_all_hints(std::string group_name, bool base_cutscenes);
 
   GameSubtitleDB m_subtitle_db;
   std::map<std::string, SubtitleEditorDB::Entry> m_db = {};
@@ -50,6 +53,7 @@ class SubtitleEditor {
 
   std::string m_new_scene_name = "";
   std::string m_new_scene_group = "";
+  std::string m_new_scene_id = "0";
 
   std::string m_new_scene_group_name = "";
 
@@ -79,6 +83,7 @@ class SubtitleEditor {
                                       const std::string_view& process_name);
   void repl_execute_cutscene_code(const SubtitleEditorDB::Entry& entry);
   void repl_rebuild_text();
+  void repl_play_hint(const std::string_view& hint_name);
 
   bool is_scene_in_current_lang(const std::string& scene_name);
 };

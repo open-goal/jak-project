@@ -39,25 +39,29 @@ bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
         }
         file_contents += fmt::format("\n(\"{}\"", scene_name);
         if (scene_info.m_kind == SubtitleSceneKind::Hint) {
-          file_contents += " :hint 0";
+          file_contents += " :hint #x0";
         } else if (scene_info.m_kind == SubtitleSceneKind::HintNamed) {
           file_contents += fmt::format(" :hint #x{0:x}", scene_info.m_id);
         }
         file_contents += "\n";
-        for (const auto& line : scene_info.m_lines) {
-          // Clear screen entries
-          if (line.line_utf8.empty()) {
-            file_contents += fmt::format("  ({})\n", line.frame);
-          } else {
-            file_contents += fmt::format("  ({}", line.frame);
-            if (line.offscreen && scene_info.m_kind == SubtitleSceneKind::Movie) {
-              file_contents += " :offscreen";
+        if (scene_info.m_lines.empty()) {
+          file_contents += fmt::format("  ()\n");
+        } else {
+          for (const auto& line : scene_info.m_lines) {
+            // Clear screen entries
+            if (line.line_utf8.empty()) {
+              file_contents += fmt::format("  ({})\n", line.frame);
+            } else {
+              file_contents += fmt::format("  ({}", line.frame);
+              if (line.offscreen && scene_info.m_kind == SubtitleSceneKind::Movie) {
+                file_contents += " :offscreen";
+              }
+              file_contents += fmt::format(" \"{}\"", line.speaker_utf8);
+              // escape quotes
+              std::string temp = line.line_utf8;
+              temp = std::regex_replace(temp, std::regex("\""), "\\\"");
+              file_contents += fmt::format(" \"{}\")\n", temp);
             }
-            file_contents += fmt::format(" \"{}\"", line.speaker_utf8);
-            // escape quotes
-            std::string temp = line.line_utf8;
-            temp = std::regex_replace(temp, std::regex("\""), "\\\"");
-            file_contents += fmt::format(" \"{}\")\n", temp);
           }
         }
         file_contents += "  )\n";
