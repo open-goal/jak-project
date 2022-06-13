@@ -10,6 +10,19 @@
 ;; The EE sends commands using the IOP RPC system to the OVERLORD IOP driver telling it to load and play sounds.
 ;; There is also some sort of per-frame status update, that is not included here.
 
+(defenum sound-group
+  :bitfield #t
+  :type uint8
+  (sfx)
+  (music)
+  (dialog)
+  (sog3)
+  (ambient)
+  (sog5)
+  (sog6)
+  (sog7)
+  )
+
 (deftype sound-id (uint32)
   ()
   (:methods
@@ -173,7 +186,7 @@
    (priority  int8      :offset-assert 11)
    (volume    int32     :offset-assert 12)
    (trans     vector3w  :inline :offset-assert 16)
-   (group     uint8     :offset-assert 28)
+   (group     sound-group     :offset-assert 28)
    )
   :pack-me
   :method-count-assert 9
@@ -198,7 +211,7 @@
   )
 
 (deftype sound-rpc-group-cmd (sound-rpc-cmd)
-  ((group   uint8   :offset-assert 4)
+  ((group   sound-group   :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x5
@@ -435,9 +448,9 @@
 (deftype sound-spec (basic)
   ((mask            sound-mask :offset-assert 4)
    (num             float      :offset-assert 8)
-   (group           uint8      :offset-assert 12)
+   (group           sound-group      :offset-assert 12)
+   (sound-name-char uint8 16   :offset 16)
    (sound-name      sound-name :score 20 :offset 16)
-   (sound-name-char uint8 16   :offset 16) ;; moved to after sound-name
    (trans           float 4    :offset-assert 32) ;; guess
    (volume          int32      :offset-assert 48)
    (pitch-mod       int32      :offset-assert 52)

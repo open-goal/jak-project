@@ -48,10 +48,8 @@
              )
            )
           (('boost)
-           (sound-play-by-name (static-sound-name "get-blue-eco") (new-sound-id) 1024 0 0 1 #t)
-           (set! (-> self racer boost-sound-id)
-                 (sound-play-by-name (static-sound-name "zoom-boost") (new-sound-id) 1024 0 0 1 #t)
-                 )
+           (sound-play "get-blue-eco")
+           (set! (-> self racer boost-sound-id) (sound-play "zoom-boost"))
            (set! (-> self racer boost-time) (-> *display* base-frame-counter))
            (let ((f0-12 (seek
                           (-> self racer boost-level)
@@ -461,8 +459,8 @@
       )
     (when (!= (-> self racer slide-shift-x) 0.0)
       (if (rand-vu-percent? 0.5)
-          (sound-play-by-name (static-sound-name "zoomer-rev1") (new-sound-id) 819 0 0 1 #t)
-          (sound-play-by-name (static-sound-name "zoomer-rev2") (new-sound-id) 819 0 0 1 #t)
+          (sound-play "zoomer-rev1" :vol 80)
+          (sound-play "zoomer-rev2" :vol 80)
           )
       )
     (set! (-> self racer bounce) 0)
@@ -517,7 +515,7 @@
   :event (-> target-racing-start event)
   :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (set! (-> self racer shock-offsetv) 0.0)
-    (sound-play-by-name (static-sound-name "zoomer-jump") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "zoomer-jump")
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (when arg2
       (when (>= (-> self racer hill-ground-value) 0.11)
@@ -641,7 +639,7 @@
   :event (-> target-racing-start event)
   :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (logior! (-> self control root-prim prim-core action) (collide-action ca-15))
-    (sound-play-by-name (static-sound-name "zoomer-jump") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "zoomer-jump")
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (racer-calc-gravity)
     (init-var-jump arg0 arg1 (the-as vector #t) (the-as vector #f) (-> self control transv))
@@ -713,7 +711,7 @@
 (defstate target-racing-smack (target)
   :event (-> target-racing-start event)
   :enter (behavior ((arg0 float) (arg1 symbol))
-    (sound-play-by-name (static-sound-name "smack-surface") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "smack-surface")
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.5))
     (set! (-> self racer heavy) arg1)
     (vector-! (-> self control transv) (-> self control unknown-vector70) (-> self control trans))
@@ -741,7 +739,7 @@
     (none)
     )
   :code (behavior ((arg0 float) (arg1 symbol))
-    (sound-play-by-name (static-sound-name "zoomer-crash-2") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "zoomer-crash-2")
     (ja-channel-push! 2 (seconds 0.05))
     (ja-no-eval :group! (-> self draw art-group data 136) :num! (seek!))
     (ja :chan 1
@@ -830,7 +828,7 @@
     (when (!= (-> self attack-info mode) 'endlessfall)
       (dummy-10 (-> self skel effect) 'group-target-hit -1.0 -1)
       (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.3))
-      (sound-play-by-name (static-sound-name "oof") (new-sound-id) 1024 0 0 1 #t)
+      (sound-play "oof")
       )
     (set! (-> self game hit-time) (-> *display* base-frame-counter))
     (logior! (-> self state-flags) (state-flags being-attacked))
@@ -913,7 +911,7 @@
        ((-> target-racing-start exit))
        (send-event (ppointer->process (-> self manipy)) 'anim-mode 'loop)
        (send-event (ppointer->process (-> self manipy)) 'draw #f)
-       (sound-play-by-name (static-sound-name "zoomer-explode") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "zoomer-explode")
        (process-spawn
          part-tracker
          :init part-tracker-init
@@ -1005,7 +1003,7 @@
          )
        )
       (('melt)
-       (sound-play-by-name (static-sound-name "zoomer-melt") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "zoomer-melt")
        (process-spawn
          part-tracker
          :init part-tracker-init
@@ -1028,7 +1026,7 @@
          )
        )
       (('endlessfall)
-       (sound-play-by-name (static-sound-name "death-fall") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "death-fall")
        (camera-change-to (the-as string cam-endlessfall) 30 #f)
        (set! (-> self control pat-ignore-mask unknown-bit) 1)
        (let ((f30-0 (fmin -4096.0 (- (-> self control ground-impact-vel)))))
@@ -1143,7 +1141,7 @@
         (set! (-> self control transv quad) (the-as uint128 0))
         (when (< 50.0 (ja-aframe-num 0))
           (when (not gp-1)
-            (sound-play-by-name (static-sound-name "zoomer-start") (new-sound-id) 1024 0 0 1 #t)
+            (sound-play "zoomer-start")
             (set! gp-1 #t)
             )
           (set! (-> self racer front-rotv) 65536.0)
@@ -1285,7 +1283,7 @@
   :event target-generic-event-handler
   :exit (-> target-racing-start exit)
   :code (behavior ((arg0 handle))
-    (sound-play-by-name (static-sound-name "zoomer-stop") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "zoomer-stop")
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self control transv quad) (the-as uint128 0))
     (let ((gp-1 (new 'stack-no-clear 'vector)))

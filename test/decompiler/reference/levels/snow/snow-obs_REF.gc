@@ -594,8 +594,8 @@
               (when (not gp-0)
                 (set! gp-0 #t)
                 (if (>= f0-0 0.5)
-                    (sound-play-by-name (-> self close-sound) (new-sound-id) 1024 0 0 1 #t)
-                    (sound-play-by-name (-> self open-sound) (new-sound-id) 1024 0 0 1 #t)
+                    (sound-play-by-name (-> self close-sound) (new-sound-id) 1024 0 0 (sound-group sfx) #t)
+                    (sound-play-by-name (-> self open-sound) (new-sound-id) 1024 0 0 (sound-group sfx) #t)
                     )
                 )
               )
@@ -713,7 +713,7 @@
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'bonk)
                        (dummy-22 self)
-                       (sound-play-by-name (static-sound-name "snow-spat-short") (new-sound-id) 768 1143 0 1 #t)
+                       (sound-play "snow-spat-short" :vol 75 :pitch 0.75)
                        )
               )
       )
@@ -734,26 +734,10 @@
                 (set! gp-0 v1-3)
                 (cond
                   ((> v1-3 0)
-                   (sound-play-by-name
-                     (static-sound-name "snow-spat-long")
-                     (new-sound-id)
-                     1024
-                     (the int (* 1524.0 (rand-vu-float-range -0.2 0.2)))
-                     0
-                     1
-                     #t
-                     )
+                   (sound-play "snow-spat-long" :pitch (rand-vu-float-range -0.2 0.2))
                    )
                   (1
-                    (sound-play-by-name
-                      (static-sound-name "snow-spat-short")
-                      (new-sound-id)
-                      1024
-                      (the int (* 1524.0 (rand-vu-float-range -0.2 0.2)))
-                      0
-                      1
-                      #t
-                      )
+                    (sound-play "snow-spat-short" :pitch (rand-vu-float-range -0.2 0.2))
                     )
                   )
                 )
@@ -1090,7 +1074,7 @@
                 )
               )
             (when (>= 1677.7216 f30-0)
-              (sound-play-by-name (static-sound-name "lodge-close") (new-sound-id) 1024 0 0 1 #t)
+              (sound-play "lodge-close")
               (activate! *camera-smush-control* 819.2 37 150 1.0 0.99)
               (go snow-fort-gate-idle-open)
               )
@@ -1356,7 +1340,7 @@
     (none)
     )
   :code (behavior ()
-    (sound-play-by-name (static-sound-name "eng-start-up") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "eng-start-up")
     (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek! max 0.85) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
@@ -1398,7 +1382,7 @@
       (ja :num! (seek! max 0.35))
       )
     (stop! (-> self sound))
-    (sound-play-by-name (static-sound-name "eng-shut-down") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "eng-shut-down")
     (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek! max 0.85) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
@@ -1527,7 +1511,7 @@
       (suspend)
       (set! v1-1 (or (not *target*) (zero? (logand (-> *target* state-flags) (state-flags grabbed)))))
       )
-    (sound-play-by-name (static-sound-name "prec-button1") (new-sound-id) 1024 -1524 0 1 #t)
+    (sound-play "prec-button1" :pitch -1)
     (let ((gp-1 (get-process *default-dead-pool* snowcam #x4000)))
       (set! (-> (the-as snowcam (-> (when gp-1
                                       (let ((t9-3 (method-of-type snowcam activate)))
@@ -1786,8 +1770,8 @@
       (until (ja-done? 0)
         (when (and (not gp-0) (>= (ja-frame-num 0) 5.0))
           (set! gp-0 #t)
-          (sound-play-by-name (static-sound-name "explosion") (new-sound-id) 409 1371 0 1 #t)
-          (sound-play-by-name (static-sound-name "snow-spat-short") (new-sound-id) 1024 381 0 1 #t)
+          (sound-play "explosion" :vol 40 :pitch 0.9)
+          (sound-play "snow-spat-short" :pitch 0.25)
           )
         (suspend)
         (ja :num! (seek!))
@@ -1818,28 +1802,12 @@
               ((and gp-0 (< f0-4 1.0))
                (set! gp-0 #f)
                (set! s5-0 #t)
-               (sound-play-by-name
-                 (static-sound-name "snow-spat-long")
-                 (new-sound-id)
-                 870
-                 (the int (* 1524.0 (rand-vu-float-range -0.2 0.2)))
-                 0
-                 1
-                 #t
-                 )
+               (sound-play "snow-spat-long" :vol 85 :pitch (rand-vu-float-range -0.2 0.2))
                )
               ((and s5-0 (>= f0-4 11.0))
                (set! s5-0 #f)
                (set! gp-0 #t)
-               (sound-play-by-name
-                 (static-sound-name "snow-spat-short")
-                 (new-sound-id)
-                 870
-                 (the int (* 1524.0 (rand-vu-float-range -0.2 0.2)))
-                 0
-                 1
-                 #t
-                 )
+               (sound-play "snow-spat-short" :vol 85 :pitch (rand-vu-float-range -0.2 0.2))
                )
               )
             )
@@ -1970,7 +1938,7 @@
     )
   :trans (the-as (function none :behavior snow-log-button) rider-trans)
   :code (behavior ()
-    (sound-play-by-name (static-sound-name "prec-button1") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "prec-button1")
     (loop
       (let ((f30-0 (+ -1433.6 (-> self orig-trans y))))
         (when (= (-> self root-override trans y) f30-0)
