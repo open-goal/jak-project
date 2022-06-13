@@ -21,21 +21,21 @@
 (defbehavior time-of-day-update time-of-day-proc ()
   "Update the particles and sky tng renderer for time-of-day effects"
   (time-of-day-effect)
-  
+
   ;; spawn or kill stars, if needed.
   (cond
     ;; should have stars in the sky
     ((and (or (>= (-> self hour) 19) (>= 5 (-> self hour))) ;; night time
           (and (< 45.0 (-> *time-of-day-context* num-stars)) (-> *time-of-day-context* sky)) ;; sky + stars desired
           )
-     
+
      ;; see if we need more
      (when (and *dproc* (< (-> self star-count) (the int (-> *time-of-day-context* num-stars))))
        (spawn (-> self stars) (math-camera-pos))
        (+! (-> self star-count) 1)
        )
      )
-    
+
     ;; have stars, but don't want them
     ((> (-> self star-count) 0)
      ;; kill all stars.
@@ -55,7 +55,7 @@
      0
      )
     )
-  
+
   ;; spawn or kill sun, if needed
   (cond
     ((and (>= (-> self time-of-day) 6.25)
@@ -73,7 +73,7 @@
      0
      )
     )
-  
+
   ;; spawn or kill green sun, if needed
   (cond
     ((and (or (>= (-> self time-of-day) 21.75) (>= 10.25 (-> self time-of-day)))
@@ -90,7 +90,7 @@
      0
      )
     )
-  
+
   ;; update the sky renderer.
   (update-sky-tng-data (-> self time-of-day))
   0
@@ -105,7 +105,7 @@
     (while #t
       ;; tick!
       (+! (-> self frame) (the int (* (-> self time-ratio) (-> *display* time-adjust-ratio))))
-      
+
       ;; now update time...
       (when (>= (-> self frame) 300)
         ;; 300 ticks/second
@@ -156,7 +156,7 @@
             )
           )
         )
-      
+
       ;; set the time of day float. This is in hours (0-24)
       (let* ((f0-4 (the float (-> self frame)))
              (f0-6 (+ (* 0.0033333334 f0-4) (the float (-> self second))))
@@ -205,7 +205,7 @@
   )
 
 (defun time-of-day-setup ((arg0 symbol))
-  "This function is weird. Returns if time of day will tick forward or not.  
+  "This function is weird. Returns if time of day will tick forward or not.
   If you set arg0 it will toggle on/off time of day.
   Otherwise, calling the function has no side effects."
   (when arg0
@@ -267,19 +267,19 @@
 
 (defun update-time-of-day ((arg0 time-of-day-context))
   "Update the time of day context"
-  
+
   ;; set defaults
   (set! (-> arg0 sky) #f)
   (set! (-> arg0 target-interp) 0.0)
-  
+
   (when *target*
     (set! (-> *target* draw light-index) (the-as uint 0))
     (when (-> *target* sidekick)
       (set! (-> *target* sidekick 0 draw light-index) (the-as uint 0))
       )
     )
-    
-  
+
+
   ;; see if either level gives us a sky.
   (dotimes (v1-12 (-> *level* length))
     (let ((a0-4 (-> *level* level v1-12)))
@@ -290,19 +290,19 @@
         )
       )
     )
-  
+
   ;; level distances
   (let ((s4-0 (new 'stack-no-clear 'array 'float 2))) ;; was a boxed array, but the GOAL implementation seems buggy.
     (set! (-> s4-0 0) 0.0)
     (set! (-> s4-0 1) 0.0)
     0.0
-    
+
     (let ((s5-0 0)
           (f30-0 (-> arg0 current-interp))
           )
       (set! *lightning-frame-done* #f)
       (set! *lightning-realtime-done* #f)
-      
+
       ;; loop over levels and figure out which to use.
       (dotimes (s3-0 2)
         (let ((s2-0 (-> *level* level s3-0)))
@@ -327,7 +327,7 @@
             )
           )
         )
-      
+
       ;; now pick desired interpolation weights
       (let* ((f0-6 (-> s4-0 0))
              (f1-0 (-> s4-0 1))
@@ -347,15 +347,15 @@
                       ;; this is a hack to pick the mood of village2 when we're closer to sunken, as long as
                       ;; the camera is above 0.
                       ((and (< 0.0 (-> *math-camera* trans y))
-                         (= (-> *level* level0 name) 'village2)
-                         (= (-> *level* level1 name) 'sunken)
-                         )
+                            (= (-> *level* level0 name) 'village2)
+                            (= (-> *level* level1 name) 'sunken)
+                            )
                        0.0 ;; picks 0 = village2
                        )
                       ((and (< 0.0 (-> *math-camera* trans y))
-                         (= (-> *level* level0 name) 'sunken)
-                         (= (-> *level* level1 name) 'village2)
-                         )
+                            (= (-> *level* level0 name) 'sunken)
+                            (= (-> *level* level1 name) 'village2)
+                            )
                        1.0 ;; picks 1 = village 2
                        )
                       (else
@@ -365,13 +365,13 @@
                       )
                     )
              )
-        
+
         ;; normally we will slowly ramp the interpolation weights.
         ;; but if we've just teleported, immediately snap to the new value.
         (if *teleport*
             (set! f30-0 f28-0)
             )
-        
+
         ;; ramp interpolation weights.
         (when (not (or (paused?) (= f28-0 f30-0)))
           (let ((f0-7 (- f30-0 f28-0)))
@@ -408,13 +408,13 @@
                   )
             )
           )
-        
+
         ;; number of active skys
         (set! (-> arg0 active-count) (the-as uint s5-0))
         ;; interpolation value between the two level moods.
         (set! (-> arg0 interp) f28-0)
         )
-      
+
       ;; Do the interpolation
       (set! (-> arg0 current-interp) f30-0)
       (set! *sky-drawn* #f)
@@ -481,8 +481,8 @@
             (dotimes (s4-4 8)
               (dotimes (s3-2 3)
                 (let ((s2-1 (+ (+ (* 48 s3-2) 156 (* 192 s4-4)) (the-as int arg0))))
-                  (let ((s1-0 (+ (+ (* 48 s3-2) 156 (* 192 s4-4)) (the-as int (-> arg0 moods 0))) )
-                        (s0-0 (+ (+ (* 48 s3-2) 156 (* 192 s4-4)) (the-as int (-> arg0 moods 1))) )
+                  (let ((s1-0 (+ (+ (* 48 s3-2) 156 (* 192 s4-4)) (the-as int (-> arg0 moods 0))))
+                        (s0-0 (+ (+ (* 48 s3-2) 156 (* 192 s4-4)) (the-as int (-> arg0 moods 1))))
                         )
                     (vector4-lerp! (the-as vector (+ s2-1 0)) (the-as vector (+ s1-0 0)) (the-as vector (+ s0-0 0)) f30-0)
                     (vector4-lerp! (the-as vector (+ s2-1 16)) (the-as vector (+ s1-0 16)) (the-as vector (+ s0-0 16)) f30-0)
@@ -506,7 +506,7 @@
               )
             )
           )
-        
+
         ;; setup sky stuff
         (dotimes (s4-5 2)
           (make-sky-textures arg0 s4-5)
@@ -530,14 +530,13 @@
   (set! (-> arg0 current-sun env-color y) (* 0.5019608 (-> arg0 current-sun env-color y)))
   (set! (-> arg0 current-sun env-color z) (* 0.5019608 (-> arg0 current-sun env-color z)))
   (set! (-> arg0 current-sun env-color w) (* 0.5019608 (-> arg0 current-sun env-color w)))
-  
+
   (let ((v1-179 (-> arg0 current-fog)))
-    (set! *fog-color*
-          (new 'static 'rgba
-               :r (the int (-> v1-179 fog-color x))
-               :g (the int (-> v1-179 fog-color y))
-               :b (the int (-> v1-179 fog-color z))
-               )
+    (set! *fog-color* (new 'static 'rgba
+                        :r (the int (-> v1-179 fog-color x))
+                        :g (the int (-> v1-179 fog-color y))
+                        :b (the int (-> v1-179 fog-color z))
+                        )
           )
     )
   (let ((v1-184 (-> arg0 current-fog erase-color)))
@@ -554,73 +553,68 @@
   (set! (-> *math-camera* fog-end) (-> arg0 current-fog fog-dists y))
   (set! (-> *math-camera* fog-max) (-> arg0 current-fog fog-dists z))
   (set! (-> *math-camera* fog-min) (-> arg0 current-fog fog-dists w))
-  
+
   ;; interp target lights. (note: added check here.)
   (let* ((v1-195 (if *target* (-> *target* draw light-index) 0))
          (f30-1 (-> arg0 target-interp))
          (s4-6 (-> arg0 light-group))
          (s5-2 (-> arg0 light-group v1-195))
          )
-    
+    (when (nonzero? v1-195)
+      (cond
+        ((= f30-1 1.0)
+         )
+        ((= f30-1 0.0)
+         (quad-copy! (the-as pointer (-> arg0 light-group v1-195)) (the-as pointer (-> arg0 light-group)) 12)
+         )
+        (else
+          (dotimes (s3-4 4)
+            (vector4-lerp!
+              (the-as vector (+ (the-as uint (-> s5-2 dir0)) (* 48 s3-4)))
+              (the-as vector (+ (the-as uint (-> s4-6 0)) (* 48 s3-4)))
+              (the-as vector (+ (the-as uint (-> s5-2 dir0)) (* 48 s3-4)))
+              f30-1
+              )
+            (vector4-lerp!
+              (the-as vector (+ (the-as uint (-> s5-2 dir0 color)) (* 48 s3-4)))
+              (the-as vector (+ (the-as uint (-> s4-6 0 dir0 color)) (* 48 s3-4)))
+              (the-as vector (+ (the-as uint (-> s5-2 dir0 color)) (* 48 s3-4)))
+              f30-1
+              )
+            (vector4-lerp!
+              (the-as vector (+ (the-as uint (-> s5-2 dir0 levels)) (* 48 s3-4)))
+              (the-as vector (+ (the-as uint (-> s4-6 0 dir0 levels)) (* 48 s3-4)))
+              (the-as vector (+ (the-as uint (-> s5-2 dir0 levels)) (* 48 s3-4)))
+              f30-1
+              )
+            (vector-normalize! (the-as vector (+ (the-as uint (-> s5-2 dir0)) (* 48 s3-4))) 1.0)
+            )
+          )
+        )
 
-   (when (nonzero? v1-195)
-    (cond
-     ((= f30-1 1.0)
-      )
-     ((= f30-1 0.0)
-      (quad-copy! (the-as pointer (-> arg0 light-group v1-195)) (the-as pointer (-> arg0 light-group)) 12)
-      )
-     (else
-      (dotimes (s3-4 4)
-       (vector4-lerp!
-        (the-as vector (+ (the-as uint (-> s5-2 dir0)) (* 48 s3-4)))
-        (the-as vector (+ (the-as uint (-> s4-6 0)) (* 48 s3-4)))
-        (the-as vector (+ (the-as uint (-> s5-2 dir0)) (* 48 s3-4)))
-        f30-1
+      ;; some shadow thing.
+      (let ((a2-30 (new 'stack-no-clear 'vector)))
+        (set! (-> a2-30 x) (- (-> s5-2 dir0 direction x)))
+        (set! (-> a2-30 y) (- (-> s5-2 dir0 direction y)))
+        (set! (-> a2-30 z) (- (-> s5-2 dir0 direction z)))
+        (when (< (-> s5-2 dir0 direction y) 0.9063)
+          (let* ((f0-56 0.4226)
+                 (f1-17 (-> a2-30 x))
+                 (f1-19 (* f1-17 f1-17))
+                 (f2-7 (-> a2-30 z))
+                 (f0-57 (/ f0-56 (sqrtf (+ f1-19 (* f2-7 f2-7)))))
+                 )
+            (set! (-> a2-30 x) (* (-> a2-30 x) f0-57))
+            (set! (-> a2-30 y) -0.9063)
+            (set! (-> a2-30 z) (* (-> a2-30 z) f0-57))
+            )
+          )
+        (vector4-lerp! (-> arg0 current-shadow) (-> arg0 current-shadow) a2-30 f30-1)
         )
-       (vector4-lerp!
-        (the-as vector (+ (the-as uint (-> s5-2 dir0 color)) (* 48 s3-4)))
-        (the-as vector (+ (the-as uint (-> s4-6 0 dir0 color)) (* 48 s3-4)))
-        (the-as vector (+ (the-as uint (-> s5-2 dir0 color)) (* 48 s3-4)))
-        f30-1
-        )
-       (vector4-lerp!
-        (the-as vector (+ (the-as uint (-> s5-2 dir0 levels)) (* 48 s3-4)))
-        (the-as vector (+ (the-as uint (-> s4-6 0 dir0 levels)) (* 48 s3-4)))
-        (the-as vector (+ (the-as uint (-> s5-2 dir0 levels)) (* 48 s3-4)))
-        f30-1
-        )
-       (vector-normalize!
-        (the-as vector (+ (the-as uint (-> s5-2 dir0)) (* 48 s3-4)))
-        1.0
-        )
-       )
+      (vector-normalize! (-> arg0 current-shadow) 1.0)
       )
-     )
-    
-    ;; some shadow thing.
-    (let ((a2-30 (new 'stack-no-clear 'vector)))
-     (set! (-> a2-30 x) (- (-> s5-2 dir0 direction x)))
-     (set! (-> a2-30 y) (- (-> s5-2 dir0 direction y)))
-     (set! (-> a2-30 z) (- (-> s5-2 dir0 direction z)))
-     (when (< (-> s5-2 dir0 direction y) 0.9063)
-      (let* ((f0-56 0.4226)
-             (f1-17 (-> a2-30 x))
-             (f1-19 (* f1-17 f1-17))
-             (f2-7 (-> a2-30 z))
-             (f0-57 (/ f0-56 (sqrtf (+ f1-19 (* f2-7 f2-7)))))
-             )
-       (set! (-> a2-30 x) (* (-> a2-30 x) f0-57))
-       (set! (-> a2-30 y) -0.9063)
-       (set! (-> a2-30 z) (* (-> a2-30 z) f0-57))
-       )
-      )
-     (vector4-lerp! (-> arg0 current-shadow) (-> arg0 current-shadow) a2-30 f30-1)
-     )
-    (vector-normalize! (-> arg0 current-shadow) 1.0)
     )
-   )
-  
+
   (reset! *palette-fade-controls*)
   0
   (none)
