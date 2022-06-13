@@ -406,7 +406,7 @@
   )
 
 ;; definition for function sound-set-volume
-(defun sound-set-volume ((arg0 uint) (arg1 float))
+(defun sound-set-volume ((arg0 sound-group) (arg1 float))
   (let ((cmd (the-as sound-rpc-set-master-volume (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command set-master-volume))
     (set! (-> cmd group) arg0)
@@ -440,8 +440,8 @@
 
 ;; definition for function sound-play-by-name
 ;; Used lq/sq
-(defun sound-play-by-name ((name sound-name) (id sound-id) (vol int) (pitch int) (bend int) (group int) (trans symbol))
-  (local-vars (sv-16 int))
+(defun sound-play-by-name ((name sound-name) (id sound-id) (vol int) (pitch int) (bend int) (group sound-group) (trans symbol))
+  (local-vars (sv-16 sound-group))
   (with-pp
     (set! sv-16 group)
     (let ((sound-trans (the-as structure trans)))
@@ -451,7 +451,7 @@
           (set! (-> cmd id) id)
           (set! (-> cmd name) name)
           (set! (-> cmd parms mask) (sound-mask))
-          (set! (-> cmd parms group) (the-as uint sv-16))
+          (set! (-> cmd parms group) sv-16)
           (set! (-> cmd parms volume) vol)
           (set! (-> cmd parms pitch-mod) pitch)
           (set! (-> cmd parms bend) bend)
@@ -532,7 +532,7 @@
   )
 
 ;; definition for function sound-group-pause
-(defun sound-group-pause ((arg0 uint))
+(defun sound-group-pause ((arg0 sound-group))
   (let ((cmd (the-as sound-rpc-pause-group (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command pause-group))
     (set! (-> cmd group) arg0)
@@ -541,7 +541,7 @@
   )
 
 ;; definition for function sound-group-stop
-(defun sound-group-stop ((arg0 uint))
+(defun sound-group-stop ((arg0 sound-group))
   (let ((cmd (the-as sound-rpc-stop-group (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command stop-group))
     (set! (-> cmd group) arg0)
@@ -550,7 +550,7 @@
   )
 
 ;; definition for function sound-group-continue
-(defun sound-group-continue ((arg0 uint))
+(defun sound-group-continue ((arg0 sound-group))
   (let ((cmd (the-as sound-rpc-continue-group (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command continue-group))
     (set! (-> cmd group) arg0)
@@ -770,7 +770,7 @@
                                    (-> obj volume)
                                    (-> obj pitch)
                                    0
-                                   1
+                                   (sound-group sfx)
                                    (the-as symbol (-> obj trans))
                                    )
              )
@@ -784,7 +784,7 @@
                   (-> obj volume)
                   (-> obj pitch)
                   0
-                  1
+                  (sound-group sfx)
                   (the-as symbol (-> obj trans))
                   )
                 )

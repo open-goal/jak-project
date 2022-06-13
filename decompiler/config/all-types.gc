@@ -2970,6 +2970,19 @@
 
 ;; - Types
 
+(defenum sound-group
+  :bitfield #t
+  :type uint8
+  (sfx)
+  (music)
+  (dialog)
+  (sog3)
+  (ambient)
+  (sog5)
+  (sog6)
+  (sog7)
+  )
+
 (deftype sound-id (uint32)
   ()
   (:methods
@@ -3023,7 +3036,7 @@
    (priority  int8      :offset-assert 11)
    (volume    int32     :offset-assert 12)
    (trans     vector3w  :inline :offset-assert 16)
-   (group     uint8     :offset-assert 28)
+   (group     sound-group  :offset-assert 28)
    )
   :pack-me
   :method-count-assert 9
@@ -3048,7 +3061,7 @@
   )
 
 (deftype sound-rpc-group-cmd (sound-rpc-cmd)
-  ((group   uint8   :offset-assert 4)
+  ((group   sound-group   :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x5
@@ -3283,9 +3296,9 @@
 (deftype sound-spec (basic)
   ((mask            sound-mask :offset-assert 4)
    (num             float      :offset-assert 8)
-   (group           uint8      :offset-assert 12)
+   (group           sound-group :offset-assert 12)
+   (sound-name-char uint8 16   :offset 16)
    (sound-name      sound-name :score 20 :offset 16)
-   (sound-name-char uint8 16   :offset 16) ;; moved to after sound-name
    (trans           float 4    :offset-assert 32) ;; guess
    (volume          int32      :offset-assert 48)
    (pitch-mod       int32      :offset-assert 52)
@@ -16301,7 +16314,7 @@
 (define-extern effect-param->sound-spec (function sound-spec (pointer float) int sound-spec))
 (define-extern ear-trans (function vector))
 (define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id))
-(define-extern sound-play-by-name (function sound-name sound-id int int int int symbol sound-id))
+(define-extern sound-play-by-name (function sound-name sound-id int int int sound-group symbol sound-id))
 (define-extern sound-angle-convert (function float int))
 (define-extern sound-set-ear-trans (function vector vector float int))
 (define-extern activate-progress (function process progress-screen none))
@@ -16324,13 +16337,13 @@
 (define-extern swap-sound-buffers (function vector vector float int))
 (define-extern free-last-sound-buffer-entry (function int))
 (define-extern sound-basic-cb (function int (pointer int32) none))
-(define-extern sound-set-volume (function uint float int))
+(define-extern sound-set-volume (function sound-group float int))
 (define-extern sound-set-reverb (function int float float uint int))
 (define-extern sound-pause (function sound-id int))
 (define-extern sound-continue (function sound-id int))
-(define-extern sound-group-pause (function uint int))
-(define-extern sound-group-stop (function uint int))
-(define-extern sound-group-continue (function uint int))
+(define-extern sound-group-pause (function sound-group int))
+(define-extern sound-group-stop (function sound-group int))
+(define-extern sound-group-continue (function sound-group int))
 (define-extern sound-set-falloff-curve (function int float float int))
 (define-extern sound-set-sound-falloff (function sound-name int int int int))
 (define-extern sound-set-flava (function uint int))
@@ -18601,7 +18614,7 @@
 (define-extern update-mood-jungleb-blue (function mood-context float int none))
 (define-extern update-mood-prt-color (function mood-context vector))
 (define-extern update-mood-default (function mood-context float int none))
-(define-extern update-mood-misty (function mood-context float float none))
+(define-extern update-mood-misty (function mood-context float int none))
 (define-extern update-mood-village2 (function mood-context float int none))
 (define-extern update-mood-swamp (function mood-context float int none))
 (define-extern update-mood-village1 (function mood-context float int none))

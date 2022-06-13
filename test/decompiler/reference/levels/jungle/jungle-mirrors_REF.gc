@@ -776,7 +776,10 @@
                     (set! sv-32 0)
                     (set! sv-48 1)
                     (let ((t2-0 (target-pos 0)))
-                      (the-as int (s4-0 (the-as sound-name s3-0) s2-0 s1-0 s0-0 sv-32 sv-48 (the-as symbol t2-0)))
+                      (the-as
+                        int
+                        (s4-0 (the-as sound-name s3-0) s2-0 s1-0 s0-0 sv-32 (the-as sound-group sv-48) (the-as symbol t2-0))
+                        )
                       )
                     )
                   )
@@ -892,15 +895,7 @@
                      )
                 (when (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
                   (sound-stop (-> self sound-id))
-                  (sound-play-by-name
-                    (static-sound-name "beam-connect")
-                    (new-sound-id)
-                    1024
-                    0
-                    0
-                    1
-                    (the-as symbol (target-pos 0))
-                    )
+                  (sound-play "beam-connect" :position (the-as symbol (target-pos 0)))
                   )
                 (process-entity-status! self (entity-perm-status complete) #t)
                 (set! gp-0 #t)
@@ -1332,15 +1327,7 @@
 (defstate periscope-activate (periscope)
   :exit (behavior ()
     (sound-stop (-> self rise-sound-id))
-    (sound-play-by-name
-      (static-sound-name "eco-tower-stop")
-      (new-sound-id)
-      1024
-      0
-      0
-      1
-      (the-as symbol (-> self base))
-      )
+    (sound-play "eco-tower-stop" :position (the-as symbol (-> self base)))
     (none)
     )
   :trans periscope-debug-trans
@@ -1356,15 +1343,7 @@
       (set! (-> self turn) (+ 18204.445 (-> self target-turn)))
       )
     (until (and v1-13 (= (-> self turn) (-> self target-turn)) (= (-> self tilt) (-> self target-tilt)))
-      (sound-play-by-name
-        (static-sound-name "eco-tower-rise")
-        (-> self rise-sound-id)
-        1024
-        0
-        0
-        1
-        (the-as symbol (-> self base))
-        )
+      (sound-play "eco-tower-rise" :id (-> self rise-sound-id) :position (the-as symbol (-> self base)))
       (seek! (-> self y-offset) (-> self height) (* 16384.0 (-> *display* seconds-per-frame)))
       (seek! (-> self turn) (-> self target-turn) (* 7281.778 (-> *display* seconds-per-frame)))
       (seek! (-> self tilt) (-> self target-tilt) (* 7281.778 (-> *display* seconds-per-frame)))
@@ -1461,15 +1440,7 @@
         (if (nonzero? gp-0)
             (level-hint-spawn (game-text-id zero) (the-as string #f) (-> self entity) *entity-pool* (game-task none))
             )
-        (sound-play-by-name
-          (static-sound-name "site-moves")
-          (-> self grips-sound-id)
-          1024
-          0
-          0
-          1
-          (the-as symbol (-> self grips transform))
-          )
+        (sound-play "site-moves" :id (-> self grips-sound-id) :position (the-as symbol (-> self grips transform)))
         (seek! (-> self y-offset-grips) f30-0 (* 16384.0 (-> *display* seconds-per-frame)))
         (periscope-update-joints)
         (suspend)
@@ -1548,15 +1519,7 @@
     )
   :post (behavior ()
     (if (-> self grips-moving?)
-        (sound-play-by-name
-          (static-sound-name "site-moves")
-          (-> self grips-sound-id)
-          1024
-          0
-          0
-          1
-          (the-as symbol (-> self grips transform))
-          )
+        (sound-play "site-moves" :id (-> self grips-sound-id) :position (the-as symbol (-> self grips transform)))
         (sound-stop (-> self grips-sound-id))
         )
     (periscope-draw-beam-impact)
@@ -1802,15 +1765,7 @@
       (until (= (-> self y-offset-grips) f30-0)
         (seek! (-> self y-offset-grips) f30-0 (* 16384.0 (-> *display* seconds-per-frame)))
         (periscope-update-joints)
-        (sound-play-by-name
-          (static-sound-name "site-moves")
-          (-> self grips-sound-id)
-          1024
-          0
-          0
-          1
-          (the-as symbol (-> self grips transform))
-          )
+        (sound-play "site-moves" :id (-> self grips-sound-id) :position (the-as symbol (-> self grips transform)))
         (suspend)
         )
       )
@@ -1994,7 +1949,7 @@
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('attack)
-       (sound-play-by-name (static-sound-name "mirror-smash") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "mirror-smash")
        (go reflector-mirror-broken #f)
        )
       )

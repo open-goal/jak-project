@@ -3058,6 +3058,133 @@ void FunctionCallElement::update_from_stack(const Env& env,
     }
   }
 
+  // check for sound-play stuff
+  {
+    if (arg_forms.size() == 7 && unstacked.at(0)->to_form(env).is_symbol("sound-play-by-name")) {
+      auto ssn = arg_forms.at(0)->to_string(env);
+      static const std::string ssn_check = "(static-sound-name \"";
+      // idk what a good way to do this is :(
+      if (ssn.substr(0, ssn_check.size()) == ssn_check) {
+        // get sound name
+        auto sound_name = ssn.substr(ssn_check.size(), ssn.size() - ssn_check.size() - 2);
+
+        // get sound id
+        auto so_id_f = arg_forms.at(1);
+        if (so_id_f->to_string(env) == "(new-sound-id)") {
+          so_id_f = nullptr;
+        }
+
+        // get sound volume
+        bool panic = false;
+        auto so_vol_o = arg_forms.at(2)->to_form(env);
+        Form* so_vol_f = nullptr;
+        if (so_vol_o.is_int()) {
+          auto vol_as_flt_temp = fixed_point_to_float(so_vol_o.as_int(), 1024) * 100;
+          // fixed point convert is good but floating point accuracy sucks so we can do even better
+          // with a hardcoded case
+          for (int i = 0; i < 100; ++i) {
+            if (int(i * 1024.0f / 100.0f) == so_vol_o.as_int()) {
+              vol_as_flt_temp = i;
+              break;
+            }
+          }
+          // make the number now...
+          if (int(vol_as_flt_temp * 1024.0f / 100.0f) == so_vol_o.as_int()) {
+            if (so_vol_o.as_int() != 1024) {
+              so_vol_f = pool.form<ConstantTokenElement>(float_to_string(vol_as_flt_temp, false));
+            }
+          }
+        } else {
+          auto mr_vol = match(
+              Matcher::cast("int", Matcher::op_fixed(FixedOperatorKind::MULTIPLICATION,
+                                                     {Matcher::single(10.24f), Matcher::any(0)})),
+              arg_forms.at(2));
+          if (mr_vol.matched) {
+            so_vol_f = mr_vol.maps.forms.at(0);
+          } else {
+            // AAAHHHH i dont know how to handle this volume thing!
+            panic = true;
+          }
+        }
+
+        // get sound pitch mod
+        auto so_pitch_o = arg_forms.at(3)->to_form(env);
+        Form* so_pitch_f = nullptr;
+        if (so_pitch_o.is_int()) {
+          if (so_pitch_o.as_int() != 0) {
+            so_pitch_f =
+                pool.form<ConstantTokenElement>(fixed_point_to_string(so_pitch_o.as_int(), 1524));
+          }
+        } else {
+          auto mr_pitch = match(
+              Matcher::cast("int", Matcher::op_fixed(FixedOperatorKind::MULTIPLICATION,
+                                                     {Matcher::single(1524), Matcher::any(0)})),
+              arg_forms.at(3));
+          if (mr_pitch.matched) {
+            so_pitch_f = mr_pitch.maps.forms.at(0);
+          } else {
+            panic = true;
+          }
+        }
+
+        // rest
+        if (!panic) {
+          auto so_bend = arg_forms.at(4);
+          if (so_bend->to_form(env).is_int(0)) {
+            so_bend = nullptr;
+          }
+          auto elt_group = arg_forms.at(5)->try_as_element<GenericElement>();
+          if (elt_group && elt_group->op().is_func() &&
+              elt_group->op().func()->to_form(env).is_symbol("sound-group") &&
+              elt_group->elts().size() == 1) {
+            Form* so_group_f = nullptr;
+            if (!elt_group->elts().at(0)->to_form(env).is_symbol("sfx")) {
+              so_group_f = pool.form<ConstantTokenElement>(
+                  elt_group->elts().at(0)->to_form(env).as_symbol()->name);
+            }
+            auto so_positional_f = arg_forms.at(6);
+            if (so_positional_f->to_form(env).is_symbol("#t")) {
+              so_positional_f = nullptr;
+            }
+            // now make the macro call!
+            std::vector<Form*> macro_args;
+            macro_args.push_back(pool.form<StringConstantElement>(sound_name));
+            if (so_id_f) {
+              macro_args.push_back(pool.form<ConstantTokenElement>(":id"));
+              macro_args.push_back(so_id_f);
+            }
+            if (so_vol_f) {
+              macro_args.push_back(pool.form<ConstantTokenElement>(":vol"));
+              macro_args.push_back(so_vol_f);
+            }
+            if (so_pitch_f) {
+              macro_args.push_back(pool.form<ConstantTokenElement>(":pitch"));
+              macro_args.push_back(so_pitch_f);
+            }
+            if (so_bend) {
+              macro_args.push_back(pool.form<ConstantTokenElement>(":bend"));
+              macro_args.push_back(so_bend);
+            }
+            if (so_group_f) {
+              macro_args.push_back(pool.form<ConstantTokenElement>(":group"));
+              macro_args.push_back(so_group_f);
+            }
+            if (so_positional_f) {
+              macro_args.push_back(pool.form<ConstantTokenElement>(":position"));
+              macro_args.push_back(so_positional_f);
+            }
+
+            new_form = pool.alloc_element<GenericElement>(
+                GenericOperator::make_function(pool.form<ConstantTokenElement>("sound-play")),
+                macro_args);
+            result->push_back(new_form);
+            return;
+          }
+        }
+      }
+    }
+  }
+
   new_form = pool.alloc_element<GenericElement>(GenericOperator::make_function(unstacked.at(0)),
                                                 arg_forms);
 

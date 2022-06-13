@@ -301,7 +301,7 @@
     )
   )
 
-(defun sound-set-volume ((group uint) (volume float))
+(defun sound-set-volume ((group sound-group) (volume float))
 
   (let ((cmd (the sound-rpc-set-master-volume (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-master-volume))
@@ -351,10 +351,17 @@
     )
   )
 
-(defun sound-play-by-name ((name sound-name) (id sound-id) (vol int) (pitch int) (bend int) (group int) (trans symbol))
+(defmacro sound-play (name &key (id (new-sound-id))
+                           &key (vol 100.0) &key (pitch 0) &key (bend 0)
+                           &key (group sfx)
+                           &key (position #t))
+  `(sound-play-by-name (static-sound-name ,name) ,id (the int (* (/ 1024.0 100.0) ,vol)) (the int (* 1524.0 ,pitch)) ,bend (sound-group ,group) ,position)
+  )
+
+(defun sound-play-by-name ((name sound-name) (id sound-id) (vol int) (pitch int) (bend int) (group sound-group) (trans symbol))
   "Play a sound called name with the specified params"
 
-  (local-vars (sv-16 int))
+  (local-vars (sv-16 sound-group))
   (set! sv-16 group)
   (let ((sound-trans (the-as vector trans)))
     (when *sound-player-enable*
@@ -364,7 +371,7 @@
         (set! (-> cmd id) id)
         (set! (-> cmd name) name)
         (set! (-> cmd parms mask) (sound-mask))
-        (set! (-> cmd parms group) (the-as uint sv-16))
+        (set! (-> cmd parms group) sv-16)
         (set! (-> cmd parms volume) vol)
         (set! (-> cmd parms pitch-mod) pitch)
         (set! (-> cmd parms bend) bend)
@@ -428,7 +435,7 @@
   0
   )
 
-(defun sound-group-pause ((group uint))
+(defun sound-group-pause ((group sound-group))
 
   (let ((cmd (the sound-rpc-pause-group (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command pause-group))
@@ -437,7 +444,7 @@
   0
   )
 
-(defun sound-group-stop ((group uint))
+(defun sound-group-stop ((group sound-group))
 
   (let ((cmd (the sound-rpc-stop-group (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command stop-group))
@@ -446,7 +453,7 @@
   0
   )
 
-(defun sound-group-continue ((group uint))
+(defun sound-group-continue ((group sound-group))
 
   (let ((cmd (the sound-rpc-continue-group (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command continue-group))
@@ -654,7 +661,7 @@
                                    (-> obj volume)
                                    (-> obj pitch)
                                    0
-                                   1
+                                   (sound-group sfx)
                                    (the-as symbol (-> obj trans))))
         )
        (else
@@ -665,7 +672,7 @@
                                      (-> obj volume)
                                      (-> obj pitch)
                                      0
-                                     1
+                                     (sound-group sfx)
                                      (the-as symbol (-> obj trans))))
           (set! (-> obj play-time) (+ (-> *display* base-frame-counter)
                                       (-> obj time-base)
