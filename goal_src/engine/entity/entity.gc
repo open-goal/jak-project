@@ -1650,8 +1650,12 @@
       )
     )
   (when (not (paused?))
-    (let ((s5-1 (-> *display* frames (-> *display* last-screen) frame run-time)))
-      (let ((f0-5 (fmax 327680.0 (fmin (+ 327680.0 (* 204.8 (the float (- 7000 s5-1)))) (-> *ACTOR-bank* birth-dist)))))
+    ;; NOTE : get rid of lag compensation in PC port, it's not helpful
+    (let ((s5-1 (#if PC_PORT
+                     0
+                     (-> *display* frames (-> *display* last-screen) frame run-time)
+                     )))
+      (let ((f0-5 (fmax (meters 80) (fmin (+ (meters 80) (* (meters 0.05) (the float (- 7000 s5-1)))) (-> *ACTOR-bank* birth-dist)))))
         (seek! (-> *ACTOR-bank* pause-dist) f0-5 (* 81920.0 (-> *display* seconds-per-frame)))
         )
       (seekl! (-> *ACTOR-bank* birth-max) (the int (lerp-scale 25.0 1.0 (the float s5-1) 2000.0 7000.0)) 10)
