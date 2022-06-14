@@ -36,13 +36,18 @@
    (battle-max   int32)
    (battle-alive int32)
    (battle-mode  symbol)
+   (task-entity   entity)
+   (task2-entity  entity)
+   (task2-time    time-frame)
    
+   (last-level  symbol)
    (has-icons   symbol)
    (kicked  symbol)
    )
   (:methods
     (make-enemy-icon (_type_ int symbol) int)
     (kill-enemy-icons (_type_) int)
+    (update-display-status (_type_ symbol int symbol) int)
     )
   )
 
@@ -183,28 +188,96 @@
 
   0)
 
+(defmethod update-display-status hud-battle-enemy ((obj hud-battle-enemy) (skel symbol) (icon-idx int) (trigger-force symbol))
+  "logic for displaying or hiding the hud, and drawing the icons."
+  
+
+  ;; do stuff depending on our current state
+  (cond
+    ((hidden? obj)
+     ;; we're hidden, so let's make our new icons and see if we are allowed to show
+     ;; if we have icons, show!
+     (when (-> obj has-icons)
+       (set! (-> obj kicked) #f)
+       (send-event obj 'show)
+       )
+     ;; no icons, make new ones but keep them hidden for now
+     (when (and (not (-> obj has-icons)) skel (not *progress-process*))
+       (kill-enemy-icons obj)
+       (case skel
+         (('*swamp-rat-sg* '*citb-bunny-sg*)
+          (set! (-> obj icons icon-idx scale-x) 0.006)
+          )
+         (else
+          (set! (-> obj icons icon-idx scale-x) 0.004)
+          )
+         )
+       (set! (-> obj icons icon-idx scale-y) (* (-> obj icons icon-idx scale-x) (/ -512.0 448.0)))
+       (make-enemy-icon obj icon-idx skel)
+       (let ((icon0 (ppointer->process (-> obj icons icon-idx icon))))
+         (case skel
+           (('*babak-sg*)
+            (send-event icon0 'art-joint-anim "babak-idle" 0)
+            (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
+            )
+           (('*citb-bunny-sg*)
+            (send-event icon0 'art-joint-anim "citb-bunny-idle" 0)
+            (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
+            )
+           (('*bonelurker-sg*)
+            (send-event icon0 'art-joint-anim "bonelurker-idle" 0)
+            (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
+            )
+           (('*swamp-rat-sg*)
+            (send-event icon0 'art-joint-anim "swamp-rat-celebrate" 0)
+            (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
+            )
+           )
+         (send-event icon0 'draw #f)
+         )
+       )
+     )
+    (else
+     ;; we want to be shown!
+     
+     ;; progress is open, let's leave.
+     (when (and (not (-> obj kicked)) (= *master-mode* 'progress))
+         (true! (-> obj kicked))
+         (kill-enemy-icons obj)
+         (send-event obj 'hide-quick)
+         )
+     
+     ;; set the trigger time so we don't automatically go away
+     (if (and trigger-force (!= (-> obj next-state name) 'hud-leaving))
+         (set! (-> obj trigger-time) (current-time)))
+     )
+    )
+  0)
+
 
 (defmethod hud-update hud-battle-enemy ((obj hud-battle-enemy))
+  "hud logic."
 
   (when (not (-> *pc-settings* extra-hud?))
       (kill-enemy-icons obj)
       (return #f))
 
-  (let ((battle (the battlecontroller #f)))
+  (let ((battle (the process #f))
+        (cur-lev (level-get-target-inside *level*)))
       ;; default params
       (set! (-> obj battle-entity) #f)
-      (set! (-> obj battle-mode) 'dead)
+      (set! (-> obj battle-mode) 'remain)
       
       ;; find an entity for a battlecontroller, check current level
-      (awhen (level-get-target-inside *level*)
-        (case (-> it name)
+      (when cur-lev
+        (case (-> cur-lev name)
           (('swamp)
             (set! (-> obj battle-entity) (entity-by-name "swamp-battlecontroller-1"))
-            (set! (-> obj want-skel) '*babak-sg*)
+            (set! (-> obj want-skel) '*swamp-rat-sg*)
             )
           (('misty)
             (set! (-> obj battle-entity) (entity-by-name "misty-battlecontroller-1"))
-            (set! (-> obj want-skel) '*babak-sg*)
+            (set! (-> obj want-skel) '*bonelurker-sg*)
             )
           (('citadel)
             (set! (-> obj battle-entity) (entity-by-name "citb-battlecontroller-1"))
@@ -216,81 +289,55 @@
       
       ;; have an entity, grab its process
       (if (-> obj battle-entity)
-          (set! battle (the battlecontroller (-> obj battle-entity extra process))))
+          (set! battle (-> obj battle-entity extra process)))
       
       (cond
         ;; check if we have a battle process
-        (battle
-          ;; if its a different process, panic and restart the whole sequence. it's OK
-          (when (!= (handle->process (-> obj last-battle)) battle)
-              (set! (-> obj last-battle) (process->handle battle))
-              (kill-enemy-icons obj)
-              (send-event obj 'hide-quick)
-              )
-          
-          ;; wait until battle is active
-          (when (= 'battlecontroller-active (-> battle next-state name))
-            ;; get battle stats
-            (let ((alive-count 0))
-              (with-children (child battle)
-                  (1+! alive-count))
-              (set! (-> obj value) (- (-> battle spawn-count) alive-count))
-              (set! (-> obj battle-max) (-> battle max-spawn-count))
-              (set! (-> obj battle-alive) alive-count)
-              )
-            
-            ;; do stuff depending on our current state
-            (case (-> obj next-state name)
-              (('hud-hidden)
-               ;; we're hidden, so let's make our new icons and see if we are allowed to show
-               ;; if we have icons, show!
-               (when (-> obj has-icons)
-                 (set! (-> obj kicked) #f)
-                 (send-event obj 'show)
-                 )
-               ;; no icons, make new ones but keep them hidden for now
-               (when (and (not (-> obj has-icons)) (-> obj want-skel) (not *progress-process*))
-                 (make-enemy-icon obj 0 (-> obj want-skel))
-                 (let ((icon0 (ppointer->process (-> obj icons 0 icon))))
-                   (case (-> obj want-skel)
-                     (('*babak-sg*)
-                      (send-event icon0 'art-joint-anim "babak-idle" (seconds 0.05))
-                      (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
-                      )
-                     (('*citb-bunny-sg*)
-                      (send-event icon0 'art-joint-anim "citb-bunny-idle" (seconds 0.05))
-                      (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
-                      )
-                     )
-                   (send-event icon0 'draw #f)
-                   )
-                 )
-               )
-              (else
-               ;; we want to be shown!
-               
-               ;; progress is open, let's leave.
-               (when (and (not (-> obj kicked)) (= *master-mode* 'progress))
-                   (true! (-> obj kicked))
-                   (kill-enemy-icons obj)
-                   (send-event obj 'hide-quick)
-                   )
-               
-               ;; set the trigger time so we don't automatically go away
-               (set! (-> obj trigger-time) (current-time))
-               )
-              )
-            )
-          )
-        (else
-          ;; no battle. kill everything we have.
-          (when (-> obj has-icons)
+        ((or (not cur-lev) (!= (-> cur-lev name) (-> obj last-level))
+             (and (not (-> obj battle-entity))))
+          ;; no entity, no level or different level. kill everything we have.
+          (when (and (not (-> obj battle-entity)) (-> obj has-icons))
             (kill-enemy-icons obj)
             (set! (-> obj last-battle) INVALID_HANDLE)
             (send-event obj 'hide-quick)
             )
           )
+        (battle
+          ;; if its a different process, panic and restart the whole sequence. it's OK
+          (when (!= (handle->process (-> obj last-battle)) battle)
+              (set! (-> obj last-battle) (process->handle battle))
+              (false! (-> obj has-icons))
+              ;(kill-enemy-icons obj)
+              (send-event obj 'hide)
+              )
+          
+          ;; logic for each kind of process.
+          (cond
+            ((type-type? (-> battle type) battlecontroller)
+             (let ((battle (the battlecontroller battle))
+                      )
+              ;; wait until battle is active
+              (when (= 'battlecontroller-active (-> battle next-state name))
+                ;; get battle stats
+                (let ((alive-count 0))
+                  (with-children (child battle)
+                      (1+! alive-count))
+                  (set! (-> obj value) (- (-> battle spawn-count) alive-count))
+                  (set! (-> obj battle-max) (-> battle max-spawn-count))
+                  (set! (-> obj battle-alive) alive-count)
+                  )
+                
+                (update-display-status obj (-> obj want-skel) 0 #t)
+                )
+              ))
+            )
+          )
         )
+      
+      ;; save the current level
+      (if cur-lev
+          (set! (-> obj last-level) (-> cur-lev name))
+          (set! (-> obj last-level) #f))
       )
   0
   (none)
@@ -312,11 +359,15 @@
         (case (-> obj battle-mode)
           (('dead)
            (draw-string-xy (string-format "~D/~D" (-> obj value) (-> obj battle-max))
-                           buf str-x str-y (font-color white) (font-flags shadow kerning large))
+                           buf str-x str-y (font-color white) (font-flags shadow kerning large middle))
            )
           (('alive)
            (draw-string-xy (string-format "~D" (-> obj battle-alive))
-                           buf str-x str-y (font-color white) (font-flags shadow kerning large))
+                           buf str-x str-y (font-color white) (font-flags shadow kerning large middle))
+           )
+          (('remain)
+           (draw-string-xy (string-format "~D" (- (-> obj battle-max) (-> obj value)))
+                           buf str-x str-y (font-color white) (font-flags shadow kerning large middle))
            )
           )
         )
@@ -328,9 +379,9 @@
 
 (defmethod init-particles! hud-battle-enemy ((obj hud-battle-enemy) (arg0 int))
   (hud-pc-make-icon obj HUD_ICON_COUNT :skel *fuelcell-naked-sg*
-                                       :x (the int (* 0.84 512)) :y (the int (* 0.52 448)) :z (meters 0.5)
+                                       :x (the int (* 0.84 512)) :y (the int (* 0.51 448)) :z (meters 0.5)
                                        :scale-x 0.004 :scale-y (* -0.004 (/ 512.0 448.0)))
-  (set! (-> obj text-x) (the int (* 0.78 512)))
+  (set! (-> obj text-x) (the int (* 0.84 512)))
   (set! (-> obj text-y) (the int (* 0.5 448)))
   (set! (-> obj x-sgn) 1)
   (set! (-> obj y-sgn) 0)
@@ -341,6 +392,7 @@
   (set! (-> obj want-skel) #f)
   (set! (-> obj battle-max) 0)
   
+  (set! (-> obj last-level) #f)
   (set! (-> obj kicked) #f)
   (set! (-> obj has-icons) #f)
   0

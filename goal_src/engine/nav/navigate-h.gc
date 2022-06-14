@@ -291,74 +291,65 @@
     )
   )
 
-(defun nav-mesh-connect ((proc process) (trans trsqv) (nav-cont nav-control))
-  (with-pp
-    ;; try to find an entity with a nav-mesh, first from the given process
-    (let ((ent (-> proc entity)))
-      (when (zero? (-> (the-as entity-actor ent) nav-mesh))
-        ;; and if that doesn't have one already, lookup from the res-lump
-        (let ((lookup-entity (entity-actor-lookup (the-as res-lump ent) 'nav-mesh-actor 0)))
-          (if lookup-entity
-              (set! ent lookup-entity)
-              )
-          )
+(defbehavior nav-mesh-connect process ((proc process) (trans trsqv) (nav-cont nav-control))
+  ;; try to find an entity with a nav-mesh, first from the given process
+  (let ((ent (-> proc entity)))
+    (when (zero? (-> ent nav-mesh))
+      ;; and if that doesn't have one already, lookup from the res-lump
+      (let ((lookup-entity (entity-actor-lookup ent 'nav-mesh-actor 0)))
+        (if lookup-entity
+            (set! ent lookup-entity)
+            )
         )
+      )
 
-      ;; now, look at the nav-mesh from the entity
-      (let ((entity-nav-mesh (-> (the-as entity-actor ent) nav-mesh)))
-        (cond
-          ((nonzero? entity-nav-mesh)
-           ;; we have a nav mesh mesh already
-           (when (zero? (-> entity-nav-mesh user-list))
-             ;; but, no engine, maybe because this is the first time we're doing this for the level.
+    ;; now, look at the nav-mesh from the entity
+    (let ((entity-nav-mesh (-> ent nav-mesh)))
+      (cond
+        ((nonzero? entity-nav-mesh)
+         ;; we have a nav mesh mesh already
+         (when (zero? (-> entity-nav-mesh user-list))
+           ;; but, no engine, maybe because this is the first time we're doing this for the level.
 
-             ;; this seems like a bit of a hack. We'd like to allocate the engine on a level heap.
-             ;; but I guess we can't assume that process-level-heap is set correctly here.
-             ;; so we grab the entity-links from the current pp's entity, and look at that level.
-             ;; I'm not sure why we do this on the current pp instead of the proc we were given...
-             (set! process-level-heap
-                   (-> (the-as entity-links (-> (the-as entity (-> pp entity)) extra)) level heap)
-                   )
+           ;; this seems like a bit of a hack. We'd like to allocate the engine on a level heap.
+           ;; but I guess we can't assume that process-level-heap is set correctly here.
+           ;; so we grab the entity-links from the current pp's entity, and look at that level.
+           ;; I'm not sure why we do this on the current pp instead of the proc we were given...
+           (set! process-level-heap (-> self entity extra level heap))
 
-             ;; now construct the engine, looking up the size from the res-lump.
-             (set! (-> entity-nav-mesh user-list)
-                   (new 'process-level-heap 'engine 'nav-engine
-                        (res-lump-value ent 'nav-max-users int :default (the-as uint128 32))
-                        )
-                   )
+           ;; now construct the engine, looking up the size from the res-lump.
+           (set! (-> entity-nav-mesh user-list)
+                 (new 'process-level-heap 'engine 'nav-engine
+                      (res-lump-value ent 'nav-max-users int :default (the-as uint128 32))
+                      )
+                 )
 
-             ;; do some setup
-             (initialize-mesh! entity-nav-mesh)
-             (update-route-table entity-nav-mesh)
+           ;; do some setup
+           (initialize-mesh! entity-nav-mesh)
+           (update-route-table entity-nav-mesh)
+           )
+
+         ;; in all cases, do the connection
+         ;; connect the nav-mesh engine:
+         (add-connection (-> entity-nav-mesh user-list)
+                         proc ;; to the given process
+                         nothing ;; no function
+                         ;; and some weird parameters.
+                         proc
+                         nav-cont
+                         trans
+                         )
+         )
+        (else
+         ;; we couldn't find a nav-mesh.  Set a bit.
+         (if (and nav-cont (-> proc entity))
+             (logior! (-> proc entity extra perm status) (entity-perm-status bit-1))
              )
-
-           ;; in all cases, do the connection
-           ;; connect the nav-mesh engine:
-           (add-connection (-> entity-nav-mesh user-list)
-                           proc ;; to the given process
-                           nothing ;; no function
-                           ;; and some weird parameters.
-                           proc
-                           nav-cont
-                           trans
-                           )
-           )
-          (else
-           ;; we couldn't find a nav-mesh.  Set a bit.
-           (if (and nav-cont (-> proc entity))
-               (logior! (-> (the-as entity-links (-> (the-as entity (-> proc entity)) extra))
-                            perm
-                            status
-                            )
-                        (entity-perm-status bit-1)
-                        )
-               )
-           ;; no nav-mesh, so give us a default-nav-mesh.
-           (set! entity-nav-mesh *default-nav-mesh*)
-           )
-          )
-        entity-nav-mesh
+         ;; no nav-mesh, so give us a default-nav-mesh.
+         (set! entity-nav-mesh *default-nav-mesh*)
+         )
         )
+      entity-nav-mesh
       )
     )
   )
