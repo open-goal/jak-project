@@ -45,14 +45,14 @@
    (task2-track   int32)
 
    (last-level  symbol)
-   (has-icons   symbol)
    (ready?  symbol)
    (kicked  symbol)
    (display-mode?  symbol)
    )
   (:methods
     (make-enemy-icon (_type_ int symbol entity) int)
-    (kill-enemy-icons (_type_) int)
+    (kill-icon (_type_ int) int)
+    (kill-all-icons (_type_) int)
     (update-display-status (_type_ symbol entity int symbol) int)
     )
   )
@@ -96,10 +96,7 @@
   `(when (< (-> ,obj nb-of-icons) ,max)
     (let ((icon-idx (-> ,obj nb-of-icons)))
       (set! (-> ,obj icons icon-idx) (new 'static 'hud-icon))
-      (let ((new-manipy (manipy-spawn (new 'static 'vector :w 1.0) ,entity ,skel #f
-                          :to ,obj
-                          :stack *scratch-memory-top*
-                          )))
+      (let ((new-manipy (manipy-spawn (new 'static 'vector :w 1.0) ,entity ,skel #f :to ,obj)))
         (when new-manipy
           (set! (-> (-> new-manipy) draw dma-add-func) dma-add-process-drawable-hud)
           (set-vector! (-> (-> new-manipy) root trans) 0.0 0.0 0.0 1.0)
@@ -129,10 +126,7 @@
                                        &key z
                                        &key (entity #f)
                                        )
-  `(let ((new-manipy (manipy-spawn (new 'static 'vector :w 1.0) ,entity ,skel #f
-                        :to ,obj
-                        :stack *scratch-memory-top*
-                        )))
+  `(let ((new-manipy (manipy-spawn (new 'static 'vector :w 1.0) ,entity ,skel #f :to ,obj)))
       (when new-manipy
         (set! (-> (-> new-manipy) draw dma-add-func) dma-add-process-drawable-hud)
         (set-vector! (-> (-> new-manipy) root trans) 0.0 0.0 0.0 1.0)
@@ -168,19 +162,20 @@
   )
 
 
-(defmethod kill-enemy-icons hud-battle-enemy ((obj hud-battle-enemy))
+(defmethod kill-icon hud-battle-enemy ((obj hud-battle-enemy) (idx int))
+  "kill a hud icon"
+
+  (when (and (nonzero? (-> obj icons idx)) (nonzero? (-> obj icons idx icon)) (-> obj icons idx icon))
+      (deactivate (ppointer->process (-> obj icons idx icon)))
+      (set! (-> obj icons idx icon) #f)
+      )
+  0)
+
+(defmethod kill-all-icons hud-battle-enemy ((obj hud-battle-enemy))
   "kill all hud icons"
 
-  (when (-> obj has-icons)
-    (dotimes (i (-> obj nb-of-icons))
-      (when (and (nonzero? (-> obj icons i)) (nonzero? (-> obj icons i icon)) (-> obj icons i icon))
-          (deactivate (ppointer->process (-> obj icons i icon)))
-          (set! (-> obj icons i icon) #f)
-          (hud-pc-replace-icon obj i :skel *fuelcell-naked-sg* :z (meters 0.5))
-          )
-      )
-
-    (false! (-> obj has-icons))
+  (dotimes (i (-> obj nb-of-icons))
+    (kill-icon obj i)
     )
   0)
 
@@ -188,9 +183,8 @@
   "make a new icon for the hud"
 
   ;; make new manipy
+  (kill-icon obj 0)
   (hud-pc-replace-icon obj 0 :skel (-> skel-sym value) :entity enemy-ent :z (meters 0.5))
-
-  (true! (-> obj has-icons))
 
   0)
 
@@ -222,6 +216,11 @@
           (set! (-> obj icons icon-idx icon-y) (the int (* 0.54 448)))
           (set! (-> obj icons icon-idx scale-x) 0.003)
           )
+         (('*flying-lurker-sg*)
+          (set! (-> obj icons icon-idx icon-x) (the int (* 0.80 512)))
+          (set! (-> obj icons icon-idx icon-y) (the int (* 0.40 448)))
+          (set! (-> obj icons icon-idx scale-x) 0.003)
+          )
          (else
           (set! (-> obj icons icon-idx icon-x) (the int (* 0.84 512)))
           (set! (-> obj icons icon-idx icon-y) (the int (* 0.51 448)))
@@ -250,6 +249,10 @@
             )
            (('*gnawer-sg*)
             (send-event icon0 'art-joint-anim "gnawer-idle" 0)
+            (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
+            )
+           (('*flying-lurker-sg*)
+            (send-event icon0 'art-joint-anim "flying-lurker-fly" 0)
             (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
             )
            )
@@ -292,11 +295,11 @@
   "hud logic."
 
   (when (not (-> *pc-settings* extra-hud?))
-      (kill-enemy-icons obj)
+      (kill-all-icons obj)
       (return #f))
 
   (when (and (not (-> obj ready?)) (hidden? obj))
-      (kill-enemy-icons obj)
+      (kill-all-icons obj)
       )
 
   (let ((battle (the process #f))
@@ -337,6 +340,13 @@
           (true! actor-list-task?)
           (set! (-> obj want-skel) '*gnawer-sg*)
           )
+        (('ogre)
+          (when (= 'debug *cheat-mode*)
+            (set! (-> obj battle-entity) (actor-by-name "flying-lurker-1"))
+            (set! (-> obj want-skel) '*flying-lurker-sg*)
+            (set! (-> obj battle-mode) 'alive)
+            )
+          )
         )
 
       ;; have an entity, grab its process
@@ -351,7 +361,7 @@
             (set! (-> obj last-battle) INVALID_HANDLE)
             (set! (-> obj last-task) #f)
             (false! (-> obj ready?))
-            (kill-enemy-icons obj)
+            (kill-all-icons obj)
             (go hud-hidden)
             )
           )
@@ -430,6 +440,14 @@
                 (update-display-status obj (-> obj want-skel) (-> obj battle-entity) 0 #t)
                 )
               ))
+            ((and (= 'debug *cheat-mode*) (= (-> obj battle-entity) (actor-by-name "flying-lurker-1")))
+              (let ((battle (the process-drawable battle)))
+                
+                (if *target*
+                    (set! (-> obj battle-alive) (the int (/ (vector-vector-distance (-> battle root trans) (target-pos 0)) METER_LENGTH))))
+                
+                (update-display-status obj (-> obj want-skel) (-> obj battle-entity) 0 #t)
+              ))
             )
           )
         (else
@@ -443,7 +461,7 @@
                 (send-event obj 'hide)
                 )
               (else
-                (kill-enemy-icons obj)
+                (kill-all-icons obj)
                 (go hud-hidden)
                 )
               )
@@ -510,7 +528,6 @@
 
   (set! (-> obj last-level) #f)
   (set! (-> obj kicked) #f)
-  (set! (-> obj has-icons) #f)
   (set! (-> obj ready?) #f)
   0
   (none)
