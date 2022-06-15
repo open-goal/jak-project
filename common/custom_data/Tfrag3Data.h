@@ -53,7 +53,7 @@ enum MemoryUsageCategory {
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 19;
+constexpr int TFRAG3_VERSION = 20;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -144,12 +144,14 @@ struct StripDraw {
     u32 idx_of_first_idx_in_full_buffer = 0;
   } unpacked;
 
+  // indices can be specified as lists of runs and plain indices.
+  // the runs are still drawn with indexed opengl calls, it just uses less space in the file.
   struct VertexRun {
     u32 vertex0;
     u16 length;
   };
-
   std::vector<VertexRun> runs;
+  std::vector<u32> plain_indices;
 
   // to do culling, the above vertex stream is grouped.
   // by following the visgroups and checking the visibility, you can leave out invisible vertices.
@@ -260,6 +262,7 @@ struct TfragTree {
   PackedTfragVertices packed_vertices;
   std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)
   BVH bvh;                             // the bvh for frustum culling
+  bool use_strips = true;
 
   struct {
     std::vector<PreloadedVertex> vertices;  // mesh vertices
@@ -396,5 +399,7 @@ struct Level {
 
   std::array<int, MemoryUsageCategory::NUM_CATEGORIES> get_memory_usage() const;
 };
+
+void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size);
 
 }  // namespace tfrag3

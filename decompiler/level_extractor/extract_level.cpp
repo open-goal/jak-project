@@ -53,51 +53,6 @@ bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
   return true;
 }
 
-void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
-  int total_accounted = 0;
-  auto memory_use_by_category = lev.get_memory_usage();
-
-  std::vector<std::pair<std::string, int>> known_categories = {
-      {"texture", memory_use_by_category[tfrag3::MemoryUsageCategory::TEXTURE]},
-      {"tie-deinst-vis", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_DEINST_VIS]},
-      {"tie-deinst-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_DEINST_INDEX]},
-      {"tie-inst-vis", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_INST_VIS]},
-      {"tie-inst-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_INST_INDEX]},
-      {"tie-bvh", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_BVH]},
-      {"tie-verts", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_VERTS]},
-      {"tie-colors", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_TIME_OF_DAY]},
-      {"tie-wind-inst-info",
-       memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_WIND_INSTANCE_INFO]},
-      {"tie-cidx", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_CIDX]},
-      {"tie-mats", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_MATRICES]},
-      {"tie-grps", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_GRPS]},
-      {"tfrag-vis", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_VIS]},
-      {"tfrag-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_INDEX]},
-      {"tfrag-vert", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_VERTS]},
-      {"tfrag-colors", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_TIME_OF_DAY]},
-      {"tfrag-cluster", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_CLUSTER]},
-      {"tfrag-bvh", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_BVH]},
-      {"shrub-colors", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_TIME_OF_DAY]},
-      {"shrub-vert", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_VERT]},
-      {"shrub-ind", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_IND]},
-      {"collision", memory_use_by_category[tfrag3::MemoryUsageCategory::COLLISION]},
-      {"merc-vert", memory_use_by_category[tfrag3::MemoryUsageCategory::MERC_VERT]},
-      {"merc-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::MERC_INDEX]}};
-  for (auto& known : known_categories) {
-    total_accounted += known.second;
-  }
-
-  known_categories.push_back({"unknown", uncompressed_data_size - total_accounted});
-
-  std::sort(known_categories.begin(), known_categories.end(),
-            [](const auto& a, const auto& b) { return a.second > b.second; });
-
-  for (const auto& x : known_categories) {
-    fmt::print("{:30s} : {:6d} kB {:3.1f}%\n", x.first, x.second / 1024,
-               100.f * (float)x.second / uncompressed_data_size);
-  }
-}
-
 void add_all_textures_from_level(tfrag3::Level& lev,
                                  const std::string& level_name,
                                  const TextureDB& tex_db) {

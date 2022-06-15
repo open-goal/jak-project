@@ -162,6 +162,8 @@ add_subdirectory(third-party/lzokay EXCLUDE_FROM_ALL)
 
 # build format library
 add_subdirectory(third-party/fmt EXCLUDE_FROM_ALL)
+add_subdirectory(third-party/tiny_gltf EXCLUDE_FROM_ALL)
+
 # discord rich presence
 include_directories(third-party/discord-rpc/include)
 add_subdirectory(third-party/discord-rpc EXCLUDE_FROM_ALL)
