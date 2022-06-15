@@ -98,7 +98,7 @@
       (set! (-> ,obj icons icon-idx) (new 'static 'hud-icon))
       (let ((new-manipy (manipy-spawn (new 'static 'vector :w 1.0) ,entity ,skel #f :to ,obj)))
         (when new-manipy
-          (set! (-> (-> new-manipy) draw dma-add-func) dma-add-process-drawable-hud)
+          (set! (-> (-> new-manipy) draw dma-add-func) dma-add-process-drawable-hud-with-hud-lights)
           (set-vector! (-> (-> new-manipy) root trans) 0.0 0.0 0.0 1.0)
           (set-vector! (-> (-> new-manipy) root scale) ,scale-x ,scale-y ,scale-x 1.0)
           (when #f
@@ -128,7 +128,7 @@
                                        )
   `(let ((new-manipy (manipy-spawn (new 'static 'vector :w 1.0) ,entity ,skel #f :to ,obj)))
       (when new-manipy
-        (set! (-> (-> new-manipy) draw dma-add-func) dma-add-process-drawable-hud)
+        (set! (-> (-> new-manipy) draw dma-add-func) dma-add-process-drawable-hud-with-hud-lights)
         (set-vector! (-> (-> new-manipy) root trans) 0.0 0.0 0.0 1.0)
         (set-vector! (-> (-> new-manipy) root scale) (-> ,obj icons ,idx scale-x) (-> ,obj icons ,idx scale-y) (-> ,obj icons ,idx scale-x) 1.0)
         (when #f
@@ -144,6 +144,61 @@
       )
   )
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  hud rendering with level lights
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(define *hud-pc-lights* (new 'global 'vu-lights))
+(set-vector! (-> *hud-pc-lights* direction 0) 1.0 0.0 0.0 1.0)
+(set-vector! (-> *hud-pc-lights* direction 1) 0.0 1.0 0.0 1.0)
+(set-vector! (-> *hud-pc-lights* direction 2) 0.0 0.0 1.0 1.0)
+(set-vector! (-> *hud-pc-lights* color 0) 0.75 0.75 1.0 1.0)
+(set-vector! (-> *hud-pc-lights* color 1) 0.75 0.75 1.0 1.0)
+(set-vector! (-> *hud-pc-lights* color 2) 0.75 0.75 1.0 1.0)
+(set-vector! (-> *hud-pc-lights* ambient) 0.2 0.2 0.2 1.0)
+
+(defun dma-add-process-drawable-hud-with-lights ((proc process-drawable) (draw draw-control) (arg2 symbol) (buf dma-buffer))
+  (logclear! (-> draw status) (draw-status was-drawn))
+  (when (zero? (logand (-> draw status) (draw-status hidden no-anim no-skeleton-update)))
+    (let ((vu-lgt (the-as vu-lights (+ 64 (scratchpad-object int))))
+          (lgt (if (= (-> draw level-index) 2)
+                   (-> *time-of-day-context* light-group (-> draw light-index))
+                   (-> *time-of-day-context* moods (-> draw level-index) light-group (-> draw light-index))
+                   ))
+          )
+      (vu-lights<-light-group! vu-lgt lgt)
+      )
+    (lod-set! draw 0)
+    (logior! (-> draw status) (draw-status was-drawn))
+    (draw-bones-hud draw buf)
+    )
+  0
+  (none)
+  )
+
+(defun dma-add-process-drawable-hud-with-hud-lights ((proc process-drawable) (draw draw-control) (arg2 symbol) (buf dma-buffer))
+  (logclear! (-> draw status) (draw-status was-drawn))
+  (when (zero? (logand (-> draw status) (draw-status hidden no-anim no-skeleton-update)))
+    (let ((vu-lgt (the-as vu-lights (+ 64 (scratchpad-object int))))
+          (lgt *hud-pc-lights*)
+          )
+      (set! (-> vu-lgt direction 0 quad) (-> lgt direction 0 quad))
+      (set! (-> vu-lgt direction 1 quad) (-> lgt direction 1 quad))
+      (set! (-> vu-lgt direction 2 quad) (-> lgt direction 2 quad))
+      (set! (-> vu-lgt color 0 quad) (-> lgt color 0 quad))
+      (set! (-> vu-lgt color 1 quad) (-> lgt color 1 quad))
+      (set! (-> vu-lgt color 2 quad) (-> lgt color 2 quad))
+      (set! (-> vu-lgt ambient quad) (-> lgt ambient quad))
+      )
+    (lod-set! draw 0)
+    (logior! (-> draw status) (draw-status was-drawn))
+    (draw-bones-hud draw buf)
+    )
+  0
+  (none)
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;  hud methods
@@ -457,7 +512,9 @@
             (set! (-> obj last-task) #f)
             (false! (-> obj ready?))
             (cond
-              ((aif (level-get *level* (-> obj last-level)) (-> it display?))
+              ((and (!= (-> obj next-state name) 'hud-leaving)
+                    (aif (level-get *level* (-> obj last-level)) (-> it display?))
+                    )
                 (send-event obj 'hide)
                 )
               (else
