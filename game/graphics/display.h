@@ -13,6 +13,7 @@
 // a GfxDisplay class is equivalent to a window that displays stuff. This holds an actual internal
 // window pointer used by whichever renderer. It also contains functions for setting and
 // retrieving certain window parameters.
+// Maybe this is better implemented as an abstract class and renderers would have overrides?
 class GfxDisplay {
   const char* m_title;
 
@@ -25,8 +26,8 @@ class GfxDisplay {
   int m_xpos;
   int m_ypos;
 
-  Gfx::DisplayMode m_fullscreen_mode = Gfx::DisplayMode::Windowed;
-  Gfx::DisplayMode m_fullscreen_target_mode = Gfx::DisplayMode::Windowed;
+  GfxDisplayMode m_fullscreen_target_mode = GfxDisplayMode::Windowed;
+  GfxDisplayMode m_last_fullscreen_mode;
   int m_fullscreen_screen;
   int m_fullscreen_target_screen;
 
@@ -52,19 +53,20 @@ class GfxDisplay {
   }
   const char* title() const { return m_title; }
 
-  bool fullscreen_pending() const { return m_fullscreen_mode != m_fullscreen_target_mode; }
+  bool fullscreen_pending() { return fullscreen_mode() != m_fullscreen_target_mode; }
   void fullscreen_flush() {
     m_renderer->set_fullscreen(this, m_fullscreen_target_mode, m_fullscreen_target_screen);
-    m_fullscreen_mode = m_fullscreen_target_mode;
     m_fullscreen_screen = m_fullscreen_target_screen;
   }
-  void set_fullscreen(Gfx::DisplayMode mode, int screen) {
+  void set_fullscreen(GfxDisplayMode mode, int screen) {
     m_fullscreen_target_mode = mode;
     m_fullscreen_target_screen = screen;
   }
-  int fullscreen_mode() const { return m_fullscreen_mode; }
+  void update_last_fullscreen_mode() { m_last_fullscreen_mode = fullscreen_mode(); }
+  GfxDisplayMode fullscreen_mode();
+  GfxDisplayMode last_fullscreen_mode() const { return m_last_fullscreen_mode; }
   int fullscreen_screen() const { return m_fullscreen_screen; }
-  bool windowed() const { return m_fullscreen_mode == Gfx::DisplayMode::Windowed; }
+  bool windowed() { return fullscreen_mode() == GfxDisplayMode::Windowed; }
   void backup_params();
   int width_backup() { return m_width; }
   int height_backup() { return m_height; }

@@ -55,6 +55,7 @@ GfxSettings g_settings;
 void LoadSettings() {
   const auto filename = file_util::get_file_path({GAME_CONFIG_DIR_NAME, SETTINGS_GFX_FILE_NAME});
   if (std::filesystem::exists(filename)) {
+    // this is just wrong LOL
     FILE* fp = fopen(filename.c_str(), "rb");
     lg::info("Found graphics configuration file. Checking version.");
     u64 version;
@@ -215,11 +216,11 @@ void get_window_scale(float* x, float* y) {
   }
 }
 
-int get_fullscreen() {
+GfxDisplayMode get_fullscreen() {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->fullscreen_mode();
   } else {
-    return DisplayMode::Windowed;
+    return GfxDisplayMode::Windowed;
   }
 }
 
@@ -234,7 +235,7 @@ void set_letterbox(int w, int h) {
   g_global_settings.lbox_h = h;
 }
 
-void set_fullscreen(DisplayMode mode, int screen) {
+void set_fullscreen(GfxDisplayMode mode, int screen) {
   if (Display::GetMainDisplay()) {
     Display::GetMainDisplay()->set_fullscreen(mode, screen);
   }

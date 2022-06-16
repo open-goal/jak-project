@@ -78,7 +78,12 @@ void GfxDisplay::set_title(const char* title) {
     return;
   }
 
+  // TODO set title?
   m_title = title;
+}
+
+GfxDisplayMode GfxDisplay::fullscreen_mode() {
+  return m_renderer->get_fullscreen(this);
 }
 
 void GfxDisplay::render_graphics() {
@@ -95,7 +100,7 @@ int GfxDisplay::height() {
   int h;
   m_renderer->display_size(this, NULL, &h);
 #ifdef _WIN32
-  if (fullscreen_mode() == Gfx::DisplayMode::Borderless) {
+  if (last_fullscreen_mode() == GfxDisplayMode::Borderless) {
     // windows borderless hack
     h--;
   }

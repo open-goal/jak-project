@@ -945,22 +945,22 @@ void prof_event(u32 name, u32 kind) {
 u32 get_fullscreen() {
   switch (Gfx::get_fullscreen()) {
     default:
-    case Gfx::DisplayMode::Windowed:
+    case GfxDisplayMode::Windowed:
       return intern_from_c("windowed").offset;
-    case Gfx::DisplayMode::Borderless:
+    case GfxDisplayMode::Borderless:
       return intern_from_c("borderless").offset;
-    case Gfx::DisplayMode::Fullscreen:
+    case GfxDisplayMode::Fullscreen:
       return intern_from_c("fullscreen").offset;
   }
 }
 
 void set_fullscreen(u32 symptr, s64 screen) {
   if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
-    Gfx::set_fullscreen(Gfx::DisplayMode::Windowed, screen);
+    Gfx::set_fullscreen(GfxDisplayMode::Windowed, screen);
   } else if (symptr == intern_from_c("borderless").offset) {
-    Gfx::set_fullscreen(Gfx::DisplayMode::Borderless, screen);
+    Gfx::set_fullscreen(GfxDisplayMode::Borderless, screen);
   } else if (symptr == intern_from_c("fullscreen").offset) {
-    Gfx::set_fullscreen(Gfx::DisplayMode::Fullscreen, screen);
+    Gfx::set_fullscreen(GfxDisplayMode::Fullscreen, screen);
   }
 }
 

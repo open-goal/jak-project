@@ -53,13 +53,8 @@
 (defmethod set-display-mode! pc-settings ((obj pc-settings) (mode symbol))
   "sets the game's display mode"
 
-  ;; changing to same mode, no-op
-  (if (= (pc-get-fullscreen) mode)
-    (return 0))
-
-  ;; else change it and update it
+  ;; change the display mode.
   (set! (-> obj display-mode) mode)
-  (pc-set-fullscreen mode 0)
   0)
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
@@ -102,7 +97,6 @@
   (set! (-> obj os) (pc-get-os))
   (pc-get-window-size (&-> obj win-width) (&-> obj win-height))
   (pc-get-window-scale (&-> obj dpi-x) (&-> obj dpi-y))
-  (set! (-> obj display-mode) 'windowed)
 
   (when (-> obj use-vis?)
     (if (= (-> *setting-control* default aspect-ratio) 'aspect4x3)
@@ -152,6 +146,8 @@
      (pc-set-letterbox (-> obj win-width) (-> obj win-height))
      )
     )
+
+  (pc-set-fullscreen (-> obj display-mode) 0)
 
   (pc-discord-rpc-set (if (-> obj discord-rpc?) 1 0))
 

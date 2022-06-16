@@ -1,6 +1,6 @@
 /*!
  * @file opengl.cpp
- * Lower-level OpenGL implementation.
+ * Lower-level OpenGL interface. No actual rendering is performed here!
  */
 
 #include <memory>
@@ -324,7 +324,7 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
   GLFWmonitor* monitor = glfwGetPrimaryMonitor();  // todo
   auto window = display->window_glfw;
   switch (mode) {
-    case Gfx::DisplayMode::Windowed: {
+    case GfxDisplayMode::Windowed: {
       // windowed
       glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
       glfwSetWindowFocusCallback(window, NULL);
@@ -332,16 +332,18 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
       glfwSetWindowMonitor(window, NULL, display->xpos_backup(), display->ypos_backup(),
                            display->width_backup(), display->height_backup(), GLFW_DONT_CARE);
     } break;
-    case Gfx::DisplayMode::Fullscreen: {
+    case GfxDisplayMode::Fullscreen: {
       // fullscreen
       if (display->windowed()) {
         display->backup_params();
       }
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
+      glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
+      glfwSetWindowFocusCallback(window, NULL);
+      glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_FALSE);
       glfwSetWindowMonitor(window, monitor, 0, 0, vmode->width, vmode->height, 60);
-      glfwSetWindowFocusCallback(window, FocusCallback);
     } break;
-    case Gfx::DisplayMode::Borderless: {
+    case GfxDisplayMode::Borderless: {
       // borderless fullscreen
       if (display->windowed()) {
         display->backup_params();
@@ -350,14 +352,26 @@ static void gl_set_fullscreen(GfxDisplay* display, int mode, int /*screen*/) {
       glfwGetMonitorPos(monitor, &x, &y);
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
       glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
-      glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_TRUE);
-      glfwSetWindowFocusCallback(window, FocusCallback);
+      //glfwSetWindowAttrib(window, GLFW_FLOATING, GLFW_TRUE);
+      //glfwSetWindowFocusCallback(window, FocusCallback);
 #ifdef _WIN32
       glfwSetWindowMonitor(window, NULL, x, y, vmode->width, vmode->height + 1, GLFW_DONT_CARE);
 #else
       glfwSetWindowMonitor(window, NULL, x, y, vmode->width, vmode->height, GLFW_DONT_CARE);
 #endif
     } break;
+  }
+}
+
+static GfxDisplayMode gl_get_fullscreen(GfxDisplay* display) {
+  GLFWmonitor* monitor = glfwGetPrimaryMonitor();  // todo
+  const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
+  if (display->width() >= vmode->width && display->height() >= vmode->height) {
+    return glfwGetWindowAttrib(display->window_glfw, GLFW_DECORATED) == GLFW_TRUE
+               ? GfxDisplayMode::Fullscreen
+               : GfxDisplayMode::Borderless;
+  } else {
+    return GfxDisplayMode::Windowed;
   }
 }
 
@@ -427,7 +441,7 @@ static void gl_render_display(GfxDisplay* display) {
   int fbuf_w, fbuf_h;
   glfwGetFramebufferSize(window, &fbuf_w, &fbuf_h);
 #ifdef _WIN32
-  if (display->fullscreen_mode() == 2) {
+  if (display->last_fullscreen_mode() == GfxDisplayMode::Borderless) {
     // pretend the framebuffer is 1 pixel shorter on borderless. fullscreen issues!
     fbuf_h--;
   }
@@ -437,7 +451,7 @@ static void gl_render_display(GfxDisplay* display) {
   // vertical letterbox size
   int lbox_h = (fbuf_h - height) / 2;
 #ifdef _WIN32
-  if (display->fullscreen_mode() == 2) {
+  if (display->last_fullscreen_mode() == GfxDisplayMode::Borderless) {
     // add one pixel of vertical letterbox on borderless to make up for extra line
     lbox_h++;
   }
@@ -491,6 +505,7 @@ static void gl_render_display(GfxDisplay* display) {
   if (display->fullscreen_pending()) {
     display->fullscreen_flush();
   }
+  display->update_last_fullscreen_mode();
 
   // toggle even odd and wake up engine waiting on vsync.
   {
@@ -613,6 +628,7 @@ const GfxRendererModule moduleOpenGL = {
     gl_display_scale,       // display_scale
     gl_set_fullscreen,      // set_fullscreen
     gl_screen_size,         // screen_size
+    gl_get_fullscreen,      // get_fullscreen
     gl_exit,                // exit
     gl_vsync,               // vsync
     gl_sync_path,           // sync_path
