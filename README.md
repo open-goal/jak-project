@@ -59,7 +59,7 @@ We have a Discord server where we discuss development: https://discord.gg/VZbXMH
 
 ## Current Status
 
-So far, we've decompiled around 400,000 lines of GOAL code, out of an estimated 500,000 total lines. We have a working OpenGL renderer which renders most of the game world and foreground. Levels are fully playable, and you can finish the game with 100% completion! There is currently *no* audio.
+So far, we've decompiled around 400,000 lines of GOAL code, out of an estimated 500,000 total lines from the original game. We have a working OpenGL renderer which renders most of the game world and foreground. Levels are fully playable, and you can finish the game with 100% completion!
 
 Here are some screenshots of the renderer:
 ![](./docs/img/promosmall1.png)
