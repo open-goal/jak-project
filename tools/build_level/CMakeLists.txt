@@ -1,5 +1,6 @@
 add_executable(build_level
         main.cpp
+        color_quantization.cpp
         LevelFile.cpp
         FileInfo.cpp
         gltf_mesh_extract.cpp

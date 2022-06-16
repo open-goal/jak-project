@@ -1,5 +1,5 @@
 #include "gltf_mesh_extract.h"
-
+#include "tools/build_level/color_quantization.h"
 #include "third-party/tiny_gltf/tiny_gltf.h"
 #include "common/log/log.h"
 
@@ -40,32 +40,6 @@ std::vector<math::Vector<u8, 4>> extract_color_from_vec4_u16(const u8* data,
     data += stride;
     result.emplace_back(temp.x() >> 8, temp.y() >> 8, temp.z() >> 8, temp.w() >> 8);
   }
-  return result;
-}
-
-struct QuantizedColors {
-  std::vector<math::Vector<u8, 4>> final_colors;
-  std::vector<u32> vtx_to_color;
-};
-
-QuantizedColors quantize_colors_dumb(const std::vector<math::Vector<u8, 4>>& in) {
-  QuantizedColors result;
-  std::unordered_map<u64, u32> color_to_slot;
-  for (auto& vtx : in) {
-    u64 key;
-    memcpy(&key, vtx.data(), sizeof(u64));
-    const auto& existing = color_to_slot.find(key);
-    if (existing == color_to_slot.end()) {
-      auto cidx = result.final_colors.size();
-      result.vtx_to_color.push_back(cidx);
-      color_to_slot[key] = cidx;
-      result.final_colors.push_back(vtx);
-    } else {
-      result.vtx_to_color.push_back(existing->second);
-    }
-  }
-  fmt::print("quantize_colors_dumb: {} -> {}\n", in.size(), result.final_colors.size());
-  ASSERT(result.final_colors.size() < 8192);
   return result;
 }
 
@@ -124,6 +98,7 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     for (auto& attrib : attributes) {
       fmt::print("attrib: {}\n", attrib.first);
     }
+    fmt::print("gltf vert count is {}\n", count);
     auto mesh_verts = extract_vec3f(data_ptr, count, byte_stride);
     result.reserve(mesh_verts.size());
     for (auto& vert : mesh_verts) {
@@ -250,7 +225,7 @@ void extract(const Input& in, Output& out) {
     }
   }
 
-  auto quantized = quantize_colors_dumb(all_vtx_colors);
+  auto quantized = quantize_colors_octree(all_vtx_colors, 1024);
   for (size_t i = 0; i < out.vertices.size(); i++) {
     out.vertices[i].color_index = quantized.vtx_to_color[i];
   }

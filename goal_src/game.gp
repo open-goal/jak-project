@@ -103,6 +103,17 @@
     )
   )
 
+(defun custom-level-cgo (output-name desc-file-name)
+  "Add a CGO with the given output name (in out/iso) and input name (in custom_levels/)"
+  (let ((out-name (string-append "out/iso/" output-name)))
+    (defstep :in (string-append "custom_levels/" desc-file-name)
+      :tool 'dgo
+      :out `(,out-name)
+      )
+    (set! *all-cgos* (cons out-name *all-cgos*))
+    )
+  )
+
 (defun cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
   (let ((out-name (string-append "out/iso/" output-name)))
@@ -144,6 +155,18 @@
 (defmacro copy-gos (&rest gos)
   `(begin
     ,@(apply (lambda (x) `(copy-go ,x)) gos)
+    )
+  )
+
+(defmacro copy-custom-level-go (name)
+  (let* ((path (string-append "buildlevel_out/" name ".go")))
+    `(defstep :in ,path
+              :tool 'copy
+              :out '(,(string-append "out/obj/" name ".go")))))
+
+(defmacro copy-custom-level-gos (&rest gos)
+  `(begin
+    ,@(apply (lambda (x) `(copy-custom-level-go ,x)) gos)
     )
   )
 
@@ -1552,6 +1575,13 @@
   "ndi-cam-ag"
   "ndi-volumes-ag"
   "title-vis")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Example Custom Level
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(custom-level-cgo "AWFVIL.DGO" "awful_village/awflvil.gd")
+(copy-custom-level-gos "awful-village")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Game Engine Code
