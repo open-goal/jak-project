@@ -32,6 +32,7 @@ class GfxDisplay {
   GfxDisplayMode m_last_fullscreen_mode;
   int m_fullscreen_screen;
   int m_fullscreen_target_screen;
+  bool m_imgui_visible;
 
  protected:
   bool m_main;
@@ -65,6 +66,8 @@ class GfxDisplay {
   void update_last_fullscreen_mode() { m_last_fullscreen_mode = get_fullscreen(); }
   GfxDisplayMode last_fullscreen_mode() const { return m_last_fullscreen_mode; }
   int fullscreen_screen() const { return m_fullscreen_screen; }
+  void set_imgui_visible(bool visible) { m_imgui_visible = visible; }
+  bool is_imgui_visible() const { return m_imgui_visible; }
   bool windowed() { return get_fullscreen() == GfxDisplayMode::Windowed; }
   void backup_params();
   int width_backup() const { return m_width; }

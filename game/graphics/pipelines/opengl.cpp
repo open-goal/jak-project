@@ -74,13 +74,20 @@ std::unique_ptr<GraphicsData> g_gfx_data;
 
 void SetDisplayCallbacks(GLFWwindow* d) {
   glfwSetKeyCallback(
-      d, [](GLFWwindow* /*window*/, int key, int /*scancode*/, int action, int /*mods*/) {
+      d, [](GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
         if (action == GlfwKeyAction::Press) {
           // lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
           Pad::OnKeyPress(key);
         } else if (action == GlfwKeyAction::Release) {
           // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
           Pad::OnKeyRelease(key);
+          GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
+          if (display != NULL) {  // toggle ImGui when pressing Alt
+            if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
+                glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+              display->set_imgui_visible(!display->is_imgui_visible());
+            }
+          }
         }
       });
 }
@@ -236,9 +243,11 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
 
 GLDisplay::GLDisplay(GLFWwindow* window, bool is_main) : m_window(window) {
   m_main = is_main;
+  glfwSetWindowUserPointer(window, reinterpret_cast<void*>(this));
 }
 
 GLDisplay::~GLDisplay() {
+  glfwSetWindowUserPointer(m_window, nullptr);
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
@@ -341,6 +350,7 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int /*screen*/) {
       glfwSetWindowAttrib(m_window, GLFW_FLOATING, GLFW_FALSE);
       glfwSetWindowMonitor(m_window, NULL, xpos_backup(), ypos_backup(), width_backup(),
                            height_backup(), GLFW_DONT_CARE);
+      set_imgui_visible(true);
     } break;
     case GfxDisplayMode::Fullscreen: {
       // fullscreen
@@ -352,6 +362,7 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int /*screen*/) {
       glfwSetWindowFocusCallback(m_window, NULL);
       glfwSetWindowAttrib(m_window, GLFW_FLOATING, GLFW_FALSE);
       glfwSetWindowMonitor(m_window, monitor, 0, 0, vmode->width, vmode->height, 60);
+      set_imgui_visible(false);
     } break;
     case GfxDisplayMode::Borderless: {
       // borderless fullscreen
@@ -369,6 +380,7 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int /*screen*/) {
 #else
       glfwSetWindowMonitor(m_window, NULL, x, y, vmode->width, vmode->height, GLFW_DONT_CARE);
 #endif
+      set_imgui_visible(false);
     } break;
   }
 }
@@ -471,7 +483,7 @@ void GLDisplay::render() {
   }
 
   // render debug
-  {
+  if (is_imgui_visible()) {
     auto p = scoped_prof("debug-gui");
     g_gfx_data->debug_gui.draw(g_gfx_data->dma_copier.get_last_result().stats);
   }
