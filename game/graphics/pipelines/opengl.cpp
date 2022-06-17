@@ -140,9 +140,10 @@ static void gl_exit() {
 }
 
 static std::shared_ptr<GfxDisplay> gl_make_display(int width,
-                                                        int height,
-                                                        const char* title,
-                                                        GfxSettings& settings, bool is_main) {
+                                                   int height,
+                                                   const char* title,
+                                                   GfxSettings& settings,
+                                                   bool is_main) {
   GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
 
   if (!window) {
@@ -376,9 +377,8 @@ GfxDisplayMode GLDisplay::get_fullscreen() {
   GLFWmonitor* monitor = glfwGetPrimaryMonitor();  // todo
   const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
   if (width() >= vmode->width && height() >= vmode->height) {
-    return glfwGetWindowAttrib(m_window, GLFW_DECORATED) == GLFW_TRUE
-               ? GfxDisplayMode::Fullscreen
-               : GfxDisplayMode::Borderless;
+    return glfwGetWindowAttrib(m_window, GLFW_DECORATED) == GLFW_TRUE ? GfxDisplayMode::Fullscreen
+                                                                      : GfxDisplayMode::Borderless;
   } else {
     return GfxDisplayMode::Windowed;
   }
