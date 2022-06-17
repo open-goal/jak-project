@@ -53,19 +53,23 @@
 (defmethod set-display-mode! pc-settings ((obj pc-settings) (mode symbol))
   "sets the game's display mode"
 
-  ;; changing to same mode, no-op
-  (if (= (pc-get-fullscreen) mode)
-    (return 0))
-
-  ;; else change it and update it
+  ;; change the display mode.
   (set! (-> obj display-mode) mode)
-  (pc-set-fullscreen mode 0)
   0)
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
   "sets the size of the display window"
   (format #t "Setting size to ~D x ~D~%" width height)
-  (pc-set-window-size width height)
+  (cond
+    ((= 'windowed (-> obj display-mode))
+      (set! (-> obj win-width) width)
+      (set! (-> obj win-height) height)
+      )
+    (else
+      (format 0  "Nope! No changing fullscreen resolution for now!")
+      (format #t "Nope! No changing fullscreen resolution for now!")
+      )
+    )
   (none))
 
 
@@ -100,9 +104,8 @@
   "Update settings from the C kernel to GOAL."
 
   (set! (-> obj os) (pc-get-os))
-  (pc-get-window-size (&-> obj win-width) (&-> obj win-height))
+  (pc-get-window-size (&-> obj real-width) (&-> obj real-height))
   (pc-get-window-scale (&-> obj dpi-x) (&-> obj dpi-y))
-  (set! (-> obj display-mode) 'windowed)
 
   (when (-> obj use-vis?)
     (if (= (-> *setting-control* default aspect-ratio) 'aspect4x3)
@@ -111,28 +114,28 @@
         )
     )
 
-  (let ((win-aspect (/ (the float (-> obj win-width)) (the float (-> obj win-height)))))
+  (let ((win-aspect (/ (the float (-> obj real-width)) (the float (-> obj real-height)))))
     (cond
       ((and (not (-> obj use-vis?)) (-> obj aspect-ratio-auto?))
        ;; the window determines the resolution
        (set-aspect-ratio! obj win-aspect)
-       (set! (-> obj width) (-> obj win-width))
-       (set! (-> obj height) (-> obj win-height))
+       (set! (-> obj lbox-width) (-> obj real-width))
+       (set! (-> obj lbox-height) (-> obj real-height))
        )
       ((> win-aspect (-> obj aspect-ratio))
        ;; too wide
-       (set! (-> obj width) (the int (* (the float (-> obj win-height)) (-> obj aspect-ratio))))
-       (set! (-> obj height) (-> obj win-height))
+       (set! (-> obj lbox-width) (the int (* (the float (-> obj real-height)) (-> obj aspect-ratio))))
+       (set! (-> obj lbox-height) (-> obj real-height))
        )
       ((< win-aspect (-> obj aspect-ratio))
        ;; too tall
-       (set! (-> obj width) (-> obj win-width))
-       (set! (-> obj height) (the int (/ (the float (-> obj win-width)) (-> obj aspect-ratio))))
+       (set! (-> obj lbox-width) (-> obj real-width))
+       (set! (-> obj lbox-height) (the int (/ (the float (-> obj real-width)) (-> obj aspect-ratio))))
        )
       (else
        ;; just right
-       (set! (-> obj width) (-> obj win-width))
-       (set! (-> obj height) (-> obj win-height))
+       (set! (-> obj lbox-width) (-> obj real-width))
+       (set! (-> obj lbox-height) (-> obj real-height))
        )
       )
     )
@@ -145,13 +148,16 @@
 
   (cond
     ((-> obj letterbox?)
-     ;; AGH bad idea, this is meant for resolution! TODO fix this crap
-     (pc-set-letterbox (-> obj width) (-> obj height))
+     (pc-set-letterbox (-> obj lbox-width) (-> obj lbox-height))
      )
     (else
-     (pc-set-letterbox (-> obj win-width) (-> obj win-height))
+     (pc-set-letterbox (-> obj real-width) (-> obj real-height))
      )
     )
+
+  (pc-set-fullscreen (-> obj display-mode) 0)
+  (if (= 'windowed (-> obj display-mode))
+      (pc-set-window-size (max 320 (-> obj win-width)) (max 240 (-> obj win-height))))
 
   (pc-discord-rpc-set (if (-> obj discord-rpc?) 1 0))
 
@@ -459,8 +465,8 @@
 
   (clear *pc-temp-string*)
   (format *pc-temp-string* "game resolution: ~D x ~D~%" (-> obj width) (-> obj height))
-  (format *pc-temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj win-width) (-> obj win-height) (-> obj dpi-x) (-> obj dpi-y))
-  (format *pc-temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A L: ~A~%" (-> obj aspect-ratio) (/ (the float (-> obj win-width)) (the float (-> obj win-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
+  (format *pc-temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj real-width) (-> obj real-height) (-> obj dpi-x) (-> obj dpi-y))
+  (format *pc-temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A L: ~A~%" (-> obj aspect-ratio) (/ (the float (-> obj real-width)) (the float (-> obj real-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
   (format *pc-temp-string* "display-type: ~A ~A~%" (-> obj display-mode) (-> obj vsync?))
 
   (draw-string-xy *pc-temp-string* buf 0 (- 224 (* 8 4)) (font-color default) (font-flags shadow kerning))
@@ -679,10 +685,13 @@
             (dosettings (file)
               (case-str *pc-temp-string*
                 (("fps") (set! (-> obj target-fps) (file-stream-read-int file)))
-                (("size")
+                (("window-size")
+                  (set! (-> obj win-width) (file-stream-read-int file))
+                  (set! (-> obj win-height) (file-stream-read-int file))
+                  )
+                (("game-size")
                   (set! (-> obj width) (file-stream-read-int file))
                   (set! (-> obj height) (file-stream-read-int file))
-                  (set-size! obj (-> obj width) (-> obj height))
                   )
                 (("aspect") (set-aspect! obj (file-stream-read-int file) (file-stream-read-int file)))
                 (("aspect-test")
@@ -801,7 +810,8 @@
     (format file "(settings #x~X~%" (-> obj version))
 
     (format file "  (fps ~D)~%" (-> obj target-fps))
-    (format file "  (size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
+    (format file "  (game-size ~D ~D)~%" (-> obj width) (-> obj height))
+    (format file "  (window-size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
     (format file "  (aspect ~D ~D)~%" (-> obj width) (-> obj height))
     (format file "  (aspect-test ~D ~D)~%" (-> obj aspect-custom-x) (-> obj aspect-custom-y))
     (format file "  (aspect-auto ~A)~%" (-> obj aspect-ratio-auto?))

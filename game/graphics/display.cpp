@@ -16,10 +16,6 @@
 
 namespace {
 
-bool renderer_is_correct(const GfxRendererModule* renderer, GfxPipeline pipeline) {
-  return renderer->pipeline == pipeline;
-}
-
 void set_main_display(std::shared_ptr<GfxDisplay> display) {
   if (Display::g_displays.size() > 0) {
     Display::g_displays[0] = display;
@@ -36,66 +32,27 @@ void set_main_display(std::shared_ptr<GfxDisplay> display) {
 ********************************
 */
 
-GfxDisplay::GfxDisplay(GLFWwindow* a_window) {
-  set_renderer(GfxPipeline::OpenGL);
-  set_window(a_window);
-}
-
-GfxDisplay::~GfxDisplay() {
-  m_renderer->kill_display(this);
-  // window_generic_ptr = nullptr;
-}
-
-void GfxDisplay::set_renderer(GfxPipeline pipeline) {
-  if (is_active()) {
-    lg::error("Can't change display's renderer while window exists.");
-    return;
-  }
-  if (m_renderer != nullptr) {
-    lg::error("A display changed renderer unexpectedly.");
-    return;
-  }
-
-  m_renderer = Gfx::GetRenderer(pipeline);
-}
-
-void GfxDisplay::set_window(GLFWwindow* window) {
-  if (!renderer_is_correct(m_renderer, GfxPipeline::OpenGL)) {
-    lg::error("Can't set OpenGL window when using {}", m_renderer->name);
-    return;
-  }
-  if (is_active()) {
-    lg::error("Already have a window. Close window first.");
-    return;
-  }
-
-  this->window_glfw = window;
-}
-
 void GfxDisplay::set_title(const char* title) {
   if (!is_active()) {
     lg::error("No window to set title `{}`.", title);
     return;
   }
 
+  // TODO set title?
   m_title = title;
-}
-
-void GfxDisplay::render_graphics() {
-  m_renderer->render_display(this);
 }
 
 int GfxDisplay::width() {
   int w;
-  m_renderer->display_size(this, &w, NULL);
+  get_size(&w, NULL);
   return w;
 }
 
 int GfxDisplay::height() {
   int h;
-  m_renderer->display_size(this, NULL, &h);
+  get_size(NULL, &h);
 #ifdef _WIN32
-  if (fullscreen_mode() == Gfx::DisplayMode::Borderless) {
+  if (last_fullscreen_mode() == GfxDisplayMode::Borderless) {
     // windows borderless hack
     h--;
   }
@@ -104,8 +61,8 @@ int GfxDisplay::height() {
 }
 
 void GfxDisplay::backup_params() {
-  m_renderer->display_size(this, &m_width, &m_height);
-  m_renderer->display_position(this, &m_xpos, &m_ypos);
+  get_size(&m_width, &m_height);
+  get_position(&m_xpos, &m_ypos);
   fmt::print("backed up window: {},{} {}x{}\n", m_xpos, m_ypos, m_width, m_height);
 }
 
@@ -130,7 +87,7 @@ int InitMainDisplay(int width, int height, const char* title, GfxSettings& setti
     return 1;
   }
 
-  auto display = Gfx::GetCurrentRenderer()->make_main_display(width, height, title, settings);
+  auto display = Gfx::GetCurrentRenderer()->make_display(width, height, title, settings, true);
   if (display == NULL) {
     lg::error("Failed to make main display.");
     return 1;
