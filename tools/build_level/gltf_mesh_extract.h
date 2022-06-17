@@ -11,6 +11,7 @@ namespace gltf_mesh_extract {
 struct Input {
   std::string filename;
   TexturePool* tex_pool = nullptr;
+  bool get_colors = true;
 };
 
 struct Output {

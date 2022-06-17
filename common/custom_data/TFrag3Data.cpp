@@ -1,3 +1,4 @@
+#include <functional>
 #include "Tfrag3Data.h"
 #include "common/util/Assert.h"
 
@@ -80,7 +81,7 @@ void TieTree::unpack() {
         vtx.x = proto_vtx.x;
         vtx.y = proto_vtx.y;
         vtx.z = proto_vtx.z;
-        vtx.q = 1.f;
+        vtx.q_unused = 1.f;
         vtx.s = proto_vtx.s;
         vtx.t = proto_vtx.t;
         i++;
@@ -95,7 +96,7 @@ void TieTree::unpack() {
         vtx.x = temp.x();
         vtx.y = temp.y();
         vtx.z = temp.z();
-        vtx.q = 1.f;
+        vtx.q_unused = 1.f;
         vtx.s = proto_vtx.s;
         vtx.t = proto_vtx.t;
         i++;
@@ -155,7 +156,7 @@ void TfragTree::unpack() {
     o.z = cz + in.zoff * rescale;
     o.s = in.s / (1024.f);
     o.t = in.t / (1024.f);
-    o.q = 1.f;
+    o.q_unused = 1.f;
     o.color_index = in.color_index;
   }
 
@@ -366,6 +367,7 @@ std::array<int, MemoryUsageCategory::NUM_CATEGORIES> Level::get_memory_usage() c
     for (const auto& tfrag_tree : tfrag_tree_geoms) {
       for (const auto& draw : tfrag_tree.draws) {
         result[TFRAG_INDEX] += draw.runs.size() * sizeof(StripDraw::VertexRun);
+        result[TFRAG_INDEX] += draw.plain_indices.size() * sizeof(u32);
         result[TFRAG_VIS] += draw.vis_groups.size() * sizeof(StripDraw::VisGroup);
       }
       result[TFRAG_VERTS] +=
@@ -467,6 +469,11 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
     fmt::print("{:30s} : {:6d} kB {:3.1f}%\n", x.first, x.second / 1024,
                100.f * (float)x.second / uncompressed_data_size);
   }
+}
+
+std::size_t PreloadedVertex::hash::operator()(const PreloadedVertex& v) const {
+  return std::hash<float>()(v.x) ^ std::hash<float>()(v.y) ^ std::hash<float>()(v.z) ^
+         std::hash<float>()(v.s) ^ std::hash<float>()(v.t) ^ std::hash<u16>()(v.color_index);
 }
 
 }  // namespace tfrag3

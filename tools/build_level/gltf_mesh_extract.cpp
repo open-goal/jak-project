@@ -1,11 +1,20 @@
+/*!
+ * Mesh extraction for GLTF meshes.
+ */
+
 #include "gltf_mesh_extract.h"
 #include "tools/build_level/color_quantization.h"
 #include "third-party/tiny_gltf/tiny_gltf.h"
 #include "common/log/log.h"
+#include "common/util/Timer.h"
 
 namespace gltf_mesh_extract {
 
 namespace {
+
+/*!
+ * Convert a GLTF index buffer to std::vector<u32>
+ */
 template <typename T>
 std::vector<u32> index_list_to_u32(const u8* data, u32 num_verts, u32 offset, u32 stride) {
   std::vector<u32> result;
@@ -19,6 +28,9 @@ std::vector<u32> index_list_to_u32(const u8* data, u32 num_verts, u32 offset, u3
   return result;
 }
 
+/*!
+ * Convert a GLTF position buffer or similar to std::vector<Vec3f>
+ */
 std::vector<math::Vector3f> extract_vec3f(const u8* data, u32 count, u32 stride) {
   std::vector<math::Vector3f> result;
   result.reserve(count);
@@ -29,6 +41,9 @@ std::vector<math::Vector3f> extract_vec3f(const u8* data, u32 count, u32 stride)
   return result;
 }
 
+/*!
+ * Convert a GLTF color buffer to u8 colors.
+ */
 std::vector<math::Vector<u8, 4>> extract_color_from_vec4_u16(const u8* data,
                                                              u32 count,
                                                              u32 stride) {
@@ -43,6 +58,9 @@ std::vector<math::Vector<u8, 4>> extract_color_from_vec4_u16(const u8* data,
   return result;
 }
 
+/*!
+ * Convert a GLTF index buffer
+ */
 std::vector<u32> gltf_index_buffer(const tinygltf::Model& model,
                                    int indices_idx,
                                    u32 index_offset) {
@@ -78,7 +96,8 @@ struct ExtractedVertices {
 
 ExtractedVertices gltf_vertices(const tinygltf::Model& model,
                                 const std::map<std::string, int>& attributes,
-                                const math::Matrix4f& w_T_local) {
+                                const math::Matrix4f& w_T_local,
+                                bool get_colors) {
   std::vector<tfrag3::PreloadedVertex> result;
   std::vector<math::Vector<u8, 4>> vtx_colors;
 
@@ -96,10 +115,9 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     ASSERT_MSG(attrib_accessor.type == TINYGLTF_TYPE_VEC3, "POSITION wasn't vec3");
     ASSERT_MSG(attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT,
                "POSITION wasn't float");
-    for (auto& attrib : attributes) {
-      fmt::print("attrib: {}\n", attrib.first);
-    }
-    fmt::print("gltf vert count is {}\n", count);
+    // for (auto& attrib : attributes) {
+    // fmt::print("attrib: {}\n", attrib.first);
+    //}
     auto mesh_verts = extract_vec3f(data_ptr, count, byte_stride);
     result.reserve(mesh_verts.size());
     for (auto& vert : mesh_verts) {
@@ -112,7 +130,7 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     }
   }
 
-  {
+  if (get_colors) {
     const auto& color_attrib = attributes.find("COLOR_0");
     ASSERT_MSG(color_attrib != attributes.end(), "Did not find color attribute.");
 
@@ -134,7 +152,7 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     v.color_index = 0;
     v.s = 0;
     v.t = 0;
-    v.q = 0;
+    v.q_unused = 0;
     v.pad[0] = 0;
     v.pad[1] = 0;
     v.pad[2] = 0;
@@ -280,7 +298,6 @@ void node_find_helper(const tinygltf::Model& model,
   math::Matrix4f w_T_node = w_T_parent * matrix_from_node(node);
   out->push_back({node_idx, w_T_node});
   for (auto& child : node.children) {
-    fmt::print("child: {} {}\n", child, model.nodes[child].name);
     node_find_helper(model, w_T_node, child, out);
   }
 }
@@ -289,7 +306,6 @@ std::vector<NodeWithTransform> flatten_nodes_from_all_scenes(const tinygltf::Mod
   std::vector<NodeWithTransform> out;
   for (auto& scene : model.scenes) {
     for (auto& nidx : scene.nodes) {
-      fmt::print("doing root node: {}: {}\n", nidx, model.nodes[nidx].name);
       math::Matrix4f identity = math::Matrix4f::identity();
       node_find_helper(model, identity, nidx, &out);
     }
@@ -297,8 +313,53 @@ std::vector<NodeWithTransform> flatten_nodes_from_all_scenes(const tinygltf::Mod
   return out;
 }
 
+void dedup_vertices(const std::vector<tfrag3::PreloadedVertex>& vertices_in,
+                    std::vector<tfrag3::PreloadedVertex>& vertices_out,
+                    std::vector<u32>& old_to_new_out) {
+  ASSERT(vertices_out.empty());
+  ASSERT(old_to_new_out.empty());
+  old_to_new_out.resize(vertices_in.size(), -1);
+
+  std::unordered_map<tfrag3::PreloadedVertex, u32, tfrag3::PreloadedVertex::hash> vtx_to_new;
+
+  for (size_t in_idx = 0; in_idx < vertices_in.size(); in_idx++) {
+    auto& vtx = vertices_in[in_idx];
+    const auto& lookup = vtx_to_new.find(vtx);
+    if (lookup == vtx_to_new.end()) {
+      // first time seeing this one
+      size_t new_idx = vertices_out.size();
+      vertices_out.push_back(vtx);
+      old_to_new_out[in_idx] = new_idx;
+      vtx_to_new[vtx] = new_idx;
+    } else {
+      old_to_new_out[in_idx] = lookup->second;
+    }
+  }
+}
+
+void dedup_vertices(Output& data) {
+  Timer timer;
+  size_t original_size = data.vertices.size();
+  std::vector<tfrag3::PreloadedVertex> new_verts;
+  std::vector<u32> old_to_new;
+
+  dedup_vertices(data.vertices, new_verts, old_to_new);
+  data.vertices = std::move(new_verts);
+
+  for (auto& draw : data.strip_draws) {
+    ASSERT(draw.runs.empty());  // not supported yet
+    for (auto& idx : draw.plain_indices) {
+      idx = old_to_new.at(idx);
+    }
+  }
+
+  lg::info("Deduplication took {:.2f} ms, {} -> {} ({:.2f} %)", timer.getMs(), original_size,
+           data.vertices.size(), 100.f * data.vertices.size() / original_size);
+}
+
 void extract(const Input& in, Output& out) {
   lg::info("Reading gltf mesh: {}", in.filename);
+  Timer read_timer;
   tinygltf::TinyGLTF loader;
   tinygltf::Model model;
   std::string err, warn;
@@ -308,26 +369,29 @@ void extract(const Input& in, Output& out) {
   ASSERT_MSG(res, "Failed to load GLTF file!");
 
   std::vector<math::Vector<u8, 4>> all_vtx_colors;
+
   ASSERT(out.vertices.empty());
 
-  for (const auto& node : model.nodes) {
-    fmt::print("node: {}: {} : {}\n", node.name, node.mesh, node.translation.size());
-  }
+  int mesh_count = 0;
+  int prim_count = 0;
   auto all_nodes = flatten_nodes_from_all_scenes(model);
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
-      fmt::print("{}\n", n.w_T_node.to_string_aligned());
+      mesh_count++;
       for (const auto& prim : mesh.primitives) {
+        prim_count++;
         // extract index buffer
         std::vector<u32> prim_indices = gltf_index_buffer(model, prim.indices, out.vertices.size());
         ASSERT_MSG(prim.mode == TINYGLTF_MODE_TRIANGLES, "Unsupported triangle mode");
         // extract vertices
-        auto verts = gltf_vertices(model, prim.attributes, n.w_T_node);
+        auto verts = gltf_vertices(model, prim.attributes, n.w_T_node, in.get_colors);
         out.vertices.insert(out.vertices.end(), verts.vtx.begin(), verts.vtx.end());
-        all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(),
-                              verts.vtx_colors.end());
+        if (in.get_colors) {
+          all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(),
+                                verts.vtx_colors.end());
+        }
 
         // TODO: just putting it all in one material
         auto& draw = out.strip_draws.emplace_back();
@@ -343,10 +407,20 @@ void extract(const Input& in, Output& out) {
     }
   }
 
+  lg::info("Merged {} meshes and {} prims into {} vertices", mesh_count, prim_count,
+           out.vertices.size());
+  lg::info("Took {:.2f} ms", read_timer.getMs());
+
+  if (in.get_colors) {
+    Timer quantize_timer;
     auto quantized = quantize_colors_octree(all_vtx_colors, 1024);
     for (size_t i = 0; i < out.vertices.size(); i++) {
       out.vertices[i].color_index = quantized.vtx_to_color[i];
     }
     out.color_palette = std::move(quantized.final_colors);
+    lg::info("Color palette generation took {:.2f} ms", quantize_timer.getMs());
+  }
+
+  dedup_vertices(out);
 }
 }  // namespace gltf_mesh_extract

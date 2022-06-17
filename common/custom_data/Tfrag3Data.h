@@ -60,10 +60,19 @@ struct PreloadedVertex {
   // the vertex position
   float x, y, z;
   // texture coordinates
-  float s, t, q;
+  float s, t, q_unused;
   // color table index
   u16 color_index;
   u16 pad[3];
+
+  struct hash {
+    std::size_t operator()(const PreloadedVertex& x) const;
+  };
+
+  bool operator==(const PreloadedVertex& other) const {
+    return x == other.x && y == other.y && z == other.z && s == other.s && t == other.t &&
+           color_index == other.color_index;
+  }
 };
 static_assert(sizeof(PreloadedVertex) == 32, "PreloadedVertex size");
 

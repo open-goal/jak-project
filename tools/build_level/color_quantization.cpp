@@ -1,6 +1,7 @@
 #include <algorithm>
 #include "color_quantization.h"
 #include "common/util/Assert.h"
+#include "common/log/log.h"
 
 /*!
  * Just removes duplicate colors, which can work if there are only a few unique colors.
@@ -210,9 +211,10 @@ QuantizedColors quantize_colors_octree(const std::vector<math::Vector<u8, 4>>& i
       total_error[j] += std::abs(diff[j]);
     }
   }
-  fmt::print("quantize_colors_octree total error: {}, {} {}\n", total_error[0] / in.size(),
-             total_error[1] / in.size(), total_error[2] / in.size());
-  fmt::print("{}\n", out.final_colors.size());
+
+  lg::info("Octree quantize average error (as 8-bit ints): r: {}, g: {} b: {}",
+           total_error[0] / in.size(), total_error[1] / in.size(), total_error[2] / in.size());
+  lg::info("Final palette size: {}", out.final_colors.size());
 
   return out;
 }
