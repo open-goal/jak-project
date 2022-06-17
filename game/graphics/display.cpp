@@ -92,6 +92,7 @@ int InitMainDisplay(int width, int height, const char* title, GfxSettings& setti
     lg::error("Failed to make main display.");
     return 1;
   }
+  display->set_imgui_visible(true);
   set_main_display(display);
   return 0;
 }
