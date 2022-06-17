@@ -246,6 +246,7 @@ GLDisplay::GLDisplay(GLFWwindow* window, bool is_main) : m_window(window) {
 }
 
 GLDisplay::~GLDisplay() {
+  glfwSetWindowUserPointer(m_window, nullptr);
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
