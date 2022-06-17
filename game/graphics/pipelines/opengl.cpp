@@ -78,15 +78,16 @@ void SetDisplayCallbacks(GLFWwindow* d) {
         if (action == GlfwKeyAction::Press) {
           // lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
           Pad::OnKeyPress(key);
-          GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
-          if (display != NULL) {  // toggle ImGui when pressing Alt
-            if (key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) {
-              display->set_imgui_visible(!display->is_imgui_visible());
-            }
-          }
         } else if (action == GlfwKeyAction::Release) {
           // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
           Pad::OnKeyRelease(key);
+          GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
+          if (display != NULL) {  // toggle ImGui when pressing Alt
+            if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
+                glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+              display->set_imgui_visible(!display->is_imgui_visible());
+            }
+          }
         }
       });
 }
