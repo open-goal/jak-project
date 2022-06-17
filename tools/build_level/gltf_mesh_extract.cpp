@@ -77,7 +77,8 @@ struct ExtractedVertices {
 };
 
 ExtractedVertices gltf_vertices(const tinygltf::Model& model,
-                                const std::map<std::string, int>& attributes) {
+                                const std::map<std::string, int>& attributes,
+                                const math::Matrix4f& w_T_local) {
   std::vector<tfrag3::PreloadedVertex> result;
   std::vector<math::Vector<u8, 4>> vtx_colors;
 
@@ -103,9 +104,11 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     result.reserve(mesh_verts.size());
     for (auto& vert : mesh_verts) {
       auto& new_vert = result.emplace_back();
-      new_vert.x = vert.x() * 4096;
-      new_vert.y = vert.y() * 4096;
-      new_vert.z = vert.z() * 4096;
+      math::Vector4f v_in(vert.x(), vert.y(), vert.z(), 1);
+      math::Vector4f v_w = w_T_local * v_in;
+      new_vert.x = v_w.x() * 4096;
+      new_vert.y = v_w.y() * 4096;
+      new_vert.z = v_w.z() * 4096;
     }
   }
 
@@ -126,8 +129,6 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     auto colors = extract_color_from_vec4_u16(data_ptr, count, byte_stride);
     vtx_colors.insert(vtx_colors.end(), colors.begin(), colors.end());
   }
-
-
 
   for (auto& v : result) {
     v.color_index = 0;
@@ -188,6 +189,114 @@ int texture_pool_debug_checker(TexturePool* pool) {
 }
 }  // namespace
 
+math::Matrix4f affine_translation(const math::Vector3f& translation) {
+  math::Matrix4f result = math::Matrix4f::identity();
+  result(0, 3) = translation[0];
+  result(1, 3) = translation[1];
+  result(2, 3) = translation[2];
+  result(3, 3) = 1;
+  return result;
+}
+
+math::Matrix4f affine_scale(const math::Vector3f& scale) {
+  math::Matrix4f result = math::Matrix4f::zero();
+  result(0, 0) = scale[0];
+  result(1, 1) = scale[1];
+  result(2, 2) = scale[2];
+  result(3, 3) = 1;
+  return result;
+}
+
+math::Matrix4f affine_rot_qxyzw(const math::Vector4f& quat) {
+  math::Matrix4f result = math::Matrix4f::zero();
+  result(3, 3) = 1;
+  result(0, 0) = 1.0 - 2.0 * (quat.y() * quat.y() + quat.z() * quat.z());
+  result(0, 1) = 2.0 * (quat.x() * quat.y() - quat.z() * quat.w());
+  result(0, 2) = 2.0 * (quat.x() * quat.z() + quat.y() * quat.w());
+  result(1, 0) = 2.0 * (quat.x() * quat.y() + quat.z() * quat.w());
+  result(1, 1) = 1.0 - 2.0 * (quat.x() * quat.x() + quat.z() * quat.z());
+  result(1, 2) = 2.0 * (quat.y() * quat.z() - quat.x() * quat.w());
+  result(2, 0) = 2.0 * (quat.x() * quat.z() - quat.y() * quat.w());
+  result(2, 1) = 2.0 * (quat.y() * quat.z() + quat.x() * quat.w());
+  result(2, 2) = 1.0 - 2.0 * (quat.x() * quat.x() + quat.y() * quat.y());
+  return result;
+}
+
+math::Vector3f vector3f_from_gltf(const std::vector<double>& in) {
+  ASSERT(in.size() == 3);
+  return math::Vector3f{in[0], in[1], in[2]};
+}
+
+math::Vector4f vector4f_from_gltf(const std::vector<double>& in) {
+  ASSERT(in.size() == 4);
+  return math::Vector4f{in[0], in[1], in[2], in[3]};
+}
+
+math::Matrix4f matrix_from_node(const tinygltf::Node& node) {
+  if (!node.matrix.empty()) {
+    math::Matrix4f result;
+    for (int i = 0; i < 16; i++) {
+      result.data()[i] = node.matrix[i];
+    }
+    return result;
+  } else {
+    // from trs
+    math::Matrix4f t, r, s;
+    if (!node.translation.empty()) {
+      t = affine_translation(vector3f_from_gltf(node.translation));
+    } else {
+      t = math::Matrix4f::identity();
+    }
+
+    if (!node.rotation.empty()) {
+      r = affine_rot_qxyzw(vector4f_from_gltf(node.rotation));
+    } else {
+      r = math::Matrix4f::identity();
+    }
+
+    if (!node.scale.empty()) {
+      s = affine_scale(vector3f_from_gltf(node.scale));
+    } else {
+      s = math::Matrix4f::identity();
+    }
+
+    return t * r * s;
+  }
+}
+
+struct NodeWithTransform {
+  int node_idx;
+  math::Matrix4f w_T_node;
+};
+
+/*!
+ * Recursively walk the tree of nodes, flatten, and compute w_T_node for each.
+ */
+void node_find_helper(const tinygltf::Model& model,
+                      const math::Matrix4f& w_T_parent,
+                      int node_idx,
+                      std::vector<NodeWithTransform>* out) {
+  const auto& node = model.nodes.at(node_idx);
+  math::Matrix4f w_T_node = w_T_parent * matrix_from_node(node);
+  out->push_back({node_idx, w_T_node});
+  for (auto& child : node.children) {
+    fmt::print("child: {} {}\n", child, model.nodes[child].name);
+    node_find_helper(model, w_T_node, child, out);
+  }
+}
+
+std::vector<NodeWithTransform> flatten_nodes_from_all_scenes(const tinygltf::Model& model) {
+  std::vector<NodeWithTransform> out;
+  for (auto& scene : model.scenes) {
+    for (auto& nidx : scene.nodes) {
+      fmt::print("doing root node: {}: {}\n", nidx, model.nodes[nidx].name);
+      math::Matrix4f identity = math::Matrix4f::identity();
+      node_find_helper(model, identity, nidx, &out);
+    }
+  }
+  return out;
+}
+
 void extract(const Input& in, Output& out) {
   lg::info("Reading gltf mesh: {}", in.filename);
   tinygltf::TinyGLTF loader;
@@ -200,35 +309,44 @@ void extract(const Input& in, Output& out) {
 
   std::vector<math::Vector<u8, 4>> all_vtx_colors;
   ASSERT(out.vertices.empty());
-  // iterate through all meshes
-  for (const auto& mesh : model.meshes) {
-    // mesh is made of primitives
-    for (const auto& prim : mesh.primitives) {
-      // extract index buffer
-      std::vector<u32> prim_indices = gltf_index_buffer(model, prim.indices, out.vertices.size());
-      ASSERT_MSG(prim.mode == TINYGLTF_MODE_TRIANGLES, "Unsupported triangle mode");
-      // extract vertices
-      auto verts = gltf_vertices(model, prim.attributes);
-      out.vertices.insert(out.vertices.end(), verts.vtx.begin(), verts.vtx.end());
-      all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(), verts.vtx_colors.end());
 
-      // TODO: just putting it all in one material
-      auto& draw = out.strip_draws.emplace_back();
-      draw.mode = make_default_draw_mode();
-      draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);
-      draw.num_triangles = prim_indices.size() / 3;
-      auto& grp = draw.vis_groups.emplace_back();
-      grp.num_inds = prim_indices.size();
-      grp.num_tris = draw.num_triangles;
-      grp.vis_idx_in_pc_bvh = UINT32_MAX;
-      draw.plain_indices = std::move(prim_indices);
+  for (const auto& node : model.nodes) {
+    fmt::print("node: {}: {} : {}\n", node.name, node.mesh, node.translation.size());
+  }
+  auto all_nodes = flatten_nodes_from_all_scenes(model);
+  for (const auto& n : all_nodes) {
+    const auto& node = model.nodes[n.node_idx];
+    if (node.mesh >= 0) {
+      const auto& mesh = model.meshes[node.mesh];
+      fmt::print("{}\n", n.w_T_node.to_string_aligned());
+      for (const auto& prim : mesh.primitives) {
+        // extract index buffer
+        std::vector<u32> prim_indices = gltf_index_buffer(model, prim.indices, out.vertices.size());
+        ASSERT_MSG(prim.mode == TINYGLTF_MODE_TRIANGLES, "Unsupported triangle mode");
+        // extract vertices
+        auto verts = gltf_vertices(model, prim.attributes, n.w_T_node);
+        out.vertices.insert(out.vertices.end(), verts.vtx.begin(), verts.vtx.end());
+        all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(),
+                              verts.vtx_colors.end());
+
+        // TODO: just putting it all in one material
+        auto& draw = out.strip_draws.emplace_back();
+        draw.mode = make_default_draw_mode();
+        draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);
+        draw.num_triangles = prim_indices.size() / 3;
+        auto& grp = draw.vis_groups.emplace_back();
+        grp.num_inds = prim_indices.size();
+        grp.num_tris = draw.num_triangles;
+        grp.vis_idx_in_pc_bvh = UINT32_MAX;
+        draw.plain_indices = std::move(prim_indices);
+      }
     }
   }
 
-  auto quantized = quantize_colors_octree(all_vtx_colors, 1024);
-  for (size_t i = 0; i < out.vertices.size(); i++) {
-    out.vertices[i].color_index = quantized.vtx_to_color[i];
-  }
-  out.color_palette = std::move(quantized.final_colors);
+    auto quantized = quantize_colors_octree(all_vtx_colors, 1024);
+    for (size_t i = 0; i < out.vertices.size(); i++) {
+      out.vertices[i].color_index = quantized.vtx_to_color[i];
+    }
+    out.color_palette = std::move(quantized.final_colors);
 }
 }  // namespace gltf_mesh_extract

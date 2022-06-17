@@ -2,6 +2,9 @@
 #include "color_quantization.h"
 #include "common/util/Assert.h"
 
+/*!
+ * Just removes duplicate colors, which can work if there are only a few unique colors.
+ */
 QuantizedColors quantize_colors_dumb(const std::vector<math::Vector<u8, 4>>& in) {
   QuantizedColors result;
   std::unordered_map<u64, u32> color_to_slot;
@@ -86,7 +89,7 @@ void for_each_node(Node& root, T&& func) {
 
 u32 count_leaves(Node& root) {
   u32 result = 0;
-  for_each_node(root, [&](Node& n){
+  for_each_node(root, [&](Node& n) {
     if (n.rgb_sum_count) {
       ASSERT(n.children.empty());
       result++;
@@ -138,14 +141,9 @@ void find_nodes_at_level(Node& n, std::vector<Node*>& out, u8 level) {
   }
 }
 
-
-
 void collapse_at_level(Node& root, u8 level, u32 target_leaf_count) {
-  fmt::print("collapse at level: {}. Want {} leaves, currently {}\n", level, target_leaf_count,
-             root.leaves_under_me);
   std::vector<Node*> nodes_at_level;
   find_nodes_at_level(root, nodes_at_level, level);
-  fmt::print("found {} nodes at this level\n", nodes_at_level.size());
   std::stable_sort(nodes_at_level.begin(), nodes_at_level.end(),
                    [](Node* a, Node* b) { return a->leaves_under_me < b->leaves_under_me; });
 
@@ -160,10 +158,7 @@ void collapse_as_needed(Node& root, u32 target_leaf_count) {
   while (root.leaves_under_me > target_leaf_count) {
     collapse_at_level(root, level_to_reduce--, target_leaf_count);
   }
-  fmt::print("end: {}\n", root.leaves_under_me);
 }
-
-
 
 void assign_colors(Node& root, std::vector<Color>& palette_out) {
   u32 idx = 0;
@@ -173,9 +168,7 @@ void assign_colors(Node& root, std::vector<Color>& palette_out) {
       palette_out.emplace_back(n.r_sum / n.rgb_sum_count, n.g_sum / n.rgb_sum_count,
                                n.b_sum / n.rgb_sum_count);
     }
-
   });
-  fmt::print("got: {}\n", idx);
 }
 
 u32 lookup_node_for_color(Node& root, Color c, u8 depth) {
@@ -188,6 +181,9 @@ u32 lookup_node_for_color(Node& root, Color c, u8 depth) {
 
 }  // namespace
 
+/*!
+ * Quantize colors using an octree for clustering.
+ */
 QuantizedColors quantize_colors_octree(const std::vector<math::Vector<u8, 4>>& in,
                                        u32 target_count) {
   Node root;
@@ -206,15 +202,16 @@ QuantizedColors quantize_colors_octree(const std::vector<math::Vector<u8, 4>>& i
 
   float total_error[3] = {0, 0, 0};
   for (size_t i = 0; i < in.size(); i++) {
-    // fmt::print(" {} -> {}\n", in[i].to_string_hex_byte(), out.final_colors[out.vtx_to_color[i]].to_string_hex_byte());
+    // fmt::print(" {} -> {}\n", in[i].to_string_hex_byte(),
+    // out.final_colors[out.vtx_to_color[i]].to_string_hex_byte());
     auto diff = in[i].cast<int>() - out.final_colors[out.vtx_to_color[i]].cast<int>();
 
-    for (int j= 0; j < 3; j++) {
+    for (int j = 0; j < 3; j++) {
       total_error[j] += std::abs(diff[j]);
     }
   }
-  fmt::print("total error: {}, {} {}\n", total_error[0] / in.size(), total_error[1] / in.size(), total_error[2] / in.size());
-
+  fmt::print("quantize_colors_octree total error: {}, {} {}\n", total_error[0] / in.size(),
+             total_error[1] / in.size(), total_error[2] / in.size());
   fmt::print("{}\n", out.final_colors.size());
 
   return out;
