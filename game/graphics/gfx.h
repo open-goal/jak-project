@@ -24,17 +24,9 @@ enum GfxDisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
 // module for the different rendering pipelines
 struct GfxRendererModule {
   std::function<int(GfxSettings&)> init;
-  std::function<std::shared_ptr<GfxDisplay>(int w, int h, const char* title, GfxSettings& settings)>
-      make_main_display;
-  std::function<void(GfxDisplay*)> kill_display;
-  std::function<void(GfxDisplay*)> render_display;
-  std::function<void(GfxDisplay*, int*, int*)> display_position;
-  std::function<void(GfxDisplay*, int*, int*)> display_size;
-  std::function<void(GfxDisplay*, int, int)> display_set_size;
-  std::function<void(GfxDisplay*, float*, float*)> display_scale;
-  std::function<void(GfxDisplay*, int, int)> set_fullscreen;
-  std::function<void(GfxDisplay*, int, int, s32*, s32*, s32*)> screen_size;
-  std::function<GfxDisplayMode(GfxDisplay*)> get_fullscreen;
+  std::function<std::shared_ptr<
+      GfxDisplay>(int width, int height, const char* title, GfxSettings& settings, bool is_main)>
+      make_display;
   std::function<void()> exit;
   std::function<u32()> vsync;
   std::function<u32()> sync_path;
@@ -101,9 +93,7 @@ namespace Gfx {
 
 extern GfxGlobalSettings g_global_settings;
 extern GfxSettings g_settings;
-// extern const std::vector<const GfxRendererModule*> renderers;
 
-const GfxRendererModule* GetRenderer(GfxPipeline pipeline);
 const GfxRendererModule* GetCurrentRenderer();
 
 u32 Init();

@@ -84,13 +84,12 @@ void SaveSettings() {
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
   switch (pipeline) {
     case GfxPipeline::Invalid:
-      lg::error("Requested invalid graphics pipeline!");
+      lg::error("Requested invalid renderer", pipeline);
       return NULL;
-      break;
     case GfxPipeline::OpenGL:
-      return &moduleOpenGL;
+      return &gRendererOpenGL;
     default:
-      lg::error("Unknown graphics pipeline {}", (u64)pipeline);
+      lg::error("Requested unknown renderer {}", (u64)pipeline);
       return NULL;
   }
 }
@@ -120,7 +119,7 @@ u32 Init() {
   }
 
   if (g_main_thread_id != std::this_thread::get_id()) {
-    lg::warn("Ran Gfx::Init outside main thread. Init display elsewhere?");
+    lg::error("Ran Gfx::Init outside main thread. Init display elsewhere?");
   } else {
     Display::InitMainDisplay(640, 480, "OpenGOAL GL Window", g_settings);
   }
@@ -134,7 +133,7 @@ void Loop(std::function<bool()> f) {
     // check if we have a display
     if (Display::GetMainDisplay()) {
       // lg::debug("run display");
-      Display::GetMainDisplay()->render_graphics();
+      Display::GetMainDisplay()->render();
     }
   }
 }
@@ -185,7 +184,9 @@ void set_levels(const std::vector<std::string>& levels) {
 }
 
 void poll_events() {
-  GetCurrentRenderer()->poll_events();
+  if (GetCurrentRenderer()) {
+    GetCurrentRenderer()->poll_events();
+  }
 }
 
 u64 get_window_width() {
@@ -218,7 +219,7 @@ void get_window_scale(float* x, float* y) {
 
 GfxDisplayMode get_fullscreen() {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->fullscreen_mode();
+    return Display::GetMainDisplay()->get_fullscreen();
   } else {
     return GfxDisplayMode::Windowed;
   }
