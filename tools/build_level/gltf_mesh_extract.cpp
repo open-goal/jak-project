@@ -41,6 +41,16 @@ std::vector<math::Vector3f> extract_vec3f(const u8* data, u32 count, u32 stride)
   return result;
 }
 
+std::vector<math::Vector2f> extract_vec2f(const u8* data, u32 count, u32 stride) {
+  std::vector<math::Vector2f> result;
+  result.reserve(count);
+  for (u32 i = 0; i < count; i++) {
+    memcpy(&result.emplace_back(), data, sizeof(math::Vector2f));
+    data += stride;
+  }
+  return result;
+}
+
 /*!
  * Convert a GLTF color buffer to u8 colors.
  */
@@ -97,7 +107,8 @@ struct ExtractedVertices {
 ExtractedVertices gltf_vertices(const tinygltf::Model& model,
                                 const std::map<std::string, int>& attributes,
                                 const math::Matrix4f& w_T_local,
-                                bool get_colors) {
+                                bool get_colors,
+                                const std::string& debug_name) {
   std::vector<tfrag3::PreloadedVertex> result;
   std::vector<math::Vector<u8, 4>> vtx_colors;
 
@@ -115,9 +126,9 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     ASSERT_MSG(attrib_accessor.type == TINYGLTF_TYPE_VEC3, "POSITION wasn't vec3");
     ASSERT_MSG(attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT,
                "POSITION wasn't float");
-    // for (auto& attrib : attributes) {
-    // fmt::print("attrib: {}\n", attrib.first);
-    //}
+    for (auto& attrib : attributes) {
+      fmt::print("attrib: {}\n", attrib.first);
+    }
     auto mesh_verts = extract_vec3f(data_ptr, count, byte_stride);
     result.reserve(mesh_verts.size());
     for (auto& vert : mesh_verts) {
@@ -148,10 +159,40 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     vtx_colors.insert(vtx_colors.end(), colors.begin(), colors.end());
   }
 
+  bool got_texture = false;
+  {
+    const auto& texcoord_attrib = attributes.find("TEXCOORD_0");
+    if (texcoord_attrib != attributes.end()) {
+      const auto attrib_accessor = model.accessors[texcoord_attrib->second];
+      const auto& buffer_view = model.bufferViews[attrib_accessor.bufferView];
+      const auto& buffer = model.buffers[buffer_view.buffer];
+      const auto data_ptr =
+          buffer.data.data() + buffer_view.byteOffset + attrib_accessor.byteOffset;
+      const auto byte_stride = attrib_accessor.ByteStride(buffer_view);
+      const auto count = attrib_accessor.count;
+
+      ASSERT_MSG(attrib_accessor.type == TINYGLTF_TYPE_VEC2, "TEXCOORD wasn't vec2");
+      ASSERT_MSG(attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT,
+                 "TEXCOORD wasn't float");
+      auto mesh_verts = extract_vec2f(data_ptr, count, byte_stride);
+      ASSERT(mesh_verts.size() == result.size());
+      got_texture = true;
+      for (size_t i = 0; i < mesh_verts.size(); i++) {
+        result[i].s = mesh_verts[i].x();
+        result[i].t = mesh_verts[i].y();
+      }
+    } else {
+      lg::warn("No texcoord attribute for mesh: {}", debug_name);
+    }
+  }
+
   for (auto& v : result) {
     v.color_index = 0;
-    v.s = 0;
-    v.t = 0;
+    if (!got_texture) {
+      v.s = 0;
+      v.t = 0;
+    }
+
     v.q_unused = 0;
     v.pad[0] = 0;
     v.pad[1] = 0;
@@ -204,6 +245,32 @@ int texture_pool_debug_checker(TexturePool* pool) {
   } else {
     return existing->second;
   }
+}
+
+int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex) {
+  const auto& existing = pool->textures_by_name.find(tex.name);
+  if (existing != pool->textures_by_name.end()) {
+    lg::info("Reusing image: {}", tex.name);
+    return existing->second;
+  }
+
+  ASSERT(tex.bits == 8);
+  ASSERT(tex.component == 4);
+  ASSERT(tex.pixel_type == TINYGLTF_TEXTURE_TYPE_UNSIGNED_BYTE);
+
+  size_t idx = pool->textures_by_idx.size();
+  pool->textures_by_name[tex.name] = idx;
+  auto& tt = pool->textures_by_idx.emplace_back();
+  tt.w = tex.width;
+  tt.h = tex.height;
+  tt.debug_name = tex.name;
+  tt.debug_tpage_name = "custom-level";
+  tt.load_to_pool = false;
+  tt.combo_id = 0;  // doesn't matter, not a pool tex
+  tt.data.resize(tt.w * tt.h * 4);
+  ASSERT(tex.image.size() >= tt.data.size());
+  memcpy(tt.data.data(), tex.image.data(), tt.data.size());
+  return idx;
 }
 }  // namespace
 
@@ -357,6 +424,41 @@ void dedup_vertices(Output& data) {
            data.vertices.size(), 100.f * data.vertices.size() / original_size);
 }
 
+DrawMode draw_mode_from_sampler(tinygltf::Sampler& sampler) {
+  DrawMode mode = make_default_draw_mode();
+  if (sampler.magFilter == TINYGLTF_TEXTURE_FILTER_NEAREST) {
+    ASSERT(sampler.minFilter == TINYGLTF_TEXTURE_FILTER_NEAREST);
+    mode.set_filt_enable(false);
+  } else {
+    ASSERT(sampler.minFilter != TINYGLTF_TEXTURE_FILTER_NEAREST);
+    mode.set_filt_enable(true);
+  }
+
+  switch (sampler.wrapS) {
+    case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
+      mode.set_clamp_s_enable(true);
+      break;
+    case TINYGLTF_TEXTURE_WRAP_REPEAT:
+      mode.set_clamp_s_enable(false);
+      break;
+    default:
+      ASSERT(false);
+  }
+
+  switch (sampler.wrapT) {
+    case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
+      mode.set_clamp_t_enable(true);
+      break;
+    case TINYGLTF_TEXTURE_WRAP_REPEAT:
+      mode.set_clamp_t_enable(false);
+      break;
+    default:
+      ASSERT(false);
+  }
+
+  return mode;
+}
+
 void extract(const Input& in, Output& out) {
   lg::info("Reading gltf mesh: {}", in.filename);
   Timer read_timer;
@@ -375,6 +477,9 @@ void extract(const Input& in, Output& out) {
   int mesh_count = 0;
   int prim_count = 0;
   auto all_nodes = flatten_nodes_from_all_scenes(model);
+
+  std::map<int, tfrag3::StripDraw> draw_by_material;
+
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
     if (node.mesh >= 0) {
@@ -386,7 +491,7 @@ void extract(const Input& in, Output& out) {
         std::vector<u32> prim_indices = gltf_index_buffer(model, prim.indices, out.vertices.size());
         ASSERT_MSG(prim.mode == TINYGLTF_MODE_TRIANGLES, "Unsupported triangle mode");
         // extract vertices
-        auto verts = gltf_vertices(model, prim.attributes, n.w_T_node, in.get_colors);
+        auto verts = gltf_vertices(model, prim.attributes, n.w_T_node, in.get_colors, mesh.name);
         out.vertices.insert(out.vertices.end(), verts.vtx.begin(), verts.vtx.end());
         if (in.get_colors) {
           all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(),
@@ -394,18 +499,55 @@ void extract(const Input& in, Output& out) {
         }
 
         // TODO: just putting it all in one material
-        auto& draw = out.strip_draws.emplace_back();
-        draw.mode = make_default_draw_mode();
-        draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);
-        draw.num_triangles = prim_indices.size() / 3;
-        auto& grp = draw.vis_groups.emplace_back();
-        grp.num_inds = prim_indices.size();
-        grp.num_tris = draw.num_triangles;
-        grp.vis_idx_in_pc_bvh = UINT32_MAX;
-        draw.plain_indices = std::move(prim_indices);
+        auto& draw = draw_by_material[prim.material];
+        draw.mode = make_default_draw_mode();                        // todo rm
+        draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);  // todo rm
+        draw.num_triangles += prim_indices.size() / 3;
+        if (draw.vis_groups.empty()) {
+          auto& grp = draw.vis_groups.emplace_back();
+          grp.num_inds += prim_indices.size();
+          grp.num_tris += draw.num_triangles;
+          grp.vis_idx_in_pc_bvh = UINT32_MAX;
+        } else {
+          auto& grp = draw.vis_groups.back();
+          grp.num_inds += prim_indices.size();
+          grp.num_tris += draw.num_triangles;
+          grp.vis_idx_in_pc_bvh = UINT32_MAX;
+        }
+
+        draw.plain_indices.insert(draw.plain_indices.end(), prim_indices.begin(),
+                                  prim_indices.end());
       }
     }
   }
+
+  for (const auto& [mat_idx, d_] : draw_by_material) {
+    out.strip_draws.push_back(d_);
+    auto& draw = out.strip_draws.back();
+    draw.mode = make_default_draw_mode();
+
+    if (mat_idx == -1) {
+      lg::warn("Draw had a material index of -1, using default texture.");
+      draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);
+      continue;
+    }
+    const auto& mat = model.materials[mat_idx];
+    int tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
+    if (tex_idx == -1) {
+      lg::warn("Material {} has no texture, using default texture.", mat.name);
+      draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);
+      continue;
+    }
+
+    const auto& tex = model.textures[tex_idx];
+    ASSERT(tex.sampler >= 0);
+    ASSERT(tex.source >= 0);
+    draw.mode = draw_mode_from_sampler(model.samplers.at(tex.sampler));
+
+    const auto& img = model.images[tex.source];
+    draw.tree_tex_id = texture_pool_add_texture(in.tex_pool, img);
+  }
+  lg::info("total of {} unique materials", out.strip_draws.size());
 
   lg::info("Merged {} meshes and {} prims into {} vertices", mesh_count, prim_count,
            out.vertices.size());
