@@ -305,7 +305,7 @@ void compile(std::filesystem::path extracted_iso_path) {
 }
 
 void launch_game() {
-  system((file_util::get_jak_project_dir() / "../gk").string().c_str());
+  system(fmt::format("\"{}\"", (file_util::get_jak_project_dir() / "../gk").string()).c_str());
 }
 
 int main(int argc, char** argv) {
