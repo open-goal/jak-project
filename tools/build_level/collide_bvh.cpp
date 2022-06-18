@@ -133,7 +133,6 @@ void split_along_dim(std::vector<CollideFace>& faces,
                      std::vector<CollideFace>* out1) {
   std::sort(faces.begin(), faces.end(), [=](const CollideFace& a, const CollideFace& b) {
     return a.bsphere[dim] < b.bsphere[dim];
-    //return a.v[0][dim] < b.v[0][dim];
   });
   size_t split_idx = faces.size() / 2;
   out0->insert(out0->end(), faces.begin(), faces.begin() + split_idx);
@@ -212,8 +211,6 @@ void split_as_needed(CNode& root) {
   lg::info("leaf count: {}", num_leaves);
 }
 
-
-
 /*!
  * Recursively compute bspheres of all children
  * (note that we don't do bspheres of bspheres... I think this is better?)
@@ -225,16 +222,66 @@ void bsphere_recursive(CNode& node) {
   }
 }
 
+void drawable_layout_helper(CNode& node, int depth, CollideTree& tree_out, size_t my_idx_check) {
+  if (node.child_nodes.empty()) {
+    // we're a leaf! add us to the frags
+    auto& frag = tree_out.frags.frags.emplace_back();
+    frag.bsphere = node.bsphere;
+    frag.faces = node.faces;
+  } else {
+    // not a leaf
+    if ((int)tree_out.node_arrays.size() <= depth) {
+      tree_out.node_arrays.resize(depth + 1);
+    }
+    ASSERT(my_idx_check == tree_out.node_arrays.at(depth).nodes.size());
+    auto& draw_node = tree_out.node_arrays[depth].nodes.emplace_back();
+    draw_node.bsphere = node.bsphere;
+    for (int i = 0; i < 8; i++) {
+      draw_node.children[i] = my_idx_check * 8 + i;
+      drawable_layout_helper(node.child_nodes.at(i), depth + 1, tree_out, draw_node.children[i]);
+    }
+  }
+}
+
+CollideTree build_collide_tree(CNode& root) {
+  CollideTree tree;
+  drawable_layout_helper(root, 0, tree, 0);
+  return tree;
+}
+
+void debug_stats(const CollideTree& tree) {
+  lg::info("Tree build: {} draw node layers", tree.node_arrays.size());
+  float sum_w = 0, max_w = 0;
+  for (auto& frag : tree.frags.frags) {
+    sum_w += frag.bsphere.w();
+    max_w = std::max(frag.bsphere.w(), max_w);
+  }
+  lg::info("Max bsphere radius: {:.2f}m, average {:.2f} (aiming for around 20-30m avg)",
+           max_w / 4096, sum_w / (4096 * tree.frags.frags.size()));
+}
+
 }  // namespace
 
-void construct_collide_bvh(const std::vector<CollideFace>& tris) {
+CollideTree construct_collide_bvh(const std::vector<CollideFace>& tris) {
+  // part 1: build the tree
   Timer bvh_timer;
   lg::info("Building collide bvh from {} triangles", tris.size());
   CNode root;
   root.faces = tris;
   split_as_needed(root);
+  lg::info("BVH tree constructed in {:.2f} ms", bvh_timer.getMs());
+
+  // part 2: compute bspheres
+  bvh_timer.start();
   bsphere_recursive(root);
-  lg::info("Collide bvh took {:.2f} ms\n", bvh_timer.getMs());
+  lg::info("Found bspheres in {:.2f} ms", bvh_timer.getMs());
+
+  // part 3: layout tree
+  bvh_timer.start();
+  auto tree = build_collide_tree(root);
+  debug_stats(tree);
+  lg::info("Tree layout done in {:.2f} ms", bvh_timer.getMs());
+  return tree;
 }
 
 }  // namespace collide

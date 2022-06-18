@@ -10,27 +10,30 @@
 // branching factor of 8 everywhere.
 namespace collide {
 
-struct MeshFrag {
+
+
+struct DrawNode {
+  s32 children[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
+  math::Vector4f bsphere;
+};
+
+struct CollideFrag {
+  math::Vector4f bsphere;
   std::vector<CollideFace> faces;
-  math::Vector3f origin;
-  math::Vector4f bsphere;
 };
 
-struct MeshFragArray {
-  MeshFrag data[8];
+struct DrawableInlineArrayNode {
+  std::vector<DrawNode> nodes;
 };
 
-struct BvhNodeArray;
-
-struct BvhNode {
-  math::Vector4f bsphere;
-  std::unique_ptr<MeshFragArray> frag_children;
-  std::unique_ptr<BvhNodeArray> node_children;
+struct DrawableInlineArrayCollideFrag {
+  std::vector<CollideFrag> frags;
 };
 
-struct BvhNodeArray {
-  BvhNode data[8];
+struct CollideTree {
+  std::vector<DrawableInlineArrayNode> node_arrays;
+  DrawableInlineArrayCollideFrag frags;
 };
 
-void construct_collide_bvh(const std::vector<CollideFace>& tris);
+CollideTree construct_collide_bvh(const std::vector<CollideFace>& tris);
 }
