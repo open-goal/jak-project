@@ -40,15 +40,15 @@ class GfxDisplay {
  public:
   virtual ~GfxDisplay() {}
 
-  virtual void* get_window() const __NYI_DEF;
-  virtual void set_size(int w, int h) __NYI_DEF;
-  virtual void update_fullscreen(GfxDisplayMode mode, int screen) __NYI_DEF;
-  virtual void get_scale(float* x, float* y) __NYI_DEF;
-  virtual void get_screen_size(int vmode_idx, s32* w, s32* h, s32* c) __NYI_DEF;
-  virtual void get_position(int* x, int* y) __NYI_DEF;
-  virtual void get_size(int* w, int* h) __NYI_DEF;
-  virtual GfxDisplayMode get_fullscreen() __NYI_DEF;
-  virtual void render() __NYI_DEF;
+  virtual void* get_window() const = 0;
+  virtual void set_size(int w, int h) = 0;
+  virtual void update_fullscreen(GfxDisplayMode mode, int screen) = 0;
+  virtual void get_scale(float* x, float* y) = 0;
+  virtual void get_screen_size(int vmode_idx, s32* w, s32* h, s32* c) = 0;
+  virtual void get_position(int* x, int* y) = 0;
+  virtual void get_size(int* w, int* h) = 0;
+  virtual GfxDisplayMode get_fullscreen() = 0;
+  virtual void render() = 0;
   bool is_active() const { return get_window() != nullptr; }
   void set_title(const char* title);
   const char* title() const { return m_title; }

@@ -1,4 +1,5 @@
 add_subdirectory(level_tools)
+add_subdirectory(build_level)
 
 add_executable(dgo_unpacker
         dgo_unpacker.cpp)
