@@ -6,6 +6,7 @@
 #include "tools/build_level/Tfrag.h"
 #include "tools/build_level/gltf_mesh_extract.h"
 #include "tools/build_level/collide_bvh.h"
+#include "tools/build_level/collide_pack.h"
 
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/util/compress.h"
@@ -75,7 +76,8 @@ int main(int argc, char** argv) {
   tfrag_from_gltf(mesh_extract_out.tfrag, file.drawable_trees.tfrags.emplace_back(),
                   pc_level.tfrag_trees[0].emplace_back());
   pc_level.textures = std::move(tex_pool.textures_by_idx);
-  collide::construct_collide_bvh(mesh_extract_out.collide.faces);
+  auto collide_tree = collide::construct_collide_bvh(mesh_extract_out.collide.faces);
+  auto collide_packed = pack_collide_frags(collide_tree.frags.frags);
 
   // Save the GOAL level
   auto result = file.save_object_file();

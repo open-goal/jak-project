@@ -2,6 +2,7 @@ add_executable(build_level
         main.cpp
         collide_bvh.cpp
         color_quantization.cpp
+        collide_pack.cpp
         LevelFile.cpp
         FileInfo.cpp
         gltf_mesh_extract.cpp

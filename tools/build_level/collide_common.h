@@ -94,6 +94,7 @@ struct PatSurface {
   }
   Event get_event() const { return (Event)(0b111111 & (val >> 14)); }
 
+  bool operator==(const PatSurface& other) const { return val == other.val; }
   // bits 13, [15-31] are unused, or have unknown purpose.
   u32 val = 0;
 };

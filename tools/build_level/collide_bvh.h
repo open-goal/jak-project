@@ -10,8 +10,6 @@
 // branching factor of 8 everywhere.
 namespace collide {
 
-
-
 struct DrawNode {
   s32 children[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
   math::Vector4f bsphere;
@@ -36,4 +34,4 @@ struct CollideTree {
 };
 
 CollideTree construct_collide_bvh(const std::vector<CollideFace>& tris);
-}
+}  // namespace collide
