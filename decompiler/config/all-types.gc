@@ -1697,7 +1697,7 @@
    (pid int32 :offset-assert 40)
    (main-thread cpu-thread :offset-assert 44)
    (top-thread thread :offset-assert 48)
-   (entity entity :offset-assert 52) ;; likely a res-lump
+   (entity entity-actor :offset-assert 52)
    (state state :offset-assert 56)
    (trans-hook function :offset-assert 60)
    (post-hook function :offset-assert 64)
@@ -1724,7 +1724,7 @@
 
 ;; - Functions
 
-(define-extern entity-deactivate-handler (function process entity none))
+(define-extern entity-deactivate-handler (function process entity-actor none))
 (define-extern process-disconnect (function process int))
 (define-extern throw (function symbol object int))
 (define-extern set-to-run-bootstrap (function none))
@@ -10834,8 +10834,7 @@
   )
 
 (deftype camera-tracker (process)
-  ((entity-override entity-actor :score 100   :offset 52)
-   (grab-target     handle  :offset 120)
+  ((grab-target     handle  :offset 120)
    (grab-event      symbol   :offset-assert 128)
    (release-event   symbol   :offset-assert 132)
    (old-global-mask process-mask  :offset-assert 136)
@@ -16112,7 +16111,7 @@
 
 ;; - Functions
 
-(define-extern nav-mesh-connect (function process trsqv nav-control nav-mesh))
+(define-extern nav-mesh-connect (function process trsqv nav-control nav-mesh :behavior process))
 (define-extern has-nav-mesh? (function entity-actor symbol))
 
 ;; - Symbols
@@ -20467,7 +20466,7 @@
 (define-extern camera-look-at (function pair uint process :behavior camera-tracker))
 (define-extern camera-pov-from (function pair uint process :behavior camera-tracker))
 (define-extern command-get-trans (function object vector vector)) ;; object types - null | symbol (null | target) | pair
-(define-extern manipy-init (function vector entity skeleton-group vector none :behavior manipy)) ;; TODO - not confirmed yet
+(define-extern manipy-init (function vector entity-actor skeleton-group vector none :behavior manipy)) ;; TODO - not confirmed yet
 (define-extern part-tracker-notify (function object :behavior part-tracker))
 (define-extern clone-anim-once (function handle int symbol string none :behavior process-drawable))
 (define-extern convert-to-hud-object (function process-drawable hud none :behavior process-drawable))
@@ -20853,7 +20852,7 @@
 ;; - Functions
 
 (define-extern target-swim-tilt (function float float float float float :behavior target))
-(define-extern projectile-init-by-other (function entity vector vector uint handle none :behavior projectile)) ;; 4th arg is `options`, 5th is `last-target`
+(define-extern projectile-init-by-other (function entity-actor vector vector uint handle none :behavior projectile)) ;; 4th arg is `options`, 5th is `last-target`
 (define-extern first-person-hud-init-by-other (function none :behavior first-person-hud))
 (define-extern disable-hud (function int none))
 (define-extern enable-hud (function none))
@@ -21258,8 +21257,8 @@
 ;; - Functions
 
 (define-extern task-control-reset (function symbol none))
-(define-extern init-entity (function process entity none))
-(define-extern birth-viewer (function process entity object))
+(define-extern init-entity (function process entity-actor none))
+(define-extern birth-viewer (function process entity-actor object))
 (define-extern update-actor-vis-box (function process-drawable vector vector none))
 (define-extern process-status-bits (function process symbol none))
 (define-extern entity-by-meters (function float float float entity-actor))
@@ -21472,7 +21471,7 @@
 (define-extern check-water-level-drop (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern check-water-level-drop-and-die (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern check-water-level-above-and-die (function sparticle-system sparticle-cpuinfo vector none))
-(define-extern water-vol-init-by-other (function entity none :behavior water-vol))
+(define-extern water-vol-init-by-other (function entity-actor none :behavior water-vol))
 
 
 ;; ----------------------
@@ -21730,11 +21729,11 @@
 (define-extern check-blue-suck (function process-drawable none :behavior eco-collectable))
 (define-extern initialize-eco-by-other (function vector vector fact-info none :behavior eco))
 (define-extern add-blue-shake (function vector vector vector vector))
-(define-extern money-init-by-other (function vector vector fact-info entity none :behavior money))
-(define-extern money-init-by-other-no-bob (function vector vector fact-info float entity none :behavior money))
-(define-extern fuel-cell-init-by-other (function vector vector fact-info entity none :behavior fuel-cell))
+(define-extern money-init-by-other (function vector vector fact-info entity-actor none :behavior money))
+(define-extern money-init-by-other-no-bob (function vector vector fact-info float entity-actor none :behavior money))
+(define-extern fuel-cell-init-by-other (function vector vector fact-info entity-actor none :behavior fuel-cell))
 (define-extern fuel-cell-init-as-clone (function handle int none :behavior fuel-cell))
-(define-extern buzzer-init-by-other (function vector vector fact-info entity none :behavior buzzer))
+(define-extern buzzer-init-by-other (function vector vector fact-info entity-actor none :behavior buzzer))
 
 ;; - Symbols
 
@@ -23560,7 +23559,7 @@
 
 ;; - Functions
 
-(define-extern basebutton-init-by-other (function basebutton vector quaternion entity-actor symbol float none :behavior basebutton))
+(define-extern basebutton-init-by-other (function entity-actor vector quaternion entity-actor symbol float none :behavior basebutton))
 
 ;; - Unknowns
 
@@ -24199,7 +24198,7 @@
 (define-extern solve-missile-velocity (function trajectory-params float none))
 (define-extern spawn-mistycannon-missile (function process-tree vector vector float float float float entity none))
 (define-extern angle-tracker-apply-move! (function angle-tracker float float))
-(define-extern mistycannon-missile-init-by-other (function mistycannon-init-data entity none :behavior mistycannon-missile))
+(define-extern mistycannon-missile-init-by-other (function mistycannon-init-data entity-actor none :behavior mistycannon-missile))
 (define-extern mistycannon-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector cshape-moving-flags))
 (define-extern angle-tracker-get-value (function angle-tracker float))
 (define-extern angle-tracker-set-value (function angle-tracker float float))
@@ -24487,7 +24486,7 @@
 
 (define-extern flutflutegg-hit-sounds (function none :behavior flutflutegg))
 (define-extern bladeassm-prebind-function (function process-drawable int bladeassm event-message-block object)) ;; TODO - first arg is very likely wrong
-(define-extern flying-rock-init-by-other (function vector vector float entity none :behavior flying-rock))
+(define-extern flying-rock-init-by-other (function vector vector float entity-actor none :behavior flying-rock))
 (define-extern spawn-flying-rock (function vector vector float entity none))
 (define-extern move-grottopole-to-position (function grottopole none))
 (define-extern move-grottopole (function grottopole float none))
@@ -26129,12 +26128,12 @@
 
 ;; - Functions
 
-(define-extern light-eco-child-init-by-other (function entity vector vector int none :behavior light-eco-child))
+(define-extern light-eco-child-init-by-other (function entity-actor vector vector int none :behavior light-eco-child))
 (define-extern check-drop-level-lighteco-big-pops (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern check-drop-level-lighteco-pops (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern light-eco-child-default-event-handler (function process int symbol event-message-block object :behavior light-eco-child))
 (define-extern light-eco-mother-default-event-handler (function process int symbol event-message-block int :behavior light-eco-mother))
-(define-extern light-eco-mother-init-by-other (function entity vector none :behavior light-eco-mother))
+(define-extern light-eco-mother-init-by-other (function entity-actor vector none :behavior light-eco-mother))
 
 ;; - Unknowns
 
@@ -26327,7 +26326,7 @@
 (define-extern robotboss-manipy-trans-hook (function none :behavior robotboss))
 (define-extern ecoclaw-beam-particle-callback (function part-tracker none))
 (define-extern ecoclaw-handler (function process int symbol event-message-block object :behavior ecoclaw))
-(define-extern finalbosscam-init-by-other (function entity none :behavior finalbosscam))
+(define-extern finalbosscam-init-by-other (function entity-actor none :behavior finalbosscam))
 
 ;; - Unknowns
 
@@ -26380,8 +26379,8 @@
 
 ;; - Functions
 
-(define-extern green-eco-lurker-init-by-other (function entity green-eco-lurker-gen vector none :behavior green-eco-lurker))
-(define-extern green-eco-lurker-gen-init-by-other (function entity vector int none :behavior green-eco-lurker-gen))
+(define-extern green-eco-lurker-init-by-other (function entity-actor green-eco-lurker-gen vector none :behavior green-eco-lurker))
+(define-extern green-eco-lurker-gen-init-by-other (function entity-actor vector int none :behavior green-eco-lurker-gen))
 
 ;; - Unknowns
 
@@ -26510,7 +26509,7 @@
 
 ;; - Functions
 
-(define-extern powercellalt-init-by-other (function entity vector vector int none :behavior powercellalt))
+(define-extern powercellalt-init-by-other (function entity-actor vector vector int none :behavior powercellalt))
 
 ;; - Unknowns
 
@@ -26601,7 +26600,7 @@
 ;; - Types
 
 (deftype evilbro (process-taskable)
-  ((evilsis entity  :offset-assert 380)
+  ((evilsis entity-actor  :offset-assert 380)
    )
   :method-count-assert 53
   :heap-base           #x110
@@ -27844,7 +27843,7 @@
 ;; - Types
 
 (deftype flut-info (basic)
-  ((entity basic :offset-assert 4)
+  ((entity entity-actor :offset-assert 4)
    (flut-trans vector :inline :offset-assert 16)
    (flut-quat vector :inline :offset-assert 32)
    (flut-scale vector :inline :offset-assert 48)
@@ -28488,7 +28487,7 @@
 
 ;; - Functions
 
-(define-extern sequenceA-village1-init-by-other (function entity none :behavior sequenceA-village1))
+(define-extern sequenceA-village1-init-by-other (function entity-actor none :behavior sequenceA-village1))
 (define-extern sequenceA-village1-trans-hook (function none :behavior sequenceA-village1))
 
 ;; - Unknowns
@@ -29039,10 +29038,10 @@
 
 (define-extern orient-to-face-target (function quaternion :behavior quicksandlurker))
 (define-extern quicksandlurker-spit (function (pointer part-tracker) :behavior quicksandlurker))
-(define-extern spawn-quicksandlurker-missile (function process vector vector entity none))
+(define-extern spawn-quicksandlurker-missile (function process vector vector entity-actor none))
 (define-extern quicksandlurker-check-hide-transition (function none :behavior quicksandlurker))
 (define-extern inc-angle (function (pointer float) float float))
-(define-extern quicksandlurker-missile-init-by-other (function quicksandlurker-missile-init-data entity none :behavior quicksandlurker-missile))
+(define-extern quicksandlurker-missile-init-by-other (function quicksandlurker-missile-init-data entity-actor none :behavior quicksandlurker-missile))
 (define-extern get-height-over-navmesh! function) ;; unused
 (define-extern intersects-nav-mesh? (function nav-control vector symbol)) ;; unused
 (define-extern quicksandlurker-default-event-handler (function process int symbol event-message-block object :behavior quicksandlurker))
@@ -29115,10 +29114,10 @@
    (explosion-force          vector  :inline :offset-assert 752)
    (explosion                symbol          :offset-assert 768)
    (explosion-joint-index    uint16  2       :offset-assert 772)
-   (explosion-joint-index-bytes int8 4       :offset 772) ;; added overlay
+   (explosion-joint-index-bytes int8 4       :score 50 :offset 772) ;; added overlay
    (vulnerable               symbol           :offset-assert 776)
    (water-y                  float           :offset-assert 780)
-   (propeller                joint-mod-set-local           :offset-assert 784)
+   (propeller                joint-mod-spinner             :offset-assert 784)
    (rudder                   joint-mod-set-local           :offset-assert 788)
    (mine                     joint-mod-set-world   2       :offset-assert 792)
    (buoyancy-factor          float           :offset-assert 800)
@@ -30321,7 +30320,7 @@
 (define-extern kermit-get-new-patrol-point (function vector :behavior kermit))
 (define-extern kermit-long-hop (function symbol :behavior kermit))
 (define-extern kermit-short-hop (function symbol :behavior kermit))
-(define-extern kermit-pulse-init-by-other (function vector entity none :behavior kermit-pulse))
+(define-extern kermit-pulse-init-by-other (function vector entity-actor none :behavior kermit-pulse))
 (define-extern joint-mod-tracker-callback (function cspace transformq none))
 (define-extern build-matrix-from-up-and-forward-axes! (function matrix vector int vector int matrix))
 (define-extern kermit-get-head-dir (function kermit vector vector))
@@ -30959,7 +30958,7 @@
 
 ;; - Functions
 
-(define-extern mother-spider-egg-init-by-other (function entity vector vector vector none :behavior mother-spider-egg))
+(define-extern mother-spider-egg-init-by-other (function entity-actor vector vector vector none :behavior mother-spider-egg))
 
 ;; - Unknowns
 
@@ -31535,7 +31534,7 @@
 
 ;; - Functions
 
-(define-extern orbit-plat-bottom-init-by-other (function entity orbit-plat none :behavior orbit-plat-bottom))
+(define-extern orbit-plat-bottom-init-by-other (function entity-actor orbit-plat none :behavior orbit-plat-bottom))
 (define-extern get-rotate-point! (function vector vector vector vector float float vector))
 (define-extern get-nav-point! (function vector orbit-plat vector float vector))
 
@@ -31695,7 +31694,7 @@
 
 ;; - Functions
 
-(define-extern qbert-plat-on-init-by-other (function entity qbert-plat none :behavior qbert-plat))
+(define-extern qbert-plat-on-init-by-other (function entity-actor qbert-plat none :behavior qbert-plat))
 (define-extern qbert-plat-event-handler (function process int symbol event-message-block object :behavior qbert-plat))
 
 ;; - Unknowns
@@ -31859,7 +31858,7 @@
 ;; - Functions
 
 (define-extern exit-chamber-button-init-by-other (function vector quaternion entity-actor symbol none :behavior exit-chamber-button))
-(define-extern blue-eco-charger-orb-init-by-other (function entity blue-eco-charger-orb none :behavior blue-eco-charger-orb))
+(define-extern blue-eco-charger-orb-init-by-other (function entity-actor blue-eco-charger-orb none :behavior blue-eco-charger-orb))
 
 ;; - Unknowns
 
@@ -32079,7 +32078,7 @@
 
 ;; - Functions
 
-(define-extern bully-broken-cage-init-by-other (function entity none :behavior bully-broken-cage))
+(define-extern bully-broken-cage-init-by-other (function entity-actor none :behavior bully-broken-cage))
 (define-extern bully-default-event-handler (function process int symbol event-message-block object :behavior bully))
 (define-extern bully-post (function none :behavior bully))
 
@@ -32364,7 +32363,7 @@
 
 ;; - Functions
 
-(define-extern sunkenfisha-init-by-other (function entity none :behavior sunkenfisha))
+(define-extern sunkenfisha-init-by-other (function entity-actor none :behavior sunkenfisha))
 
 ;; - Unknowns
 
@@ -32994,20 +32993,20 @@
 (define-extern ogreboss-spawn-super-boulder (function none :behavior ogreboss))
 (define-extern ogreboss-update-shuffling (function none :behavior ogreboss))
 (define-extern ogreboss-player-inside-range? (function float symbol :behavior ogreboss))
-(define-extern ogreboss-super-boulder-init-by-other (function vector float entity none :behavior ogreboss-super-boulder))
+(define-extern ogreboss-super-boulder-init-by-other (function vector float entity-actor none :behavior ogreboss-super-boulder))
 (define-extern ogreboss-set-stage2-camera (function none))
 (define-extern ogreboss-move-far (function time-frame float none :behavior ogreboss))
 (define-extern ogreboss-roll-boulder (function none :behavior ogreboss))
 (define-extern ogreboss-update-super-boulder (function none :behavior ogreboss))
 (define-extern ogreboss-blend-hit-anim (function none :behavior ogreboss))
-(define-extern ogreboss-bounce-boulder-init-by-other (function int entity none :behavior ogreboss-bounce-boulder))
+(define-extern ogreboss-bounce-boulder-init-by-other (function int entity-actor none :behavior ogreboss-bounce-boulder))
 (define-extern ogreboss-set-stage1-camera (function none))
 (define-extern ogreboss-move-near (function time-frame float none :behavior ogreboss))
 (define-extern ogreboss-shoot-boulder (function int none :behavior ogreboss))
 (define-extern ogreboss-inc-try-count (function none :behavior ogreboss))
 (define-extern ogreboss-emerge (function float none :behavior ogreboss))
 (define-extern ogreboss-pick-target (function int :behavior ogreboss))
-(define-extern ogreboss-missile-init-by-other (function ogreboss-missile-init-data entity none :behavior ogreboss-missile))
+(define-extern ogreboss-missile-init-by-other (function ogreboss-missile-init-data entity-actor none :behavior ogreboss-missile))
 (define-extern ogreboss-idle-loop (function none :behavior ogreboss))
 (define-extern ogreboss-super-boulder-impact-effect (function none :behavior ogreboss-super-boulder))
 (define-extern ogreboss-super-boulder-play-hit-anim (function object :behavior ogreboss-super-boulder))
@@ -34669,8 +34668,8 @@
 
 ;; - Functions
 
-(define-extern logo-slave-init-by-other (function entity skeleton-group none :behavior logo-slave))
-(define-extern logo-init-by-other (function entity vector symbol none :behavior logo))
+(define-extern logo-slave-init-by-other (function entity-actor skeleton-group none :behavior logo-slave))
+(define-extern logo-init-by-other (function entity-actor vector symbol none :behavior logo))
 
 ;; - Unknowns
 

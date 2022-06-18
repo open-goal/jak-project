@@ -1218,7 +1218,7 @@
   ;;`(empty)
   )
 
-(defun init-entity ((proc process) (ent entity))
+(defun init-entity ((proc process) (ent entity-actor))
   "This function starts up an entity!
   The process should not be activated yet."
   
@@ -1241,7 +1241,7 @@
 
 
 ;; TODO
-(define-extern birth-viewer (function process entity object))
+(define-extern birth-viewer (function process entity-actor object))
 
 (defmacro obj-etype? (&rest types)
   `(or ,@(apply (lambda (x) `(begin (define-extern ,x type) (type-type? (-> obj etype) ,x))) types))
@@ -1297,7 +1297,7 @@
   obj
   )
 
-(defun entity-deactivate-handler ((arg0 process) (arg1 entity))
+(defun entity-deactivate-handler ((arg0 process) (arg1 entity-actor))
   "Handle a deactivation in the entity.
    The entity directly stores a process so it should remove that after deactivating."
   (when (= arg0 (-> arg1 extra process))
@@ -1650,8 +1650,12 @@
       )
     )
   (when (not (paused?))
-    (let ((s5-1 (-> *display* frames (-> *display* last-screen) frame run-time)))
-      (let ((f0-5 (fmax 327680.0 (fmin (+ 327680.0 (* 204.8 (the float (- 7000 s5-1)))) (-> *ACTOR-bank* birth-dist)))))
+    ;; NOTE : get rid of lag compensation in PC port, it's not helpful
+    (let ((s5-1 (#if PC_PORT
+                     0
+                     (-> *display* frames (-> *display* last-screen) frame run-time)
+                     )))
+      (let ((f0-5 (fmax (meters 80) (fmin (+ (meters 80) (* (meters 0.05) (the float (- 7000 s5-1)))) (-> *ACTOR-bank* birth-dist)))))
         (seek! (-> *ACTOR-bank* pause-dist) f0-5 (* 81920.0 (-> *display* seconds-per-frame)))
         )
       (seekl! (-> *ACTOR-bank* birth-max) (the int (lerp-scale 25.0 1.0 (the float s5-1) 2000.0 7000.0)) 10)
