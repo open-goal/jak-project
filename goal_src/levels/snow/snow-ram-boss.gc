@@ -580,7 +580,7 @@
   (set! (-> obj attack-mode) 'snow-ram-proj)
   (set! (-> obj launch-time) (-> *display* base-frame-counter))
   (set! (-> obj timeout) (seconds 4))
-  (set! (-> obj sound-id) (sound-play-by-name (static-sound-name "ramboss-track") (new-sound-id) 1024 0 0 1 #t))
+  (set! (-> obj sound-id) (sound-play "ramboss-track"))
   (let ((v1-12 (-> obj parent-override)))
     (set! (-> v1-12 0 proj-stoked) #t)
     (set! (-> v1-12 0 proj-status) (the-as uint 1))
@@ -604,7 +604,12 @@
   )
 
 (defmethod dummy-28 ram-boss-proj ((obj ram-boss-proj))
-  (when (and *target* (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15))))
+  (when (and *target*
+             (zero? (logand (-> *target* state-flags)
+                            (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                            )
+                    )
+             )
     (let ((gp-0 (-> obj target)))
       (set! (-> gp-0 quad) (-> (target-pos 0) quad))
       (set! (-> gp-0 y) (+ 4915.2 (-> gp-0 y)))
@@ -639,9 +644,7 @@
       )
     )
   :code (behavior ()
-    (set! (-> self charge-sound-id)
-          (sound-play-by-name (static-sound-name "ramboss-charge") (new-sound-id) 1024 0 0 1 #t)
-          )
+    (set! (-> self charge-sound-id) (sound-play "ramboss-charge"))
     (loop
       (let ((gp-1 (-> self parent-override)))
         (when (-> gp-1 0 dead?)
@@ -684,7 +687,7 @@
 
 (defstate ram-boss-proj-launch (ram-boss-proj)
   :code (behavior ()
-    (sound-play-by-name (static-sound-name "ramboss-fire") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "ramboss-fire")
     (set! (-> self launched?) #t)
     (set! (-> self growth) 1.0)
     (logior! (-> self root-override root-prim prim-core action) (collide-action solid))
@@ -715,7 +718,7 @@
     (if (nonzero? (-> self sound-id))
         (sound-stop (-> self sound-id))
         )
-    (sound-play-by-name (static-sound-name "ramboss-hit") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "ramboss-hit")
     (suspend)
     (go-virtual projectile-die)
     (none)
@@ -1177,7 +1180,7 @@
                       (collide-kind background cak-2 ground-object)
                       obj
                       t2-0
-                      1
+                      (new 'static 'pat-surface :noentity #x1)
                       )
                     0.0
                     )
@@ -1215,24 +1218,18 @@
          (set! (-> obj proj-stoked) #t)
          (let ((s5-0 (new 'stack-no-clear 'vector)))
            (set! (-> s5-0 quad) (the-as uint128 0))
-           (let* ((s4-0 (the-as ram-boss-proj (get-process *default-dead-pool* ram-boss-proj #x4000)))
-                  (v1-9 (when s4-0
-                          (let ((t9-1 (method-of-type ram-boss-proj activate)))
-                            (t9-1 s4-0 obj 'ram-boss-proj (the-as pointer #x70004000))
-                            )
-                          (run-now-in-process
-                            s4-0
-                            projectile-init-by-other
-                            (-> obj entity)
-                            (-> obj collide-info trans)
-                            s5-0
-                            0
-                            (process->handle *target*)
-                            )
-                          (-> s4-0 ppointer)
-                          )
-                        )
-                  )
+           (let ((v1-9 (process-spawn
+                         ram-boss-proj
+                         :init projectile-init-by-other
+                         (-> obj entity)
+                         (-> obj collide-info trans)
+                         s5-0
+                         0
+                         (process->handle *target*)
+                         :to obj
+                         )
+                       )
+                 )
              (set! (-> (the-as (pointer ram-boss-proj) v1-9) 0 notify-handle) (process->handle obj))
              )
            )
@@ -1616,7 +1613,10 @@
         )
       )
     (when (and (= (-> self proj-status) 2)
-               (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+               (zero? (logand (-> *target* state-flags)
+                              (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                              )
+                      )
                (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
                )
       (let ((gp-2 (new 'stack-no-clear 'vector))
@@ -1857,11 +1857,11 @@
     (none)
     )
   :post (behavior ()
-    (TODO-RENAME-9 (-> self align))
+    (compute-alignment! (-> self align))
     (dummy-11 (-> self nav) (-> self nav target-pos))
-    (TODO-RENAME-11
+    (align-vel-and-quat-only!
       (-> self align)
-      4
+      (align-opts adjust-xz-vel)
       (-> self nav travel)
       (the-as int 1.0)
       1.0
@@ -1871,7 +1871,7 @@
       (-> self collide-info transv)
       (compute-acc-due-to-gravity (-> self collide-info) (new-stack-vector0) 0.0)
       )
-    (TODO-RENAME-10 (-> self align) 16 1.0 1.0 1.0)
+    (align! (-> self align) (align-opts adjust-quat) 1.0 1.0 1.0)
     (integrate-for-enemy-with-move-to-ground!
       (-> self collide-info)
       (-> self collide-info transv)

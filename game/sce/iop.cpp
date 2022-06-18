@@ -217,4 +217,12 @@ s32 WakeupThread(s32 thid) {
   iop->kernel.WakeupThread(thid);
   return 0;
 }
+
+bool ThreadWantsExit(s32 thid) {
+  return iop->kernel.GetWantExit(thid);
+}
+
+bool OnlyThreadAlive(s32 thid) {
+  return iop->kernel.OnlyThreadAlive(thid);
+}
 }  // namespace iop

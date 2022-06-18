@@ -102,16 +102,16 @@
                                                (import-mesh-func (function collide-cache object none))
                                                )
   "This terrible function fills the collide cache with background tris from a bounding box."
-  
+
   (local-vars (a0-4 int) (a0-6 int))
-    
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Step 1: Build Collide List
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  
+
   ;; this is a list of fragments that we will look at.
-  
-  
+
+
   (set! (-> *collide-list* num-items) 0)
   (cond
     ((= bsp-find-mesh-func (method-of-type bsp-header collide-ray))
@@ -137,14 +137,14 @@
         )
       )
     )
-  
-  
+
+
   (when (> (-> *collide-list* num-items) 0)
-    
+
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Step 2: Upload to VU0 Data
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    
+
     ;; in classic ND style, this is double buffered.
     ;; we'll undo this.
     (dotimes (i (-> *collide-list* num-items))
@@ -157,14 +157,14 @@
           (import-mesh-func obj (-> frag mesh))
         )
       )
-    
+
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Fake it as a prim
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    
+
     ;; The old system can actually read out lists of prims.
     ;; Note that this assumes the cache has been emptied and we're the first to fill it here.
-    
+
     (let ((a0-28 (-> obj num-tris)))
       (when (> a0-28 0)
         (let ((v1-55 (-> obj prims))
@@ -180,7 +180,7 @@
           )
         )
       )
-    
+
     )
   0
   (none)
@@ -602,7 +602,7 @@
                                                (arg2 float)
                                                (arg3 collide-kind)
                                                (arg4 process-drawable)
-                                               (arg5 int)
+                                               (arg5 pat-surface)
                                                )
   (local-vars
     (zero uint128)
@@ -652,7 +652,7 @@
         (.mul.vf vf8 vf3 vf3)
         (let ((v1-1 *collide-work*))
           (.add.vf vf2 vf1 vf3)
-          (set! (-> obj ignore-mask) (the-as pat-surface arg5))
+          (set! (-> obj ignore-mask) arg5)
           (.mov t0-1 vf21)
           (nop!)
           (pabsw-hack t0-2 t0-1)       ;; t0-2 is the line, absolute value
@@ -663,7 +663,7 @@
             )
           (let ((s2-0 (new 'stack-no-clear 'bounding-box)))
             (set-from-point-offset-pad! s2-0 (the-as vector3s arg0) (the-as vector3s arg1) arg2)
-            (fill-using-bounding-box obj s2-0 arg3 arg4 (the-as pat-surface arg5))
+            (fill-using-bounding-box obj s2-0 arg3 arg4 arg5)
             )
           (b! #t cfg-13 :delay (nop!))
           (set! v1-1 (the-as collide-work 0))
@@ -899,7 +899,7 @@
    to the given collide-list.
    Note: collide-probe is the faster implementation of this."
   *collide-work*
-  
+
   ;; just iterate over all and check their bsphere.
   (dotimes (s3-0 arg0)
     (when (collide-cache-using-line-sphere-test (-> obj bsphere))
@@ -921,7 +921,7 @@
   If the bsphere of the mesh is in the non-aligned bounding box, the mesh will be added
   to the given collide-list.
   Note: collide-probe is the faster implementation of this."
-  
+
   ;; loop over instance-ties
   (dotimes (s3-0 arg0)
     ;; first check the instance-tie's bsphere
@@ -2307,14 +2307,14 @@
                                                          (arg3 collide-kind)
                                                          (arg4 process)
                                                          (arg5 collide-tri-result)
-                                                         (arg6 int)
+                                                         (arg6 pat-surface)
                                                          )
   (fill-using-line-sphere obj arg0 arg1 arg2 arg3 (the-as process-drawable arg4) arg6)
   (probe-using-line-sphere obj arg0 arg1 arg2 arg3 arg5 arg6)
   )
 
 (deftype collide-puls-work (structure)
-  ((ignore-pat uint32                     :offset-assert   0)
+  ((ignore-pat pat-surface                :offset-assert   0)
    (tri-out    collide-tri-result         :offset-assert   4)
    (bsphere    sphere             :inline :offset-assert  16)
    (move-dist  vector             :inline :offset-assert  32)
@@ -2323,15 +2323,15 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-  
-  
+
+
 (defmethod probe-using-line-sphere collide-cache ((obj collide-cache)
                                                   (arg0 vector)
                                                   (arg1 vector)
                                                   (arg2 float)
                                                   (arg3 collide-kind)
                                                   (arg4 collide-tri-result)
-                                                  (arg5 int)
+                                                  (arg5 pat-surface)
                                                   )
   (rlet ((vf0 :class vf)
          (vf2 :class vf)
@@ -2343,7 +2343,7 @@
           (.mov vf4 arg2)
           (.lvf vf3 (&-> arg0 quad))
           (.lvf vf2 (&-> arg1 quad))
-          (set! (-> s4-0 ignore-pat) (the-as uint arg5))
+          (set! (-> s4-0 ignore-pat) arg5)
           (.mul.x.vf vf3 vf0 vf4 :mask #b1000)
           (set! (-> s4-0 tri-out) arg4)
           (.svf (&-> s4-0 move-dist quad) vf2)
@@ -2373,7 +2373,7 @@
                      )
                    )
                   (else
-                    (when (zero? (logand (the-as pat-surface arg5)
+                    (when (zero? (logand arg5
                                          (-> (the-as collide-shape-prim-sphere (-> (the-as collide-cache-prim s3-0) prim)) pat)
                                          )
                                  )

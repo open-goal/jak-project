@@ -222,7 +222,7 @@
     (ja-post)
     (loop
       (if (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-               (and (zero? (logand (-> *target* state-flags) (state-flags sf08)))
+               (and (zero? (logand (-> *target* state-flags) (state-flags grabbed)))
                     (and (>= (-> *game-info* fuel) 100.0)
                          (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
                          (= (get-task-status (game-task finalboss-movies)) (task-status need-reward-speech))
@@ -293,7 +293,7 @@
 (defstate jump (powercellalt)
   :virtual #t
   :code (behavior ()
-    (sound-play-by-name (static-sound-name "cell-prize") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "cell-prize")
     (let ((gp-1 (new 'stack 'trajectory)))
       (set! (-> self base y) (-> self jump-pos y))
       (setup-from-to-duration! gp-1 (-> self root-override trans) (-> self jump-pos) 300.0 -2.2755556)
@@ -313,7 +313,7 @@
     (set! (-> self root-override trans quad) (-> self jump-pos quad))
     (set! (-> self base quad) (-> self root-override trans quad))
     (transform-post)
-    (sound-play-by-name (static-sound-name "land-pcmetal") (new-sound-id) 1024 3048 0 1 #t)
+    (sound-play "land-pcmetal" :pitch 2)
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -349,7 +349,7 @@
 ;; definition for function powercellalt-init-by-other
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defbehavior powercellalt-init-by-other powercellalt ((arg0 entity) (arg1 vector) (arg2 vector) (arg3 int))
+(defbehavior powercellalt-init-by-other powercellalt ((arg0 entity-actor) (arg1 vector) (arg2 vector) (arg3 int))
   (set! (-> self entity) arg0)
   (let ((s3-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
     (set! (-> s3-0 dynam) (copy *standard-dynamics* 'process))
@@ -388,15 +388,15 @@
   :enter (behavior ((arg0 basic) (arg1 handle))
     (send-event *camera* 'change-to-entity-by-name "camera-403")
     (set! (-> self control unknown-surface00) *empty-mods*)
-    (logior! (-> self state-flags) (state-flags sf04 sf08))
-    (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
+    (logior! (-> self state-flags) (state-flags invulnerable grabbed))
+    (set-setting! 'allow-progress #f 0.0 0)
     (none)
     )
   :exit (behavior ()
     (send-event *camera* 'change-state *camera-base-mode* (seconds 0.2))
-    (logclear! (-> self state-flags) (state-flags sf04 sf08))
+    (logclear! (-> self state-flags) (state-flags invulnerable grabbed))
     (target-exit)
-    (clear-pending-settings-from-process *setting-control* self 'allow-progress)
+    (remove-setting! 'allow-progress)
     (none)
     )
   :trans (behavior ()

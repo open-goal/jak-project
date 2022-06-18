@@ -1697,7 +1697,7 @@
    (pid int32 :offset-assert 40)
    (main-thread cpu-thread :offset-assert 44)
    (top-thread thread :offset-assert 48)
-   (entity entity :offset-assert 52) ;; likely a res-lump
+   (entity entity-actor :offset-assert 52)
    (state state :offset-assert 56)
    (trans-hook function :offset-assert 60)
    (post-hook function :offset-assert 64)
@@ -1724,7 +1724,7 @@
 
 ;; - Functions
 
-(define-extern entity-deactivate-handler (function process entity none))
+(define-extern entity-deactivate-handler (function process entity-actor none))
 (define-extern process-disconnect (function process int))
 (define-extern throw (function symbol object int))
 (define-extern set-to-run-bootstrap (function none))
@@ -2970,6 +2970,19 @@
 
 ;; - Types
 
+(defenum sound-group
+  :bitfield #t
+  :type uint8
+  (sfx)
+  (music)
+  (dialog)
+  (sog3)
+  (ambient)
+  (sog5)
+  (sog6)
+  (sog7)
+  )
+
 (deftype sound-id (uint32)
   ()
   (:methods
@@ -3023,7 +3036,7 @@
    (priority  int8      :offset-assert 11)
    (volume    int32     :offset-assert 12)
    (trans     vector3w  :inline :offset-assert 16)
-   (group     uint8     :offset-assert 28)
+   (group     sound-group  :offset-assert 28)
    )
   :pack-me
   :method-count-assert 9
@@ -3048,7 +3061,7 @@
   )
 
 (deftype sound-rpc-group-cmd (sound-rpc-cmd)
-  ((group   uint8   :offset-assert 4)
+  ((group   sound-group   :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x5
@@ -3283,9 +3296,9 @@
 (deftype sound-spec (basic)
   ((mask            sound-mask :offset-assert 4)
    (num             float      :offset-assert 8)
-   (group           uint8      :offset-assert 12)
+   (group           sound-group :offset-assert 12)
+   (sound-name-char uint8 16   :offset 16)
    (sound-name      sound-name :score 20 :offset 16)
-   (sound-name-char uint8 16   :offset 16) ;; moved to after sound-name
    (trans           float 4    :offset-assert 32) ;; guess
    (volume          int32      :offset-assert 48)
    (pitch-mod       int32      :offset-assert 52)
@@ -6097,11 +6110,11 @@
   :flag-assert         #xe00000278
   (:methods
     (new (symbol type int) _type_ 0)
-    (push-setting! (_type_ process symbol object object object) none 9)
-    (set-setting! (_type_ process symbol symbol float int) none 10)
-    (clear-pending-settings-from-process (_type_ process symbol) none 11)
-    (copy-settings-from-target! (_type_) setting-data 12)
-    (update-per-frame-settings! (_type_) setting-data 13)
+    (add-setting (_type_ process symbol object object object) none 9)
+    (set-setting (_type_ process symbol object object object) none 10)
+    (remove-setting (_type_ process symbol) none 11)
+    (apply-settings (_type_) setting-data 12)
+    (update (_type_) setting-data 13)
     )
   )
 
@@ -6464,7 +6477,7 @@
   ;; field param1 is a basic loaded with a signed load field param2 is a basic loaded with a signed load
   (:methods
     (new (symbol type basic) _type_ 0)
-    (dummy-9 (_type_ basic) _type_ 9)
+    (reset-and-assign-geo! (_type_ basic) _type_ 9)
     )
   )
 
@@ -9177,42 +9190,16 @@
 (defenum shadow-flags
   :bitfield #t
   :type int32
-  (shdf00)
-  (shdf01)
-  (shdf02)
+  (shdf00) ;; unused
+  (disable-fade)
+  (shdf02) ;; only set, never used.
   (shdf03)
-  (shdf04)
-  (shdf05)
-  (shdf06)
-  (shdf07)
-  (shdf08)
-  (shdf09)
-  (shdf10)
-  (shdf11)
-  (shdf12)
-  (shdf13)
-  (shdf14)
-  (shdf15)
-  (shdf16)
-  (shdf17)
-  (shdf18)
-  (shdf19)
-  (shdf20)
-  (shdf21)
-  (shdf22)
-  (shdf23)
-  (shdf24)
-  (shdf25)
-  (shdf26)
-  (shdf27)
-  (shdf28)
-  (shdf29)
-  (shdf30)
-  (shdf31)
+  (shdf04) ;; unused
+  (disable-draw)
   )
 
 (deftype shadow-settings (structure)
-  ((center        vector :inline :offset-assert 0)
+  ((center        vector :inline :offset-assert 0 :do-not-decompile)
    (flags         shadow-flags   :score 100 :offset 12)
    (shadow-dir    vector :inline :offset-assert 16)
    (dist-to-locus float          :offset 28)
@@ -9241,7 +9228,7 @@
     (set-offset-bit (shadow-control) int 10)
     (set-top-plane-offset (shadow-control float) int 11)
     (set-bottom-plane-offset (shadow-control float) int 12)
-    (dummy-13 (_type_) none 13)
+    (unused-13 (_type_) none 13)
     (update-direction-from-time-of-day (_type_) none 14)
     (collide-to-find-planes (_type_ vector float float float) none 15)
     )
@@ -9903,7 +9890,7 @@
   :flag-assert         #xb000000c0
   (:methods
     (new (symbol type int) _type_ 0)
-    (dummy-9 (_type_) float 9)
+    (current-cycle-distance (_type_) float 9)
     (debug-print-channels (_type_ symbol) int 10)
     )
   )
@@ -10221,38 +10208,33 @@
 (defenum surface-flags
   :bitfield #t
   :type uint32
-  (surf00)
-  (surf01)
-  (surf02)
-  (surf03)
-  (surf04)
-  (surf05)
-  (surf06)
-  (surf07)
-  (surf08)
-  (surf09)
-  (surf10)
-  (surf11)
-  (surf12)
-  (surf13)
-  (surf14)
-  (surf15)
-  (surf16)
-  (surf17)
-  (surf18)
-  (surf19)
-  (surf20)
-  (surf21)
-  (surf22)
-  (surf23)
-  (surf24)
-  (surf25)
-  (surf26)
-  (surf27)
-  (surf28)
-  (surf29)
-  (surf30)
-  (surf31)
+  (allow-look-around) ;; allows entering first person with triangle
+  (dive)              ;; set on all diving (dive, dive-bottom) surfaces
+  (surf02)            ;; unused
+  (no-turn-around)    ;; prevent "changed direction" animation from happening
+
+  ;; when jak is on a surface with this flag, the case where jak
+  ;; is forced to rotate in the direction he's traveling is
+  ;; never taken. It's used on ice (though it is not needed, the turn toward transv
+  ;; is disabled by not being in target-walk ever) and also used to prevent
+  ;; jak from spinning around when he shouldn't (like if he's knocked back)
+  (no-rotate-toward-transv)
+  ;; if jak should always be forced to rotate in the direction he's travelling.
+  ;; used for the slides and also the warp gate jump
+  (always-rotate-toward-transv)
+
+  ;; never set, but prevents jak from jumping (both normal and roll)
+  (prevent-jump)
+
+  ;; target is launch jumping (from a blue eco pad)
+  (prevent-attacks-during-launch-jump)
+  (surf08) ;; never set, prevents various attacks from being possible
+  (surf09) ;; another attack prevent
+  (allow-edge-grab) ;; if set, and jak is falling, turn on the ledge grab search.
+  (jump) ;; set on all jumps, used to prevent "on-grounds" in places
+  (attacking) ;; set on all attacks, but not actually used anywhere
+  (ducking)   ;; set on all ducks, but not actually used anywhere
+  (moving-ground) ;; unused, but would make sense if jak was on something moving
   )
 
 (deftype surface (basic)
@@ -10364,7 +10346,7 @@
   ((skip          uint8        :offset   0 :size   3 :do-not-decompile)
    (mode          pat-mode     :offset   3 :size   3)
    (material      pat-material :offset   6 :size   6)
-   (camera        uint8        :offset  12 :size   2)
+   (camera        uint8        :offset  12 :size   2 :do-not-decompile)
    (event         pat-event    :offset  14 :size   6)
    (noentity      uint8        :offset   0 :size   1)
    (nocamera      uint8        :offset   1 :size   1)
@@ -10417,21 +10399,20 @@
   (vent-valve 2)
   (wrap-phase 3)     ;; phase should wrap from 1 to 0 instead of mirroring.
   (fop4 4)           ;; unused?
-  (fop5 5)           ;; wait-for-cue after death?
-  (fop6 6)
-  (fop7 7)
+  (fop5 5)           ;; wait-for-cue after death? nothing sets this.
+  (instant-collect 6) ;; set on balloon lurker, puffer
+  (skip-jump-anim 7) ;; skips fuel cell "jump" animation
   (can-collect 8)
   (fade 9)
   (large 10)
-  (fop11 11)
+  (require-zoomer 11) ;; iron, but need to be riding zoomer to break it. only used in demo?
   (powerup 12)
   ;; strengths
   (touch 13)
   (normal-attack 14)
   (strong-attack 15)
   (indestructible 16)
-
-  (fop17 17)         ;; unused
+  (fop17 17)         ;; engine doesn't check it, set on babak near jungleb exit and in robot room.
   (eco-blocked 18)
   (respawn 19)
   )
@@ -10541,59 +10522,46 @@
 (defenum align-flags
   :bitfield #t
   :type uint32
-  (algf00)
-  (algf01)
-  (algf02)
-  (algf03)
-  (algf04)
-  (algf05)
-  (algf06)
-  (algf07)
-  (algf08)
-  (algf09)
-  (algf10)
-  (algf11)
-  (algf12)
-  (algf13)
-  (algf14)
-  (algf15)
-  (algf16)
-  (algf17)
-  (algf18)
-  (algf19)
-  (algf20)
-  (algf21)
-  (algf22)
-  (algf23)
-  (algf24)
-  (algf25)
-  (algf26)
-  (algf27)
-  (algf28)
-  (algf29)
-  (algf30)
-  (algf31)
+  (disabled) ;; keep object velocity
+  )
+
+(defenum align-opts
+  :bitfield #t
+  :type uint32
+  (adjust-x-vel)
+  (adjust-y-vel)
+  (adjust-xz-vel)
+  (keep-other-velocities)
+  (adjust-quat) ;; 16
+  (alop0)
+  (alop1)
+  (alop2)
+  (alop3)
+  (alop4)
+  (alop5)
+  (no-gravity)
+  (ignore-y-if-zero)
   )
 
 (deftype align-control (basic)
-  ((flags       align-flags        :offset-assert 4)
-   (process     process-drawable   :offset-assert 8)
-   (frame-group art-joint-anim     :offset-assert 12)
-   (frame-num   float              :offset-assert 16)
-   (matrix      matrix     2 :inline :offset-assert 32)
-   (transform   transform  2 :inline :offset-assert 160)
-   (delta       transformq :inline :offset-assert 256)
-   (last-speed  meters             :offset-assert 304)
-   (align       transformq :inline :offset 160)
+  ((flags       align-flags                :offset-assert   4)
+   (process     process-drawable           :offset-assert   8)
+   (frame-group art-joint-anim             :offset-assert  12)
+   (frame-num   float                      :offset-assert  16)
+   (matrix      matrix           2 :inline :offset-assert  32)
+   (transform   transform        2 :inline :offset-assert 160)
+   (delta       transformq       :inline   :offset-assert 256)
+   (last-speed  meters                     :offset-assert 304)
+   (align       transformq       :inline   :offset        160)
    )
   :method-count-assert 14
   :size-assert         #x134
   :flag-assert         #xe00000134
   (:methods
     (new (symbol type process) _type_ :behavior process-drawable 0)
-    (TODO-RENAME-9 (_type_) transformq 9)
-    (TODO-RENAME-10 (_type_ int float float float) trsqv 10)
-    (TODO-RENAME-11 (_type_ int vector int float float) none 11) ;; 3rd arg is unused
+    (compute-alignment! (_type_) transformq 9)
+    (align! (_type_ align-opts float float float) trsqv 10)
+    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv 11) ;; 3rd arg is unused
     (first-transform (_type_) transform 12)
     (snd-transform (_type_) transform 13)
     )
@@ -10611,38 +10579,27 @@
 (defenum state-flags
   :bitfield #t
   :type uint32
-  (sf00)
-  (sf01)
-  (sf02)
-  (sf03)
-  (sf04)
-  (sf05)
-  (sf06)
-  (sf07)
-  (sf08)
-  (sf09)
-  (sf10)
-  (sf11)
-  (sf12)
-  (sf13)
-  (sf14)
-  (sf15)
-  (sf16)
-  (sf17)
-  (sf18)
-  (sf19)
-  (sf20)
-  (sf21)
-  (sf22)
-  (sf23)
-  (sf24)
-  (sf25)
-  (sf26)
-  (sf27)
-  (sf28)
-  (sf29)
-  (sf30)
-  (sf31)
+  (fade-out-particles) ;; set so particle callbacks can fade out before death
+  (dangerous)          ;; set on jak if he is "dangerous" (currently attacking)
+  (sf02)               ;; never sent, blocks tripping
+  (being-attacked)     ;; set when attacked
+  (invulnerable)       ;; set from the debug menu
+  (timed-invulnerable) ;; after being attacked
+  (invuln-powerup)     ;; unused invulnerable mode from powerup
+  (do-not-notice)      ;; enemies etc shouldn't notice jak
+  (grabbed)            ;; something else has "grabbed" control of jak
+  (first-person-mode)  ;; triangle, billy game
+  (use-alt-cam-pos)    ;; target-cam-pos should use an alternate position (jumping in warp gate, on to flutflut...)
+  (prevent-jump)       ;; target cannot do any jumps
+  (prevent-attack)     ;; target cannot do attacks
+  (prevent-duck)       ;; can't duck or roll
+  (remove-prevents)    ;; when set, removes the previous 3 prevents on the next frame.
+  (dying)                ;; set during death anim
+  (sf16)                 ;; unused
+  (has-saved-position)       ;; is there a saved position?
+  (looking-at-enemy)         ;; neck mod active to look at enemy
+  (falling-into-pool-of-bad) ;; falling into lava, dark eco, or melt
+  (flop-hit-ground)          ;; set when ground pound hit ground
   )
 
 (declare-type nav-control basic)
@@ -10678,7 +10635,7 @@
   (:methods
     (initialize-skeleton (_type_ skeleton-group pair) none 14)
     (initialize-skeleton-by-name (_type_ string object) _type_ 15)
-    (apply-alignment (_type_ int transformq vector) collide-shape 16)
+    (apply-alignment (_type_ align-opts transformq vector) collide-shape 16)
     (do-joint-math! (_type_) none 17)
     (cleanup-for-death (_type_) none 18)
     (evaluate-joint-control (_type_) none 19)
@@ -10877,8 +10834,7 @@
   )
 
 (deftype camera-tracker (process)
-  ((entity-override entity-actor :score 100   :offset 52)
-   (grab-target     handle  :offset 120)
+  ((grab-target     handle  :offset 120)
    (grab-event      symbol   :offset-assert 128)
    (release-event   symbol   :offset-assert 132)
    (old-global-mask process-mask  :offset-assert 136)
@@ -11762,7 +11718,7 @@
     (add-fg-prim-using-y-probe (_type_ collide-cache) none 14)
     (overlaps-others-test (_type_ overlaps-others-params collide-shape-prim) symbol 15)
     (overlaps-others-group (_type_ overlaps-others-params collide-shape-prim-group) symbol 16)
-    (dummy-17 () none 17)
+    (unused-17 () none 17)
     (collide-with-collide-cache-prim-mesh (_type_ collide-shape-intersect collide-cache-prim) none 18)
     (collide-with-collide-cache-prim-sphere (_type_ collide-shape-intersect collide-cache-prim) none 19)
     (add-to-bounding-box (_type_ collide-kind) symbol 20)
@@ -13046,7 +13002,7 @@
    (num-spheres  uint32  :offset-assert 4)
    (collide-with collide-kind  :offset-assert 8)
    (proc         process-drawable   :offset-assert 16)
-   (ignore-pat   uint32  :offset-assert 20) ;; flags / bitfield i bet
+   (ignore-pat   pat-surface  :offset-assert 20) ;; flags / bitfield i bet
    (solid-only   basic   :offset-assert 24) ;; probably a symbol
    )
   :method-count-assert 9
@@ -13146,15 +13102,15 @@
   :flag-assert         #x2100008670
   (:methods
     (debug-draw (_type_) none 9)
-    (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result int) float 10)
+    (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result pat-surface) float 10)
     (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
     (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface) float 12)
     (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
-    (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable int) none 14)
+    (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable pat-surface) none 14)
     (fill-using-spheres (_type_ collide-using-spheres-params) none 15)
     (fill-using-y-probe (_type_ vector float collide-kind process-drawable pat-surface) none 16)
     (initialize (_type_) none 17)
-    (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result int) float 18)
+    (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result pat-surface) float 18)
     (probe-using-spheres (_type_ collide-using-spheres-params) symbol 19)
     (probe-using-y-probe (_type_ vector float collide-kind collide-tri-result pat-surface) float 20)
     (fill-from-background (_type_ (function bsp-header int collide-list none) (function collide-cache object none)) none 21) ;; second functiom is method 28
@@ -14637,7 +14593,7 @@
    (random-mult    int32   :offset 12)
    (sym            symbol  :offset 4) ;; moved
    (func           symbol  :offset 4)
-   (tex            uint32  :offset 4)
+   (tex            texture-id  :offset 4)
    (pntr           pointer :offset 4)
    ;; sym used to be here
    (sound          sound-spec   :offset 4)
@@ -16155,7 +16111,7 @@
 
 ;; - Functions
 
-(define-extern nav-mesh-connect (function process trsqv nav-control nav-mesh))
+(define-extern nav-mesh-connect (function process trsqv nav-control nav-mesh :behavior process))
 (define-extern has-nav-mesh? (function entity-actor symbol))
 
 ;; - Symbols
@@ -16357,7 +16313,7 @@
 (define-extern effect-param->sound-spec (function sound-spec (pointer float) int sound-spec))
 (define-extern ear-trans (function vector))
 (define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id))
-(define-extern sound-play-by-name (function sound-name sound-id int int int int symbol sound-id))
+(define-extern sound-play-by-name (function sound-name sound-id int int int sound-group symbol sound-id))
 (define-extern sound-angle-convert (function float int))
 (define-extern sound-set-ear-trans (function vector vector float int))
 (define-extern activate-progress (function process progress-screen none))
@@ -16380,13 +16336,13 @@
 (define-extern swap-sound-buffers (function vector vector float int))
 (define-extern free-last-sound-buffer-entry (function int))
 (define-extern sound-basic-cb (function int (pointer int32) none))
-(define-extern sound-set-volume (function uint float int))
+(define-extern sound-set-volume (function sound-group float int))
 (define-extern sound-set-reverb (function int float float uint int))
 (define-extern sound-pause (function sound-id int))
 (define-extern sound-continue (function sound-id int))
-(define-extern sound-group-pause (function uint int))
-(define-extern sound-group-stop (function uint int))
-(define-extern sound-group-continue (function uint int))
+(define-extern sound-group-pause (function sound-group int))
+(define-extern sound-group-stop (function sound-group int))
+(define-extern sound-group-continue (function sound-group int))
 (define-extern sound-set-falloff-curve (function int float float int))
 (define-extern sound-set-sound-falloff (function sound-name int int int int))
 (define-extern sound-set-flava (function uint int))
@@ -18657,7 +18613,7 @@
 (define-extern update-mood-jungleb-blue (function mood-context float int none))
 (define-extern update-mood-prt-color (function mood-context vector))
 (define-extern update-mood-default (function mood-context float int none))
-(define-extern update-mood-misty (function mood-context float float none))
+(define-extern update-mood-misty (function mood-context float int none))
 (define-extern update-mood-village2 (function mood-context float int none))
 (define-extern update-mood-swamp (function mood-context float int none))
 (define-extern update-mood-village1 (function mood-context float int none))
@@ -19703,11 +19659,11 @@
 (define-extern cam-collision-record-save (function vector vector int symbol camera-slave none))
 (define-extern cam-string-move (function object :behavior camera-slave))
 (define-extern cam-dist-analog-input (function int float float))
-(define-extern cam-los-collide (function vector vector clip-travel-vector-to-mesh-return-info int symbol :behavior camera-slave))
+(define-extern cam-los-collide (function vector vector clip-travel-vector-to-mesh-return-info pat-surface symbol :behavior camera-slave))
 (define-extern dist-info-init (function collide-los-dist-info none))
 (define-extern los-cw-ccw (function (inline-array collide-cache-tri) vector vector float clip-travel-vector-to-mesh-return-info vector float symbol))
 (define-extern cam-debug-add-los-tri (function (inline-array collide-cache-tri) vector vector none))
-(define-extern cam-los-spline-collide (function vector vector vector float))
+(define-extern cam-los-spline-collide (function vector vector pat-surface float))
 (define-extern cam-los-setup-lateral (function clip-travel-vector-to-mesh-return-info vector vector symbol :behavior camera-slave))
 (define-extern slave-los-state->string (function slave-los-state string))
 (define-extern dist-info-print (function collide-los-dist-info string object))
@@ -20510,7 +20466,7 @@
 (define-extern camera-look-at (function pair uint process :behavior camera-tracker))
 (define-extern camera-pov-from (function pair uint process :behavior camera-tracker))
 (define-extern command-get-trans (function object vector vector)) ;; object types - null | symbol (null | target) | pair
-(define-extern manipy-init (function vector entity skeleton-group vector none :behavior manipy)) ;; TODO - not confirmed yet
+(define-extern manipy-init (function vector entity-actor skeleton-group vector none :behavior manipy)) ;; TODO - not confirmed yet
 (define-extern part-tracker-notify (function object :behavior part-tracker))
 (define-extern clone-anim-once (function handle int symbol string none :behavior process-drawable))
 (define-extern convert-to-hud-object (function process-drawable hud none :behavior process-drawable))
@@ -20896,7 +20852,7 @@
 ;; - Functions
 
 (define-extern target-swim-tilt (function float float float float float :behavior target))
-(define-extern projectile-init-by-other (function entity vector vector uint handle none :behavior projectile)) ;; 4th arg is `options`, 5th is `last-target`
+(define-extern projectile-init-by-other (function entity-actor vector vector uint handle none :behavior projectile)) ;; 4th arg is `options`, 5th is `last-target`
 (define-extern first-person-hud-init-by-other (function none :behavior first-person-hud))
 (define-extern disable-hud (function int none))
 (define-extern enable-hud (function none))
@@ -21250,7 +21206,7 @@
 ;; - Types
 
 (deftype collide-puls-work (structure)
-  ((ignore-pat uint32                     :offset-assert 0)
+  ((ignore-pat pat-surface                :offset-assert 0)
    (tri-out    collide-tri-result         :offset-assert 4)
    (bsphere    sphere             :inline :offset-assert 16)
    (move-dist  vector             :inline :offset-assert 32)
@@ -21301,8 +21257,8 @@
 ;; - Functions
 
 (define-extern task-control-reset (function symbol none))
-(define-extern init-entity (function process entity none))
-(define-extern birth-viewer (function process entity object))
+(define-extern init-entity (function process entity-actor none))
+(define-extern birth-viewer (function process entity-actor object))
 (define-extern update-actor-vis-box (function process-drawable vector vector none))
 (define-extern process-status-bits (function process symbol none))
 (define-extern entity-by-meters (function float float float entity-actor))
@@ -21515,7 +21471,7 @@
 (define-extern check-water-level-drop (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern check-water-level-drop-and-die (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern check-water-level-above-and-die (function sparticle-system sparticle-cpuinfo vector none))
-(define-extern water-vol-init-by-other (function entity none :behavior water-vol))
+(define-extern water-vol-init-by-other (function entity-actor none :behavior water-vol))
 
 
 ;; ----------------------
@@ -21773,11 +21729,11 @@
 (define-extern check-blue-suck (function process-drawable none :behavior eco-collectable))
 (define-extern initialize-eco-by-other (function vector vector fact-info none :behavior eco))
 (define-extern add-blue-shake (function vector vector vector vector))
-(define-extern money-init-by-other (function vector vector fact-info entity none :behavior money))
-(define-extern money-init-by-other-no-bob (function vector vector fact-info float entity none :behavior money))
-(define-extern fuel-cell-init-by-other (function vector vector fact-info entity none :behavior fuel-cell))
+(define-extern money-init-by-other (function vector vector fact-info entity-actor none :behavior money))
+(define-extern money-init-by-other-no-bob (function vector vector fact-info float entity-actor none :behavior money))
+(define-extern fuel-cell-init-by-other (function vector vector fact-info entity-actor none :behavior fuel-cell))
 (define-extern fuel-cell-init-as-clone (function handle int none :behavior fuel-cell))
-(define-extern buzzer-init-by-other (function vector vector fact-info entity none :behavior buzzer))
+(define-extern buzzer-init-by-other (function vector vector fact-info entity-actor none :behavior buzzer))
 
 ;; - Symbols
 
@@ -23603,7 +23559,7 @@
 
 ;; - Functions
 
-(define-extern basebutton-init-by-other (function basebutton vector quaternion entity-actor symbol float none :behavior basebutton))
+(define-extern basebutton-init-by-other (function entity-actor vector quaternion entity-actor symbol float none :behavior basebutton))
 
 ;; - Unknowns
 
@@ -24242,7 +24198,7 @@
 (define-extern solve-missile-velocity (function trajectory-params float none))
 (define-extern spawn-mistycannon-missile (function process-tree vector vector float float float float entity none))
 (define-extern angle-tracker-apply-move! (function angle-tracker float float))
-(define-extern mistycannon-missile-init-by-other (function mistycannon-init-data entity none :behavior mistycannon-missile))
+(define-extern mistycannon-missile-init-by-other (function mistycannon-init-data entity-actor none :behavior mistycannon-missile))
 (define-extern mistycannon-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector cshape-moving-flags))
 (define-extern angle-tracker-get-value (function angle-tracker float))
 (define-extern angle-tracker-set-value (function angle-tracker float float))
@@ -24530,7 +24486,7 @@
 
 (define-extern flutflutegg-hit-sounds (function none :behavior flutflutegg))
 (define-extern bladeassm-prebind-function (function process-drawable int bladeassm event-message-block object)) ;; TODO - first arg is very likely wrong
-(define-extern flying-rock-init-by-other (function vector vector float entity none :behavior flying-rock))
+(define-extern flying-rock-init-by-other (function vector vector float entity-actor none :behavior flying-rock))
 (define-extern spawn-flying-rock (function vector vector float entity none))
 (define-extern move-grottopole-to-position (function grottopole none))
 (define-extern move-grottopole (function grottopole float none))
@@ -25978,7 +25934,8 @@
 
 ;; - Functions
 
-(define-extern static-screen-spawn (function int int int int int symbol target (pointer process))) ;; target may differ
+(declare-type static-screen process)
+(define-extern static-screen-spawn (function int texture-id texture-id texture-id time-frame symbol process-tree (pointer static-screen)))
 
 
 ;; ----------------------
@@ -26004,7 +25961,7 @@
 
 ;; - Functions
 
-(define-extern static-screen-init-by-other (function int int int int time-frame symbol none :behavior static-screen))
+(define-extern static-screen-init-by-other (function int texture-id texture-id texture-id time-frame symbol none :behavior static-screen))
 
 
 ;; ----------------------
@@ -26171,12 +26128,12 @@
 
 ;; - Functions
 
-(define-extern light-eco-child-init-by-other (function entity vector vector int none :behavior light-eco-child))
+(define-extern light-eco-child-init-by-other (function entity-actor vector vector int none :behavior light-eco-child))
 (define-extern check-drop-level-lighteco-big-pops (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern check-drop-level-lighteco-pops (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern light-eco-child-default-event-handler (function process int symbol event-message-block object :behavior light-eco-child))
 (define-extern light-eco-mother-default-event-handler (function process int symbol event-message-block int :behavior light-eco-mother))
-(define-extern light-eco-mother-init-by-other (function entity vector none :behavior light-eco-mother))
+(define-extern light-eco-mother-init-by-other (function entity-actor vector none :behavior light-eco-mother))
 
 ;; - Unknowns
 
@@ -26369,7 +26326,7 @@
 (define-extern robotboss-manipy-trans-hook (function none :behavior robotboss))
 (define-extern ecoclaw-beam-particle-callback (function part-tracker none))
 (define-extern ecoclaw-handler (function process int symbol event-message-block object :behavior ecoclaw))
-(define-extern finalbosscam-init-by-other (function entity none :behavior finalbosscam))
+(define-extern finalbosscam-init-by-other (function entity-actor none :behavior finalbosscam))
 
 ;; - Unknowns
 
@@ -26422,8 +26379,8 @@
 
 ;; - Functions
 
-(define-extern green-eco-lurker-init-by-other (function entity green-eco-lurker-gen vector none :behavior green-eco-lurker))
-(define-extern green-eco-lurker-gen-init-by-other (function entity vector int none :behavior green-eco-lurker-gen))
+(define-extern green-eco-lurker-init-by-other (function entity-actor green-eco-lurker-gen vector none :behavior green-eco-lurker))
+(define-extern green-eco-lurker-gen-init-by-other (function entity-actor vector int none :behavior green-eco-lurker-gen))
 
 ;; - Unknowns
 
@@ -26552,7 +26509,7 @@
 
 ;; - Functions
 
-(define-extern powercellalt-init-by-other (function entity vector vector int none :behavior powercellalt))
+(define-extern powercellalt-init-by-other (function entity-actor vector vector int none :behavior powercellalt))
 
 ;; - Unknowns
 
@@ -26643,7 +26600,7 @@
 ;; - Types
 
 (deftype evilbro (process-taskable)
-  ((evilsis entity  :offset-assert 380)
+  ((evilsis entity-actor  :offset-assert 380)
    )
   :method-count-assert 53
   :heap-base           #x110
@@ -27747,7 +27704,7 @@
 
 ;; - Functions
 
-(define-extern blocking-plane-spawn (function curve-control none))
+(define-extern blocking-plane-spawn (function curve-control none :behavior process))
 (define-extern racer-effect (function none :behavior racer))
 (define-extern blocking-plane-destroy (function none))
 
@@ -27886,7 +27843,7 @@
 ;; - Types
 
 (deftype flut-info (basic)
-  ((entity basic :offset-assert 4)
+  ((entity entity-actor :offset-assert 4)
    (flut-trans vector :inline :offset-assert 16)
    (flut-quat vector :inline :offset-assert 32)
    (flut-scale vector :inline :offset-assert 48)
@@ -28530,7 +28487,7 @@
 
 ;; - Functions
 
-(define-extern sequenceA-village1-init-by-other (function entity none :behavior sequenceA-village1))
+(define-extern sequenceA-village1-init-by-other (function entity-actor none :behavior sequenceA-village1))
 (define-extern sequenceA-village1-trans-hook (function none :behavior sequenceA-village1))
 
 ;; - Unknowns
@@ -29081,10 +29038,10 @@
 
 (define-extern orient-to-face-target (function quaternion :behavior quicksandlurker))
 (define-extern quicksandlurker-spit (function (pointer part-tracker) :behavior quicksandlurker))
-(define-extern spawn-quicksandlurker-missile (function process vector vector entity none))
+(define-extern spawn-quicksandlurker-missile (function process vector vector entity-actor none))
 (define-extern quicksandlurker-check-hide-transition (function none :behavior quicksandlurker))
 (define-extern inc-angle (function (pointer float) float float))
-(define-extern quicksandlurker-missile-init-by-other (function quicksandlurker-missile-init-data entity none :behavior quicksandlurker-missile))
+(define-extern quicksandlurker-missile-init-by-other (function quicksandlurker-missile-init-data entity-actor none :behavior quicksandlurker-missile))
 (define-extern get-height-over-navmesh! function) ;; unused
 (define-extern intersects-nav-mesh? (function nav-control vector symbol)) ;; unused
 (define-extern quicksandlurker-default-event-handler (function process int symbol event-message-block object :behavior quicksandlurker))
@@ -29157,10 +29114,10 @@
    (explosion-force          vector  :inline :offset-assert 752)
    (explosion                symbol          :offset-assert 768)
    (explosion-joint-index    uint16  2       :offset-assert 772)
-   (explosion-joint-index-bytes int8 4       :offset 772) ;; added overlay
+   (explosion-joint-index-bytes int8 4       :score 50 :offset 772) ;; added overlay
    (vulnerable               symbol           :offset-assert 776)
    (water-y                  float           :offset-assert 780)
-   (propeller                joint-mod-set-local           :offset-assert 784)
+   (propeller                joint-mod-spinner             :offset-assert 784)
    (rudder                   joint-mod-set-local           :offset-assert 788)
    (mine                     joint-mod-set-world   2       :offset-assert 792)
    (buoyancy-factor          float           :offset-assert 800)
@@ -30363,7 +30320,7 @@
 (define-extern kermit-get-new-patrol-point (function vector :behavior kermit))
 (define-extern kermit-long-hop (function symbol :behavior kermit))
 (define-extern kermit-short-hop (function symbol :behavior kermit))
-(define-extern kermit-pulse-init-by-other (function vector entity none :behavior kermit-pulse))
+(define-extern kermit-pulse-init-by-other (function vector entity-actor none :behavior kermit-pulse))
 (define-extern joint-mod-tracker-callback (function cspace transformq none))
 (define-extern build-matrix-from-up-and-forward-axes! (function matrix vector int vector int matrix))
 (define-extern kermit-get-head-dir (function kermit vector vector))
@@ -31001,7 +30958,7 @@
 
 ;; - Functions
 
-(define-extern mother-spider-egg-init-by-other (function entity vector vector vector none :behavior mother-spider-egg))
+(define-extern mother-spider-egg-init-by-other (function entity-actor vector vector vector none :behavior mother-spider-egg))
 
 ;; - Unknowns
 
@@ -31577,7 +31534,7 @@
 
 ;; - Functions
 
-(define-extern orbit-plat-bottom-init-by-other (function entity orbit-plat none :behavior orbit-plat-bottom))
+(define-extern orbit-plat-bottom-init-by-other (function entity-actor orbit-plat none :behavior orbit-plat-bottom))
 (define-extern get-rotate-point! (function vector vector vector vector float float vector))
 (define-extern get-nav-point! (function vector orbit-plat vector float vector))
 
@@ -31737,7 +31694,7 @@
 
 ;; - Functions
 
-(define-extern qbert-plat-on-init-by-other (function entity qbert-plat none :behavior qbert-plat))
+(define-extern qbert-plat-on-init-by-other (function entity-actor qbert-plat none :behavior qbert-plat))
 (define-extern qbert-plat-event-handler (function process int symbol event-message-block object :behavior qbert-plat))
 
 ;; - Unknowns
@@ -31901,7 +31858,7 @@
 ;; - Functions
 
 (define-extern exit-chamber-button-init-by-other (function vector quaternion entity-actor symbol none :behavior exit-chamber-button))
-(define-extern blue-eco-charger-orb-init-by-other (function entity blue-eco-charger-orb none :behavior blue-eco-charger-orb))
+(define-extern blue-eco-charger-orb-init-by-other (function entity-actor blue-eco-charger-orb none :behavior blue-eco-charger-orb))
 
 ;; - Unknowns
 
@@ -32121,7 +32078,7 @@
 
 ;; - Functions
 
-(define-extern bully-broken-cage-init-by-other (function entity none :behavior bully-broken-cage))
+(define-extern bully-broken-cage-init-by-other (function entity-actor none :behavior bully-broken-cage))
 (define-extern bully-default-event-handler (function process int symbol event-message-block object :behavior bully))
 (define-extern bully-post (function none :behavior bully))
 
@@ -32406,7 +32363,7 @@
 
 ;; - Functions
 
-(define-extern sunkenfisha-init-by-other (function entity none :behavior sunkenfisha))
+(define-extern sunkenfisha-init-by-other (function entity-actor none :behavior sunkenfisha))
 
 ;; - Unknowns
 
@@ -33036,20 +32993,20 @@
 (define-extern ogreboss-spawn-super-boulder (function none :behavior ogreboss))
 (define-extern ogreboss-update-shuffling (function none :behavior ogreboss))
 (define-extern ogreboss-player-inside-range? (function float symbol :behavior ogreboss))
-(define-extern ogreboss-super-boulder-init-by-other (function vector float entity none :behavior ogreboss-super-boulder))
+(define-extern ogreboss-super-boulder-init-by-other (function vector float entity-actor none :behavior ogreboss-super-boulder))
 (define-extern ogreboss-set-stage2-camera (function none))
 (define-extern ogreboss-move-far (function time-frame float none :behavior ogreboss))
 (define-extern ogreboss-roll-boulder (function none :behavior ogreboss))
 (define-extern ogreboss-update-super-boulder (function none :behavior ogreboss))
 (define-extern ogreboss-blend-hit-anim (function none :behavior ogreboss))
-(define-extern ogreboss-bounce-boulder-init-by-other (function int entity none :behavior ogreboss-bounce-boulder))
+(define-extern ogreboss-bounce-boulder-init-by-other (function int entity-actor none :behavior ogreboss-bounce-boulder))
 (define-extern ogreboss-set-stage1-camera (function none))
 (define-extern ogreboss-move-near (function time-frame float none :behavior ogreboss))
 (define-extern ogreboss-shoot-boulder (function int none :behavior ogreboss))
 (define-extern ogreboss-inc-try-count (function none :behavior ogreboss))
 (define-extern ogreboss-emerge (function float none :behavior ogreboss))
 (define-extern ogreboss-pick-target (function int :behavior ogreboss))
-(define-extern ogreboss-missile-init-by-other (function ogreboss-missile-init-data entity none :behavior ogreboss-missile))
+(define-extern ogreboss-missile-init-by-other (function ogreboss-missile-init-data entity-actor none :behavior ogreboss-missile))
 (define-extern ogreboss-idle-loop (function none :behavior ogreboss))
 (define-extern ogreboss-super-boulder-impact-effect (function none :behavior ogreboss-super-boulder))
 (define-extern ogreboss-super-boulder-play-hit-anim (function object :behavior ogreboss-super-boulder))
@@ -34711,8 +34668,8 @@
 
 ;; - Functions
 
-(define-extern logo-slave-init-by-other (function entity skeleton-group none :behavior logo-slave))
-(define-extern logo-init-by-other (function entity vector symbol none :behavior logo))
+(define-extern logo-slave-init-by-other (function entity-actor skeleton-group none :behavior logo-slave))
+(define-extern logo-init-by-other (function entity-actor vector symbol none :behavior logo))
 
 ;; - Unknowns
 

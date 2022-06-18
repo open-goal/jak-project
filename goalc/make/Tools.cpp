@@ -177,6 +177,8 @@ bool SubtitleTool::needs_run(const ToolInput& task) {
 
 bool SubtitleTool::run(const ToolInput& task) {
   GameSubtitleDB db;
+  db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
+  db.m_subtitle_groups->hydrate_from_asset_file();
   std::unordered_map<GameTextVersion, std::vector<std::string>> inputs;
   open_text_project("subtitle", task.input.at(0), inputs);
   for (auto& [ver, in] : inputs) {

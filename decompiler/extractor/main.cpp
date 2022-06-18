@@ -261,6 +261,9 @@ void decompile(std::filesystem::path jak1_input_files) {
   db.find_code(config);
   db.process_labels();
 
+  // ensure asset dir exists
+  file_util::create_dir_if_needed(file_util::get_file_path({"assets"}));
+
   // text files
   {
     auto result = db.process_game_text_files(config);
@@ -305,7 +308,7 @@ void compile(std::filesystem::path extracted_iso_path) {
 }
 
 void launch_game() {
-  system((file_util::get_jak_project_dir() / "../gk").string().c_str());
+  system(fmt::format("\"{}\"", (file_util::get_jak_project_dir() / "../gk").string()).c_str());
 }
 
 int main(int argc, char** argv) {

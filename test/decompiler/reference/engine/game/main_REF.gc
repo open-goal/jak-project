@@ -101,7 +101,7 @@
          )
      (logclear! (-> *setting-control* default process-mask) (process-mask menu))
      (set! *pause-lock* #f)
-     (sound-group-pause (the-as uint 255))
+     (sound-group-pause (sound-group sfx music dialog sog3 ambient sog5 sog6 sog7))
      (hide-progress-screen)
      )
     (('menu)
@@ -121,11 +121,11 @@
      )
     (('game)
      (logclear! (-> *setting-control* default process-mask) (process-mask pause menu))
-     (sound-group-continue (the-as uint 255))
+     (sound-group-continue (sound-group sfx music dialog sog3 ambient sog5 sog6 sog7))
      (hide-progress-screen)
      )
     )
-  (copy-settings-from-target! *setting-control*)
+  (apply-settings *setting-control*)
   0
   (none)
   )
@@ -439,8 +439,8 @@
               (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
               (set! *cheat-mode* (not *cheat-mode*))
               (if *cheat-mode*
-                  (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 1 #t)
-                  (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
+                  (sound-play "select-menu")
+                  (sound-play "cursor-options")
                   )
               (set! (-> *cheat-temp* 0) 0)
               0
@@ -612,8 +612,8 @@
                                        )
                       )
                 (if *cheat-mode*
-                    (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 1 #t)
-                    (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
+                    (sound-play "select-menu")
+                    (sound-play "cursor-options")
                     )
                 (set! (-> *cheat-temp* 1) 0)
                 0
@@ -721,8 +721,8 @@
                                             )
                        )
                  (if *progress-cheat*
-                     (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 1 #t)
-                     (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
+                     (sound-play "select-menu")
+                     (sound-play "cursor-options")
                      )
                  (set! (-> *cheat-temp* 2) 0)
                  0
@@ -830,8 +830,8 @@
                                            )
                       )
                 (if *progress-cheat*
-                    (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 1 #t)
-                    (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
+                    (sound-play "select-menu")
+                    (sound-play "cursor-options")
                     )
                 (set! (-> *cheat-temp* 3) 0)
                 0
@@ -911,7 +911,7 @@
                                               (set-blackout-frames (seconds 100))
                                               (set! (-> *setting-control* default allow-pause) #f)
                                               (set! (-> *setting-control* default allow-progress) #f)
-                                              (copy-settings-from-target! *setting-control*)
+                                              (apply-settings *setting-control*)
                                               (set! (-> *setting-control* default sfx-volume) 0.0)
                                               (set! (-> *setting-control* default music-volume) 0.0)
                                               (set! (-> *setting-control* default dialog-volume) 0.0)
@@ -970,7 +970,7 @@
   (let ((disp *display*))
     (dma-send-to-spr (the-as uint #x70000000) (the-as uint *terrain-context*) (the-as uint 0) #t)
     (set! *teleport* #t)
-    (update-per-frame-settings! *setting-control*)
+    (update *setting-control*)
     (init-time-of-day-context *time-of-day-context*)
     (display-sync disp)
     (swap-display disp)

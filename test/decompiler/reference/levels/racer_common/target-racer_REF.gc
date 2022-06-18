@@ -25,7 +25,7 @@
                        :alignv 1.0
                        :slope-up-traction 1.0
                        :align-speed 1.0
-                       :flags (surface-flags surf00)
+                       :flags (surface-flags allow-look-around)
                        )
         )
 
@@ -54,7 +54,7 @@
                            :slope-up-traction 1.0
                            :align-speed 1.0
                            :mode 'air
-                           :flags (surface-flags surf00 surf11)
+                           :flags (surface-flags allow-look-around jump)
                            )
         )
 
@@ -550,7 +550,7 @@
           (if (or (and (logtest? (-> self control status) (cshape-moving-flags twall))
                        (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
                        )
-                  (logtest? (-> self state-flags) (state-flags sf15))
+                  (logtest? (-> self state-flags) (state-flags dying))
                   )
               0.0
               (-> self control unknown-float81)
@@ -606,14 +606,12 @@
       )
     )
   (let ((f0-11 (lerp-scale 100.0 60.0 (-> self racer engine-sound-pitch) 0.8 2.0)))
-    (sound-play-by-name
-      (static-sound-name "zoomer-loop")
-      (-> self racer engine-sound-id)
-      (the int (* 10.24 f0-11))
-      (the int (* 1524.0 (-> self racer engine-sound-pitch)))
-      0
-      1
-      (the-as symbol (-> self control trans))
+    (sound-play
+      "zoomer-loop"
+      :id (-> self racer engine-sound-id)
+      :vol f0-11
+      :pitch (-> self racer engine-sound-pitch)
+      :position (the-as symbol (-> self control trans))
       )
     )
   (cond
@@ -635,7 +633,7 @@
           (>= (- (-> *display* base-frame-counter) (-> self racer heat-sound-time)) (seconds 1))
           )
      (set! (-> self racer heat-sound-time) (-> *display* base-frame-counter))
-     (sound-play-by-name (static-sound-name "warning") (new-sound-id) 1024 0 0 1 #t)
+     (sound-play "warning")
      )
     )
   )
@@ -834,7 +832,7 @@
                   )
              (cpad-pressed? (-> self control unknown-cpad-info00 number) circle square)
              (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword82)) (seconds 0.25))
-             (zero? (logand (-> self state-flags) (state-flags sf03 sf15)))
+             (zero? (logand (-> self state-flags) (state-flags being-attacked dying)))
              )
     (let ((gp-6 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat)))
           (s5-4 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self manipy 0 node-list data 4)))
@@ -989,7 +987,7 @@
       1024
       0
       0
-      1
+      (sound-group sfx)
       #t
       )
     )
@@ -1001,7 +999,7 @@
                   )
              )
     (set! (-> self racer heat-sound-time) (-> *display* base-frame-counter))
-    (sound-play-by-name (static-sound-name "warning") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "warning")
     )
   (when (rand-vu-percent? (/ (-> self racer heat) (-> *RACER-bank* heat-max)))
     (let ((a2-28
