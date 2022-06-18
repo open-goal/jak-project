@@ -1,20 +1,14 @@
 #include <iostream>
 
 #include "Tfrag.h"
-#include "tools/build_level/gltf_mesh_extract.h"
 #include "common/custom_data/pack_helpers.h"
 #include "goalc/data_compiler/DataObjectGenerator.h"
+#include "tools/build_level/gltf_mesh_extract.h"
 
-void tfrag_from_gltf(const std::string& filename,
+void tfrag_from_gltf(const gltf_mesh_extract::TfragOutput& mesh_extract_out,
                      DrawableTreeTfrag& out,
-                     tfrag3::TfragTree& out_pc,
-                     TexturePool* tex_pool) {
-  gltf_mesh_extract::Input mesh_extract_in;
-  mesh_extract_in.filename = filename;
-  mesh_extract_in.tex_pool = tex_pool;
+                     tfrag3::TfragTree& out_pc) {
 
-  gltf_mesh_extract::Output mesh_extract_out;
-  gltf_mesh_extract::extract(mesh_extract_in, mesh_extract_out);
 
   out_pc.kind = tfrag3::TFragmentTreeKind::NORMAL;  // todo more types?
   out_pc.draws = std::move(mesh_extract_out.strip_draws);

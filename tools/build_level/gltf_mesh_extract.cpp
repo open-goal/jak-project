@@ -7,6 +7,7 @@
 #include "third-party/tiny_gltf/tiny_gltf.h"
 #include "common/log/log.h"
 #include "common/util/Timer.h"
+#include "common/math/geometry.h"
 
 namespace gltf_mesh_extract {
 
@@ -102,12 +103,14 @@ std::vector<u32> gltf_index_buffer(const tinygltf::Model& model,
 struct ExtractedVertices {
   std::vector<tfrag3::PreloadedVertex> vtx;
   std::vector<math::Vector<u8, 4>> vtx_colors;
+  std::vector<math::Vector3f> normals;
 };
 
 ExtractedVertices gltf_vertices(const tinygltf::Model& model,
                                 const std::map<std::string, int>& attributes,
                                 const math::Matrix4f& w_T_local,
                                 bool get_colors,
+                                bool get_normals,
                                 const std::string& debug_name) {
   std::vector<tfrag3::PreloadedVertex> result;
   std::vector<math::Vector<u8, 4>> vtx_colors;
@@ -126,9 +129,9 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     ASSERT_MSG(attrib_accessor.type == TINYGLTF_TYPE_VEC3, "POSITION wasn't vec3");
     ASSERT_MSG(attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT,
                "POSITION wasn't float");
-    for (auto& attrib : attributes) {
-      fmt::print("attrib: {}\n", attrib.first);
-    }
+    // for (auto& attrib : attributes) {
+    // fmt::print("attrib: {}\n", attrib.first);
+    //}
     auto mesh_verts = extract_vec3f(data_ptr, count, byte_stride);
     result.reserve(mesh_verts.size());
     for (auto& vert : mesh_verts) {
@@ -182,7 +185,32 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
         result[i].t = mesh_verts[i].y();
       }
     } else {
-      lg::warn("No texcoord attribute for mesh: {}", debug_name);
+      if (!get_normals) {
+        // don't warn if we're just getting collision
+        lg::warn("No texcoord attribute for mesh: {}", debug_name);
+      }
+    }
+  }
+
+  std::vector<math::Vector3f> normals;
+  if (get_normals) {
+    const auto& normal_attrib = attributes.find("NORMAL");
+    if (normal_attrib != attributes.end()) {
+      const auto attrib_accessor = model.accessors[normal_attrib->second];
+      const auto& buffer_view = model.bufferViews[attrib_accessor.bufferView];
+      const auto& buffer = model.buffers[buffer_view.buffer];
+      const auto data_ptr =
+          buffer.data.data() + buffer_view.byteOffset + attrib_accessor.byteOffset;
+      const auto byte_stride = attrib_accessor.ByteStride(buffer_view);
+      const auto count = attrib_accessor.count;
+
+      ASSERT_MSG(attrib_accessor.type == TINYGLTF_TYPE_VEC3, "NORMAL wasn't vec3");
+      ASSERT_MSG(attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT,
+                 "NORMAL wasn't float");
+      normals = extract_vec3f(data_ptr, count, byte_stride);
+      ASSERT(normals.size() == result.size());
+    } else {
+      lg::error("No NORMAL attribute for mesh: {}", debug_name);
     }
   }
 
@@ -199,7 +227,7 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     v.pad[2] = 0;
   }
   // TODO: other properties
-  return {result, vtx_colors};
+  return {result, vtx_colors, normals};
 }
 
 DrawMode make_default_draw_mode() {
@@ -404,7 +432,7 @@ void dedup_vertices(const std::vector<tfrag3::PreloadedVertex>& vertices_in,
   }
 }
 
-void dedup_vertices(Output& data) {
+void dedup_vertices(TfragOutput& data) {
   Timer timer;
   size_t original_size = data.vertices.size();
   std::vector<tfrag3::PreloadedVertex> new_verts;
@@ -424,7 +452,7 @@ void dedup_vertices(Output& data) {
            data.vertices.size(), 100.f * data.vertices.size() / original_size);
 }
 
-DrawMode draw_mode_from_sampler(tinygltf::Sampler& sampler) {
+DrawMode draw_mode_from_sampler(const tinygltf::Sampler& sampler) {
   DrawMode mode = make_default_draw_mode();
   if (sampler.magFilter == TINYGLTF_TEXTURE_FILTER_NEAREST) {
     ASSERT(sampler.minFilter == TINYGLTF_TEXTURE_FILTER_NEAREST);
@@ -459,31 +487,24 @@ DrawMode draw_mode_from_sampler(tinygltf::Sampler& sampler) {
   return mode;
 }
 
-void extract(const Input& in, Output& out) {
-  lg::info("Reading gltf mesh: {}", in.filename);
-  Timer read_timer;
-  tinygltf::TinyGLTF loader;
-  tinygltf::Model model;
-  std::string err, warn;
-  bool res = loader.LoadBinaryFromFile(&model, &err, &warn, in.filename);
-  ASSERT_MSG(warn.empty(), warn.c_str());
-  ASSERT_MSG(err.empty(), err.c_str());
-  ASSERT_MSG(res, "Failed to load GLTF file!");
-
+void extract(const Input& in,
+             TfragOutput& out,
+             const tinygltf::Model& model,
+             const std::vector<NodeWithTransform>& all_nodes) {
   std::vector<math::Vector<u8, 4>> all_vtx_colors;
-
   ASSERT(out.vertices.empty());
-
+  std::map<int, tfrag3::StripDraw> draw_by_material;
   int mesh_count = 0;
   int prim_count = 0;
-  auto all_nodes = flatten_nodes_from_all_scenes(model);
-
-  std::map<int, tfrag3::StripDraw> draw_by_material;
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
+      if (!mesh.extras.Has("tfrag")) {
+        fmt::print("skip tfrag: {}\n", mesh.name);
+        continue;
+      }
       mesh_count++;
       for (const auto& prim : mesh.primitives) {
         prim_count++;
@@ -491,7 +512,8 @@ void extract(const Input& in, Output& out) {
         std::vector<u32> prim_indices = gltf_index_buffer(model, prim.indices, out.vertices.size());
         ASSERT_MSG(prim.mode == TINYGLTF_MODE_TRIANGLES, "Unsupported triangle mode");
         // extract vertices
-        auto verts = gltf_vertices(model, prim.attributes, n.w_T_node, in.get_colors, mesh.name);
+        auto verts =
+            gltf_vertices(model, prim.attributes, n.w_T_node, in.get_colors, false, mesh.name);
         out.vertices.insert(out.vertices.end(), verts.vtx.begin(), verts.vtx.end());
         if (in.get_colors) {
           all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(),
@@ -551,7 +573,6 @@ void extract(const Input& in, Output& out) {
 
   lg::info("Merged {} meshes and {} prims into {} vertices", mesh_count, prim_count,
            out.vertices.size());
-  lg::info("Took {:.2f} ms", read_timer.getMs());
 
   if (in.get_colors) {
     Timer quantize_timer;
@@ -564,5 +585,93 @@ void extract(const Input& in, Output& out) {
   }
 
   dedup_vertices(out);
+}
+
+void extract(const Input& in,
+             CollideOutput& out,
+             const tinygltf::Model& model,
+             const std::vector<NodeWithTransform>& all_nodes) {
+  int mesh_count = 0;
+  int prim_count = 0;
+  int suspicious_faces = 0;
+
+  for (const auto& n : all_nodes) {
+    const auto& node = model.nodes[n.node_idx];
+    if (node.mesh >= 0) {
+      const auto& mesh = model.meshes[node.mesh];
+      if (!mesh.extras.Has("collide")) {
+        fmt::print("skip collide: {}\n", mesh.name);
+        continue;
+      }
+      mesh_count++;
+      for (const auto& prim : mesh.primitives) {
+        prim_count++;
+        // extract index buffer
+        std::vector<u32> prim_indices = gltf_index_buffer(model, prim.indices, 0);
+        ASSERT_MSG(prim.mode == TINYGLTF_MODE_TRIANGLES, "Unsupported triangle mode");
+        // extract vertices
+        auto verts = gltf_vertices(model, prim.attributes, n.w_T_node, false, true, mesh.name);
+
+        for (size_t iidx = 0; iidx < prim_indices.size(); iidx += 3) {
+          CollideFace face;
+
+          // get the positions
+          for (int j = 0; j < 3; j++) {
+            auto& vtx = verts.vtx.at(prim_indices.at(iidx + j));
+            face.v[j].x() = vtx.x;
+            face.v[j].y() = vtx.y;
+            face.v[j].z() = vtx.z;
+          }
+
+          // now face normal
+          math::Vector3f face_normal =
+              (face.v[2] - face.v[0]).cross(face.v[1] - face.v[0]).normalized();
+
+          float dots[3];
+          for (int j = 0; j < 3; j++) {
+            dots[j] = face_normal.dot(verts.normals.at(prim_indices.at(iidx + j)).normalized());
+          }
+
+          if (dots[0] > 1e-3 && dots[1] > 1e-3 && dots[2] > 1e-3) {
+            suspicious_faces++;
+          }
+
+          face.bsphere = math::bsphere_of_triangle(face.v);
+          face.bsphere.w() += 1e-1;
+          for (int j = 0; j < 3; j++) {
+            float output_dist = face.bsphere.w() - (face.bsphere.xyz() - face.v[j]).length();
+            if (output_dist < 0) {
+              fmt::print("{}\n", output_dist);
+              fmt::print("BAD:\n{}\n{}\n{}\n", face.v[0].to_string_aligned(),
+                         face.v[1].to_string_aligned(), face.v[2].to_string_aligned());
+              fmt::print("bsphere: {}\n", face.bsphere.to_string_aligned());
+            }
+          }
+
+          out.faces.push_back(face);
+        }
+      }
+    }
+  }
+
+  lg::info("{} out of {} faces were suspicious (a small number is ok)", suspicious_faces,
+           out.faces.size());
+  // lg::info("Collision extract{} {}", mesh_count, prim_count);
+}
+
+void extract(const Input& in, Output& out) {
+  lg::info("Reading gltf mesh: {}", in.filename);
+  Timer read_timer;
+  tinygltf::TinyGLTF loader;
+  tinygltf::Model model;
+  std::string err, warn;
+  bool res = loader.LoadBinaryFromFile(&model, &err, &warn, in.filename);
+  ASSERT_MSG(warn.empty(), warn.c_str());
+  ASSERT_MSG(err.empty(), err.c_str());
+  ASSERT_MSG(res, "Failed to load GLTF file!");
+  auto all_nodes = flatten_nodes_from_all_scenes(model);
+  extract(in, out.tfrag, model, all_nodes);
+  extract(in, out.collide, model, all_nodes);
+  lg::info("GLTF total took {:.2f} ms", read_timer.getMs());
 }
 }  // namespace gltf_mesh_extract

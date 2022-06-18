@@ -1,5 +1,6 @@
 add_executable(build_level
         main.cpp
+        collide_bvh.cpp
         color_quantization.cpp
         LevelFile.cpp
         FileInfo.cpp

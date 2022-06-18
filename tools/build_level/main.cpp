@@ -4,6 +4,8 @@
 #include "tools/build_level/LevelFile.h"
 #include "tools/build_level/FileInfo.h"
 #include "tools/build_level/Tfrag.h"
+#include "tools/build_level/gltf_mesh_extract.h"
+#include "tools/build_level/collide_bvh.h"
 
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/util/compress.h"
@@ -30,14 +32,22 @@ int main(int argc, char** argv) {
   fmt::print("buildlevel\n");
   file_util::setup_project_path({});
 
-  std::string level_description_text = file_util::read_text_file(argv[1]);
-  auto level_json = parse_commented_json(level_description_text, argv[1]);
+  // read level file
+  auto level_json = parse_commented_json(file_util::read_text_file(argv[1]), argv[1]);
 
   LevelFile file;          // GOAL level file
   tfrag3::Level pc_level;  // PC level file
   TexturePool tex_pool;    // pc level texture pool
 
-  // add stuff
+  // process input mesh from blender
+  gltf_mesh_extract::Input mesh_extract_in;
+  mesh_extract_in.filename =
+      file_util::get_file_path({level_json.at("tfrag_data").get<std::string>()});
+  mesh_extract_in.tex_pool = &tex_pool;
+  gltf_mesh_extract::Output mesh_extract_out;
+  gltf_mesh_extract::extract(mesh_extract_in, mesh_extract_out);
+
+  // add stuff to the GOAL level structure
   file.info = make_file_info_for_level(std::filesystem::path(argv[1]).filename().string());
   // all vis
   // drawable trees
@@ -60,13 +70,14 @@ int main(int argc, char** argv) {
   // actor birht
   // split box
 
+  // add stuff to the both structures
   pc_level.level_name = file.name;
+  tfrag_from_gltf(mesh_extract_out.tfrag, file.drawable_trees.tfrags.emplace_back(),
+                  pc_level.tfrag_trees[0].emplace_back());
+  pc_level.textures = std::move(tex_pool.textures_by_idx);
+  collide::construct_collide_bvh(mesh_extract_out.collide.faces);
 
-  // DRAWABLE TREE STUFF
-  tfrag_from_gltf(file_util::get_file_path({level_json.at("tfrag_data").get<std::string>()}),
-                  file.drawable_trees.tfrags.emplace_back(), pc_level.tfrag_trees[0].emplace_back(),
-                  &tex_pool);
-
+  // Save the GOAL level
   auto result = file.save_object_file();
   fmt::print("Level bsp file size {} bytes\n", result.size());
   auto save_path = file_util::get_file_path({"buildlevel_out", fmt::format("{}.go", file.name)});
@@ -74,7 +85,7 @@ int main(int argc, char** argv) {
   fmt::print("Saving to {}\n", save_path);
   file_util::write_binary_file(save_path, result.data(), result.size());
 
-  pc_level.textures = std::move(tex_pool.textures_by_idx);
+  // Save the PC level
   save_pc_data(file.nickname, pc_level);
 
   return 0;

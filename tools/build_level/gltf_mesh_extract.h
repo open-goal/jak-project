@@ -4,9 +4,9 @@
 
 #include "common/custom_data/Tfrag3Data.h"
 #include "tools/build_level/TexturePool.h"
+#include "tools/build_level/collide_common.h"
 
 namespace gltf_mesh_extract {
-
 
 struct Input {
   std::string filename;
@@ -14,13 +14,21 @@ struct Input {
   bool get_colors = true;
 };
 
-struct Output {
+struct TfragOutput {
   std::vector<tfrag3::StripDraw> strip_draws;
   std::vector<tfrag3::PreloadedVertex> vertices;
   std::vector<math::Vector<u8, 4>> color_palette;
 };
 
+struct CollideOutput {
+  std::vector<CollideFace> faces;
+};
+
+struct Output {
+  TfragOutput tfrag;
+  CollideOutput collide;
+};
+
 void extract(const Input& in, Output& out);
 
-
-}
+}  // namespace gltf_mesh_extract

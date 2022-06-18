@@ -89,6 +89,14 @@ class Vector {
     return result;
   }
 
+  Vector<T, Size> operator+(const T& other) const {
+    Vector<T, Size> result;
+    for (int i = 0; i < Size; i++) {
+      result[i] = m_data[i] + other;
+    }
+    return result;
+  }
+
   Vector<T, Size>& operator+=(const Vector<T, Size>& other) {
     for (int i = 0; i < Size; i++) {
       m_data[i] += other[i];
@@ -179,6 +187,18 @@ class Vector {
   Vector<T, Size> normalized(const T& norm = T(1)) const { return (*this) * (norm / length()); }
 
   void normalize(const T& norm = T(1)) { *this = normalized(norm); }
+
+  void max_in_place(const Vector<T, Size>& other) {
+    for (int i = 0; i < Size; i++) {
+      m_data[i] = std::max(m_data[i], other[i]);
+    }
+  }
+
+  void min_in_place(const Vector<T, Size>& other) {
+    for (int i = 0; i < Size; i++) {
+      m_data[i] = std::min(m_data[i], other[i]);
+    }
+  }
 
   std::string to_string_aligned() const {
     std::string result = "[";
