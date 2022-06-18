@@ -146,20 +146,29 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
 
   if (get_colors) {
     const auto& color_attrib = attributes.find("COLOR_0");
-    ASSERT_MSG(color_attrib != attributes.end(), "Did not find color attribute.");
+    if (color_attrib == attributes.end()) {
+      lg::error("Mesh {} didn't have any colors, using white", debug_name);
+      for (size_t i = 0; i < result.size(); i++) {
+        vtx_colors.emplace_back(0x80, 0x80, 0x80, 0xff);
+      }
+    } else {
+      const auto attrib_accessor = model.accessors[color_attrib->second];
+      const auto& buffer_view = model.bufferViews[attrib_accessor.bufferView];
+      const auto& buffer = model.buffers[buffer_view.buffer];
+      const auto data_ptr =
+          buffer.data.data() + buffer_view.byteOffset + attrib_accessor.byteOffset;
+      const auto byte_stride = attrib_accessor.ByteStride(buffer_view);
+      const auto count = attrib_accessor.count;
 
-    const auto attrib_accessor = model.accessors[color_attrib->second];
-    const auto& buffer_view = model.bufferViews[attrib_accessor.bufferView];
-    const auto& buffer = model.buffers[buffer_view.buffer];
-    const auto data_ptr = buffer.data.data() + buffer_view.byteOffset + attrib_accessor.byteOffset;
-    const auto byte_stride = attrib_accessor.ByteStride(buffer_view);
-    const auto count = attrib_accessor.count;
+      ASSERT_MSG(attrib_accessor.type == TINYGLTF_TYPE_VEC4, "COLOR_0 wasn't vec4");
+      ASSERT_MSG(
+          attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT,
+          fmt::format("COLOR_0 wasn't float, got {} instead", attrib_accessor.componentType));
+      auto colors = extract_color_from_vec4_u16(data_ptr, count, byte_stride);
+      vtx_colors.insert(vtx_colors.end(), colors.begin(), colors.end());
+    }
 
-    ASSERT_MSG(attrib_accessor.type == TINYGLTF_TYPE_VEC4, "COLOR_0 wasn't vec4");
-    ASSERT_MSG(attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT,
-               fmt::format("COLOR_0 wasn't float, got {} instead", attrib_accessor.componentType));
-    auto colors = extract_color_from_vec4_u16(data_ptr, count, byte_stride);
-    vtx_colors.insert(vtx_colors.end(), colors.begin(), colors.end());
+    // ASSERT_MSG(color_attrib != attributes.end(), "Did not find color attribute.");
   }
 
   bool got_texture = false;

@@ -1,6 +1,7 @@
 #include "third-party/fmt/core.h"
 #include "common/util/json_util.h"
 #include "common/util/FileUtil.h"
+#include "common/log/log.h"
 #include "tools/build_level/LevelFile.h"
 #include "tools/build_level/FileInfo.h"
 #include "tools/build_level/Tfrag.h"
@@ -81,9 +82,14 @@ int main(int argc, char** argv) {
   pc_level.textures = std::move(tex_pool.textures_by_idx);
 
   // COLLIDE
-  auto& collide_drawable_tree = file.drawable_trees.collides.emplace_back();
-  collide_drawable_tree.bvh = collide::construct_collide_bvh(mesh_extract_out.collide.faces);
-  collide_drawable_tree.packed_frags = pack_collide_frags(collide_drawable_tree.bvh.frags.frags);
+  if (mesh_extract_out.collide.faces.empty()) {
+    lg::error("No collision geometry was found");
+  } else {
+    auto& collide_drawable_tree = file.drawable_trees.collides.emplace_back();
+    collide_drawable_tree.bvh = collide::construct_collide_bvh(mesh_extract_out.collide.faces);
+    collide_drawable_tree.packed_frags = pack_collide_frags(collide_drawable_tree.bvh.frags.frags);
+  }
+
 
   // Save the GOAL level
   auto result = file.save_object_file();
