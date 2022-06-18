@@ -10,7 +10,7 @@
 
 #include "common/goos/ReplUtils.h"
 #include <regex>
-#include <goalc/compiler/nrepl/ReplServer.h>
+#include "common/nrepl/ReplServer.h"
 
 void setup_logging(bool verbose) {
   lg::set_file(file_util::get_file_path({"log/compiler.txt"}));

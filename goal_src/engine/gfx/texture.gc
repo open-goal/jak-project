@@ -37,8 +37,6 @@
 ;; During a level load, the first texture-page loaded is TFRAG, which contains both "near" and "common" data.
 ;; TFRAG is the only known thing to use "near"
 
-;; Note: there is something weird going on with the zoomer hud texture.
-
 ;; On the DVD, textures are stored in "tpage files".  Each file contains:
 ;; - a texture-page object, describing the file
 ;; - a texture object per texture, describing each texture (possibly multiple textures, mipmapped textures are considered 1 "texture")
@@ -65,13 +63,13 @@
 ;; the first 0x24000 words are for level 0, and the last 0x24000 words are for level 1.
 ;; the stuff in the middle is shared and lazily loaded as needed.
 
-;; there are 5 texture uploads per frame:
+;; there are 5 texture uploads per frame per level:
 ;; - TFRAG
 ;; - PRIS
 ;; - SHRUB
 ;; - ALPHA
 ;; - WATER
-;; it is unknown how this works when drawing two levels.
+;; And also a single "common" texture upload for textures like HUD.
 
 ;; Generally, "dest" refers to a location in vram, specified in 32-bit words.
 ;; block-data is a pointer to EE memory containing texture data.
@@ -134,9 +132,7 @@
         (+ (-> arg0 data (mem-usage-id texture) count) (-> obj length)))
 
   ;; We subtract off the size of the textures. This makes the memory usage negative!
-  ;; I don't understand why this happens, but
-  ;;  - it matches the game (texture size shows up as negative in the debug menu)
-  ;;  - the game sizes seem correct.
+  ;; I don't see why this is correct.
   (let ((v1-7 (- (asize-of obj) (the-as int (shl (-> obj size) 2)))))
     ;; add 64-bytes for each entry, the size of texture.
     (dotimes (a0-6 (-> obj length))
@@ -410,12 +406,8 @@
   (let* ((block-width (gs-block-width tex-format))
          (block-height (gs-block-height tex-format))
          ;; round up to neaest block.
-         (real-width
-          (* (/ (+ (+ block-width -1) tex-width) block-width) block-width)
-           )
-         (real-height
-          (* (/ (+ (+ block-height -1) tex-height) block-height) block-height)
-           )
+         (real-width (* (/ (+ (+ block-width -1) tex-width) block-width) block-width))
+         (real-height (* (/ (+ (+ block-height -1) tex-height) block-height) block-height))
          ;; and now convert to actual blocks
          (width-blocks (/ real-width block-width))
          (height-blocks (/ real-height block-height))
@@ -436,12 +428,8 @@
   "This function doesn't make much sense...  It's unused so maybe it's just wrong?"
   (let* ((page-width (gs-page-width tex-format))
          (page-height (gs-page-height tex-format))
-         (real-width
-          (* (/ (+ (+ page-width -1) tex-width) page-width) page-width)
-           )
-         (real-height
-          (* (/ (+ (+ page-height -1) tex-height) page-height) page-height)
-           )
+         (real-width (* (/ (+ (+ page-width -1) tex-width) page-width) page-width))
+         (real-height (* (/ (+ (+ page-height -1) tex-height) page-height) page-height))
          (width-blocks (/ real-width page-width))
          (height-blocks (/ real-height page-height))
          ;; past here, it doesn't make much sense to me.
@@ -570,7 +558,7 @@
   (allocate-defaults! obj)
   (set! (-> obj font-palette) (allocate-vram-words! obj 64))
 
-  ;; clear out common pages.
+  ;; mark the common page area as not-uploaded.
   (dotimes (v1-6 32)
     (set! (-> obj common-page v1-6) (the-as texture-page 0))
     )
@@ -987,6 +975,8 @@
 
 (defun upload-vram-pages-pris ((pool texture-pool) (segment texture-pool-segment) (page texture-page) (bucket-idx bucket-id) (needed-mask int))
   "Upload the entire texture page. If the needed-mask is not set, it will not upload those chunks.
+   Unlike other pages, it's pretty easy to determine a mask of needed textures - if you draw no cows, don't bother
+   uploading cow textures.
    Upload will be added to the given bucket for on-screen.
    The nth bit of the mask determines if the nth 16-kB chunk is needed in this upload.
    A 64-bit mask is enough to address the entire common segment, which is the only destination for PRIS textures."
@@ -1117,13 +1107,11 @@
     )
 
   ;; upload near data, and update the upload cache stuff.
-  ;; Doesn't this upload more than is needed, and also the shared texture memory?
-  ;; How does this avoid overwriting the TFRAG textures that might be in use by the
-  ;; currently rendering frame?
+  ;; I think this relies on "mode 2" uploads only being in the private area.
   (upload-now! page 2)
   (update-vram-pages pool (-> pool segment-near) page 2)
 
-  ;; our strategy is to remove the private memory from RAM.
+  ;; our strategy is to remove the private memory from RAM to save memory, now that it's in VRAM.
   ;; to avoid leaving an unused hole, we copy the shared data backward.
   ;; unfortunately, it would be too slow to do it now.
   ;; this function runs during level loading, during the login of the linked tpage file.
@@ -1216,7 +1204,7 @@
     (cond
       ((< (the-as uint NEAR_PRIVATE_WORDS) seg2-size)
        ;; we use the shared part. Kick out only the non-shared texture.
-       ;; it's on th end this time, so no mempcy like in near-allocate-0
+       ;; it's on the end this time, so no mempcy like in near-allocate-0
        (set! (-> page segment 2 size) (+ -147456 (the-as int seg2-size)))
        (set! (-> heap current)
         (&+ (-> page segment 2 block-data) (shl (-> page segment 2 size) 2))
@@ -1385,7 +1373,8 @@
     )
 
   (if (>= max-page-kind 0) ;; tfrag.
-      ;; login with near allocator.
+      ;; login the texture. If the texture isn't there, it will try to load it
+      ;; and allocate with the given allocation function.
       (let ((tfrag-dir-entry (texture-page-login
                               (-> id-array 0)
                               (if (= (-> level index) 1)
@@ -1929,13 +1918,7 @@
               (font-tx-1-fmt (gs-psm mt4hl)) ;; 4-bit, using 4 of the 8 free bits of z24
               )
           ;; do the relocation!
-          (texture-relocate
-           dma-buff
-           font-tx-1
-           font-tx-1-dest
-           font-tx-1-fmt
-           font-clut
-           )
+          (texture-relocate dma-buff font-tx-1 font-tx-1-dest font-tx-1-fmt font-clut)
           ;; tell the font system that we put the texture here.
           (font-set-tex0
            (the-as (pointer gs-tex0) (-> *font-work* small-font-lo-tmpl))
@@ -1949,13 +1932,7 @@
              (font-tx-0-dest #xe0000)
              (font-tx-0-fmt (gs-psm mt4hh))
              )
-          (texture-relocate
-           dma-buff
-           font-tx-0
-           font-tx-0-dest
-           font-tx-0-fmt
-           font-clut
-           )
+          (texture-relocate dma-buff font-tx-0 font-tx-0-dest font-tx-0-fmt font-clut)
           (font-set-tex0
            (the-as (pointer gs-tex0) (-> *font-work* small-font-hi-tmpl))
            font-tx-0
@@ -1968,13 +1945,7 @@
              (font-tx-3-dest #xe6000)
              (font-tx-3-fmt (gs-psm mt4hl))
              )
-          (texture-relocate
-           dma-buff
-           font-tx-3
-           font-tx-3-dest
-           font-tx-3-fmt
-           font-clut
-           )
+          (texture-relocate dma-buff font-tx-3 font-tx-3-dest font-tx-3-fmt font-clut)
           (font-set-tex0
            (the-as (pointer gs-tex0) (-> *font-work* large-font-lo-tmpl))
            font-tx-3
@@ -1982,23 +1953,19 @@
            (the-as uint font-tx-3-fmt)
            (the-as uint clut-dest-addr)
            )
-          (set! font-tx-3 (lookup-texture-by-id (new 'static 'texture-id :index #x2 :page #x4fe)))
-          (set! font-tx-3-dest #xe6000)
-          (set! font-tx-3-fmt (gs-psm mt4hh))
-          (texture-relocate
-           dma-buff
-           font-tx-3
-           font-tx-3-dest
-           font-tx-3-fmt
-           font-clut
-           )
+          )
+        (let ((font-tx-2 (lookup-texture-by-id (new 'static 'texture-id :index #x2 :page #x4fe)))
+             (font-tx-2-dest #xe0000)
+             (font-tx-2-fmt (gs-psm mt4hh))
+             )
+          (texture-relocate dma-buff font-tx-2 font-tx-2-dest (the-as gs-psm font-tx-2-fmt) font-clut)
           (font-set-tex0
-           (the-as (pointer gs-tex0) (-> *font-work* large-font-hi-tmpl))
-           font-tx-3
-           (the-as uint font-tx-3-dest)
-           (the-as uint font-tx-3-fmt)
-           (the-as uint clut-dest-addr)
-           )
+            (the-as (pointer gs-tex0) (-> *font-work* large-font-hi-tmpl))
+            font-tx-2
+            (the-as uint font-tx-2-dest)
+            (the-as uint font-tx-2-fmt)
+            (the-as uint clut-dest-addr)
+            )
           )
 
         ;; texflush
@@ -2098,7 +2065,8 @@
   )
 
 (defmethod relocate texture-page ((obj texture-page) (arg0 kheap) (arg1 (pointer uint8)))
-  "Add to VRAM and allocate links"
+  "Add to VRAM and allocate links.
+   This method is called by the GOAL linker when it loads a texture page."
   (tex-dbg "loaded tpage ~A~%" obj
            ;;(-> obj info file-name)
            ;;(-> obj info maya-file-name)
@@ -2118,9 +2086,7 @@
         (tex-dbg "  tpage is with level ~A~%" v1-2)
         (when v1-2
           ;; add us to the loading level's tpages
-          (set! (-> v1-2 loaded-texture-page (-> v1-2 loaded-texture-page-count))
-           obj
-           )
+          (set! (-> v1-2 loaded-texture-page (-> v1-2 loaded-texture-page-count)) obj)
           (+! (-> v1-2 loaded-texture-page-count) 1)
           )
         )
@@ -2134,12 +2100,7 @@
         (set! (-> *texture-relocate-later* memcpy) #f)
 
         ;; allocate!
-        ((-> *texture-pool* allocate-func)
-         *texture-pool*
-         obj
-         arg0
-         (the-as int a3-0)
-         )
+        ((-> *texture-pool* allocate-func) *texture-pool* obj arg0 (the-as int a3-0))
         )
       ;; the actual condition
       (not (-> *texture-relocate-later* memcpy))
@@ -2148,11 +2109,8 @@
      (set! (-> s4-0 page) obj)
      (if (not (-> s4-0 link))
          (set! (-> s4-0 link)
-          (the-as
-           texture-link
-           (malloc 'loading-level (* (max (-> s4-0 length) (-> obj length)) 4))
-           )
-          )
+               (the-as texture-link (malloc 'loading-level (* (max (-> s4-0 length) (-> obj length)) 4)))
+               )
          )
      )
     (else
@@ -2174,19 +2132,12 @@
           (s4-0 (-> gp-0 page))
           )
       ;; do this first, before allocating
-      (ultimate-memcpy
-       (the-as pointer (-> gp-0 dest))
-       (the-as pointer (-> gp-0 source))
-       (-> gp-0 move)
-       )
+      (ultimate-memcpy (the-as pointer (-> gp-0 dest)) (the-as pointer (-> gp-0 source)) (-> gp-0 move))
       (set! (-> s5-0 page) s4-0)
       ;; now safe to allocate links!
       (if (not (-> s5-0 link))
           (set! (-> s5-0 link)
-                (the-as
-                 texture-link
-                 (malloc 'loading-level (* (max (-> s5-0 length) (-> s4-0 length)) 4))
-                 )
+                (the-as texture-link (malloc 'loading-level (* (max (-> s5-0 length) (-> s4-0 length)) 4)))
                 )
           )
       )
@@ -2218,7 +2169,7 @@
                              #f
                              )
                    )
-                 ;; and load it! The loado links but doesn't execute
+                 ;; and load it! The loado links but doesn't execute the relocate method.
                  (s2-0 (the-as texture-page (loado file-name heap)))
                  )
             ;; if we loaded, relocate!
@@ -2271,7 +2222,7 @@
 
 ;; debug menu shader stuff
 (define *shader-list* '())
-(define *edit-shader* (the-as texture-id 0))
+(define *edit-shader* (new 'static 'texture-id))
 
 (defun link-texture-by-id ((arg0 texture-id) (arg1 adgif-shader))
   "Link the given adgif shader to the texture with the given ID"
@@ -2485,12 +2436,8 @@
                      (-> dir-entry link)
                      )
             ;; push
-            (set! (-> shader next shader)
-             (-> dir-entry link next (-> tex-id index) shader)
-             )
-            (set! (-> dir-entry link next (-> tex-id index) shader)
-             (shr (the-as uint shader) 4)
-             )
+            (set! (-> shader next shader) (-> dir-entry link next (-> tex-id index) shader))
+            (set! (-> dir-entry link next (-> tex-id index) shader) (shr (the-as uint shader) 4))
             )
           (when (and (-> dir-entry page)
                      (< (-> tex-id index) (the-as uint (-> dir-entry page length)))
@@ -2522,9 +2469,7 @@
         (let ((a1-7 (-> *texture-page-dir* entries (the-as uint (-> v1-4 page)))))
           (when (and (< (-> v1-4 index) (the-as uint (-> a1-7 length))) (-> a1-7 link))
             (set! (-> arg0 next shader) (-> a1-7 link next (-> v1-4 index) shader))
-            (set! (-> a1-7 link next (-> v1-4 index) shader)
-                  (shr (the-as uint arg0) 4)
-                  )
+            (set! (-> a1-7 link next (-> v1-4 index) shader) (shr (the-as uint arg0) 4))
             )
           (when (and (-> a1-7 page)
                      (< (-> v1-4 index) (the-as uint (-> a1-7 page length)))
@@ -2580,96 +2525,94 @@
 (defun-debug texture-page-dir-inspect ((dir texture-page-dir) (mode symbol))
   (format #t "[~8x] ~A~%" dir (-> dir type))
   (let ((pool *texture-pool*))
-   (format
-    #t
-    "~Ttexture pool (~DK used, ~DK free)~%"
-    (/ (- (-> pool cur) (-> pool top)) 256)
-    (/ (- #xa0000 (-> pool cur)) 256)
+    (format #t "~Ttexture pool (~DK used, ~DK free)~%"
+            (/ (- (-> pool cur) (-> pool top)) 256)
+            (/ (- #xa0000 (-> pool cur)) 256)
+            )
     )
-   )
   (dotimes (level-idx (-> *level* length))
-   (let ((lev (-> *level* level level-idx)))
-    (if (= (-> lev status) 'active)
-     (texture-page-size-check *texture-pool* lev #f)
-     )
+    (let ((lev (-> *level* level level-idx)))
+      (if (= (-> lev status) 'active)
+          (texture-page-size-check *texture-pool* lev #f)
+          )
+      )
     )
-   )
   (format #t "~Tlength: ~D~%" (-> dir length))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> dir length) (-> dir entries))
   (dotimes (entry-idx (-> dir length))
-   (let ((entry-page (-> dir entries entry-idx page))
-         (entry-link (-> dir entries entry-idx link))
-         )
-    (cond
-     (entry-page
-      (format #t "~T  [~3D]   loaded ~S ~A~%" entry-idx (if entry-link
-                                                         "  linked"
-                                                         "unlinked"
-                                                         )
-       entry-page
-       )
-      )
-     (else
-      (if (= mode 'full)
-       (format
-        #t
-        "~T  [~3D] unloaded ~S #<texture-page :length ~D>~%"
-        entry-idx
-        (if entry-link
-         "  linked"
-         "unlinked"
-         )
-        (-> dir entries entry-idx length)
-        )
-       )
-      )
-     )
-    (when (and (or entry-page entry-link) mode)
-     (dotimes (entry-list-length (-> dir entries entry-idx length))
-      (cond
-       ((not entry-link)
-        (format #t "~T    [~3D]   unlinked" entry-list-length)
-        )
-       ((zero? (-> entry-link next entry-list-length shader))
-        (format #t "~T    [~3D]   UNUSED  " entry-list-length)
-        )
-       (else
-        (let ((t9-9 format)
-              (a0-12 #t)
-              (a1-10 "~T    [~3D] ~3D links ")
-              (a2-11 entry-list-length)
-              (a3-7 0)
-              )
-         (let
-          ((v1-40
-            (the-as object (* (-> entry-link next entry-list-length shader) 16))
-            )
-           )
-          (while (nonzero? (the-as int v1-40))
-           (nop!)
-           (+! a3-7 1)
-           (set! v1-40 (* (-> (the-as adgif-shader v1-40) next shader) 16))
-           )
+    (let ((entry-page (-> dir entries entry-idx page))
+          (entry-link (-> dir entries entry-idx link))
           )
-         (t9-9 a0-12 a1-10 a2-11 a3-7)
-         )
-        )
-       )
       (cond
-       ((not entry-page)
-        (format #t " unloaded~%")
+        (entry-page
+          (format
+            #t
+            "~T  [~3D]   loaded ~S ~A~%"
+            entry-idx
+            (if entry-link
+                "  linked"
+                "unlinked"
+                )
+            entry-page
+            )
+          )
+        (else
+          (if (= mode 'full)
+              (format
+                #t
+                "~T  [~3D] unloaded ~S #<texture-page :length ~D>~%"
+                entry-idx
+                (if entry-link
+                    "  linked"
+                    "unlinked"
+                    )
+                (-> dir entries entry-idx length)
+                )
+              )
+          )
         )
-       ((not (-> entry-page data entry-list-length))
-        (format #t "    empty~%")
+      (when (and (or entry-page entry-link) mode)
+        (dotimes (entry-list-length (-> dir entries entry-idx length))
+          (cond
+            ((not entry-link)
+             (format #t "~T    [~3D]   unlinked" entry-list-length)
+             )
+            ((zero? (-> entry-link next entry-list-length shader))
+             (format #t "~T    [~3D]   UNUSED  " entry-list-length)
+             )
+            (else
+              (let ((t9-9 format)
+                    (a0-12 #t)
+                    (a1-10 "~T    [~3D] ~3D links ")
+                    (a2-11 entry-list-length)
+                    (a3-7 0)
+                    )
+                (let ((v1-40 (the-as object (* (-> entry-link next entry-list-length shader) 16))))
+                  (while (nonzero? (the-as uint v1-40))
+                    (nop!)
+                    (+! a3-7 1)
+                    (set! v1-40 (* (-> (the-as adgif-shader v1-40) next shader) 16))
+                    )
+                  )
+                (t9-9 a0-12 a1-10 a2-11 a3-7)
+                )
+              )
+            )
+          (cond
+            ((not entry-page)
+             (format #t " unloaded~%")
+             )
+            ((not (-> entry-page data entry-list-length))
+             (format #t "    empty~%")
+             )
+            (else
+              (format #t " ~A~%" (-> entry-page data entry-list-length))
+              )
+            )
+          )
         )
-       (else
-        (format #t " ~A~%" (-> entry-page data entry-list-length))
-        )
-       )
       )
-     )
     )
-   )
   (none)
   )
 

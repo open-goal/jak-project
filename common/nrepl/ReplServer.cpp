@@ -34,7 +34,13 @@ void ReplServer::post_init() {
 void ReplServer::ping_response(int socket) {
   std::string ping = fmt::format("Connected to OpenGOAL v{}.{} nREPL!",
                                  versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
-  write_to_socket(socket, ping.c_str(), ping.size());
+  auto resp = write_to_socket(socket, ping.c_str(), ping.size());
+  if (resp == -1) {
+    fmt::print("[nREPL:{}] Client Disconnected: {}\n", tcp_port, inet_ntoa(addr.sin_addr),
+               ntohs(addr.sin_port), socket);
+    close_socket(socket);
+    client_sockets.erase(socket);
+  }
 }
 
 std::optional<std::string> ReplServer::get_msg() {

@@ -1740,7 +1740,7 @@ u64 execute(void* ctxt) {
   printf("too many prims\n");
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
   //beq r0, r0, L147                                // beq r0, r0, L147
   // nop                                            // sll r0, r0, 0
   goto block_15;                                    // branch always

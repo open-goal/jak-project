@@ -5,41 +5,43 @@
 ;; name in dgo: surface-h
 ;; dgos: GAME, ENGINE
 
+;; A "surface" contains parameters for how Jak will behave.
+;; It can be used for different in-game surfaces (ice is slippery, grass isn't)
+;; but is also used for most other changes to Jak's control
+;; For example, when jumping, there's a separate "surface" for jumping that makes
+;; Jak less responsive to changing directions.
+;; Surfaces have flags and parameters that can be combined with other surfaces
+
 (defenum surface-flags
   :bitfield #t
   :type uint32
-  (surf00)
-  (surf01)
-  (surf02)
-  (surf03)
-  (surf04)
-  (surf05)
-  (surf06)
-  (surf07)
-  (surf08)
-  (surf09)
-  (surf10)
-  (surf11)
-  (surf12)
-  (surf13)
-  (surf14)
-  (surf15)
-  (surf16)
-  (surf17)
-  (surf18)
-  (surf19)
-  (surf20)
-  (surf21)
-  (surf22)
-  (surf23)
-  (surf24)
-  (surf25)
-  (surf26)
-  (surf27)
-  (surf28)
-  (surf29)
-  (surf30)
-  (surf31)
+  (allow-look-around) ;; allows entering first person with triangle
+  (dive)              ;; set on all diving (dive, dive-bottom) surfaces
+  (surf02)            ;; unused
+  (no-turn-around)    ;; prevent "changed direction" animation from happening
+
+  ;; when jak is on a surface with this flag, the case where jak
+  ;; is forced to rotate in the direction he's traveling is
+  ;; never taken. It's used on ice (though it is not needed, the turn toward transv
+  ;; is disabled by not being in target-walk ever) and also used to prevent
+  ;; jak from spinning around when he shouldn't (like if he's knocked back)
+  (no-rotate-toward-transv)
+  ;; if jak should always be forced to rotate in the direction he's travelling.
+  ;; used for the slides and also the warp gate jump
+  (always-rotate-toward-transv)
+
+  ;; never set, but prevents jak from jumping (both normal and roll)
+  (prevent-jump)
+
+  ;; target is launch jumping (from a blue eco pad)
+  (prevent-attacks-during-launch-jump)
+  (surf08) ;; never set, prevents various attacks from being possible
+  (surf09) ;; another attack prevent
+  (allow-edge-grab) ;; if set, and jak is falling, turn on the ledge grab search.
+  (jump) ;; set on all jumps, used to prevent "on-grounds" in places
+  (attacking) ;; set on all attacks, but not actually used anywhere
+  (ducking)   ;; set on all ducks, but not actually used anywhere
+  (moving-ground) ;; unused, but would make sense if jak was on something moving
   )
 
 ;; The "surface" defines how jak moves on the ground. It includes things like how fast he can go,
@@ -87,7 +89,7 @@
   :flag-assert         #x900000098
   )
 
-
+;; these calc-terminal functions are unused.
 (defun calc-terminal-vel ((arg0 float) (arg1 float) (arg2 float))
   (- (* (/ (- (* 0.016666668 arg0) arg1) arg2) (- 1.0 arg2)) arg1)
   )
@@ -193,6 +195,8 @@
   (none)
   )
 
+;; The common surfaces:
+
 (define *walk-mods* (new 'static 'surface
                       :name 'run
                       :turnv 131072.0
@@ -217,7 +221,7 @@
                       :alignv 1.0
                       :slope-up-traction 1.0
                       :align-speed 1.0
-                      :flags (surface-flags surf00)
+                      :flags (surface-flags allow-look-around)
                       )
         )
 
@@ -292,7 +296,7 @@
               :alignv 1.0
               :slope-up-traction 1.0
               :align-speed 1.0
-              :flags (surface-flags surf13)
+              :flags (surface-flags ducking)
               )
             )
       )
@@ -323,7 +327,7 @@
                              :slope-up-traction 1.0
                              :align-speed 1.0
                              :mode 'attack
-                             :flags (surface-flags surf12 surf13)
+                             :flags (surface-flags attacking ducking)
                              )
         )
 
@@ -352,7 +356,7 @@
                       :slope-up-traction 1.0
                       :align-speed 1.0
                       :mode 'air
-                      :flags (surface-flags surf10 surf11)
+                      :flags (surface-flags allow-edge-grab jump)
                       )
         )
 
@@ -381,7 +385,7 @@
                              :slope-up-traction 1.0
                              :align-speed 1.0
                              :mode 'air
-                             :flags (surface-flags surf10 surf11)
+                             :flags (surface-flags allow-edge-grab jump)
                              )
         )
 
@@ -410,7 +414,7 @@
                             :slope-up-traction 1.0
                             :align-speed 1.0
                             :mode 'air
-                            :flags (surface-flags surf10 surf11)
+                            :flags (surface-flags allow-edge-grab jump)
                             )
         )
 
@@ -439,7 +443,7 @@
                            :slope-up-traction 1.0
                            :align-speed 1.0
                            :mode 'air
-                           :flags (surface-flags surf10 surf11)
+                           :flags (surface-flags allow-edge-grab jump)
                            )
         )
 
@@ -468,7 +472,7 @@
                              :slope-up-traction 1.0
                              :align-speed 1.0
                              :mode 'air
-                             :flags (surface-flags surf07 surf10 surf11)
+                             :flags (surface-flags prevent-attacks-during-launch-jump allow-edge-grab jump)
                              )
         )
 
@@ -497,7 +501,7 @@
                                    :slope-up-traction 1.0
                                    :align-speed 1.0
                                    :mode 'air
-                                   :flags (surface-flags surf10 surf11)
+                                   :flags (surface-flags allow-edge-grab jump)
                                    )
         )
 
@@ -526,7 +530,7 @@
                            :slope-up-traction 1.0
                            :align-speed 1.0
                            :mode 'air
-                           :flags (surface-flags surf10 surf11)
+                           :flags (surface-flags allow-edge-grab jump)
                            )
         )
 
@@ -555,7 +559,7 @@
                               :slope-up-traction 1.0
                               :align-speed 1.0
                               :mode 'air
-                              :flags (surface-flags surf10 surf11)
+                              :flags (surface-flags allow-edge-grab jump)
                               )
         )
 
@@ -584,7 +588,7 @@
                                    :slope-up-traction 1.0
                                    :align-speed 1.0
                                    :mode 'air
-                                   :flags (surface-flags surf10 surf11)
+                                   :flags (surface-flags allow-edge-grab jump)
                                    )
         )
 
@@ -611,7 +615,7 @@
                         :slope-up-traction 1.0
                         :align-speed 1.0
                         :mode 'attack
-                        :flags (surface-flags surf12)
+                        :flags (surface-flags attacking)
                         )
         )
 
@@ -639,7 +643,7 @@
                              :slope-up-traction 1.0
                              :align-speed 1.0
                              :mode 'air
-                             :flags (surface-flags surf10 surf11 surf12)
+                             :flags (surface-flags allow-edge-grab jump attacking)
                              )
         )
 
@@ -667,7 +671,7 @@
               :slope-up-traction 1.0
               :align-speed 1.0
               :mode 'air
-              :flags (surface-flags surf10 surf11 surf12)
+              :flags (surface-flags allow-edge-grab jump attacking)
               )
             )
       )
@@ -695,7 +699,9 @@
                             :slope-up-traction 1.0
                             :align-speed 1.0
                             :mode 'attack
-                            :flags (surface-flags surf03 surf04 surf12)
+                            ;; no-rotate-toward-transv prevents jak from spinning around
+                            ;; if you punch over bumpy terrain
+                            :flags (surface-flags no-turn-around no-rotate-toward-transv attacking)
                             )
         )
 
@@ -722,7 +728,7 @@
                        :slope-up-traction 1.0
                        :align-speed 1.0
                        :mode 'attack
-                       :flags (surface-flags surf12)
+                       :flags (surface-flags attacking)
                        )
         )
 
@@ -746,7 +752,7 @@
                             :slope-up-traction 1.0
                             :align-speed 1.0
                             :mode 'attack
-                            :flags (surface-flags surf10 surf11 surf12)
+                            :flags (surface-flags allow-edge-grab jump attacking)
                             )
         )
 
@@ -771,7 +777,7 @@
                       :slope-up-traction 1.0
                       :align-speed 1.0
                       :mode 'attack
-                      :flags (surface-flags surf11 surf12)
+                      :flags (surface-flags jump attacking)
                       )
         )
 
@@ -800,7 +806,7 @@
               :slope-up-traction 1.0
               :align-speed 1.0
               :mode 'air
-              :flags (surface-flags surf11)
+              :flags (surface-flags jump)
               )
             )
       )
@@ -833,7 +839,7 @@
                       :slope-up-traction 1.0
                       :align-speed 1.0
                       :mode 'wade
-                      :flags (surface-flags surf00)
+                      :flags (surface-flags allow-look-around)
                       )
         )
 
@@ -884,7 +890,7 @@
                       :alignv 1.0
                       :align-speed 1.0
                       :mode 'dive
-                      :flags (surface-flags surf01)
+                      :flags (surface-flags dive)
                       )
         )
 
@@ -913,7 +919,7 @@
                              :slope-up-traction 1.0
                              :align-speed 1.0
                              :mode 'dive
-                             :flags (surface-flags surf01)
+                             :flags (surface-flags dive)
                              )
         )
 
@@ -1190,7 +1196,7 @@
                :alignv 1.0
                :slope-up-traction 1.0
                :align-speed 1.0
-               :flags (surface-flags surf03 surf04)
+               :flags (surface-flags no-turn-around no-rotate-toward-transv)
                )
              )
       )

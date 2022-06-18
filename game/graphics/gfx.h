@@ -19,20 +19,14 @@ class GfxDisplay;
 
 // enum for rendering pipeline
 enum class GfxPipeline { Invalid = 0, OpenGL };
+enum GfxDisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
 
 // module for the different rendering pipelines
 struct GfxRendererModule {
   std::function<int(GfxSettings&)> init;
-  std::function<std::shared_ptr<GfxDisplay>(int w, int h, const char* title, GfxSettings& settings)>
-      make_main_display;
-  std::function<void(GfxDisplay*)> kill_display;
-  std::function<void(GfxDisplay*)> render_display;
-  std::function<void(GfxDisplay*, int*, int*)> display_position;
-  std::function<void(GfxDisplay*, int*, int*)> display_size;
-  std::function<void(GfxDisplay*, int, int)> display_set_size;
-  std::function<void(GfxDisplay*, float*, float*)> display_scale;
-  std::function<void(GfxDisplay*, int, int)> set_fullscreen;
-  std::function<void(GfxDisplay*, int, int, s32*, s32*, s32*)> screen_size;
+  std::function<std::shared_ptr<
+      GfxDisplay>(int width, int height, const char* title, GfxSettings& settings, bool is_main)>
+      make_display;
   std::function<void()> exit;
   std::function<u32()> vsync;
   std::function<u32()> sync_path;
@@ -47,6 +41,7 @@ struct GfxRendererModule {
 };
 
 // store settings related to the gfx systems
+// TODO merge with globalsettings
 struct GfxSettings {
   // current version of the settings. this should be set up so that newer versions are always higher
   // than older versions
@@ -98,12 +93,8 @@ namespace Gfx {
 
 extern GfxGlobalSettings g_global_settings;
 extern GfxSettings g_settings;
-// extern const std::vector<const GfxRendererModule*> renderers;
 
-const GfxRendererModule* GetRenderer(GfxPipeline pipeline);
 const GfxRendererModule* GetCurrentRenderer();
-
-enum DisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
 
 u32 Init();
 void Loop(std::function<bool()> f);
@@ -120,10 +111,10 @@ u64 get_window_width();
 u64 get_window_height();
 void set_window_size(u64 w, u64 h);
 void get_window_scale(float* x, float* y);
-int get_fullscreen();
+GfxDisplayMode get_fullscreen();
 void get_screen_size(s64 vmode_idx, s32* w, s32* h, s32* c);
 void set_letterbox(int w, int h);
-void set_fullscreen(DisplayMode mode, int screen);
+void set_fullscreen(GfxDisplayMode mode, int screen);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);

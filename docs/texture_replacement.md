@@ -1,5 +1,12 @@
 # How to replace textures
+## Release build
+Create a folder called `texture_replacements` inside the `data` directory. The directory structure should be
+```
+data/texture_replacements/page_name/texture_name.png
+```
+Where `page_name` is the name of the folder in `data/assets/textures` and `texture_name.png` is the name of the texture.
 
+## From source
 Textures to be replaced should be saved in
 ```
 jak-project/texture_replacements/page_name/texture_name.png
@@ -12,7 +19,7 @@ To make this easier to set up, you can copy the default textures from `assets`, 
 For example, you can copy the `common` folder from `assets/textures` to `texture_replacements`.  Then you can modify the png files in `texture_replacements/common`
 
 # Rebuilding the game with modified textures
-Run the decompiler again to rebuild with modified textures.
+Run the decompiler/extractor again to rebuild with modified textures.
 
 If it worked, you will see:
 ```

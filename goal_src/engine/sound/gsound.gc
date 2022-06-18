@@ -301,7 +301,7 @@
     )
   )
 
-(defun sound-set-volume ((group uint) (volume float))
+(defun sound-set-volume ((group sound-group) (volume float))
 
   (let ((cmd (the sound-rpc-set-master-volume (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-master-volume))
@@ -337,59 +337,49 @@
 
   `(with-pp
     (let ((proc (the process-drawable pp)))
-      ;(format 0 "get proc~%")
       (when (= ,sound-trans #t)
-        ;(format 0 "trans #t~%")
         (if (and proc
                  (type-type? (-> proc type) process-drawable)
                  (nonzero? (-> proc root)))
           (set! ,sound-trans (-> proc root trans))
           (set! ,sound-trans (the vector #f))
           )
-        ;(format 0 "trans is ~A~%" ,sound-trans)
         )
       )
 
-    ;(format 0 "convert~%" ,sound-trans)
     (sound-trans-convert (-> ,cmd parms trans) ,sound-trans)
     )
   )
 
-(defun sound-play-by-name ((name sound-name) (id sound-id) (vol int) (pitch int) (bend int) (group int) (trans symbol))
+(defmacro sound-play (name &key (id (new-sound-id))
+                           &key (vol 100.0) &key (pitch 0) &key (bend 0)
+                           &key (group sfx)
+                           &key (position #t))
+  `(sound-play-by-name (static-sound-name ,name) ,id (the int (* (/ 1024.0 100.0) ,vol)) (the int (* 1524.0 ,pitch)) ,bend (sound-group ,group) ,position)
+  )
+
+(defun sound-play-by-name ((name sound-name) (id sound-id) (vol int) (pitch int) (bend int) (group sound-group) (trans symbol))
   "Play a sound called name with the specified params"
 
-  (local-vars (sv-16 int))
-  (with-pp
-   (set! sv-16 group)
-   (let ((sound-trans (the-as structure trans)))
+  (local-vars (sv-16 sound-group))
+  (set! sv-16 group)
+  (let ((sound-trans (the-as vector trans)))
     (when *sound-player-enable*
-     (let ((cmd (the-as sound-rpc-play (get-sound-buffer-entry))))
-      (set! (-> cmd command) (sound-command play))
-      (set! (-> cmd id) id)
-      (set! (-> cmd name) name)
-      (set! (-> cmd parms mask) (sound-mask))
-      (set! (-> cmd parms group) (the-as uint sv-16))
-      (set! (-> cmd parms volume) vol)
-      (set! (-> cmd parms pitch-mod) pitch)
-      (set! (-> cmd parms bend) bend)
-      (let ((proc (the-as process-drawable pp)))
-       (when (= (the-as symbol sound-trans) #t)
-        (if
-         (and
-          proc
-          (type-type? (-> proc type) process-drawable)
-          (nonzero? (-> proc root))
-          )
-         (set! sound-trans (-> proc root trans))
-         (set! sound-trans #f)
-         )
+      (let ((cmd (the-as sound-rpc-play (get-sound-buffer-entry))))
+
+        (set! (-> cmd command) (sound-command play))
+        (set! (-> cmd id) id)
+        (set! (-> cmd name) name)
+        (set! (-> cmd parms mask) (sound-mask))
+        (set! (-> cmd parms group) sv-16)
+        (set! (-> cmd parms volume) vol)
+        (set! (-> cmd parms pitch-mod) pitch)
+        (set! (-> cmd parms bend) bend)
+
+        (sound-trans-from-process cmd sound-trans)
         )
-       )
-      (sound-trans-convert (-> cmd parms trans) (the-as vector sound-trans))
       )
-     )
     )
-   )
   id
   )
 
@@ -445,7 +435,7 @@
   0
   )
 
-(defun sound-group-pause ((group uint))
+(defun sound-group-pause ((group sound-group))
 
   (let ((cmd (the sound-rpc-pause-group (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command pause-group))
@@ -454,7 +444,7 @@
   0
   )
 
-(defun sound-group-stop ((group uint))
+(defun sound-group-stop ((group sound-group))
 
   (let ((cmd (the sound-rpc-stop-group (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command stop-group))
@@ -463,7 +453,7 @@
   0
   )
 
-(defun sound-group-continue ((group uint))
+(defun sound-group-continue ((group sound-group))
 
   (let ((cmd (the sound-rpc-continue-group (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command continue-group))
@@ -516,11 +506,9 @@
 (defun sound-volume-off ()
   "Set all sound volume to zero"
 
-  (with-pp
-    (set-setting! *setting-control* pp 'music-volume 'abs 0.0 0)
-    (set-setting! *setting-control* pp 'sfx-volume 'abs 0.0 0)
-    (set-setting! *setting-control* pp 'ambient-volume 'abs 0.0 0)
-    )
+  (set-setting! 'music-volume 'abs 0.0 0)
+  (set-setting! 'sfx-volume 'abs 0.0 0)
+  (set-setting! 'ambient-volume 'abs 0.0 0)
   0
   )
 
@@ -673,7 +661,7 @@
                                    (-> obj volume)
                                    (-> obj pitch)
                                    0
-                                   1
+                                   (sound-group sfx)
                                    (the-as symbol (-> obj trans))))
         )
        (else
@@ -684,7 +672,7 @@
                                      (-> obj volume)
                                      (-> obj pitch)
                                      0
-                                     1
+                                     (sound-group sfx)
                                      (the-as symbol (-> obj trans))))
           (set! (-> obj play-time) (+ (-> *display* base-frame-counter)
                                       (-> obj time-base)

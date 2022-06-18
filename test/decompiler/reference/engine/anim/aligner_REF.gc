@@ -5,7 +5,7 @@
 ;; WARN: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
 ;; WARN: Unsupported inline assembly instruction kind - [jr ra]
 ;; Used lq/sq
-(defmethod TODO-RENAME-9 align-control ((obj align-control))
+(defmethod compute-alignment! align-control ((obj align-control))
   (local-vars (a0-9 symbol) (s7-0 none) (ra-0 int))
   (with-pp
     (let ((s5-0 (-> obj process skel active-channels)))
@@ -54,8 +54,8 @@
           )
         )
       (if a0-9
-          (logior! (-> obj flags) (align-flags algf00))
-          (logclear! (-> obj flags) (align-flags algf00))
+          (logior! (-> obj flags) (align-flags disabled))
+          (logclear! (-> obj flags) (align-flags disabled))
           )
       (set! (-> obj frame-group) v1-16)
       (set! (-> obj frame-num) f0-0)
@@ -128,8 +128,8 @@
   )
 
 ;; definition for method 10 of type align-control
-(defmethod TODO-RENAME-10 align-control ((obj align-control) (arg0 int) (arg1 float) (arg2 float) (arg3 float))
-  (when (zero? (logand (-> obj flags) (align-flags algf00)))
+(defmethod align! align-control ((obj align-control) (arg0 align-opts) (arg1 float) (arg2 float) (arg3 float))
+  (when (zero? (logand (-> obj flags) (align-flags disabled)))
     (let* ((a0-1 (-> obj process))
            (t9-0 (method-of-object a0-1 apply-alignment))
            (v1-4 (-> obj delta))
@@ -160,15 +160,14 @@
   )
 
 ;; definition for method 11 of type align-control
-;; INFO: Return type mismatch trsqv vs none.
-(defmethod TODO-RENAME-11 align-control ((obj align-control) (arg0 int) (arg1 vector) (arg2 int) (arg3 float) (arg4 float))
-  (when (zero? (logand (-> obj flags) (align-flags algf00)))
+(defmethod align-vel-and-quat-only! align-control ((obj align-control) (arg0 align-opts) (arg1 vector) (arg2 int) (arg3 float) (arg4 float))
+  (when (zero? (logand (-> obj flags) (align-flags disabled)))
     (let ((s5-0 (-> obj delta)))
       (let ((s3-0 (-> obj process root transv)))
-        (if (logtest? arg0 2)
+        (if (logtest? arg0 (align-opts adjust-y-vel))
             (set! (-> s3-0 y) (* (-> s5-0 trans y) arg3 (-> *display* frames-per-second)))
             )
-        (when (logtest? arg0 4)
+        (when (logtest? arg0 (align-opts adjust-xz-vel))
           (set! (-> s3-0 x) (-> arg1 x))
           (set! (-> s3-0 z) (-> arg1 z))
           (let ((f0-8 (* (fmin (vector-xz-length arg1) (* (vector-xz-length (-> s5-0 trans)) arg4))
@@ -182,11 +181,10 @@
             )
           )
         )
-      (if (logtest? arg0 16)
+      (if (logtest? arg0 (align-opts adjust-quat))
           (quaternion-normalize! (quaternion*! (-> obj process root quat) (-> obj process root quat) (-> s5-0 quat)))
           )
       )
     )
   (-> obj process root)
-  (none)
   )
