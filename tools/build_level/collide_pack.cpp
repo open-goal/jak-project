@@ -64,6 +64,22 @@ PackedU16Verts pack_verts_to_u16(const std::vector<math::Vector3f>& input) {
                                magic_float_to_u16(vertex_magic[2]));
   }
 
+  // verify
+  /*
+  for (size_t i = 0; i < input.size(); i++) {
+    math::Vector3f v;
+    v[0] = u32_to_float(0x4d000000 + result.vertex[i][0]);
+    v[1] = u32_to_float(0x4d000000 + result.vertex[i][1]);
+    v[2] = u32_to_float(0x4d000000 + result.vertex[i][2]);
+    float base_offset = u32_to_float(0x4d000000);
+    math::Vector3f vf13_combo_offset(base_offset, base_offset, base_offset);
+    math::Vector3f vf14_base_trans_float(result.base[0], result.base[1], result.base[2]);
+    vf13_combo_offset -= vf14_base_trans_float;
+    v -= vf13_combo_offset;
+    fmt::print("error {}\n", (v - input[i]).to_string_aligned());;
+  }
+   */
+
   return result;
 }
 
@@ -163,6 +179,7 @@ std::vector<u8> make_dumb_strip_table(const IndexedFaces& faces) {
     out.push_back(face.vertex_indices[2]);
     out.push_back(0);
   }
+  out.push_back(-1);
 
   return out;
 }
@@ -180,7 +197,7 @@ CollideFragMeshDataArray pack_collide_frags(const std::vector<collide::CollideFr
     auto indexed = dedup_frag_mesh(frag_in, &pat_map);
     // first part of packed_data is the u16 vertex data:
     frag_out.vertex_count = indexed.vertices_u16.vertex.size();
-    frag_out.packed_data.resize(sizeof(u16) * frag_out.vertex_count);
+    frag_out.packed_data.resize(sizeof(u16) * frag_out.vertex_count * 3);
     memcpy(frag_out.packed_data.data(), indexed.vertices_u16.vertex.data(),
            frag_out.packed_data.size());
     // align to 16-bytes
@@ -209,6 +226,7 @@ CollideFragMeshDataArray pack_collide_frags(const std::vector<collide::CollideFr
     frag_out.poly_count = indexed.faces.size();
     frag_out.total_qwc = frag_out.packed_data.size() / 16;
     frag_out.base_trans_xyz_s32 = indexed.vertices_u16.base;
+    frag_out.bsphere = frag_in.bsphere;
     total_pack_bytes += frag_out.packed_data.size();
   }
 

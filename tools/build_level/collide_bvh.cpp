@@ -95,35 +95,6 @@ void compute_my_bsphere(CNode& node) {
 }
 
 /*!
- * Pick a dimension (x, y, or z) to split along.
- * The heuristic is just to pick the direction with the largest span.
- */
-int pick_dim_for_split(const std::vector<CollideFace>& faces) {
-  math::Vector3f maxs, mins;
-  maxs.fill(-std::numeric_limits<float>::max());
-  mins.fill(std::numeric_limits<float>::min());
-
-  for (const auto& face : faces) {
-    for (const auto& vert : face.v) {
-      maxs.max_in_place(vert);
-      mins.min_in_place(vert);
-    }
-  }
-
-  float best_range = 0;
-  int best_dim = 0;
-  math::Vector3f range = maxs - mins;
-  for (int i = 0; i < 3; i++) {
-    if (range[i] > best_range) {
-      best_range = range[i];
-      best_dim = i;
-    }
-  }
-
-  return best_dim;
-}
-
-/*!
  * Split faces in two along a coordinate plane.
  * Will clear the input faces
  */
@@ -137,14 +108,38 @@ void split_along_dim(std::vector<CollideFace>& faces,
   size_t split_idx = faces.size() / 2;
   out0->insert(out0->end(), faces.begin(), faces.begin() + split_idx);
   out1->insert(out1->end(), faces.begin() + split_idx, faces.end());
-  faces.clear();
 }
 
 /*!
  * Split a node into two nodes. The outputs should be uninitialized nodes
  */
 void split_node_once(CNode& node, CNode* out0, CNode* out1) {
-  split_along_dim(node.faces, pick_dim_for_split(node.faces), &out0->faces, &out1->faces);
+  CNode temps[6];
+  // split_along_dim(node.faces, pick_dim_for_split(node.faces), &out0->faces, &out1->faces);
+  split_along_dim(node.faces, 0, &temps[0].faces, &temps[1].faces);
+  split_along_dim(node.faces, 1, &temps[2].faces, &temps[3].faces);
+  split_along_dim(node.faces, 2, &temps[4].faces, &temps[5].faces);
+  node.faces.clear();
+  for (auto& t : temps) {
+    compute_my_bsphere(t);
+  }
+
+  float max_bspheres[3] = {0, 0, 0};
+  for (int i = 0; i < 3; i++) {
+    max_bspheres[i] = std::max(temps[i * 2].bsphere.w(), temps[i * 2 + 1].bsphere.w());
+  }
+
+  int best_dim = 0;
+  float best_w = max_bspheres[0];
+  for (int i = 0; i < 3; i++) {
+    if (max_bspheres[i] < best_w) {
+      best_dim = i;
+      best_w = max_bspheres[i];
+    }
+  }
+
+  *out0 = temps[best_dim * 2];
+  *out1 = temps[best_dim * 2 + 1];
 }
 
 /*!

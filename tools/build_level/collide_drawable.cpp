@@ -105,6 +105,70 @@ size_t generate_collide_frag_mesh(DataObjectGenerator& gen,
   return result;
 }
 
+size_t generate_collide_fragment(DataObjectGenerator& gen,
+                                 const CollideFragMeshData& mesh,
+                                 size_t frag_mesh_loc) {
+  /*
+    .type collide-fragment
+    .word 0x10000
+    .word L705
+    .word 0x0
+    .word 0x46bf480a
+    .word 0x43dc730b
+    .word 0xb71ed4fe
+    .word 0x46c42e44
+   */
+  gen.align_to_basic();
+  gen.add_type_tag("collide-fragment");
+  size_t result = gen.current_offset_bytes();
+  gen.add_word(0x10000);  // ???
+  gen.link_word_to_byte(gen.add_word(0), frag_mesh_loc);
+  gen.add_word(0);
+  for (int i = 0; i < 4; i++) {
+    gen.add_word_float(mesh.bsphere[i]);
+  }
+
+  return result;
+}
+
+size_t generate_collide_fragment_array(DataObjectGenerator& gen,
+                                       const std::vector<CollideFragMeshData>& meshes,
+                                       const std::vector<size_t>& frag_mesh_locs,
+                                       std::vector<size_t>& parent_ref_out) {
+  gen.align_to_basic();
+  gen.add_type_tag("drawable-inline-array-collide-fragment");  // 0
+  size_t result = gen.current_offset_bytes();
+  ASSERT(meshes.size() < UINT16_MAX);
+  gen.add_word(meshes.size() << 16);  // 4, 6
+  gen.add_word(0);                    // 8
+  gen.add_word(0);                    // 12
+  gen.add_word(0);                    // 16
+  gen.add_word(0);                    // 20
+  gen.add_word(0);                    // 24
+  gen.add_word(0);                    // 28
+
+  fmt::print("have: {}\n", meshes.size());
+
+  ASSERT(meshes.size() == frag_mesh_locs.size());
+  for (size_t i = 0; i < meshes.size(); i++) {
+    auto& mesh = meshes[i];
+    // should be 8 words here:
+    gen.add_type_tag("collide-fragment");  // 1
+    size_t me = gen.current_offset_bytes();
+    gen.add_word(0x10000);  // ???
+    gen.link_word_to_byte(gen.add_word(0), frag_mesh_locs[i]);
+    gen.add_word(0);
+    for (int j = 0; j < 4; j++) {
+      gen.add_word_float(mesh.bsphere[j]);
+    }
+    if ((i % 8) == 0) {
+      parent_ref_out.push_back(me);
+    }
+  }
+
+  return result;
+}
+
 size_t generate_collide_draw_node_array(DataObjectGenerator& gen,
                                         const std::vector<collide::DrawNode>& nodes,
                                         u32 flag,
@@ -146,6 +210,59 @@ size_t generate_collide_draw_node_array(DataObjectGenerator& gen,
 }
 
 size_t DrawableTreeCollideFragment::add_to_object_file(DataObjectGenerator& gen) const {
-  // don't forget pats
-  return 0;
+  for (auto& lev : bvh.node_arrays) {
+    fmt::print("lev: {}\n", lev.nodes.size());
+  }
+  // generate pat array
+  size_t pat_array_loc = generate_pat_array(gen, packed_frags.pats);
+
+  // generated packed data
+  std::vector<size_t> packed_data_locs;
+  for (auto& mesh : packed_frags.packed_frag_data) {
+    packed_data_locs.push_back(generate_packed_collide_data(gen, mesh.packed_data));
+  }
+
+  // generate collide frag meshes
+  std::vector<size_t> collide_frag_meshes;
+  for (size_t i = 0; i < packed_data_locs.size(); i++) {
+    collide_frag_meshes.push_back(generate_collide_frag_mesh(gen, packed_frags.packed_frag_data[i],
+                                                             packed_data_locs[i], pat_array_loc));
+  }
+
+  std::vector<size_t> array_locs;
+  array_locs.resize(bvh.node_arrays.size() + 1);  // plus one for the frags.
+  int array_slot = bvh.node_arrays.size();
+
+  std::vector<size_t> children_refs;
+  array_locs[array_slot--] = generate_collide_fragment_array(gen, packed_frags.packed_frag_data,
+                                                             collide_frag_meshes, children_refs);
+  u32 flag = 0;
+  while (array_slot >= 0) {
+    fmt::print("sizes: {} {}\n", children_refs.size(), bvh.node_arrays.at(array_slot).nodes.size());
+    ASSERT(children_refs.size() == bvh.node_arrays.at(array_slot).nodes.size());
+    std::vector<size_t> next_children;
+
+    array_locs[array_slot] = generate_collide_draw_node_array(
+        gen, bvh.node_arrays.at(array_slot).nodes, flag, children_refs, next_children);
+
+    children_refs = std::move(next_children);
+    array_slot--;
+    flag = 1;
+  }
+
+  {
+    gen.align_to_basic();
+    gen.add_type_tag("drawable-tree-collide-fragment");
+    size_t result = gen.current_offset_bytes();
+    gen.add_word((array_locs.size() - 1) << 16);  // todo the minus one here??
+    for (int i = 0; i < 6; i++) {
+      gen.add_word(0);
+    }
+
+    for (size_t i = 1; i < array_locs.size(); i++) {  // todo the offset here?
+      gen.link_word_to_byte(gen.add_word(0), array_locs[i]);
+    }
+
+    return result;
+  }
 }
