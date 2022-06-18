@@ -220,7 +220,8 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& 
     if (i == header.object_count - 1) {
       if (reader.bytes_left() == obj_header.object_count - 0x30) {
         if (config.is_pal) {
-          lg::warn("Skipping {} because it is a broken PAL object", obj_header.name);
+          lg::warn("Skipping {} in {} because it is a broken PAL object", obj_header.name,
+                   dgo_base_name);
           reader.ffwd(reader.bytes_left());
           continue;
         } else {
