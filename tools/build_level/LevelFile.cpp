@@ -22,6 +22,7 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
   size_t result = gen.current_offset_bytes();
   int num_trees = 0;
   num_trees += tfrags.size();
+  num_trees += collides.size();
   gen.add_word(num_trees << 16);
   gen.add_word(0);
   gen.add_word(0);
@@ -36,14 +37,18 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
   if (num_trees == 0) {
     gen.add_word(0);  // the one at the end.
   } else {
-    size_t tree_word = gen.current_offset_bytes() / 4;
-    for (size_t i = 0; i < num_trees; i++) {
+    int tree_word = (int)gen.current_offset_bytes() / 4;
+    for (int i = 0; i < num_trees; i++) {
       gen.add_word(0);
     }
 
     for (auto& tfrag : tfrags) {
       // gen.set_word(tree_word++, tfrag.add_to_object_file(gen));
       gen.link_word_to_byte(tree_word++, tfrag.add_to_object_file(gen));
+    }
+
+    for (auto& collide : collides) {
+      gen.link_word_to_byte(tree_word++, collide.add_to_object_file(gen));
     }
   }
 

@@ -4,10 +4,10 @@
 
 struct CollideFragMeshData {
   math::Vector4f bsphere;  // not part of the collide frag, but is part of the drawable wrapping it
-  std::vector<u8> packed_data, pat_array;
-  u16 strip_data_len;
-  u16 poly_count;
-  math::Vector3f base_trans_xyz;
+  std::vector<u8> packed_data;
+  u32 strip_data_len;
+  u32 poly_count;
+  math::Vector<s32, 3> base_trans_xyz_s32;
   u8 vertex_count;
   u8 vertex_data_qwc;
   u8 total_qwc;

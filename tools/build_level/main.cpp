@@ -71,13 +71,19 @@ int main(int argc, char** argv) {
   // actor birht
   // split box
 
-  // add stuff to the both structures
+  // add stuff to the PC level structure
   pc_level.level_name = file.name;
-  tfrag_from_gltf(mesh_extract_out.tfrag, file.drawable_trees.tfrags.emplace_back(),
+
+  // TFRAG
+  auto& tfrag_drawable_tree = file.drawable_trees.tfrags.emplace_back();
+  tfrag_from_gltf(mesh_extract_out.tfrag, tfrag_drawable_tree,
                   pc_level.tfrag_trees[0].emplace_back());
   pc_level.textures = std::move(tex_pool.textures_by_idx);
-  auto collide_tree = collide::construct_collide_bvh(mesh_extract_out.collide.faces);
-  auto collide_packed = pack_collide_frags(collide_tree.frags.frags);
+
+  // COLLIDE
+  auto& collide_drawable_tree = file.drawable_trees.collides.emplace_back();
+  collide_drawable_tree.bvh = collide::construct_collide_bvh(mesh_extract_out.collide.faces);
+  collide_drawable_tree.packed_frags = pack_collide_frags(collide_drawable_tree.bvh.frags.frags);
 
   // Save the GOAL level
   auto result = file.save_object_file();

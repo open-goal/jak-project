@@ -51,6 +51,13 @@ int DataObjectGenerator::add_word(u32 word) {
   return result;
 }
 
+int DataObjectGenerator::add_word_float(float f) {
+  auto result = int(m_words.size());
+  m_words.push_back(0);
+  memcpy(&m_words.back(), &f, sizeof(float));
+  return result;
+}
+
 void DataObjectGenerator::set_word(u32 word_idx, u32 val) {
   m_words.at(word_idx) = val;
 }

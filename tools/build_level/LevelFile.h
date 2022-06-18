@@ -7,9 +7,10 @@
 #include "common/common_types.h"
 #include "tools/build_level/FileInfo.h"
 #include "tools/build_level/Tfrag.h"
-
-
-
+#include "tools/build_level/collide_pack.h"
+#include "tools/build_level/collide_common.h"
+#include "tools/build_level/collide_bvh.h"
+#include "tools/build_level/collide_drawable.h"
 
 
 struct VisibilityString {
@@ -17,16 +18,11 @@ struct VisibilityString {
 };
 
 
-
 struct DrawableTreeInstanceTie {
 
 };
 
 struct DrawableTreeActor {
-
-};
-
-struct DrawableTreeCollideFragment {
 
 };
 
@@ -38,6 +34,7 @@ struct DrawableTreeInstanceShrub {
 
 };
 
+
 struct DrawableTreeArray {
   std::vector<DrawableTreeTfrag> tfrags;
   std::vector<DrawableTreeInstanceTie> ties;
@@ -45,14 +42,9 @@ struct DrawableTreeArray {
   std::vector<DrawableTreeCollideFragment> collides;
   std::vector<DrawableTreeAmbient> ambients;
   std::vector<DrawableTreeInstanceShrub> shrubs;
-
   size_t add_to_object_file(DataObjectGenerator& gen) const;
 };
 
-
-struct Pat {
-
-};
 
 struct TextureRemap {
 
@@ -114,7 +106,7 @@ struct LevelFile {
 
   //  (pat                    pointer                          :offset-assert  44)
   //  (pat-length             int32                            :offset-assert  48)
-  std::vector<Pat> pat;
+  std::vector<PatSurface> pat;
 
   //  (texture-remap-table    (pointer uint64)                 :offset-assert  52)
   //  (texture-remap-table-len int32                           :offset-assert  56)

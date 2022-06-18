@@ -8,6 +8,7 @@
 class DataObjectGenerator {
  public:
   int add_word(u32 word);
+  int add_word_float(float f);
   void set_word(u32 word_idx, u32 val);
   void link_word_to_word(int source, int target, int offset = 0);
   void link_word_to_byte(int source_word, int target_byte);
