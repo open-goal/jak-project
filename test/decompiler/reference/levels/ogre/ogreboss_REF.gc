@@ -1349,14 +1349,14 @@
 ;; definition for function ogreboss-shoot-boulder
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defbehavior ogreboss-shoot-boulder ogreboss ((arg0 int))
+(defbehavior ogreboss-shoot-boulder ogreboss ((arg0 pickup-type))
   (let ((gp-0 (new 'stack-no-clear 'ogreboss-missile-init-data)))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       (set! (-> gp-0 src) (-> self node-list data 52 bone transform vector 3))
       (set! (-> gp-0 duration)
             (the-as time-frame (the int (* 300.0 (+ 1.25 (* -0.25 (-> self level)) (/ 0.5 (-> self difficulty))))))
             )
-      (set! (-> gp-0 pickup-type) (the-as pickup-type arg0))
+      (set! (-> gp-0 pickup-type) arg0)
       (set! (-> gp-0 blast-radius) 32768.0)
       (cond
         (*target*
@@ -1620,7 +1620,7 @@
         (ja :num! (seek! max f30-0))
         )
       (countdown (gp-1 (+ gp-0 -1))
-        (let ((s5-0 0))
+        (let ((boulder-pickup (pickup-type none)))
           (let ((f28-0 0.0))
             (cond
               ((>= 1.0 (-> *target* fact-info-target health))
@@ -1644,10 +1644,10 @@
                           )
                   )
             (if (and *target* (< (rand-vu) f28-0))
-                (set! s5-0 4)
+                (set! boulder-pickup (pickup-type eco-green))
                 )
             )
-          (ogreboss-shoot-boulder s5-0)
+          (ogreboss-shoot-boulder (the-as pickup-type boulder-pickup))
           )
         (ja-no-eval :group! ogreboss-attack2-loop-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
@@ -1656,7 +1656,7 @@
           )
         (ogreboss-inc-try-count)
         )
-      (ogreboss-shoot-boulder 3)
+      (ogreboss-shoot-boulder (pickup-type eco-blue))
       (ja-no-eval :group! ogreboss-attack2-last-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
