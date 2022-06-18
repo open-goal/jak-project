@@ -1580,8 +1580,9 @@
 ;; Example Custom Level
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(custom-level-cgo "AWFVIL.DGO" "awful_village/awflvil.gd")
-(copy-custom-level-gos "awful-village")
+;; (custom-level-cgo "TESTZONE.DGO" "test-zone/testzone.gd")
+;; (copy-custom-level-gos "test-zone")
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Game Engine Code

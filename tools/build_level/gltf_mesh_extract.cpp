@@ -246,8 +246,8 @@ DrawMode make_default_draw_mode() {
   mode.set_alpha_blend(DrawMode::AlphaBlend::DISABLED);
   mode.set_aref(0);
   mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
-  mode.set_clamp_s_enable(false);
-  mode.set_clamp_t_enable(false);
+  mode.set_clamp_s_enable(true);
+  mode.set_clamp_t_enable(true);
   mode.disable_filt();  // for checkerboard...
   mode.enable_tcc();    // ?
   mode.disable_at();

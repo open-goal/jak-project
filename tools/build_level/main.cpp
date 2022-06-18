@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
   // process input mesh from blender
   gltf_mesh_extract::Input mesh_extract_in;
   mesh_extract_in.filename =
-      file_util::get_file_path({level_json.at("tfrag_data").get<std::string>()});
+      file_util::get_file_path({level_json.at("gltf_file").get<std::string>()});
   mesh_extract_in.tex_pool = &tex_pool;
   gltf_mesh_extract::Output mesh_extract_out;
   gltf_mesh_extract::extract(mesh_extract_in, mesh_extract_out);
