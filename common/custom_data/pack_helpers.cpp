@@ -23,7 +23,7 @@ std::pair<u64, u16> position_to_cluster_and_offset(float in) {
 }
 
 void pack_tfrag_vertices(tfrag3::PackedTfragVertices* result,
-                   const std::vector<tfrag3::PreloadedVertex>& vertices) {
+                         const std::vector<tfrag3::PreloadedVertex>& vertices) {
   u32 next_cluster_idx = 0;
   std::map<u64, u32> clusters;
 

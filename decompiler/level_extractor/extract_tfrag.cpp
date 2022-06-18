@@ -2138,8 +2138,6 @@ void merge_groups(std::vector<tfrag3::StripDraw::VisGroup>& grps) {
 
 }  // namespace
 
-
-
 void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const std::string& debug_name,
                    const std::vector<level_tools::TextureRemap>& map,

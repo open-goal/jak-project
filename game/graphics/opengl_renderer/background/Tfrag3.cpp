@@ -244,14 +244,8 @@ void Tfrag3::render_tree(int geom,
       glDrawElements(tree.draw_mode, singledraw_indices.second, GL_UNSIGNED_INT,
                      (void*)(singledraw_indices.first * sizeof(u32)));
     } else {
-//      fmt::print("draw with {}\n", multidraw_indices.second);
-//      fmt::print("tex: {}\n", m_textures->at(draw.tree_tex_id));
-//      if (multidraw_indices.second == 1) {
-//        fmt::print("cnt is: {}\n", m_cache.multidraw_count_buffer[multidraw_indices.first]);
-//        fmt::print("Val: {}", (u64)m_cache.multidraw_index_offset_buffer[multidraw_indices.first]);
-//      }
-      glMultiDrawElements(tree.draw_mode,
-                          &m_cache.multidraw_count_buffer[multidraw_indices.first], GL_UNSIGNED_INT,
+      glMultiDrawElements(tree.draw_mode, &m_cache.multidraw_count_buffer[multidraw_indices.first],
+                          GL_UNSIGNED_INT,
                           &m_cache.multidraw_index_offset_buffer[multidraw_indices.first],
                           multidraw_indices.second);
     }
