@@ -191,6 +191,10 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
       g_gfx_data->debug_gui.m_vsync = false;
       g_gfx_data->vsync_enabled = false;
       glfwSwapInterval(false);
+      if (primary_monitor_video_mode->refreshRate > 120) {
+        BootVideoMode = VideoMode::FPS150;
+        g_gfx_data->debug_gui.target_fps = 150;
+      }
     } else {
       // enable vsync
       g_gfx_data->debug_gui.framelimiter = false;

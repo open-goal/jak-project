@@ -32,6 +32,8 @@
 
 using namespace ee;
 
+VideoMode BootVideoMode;
+
 // Level to load on boot
 char DebugBootLevel[64];
 

@@ -30,6 +30,15 @@ enum class RuntimeExitStatus {
   RESTART_IN_DEBUG = 3,
 };
 
+enum class VideoMode {
+  NTSC = 0,
+  PAL = 1,
+  FPS150 = 2,
+};
+
+// Video Mode that's set based on display refresh rate on boot
+extern VideoMode BootVideoMode;
+
 // Level to load on boot
 extern char DebugBootLevel[64];
 
