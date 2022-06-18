@@ -32,6 +32,7 @@
 #include <cstring>
 #endif
 #include "common/util/Assert.h"
+#include <common/log/log.h>
 
 namespace file_util {
 std::filesystem::path get_user_home_dir() {
@@ -201,7 +202,7 @@ void write_rgba_png(const std::string& name, void* data, int w, int h) {
 void write_text_file(const std::string& file_name, const std::string& text) {
   FILE* fp = fopen(file_name.c_str(), "w");
   if (!fp) {
-    printf("Failed to fopen %s\n", file_name.c_str());
+    lg::error("Failed to fopen {}\n", file_name);
     throw std::runtime_error("Failed to open file");
   }
   fprintf(fp, "%s\n", text.c_str());
