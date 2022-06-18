@@ -204,12 +204,27 @@ yakow-default-event-handler
           (if gp-0
               (yakow-cam)
               )
-          (level-hint-spawn
-            (game-text-id yakow-owed-powercell)
-            "sksp018a"
-            (the-as entity #f)
-            *entity-pool*
-            (game-task none)
+          ;; PAL patch here
+          (process-spawn-function
+            process
+            (lambda :behavior process
+              ()
+              (while (or (-> *setting-control* current ambient)
+                         (-> *setting-control* current movie)
+                         (-> *setting-control* current hint)
+                         )
+                (suspend)
+                )
+              (level-hint-spawn
+                (game-text-id yakow-owed-powercell)
+                "sksp018a"
+                (the-as entity #f)
+                *entity-pool*
+                (game-task none)
+                )
+              (none)
+              )
+            :to self
             )
           )
         (else
