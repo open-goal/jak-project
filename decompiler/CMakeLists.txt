@@ -83,6 +83,7 @@ target_link_libraries(decomp
         lzokay
         common
         fmt
+        stb_image
         )
 
 add_executable(decompiler
