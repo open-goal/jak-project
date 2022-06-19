@@ -1,4 +1,5 @@
 #include <functional>
+#include <algorithm>
 #include "Tfrag3Data.h"
 #include "common/util/Assert.h"
 
