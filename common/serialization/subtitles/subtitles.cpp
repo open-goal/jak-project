@@ -6,7 +6,9 @@
 #include "common/util/json_util.h"
 
 static const std::unordered_map<std::string, GameTextVersion> s_text_ver_enum_map = {
-    {"jak1-v1", GameTextVersion::JAK1_V1}};
+    {"jak1-v1", GameTextVersion::JAK1_V1},
+    {"jak1-v2", GameTextVersion::JAK1_V1}
+};
 
 // TODO - why not just return the inputs instead of passing in an empty one?
 void open_text_project(const std::string& kind,
@@ -26,6 +28,10 @@ void open_text_project(const std::string& kind,
 
     auto& ver = o.as_pair()->car.as_symbol()->name;
     auto& in = o.as_pair()->cdr.as_pair()->car.as_string()->data;
+
+    if (s_text_ver_enum_map.count(ver) == 0) {
+      throw std::runtime_error(fmt::format("unknown text version {}", ver));
+    }
 
     inputs[s_text_ver_enum_map.at(ver)].push_back(in);
   });

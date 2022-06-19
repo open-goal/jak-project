@@ -2611,7 +2611,7 @@
     (if (nonzero? arg3)
         (process-spawn-function
           process
-          (lambda :behavior target
+          (lambda :behavior process
             ((arg0 vector) (arg1 time-frame) (arg2 float))
             (local-vars (sv-32 time-frame) (sv-40 vector) (sv-44 symbol))
             (set! sv-32 (-> *display* base-frame-counter))
@@ -2627,13 +2627,12 @@
                         (< (- (-> (the-as target s4-0) control trans y) (-> (the-as target s4-0) control unknown-vector52 y)) arg2)
                         )
                    (vector-xz-normalize! (-> (the-as target s4-0) control transv) (the-as float 0.0))
-                   (case (-> (the-as target s4-0) current-level name)
-                     (('jungleb)
-                      (let ((v1-16 (vector-! (new-stack-vector0) (-> (the-as target s4-0) control trans) sv-40)))
-                        (set! (-> (the-as target s4-0) control trans x) (+ (-> sv-40 x) (fmax -4096.0 (fmin 4096.0 (-> v1-16 x)))))
-                        (set! (-> (the-as target s4-0) control trans z) (+ (-> sv-40 z) (fmax -4096.0 (fmin 4096.0 (-> v1-16 z)))))
-                        )
-                      )
+                   ;; PAL patch here
+                   (when (< (vector-vector-xz-distance (-> (the-as target s4-0) control trans) sv-40) 20480.0)
+                     (let ((v1-16 (vector-! (new-stack-vector0) (-> (the-as target s4-0) control trans) sv-40)))
+                       (set! (-> (the-as target s4-0) control trans x) (+ (-> sv-40 x) (fmax -2867.2 (fmin 2867.2 (-> v1-16 x)))))
+                       (set! (-> (the-as target s4-0) control trans z) (+ (-> sv-40 z) (fmax -2867.2 (fmin 2867.2 (-> v1-16 z)))))
+                       )
                      )
                    )
                   (else
@@ -2677,7 +2676,8 @@
           :to self
           )
         )
-    (sound-play "launch-fire")
+    ;; PAL patch (sound plays elsewhere)
+    ;(sound-play "launch-fire")
     (go target-high-jump arg0 arg0 'launch)
     (none)
     )
@@ -2704,8 +2704,8 @@
   :exit (behavior ()
     (target-exit)
     (set! (-> self cam-user-mode) 'normal)
-    (logior! (-> self state-flags) (state-flags grabbed))
-    (logclear! (-> self state-flags) (state-flags invulnerable))
+    ;; PAL patch here
+    (logclear! (-> self state-flags) (state-flags invulnerable grabbed))
     (none)
     )
   :code (behavior ((arg0 handle))
