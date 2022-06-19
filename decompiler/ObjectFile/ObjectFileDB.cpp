@@ -647,7 +647,7 @@ std::string ObjectFileDB::process_game_text_files(const Config& cfg) {
   if (text_by_language_by_id.empty()) {
     return {};
   }
-  return write_game_text(cfg, text_by_language_by_id);
+  return write_game_text(cfg.text_version, text_by_language_by_id);
 }
 
 std::string ObjectFileDB::process_game_count_file() {
