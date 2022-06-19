@@ -22,11 +22,14 @@ u16 magic_float_to_u16(float in) {
   return u16s[0];
 }
 
+namespace {
 float u32_to_float(u32 in) {
   float out;
   memcpy(&out, &in, 4);
   return out;
 }
+}  // namespace
+
 /*!
  * Pack vertices to base + u16.
  * The format is quite strange to allow for fast unpacking.

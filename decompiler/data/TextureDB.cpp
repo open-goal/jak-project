@@ -2,7 +2,7 @@
 
 #include "third-party/fmt/core.h"
 #include "common/util/Assert.h"
-#include "third-party/stb_image.h"
+#include "third-party/stb_image/stb_image.h"
 #include <filesystem>
 
 namespace decompiler {

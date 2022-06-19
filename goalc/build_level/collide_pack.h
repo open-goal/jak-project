@@ -1,6 +1,6 @@
 #pragma once
 
-#include "tools/build_level/collide_bvh.h"
+#include "goalc/build_level/collide_bvh.h"
 
 struct CollideFragMeshData {
   math::Vector4f bsphere;  // not part of the collide frag, but is part of the drawable wrapping it

@@ -5,92 +5,56 @@
 #include <array>
 
 #include "common/common_types.h"
-#include "tools/build_level/FileInfo.h"
-#include "tools/build_level/Tfrag.h"
-#include "tools/build_level/collide_pack.h"
-#include "tools/build_level/collide_common.h"
-#include "tools/build_level/collide_bvh.h"
-#include "tools/build_level/collide_drawable.h"
-
+#include "goalc/build_level/FileInfo.h"
+#include "goalc/build_level/Tfrag.h"
+#include "goalc/build_level/collide_pack.h"
+#include "goalc/build_level/collide_common.h"
+#include "goalc/build_level/collide_bvh.h"
+#include "goalc/build_level/collide_drawable.h"
 
 struct VisibilityString {
   std::vector<u8> bytes;
 };
 
+struct DrawableTreeInstanceTie {};
 
-struct DrawableTreeInstanceTie {
+struct DrawableTreeActor {};
 
-};
+struct DrawableTreeAmbient {};
 
-struct DrawableTreeActor {
-
-};
-
-struct DrawableTreeAmbient {
-
-};
-
-struct DrawableTreeInstanceShrub {
-
-};
-
+struct DrawableTreeInstanceShrub {};
 
 struct DrawableTreeArray {
   std::vector<DrawableTreeTfrag> tfrags;
   std::vector<DrawableTreeInstanceTie> ties;
-  std::vector<DrawableTreeActor> actors; // unused?
+  std::vector<DrawableTreeActor> actors;  // unused?
   std::vector<DrawableTreeCollideFragment> collides;
   std::vector<DrawableTreeAmbient> ambients;
   std::vector<DrawableTreeInstanceShrub> shrubs;
   size_t add_to_object_file(DataObjectGenerator& gen) const;
 };
 
+struct TextureRemap {};
 
-struct TextureRemap {
+struct TextureId {};
 
-};
+struct VisInfo {};
 
-struct TextureId {
+struct DrawableActor {};
 
-};
+struct DrawableInlineArrayActor {};
 
-struct VisInfo {
+struct EntityCamera {};
 
-};
+struct BspNode {};
 
-struct DrawableActor {
+struct Box8s {};
 
-};
+struct DrawableAmbient {};
 
-struct DrawableInlineArrayActor {
+struct DrawableInlineArrayAmbient {};
 
-};
-
-struct EntityCamera {
-
-};
-
-struct BspNode {
-
-};
-
-struct Box8s {
-
-};
-
-struct DrawableAmbient {
-
-};
-
-struct DrawableInlineArrayAmbient {
-
-};
-
-struct AdgifShaderArray {
-
-};
-
-
+struct AdgifShaderArray {};
 
 // This is a place to collect all the data that should go into the bsp-header file.
 struct LevelFile {
@@ -120,10 +84,10 @@ struct LevelFile {
   //  "misc", seems like it can be zero and is unused.
 
   //  (name                   symbol                           :offset-assert  72)
-  std::string name; // full name
+  std::string name;  // full name
 
   //  (nickname               symbol                           :offset-assert  76)
-  std::string nickname; // 3 char name
+  std::string nickname;  // 3 char name
 
   //  (vis-info               level-vis-info                8  :offset-assert  80) ;; note: 0 when
   std::array<VisInfo, 8> vis_infos;

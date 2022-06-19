@@ -158,17 +158,11 @@
     )
   )
 
-(defmacro copy-custom-level-go (name)
-  (let* ((path (string-append "buildlevel_out/" name ".go")))
+(defmacro build-custom-level (name)
+  (let* ((path (string-append "custom_levels/" name "/" name ".jsonc")))
     `(defstep :in ,path
-              :tool 'copy
+              :tool 'build-level
               :out '(,(string-append "out/obj/" name ".go")))))
-
-(defmacro copy-custom-level-gos (&rest gos)
-  `(begin
-    ,@(apply (lambda (x) `(copy-custom-level-go ,x)) gos)
-    )
-  )
 
 (defun get-iso-data-path ()
   (if *use-iso-data-path*
@@ -1580,9 +1574,12 @@
 ;; Example Custom Level
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (custom-level-cgo "TESTZONE.DGO" "test-zone/testzone.gd")
-;; (copy-custom-level-gos "test-zone")
-
+;; Set up the build system to build the level geometry
+;; this path is relative to the custom_levels/ folder
+;; it should point to the .jsonc file that specifies the level.
+(build-custom-level "test-zone")
+;; the DGO file
+(custom-level-cgo "TESTZONE.DGO" "test-zone/testzone.gd")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Game Engine Code

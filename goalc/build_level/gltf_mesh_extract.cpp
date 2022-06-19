@@ -3,7 +3,7 @@
  */
 
 #include "gltf_mesh_extract.h"
-#include "tools/build_level/color_quantization.h"
+#include "goalc/build_level/color_quantization.h"
 #include "third-party/tiny_gltf/tiny_gltf.h"
 #include "common/log/log.h"
 #include "common/util/Timer.h"
@@ -511,8 +511,8 @@ void extract(const Input& in,
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
       if (!mesh.extras.Has("tfrag")) {
-        fmt::print("skip tfrag: {}\n", mesh.name);
-        continue;
+        // fmt::print("skip tfrag: {}\n", mesh.name);
+        // continue;
       }
       mesh_count++;
       for (const auto& prim : mesh.primitives) {
@@ -606,11 +606,12 @@ void extract(const Input& in,
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
+    fmt::print("node: {} {}\n", node.name, node.mesh);
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
       if (!mesh.extras.Has("collide")) {
-        fmt::print("skip collide: {}\n", mesh.name);
-        continue;
+        // fmt::print("skip collide: {}\n", mesh.name);
+        // continue;
       }
       mesh_count++;
       for (const auto& prim : mesh.primitives) {
@@ -643,6 +644,7 @@ void extract(const Input& in,
 
           if (dots[0] > 1e-3 && dots[1] > 1e-3 && dots[2] > 1e-3) {
             suspicious_faces++;
+            std::swap(face.v[2], face.v[1]);
           }
 
           face.bsphere = math::bsphere_of_triangle(face.v);

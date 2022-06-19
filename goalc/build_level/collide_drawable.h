@@ -1,7 +1,7 @@
 #pragma once
 
-#include "tools/build_level/collide_bvh.h"
-#include "tools/build_level/collide_pack.h"
+#include "goalc/build_level/collide_bvh.h"
+#include "goalc/build_level/collide_pack.h"
 
 class DataObjectGenerator;
 

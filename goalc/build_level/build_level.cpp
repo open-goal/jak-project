@@ -2,12 +2,12 @@
 #include "common/util/json_util.h"
 #include "common/util/FileUtil.h"
 #include "common/log/log.h"
-#include "tools/build_level/LevelFile.h"
-#include "tools/build_level/FileInfo.h"
-#include "tools/build_level/Tfrag.h"
-#include "tools/build_level/gltf_mesh_extract.h"
-#include "tools/build_level/collide_bvh.h"
-#include "tools/build_level/collide_pack.h"
+#include "goalc/build_level/LevelFile.h"
+#include "goalc/build_level/FileInfo.h"
+#include "goalc/build_level/Tfrag.h"
+#include "goalc/build_level/gltf_mesh_extract.h"
+#include "goalc/build_level/collide_bvh.h"
+#include "goalc/build_level/collide_pack.h"
 
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/util/compress.h"
@@ -25,18 +25,15 @@ void save_pc_data(const std::string& nickname, tfrag3::Level& data) {
                                compressed.data(), compressed.size());
 }
 
-int main(int argc, char** argv) {
-  if (argc != 2) {
-    fmt::print("usage: buildlevel <level_description_json>\n");
-    return 1;
-  }
+std::vector<std::string> get_build_level_deps(const std::string& input_file) {
+  auto level_json = parse_commented_json(
+      file_util::read_text_file(file_util::get_file_path({input_file})), input_file);
+  return {level_json.at("gltf_file").get<std::string>()};
+}
 
-  fmt::print("buildlevel\n");
-  file_util::setup_project_path({});
-
-  // read level file
-  auto level_json = parse_commented_json(file_util::read_text_file(argv[1]), argv[1]);
-
+bool run_build_level(const std::string& input_file, const std::string& output_file) {
+  auto level_json = parse_commented_json(
+      file_util::read_text_file(file_util::get_file_path({input_file})), input_file);
   LevelFile file;          // GOAL level file
   tfrag3::Level pc_level;  // PC level file
   TexturePool tex_pool;    // pc level texture pool
@@ -50,7 +47,7 @@ int main(int argc, char** argv) {
   gltf_mesh_extract::extract(mesh_extract_in, mesh_extract_out);
 
   // add stuff to the GOAL level structure
-  file.info = make_file_info_for_level(std::filesystem::path(argv[1]).filename().string());
+  file.info = make_file_info_for_level(std::filesystem::path(input_file).filename().string());
   // all vis
   // drawable trees
   // pat
@@ -90,11 +87,10 @@ int main(int argc, char** argv) {
     collide_drawable_tree.packed_frags = pack_collide_frags(collide_drawable_tree.bvh.frags.frags);
   }
 
-
   // Save the GOAL level
   auto result = file.save_object_file();
   fmt::print("Level bsp file size {} bytes\n", result.size());
-  auto save_path = file_util::get_file_path({"buildlevel_out", fmt::format("{}.go", file.name)});
+  auto save_path = file_util::get_file_path({output_file});
   file_util::create_dir_if_needed_for_file(save_path);
   fmt::print("Saving to {}\n", save_path);
   file_util::write_binary_file(save_path, result.data(), result.size());
@@ -102,5 +98,5 @@ int main(int argc, char** argv) {
   // Save the PC level
   save_pc_data(file.nickname, pc_level);
 
-  return 0;
+  return true;
 }

@@ -3,13 +3,11 @@
 #include "Tfrag.h"
 #include "common/custom_data/pack_helpers.h"
 #include "goalc/data_compiler/DataObjectGenerator.h"
-#include "tools/build_level/gltf_mesh_extract.h"
+#include "goalc/build_level/gltf_mesh_extract.h"
 
 void tfrag_from_gltf(const gltf_mesh_extract::TfragOutput& mesh_extract_out,
                      DrawableTreeTfrag& out,
                      tfrag3::TfragTree& out_pc) {
-
-
   out_pc.kind = tfrag3::TFragmentTreeKind::NORMAL;  // todo more types?
   out_pc.draws = std::move(mesh_extract_out.strip_draws);
   fmt::print("have {} draws\n", out_pc.draws.size());
@@ -22,7 +20,6 @@ void tfrag_from_gltf(const gltf_mesh_extract::TfragOutput& mesh_extract_out,
       rgba = col;
     }
     out_pc.colors.push_back(todc);
-
   }
   out_pc.use_strips = false;
 }

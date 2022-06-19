@@ -1,7 +1,7 @@
 #pragma once
 
-#include "tools/build_level/collide_common.h"
 #include <vector>
+#include "goalc/build_level/collide_common.h"
 
 // requirements:
 // max depth of 3 (maybe?)
