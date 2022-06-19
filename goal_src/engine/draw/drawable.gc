@@ -1335,7 +1335,12 @@
         (+! (-> disp base-frame-counter) scaled-seconds)
         (+! (-> disp part-frame-counter) scaled-seconds)
         ;; this counts actual frames, not seconds. Will count 2 frames if we lag
-        (+! (-> disp integral-frame-counter) (the int time-ratio))
+        ;; When counting frames while running at > 60fps we need to scale it, but always count at least 1 frame
+        (+! (-> disp integral-frame-counter) (if (= (-> *setting-control* current video-mode) '150fps)
+                                                 (min 1 (the int (+ 1 (* 0.4 time-ratio))))
+                                                 (if (= (-> *setting-control* current video-mode) '100fps)
+                                                     (min 1 (the int (+ 1 (* 0.6 time-ratio))))
+                                                     (the int time-ratio))))
         ;; this counts actual frames, not doubling for lag. Will count 1 per frame drawn
         (+! (-> disp actual-frame-counter) 1)
         ;; game counter will count seconds that we're not in a movie
@@ -1640,7 +1645,7 @@
         ;; need to call reset-graph with some magic number
         ;; also stash this parameter so that if things go really wrong and our DMA transfer
         ;; times out, we can reset-graph to the appropriate video mode
-        (if (= (-> *setting-control* current video-mode) 'ntsc)
+        (if (or (= (-> *setting-control* current video-mode) 'ntsc) (= (-> *setting-control* current video-mode) '150fps) (= (-> *setting-control* current video-mode) '100fps))
             (set! *video-reset-parm* 2)
             (set! *video-reset-parm* 3)
             )
