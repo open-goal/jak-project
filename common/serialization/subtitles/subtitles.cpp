@@ -7,8 +7,7 @@
 
 static const std::unordered_map<std::string, GameTextVersion> s_text_ver_enum_map = {
     {"jak1-v1", GameTextVersion::JAK1_V1},
-    {"jak1-v2", GameTextVersion::JAK1_V1}
-};
+    {"jak1-v2", GameTextVersion::JAK1_V1}};
 
 // TODO - why not just return the inputs instead of passing in an empty one?
 void open_text_project(const std::string& kind,
