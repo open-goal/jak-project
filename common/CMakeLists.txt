@@ -47,8 +47,7 @@ add_library(common
         util/os.cpp
         util/print_float.cpp
         util/FontUtils.cpp
-        util/FrameLimiter.cpp
-        util/image_loading.cpp)
+        util/FrameLimiter.cpp)
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 

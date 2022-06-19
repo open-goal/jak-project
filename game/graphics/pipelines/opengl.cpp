@@ -21,7 +21,7 @@
 #include "game/system/newpad.h"
 #include "common/log/log.h"
 #include "common/goal_constants.h"
-#include "common/util/image_loading.h"
+#include "third-party/stb_image/stb_image.h"
 #include "game/runtime.h"
 #include "common/util/Timer.h"
 #include "game/graphics/opengl_renderer/debug_gui.h"
