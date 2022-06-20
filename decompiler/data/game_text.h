@@ -5,7 +5,6 @@
 
 namespace decompiler {
 struct ObjectFileData;
-struct Config;
 
 struct GameTextResult {
   int total_text = 0;

@@ -176,7 +176,7 @@ ExtractorErrorCode validate(const IsoFile& iso_file,
     } else {
       fmt::print(stderr,
                  "Validation has failed to match with expected values, see the above errors for "
-                 "specific.  This may be an error in the validation database!\n");
+                 "specifics. This may be an error in the validation database!\n");
     }
     return error_code.value();
   }
@@ -242,7 +242,7 @@ void decompile(std::filesystem::path jak1_input_files) {
   // grab all the object files we need (just text)
   for (const auto& obj_name : config.object_file_names) {
     if (obj_name.length() > 3 && obj_name.substr(obj_name.length() - 3) == "TXT") {
-      // ends in DGO, it's a level
+      // ends in TXT
       objs.push_back((jak1_input_files / obj_name).string());
     }
   }
