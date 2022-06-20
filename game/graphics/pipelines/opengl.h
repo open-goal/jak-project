@@ -34,6 +34,7 @@ class GLDisplay : public GfxDisplay {
   void set_size(int w, int h);
   void update_fullscreen(GfxDisplayMode mode, int screen);
   void render();
+  void set_lock(bool lock);
 };
 
 extern const GfxRendererModule gRendererOpenGL;
