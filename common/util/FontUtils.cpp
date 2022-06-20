@@ -502,6 +502,16 @@ GameTextFontBank g_font_bank_jak1(GameTextVersion::JAK1_V1,
                                   &g_replace_info_jak1,
                                   &passthrus);
 
+/*!
+ * ================================
+ * GAME TEXT FONT BANK - JAK 1 (v2)
+ * ================================
+ * This font is used in:
+ * - Jak & Daxter: The Precursor Legacy (PAL)
+ *
+ * It is the same as v1, but _ has been fixed and no longer overlaps 掘
+ */
+
 static std::vector<EncodeInfo> g_encode_info_jak1_v2 = {
     // random
     {"_", {0x03}},      // large space
