@@ -51,6 +51,17 @@ int DataObjectGenerator::add_word(u32 word) {
   return result;
 }
 
+int DataObjectGenerator::add_word_float(float f) {
+  auto result = int(m_words.size());
+  m_words.push_back(0);
+  memcpy(&m_words.back(), &f, sizeof(float));
+  return result;
+}
+
+void DataObjectGenerator::set_word(u32 word_idx, u32 val) {
+  m_words.at(word_idx) = val;
+}
+
 void DataObjectGenerator::link_word_to_word(int source, int target, int offset) {
   link_word_to_byte(source, target * 4 + offset);
 }
@@ -68,6 +79,10 @@ int DataObjectGenerator::add_ref_to_string_in_pool(const std::string& str) {
   return result;
 }
 
+void DataObjectGenerator::link_word_to_string_in_pool(const std::string& str, int word_idx) {
+  m_string_pool[str].push_back(word_idx);
+}
+
 int DataObjectGenerator::add_type_tag(const std::string& str) {
   auto result = int(m_words.size());
   m_words.push_back(0);
@@ -82,10 +97,18 @@ int DataObjectGenerator::add_symbol_link(const std::string& str) {
   return result;
 }
 
+void DataObjectGenerator::link_word_to_symbol(const std::string& str, int word_idx) {
+  m_symbol_links[str].push_back(word_idx);
+}
+
 void DataObjectGenerator::align(int alignment_words) {
   while (m_words.size() % alignment_words) {
     m_words.push_back(0);
   }
+}
+
+void DataObjectGenerator::align_to_basic() {
+  align(4);
 }
 
 int DataObjectGenerator::words() const {

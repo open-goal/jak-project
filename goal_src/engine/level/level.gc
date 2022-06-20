@@ -93,13 +93,13 @@
   "Draw a level!"
   ;; do the draw
   (draw arg0 arg0 arg3)
-  
+
   (if (nonzero? *display-strip-lines*)
       (debug-draw arg0 arg0 arg3)
       )
   (none)
   )
-  
+
 
 (defmethod print level ((obj level))
   "print a level."
@@ -115,7 +115,7 @@
 
 (defmethod relocate bsp-header ((obj bsp-header) (dest-heap kheap) (name (pointer uint8)))
   "Handle a bsp file load."
-  
+
   ;; we expect that we'll have a loading-level set when we link/login a bsp-header
   (let ((s5-0 (-> *level* loading-level)))
     (if s5-0
@@ -175,7 +175,7 @@
 
 (defmethod vis-clear level ((obj level))
   "Clear the visibility info for when the level is loading."
-  
+
   ;; clear vis-infos, so we can't try to look up a vis string.
   (countdown (v1-0 8)
     (nop!) ;; the usual.
@@ -194,11 +194,11 @@
 (defmethod vis-load level ((obj level))
   "Start the initial load of a VIS file to the IOP VIS buffer. After this is done, we can use
    ramdisk-load to load chunks."
-   
-  ;; check to see if we have a buffer for loaded vis data. 
+
+  ;; check to see if we have a buffer for loaded vis data.
   (when (zero? (-> obj vis-info (-> obj vis-self-index) ramdisk))
     ;; nope, we have no vis data buffer, we need to set it up.
-    
+
     ;; first, we should see if the other level has loaded vis. if so, kill it.
     (let ((vis (-> obj other vis-info (-> obj other vis-self-index))))
         (when (and vis (nonzero? (-> vis ramdisk)))
@@ -207,7 +207,7 @@
           0
           )
         )
-    
+
     ;; set up a ramdisk rpc (fill command, actually load the file from DVD to IOP buffer)
     (let ((visname (make-file-name (file-kind vis) (the-as string (-> obj nickname)) 0 #f))
           (cmd (the-as ramdisk-rpc-fill (add-element *ramdisk-rpc*)))
@@ -222,7 +222,7 @@
         (set! (-> obj vis-info (-> obj vis-self-index) ramdisk) s5-0)
         )
     )
-  
+
   ;; return the ramdisk ID.
   (-> obj vis-info (-> obj vis-self-index) ramdisk)
   )
@@ -278,7 +278,7 @@
           )
         )
       )
-    
+
     ;; check for up to 6 neighbor level vis info.  The last one is always left as null.
     (dotimes (s5-1 6)
       (let* ((s3-0 (+ s5-1 1))
@@ -425,7 +425,7 @@
          (('alive)
           (when (and *dproc* (= want-status 'active))
             ;; only if we want to do alive -> active
-            
+
             ;; will set the level to be drawn.
             (remove-by-param1 *background-draw-engine* (-> obj bsp))
             (add-connection *background-draw-engine* *dproc* (the (function object object object object object) add-bsp-drawable) (-> obj bsp) obj #f)
@@ -539,10 +539,10 @@
 
   ;; set the level heap. level code logins called from linker may allocate here
   (set! loading-level (-> obj heap))
-  
+
   ;; relocate method of the bsp will look for this
   (set! (-> *level* loading-level) obj)
-  
+
   ;; clear out old stuff
   (set! (-> *level* log-in-level-bsp) #f)
   (set! (-> obj nickname) #f)
@@ -551,12 +551,12 @@
   (set! (-> obj ambient) #f)
   (set! (-> obj linking) #f)
   (vis-clear obj)
-  
+
   (set! (-> obj status) 'loading)
-  
+
   ;; incoming textures should use the level allocator
   (set! (-> *texture-pool* allocate-func) texture-page-level-allocate)
-  
+
   ;; build name
   (if (= (-> obj load-name) (-> obj info visname))
     (format (clear *temp-string*) "~S" (-> obj info nickname))
@@ -564,19 +564,19 @@
     )
   (set! (-> *temp-string* data 8) (the-as uint 0))
   (format *temp-string* ".DGO")
-  
+
   ;; reset temporary allocations on level heap
   (set! (-> obj heap top) (-> obj heap top-base))
-  
+
   ;; allocate DGO loading buffers
   (let ((s4-0 (kmalloc (-> obj heap) (* 2 1024 1024) (kmalloc-flags align-64 top) "dgo-level-buf-2"))
         (s5-2 (kmalloc (-> obj heap) (* 2 1024 1024) (kmalloc-flags align-64 top) "dgo-level-buf-2"))
         )
       (load-dbg " DGO buffers at #x~X #x~X~%" s4-0 s5-2)
-      
+
       ;; we expect to load code first, remember where the heap is now.
       (set! (-> obj code-memory-start) (-> obj heap current))
-      
+
       (format 0 "-----------> begin load ~A [~S]~%" (-> obj load-name) *temp-string*)
       ;; kick off the load!
       (dgo-load-begin *temp-string* s5-2 s4-0 (the pointer (align64 (-> obj heap current))))
@@ -586,10 +586,10 @@
 
 (defmethod login-begin level ((obj level))
   "Start the login.  This is spread over multiple frames."
-  
+
   ;; done with load, reset the texture page allocator
   (set! (-> *texture-pool* allocate-func) texture-page-default-allocate)
-  
+
   (cond
     ((-> obj bsp)
      (set! (-> *level* log-in-level-bsp) (-> obj bsp))
@@ -605,7 +605,7 @@
            )
          )
        )
-     
+
      ;; set the login state machine at the beginning.
      (set! (-> *login-state* state) -1)
      (set! (-> *login-state* pos) (the-as uint 0))
@@ -633,16 +633,16 @@
     (sv-16 prototype-bucket-tie)
     (sv-32 int)
     )
-  
+
   ;; there is some logic for not doing the whole login all at once...
   ;; for now, we will somewhat ignore that.
-  
-  
+
+
   (let ((level-drawable-trees (-> loaded-level bsp drawable-trees)))
     ;;(.mfc0 initial-timer Count)
     (label cfg-1)
     ;;(.mfc0 current-timer Count)
-    
+
     ;; this would quit the login function after some amount of time elapsed.
     #|
     (let ((elapsed-timer (- current-timer initial-timer)))
@@ -652,16 +652,16 @@
         )
       )
     |#
-    
+
     (let ((current-login-pos (the-as int (-> level-login-state pos))))
-      
+
       ;; Login state -1.
       ;; in this state, we log in drawables/art-groups that are in referenced in the bsp directly
       ;; the current-login-pos in the index of the drawable/art to login.
-      
+
       (when (= (-> level-login-state state) -1)
         ;;(load-dbg "login state -1~%")
-        
+
         ;; login some drawables.
         (when (< current-login-pos (-> level-drawable-trees length))
           (let ((current-drawable (-> level-drawable-trees trees (the-as uint current-login-pos))))
@@ -699,7 +699,7 @@
           (+! (-> level-login-state pos) 1)
           (goto cfg-1)
           )
-        
+
         ;; this makes the art groups go at the end.
         (let ((v1-39 (- (the-as uint current-login-pos) (the-as uint (-> level-drawable-trees length)))))
           (when (< (the-as int v1-39) (-> loaded-level art-group art-group-array length))
@@ -713,14 +713,14 @@
             (goto cfg-1)
             )
           )
-        
+
         ;; if we got here, we're done with state -1!
         (set! (-> level-login-state pos) (the-as uint 0))
         (set! (-> level-login-state state) 0)
         (goto cfg-1)
         )
-      
-      
+
+
       ;; login state 0.
       ;; we log in children of the drawables from state -1.
       (when (< (-> level-login-state state) (the-as int (-> level-login-state elts)))
@@ -755,7 +755,7 @@
                    (when (< current-login-pos (-> s1-2 length))
                      (set! sv-16 (-> s1-2 array-data (the-as uint current-login-pos)))
                      (set! sv-32 0)
-                     
+
                      (#when PC_PORT
                        ;; if a TIE uses environment mapping, disable the fade out so it always renderers with
                        ;; the generic renderer. In the port, we just make envmapped things always envmap.
@@ -763,7 +763,7 @@
                          (*! (-> sv-16 envmap-fade-far) 10000.)
                          )
                        )
-                     
+
                      (while (< sv-32 4)
                        (let ((a0-28 (-> sv-16 geometry sv-32)))
                          ;;(load-dbg " login geom: ~A~%" a0-28)
@@ -810,8 +810,8 @@
           )
         (goto cfg-1)
         )
-      
-      
+
+
       (when (= (-> level-login-state state) (-> level-login-state elts))
         (let ((v1-115 (-> loaded-level bsp)))
           (cond
@@ -837,8 +837,7 @@
         )
       )
     )
-  
-  
+
   ;; done!
   (set! (-> loaded-level nickname) (-> loaded-level bsp nickname))
   (if (nonzero? (-> loaded-level bsp nodes))
@@ -857,7 +856,7 @@
     (set! (-> *subdivide-settings* close 3) f0-0)
     (set! (-> *subdivide-settings* far 3) f1-0)
     )
-  
+
   (load-dbg "init-vis~%")
   (init-vis loaded-level)
   (load-dbg "package load~%")
@@ -905,31 +904,31 @@
   (case (-> obj status)
     (('active 'alive)
      (format 0 "----------- kill ~A (status ~A)~%" obj (-> obj status))
-     
+
      ;; copy data from the level to the game-info storage.  This will remember permanent level stuff, like
      ;; what you collected/completed.
      (copy-perms-from-level! *game-info* obj)
      (send-event *camera* 'level-deactivate (-> obj name))
      (send-event *target* 'level-deactivate (-> obj name))
-     
+
      ;; remove this BSP from the engine. This will stop us from being drawn.
      (remove-by-param1 *background-draw-engine* (-> obj bsp))
-     
+
      ;; track down all the entities and kill them
      (deactivate-entities (-> obj bsp))
-     
+
      ;; kill any remaining particles not associated with a part-tracker
      (kill-all-particles-in-level obj)
-     
+
      ;; clean up our level
      (set! (-> obj inside-sphere?) #f)
      (set! (-> obj inside-boxes?) #f)
      (set! (-> obj meta-inside?) #f)
      (set! (-> obj force-inside?) #f)
-     
+
      ;; we're still loaded.
      (set! (-> obj status) 'loaded)
-     
+
      (set! (-> obj all-visible?) 'loading)
      ;; clear vis buffers
      (dotimes (v1-19 128)
@@ -955,10 +954,10 @@
 
 (defmethod unload! level ((obj level))
   "Unloads the level. This does not free the heap. The level will be made inactive and ready to be loaded some other time."
-  
+
   (deactivate obj)
   (when (!= (-> obj status) 'inactive)
-    
+
     ;; if we linked art group, unlink it.
     (when (or (= (-> obj status) 'loaded)
               (= (-> obj status) 'alive)
@@ -973,7 +972,7 @@
           )
         )
       )
-    
+
     ;; turn some things off
     (set! (-> obj bsp) #f)
     (set! (-> obj entity) #f)
@@ -981,7 +980,7 @@
     (set! (-> obj status) 'inactive)
     (set! (-> obj art-group string-array length) 0)
     (set! (-> obj art-group art-group-array length) 0)
-    
+
     ;; unload texture pages
     (countdown (s5-1 (-> obj loaded-texture-page-count))
       (dotimes (v1-27 32)
@@ -993,10 +992,10 @@
       )
     (set! (-> obj loaded-texture-page-count) 0)
     (unlink-textures-in-heap! *texture-page-dir* (-> obj heap))
-    
+
     ;; unload particle groups that were defined in the level data
     (unlink-part-group-by-heap (-> obj heap))
-    
+
     ;; if there are any in-progress art loads for this level, kill them.
     (dotimes (s5-2 2)
       (let ((v1-41 (-> *art-control* buffer s5-2 pending-load-file)))
@@ -1019,7 +1018,7 @@
            (a0-29 (car s5-3))
            )
       (while (not (null? s5-3))
-        (case (rtype-of a0-29) 
+        (case (rtype-of a0-29)
               ((symbol)
                (unload (symbol->string (the-as symbol a0-29)))
                )
@@ -1033,7 +1032,7 @@
       )
 
     (vis-clear obj)
-    
+
     ;; reset the level heap!
     (let ((v1-64 (-> obj heap)))
       (set! (-> v1-64 current) (-> v1-64 base))
@@ -1057,14 +1056,14 @@
 
   ;; note : pc port added option to show every actor regardless
   (with-pc (if (-> *pc-settings* force-actors?) (return #t)))
-        
+
   ;; check the vis bits!
-  (let* (;; lwu v1, 388(a0) 
+  (let* (;; lwu v1, 388(a0)
             (vis-data (-> obj vis-bits))
             ;; sra a0, a1, 3
             (byte-idx (sar arg0 3))
             ;; daddu v1, a0, v1
-            ;; lb v1, 0(v1) 
+            ;; lb v1, 0(v1)
             (vis-byte (-> (the (pointer int8) vis-data) byte-idx))
             ;; andi a0, a1, 7
             (bit-idx (logand arg0 #b111))
@@ -1117,7 +1116,7 @@
 (defmethod debug-print-splitbox level ((obj level) (arg0 vector) (arg1 string))
   "Print the current splitbox, if we're in one."
   (cond
-   ((or (not (-> obj bsp)) (zero? (-> obj bsp boxes)) (zero? (-> obj bsp split-box-indices))) 
+   ((or (not (-> obj bsp)) (zero? (-> obj bsp boxes)) (zero? (-> obj bsp split-box-indices)))
     ;; do nothing!
     )
    (else
@@ -1431,6 +1430,11 @@
   )
 
 (defun bg ((level-name symbol))
+  "Begin game in a given level.
+   The level name can be the full name (village3), the nickname (vi3), or visname (village3-vis)
+   If the visname is used (and its a recognized level in level-info), it will use vis mode.
+   Otherwise, it will use the non-vis DGO name (like VILLAGE3.DGO) which will usually fail.
+   "
   (set! *cheat-mode* (if *debug-segment*
                       'debug
                       #f
@@ -1494,6 +1498,62 @@
   (activate-levels! *level*)
   (set! *print-login* #f)
   0
+  )
+
+(defun bg-custom ((level-name symbol))
+  "Modified version of bg for the PC Port custom levels."
+
+  ;; lookup info
+  (format 0 "(bg-custom ~A)%" level-name)
+  (let ((lev-info (lookup-level-info level-name)))
+    (when (= lev-info default-level)
+      (format 0 "Unable to (bg-custom ~A), the level was not found in *level-load-list*~%" level-name)
+      (return #f)
+      )
+
+    ;; kill jak (rip)
+    (format 0 "doing stop~%")
+    (stop 'play)
+
+    ;; enable visiblity. the custom level won't use it, but we want it on so other levels can be loaded.
+    (set! (-> *level* vis?) #t)
+
+    ;; disable border and play mode to prevent loading levels
+    (set! (-> *level* border?) #f)
+    (set! (-> *setting-control* default border-mode) #f)
+    (set! (-> *level* play?) #f)
+
+    (format 0 "doing level load~%")
+    ;; allocate level. This may start the loading process, but won't finish it.
+    (let ((lev (level-get-for-use *level* level-name 'active)))
+      (when (not lev)
+        (format 0 "Unable to load level, could not level-get-for-use~%")
+        (return #f)
+        )
+      (format 0 "about to start load loop, game will freeze and hopefully come back soon~%")
+
+      ;; spin in a loop and load it. This will cause the game to freeze during the load,
+      ;; but this is good enough for now.
+      (while (or (= (-> lev status) 'loading)
+                 (= (-> lev status) 'loading-bt)
+                 (= (-> lev status) 'login)
+                 )
+        (load-continue lev)
+        )
+
+      (when (not (-> lev info continues))
+        (format 0 "level info has no continues, can't load it.~%")
+        )
+
+      (let ((cont (car (-> lev info continues))))
+        (start 'play (the continue-point cont))
+        )
+
+      (vis-load lev)
+      (set! (-> lev all-visible?) #f)
+      (set! (-> lev force-all-visible?) #t)
+      )
+    )
   )
 
 (defun play ((use-vis symbol) (init-game symbol))
@@ -1817,11 +1877,11 @@
         )
       )
     )
-  
+
   ;; load vis info.
   ;; The load-state's vis-nick is the level we want vis data for.
   ;; Note that we won't load vis until we are inside the level's boxes.
-  
+
   ;; this will be the level that is currently being used.
   (let ((s5-3 #f))
     (dotimes (v1-121 (-> *level* length))
@@ -1833,7 +1893,7 @@
             )
           )
       )
-    
+
     ;; if we have the wrong vis
     (when (and (!= s5-3 (-> obj vis-nick)) (-> *level* vis?))
       ;; and we want a vis
@@ -1859,23 +1919,23 @@
 ;; method 16 level-group (debug text stuff)
 
 (defmethod level-update level-group ((obj level-group))
-  
+
   ;; this does nothing...
   (camera-pos)
   (new 'static 'boxed-array :type symbol :length 0 :allocated-length 2)
-  
+
   ;; compute the settings for this frame
   (update *setting-control*)
-  
+
   ;; run the art loading system
   (update *art-control* #t)
   (clear-rec *art-control*)
-  
+
   ;; run level loading!
   (dotimes (s5-0 2)
     (load-continue (-> obj level s5-0))
     )
-  
+
   ;; compute inside for each level
   (dotimes (s5-1 (-> obj length))
     (let ((s4-0 (-> obj level s5-1)))
@@ -1889,10 +1949,9 @@
         )
       )
     )
-  
+
   ;; update load state machine (the level-border one)
   (update! *load-state*)
-  
   ;; checkpoint assignment
   (dotimes (s5-2 (-> obj length))
     (let ((s4-1 (-> obj level s5-2)))
@@ -1927,7 +1986,7 @@
         )
       )
     )
-  
+
   ;; determine vis info idx for each level
   (dotimes (v1-67 (-> obj length))
     (let ((a0-26 (-> obj level v1-67)))
@@ -1950,7 +2009,7 @@
         )
       )
     )
-  
+
   ;; display level vis info
   (when *display-level-border*
     (dotimes (s5-3 (-> obj length))
@@ -1978,7 +2037,7 @@
         )
       )
     )
-  
+
   ;; if we have vis for level A, but we aren't "in" it, display an error and
   ;; force us out of the other level.  Ideally the boxes and the load boundary system
   ;; will be consistent and there is no way to set a vis to a level that we aren't in.
@@ -2002,7 +2061,6 @@
         )
       )
     )
-  
   ;; if we are outside of the boxes, we consider ourselves "outside of bsp"
   ;; if we are outside of both levels boxes, then we don't really know what to do
   ;; for vis, and we can display the classic "outside of bsp" error.
@@ -2041,7 +2099,7 @@
                   )
                 )
               )
-            
+
             ;; now, handle setting bit 31 (maybe single vis mode?)
             (cond
               ;; special display self mode.
@@ -2074,7 +2132,6 @@
         )
       )
     )
-  
   (when (or *display-level-border* *display-texture-download* *display-split-box-info*)
     (when *display-level-border*
       (format *stdcon* "  want: ~A ~A/~A   ~A ~A/~A~%"
@@ -2144,13 +2201,13 @@
         )
       )
     )
-  
+
   ;; tell PC port about our levels
-  (__pc-set-levels 
+  (__pc-set-levels
     (if (= (-> obj level0 status) 'inactive) "none" (symbol->string (-> obj level0 nickname)))
     (if (= (-> obj level1 status) 'inactive) "none" (symbol->string (-> obj level1 nickname)))
     )
-  
+
   0
   )
 
