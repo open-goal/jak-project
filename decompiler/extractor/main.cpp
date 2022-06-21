@@ -32,7 +32,7 @@ struct ISOMetadata {
 // this will let the installer reject (or gracefully handle) jak2 isos on the jak1 page, etc.
 
 // { SERIAL : { ELF_HASH : ISOMetadataDatabase } }
-static std::map<std::string, std::map<xxh::hash64_t, ISOMetadata>> isoDatabase{
+static const std::map<std::string, std::map<xxh::hash64_t, ISOMetadata>> isoDatabase{
     {"SCUS-97124",
      {{7280758013604870207U,
        {"Jak & Daxter™: The Precursor Legacy (Black Label)", "NTSC-U", 337, 11363853835861842434U,
@@ -40,7 +40,11 @@ static std::map<std::string, std::map<xxh::hash64_t, ISOMetadata>> isoDatabase{
     {"SCES-50361",
      {{12150718117852276522U,
        {"Jak & Daxter™: The Precursor Legacy (PAL)", "PAL", 338, 16850370297611763875U,
-        "jak1_pal"}}}}};
+        "jak1_pal"}}}},
+    {"SCPS-15021",
+     {{16909372048085114219U,
+       {"ジャックＸダクスター　～　旧世界の遺産", "NTSC-J", 338, 1262350561338887717,
+        "jak1_jp"}}}}};
 
 void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_path_override) {
   decompiler::init_opcode_info();
@@ -113,8 +117,7 @@ ExtractorErrorCode validate(const IsoFile& iso_file,
   }
 
   // Find the game in our tracking database
-  auto dbEntry = isoDatabase.find(serial.value());
-  if (dbEntry == isoDatabase.end()) {
+  if (auto dbEntry = isoDatabase.find(serial.value()); dbEntry == isoDatabase.end()) {
     fmt::print(stderr, "ERROR: Serial '{}' not found in the validation database\n", serial.value());
     if (!error_code.has_value()) {
       error_code = std::make_optional(ExtractorErrorCode::VALIDATION_SERIAL_MISSING_FROM_DB);
@@ -354,6 +357,12 @@ int main(int argc, char** argv) {
     fmt::print("Running all steps, no flags provided!\n");
     flag_runall = true;
   }
+  if (flag_runall) {
+    flag_extract = true;
+    flag_decompile = true;
+    flag_compile = true;
+    flag_play = true;
+  }
 
   // todo: print revision here.
   if (!project_path_override.empty()) {
@@ -362,7 +371,11 @@ int main(int argc, char** argv) {
     setup_global_decompiler_stuff(std::nullopt);
   }
 
-  std::filesystem::path path_to_iso_files = file_util::get_jak_project_dir() / "iso_data" / "jak1";
+  std::filesystem::path path_to_iso_files = file_util::get_jak_project_dir() / "iso_data" / "_temp";
+  if (flag_extract && data_dir_path != path_to_iso_files) {
+    // in case input is also output, don't just wipe everything (weird)
+    std::filesystem::remove_all(path_to_iso_files);
+  }
   std::filesystem::create_directories(path_to_iso_files);
 
   // make sure the input looks right
@@ -371,7 +384,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  if (flag_runall || flag_extract) {
+  if (flag_extract) {
     if (std::filesystem::is_regular_file(data_dir_path)) {
       // it's a file, treat it as an ISO
       auto iso_file = extract_files(data_dir_path, path_to_iso_files);
@@ -392,7 +405,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  if (flag_runall || flag_decompile) {
+  if (flag_decompile) {
     try {
       decompile(path_to_iso_files);
     } catch (std::exception& e) {
@@ -401,11 +414,11 @@ int main(int argc, char** argv) {
     }
   }
 
-  if (flag_runall || flag_compile) {
+  if (flag_compile) {
     compile(path_to_iso_files);
   }
 
-  if (flag_runall || flag_play) {
+  if (flag_play) {
     launch_game();
   }
 
