@@ -282,8 +282,6 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   g_argv = argv;
   g_main_thread_id = std::this_thread::get_id();
 
-  file_util::create_dir_if_needed("game_config/");
-
   // parse opengoal arguments
   bool enable_display = true;
   for (int i = 1; i < argc; i++) {
