@@ -136,6 +136,28 @@ Run tests:
 ./test.sh
 ```
 
+### Fedora
+
+Install packages and init repository:
+
+```sh
+sudo dnf install cmake lld clang nasm libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel pulseaudio-libs-devel
+sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+```
+
+Compile with `clang`:
+
+```sh
+cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build
+cmake --build build -j$(nproc)
+```
+
+Run tests:
+
+```sh
+./test.sh
+```
+
 ## Getting Started - Windows
 
 ### Required Software
