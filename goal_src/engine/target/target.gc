@@ -809,7 +809,12 @@
                  )
                (until (ja-done? 0)
                  (suspend)
-                 (ja :num! (seek! max (/ (* (fmax 20480.0 (-> self control unknown-float01)) (-> *display* seconds-per-frame))
+                 ;; This controls the slow walk animation that occurs after landing from a jump. > 60fps was broken here so I think should not be tied to seconds-per-frame
+                 ;; unknown-float01 is the magnitude of xz velocity
+                 (ja :num! (seek! max (/ (* (fmax 20480.0 (-> self control unknown-float01)) (if (or (= (-> *setting-control* current video-mode) '150fps)
+                                                                                                     (= (-> *setting-control* current video-mode) '100fps))
+                                                                                                 0.016666668
+                                                                                                 (-> *display* seconds-per-frame)))
                                         (/ (-> *TARGET-bank* run-up-cycle-dist) (-> *TARGET-bank* run-cycle-length))
                                         )
                                  )
@@ -879,7 +884,11 @@
             (set! f30-0 (seek
                           f30-0
                           (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -16384.0 (-> self control unknown-float01)))))
-                          (* 2.0 (-> *display* seconds-per-frame))
+                          ;; Jaks' walk animation felt sped up in > 60fps. I'm thinking it shouldn't be tied to seconds-per-frame but I'm not positive
+                          (* 2.0 (if (or (= (-> *setting-control* current video-mode) '150fps)
+                                         (= (-> *setting-control* current video-mode) '100fps))
+                                     0.016666668
+                                     (-> *display* seconds-per-frame)))
                           )
                   )
             (let ((v1-317 (-> self skel effect)))
@@ -2394,7 +2403,13 @@
         (seek!
           (-> self control dynam gravity-length)
           (-> self control unknown-dynamics00 gravity-length)
-          (* 245760.0 (-> *display* seconds-per-frame))
+          (* 245760.0 (if (or (= (-> *setting-control* current video-mode) '150fps)
+                              (= (-> *setting-control* current video-mode) '100fps)
+                              )
+                          0.016666668
+                          (-> *display* seconds-per-frame)
+                          )
+             )
           )
         )
     (when (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.05))
@@ -2726,9 +2741,15 @@
               (lambda ((arg0 target)) (let ((f0-3 (seek
                                                     (-> arg0 control root-prim local-sphere w)
                                                     (the-as float 28672.0)
-                                                    (* 286720.0 (-> *display* seconds-per-frame))
+                                                    (* 286720.0 0 (if (or (= (-> *setting-control* current video-mode) '150fps)
+                                                                          (= (-> *setting-control* current video-mode) '100fps)
+                                                                          )
+                                                                      0.016666668
+                                                                      (-> *display* seconds-per-frame)
+                                                                      )
+                                                       )
                                                     )
-                                                  )
+                                              )
                                             )
                                         (set! (-> arg0 control root-prim local-sphere w) f0-3)
                                         f0-3
