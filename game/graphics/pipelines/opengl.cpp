@@ -135,6 +135,7 @@ static int gl_init(GfxSettings& settings) {
   }
   glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
   glfwWindowHint(GLFW_SAMPLES, 1);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
   return 0;
 }
@@ -430,6 +431,10 @@ void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out, s32* coun
   if (h_out) {
     *h_out = vmode->height;
   }
+}
+
+void GLDisplay::set_lock(bool lock) {
+  glfwSetWindowAttrib(m_window, GLFW_RESIZABLE, lock ? GLFW_TRUE : GLFW_FALSE);
 }
 
 void update_global_profiler() {

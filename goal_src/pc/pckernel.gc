@@ -91,6 +91,11 @@
   (set! (-> obj aspect-ratio-reciprocal) (/ ASPECT_4X3 aspect))
   (none))
 
+(defmethod set-window-lock! pc-settings ((obj pc-settings) (lock symbol))
+  "set the aspect ratio used for rendering."
+  (pc-set-window-lock lock)
+  (set! (-> obj window-lock?) lock))
+
 (defmethod commit-to-file pc-settings ((obj pc-settings))
   "commits the current settings to the file"
   ;; auto load settings if available
@@ -156,7 +161,10 @@
     )
 
   (pc-set-fullscreen (-> obj display-mode) 0)
-  (if (= 'windowed (-> obj display-mode))
+  (if (and (= 'windowed (-> obj display-mode))
+           (-> obj window-lock?)
+           (or (!= (-> obj win-width) (-> obj real-width))
+               (!= (-> obj win-height) (-> obj real-height))))
       (pc-set-window-size (max 320 (-> obj win-width)) (max 240 (-> obj win-height))))
 
   (pc-discord-rpc-set (if (-> obj discord-rpc?) 1 0))

@@ -964,6 +964,10 @@ void set_fullscreen(u32 symptr, s64 screen) {
   }
 }
 
+void set_window_lock(u32 symptr) {
+  Gfx::set_window_lock(symptr == s7.offset);
+}
+
 void set_collision(u32 symptr) {
   Gfx::g_global_settings.collision_enable = symptr != s7.offset;
 }
@@ -1012,6 +1016,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
   make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
+  make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
 
   // graphics things
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);

@@ -115,6 +115,7 @@ GfxDisplayMode get_fullscreen();
 void get_screen_size(s64 vmode_idx, s32* w, s32* h, s32* c);
 void set_letterbox(int w, int h);
 void set_fullscreen(GfxDisplayMode mode, int screen);
+void set_window_lock(bool lock);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);

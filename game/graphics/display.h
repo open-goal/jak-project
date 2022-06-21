@@ -10,10 +10,6 @@
 #include "common/util/Assert.h"
 #include "gfx.h"
 
-// lol hax
-#define __NYI_DEF \
-  { ASSERT_MSG(false, "nyi"); }
-
 // a GfxDisplay class is equivalent to a window that displays stuff. This holds an actual internal
 // window pointer used by whichever renderer. It also contains functions for setting and
 // retrieving certain window parameters.
@@ -49,6 +45,7 @@ class GfxDisplay {
   virtual void get_size(int* w, int* h) = 0;
   virtual GfxDisplayMode get_fullscreen() = 0;
   virtual void render() = 0;
+  virtual void set_lock(bool lock) = 0;
   bool is_active() const { return get_window() != nullptr; }
   void set_title(const char* title);
   const char* title() const { return m_title; }
