@@ -16,7 +16,8 @@ enum class ExtractorErrorCode {
   VALIDATION_ELF_MISSING_FROM_DB = 4002,
   VALIDATION_BAD_ISO_CONTENTS = 4010,
   VALIDATION_INCORRECT_EXTRACTION_COUNT = 4011,
-  VALIDATION_BAD_EXTRACTION = 4020
+  VALIDATION_BAD_EXTRACTION = 4020,
+  VALIDATION_BAD_DECOMP = 4021
 };
 
 struct ISOMetadata {
@@ -34,8 +35,12 @@ struct ISOMetadata {
 static std::map<std::string, std::map<xxh::hash64_t, ISOMetadata>> isoDatabase{
     {"SCUS-97124",
      {{7280758013604870207U,
-       {"Jak and Daxter: The Precursor Legacy - Black Label", "NTSC-U", 337, 11363853835861842434U,
-        "jak1_ntsc_black_label"}}}}};
+       {"Jak & Daxter™: The Precursor Legacy (Black Label)", "NTSC-U", 337, 11363853835861842434U,
+        "jak1_ntsc_black_label"}}}},
+    {"SCES-50361",
+     {{12150718117852276522U,
+       {"Jak & Daxter™: The Precursor Legacy (PAL)", "PAL", 338, 16850370297611763875U,
+        "jak1_pal"}}}}};
 
 void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_path_override) {
   decompiler::init_opcode_info();
@@ -50,7 +55,7 @@ IsoFile extract_files(std::filesystem::path data_dir_path,
 
   auto fp = fopen(data_dir_path.string().c_str(), "rb");
   ASSERT_MSG(fp, "failed to open input ISO file\n");
-  IsoFile iso = unpack_iso_files(fp, extracted_iso_path, true);
+  IsoFile iso = unpack_iso_files(fp, extracted_iso_path, true, true);
   fclose(fp);
   return iso;
 }
@@ -388,7 +393,12 @@ int main(int argc, char** argv) {
   }
 
   if (flag_runall || flag_decompile) {
-    decompile(path_to_iso_files);
+    try {
+      decompile(path_to_iso_files);
+    } catch (std::exception& e) {
+      lg::error("Error during decompile: {}", e.what());
+      return static_cast<int>(ExtractorErrorCode::VALIDATION_BAD_DECOMP);
+    }
   }
 
   if (flag_runall || flag_compile) {
