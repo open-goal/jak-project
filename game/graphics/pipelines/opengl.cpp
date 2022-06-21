@@ -234,6 +234,11 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   // this does initialization for stuff like the font data
   ImGui::CreateContext();
 
+  // Init ImGui settings
+  ImGuiIO& io = ImGui::GetIO();
+  io.IniFilename = file_util::get_file_path({"imgui.ini"}).c_str();
+  io.LogFilename = file_util::get_file_path({"imgui_log.txt"}).c_str();
+
   // set up to get inputs for this window
   ImGui_ImplGlfw_InitForOpenGL(window, true);
 

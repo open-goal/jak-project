@@ -297,7 +297,8 @@ void MercModelGroup::serialize(Serializer& ser) {
 void Level::serialize(Serializer& ser) {
   ser.from_ptr(&version);
   if (ser.is_loading() && version != TFRAG3_VERSION) {
-    ASSERT_MSG(false, fmt::format("version mismatch when loading tfrag3 data. Got {}, expected {}",
+    ASSERT_MSG(false, fmt::format("version mismatch when loading tfrag3 data. Got {}, expected {}, "
+                                  "did you forget to re-decompile?",
                                   version, TFRAG3_VERSION));
   }
 
