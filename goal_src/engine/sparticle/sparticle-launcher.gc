@@ -1022,12 +1022,15 @@
                   (b! (!= (-> a1-4 type) a0-26) cfg-78 :delay (nop!))
                   )
                 
+                ;; PAL patch here
                 ;; ??
-                (b! (zero? (logand (-> v1-29 flags) (sp-group-item-flag launch-asap)))
+                (b! (zero? (logand (-> v1-29 flags) (sp-group-item-flag launch-asap bit6)))
                     cfg-36 :delay (nop!)
                     )
                 
-                (when (zero? (logand (-> a3-0 flags) (sp-launch-state-flags particles-active)))
+                (when (or (zero? (logand (-> a3-0 flags) (sp-launch-state-flags particles-active)))
+                          (logtest? (-> v1-29 flags) (sp-group-item-flag bit6))
+                          )
                   ;; particles are not active, lets activate them.
                   (set! (-> a3-0 spawn-time) (the-as uint s4-0))
                   (logior! (-> a3-0 flags) (sp-launch-state-flags particles-active))

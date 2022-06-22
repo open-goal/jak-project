@@ -8,6 +8,7 @@
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/data/game_text.h"
 #include "common/versions.h"
+#include "common/common_types.h"
 
 namespace decompiler {
 struct RegisterTypeCast {
@@ -82,6 +83,12 @@ struct DecompileHacks {
   std::unordered_map<std::string, std::vector<std::pair<int, int>>> missing_textures_by_level;
 };
 
+struct ObjectPatchInfo {
+  u32 crc;
+  std::string target_file;
+  std::string patch_file;
+};
+
 struct Config {
   GameVersion game_version = GameVersion::Jak1;
   std::vector<std::string> dgo_names;
@@ -115,6 +122,10 @@ struct Config {
   bool generate_symbol_definition_map = false;
 
   bool is_pal = false;
+
+  bool write_patches = false;
+  bool apply_patches = false;
+
   std::string game_name;
   std::string expected_elf_name;
   GameTextVersion text_version = GameTextVersion::JAK1_V1;
@@ -134,6 +145,7 @@ struct Config {
   std::unordered_map<std::string, std::unordered_map<std::string, LabelConfigInfo>> label_types;
   std::unordered_map<std::string, std::vector<StackStructureHint>>
       stack_structure_hints_by_function;
+  std::unordered_map<std::string, ObjectPatchInfo> object_patches;
 
   std::unordered_map<std::string, int> bad_format_strings;
 

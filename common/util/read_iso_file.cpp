@@ -1,5 +1,5 @@
 #include "read_iso_file.h"
-#include "third-party/fmt/core.h"
+#include "common/log/log.h"
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
@@ -79,14 +79,18 @@ void add_from_dir(FILE* fp, u32 sector, u32 size, IsoFile::Entry* parent) {
 void unpack_entry(FILE* fp,
                   IsoFile& iso,
                   const IsoFile::Entry& entry,
-                  const std::filesystem::path& dest) {
+                  const std::filesystem::path& dest,
+                  bool print_progress) {
   std::filesystem::path path_to_entry = dest / entry.name;
   if (entry.is_dir) {
     std::filesystem::create_directory(path_to_entry);
     for (const auto& child : entry.children) {
-      unpack_entry(fp, iso, child, path_to_entry);
+      unpack_entry(fp, iso, child, path_to_entry, print_progress);
     }
   } else {
+    if (print_progress) {
+      lg::info("Extracting {}...", entry.name);
+    }
     std::vector<u8> buffer(entry.size);
     if (fseek(fp, entry.offset_in_file, SEEK_SET)) {
       ASSERT_MSG(false, "Failed to fseek iso when unpacking");
@@ -113,13 +117,19 @@ IsoFile find_files_in_iso(FILE* fp) {
   return result;
 }
 
-void unpack_iso_files(FILE* fp, IsoFile& layout, const std::filesystem::path& dest) {
-  unpack_entry(fp, layout, layout.root, dest);
+void unpack_iso_files(FILE* fp,
+                      IsoFile& layout,
+                      const std::filesystem::path& dest,
+                      bool print_progress) {
+  unpack_entry(fp, layout, layout.root, dest, print_progress);
 }
 
-IsoFile unpack_iso_files(FILE* fp, const std::filesystem::path& dest, const bool hashFiles) {
+IsoFile unpack_iso_files(FILE* fp,
+                         const std::filesystem::path& dest,
+                         bool print_progress,
+                         const bool hashFiles) {
   auto file = find_files_in_iso(fp);
   file.shouldHash = hashFiles;
-  unpack_iso_files(fp, file, dest);
+  unpack_iso_files(fp, file, dest, print_progress);
   return file;
 }

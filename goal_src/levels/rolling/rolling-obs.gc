@@ -706,16 +706,14 @@
         (set! (-> arg0 digit 2) (the int f0-3))
         (let ((f0-4 (- f0-3 (the float (-> arg0 digit 2)))))
           (set! (-> arg0 digit 3) (the int (* 10.0 f0-4)))
-          (let* ((f0-5 (- f0-4 (* 0.1 (the float (-> arg0 digit 3)))))
-                 (v0-0 (the int (* 100.0 f0-5)))
-                 )
-            (set! (-> arg0 digit 4) v0-0)
-            v0-0
+          (let ((f0-5 (- f0-4 (* 0.1 (the float (-> arg0 digit 3))))))
+            (set! (-> arg0 digit 4) (the int (* 100.0 f0-5)))
             )
           )
         )
       )
     )
+  (none)
   )
 
 (defun race-time->seconds ((arg0 race-time))
@@ -745,24 +743,24 @@
   #f
   )
 
-(defun race-time-save ((arg0 race-time) (arg1 int) (arg2 task-control))
-  (dotimes (s3-0 5)
-    (save-reminder arg2 (-> arg0 digit s3-0) (+ arg1 s3-0))
+(defun race-time-save ((arg0 race-time) (arg1 task-control))
+  (dotimes (s4-0 5)
+    (save-reminder arg1 (-> arg0 digit s4-0) s4-0)
     )
   #f
   )
 
-(defun race-time-read ((arg0 race-time) (arg1 int) (arg2 task-control) (arg3 time-frame))
-  (dotimes (s2-0 5)
-    (set! (-> arg0 digit s2-0) (get-reminder arg2 (+ arg1 s2-0)))
+(defun race-time-read ((arg0 race-time) (arg1 task-control) (arg2 time-frame))
+  (dotimes (s3-0 5)
+    (set! (-> arg0 digit s3-0) (get-reminder arg1 s3-0))
     )
   (let ((a1-3 (new 'stack 'race-time)))
     (set! (-> a1-3 digit 4) 1)
-    (the-as symbol (if (race-time-less-than arg0 a1-3)
-                       (seconds->race-time arg0 arg3)
-                       )
-            )
+    (if (race-time-less-than arg0 a1-3)
+        (seconds->race-time arg0 arg2)
+        )
     )
+  (none)
   )
 
 (defskelgroup *rolling-start-whole-sg* rolling-start rolling-start-whole-lod0-jg rolling-start-idle-ja
@@ -1124,7 +1122,7 @@
            *entity-pool*
            (game-task none)
            )
-         (race-time-save (-> self this-time) 1 (-> self tasks))
+         (race-time-save (-> self this-time) (-> self tasks))
          )
        )
       (else
@@ -1262,7 +1260,7 @@
     (send-event (ppointer->process (-> *hud-parts* fuel-cell)) 'hide)
     (send-event (ppointer->process (-> *hud-parts* money)) 'disable)
     (send-event (ppointer->process (-> *hud-parts* money)) 'hide)
-    (race-time-read (-> self record-time) 1 (-> self tasks) (seconds 45))
+    (race-time-read (-> self record-time) (-> self tasks) (seconds 45))
     (set! (-> self end-banner)
           (ppointer->handle
             (process-spawn rolling-start (new 'static 'vector :x -86016.0 :y 112640.0 :z -6309888.0) 16384.0 :to self)

@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 
 #ifndef __AVX2__
   if (get_cpu_info().has_avx2) {
-    printf("Note: your CPU supports AVX2, but this build was not compiled with AVX2 support\n");
+    // printf("Note: your CPU supports AVX2, but this build was not compiled with AVX2 support\n");
     get_cpu_info().has_avx2 = false;
   }
 #endif

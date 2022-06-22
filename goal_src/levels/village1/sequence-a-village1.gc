@@ -74,6 +74,7 @@
     )
   )
 
+;; PAL patch here
 (defpartgroup group-sequenceAV-2d-intro-mist
   :id 688
   :flags (screen-space)
@@ -85,7 +86,7 @@
     (sp-item 2857 :flags (start-dead))
     (sp-item 2857 :flags (start-dead))
     (sp-item 2859)
-    (sp-item 2860)
+    (sp-item 2860 :flags (bit6))
     )
   )
 
@@ -223,12 +224,14 @@
     (send-event (handle->process (-> obj boat)) 'anim-mode 'clone-anim)
     (send-event (handle->process (-> obj boat)) 'origin-joint-index 3)
     )
+  ;; PAL patch here
   (the-as basic (new 'static 'spool-anim
                   :name "sage-intro-sequence-a"
                   :index 17
                   :parts 22
                   :command-list '((0 blackout 0)
                     (0 want-levels village1 misty)
+                    (1120 send-event self pause)
                     (1210 display-level misty display)
                     (1210 want-vis mis)
                     (1210 want-force-vis misty #t)
@@ -274,6 +277,13 @@
              (send-event (handle->process (-> self side)) 'blend-shape #t)
              )
            )
+         )
+       )
+      ;; PAL patch here
+      (('pause)
+       (let ((v0-2 (the-as object (logior (-> self mask) (process-mask pause)))))
+         (set! (-> self mask) (the-as process-mask v0-2))
+         v0-2
          )
        )
       )
