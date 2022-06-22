@@ -12,17 +12,14 @@
 #include <regex>
 #include "common/nrepl/ReplServer.h"
 
-void setup_logging(bool verbose) {
+void setup_logging() {
   lg::set_file(file_util::get_file_path({"log/compiler.txt"}));
-  if (verbose) {
-    lg::set_file_level(lg::level::info);
-    lg::set_stdout_level(lg::level::info);
-    lg::set_flush_level(lg::level::info);
-  } else {
-    lg::set_file_level(lg::level::warn);
-    lg::set_stdout_level(lg::level::warn);
-    lg::set_flush_level(lg::level::warn);
-  }
+  lg::set_file_level(lg::level::info);
+  lg::set_stdout_level(lg::level::info);
+  lg::set_flush_level(lg::level::info);
+  lg::set_file_level(lg::level::warn);
+  lg::set_stdout_level(lg::level::warn);
+  lg::set_flush_level(lg::level::warn);
   lg::initialize();
 }
 
