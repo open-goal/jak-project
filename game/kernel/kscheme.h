@@ -7,6 +7,7 @@
 
 #include "common/common_types.h"
 #include "common/goal_constants.h"
+
 #include "kmachine.h"
 #include "kmalloc.h"
 

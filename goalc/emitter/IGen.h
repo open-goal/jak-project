@@ -1,9 +1,11 @@
 #pragma once
 
-#include "Register.h"
-#include "Instruction.h"
 #include <stdexcept>
+
 #include "common/util/Assert.h"
+
+#include "Instruction.h"
+#include "Register.h"
 
 namespace emitter {
 class IGen {

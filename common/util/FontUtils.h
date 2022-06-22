@@ -9,12 +9,12 @@
  * Always verify the encoding if string detection suddenly goes awry.
  */
 
-#include "common/common_types.h"
-
-#include <string>
-#include <vector>
-#include <unordered_set>
 #include <map>
+#include <string>
+#include <unordered_set>
+#include <vector>
+
+#include "common/common_types.h"
 
 // version of the game text file's text encoding. Not real, but we need to differentiate them
 // somehow, since the encoding changes.

@@ -2,9 +2,9 @@
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
-#include "game/graphics/opengl_renderer/opengl_utils.h"
-#include "game/graphics/opengl_renderer/ocean/OceanTexture.h"
 #include "game/graphics/opengl_renderer/ocean/OceanMid.h"
+#include "game/graphics/opengl_renderer/ocean/OceanTexture.h"
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 
 /*!
  * OceanMidAndFar is the handler for the first ocean bucket.

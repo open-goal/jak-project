@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: ISC
 #pragma once
 
-#include "common/common_types.h"
 #include <queue>
 #include <unordered_map>
+
+#include "common/common_types.h"
 
 namespace snd {
 

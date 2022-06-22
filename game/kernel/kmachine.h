@@ -6,6 +6,7 @@
  */
 
 #include "common/common_types.h"
+
 #include "Ptr.h"
 
 //! Toggle to use more memory. To simulate the original game's memory layout, set this to false.

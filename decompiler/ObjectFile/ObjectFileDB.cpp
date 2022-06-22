@@ -6,27 +6,31 @@
  */
 
 #include "ObjectFileDB.h"
+
 #include <algorithm>
-#include <set>
 #include <cstring>
 #include <map>
+#include <set>
+
 #include "common/link_types.h"
-#include "common/util/dgo_util.h"
+#include "common/log/log.h"
+#include "common/util/BinaryReader.h"
 #include "common/util/BitUtils.h"
-#include "decompiler/data/tpage.h"
-#include "decompiler/data/game_text.h"
-#include "decompiler/data/StrFileReader.h"
+#include "common/util/crc32.h"
+#include "common/util/dgo_util.h"
+#include "common/util/FileUtil.h"
+#include "common/util/json_util.h"
+#include "common/util/Timer.h"
+
+#include "decompiler/config.h"
 #include "decompiler/data/dir_tpages.h"
 #include "decompiler/data/game_count.h"
-#include "LinkedObjectFileCreation.h"
-#include "decompiler/config.h"
-#include "common/util/BinaryReader.h"
-#include "common/util/Timer.h"
-#include "common/util/FileUtil.h"
+#include "decompiler/data/game_text.h"
+#include "decompiler/data/StrFileReader.h"
+#include "decompiler/data/tpage.h"
 #include "decompiler/Function/BasicBlocks.h"
-#include "common/log/log.h"
-#include "common/util/json_util.h"
-#include "common/util/crc32.h"
+#include "LinkedObjectFileCreation.h"
+
 #include "third-party/xdelta3/xdelta3.h"
 
 namespace decompiler {

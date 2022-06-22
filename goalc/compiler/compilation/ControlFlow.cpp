@@ -3,8 +3,9 @@
  * Compiler forms related to conditional branching and control flow.
  */
 
-#include "goalc/compiler/Compiler.h"
 #include "common/goos/ParseHelpers.h"
+
+#include "goalc/compiler/Compiler.h"
 
 /*!
  * Convert an expression into a GoalCondition for use in a conditional branch.

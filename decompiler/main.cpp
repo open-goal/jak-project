@@ -1,17 +1,19 @@
 #include <cstdio>
 #include <string>
 #include <vector>
-#include "ObjectFile/ObjectFileDB.h"
+
 #include "common/log/log.h"
-#include "config.h"
-#include "common/util/FileUtil.h"
-#include "common/versions.h"
-#include "decompiler/data/streamed_audio.h"
-#include "decompiler/level_extractor/extract_level.h"
-#include "decompiler/data/TextureDB.h"
-#include "common/util/os.h"
 #include "common/util/diff.h"
+#include "common/util/FileUtil.h"
+#include "common/util/os.h"
 #include "common/util/Timer.h"
+#include "common/versions.h"
+
+#include "config.h"
+#include "decompiler/data/streamed_audio.h"
+#include "decompiler/data/TextureDB.h"
+#include "decompiler/level_extractor/extract_level.h"
+#include "ObjectFile/ObjectFileDB.h"
 
 int main(int argc, char** argv) {
   Timer decomp_timer;

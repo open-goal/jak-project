@@ -1,7 +1,8 @@
 #include "TFragment.h"
 
-#include "third-party/imgui/imgui.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
+
+#include "third-party/imgui/imgui.h"
 
 namespace {
 bool looks_like_tfragment_dma(const DmaFollower& follow) {

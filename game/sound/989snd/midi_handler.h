@@ -1,17 +1,19 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #pragma once
-#include "ame_handler.h"
-#include "vagvoice.h"
-#include "loader.h"
-#include "sound_handler.h"
-#include "common/common_types.h"
 #include <exception>
-#include <memory>
 #include <list>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
+
+#include "common/common_types.h"
+
+#include "ame_handler.h"
+#include "loader.h"
+#include "sound_handler.h"
+#include "vagvoice.h"
 
 namespace snd {
 

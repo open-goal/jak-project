@@ -1,7 +1,9 @@
-#include "third-party/fmt/core.h"
-#include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "game_count.h"
+
+#include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "LinkedWordReader.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 GameCountResult process_game_count(ObjectFileData& data) {

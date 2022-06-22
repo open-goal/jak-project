@@ -4,15 +4,18 @@
  * Also called "Server".
  */
 
-#include <cstring>
-#include <cstdio>
-#include "common/common_types.h"
-#include "game/common/ramdisk_rpc_types.h"
 #include "ramdisk.h"
+
+#include <cstdio>
+#include <cstring>
+
+#include "common/common_types.h"
+#include "common/util/Assert.h"
+
+#include "game/common/ramdisk_rpc_types.h"
+#include "game/sce/iop.h"
 #include "iso.h"
 #include "iso_api.h"
-#include "game/sce/iop.h"
-#include "common/util/Assert.h"
 
 // Note - the RAMDISK code supports having multiple files, but it appears only one file can ever be
 // used at a time.

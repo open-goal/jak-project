@@ -1,8 +1,12 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
+
 #include "common/util/Assert.h"
+
+#include "decompiler/config.h"
 
 namespace goos {
 class Object;

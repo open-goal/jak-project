@@ -1,7 +1,8 @@
 #pragma once
 
-#include "game/graphics/pipelines/opengl.h"
 #include "common/math/Vector.h"
+
+#include "game/graphics/pipelines/opengl.h"
 
 struct SharedRenderState;
 class ScopedProfilerNode;

@@ -4,18 +4,21 @@
  * Done
  */
 
-#include <cstring>
+#include "klisten.h"
+
 #include <cstdio>
 #include <cstdlib>
-#include "klisten.h"
-#include "kboot.h"
-#include "kprint.h"
-#include "kdsnetm.h"
-#include "ksocket.h"
-#include "kmalloc.h"
-#include "klink.h"
-#include "kscheme.h"
+#include <cstring>
+
 #include "common/symbols.h"
+
+#include "kboot.h"
+#include "kdsnetm.h"
+#include "klink.h"
+#include "kmalloc.h"
+#include "kprint.h"
+#include "kscheme.h"
+#include "ksocket.h"
 
 using namespace jak1_symbols;
 

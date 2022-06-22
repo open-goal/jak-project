@@ -7,6 +7,7 @@
  */
 
 #include "common/common_types.h"
+
 #include "isocommon.h"
 
 extern s32 gFakeVAGClockPaused;

@@ -1,9 +1,11 @@
-#include <algorithm>
 #include "FormStack.h"
-#include "Form.h"
-#include "GenericElementMatcher.h"
+
+#include <algorithm>
+
 #include "decompiler/Function/Function.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "Form.h"
+#include "GenericElementMatcher.h"
 
 namespace decompiler {
 std::string FormStack::StackEntry::print(const Env& env) const {

@@ -7,16 +7,16 @@
  * access types, and reverse type lookups.
  */
 
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <string>
-#include <memory>
-#include <stdexcept>
-#include <optional>
 
-#include "TypeSpec.h"
 #include "Type.h"
+#include "TypeSpec.h"
 
 struct TypeFlags {
   union {

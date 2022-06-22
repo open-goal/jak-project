@@ -1,9 +1,11 @@
 #include "DecompilerTypeSystem.h"
+
 #include "common/goos/Reader.h"
+#include "common/log/log.h"
 #include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
+
 #include "decompiler/Disasm/Register.h"
-#include "common/log/log.h"
 #include "TP_Type.h"
 
 namespace decompiler {

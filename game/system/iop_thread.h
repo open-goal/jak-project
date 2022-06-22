@@ -4,6 +4,7 @@
 #define JAK1_IOP_THREAD_H
 
 #include "common/common_types.h"
+
 #include "IOP_Kernel.h"
 
 enum IOP_Status { IOP_WAIT_FOR_LOAD, IOP_OVERLORD_INIT, IOP_OVERLORD_RUN, IOP_OVERLORD_STOP };

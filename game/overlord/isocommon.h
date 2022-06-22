@@ -9,8 +9,10 @@
 #define JAK_V2_ISOCOMMON_H
 
 #include <string>
+
 #include "common/common_types.h"
 #include "common/link_types.h"
+
 #include "game/common/overlord_common.h"
 #include "game/overlord/ssound.h"
 

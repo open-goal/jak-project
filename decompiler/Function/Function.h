@@ -1,19 +1,21 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <unordered_map>
 #include <stdexcept>
+#include <string>
+#include <unordered_map>
 #include <unordered_set>
-#include "decompiler/analysis/atomic_op_builder.h"
-#include "decompiler/Disasm/Instruction.h"
-#include "decompiler/Disasm/Register.h"
+#include <vector>
+
+#include "common/type_system/state.h"
+#include "common/type_system/TypeSpec.h"
+
 #include "BasicBlocks.h"
 #include "CfgVtx.h"
-#include "common/type_system/TypeSpec.h"
+#include "decompiler/analysis/atomic_op_builder.h"
 #include "decompiler/config.h"
+#include "decompiler/Disasm/Instruction.h"
+#include "decompiler/Disasm/Register.h"
 #include "Warnings.h"
-#include "common/type_system/state.h"
 
 namespace decompiler {
 class DecompilerTypeSystem;

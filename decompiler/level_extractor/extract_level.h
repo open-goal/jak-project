@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "common/math/Vector.h"
+
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 
 namespace decompiler {

@@ -1,13 +1,17 @@
-#include <utility>
-#include <stdexcept>
-#include "common/goal_constants.h"
-#include "third-party/fmt/core.h"
-#include "common/goos/PrettyPrinter.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "AtomicOp.h"
-#include "OpenGoalMapping.h"
-#include "Form.h"
+
+#include <stdexcept>
+#include <utility>
+
+#include "common/goal_constants.h"
+#include "common/goos/PrettyPrinter.h"
 #include "common/util/Assert.h"
+
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "Form.h"
+#include "OpenGoalMapping.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 /////////////////////////////

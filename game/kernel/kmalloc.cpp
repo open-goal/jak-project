@@ -5,10 +5,13 @@
  * DONE
  */
 
-#include <cstring>
-#include <cstdio>
-#include "common/goal_constants.h"
 #include "kmalloc.h"
+
+#include <cstdio>
+#include <cstring>
+
+#include "common/goal_constants.h"
+
 #include "kprint.h"
 #include "kscheme.h"
 

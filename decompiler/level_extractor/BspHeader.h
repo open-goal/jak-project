@@ -1,13 +1,14 @@
 #pragma once
 
-#include "common/common_types.h"
-#include <string>
 #include <memory>
-#include <vector>
 #include <optional>
+#include <string>
+#include <vector>
 
-#include "decompiler/util/goal_data_reader.h"
+#include "common/common_types.h"
+
 #include "decompiler/level_extractor/common_formats.h"
+#include "decompiler/util/goal_data_reader.h"
 
 namespace decompiler {
 class LinkedObjectFile;

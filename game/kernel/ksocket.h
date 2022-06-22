@@ -9,6 +9,7 @@
 #define JAK_KSOCKET_H
 
 #include "common/common_types.h"
+
 #include "kmachine.h"
 #include "Ptr.h"
 

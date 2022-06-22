@@ -4,13 +4,16 @@
  * This implements a decoder for the GOAL linking format.
  */
 
-#include <cstring>
 #include "LinkedObjectFileCreation.h"
+
+#include <cstring>
+
+#include "common/link_types.h"
+#include "common/util/Assert.h"
+#include "common/util/BitUtils.h"
+
 #include "decompiler/config.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "common/link_types.h"
-#include "common/util/BitUtils.h"
-#include "common/util/Assert.h"
 
 namespace decompiler {
 // There are three link versions:

@@ -9,6 +9,7 @@
 #define JAK_ISO_CD_H
 
 #include "common/common_types.h"
+
 #include "iso.h"
 
 void iso_cd_init_globals();

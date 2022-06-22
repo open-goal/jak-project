@@ -4,20 +4,23 @@
  * DONE!
  */
 
-#include <cstring>
 #include "kdgo.h"
-#include "kprint.h"
-#include "kmalloc.h"
+
+#include <cstring>
+
+#include "common/log/log.h"
+
 #include "fileio.h"
-#include "klink.h"
-#include "game/sce/sif_ee.h"
 #include "game/common/dgo_rpc_types.h"
-#include "game/common/player_rpc_types.h"
-#include "game/common/ramdisk_rpc_types.h"
 #include "game/common/loader_rpc_types.h"
 #include "game/common/play_rpc_types.h"
+#include "game/common/player_rpc_types.h"
+#include "game/common/ramdisk_rpc_types.h"
 #include "game/common/str_rpc_types.h"
-#include "common/log/log.h"
+#include "game/sce/sif_ee.h"
+#include "klink.h"
+#include "kmalloc.h"
+#include "kprint.h"
 
 using namespace ee;
 

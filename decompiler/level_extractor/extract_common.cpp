@@ -1,5 +1,6 @@
-#include <cstddef>
 #include "extract_common.h"
+
+#include <cstddef>
 
 u32 clean_up_vertex_indices(std::vector<u32>& idx) {
   std::vector<u32> fixed;

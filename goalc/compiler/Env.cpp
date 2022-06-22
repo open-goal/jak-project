@@ -1,8 +1,12 @@
-#include <stdexcept>
-#include "third-party/fmt/core.h"
 #include "Env.h"
-#include "IR.h"
+
+#include <stdexcept>
+
 #include "common/goos/Reader.h"
+
+#include "IR.h"
+
+#include "third-party/fmt/core.h"
 
 ///////////////////
 // Env

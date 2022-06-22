@@ -1,8 +1,7 @@
 #include "goal_data_reader.h"
 
-#include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
-
+#include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/Error.h"
 
 void read_plain_data_field(const TypedRef& object,

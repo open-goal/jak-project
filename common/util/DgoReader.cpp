@@ -1,12 +1,16 @@
-#include <cstring>
-#include <utility>
-#include <unordered_set>
 #include "DgoReader.h"
-#include "BinaryReader.h"
+
+#include <cstring>
+#include <unordered_set>
+#include <utility>
+
 #include "common/link_types.h"
-#include "third-party/json.hpp"
+
+#include "BinaryReader.h"
 #include "BitUtils.h"
 #include "dgo_util.h"
+
+#include "third-party/json.hpp"
 
 DgoReader::DgoReader(std::string file_name, const std::vector<u8>& data)
     : m_file_name(std::move(file_name)) {

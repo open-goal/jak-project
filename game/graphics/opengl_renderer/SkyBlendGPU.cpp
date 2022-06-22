@@ -1,6 +1,7 @@
 #include "SkyBlendGPU.h"
 
 #include "common/log/log.h"
+
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
 
 SkyBlendGPU::SkyBlendGPU() {

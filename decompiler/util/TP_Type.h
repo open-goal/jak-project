@@ -1,11 +1,13 @@
 #pragma once
-#include <string>
 #include <stdexcept>
+#include <string>
+
+#include "common/common_types.h"
 #include "common/log/log.h"
 #include "common/type_system/TypeSpec.h"
-#include "common/common_types.h"
-#include "decompiler/Disasm/Register.h"
 #include "common/util/Assert.h"
+
+#include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
 /*!

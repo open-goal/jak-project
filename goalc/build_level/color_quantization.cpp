@@ -1,7 +1,9 @@
-#include <algorithm>
 #include "color_quantization.h"
-#include "common/util/Assert.h"
+
+#include <algorithm>
+
 #include "common/log/log.h"
+#include "common/util/Assert.h"
 
 /*!
  * Just removes duplicate colors, which can work if there are only a few unique colors.

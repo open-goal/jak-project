@@ -1,6 +1,7 @@
 #include "Generic2.h"
 
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
+
 #include "third-party/imgui/imgui.h"
 
 Generic2::Generic2(const std::string& name,

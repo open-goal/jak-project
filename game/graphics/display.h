@@ -5,9 +5,11 @@
  * Display for graphics. This is the game window, distinct from the runtime console.
  */
 
-#include <vector>
 #include <memory>
+#include <vector>
+
 #include "common/util/Assert.h"
+
 #include "gfx.h"
 
 // a GfxDisplay class is equivalent to a window that displays stuff. This holds an actual internal

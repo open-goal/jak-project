@@ -6,6 +6,7 @@
  */
 
 #include "common/common_types.h"
+
 #include "kmachine.h"
 
 void kmemcard_init_globals();

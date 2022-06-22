@@ -1,10 +1,12 @@
 #pragma once
 #include <memory>
-#include "vagvoice.h"
+
+#include "common/common_types.h"
+
+#include "../common/synth.h"
 #include "locator.h"
 #include "sound_handler.h"
-#include "common/common_types.h"
-#include "../common/synth.h"
+#include "vagvoice.h"
 
 namespace snd {
 struct BankTag {

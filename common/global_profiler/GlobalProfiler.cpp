@@ -1,12 +1,14 @@
 #include "GlobalProfiler.h"
 
-#include <thread>
-#include <cstring>
 #include <chrono>
-#include "third-party/fmt/core.h"
-#include "third-party/json.hpp"
+#include <cstring>
+#include <thread>
+
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/json.hpp"
 
 #ifdef __linux__
 u32 get_current_tid() {
@@ -15,8 +17,8 @@ u32 get_current_tid() {
 #else
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
 #include "Processthreadsapi.h"
+#include <windows.h>
 u32 get_current_tid() {
   return (u32)GetCurrentThreadId();
 }

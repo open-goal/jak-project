@@ -4,22 +4,24 @@
  * DONE!
  */
 
-#include <cstring>
+#include "kboot.h"
+
 #include <chrono>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstring>
 #include <thread>
 
 #include "common/common_types.h"
 #include "common/util/Timer.h"
+
 #include "game/common/game_common_types.h"
 #include "game/sce/libscf.h"
-#include "kboot.h"
+#include "klisten.h"
 #include "kmachine.h"
+#include "kprint.h"
 #include "kscheme.h"
 #include "ksocket.h"
-#include "klisten.h"
-#include "kprint.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifdef _WIN32
 #define NOMINMAX

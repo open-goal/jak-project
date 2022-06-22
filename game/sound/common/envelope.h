@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: ISC
 #pragma once
 
-#include "bitfield.h"
 #include "common/common_types.h"
+
+#include "bitfield.h"
 
 namespace snd {
 union ADSRReg {

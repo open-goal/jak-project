@@ -1,9 +1,11 @@
 
-#include "third-party/fmt/core.h"
-#include "gtest/gtest.h"
+#include "common/util/FileUtil.h"
+
 #include "decompiler/util/DataParser.h"
 #include "decompiler/VuDisasm/VuDisassembler.h"
-#include "common/util/FileUtil.h"
+#include "gtest/gtest.h"
+
+#include "third-party/fmt/core.h"
 
 using namespace decompiler;
 

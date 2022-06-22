@@ -1,6 +1,8 @@
 #include "collide_drawable.h"
-#include "goalc/data_compiler/DataObjectGenerator.h"
+
 #include "common/util/Assert.h"
+
+#include "goalc/data_compiler/DataObjectGenerator.h"
 
 /*
 (deftype drawable (basic)

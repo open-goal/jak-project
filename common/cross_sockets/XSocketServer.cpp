@@ -1,8 +1,8 @@
 #include "XSocketServer.h"
 
-#include "third-party/fmt/core.h"
-
 #include "common/cross_sockets/XSocket.h"
+
+#include "third-party/fmt/core.h"
 
 #ifdef _WIN32
 #define NOMINMAX

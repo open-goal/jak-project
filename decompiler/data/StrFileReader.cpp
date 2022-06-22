@@ -3,12 +3,15 @@
  * Utility class to read a .STR file and extract the full file name.
  */
 
+#include "StrFileReader.h"
+
 #include <cstring>
+
+#include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
+
 #include "game/common/overlord_common.h"
 #include "game/common/str_rpc_types.h"
-#include "StrFileReader.h"
-#include "common/util/Assert.h"
 
 namespace decompiler {
 StrFileReader::StrFileReader(const std::string& file_path) {

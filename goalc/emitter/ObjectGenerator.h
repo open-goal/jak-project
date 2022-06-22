@@ -8,9 +8,10 @@
 #include <cstring>
 #include <map>
 #include <string>
-#include "ObjectFileData.h"
-#include "Instruction.h"
+
 #include "goalc/debugger/DebugInfo.h"
+#include "Instruction.h"
+#include "ObjectFileData.h"
 
 struct FunctionDebugInfo;
 class TypeSystem;

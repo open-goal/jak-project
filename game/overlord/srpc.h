@@ -1,7 +1,8 @@
 #pragma once
 
-#include "ssound.h"
 #include "common/common_types.h"
+
+#include "ssound.h"
 
 void srpc_init_globals();
 

@@ -5,10 +5,12 @@
  * PS2 DMA and VIF types.
  */
 
-#include <string>
 #include <cstring>
+#include <string>
+
 #include "common/common_types.h"
 #include "common/util/Assert.h"
+
 #include "third-party/fmt/core.h"
 
 struct DmaStats {

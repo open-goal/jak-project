@@ -1,9 +1,9 @@
 #include "ReplClient.h"
 
 #include "common/cross_sockets/XSocket.h"
+#include "common/versions.h"
 
 #include "third-party/fmt/core.h"
-#include "common/versions.h"
 
 #ifdef _WIN32
 #define NOMINMAX

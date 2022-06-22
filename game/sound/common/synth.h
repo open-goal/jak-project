@@ -1,14 +1,16 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #pragma once
-#include "common/common_types.h"
-#include "sound_types.h"
-#include "voice.h"
-#include "envelope.h"
 #include <forward_list>
 #include <memory>
 #include <unordered_map>
 #include <vector>
+
+#include "common/common_types.h"
+
+#include "envelope.h"
+#include "sound_types.h"
+#include "voice.h"
 
 namespace snd {
 struct SpuVolume {

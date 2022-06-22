@@ -1,9 +1,9 @@
 #pragma once
 
-#include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/opengl_renderer/ocean/OceanTexture.h"
 #include "game/common/vu.h"
+#include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/ocean/CommonOceanRenderer.h"
+#include "game/graphics/opengl_renderer/ocean/OceanTexture.h"
 
 class OceanNear : public BucketRenderer {
  public:

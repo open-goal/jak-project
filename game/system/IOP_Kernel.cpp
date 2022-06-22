@@ -1,7 +1,10 @@
-#include <cstring>
 #include "IOP_Kernel.h"
-#include "game/sce/iop.h"
+
+#include <cstring>
+
 #include "common/util/Assert.h"
+
+#include "game/sce/iop.h"
 
 /*!
  * Create a new thread.  Will not run the thread.

@@ -1,9 +1,11 @@
 #pragma once
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <stdexcept>
-#include "third-party/fmt/core.h"
+
 #include "common/util/Assert.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 class DecompWarnings {

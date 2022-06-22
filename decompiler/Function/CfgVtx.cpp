@@ -1,9 +1,11 @@
+#include "CfgVtx.h"
+
 #include "common/goos/PrettyPrinter.h"
+#include "common/util/Assert.h"
+
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "CfgVtx.h"
 #include "Function.h"
-#include "common/util/Assert.h"
 
 namespace decompiler {
 /////////////////////////////////////////

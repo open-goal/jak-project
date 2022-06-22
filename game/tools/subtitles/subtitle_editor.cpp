@@ -1,13 +1,15 @@
 #include "subtitle_editor.h"
 
-#include "third-party/imgui/imgui.h"
-#include "third-party/imgui/imgui_stdlib.h"
-#include "third-party/fmt/core.h"
-#include "common/util/FileUtil.h"
-#include "common/util/json_util.h"
 #include <regex>
 #include <string_view>
+
 #include "common/deserialization/subtitles/subtitles.h"
+#include "common/util/FileUtil.h"
+#include "common/util/json_util.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/imgui/imgui.h"
+#include "third-party/imgui/imgui_stdlib.h"
 
 SubtitleEditor::SubtitleEditor() : m_repl(8181) {
   std::string db_path = (file_util::get_jak_project_dir() / "game" / "assets" / "jak1" /
