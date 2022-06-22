@@ -5,8 +5,8 @@
 #include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
 
-#include "decompiler/Disasm/Register.h"
 #include "TP_Type.h"
+#include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
 DecompilerTypeSystem::DecompilerTypeSystem() {

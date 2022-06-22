@@ -1,7 +1,7 @@
 #include "common/goos/ParseHelpers.h"
 #include "common/goos/Reader.h"
-#include "common/type_system/deftype.h"
 #include "common/type_system/TypeSystem.h"
+#include "common/type_system/deftype.h"
 
 #include "gtest/gtest.h"
 

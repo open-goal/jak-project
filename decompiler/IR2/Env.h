@@ -6,10 +6,10 @@
 #include "common/goos/Object.h"
 #include "common/util/Assert.h"
 
-#include "decompiler/analysis/reg_usage.h"
-#include "decompiler/config.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/IR2_common.h"
+#include "decompiler/analysis/reg_usage.h"
+#include "decompiler/config.h"
 #include "decompiler/util/StackSpillMap.h"
 #include "decompiler/util/TP_Type.h"
 

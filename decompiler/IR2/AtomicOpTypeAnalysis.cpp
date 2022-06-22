@@ -6,8 +6,8 @@
 #include "decompiler/IR2/bitfields.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "decompiler/util/goal_constants.h"
 #include "decompiler/util/TP_Type.h"
+#include "decompiler/util/goal_constants.h"
 
 #include "third-party/fmt/core.h"
 

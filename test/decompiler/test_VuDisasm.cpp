@@ -1,8 +1,8 @@
 
 #include "common/util/FileUtil.h"
 
-#include "decompiler/util/DataParser.h"
 #include "decompiler/VuDisasm/VuDisassembler.h"
+#include "decompiler/util/DataParser.h"
 #include "gtest/gtest.h"
 
 #include "third-party/fmt/core.h"

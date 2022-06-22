@@ -8,8 +8,8 @@
 #include "common/util/print_float.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "decompiler/util/data_decompile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/data_decompile.h"
 #include "decompiler/util/sparticle_decompile.h"
 
 namespace decompiler {

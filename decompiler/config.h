@@ -9,8 +9,8 @@
 #include "common/common_types.h"
 #include "common/versions.h"
 
-#include "decompiler/data/game_text.h"
 #include "decompiler/Disasm/Register.h"
+#include "decompiler/data/game_text.h"
 
 namespace decompiler {
 struct RegisterTypeCast {

@@ -5,10 +5,10 @@
 
 #include "common/dma/dma_chain_read.h"
 
-#include "game/graphics/opengl_renderer/buckets.h"
-#include "game/graphics/opengl_renderer/loader/Loader.h"
 #include "game/graphics/opengl_renderer/Profiler.h"
 #include "game/graphics/opengl_renderer/Shader.h"
+#include "game/graphics/opengl_renderer/buckets.h"
+#include "game/graphics/opengl_renderer/loader/Loader.h"
 #include "game/graphics/texture/TexturePool.h"
 
 struct LevelVis {

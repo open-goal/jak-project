@@ -13,10 +13,10 @@
 
 #include "common/common_types.h"
 
+#include "LinkedWord.h"
 #include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/LabelDB.h"
-#include "LinkedWord.h"
 
 namespace decompiler {
 /*!

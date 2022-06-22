@@ -9,6 +9,8 @@
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 
+#include "ObjectFileDB.h"
+#include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/expression_build.h"
 #include "decompiler/analysis/final_output.h"
@@ -25,8 +27,6 @@
 #include "decompiler/analysis/symbol_def_map.h"
 #include "decompiler/analysis/type_analysis.h"
 #include "decompiler/analysis/variable_naming.h"
-#include "decompiler/IR2/Form.h"
-#include "ObjectFileDB.h"
 
 namespace decompiler {
 

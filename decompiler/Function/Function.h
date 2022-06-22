@@ -6,16 +6,16 @@
 #include <unordered_set>
 #include <vector>
 
-#include "common/type_system/state.h"
 #include "common/type_system/TypeSpec.h"
+#include "common/type_system/state.h"
 
 #include "BasicBlocks.h"
 #include "CfgVtx.h"
-#include "decompiler/analysis/atomic_op_builder.h"
-#include "decompiler/config.h"
+#include "Warnings.h"
 #include "decompiler/Disasm/Instruction.h"
 #include "decompiler/Disasm/Register.h"
-#include "Warnings.h"
+#include "decompiler/analysis/atomic_op_builder.h"
+#include "decompiler/config.h"
 
 namespace decompiler {
 class DecompilerTypeSystem;

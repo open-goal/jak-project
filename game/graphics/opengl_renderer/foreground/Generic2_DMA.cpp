@@ -1,5 +1,5 @@
-#include "game/graphics/opengl_renderer/AdgifHandler.h"
 #include "Generic2.h"
+#include "game/graphics/opengl_renderer/AdgifHandler.h"
 
 /*!
  * Advance through DMA data that has no effect on rendering (NOP codes) and see if this is the

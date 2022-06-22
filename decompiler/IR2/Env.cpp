@@ -7,9 +7,9 @@
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/math_util.h"
 
+#include "Form.h"
 #include "decompiler/analysis/atomic_op_builder.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "Form.h"
 
 namespace decompiler {
 

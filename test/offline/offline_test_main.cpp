@@ -5,10 +5,10 @@
 
 #include "common/common_types.h"
 #include "common/log/log.h"
-#include "common/util/diff.h"
 #include "common/util/FileUtil.h"
-#include "common/util/json_util.h"
 #include "common/util/Timer.h"
+#include "common/util/diff.h"
+#include "common/util/json_util.h"
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "goalc/compiler/Compiler.h"

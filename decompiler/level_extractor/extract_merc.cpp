@@ -1,10 +1,10 @@
 #include "extract_merc.h"
 
-#include "common/util/colors.h"
 #include "common/util/FileUtil.h"
+#include "common/util/colors.h"
 
-#include "decompiler/level_extractor/extract_common.h"
 #include "decompiler/level_extractor/MercData.h"
+#include "decompiler/level_extractor/extract_common.h"
 #include "decompiler/util/goal_data_reader.h"
 
 namespace decompiler {

@@ -6,10 +6,10 @@
 #include "common/type_system/TypeSpec.h"
 #include "common/type_system/TypeSystem.h"
 
-#include "decompiler/config.h"
 #include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/IR2/LabelDB.h"
 #include "decompiler/ObjectFile/LinkedWord.h"
+#include "decompiler/config.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {

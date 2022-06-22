@@ -1,15 +1,15 @@
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/log/log.h"
-#include "common/util/compress.h"
 #include "common/util/FileUtil.h"
+#include "common/util/compress.h"
 #include "common/util/json_util.h"
 
-#include "goalc/build_level/collide_bvh.h"
-#include "goalc/build_level/collide_pack.h"
 #include "goalc/build_level/FileInfo.h"
-#include "goalc/build_level/gltf_mesh_extract.h"
 #include "goalc/build_level/LevelFile.h"
 #include "goalc/build_level/Tfrag.h"
+#include "goalc/build_level/collide_bvh.h"
+#include "goalc/build_level/collide_pack.h"
+#include "goalc/build_level/gltf_mesh_extract.h"
 
 #include "third-party/fmt/core.h"
 

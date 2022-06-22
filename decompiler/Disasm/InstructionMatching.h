@@ -5,8 +5,8 @@
  * Utilities for checking if an instruction matches some criteria.
  */
 
-#include "decompiler/util/MatchParam.h"
 #include "Instruction.h"
+#include "decompiler/util/MatchParam.h"
 
 namespace decompiler {
 bool is_no_link_gpr_store(const Instruction& instr,

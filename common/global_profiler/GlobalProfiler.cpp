@@ -17,8 +17,8 @@ u32 get_current_tid() {
 #else
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
-#include "Processthreadsapi.h"
 #include <windows.h>
+#include "Processthreadsapi.h"
 u32 get_current_tid() {
   return (u32)GetCurrentThreadId();
 }

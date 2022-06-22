@@ -10,8 +10,8 @@
 
 #include "common/common_types.h"
 
-#include "kmalloc.h"
 #include "Ptr.h"
+#include "kmalloc.h"
 
 // GOAL File Types
 enum GoalFileType {

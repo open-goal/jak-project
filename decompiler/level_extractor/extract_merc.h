@@ -2,9 +2,9 @@
 
 #include "common/custom_data/Tfrag3Data.h"
 
+#include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "decompiler/data/TextureDB.h"
 #include "decompiler/level_extractor/common_formats.h"
-#include "decompiler/ObjectFile/ObjectFileDB.h"
 
 namespace decompiler {
 

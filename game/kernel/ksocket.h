@@ -10,8 +10,8 @@
 
 #include "common/common_types.h"
 
-#include "kmachine.h"
 #include "Ptr.h"
+#include "kmachine.h"
 
 /*!
  * Update GOAL message header after receiving and verify message is ok.

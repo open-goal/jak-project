@@ -12,8 +12,8 @@
 
 #include "common/common_types.h"
 
-#include "kmachine.h"
 #include "Ptr.h"
+#include "kmachine.h"
 
 /*!
  * A kheap has a top/bottom linear allocator

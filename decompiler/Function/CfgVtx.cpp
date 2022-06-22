@@ -3,9 +3,9 @@
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/Assert.h"
 
+#include "Function.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "Function.h"
 
 namespace decompiler {
 /////////////////////////////////////////

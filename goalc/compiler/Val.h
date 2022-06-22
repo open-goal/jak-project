@@ -12,10 +12,10 @@
 
 #include "common/type_system/TypeSystem.h"
 
-#include "goalc/compiler/ConstantValue.h"
-#include "goalc/regalloc/IRegister.h"
 #include "Lambda.h"
 #include "StaticObject.h"
+#include "goalc/compiler/ConstantValue.h"
+#include "goalc/regalloc/IRegister.h"
 
 class RegVal;
 class Env;

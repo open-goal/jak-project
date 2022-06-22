@@ -7,9 +7,9 @@
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/Assert.h"
 
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "Form.h"
 #include "OpenGoalMapping.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 #include "third-party/fmt/core.h"
 

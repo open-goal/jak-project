@@ -4,8 +4,8 @@
 
 #include "common/custom_data/Tfrag3Data.h"
 
-#include "goalc/build_level/collide_common.h"
 #include "goalc/build_level/TexturePool.h"
+#include "goalc/build_level/collide_common.h"
 
 namespace gltf_mesh_extract {
 

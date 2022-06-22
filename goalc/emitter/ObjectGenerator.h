@@ -9,9 +9,9 @@
 #include <map>
 #include <string>
 
-#include "goalc/debugger/DebugInfo.h"
 #include "Instruction.h"
 #include "ObjectFileData.h"
+#include "goalc/debugger/DebugInfo.h"
 
 struct FunctionDebugInfo;
 class TypeSystem;

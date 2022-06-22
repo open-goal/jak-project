@@ -7,8 +7,8 @@
 
 #include "common/goos/Object.h"
 #include "common/math/Vector.h"
-#include "common/type_system/state.h"
 #include "common/type_system/TypeSystem.h"
+#include "common/type_system/state.h"
 
 #include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Disasm/Register.h"

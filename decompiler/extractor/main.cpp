@@ -4,10 +4,10 @@
 #include "common/util/FileUtil.h"
 #include "common/util/read_iso_file.h"
 
-#include "decompiler/config.h"
 #include "decompiler/Disasm/OpcodeInfo.h"
-#include "decompiler/level_extractor/extract_level.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
+#include "decompiler/config.h"
+#include "decompiler/level_extractor/extract_level.h"
 #include "goalc/compiler/Compiler.h"
 
 #include "third-party/CLI11.hpp"

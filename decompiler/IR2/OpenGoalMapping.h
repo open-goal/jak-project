@@ -9,10 +9,10 @@
 #include "common/util/Assert.h"
 
 #include "AtomicOp.h"
+#include "Env.h"
 #include "decompiler/Disasm/Instruction.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/IR2_common.h"
-#include "Env.h"
 
 namespace decompiler {
 

@@ -9,9 +9,9 @@
 #include "common/util/math_util.h"
 #include "common/util/print_float.h"
 
-#include "decompiler/analysis/final_output.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/analysis/final_output.h"
 #include "decompiler/util/sparticle_decompile.h"
 
 #include "third-party/fmt/core.h"

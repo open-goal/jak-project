@@ -3,6 +3,7 @@
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/json_util.h"
 
+#include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/expression_build.h"
 #include "decompiler/analysis/final_output.h"
@@ -12,7 +13,6 @@
 #include "decompiler/analysis/stack_spill.h"
 #include "decompiler/analysis/type_analysis.h"
 #include "decompiler/analysis/variable_naming.h"
-#include "decompiler/IR2/Form.h"
 #include "decompiler/util/config_parsers.h"
 
 #include "third-party/json.hpp"

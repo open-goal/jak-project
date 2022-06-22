@@ -13,8 +13,8 @@
 #include <vector>
 
 #include "goalc/emitter/Register.h"
-#include "goalc/regalloc/IRegister.h"
 #include "goalc/regalloc/IRegSet.h"
+#include "goalc/regalloc/IRegister.h"
 
 /*!
  * Information about an instruction needed for register allocation.

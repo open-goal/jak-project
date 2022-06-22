@@ -3,9 +3,9 @@
 #include <set>
 #include <thread>
 
-#include "common/util/compress.h"
 #include "common/util/FileUtil.h"
 #include "common/util/SimpleThreadGroup.h"
+#include "common/util/compress.h"
 
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_collide_frags.h"

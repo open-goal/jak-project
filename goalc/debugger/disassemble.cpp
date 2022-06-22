@@ -2,9 +2,9 @@
 
 #include "common/goos/Reader.h"
 
+#include "Zydis/Zydis.h"
 #include "goalc/compiler/Env.h"
 #include "goalc/compiler/IR.h"
-#include "Zydis/Zydis.h"
 
 #include "third-party/fmt/color.h"
 #include "third-party/fmt/core.h"

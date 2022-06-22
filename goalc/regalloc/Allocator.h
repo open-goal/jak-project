@@ -4,9 +4,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "allocator_interface.h"
-#include "IRegister.h"
 #include "IRegSet.h"
+#include "IRegister.h"
+#include "allocator_interface.h"
 
 // with this on, gaps in usage of registers allow other variables to steal registers.
 // this reduces stack spills/moves, but may make register allocation slower.
