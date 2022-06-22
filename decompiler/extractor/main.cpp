@@ -17,7 +17,7 @@ enum class ExtractorErrorCode {
   VALIDATION_BAD_ISO_CONTENTS = 4010,
   VALIDATION_INCORRECT_EXTRACTION_COUNT = 4011,
   VALIDATION_BAD_EXTRACTION = 4020,
-  VALIDATION_BAD_DECOMP = 4021
+  DECOMPILATION_GENERIC_ERROR = 4030
 };
 
 struct ISOMetadata {
@@ -372,11 +372,6 @@ int main(int argc, char** argv) {
   }
 
   std::filesystem::path path_to_iso_files = file_util::get_jak_project_dir() / "iso_data" / "_temp";
-  if (flag_extract && data_dir_path != path_to_iso_files) {
-    // in case input is also output, don't just wipe everything (weird)
-    std::filesystem::remove_all(path_to_iso_files);
-  }
-  std::filesystem::create_directories(path_to_iso_files);
 
   // make sure the input looks right
   if (!std::filesystem::exists(data_dir_path)) {
@@ -385,6 +380,12 @@ int main(int argc, char** argv) {
   }
 
   if (flag_extract) {
+    if (data_dir_path != path_to_iso_files) {
+      // in case input is also output, don't just wipe everything (weird)
+      std::filesystem::remove_all(path_to_iso_files);
+    }
+    std::filesystem::create_directories(path_to_iso_files);
+
     if (std::filesystem::is_regular_file(data_dir_path)) {
       // it's a file, treat it as an ISO
       auto iso_file = extract_files(data_dir_path, path_to_iso_files);
@@ -410,7 +411,7 @@ int main(int argc, char** argv) {
       decompile(path_to_iso_files);
     } catch (std::exception& e) {
       lg::error("Error during decompile: {}", e.what());
-      return static_cast<int>(ExtractorErrorCode::VALIDATION_BAD_DECOMP);
+      return static_cast<int>(ExtractorErrorCode::DECOMPILATION_GENERIC_ERROR);
     }
   }
 
