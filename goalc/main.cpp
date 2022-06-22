@@ -17,9 +17,6 @@ void setup_logging() {
   lg::set_file_level(lg::level::info);
   lg::set_stdout_level(lg::level::info);
   lg::set_flush_level(lg::level::info);
-  lg::set_file_level(lg::level::warn);
-  lg::set_stdout_level(lg::level::warn);
-  lg::set_flush_level(lg::level::warn);
   lg::initialize();
 }
 
