@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  setup_logging(true);
+  setup_logging();
 
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
