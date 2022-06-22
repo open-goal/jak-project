@@ -2,12 +2,13 @@
 
 #include <cstring>
 
-#include "game/sce/iop.h"
 #include "iso.h"
 #include "ramdisk.h"
 #include "sbank.h"
 #include "srpc.h"
 #include "ssound.h"
+
+#include "game/sce/iop.h"
 
 using namespace iop;
 

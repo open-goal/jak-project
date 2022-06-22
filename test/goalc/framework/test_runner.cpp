@@ -4,13 +4,14 @@
 #include <filesystem>
 #include <string>
 
+#include "inja.hpp"
+
 #include "common/util/FileUtil.h"
 
 #include "game/runtime.h"
 #include "goalc/compiler/Compiler.h"
 #include "goalc/listener/Listener.h"
 #include "gtest/gtest.h"
-#include "inja.hpp"
 
 #include "third-party/fmt/core.h"
 #include "third-party/json.hpp"

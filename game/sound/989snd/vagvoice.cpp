@@ -4,8 +4,9 @@
 
 #include <stdexcept>
 
-#include "../common/voice.h"
 #include "util.h"
+
+#include "../common/voice.h"
 
 namespace snd {
 voice_manager::voice_manager(synth& synth, locator& loc) : m_synth(synth), m_locator(loc) {

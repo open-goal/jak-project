@@ -10,6 +10,19 @@
 #include <cstring>
 #include <string>
 
+#include "fileio.h"
+#include "kboot.h"
+#include "kdgo.h"
+#include "kdsnetm.h"
+#include "klink.h"
+#include "klisten.h"
+#include "kmalloc.h"
+#include "kprint.h"
+#include "kscheme.h"
+#include "ksocket.h"
+#include "ksound.h"
+#include "svnrev.h"
+
 #include "common/dma/dma_chain_read.h"
 #include "common/dma/dma_copy.h"
 #include "common/global_profiler/GlobalProfiler.h"
@@ -19,7 +32,6 @@
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 
-#include "fileio.h"
 #include "game/discord.h"
 #include "game/graphics/gfx.h"
 #include "game/graphics/sceGraphicsInterface.h"
@@ -33,17 +45,6 @@
 #include "game/sce/stubs.h"
 #include "game/system/newpad.h"
 #include "game/system/vm/vm.h"
-#include "kboot.h"
-#include "kdgo.h"
-#include "kdsnetm.h"
-#include "klink.h"
-#include "klisten.h"
-#include "kmalloc.h"
-#include "kprint.h"
-#include "kscheme.h"
-#include "ksocket.h"
-#include "ksound.h"
-#include "svnrev.h"
 
 using namespace jak1_symbols;
 using namespace ee;

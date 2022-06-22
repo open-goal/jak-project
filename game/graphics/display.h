@@ -8,9 +8,9 @@
 #include <memory>
 #include <vector>
 
-#include "common/util/Assert.h"
-
 #include "gfx.h"
+
+#include "common/util/Assert.h"
 
 // a GfxDisplay class is equivalent to a window that displays stuff. This holds an actual internal
 // window pointer used by whichever renderer. It also contains functions for setting and

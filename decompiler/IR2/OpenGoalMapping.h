@@ -5,11 +5,12 @@
 #include <string>
 #include <utility>
 
+#include "AtomicOp.h"
+#include "Env.h"
+
 #include "common/goos/Object.h"
 #include "common/util/Assert.h"
 
-#include "AtomicOp.h"
-#include "Env.h"
 #include "decompiler/Disasm/Instruction.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/IR2_common.h"

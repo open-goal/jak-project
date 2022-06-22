@@ -3,6 +3,11 @@
 #include <cstdio>
 #include <cstring>
 
+#include "iso.h"
+#include "iso_api.h"
+#include "ramdisk.h"
+#include "sbank.h"
+
 #include "common/util/Assert.h"
 #include "common/versions.h"
 
@@ -11,10 +16,6 @@
 #include "game/common/player_rpc_types.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
-#include "iso.h"
-#include "iso_api.h"
-#include "ramdisk.h"
-#include "sbank.h"
 
 #include "third-party/fmt/core.h"
 

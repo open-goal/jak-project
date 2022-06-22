@@ -10,10 +10,11 @@
 #include <string>
 #include <utility>
 
-#include "common/type_system/TypeSystem.h"
-
 #include "Lambda.h"
 #include "StaticObject.h"
+
+#include "common/type_system/TypeSystem.h"
+
 #include "goalc/compiler/ConstantValue.h"
 #include "goalc/regalloc/IRegister.h"
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "common/custom_data/Tfrag3Data.h"
-
 #include "BspHeader.h"
+
+#include "common/custom_data/Tfrag3Data.h"
 
 namespace decompiler {
 

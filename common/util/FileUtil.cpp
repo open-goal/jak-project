@@ -12,10 +12,10 @@
 #include <iostream>
 #include <sstream>
 
+#include "BinaryWriter.h"
+
 #include "common/common_types.h"
 #include "common/util/BinaryReader.h"
-
-#include "BinaryWriter.h"
 
 // This disables the use of PCLMULQDQ which is probably ok, but let's just be safe and disable it
 // because nobody will care if png compression is 10% slower.
@@ -31,7 +31,6 @@
 #include <Windows.h>
 #else
 #include <cstring>
-
 #include <unistd.h>
 #endif
 #include "common/util/Assert.h"

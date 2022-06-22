@@ -11,9 +11,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "LinkedWord.h"
+
 #include "common/common_types.h"
 
-#include "LinkedWord.h"
 #include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/LabelDB.h"

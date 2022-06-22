@@ -14,10 +14,10 @@
 #include <stdexcept>
 #include <string>
 
-#include "common/common_types.h"
-
 #include "Instruction.h"
 #include "Register.h"
+
+#include "common/common_types.h"
 
 namespace emitter {
 class CodeTester {

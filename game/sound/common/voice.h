@@ -1,12 +1,12 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #pragma once
-#include "common/common_types.h"
-
 #include "bitfield.h"
 #include "envelope.h"
 #include "fifo.h"
 #include "sound_types.h"
+
+#include "common/common_types.h"
 
 #include "third-party/fmt/core.h"
 

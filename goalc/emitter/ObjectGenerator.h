@@ -11,6 +11,7 @@
 
 #include "Instruction.h"
 #include "ObjectFileData.h"
+
 #include "goalc/debugger/DebugInfo.h"
 
 struct FunctionDebugInfo;

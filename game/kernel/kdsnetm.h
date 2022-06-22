@@ -9,9 +9,9 @@
 #ifndef JAK_KDSNETM_H
 #define JAK_KDSNETM_H
 
-#include "common/listener_common.h"
-
 #include "Ptr.h"
+
+#include "common/listener_common.h"
 
 struct GoalProtoBlock {
   s32 socket = 0;

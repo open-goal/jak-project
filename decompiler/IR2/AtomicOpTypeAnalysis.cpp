@@ -1,8 +1,9 @@
+#include "AtomicOp.h"
+
 #include "common/log/log.h"
 #include "common/type_system/state.h"
 #include "common/util/BitUtils.h"
 
-#include "AtomicOp.h"
 #include "decompiler/IR2/bitfields.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"

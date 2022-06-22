@@ -2,11 +2,11 @@
 
 #include <vector>
 
+#include "DataObjectGenerator.h"
+
 #include "common/goos/ParseHelpers.h"
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
-
-#include "DataObjectGenerator.h"
 
 void compile_game_count(const std::string& filename) {
   struct Count {

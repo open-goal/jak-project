@@ -16,13 +16,13 @@
 #include <algorithm>
 #include <queue>
 
+#include "DataObjectGenerator.h"
+
 #include "common/goos/ParseHelpers.h"
 #include "common/goos/Reader.h"
 #include "common/serialization/subtitles/subtitles.h"
 #include "common/util/FileUtil.h"
 #include "common/util/FontUtils.h"
-
-#include "DataObjectGenerator.h"
 
 #include "third-party/fmt/core.h"
 

@@ -4,8 +4,9 @@
 #include <string>
 #include <vector>
 
-#include "goalc/compiler/Compiler.h"
 #include "inja.hpp"
+
+#include "goalc/compiler/Compiler.h"
 
 namespace GoalTest {
 

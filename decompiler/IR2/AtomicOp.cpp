@@ -3,12 +3,13 @@
 #include <stdexcept>
 #include <utility>
 
+#include "Form.h"
+#include "OpenGoalMapping.h"
+
 #include "common/goal_constants.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/Assert.h"
 
-#include "Form.h"
-#include "OpenGoalMapping.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 #include "third-party/fmt/core.h"

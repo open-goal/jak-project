@@ -6,11 +6,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "common/common_types.h"
-
 #include "envelope.h"
 #include "sound_types.h"
 #include "voice.h"
+
+#include "common/common_types.h"
 
 namespace snd {
 struct SpuVolume {

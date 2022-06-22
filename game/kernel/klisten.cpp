@@ -10,8 +10,6 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "common/symbols.h"
-
 #include "kboot.h"
 #include "kdsnetm.h"
 #include "klink.h"
@@ -19,6 +17,8 @@
 #include "kprint.h"
 #include "kscheme.h"
 #include "ksocket.h"
+
+#include "common/symbols.h"
 
 using namespace jak1_symbols;
 

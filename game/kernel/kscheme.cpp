@@ -7,16 +7,7 @@
 
 #include <cstring>
 
-#include "common/common_types.h"
-#include "common/goal_constants.h"
-#include "common/log/log.h"
-#include "common/symbols.h"
-#include "common/util/Assert.h"
-#include "common/util/Timer.h"
-#include "common/versions.h"
-
 #include "fileio.h"
-#include "game/mips2c/mips2c_table.h"
 #include "kboot.h"
 #include "kdgo.h"
 #include "kdsnetm.h"
@@ -26,6 +17,16 @@
 #include "kmalloc.h"
 #include "kmemcard.h"
 #include "kprint.h"
+
+#include "common/common_types.h"
+#include "common/goal_constants.h"
+#include "common/log/log.h"
+#include "common/symbols.h"
+#include "common/util/Assert.h"
+#include "common/util/Timer.h"
+#include "common/versions.h"
+
+#include "game/mips2c/mips2c_table.h"
 
 using namespace jak1_symbols;
 

@@ -5,14 +5,15 @@
 #include <memory>
 #include <vector>
 
-#include "common/common_types.h"
-
-#include "../common/synth.h"
 #include "handle_allocator.h"
 #include "musicbank.h"
 #include "sfxblock.h"
 #include "sound_handler.h"
 #include "soundbank.h"
+
+#include "common/common_types.h"
+
+#include "../common/synth.h"
 
 namespace snd {
 

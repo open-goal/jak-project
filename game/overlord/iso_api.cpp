@@ -1,12 +1,13 @@
 #include "iso_api.h"
 
+#include "iso_queue.h"
+#include "sbank.h"
+
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 
 #include "game/overlord/srpc.h"
 #include "game/sce/iop.h"
-#include "iso_queue.h"
-#include "sbank.h"
 
 using namespace iop;
 

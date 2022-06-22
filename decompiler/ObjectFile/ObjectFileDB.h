@@ -11,10 +11,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "LinkedObjectFile.h"
+
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
-#include "LinkedObjectFile.h"
 #include "decompiler/analysis/symbol_def_map.h"
 #include "decompiler/data/TextureDB.h"
 #include "decompiler/util/DecompilerTypeSystem.h"

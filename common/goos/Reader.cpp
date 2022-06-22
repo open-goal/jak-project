@@ -13,10 +13,10 @@
 
 #include <filesystem>
 
+#include "ReplUtils.h"
+
 #include "common/util/FileUtil.h"
 #include "common/util/FontUtils.h"
-
-#include "ReplUtils.h"
 
 #include "third-party/fmt/core.h"
 

@@ -4,11 +4,11 @@
 #include <unordered_set>
 #include <utility>
 
-#include "common/link_types.h"
-
 #include "BinaryReader.h"
 #include "BitUtils.h"
 #include "dgo_util.h"
+
+#include "common/link_types.h"
 
 #include "third-party/json.hpp"
 

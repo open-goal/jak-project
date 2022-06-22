@@ -6,10 +6,10 @@
 
 #include "defenum.h"
 
+#include "deftype.h"
+
 #include "common/goos/ParseHelpers.h"
 #include "common/util/BitUtils.h"
-
-#include "deftype.h"
 
 #include "third-party/fmt/core.h"
 

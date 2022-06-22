@@ -9,11 +9,12 @@
 #include <cstdio>
 #include <cstring>
 
+#include "kprint.h"
+
 #include "common/util/Assert.h"
 #include "common/versions.h"
 
 #include "game/sce/sif_ee.h"
-#include "kprint.h"
 
 namespace {
 // buffer for file paths.  This might be static char buffer[512]. Maybe 633 is the line number?

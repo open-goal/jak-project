@@ -9,10 +9,10 @@
 #include <string>
 #include <unordered_map>
 
+#include "TypeSpec.h"
+
 #include "common/goal_constants.h"
 #include "common/util/Assert.h"
-
-#include "TypeSpec.h"
 
 class TypeSystem;
 

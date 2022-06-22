@@ -1,4 +1,5 @@
 #include "FormRegressionTest.h"
+
 #include "gtest/gtest.h"
 
 using namespace decompiler;

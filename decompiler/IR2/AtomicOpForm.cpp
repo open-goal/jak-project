@@ -1,7 +1,8 @@
-#include "common/type_system/TypeSystem.h"
-
 #include "AtomicOp.h"
 #include "Form.h"
+
+#include "common/type_system/TypeSystem.h"
+
 #include "decompiler/IR2/bitfields.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"

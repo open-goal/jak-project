@@ -13,10 +13,11 @@
 #include <thread>
 #include <unordered_map>
 
+#include "DebugInfo.h"
+
 #include "common/common_types.h"
 #include "common/cross_os_debug/xdbg.h"
 
-#include "DebugInfo.h"
 #include "goalc/listener/MemoryMap.h"
 
 namespace listener {

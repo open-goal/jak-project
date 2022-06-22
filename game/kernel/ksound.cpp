@@ -6,12 +6,13 @@
 
 #include "ksound.h"
 
+#include "kdgo.h"
+#include "kscheme.h"
+
 #include "common/common_types.h"
 
 #include "game/overlord/srpc.h"
 #include "game/sound/989snd/ame_handler.h"
-#include "kdgo.h"
-#include "kscheme.h"
 
 /*!
  * Does nothing!

@@ -11,17 +11,18 @@
 #include <cstdio>
 #include <cstring>
 
+#include "fileio.h"
+#include "kboot.h"
+#include "kprint.h"
+#include "kscheme.h"
+
 #include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/Assert.h"
 #include <common/versions.h>
 
-#include "fileio.h"
 #include "game/mips2c/mips2c_table.h"
-#include "kboot.h"
-#include "kprint.h"
-#include "kscheme.h"
 
 #include "third-party/fmt/core.h"
 

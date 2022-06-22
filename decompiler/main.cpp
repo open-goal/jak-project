@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 
+#include "config.h"
+
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
@@ -10,7 +12,6 @@
 #include "common/versions.h"
 
 #include "ObjectFile/ObjectFileDB.h"
-#include "config.h"
 #include "decompiler/data/TextureDB.h"
 #include "decompiler/data/streamed_audio.h"
 #include "decompiler/level_extractor/extract_level.h"

@@ -2,11 +2,12 @@
 
 #include "background_common.h"
 
+#include <immintrin.h>
+
 #include "common/util/os.h"
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/pipelines/opengl.h"
-#include <immintrin.h>
 
 DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap) {
   glActiveTexture(tex_unit);

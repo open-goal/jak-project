@@ -1,6 +1,7 @@
 #include "game_count.h"
 
 #include "LinkedWordReader.h"
+
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 
 #include "third-party/fmt/core.h"

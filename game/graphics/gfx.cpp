@@ -9,11 +9,12 @@
 #include <filesystem>
 #include <functional>
 
+#include "display.h"
+
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
 
-#include "display.h"
 #include "game/common/file_paths.h"
 #include "game/kernel/kscheme.h"
 #include "game/runtime.h"

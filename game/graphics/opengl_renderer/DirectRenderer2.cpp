@@ -1,8 +1,8 @@
 #include "DirectRenderer2.h"
 
-#include "common/log/log.h"
-
 #include <immintrin.h>
+
+#include "common/log/log.h"
 
 #include "third-party/imgui/imgui.h"
 

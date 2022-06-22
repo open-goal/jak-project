@@ -10,14 +10,7 @@
 #include <cstdio>
 #include <cstring>
 
-#include "common/common_types.h"
-#include "common/cross_os_debug/xdbg.h"
-#include "common/goal_constants.h"
-#include "common/symbols.h"
-#include "common/util/Assert.h"
-
 #include "fileio.h"
-#include "game/sce/sif_ee.h"
 #include "kboot.h"
 #include "kdsnetm.h"
 #include "klink.h"
@@ -25,6 +18,14 @@
 #include "kmachine.h"
 #include "kmalloc.h"
 #include "kscheme.h"
+
+#include "common/common_types.h"
+#include "common/cross_os_debug/xdbg.h"
+#include "common/goal_constants.h"
+#include "common/symbols.h"
+#include "common/util/Assert.h"
+
+#include "game/sce/sif_ee.h"
 
 using namespace jak1_symbols;
 

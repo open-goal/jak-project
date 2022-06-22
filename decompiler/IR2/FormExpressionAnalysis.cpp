@@ -1,12 +1,13 @@
+#include "Form.h"
+#include "FormStack.h"
+#include "GenericElementMatcher.h"
+
 #include "common/goos/PrettyPrinter.h"
 #include "common/type_system/state.h"
 #include "common/util/Assert.h"
 #include "common/util/BitUtils.h"
 #include "common/util/print_float.h"
 
-#include "Form.h"
-#include "FormStack.h"
-#include "GenericElementMatcher.h"
 #include "decompiler/IR2/ExpressionHelpers.h"
 #include "decompiler/IR2/bitfields.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"

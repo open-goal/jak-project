@@ -6,6 +6,7 @@
 #include <optional>
 
 #include "midi_handler.h"
+
 #include <third-party/fmt/core.h>
 
 namespace snd {

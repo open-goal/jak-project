@@ -1,8 +1,9 @@
 #include "musicbank.h"
 
-#include "../common/synth.h"
 #include "ame_handler.h"
 #include "midi_handler.h"
+
+#include "../common/synth.h"
 
 namespace snd {
 std::unique_ptr<sound_handler> MusicBank::make_handler(voice_manager& vm,

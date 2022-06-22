@@ -10,12 +10,13 @@
 #include <string>
 #include <vector>
 
-#include "common/goos/Object.h"
-#include "common/type_system/TypeSpec.h"
-
 #include "Label.h"
 #include "StaticObject.h"
 #include "Val.h"
+
+#include "common/goos/Object.h"
+#include "common/type_system/TypeSpec.h"
+
 #include "goalc/regalloc/allocator_interface.h"
 
 class FileEnv;

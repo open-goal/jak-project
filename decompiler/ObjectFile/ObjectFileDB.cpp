@@ -12,6 +12,8 @@
 #include <map>
 #include <set>
 
+#include "LinkedObjectFileCreation.h"
+
 #include "common/link_types.h"
 #include "common/log/log.h"
 #include "common/util/BinaryReader.h"
@@ -22,7 +24,6 @@
 #include "common/util/dgo_util.h"
 #include "common/util/json_util.h"
 
-#include "LinkedObjectFileCreation.h"
 #include "decompiler/Function/BasicBlocks.h"
 #include "decompiler/config.h"
 #include "decompiler/data/StrFileReader.h"

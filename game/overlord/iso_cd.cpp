@@ -7,14 +7,15 @@
 
 #include <cstring>
 
-#include "common/log/log.h"
-
-#include "game/sce/iop.h"
-#include "game/sce/stubs.h"
 #include "isocommon.h"
 #include "overlord.h"
 #include "soundcommon.h"
 #include "srpc.h"
+
+#include "common/log/log.h"
+
+#include "game/sce/iop.h"
+#include "game/sce/stubs.h"
 
 // iso_cd is an implementation of the IsoFs API for loading files from a CD/DVD with an ISO and/or
 // DUP filesystem.

@@ -2,8 +2,9 @@
 
 #include <cstdio>
 
-#include "989snd/player.h"
 #include "sdshim.h"
+
+#include "989snd/player.h"
 
 std::unique_ptr<snd::player> player;
 

@@ -3,13 +3,14 @@
  * This runs the IR2 analysis passes.
  */
 
+#include "ObjectFileDB.h"
+
 #include "common/goos/PrettyPrinter.h"
 #include "common/link_types.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 
-#include "ObjectFileDB.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/expression_build.h"

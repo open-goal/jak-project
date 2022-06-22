@@ -3,12 +3,12 @@
 #pragma once
 #include <array>
 
-#include "common/common_types.h"
-
 #include "loader.h"
 #include "midi_handler.h"
 #include "sound_handler.h"
 #include "vagvoice.h"
+
+#include "common/common_types.h"
 
 namespace snd {
 

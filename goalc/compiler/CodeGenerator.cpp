@@ -10,6 +10,7 @@
 #include <unordered_set>
 
 #include "IR.h"
+
 #include "goalc/debugger/DebugInfo.h"
 #include "goalc/emitter/IGen.h"
 

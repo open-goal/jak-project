@@ -10,9 +10,10 @@
 #include <condition_variable>
 #include <mutex>
 
+#include "dmac.h"
+
 #include "common/log/log.h"
 
-#include "dmac.h"
 #include "game/kernel/kscheme.h"
 
 namespace VM {

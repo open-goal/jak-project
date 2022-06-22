@@ -16,11 +16,11 @@
 #include <unordered_map>
 #include <utility>
 
+#include "ReplUtils.h"
+
 #include "common/goos/Object.h"
 #include "common/goos/TextDB.h"
 #include "common/util/Assert.h"
-
-#include "ReplUtils.h"
 
 namespace goos {
 

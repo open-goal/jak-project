@@ -8,12 +8,12 @@
 #include <string>
 #include <utility>
 
-#include "common/common_types.h"
-
 #include "ame_handler.h"
 #include "loader.h"
 #include "sound_handler.h"
 #include "vagvoice.h"
+
+#include "common/common_types.h"
 
 namespace snd {
 

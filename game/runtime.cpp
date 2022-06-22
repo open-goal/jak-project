@@ -4,8 +4,9 @@
  */
 
 #ifdef __linux__
-#include <sys/mman.h>
 #include <unistd.h>
+
+#include <sys/mman.h>
 #elif _WIN32
 #include <io.h>
 
@@ -18,6 +19,8 @@
 #include <chrono>
 #include <cstring>
 #include <thread>
+
+#include "runtime.h"
 
 #include "common/cross_os_debug/xdbg.h"
 #include "common/goal_constants.h"
@@ -49,7 +52,6 @@
 #include "game/system/iop_thread.h"
 #include "game/system/vm/dmac.h"
 #include "game/system/vm/vm.h"
-#include "runtime.h"
 #include "sce/deci2.h"
 #include "sce/iop.h"
 #include "sce/libcdvd_ee.h"

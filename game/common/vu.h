@@ -1,11 +1,11 @@
 #pragma once
 #include <cfloat>
 
+#include "immintrin.h"
+
 #include "common/common_types.h"
 #include "common/math/Vector.h"
 #include "common/util/Assert.h"
-
-#include "immintrin.h"
 
 enum class Mask {
   NONE = 0,

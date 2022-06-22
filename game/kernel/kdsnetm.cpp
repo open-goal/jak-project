@@ -9,11 +9,12 @@
 #include <cstdio>
 #include <cstring>
 
+#include "kprint.h"
+
 #include "common/util/Assert.h"
 
 #include "game/sce/deci2.h"
 #include "game/system/deci_common.h"  // todo, reorganize to avoid this include
-#include "kprint.h"
 
 using namespace ee;
 

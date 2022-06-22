@@ -3,11 +3,12 @@
 #include <cstdio>
 #include <cstring>
 
+#include "isocommon.h"
+
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 
 #include "game/sce/iop.h"
-#include "isocommon.h"
 
 using namespace iop;
 

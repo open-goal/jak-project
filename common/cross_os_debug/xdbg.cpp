@@ -15,6 +15,8 @@
 
 #ifdef __linux
 #include <fcntl.h>
+#include <unistd.h>
+
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/stat.h>
@@ -22,14 +24,12 @@
 #include <sys/types.h>
 #include <sys/user.h>
 #include <sys/wait.h>
-#include <unistd.h>
 #elif _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 #include <condition_variable>
 #include <mutex>
-
-#include <Windows.h>
 #endif
 
 namespace xdbg {

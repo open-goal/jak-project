@@ -8,11 +8,12 @@
 #include <string>
 #include <thread>
 
+#include "inja.hpp"
+
 #include "game/runtime.h"
 #include "goalc/compiler/Compiler.h"
 #include "goalc/listener/Listener.h"
 #include "gtest/gtest.h"
-#include "inja.hpp"
 #include "test/goalc/framework/test_runner.h"
 
 #include "third-party/json.hpp"

@@ -8,6 +8,8 @@
 #include <string>
 #include <thread>
 
+#include "inja.hpp"
+
 #include "common/util/FileUtil.h"
 
 #include "game/mips2c/mips2c_table.h"
@@ -15,7 +17,6 @@
 #include "goalc/compiler/Compiler.h"
 #include "goalc/listener/Listener.h"
 #include "gtest/gtest.h"
-#include "inja.hpp"
 #include "test/goalc/framework/test_runner.h"
 
 #include "third-party/fmt/core.h"

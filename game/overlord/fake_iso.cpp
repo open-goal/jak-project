@@ -14,6 +14,9 @@
 #include <cstring>
 #include <filesystem>
 
+#include "isocommon.h"
+#include "overlord.h"
+
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
@@ -23,8 +26,6 @@
 #include "game/overlord/srpc.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
-#include "isocommon.h"
-#include "overlord.h"
 
 using namespace iop;
 

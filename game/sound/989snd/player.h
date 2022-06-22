@@ -7,15 +7,16 @@
 #include <unordered_map>
 #include <vector>
 
-#include "common/common_types.h"
-
-#include "../common/synth.h"
 #include "ame_handler.h"
-#include "game/sound/989snd/vagvoice.h"
 #include "handle_allocator.h"
 #include "loader.h"
 #include "midi_handler.h"
 #include "sound_handler.h"
+
+#include "common/common_types.h"
+
+#include "../common/synth.h"
+#include "game/sound/989snd/vagvoice.h"
 
 #include "third-party/cubeb/cubeb/include/cubeb/cubeb.h"
 

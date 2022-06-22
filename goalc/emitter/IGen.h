@@ -2,10 +2,10 @@
 
 #include <stdexcept>
 
-#include "common/util/Assert.h"
-
 #include "Instruction.h"
 #include "Register.h"
+
+#include "common/util/Assert.h"
 
 namespace emitter {
 class IGen {

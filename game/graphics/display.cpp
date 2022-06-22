@@ -5,9 +5,9 @@
 
 #include "display.h"
 
-#include "common/log/log.h"
-
 #include "gfx.h"
+
+#include "common/log/log.h"
 
 /*
 ********************************

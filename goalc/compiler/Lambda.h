@@ -4,6 +4,7 @@
 #define JAK_LAMBDA_H
 
 #include "common/goos/Object.h"
+#include "common/type_system/TypeSpec.h"
 
 // note - we cannot easily reuse the GOOS argument system because GOAL's is slightly different.
 // there's no rest or keyword support.

@@ -2,9 +2,9 @@
 
 #include <stdexcept>
 
-#include "common/goos/Reader.h"
-
 #include "IR.h"
+
+#include "common/goos/Reader.h"
 
 #include "third-party/fmt/core.h"
 
