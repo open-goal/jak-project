@@ -83,6 +83,7 @@ target_link_libraries(decomp
         lzokay
         common
         fmt
+        stb_image
         )
 
 add_executable(decompiler
@@ -92,7 +93,8 @@ target_link_libraries(decompiler
         decomp
         common
         lzokay
-        fmt)
+        fmt
+        stb_image)
 
 
 add_executable(extractor
@@ -103,4 +105,5 @@ target_link_libraries(extractor
         common
         lzokay
         fmt
-        compiler)
+        compiler
+        stb_image)

@@ -104,13 +104,30 @@
               (format *stdcon* "~%")
               )
             (dotimes (ii 2)
-              (format *stdcon* " ~3Lcpad ~D~0L~%" ii)
+              (format *stdcon* " ~0k~3Lcpad ~D~0L~%" ii)
               (dotimes (j 8)
                 (dotimes (i 2)
-                  (let (
+                  (format *stdcon* "  ") 
+                  (let* (
                     (btn-idx (+ i(* j 2)))
+                    (btn-name (-> *pc-pad-button-names* btn-idx))
+                    (keycode (pc-pad-get-mapped-button ii btn-idx))
                     )
-                    (format *stdcon* "  ~8L~S:  ~0L~D  " (-> *pc-pad-button-names* btn-idx) (pc-pad-get-mapped-button ii btn-idx))
+                    (format *stdcon* "~8L~S: " btn-name)
+                    ;; longest button string is TRIANGLE, which is 8 characters in length
+                    ;; but only shows up in the left column. CIRCLE and SQUARE are longest in the right with 6
+                    (dotimes (_ (- 
+                                (cond ((= i 0) 8) ((= i 1) 6))
+                                (length btn-name)))
+                      (format *stdcon* " ")
+                      )
+                    (format *stdcon* "~0L~D" keycode)
+                    (when (< keycode 100)
+                      (format *stdcon* " ")
+                      (if (< keycode 10)
+                        (format *stdcon* " ")
+                        )
+                      )
                     )
                   )
                   (format *stdcon* "~%")

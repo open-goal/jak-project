@@ -21,7 +21,7 @@
 #include "game/system/newpad.h"
 #include "common/log/log.h"
 #include "common/goal_constants.h"
-#include "common/util/image_loading.h"
+#include "third-party/stb_image/stb_image.h"
 #include "game/runtime.h"
 #include "common/util/Timer.h"
 #include "game/graphics/opengl_renderer/debug_gui.h"
@@ -192,6 +192,13 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
       g_gfx_data->debug_gui.m_vsync = false;
       g_gfx_data->vsync_enabled = false;
       glfwSwapInterval(false);
+      if (primary_monitor_video_mode->refreshRate > 100) {
+        BootVideoMode = VideoMode::FPS150;
+        g_gfx_data->debug_gui.target_fps = 150;
+      } else if (primary_monitor_video_mode->refreshRate > 60) {
+        BootVideoMode = VideoMode::FPS100;
+        g_gfx_data->debug_gui.target_fps = 100;
+      }
     } else {
       // enable vsync
       g_gfx_data->debug_gui.framelimiter = false;
@@ -227,6 +234,11 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
 
   // this does initialization for stuff like the font data
   ImGui::CreateContext();
+
+  // Init ImGui settings
+  ImGuiIO& io = ImGui::GetIO();
+  io.IniFilename = file_util::get_file_path({"imgui.ini"}).c_str();
+  io.LogFilename = file_util::get_file_path({"imgui_log.txt"}).c_str();
 
   // set up to get inputs for this window
   ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -400,13 +412,15 @@ GfxDisplayMode GLDisplay::get_fullscreen() {
 void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out, s32* count_out) {
   int count = 0;
   auto vmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-  auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
-  if (vmode_idx >= 0) {
-    vmode = &vmodes[vmode_idx];
-  } else {
-    for (int i = 0; i < count; ++i) {
-      if (!vmode || vmode->height < vmodes[i].height) {
-        vmode = &vmodes[i];
+  if (get_fullscreen() == GfxDisplayMode::Fullscreen) {
+    auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
+    if (vmode_idx >= 0) {
+      vmode = &vmodes[vmode_idx];
+    } else {
+      for (int i = 0; i < count; ++i) {
+        if (!vmode || vmode->height < vmodes[i].height) {
+          vmode = &vmodes[i];
+        }
       }
     }
   }

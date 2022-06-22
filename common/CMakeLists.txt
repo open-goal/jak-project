@@ -4,6 +4,7 @@ add_library(common
         cross_sockets/XSocket.cpp
         cross_sockets/XSocketServer.cpp
         cross_sockets/XSocketClient.cpp
+        custom_data/pack_helpers.cpp
         custom_data/TFrag3Data.cpp
         deserialization/subtitles/subtitles.cpp
         dma/dma.cpp
@@ -47,8 +48,7 @@ add_library(common
         util/os.cpp
         util/print_float.cpp
         util/FontUtils.cpp
-        util/FrameLimiter.cpp
-        util/image_loading.cpp)
+        util/FrameLimiter.cpp)
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 

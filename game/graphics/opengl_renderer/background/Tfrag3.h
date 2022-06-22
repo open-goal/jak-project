@@ -64,6 +64,7 @@ class Tfrag3 {
     const tfrag3::BVH* vis = nullptr;
     const u32* index_data = nullptr;
     SwizzledTimeOfDay tod_cache;
+    u64 draw_mode = 0;
 
     void reset_stats() {
       rendered_this_frame = false;

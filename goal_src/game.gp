@@ -103,6 +103,17 @@
     )
   )
 
+(defun custom-level-cgo (output-name desc-file-name)
+  "Add a CGO with the given output name (in out/iso) and input name (in custom_levels/)"
+  (let ((out-name (string-append "out/iso/" output-name)))
+    (defstep :in (string-append "custom_levels/" desc-file-name)
+      :tool 'dgo
+      :out `(,out-name)
+      )
+    (set! *all-cgos* (cons out-name *all-cgos*))
+    )
+  )
+
 (defun cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
   (let ((out-name (string-append "out/iso/" output-name)))
@@ -146,6 +157,12 @@
     ,@(apply (lambda (x) `(copy-go ,x)) gos)
     )
   )
+
+(defmacro build-custom-level (name)
+  (let* ((path (string-append "custom_levels/" name "/" name ".jsonc")))
+    `(defstep :in ,path
+              :tool 'build-level
+              :out '(,(string-append "out/obj/" name ".go")))))
 
 (defun get-iso-data-path ()
   (if *use-iso-data-path*
@@ -1552,6 +1569,17 @@
   "ndi-cam-ag"
   "ndi-volumes-ag"
   "title-vis")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Example Custom Level
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Set up the build system to build the level geometry
+;; this path is relative to the custom_levels/ folder
+;; it should point to the .jsonc file that specifies the level.
+(build-custom-level "test-zone")
+;; the DGO file
+(custom-level-cgo "TESTZONE.DGO" "test-zone/testzone.gd")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Game Engine Code

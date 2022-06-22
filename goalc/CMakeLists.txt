@@ -5,6 +5,16 @@ add_library(compiler
         emitter/ObjectGenerator.cpp
         emitter/Register.cpp
         debugger/disassemble.cpp
+        build_level/build_level.cpp
+        build_level/collide_bvh.cpp
+        build_level/collide_drawable.cpp
+        build_level/collide_pack.cpp
+        build_level/color_quantization.cpp
+        build_level/FileInfo.cpp
+        build_level/gltf_mesh_extract.cpp
+        build_level/LevelFile.cpp
+        build_level/ResLump.cpp
+        build_level/Tfrag.cpp
         compiler/Compiler.cpp
         compiler/Env.cpp
         compiler/Val.cpp
@@ -44,7 +54,7 @@ add_library(compiler
         regalloc/Allocator_v2.cpp
         )
 
-target_link_libraries(compiler common Zydis)
+target_link_libraries(compiler common Zydis tiny_gltf)
 
 if (WIN32)
     target_link_libraries(compiler mman)

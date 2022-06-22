@@ -83,6 +83,7 @@ class TfragLoadStage : public LoaderStage {
           GLuint& tree_out = data.lev_data->tfrag_vertex_data[geo].emplace_back();
           glGenBuffers(1, &tree_out);
           glBindBuffer(GL_ARRAY_BUFFER, tree_out);
+
           glBufferData(GL_ARRAY_BUFFER,
                        in_tree.unpacked.vertices.size() * sizeof(tfrag3::PreloadedVertex), nullptr,
                        GL_STATIC_DRAW);
@@ -97,34 +98,38 @@ class TfragLoadStage : public LoaderStage {
     u32 unique_buffers = 0;
 
     while (true) {
-      const auto& tree = data.lev_data->level->tfrag_trees[m_next_geo][m_next_tree];
-      u32 end_vert_in_tree = tree.unpacked.vertices.size();
-      // the number of vertices we'd need to finish the tree right now
-      size_t num_verts_left_in_tree = end_vert_in_tree - m_next_vert;
-      size_t start_vert_for_chunk;
-      size_t end_vert_for_chunk;
-
       bool complete_tree;
 
-      if (num_verts_left_in_tree > CHUNK_SIZE) {
-        complete_tree = false;
-        // should only do partial
-        start_vert_for_chunk = m_next_vert;
-        end_vert_for_chunk = start_vert_for_chunk + CHUNK_SIZE;
-        m_next_vert += CHUNK_SIZE;
-      } else {
-        // should do all!
-        start_vert_for_chunk = m_next_vert;
-        end_vert_for_chunk = end_vert_in_tree;
+      if (data.lev_data->level->tfrag_trees[m_next_geo].empty()) {
         complete_tree = true;
-      }
+      } else {
+        const auto& tree = data.lev_data->level->tfrag_trees[m_next_geo][m_next_tree];
+        u32 end_vert_in_tree = tree.unpacked.vertices.size();
+        // the number of vertices we'd need to finish the tree right now
+        size_t num_verts_left_in_tree = end_vert_in_tree - m_next_vert;
+        size_t start_vert_for_chunk;
+        size_t end_vert_for_chunk;
 
-      glBindBuffer(GL_ARRAY_BUFFER, data.lev_data->tfrag_vertex_data[m_next_geo][m_next_tree]);
-      u32 upload_size =
-          (end_vert_for_chunk - start_vert_for_chunk) * sizeof(tfrag3::PreloadedVertex);
-      glBufferSubData(GL_ARRAY_BUFFER, start_vert_for_chunk * sizeof(tfrag3::PreloadedVertex),
-                      upload_size, tree.unpacked.vertices.data() + start_vert_for_chunk);
-      uploaded_bytes += upload_size;
+        if (num_verts_left_in_tree > CHUNK_SIZE) {
+          complete_tree = false;
+          // should only do partial
+          start_vert_for_chunk = m_next_vert;
+          end_vert_for_chunk = start_vert_for_chunk + CHUNK_SIZE;
+          m_next_vert += CHUNK_SIZE;
+        } else {
+          // should do all!
+          start_vert_for_chunk = m_next_vert;
+          end_vert_for_chunk = end_vert_in_tree;
+          complete_tree = true;
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, data.lev_data->tfrag_vertex_data[m_next_geo][m_next_tree]);
+        u32 upload_size =
+            (end_vert_for_chunk - start_vert_for_chunk) * sizeof(tfrag3::PreloadedVertex);
+        glBufferSubData(GL_ARRAY_BUFFER, start_vert_for_chunk * sizeof(tfrag3::PreloadedVertex),
+                        upload_size, tree.unpacked.vertices.data() + start_vert_for_chunk);
+        uploaded_bytes += upload_size;
+      }
 
       if (complete_tree) {
         unique_buffers++;

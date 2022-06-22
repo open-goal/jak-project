@@ -70,9 +70,9 @@ const char* time_of_day_str(float time) {
 
   if (hour >= 0 && hour <= 9)
     return "green-sun";
-  else if (hour >= 10 && hour <= 21)
+  else if (hour < 22)
     return "day";
-  else if (hour >= 22 && hour <= 24)
+  else if (hour < 25)
     return "evening";
   else
     return "";
