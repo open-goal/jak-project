@@ -27,7 +27,7 @@
 #include "common/log/log.h"
 #include "common/util/json_util.h"
 #include "common/util/crc32.h"
-#include "common/util/xdelta3_util.h"
+#include "third-party/xdelta3/xdelta3.h"
 
 namespace decompiler {
 namespace {
