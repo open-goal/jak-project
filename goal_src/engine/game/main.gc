@@ -104,52 +104,57 @@
 
 (defun set-master-mode ((new-mode symbol))
   "Update pause masks for the given mode, and set *master-mode*"
-  (set! *master-mode* new-mode)
-  (if *debug-segment*
-      (menu-respond-to-pause)
-      )
-  (case *master-mode*
-    (('pause)
+  ;; PAL patch here
+  (let ((gp-0 *master-mode*))
+    (set! *master-mode* new-mode)
+    (if *debug-segment*
+        (menu-respond-to-pause)
+        )
+    (case *master-mode*
+      (('pause)
 
-     ;; request the pause mask to be set in prevent-from-run.
-     ;; this will block any process with pause from running, pausing most game objects.
-     (if (not *debug-pause*)
-         (logior! (-> *setting-control* default process-mask) (process-mask pause))
-         )
-
-     ;; allow the menu to run.
-     (logclear! (-> *setting-control* default process-mask) (process-mask menu))
-
-     ;; ??
-     (set! *pause-lock* #f)
-     (sound-group-pause (sound-group sfx music dialog sog3 ambient sog5 sog6 sog7))
-     (hide-progress-screen)
-     )
-    (('menu)
-     ;; I believe these masks are just to make the progress go away work.
-     (logior! (-> *setting-control* default process-mask) (process-mask menu))
-     (logclear! (-> *setting-control* default process-mask) (process-mask pause progress))
-     (set! *pause-lock* #f)
-     (hide-progress-screen)
-     )
-    (('progress)
-     ;; allow menu to run while in progress.
-     (logclear! (-> *setting-control* default process-mask) (process-mask menu))
-
-     ;; activate the progress menu.
-     (when (not *progress-process*)
-       (activate-progress *dproc* (progress-screen fuel-cell))
-       (if (not *progress-process*) ;; if it doesn't want to activate, back to game.
-           (set-master-mode 'game)
+       ;; request the pause mask to be set in prevent-from-run.
+       ;; this will block any process with pause from running, pausing most game objects.
+       (if (not *debug-pause*)
+           (logior! (-> *setting-control* default process-mask) (process-mask pause))
            )
+
+       ;; allow the menu to run.
+       (logclear! (-> *setting-control* default process-mask) (process-mask menu))
+
+       ;; ??
+       (set! *pause-lock* #f)
+       (sound-group-pause (sound-group sfx music dialog sog3 ambient sog5 sog6 sog7))
+       (hide-progress-screen)
        )
-     )
-    (('game)
-     ;; allow pausable/menu to run.
-     (logclear! (-> *setting-control* default process-mask) (process-mask pause menu))
-     (sound-group-continue (sound-group sfx music dialog sog3 ambient sog5 sog6 sog7))
-     (hide-progress-screen)
-     )
+      (('menu)
+       ;; I believe these masks are just to make the progress go away work.
+       (logior! (-> *setting-control* default process-mask) (process-mask menu))
+       (logclear! (-> *setting-control* default process-mask) (process-mask pause progress))
+       (set! *pause-lock* #f)
+       (hide-progress-screen)
+       )
+      (('progress)
+       ;; allow menu to run while in progress.
+       (logclear! (-> *setting-control* default process-mask) (process-mask menu))
+
+       ;; activate the progress menu.
+       (when (not *progress-process*)
+         (activate-progress *dproc* (progress-screen fuel-cell))
+         (if (not *progress-process*)
+             (set-master-mode 'game)
+             )
+         )
+       )
+      (('game)
+       ;; allow pausable/menu to run.
+       (logclear! (-> *setting-control* default process-mask) (process-mask pause menu))
+       (if (!= gp-0 *master-mode*)
+           (sound-group-continue (sound-group sfx music dialog sog3 ambient sog5 sog6 sog7))
+           )
+       (hide-progress-screen)
+       )
+      )
     )
   ;; apply settings now.
   (apply-settings *setting-control*)

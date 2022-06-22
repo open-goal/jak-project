@@ -1,2 +1,2 @@
 cd ..\..
-git update-index --no-assume-unchanged decompiler\config\jak1_ntsc_black_label.jsonc decompiler\config\jak1_ntsc_black_label\inputs.jsonc
+git update-index --no-assume-unchanged decompiler\config\jak1_ntsc_black_label.jsonc

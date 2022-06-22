@@ -6,7 +6,8 @@
 #include "common/util/json_util.h"
 
 static const std::unordered_map<std::string, GameTextVersion> s_text_ver_enum_map = {
-    {"jak1-v1", GameTextVersion::JAK1_V1}};
+    {"jak1-v1", GameTextVersion::JAK1_V1},
+    {"jak1-v2", GameTextVersion::JAK1_V2}};
 
 // TODO - why not just return the inputs instead of passing in an empty one?
 void open_text_project(const std::string& kind,
@@ -26,6 +27,10 @@ void open_text_project(const std::string& kind,
 
     auto& ver = o.as_pair()->car.as_symbol()->name;
     auto& in = o.as_pair()->cdr.as_pair()->car.as_string()->data;
+
+    if (s_text_ver_enum_map.count(ver) == 0) {
+      throw std::runtime_error(fmt::format("unknown text version {}", ver));
+    }
 
     inputs[s_text_ver_enum_map.at(ver)].push_back(in);
   });
@@ -77,7 +82,7 @@ void parse_text(const goos::Object& data, GameTextVersion text_ver, GameTextDB& 
   for_each_in_list(data.as_pair()->cdr, [&](const goos::Object& obj) {
     if (obj.is_pair()) {
       auto& head = car(obj);
-      if (head.is_symbol() && head.as_symbol()->name == "language-id") {
+      if (head.is_symbol("language-id")) {
         if (banks.size() != 0) {
           throw std::runtime_error("Languages have been set multiple times.");
         }
@@ -99,7 +104,7 @@ void parse_text(const goos::Object& data, GameTextVersion text_ver, GameTextDB& 
             banks.push_back(db.bank_by_id(possible_group_name, lang));
           }
         });
-      } else if (head.is_symbol() && head.as_symbol()->name == "group-name") {
+      } else if (head.is_symbol("group-name")) {
         if (!possible_group_name.empty()) {
           throw std::runtime_error("group-name has been set multiple times.");
         }
@@ -113,6 +118,56 @@ void parse_text(const goos::Object& data, GameTextVersion text_ver, GameTextDB& 
         if (!cdr(cdr(obj)).is_empty_list()) {
           throw std::runtime_error("group-name has too many arguments");
         }
+      } else if (head.is_symbol("credits")) {
+        // parse a "credits" object. it's a list of lines where the ID automatically increments, and
+        // empty lines are skipped
+        if (banks.size() == 0) {
+          throw std::runtime_error("At least one language must be set before defining entries.");
+        }
+
+        if (cdr(obj).is_empty_list() || cdr(cdr(obj)).is_empty_list() ||
+            !car(cdr(obj)).is_symbol(":begin") || !car(cdr(cdr(obj))).is_int()) {
+          throw std::runtime_error("Invalid credits begin param");
+        }
+
+        const auto& it = cdr(cdr(obj));
+        int begin_id = car(it).as_int();
+        int id = begin_id - 1;
+        for_each_in_list(cdr(it), [&](const goos::Object& entry) {
+          ++id;
+          if (entry.is_string()) {
+            if (entry.as_string()->data.empty()) {
+              // empty string! just advance
+              return;
+            }
+
+            auto line = font->convert_utf8_to_game(entry.as_string()->data);
+            // add to all langs
+            for (auto& bank : banks) {
+              bank->set_line(id, line);
+            }
+          } else if (entry.is_pair()) {
+            int b_i = 0;
+            for_each_in_list(entry, [&](const goos::Object& entry) {
+              if (entry.is_string()) {
+                if (b_i >= int(banks.size())) {
+                  throw std::runtime_error(fmt::format("Too many strings in text id #x{:x}", id));
+                }
+
+                auto line = font->convert_utf8_to_game(entry.as_string()->data);
+                banks[b_i++]->set_line(id, line);
+              } else {
+                throw std::runtime_error(fmt::format("Non-string value in text id #x{:x}", id));
+              }
+            });
+            if (b_i != int(banks.size())) {
+              throw std::runtime_error(
+                  fmt::format("Not enough strings specified in text id #x{:x}", id));
+            }
+          } else {
+            throw std::runtime_error(fmt::format("Non-string value in text id #x{:x}", id));
+          }
+        });
       }
 
       else if (head.is_int()) {

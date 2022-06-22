@@ -44,12 +44,13 @@
 
 
 (deftype snow-button (process-drawable)
-  ((root-override    collide-shape-moving         :offset        112)
-   (wiggled?         symbol                       :offset-assert 176)
-   (timeout          time-frame                   :offset-assert 184)
-   (delay-til-wiggle time-frame                   :offset-assert 192)
-   (prev-button      entity-actor                 :offset-assert 200)
-   (ticker           ticky                :inline :offset-assert 208)
+  ((root-override         collide-shape-moving         :offset        112)
+   (wiggled?              symbol                       :offset-assert 176)
+   (trying-for-fuel-cell? symbol                       :offset-assert 180)
+   (timeout               time-frame                   :offset-assert 184)
+   (delay-til-wiggle      time-frame                   :offset-assert 192)
+   (prev-button           entity-actor                 :offset-assert 200)
+   (ticker                ticky                :inline :offset-assert 208)
    )
   :heap-base #x80
   :method-count-assert 20
@@ -274,6 +275,8 @@
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self wiggled?) #f)
+    ;; PAL patch here
+    (set! (-> self trying-for-fuel-cell?) (not (task-complete? *game-info* (game-task snow-ball))))
     (sleep (-> self ticker) (-> self timeout))
     (when (-> self prev-button)
       (let* ((v1-6 (-> self prev-button))
@@ -294,6 +297,11 @@
     (if (completed? (-> self ticker))
         (go snow-button-deactivate)
         )
+    (when (and (-> self trying-for-fuel-cell?) (task-complete? *game-info* (game-task snow-ball)))
+      (set! (-> self trying-for-fuel-cell?) #f)
+      (go snow-button-deactivate)
+      )
+    ;; PAL patch here
     (when (reached-delay? (-> self ticker) (-> self delay-til-wiggle))
       (when (not (-> self wiggled?))
         (set! (-> self wiggled?) #t)
@@ -406,6 +414,8 @@
       (set! (-> obj prev-button) (entity-actor-lookup arg0 'alt-actor 0))
       (set! (-> obj prev-button) #f)
       )
+  ;; PAL patch here
+  (set! (-> obj trying-for-fuel-cell?) (not (task-complete? *game-info* (game-task snow-ball))))
   (ja-channel-set! 1)
   (let ((s5-1 (-> obj skel root-channel 0)))
     (joint-control-channel-group-eval!
@@ -823,7 +833,8 @@
       (dummy-22 self)
       (go elevator-idle-at-fort)
       )
-    (seek! (-> self path-pos) 1.0 (* 0.06666667 (-> *display* seconds-per-frame)))
+    ;; PAL patch here
+    (seek! (-> self path-pos) 1.0 (* 0.16 (-> *display* seconds-per-frame)))
     (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
     (plat-trans)
     (dummy-20 self)
@@ -880,7 +891,8 @@
       (dummy-22 self)
       (go elevator-idle-at-cave)
       )
-    (seek! (-> self path-pos) 0.0 (* 0.06666667 (-> *display* seconds-per-frame)))
+    ;; PAL patch here
+    (seek! (-> self path-pos) 0.0 (* 0.16 (-> *display* seconds-per-frame)))
     (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
     (plat-trans)
     (dummy-20 self)

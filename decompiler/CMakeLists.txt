@@ -84,6 +84,7 @@ target_link_libraries(decomp
         common
         fmt
         stb_image
+        xdelta3
         )
 
 add_executable(decompiler

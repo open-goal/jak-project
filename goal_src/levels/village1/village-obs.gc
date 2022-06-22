@@ -29,6 +29,7 @@
 (import "goal_src/import/medres-beach-ag.gc")
 (import "goal_src/import/reflector-middle-ag.gc")
 (import "goal_src/import/medres-beach1-ag.gc")
+(import "goal_src/import/evilplant-ag.gc")
 
 (defskelgroup *med-res-jungle-sg* medres-jungle medres-jungle-lod0-jg medres-jungle-idle-ja
               ((medres-jungle-lod0-mg (meters 999999)))
@@ -517,6 +518,53 @@
   (initialize-skeleton obj *mayorgears-sg* '())
   (set! (-> obj draw shadow-mask) (the-as uint 255))
   (go mayorgears-idle)
+  (none)
+  )
+
+;; PAL patch here
+(deftype evilplant (process-drawable)
+  ()
+  :heap-base #x40
+  :method-count-assert 21
+  :size-assert         #xb0
+  :flag-assert         #x15004000b0
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+(defmethod inspect evilplant ((obj evilplant))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  obj
+  )
+
+(defskelgroup *evilplant-sg* evilplant evilplant-lod0-jg evilplant-idle-ja
+              ((evilplant-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 3.8)
+              )
+
+(defstate idle (evilplant)
+  :virtual #t
+  :code (behavior ()
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior evilplant) ja-post)
+  )
+
+(defmethod init-from-entity! evilplant ((obj evilplant) (arg0 entity-actor))
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *evilplant-sg* '())
+  (go (method-of-object obj idle))
   (none)
   )
 

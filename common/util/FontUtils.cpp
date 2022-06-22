@@ -503,6 +503,240 @@ GameTextFontBank g_font_bank_jak1(GameTextVersion::JAK1_V1,
                                   &passthrus);
 
 /*!
+ * ================================
+ * GAME TEXT FONT BANK - JAK 1 (v2)
+ * ================================
+ * This font is used in:
+ * - Jak & Daxter: The Precursor Legacy (PAL)
+ *
+ * It is the same as v1, but _ has been fixed and no longer overlaps 掘
+ */
+
+static std::vector<EncodeInfo> g_encode_info_jak1_v2 = {
+    // random
+    {"_", {0x03}},      // large space
+    {"ˇ", {0x10}},      // caron
+    {"`", {0x11}},      // grave accent
+    {"'", {0x12}},      // apostrophe
+    {"^", {0x13}},      // circumflex
+    {"<TIL>", {0x14}},  // tilde
+    {"¨", {0x15}},      // umlaut
+    {"º", {0x16}},      // numero/overring
+    {"¡", {0x17}},      // inverted exclamation mark
+    {"¿", {0x18}},      // inverted question mark
+
+    {"海", {0x1a}},  // umi
+    {"Æ", {0x1b}},   // aesc
+    {"界", {0x1c}},  // kai
+    {"Ç", {0x1d}},   // c-cedilla
+    {"学", {0x1e}},  // gaku
+    {"ß", {0x1f}},   // eszett
+
+    {"\"", {0x22}},  // double-quotes
+
+    {"ワ", {0x24}},  // wa
+
+    {"ヲ", {0x26}},  // wo
+    {"ン", {0x27}},  // -n
+
+    {"岩", {0x5c}},  // iwa
+    {"旧", {0x5d}},  // kyuu
+    {"空", {0x5e}},  // sora
+    {"掘", {0x5f}},  // horu
+
+    {"ヮ", {0x60}},  // -wa
+    {"撃", {0x61}},  // utsu
+    {"賢", {0x62}},  // kashikoi
+    {"湖", {0x63}},  // mizuumi
+    {"口", {0x64}},  // kuchi
+    {"行", {0x65}},  // iku
+    {"合", {0x66}},  // ai
+    {"士", {0x67}},  // shi
+    {"寺", {0x68}},  // tera
+    {"山", {0x69}},  // yama
+    {"者", {0x6a}},  // mono
+    {"所", {0x6b}},  // tokoro
+    {"書", {0x6c}},  // kaku
+    {"小", {0x6d}},  // shou
+    {"沼", {0x6e}},  // numa
+    {"上", {0x6f}},  // ue
+    {"城", {0x70}},  // shiro
+    {"場", {0x71}},  // ba
+    {"出", {0x72}},  // shutsu
+    {"闇", {0x73}},  // yami
+    {"遺", {0x74}},  // nokosu
+    {"黄", {0x75}},  // ki
+    {"屋", {0x76}},  // ya
+    {"下", {0x77}},  // shita
+    {"家", {0x78}},  // ie
+    {"火", {0x79}},  // hi
+    {"花", {0x7a}},  // hana
+    {"レ", {0x7b}},  // re
+    {"Œ", {0x7c}},   // oe
+    {"ロ", {0x7d}},  // ro
+
+    {"青", {0x7f}},  // ao
+
+    {"・", {0x90}},  // nakaguro
+    {"゛", {0x91}},  // dakuten
+    {"゜", {0x92}},  // handakuten
+    {"ー", {0x93}},  // chouompu
+    {"『", {0x94}},  // nijuukagikakko left
+    {"』", {0x95}},  // nijuukagikakko right
+    // hiragana
+    {"ぁ", {0x96}},  // -a
+    {"あ", {0x97}},  // a
+    {"ぃ", {0x98}},  // -i
+    {"い", {0x99}},  // i
+    {"ぅ", {0x9a}},  // -u
+    {"う", {0x9b}},  // u
+    {"ぇ", {0x9c}},  // -e
+    {"え", {0x9d}},  // e
+    {"ぉ", {0x9e}},  // -o
+    {"お", {0x9f}},  // o
+    {"か", {0xa0}},  // ka
+    {"き", {0xa1}},  // ki
+    {"く", {0xa2}},  // ku
+    {"け", {0xa3}},  // ke
+    {"こ", {0xa4}},  // ko
+    {"さ", {0xa5}},  // sa
+    {"し", {0xa6}},  // shi
+    {"す", {0xa7}},  // su
+    {"せ", {0xa8}},  // se
+    {"そ", {0xa9}},  // so
+    {"た", {0xaa}},  // ta
+    {"ち", {0xab}},  // chi
+    {"っ", {0xac}},  // sokuon
+    {"つ", {0xad}},  // tsu
+    {"て", {0xae}},  // te
+    {"と", {0xaf}},  // to
+    {"な", {0xb0}},  // na
+    {"に", {0xb1}},  // ni
+    {"ぬ", {0xb2}},  // nu
+    {"ね", {0xb3}},  // ne
+    {"の", {0xb4}},  // no
+    {"は", {0xb5}},  // ha
+    {"ひ", {0xb6}},  // hi
+    {"ふ", {0xb7}},  // hu
+    {"へ", {0xb8}},  // he
+    {"ほ", {0xb9}},  // ho
+    {"ま", {0xba}},  // ma
+    {"み", {0xbb}},  // mi
+    {"む", {0xbc}},  // mu
+    {"め", {0xbd}},  // me
+    {"も", {0xbe}},  // mo
+    {"ゃ", {0xbf}},  // youon ya
+    {"や", {0xc0}},  // ya
+    {"ゅ", {0xc1}},  // youon yu
+    {"ゆ", {0xc2}},  // yu
+    {"ょ", {0xc3}},  // youon yo
+    {"よ", {0xc4}},  // yo
+    {"ら", {0xc5}},  // ra
+    {"り", {0xc6}},  // ri
+    {"る", {0xc7}},  // ru
+    {"れ", {0xc8}},  // re
+    {"ろ", {0xc9}},  // ro
+    {"ゎ", {0xca}},  // -wa
+    {"わ", {0xcb}},  // wa
+    {"を", {0xcc}},  // wo
+    {"ん", {0xcd}},  // -n
+    // katakana
+    {"ァ", {0xce}},  // -a
+    {"ア", {0xcf}},  // a
+    {"ィ", {0xd0}},  // -i
+    {"イ", {0xd1}},  // i
+    {"ゥ", {0xd2}},  // -u
+    {"ウ", {0xd3}},  // u
+    {"ェ", {0xd4}},  // -e
+    {"エ", {0xd5}},  // e
+    {"ォ", {0xd6}},  // -o
+    {"オ", {0xd7}},  // o
+    {"カ", {0xd8}},  // ka
+    {"キ", {0xd9}},  // ki
+    {"ク", {0xda}},  // ku
+    {"ケ", {0xdb}},  // ke
+    {"コ", {0xdc}},  // ko
+    {"サ", {0xdd}},  // sa
+    {"シ", {0xde}},  // shi
+    {"ス", {0xdf}},  // su
+    {"セ", {0xe0}},  // se
+    {"ソ", {0xe1}},  // so
+    {"タ", {0xe2}},  // ta
+    {"チ", {0xe3}},  // chi
+    {"ッ", {0xe4}},  // sokuon
+    {"ツ", {0xe5}},  // tsu
+    {"テ", {0xe6}},  // te
+    {"ト", {0xe7}},  // to
+    {"ナ", {0xe8}},  // na
+    {"ニ", {0xe9}},  // ni
+    {"ヌ", {0xea}},  // nu
+    {"ネ", {0xeb}},  // ne
+    {"ノ", {0xec}},  // no
+    {"ハ", {0xed}},  // ha
+    {"ヒ", {0xee}},  // hi
+    {"フ", {0xef}},  // hu
+    {"ヘ", {0xf0}},  // he
+    {"ホ", {0xf1}},  // ho
+    {"マ", {0xf2}},  // ma
+    {"ミ", {0xf3}},  // mi
+    {"ム", {0xf4}},  // mu
+    {"メ", {0xf5}},  // me
+    {"モ", {0xf6}},  // mo
+    {"ャ", {0xf7}},  // youon ya
+    {"ヤ", {0xf8}},  // ya
+    {"ュ", {0xf9}},  // youon yu
+    {"ユ", {0xfa}},  // yu
+    {"ョ", {0xfb}},  // youon yo
+    {"ヨ", {0xfc}},  // yo
+    {"ラ", {0xfd}},  // ra
+    {"リ", {0xfe}},  // ri
+    {"ル", {0xff}},  // ru
+    // kanji 2
+    {"宝", {1, 0x01}},  // takara
+
+    {"石", {1, 0x10}},  // ishi
+    {"赤", {1, 0x11}},  // aka
+    {"跡", {1, 0x12}},  // ato
+    {"川", {1, 0x13}},  // kawa
+    {"戦", {1, 0x14}},  // ikusa
+    {"村", {1, 0x15}},  // mura
+    {"隊", {1, 0x16}},  // tai
+    {"台", {1, 0x17}},  // utena
+    {"長", {1, 0x18}},  // osa
+    {"鳥", {1, 0x19}},  // tori
+    {"艇", {1, 0x1a}},  // tei
+    {"洞", {1, 0x1b}},  // hora
+    {"道", {1, 0x1c}},  // michi
+    {"発", {1, 0x1d}},  // hatsu
+    {"飛", {1, 0x1e}},  // tobu
+    {"噴", {1, 0x1f}},  // fuku
+
+    {"池", {1, 0xa0}},  // ike
+    {"中", {1, 0xa1}},  // naka
+    {"塔", {1, 0xa2}},  // tou
+    {"島", {1, 0xa3}},  // shima
+    {"部", {1, 0xa4}},  // bu
+    {"砲", {1, 0xa5}},  // hou
+    {"産", {1, 0xa6}},  // san
+    {"眷", {1, 0xa7}},  // kaerimiru
+    {"力", {1, 0xa8}},  // chikara
+    {"緑", {1, 0xa9}},  // midori
+    {"岸", {1, 0xaa}},  // kishi
+    {"像", {1, 0xab}},  // zou
+    {"谷", {1, 0xac}},  // tani
+    {"心", {1, 0xad}},  // kokoro
+    {"森", {1, 0xae}},  // mori
+    {"水", {1, 0xaf}},  // mizu
+    {"船", {1, 0xb0}},  // fune
+    {"™", {1, 0xb1}},   // trademark
+};
+
+GameTextFontBank g_font_bank_jak1_v2(GameTextVersion::JAK1_V2,
+                                     &g_encode_info_jak1_v2,
+                                     &g_replace_info_jak1,
+                                     &passthrus);
+
+/*!
  * ========================
  * GAME TEXT FONT BANK LIST
  * ========================
@@ -510,7 +744,8 @@ GameTextFontBank g_font_bank_jak1(GameTextVersion::JAK1_V1,
  */
 
 std::map<GameTextVersion, GameTextFontBank*> g_font_banks = {
-    {GameTextVersion::JAK1_V1, &g_font_bank_jak1}};
+    {GameTextVersion::JAK1_V1, &g_font_bank_jak1},
+    {GameTextVersion::JAK1_V2, &g_font_bank_jak1_v2}};
 
 const GameTextFontBank* get_font_bank(GameTextVersion version) {
   return g_font_banks.at(version);

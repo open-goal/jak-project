@@ -1349,32 +1349,28 @@
       ((< (-> self caught) 0)
        )
       (else
-        (when (< (mod (-> *display* base-frame-counter) 300) 150)
-          (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-                 (gp-0 (-> s5-0 base))
-                 )
-            (draw-string-xy
-              (lookup-text! *common-text* (game-text-id lose!) #f)
-              s5-0
-              256
-              100
-              (font-color orange-red)
-              (font-flags shadow kerning middle large)
-              )
-            (let ((a3-1 (-> s5-0 base)))
-              (let ((v1-13 (the-as dma-packet (-> s5-0 base))))
-                (set! (-> v1-13 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                (set! (-> v1-13 vif0) (new 'static 'vif-tag))
-                (set! (-> v1-13 vif1) (new 'static 'vif-tag))
-                (set! (-> s5-0 base) (&+ (the-as pointer v1-13) 16))
+        (when (< (mod (-> *display* base-frame-counter) (seconds 1)) (seconds 0.5))
+          ;; PAL patch here
+          (let ((gp-0 (new
+                        'stack
+                        'font-context
+                        *font-default-matrix*
+                        56
+                        100
+                        0.0
+                        (font-color orange-red)
+                        (font-flags shadow kerning)
+                        )
+                      )
                 )
-              (dma-bucket-insert-tag
-                (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                (bucket-id debug)
-                gp-0
-                (the-as (pointer dma-tag) a3-1)
-                )
+            (let ((v1-10 gp-0))
+              (set! (-> v1-10 width) (the float 400))
               )
+            (let ((v1-11 gp-0))
+              (set! (-> v1-11 height) (the float 50))
+              )
+            (set! (-> gp-0 flags) (font-flags shadow kerning middle large))
+            (print-game-text (lookup-text! *common-text* (game-text-id lose!) #f) gp-0 #f 128 22)
             )
           )
         (fisher-draw-display self)
