@@ -1,3 +1,4 @@
+// clang-format off
 #include "ReplClient.h"
 
 #include "common/cross_sockets/XSocket.h"
@@ -12,6 +13,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
+// clang-format on
 
 void ReplClient::eval(std::string form) {
   if (!is_connected()) {

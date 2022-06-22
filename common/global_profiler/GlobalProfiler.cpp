@@ -1,3 +1,4 @@
+// clang-format off
 #include "GlobalProfiler.h"
 
 #include <chrono>
@@ -23,6 +24,7 @@ u32 get_current_tid() {
   return (u32)GetCurrentThreadId();
 }
 #endif
+// clang-format on
 
 u64 get_current_ts() {
   return std::chrono::steady_clock::now().time_since_epoch().count();

@@ -1,3 +1,4 @@
+// clang-format off
 #include "ReplServer.h"
 
 #include "common/cross_sockets/XSocket.h"
@@ -12,6 +13,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
+// clang-format on
 
 // TODO - basically REPL to listen and inject commands into a running REPL
 // - we will need a C++ side client as well which will let us communicate with the repl via for

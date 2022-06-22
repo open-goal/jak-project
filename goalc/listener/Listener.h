@@ -5,6 +5,7 @@
  * The Listener can connect to a Deci2Server for debugging.
  */
 
+// clang-format off
 #ifndef JAK1_LISTENER_H
 #define JAK1_LISTENER_H
 
@@ -20,6 +21,7 @@
 
 #include "goalc/debugger/Debugger.h"
 #include "MemoryMap.h"
+// clang-format on
 
 namespace listener {
 

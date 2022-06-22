@@ -3,6 +3,7 @@
  * The Listener can connect to a Deci2Server for debugging.
  */
 
+// clang-format off
 #ifdef __linux__
 #include <stdexcept>
 
@@ -32,6 +33,7 @@
 #include "Listener.h"
 
 #include "third-party/fmt/core.h"
+// clang-format on
 
 using namespace versions;
 constexpr bool debug_listener = false;
