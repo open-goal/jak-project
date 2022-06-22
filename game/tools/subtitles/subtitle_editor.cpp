@@ -179,9 +179,16 @@ void SubtitleEditor::draw_window() {
   }
 
   if (ImGui::TreeNode("All Cutscenes")) {
+    // BUG - for some reason drawing this crashes when current language != 0!!
     ImGui::InputText("New Scene Name", &m_new_scene_name);
-    // TODO - make this a dropdown
-    ImGui::InputText("New Scene Group", &m_new_scene_group);
+    if (ImGui::BeginCombo("Sorting Group", m_new_scene_group.c_str())) {
+      for (size_t i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
+        if (ImGui::Selectable(m_subtitle_db.m_subtitle_groups->m_group_order[i].c_str())) {
+          m_new_scene_group = m_subtitle_db.m_subtitle_groups->m_group_order[i];
+        }
+      }
+      ImGui::EndCombo();
+    }
     ImGui::InputText("Filter", &m_filter, ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
     if (is_scene_in_current_lang(m_new_scene_name)) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
@@ -201,8 +208,17 @@ void SubtitleEditor::draw_window() {
         newScene.m_id = 0;  // TODO - id is always zero, bug in subtitles.cpp?
         newScene.m_sorting_group = m_new_scene_group;
         m_subtitle_db.m_banks.at(m_current_language)->add_scene(newScene);
+        m_subtitle_db.m_subtitle_groups->add_scene(newScene.m_sorting_group, newScene.m_name);
+        if (m_add_new_scene_as_current) {
+          auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
+          auto& scene_info = scenes[m_new_scene_name];
+          m_current_scene = &scene_info;
+        }
         m_new_scene_name = "";
       }
+      ImGui::SameLine();
+      ImGui::Checkbox("Add as Current Scene", &m_add_new_scene_as_current);
+      ImGui::NewLine();
     }
 
     draw_all_cutscene_groups();
@@ -210,10 +226,17 @@ void SubtitleEditor::draw_window() {
   }
 
   if (ImGui::TreeNode("All Hints")) {
+    // BUG - for some reason drawing this crashes when current language != 0!!
     ImGui::InputText("New Scene Name", &m_new_scene_name);
     ImGui::InputText("New Scene ID (hex)", &m_new_scene_id);
-    // TODO - make this a dropdown
-    ImGui::InputText("New Scene Group", &m_new_scene_group);
+    if (ImGui::BeginCombo("Sorting Group", m_new_scene_group.c_str())) {
+      for (size_t i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
+        if (ImGui::Selectable(m_subtitle_db.m_subtitle_groups->m_group_order[i].c_str())) {
+          m_new_scene_group = m_subtitle_db.m_subtitle_groups->m_group_order[i];
+        }
+      }
+      ImGui::EndCombo();
+    }
     ImGui::InputText("Filter", &m_filter, ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
     if (is_scene_in_current_lang(m_new_scene_name)) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
@@ -236,6 +259,7 @@ void SubtitleEditor::draw_window() {
           newScene.m_kind = SubtitleSceneKind::HintNamed;
           newScene.m_id = strtoul(m_new_scene_id.c_str(), nullptr, 16);
         }
+        // currently hints have no way in the editor to add a line, so give us one for free
         newScene.add_line(0, "", "", "", "", false);
         newScene.m_sorting_group = m_new_scene_group;
         m_subtitle_db.m_banks.at(m_current_language)->add_scene(newScene);
