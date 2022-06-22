@@ -412,13 +412,15 @@ GfxDisplayMode GLDisplay::get_fullscreen() {
 void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out, s32* count_out) {
   int count = 0;
   auto vmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-  auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
-  if (vmode_idx >= 0) {
-    vmode = &vmodes[vmode_idx];
-  } else {
-    for (int i = 0; i < count; ++i) {
-      if (!vmode || vmode->height < vmodes[i].height) {
-        vmode = &vmodes[i];
+  if (get_fullscreen() == GfxDisplayMode::Fullscreen) {
+    auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
+    if (vmode_idx >= 0) {
+      vmode = &vmodes[vmode_idx];
+    } else {
+      for (int i = 0; i < count; ++i) {
+        if (!vmode || vmode->height < vmodes[i].height) {
+          vmode = &vmodes[i];
+        }
       }
     }
   }
