@@ -63,6 +63,8 @@ struct GraphicsData {
   double last_engine_time = 1. / 60.;
   float pmode_alp = 0.f;
 
+  std::string imgui_log_filename, imgui_filename;
+
   GraphicsData()
       : dma_copier(EE_MAIN_MEM_SIZE),
         texture_pool(std::make_shared<TexturePool>()),
@@ -236,9 +238,11 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   ImGui::CreateContext();
 
   // Init ImGui settings
+  g_gfx_data->imgui_filename = file_util::get_file_path({"imgui.ini"});
+  g_gfx_data->imgui_log_filename = file_util::get_file_path({"imgui_log.txt"});
   ImGuiIO& io = ImGui::GetIO();
-  io.IniFilename = file_util::get_file_path({"imgui.ini"}).c_str();
-  io.LogFilename = file_util::get_file_path({"imgui_log.txt"}).c_str();
+  io.IniFilename = g_gfx_data->imgui_filename.c_str();
+  io.LogFilename = g_gfx_data->imgui_log_filename.c_str();
 
   // set up to get inputs for this window
   ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -260,6 +264,9 @@ GLDisplay::GLDisplay(GLFWwindow* window, bool is_main) : m_window(window) {
 }
 
 GLDisplay::~GLDisplay() {
+  ImGuiIO& io = ImGui::GetIO();
+  io.IniFilename = nullptr;
+  io.LogFilename = nullptr;
   glfwSetWindowUserPointer(m_window, nullptr);
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();

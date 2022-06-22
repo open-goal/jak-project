@@ -40,7 +40,6 @@ int main(int argc, char** argv) {
   app.add_option("-u,--user", username,
                  "Specify the username to use for your user profile in 'goal_src/user/'");
   app.add_option("-p,--port", nrepl_port, "Specify the nREPL port.  Defaults to 8181");
-  app.add_flag("-v,--verbose", verbose, "Enable verbose output");
   app.add_flag("--auto-lt", auto_listen,
                "Attempt to automatically connect to the listener on startup");
   app.add_flag("--auto-dbg", auto_debug,
@@ -78,7 +77,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  setup_logging(verbose);
+  setup_logging(true);
 
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
