@@ -560,7 +560,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
     // in this case, we expect the value we're oring with to be the appropriate mask for the field.
 
-    fmt::print("Rare bitfield set!\n");
+    lg::info("Rare bitfield set!\n");
     u64 value = step.amount;
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);

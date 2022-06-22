@@ -78,10 +78,8 @@ Form* lca_form(Form* a, Form* b, const Env& env) {
     ai--;
     bi--;
   }
-  if (!result) {
-    fmt::print("{} bad form is {}\n\n{}\n", env.func->name(), a->to_string(env), b->to_string(env));
-  }
-  ASSERT(result);
+  ASSERT_MSG(result, fmt::format("{} bad form is {}\n\n{}\n", env.func->name(), a->to_string(env),
+                                 b->to_string(env)));
 
   // fmt::print("{}\n\n", result->to_string(env));
   return result;

@@ -74,11 +74,11 @@ goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
       // TODO - having this logic here isn't great.
       auto stride = align(field_type_info->get_size_in_memory(),
                           field_type_info->get_inline_array_stride_alignment());
-      fmt::print("decompiler {} stride {} {} = {}\n", field_type_info->get_name(),
-                 field_type_info->get_size_in_memory(),
-                 field_type_info->get_inline_array_stride_alignment(),
-                 align(field_type_info->get_size_in_memory(),
-                       field_type_info->get_inline_array_stride_alignment()));
+      lg::info("decompiler {} stride {} {} = {}\n", field_type_info->get_name(),
+               field_type_info->get_size_in_memory(),
+               field_type_info->get_inline_array_stride_alignment(),
+               align(field_type_info->get_size_in_memory(),
+                     field_type_info->get_inline_array_stride_alignment()));
 
       if (dynamic_cast<BasicType*>(field_type_info)) {
         throw std::runtime_error("Plan basic arrays not supported yet");

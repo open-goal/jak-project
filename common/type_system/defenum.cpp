@@ -9,6 +9,7 @@
 #include "deftype.h"
 #include "third-party/fmt/core.h"
 #include "common/util/BitUtils.h"
+#include "common/log/log.h"
 
 namespace {
 const goos::Object& car(const goos::Object* x) {

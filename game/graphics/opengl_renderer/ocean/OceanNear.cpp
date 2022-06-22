@@ -53,7 +53,7 @@ void OceanNear::render(DmaFollower& dma,
   }
 
   if (dma.current_tag().qwc != 2) {
-    fmt::print("abort!\n");
+    lg::error("abort OceanNear::render!\n");
     while (dma.current_tag_offset() != render_state->next_bucket) {
       dma.read_and_advance();
     }

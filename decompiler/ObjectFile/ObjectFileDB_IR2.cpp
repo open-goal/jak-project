@@ -52,7 +52,7 @@ void ObjectFileDB::analyze_functions_ir2(
   int file_idx = 1;
   for_each_obj([&](ObjectFileData& data) {
     Timer file_timer;
-    fmt::print("[{:3d}/{}]------ {}\n", file_idx++, total_file_count, data.to_unique_name());
+    lg::info("[{:3d}/{}]------ {}\n", file_idx++, total_file_count, data.to_unique_name());
     ir2_do_segment_analysis_phase1(TOP_LEVEL_SEGMENT, config, data);
     ir2_do_segment_analysis_phase1(DEBUG_SEGMENT, config, data);
     ir2_do_segment_analysis_phase1(MAIN_SEGMENT, config, data);
@@ -103,7 +103,7 @@ void ObjectFileDB::analyze_functions_ir2(
 
     for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
 
-    fmt::print("Done in {:.2f}ms\n", file_timer.getMs());
+    lg::info("Done in {:.2f}ms\n", file_timer.getMs());
   });
 
   int total = stats.let.total();

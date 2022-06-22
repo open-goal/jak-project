@@ -13,6 +13,7 @@
 #include "goalc/listener/Listener.h"
 #include "third-party/fmt/core.h"
 #include "common/util/Assert.h"
+#include "common/log/log.h"
 
 /*!
  * Is the target halted? If we don't know or aren't connected, returns false.

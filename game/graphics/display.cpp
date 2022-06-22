@@ -106,7 +106,7 @@ int GfxDisplay::height() {
 void GfxDisplay::backup_params() {
   m_renderer->display_size(this, &m_width, &m_height);
   m_renderer->display_position(this, &m_xpos, &m_ypos);
-  fmt::print("backed up window: {},{} {}x{}\n", m_xpos, m_ypos, m_width, m_height);
+  lg::info("backed up window: {},{} {}x{}\n", m_xpos, m_ypos, m_width, m_height);
 }
 
 /*

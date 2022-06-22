@@ -3,6 +3,7 @@
 #include "Env.h"
 #include "IR.h"
 #include "common/goos/Reader.h"
+#include "common/log/log.h"
 
 ///////////////////
 // Env

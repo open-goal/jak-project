@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: ISC
 #include "ame_handler.h"
 #include "game/sound/989snd/blocksound_handler.h"
+#include "common/log/log.h"
 
 namespace snd {
 
@@ -52,7 +53,7 @@ bool ame_handler::tick() {
 
 void ame_handler::start_segment(u32 id) {
   auto midiblock = (MIDIBlockHeader*)(m_header->BlockPtr[id] + (uintptr_t)m_header);
-  fmt::print("starting segment {}\n", id);
+  lg::debug("starting segment {}\n", id);
   m_midis.emplace(id, std::make_unique<midi_handler>(midiblock, m_vm, m_sound, m_vol, m_pan,
                                                      m_locator, m_bank, this));
 }

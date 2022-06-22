@@ -1,4 +1,5 @@
 #include "goalc/compiler/Compiler.h"
+#include "common/log/log.h"
 
 /*!
  * Main table for compiler forms that can be constant propagated.

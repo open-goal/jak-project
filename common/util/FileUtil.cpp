@@ -32,6 +32,7 @@
 #include <cstring>
 #endif
 #include "common/util/Assert.h"
+#include "common/log/log.h"
 
 namespace file_util {
 std::filesystem::path get_user_home_dir() {
@@ -116,7 +117,7 @@ bool setup_project_path(std::optional<std::filesystem::path> project_path_overri
   if (project_path_override) {
     gFilePathInfo.path_to_data = *project_path_override;
     gFilePathInfo.initialized = true;
-    fmt::print("Using explicitly set project path: {}\n", project_path_override->string());
+    lg::info("Using explicitly set project path: {}\n", project_path_override->string());
     return true;
   }
 
@@ -124,7 +125,7 @@ bool setup_project_path(std::optional<std::filesystem::path> project_path_overri
   if (data_path) {
     gFilePathInfo.path_to_data = *data_path;
     gFilePathInfo.initialized = true;
-    fmt::print("Using data path: {}\n", data_path->string());
+    lg::info("Using data path: {}\n", data_path->string());
     return true;
   }
 
@@ -132,11 +133,11 @@ bool setup_project_path(std::optional<std::filesystem::path> project_path_overri
   if (development_repo_path) {
     gFilePathInfo.path_to_data = *development_repo_path;
     gFilePathInfo.initialized = true;
-    fmt::print("Using development repo path: {}\n", *development_repo_path);
+    lg::info("Using development repo path: {}\n", *development_repo_path);
     return true;
   }
 
-  fmt::print("Failed to initialize project path.\n");
+  lg::error("Failed to initialize project path.\n");
   return false;
 }
 

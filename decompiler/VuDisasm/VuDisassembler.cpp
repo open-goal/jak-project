@@ -5,6 +5,7 @@
 #include "third-party/fmt/core.h"
 #include "common/util/print_float.h"
 #include "common/util/Assert.h"
+#include "common/log/log.h"
 
 namespace decompiler {
 

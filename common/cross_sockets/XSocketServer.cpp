@@ -11,6 +11,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
+#include "common/log/log.h"
 
 XSocketServer::XSocketServer(std::function<bool()> shutdown_callback,
                              int _tcp_port,
@@ -65,19 +66,19 @@ bool XSocketServer::init_server() {
   addr.sin_port = htons(tcp_port);
 
   if (bind(listening_socket, (sockaddr*)&addr, sizeof(addr)) < 0) {
-    fmt::print("[XSocketServer:{}] failed to bind\n", tcp_port);
+    lg::error("[XSocketServer:{}] failed to bind\n", tcp_port);
     close_server_socket();
     return false;
   }
 
   if (listen(listening_socket, 0) < 0) {
-    fmt::print("[XSocketServer:{}] failed to listen\n", tcp_port);
+    lg::error("[XSocketServer:{}] failed to listen\n", tcp_port);
     close_server_socket();
     return false;
   }
 
   server_initialized = true;
-  fmt::print("[XSocketServer:{}] initialized\n", tcp_port);
+  lg::info("[XSocketServer:{}] initialized\n", tcp_port);
   post_init();
   return true;
 }

@@ -62,11 +62,12 @@ void log_message(level log_level, LogTime& now, const char* message) {
     }
 
     if (log_level >= gLogger.stdout_log_level) {
-      fmt::print("{} [", date_string);
+      fmt::print("[");
       fmt::print(fg(log_colors[int(log_level)]), "{}", log_level_names[int(log_level)]);
       fmt::print("] {}\n", message);
       if (log_level >= gLogger.flush_level) {
         fflush(stdout);
+        fflush(stderr);
       }
     }
   }

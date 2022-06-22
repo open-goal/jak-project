@@ -4,6 +4,7 @@
 #include "third-party/fmt/core.h"
 #include "common/util/Range.h"
 #include "Allocator_v2.h"
+#include "common/log/log.h"
 
 /*!
  Documentation:

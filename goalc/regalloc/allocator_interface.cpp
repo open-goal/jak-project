@@ -7,7 +7,7 @@
 
 #include "third-party/fmt/core.h"
 #include "allocator_interface.h"
-
+#include "common/log/log.h"
 /*!
  * Print out the input data for debugging.
  */

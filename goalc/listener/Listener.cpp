@@ -30,6 +30,7 @@
 
 #include "third-party/fmt/core.h"
 #include "common/util/Assert.h"
+#include "common/log/log.h"
 
 using namespace versions;
 constexpr bool debug_listener = false;

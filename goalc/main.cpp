@@ -125,7 +125,7 @@ int main(int argc, char** argv) {
     // Poll Terminal
     while (status != ReplStatus::WANT_EXIT) {
       if (status == ReplStatus::WANT_RELOAD) {
-        fmt::print("Reloading compiler...\n");
+        lg::info("Reloading compiler...\n");
         std::lock_guard<std::mutex> lock(compiler_mutex);
         if (compiler) {
           compiler->save_repl_history();
@@ -141,7 +141,7 @@ int main(int argc, char** argv) {
       }
     }
   } catch (std::exception& e) {
-    fmt::print(stderr, "Compiler Fatal Error: {}\n", e.what());
+    lg::error("Compiler Fatal Error: {}\n", e.what());
     status = ReplStatus::WANT_EXIT;
   }
 

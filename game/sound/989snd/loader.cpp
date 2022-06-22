@@ -5,6 +5,7 @@
 #include <fstream>
 #include <optional>
 #include <third-party/fmt/core.h>
+#include "common/log/log.h"
 
 namespace snd {
 enum chunk : u32 { bank, samples, midi };
@@ -82,7 +83,7 @@ u32 loader::read_bank(std::fstream& in) {
   in.read((char*)(&attr), sizeof(attr));
 
   if (attr.type != 1 && attr.type != 3) {
-    fmt::print("Error: File type {} not supported.", attr.type);
+    lg::error("Error: File type {} not supported.", attr.type);
     return -1;
   }
 
@@ -119,7 +120,7 @@ u32 loader::read_bank(std::fstream& in) {
     load_midi(in);
   }
 
-  fmt::print("Created bank {}\n", bank_id);
+  lg::info("Created bank {}\n", bank_id);
 
   return bank_id;
 }
@@ -135,7 +136,7 @@ void loader::load_midi(std::fstream& in) {
   in.read((char*)midi.get(), attr.where[0].size);
 
   auto h = (MIDIBlock*)midi.get();
-  fmt::print("Loaded midi {:.4}\n", (char*)&h->ID);
+  lg::info("Loaded midi {:.4}\n", (char*)&h->ID);
 
   m_midi.emplace(h->ID, (MIDIBlock*)midi.get());
   m_midi_chunks.emplace_back(std::move(midi));

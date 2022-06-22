@@ -19,6 +19,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 #include "common/util/Assert.h"
+#include "common/log/log.h"
 
 static constexpr bool memcard_debug = false;
 
@@ -90,11 +91,11 @@ using namespace ee;
 template <typename... Args>
 void mc_print(const std::string& str, Args&&... args) {
   if (memcard_debug) {
-    fmt::print("[MC] ");
+    lg::info("[MC] ");
     if (!str.empty() && str.back() == '\n') {
-      fmt::print(str, std::forward<Args>(args)...);
+      lg::info(str, std::forward<Args>(args)...);
     } else {
-      fmt::print(str + '\n', std::forward<Args>(args)...);
+      lg::info(str + '\n', std::forward<Args>(args)...);
     }
   }
 }
@@ -278,7 +279,7 @@ void pc_game_save_synch() {
   auto save_path = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p4];
   file_util::create_dir_if_needed_for_file(save_path.string());
   auto fd = fopen(save_path.string().c_str(), "wb");
-  fmt::print("[MC] synchronous save file open took {:.2f}ms\n", mc_timer.getMs());
+  lg::info("[MC] synchronous save file open took {:.2f}ms\n", mc_timer.getMs());
   if (fd) {
     // cb_openedsave //
     mc_print("save file opened, writing header...");
@@ -326,12 +327,12 @@ void pc_game_save_synch() {
       op.result = McStatusCode::INTERNAL_ERROR;
     }
   } else {
-    fmt::print("[MC] Error opening file, errno - {}", errno);
+    lg::info("[MC] Error opening file, errno - {}", errno);
     op.operation = MemoryCardOperationKind::NO_OP;
     op.result = McStatusCode::INTERNAL_ERROR;
   }
 
-  fmt::print("[MC] synchronous save took {:.2f}ms\n", mc_timer.getMs());
+  lg::info("[MC] synchronous save took {:.2f}ms\n", mc_timer.getMs());
 }
 
 void pc_game_load_open_file(FILE* fd) {
@@ -470,7 +471,7 @@ void pc_game_load_synch() {
   auto fd = fopen(path.string().c_str(), "rb");
   pc_game_load_open_file(fd);
 
-  fmt::print("[MC] synchronous load took {:.2f}ms\n", mc_timer.getMs());
+  lg::info("[MC] synchronous load took {:.2f}ms\n", mc_timer.getMs());
 }
 
 /*!

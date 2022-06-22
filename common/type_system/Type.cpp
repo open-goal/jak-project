@@ -7,6 +7,7 @@
 #include "third-party/fmt/core.h"
 #include "Type.h"
 #include "common/util/Assert.h"
+#include "common/log/log.h"
 
 namespace {
 std::string reg_kind_to_string(RegClass kind) {

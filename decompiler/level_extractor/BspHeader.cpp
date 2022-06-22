@@ -211,7 +211,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
 
   while (word_offset < qwc_total * 4) {
     VifCode next(deref_u32(start, word_offset));
-    fmt::print("{} at: {} bytes, {} qw\n", next.print(), word_offset * 4, word_offset / 4);
+    lg::debug("{} at: {} bytes, {} qw\n", next.print(), word_offset * 4, word_offset / 4);
     word_offset++;
     switch (next.kind) {
       case VifCode::Kind::UNPACK_V4_16: {
@@ -227,8 +227,8 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
           words[1] = deref_u32(start, word_offset++);
           u16 unpacked[4];
           memcpy(unpacked, words, 8);
-          fmt::print("  [{:3d} {:3d} {:3d} {:3d}]\n", unpacked[0], unpacked[1], unpacked[2],
-                     unpacked[3]);
+          lg::debug("  [{:3d} {:3d} {:3d} {:3d}]\n", unpacked[0], unpacked[1], unpacked[2],
+                    unpacked[3]);
         }
 
       } break;
@@ -245,7 +245,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
           words[1] = deref_u32(start, word_offset++);
           words[2] = deref_u32(start, word_offset++);
           words[3] = deref_u32(start, word_offset++);
-          fmt::print("  [{:3d} {:3d} {:3d} {:3d}]\n", words[0], words[1], words[2], words[3]);
+          lg::debug("  [{:3d} {:3d} {:3d} {:3d}]\n", words[0], words[1], words[2], words[3]);
         }
       } break;
 
@@ -260,7 +260,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
           words[0] = deref_u32(start, word_offset++);
           words[1] = deref_u32(start, word_offset++);
           words[2] = deref_u32(start, word_offset++);
-          fmt::print("  [{:3d} {:3d} {:3d}]\n", words[0], words[1], words[2]);
+          lg::debug("  [{:3d} {:3d} {:3d}]\n", words[0], words[1], words[2]);
         }
       } break;
 
@@ -270,7 +270,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
         words[1] = deref_u32(start, word_offset++);
         words[2] = deref_u32(start, word_offset++);
         words[3] = deref_u32(start, word_offset++);
-        fmt::print(" row data [{:3d} {:3d} {:3d} {:3d}]\n", words[0], words[1], words[2], words[3]);
+        lg::debug(" row data [{:3d} {:3d} {:3d} {:3d}]\n", words[0], words[1], words[2], words[3]);
       } break;
 
       case VifCode::Kind::STMOD: {
@@ -289,7 +289,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
           s8 words[4];
           u32 all = deref_u32(start, word_offset++);
           memcpy(words, &all, 4);
-          fmt::print("  [{:3d} {:3d} {:3d} {:3d}]\n", words[0], words[1], words[2], words[3]);
+          lg::debug("  [{:3d} {:3d} {:3d} {:3d}]\n", words[0], words[1], words[2], words[3]);
         }
       } break;
       case VifCode::Kind::NOP:
@@ -298,7 +298,7 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
         ASSERT_MSG(false, fmt::format("unknown: {}", next.print()));
     }
   }
-  fmt::print("-------------------------------------------\n");
+  lg::debug("-------------------------------------------\n");
 }
 
 std::vector<u8> read_dma_chain(Ref& start, u32 qwc) {
@@ -345,11 +345,11 @@ void TFragment::read_from_file(TypedRef ref,
 
   if (stats->debug_print_dma_data) {
     // first, common
-    fmt::print("DMA COMMON {}, {} qwc:\n", dmas[0].label_name, dma_qwc[0]);
+    lg::info("DMA COMMON {}, {} qwc:\n", dmas[0].label_name, dma_qwc[0]);
     tfrag_debug_print_unpack(dmas[0].ref, dma_qwc[0]);
 
     // next "base"
-    fmt::print("DMA BASE {}, {} qwc:\n", dmas[1].label_name, dma_qwc[1]);
+    lg::info("DMA BASE {}, {} qwc:\n", dmas[1].label_name, dma_qwc[1]);
     tfrag_debug_print_unpack(dmas[1].ref, dma_qwc[1]);
 
     // next "level0"
@@ -357,10 +357,10 @@ void TFragment::read_from_file(TypedRef ref,
     //  tfrag_debug_print_unpack(dmas[0].ref, dma_qwc[3]);
 
     // next "level1"
-    fmt::print("DMA LEVEL1 {}, {} qwc:\n", dmas[2].label_name, dma_qwc[2]);
+    lg::info("DMA LEVEL1 {}, {} qwc:\n", dmas[2].label_name, dma_qwc[2]);
     tfrag_debug_print_unpack(dmas[2].ref, dma_qwc[2]);
 
-    fmt::print("qwc's: {} {} {} {}\n", dma_qwc[0], dma_qwc[1], dma_qwc[2], dma_qwc[3]);
+    lg::info("qwc's: {} {} {} {}\n", dma_qwc[0], dma_qwc[1], dma_qwc[2], dma_qwc[3]);
   }
 
   num_base_colors = read_plain_data_field<u8>(ref, "num-base-colors", dts);
@@ -1500,7 +1500,7 @@ void PrototypeBucketShrub::read_from_file(TypedRef ref,
   flags = read_plain_data_field<u32>(ref, "flags", dts);
   if (flags) {
     // lid in misty has flag 2, not sure what it means yet.
-    fmt::print("proto: {} flags: {}\n", name, flags);
+    lg::info("proto: {} flags: {}\n", name, flags);
   }
   ASSERT(flags == 0 || flags == 2);
   in_level = read_plain_data_field<u16>(ref, "in-level", dts);

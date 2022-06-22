@@ -7,6 +7,7 @@
 #include "common/goos/ParseHelpers.h"
 #include "deftype.h"
 #include "third-party/fmt/core.h"
+#include "common/log/log.h"
 
 /*!
  * Missing Features

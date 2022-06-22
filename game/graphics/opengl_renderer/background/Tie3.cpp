@@ -1,6 +1,7 @@
 #include "Tie3.h"
 
 #include "third-party/imgui/imgui.h"
+#include "common/log/log.h"
 
 Tie3::Tie3(const std::string& name, BucketId my_id, int level_id)
     : BucketRenderer(name, my_id), m_level_id(level_id) {
@@ -157,7 +158,7 @@ bool Tie3::setup_for_level(const std::string& level, SharedRenderState* render_s
   }
 
   if (tfrag3_setup_timer.getMs() > 5) {
-    fmt::print("TIE setup: {:.1f}ms\n", tfrag3_setup_timer.getMs());
+    lg::info("TIE setup: {:.1f}ms\n", tfrag3_setup_timer.getMs());
   }
 
   return m_has_level;

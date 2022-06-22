@@ -5,6 +5,7 @@
 #include "goalc/emitter/CallingConvention.h"
 #include "common/util/math_util.h"
 #include "common/type_system/state.h"
+#include "common/log/log.h"
 
 namespace {
 

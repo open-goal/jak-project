@@ -1,4 +1,5 @@
 #include "CommonOceanRenderer.h"
+#include "common/log/log.h"
 
 CommonOceanRenderer::CommonOceanRenderer() {
   m_vertices.resize(4096 * 10);  // todo decrease
@@ -252,7 +253,7 @@ void CommonOceanRenderer::handle_near_adgif(const u8* data, u32 offset, u32 coun
       } break;
 
       default:
-        fmt::print("reg: {}\n", register_address_name(addr));
+        lg::debug("reg: {}\n", register_address_name(addr));
         break;
     }
   }
@@ -412,7 +413,7 @@ void CommonOceanRenderer::handle_mid_adgif(const u8* data, u32 offset) {
       } break;
 
       default:
-        fmt::print("reg: {}\n", register_address_name(addr));
+        lg::debug("reg: {}\n", register_address_name(addr));
         break;
     }
   }

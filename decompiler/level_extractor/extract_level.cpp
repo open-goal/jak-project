@@ -35,18 +35,18 @@ std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>
  */
 bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
   if (file.segments != 1) {
-    fmt::print("Got {} segments, but expected 1\n", file.segments);
+    lg::error("Got {} segments, but expected 1\n", file.segments);
     return false;
   }
 
   auto& first_word = file.words_by_seg.at(0).at(0);
   if (first_word.kind() != decompiler::LinkedWord::TYPE_PTR) {
-    fmt::print("Expected the first word to be a type pointer, but it wasn't.\n");
+    lg::error("Expected the first word to be a type pointer, but it wasn't.\n");
     return false;
   }
 
   if (first_word.symbol_name() != "bsp-header") {
-    fmt::print("Expected to get a bsp-header, but got {} instead.\n", first_word.symbol_name());
+    lg::error("Expected to get a bsp-header, but got {} instead.\n", first_word.symbol_name());
     return false;
   }
 
@@ -91,8 +91,8 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
             [](const auto& a, const auto& b) { return a.second > b.second; });
 
   for (const auto& x : known_categories) {
-    fmt::print("{:30s} : {:6d} kB {:3.1f}%\n", x.first, x.second / 1024,
-               100.f * (float)x.second / uncompressed_data_size);
+    lg::debug("{:30s} : {:6d} kB {:3.1f}%\n", x.first, x.second / 1024,
+              100.f * (float)x.second / uncompressed_data_size);
   }
 }
 
@@ -164,7 +164,7 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
   }
   std::string level_name = bsp_rec->name.substr(0, bsp_rec->name.length() - 4);
 
-  fmt::print("Processing level {} ({})\n", dgo_name, level_name);
+  lg::info("Processing level {} ({})\n", dgo_name, level_name);
   const auto& bsp_file = db.lookup_record(*bsp_rec);
   bool ok = is_valid_bsp(bsp_file.linked_data);
   ASSERT(ok);
@@ -264,8 +264,8 @@ void extract_common(const ObjectFileDB& db,
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
   print_memory_usage(tfrag_level, ser.get_save_result().second);
-  fmt::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
-             100.f * compressed.size() / ser.get_save_result().second);
+  lg::info("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
+           100.f * compressed.size() / ser.get_save_result().second);
   file_util::write_binary_file(file_util::get_file_path({fmt::format(
                                    "assets/{}.fr3", dgo_name.substr(0, dgo_name.length() - 4))}),
                                compressed.data(), compressed.size());
@@ -294,8 +294,8 @@ void extract_from_level(const ObjectFileDB& db,
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
   print_memory_usage(level_data, ser.get_save_result().second);
-  fmt::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
-             100.f * compressed.size() / ser.get_save_result().second);
+  lg::info("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
+           100.f * compressed.size() / ser.get_save_result().second);
   file_util::write_binary_file(file_util::get_file_path({fmt::format(
                                    "assets/{}.fr3", dgo_name.substr(0, dgo_name.length() - 4))}),
                                compressed.data(), compressed.size());

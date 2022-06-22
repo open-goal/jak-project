@@ -2,6 +2,7 @@
 #include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
 #include "common/util/compress.h"
+#include "common/log/log.h"
 
 namespace {
 std::string uppercase_string(const std::string& s) {
@@ -144,7 +145,7 @@ void Loader::loader_thread() {
     for (auto& shrub_tree : result->shrub_trees) {
       shrub_tree.unpack();
     }
-    fmt::print(
+    lg::info(
         "------------> Load from file: {:.3f}s, import {:.3f}s, decomp {:.3f}s unpack {:.3f}s\n",
         disk_load_time, import_time, decomp_time, unpack_timer.getSeconds());
 
@@ -524,7 +525,7 @@ bool Loader::upload_textures(Timer& timer, LevelData& data, TexturePool& texture
 }
 
 void Loader::update_blocking(TexturePool& tex_pool) {
-  fmt::print("NOTE: coming out of blackout on next frame, doing all loads now...\n");
+  lg::info("NOTE: coming out of blackout on next frame, doing all loads now...\n");
 
   bool missing_levels = true;
   while (missing_levels) {
@@ -561,7 +562,7 @@ void Loader::update_blocking(TexturePool& tex_pool) {
       missing_levels = false;
       for (auto& des : m_desired_levels) {
         if (m_loaded_tfrag3_levels.find(des) == m_loaded_tfrag3_levels.end()) {
-          fmt::print("blackout loader doing additional level {}...\n", des);
+          lg::info("blackout loader doing additional level {}...\n", des);
           missing_levels = true;
         }
       }
@@ -572,10 +573,10 @@ void Loader::update_blocking(TexturePool& tex_pool) {
     }
   }
 
-  fmt::print("Blackout loads done. Current status:");
+  lg::info("Blackout loads done. Current status:");
   std::unique_lock<std::mutex> lk(m_loader_mutex);
   for (auto& ld : m_loaded_tfrag3_levels) {
-    fmt::print("  {} is loaded.\n", ld.first);
+    lg::info("  {} is loaded.\n", ld.first);
   }
 }
 
@@ -628,7 +629,7 @@ void Loader::update(TexturePool& texture_pool) {
       for (const auto& lev : m_loaded_tfrag3_levels) {
         if (lev.second.frames_since_last_used > 180) {
           std::unique_lock<std::mutex> lk(texture_pool.mutex());
-          fmt::print("------------------------- PC unloading {}\n", lev.first);
+          lg::info("------------------------- PC unloading {}\n", lev.first);
           for (size_t i = 0; i < lev.second.data.level->textures.size(); i++) {
             auto& tex = lev.second.data.level->textures[i];
             if (tex.load_to_pool) {
@@ -677,6 +678,6 @@ void Loader::update(TexturePool& texture_pool) {
   }
 
   if (loader_timer.getMs() > 5) {
-    fmt::print("Loader::update slow setup: {:.1f}ms\n", loader_timer.getMs());
+    lg::info("Loader::update slow setup: {:.1f}ms\n", loader_timer.getMs());
   }
 }

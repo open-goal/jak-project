@@ -20,6 +20,7 @@
 #include "common/util/FontUtils.h"
 #include "common/goos/ParseHelpers.h"
 #include "third-party/fmt/core.h"
+#include "common/log/log.h"
 
 namespace {
 int64_t get_int(const goos::Object& obj) {

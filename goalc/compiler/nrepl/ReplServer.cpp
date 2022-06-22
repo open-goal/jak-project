@@ -12,6 +12,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
+#include "common/log/log.h"
 
 // TODO - basically REPL to listen and inject commands into a running REPL
 // - we will need a C++ side client as well which will let us communicate with the repl via for

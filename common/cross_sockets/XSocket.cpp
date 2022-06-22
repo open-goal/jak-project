@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "third-party/fmt/core.h"
+#include "common/log/log.h"
 
 int open_socket(int af, int type, int protocol) {
 #ifdef __linux
@@ -27,7 +28,7 @@ int open_socket(int af, int type, int protocol) {
   // Initialize Winsock
   iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
   if (iResult != 0) {
-    printf("WSAStartup failed: %d\n", iResult);
+    lg::error("WSAStartup failed: {}", iResult);
     return 1;
   }
   return socket(af, type, protocol);
@@ -47,7 +48,7 @@ int accept_socket(int socket, sockaddr* addr, int* addrLen) {
   // Initialize Winsock
   iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
   if (iResult != 0) {
-    printf("WSAStartup failed: %d\n", iResult);
+    lg::error("WSAStartup failed: {}", iResult);
     return 1;
   }
   return accept(socket, addr, addrLen);
@@ -69,13 +70,13 @@ void close_socket(int sock) {
 int set_socket_option(int socket, int level, int optname, const void* optval, int optlen) {
   int ret = setsockopt(socket, level, optname, (const char*)optval, optlen);
   if (ret < 0) {
-    printf("Failed to setsockopt(%d, %d, %d, _, _) - Error: %s\n", socket, level, optname,
-           strerror(errno));
+    lg::error("Failed to setsockopt({},{}, {}, _, _) - Error: {}\n", socket, level, optname,
+              strerror(errno));
   }
 #ifdef _WIN32
   if (ret < 0) {
     int err = WSAGetLastError();
-    printf("WSAGetLastError: %d\n", err);
+    lg::error("WSAGetLastError: {}\n", err);
   }
 #endif
   return ret;
@@ -106,7 +107,7 @@ int write_to_socket(int socket, const char* buf, int len) {
   bytes_wrote = send(socket, buf, len, 0);
 #endif
   if (bytes_wrote < 0) {
-    fmt::print(stderr, "[XSocket:{}] Error writing to socket\n", socket);
+    lg::error("[XSocket:{}] Error writing to socket\n", socket);
   }
   return bytes_wrote;
 }

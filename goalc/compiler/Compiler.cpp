@@ -11,6 +11,7 @@
 #include "goalc/regalloc/Allocator_v2.h"
 #include "third-party/fmt/core.h"
 #include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
 
 using namespace goos;
 

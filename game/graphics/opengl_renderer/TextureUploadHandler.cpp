@@ -4,6 +4,7 @@
 #include "TextureUploadHandler.h"
 #include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
+#include "common/log/log.h"
 
 TextureUploadHandler::TextureUploadHandler(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id) {}
@@ -81,9 +82,9 @@ void TextureUploadHandler::flush_uploads(std::vector<TextureUpload>& uploads,
     else if (uploads.empty()) {
       // do nothing.
     } else {
-      fmt::print("unhandled upload sequence in {}:\n", m_name);
+      lg::error("unhandled upload sequence in {}:\n", m_name);
       for (auto& upload : uploads) {
-        fmt::print(" page: 0x{:x} mode: {}\n", upload.page, upload.mode);
+        lg::error(" page: 0x{:x} mode: {}\n", upload.page, upload.mode);
       }
       ASSERT(false);
     }

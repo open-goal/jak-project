@@ -4,6 +4,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 #include "decompiler/util/config_parsers.h"
+#include "common/log/log.h"
 
 namespace decompiler {
 
@@ -30,7 +31,7 @@ Config read_config_file(const std::string& path_to_config_file,
 
   // Override JSON
   for (auto const& [key, val] : overrides) {
-    fmt::print("[Config] - Overwriting '{}' with '{}'\n", key, val);
+    lg::info("[Config] - Overwriting '{}' with '{}'\n", key, val);
     cfg[key] = val;
   }
 

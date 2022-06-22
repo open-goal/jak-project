@@ -16,7 +16,7 @@
 int main(int argc, char** argv) {
   Timer decomp_timer;
 
-  fmt::print("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
+  lg::info("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
   using namespace decompiler;
   if (!file_util::setup_project_path(std::nullopt)) {
     return 1;
@@ -30,6 +30,7 @@ int main(int argc, char** argv) {
 
   init_opcode_info();
 
+  // TODO - replace with CLI lib
   if (argc < 4) {
     printf(
         "Usage: decompiler <config_file> <in_folder> <out_folder> "
@@ -47,6 +48,7 @@ int main(int argc, char** argv) {
     // "<key>=<override>"
     //
     // This allows us to run scripts that deviate from the defaults
+    // TODO - replace with CLI lib
     std::map<std::string, bool> overrides;
     if (argc > 4) {
       for (int i = 4; i < argc; i++) {
@@ -90,7 +92,7 @@ int main(int argc, char** argv) {
   // Verify the in_folder is correct
   // TODO - refactor to use ghc::filesystem, cleanup file_util
   if (!file_util::file_exists(in_folder)) {
-    fmt::print("Aborting - 'in_folder' does not exist '{}'\n", in_folder);
+    lg::error("Aborting - 'in_folder' does not exist '{}'\n", in_folder);
     return 1;
   }
 
@@ -98,7 +100,7 @@ int main(int argc, char** argv) {
   // the ISO properly
   if (!config.expected_elf_name.empty() &&
       !file_util::file_exists(file_util::combine_path(in_folder, config.expected_elf_name))) {
-    fmt::print(
+    lg::warn(
         "WARNING - '{}' does not contain the expected ELF file '{}'.  Was the ISO extracted "
         "properly or is there a version mismatch?\n",
         in_folder, config.expected_elf_name);
@@ -122,13 +124,13 @@ int main(int argc, char** argv) {
     file_util::create_dir_if_needed(file_util::get_file_path({"debug_out"}));
   }
 
-  fmt::print("[Mem] After config read: {} MB\n", get_peak_rss() / (1024 * 1024));
+  lg::info("[Mem] After config read: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   // build file database
   lg::info("Setting up object file DB...");
   ObjectFileDB db(dgos, config.obj_file_name_map_file, objs, strs, config);
 
-  fmt::print("[Mem] After DB setup: {} MB\n", get_peak_rss() / (1024 * 1024));
+  lg::info("[Mem] After DB setup: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   // write out DGO file info
   file_util::write_text_file(file_util::combine_path(out_folder, "dgo.txt"),
@@ -146,10 +148,10 @@ int main(int argc, char** argv) {
 
   // process files (required for all analysis)
   db.process_link_data(config);
-  fmt::print("[Mem] After link data: {} MB\n", get_peak_rss() / (1024 * 1024));
+  lg::info("[Mem] After link data: {} MB\n", get_peak_rss() / (1024 * 1024));
   db.find_code(config);
   db.process_labels();
-  fmt::print("[Mem] After code: {} MB\n", get_peak_rss() / (1024 * 1024));
+  lg::info("[Mem] After code: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   // print disassembly
   if (config.disassemble_code || config.disassemble_data) {
@@ -167,7 +169,7 @@ int main(int argc, char** argv) {
     db.analyze_functions_ir2(out_folder, config, {});
   }
 
-  fmt::print("[Mem] After decomp: {} MB\n", get_peak_rss() / (1024 * 1024));
+  lg::info("[Mem] After decomp: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   // write out all symbols
   file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
@@ -194,7 +196,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  fmt::print("[Mem] After text: {} MB\n", get_peak_rss() / (1024 * 1024));
+  lg::info("[Mem] After text: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   decompiler::TextureDB tex_db;
   if (config.process_tpages || config.levels_extract) {
@@ -204,7 +206,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  fmt::print("[Mem] After textures: {} MB\n", get_peak_rss() / (1024 * 1024));
+  lg::info("[Mem] After textures: {} MB\n", get_peak_rss() / (1024 * 1024));
   // todo config
   auto replacements_path = file_util::get_file_path({"texture_replacements"});
   if (std::filesystem::exists(replacements_path)) {
@@ -223,7 +225,7 @@ int main(int argc, char** argv) {
                        config.rip_levels, config.extract_collision);
   }
 
-  fmt::print("[Mem] After extraction: {} MB\n", get_peak_rss() / (1024 * 1024));
+  lg::info("[Mem] After extraction: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   if (!config.audio_dir_file_name.empty()) {
     process_streamed_audio(config.audio_dir_file_name, config.streamed_audio_file_names);
