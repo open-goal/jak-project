@@ -743,7 +743,7 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
     for (size_t i = 0; i < cne->entries.size(); i++) {
       if (func.ir2.env.has_reg_use()) {
         auto reg = cne->entries.at(i).false_destination;
-        // lg::warn("Disable def of {} at {}\n", reg->to_string(func.ir2.env), reg->idx());
+        // lg::warn("Disable def of {} at {}", reg->to_string(func.ir2.env), reg->idx());
         func.ir2.env.disable_def(*reg, func.warnings);
       }
     }

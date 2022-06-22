@@ -94,7 +94,7 @@ void DirectRenderer2::reset_state() {
   m_state = {};
   m_stats = {};
   if (m_next_free_draw || m_vertices.next_vertex || m_vertices.next_index) {
-    lg::warn("[{}] Call to reset_state while there was pending draw data!\n", m_name);
+    lg::warn("[{}] Call to reset_state while there was pending draw data!", m_name);
   }
   reset_buffers();
 }
@@ -153,7 +153,7 @@ void DirectRenderer2::flush_pending(SharedRenderState* render_state, ScopedProfi
 
 void DirectRenderer2::draw_call_loop_simple(SharedRenderState* render_state,
                                             ScopedProfilerNode& prof) {
-  lg::debug("------------------------\n");
+  lg::debug("------------------------");
   for (u32 draw_idx = 0; draw_idx < m_next_free_draw; draw_idx++) {
     const auto& draw = m_draw_buffer[draw_idx];
     lg::debug("{}", draw.to_single_line_string());
@@ -350,10 +350,10 @@ void DirectRenderer2::setup_opengl_tex(u16 unit,
   if (!tex) {
     // TODO Add back
     if (tbp_to_lookup >= 8160 && tbp_to_lookup <= 8600) {
-      lg::warn("Failed to find texture at {}, using random (eye zone)\n", tbp_to_lookup);
+      lg::warn("Failed to find texture at {}, using random (eye zone)", tbp_to_lookup);
       tex = render_state->texture_pool->get_placeholder_texture();
     } else {
-      lg::warn("Failed to find texture at {}, using random\n", tbp_to_lookup);
+      lg::warn("Failed to find texture at {}, using random", tbp_to_lookup);
       tex = render_state->texture_pool->get_placeholder_texture();
     }
   }

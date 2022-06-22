@@ -41,7 +41,7 @@ struct AudioDir {
 
   void debug_print() const {
     for (auto& e : entries) {
-      lg::debug("\"{}\" 0x{:07x} - 0x{:07x}\n", e.name, e.start_byte, e.end_byte);
+      lg::debug("\"{}\" 0x{:07x} - 0x{:07x}", e.name, e.start_byte, e.end_byte);
     }
   }
 };
@@ -79,7 +79,7 @@ struct VagFileHeader {
     char temp_name[17];
     memcpy(temp_name, name, 16);
     temp_name[16] = '\0';
-    lg::debug("{}{}{}{} v {} zero {} chan {} samp {} z {} {} {} name {}\n", magic[0], magic[1],
+    lg::debug("{}{}{}{} v {} zero {} chan {} samp {} z {} {} {} name {}", magic[0], magic[1],
               magic[2], magic[3], version, zero, channel_size, sample_rate, z[0], z[1], z[2],
               temp_name);
   }
@@ -95,7 +95,7 @@ AudioDir read_audio_dir(const std::string& path) {
     u32 value;
   };
   auto data = file_util::read_binary_file(path);
-  lg::info("Got {} bytes of audio dir.\n", data.size());
+  lg::info("Got {} bytes of audio dir.", data.size());
   auto reader = BinaryReader(data);
 
   u32 count = reader.read<u32>();
@@ -183,7 +183,7 @@ AudioFileInfo process_audio_file(const std::vector<u8>& data,
 
 void process_streamed_audio(const std::string& dir, const std::vector<std::string>& audio_files) {
   auto dir_file_name = file_util::combine_path(dir, "VAGDIR.AYB");
-  lg::info("Streaming audio: {}\n", dir_file_name);
+  lg::info("Streaming audio: {}", dir_file_name);
   file_util::create_dir_if_needed(file_util::get_file_path({"assets", "streaming_audio"}));
   auto dir_data = read_audio_dir(file_util::get_file_path({"iso_data", dir_file_name}));
   double audio_len = 0.f;

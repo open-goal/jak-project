@@ -492,12 +492,12 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
   bool debug = b0->to_string() == "Seq CONDNE104 ... Block 18100";
 
   if (debug) {
-    lg::debug("try while: {} | {} | {}\n", b0->to_string(), b1->to_string(), b2->to_string());
+    lg::debug("try while: {} | {} | {}", b0->to_string(), b1->to_string(), b2->to_string());
   }
 
   if (b0->end_branch.asm_branch || b1->end_branch.asm_branch) {
     if (debug)
-      lg::debug("reject 1 {} {}\n", b0->end_branch.asm_branch, b1->end_branch.asm_branch);
+      lg::debug("reject 1 {} {}", b0->end_branch.asm_branch, b1->end_branch.asm_branch);
     return false;
   }
 
@@ -528,17 +528,17 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
     return false;
   ASSERT(!b1->end_branch.has_branch);
   if (!b2->has_pred(b0)) {
-    lg::debug("expect b2 ({}) to have pred b0 ({})\n", b2->to_string().c_str(),
+    lg::debug("expect b2 ({}) to have pred b0 ({})", b2->to_string().c_str(),
               b0->to_string().c_str());
-    lg::debug("but it doesn't! instead it has:\n");
+    lg::debug("but it doesn't! instead it has:");
     for (auto* x : b2->pred) {
-      lg::debug(" {}\n", x->to_string().c_str());
+      lg::debug(" {}", x->to_string().c_str());
     }
     if (b0->succ_ft) {
-      lg::debug("b0's succ_ft: {}\n", b0->succ_ft->to_string().c_str());
+      lg::debug("b0's succ_ft: {}", b0->succ_ft->to_string().c_str());
     }
     if (b0->succ_branch) {
-      lg::debug("b0's succ_branch: {}\n", b0->succ_branch->to_string().c_str());
+      lg::debug("b0's succ_branch: {}", b0->succ_branch->to_string().c_str());
     }
   }
   ASSERT(b2->has_pred(b0));
@@ -1146,7 +1146,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
       }
 
       if (debug_asm_branch) {
-        lg::debug("Looks like asm likely branch: {} {} to {}\n", b0->to_string(), bds->to_string(),
+        lg::debug("Looks like asm likely branch: {} {} to {}", b0->to_string(), bds->to_string(),
                   b1->to_string());
       }
 
@@ -1165,7 +1165,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
 
         for (auto* new_pred : b0->pred) {
           if (debug_asm_branch) {
-            lg::debug("  pred {}\n", new_pred->to_string());
+            lg::debug("  pred {}", new_pred->to_string());
           }
           new_pred->replace_succ_and_check(b0, new_seq);
         }
@@ -1285,19 +1285,19 @@ bool ControlFlowGraph::clean_up_asm_branches() {
       else {
         lg::error("unhandled sequences in clean_up_asm_branches likely seq: {} {}", !!b0_seq,
                   !!b1_seq);
-        lg::error("{} {}\n", b0->get_first_block_id(), b1->get_first_block_id());
+        lg::error("{} {}", b0->get_first_block_id(), b1->get_first_block_id());
       }
 
     } else {
       if (debug_asm_branch) {
-        lg::debug("Looks like asm normal branch: {} to {}\n", b0->to_string(), b1->to_string());
+        lg::debug("Looks like asm normal branch: {} to {}", b0->to_string(), b1->to_string());
       }
       auto* b0_seq = dynamic_cast<SequenceVtx*>(b0);
       auto* b1_seq = dynamic_cast<SequenceVtx*>(b1);
 
       if (!b0_seq && !b1_seq) {
         if (debug_asm_branch) {
-          lg::debug("[combo nn] {} and {}\n", b0->get_first_block_id(), b1->get_first_block_id());
+          lg::debug("[combo nn] {} and {}", b0->get_first_block_id(), b1->get_first_block_id());
         }
         // build new sequence
         replaced = true;
@@ -1326,13 +1326,13 @@ bool ControlFlowGraph::clean_up_asm_branches() {
           }
           new_succ->replace_pred_and_check(b1, new_seq);
           if (debug_asm_branch) {
-            lg::debug(" ac: {}\n", new_succ->pred.size());
+            lg::debug(" ac: {}", new_succ->pred.size());
           }
         }
         new_seq->succ_ft = b1->succ_ft;
 
         if (b1->succ_branch && debug_asm_branch) {
-          lg::debug("combining {} and {} into a sequence, succ {}\n", b0->get_first_block_id(),
+          lg::debug("combining {} and {} into a sequence, succ {}", b0->get_first_block_id(),
                     b1->get_first_block_id(), b1->succ_branch->get_first_block_id());
         }
 
@@ -1358,13 +1358,13 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         return false;
       } else if (b0_seq && !b1_seq) {
         if (debug_asm_branch) {
-          lg::debug("[combo sn] {} and {}\n", b0->get_first_block_id(), b1->get_first_block_id());
-          lg::debug("expanding sequence: {} (s {}) to include {}\n", b0_seq->to_string(),
+          lg::debug("[combo sn] {} and {}", b0->get_first_block_id(), b1->get_first_block_id());
+          lg::debug("expanding sequence: {} (s {}) to include {}", b0_seq->to_string(),
                     b0_seq->get_first_block_id(), b1->get_first_block_id());
         }
         if (b1->succ_ft) {
           if (debug_asm_branch) {
-            lg::debug("  b1 succ_ft is {}\n", b1->succ_ft->to_string());
+            lg::debug("  b1 succ_ft is {}", b1->succ_ft->to_string());
           }
           ASSERT(b1->succ_ft->has_pred(b1));
         }
@@ -1377,18 +1377,18 @@ bool ControlFlowGraph::clean_up_asm_branches() {
 
         if (b0->succ_branch) {
           if (debug_asm_branch) {
-            lg::debug("succ {} has {} preds parent: {}\n", b0->succ_branch->get_first_block_id(),
+            lg::debug("succ {} has {} preds parent: {}", b0->succ_branch->get_first_block_id(),
                       b0->succ_branch->pred.size(), !!b0->succ_branch->parent);
           }
           b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
           if (debug_asm_branch) {
-            lg::debug("OKOK\n");
+            lg::debug("OKOK");
           }
         }
 
         for (auto* new_succ : b1->succs()) {
           if (debug_asm_branch) {
-            lg::debug("fixing up succ {}\n", new_succ->to_string());
+            lg::debug("fixing up succ {}", new_succ->to_string());
           }
           new_succ->replace_pred_and_check(b1, b0);
         }
@@ -1410,7 +1410,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         }
 
         if (seq->succ_branch && debug_asm_branch) {
-          lg::debug("  new sb: {}\n", seq->succ_branch->get_first_block_id());
+          lg::debug("  new sb: {}", seq->succ_branch->get_first_block_id());
         }
         seq->next = b1->next;
         if (seq->next) {
@@ -1425,8 +1425,8 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         return false;
       } else if (b0_seq && b1_seq) {
         if (debug_asm_branch) {
-          lg::debug("[combo ss] {} and {}\n", b0->get_first_block_id(), b1->get_first_block_id());
-          lg::debug(" {} and {}\n", b0->to_string(), b1->to_string());
+          lg::debug("[combo ss] {} and {}", b0->get_first_block_id(), b1->get_first_block_id());
+          lg::debug(" {} and {}", b0->to_string(), b1->to_string());
         }
 
         //      printf("make seq type 3 %s %s\n", b0->to_string().c_str(), b1->to_string().c_str());
@@ -1440,8 +1440,8 @@ bool ControlFlowGraph::clean_up_asm_branches() {
 
         if (b0->succ_branch) {
           if (debug_asm_branch) {
-            lg::debug("  sbp: {}\n", !!b0->succ_branch->parent);
-            lg::debug("  sb: {}\n", b0->succ_branch->to_string());
+            lg::debug("  sbp: {}", !!b0->succ_branch->parent);
+            lg::debug("  sb: {}", b0->succ_branch->to_string());
           }
           b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
         }
@@ -1458,7 +1458,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         seq->succ_branch = old_seq->succ_branch;
         seq->succ_branch = b1->succ_branch;
         if (seq->succ_branch && debug_asm_branch) {
-          lg::debug("  DS new sb: {}\n", seq->succ_branch->get_first_block_id());
+          lg::debug("  DS new sb: {}", seq->succ_branch->get_first_block_id());
         }
         seq->succ_ft = old_seq->succ_ft;
         seq->end_branch = old_seq->end_branch;
@@ -1474,15 +1474,15 @@ bool ControlFlowGraph::clean_up_asm_branches() {
       } else if (!b0_seq && b1_seq) {
         replaced = true;
         if (!b0->succ_branch) {
-          lg::debug("bad: {}\n", b0->to_string());
+          lg::debug("bad: {}", b0->to_string());
         }
         m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
         auto* old_seq = dynamic_cast<SequenceVtx*>(b1);
         ASSERT(old_seq);
         if (b0->succ_branch) {
           if (debug_asm_branch) {
-            lg::debug("  sbp: {}\n", !!b0->succ_branch->parent);
-            lg::debug("  sb: {}\n", b0->succ_branch->to_string());
+            lg::debug("  sbp: {}", !!b0->succ_branch->parent);
+            lg::debug("  sb: {}", b0->succ_branch->to_string());
           }
           b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
         }
@@ -2758,7 +2758,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
     if (blocks_ending_in_asm_br.find(i) != blocks_ending_in_asm_br.end()) {
       b->end_branch.asm_branch = true;
       if (debug_asm_branch) {
-        lg::debug("OVERRIDE asm branch at block {}\n", i);
+        lg::debug("OVERRIDE asm branch at block {}", i);
       }
       continue;
     }
@@ -2774,7 +2774,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
       if (branch_delay_asm(following)) {
         b->end_branch.asm_branch = true;
         if (debug_asm_branch) {
-          lg::debug("LIKELY ASM BRANCH: {} and {}\n",
+          lg::debug("LIKELY ASM BRANCH: {} and {}",
                     likely_branch_candidate.to_string(file.labels),
                     following.to_string(file.labels));
         }
@@ -2790,7 +2790,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
         if (branch_delay_asm(delay_slot_candidate)) {
           b->end_branch.asm_branch = true;
           if (debug_asm_branch) {
-            lg::debug("NORMAL ASM BRANCH: {} and {}\n", branch_candidate.to_string(file.labels),
+            lg::debug("NORMAL ASM BRANCH: {} and {}", branch_candidate.to_string(file.labels),
                       delay_slot_candidate.to_string(file.labels));
           }
         }

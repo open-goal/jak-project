@@ -50,11 +50,11 @@ void TextureDB::replace_textures(const std::string& path) {
     std::filesystem::path full_path =
         base_path / tpage_names.at(tex.second.page) / (tex.second.name + ".png");
     if (std::filesystem::exists(full_path)) {
-      lg::info("Replacing {}\n", full_path.string().c_str());
+      lg::info("Replacing {}", full_path.string().c_str());
       int w, h;
       auto data = stbi_load(full_path.string().c_str(), &w, &h, 0, 4);  // rgba channels
       if (!data) {
-        lg::warn("failed to load PNG file: {}\n", full_path.string().c_str());
+        lg::warn("failed to load PNG file: {}", full_path.string().c_str());
         continue;
       }
       tex.second.rgba_bytes.resize(w * h);

@@ -279,7 +279,7 @@ void pc_game_save_synch() {
   auto save_path = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p4];
   file_util::create_dir_if_needed_for_file(save_path.string());
   auto fd = fopen(save_path.string().c_str(), "wb");
-  lg::info("[MC] synchronous save file open took {:.2f}ms\n", mc_timer.getMs());
+  lg::info("[MC] synchronous save file open took {:.2f}ms", mc_timer.getMs());
   if (fd) {
     // cb_openedsave //
     mc_print("save file opened, writing header...");
@@ -332,7 +332,7 @@ void pc_game_save_synch() {
     op.result = McStatusCode::INTERNAL_ERROR;
   }
 
-  lg::info("[MC] synchronous save took {:.2f}ms\n", mc_timer.getMs());
+  lg::info("[MC] synchronous save took {:.2f}ms", mc_timer.getMs());
 }
 
 void pc_game_load_open_file(FILE* fd) {
@@ -471,7 +471,7 @@ void pc_game_load_synch() {
   auto fd = fopen(path.string().c_str(), "rb");
   pc_game_load_open_file(fd);
 
-  lg::info("[MC] synchronous load took {:.2f}ms\n", mc_timer.getMs());
+  lg::info("[MC] synchronous load took {:.2f}ms", mc_timer.getMs());
 }
 
 /*!

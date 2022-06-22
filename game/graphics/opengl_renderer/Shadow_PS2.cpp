@@ -149,7 +149,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm) {
       goto L21;
 
     default:
-      lg::warn("didn't know mscal imm: {}\n", imm);
+      lg::warn("didn't know mscal imm: {}", imm);
       // ASSERT(false);
   }
   // clang-format off

@@ -1153,7 +1153,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           return;
         } else {
           // TODO - output error to IR
-          lg::error("Bad {} at OP: {}\n", args.at(0)->to_string(env), m_my_idx);
+          lg::error("Bad {} at OP: {}", args.at(0)->to_string(env), m_my_idx);
           throw std::runtime_error("Failed to match product_with_constant inline array access 2.");
         }
       }
@@ -1396,7 +1396,7 @@ void SimpleExpressionElement::update_from_stack_pcypld(const Env& env,
       result->push_back(as_mod);
       return;
     } else {
-      lg::warn("pcpyud rewrite form fail: {} {}\n", base_form.print(), a1_form.print());
+      lg::warn("pcpyud rewrite form fail: {} {}", base_form.print(), a1_form.print());
     }
   }
   auto new_form = pool.alloc_element<GenericElement>(
@@ -1810,7 +1810,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
       auto repopped = stack.pop_reg(var_b, {}, env, true, stack.size() - 1);
 
       if (!repopped) {
-        lg::warn("repop failed.\n{}\n", stack.print(env));
+        lg::warn("repop failed.\n{}", stack.print(env));
         repopped = var_to_form(var_b, pool);
       }
 
@@ -2375,7 +2375,7 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
       m_src = value;
     }
   } else if (src_as_bf_set) {
-    lg::warn("invalid bf set: {}\n", src_as_bf_set->to_string(env));
+    lg::warn("invalid bf set: {}", src_as_bf_set->to_string(env));
   }
 
   // setting a bitfield to zero is wonky.
@@ -2772,12 +2772,12 @@ Form* get_set_next_state(FormElement* set_elt, const Env& env) {
       Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("next-state")});
   auto mr = match(dst_matcher, dst);
   if (!mr.matched) {
-    lg::error("failed to match dst {}\n", dst->to_string(env));
+    lg::error("failed to match dst {}", dst->to_string(env));
     return nullptr;
   }
 
   if (mr.maps.regs.at(0)->reg() != Register(Reg::GPR, Reg::S6)) {
-    lg::error("failed to match pp reg, got {}\n", mr.maps.regs.at(0)->reg().to_string());
+    lg::error("failed to match pp reg, got {}", mr.maps.regs.at(0)->reg().to_string());
     return nullptr;
   }
 
@@ -5027,7 +5027,7 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
         if (!match_result.matched) {
           result->push_back(this);
           return;
-          lg::error("power {}\n", power_of_two);
+          lg::error("power {}", power_of_two);
           throw std::runtime_error(
               "Couldn't match ArrayFieldAccess (stride power of 2, 0 offset) values: " +
               new_val->to_string(env));

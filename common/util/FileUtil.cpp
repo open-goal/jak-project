@@ -117,7 +117,7 @@ bool setup_project_path(std::optional<std::filesystem::path> project_path_overri
   if (project_path_override) {
     gFilePathInfo.path_to_data = *project_path_override;
     gFilePathInfo.initialized = true;
-    lg::info("Using explicitly set project path: {}\n", project_path_override->string());
+    lg::info("Using explicitly set project path: {}", project_path_override->string());
     return true;
   }
 
@@ -125,7 +125,7 @@ bool setup_project_path(std::optional<std::filesystem::path> project_path_overri
   if (data_path) {
     gFilePathInfo.path_to_data = *data_path;
     gFilePathInfo.initialized = true;
-    lg::info("Using data path: {}\n", data_path->string());
+    lg::info("Using data path: {}", data_path->string());
     return true;
   }
 
@@ -133,11 +133,11 @@ bool setup_project_path(std::optional<std::filesystem::path> project_path_overri
   if (development_repo_path) {
     gFilePathInfo.path_to_data = *development_repo_path;
     gFilePathInfo.initialized = true;
-    lg::info("Using development repo path: {}\n", *development_repo_path);
+    lg::info("Using development repo path: {}", *development_repo_path);
     return true;
   }
 
-  lg::error("Failed to initialize project path.\n");
+  lg::error("Failed to initialize project path.");
   return false;
 }
 

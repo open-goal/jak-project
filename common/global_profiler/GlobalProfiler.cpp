@@ -154,17 +154,17 @@ void GlobalProfiler::dump_to_json(const std::string& path) {
     // ts
     json_event["ts"] = (event.ts - lowest_ts) / 1000.f;
     if (event.ts < info.debug) {
-      lg::debug("out of order: {} {} {} ms\n", event.ts / 1000.f, info.debug / 1000.f,
+      lg::debug("out of order: {} {} {} ms", event.ts / 1000.f, info.debug / 1000.f,
                 (info.debug - event.ts) / 1000000.f);
-      lg::debug("  idx: {}, range {} {}\n", event_idx, info.lowest_at_target,
+      lg::debug("  idx: {}, range {} {}", event_idx, info.lowest_at_target,
                 info.highest_at_target);
-      lg::debug("  now: {}\n", m_next_idx);
+      lg::debug("  now: {}", m_next_idx);
     }
     info.debug = event.ts;
   }
 
   for (auto& t : info_per_thread) {
-    lg::debug("thread: {}: {} -> {}\n", t.first, t.second.lowest_at_target,
+    lg::debug("thread: {}: {} -> {}", t.first, t.second.lowest_at_target,
               t.second.highest_at_target);
   }
 

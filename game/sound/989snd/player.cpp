@@ -24,8 +24,8 @@ void player::init_cubeb() {
   HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
   m_coinitialized = SUCCEEDED(hr);
   if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) {
-    lg::error("Couldn't initialize COM\n");
-    lg::error("Cubeb init failed\n");
+    lg::error("Couldn't initialize COM");
+    lg::error("Cubeb init failed");
     return;
   }
 #endif
@@ -43,20 +43,20 @@ void player::init_cubeb() {
   u32 latency = 0;
   err = cubeb_get_min_latency(m_ctx, &outparam, &latency);
   if (err != CUBEB_OK) {
-    lg::error("Cubeb init failed\n");
+    lg::error("Cubeb init failed");
     return;
   }
 
   err = cubeb_stream_init(m_ctx, &m_stream, "OpenGOAL", nullptr, nullptr, nullptr, &outparam,
                           latency, &sound_callback, &state_callback, this);
   if (err != CUBEB_OK) {
-    lg::error("Cubeb init failed\n");
+    lg::error("Cubeb init failed");
     return;
   }
 
   err = cubeb_stream_start(m_stream);
   if (err != CUBEB_OK) {
-    lg::error("Cubeb init failed\n");
+    lg::error("Cubeb init failed");
     return;
   }
 }
@@ -124,7 +124,7 @@ u32 player::play_sound(u32 bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm, s32 
   std::scoped_lock lock(m_ticklock);
   auto bank = m_loader.get_bank_by_handle(bank_id);
   if (bank == nullptr) {
-    lg::error("play_sound: Bank {} does not exist\n", bank_id);
+    lg::error("play_sound: Bank {} does not exist", bank_id);
     return 0;
   }
 
@@ -194,7 +194,7 @@ void player::set_master_volume(u32 group, s32 volume) {
 
 u32 player::load_bank(std::filesystem::path& filepath, size_t offset) {
   std::scoped_lock lock(m_ticklock);
-  lg::info("Loading bank {}\n", filepath.string());
+  lg::info("Loading bank {}", filepath.string());
   std::fstream in(filepath, std::fstream::binary | std::fstream::in);
   in.seekg(offset, std::fstream::beg);
 

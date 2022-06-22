@@ -214,10 +214,10 @@ void Generic2::setup_opengl_tex(u16 unit,
   if (!tex) {
     // TODO Add back
     if (tbp_to_lookup >= 8160 && tbp_to_lookup <= 8600) {
-      lg::warn("Failed to find texture at {}, using random (eye zone)\n", tbp_to_lookup);
+      lg::warn("Failed to find texture at {}, using random (eye zone)", tbp_to_lookup);
       tex = render_state->texture_pool->get_placeholder_texture();
     } else {
-      lg::warn("Failed to find texture at {}, using random\n", tbp_to_lookup);
+      lg::warn("Failed to find texture at {}, using random", tbp_to_lookup);
       tex = render_state->texture_pool->get_placeholder_texture();
     }
   }

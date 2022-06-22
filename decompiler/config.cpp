@@ -31,7 +31,7 @@ Config read_config_file(const std::string& path_to_config_file,
 
   // Override JSON
   for (auto const& [key, val] : overrides) {
-    lg::info("[Config] - Overwriting '{}' with '{}'\n", key, val);
+    lg::info("[Config] - Overwriting '{}' with '{}'", key, val);
     cfg[key] = val;
   }
 

@@ -1173,7 +1173,7 @@ struct JumpTableBlock {
 };
 
 void run_mips2c_jump_table(Function* f, const std::vector<int>& jump_table_locations) {
-  lg::info("mips2c-jump on {}\n", f->name());
+  lg::info("mips2c-jump on {}", f->name());
   u32 magic_code = std::hash<std::string>()(f->name());
   std::unordered_map<int, int> loc_to_block;
   for (size_t bb_idx = 0; bb_idx < f->basic_blocks.size(); bb_idx++) {

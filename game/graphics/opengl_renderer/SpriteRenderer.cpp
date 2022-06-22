@@ -613,7 +613,7 @@ void SpriteRenderer::update_gl_texture(SharedRenderState* render_state, int unit
   }
 
   if (!tex) {
-    lg::warn("Failed to find texture at {}, using random\n", state.texture_base_ptr);
+    lg::warn("Failed to find texture at {}, using random", state.texture_base_ptr);
     tex = render_state->texture_pool->get_placeholder_texture();
   }
   ASSERT(tex);

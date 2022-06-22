@@ -16,17 +16,17 @@ bool verify_unpack_with_stcycl(const DmaTransfer& transfer,
                                bool usn,
                                bool flg) {
   if (transfer.size_bytes != qwc * 16) {
-    lg::error("verify_unpack: bad size {} vs {}\n", transfer.size_bytes, qwc * 16);
+    lg::error("verify_unpack: bad size {} vs {}", transfer.size_bytes, qwc * 16);
     return false;
   }
 
   if (transfer.vifcode0().kind != VifCode::Kind::STCYCL) {
-    lg::error("verify_unpack: bad vifcode 0\n");
+    lg::error("verify_unpack: bad vifcode 0");
     return false;
   }
 
   if (transfer.vifcode1().kind != unpack_kind) {
-    lg::error("verify_unpack: bad vifcode 1\n");
+    lg::error("verify_unpack: bad vifcode 1");
     return false;
   }
 
@@ -34,7 +34,7 @@ bool verify_unpack_with_stcycl(const DmaTransfer& transfer,
   VifCodeUnpack unpack(transfer.vifcode1());
 
   if (stcycl.cl != cl || stcycl.wl != wl) {
-    lg::error("verify_unpack: bad cl/wl {}/{} vs {}/{}\n", stcycl.cl, stcycl.wl, cl, wl);
+    lg::error("verify_unpack: bad cl/wl {}/{} vs {}/{}", stcycl.cl, stcycl.wl, cl, wl);
     return false;
   }
 
@@ -45,7 +45,7 @@ bool verify_unpack_with_stcycl(const DmaTransfer& transfer,
   }
 
   if (transfer.vifcode1().num != qwc) {
-    lg::error("verify_unpack: bad num {} vs {}\n", transfer.vifcode1().num, qwc);
+    lg::error("verify_unpack: bad num {} vs {}", transfer.vifcode1().num, qwc);
     return false;
   }
 
@@ -83,17 +83,17 @@ bool verify_unpack_no_stcycl(const DmaTransfer& transfer,
                              bool usn,
                              bool flg) {
   if (transfer.size_bytes != qwc * 16) {
-    lg::error("verify_unpack: bad size {} vs {}\n", transfer.size_bytes, qwc * 16);
+    lg::error("verify_unpack: bad size {} vs {}", transfer.size_bytes, qwc * 16);
     return false;
   }
 
   if (transfer.vifcode0().kind != VifCode::Kind::NOP) {
-    lg::error("verify_unpack: bad vifcode 0\n");
+    lg::error("verify_unpack: bad vifcode 0");
     return false;
   }
 
   if (transfer.vifcode1().kind != unpack_kind) {
-    lg::error("verify_unpack: bad vifcode 1\n");
+    lg::error("verify_unpack: bad vifcode 1");
     return false;
   }
 
@@ -106,7 +106,7 @@ bool verify_unpack_no_stcycl(const DmaTransfer& transfer,
   }
 
   if (transfer.vifcode1().num != qwc) {
-    lg::error("verify_unpack: bad num {} vs {}\n", transfer.vifcode1().num, qwc);
+    lg::error("verify_unpack: bad num {} vs {}", transfer.vifcode1().num, qwc);
     return false;
   }
 

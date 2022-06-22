@@ -42,7 +42,7 @@ bool verify_node_indices_from_array(const level_tools::DrawableInlineArray* arra
   if (as_tie_instances) {
     for (auto& elt : as_tie_instances->instances) {
       if (elt.id != start) {
-        lg::error("bad inst: exp {} got {}\n", start, elt.id);
+        lg::error("bad inst: exp {} got {}", start, elt.id);
         return false;
       }
       start++;
@@ -52,7 +52,7 @@ bool verify_node_indices_from_array(const level_tools::DrawableInlineArray* arra
   } else if (as_nodes) {
     for (auto& elt : as_nodes->draw_nodes) {
       if (elt.id != start) {
-        lg::error("bad node: exp {} got {}\n", start, elt.id);
+        lg::error("bad node: exp {} got {}", start, elt.id);
         return false;
       }
       start++;
@@ -60,7 +60,7 @@ bool verify_node_indices_from_array(const level_tools::DrawableInlineArray* arra
     *end = start;
     return true;
   } else {
-    lg::error("bad node array type: {}\n", array->my_type());
+    lg::error("bad node array type: {}", array->my_type());
     return false;
   }
 }
@@ -547,7 +547,7 @@ void update_proto_info(std::vector<TieProtoInfo>* out,
         // try remapping it
         u32 new_tex = remap_texture(original_tex, map);
         if (original_tex != new_tex) {
-          lg::info("map from 0x{:x} to 0x{:x}\n", original_tex, new_tex);
+          lg::info("map from 0x{:x} to 0x{:x}", original_tex, new_tex);
         }
         // texture the texture page/texture index, and convert to a PC port texture ID
         u32 tpage = new_tex >> 20;
@@ -1275,10 +1275,10 @@ void emulate_tie_prototype_program(std::vector<TieProtoInfo>& protos) {
 
 void debug_print_info(const std::vector<TieProtoInfo>& out) {
   for (auto& proto : out) {
-    lg::debug("[{:40}]\n", proto.name);
-    lg::debug("  generic: {}\n", proto.uses_generic);
-    lg::debug("  use count: {}\n", proto.instances.size());
-    lg::debug("  stiffness: {}\n", proto.stiffness);
+    lg::debug("[{:40}]", proto.name);
+    lg::debug("  generic: {}", proto.uses_generic);
+    lg::debug("  use count: {}", proto.instances.size());
+    lg::debug("  stiffness: {}", proto.stiffness);
   }
 }
 
@@ -1391,7 +1391,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
       // iadd vi_kick_addr, vi_kick_addr, vi01       |  nop
       kick_addr += vi01;
       if (tgt_bp1_ptr == dest_ptr) {
-        lg::info("DRAW FINISH 1 (no points)\n");
+        lg::info("DRAW FINISH 1 (no points)");
         goto program_end;
       }
 
@@ -1971,7 +1971,7 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
   }
 
   else {
-    lg::error("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
+    lg::error("unsupported blend: a {} b {} c {} d {}", (int)reg.a_mode(), (int)reg.b_mode(),
               (int)reg.c_mode(), (int)reg.d_mode());
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
     ASSERT(false);

@@ -70,13 +70,13 @@ void close_socket(int sock) {
 int set_socket_option(int socket, int level, int optname, const void* optval, int optlen) {
   int ret = setsockopt(socket, level, optname, (const char*)optval, optlen);
   if (ret < 0) {
-    lg::error("Failed to setsockopt({},{}, {}, _, _) - Error: {}\n", socket, level, optname,
+    lg::error("Failed to setsockopt({},{}, {}, _, _) - Error: {}", socket, level, optname,
               strerror(errno));
   }
 #ifdef _WIN32
   if (ret < 0) {
     int err = WSAGetLastError();
-    lg::error("WSAGetLastError: {}\n", err);
+    lg::error("WSAGetLastError: {}", err);
   }
 #endif
   return ret;
@@ -107,7 +107,7 @@ int write_to_socket(int socket, const char* buf, int len) {
   bytes_wrote = send(socket, buf, len, 0);
 #endif
   if (bytes_wrote < 0) {
-    lg::error("[XSocket:{}] Error writing to socket\n", socket);
+    lg::error("[XSocket:{}] Error writing to socket", socket);
   }
   return bytes_wrote;
 }

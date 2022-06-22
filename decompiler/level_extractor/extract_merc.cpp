@@ -195,7 +195,7 @@ void update_mode_from_alpha1(GsAlpha reg, DrawMode& mode) {
 
   else {
     // unsupported blend: a 0 b 1 c 0 d 2 is this part of generic?
-    lg::warn("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
+    lg::warn("unsupported blend: a {} b {} c {} d {}", (int)reg.a_mode(), (int)reg.b_mode(),
              (int)reg.c_mode(), (int)reg.d_mode());
     mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
     // ASSERT(false);
@@ -538,7 +538,7 @@ std::vector<u32> index_list_from_packet(u32 vtx_ptr,
       prev_vtx = vtx_mem.vtx_idx;
     } else {
       // missing vertex!
-      lg::warn("MISSING VERTEX at {}\n", vtx_ptr);
+      lg::warn("MISSING VERTEX at {}", vtx_ptr);
       result.push_back(UINT32_MAX);
     }
 
@@ -767,7 +767,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
           dvert.adc = !dvert.adc;
         }
       } else {
-        lg::warn("sc missing vert\n");
+        lg::warn("sc missing vert");
         dvert.kind = MercOutputQuadword::Kind::INVALID;
       }
 
@@ -789,7 +789,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
           dvert.adc = !dvert.adc;
         }
       } else {
-        lg::warn("cc missing vert\n");
+        lg::warn("cc missing vert");
         dvert.kind = MercOutputQuadword::Kind::INVALID;
       }
       srcdst_ptr++;

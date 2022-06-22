@@ -189,7 +189,7 @@ void InitCD() {
   while (sceCdDiskReady(0) == SCECdNotReady) {
     lg::debug("Drive not ready... insert a disk!");
   }
-  lg::debug("Disk type {}\n", sceCdGetDiskType());
+  lg::debug("Disk type {}", sceCdGetDiskType());
 }
 
 /*!

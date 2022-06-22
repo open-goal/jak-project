@@ -181,7 +181,7 @@ bool Shrub::setup_for_level(const std::string& level, SharedRenderState* render_
   }
 
   if (tfrag3_setup_timer.getMs() > 5) {
-    lg::info("Shrub setup: {:.1f}ms\n", tfrag3_setup_timer.getMs());
+    lg::info("Shrub setup: {:.1f}ms", tfrag3_setup_timer.getMs());
   }
 
   return m_has_level;

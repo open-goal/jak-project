@@ -116,7 +116,7 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
     }
 
     if (debug_defstates) {
-      lg::debug("SET: {} to {}\n", name, val->to_string(env));
+      lg::debug("SET: {} to {}", name, val->to_string(env));
     }
 
     // now we try to find a function
@@ -139,7 +139,7 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
         handler_func->guessed_name.set_as_nv_state(state_name, handler_kind);
       }
       if (print_renames) {
-        lg::info("{}\n", handler_func->name());
+        lg::info("{}", handler_func->name());
       }
 
       // scary part - modify the function type!
@@ -191,7 +191,7 @@ FormElement* rewrite_nonvirtual_defstate(
         expected_state_name);
   }
   if (debug_defstates) {
-    lg::debug("State: {} Type: {}\n", info.first, info.second.print());
+    lg::debug("State: {} Type: {}", info.first, info.second.print());
   }
   body_index++;
 
@@ -458,7 +458,7 @@ void run_defstate(
             env.get_variable_type(as_let->entries().at(0).dest, false) == TypeSpec("state")) {
           std::string expected_state_name = verify_empty_state_and_get_name(src_as_label, env);
           if (debug_defstates) {
-            lg::debug("got state let:\n{}\n", pretty_print::to_string(as_let->to_form(env)));
+            lg::debug("got state let:\n{}", pretty_print::to_string(as_let->to_form(env)));
           }
 
           if (is_nonvirtual_state(as_let)) {

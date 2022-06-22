@@ -158,7 +158,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
     }
   }
 
-  lg::info("ObjectFileDB Initialized\n");
+  lg::info("ObjectFileDB Initialized");
   if (obj_files_by_name.empty()) {
     lg::error(
         "No object files have been added. Check that there are input files and the allowed_objects "
@@ -432,7 +432,7 @@ void ObjectFileDB::process_link_data(const Config& config) {
   });
 
   lg::info("Processed Link Data");
-  lg::info(" Total {:.2f} ms\n", process_link_timer.getMs());
+  lg::info(" Total {:.2f} ms", process_link_timer.getMs());
   // printf("\n");
 }
 
@@ -447,7 +447,7 @@ void ObjectFileDB::process_labels() {
 
   lg::info("Processed Labels:");
   lg::info(" Total {} labels", total);
-  lg::info(" Total {:.2f} ms\n", process_label_timer.getMs());
+  lg::info(" Total {:.2f} ms", process_label_timer.getMs());
 }
 
 /*!
@@ -554,7 +554,7 @@ void ObjectFileDB::find_code(const Config& config) {
   auto total_ops = combined_stats.code_bytes / 4;
   lg::info(" Decoded {} / {} ({:.3f} %)", combined_stats.decoded_ops, total_ops,
            100.f * (float)combined_stats.decoded_ops / total_ops);
-  lg::info(" Total {:.3f} ms\n", timer.getMs());
+  lg::info(" Total {:.3f} ms", timer.getMs());
 }
 
 /*!
@@ -580,7 +580,7 @@ void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
   file_util::write_text_file(file_name, all_scripts);
 
   lg::info("Found scripts:");
-  lg::info(" Total {:.3f} ms\n", timer.getMs());
+  lg::info(" Total {:.3f} ms", timer.getMs());
 }
 
 std::string ObjectFileDB::process_tpages(TextureDB& tex_db) {
@@ -727,7 +727,7 @@ void ObjectFileDB::extract_art_info() {
     }
   });
 
-  lg::info("Processed art groups: in {:.2f} ms\n", timer.getMs());
+  lg::info("Processed art groups: in {:.2f} ms", timer.getMs());
 }
 
 /*!
@@ -754,7 +754,7 @@ void ObjectFileDB::dump_art_info(const std::string& output_dir) {
     file_util::write_text_file(filename, result);
   }
 
-  lg::info("Written art group info: in {:.2f} ms\n", timer.getMs());
+  lg::info("Written art group info: in {:.2f} ms", timer.getMs());
 }
 
 void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {

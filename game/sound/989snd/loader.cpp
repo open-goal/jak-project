@@ -120,7 +120,7 @@ u32 loader::read_bank(std::fstream& in) {
     load_midi(in);
   }
 
-  lg::info("Created bank {}\n", bank_id);
+  lg::info("Created bank {}", bank_id);
 
   return bank_id;
 }
@@ -136,7 +136,7 @@ void loader::load_midi(std::fstream& in) {
   in.read((char*)midi.get(), attr.where[0].size);
 
   auto h = (MIDIBlock*)midi.get();
-  lg::info("Loaded midi {:.4}\n", (char*)&h->ID);
+  lg::info("Loaded midi {:.4}", (char*)&h->ID);
 
   m_midi.emplace(h->ID, (MIDIBlock*)midi.get());
   m_midi_chunks.emplace_back(std::move(midi));

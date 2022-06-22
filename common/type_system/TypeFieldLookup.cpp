@@ -451,7 +451,7 @@ void try_reverse_lookup(const FieldReverseLookupInput& input,
                         FieldReverseMultiLookupOutput* output,
                         int max_count) {
   if (debug_reverse_lookup) {
-    lg::debug(" try_reverse_lookup on {} offset {} deref {} stride {}\n", input.base_type.print(),
+    lg::debug(" try_reverse_lookup on {} offset {} deref {} stride {}", input.base_type.print(),
               input.offset, input.deref.has_value(), input.stride);
   }
 
@@ -523,7 +523,7 @@ FieldReverseMultiLookupOutput TypeSystem::reverse_field_multi_lookup(
     const FieldReverseLookupInput& input,
     int max_count) const {
   if (debug_reverse_lookup) {
-    lg::debug("reverse_field_lookup on {} offset {} deref {} stride {}\n", input.base_type.print(),
+    lg::debug("reverse_field_lookup on {} offset {} deref {} stride {}", input.base_type.print(),
               input.offset, input.deref.has_value(), input.stride);
   }
 

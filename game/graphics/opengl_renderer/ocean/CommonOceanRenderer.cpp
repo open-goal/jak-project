@@ -253,7 +253,7 @@ void CommonOceanRenderer::handle_near_adgif(const u8* data, u32 offset, u32 coun
       } break;
 
       default:
-        lg::debug("reg: {}\n", register_address_name(addr));
+        lg::debug("reg: {}", register_address_name(addr));
         break;
     }
   }
@@ -413,7 +413,7 @@ void CommonOceanRenderer::handle_mid_adgif(const u8* data, u32 offset) {
       } break;
 
       default:
-        lg::debug("reg: {}\n", register_address_name(addr));
+        lg::debug("reg: {}", register_address_name(addr));
         break;
     }
   }
