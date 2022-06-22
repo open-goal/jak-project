@@ -7,6 +7,8 @@
 
 ;; DECOMP BEGINS
 
+(import "goal_src/import/ef-plane-ag.gc")
+
 (deftype blocking-plane (process-drawable)
   ()
   :heap-base #x40
@@ -25,8 +27,7 @@
               )
 
 (defstate blocking-plane-idle (blocking-plane)
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
     (loop
       (logior! (-> self mask) (process-mask sleep))
@@ -84,33 +85,23 @@
   (none)
   )
 
-(defun blocking-plane-spawn ((arg0 curve-control))
-  (with-pp
-    (cond
-      ((or (not arg0) (logtest? (-> arg0 flags) (path-control-flag not-found)))
-       )
-      (else
-        (let ((s5-0 (the int (the float (+ (-> arg0 curve num-cverts) -1))))
-              (s4-0 0)
-              )
-          (while (< s4-0 s5-0)
-            (let ((s3-0 (get-process *default-dead-pool* blocking-plane #x4000)))
-              (when s3-0
-                (let ((t9-1 (method-of-type blocking-plane activate)))
-                  (t9-1 (the-as blocking-plane s3-0) pp 'blocking-plane (the-as pointer #x70004000))
-                  )
-                (run-now-in-process s3-0 blocking-plane-init-by-other arg0 s4-0)
-                (-> s3-0 ppointer)
-                )
-              )
-            (+! s4-0 2)
+(defbehavior blocking-plane-spawn process ((arg0 curve-control))
+  (cond
+    ((or (not arg0) (logtest? (-> arg0 flags) (path-control-flag not-found)))
+     )
+    (else
+      (let ((s5-0 (the int (the float (+ (-> arg0 curve num-cverts) -1))))
+            (s4-0 0)
             )
+        (while (< s4-0 s5-0)
+          (process-spawn blocking-plane arg0 s4-0 :to self)
+          (+! s4-0 2)
           )
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 (defun blocking-plane-destroy ()

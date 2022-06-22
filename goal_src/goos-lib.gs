@@ -108,6 +108,12 @@
   `(set! ,lst (cdr ,lst))
   )
 
+(desfun count (lst)
+  (if (null? lst)
+      0
+      (+ 1 (count (cdr lst))))
+  )
+
 (desfun apply (fun x)
 	(if (null? x)
 	    '()
@@ -443,6 +449,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; a map for art definitions used by art loading code.
-(define *art-info* '())
+(define *art-info* (make-string-hash-table))
 
 

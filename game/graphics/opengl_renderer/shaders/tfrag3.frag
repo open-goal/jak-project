@@ -14,15 +14,11 @@ uniform vec4 fog_color;
 void main() {
     //vec4 T0 = texture(tex_T0, tex_coord);
     vec4 T0 = texture(tex_T0, tex_coord.xy);
-    color = fragment_color * T0 * 2.0;
+    color = fragment_color * T0;
 
-    if (color.a < alpha_min) {
+    if (color.a < alpha_min || color.a > alpha_max) {
         discard;
     }
 
-    if (color.a > alpha_max) {
-        discard;
-    }
-
-    color.xyz = mix(color.xyz, fog_color.xyz / 255., clamp(fogginess/255 * fog_color.w, 0., 1.));
+    color.rgb = mix(color.rgb, fog_color.rgb, clamp(fogginess * fog_color.a, 0, 1));
 }

@@ -98,7 +98,7 @@ void LoadMusic(const char* music_name, s32* bank) {
   SendMbx(iso_mbx, &cmd);
   SleepThread();
 
-  for (int i = 0; i < gMusicTweakInfo.TweakCount; i++) {
+  for (u32 i = 0; i < gMusicTweakInfo.TweakCount; i++) {
     if (!strcmp(gMusicTweakInfo.MusicTweak[i].MusicName, music_name)) {
       gMusicTweak = gMusicTweakInfo.MusicTweak[i].VolumeAdjust;
       return;

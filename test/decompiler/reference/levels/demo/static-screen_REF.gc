@@ -57,8 +57,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2966
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x5c6))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x5c6))
     (sp-flt spt-num 1.0)
     (sp-flt spt-y (meters 1.18))
     (sp-flt spt-scale-x (meters 15))
@@ -74,8 +73,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2967
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1 :page #x5c6))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1 :page #x5c6))
     (sp-flt spt-num 1.0)
     (sp-flt spt-y (meters -1.264))
     (sp-flt spt-scale-x (meters 15))
@@ -91,8 +89,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2968
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x5c6))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x5c6))
     (sp-flt spt-num 1.0)
     (sp-flt spt-y (meters -2.482))
     (sp-flt spt-scale-x (meters 15))
@@ -111,29 +108,25 @@
   :id 707
   :flags (screen-space)
   :bounds (static-bspherem 0 0 0 1)
-  :parts
-  ((sp-item 2966 :flags (launch-asap)) (sp-item 2967 :flags (launch-asap)) (sp-item 2968 :flags (launch-asap)))
+  :parts ((sp-item 2966 :flags (launch-asap)) (sp-item 2967 :flags (launch-asap)) (sp-item 2968 :flags (launch-asap)))
   )
 
 ;; failed to figure out what this is:
 (defstate idle (static-screen)
   :virtual #t
-  :enter
-  (behavior ((arg0 int) (arg1 time-frame) (arg2 symbol))
+  :enter (behavior ((arg0 int) (arg1 time-frame) (arg2 symbol))
     (set! (-> *setting-control* current bg-a) 1.0)
     (set! (-> *setting-control* default bg-a) 0.0)
-    (push-setting! *setting-control* self 'common-page 'set 0.0 (ash 1 (+ arg0 1)))
+    (add-setting! 'common-page 'set 0.0 (ash 1 (+ arg0 1)))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (hide-hud-quick)
     (spawn (-> self part 0) *zero-vector*)
     0
     (none)
     )
-  :code
-  (behavior ((arg0 int) (arg1 time-frame) (arg2 symbol))
+  :code (behavior ((arg0 int) (arg1 time-frame) (arg2 symbol))
     (local-vars (v1-6 symbol))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (until v1-6
@@ -150,7 +143,7 @@
     (while (!= (-> *setting-control* current bg-a) (-> *setting-control* default bg-a))
       (suspend)
       )
-    (clear-pending-settings-from-process *setting-control* self 'common-page)
+    (remove-setting! 'common-page)
     (suspend)
     0
     (none)
@@ -159,7 +152,7 @@
 
 ;; definition for function static-screen-init-by-other
 ;; INFO: Return type mismatch int vs none.
-(defbehavior static-screen-init-by-other static-screen ((arg0 int) (arg1 int) (arg2 int) (arg3 int) (arg4 time-frame) (arg5 symbol))
+(defbehavior static-screen-init-by-other static-screen ((arg0 int) (arg1 texture-id) (arg2 texture-id) (arg3 texture-id) (arg4 time-frame) (arg5 symbol))
   (let ((s3-0 (lookup-part-group-by-name "group-part-screen1")))
     (when (and s3-0 (nonzero? s3-0) (type-type? (-> s3-0 type) sparticle-launch-group))
       (set! (-> *part-id-table* 2966 init-specs 0 initial-valuef) (the-as float arg1))
@@ -174,15 +167,26 @@
   )
 
 ;; definition for function static-screen-spawn
+;; INFO: Return type mismatch (pointer process) vs (pointer static-screen).
 ;; Used lq/sq
-(defun static-screen-spawn ((arg0 int) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 symbol) (arg6 target))
+(defun static-screen-spawn ((arg0 int)
+                   (arg1 texture-id)
+                   (arg2 texture-id)
+                   (arg3 texture-id)
+                   (arg4 time-frame)
+                   (arg5 symbol)
+                   (arg6 process-tree)
+                   )
   (local-vars (sv-16 process))
   (set! sv-16 (get-process *default-dead-pool* static-screen #x4000))
-  (when sv-16
-    (let ((t9-1 (method-of-type static-screen activate)))
-      (t9-1 (the-as static-screen sv-16) arg6 'static-screen (the-as pointer #x70004000))
+  (the-as
+    (pointer static-screen)
+    (when sv-16
+      (let ((t9-1 (method-of-type static-screen activate)))
+        (t9-1 (the-as static-screen sv-16) arg6 'static-screen (the-as pointer #x70004000))
+        )
+      (run-now-in-process sv-16 static-screen-init-by-other arg0 arg1 arg2 arg3 arg4 arg5)
+      (-> sv-16 ppointer)
       )
-    (run-now-in-process sv-16 static-screen-init-by-other arg0 arg1 arg2 arg3 arg4 arg5)
-    (-> sv-16 ppointer)
     )
   )

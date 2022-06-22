@@ -100,6 +100,12 @@ bool Generic2::handle_bucket_setup_dma(DmaFollower& dma, u32 next_bucket) {
 }
 
 void Generic2::reset_buffers() {
+  m_max_frags_seen = std::max(m_next_free_frag, m_max_frags_seen);
+  m_max_verts_seen = std::max(m_next_free_vert, m_max_verts_seen);
+  m_max_adgifs_seen = std::max(m_next_free_adgif, m_max_adgifs_seen);
+  m_max_buckets_seen = std::max(m_next_free_bucket, m_max_buckets_seen);
+  m_max_indices_seen = std::max(m_next_free_idx, m_max_indices_seen);
+
   m_next_free_frag = 0;
   m_next_free_vert = 0;
   m_next_free_adgif = 0;

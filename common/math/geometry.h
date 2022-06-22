@@ -44,4 +44,10 @@ RaySphereResult<T> ray_sphere_intersect(const Vector3<T>& ray_origin,
   result.u[1] = minus_b - sqrt_val;
   return result;
 }
+
+math::Vector4f bsphere_of_triangle(const Vector3f* vertices);
+
+inline bool point_in_bsphere(const Vector4f& sphere, const Vector3f& pt) {
+  return (sphere.xyz() - pt).squared_length() <= (sphere.w() * sphere.w());
+}
 }  // namespace math

@@ -21,7 +21,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defconstant PC_SUBTITLE_FILE_SIZE (* 64 1024)) ;; 64K heap for subtitles. adjust later if necessary.
+(defconstant PC_SUBTITLE_FILE_SIZE (* 128 1024)) ;; 128K heap for subtitles. adjust later if necessary.
 (defconstant PC_SUBTITLE_FILE_NAME "subtit")
 (defconstant PC_SUBTITLE_STR_ADJUST 17)
 (defglobalconstant PC_SUBTITLE_DEBUG #f)
@@ -125,7 +125,7 @@
     (new 'static 'subtitle-bank
                   :scale 0.49
                   :width 0.87
-                  :height 0.82
+                  :height 0.835
                   :lines 2.0
                   ))
 
@@ -158,9 +158,7 @@
 ;;;----------------------------------------------
 
 
-;; the actor pool for PC processes! it has 1K of space for 1 process.
-(define *pc-dead-pool* (new 'global 'dead-pool 1 (* 1 1024) '*pc-dead-pool*))
-(define *subtitle-temp-string* (new 'global 'string 16 (the string #f)))
+;; the subtitle process.
 (define *subtitle* (the (pointer subtitle) #f))
 
 ;; subtitle text data
@@ -789,13 +787,12 @@
     (subtitle-stop)
     )
 
-  (set! *subtitle* (process-new subtitle subtitle-init-by-other
-                                :from *pc-dead-pool* :to *display-pool*
-                                :stack-size (* 1 1024)))
+  (set! *subtitle* (process-spawn subtitle :from *pc-dead-pool* :to *display-pool*
+                                           :stack-size PC_PROC_DEFAULT_STACK_SIZE))
   )
 
 
-;; start the subtitle process
+;; start the subtitle process when this file loads.
 (subtitle-start)
 
 

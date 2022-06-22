@@ -227,6 +227,7 @@ std::string write_from_top_level_form(Form* top_form,
                                       const DecompilerTypeSystem& dts,
                                       const LinkedObjectFile& file,
                                       const std::unordered_set<std::string>& skip_functions,
+                                      const std::vector<std::string>& imports,
                                       const Env& env) {
   std::vector<FormElement*> forms = top_form->elts();
   ASSERT(!forms.empty());
@@ -238,6 +239,15 @@ std::string write_from_top_level_form(Form* top_form,
   }
 
   std::string result;
+
+  // import deps:
+  for (const auto& import : imports) {
+    result += fmt::format("(import \"{}\")\n", import);
+  }
+  if (!imports.empty()) {
+    result += "\n";
+  }
+
   // local vars:
   auto var_dec = env.local_var_type_list(top_form, 0);
   if (var_dec.local_vars) {
@@ -443,7 +453,7 @@ std::string write_from_top_level_form(Form* top_form,
           result += ";; this part is debug only\n";
           result += "(when *debug-segment*\n";
 
-          result += write_from_top_level_form(entry.body, dts, file, skip_functions, env);
+          result += write_from_top_level_form(entry.body, dts, file, skip_functions, imports, env);
 
           result += ")\n";
         }
@@ -480,6 +490,7 @@ std::string write_from_top_level_form(Form* top_form,
 std::string write_from_top_level(const Function& top_level,
                                  const DecompilerTypeSystem& dts,
                                  const LinkedObjectFile& file,
+                                 const std::vector<std::string>& imports,
                                  const std::unordered_set<std::string>& skip_functions) {
   auto top_form = top_level.ir2.top_form;
   if (!top_form) {
@@ -499,6 +510,6 @@ std::string write_from_top_level(const Function& top_level,
     return ";; ERROR: top level has no register use analysis. Cannot decompile.\n\n";
   }
 
-  return write_from_top_level_form(top_form, dts, file, skip_functions, env);
+  return write_from_top_level_form(top_form, dts, file, skip_functions, imports, env);
 }
 }  // namespace decompiler

@@ -40,7 +40,7 @@
       object
       (cond
         ((= v1-0 'get-pickup)
-         (when (zero? (logand (-> self state-flags) (state-flags sf15)))
+         (when (zero? (logand (-> self state-flags) (state-flags dying)))
            (let ((s4-0 (-> arg3 param 0))
                  (f28-0 (the-as float (-> arg3 param 1)))
                  )
@@ -133,11 +133,11 @@
          (case (-> arg3 param 0)
            (('save)
             (set! (-> self alt-cam-pos quad) (-> self control trans quad))
-            (set! (-> self state-flags) (logior (state-flags sf17) (-> self state-flags)))
+            (set! (-> self state-flags) (logior (state-flags has-saved-position) (-> self state-flags)))
             (mem-copy! (the-as pointer (-> arg3 param 1)) (the-as pointer (-> self control trans)) 48)
             )
            (('restore)
-            (logclear! (-> self state-flags) (state-flags sf17))
+            (logclear! (-> self state-flags) (state-flags has-saved-position))
             (let ((gp-1 (-> arg3 param 1)))
               (move-to-point! (-> self control) (the-as vector (+ gp-1 0)))
               (quaternion-copy! (-> self control quat) (the-as quaternion (+ gp-1 16)))
@@ -149,7 +149,7 @@
             v0-0
             )
            (('reset)
-            (set! v0-0 (the-as object (logclear (-> self state-flags) (state-flags sf17))))
+            (set! v0-0 (the-as object (logclear (-> self state-flags) (state-flags has-saved-position))))
             (set! (-> self state-flags) (the-as state-flags v0-0))
             v0-0
             )
@@ -173,12 +173,12 @@
          (set! (-> self neck flex-blend) (the-as float (-> arg3 param 0)))
          (cond
            ((-> arg3 param 1)
-            (set! (-> self state-flags) (logior (state-flags sf18) (-> self state-flags)))
+            (set! (-> self state-flags) (logior (state-flags looking-at-enemy) (-> self state-flags)))
             (set! (-> self alt-neck-pos quad) (-> (the-as vector (-> arg3 param 1)) quad))
             (look-at-enemy! (-> self neck) (-> self alt-neck-pos) 'force arg0)
             )
            (else
-             (set! v0-0 (the-as object (logclear (-> self state-flags) (state-flags sf18))))
+             (set! v0-0 (the-as object (logclear (-> self state-flags) (state-flags looking-at-enemy))))
              (set! (-> self state-flags) (the-as state-flags v0-0))
              v0-0
              )
@@ -230,13 +230,13 @@
          (cond
            ((-> arg3 param 0)
             (let ((v1-108 (-> self draw shadow-ctrl)))
-              (logclear! (-> v1-108 settings flags) (shadow-flags shdf05))
+              (logclear! (-> v1-108 settings flags) (shadow-flags disable-draw))
               )
             0
             )
            (else
              (let ((v1-110 (-> self draw shadow-ctrl)))
-               (logior! (-> v1-110 settings flags) (shadow-flags shdf05))
+               (logior! (-> v1-110 settings flags) (shadow-flags disable-draw))
                )
              0
              )
@@ -322,7 +322,7 @@
               'shove
               )
           )
-    (set! (-> s5-0 mask) (the-as uint 2248))
+    (set! (-> s5-0 mask) (attack-mask attacker shove-back shove-up angle))
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.1))
     (go arg3 'shove s5-0)
     )
@@ -339,15 +339,15 @@
   )
 
 (defbehavior target-attacked target ((arg0 symbol) (arg1 attack-info) (arg2 process) (arg3 process) (arg4 (state symbol attack-info target)))
-  (when (zero? (logand (-> self state-flags) (state-flags sf03)))
+  (when (zero? (logand (-> self state-flags) (state-flags being-attacked)))
     (cond
-      ((or (logtest? (-> self state-flags) (state-flags sf04 sf05 sf06))
-           (and (logtest? (-> arg1 mask) 32)
+      ((or (logtest? (-> self state-flags) (state-flags invulnerable timed-invulnerable invuln-powerup))
+           (and (logtest? (-> arg1 mask) (attack-mask mode))
                 (= (-> arg1 mode) 'darkeco)
                 (and (and (= (-> self fact-info-target eco-type) (pickup-type eco-red))
                           (>= (-> self fact-info-target eco-level) 1.0)
                           )
-                     (logtest? (state-flags sf01 sf20) (-> self state-flags))
+                     (logtest? (state-flags dangerous flop-hit-ground) (-> self state-flags))
                      )
                 )
            )
@@ -381,18 +381,18 @@
             )
         (when a1-2
           (get-intersect-point (-> self attack-info-rec intersection) a1-2 (-> self control) arg3)
-          (logior! (-> self attack-info-rec mask) 4)
+          (logior! (-> self attack-info-rec mask) (attack-mask intersection))
           )
         )
       )
     (set! (-> self attack-info-rec prev-state) (-> self state))
-    (logior! (-> self attack-info-rec mask) 8192)
-    (when (zero? (logand (-> self attack-info-rec mask) 8))
+    (logior! (-> self attack-info-rec mask) (attack-mask atki13))
+    (when (zero? (logand (-> self attack-info-rec mask) (attack-mask attacker)))
       (set! (-> self attack-info-rec attacker) (process->handle arg2))
-      (logior! (-> self attack-info-rec mask) 8)
+      (logior! (-> self attack-info-rec mask) (attack-mask attacker))
       )
     (cond
-      ((and (logtest? (-> self attack-info-rec mask) 32)
+      ((and (logtest? (-> self attack-info-rec mask) (attack-mask mode))
             (and (= (-> self attack-info-rec mode) 'damage)
                  (not (and (= (-> self game mode) 'play) (>= 1.0 (-> self fact-info-target health))))
                  )
@@ -403,42 +403,35 @@
          (- (-> *FACT-bank* health-single-inc))
          (the-as handle #f)
          )
-       (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-         (when gp-1
-           (let ((t9-5 (method-of-type part-tracker activate)))
-             (t9-5 (the-as part-tracker gp-1) self 'part-tracker (the-as pointer #x70004000))
+       (process-spawn
+         part-tracker
+         :init part-tracker-init
+         (-> *part-group-id-table* 1)
+         -1
+         #f
+         #f
+         #f
+         (if (logtest? (-> self attack-info-rec mask) (attack-mask intersection))
+             (-> self attack-info-rec intersection)
+             (-> self control root-prim prim-core)
              )
-           (run-now-in-process
-             gp-1
-             part-tracker-init
-             (-> *part-group-id-table* 1)
-             -1
-             #f
-             #f
-             #f
-             (if (logtest? (-> self attack-info-rec mask) 4)
-                 (-> self attack-info-rec intersection)
-                 (-> self control root-prim prim-core)
-                 )
-             )
-           (-> gp-1 ppointer)
-           )
+         :to self
          )
        (target-timed-invulnerable
-         (if (logtest? (-> self attack-info-rec mask) 16)
+         (if (logtest? (-> self attack-info-rec mask) (attack-mask invinc-time))
              (-> self attack-info-rec invinc-time)
              (-> *TARGET-bank* hit-invulnerable-timeout)
              )
          self
          )
        (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 255 (seconds 0.5))
-       (sound-play-by-name (static-sound-name "oof") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "oof")
        #t
        )
       (else
-        (logior! (-> self state-flags) (state-flags sf03))
+        (logior! (-> self state-flags) (state-flags being-attacked))
         (if (and (= (-> self game mode) 'play) (and (>= 1.0 (-> self fact-info-target health)) (= arg0 'attack)))
-            (logior! (-> self state-flags) (state-flags sf15))
+            (logior! (-> self state-flags) (state-flags dying))
             )
         (go arg4 arg0 (-> self attack-info-rec))
         )
@@ -772,8 +765,8 @@
   )
 
 (defbehavior target-apply-tongue target ((arg0 vector))
-  (when (zero? (logand (-> self state-flags) (state-flags sf03)))
-    (logior! (-> self state-flags) (state-flags sf12 sf13 sf14))
+  (when (zero? (logand (-> self state-flags) (state-flags being-attacked)))
+    (logior! (-> self state-flags) (state-flags prevent-attack prevent-duck remove-prevents))
     (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> self control trans))))
       (set! (-> self control unknown-float41) (lerp-scale
                                                 (-> *TARGET-bank* tongue-pull-speed-min)
@@ -810,9 +803,9 @@
     (('shove)
      (when (!= (-> self next-state name) 'target-hit)
        (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> arg3 param 1)) 104)
-       (when (zero? (logand (-> self attack-info-rec mask) 8))
+       (when (zero? (logand (-> self attack-info-rec mask) (attack-mask attacker)))
          (set! (-> self attack-info-rec attacker) (process->handle arg0))
-         (logior! (-> self attack-info-rec mask) 8)
+         (logior! (-> self attack-info-rec mask) (attack-mask attacker))
          )
        (go target-hit 'shove (-> self attack-info-rec))
        )
@@ -830,11 +823,11 @@
          )
      )
     (('loading)
-     (if (not (or (and (logtest? (-> self control unknown-surface00 flags) (surface-flags surf11))
+     (if (not (or (and (logtest? (-> self control unknown-surface00 flags) (surface-flags jump))
                        (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
                        )
                   (or (logtest? (-> self water flags) (water-flags wt09))
-                      (logtest? (-> self state-flags) (state-flags sf01 sf02 sf03 sf08 sf09 sf15))
+                      (logtest? (-> self state-flags) (state-flags dangerous sf02 being-attacked grabbed first-person-mode dying))
                       (logtest? (-> self control root-prim prim-core action) (collide-action ca-7 ca-8 ca-9 ca-12 ca-13 ca-14))
                       (>= (-> self no-load-wait) (-> *display* base-frame-counter))
                       )
@@ -908,7 +901,7 @@
      (if (not (or (= (-> self control unknown-surface00 mode) 'swim)
                   (= (-> self control unknown-surface00 mode) 'dive)
                   (= (-> self next-state name) 'target-hit)
-                  (logtest? (-> self state-flags) (state-flags sf03))
+                  (logtest? (-> self state-flags) (state-flags being-attacked))
                   )
               )
          (go target-swim-stance)
@@ -1018,7 +1011,7 @@
                         (-> self control unknown-dword50)
                         (-> self control unknown-dword51)
                         )
-                      (zero? (logand (-> self state-flags) (state-flags sf03 sf15)))
+                      (zero? (logand (-> self state-flags) (state-flags being-attacked dying)))
                       )
              (set! (-> self control unknown-vector52 quad) (-> self control trans quad))
              (target-timed-invulnerable (seconds 0.1) self)
@@ -1029,7 +1022,7 @@
        #f
        )
       ((= arg2 'jump)
-       (sound-play-by-name (static-sound-name "jump-long") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "jump-long")
        (go
          target-jump
          (the-as float (-> arg3 param 0))
@@ -1084,7 +1077,17 @@ target-standard-event-handler
   (set! (-> self control unknown-vector11 quad) (the-as uint128 0))
   (set! (-> self control unknown-float41) 0.0)
   (set! (-> self control unknown-float81) 0.0)
-  (logclear! (-> self state-flags) (state-flags sf02 sf03 sf07 sf08 sf09 sf18 sf19 sf20))
+  (logclear! (-> self state-flags) (state-flags
+                                     sf02
+                                     being-attacked
+                                     do-not-notice
+                                     grabbed
+                                     first-person-mode
+                                     looking-at-enemy
+                                     falling-into-pool-of-bad
+                                     flop-hit-ground
+                                     )
+             )
   (target-danger-set! 'harmless #f)
   (logior! (-> self water flags) (water-flags wt04))
   (logclear! (-> self water flags) (water-flags wt16))

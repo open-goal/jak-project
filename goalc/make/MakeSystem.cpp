@@ -66,6 +66,7 @@ MakeSystem::MakeSystem() {
   add_tool<GroupTool>();
   add_tool<TextTool>();
   add_tool<SubtitleTool>();
+  add_tool<BuildLevelTool>();
 }
 
 /*!

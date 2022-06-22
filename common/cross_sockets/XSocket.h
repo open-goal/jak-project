@@ -25,10 +25,13 @@ const int TCP_SOCKET_LEVEL = IPPROTO_TCP;
 #endif
 
 int open_socket(int af, int type, int protocol);
+int connect_socket(int socket, sockaddr* addr, int nameLen);
 #ifdef __linux
 int accept_socket(int socket, sockaddr* addr, socklen_t* addrLen);
+int select_and_accept_socket(int socket, sockaddr* addr, socklen_t* addrLen, int microSeconds);
 #elif _WIN32
 int accept_socket(int socket, sockaddr* addr, int* addrLen);
+int select_and_accept_socket(int socket, sockaddr* addr, int* addrLen, int microSeconds);
 #endif
 void close_socket(int sock);
 int set_socket_option(int socket, int level, int optname, const void* optval, int optlen);

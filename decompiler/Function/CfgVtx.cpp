@@ -2607,7 +2607,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
     Function& func,
     const CondWithElseLengthHack& cond_with_else_hack,
     const std::unordered_set<int>& blocks_ending_in_asm_br) {
-  //  fmt::print("START {}\n", func.guessed_name.to_string());
+  // fmt::print("START {}\n", func.guessed_name.to_string());
   auto cfg = std::make_shared<ControlFlowGraph>();
 
   const auto& blocks = cfg->create_blocks(func.basic_blocks.size());
@@ -2774,8 +2774,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
       if (branch_delay_asm(following)) {
         b->end_branch.asm_branch = true;
         if (debug_asm_branch) {
-          lg::debug("LIKELY ASM BRANCH: {} and {}",
-                    likely_branch_candidate.to_string(file.labels),
+          lg::debug("LIKELY ASM BRANCH: {} and {}", likely_branch_candidate.to_string(file.labels),
                     following.to_string(file.labels));
         }
       }

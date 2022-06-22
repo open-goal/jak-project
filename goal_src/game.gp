@@ -103,6 +103,17 @@
     )
   )
 
+(defun custom-level-cgo (output-name desc-file-name)
+  "Add a CGO with the given output name (in out/iso) and input name (in custom_levels/)"
+  (let ((out-name (string-append "out/iso/" output-name)))
+    (defstep :in (string-append "custom_levels/" desc-file-name)
+      :tool 'dgo
+      :out `(,out-name)
+      )
+    (set! *all-cgos* (cons out-name *all-cgos*))
+    )
+  )
+
 (defun cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
   (let ((out-name (string-append "out/iso/" output-name)))
@@ -146,6 +157,12 @@
     ,@(apply (lambda (x) `(copy-go ,x)) gos)
     )
   )
+
+(defmacro build-custom-level (name)
+  (let* ((path (string-append "custom_levels/" name "/" name ".jsonc")))
+    `(defstep :in ,path
+              :tool 'build-level
+              :out '(,(string-append "out/obj/" name ".go")))))
 
 (defun get-iso-data-path ()
   (if *use-iso-data-path*
@@ -299,13 +316,6 @@
   "DE0197"
   "DE0199"
   "DE0202"
-  ;; jak other
-  "EIFISH"
-  "EIICE"
-  "EIFLUT"
-  "EIPOLE"
-  "EIRACER"
-  "EITUBE"
 
   ;; intro camera
   "NDINTRO"
@@ -642,7 +652,7 @@
 ;; oracle
 (copy-strs "ORI1" "ORLE1" "ORRE1" "ORR1")
 ;; assistant
-(copy-strs "ASIBESWI" "ASR1BESW")
+(copy-strs "ASIBESWI" "ASR1BESW" "ASIRBIKE" "ASR1RBIK" "ASR1GENE")
 ;; sage
 (copy-strs "SAISA" "SAISD1" "SAISD2" "SAISE" "SAR1ECOR" "SAIMCANN" "SAR1MCAN" "SAR1GENE" "SAR2GENE")
 ;; fishermans-boat
@@ -1560,6 +1570,17 @@
   "ndi-volumes-ag"
   "title-vis")
 
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Example Custom Level
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Set up the build system to build the level geometry
+;; this path is relative to the custom_levels/ folder
+;; it should point to the .jsonc file that specifies the level.
+(build-custom-level "test-zone")
+;; the DGO file
+(custom-level-cgo "TESTZONE.DGO" "test-zone/testzone.gd")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Game Engine Code
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1614,7 +1635,7 @@
  )
 
 
- (goal-src "engine/ps2/pad.gc" "pckernel-h")
+(goal-src "engine/ps2/pad.gc" "pckernel-h")
 
 (goal-src-sequence
  ;; prefix
@@ -1841,9 +1862,9 @@
  "game/video.gc"
  )
 
- (goal-src "engine/game/main.gc" "pckernel" "video")
+(goal-src "engine/game/main.gc" "pckernel" "video")
 
- (goal-src-sequence
+(goal-src-sequence
  ;; prefix
  "engine/"
 
@@ -1888,7 +1909,6 @@
  "debug/anim-tester.gc"
  "debug/viewer.gc"
  "debug/part-tester.gc"
- "debug/default-menu.gc"
  )
 
 (goal-src-sequence
@@ -1938,9 +1958,9 @@
  )
 
 
-(group-list "spools"
- `(,@(reverse *all-str*))
- )
+(fmt #t "found {} spools\n" (count *all-str*))
+(group-list "spools" (reverse *all-str*))
+
 
 (group-list "text"
  `("out/iso/0COMMON.TXT"
@@ -1953,7 +1973,13 @@
 (goal-src "pc/pckernel.gc" "settings")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
+(goal-src "pc/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
+(goal-src "pc/hud-classes-pc.gc" "pckernel" "hud" "battlecontroller" "generic-obs")
+
+;; the debug menu is modified to include PC specific options:
+(goal-src "engine/debug/default-menu.gc" "anim-tester-x" "part-tester")
 
 (group-list "all-code"
   `(,@(reverse *all-gc*))
   )
+

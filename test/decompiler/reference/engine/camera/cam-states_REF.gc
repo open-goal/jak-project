@@ -3,8 +3,7 @@
 
 ;; failed to figure out what this is:
 (defstate cam-fixed (camera-slave)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('teleport)
        #f
@@ -14,8 +13,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (set! (-> self saved-pt quad) (-> self trans quad))
       (set! (-> self blend-from-type) (the-as uint 1))
@@ -24,8 +22,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (not (paused?))
         (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -45,8 +42,7 @@
 
 ;; failed to figure out what this is:
 (defstate cam-fixed-read-entity (camera-slave)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('teleport)
        #f
@@ -56,8 +52,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (cond
       ((-> self enter-has-run)
        )
@@ -80,8 +75,7 @@
     (go cam-fixed)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (format *stdcon* "ERROR <GMJ>: stayed in cam-fixed-read-entity~%")
       (suspend)
@@ -92,8 +86,7 @@
 
 ;; failed to figure out what this is:
 (defstate cam-pov (camera-slave)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('teleport)
        #f
@@ -103,24 +96,21 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (set! (-> self blend-from-type) (the-as uint 1))
       (set! (-> self blend-to-type) (the-as uint 1))
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (not (handle->process (-> *camera* pov-handle)))
       (set! (-> self blend-from-type) (the-as uint 0))
       (cam-slave-go cam-fixed)
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (not (paused?))
         (vector<-cspace!
@@ -156,8 +146,7 @@
 
 ;; failed to figure out what this is:
 (defstate cam-pov180 (camera-slave)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('teleport)
        #f
@@ -167,24 +156,21 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (set! (-> self blend-from-type) (the-as uint 1))
       (set! (-> self blend-to-type) (the-as uint 1))
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (not (handle->process (-> *camera* pov-handle)))
       (set! (-> self blend-from-type) (the-as uint 0))
       (cam-slave-go cam-fixed)
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector))
           (s5-0 (new 'stack-no-clear 'vector))
           (s4-0 #t)
@@ -260,10 +246,8 @@
 
 ;; failed to figure out what this is:
 (defstate cam-pov-track (camera-slave)
-  :event
-  cam-standard-event-handler
-  :enter
-  (behavior ()
+  :event cam-standard-event-handler
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (set! (-> self blend-from-type) (the-as uint 2))
       (set! (-> self blend-to-type) (the-as uint 2))
@@ -275,15 +259,13 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (or (not (handle->process (-> *camera* pov-handle))) (zero? (logand (-> *camera* master-options) 2)))
         (cam-slave-go cam-free-floating)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (if (not (paused?))
           (vector<-cspace!
@@ -307,8 +289,7 @@
 
 ;; failed to figure out what this is:
 (defstate cam-standoff (camera-slave)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('set-standoff-dist)
        (vector-normalize! (-> self pivot-pt) (the-as float (-> arg3 param 0)))
@@ -329,8 +310,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (vector-! (-> self pivot-pt) (-> self trans) (-> *camera* tpos-curr-adj))
       (cond
@@ -348,15 +328,13 @@
     (cam-calc-follow! (-> self tracking) (-> self trans) #f)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (zero? (logand (-> *camera* master-options) 2))
         (cam-slave-go cam-free-floating)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (not (paused?))
         (cam-calc-follow! (-> self tracking) (-> self trans) #t)
@@ -370,10 +348,8 @@
 
 ;; failed to figure out what this is:
 (defstate cam-standoff-read-entity (camera-slave)
-  :event
-  cam-standard-event-handler
-  :enter
-  (behavior ()
+  :event cam-standard-event-handler
+  :enter (behavior ()
     (cond
       ((-> self enter-has-run)
        )
@@ -408,8 +384,7 @@
     (go cam-standoff)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (format *stdcon* "ERROR <GMJ>: stayed in cam-standoff-read-entity~%")
       (suspend)
@@ -447,8 +422,7 @@
 
 ;; failed to figure out what this is:
 (defstate cam-eye (camera-slave)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('teleport)
        #f
@@ -458,8 +432,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (let ((v1-3 (vector-float*! (new-stack-vector0) (-> *camera* local-down) (+ 1024.0 (-> *camera* target-height)))))
         (vector-! (-> self trans) (-> *camera* tpos-curr) v1-3)
@@ -471,25 +444,22 @@
     (set! (-> self fov) 11650.845)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (if (and *target*
              (logtest? (-> *camera* master-options) 2)
-             (logtest? (-> *target* state-flags) (state-flags sf09))
+             (logtest? (-> *target* state-flags) (state-flags first-person-mode))
              )
         (send-event *target* 'end-mode)
         )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (zero? (logand (-> *camera* master-options) 2))
         (go cam-free-floating)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (-> *display* base-frame-counter)))
       (loop
         (when (not (paused?))
@@ -631,8 +601,7 @@
 
 ;; failed to figure out what this is:
 (defstate cam-billy (camera-slave)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('teleport)
        #f
@@ -642,8 +611,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (let ((v1-3 (vector-float*! (new-stack-vector0) (-> *camera* local-down) (-> *camera* target-height))))
         (vector-! (-> self trans) (-> *camera* tpos-curr) v1-3)
@@ -656,20 +624,17 @@
     (matrix-rotate-y! (the-as matrix (-> self tracking)) (the-as float -32768.0))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     '()
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (zero? (logand (-> *camera* master-options) 2))
         (go cam-free-floating)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (not (paused?))
         (let ((s5-0 (vector-reset! (new-stack-vector0)))
@@ -753,10 +718,8 @@
 
 ;; failed to figure out what this is:
 (defstate cam-spline (camera-slave)
-  :event
-  cam-standard-event-handler
-  :enter
-  (behavior ()
+  :event cam-standard-event-handler
+  :enter (behavior ()
     (cond
       ((-> self enter-has-run)
        )
@@ -835,15 +798,13 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (zero? (logand (-> *camera* master-options) 2))
         (cam-slave-go cam-free-floating)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (not (paused?))
         (cam-calc-follow! (-> self tracking) (-> self trans) #t)
@@ -859,8 +820,7 @@
 
 ;; failed to figure out what this is:
 (defstate cam-decel (camera-slave)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('teleport)
        #f
@@ -870,15 +830,13 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (if (not (-> self enter-has-run))
         (set! (-> self saved-pt quad) (-> self trans quad))
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (not (paused?))
         (let ((s5-0 (new-stack-vector0))
@@ -915,8 +873,7 @@
 
 ;; failed to figure out what this is:
 (defstate cam-endlessfall (camera-slave)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('teleport)
        #f
@@ -926,16 +883,14 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (set! (-> self blend-from-type) (the-as uint 2))
       (set! (-> self blend-to-type) (the-as uint 2))
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'cam-vector-seeker))
           (f30-0 (-> self velocity y))
           )
@@ -1157,8 +1112,7 @@
 
 ;; failed to figure out what this is:
 (defstate cam-circular (camera-slave)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('teleport)
        #f
@@ -1172,8 +1126,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (cond
       ((-> self enter-has-run)
        )
@@ -1244,15 +1197,13 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (zero? (logand (-> *camera* master-options) 2))
         (cam-slave-go cam-free-floating)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (if (not (paused?))
           (cam-circular-code)
@@ -1265,25 +1216,21 @@
 
 ;; failed to figure out what this is:
 (defstate cam-lookat (camera-slave)
-  :event
-  cam-standard-event-handler
-  :enter
-  (behavior ()
+  :event cam-standard-event-handler
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (set! (-> self blend-from-type) (the-as uint 2))
       (set! (-> self blend-to-type) (the-as uint 2))
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (zero? (logand (-> *camera* master-options) 2))
         (cam-slave-go cam-free-floating)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (suspend)
       )
@@ -1337,7 +1284,7 @@
                (collide-kind background cak-3 wall-object ground-object cak-14)
                (the-as process #f)
                s3-0
-               2
+               (new 'static 'pat-surface :nocamera #x1)
                )
              0.0
              )
@@ -1699,7 +1646,7 @@
   )
 
 ;; definition for function cam-los-spline-collide
-(defun cam-los-spline-collide ((arg0 vector) (arg1 vector) (arg2 vector))
+(defun cam-los-spline-collide ((arg0 vector) (arg1 vector) (arg2 pat-surface))
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (s4-0 *collide-cache*)
         (f30-0 2.0)
@@ -1713,7 +1660,7 @@
       (-> *CAM_STRING-bank* los-coll-rad2)
       (collide-kind background cak-3 wall-object ground-object cak-14)
       (the-as process-drawable #f)
-      (the-as int arg2)
+      arg2
       )
     (let* ((f0-2 (vector-length s5-0))
            (f28-0
@@ -1919,7 +1866,7 @@
 ;; WARN: Unsupported inline assembly instruction kind - [madda.s f3, f6]
 ;; WARN: Unsupported inline assembly instruction kind - [madd.s f2, f4, f7]
 ;; Used lq/sq
-(defbehavior cam-los-collide camera-slave ((arg0 vector) (arg1 vector) (arg2 clip-travel-vector-to-mesh-return-info) (arg3 int))
+(defbehavior cam-los-collide camera-slave ((arg0 vector) (arg1 vector) (arg2 clip-travel-vector-to-mesh-return-info) (arg3 pat-surface))
   (local-vars (s1-3 int) (s2-2 int) (f2-1 float) (sv-224 vector) (sv-240 vector))
   (dist-info-init (the-as collide-los-dist-info (-> arg2 intersection)))
   (dist-info-init (the-as collide-los-dist-info (-> arg2 next-normal)))
@@ -2072,7 +2019,7 @@
                 (cam-los-spline-collide
                   (the-as vector (+ (the-as uint (-> *camera* target-spline)) (* 48 (-> *camera* target-spline end-point))))
                   arg0
-                  (the-as vector 4098)
+                  (new 'static 'pat-surface :nocamera #x1 :nolineofsight #x1)
                   )
                 )
               )
@@ -2105,7 +2052,7 @@
                                    (cam-los-spline-collide
                                      (the-as vector (+ (the-as uint (-> *camera* target-spline)) (* 48 s2-2)))
                                      arg0
-                                     (the-as vector 4098)
+                                     (new 'static 'pat-surface :nocamera #x1 :nolineofsight #x1)
                                      )
                                    )
                              (< f30-1 0.0)
@@ -2375,7 +2322,7 @@
     (let ((f30-0 (vector-length (-> self view-flat))))
       (vector--float*! s5-0 (-> *camera* tpos-curr) (-> *camera* local-down) (-> *camera* target-height))
       (vector-! s5-0 s5-0 (-> self string-trans))
-      (cam-los-collide (-> self string-trans) s5-0 gp-0 4098)
+      (cam-los-collide (-> self string-trans) s5-0 gp-0 (new 'static 'pat-surface :nocamera #x1 :nolineofsight #x1))
       (when (-> gp-0 vert-next y)
         (when (or (= (-> self los-state) (slave-los-state ccw)) (= (-> self los-state) (slave-los-state cw)))
           (let ((a0-6 (new 'stack-no-clear 'vector)))
@@ -2609,7 +2556,7 @@
             (collide-kind background cak-3 wall-object ground-object cak-14)
             (the-as process #f)
             s4-0
-            2
+            (new 'static 'pat-surface :nocamera #x1)
             )
           0.0
           )
@@ -2714,7 +2661,7 @@
                            (collide-kind background cak-3 wall-object ground-object cak-14)
                            (the-as process #f)
                            s4-2
-                           2
+                           (new 'static 'pat-surface :nocamera #x1)
                            )
                          -100000000.0
                          )
@@ -2881,8 +2828,7 @@
 
 ;; failed to figure out what this is:
 (defstate cam-string (camera-slave)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('teleport)
        (let ((gp-0 (new-stack-vector0)))
@@ -2925,8 +2871,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (set-string-parms)
       (set! *camera-base-mode* cam-string)
@@ -3019,7 +2964,7 @@
                        (collide-kind background cak-3 wall-object ground-object cak-14)
                        (the-as process #f)
                        s4-0
-                       4098
+                       (new 'static 'pat-surface :nocamera #x1 :nolineofsight #x1)
                        )
                      )
               )
@@ -3075,15 +3020,13 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (zero? (logand (-> *camera* master-options) 2))
         (cam-slave-go cam-free-floating)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (when (not (paused?))
         (set-string-parms)
@@ -3167,7 +3110,7 @@
                            (collide-kind background cak-3 wall-object ground-object cak-14)
                            (the-as process #f)
                            s3-0
-                           2
+                           (new 'static 'pat-surface :nocamera #x1)
                            )
                          -100000000.0
                          )
@@ -3226,10 +3169,8 @@
 
 ;; failed to figure out what this is:
 (defstate cam-stick (camera-slave)
-  :event
-  cam-standard-event-handler
-  :enter
-  (behavior ()
+  :event cam-standard-event-handler
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (set! (-> self view-off-param) (-> *camera* view-off-param-save))
       (set! (-> self view-off x) 0.0)
@@ -3253,8 +3194,7 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (zero? (logand (-> *camera* master-options) 2))
         (cam-slave-go cam-free-floating)
         )
@@ -3331,8 +3271,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (if (not (paused?))
           (cam-stick-code)
@@ -3450,7 +3389,7 @@
                          (collide-kind background cak-3 wall-object ground-object cak-14)
                          (the-as process #f)
                          s4-3
-                         2
+                         (new 'static 'pat-surface :nocamera #x1)
                          )
                        -100000000.0
                        )
@@ -3482,10 +3421,8 @@
 
 ;; failed to figure out what this is:
 (defstate cam-bike (camera-slave)
-  :event
-  cam-standard-event-handler
-  :enter
-  (behavior ()
+  :event cam-standard-event-handler
+  :enter (behavior ()
     (when (not (-> self enter-has-run))
       (set! (-> *camera* foot-offset) 4096.0)
       (set! (-> *camera* head-offset) 16384.0)
@@ -3506,15 +3443,13 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (zero? (logand (-> *camera* master-options) 2))
         (cam-slave-go cam-free-floating)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (if (not (paused?))
           (cam-bike-code)

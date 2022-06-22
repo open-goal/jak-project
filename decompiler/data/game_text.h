@@ -5,7 +5,6 @@
 
 namespace decompiler {
 struct ObjectFileData;
-struct Config;
 
 struct GameTextResult {
   int total_text = 0;
@@ -16,6 +15,6 @@ struct GameTextResult {
 
 GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version);
 std::string write_game_text(
-    const Config& cfg,
+    GameTextVersion version,
     const std::unordered_map<int, std::unordered_map<int, std::string>>& data);
 }  // namespace decompiler

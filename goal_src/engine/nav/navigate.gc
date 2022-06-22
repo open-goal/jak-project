@@ -5,6 +5,13 @@
 ;; name in dgo: navigate
 ;; dgos: GAME, ENGINE
 
+;; note: added this to avoid a bug where enemies with NaN positions end up inside the nav mesh.
+;; it's not clear yet why the enemies have NaN positions, but nothing else seems to go wrong if we
+;; ignore them here. It's possible this happens as enemies are spawned/despawned by the visibility system.
+(defmacro is-nan? (flt)
+  `(and (< 0.0 ,flt) (< ,flt 0.0))
+  )
+
 ;; DECOMP BEGINS
 
 (define *nav-timer* (new 'global 'stopwatch))
@@ -133,37 +140,28 @@
   )
 
 (define *default-nav-mesh* (new 'static 'nav-mesh
-                             :bounds
-                             (new 'static 'sphere :x 12288.0 :y -200704.0 :z 12288.0 :w 20480.0)
-                             :origin
-                             (new 'static 'vector :y -200704.0 :w 1.0)
+                             :bounds (new 'static 'sphere :x 12288.0 :y -200704.0 :z 12288.0 :w 20480.0)
+                             :origin (new 'static 'vector :y -200704.0 :w 1.0)
                              :vertex-count 4
-                             :vertex
-                             (new 'static 'inline-array nav-vertex 4
+                             :vertex (new 'static 'inline-array nav-vertex 4
                                (new 'static 'nav-vertex :z 16384.0 :w 1.0)
                                (new 'static 'nav-vertex :z 8192.0 :w 1.0)
                                (new 'static 'nav-vertex :x 8192.0 :z 8192.0 :w 1.0)
                                (new 'static 'nav-vertex :x 8192.0 :w 1.0)
                                )
                              :poly-count 2
-                             :poly
-                             (new 'static 'inline-array nav-poly 2
+                             :poly (new 'static 'inline-array nav-poly 2
                                (new 'static 'nav-poly
-                                 :vertex
-                                 (new 'static 'array uint8 3 #x0 #x2 #x1)
-                                 :adj-poly
-                                 (new 'static 'array uint8 3 #xff #x1 #xff)
+                                 :vertex (new 'static 'array uint8 3 #x0 #x2 #x1)
+                                 :adj-poly (new 'static 'array uint8 3 #xff #x1 #xff)
                                  )
                                (new 'static 'nav-poly
                                  :id #x1
-                                 :vertex
-                                 (new 'static 'array uint8 3 #x1 #x2 #x3)
-                                 :adj-poly
-                                 (new 'static 'array uint8 3 #x0 #xff #xff)
+                                 :vertex (new 'static 'array uint8 3 #x1 #x2 #x3)
+                                 :adj-poly (new 'static 'array uint8 3 #x0 #xff #xff)
                                  )
                                )
-                             :route
-                             (new 'static 'inline-array vector4ub 4
+                             :route (new 'static 'inline-array vector4ub 4
                                (new 'static 'vector4ub :data (new 'static 'array uint8 4 #xcb #x0 #x0 #x0))
                                (new 'static 'vector4ub)
                                (new 'static 'vector4ub)
@@ -236,17 +234,11 @@
   (vector+! arg1 arg1 (-> obj origin))
   )
 
-(define *edge-vert0-table*
-  (the-as (array int8) (new 'static 'boxed-array :type int8 :length 3 :allocated-length 3 1 2 0))
-  )
+(define *edge-vert0-table* (the-as (array int8) (new 'static 'boxed-array :type int8 1 2 0)))
 
-(define *edge-vert1-table*
-  (the-as (array int8) (new 'static 'boxed-array :type int8 :length 3 :allocated-length 3 2 0 1))
-  )
+(define *edge-vert1-table* (the-as (array int8) (new 'static 'boxed-array :type int8 2 0 1)))
 
-(define *edge-mask-table*
-  (the-as (array int8) (new 'static 'boxed-array :type int8 :length 3 :allocated-length 3 1 2 4))
-  )
+(define *edge-mask-table* (the-as (array int8) (new 'static 'boxed-array :type int8 1 2 4)))
 
 (defun inc-mod3 ((arg0 int))
   (local-vars (v0-1 int) (v1-1 int))
@@ -1993,7 +1985,7 @@
         )
     (when (and *target*
                (or (logtest? (-> obj flags) (nav-control-flags navcf11))
-                   (logtest? (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15))
+                   (logtest? (-> *target* state-flags) (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying))
                    )
                )
       (let ((s2-0 obj)
@@ -2080,7 +2072,9 @@
                          (f0-9 (+ (-> sv-112 w) (-> sv-80 shape nav-radius)))
                          (f2-17 (+ 40960.0 f0-9))
                          )
-                    (when (< f1-3 (* f2-17 f2-17))
+                    ;; HACK: added a NaN check here. it seems like some enemies have bogus positions (maybe on their first frame?)
+                    ;; and in these cases we shouldn't bother including them in the mesh.
+                    (when (and (< f1-3 (* f2-17 f2-17)) (not (is-nan? (-> sv-112 x))))
                       (let ((v1-94 sv-96)
                             (a0-47 (-> sv-80 mesh origin))
                             )

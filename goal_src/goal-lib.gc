@@ -5,9 +5,6 @@
 ;; OTHER STUFF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; get list of all goal import files
-(asm-file "goal_src/build/all_imports.gc")
-
 ;; tell compiler about stuff defined/implemented in the runtime.
 (asm-file "goal_src/kernel-defs.gc")
 
@@ -66,7 +63,7 @@
    Uses the blocking dgo-load."
   `(begin
      (build-game)
-     (dgo-load "kernel" global #xf #x200000)
+     (dgo-load "kernel" global (link-flag output-load-msg output-load-true-msg execute-login print-login) #x200000)
      (load-package "game" global)
      )
   )
@@ -92,6 +89,10 @@
     (set-config! print-ir #t)
     (set-config! print-regalloc #t)
     )
+  )
+
+(defmacro import (file-name)
+  `(asm-file ,file-name :no-code)
   )
 
 ;; enum for text file encoding versions
@@ -248,10 +249,9 @@
 
 ;; Define a new function
 (defmacro defun (name bindings &rest body)
-  (if (and
-        (> (length body) 1)      ;; more than one thing in function
-        (string? (first body))   ;; first thing is a string
-        )
+  (if (and (> (length body) 1)      ;; more than one thing in function
+           (string? (first body))   ;; first thing is a string
+           )
     ;; then it's a docstring and we ignore it.
     `(define ,name (lambda :name ,name ,bindings ,@(cdr body)))
     ;; otherwise don't ignore it.
@@ -435,13 +435,13 @@
      )
   )
 
-(defmacro aif (condition true false)
+(defmacro aif (condition true &rest false)
   "Anaphoric if, similar to Common Lisp"
 
   `(let ((it ,condition))
       (if it
           ,true
-          ,false
+          ,@false
           )
       )
   )
@@ -669,6 +669,11 @@
       )
   )
 
+(defmacro float->int (a)
+  "forcefully casts something as a float to int. be careful."
+  `(the int (the float ,a))
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Bit Macros
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -767,10 +772,6 @@
 
 (defmacro cadddr (arg)
   `(car (cdr (cdr (cdr ,arg))))
-  )
-
-(defmacro caddddr (arg)
-  `(car (cdr (cdr (cdr (cdr ,arg)))))
   )
 
 (defmacro dcons (a b)
@@ -914,6 +915,11 @@
   `(make-group "engine")
   )
 
+(defmacro make-text ()
+  "Make Text"
+  `(make-group "text")
+  )
+
 ;;;;;;;;;;;;;;;;;;;
 ;; enum stuff
 ;;;;;;;;;;;;;;;;;;;
@@ -1009,26 +1015,31 @@
   "define a new art element. adds it to a global map stored in goos."
 
   ;; grab data about the art group
-  (let ((ag-info (assoc group *art-info*)))
-      ;; no art group was found, make a new one and add it.
-      (when (null? ag-info)
-            (set! ag-info (cons group '()))
-            (cons! *art-info* ag-info)
-            )
-      ;; lookup art element in our art group
-      (let ((elt-info (assoc name (cdr ag-info)))
-            (elt-new (list name idx))) ;; this is the format of the individual entries
-          ;; found, check if valid
-          (if (and (not (null? elt-info)) (not (eq? elt-info elt-new)))
-              (fmt #t "error redefining art element. data mismatch: {}" elt-info elt-new)
-              #f)
-          ;; not found. add to the art-group.
-          (when (null? elt-info)
-                (set! elt-info elt-new)
-                (set-cdr! ag-info (cons elt-info (cdr ag-info)))
-                )
-          )
+  (let* ((group-string (symbol->string group))
+         (name-string (symbol->string name))
+         (ag-info-lookup (hash-table-try-ref *art-info* group-string))
+         (ag-info-exists (car ag-info-lookup))
+         (ag-info (cdr ag-info-lookup))
+         )
+    ;; no art group was found, make a new one and add it.
+    (when (not ag-info-exists)
+      (set! ag-info (make-string-hash-table))
+      (hash-table-set! *art-info* group-string ag-info)
       )
+    ;; lookup art element in our art group
+    (let* ((elt-info-lookup (hash-table-try-ref ag-info name-string))
+           (elt-info-exists (car elt-info-lookup))
+           (elt-new (list name idx))) ;; this is the format of the individual entries
+      ;; found, check if valid
+      (if (and elt-info-exists (not (eq? (cdr elt-info-lookup) elt-new)))
+          (fmt #t "error redefining art element. data mismatch: {}" elt-info elt-new)
+          #f)
+      ;; not found. add to the art-group.
+      (when (not elt-info-exists)
+        (hash-table-set! ag-info name-string elt-new)
+        )
+      )
+    )
   ;; define a constant for it!
   `(defconstant ,name (-> self draw art-group data ,idx))
   )
@@ -1037,8 +1048,3 @@
 
 ;; load the default project
 (load-project "goal_src/game.gp")
-(seval (fmt #t "Loading imports...\n"))
-(load-imports)
-(seval (fmt #t "Loaded imports. Have a nice day.\n"))
-
-

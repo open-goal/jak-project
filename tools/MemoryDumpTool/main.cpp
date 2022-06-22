@@ -114,6 +114,7 @@ struct SymbolMap {
 };
 
 SymbolMap build_symbol_map(const Ram& ram, u32 s7) {
+  // TODO jak 1 specific
   fmt::print("finding symbols...\n");
   SymbolMap map;
   /*
@@ -150,9 +151,10 @@ SymbolMap build_symbol_map(const Ram& ram, u32 s7) {
 std::unordered_map<u32, std::string> build_type_map(const Ram& ram,
                                                     const SymbolMap& symbols,
                                                     u32 s7) {
+  // TODO jak 1 specific
   std::unordered_map<u32, std::string> result;
   fmt::print("finding types...\n");
-  u32 type_of_type = ram.word(s7 + FIX_SYM_TYPE_TYPE);
+  u32 type_of_type = ram.word(s7 + jak1_symbols::FIX_SYM_TYPE_TYPE);
   ASSERT(type_of_type == ram.word(symbols.name_to_addr.at("type")));
 
   for (const auto& [name, addr] : symbols.name_to_addr) {

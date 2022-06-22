@@ -17,6 +17,8 @@
 #include "kscheme.h"
 #include "common/symbols.h"
 
+using namespace jak1_symbols;
+
 Ptr<Symbol> ListenerLinkBlock;
 Ptr<Symbol> ListenerFunction;
 Ptr<Symbol> kernel_dispatcher;

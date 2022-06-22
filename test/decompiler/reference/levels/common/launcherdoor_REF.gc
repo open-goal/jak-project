@@ -1,6 +1,9 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/launcherdoor-maincave-ag.gc")
+(import "goal_src/import/launcherdoor-ag.gc")
+
 ;; definition of type launcherdoor
 (deftype launcherdoor (process-drawable)
   ((root-override              collide-shape  :offset        112)
@@ -47,15 +50,14 @@
 
 ;; failed to figure out what this is:
 (defstate launcherdoor-closed (launcherdoor)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (if (not arg0)
-        (sound-play-by-name (static-sound-name "ldoor-close") (new-sound-id) 1024 0 0 1 #t)
+        (sound-play "ldoor-close")
         )
     (when *target*
       (case (-> *target* current-level name)
         (('jungle 'jungleb)
-         (send-event *target* 'no-load-wait 6000)
+         (send-event *target* 'no-load-wait (seconds 20))
          )
         )
       )
@@ -106,16 +108,14 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior launcherdoor) ja-post)
+  :post (the-as (function none :behavior launcherdoor) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate launcherdoor-open (launcherdoor)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (if (not arg0)
-        (sound-play-by-name (static-sound-name "ldoor-open") (new-sound-id) 1024 0 0 1 #t)
+        (sound-play "ldoor-open")
         )
     (set! (-> self draw force-lod) 0)
     (clear-collide-with-as (-> self root-override))
@@ -145,8 +145,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior launcherdoor) ja-post)
+  :post (the-as (function none :behavior launcherdoor) ja-post)
   )
 
 ;; definition for method 11 of type launcherdoor

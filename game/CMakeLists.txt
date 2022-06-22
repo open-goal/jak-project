@@ -85,6 +85,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/background/Tfrag3.cpp
         graphics/opengl_renderer/background/TFragment.cpp
         graphics/opengl_renderer/background/Tie3.cpp
+        graphics/opengl_renderer/foreground/Merc2.cpp
         graphics/opengl_renderer/foreground/Generic2.cpp
         graphics/opengl_renderer/foreground/Generic2_DMA.cpp
         graphics/opengl_renderer/foreground/Generic2_Build.cpp
@@ -97,6 +98,8 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/ocean/OceanNear_PS2.cpp
         graphics/opengl_renderer/ocean/OceanTexture.cpp
         graphics/opengl_renderer/ocean/OceanTexture_PC.cpp
+        graphics/opengl_renderer/loader/Loader.cpp
+        graphics/opengl_renderer/loader/LoaderStages.cpp
         graphics/opengl_renderer/BucketRenderer.cpp
         graphics/opengl_renderer/CollideMeshRenderer.cpp
         graphics/opengl_renderer/debug_gui.cpp
@@ -104,9 +107,6 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/DirectRenderer2.cpp
         graphics/opengl_renderer/EyeRenderer.cpp
         graphics/opengl_renderer/dma_helpers.cpp
-        graphics/opengl_renderer/Loader.cpp
-        graphics/opengl_renderer/MercProgram.cpp
-        graphics/opengl_renderer/MercRenderer.cpp
         graphics/opengl_renderer/opengl_utils.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Profiler.cpp
@@ -124,7 +124,9 @@ set(RUNTIME_SOURCE
         graphics/texture/TexturePool.cpp
         graphics/pipelines/opengl.cpp
         system/vm/dmac.cpp
-        system/vm/vm.cpp)
+        system/vm/vm.cpp
+        tools/subtitles/subtitle_editor.h
+        tools/subtitles/subtitle_editor.cpp)
 
 find_package(Git)
 
@@ -153,7 +155,7 @@ add_subdirectory(sound)
 # we build the runtime as a static library.
 add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
-target_link_libraries(runtime common fmt glfw imgui discord-rpc sound)
+target_link_libraries(runtime common fmt glfw imgui discord-rpc sound stb_image)
 if(WIN32)
     target_link_libraries(runtime mman)
 else()

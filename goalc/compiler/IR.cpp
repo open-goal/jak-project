@@ -5,7 +5,7 @@
 #include "common/symbols.h"
 
 using namespace emitter;
-
+using namespace jak1_symbols;  // TODO jak 1 symbols
 namespace {
 Register get_reg(const RegVal* rv, const AllocationResult& allocs, emitter::IR_Record irec) {
   if (rv->rlet_constraint().has_value()) {

@@ -39,12 +39,6 @@ void ObjectFileDB::analyze_functions_ir2(
     const Config& config,
     const std::unordered_set<std::string>& skip_functions,
     const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
-  // First, do basic analysis on the top level:
-  lg::info("Using IR2 analysis...");
-
-  lg::info("Processing top-level functions...");
-  ir2_top_level_pass(config);
-
   int total_file_count = 0;
   for (auto& f : obj_files_by_name) {
     total_file_count += f.second.size();
@@ -92,13 +86,19 @@ void ObjectFileDB::analyze_functions_ir2(
 
     ir2_symbol_definition_map(data);
 
+    const auto& imports_it = config.import_deps_by_file.find(data.to_unique_name());
+    std::vector<std::string> imports;
+    if (imports_it != config.import_deps_by_file.end()) {
+      imports = imports_it->second;
+    }
+
     if (!output_dir.empty()) {
-      ir2_write_results(output_dir, config, data);
+      ir2_write_results(output_dir, config, imports, data);
     } else {
       if (!skip_functions.empty()) {
-        data.output_with_skips = ir2_final_out(data, skip_functions);
+        data.output_with_skips = ir2_final_out(data, imports, skip_functions);
       }
-      data.full_output = ir2_final_out(data);
+      data.full_output = ir2_final_out(data, imports, {});
     }
 
     for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
@@ -106,19 +106,7 @@ void ObjectFileDB::analyze_functions_ir2(
     lg::info("Done in {:.2f}ms", file_timer.getMs());
   });
 
-  int total = stats.let.total();
-  lg::info("LET REWRITE STATS: {} total", total);
-  lg::info("  dotimes: {}", stats.let.dotimes);
-  lg::info("  countdown: {}", stats.let.countdown);
-  lg::info("  abs: {}", stats.let.abs);
-  lg::info("  abs2: {}", stats.let.abs2);
-  lg::info("  ja: {}", stats.let.ja);
-  lg::info("  set_vector: {}", stats.let.set_vector);
-  lg::info("  set_vector2: {}", stats.let.set_vector2);
-  lg::info("  case_no_else: {}", stats.let.case_no_else);
-  lg::info("  case_with_else: {}", stats.let.case_with_else);
-  lg::info("  unused: {}", stats.let.unused);
-  lg::info("  send_event: {}", stats.let.send_event);
+  lg::info("{}", stats.let.print());
 
   if (config.generate_symbol_definition_map) {
     lg::info("Generating symbol definition map...");
@@ -172,12 +160,12 @@ void ObjectFileDB::ir2_run_mips2c(const Config& config, ObjectFileData& data) {
   for_each_function_def_order_in_obj(data, [&](Function& func, int) {
     if (config.hacks.mips2c_functions_by_name.count(func.name())) {
       lg::info("MIPS2C on {}", func.name());
-      run_mips2c(&func);
+      run_mips2c(&func, config.game_version);
     }
 
     auto it = config.hacks.mips2c_jump_table_functions.find(func.name());
     if (it != config.hacks.mips2c_jump_table_functions.end()) {
-      run_mips2c_jump_table(&func, it->second);
+      run_mips2c_jump_table(&func, it->second, config.game_version);
     }
   });
 }
@@ -384,8 +372,9 @@ void ObjectFileDB::ir2_atomic_op_pass(int seg, const Config& config, ObjectFileD
           blocks_ending_in_asm_branch = asm_branch_it->second;
         }
 
-        auto ops = convert_function_to_atomic_ops(func, data.linked_data.labels, func.warnings,
-                                                  inline_asm, blocks_ending_in_asm_branch);
+        auto ops =
+            convert_function_to_atomic_ops(func, data.linked_data.labels, func.warnings, inline_asm,
+                                           blocks_ending_in_asm_branch, config.game_version);
         func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
         func.ir2.atomic_ops_succeeded = true;
         func.ir2.env.set_end_var(func.ir2.atomic_ops->end_op().return_var());
@@ -641,6 +630,7 @@ void ObjectFileDB::ir2_insert_anonymous_functions(int seg, ObjectFileData& data)
 
 void ObjectFileDB::ir2_write_results(const std::string& output_dir,
                                      const Config& config,
+                                     const std::vector<std::string>& imports,
                                      ObjectFileData& obj) {
   if (obj.linked_data.has_any_functions()) {
     // todo
@@ -649,7 +639,7 @@ void ObjectFileDB::ir2_write_results(const std::string& output_dir,
     auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_ir2.asm");
     file_util::write_text_file(file_name, file_text);
 
-    auto final = ir2_final_out(obj);
+    auto final = ir2_final_out(obj, imports, {});
     auto final_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_disasm.gc");
     file_util::write_text_file(final_name, final);
   }
@@ -870,7 +860,12 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
       init_types = &func.ir2.env.get_types_at_block_entry(block_id);
     }
 
-    for (int instr_id = block.start_word; instr_id < block.end_word; instr_id++) {
+    int start_word = block.start_word;
+    // if we have no prologue, skip the type tag.
+    if (start_word == 0) {
+      start_word = 1;
+    }
+    for (int instr_id = start_word; instr_id < block.end_word; instr_id++) {
       print_instr_start(instr_id);
       bool printed_comment = false;
 
@@ -1022,6 +1017,7 @@ bool ObjectFileDB::lookup_function_type(const FunctionName& name,
 }
 
 std::string ObjectFileDB::ir2_final_out(ObjectFileData& data,
+                                        const std::vector<std::string>& imports,
                                         const std::unordered_set<std::string>& skip_functions) {
   if (data.obj_version == 3) {
     std::string result;
@@ -1029,7 +1025,7 @@ std::string ObjectFileDB::ir2_final_out(ObjectFileData& data,
     result += "(in-package goal)\n\n";
     ASSERT(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).size() == 1);
     auto top_level = data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).at(0);
-    result += write_from_top_level(top_level, dts, data.linked_data, skip_functions);
+    result += write_from_top_level(top_level, dts, data.linked_data, imports, skip_functions);
     result += "\n\n";
     return result;
   } else {

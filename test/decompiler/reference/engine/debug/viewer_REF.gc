@@ -4,8 +4,7 @@
 ;; definition for symbol *viewer-sg*, type skeleton-group
 (define *viewer-sg* (new 'static 'skeleton-group
                       :bounds (new 'static 'vector :w 16384.0)
-                      :lod-dist
-                      (new 'static 'array float 4 4095996000.0 0.0 0.0 0.0)
+                      :lod-dist (new 'static 'array float 4 4095996000.0 0.0 0.0 0.0)
                       )
         )
 
@@ -33,25 +32,28 @@
 
 ;; failed to figure out what this is:
 (defstate viewer-process (viewer)
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (ja-no-eval :group! (-> self janim)
-                  :num!
-                  (seek! (the float (+ (-> self janim data 0 length) -1)))
+                  :num! (seek! (the float (+ (-> self janim data 0 length) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
-        (TODO-RENAME-9 (-> self align))
-        (TODO-RENAME-10 (-> self align) 31 1.0 1.0 1.0)
+        (compute-alignment! (-> self align))
+        (align!
+          (-> self align)
+          (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel keep-other-velocities adjust-quat)
+          1.0
+          1.0
+          1.0
+          )
         (suspend)
         (ja :num! (seek!))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior viewer) ja-post)
+  :post (the-as (function none :behavior viewer) ja-post)
   )
 
 ;; definition for symbol viewer-string, type string
@@ -239,7 +241,7 @@
 
 ;; definition for function birth-viewer
 ;; INFO: Return type mismatch symbol vs object.
-(defun birth-viewer ((arg0 process) (arg1 entity))
+(defun birth-viewer ((arg0 process) (arg1 entity-actor))
   (set! (-> arg0 type) viewer)
   (let ((t9-0 init-entity))
     viewer

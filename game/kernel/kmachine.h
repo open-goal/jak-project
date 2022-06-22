@@ -14,7 +14,7 @@ constexpr bool BIG_MEMORY = true;
 
 //! How much space to leave for the stack when creating the debug heap
 // In the game, it's 16 kB, but we increase it to 64 kB.
-// ASAN builds + fmt / spdlog stuff uses a _ton_ of stack when no optimizations are on and we
+// ASAN builds + fmt stuff uses a _ton_ of stack when no optimizations are on and we
 // need more.
 constexpr u32 DEBUG_HEAP_SPACE_FOR_STACK = 0x10000;
 
@@ -138,9 +138,15 @@ struct DiscordInfo {
   u32 fuel;
   u32 money_total;
   u32 buzzer_total;
+  u32 deaths;
   u32 status;
   u32 level;
-  u32 cutscene;  // check if cutscene is playing
+  u32 cutscene;   // check if cutscene is playing
+  u32 ogreboss;   // are we fighting ogreboss?
+  u32 plantboss;  // are we fighting plant-boss?
+  u32 racer;      // are we driving the zoomer?
+  u32 flutflut;   // are we riding on flut flut?
+  u32 time_of_day;
 };
 
 // static_assert(offsetof(CpadInfo, new_pad) == 76, "cpad type offset");

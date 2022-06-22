@@ -29,6 +29,9 @@ s32 gMusicPause = 0;
 u32 gFreeMem = 0;
 u32 gFrameNum = 0;
 
+// added
+u32 gMusicFadeHack = 0;
+
 static SoundIopInfo info;
 
 s32 gVAG_Id = 0;  // TODO probably doesn't belong here.
@@ -204,7 +207,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           Sound* sound = LookupSound(cmd->sound_id.sound_id);
           if (sound != nullptr) {
             snd_PauseSound(sound->sound_handle);
-          } else if (cmd->sound_id.sound_id == gVAG_Id) {
+          } else if (cmd->sound_id.sound_id == (u32)gVAG_Id) {
             PauseVAGStream();
           }
         } break;
@@ -212,7 +215,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           Sound* sound = LookupSound(cmd->sound_id.sound_id);
           if (sound != nullptr) {
             snd_StopSound(sound->sound_handle);
-          } else if (cmd->sound_id.sound_id == gVAG_Id) {
+          } else if (cmd->sound_id.sound_id == (u32)gVAG_Id) {
             StopVAGStream(nullptr, 0);
           }
         } break;
@@ -220,7 +223,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           Sound* sound = LookupSound(cmd->sound_id.sound_id);
           if (sound != nullptr) {
             snd_ContinueSound(sound->sound_handle);
-          } else if (cmd->sound_id.sound_id == gVAG_Id) {
+          } else if (cmd->sound_id.sound_id == (u32)gVAG_Id) {
             UnpauseVAGStream();
           }
         } break;
@@ -261,7 +264,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
               }
             }
 
-          } else if (cmd->sound_id.sound_id == gVAG_Id) {
+          } else if (cmd->sound_id.sound_id == (u32)gVAG_Id) {
             SetVAGStreamVolume(cmd->param.parms.volume);
           }
         } break;
@@ -432,14 +435,14 @@ s32 VBlank_Handler() {
     return 1;
 
   if (gMusicFadeDir > 0) {
-    gMusicFade += 1024;
-    if (gMusicFade > 0x10000) {
+    gMusicFade += (0x10000 / 64);
+    if (gMusicFade > 0x10000 || (gMusicFadeHack & 1)) {
       gMusicFade = 0x10000;
       gMusicFadeDir = 0;
     }
   } else if (gMusicFadeDir < 0) {
-    gMusicFade -= 512;
-    if (gMusicFade < 0) {
+    gMusicFade -= (0x10000 / 128);
+    if (gMusicFade < 0 || (gMusicFadeHack & 2)) {
       gMusicFade = 0;
       gMusicFadeDir = 0;
     }
@@ -486,7 +489,7 @@ s32 VBlank_Handler() {
 
   sceSifDmaData dma;
   dma.data = &info;
-  dma.addr = (void*)gInfoEE;
+  dma.addr = (void*)(uintptr_t)gInfoEE;
   dma.size = 0x110;
   dma.mode = 0;
   dmaid = sceSifSetDma(&dma, 1);

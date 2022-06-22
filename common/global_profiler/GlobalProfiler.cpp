@@ -156,8 +156,7 @@ void GlobalProfiler::dump_to_json(const std::string& path) {
     if (event.ts < info.debug) {
       lg::debug("out of order: {} {} {} ms", event.ts / 1000.f, info.debug / 1000.f,
                 (info.debug - event.ts) / 1000000.f);
-      lg::debug("  idx: {}, range {} {}", event_idx, info.lowest_at_target,
-                info.highest_at_target);
+      lg::debug("  idx: {}, range {} {}", event_idx, info.lowest_at_target, info.highest_at_target);
       lg::debug("  now: {}", m_next_idx);
     }
     info.debug = event.ts;

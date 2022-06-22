@@ -5,6 +5,8 @@
 
 #pragma once
 
+#ifndef NO_ASSERT
+
 #include <string_view>
 
 [[noreturn]] void private_assert_failed(const char* expr,
@@ -28,3 +30,10 @@
 
 #define ASSERT_MSG(EXPR, STR) \
   (void)((EXPR) || (private_assert_failed(#EXPR, __FILE__, __LINE__, __PRETTY_FUNCTION__, STR), 0))
+
+#else
+
+#define ASSERT(EX) ((void)0)
+#define ASSERT_MSG(EXPR, STR) ((void)0)
+
+#endif

@@ -1,5 +1,3 @@
-
-
 #include "Tools.h"
 
 #include <filesystem>
@@ -11,6 +9,7 @@
 #include "goalc/data_compiler/dir_tpages.h"
 #include "goalc/data_compiler/game_count.h"
 #include "goalc/data_compiler/game_text_common.h"
+#include "goalc/build_level/build_level.h"
 
 CompilerTool::CompilerTool(Compiler* compiler) : Tool("goalc"), m_compiler(compiler) {}
 
@@ -177,10 +176,29 @@ bool SubtitleTool::needs_run(const ToolInput& task) {
 
 bool SubtitleTool::run(const ToolInput& task) {
   GameSubtitleDB db;
+  db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
+  db.m_subtitle_groups->hydrate_from_asset_file();
   std::unordered_map<GameTextVersion, std::vector<std::string>> inputs;
   open_text_project("subtitle", task.input.at(0), inputs);
   for (auto& [ver, in] : inputs) {
     compile_game_subtitle(in, ver, db);
   }
   return true;
+}
+
+BuildLevelTool::BuildLevelTool() : Tool("build-level") {}
+
+bool BuildLevelTool::needs_run(const ToolInput& task) {
+  if (task.input.size() != 1) {
+    throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
+  }
+  auto deps = get_build_level_deps(task.input.at(0));
+  return Tool::needs_run({task.input, deps, task.output, task.arg});
+}
+
+bool BuildLevelTool::run(const ToolInput& task) {
+  if (task.input.size() != 1) {
+    throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
+  }
+  return run_build_level(task.input.at(0), task.output.at(0));
 }

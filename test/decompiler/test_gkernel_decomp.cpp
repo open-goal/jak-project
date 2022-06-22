@@ -62,7 +62,8 @@ TEST_F(FormRegressionTest, ExprLoadPackage) {
   std::string expected =
       "(when\n"
       "  (not (nmember arg0 *kernel-packages*))\n"
-      "  (dgo-load arg0 arg1 15 #x200000)\n"
+      "  (dgo-load arg0 arg1 (link-flag output-load-msg output-load-true-msg execute-login "
+      "print-login) #x200000)\n"
       "  (let\n"
       "   ((v0-1 (cons arg0 *kernel-packages*)))\n"
       "   (set! *kernel-packages* v0-1)\n"

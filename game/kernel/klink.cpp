@@ -9,6 +9,7 @@
 #include <cstring>
 #include <cstdio>
 #include <common/versions.h>
+#include "common/log/log.h"
 #include "klink.h"
 #include "fileio.h"
 #include "kscheme.h"
@@ -19,6 +20,8 @@
 #include "game/mips2c/mips2c_table.h"
 #include "common/util/Assert.h"
 #include "third-party/fmt/core.h"
+
+using namespace jak1_symbols;
 
 namespace {
 // turn on printf's for debugging linking issues.
@@ -578,9 +581,6 @@ uint32_t link_control::work_v2() {
     if (m_segment_process == 0) {
       m_heap_gap =
           m_object_data - m_heap->current;  // distance between end of heap and start of object
-      if (m_object_data.offset < m_heap->current.offset) {
-        ASSERT(false);
-      }
     }
 
     if (m_heap_gap <
@@ -781,6 +781,7 @@ void link_control::finish(bool jump_from_c_to_goal) {
   *EnableMethodSet = *EnableMethodSet + m_keep_debug;
 
   ObjectFileHeader* ofh = m_link_block_ptr.cast<ObjectFileHeader>().c();
+  lg::info("link finish: {}", m_object_name);
   if (ofh->object_file_version == 3) {
     // todo check function type of entry
 

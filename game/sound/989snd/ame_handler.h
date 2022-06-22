@@ -10,6 +10,9 @@
 
 namespace snd {
 
+// added!
+extern u64 SoundFlavaHack;
+
 class midi_handler;
 class ame_handler : public sound_handler {
   friend class midi_handler;

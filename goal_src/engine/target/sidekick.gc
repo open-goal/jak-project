@@ -9,6 +9,8 @@
 
 ;; DECOMP BEGINS
 
+(import "goal_src/import/sidekick-ag.gc")
+
 (define *sidekick-remap* '(("run-to-stance-left" "run-to-stance")
                            ("run-to-stance-loop-left" "run-to-stance-loop")
                            ("stance-loop-left" "stance-loop")
@@ -64,8 +66,7 @@
   )
 
 (defstate sidekick-clone (sidekick)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 object))
     (case arg2
       (('matrix)
@@ -121,10 +122,8 @@
        )
       )
     )
-  :code
-  (the-as (function none :behavior sidekick) looping-code)
-  :post
-  (behavior ()
+  :code (the-as (function none :behavior sidekick) looping-code)
+  :post (behavior ()
     (let ((v1-0 'process-drawable-art-error)
           (a0-0 (-> self parent-override))
           )
@@ -241,6 +240,14 @@
   (set! (-> self draw shadow-joint-index) (the-as uint 6))
   (set! (-> self draw shadow-ctrl) *target-shadow-control*)
   (logior! (-> self skel status) (janim-status eye))
+
+  (#when PC_PORT
+    ;; daxter can be killed mid-blerc, leaving blerc modifications in the merc data.
+    ;; once sidekick is restarted, the blerc-done flag will be lost, so the modifications will
+    ;; to work around this, just set blerc-done on spawn. it will run blerc with 0's on the
+    ;; first frame when daxter is drawn, clearing blerc data.
+    (logior! (-> self skel status) (janim-status blerc-done))
+    )
   (let ((v1-14 (-> self node-list data)))
     (set! (-> v1-14 0 param0) cspace<-cspace+quaternion!)
     (set! (-> v1-14 0 param1) (the-as basic (-> self parent-override 0 control unknown-cspace10 parent)))

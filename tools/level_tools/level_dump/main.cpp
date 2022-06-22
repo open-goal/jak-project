@@ -9,6 +9,8 @@
 
 #include "common/util/Assert.h"
 
+constexpr GameVersion kGameVersion = GameVersion::Jak1;
+
 /*!
  * Get the level data from a DGO File.
  * Will ignore all the other things in the level DGO and just return the bsp file.
@@ -28,7 +30,8 @@ decompiler::LinkedObjectFile load_bsp_from_dgo(const std::string& file_name,
   fmt::print("Using level file: {}, size {} kB\n", level_file.internal_name,
              level_file.data.size() / 1024);
 
-  return decompiler::to_linked_object_file(level_file.data, level_file.internal_name, dts, 1);
+  return decompiler::to_linked_object_file(level_file.data, level_file.internal_name, dts,
+                                           kGameVersion);
 }
 
 bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {

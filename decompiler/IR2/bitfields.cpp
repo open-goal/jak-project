@@ -547,8 +547,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
     BitFieldDef def;
     def.field_name = field->name();
-    def.value = pool.alloc_single_element_form<SimpleAtomElement>(
-        nullptr, SimpleAtom::make_int_constant(set_value));
+    def.value = pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(set_value));
     return pool.alloc_element<ModifiedCopyBitfieldElement>(m_type, m_base, m_got_pcpyud,
                                                            std::vector<BitFieldDef>{def});
   }
@@ -580,8 +579,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
     BitFieldDef def;
     def.field_name = field->name();
-    def.value = pool.alloc_single_element_form<SimpleAtomElement>(
-        nullptr, SimpleAtom::make_int_constant(set_value));
+    def.value = pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(set_value));
     return pool.alloc_element<ModifiedCopyBitfieldElement>(m_type, m_base, m_got_pcpyud,
                                                            std::vector<BitFieldDef>{def});
   }
@@ -711,14 +709,11 @@ BitFieldDef BitFieldDef::from_constant(const BitFieldConstantDef& constant, Form
     for (auto& x : constant.nested_field->fields) {
       defs.push_back(BitFieldDef::from_constant(x, pool));
     }
-    bfd.value = pool.alloc_single_element_form<BitfieldStaticDefElement>(
-        nullptr, constant.nested_field->field_type, defs);
+    bfd.value = pool.form<BitfieldStaticDefElement>(constant.nested_field->field_type, defs);
   } else if (constant.enum_constant) {
-    bfd.value =
-        pool.alloc_single_element_form<ConstantTokenElement>(nullptr, *constant.enum_constant);
+    bfd.value = pool.form<ConstantTokenElement>(*constant.enum_constant);
   } else {
-    bfd.value = pool.alloc_single_element_form<SimpleAtomElement>(
-        nullptr, SimpleAtom::make_int_constant(constant.value));
+    bfd.value = pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(constant.value));
   }
 
   return bfd;
@@ -758,8 +753,7 @@ Form* cast_sound_name(FormPool& pool, const Env& env, Form* in) {
     }
   }
 
-  return pool.alloc_single_element_form<ConstantTokenElement>(
-      nullptr, fmt::format("(static-sound-name \"{}\")", name));
+  return pool.form<ConstantTokenElement>(fmt::format("(static-sound-name \"{}\")", name));
 }
 
 std::optional<std::vector<BitFieldDef>> get_field_defs_from_expr(const BitFieldType* type_info,
@@ -821,8 +815,7 @@ std::optional<std::vector<BitFieldDef>> get_field_defs_from_expr(const BitFieldT
           float value_f;
           u32 value_i = *integer;
           memcpy(&value_f, &value_i, 4);
-          maybe_field->value =
-              pool.alloc_single_element_form<ConstantFloatElement>(nullptr, value_f);
+          maybe_field->value = pool.form<ConstantFloatElement>(value_f);
         }
       }
 
@@ -859,7 +852,7 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
       return as_sound_name;
     }
     // just do a normal cast if that failed.
-    return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+    return pool.form<CastElement>(typespec, in);
   }
 
   // check if it's just a constant:
@@ -869,17 +862,16 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
     auto fields =
         try_decompile_bitfield_from_int(typespec, env.dts->ts, in_as_atom->get_int(), false, {});
     if (!fields) {
-      return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+      return pool.form<CastElement>(typespec, in);
     }
-    return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec, *fields,
-                                                                    pool);
+    return pool.form<BitfieldStaticDefElement>(typespec, *fields, pool);
   }
 
   bool bitfield_128 = type_info->get_size_in_memory() == 16;
   if (bitfield_128) {
     auto in_no_cast = strip_int_or_uint_cast(in);
     auto pcpyld_matcher =
-        Matcher::fixed_op(FixedOperatorKind::PCPYLD, {Matcher::any(0), Matcher::any(1)});
+        Matcher::op_fixed(FixedOperatorKind::PCPYLD, {Matcher::any(0), Matcher::any(1)});
     auto mr = match(pcpyld_matcher, in_no_cast);
     if (mr.matched) {
       auto upper = mr.maps.forms.at(0);
@@ -890,22 +882,20 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
 
       if (upper_defs && lower_defs) {
         lower_defs->insert(lower_defs->end(), upper_defs->begin(), upper_defs->end());
-        return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec,
-                                                                        *lower_defs);
+        return pool.form<BitfieldStaticDefElement>(typespec, *lower_defs);
       }
     }
-    return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+    return pool.form<CastElement>(typespec, in);
   } else {
     // dynamic bitfield def
     auto field_defs = get_field_defs_from_expr(type_info, in, typespec, pool, env, {});
     if (field_defs) {
-      return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec,
-                                                                      *field_defs);
+      return pool.form<BitfieldStaticDefElement>(typespec, *field_defs);
     }
   }
 
   // all failed, just return whatever.
-  return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+  return pool.form<CastElement>(typespec, in);
 }
 
 Form* cast_to_bitfield_enum(const EnumType* type_info,
@@ -919,7 +909,7 @@ Form* cast_to_bitfield_enum(const EnumType* type_info,
     return cast_to_bitfield_enum(type_info, pool, env, *integer);
   } else {
     // all failed, just return whatever.
-    return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+    return pool.form<CastElement>(typespec, in);
   }
 }
 
@@ -934,29 +924,39 @@ Form* cast_to_int_enum(const EnumType* type_info,
     return cast_to_int_enum(type_info, pool, env, *integer);
   } else {
     // all failed, just return whatever.
-    return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+    return pool.form<CastElement>(typespec, in);
   }
 }
 
 Form* cast_to_int_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in) {
   ASSERT(!type_info->is_bitfield());
   auto entry = decompile_int_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
-  auto oper = GenericOperator::make_function(
-      pool.alloc_single_element_form<ConstantTokenElement>(nullptr, type_info->get_name()));
-  return pool.alloc_single_element_form<GenericElement>(
-      nullptr, oper, pool.alloc_single_element_form<ConstantTokenElement>(nullptr, entry));
+  auto oper =
+      GenericOperator::make_function(pool.form<ConstantTokenElement>(type_info->get_name()));
+  return pool.form<GenericElement>(oper, pool.form<ConstantTokenElement>(entry));
 }
 
-Form* cast_to_bitfield_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in) {
+Form* cast_to_bitfield_enum(const EnumType* type_info,
+                            FormPool& pool,
+                            const Env& env,
+                            s64 in,
+                            bool no_head) {
   ASSERT(type_info->is_bitfield());
   auto elts = decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
+  if (no_head) {
+    ASSERT(elts.size() >= 1);
+  }
   auto oper = GenericOperator::make_function(
-      pool.alloc_single_element_form<ConstantTokenElement>(nullptr, type_info->get_name()));
+      pool.form<ConstantTokenElement>(no_head ? elts.at(0) : type_info->get_name()));
+  if (no_head) {
+    elts.erase(elts.begin());
+  }
+
   std::vector<Form*> form_elts;
   for (auto& x : elts) {
-    form_elts.push_back(pool.alloc_single_element_form<ConstantTokenElement>(nullptr, x));
+    form_elts.push_back(pool.form<ConstantTokenElement>(x));
   }
-  return pool.alloc_single_element_form<GenericElement>(nullptr, oper, form_elts);
+  return pool.form<GenericElement>(oper, form_elts);
 }
 
 }  // namespace decompiler

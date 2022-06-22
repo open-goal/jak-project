@@ -301,7 +301,7 @@ void midi_handler::system_event() {
         m_seq_ptr = ptr;
 
         if (!cont) {
-          lg::debug("{:x} track stopped by ame", (u64)this);
+          // lg::debug("{:x} track stopped by ame", (u64)this);
           m_track_complete = true;
         }
       } else {
@@ -395,7 +395,7 @@ void midi_handler::step() {
         }
         [[fallthrough]];
       default:
-        throw midi_error(fmt::format("MIDI error: invalid status {}", m_status));
+        throw midi_error(fmt::format("invalid status {}", m_status));
         return;
     }
 

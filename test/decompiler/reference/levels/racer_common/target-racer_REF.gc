@@ -25,7 +25,7 @@
                        :alignv 1.0
                        :slope-up-traction 1.0
                        :align-speed 1.0
-                       :flags (surface-flags surf00)
+                       :flags (surface-flags allow-look-around)
                        )
         )
 
@@ -54,7 +54,7 @@
                            :slope-up-traction 1.0
                            :align-speed 1.0
                            :mode 'air
-                           :flags (surface-flags surf00 surf11)
+                           :flags (surface-flags allow-look-around jump)
                            )
         )
 
@@ -447,14 +447,16 @@
       ((< (-> self racer shock-offset) -8192.0)
        (set! (-> self racer shock-offset) -8192.0)
        (set! (-> self racer shock-offsetv) 0.0)
-       (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-         (when s5-0
-           (let ((t9-4 (method-of-type part-tracker activate)))
-             (t9-4 (the-as part-tracker s5-0) self 'part-tracker (the-as pointer #x70004000))
-             )
-           (run-now-in-process s5-0 part-tracker-init (-> *part-group-id-table* 13) -1 #f #f #f (-> self control trans))
-           (-> s5-0 ppointer)
-           )
+       (process-spawn
+         part-tracker
+         :init part-tracker-init
+         (-> *part-group-id-table* 13)
+         -1
+         #f
+         #f
+         #f
+         (-> self control trans)
+         :to self
          )
        (dummy-10 (-> self skel effect) 'effect-land -1.0 -1)
        )
@@ -548,7 +550,7 @@
           (if (or (and (logtest? (-> self control status) (cshape-moving-flags twall))
                        (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
                        )
-                  (logtest? (-> self state-flags) (state-flags sf15))
+                  (logtest? (-> self state-flags) (state-flags dying))
                   )
               0.0
               (-> self control unknown-float81)
@@ -604,14 +606,12 @@
       )
     )
   (let ((f0-11 (lerp-scale 100.0 60.0 (-> self racer engine-sound-pitch) 0.8 2.0)))
-    (sound-play-by-name
-      (static-sound-name "zoomer-loop")
-      (-> self racer engine-sound-id)
-      (the int (* 10.24 f0-11))
-      (the int (* 1524.0 (-> self racer engine-sound-pitch)))
-      0
-      1
-      (the-as symbol (-> self control trans))
+    (sound-play
+      "zoomer-loop"
+      :id (-> self racer engine-sound-id)
+      :vol f0-11
+      :pitch (-> self racer engine-sound-pitch)
+      :position (the-as symbol (-> self control trans))
       )
     )
   (cond
@@ -627,23 +627,13 @@
        )
      )
     ((>= (- (-> *display* base-frame-counter) (-> self racer unstuck-time)) (seconds 5))
-     (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-6 from) self)
-       (set! (-> a1-6 num-params) 2)
-       (set! (-> a1-6 message) 'attack)
-       (set! (-> a1-6 param 0) (the-as uint #f))
-       (let ((a0-12 (new 'static 'attack-info :mask #x20)))
-         (set! (-> a0-12 mode) 'heat)
-         (set! (-> a1-6 param 1) (the-as uint a0-12))
-         )
-       (send-event-function self a1-6)
-       )
+     (send-event self 'attack #f (static-attack-info ((mode 'heat))))
      )
     ((and (>= (- (-> *display* base-frame-counter) (-> self racer unstuck-time)) (seconds 3))
           (>= (- (-> *display* base-frame-counter) (-> self racer heat-sound-time)) (seconds 1))
           )
      (set! (-> self racer heat-sound-time) (-> *display* base-frame-counter))
-     (sound-play-by-name (static-sound-name "warning") (new-sound-id) 1024 0 0 1 #t)
+     (sound-play "warning")
      )
     )
   )
@@ -842,7 +832,7 @@
                   )
              (cpad-pressed? (-> self control unknown-cpad-info00 number) circle square)
              (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword82)) (seconds 0.25))
-             (zero? (logand (-> self state-flags) (state-flags sf03 sf15)))
+             (zero? (logand (-> self state-flags) (state-flags being-attacked dying)))
              )
     (let ((gp-6 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat)))
           (s5-4 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self manipy 0 node-list data 4)))
@@ -850,25 +840,18 @@
       (set! (-> gp-6 y) 0.0)
       (vector-normalize! gp-6 (-> *RACER-bank* yellow-projectile-speed))
       (vector+! gp-6 gp-6 (-> self control transv))
-      (let ((s4-3 (get-process *default-dead-pool* projectile-yellow #x4000)))
-        (when s4-3
-          (let ((t9-22 (method-of-type projectile-yellow activate)))
-            (t9-22 (the-as projectile-yellow s4-3) self 'projectile-yellow (the-as pointer #x70004000))
+      (process-spawn
+        projectile-yellow
+        :init projectile-init-by-other
+        (-> self entity)
+        s5-4
+        gp-6
+        (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
+            152
+            136
             )
-          (run-now-in-process
-            s4-3
-            projectile-init-by-other
-            (-> self entity)
-            s5-4
-            gp-6
-            (if (>= (-> self fact-info-target eco-level) (-> *FACT-bank* eco-level-max))
-                152
-                136
-                )
-            #f
-            )
-          (-> s4-3 ppointer)
-          )
+        #f
+        :to self
         )
       )
     (set! (-> self control unknown-dword82) (-> *display* base-frame-counter))
@@ -915,19 +898,9 @@
           )
       )
     )
-  (when (and (>= (-> self racer heat) (-> *RACER-bank* heat-max)) (= (-> self game mode) 'play))
-    (let ((a1-43 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-43 from) self)
-      (set! (-> a1-43 num-params) 2)
-      (set! (-> a1-43 message) 'attack)
-      (set! (-> a1-43 param 0) (the-as uint #f))
-      (let ((a0-68 (new 'static 'attack-info :mask #x20)))
-        (set! (-> a0-68 mode) 'heat)
-        (set! (-> a1-43 param 1) (the-as uint a0-68))
-        )
-      (send-event-function self a1-43)
+  (if (and (>= (-> self racer heat) (-> *RACER-bank* heat-max)) (= (-> self game mode) 'play))
+      (send-event self 'attack #f (static-attack-info ((mode 'heat))))
       )
-    )
   (if (and *cheat-mode* *debug-segment* (cpad-pressed? 0 l2))
       (send-event self 'boost 1.0)
       )
@@ -1014,7 +987,7 @@
       1024
       0
       0
-      1
+      (sound-group sfx)
       #t
       )
     )
@@ -1026,7 +999,7 @@
                   )
              )
     (set! (-> self racer heat-sound-time) (-> *display* base-frame-counter))
-    (sound-play-by-name (static-sound-name "warning") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "warning")
     )
   (when (rand-vu-percent? (/ (-> self racer heat) (-> *RACER-bank* heat-max)))
     (let ((a2-28
@@ -1180,8 +1153,7 @@
     )
   (ja :chan 3
       :num! (chan 0)
-      :frame-interp
-      (* (-> self racer slide-interp) (+ 0.5 (* 0.025 (-> self racer tail-anim-frame))))
+      :frame-interp (* (-> self racer slide-interp) (+ 0.5 (* 0.025 (-> self racer tail-anim-frame))))
       )
   0
   (none)

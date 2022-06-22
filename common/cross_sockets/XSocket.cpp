@@ -35,9 +35,31 @@ int open_socket(int af, int type, int protocol) {
 #endif
 }
 
+int connect_socket(int socket, sockaddr* addr, int nameLen) {
+  int result = connect(socket, addr, nameLen);
+  if (result == -1) {
+    return -1;
+  }
+  return result;
+}
+
 #ifdef __linux
 int accept_socket(int socket, sockaddr* addr, socklen_t* addrLen) {
   return accept(socket, addr, addrLen);
+}
+int select_and_accept_socket(int socket, sockaddr* addr, socklen_t* addrLen, int microSeconds) {
+  struct timeval timeout;
+  timeout.tv_sec = 0;
+  timeout.tv_usec = microSeconds;
+  // Use select so it can timeout, accept on the returned socket if it is correct
+  fd_set read_sockets;
+  FD_ZERO(&read_sockets);
+  FD_SET(socket, &read_sockets);
+  auto activity = select(socket + 1, &read_sockets, NULL, NULL, &timeout);
+  if (activity > 0) {
+    return accept(socket, addr, addrLen);
+  }
+  return -1;
 }
 #endif
 
@@ -52,6 +74,29 @@ int accept_socket(int socket, sockaddr* addr, int* addrLen) {
     return 1;
   }
   return accept(socket, addr, addrLen);
+}
+
+int select_and_accept_socket(int socket, sockaddr* addr, int* addrLen, int microSeconds) {
+  WSADATA wsaData = {0};
+  int iResult = 0;
+  // Initialize Winsock
+  iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (iResult != 0) {
+    printf("WSAStartup failed: %d\n", iResult);
+    return 1;
+  }
+  struct timeval timeout;
+  timeout.tv_sec = 0;
+  timeout.tv_usec = microSeconds;
+  // Use select so it can timeout, accept on the returned socket if it is correct
+  fd_set read_sockets;
+  FD_ZERO(&read_sockets);
+  FD_SET(socket, &read_sockets);
+  auto activity = select(socket + 1, &read_sockets, NULL, NULL, &timeout);
+  if (activity > 0) {
+    return accept(socket, addr, addrLen);
+  }
+  return -1;
 }
 #endif
 
@@ -102,7 +147,7 @@ int set_socket_timeout(int socket, long microSeconds) {
 int write_to_socket(int socket, const char* buf, int len) {
   int bytes_wrote = 0;
 #ifdef __linux
-  bytes_wrote = write(socket, buf, len);
+  bytes_wrote = send(socket, buf, len, MSG_NOSIGNAL);
 #elif _WIN32
   bytes_wrote = send(socket, buf, len, 0);
 #endif

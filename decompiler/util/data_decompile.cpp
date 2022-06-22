@@ -1368,14 +1368,15 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
   int array_allocated_length = size_word_2.data;
 
   auto content_type_info = ts.lookup_type(content_type);
+  auto params_obj = array_length == array_allocated_length
+                        ? pretty_print::to_symbol(fmt::format("new 'static 'boxed-array :type {}",
+                                                              content_type.print()))
+                        : pretty_print::to_symbol(fmt::format(
+                              "new 'static 'boxed-array :type {} :length {} :allocated-length {}",
+                              content_type.print(), array_length, array_allocated_length));
   if (content_type_info->is_reference() || content_type == TypeSpec("object")) {
     // easy, stride of 4.
-    std::vector<goos::Object> result = {
-        pretty_print::to_symbol("new"), pretty_print::to_symbol("'static"),
-        pretty_print::to_symbol("'boxed-array"),
-        pretty_print::to_symbol(fmt::format(":type {} :length {} :allocated-length {}",
-                                            content_type.print(), array_length,
-                                            array_allocated_length))};
+    std::vector<goos::Object> result = {params_obj};
 
     for (int elt = 0; elt < array_length; elt++) {
       auto& word = words.at(label.target_segment).at(first_elt_word_idx + elt);
@@ -1406,12 +1407,7 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
 
     return pretty_print::build_list(result);
   } else if (content_type.base_type() == "inline-array") {
-    std::vector<goos::Object> result = {
-        pretty_print::to_symbol("new"), pretty_print::to_symbol("'static"),
-        pretty_print::to_symbol("'boxed-array"),
-        pretty_print::to_symbol(fmt::format(":type {} :length {} :allocated-length {}",
-                                            content_type.print(), array_length,
-                                            array_allocated_length))};
+    std::vector<goos::Object> result = {params_obj};
 
     for (int elt = 0; elt < array_length; elt++) {
       auto& word = words.at(label.target_segment).at(first_elt_word_idx + elt);
@@ -1424,12 +1420,7 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
     return pretty_print::build_list(result);
   } else {
     // value array
-    std::vector<goos::Object> result = {
-        pretty_print::to_symbol("new"), pretty_print::to_symbol("'static"),
-        pretty_print::to_symbol("'boxed-array"),
-        pretty_print::to_symbol(fmt::format(":type {} :length {} :allocated-length {}",
-                                            content_type.print(), array_length,
-                                            array_allocated_length))};
+    std::vector<goos::Object> result = {params_obj};
 
     auto stride = content_type_info->get_size_in_memory();
     for (int i = 0; i < array_length; i++) {

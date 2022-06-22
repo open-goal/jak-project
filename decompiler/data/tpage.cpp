@@ -338,7 +338,7 @@ TexturePage read_texture_page(ObjectFileData& data,
   tpage.info_label = get_label(data, words.at(offset));
   tpage.info = read_file_info(data, words, label_to_word_offset(tpage.info_label, true));
   ASSERT(tpage.info.file_type == "texture-page");
-  ASSERT(tpage.info.major_version == versions::TX_PAGE_VERSION);
+  ASSERT(tpage.info.major_version == versions::jak1::TX_PAGE_VERSION);
   ASSERT(tpage.info.minor_version == 0);
   ASSERT(tpage.info.maya_file_name == "Unknown");
   ASSERT(tpage.info.mdb_file_name == 0);

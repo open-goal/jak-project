@@ -37,7 +37,7 @@ The original game had a few issues of varying severity - from progress softlocks
 In the future yes! We intend to make it as easy as we can to make your own code or import graphics for the game.
 
 ### What is this menu? Why am I not dying sometimes?
-This might be the result of the game beeing booted in debugging mode. The project is still in development and we rely on the game's built-in debug features (along with some we made ourselves) for testing and development. The final product will have this debug mode disabled. In the meantime, have fun with all the options! Keep in mind some don't work very well.
+This might be the result of the game being booted in debugging mode. The project is still in development and we rely on the game's built-in debug features (along with some we made ourselves) for testing and development. The final product will have this debug mode disabled. In the meantime, have fun with all the options! Keep in mind some don't work very well.
 
 ### What are the minimum requirements?
 These are not totally set in stone as the project is not complete. These are the minimum architecture requirements for the project:
@@ -49,7 +49,7 @@ These are not totally set in stone as the project is not complete. These are the
 Probably yes, in the future!
 
 ### I'd like to contribute, but don't know where to start!
-Great to hear! Any help is good help. If you haven't already, please read the project readme. It has information on what is done, what isn't done, what is being worked on, the project layout and how it all works. Then just join our development discord server and we can help you further.
+Great to hear! Any help is good help. If you haven't already, please read the project readme. It has information on what is done, what isn't done, what is being worked on, the project layout and how it all works. Then just join our development Discord server and we can help you further.
 
 ### Will you also decompile other games that aren't Jak?
 No.

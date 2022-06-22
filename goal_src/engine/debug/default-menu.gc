@@ -60,10 +60,10 @@
        (send-event *camera* 'reset-root)
        )
       ((= arg0 9)
-       (set! (-> *camera* master-options) (logxor (-> *camera* master-options) 1))
+       (logxor! (-> *camera* master-options) 1)
        )
       ((= arg0 10)
-       (set! (-> *camera* master-options) (logxor (-> *camera* master-options) 4))
+       (logxor! (-> *camera* master-options) 4)
        )
       ((= arg0 11)
        (send-event *camera* 'toggle-slave-option 32)
@@ -183,60 +183,53 @@
   )
 
 (defun dm-cam-render-float ((arg0 int) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
-  (with-pp
-    (when (= arg1 (debug-menu-msg press))
-      (cond
-        ((zero? (/ arg0 8))
-         (when *math-camera*
-           (set! (-> *math-camera* fov) (* 182.04445 arg2))
-           (update-math-camera
-             *math-camera*
-             (-> *setting-control* current video-mode)
-             (-> *setting-control* current aspect-ratio)
-             )
-           )
-         )
-        ((= (/ arg0 8) 1)
-         (if *camera*
-             (send-event *camera* 'set-fov (* 182.04445 arg2))
-             )
-         )
-        )
-      )
+  (when (= arg1 (debug-menu-msg press))
     (cond
       ((zero? (/ arg0 8))
-       (cond
-         (*math-camera*
-           (* 0.005493164 (-> *math-camera* fov))
-           )
-         (else
-           (empty)
-           arg3
+       (when *math-camera*
+         (set! (-> *math-camera* fov) (* 182.04445 arg2))
+         (update-math-camera
+           *math-camera*
+           (-> *setting-control* current video-mode)
+           (-> *setting-control* current aspect-ratio)
            )
          )
        )
       ((= (/ arg0 8) 1)
-       (cond
-         (*camera*
-           (let ((f30-0 0.005493164)
-                 (a1-3 (new 'stack-no-clear 'event-message-block))
-                 )
-             (set! (-> a1-3 from) pp)
-             (set! (-> a1-3 num-params) 0)
-             (set! (-> a1-3 message) 'query-fov)
-             (* f30-0 (the-as float (send-event-function *camera* a1-3)))
-             )
+       (if *camera*
+           (send-event *camera* 'set-fov (* 182.04445 arg2))
            )
-         (else
-           (empty)
-           arg3
-           )
+       )
+      )
+    )
+  (cond
+    ((zero? (/ arg0 8))
+     (cond
+       (*math-camera*
+         (* 0.005493164 (-> *math-camera* fov))
+         )
+       (else
+         (empty)
+         arg3
          )
        )
-      (else
-        (empty)
-        arg3
-        )
+     )
+    ((= (/ arg0 8) 1)
+     (cond
+       (*camera*
+         (let ((f30-0 0.005493164))
+           (* f30-0 (the-as float (send-event *camera* 'query-fov)))
+           )
+         )
+       (else
+         (empty)
+         arg3
+         )
+       )
+     )
+    (else
+      (empty)
+      arg3
       )
     )
   )
@@ -473,7 +466,7 @@
   (let ((v1-0 (find-instance-by-name *edit-instance*)))
     (when v1-0
       (if (= arg1 (debug-menu-msg press))
-          (set! (-> v1-0 flags) (logxor (-> v1-0 flags) (the-as uint arg0)))
+          (logxor! (-> v1-0 flags) (the-as uint arg0))
           )
       (logtest? (-> v1-0 flags) arg0)
       )
@@ -570,7 +563,7 @@
     (cond
       (v1-0
         (if (= arg1 (debug-menu-msg press))
-            (set! (-> v1-0 flags) (logxor (-> v1-0 flags) 1))
+            (logxor! (-> v1-0 flags) 1)
             )
         (zero? (logand (-> v1-0 flags) 1))
         )
@@ -3090,19 +3083,10 @@
   )
 
 (defun dm-task-get-money ((arg0 int) (arg1 debug-menu-msg))
-  (with-pp
-    (if (= arg1 (debug-menu-msg press))
-        (send-event *target* 'get-pickup 5 (-> *GAME-bank* money-task-inc))
-        )
-    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-2 from) pp)
-      (set! (-> a1-2 num-params) 2)
-      (set! (-> a1-2 message) 'query)
-      (set! (-> a1-2 param 0) (the-as uint 'pickup))
-      (set! (-> a1-2 param 1) (the-as uint 5))
-      (>= (the-as float (send-event-function *target* a1-2)) (-> *GAME-bank* money-task-inc))
+  (if (= arg1 (debug-menu-msg press))
+      (send-event *target* 'get-pickup 5 (-> *GAME-bank* money-task-inc))
       )
-    )
+  (>= (the-as float (send-event *target* 'query 'pickup (pickup-type money))) (-> *GAME-bank* money-task-inc))
   )
 
 (defun dm-give-all-cells ((arg0 int) (arg1 debug-menu-msg))
@@ -3285,13 +3269,13 @@
     (case arg0
       (('at-apply-align)
        (if (= arg1 (debug-menu-msg press))
-           (set! (-> *anim-tester* 0 flags) (logxor (-> *anim-tester* 0 flags) (anim-tester-flags fanimt5)))
+           (logxor! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt5))
            )
        (return (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt5)))
        )
       (('at-show-joint-info)
        (if (= arg1 (debug-menu-msg press))
-           (set! (-> *anim-tester* 0 flags) (logxor (-> *anim-tester* 0 flags) (anim-tester-flags fanimt4)))
+           (logxor! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt4))
            )
        (return (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt4)))
        )
@@ -3763,10 +3747,10 @@
              (lambda ((arg0 int) (arg1 debug-menu-msg))
                (when (= arg1 (debug-menu-msg press))
                  (if *target*
-                     (set! (-> *target* state-flags) (logxor (-> *target* state-flags) (state-flags sf04)))
+                     (logxor! (-> *target* state-flags) (state-flags invulnerable))
                      )
                  )
-               (the-as symbol (and *target* (logtest? (-> *target* state-flags) (state-flags sf04))))
+               (the-as symbol (and *target* (logtest? (-> *target* state-flags) (state-flags invulnerable))))
                )
              )
            (function
@@ -3976,6 +3960,11 @@
   )
 (defmacro new-dm-submenu (text menu)
   `(new 'debug 'debug-menu-item-submenu ,text ,menu)
+  )
+(defmacro new-dm-var-float (text var func inc min max)
+  `(debug-menu-item-var-make-float (new 'debug 'debug-menu-item-var ,text ,var (* 8 20))
+              (the-as (function int debug-menu-msg float float float) ,func)
+              ,inc #t ,min ,max 1)
   )
 
 (defun dm-want-level-toggle-pick-func ((arg0 pair) (arg1 debug-menu-msg))
@@ -4243,6 +4232,19 @@
       ))
   )
 
+(defmacro dm-lambda-float-var (val)
+  "helper macro for making float buttons"
+  `(lambda (arg (msg debug-menu-msg) (newval float))
+    (cond
+      ((= msg (debug-menu-msg press))
+       (set! ,val newval)
+       )
+      (else
+        ,val
+        )
+      ))
+  )
+
 (defmacro dm-lambda-meters-var (val)
   "helper macro for making meters buttons"
   `(lambda (arg (msg debug-menu-msg) (newval float))
@@ -4384,17 +4386,17 @@
 (defun dm-mood-override-palette-pick-func ((bpal int) (msg debug-menu-msg))
   (let* ((pal (/ bpal 8))
          (cur-val (-> *pc-settings* mood-overrides pal)))
-         
+
       (when (= msg (debug-menu-msg press))
         (set! (-> *pc-settings* mood-overrides pal) (if (= cur-val 0.0) 1.0 0.0))
-        
+
         (when (not (= 'mult (-> *pc-settings* mood-override?)))
       (set! (-> *pc-settings* mood-override?) #f)
       (dotimes (i 8)
         (if (!= (-> *pc-settings* mood-overrides i) 0.0)
             (set! (-> *pc-settings* mood-override?) 'copy)))
         ))
-        
+
       (= (-> *pc-settings* mood-overrides pal) 1.0)
       )
   )
@@ -4413,6 +4415,71 @@
   (-> *pc-settings* mood-overrides (/ pal 8))
   )
 
+(defun dm-anim-tester-x-flag-func ((action symbol) (msg debug-menu-msg))
+  (case action
+    (('at-show-joint-info)
+      (if (= msg (debug-menu-msg press))
+          (logxor! (-> *ATX-settings* flags) (atx-flags show-joints)))
+      (return (logtest? (-> *ATX-settings* flags) (atx-flags show-joints)))
+      )
+    )
+  #f)
+
+(defun dm-anim-tester-x-func ((action symbol))
+  (unless *atx*
+      (atx-start))
+
+  (case action
+    (('pick-art-group)
+     (set! (-> *atx* 0 edit-mode) (atx-edit-mode art-group))
+     (false! *camera-read-buttons*)
+     )
+    (('at-pick-joint-anim)
+     (when (-> *atx* 0 cur-art-group)
+       (set! (-> *atx* 0 edit-mode) (atx-edit-mode anim))
+       (false! *camera-read-buttons*)
+       )
+     )
+    (('pick-mesh-geo)
+     (when (-> *atx* 0 cur-art-group)
+       (set! (-> *atx* 0 edit-mode) (atx-edit-mode mgeo))
+       (false! *camera-read-buttons*)
+       )
+     )
+    (('pick-joint-geo)
+     (when (-> *atx* 0 cur-art-group)
+       (set! (-> *atx* 0 edit-mode) (atx-edit-mode jgeo))
+       (false! *camera-read-buttons*)
+       )
+     )
+    (('at-cam-free-floating)
+     (send-event *camera* 'change-state cam-free-floating 0)
+     )
+    (('at-cam-orbit)
+     (send-event *camera* 'change-state cam-orbit 0)
+     )
+    )
+  0)
+
+(defun debug-menu-make-anim-tester-x-menu ((ctx debug-menu-context))
+  (let ((menu (new 'debug 'debug-menu ctx "Anim Tester X menu")))
+      ;; master toggle
+      (debug-menu-append-item menu (new-dm-func "Start" #f atx-start))
+      (debug-menu-append-item menu (new-dm-func "Stop"  #f atx-stop))
+      (debug-menu-append-item menu (new-dm-var-float "Speed" (the int #f) (dm-lambda-float-var (-> *ATX-settings* speed)) 0.01 -10.0 10.0))
+      (debug-menu-append-item menu (new-dm-var-float "Frame Num" (the int #f) (dm-lambda-float-var (-> *ATX-settings* frame-num)) 0.1 0.0 99999.0))
+      (debug-menu-append-item menu (new-dm-func "Pick Art Group" 'pick-art-group dm-anim-tester-x-func))
+      (debug-menu-append-item menu (new-dm-func "Pick Anim" 'at-pick-joint-anim dm-anim-tester-x-func))
+      (debug-menu-append-item menu (new-dm-func "Pick Mesh" 'pick-mesh-geo dm-anim-tester-x-func))
+      (debug-menu-append-item menu (new-dm-func "Pick Skeleton" 'pick-joint-geo dm-anim-tester-x-func))
+      (debug-menu-append-item menu (new-dm-flag "Show Joint Info" 'at-show-joint-info dm-anim-tester-x-flag-func))
+      (debug-menu-append-item menu (new-dm-func "Free Floating cam" 'at-cam-free-floating dm-anim-tester-x-func))
+      (debug-menu-append-item menu (new-dm-func "Orbit cam" 'at-cam-orbit dm-anim-tester-x-func))
+
+      (new-dm-submenu "Anim Tester X" menu)
+      )
+  )
+
 (when (-> *debug-menu-context* root-menu)
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-load-menu *debug-menu-context*))
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-part-menu *debug-menu-context*))
@@ -4420,7 +4487,7 @@
   ;; Music menu TODO
   ;; Secrets menu TODO
   ;; Scene menu TODO
-  
+
   (debug-menu-append-item (-> *debug-menu-context* root-menu)
     (debug-menu-make-from-template *debug-menu-context*
       '(menu "PC Settings"
@@ -4520,6 +4587,9 @@
          (flag "All actors" #f ,(dm-lambda-boolean-flag (-> *pc-settings* force-actors?)))
          (flag "Display actor counts" #f ,(dm-lambda-boolean-flag (-> *pc-settings* display-actor-counts)))
          (flag "Display git commit" #f ,(dm-lambda-boolean-flag (-> *pc-settings* display-sha)))
+         (flag "Extra hud elements" #f ,(dm-lambda-boolean-flag (-> *pc-settings* extra-hud?)))
+         (flag "Music fadein" #f ,(dm-lambda-boolean-flag (-> *pc-settings* music-fadein?)))
+         (flag "Music fadeout" #f ,(dm-lambda-boolean-flag (-> *pc-settings* music-fadeout?)))
          (function "Reset" #f (lambda () (reset *pc-settings*)))
          (function "Save" #f (lambda () (commit-to-file *pc-settings*)))
          (function "Load" #f (lambda () (load-settings *pc-settings*)))
@@ -4582,8 +4652,11 @@
     (debug-menu-append-item (-> *debug-menu-context* root-menu) other-menu-node)
     )
 
-  (debug-menu-append-item (-> (the debug-menu-item-submenu (caddddr (-> *debug-menu-context* root-menu items))) submenu)
+  (debug-menu-append-item (-> (the debug-menu-item-submenu (ref (-> *debug-menu-context* root-menu items) 4)) submenu)
                           (debug-menu-make-collision-renderer-menu *debug-menu-context*))
+
+  (debug-menu-append-item (-> (the debug-menu-item-submenu (car (-> *debug-menu-context* root-menu items))) submenu)
+                          (debug-menu-make-anim-tester-x-menu *debug-menu-context*))
 
   )
 

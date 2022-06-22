@@ -24,6 +24,10 @@ DecompilerLabel get_label(ObjectFileData& data, const LinkedWord& word) {
   return data.linked_data.labels.at(word.label_id());
 }
 
+static const std::unordered_map<GameTextVersion, std::pair<int, int>> sTextCreditsIDs = {
+    {GameTextVersion::JAK1_V1, {0xb00, 0xf00}},
+    {GameTextVersion::JAK1_V2, {0xb00, 0xf00}}};
+
 }  // namespace
 
 /*
@@ -133,7 +137,7 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
 }
 
 std::string write_game_text(
-    const Config& /*cfg*/,
+    GameTextVersion version,
     const std::unordered_map<int, std::unordered_map<int, std::string>>& data) {
   // first sort languages:
   std::vector<int> languages;
@@ -144,9 +148,30 @@ std::string write_game_text(
 
   // build map
   std::map<int, std::vector<std::string>> text_by_id;
+  std::map<int, std::vector<std::string>> text_by_id_credits;
+  std::map<int, std::vector<std::string>> text_by_id_post_credits;
+  int last_credits_id = 0;
+  int credits_begin = 0;
+  int credits_end = 0;
+  if (auto it = sTextCreditsIDs.find(version); it != sTextCreditsIDs.end()) {
+    credits_begin = it->second.first;
+    credits_end = it->second.second;
+  }
   for (auto lang : languages) {
-    for (auto& text : data.at(lang)) {
-      text_by_id[text.first].push_back(text.second);
+    for (auto& [id, text] : data.at(lang)) {
+      if (id < credits_begin) {
+        // comes before credits
+        text_by_id[id].push_back(text);
+      } else if (id < credits_end) {
+        // comes before credits
+        text_by_id_credits[id].push_back(text);
+        if (id > last_credits_id) {
+          last_credits_id = id;
+        }
+      } else {
+        // comes after credits
+        text_by_id_post_credits[id].push_back(text);
+      }
     }
   }
 
@@ -159,6 +184,48 @@ std::string write_game_text(
   }
   result += ")\n";
   for (auto& x : text_by_id) {
+    result += fmt::format("(#x{:04x}\n  ", x.first);
+    for (auto& y : x.second) {
+      result += fmt::format("\"{}\"\n  ", y);
+    }
+    result += ")\n\n";
+  }
+  if (text_by_id_credits.size() > 0) {
+    result += fmt::format("(credits :begin #x{:04x}\n  ", sTextCreditsIDs.at(version).first);
+
+    for (int id = sTextCreditsIDs.at(version).first; id <= last_credits_id; ++id) {
+      // check if the line exists first
+      if (text_by_id_credits.count(id) == 0) {
+        result += fmt::format("\"\"\n  ");
+        continue;
+      }
+      // check if all lines are identical first
+      bool diff_langs = false;
+      bool is_first = true;
+      std::string last_lang;
+      for (auto& y : text_by_id_credits.at(id)) {
+        if (is_first) {
+          is_first = false;
+        } else if (last_lang != y) {
+          diff_langs = true;
+          break;
+        }
+        last_lang = y;
+      }
+      // now write them
+      if (!diff_langs) {
+        result += fmt::format("\"{}\"\n  ", last_lang);
+      } else {
+        result += fmt::format("(");
+        for (auto& y : text_by_id_credits.at(id)) {
+          result += fmt::format("\"{}\"\n   ", y);
+        }
+        result += ")\n  ";
+      }
+    }
+    result += ")\n\n";
+  }
+  for (auto& x : text_by_id_post_credits) {
     result += fmt::format("(#x{:04x}\n  ", x.first);
     for (auto& y : x.second) {
       result += fmt::format("\"{}\"\n  ", y);

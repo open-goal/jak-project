@@ -8,8 +8,8 @@
         "CAMERA OPTIONS")
 (#x1001 "NORMAL"
         "NORMAL")
-(#x1002 "FLIPPED"
-        "FLIPPED")
+(#x1002 "INVERTED"
+        "INVERTED")
 (#x1003 "1ST-PERSON HORIZONTAL CAMERA"
         "1ST-PERSON HORIZONTAL CAMERA")
 (#x1004 "1ST-PERSON VERTICAL CAMERA"
@@ -18,6 +18,8 @@
         "3RD-PERSON HORIZONTAL CAMERA")
 (#x1006 "3RD-PERSON VERTICAL CAMERA"
         "3RD-PERSON VERTICAL CAMERA")
+(#x1007 "RESTORE DEFAULTS"
+        "RESTORE DEFAULTS")
 
 (#x100f "MISCELLANEOUS"
         "MISCELLANEOUS")
@@ -33,6 +35,11 @@
         "PS2 LOAD SPEED")
 (#x1022 "PARTICLE CULLING"
         "PARTICLE CULLING")
+
+(#x1023 "MUSIC FADE-OUT"
+        "MUSIC FADE-OUT")
+(#x1024 "MUSIC FADE-IN"
+        "MUSIC FADE-IN")
 
 (#x1030 "DISCORD RICH-PRESENCE"
         "DISCORD RICH-PRESENCE")
@@ -80,16 +87,16 @@
         "LEVEL OF DETAIL (BACKGROUND)")
 (#x1071 "LEVEL OF DETAIL (FOREGROUND)"
         "LEVEL OF DETAIL (FOREGROUND)")
-(#x1072 "HIGHEST"
-        "HIGHEST")
+(#x1072 "MAXIMUM"
+        "MAXIMUM")
 (#x1073 "HIGH"
         "HIGH")
-(#x1074 "MID"
-        "MID")
+(#x1074 "MEDIUM"
+        "MEDIUM")
 (#x1075 "LOW"
         "LOW")
-(#x1076 "LOWEST"
-        "LOWEST")
+(#x1076 "MINIMUM"
+        "MINIMUM")
 (#x1077 "PS2"
         "PS2")
 
@@ -97,10 +104,10 @@
         "SUBTITLES")
 (#x1079 "HINT SUBTITLES"
         "HINT SUBTITLES")
-(#x107a "SUBTITLES LANGUAGE"
-        "SUBTITLES LANGUAGE")
-(#x107b "SUBTITLES SPEAKER"
-        "SUBTITLES SPEAKER")
+(#x107a "SUBTITLE LANGUAGE"
+        "SUBTITLE LANGUAGE")
+(#x107b "SHOW SPEAKER IN SUBTITLE"
+        "SHOW SPEAKER IN SUBTITLE")
 (#x107c "ALWAYS"
         "ALWAYS")
 (#x107d "NEVER"
@@ -113,6 +120,25 @@
 
 (#x1080 "CHEATS"
         "CHEATS")
+(#x1081 "SECRETS"
+        "SECRETS")
+(#x1082 "SELECT LEVEL"
+        "SELECT LEVEL")
+(#x1083 "SELECT FLAVOR"
+        "SELECT FLAVOUR")
+(#x1084 "FINAL BOSS"
+        "FINAL BOSS")
+(#x1085 "CREDITS"
+        "CREDITS")
+(#x1086 "LOCKED"
+        "LOCKED")
+(#x1087 "KLAWW"
+        "KLAWW")
+(#x1088 "FISHING MINI-GAME"
+        "FISHING MINI-GAME")
+(#x1089 "CHALLENGE THEME"
+        "CHALLENGE THEME")
+
 (#x1090 "INFINITE BLUE ECO"
         "INFINITE BLUE ECO")
 (#x1091 "INFINITE RED ECO"
@@ -125,6 +151,8 @@
         "ALTERNATE DAXTER")
 (#x1095 "INVINCIBILITY"
         "INVINCIBILITY")
+(#x1096 "PLAY ALL MUSIC TRACKS"
+        "PLAY ALL MUSIC TRACKS")
 
 (#x10c0 "MUSIC PLAYER"
         "MUSIC PLAYER")
@@ -134,6 +162,119 @@
         "PLAY CREDITS")
 (#x10c3 "SCRAPBOOK"
         "SCRAPBOOK")
+
+(#x10d0 "DEFAULT"
+        "DEFAULT")
+(#x10d1 "UNUSED"
+        "UNUSED")
+(#x10d2 "SAGE"
+        "SAGE")
+(#x10d3 "SAGE'S HUT"
+        "SAGE'S HUT")
+(#x10d4 "BIRDWATCHER"
+        "BIRDWATCHER")
+(#x10d5 "FARMER"
+        "FARMER")
+(#x10d6 "KEIRA"
+        "KEIRA")
+(#x10d7 "MAYOR"
+        "MAYOR")
+(#x10d8 "SCULPTOR"
+        "SCULPTOR")
+(#x10d9 "JAK'S UNCLE"
+        "JAK'S UNCLE")
+(#x10da "DOCK"
+        "DOCK")
+(#x10db "FORBIDDEN TEMPLE EXIT"
+        "FORBIDDEN TEMPLE EXIT")
+(#x10dc "LURKER MACHINE"
+        "LURKER MACHINE")
+(#x10dd "TOP OF THE TOWER"
+        "TOP OF THE TOWER")
+(#x10de "BLUE VENT SWITCH"
+        "BLUE VENT SWITCH")
+(#x10df "UNUSED"
+        "UNUSED")
+(#x10e0 "SENTINELS"
+        "SENTINELS")
+(#x10e1 "LURKER CANNON"
+        "LURKER CANNON")
+(#x10e2 "GROTTO"
+        "GROTTO")
+(#x10e3 "UNUSED 1"
+        "UNUSED 1")
+(#x10e4 "LURKER BOAT"
+        "LURKER BOAT")
+(#x10e5 "UNUSED 2"
+        "UNUSED 2")
+(#x10e6 "ZOOMER"
+        "ZOOMER")
+(#x10e7 "FLUT FLUT"
+        "FLUT FLUT")
+(#x10e8 "UNUSED"
+        "UNUSED")
+(#x10e9 "WARRIOR"
+        "WARRIOR")
+(#x10ea "GEOLOGIST"
+        "GEOLOGIST")
+(#x10eb "GAMBLER"
+        "GAMBLER")
+(#x10ec "LEVITATOR MACHINE"
+        "LEVITATOR MACHINE")
+(#x10ed "UNUSED 1"
+        "UNUSED 1")
+(#x10ee "LAUNCHER TRAPS"
+        "LAUNCHER TRAPS")
+(#x10ef "UNUSED 2"
+        "UNUSED 2")
+(#x10f0 "DEAD MAN'S GORGE"
+        "DEAD MAN'S GORGE")
+(#x10f1 "MIDDLE OF THE PASS"
+        "MIDDLE OF THE PASS")
+(#x10f2 "END OF THE PASS"
+        "END OF THE PASS")
+(#x10f3 "TO SPIDER CAVE"
+        "TO SPIDER CAVE")
+(#x10f4 "TO SNOWY MOUNTAIN"
+        "TO SNOWY MOUNTAIN")
+(#x10f5 "MINERS"
+        "MINERS")
+(#x10f6 "ROBOT CAVE SCAFFOLDING"
+        "ROBOT CAVE SCAFFOLDING")
+(#x10f7 "PRECURSOR ROBOT TOP"
+        "PRECURSOR ROBOT TOP")
+(#x10f8 "MAIN CAVE"
+        "MAIN CAVE")
+(#x10f9 "DARK CAVE"
+        "DARK CAVE")
+(#x10fa "UNUSED"
+        "UNUSED")
+(#x10fb "HIDDEN CAVE"
+        "HIDDEN CAVE")
+(#x10fc "LURKER FORT"
+        "LURKER FORT")
+(#x10fd "SNOWBALLS"
+        "SNOWBALLS")
+(#x10fe "MIDDLE OF THE TUBE"
+        "MIDDLE OF THE TUBE")
+(#x10ff "END OF THE TUBE"
+        "END OF THE TUBE")
+(#x1100 "YELLOW SAGE"
+        "YELLOW SAGE")
+(#x1101 "RED SAGE"
+        "RED SAGE")
+(#x1102 "BLUE SAGE"
+        "BLUE SAGE")
+(#x1103 "CITADEL HUB"
+        "CITADEL HUB")
+(#x1104 "MIDDLE OF THE BOSS"
+        "MIDDLE OF THE BOSS")
+(#x1105 "END OF THE BOSS"
+        "END OF THE BOSS")
+(#x1106 "FLAVOR 1"
+        "FLAVOUR 1")
+(#x1107 "FLAVOR 2"
+        "FLAVOUR 2")
 
 
 ;; -----------------

@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/lurkerpuppy-ag.gc")
+
 ;; definition of type lurkerpuppy
 (deftype lurkerpuppy (nav-enemy)
   ()
@@ -31,13 +33,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-notice (lurkerpuppy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkerpuppy)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-no-eval :num! (loop!))
     (ja-channel-push! 1 (seconds 0.17))
     (ja-no-eval :group! lurkerpuppy-celebrate-ja :num! (seek!) :frame-num 0.0)
@@ -54,13 +54,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-chase (lurkerpuppy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkerpuppy)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((ja-group? lurkerpuppy-jump-land-ja)
        (ja-channel-push! 1 (seconds 0.17))
@@ -77,7 +75,7 @@ nav-enemy-default-event-handler
     (let ((f30-0 (rand-vu-float-range 0.9 1.1)))
       (loop
         (if (rand-vu-percent? 0.25)
-            (sound-play-by-name (static-sound-name "puppy-bark") (new-sound-id) 1024 0 0 1 #t)
+            (sound-play "puppy-bark")
             )
         (ja-no-eval :group! lurkerpuppy-run-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
@@ -96,13 +94,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-stare (lurkerpuppy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkerpuppy)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self rotate-speed) 1456355.5)
     (set! (-> self turn-time) (seconds 0.1))
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
@@ -144,13 +140,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-give-up (lurkerpuppy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkerpuppy)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self rotate-speed) 218453.33)
     (set! (-> self turn-time) (seconds 0.5))
     (ja-channel-push! 1 (seconds 0.075))
@@ -180,14 +174,12 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-attack (lurkerpuppy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkerpuppy)
     nav-enemy-default-event-handler
     )
-  :code
-  (behavior ()
-    (sound-play-by-name (static-sound-name "head-butt") (new-sound-id) 1024 0 0 1 #t)
+  :code (behavior ()
+    (sound-play "head-butt")
     (go-virtual nav-enemy-victory)
     (none)
     )
@@ -196,18 +188,15 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-victory (lurkerpuppy)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkerpuppy)
     nav-enemy-default-event-handler
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
     (ja-channel-push! 1 (seconds 0.075))
     (dotimes (gp-0 4)
@@ -226,8 +215,7 @@ nav-enemy-default-event-handler
     (go-virtual nav-enemy-chase)
     (none)
     )
-  :post
-  (the-as (function none :behavior lurkerpuppy) nav-enemy-face-player-post)
+  :post (the-as (function none :behavior lurkerpuppy) nav-enemy-face-player-post)
   )
 
 ;; definition for symbol *lurkerpuppy-nav-enemy-info*, type nav-enemy-info

@@ -273,7 +273,7 @@ u32 GetISOFileLength(FileRecord* f) {
  */
 VagDirEntry* FindVAGFile(const char* name) {
   VagDirEntry* entry = gVagDir.vag;
-  for (s32 idx = 0; idx < gVagDir.count; idx++) {
+  for (u32 idx = 0; idx < gVagDir.count; idx++) {
     // check if matching name
     if (memcmp(entry->name, name, 8) == 0) {
       return entry;
@@ -412,11 +412,14 @@ u32 ISOThread() {
           ReturnMessage(msg_from_mbx);
         } break;
         case LOAD_MUSIC: {
+          // NOTE: this check has been removed. there doesn't seem to be any issues with this, and
+          // it fixes some other issues. there doesn't appear to be any extra safety from it either
+
           // if there's an in progress vag command, try again.
-          if (in_progress_vag_command && !in_progress_vag_command->paused) {
-            SendMbx(iso_mbx, msg_from_mbx);
-            break;
-          }
+          // if (in_progress_vag_command && !in_progress_vag_command->paused) {
+          //   SendMbx(iso_mbx, msg_from_mbx);
+          //   break;
+          // }
 
           auto buff = TryAllocateBuffer(BUFFER_PAGE_SIZE);
           if (!buff) {
@@ -641,6 +644,11 @@ u32 ISOThread() {
     ProcessMessageData();
 
     if (!read_buffer) {
+      // HACK!! sometimes when we want to exit, some other threads will wait for stuff to be loaded
+      // in such cases, we continue running until we're the last thread alive when it's safe to die
+      if (ThreadWantsExit(GetThreadId()) && OnlyThreadAlive(GetThreadId())) {
+        return 0;
+      }
       // didn't actually start a read, just delay for a bit I guess.
       DelayThread(100);
     } else {
@@ -1104,13 +1112,13 @@ static s32 CheckVAGStreamProgress(VagCommand* vag) {
   }
 
   if (vag->end_point != -1) {
-    if ((gPlayPos & 0xFFFFFFF0) == vag->end_point) {
+    if ((s32)(gPlayPos & 0xFFFFFFF0) == vag->end_point) {
       return 0;
     }
 
     if (((gPlayPos < 0x6000) && (vag->end_point < 0x6000)) ||
         ((0x5fff < gPlayPos && (0x5fff < vag->end_point)))) {
-      if ((vag->unk2 == 0) && (gPlayPos < vag->end_point)) {
+      if ((vag->unk2 == 0) && (gPlayPos < (u32)vag->end_point)) {
         sceSdSetAddr(gVoice | SD_VA_LSAX, gStreamSRAM + vag->end_point);
         vag->unk2 = 1;
       }
@@ -1223,7 +1231,7 @@ static void UpdatePlayPos() {
   }
 
   u32 pos = GetPlayPos();
-  if (pos == -1) {
+  if (pos == 0xffffffff) {
     if (gLastVagHalf) {
       pos = 0xC000;
     } else {

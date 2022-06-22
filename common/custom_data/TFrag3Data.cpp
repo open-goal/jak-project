@@ -1,3 +1,5 @@
+#include <functional>
+#include <algorithm>
 #include "Tfrag3Data.h"
 #include "common/util/Assert.h"
 
@@ -21,6 +23,7 @@ void StripDraw::serialize(Serializer& ser) {
   ser.from_ptr(&mode);
   ser.from_ptr(&tree_tex_id);
   ser.from_pod_vector(&runs);
+  ser.from_pod_vector(&plain_indices);
   ser.from_pod_vector(&vis_groups);
   ser.from_ptr(&num_triangles);
 }
@@ -64,6 +67,7 @@ void TfragTree::serialize(Serializer& ser) {
   ser.from_pod_vector(&packed_vertices.cluster_origins);
   ser.from_pod_vector(&colors);
   bvh.serialize(ser);
+  ser.from_ptr(&use_strips);
 }
 
 void TieTree::unpack() {
@@ -78,7 +82,7 @@ void TieTree::unpack() {
         vtx.x = proto_vtx.x;
         vtx.y = proto_vtx.y;
         vtx.z = proto_vtx.z;
-        vtx.q = 1.f;
+        vtx.q_unused = 1.f;
         vtx.s = proto_vtx.s;
         vtx.t = proto_vtx.t;
         i++;
@@ -93,7 +97,7 @@ void TieTree::unpack() {
         vtx.x = temp.x();
         vtx.y = temp.y();
         vtx.z = temp.z();
-        vtx.q = 1.f;
+        vtx.q_unused = 1.f;
         vtx.s = proto_vtx.s;
         vtx.t = proto_vtx.t;
         i++;
@@ -103,6 +107,7 @@ void TieTree::unpack() {
 
   for (auto& draw : static_draws) {
     draw.unpacked.idx_of_first_idx_in_full_buffer = unpacked.indices.size();
+    ASSERT(draw.plain_indices.empty());
     for (auto& run : draw.runs) {
       for (u32 ri = 0; ri < run.length; ri++) {
         unpacked.indices.push_back(run.vertex0 + ri);
@@ -152,7 +157,7 @@ void TfragTree::unpack() {
     o.z = cz + in.zoff * rescale;
     o.s = in.s / (1024.f);
     o.t = in.t / (1024.f);
-    o.q = 1.f;
+    o.q_unused = 1.f;
     o.color_index = in.color_index;
   }
 
@@ -162,8 +167,12 @@ void TfragTree::unpack() {
       for (u32 ri = 0; ri < run.length; ri++) {
         unpacked.indices.push_back(run.vertex0 + ri);
       }
-      unpacked.indices.push_back(UINT32_MAX);
+      if (use_strips) {
+        unpacked.indices.push_back(UINT32_MAX);
+      }
     }
+    unpacked.indices.insert(unpacked.indices.end(), draw.plain_indices.begin(),
+                            draw.plain_indices.end());
   }
 }
 
@@ -237,10 +246,59 @@ void CollisionMesh::serialize(Serializer& ser) {
   ser.from_pod_vector(&vertices);
 }
 
+void MercDraw::serialize(Serializer& ser) {
+  ser.from_ptr(&mode);
+  ser.from_ptr(&tree_tex_id);
+  ser.from_ptr(&first_index);
+  ser.from_ptr(&index_count);
+  ser.from_ptr(&num_triangles);
+}
+
+void MercEffect::serialize(Serializer& ser) {
+  if (ser.is_saving()) {
+    ser.save<size_t>(draws.size());
+  } else {
+    draws.resize(ser.load<size_t>());
+  }
+  for (auto& draw : draws) {
+    draw.serialize(ser);
+  }
+}
+
+void MercModel::serialize(Serializer& ser) {
+  ser.from_str(&name);
+  if (ser.is_saving()) {
+    ser.save<size_t>(effects.size());
+  } else {
+    effects.resize(ser.load<size_t>());
+  }
+  for (auto& effect : effects) {
+    effect.serialize(ser);
+  }
+  ser.from_ptr(&scale_xyz);
+  ser.from_ptr(&max_draws);
+  ser.from_ptr(&max_bones);
+}
+
+void MercModelGroup::serialize(Serializer& ser) {
+  if (ser.is_saving()) {
+    ser.save<size_t>(models.size());
+  } else {
+    models.resize(ser.load<size_t>());
+  }
+  for (auto& model : models) {
+    model.serialize(ser);
+  }
+
+  ser.from_pod_vector(&indices);
+  ser.from_pod_vector(&vertices);
+}
+
 void Level::serialize(Serializer& ser) {
   ser.from_ptr(&version);
   if (ser.is_loading() && version != TFRAG3_VERSION) {
-    ASSERT_MSG(false, fmt::format("version mismatch when loading tfrag3 data. Got {}, expected {}",
+    ASSERT_MSG(false, fmt::format("version mismatch when loading tfrag3 data. Got {}, expected {}, "
+                                  "did you forget to re-decompile?",
                                   version, TFRAG3_VERSION));
   }
 
@@ -287,6 +345,7 @@ void Level::serialize(Serializer& ser) {
   }
 
   collision.serialize(ser);
+  merc_data.serialize(ser);
 
   ser.from_ptr(&version2);
   if (ser.is_loading() && version2 != TFRAG3_VERSION) {
@@ -310,6 +369,7 @@ std::array<int, MemoryUsageCategory::NUM_CATEGORIES> Level::get_memory_usage() c
     for (const auto& tfrag_tree : tfrag_tree_geoms) {
       for (const auto& draw : tfrag_tree.draws) {
         result[TFRAG_INDEX] += draw.runs.size() * sizeof(StripDraw::VertexRun);
+        result[TFRAG_INDEX] += draw.plain_indices.size() * sizeof(u32);
         result[TFRAG_VIS] += draw.vis_groups.size() * sizeof(StripDraw::VisGroup);
       }
       result[TFRAG_VERTS] +=
@@ -358,10 +418,64 @@ std::array<int, MemoryUsageCategory::NUM_CATEGORIES> Level::get_memory_usage() c
     result[SHRUB_IND] += sizeof(u32) * shrub_tree.indices.size();
   }
 
+  // merc
+  result[MERC_INDEX] += merc_data.indices.size() * sizeof(u32);
+  result[MERC_VERT] += merc_data.vertices.size() * sizeof(MercVertex);
+
   // collision
   result[COLLISION] += sizeof(CollisionMesh::Vertex) * collision.vertices.size();
 
   return result;
+}
+
+void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
+  int total_accounted = 0;
+  auto memory_use_by_category = lev.get_memory_usage();
+
+  std::vector<std::pair<std::string, int>> known_categories = {
+      {"texture", memory_use_by_category[tfrag3::MemoryUsageCategory::TEXTURE]},
+      {"tie-deinst-vis", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_DEINST_VIS]},
+      {"tie-deinst-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_DEINST_INDEX]},
+      {"tie-inst-vis", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_INST_VIS]},
+      {"tie-inst-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_INST_INDEX]},
+      {"tie-bvh", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_BVH]},
+      {"tie-verts", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_VERTS]},
+      {"tie-colors", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_TIME_OF_DAY]},
+      {"tie-wind-inst-info",
+       memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_WIND_INSTANCE_INFO]},
+      {"tie-cidx", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_CIDX]},
+      {"tie-mats", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_MATRICES]},
+      {"tie-grps", memory_use_by_category[tfrag3::MemoryUsageCategory::TIE_GRPS]},
+      {"tfrag-vis", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_VIS]},
+      {"tfrag-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_INDEX]},
+      {"tfrag-vert", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_VERTS]},
+      {"tfrag-colors", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_TIME_OF_DAY]},
+      {"tfrag-cluster", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_CLUSTER]},
+      {"tfrag-bvh", memory_use_by_category[tfrag3::MemoryUsageCategory::TFRAG_BVH]},
+      {"shrub-colors", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_TIME_OF_DAY]},
+      {"shrub-vert", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_VERT]},
+      {"shrub-ind", memory_use_by_category[tfrag3::MemoryUsageCategory::SHRUB_IND]},
+      {"collision", memory_use_by_category[tfrag3::MemoryUsageCategory::COLLISION]},
+      {"merc-vert", memory_use_by_category[tfrag3::MemoryUsageCategory::MERC_VERT]},
+      {"merc-idx", memory_use_by_category[tfrag3::MemoryUsageCategory::MERC_INDEX]}};
+  for (auto& known : known_categories) {
+    total_accounted += known.second;
+  }
+
+  known_categories.push_back({"unknown", uncompressed_data_size - total_accounted});
+
+  std::sort(known_categories.begin(), known_categories.end(),
+            [](const auto& a, const auto& b) { return a.second > b.second; });
+
+  for (const auto& x : known_categories) {
+    fmt::print("{:30s} : {:6d} kB {:3.1f}%\n", x.first, x.second / 1024,
+               100.f * (float)x.second / uncompressed_data_size);
+  }
+}
+
+std::size_t PreloadedVertex::hash::operator()(const PreloadedVertex& v) const {
+  return std::hash<float>()(v.x) ^ std::hash<float>()(v.y) ^ std::hash<float>()(v.z) ^
+         std::hash<float>()(v.s) ^ std::hash<float>()(v.t) ^ std::hash<u16>()(v.color_index);
 }
 
 }  // namespace tfrag3

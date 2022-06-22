@@ -700,6 +700,51 @@ struct Cache {
   void* fake_scratchpad_data;
 } cache;
 
+/*
+ (deftype merc-effect-bucket-info (structure)
+  ((color-fade    rgba   :offset-assert   0)
+   (use-mercneric uint8  :offset-assert   4)
+   (ignore-alpha  uint8  :offset-assert   5)
+   (pad0          uint8  :offset-assert   6)
+   (pad1          uint8  :offset-assert   7)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; information for everything being submitted.
+(deftype merc-bucket-info (structure)
+  ((light                       vu-lights               :inline    :offset-assert   0)
+   (needs-clip                  int32                              :offset-assert 112)
+   (need-mercprime-if-merc      int32                              :offset-assert 116)
+   (must-use-mercneric-for-clip int32                              :offset-assert 120)
+   (effect                      merc-effect-bucket-info 16 :inline :offset-assert 124)
+   )
+  :method-count-assert 9
+  :size-assert         #xfc
+  :flag-assert         #x9000000fc
+  )
+ */
+
+struct MercEffectBucketInfo {
+  u8 color_fade[4];
+  u8 use_mercneric;
+  u8 ignore_alpha;
+  u8 pad0;
+  u8 pad1;
+};
+
+struct MercBucketInfo {
+  u8 lights[0x70];
+  u32 needs_clip;
+  u32 mercprime;
+  u32 mercneric;
+  MercEffectBucketInfo effects[16];
+};
+static_assert(sizeof(MercBucketInfo) == 0xfc);
+
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
@@ -752,6 +797,20 @@ u64 execute(void* ctxt) {
   c->pcpyld(t6, t9, t6);                            // pcpyld t6, t9, t6
   c->daddiu(t9, t7, 108);                           // daddiu t9, t7, 108 // the actual merc-effect
   c->load_symbol(a3, cache.merc_bucket_info);       // lw a3, *merc-bucket-info*(s7)
+
+  // PC HACK: built a bitmask of which effects end up using mercneric.
+  const MercBucketInfo* mbi = (const MercBucketInfo*)(g_ee_main_mem + c->sgpr64(a3));
+  u16 use_pc_merc_bits = 0;
+  u16 ignore_alpha_bits = 0;
+  for (int i = 0; i < 16; i++) {
+    if (!mbi->effects[i].use_mercneric) {
+      use_pc_merc_bits |= (1 << i);
+    }
+    if (mbi->effects[i].ignore_alpha) {
+      ignore_alpha_bits |= (1 << i);
+    }
+  }
+
   c->daddiu(ra, a3, 124);                           // daddiu ra, a3, 124  // effect bucket infos
 
   // effect loop!
@@ -821,6 +880,10 @@ block_3:
   c->sw(a3, 12, a2);                                // sw a3, 12(a2)    // st-vif-add's x.
   c->srl(s0, s0, 2);                                // srl s0, s0, 2    // lump fours / 4
   c->sq(t1, 16, a2);                                // sq t1, 16(a2)    // row y (will be overwritten) z w (nop).
+  // PC HACK: sneak in the bits here:
+  memcpy(g_ee_main_mem + c->sgpr64(a2) + 28, &use_pc_merc_bits, 2);
+  memcpy(g_ee_main_mem + c->sgpr64(a2) + 30, &ignore_alpha_bits, 2);
+
 
   // store the dma tag for the lump fours
   c->xor_(t3, t3, s0);                              // xor t3, t3, s0
@@ -898,6 +961,10 @@ block_3:
   c->sq(t5, 0, a2);                                 // sq t5, 0(a2)       // dma template
   c->lbu(s0, 1, gp);                                // lbu s0, 1(gp)      // s0 = mat-dest
   c->daddiu(gp, gp, 2);                             // daddiu gp, gp, 2   // inc mat-dest-data pr
+
+  // HACK for PC PORT: stash the source matrix number in the unused bits of nop viftag.
+  c->sb(a3, 8, a2);
+
   c->lbu(a3, 0, gp);                                // lbu a3, 0(gp)      // load for next iter (ugh)
   c->daddiu(s3, s3, -1);                            // daddiu s3, s3, -1  // dec count
   c->sb(s0, 12, a2);                                // sb s0, 12(a2)      // store matrix destination.

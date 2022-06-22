@@ -769,7 +769,7 @@
                   (set! (-> self draw art-group) (-> v1-1 obj-art-group))
                   (set! (-> self draw cur-lod) -1)
                   (set! (-> self draw jgeo) a0-15)
-                  (set! (-> self draw sink-group) (-> *level* level-default foreground-sink-group 1))
+                  (set! (-> self draw sink-group) (-> *level* level-default pris-tex-foreground-sink-group))
                   (set! (-> self draw lod-set lod 0 geo) a1-4)
                   )
                 (set! (-> self draw lod-set lod 0 dist) 4095996000.0)
@@ -1481,7 +1481,7 @@
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 1045]
 (defun anim-test-edit-sequence-list-handler ((arg0 int) (arg1 list-control))
   (local-vars
-    (sv-192 (function string dma-buffer int int font-color font-flags none))
+    (sv-192 (function string dma-buffer int int font-color font-flags float))
     (sv-208 (function _varargs_ object))
     )
   (let ((gp-0 (-> arg1 the-node))
@@ -2227,15 +2227,12 @@
   )
 
 (defstate anim-tester-process (anim-tester)
-  :event
-  anim-tester-standard-event-handler
-  :enter
-  (behavior ()
+  :event anim-tester-standard-event-handler
+  :enter (behavior ()
     (logior! (-> self flags) (anim-tester-flags fanimt1))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and (zero? (logand (-> self flags) (anim-tester-flags fanimt1))) (= *master-mode* 'menu))
         (anim-tester-interface)
         )
@@ -2251,8 +2248,7 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars (s4-0 glst-node) (s5-1 anim-test-seq-item) (gp-2 anim-test-sequence))
     (loop
       (logclear! (-> self flags) (anim-tester-flags fanimt0))
@@ -2349,16 +2345,28 @@
                  (when (nonzero? (-> s5-1 blend))
                    (while (and (!= (-> self skel root-channel 0) (-> self skel channel)) (logtest? (-> s5-1 flags) 2))
                      (when (logtest? (-> self flags) (anim-tester-flags fanimt5))
-                       (TODO-RENAME-9 (-> self align))
-                       (TODO-RENAME-10 (-> self align) 31 (the-as float 1.0) (the-as float 1.0) (the-as float 1.0))
+                       (compute-alignment! (-> self align))
+                       (align!
+                         (-> self align)
+                         (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel keep-other-velocities adjust-quat)
+                         (the-as float 1.0)
+                         (the-as float 1.0)
+                         (the-as float 1.0)
+                         )
                        )
                      (suspend)
                      )
                    )
                  (until (ja-done? 0)
                    (when (logtest? (-> self flags) (anim-tester-flags fanimt5))
-                     (TODO-RENAME-9 (-> self align))
-                     (TODO-RENAME-10 (-> self align) 31 (the-as float 1.0) (the-as float 1.0) (the-as float 1.0))
+                     (compute-alignment! (-> self align))
+                     (align!
+                       (-> self align)
+                       (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel keep-other-velocities adjust-quat)
+                       (the-as float 1.0)
+                       (the-as float 1.0)
+                       (the-as float 1.0)
+                       )
                      )
                    (suspend)
                    (anim-tester-update-anim-info s5-1)
@@ -2399,8 +2407,7 @@
       )
     (none)
     )
-  :post
-  anim-tester-post
+  :post anim-tester-post
   )
 
 (defbehavior initialize-anim-tester anim-tester ()
@@ -2648,19 +2655,7 @@
 
 (defun anim-tester-start ()
   (anim-tester-stop)
-  (let ((gp-0 (get-process *16k-dead-pool* anim-tester #x4000)))
-    (set! *anim-tester*
-          (the-as (pointer anim-tester)
-            (when gp-0
-              (let ((t9-2 (method-of-type anim-tester activate)))
-                (t9-2 (the-as anim-tester gp-0) *default-pool* 'anim-tester (the-as pointer #x70004000))
-                )
-              ((the-as (function process function none) run-function-in-process) gp-0 initialize-anim-tester)
-              (-> gp-0 ppointer)
-              )
-            )
-          )
-    )
+  (set! *anim-tester* (process-spawn anim-tester :init initialize-anim-tester :from *16k-dead-pool*))
   (set! *camera-orbit-target* *anim-tester*)
   (send-event *camera* 'change-state cam-orbit 0)
   #f

@@ -33,6 +33,7 @@
 (define *collision-wireframe* #f)
 (define *collision-mode* (pc-collision-mode mode))
 
+;; todo
 (defenum pc-pat-skip-hack
   :bitfield #t
   (noentity 0)
@@ -43,8 +44,6 @@
   (unknown 15)
   )
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; updates
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -54,19 +53,23 @@
 (defmethod set-display-mode! pc-settings ((obj pc-settings) (mode symbol))
   "sets the game's display mode"
 
-  ;; changing to same mode, no-op
-  (if (= (pc-get-fullscreen) mode)
-    (return 0))
-
-  ;; else change it and update it
+  ;; change the display mode.
   (set! (-> obj display-mode) mode)
-  (pc-set-fullscreen mode 0)
   0)
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
   "sets the size of the display window"
   (format #t "Setting size to ~D x ~D~%" width height)
-  (pc-set-window-size width height)
+  (cond
+    ((= 'windowed (-> obj display-mode))
+      (set! (-> obj win-width) width)
+      (set! (-> obj win-height) height)
+      )
+    (else
+      (format 0  "Nope! No changing fullscreen resolution for now!")
+      (format #t "Nope! No changing fullscreen resolution for now!")
+      )
+    )
   (none))
 
 
@@ -88,10 +91,15 @@
   (set! (-> obj aspect-ratio-reciprocal) (/ ASPECT_4X3 aspect))
   (none))
 
+(defmethod set-window-lock! pc-settings ((obj pc-settings) (lock symbol))
+  "set the aspect ratio used for rendering."
+  (pc-set-window-lock lock)
+  (set! (-> obj window-lock?) lock))
+
 (defmethod commit-to-file pc-settings ((obj pc-settings))
   "commits the current settings to the file"
   ;; auto load settings if available
-  
+
   (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
   (pc-mkdir-file-path *pc-temp-string-1*)
   (write-to-file obj *pc-temp-string-1*)
@@ -101,9 +109,8 @@
   "Update settings from the C kernel to GOAL."
 
   (set! (-> obj os) (pc-get-os))
-  (pc-get-window-size (&-> obj win-width) (&-> obj win-height))
+  (pc-get-window-size (&-> obj real-width) (&-> obj real-height))
   (pc-get-window-scale (&-> obj dpi-x) (&-> obj dpi-y))
-  (set! (-> obj display-mode) 'windowed)
 
   (when (-> obj use-vis?)
     (if (= (-> *setting-control* default aspect-ratio) 'aspect4x3)
@@ -112,28 +119,28 @@
         )
     )
 
-  (let ((win-aspect (/ (the float (-> obj win-width)) (the float (-> obj win-height)))))
+  (let ((win-aspect (/ (the float (-> obj real-width)) (the float (-> obj real-height)))))
     (cond
       ((and (not (-> obj use-vis?)) (-> obj aspect-ratio-auto?))
        ;; the window determines the resolution
        (set-aspect-ratio! obj win-aspect)
-       (set! (-> obj width) (-> obj win-width))
-       (set! (-> obj height) (-> obj win-height))
+       (set! (-> obj lbox-width) (-> obj real-width))
+       (set! (-> obj lbox-height) (-> obj real-height))
        )
       ((> win-aspect (-> obj aspect-ratio))
        ;; too wide
-       (set! (-> obj width) (the int (* (the float (-> obj win-height)) (-> obj aspect-ratio))))
-       (set! (-> obj height) (-> obj win-height))
+       (set! (-> obj lbox-width) (the int (* (the float (-> obj real-height)) (-> obj aspect-ratio))))
+       (set! (-> obj lbox-height) (-> obj real-height))
        )
       ((< win-aspect (-> obj aspect-ratio))
        ;; too tall
-       (set! (-> obj width) (-> obj win-width))
-       (set! (-> obj height) (the int (/ (the float (-> obj win-width)) (-> obj aspect-ratio))))
+       (set! (-> obj lbox-width) (-> obj real-width))
+       (set! (-> obj lbox-height) (the int (/ (the float (-> obj real-width)) (-> obj aspect-ratio))))
        )
       (else
        ;; just right
-       (set! (-> obj width) (-> obj win-width))
-       (set! (-> obj height) (-> obj win-height))
+       (set! (-> obj lbox-width) (-> obj real-width))
+       (set! (-> obj lbox-height) (-> obj real-height))
        )
       )
     )
@@ -146,13 +153,19 @@
 
   (cond
     ((-> obj letterbox?)
-     ;; AGH bad idea, this is meant for resolution! TODO fix this crap
-     (pc-set-letterbox (-> obj width) (-> obj height))
+     (pc-set-letterbox (-> obj lbox-width) (-> obj lbox-height))
      )
     (else
-     (pc-set-letterbox (-> obj win-width) (-> obj win-height))
+     (pc-set-letterbox (-> obj real-width) (-> obj real-height))
      )
     )
+
+  (pc-set-fullscreen (-> obj display-mode) 0)
+  (if (and (= 'windowed (-> obj display-mode))
+           (-> obj window-lock?)
+           (or (!= (-> obj win-width) (-> obj real-width))
+               (!= (-> obj win-height) (-> obj real-height))))
+      (pc-set-window-size (max 320 (-> obj win-width)) (max 240 (-> obj win-height))))
 
   (pc-discord-rpc-set (if (-> obj discord-rpc?) 1 0))
 
@@ -167,9 +180,16 @@
     (pc-set-collision-mode *collision-mode*)
     )
 
+  (pc-sound-set-flava-hack (-> obj flava-hack))
+  (let ((fade-hack 0))
+    (unless (-> obj music-fadein?) (logior! fade-hack 1))
+    (unless (-> obj music-fadeout?) (logior! fade-hack 2))
+    (pc-sound-set-fade-hack fade-hack)
+    )
+
   (none))
 
-(define *pc-cheat-temp* (the-as (pointer int32) (malloc 'global 24)))
+(define *pc-cheat-temp* (the-as (pointer int32) (malloc 'global (* 4 7))))
 (defmacro pc-cheat-toggle-and-tune (obj cheat)
   `(begin
     (cpad-clear! 0 r1)
@@ -191,9 +211,51 @@
     (set! (-> info fuel) (&-> *game-info* fuel))
     (set! (-> info money-total) (&-> *game-info* money-total))
     (set! (-> info buzzer-total) (&-> *game-info* buzzer-total))
+    (set! (-> info deaths) (&-> *game-info* total-deaths))
     (set! (-> info status) "Playing Jak and Daxter: The Precursor Legacy™")
     (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name))) ;; grab the name of level we're in
     (set! (-> info cutscene?) (-> obj movie?))
+    (set! (-> info ogreboss?) (aif (process-by-ename "ogreboss-1") (case (-> it next-state name) (
+                                      ('ogreboss-die
+                                       'ogreboss-idle
+                                       'ogreboss-stage1
+                                       'ogreboss-stage2
+                                       'ogreboss-stage3-hit
+                                       'ogreboss-stage3-shuffle
+                                       'ogreboss-stage3-throw
+                                       'ogreboss-wait-for-player) #t))))
+    (set! (-> info plant-boss?) (aif (process-by-ename "plant-boss-3") (case (-> it next-state name) (
+                                      ('plant-boss-idle
+                                       'plant-boss-hit
+                                       'plant-boss-vulnerable
+                                       'plant-boss-spawn
+                                       'plant-boss-reset
+                                       'plant-boss-attack) #t))))
+    (set! (-> info racer?) (aif *target* (case (-> it next-state name) (
+                                      ('target-racing
+                                       'target-racing-bounce
+                                       'target-racing-death
+                                       'target-racing-falling
+                                       'target-racing-grab
+                                       'target-racing-hit
+                                       'target-racing-jump
+                                       'target-racing-smack
+                                       'target-racing-start) #t))))
+    (set! (-> info flutflut?) (aif *target* (case (-> it next-state name) (
+                                      ('target-flut-air-attack
+                                       'target-flut-air-attack-hit-ground
+                                       'target-flut-double-jump
+                                       'target-flut-falling
+                                       'target-flut-grab
+                                       'target-flut-hit
+                                       'target-flut-hit-ground
+                                       'target-flut-jump
+                                       'target-flut-running-attack
+                                       'target-flut-stance
+                                       'target-flut-start
+                                       'target-flut-walk) #t))))
+    (set! (-> info time-of-day) (&-> *time-of-day-context* time))
+
     (with-profiler "discord-update" (pc-discord-rpc-update info))
     )
 
@@ -234,6 +296,8 @@
 
   ;; cheats.
   (update-cheats obj)
+  ;; music.
+  (update-music-log obj)
 
   (none))
 
@@ -263,43 +327,138 @@
 
     (pc-check-cheat-code (-> *pc-cheat-temp* 5) 0 (l e a d s)
           (pc-cheat-toggle-and-tune obj sidekick-blue))
+
+    (pc-check-cheat-code (-> *pc-cheat-temp* 6) 0 (t u n e s)
+          (pc-cheat-toggle-and-tune obj tunes))
     )
 
   (when *target*
 
-      ;; TODO green eco hack here as well
+      (with-pp (protect ((-> *target* fact-info-target eco-source) *sound-player-enable*)
+      ;; act as if this isnt a new source of eco to prevent spamming sounds. then restore the old source!
+      (when (< 0 (-> *target* fact-info-target eco-level))
+          (set! (-> *target* fact-info-target eco-source) (process->handle pp))
+          (false! *sound-player-enable*)
+          )
+
+      ;; blue eco!
       (when (and (pc-cheats? obj eco-blue)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-blue))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
-        (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc)))
+        (protect ((-> *target* event-hook))
+          (set! (-> *target* event-hook) target-generic-event-handler)
+          (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc))
+          )
+        (send-event *target* 'boost (-> *FACT-bank* eco-single-inc)))
 
+      ;; yellow eco!
       (when (and (pc-cheats? obj eco-yellow)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-yellow))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
         (send-event *target* 'get-pickup (pickup-type eco-yellow) (-> *FACT-bank* eco-full-inc)))
 
+      ;; red eco!
       (when (and (pc-cheats? obj eco-red)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-red))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
         (send-event *target* 'get-pickup (pickup-type eco-red) (-> *FACT-bank* eco-full-inc)))
 
+      ;; green eco!
       (when (and (pc-cheats? obj eco-green)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-green))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
-       (with-pp
         (define-extern vent type)
-        (protect ((-> (the basic pp) type) (-> *target* control root-prim prim-core action))
-        (set! (-> (the basic pp) type) vent)
-        (logior! (-> *target* control root-prim prim-core action) #x200)
+        (protect ((-> pp type) (-> *target* control root-prim prim-core action))
+        (set! (-> pp type) vent)
+        (logior! (-> *target* control root-prim prim-core action) (collide-action ca-9))
         (send-event *target* 'get-pickup (pickup-type eco-green) (-> *FACT-bank* eco-full-inc)))
-        ))
+        )
+      ))
 
       (when (pc-cheats? obj invinc)
-        (logior! (-> *target* state-flags) 16)
+        (logior! (-> *target* state-flags) (state-flags invulnerable))
         )
 
       )
+
+  (if (pc-cheats? obj tunes)
+      (set! (-> obj flava-hack) -1)
+      (set! (-> obj flava-hack) 0)
+      )
+
+  (logior! (-> obj cheats-known) (-> obj cheats))
   0)
+
+
+(defmethod add-to-music-log pc-settings ((obj pc-settings) (music symbol) (flava int))
+  "add music and flava information to the music log.
+   if music already exists, adds flava. if flava already exists, nothing happens."
+
+  ;; go through our music log
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (cond
+      ;; an empty log entry! place the currently playing music there, and fill flava.
+      ((not (-> obj secrets music i name))
+       (set! (-> obj secrets music i name) music)
+       (set! (-> obj secrets music i flava-mask) (ash 1 flava))
+       (return 0)
+       )
+      ;; an existing log entry for the current music. fill flava.
+      ((= music (-> obj secrets music i name))
+       (logior! (-> obj secrets music i flava-mask) (ash 1 flava))
+       (return 0)
+       )
+      ;; something else. maybe the wrong entry, in which case nothing to do.
+      )
+    )
+
+  0)
+
+(defmethod update-music-log pc-settings ((obj pc-settings))
+  "update music log settings."
+
+  ;; add whatever is playing to the music log.
+  (add-to-music-log obj (-> *setting-control* current music) (the int (-> *setting-control* current sound-flava)))
+
+  ;; special cases. for example, npc's that despawn and you can't hear their music anymore.
+  (if (task-closed? (game-task beach-ecorocks) (task-status need-introduction))
+      (add-to-music-log obj 'village1 1))
+  (if (task-closed? (game-task jungle-plant) (task-status need-resolution))
+      (add-to-music-log obj 'jungleb 2))
+  (if (task-closed? (game-task beach-flutflut) (task-status need-resolution))
+      (add-to-music-log obj 'beach (flava-lookup 'beach (music-flava birdlady))))
+  (if (task-closed? (game-task beach-flutflut) (task-status need-resolution))
+      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava birdlady))))
+  (if (task-closed? (game-task misty-warehouse) (task-status need-resolution))
+      (add-to-music-log obj 'misty (flava-lookup 'misty (music-flava misty-battle))))
+  (if (task-closed? (game-task misty-cannon) (task-status need-resolution))
+      (add-to-music-log obj 'misty 4))
+  (if (task-closed? (game-task firecanyon-end) (task-status need-resolution))
+      (add-to-music-log obj 'firecanyon 2))
+  (if (task-closed? (game-task swamp-billy) (task-status need-resolution))
+      (add-to-music-log obj 'swamp 1))
+  (if (task-closed? (game-task swamp-battle) (task-status need-resolution))
+      (add-to-music-log obj 'swamp (flava-lookup 'swamp (music-flava swamp-battle))))
+  (if (task-closed? (game-task snow-bunnies) (task-status need-resolution))
+      (add-to-music-log obj 'snow (flava-lookup 'snow (music-flava snow-battle))))
+  (if (task-closed? (game-task citadel-sage-yellow) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-yellow))))
+  (if (task-closed? (game-task citadel-sage-red) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-red))))
+  (if (task-closed? (game-task citadel-sage-blue) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-blue))))
+  (if (task-closed? (game-task citadel-sage-green) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage))))
+  (if (task-closed? (game-task citadel-buzzer) (task-status need-resolution))
+      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava assistant))))
+  (when (and *target* (>= (float->int (send-event *target* 'query 'pickup (pickup-type fuel-cell))) 100))
+      (add-to-music-log obj 'credits 0)
+      (add-to-music-log obj 'credits 1)
+      (add-to-music-log obj 'credits 2)
+      )
+
+  0)
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -314,8 +473,8 @@
 
   (clear *pc-temp-string*)
   (format *pc-temp-string* "game resolution: ~D x ~D~%" (-> obj width) (-> obj height))
-  (format *pc-temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj win-width) (-> obj win-height) (-> obj dpi-x) (-> obj dpi-y))
-  (format *pc-temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A L: ~A~%" (-> obj aspect-ratio) (/ (the float (-> obj win-width)) (the float (-> obj win-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
+  (format *pc-temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj real-width) (-> obj real-height) (-> obj dpi-x) (-> obj dpi-y))
+  (format *pc-temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A L: ~A~%" (-> obj aspect-ratio) (/ (the float (-> obj real-width)) (the float (-> obj real-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
   (format *pc-temp-string* "display-type: ~A ~A~%" (-> obj display-mode) (-> obj vsync?))
 
   (draw-string-xy *pc-temp-string* buf 0 (- 224 (* 8 4)) (font-color default) (font-flags shadow kerning))
@@ -323,6 +482,31 @@
   (none))
 
 )
+
+
+(defun find-music-log ((music symbol))
+  "return #t if the given music is logged into the *pc-settings*, #f otherwise."
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (if (= music (-> *pc-settings* secrets music i name))
+        (return #t)))
+  #f)
+
+(defun find-flava-log ((music symbol) (flava-idx int))
+  "return #t if the given music's flava is logged into the *pc-settings*, #f otherwise."
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (if (= music (-> *pc-settings* secrets music i name))
+        (return (logtest? (-> *pc-settings* secrets music i flava-mask) (ash 1 flava-idx)))))
+  #f)
+
+(defun-debug print-music-log ((out object))
+  "prints the *pc-settings* music log."
+
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (if (-> *pc-settings* secrets music i name)
+        (format out "music log ~D: ~A (f #x~x)~%" i (-> *pc-settings* secrets music i name) (-> *pc-settings* secrets music i flava-mask)))
+    )
+
+  0)
 
 
 
@@ -445,6 +629,21 @@
     )
   )
 
+(defmacro file-stream-get-next-char-ret (fs)
+  `(begin
+    (file-stream-seek-past-whitespace ,fs)
+    (let ((c (file-stream-getc ,fs)))
+      (file-stream-seek ,fs -1 SCE_SEEK_CUR)
+      c))
+  )
+
+(defmacro file-stream-get-next-char (fs)
+  `(begin
+    (file-stream-seek-past-whitespace ,fs)
+    (file-stream-getc ,fs)
+    )
+  )
+
 (defmacro dosettings (bindings &rest body)
   "iterate over a list of key-value pairs like so: (<key> <value>) (<key> <value>) ...
    the name of key is stored in *pc-temp-string*"
@@ -455,8 +654,7 @@
 
             ,@body
 
-            (file-stream-seek-past-whitespace ,fs)
-            (set! c (file-stream-getc ,fs))
+            (set! c (file-stream-get-next-char ,fs))
             (when (!= #x29 c)
               (pc-settings-read-throw-error ,fs (string-format "invalid char, ) not found, got #x~X ~A" c *pc-temp-string*))
               )
@@ -478,8 +676,7 @@
 
     (let ((version PC_KERNEL_VERSION))
       (with-settings-scope (file)
-        (file-stream-read-word file)
-        (case-str *pc-temp-string*
+        (case-str (file-stream-read-word file)
           (("settings")
             (set! version (file-stream-read-int file))
             (cond
@@ -496,10 +693,13 @@
             (dosettings (file)
               (case-str *pc-temp-string*
                 (("fps") (set! (-> obj target-fps) (file-stream-read-int file)))
-                (("size")
+                (("window-size")
+                  (set! (-> obj win-width) (file-stream-read-int file))
+                  (set! (-> obj win-height) (file-stream-read-int file))
+                  )
+                (("game-size")
                   (set! (-> obj width) (file-stream-read-int file))
                   (set! (-> obj height) (file-stream-read-int file))
-                  (set-size! obj (-> obj width) (-> obj height))
                   )
                 (("aspect") (set-aspect! obj (file-stream-read-int file) (file-stream-read-int file)))
                 (("aspect-test")
@@ -541,13 +741,16 @@
                 (("subtitles?") (set! (-> obj subtitles?) (file-stream-read-symbol file)))
                 (("hinttitles?") (set! (-> obj hinttitles?) (file-stream-read-symbol file)))
                 (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
-                (("first-camera-hflip?") (set! (-> obj first-camera-hflip?) (file-stream-read-symbol file)))
-                (("first-camera-vflip?") (set! (-> obj first-camera-vflip?) (file-stream-read-symbol file)))
-                (("third-camera-hflip?") (set! (-> obj third-camera-hflip?) (file-stream-read-symbol file)))
-                (("third-camera-vflip?") (set! (-> obj third-camera-vflip?) (file-stream-read-symbol file)))
+                (("first-camera-h-inverted?") (set! (-> obj first-camera-h-inverted?) (file-stream-read-symbol file)))
+                (("first-camera-v-inverted?") (set! (-> obj first-camera-v-inverted?) (file-stream-read-symbol file)))
+                (("third-camera-h-inverted?") (set! (-> obj third-camera-h-inverted?) (file-stream-read-symbol file)))
+                (("third-camera-v-inverted?") (set! (-> obj third-camera-v-inverted?) (file-stream-read-symbol file)))
                 (("money-starburst?") (set! (-> obj money-starburst?) (file-stream-read-symbol file)))
+                (("extra-hud?") (set! (-> obj extra-hud?) (file-stream-read-symbol file)))
+                (("music-fadein?") (set! (-> obj music-fadein?) (file-stream-read-symbol file)))
+                (("music-fadeout?") (set! (-> obj music-fadeout?) (file-stream-read-symbol file)))
                 (("scenes-seen")
-                  (dotimes (i 197)
+                  (dotimes (i PC_SPOOL_LOG_LENGTH)
                     (set! (-> obj scenes-seen i) (file-stream-read-int file))
                     )
                   )
@@ -565,8 +768,13 @@
                       (("hard-rats-hiscore") (set! (-> obj secrets hard-rats-hiscore) (file-stream-read-int file)))
                       (("hard-rats-hiwave") (set! (-> obj secrets hard-rats-hiwave) (file-stream-read-int file)))
                       (("music")
-                        (dotimes (i 30)
-                          (set! (-> obj secrets music i) (file-stream-read-int file))
+                        (dotimes (i PC_MUSIC_LOG_LENGTH)
+                          (when (!= #x29 (file-stream-get-next-char-ret file))
+                              (with-settings-scope (file)
+                                (set! (-> obj secrets music i name) (file-stream-read-symbol file))
+                                (set! (-> obj secrets music i flava-mask) (file-stream-read-int file))
+                                )
+                            )
                           )
                         )
                       )
@@ -610,7 +818,8 @@
     (format file "(settings #x~X~%" (-> obj version))
 
     (format file "  (fps ~D)~%" (-> obj target-fps))
-    (format file "  (size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
+    (format file "  (game-size ~D ~D)~%" (-> obj width) (-> obj height))
+    (format file "  (window-size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
     (format file "  (aspect ~D ~D)~%" (-> obj width) (-> obj height))
     (format file "  (aspect-test ~D ~D)~%" (-> obj aspect-custom-x) (-> obj aspect-custom-y))
     (format file "  (aspect-auto ~A)~%" (-> obj aspect-ratio-auto?))
@@ -647,27 +856,33 @@
     (format file "  (use-vis? ~A)~%" (-> obj use-vis?))
     (format file "  (skip-movies? ~A)~%" (-> obj skip-movies?))
     (format file "  (discord-rpc? ~A)~%" (-> obj discord-rpc?))
-    (format file "  (first-camera-hflip? ~A)~%" (-> obj first-camera-hflip?))
-    (format file "  (first-camera-vflip? ~A)~%" (-> obj first-camera-vflip?))
-    (format file "  (third-camera-hflip? ~A)~%" (-> obj third-camera-hflip?))
-    (format file "  (third-camera-vflip? ~A)~%" (-> obj third-camera-vflip?))
+    (format file "  (first-camera-h-inverted? ~A)~%" (-> obj first-camera-h-inverted?))
+    (format file "  (first-camera-v-inverted? ~A)~%" (-> obj first-camera-v-inverted?))
+    (format file "  (third-camera-h-inverted? ~A)~%" (-> obj third-camera-h-inverted?))
+    (format file "  (third-camera-v-inverted? ~A)~%" (-> obj third-camera-v-inverted?))
     (format file "  (money-starburst? ~A)~%" (-> obj money-starburst?))
     (format file "  (force-actors? ~A)~%" (-> obj force-actors?))
+    (format file "  (extra-hud? ~A)~%" (-> obj extra-hud?))
+    (format file "  (music-fadein? ~A)~%" (-> obj music-fadein?))
+    (format file "  (music-fadeout? ~A)~%" (-> obj music-fadeout?))
     (format file "  (subtitles? ~A)~%" (-> obj subtitles?))
     (format file "  (hinttitles? ~A)~%" (-> obj hinttitles?))
     (format file "  (subtitle-language ~D)~%" (-> obj subtitle-language))
     (format file "  (subtitle-speaker ~A)~%" (-> obj subtitle-speaker?))
 
+    #|
     (format file "  (scenes-seen")
-    (dotimes (i 197)
+    (dotimes (i PC_SPOOL_LOG_LENGTH)
       (if (zero? (mod i 16))
         (format file "~%   ")
         )
       (format file " ~D" (-> obj scenes-seen i))
       )
     (format file "~%    )~%")
+    |#
 
     (format file "  (secrets~%")
+    #|
     (format file "    (art #x~X)~%" (-> obj secrets art))
     (format file "    (hard-rats? ~A)~%" (-> obj secrets hard-rats?))
     (format file "    (hero-mode? ~A)~%" (-> obj secrets hero-mode?))
@@ -676,14 +891,17 @@
     (format file "    (hard-fish-hiscore ~D)~%" (-> obj secrets hard-fish-hiscore))
     (format file "    (hard-rats-hiscore ~D)~%" (-> obj secrets hard-rats-hiscore))
     (format file "    (hard-rats-hiwave ~D)~%" (-> obj secrets hard-rats-hiwave))
-    (format file "    (music")
-    (dotimes (i 30)
-      (if (zero? (mod i 1))
-        (format file "~%     ")
-        )
-      (format file " #x~X" (-> obj secrets music i))
+    |#
+
+    (format file "    (music~%")
+    (dotimes (i PC_MUSIC_LOG_LENGTH)
+      (if (-> obj secrets music i name)
+    (format file "      (~A #x~X)~%" (-> obj secrets music i name) (-> obj secrets music i flava-mask))
+    )
       )
-    (format file "~%      )~%")
+
+    (format file "      )~%")
+
     (format file "    )~%")
 
     (format file "  )~%")
@@ -697,7 +915,7 @@
 
 (defmethod load-settings pc-settings ((obj pc-settings))
   "load"
-  
+
   (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
   (if (pc-filepath-exists? *pc-temp-string-1*)
     (begin
@@ -803,6 +1021,18 @@
                           (* 10 (-> *video-parms* relative-y-scale))
                           (font-color flat-yellow)
                           (font-flags shadow kerning))))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; process pools
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; the actor pool for PC processes! it has space for 4 processes, with 16K of space.
+(defconstant PC_PROC_DEFAULT_STACK_SIZE 1024)
+(define *pc-dead-pool* (new 'global 'dead-pool 4 (* 16 1024) '*pc-dead-pool*))
+
 
 
 

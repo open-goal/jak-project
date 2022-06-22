@@ -5,13 +5,10 @@
 ;; name in dgo: puffer
 ;; dgos: L1, SUN, SUNKEN
 
-(define-extern *puffer-sg* skeleton-group)
-(define-extern *puffer-mean-sg* skeleton-group)
-
-(declare-type puffer process-drawable)
-
 
 ;; DECOMP BEGINS
+
+(import "goal_src/import/puffer-ag.gc")
 
 (deftype puffer (process-drawable)
   ((root-override        collide-shape-moving         :offset        112)
@@ -113,21 +110,15 @@
           (return (the-as object #t))
           )
         (when (= (-> arg0 type) target)
-          (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-9 from) self)
-            (set! (-> a1-9 num-params) 2)
-            (set! (-> a1-9 message) 'attack)
-            (set! (-> a1-9 param 0) (-> arg3 param 0))
-            (let ((v1-19 (new 'static 'attack-info :mask #xc0)))
-              (set! (-> v1-19 shove-up) 6144.0)
-              (set! (-> v1-19 shove-back) 10240.0)
-              (set! (-> a1-9 param 1) (the-as uint v1-19))
-              )
-            (when (send-event-function arg0 a1-9)
-              (set! (-> self hit-player?) #t)
-              (set! (-> self hit-player-time) (-> *display* base-frame-counter))
-              (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
-              )
+          (when (send-event
+                  arg0
+                  'attack
+                  (-> arg3 param 0)
+                  (static-attack-info ((shove-up (meters 1.5)) (shove-back (meters 2.5))))
+                  )
+            (set! (-> self hit-player?) #t)
+            (set! (-> self hit-player-time) (-> *display* base-frame-counter))
+            (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
             )
           )
         )
@@ -138,7 +129,10 @@
 (defbehavior puffer-post puffer ()
   (when (and (-> self hit-player?)
              (or (not *target*)
-                 (and (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+                 (and (zero? (logand (-> *target* state-flags)
+                                     (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                                     )
+                             )
                       (>= (- (-> *display* base-frame-counter) (-> self hit-player-time)) (seconds 0.05))
                       )
                  )
@@ -171,12 +165,12 @@
                 (collide-kind background cak-3 ground-object)
                 obj
                 s5-0
-                1
+                (new 'static 'pat-surface :noentity #x1)
                 )
               0.0
               )
           (let ((v1-11 (-> obj draw shadow-ctrl)))
-            (logclear! (-> v1-11 settings flags) (shadow-flags shdf05))
+            (logclear! (-> v1-11 settings flags) (shadow-flags disable-draw))
             )
           0
           (let ((v1-14 (-> obj draw shadow-ctrl)))
@@ -190,7 +184,7 @@
           )
          (else
            (let ((v1-19 (-> obj draw shadow-ctrl)))
-             (logior! (-> v1-19 settings flags) (shadow-flags shdf05))
+             (logior! (-> v1-19 settings flags) (shadow-flags disable-draw))
              )
            0
            )
@@ -199,7 +193,7 @@
      )
     (else
       (let ((v1-21 (-> obj draw shadow-ctrl)))
-        (logior! (-> v1-21 settings flags) (shadow-flags shdf05))
+        (logior! (-> v1-21 settings flags) (shadow-flags disable-draw))
         )
       0
       )
@@ -234,7 +228,10 @@
 (defmethod dummy-25 puffer ((obj puffer) (arg0 float))
   (when *target*
     (let ((gp-0 (target-pos 0)))
-      (when (and (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+      (when (and (zero? (logand (-> *target* state-flags)
+                                (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                                )
+                        )
                  (dummy-24 obj gp-0)
                  (>= (-> gp-0 y) (+ -14336.0 (-> obj attack-bottom-y)))
                  (>= (+ 2048.0 (-> obj top-y)) (-> gp-0 y))
@@ -568,21 +565,18 @@
   )
 
 (defstate puffer-idle (puffer)
-  :event
-  puffer-default-event-handler
-  :enter
-  (behavior ()
+  :event puffer-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self attacking?) #f)
     (shut-down! (-> self neck))
     (let ((v1-5 (-> self draw shadow-ctrl)))
-      (logior! (-> v1-5 settings flags) (shadow-flags shdf05))
+      (logior! (-> v1-5 settings flags) (shadow-flags disable-draw))
       )
     0
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (if (and (and *target* (>= (-> self fact-info-override idle-distance)
                                  (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
@@ -598,15 +592,12 @@
       )
     (none)
     )
-  :post
-  puffer-post
+  :post puffer-post
   )
 
 (defstate puffer-patrol (puffer)
-  :event
-  puffer-default-event-handler
-  :enter
-  (behavior ()
+  :event puffer-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self attacking?) #f)
     (set! (-> self reaction-delay) (rand-vu-int-range (seconds 0.1) (seconds 0.35)))
@@ -618,8 +609,7 @@
     (set! (-> self last-on-screen-time) (-> *display* base-frame-counter))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and (not (and *target* (>= (-> self fact-info-override idle-distance)
                                     (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                                     )
@@ -667,37 +657,31 @@
     (dummy-28 self)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (dummy-26 self)
       (suspend)
       )
     (none)
     )
-  :post
-  puffer-post
+  :post puffer-post
   )
 
 (defstate puffer-attack (puffer)
-  :event
-  puffer-default-event-handler
-  :enter
-  (behavior ()
+  :event puffer-default-event-handler
+  :enter (behavior ()
     (set! (-> self attacking?) #t)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self travel-turn-speed) 21845.334)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (shut-down! (-> self neck))
     (set! (-> self attacking?) #f)
     (set! (-> self travel-turn-speed) 16384.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not (dummy-25 self (-> self give-up-dist)))
         (go puffer-patrol)
         )
@@ -721,21 +705,18 @@
     (dummy-28 self)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (dummy-26 self)
       (suspend)
       )
     (none)
     )
-  :post
-  puffer-post
+  :post puffer-post
   )
 
 (defstate puffer-die (puffer)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as
         uint
@@ -753,8 +734,7 @@
         )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (shut-down! (-> self neck))
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -767,8 +747,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior puffer) ja-post)
+  :post (the-as (function none :behavior puffer) ja-post)
   )
 
 (defmethod dummy-21 puffer ((obj puffer))
@@ -1181,7 +1160,7 @@
   (set! (-> obj look-mean?) #f)
   (set! (-> obj travel-turn-speed) 16384.0)
   (dummy-21 obj)
-  (process-drawable-from-entity! obj (the-as entity-actor (-> obj entity)))
+  (process-drawable-from-entity! obj (-> obj entity))
   (initialize-skeleton obj *puffer-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
   (logclear! (-> obj mask) (process-mask actor-pause))

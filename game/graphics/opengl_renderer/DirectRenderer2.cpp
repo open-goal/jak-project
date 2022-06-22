@@ -325,8 +325,9 @@ void DirectRenderer2::setup_opengl_for_draw_mode(const Draw& draw,
     render_state->shaders[ShaderId::DIRECT2].activate();
     glUniform1f(m_ogl.alpha_reject, alpha_reject);
     glUniform1f(m_ogl.color_mult, color_mult);
-    glUniform4f(m_ogl.fog_color, render_state->fog_color[0], render_state->fog_color[1],
-                render_state->fog_color[2], render_state->fog_intensity);
+    glUniform4f(m_ogl.fog_color, render_state->fog_color[0] / 255.f,
+                render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
+                render_state->fog_intensity / 255);
   }
 }
 

@@ -31,10 +31,6 @@ TFragment::TFragment(const std::string& name,
   }
 }
 
-constexpr const char* level_names[] = {"bea", "cit", "dar", "fin", "int", "jub", "jun", "fic",
-                                       "lav", "mai", "mis", "ogr", "rob", "rol", "sno", "sub",
-                                       "sun", "swa", "tit", "tra", "vi1", "vi2", "vi3"};
-
 void TFragment::render(DmaFollower& dma,
                        SharedRenderState* render_state,
                        ScopedProfilerNode& prof) {
@@ -150,43 +146,6 @@ void TFragment::render(DmaFollower& dma,
     auto tag = dma.current_tag().print();
     dma.read_and_advance();
   }
-
-  if (m_hack_test_many_levels) {
-    std::vector<tfrag3::TFragmentTreeKind> all_kinds = {
-        tfrag3::TFragmentTreeKind::NORMAL, tfrag3::TFragmentTreeKind::TRANS,
-        tfrag3::TFragmentTreeKind::DIRT,   tfrag3::TFragmentTreeKind::ICE,
-        tfrag3::TFragmentTreeKind::LOWRES, tfrag3::TFragmentTreeKind::LOWRES_TRANS};
-    for (int i = 0; i < HackManyLevels::NUM_LEVELS; i++) {
-      if (m_many_level_render.level_enables[i]) {
-        if (!m_many_level_render.tfrag_level_renderers[i]) {
-          m_many_level_render.tfrag_level_renderers[i] = std::make_unique<Tfrag3>();
-        }
-        if (!m_many_level_render.tie_level_renderers[i]) {
-          m_many_level_render.tie_level_renderers[i] = std::make_unique<Tie3>("tie", m_my_id, 0);
-        }
-        m_many_level_render.tfrag_level_renderers[i]->setup_for_level(all_kinds, level_names[i],
-                                                                      render_state);
-        m_many_level_render.tie_level_renderers[i]->setup_for_level(level_names[i], render_state);
-        TfragRenderSettings settings;
-        settings.hvdf_offset = m_tfrag_data.hvdf_offset;
-        settings.fog = m_tfrag_data.fog;
-        memcpy(settings.math_camera.data(),
-               &m_buffered_data[0].pad[TFragDataMem::TFragMatrix0 * 16], 64);
-        settings.tree_idx = 0;
-        for (int j = 0; j < 8; j++) {
-          settings.time_of_day_weights[j] = m_time_of_days[j];
-        }
-
-        auto t3prof = prof.make_scoped_child(level_names[i]);
-
-        m_many_level_render.tfrag_level_renderers[i]->debug_render_all_trees_nolores(
-            0, settings, render_state, t3prof);
-        // always renders max lod
-        m_many_level_render.tie_level_renderers[i]->render_all_trees(0, settings, render_state,
-                                                                     t3prof);
-      }
-    }
-  }
 }
 
 void TFragment::draw_debug_window() {
@@ -194,13 +153,6 @@ void TFragment::draw_debug_window() {
   if (m_override_time_of_day) {
     for (int i = 0; i < 8; i++) {
       ImGui::SliderFloat(fmt::format("{}", i).c_str(), m_time_of_days + i, 0.f, 1.f);
-    }
-  }
-
-  ImGui::Checkbox("Hack Test Many (danger)", &m_hack_test_many_levels);
-  if (m_hack_test_many_levels) {
-    for (int i = 0; i < HackManyLevels::NUM_LEVELS; i++) {
-      ImGui::Checkbox(level_names[i], &m_many_level_render.level_enables[i]);
     }
   }
 

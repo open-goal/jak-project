@@ -49,6 +49,7 @@
 #include "game/overlord/srpc.h"
 #include "game/overlord/stream.h"
 #include "game/overlord/sbank.h"
+#include "game/overlord/ssound.h"
 
 #include "game/graphics/gfx.h"
 
@@ -86,14 +87,15 @@ void deci2_runner(SystemThreadInterface& iface) {
   lg::debug("[DECI2] Waiting for EE to register protos");
   server.wait_for_protos_ready();
   // then allow the server to accept connections
-  if (!server.init_server()) {
-    ASSERT_MSG(false, "[DECI2] Server not initialized even if protocols are ready, aborting");
+  bool server_ok = server.init_server();
+  if (!server_ok) {
+    lg::error("[DECI2] failed to initialize, REPL will not work.\n");
   }
 
   lg::debug("[DECI2] Waiting for listener...");
   bool saw_listener = false;
   while (!iface.get_want_exit()) {
-    if (server.is_client_connected()) {
+    if (server_ok && server.is_client_connected()) {
       if (!saw_listener) {
         lg::debug("[DECI2] Connected!");
       }
@@ -166,8 +168,6 @@ void ee_runner(SystemThreadInterface& iface) {
 
   //  // kill the IOP todo
   iop::LIBRARY_kill();
-
-  munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
 
   // after main returns, trigger a shutdown.
   iface.trigger_shutdown();
@@ -280,8 +280,6 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   g_argv = argv;
   g_main_thread_id = std::this_thread::get_id();
 
-  file_util::create_dir_if_needed("game_config/");
-
   // parse opengoal arguments
   bool enable_display = true;
   for (int i = 1; i < argc; i++) {
@@ -329,6 +327,9 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
     Gfx::Exit();
   }
 
+  // hack to make the IOP die quicker if it's loading/unloading music
+  gMusicFade = 0;
+
   deci_thread.join();
   // DECI has been killed, shutdown!
 
@@ -338,5 +339,6 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   // join and exit
   tm.join();
   lg::info("GOAL Runtime Shutdown (code {})", MasterExit);
+  munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
   return MasterExit;
 }

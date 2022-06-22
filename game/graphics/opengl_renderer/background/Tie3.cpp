@@ -15,7 +15,7 @@ Tie3::~Tie3() {
   discard_tree_cache();
 }
 
-void Tie3::update_load(const Loader::LevelData* loader_data) {
+void Tie3::update_load(const LevelData* loader_data) {
   const tfrag3::Level* lev_data = loader_data->level.get();
   m_wind_vectors.clear();
   // We changed level!
@@ -370,6 +370,7 @@ void Tie3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfi
           2 * (0xff & m_pc_port_data.itimes[i / 2].data()[2 * (i % 2)]) / 127.f;
     }
   }
+
   if (!m_override_level) {
     m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
   }

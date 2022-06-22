@@ -163,8 +163,8 @@ void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& t
   } else {
     if (ts.tc(type_spec, skv->second)) {
     } else {
-      lg::warn("Attempting to redefine type of symbol {} from {} to {}", name,
-               skv->second.print(), type_spec.print());
+      lg::warn("Attempting to redefine type of symbol {} from {} to {}", name, skv->second.print(),
+               type_spec.print());
       throw std::runtime_error("Type redefinition");
     }
   }

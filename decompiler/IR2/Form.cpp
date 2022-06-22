@@ -1769,6 +1769,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "logior!";
     case FixedOperatorKind::LOGXOR:
       return "logxor";
+    case FixedOperatorKind::LOGXOR_IN_PLACE:
+      return "logxor!";
     case FixedOperatorKind::LOGNOR:
       return "lognor";
     case FixedOperatorKind::LOGNOT:
@@ -2487,6 +2489,10 @@ void LetElement::add_def(RegisterAccess dst, Form* value) {
 
 void LetElement::make_let_star() {
   m_star = true;
+}
+
+void LetElement::clear_let_star() {
+  m_star = false;
 }
 
 goos::Object LetElement::to_form_internal(const Env& env) const {

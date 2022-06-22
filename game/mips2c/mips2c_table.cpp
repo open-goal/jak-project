@@ -5,6 +5,8 @@
 #include "game/kernel/kscheme.h"
 #include "common/symbols.h"
 
+using namespace jak1_symbols;
+
 extern "C" {
 void _mips2c_call_linux();
 void _mips2c_call_windows();

@@ -25,6 +25,8 @@
 #include "game/mips2c/mips2c_table.h"
 #include "common/util/Assert.h"
 
+using namespace jak1_symbols;
+
 //! Controls link mode when EnableMethodSet = 0, MasterDebug = 1, DiskBoot = 0. Will enable a
 //! warning message if EnableMethodSet = 1
 u32 FastLink;
@@ -86,10 +88,7 @@ u32 crc32(const u8* data, s32 size) {
     crc = crc_table[crc >> 24] ^ ((crc << 8) | *data);
   }
 
-  if ((~crc) == 0) {
-    // if this happens, I think the hash table implementation breaks.
-    ASSERT(false);
-  }
+  ASSERT(~crc);
   return ~crc;
 }
 
@@ -2004,7 +2003,7 @@ s32 InitHeapAndSymbol() {
   method_set_symbol->value = 0;
 
   // set *boot-video-mode*
-  intern_from_c("*boot-video-mode*")->value = 0;
+  intern_from_c("*boot-video-mode*")->value = (u32)BootVideoMode;
 
   lg::info("Initialized GOAL heap in {:.2} ms", heap_init_timer.getMs());
   // load the kernel!

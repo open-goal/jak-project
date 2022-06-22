@@ -676,8 +676,8 @@
   )
 
 (defmacro sp-rnd-flt (field-name val range mult)
-  `(new 'static 'sp-field-init-spec 
-        :field (sp-field-id ,field-name) 
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
         :initial-valuef ,val
         :random-rangef ,range
         :random-multf ,mult
@@ -686,8 +686,8 @@
   )
 
 (defmacro sp-flt (field-name val)
-  `(new 'static 'sp-field-init-spec 
-        :field (sp-field-id ,field-name) 
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
         :initial-valuef ,val
         :random-rangef 0.0
         :random-multf 1.0
@@ -865,13 +865,13 @@
 (desfun art-elt->index (ag-name elt-name)
   (if (number? elt-name)
       elt-name
-      (let ((ag-info (assoc ag-name *art-info*)))
-          (if (null? ag-info)
+      (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
+          (if (not (car ag-info))
               -1
-              (let ((elt-info (assoc elt-name (cdr ag-info))))
-                  (if (null? elt-info)
+              (let ((elt-info (hash-table-try-ref (cdr ag-info) (symbol->string elt-name))))
+                  (if (not (car elt-info))
                       -1
-                      (cadr elt-info))
+                      (cadr (cdr elt-info)))
                   )
               )
           )
@@ -902,7 +902,7 @@
         ;; set joint geometry and joint bones
         (set! (-> skel jgeo) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-geom))
         (set! (-> skel janim) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-anim))
-        
+
         ;; set lods
         ,@(apply-i (lambda (x i)
                       `(begin
@@ -953,6 +953,11 @@
   `(set! ,place (seekl ,place ,target ,rate))
   )
 
+(defmacro rand-float-gen (&key (gen *random-generator*))
+  "Generate a float from [0, 1)"
+  `(+ -1.0 (the-as float (logior #x3f800000 (/ (rand-uint31-gen ,gen) 256))))
+  )
+
 ;; gsound-h
 (defmacro sound-vol (vol)
   "convert to sound volume units"
@@ -985,6 +990,14 @@
           ))
   )
 
+;; gsound
+(defmacro sound-play (name &key (id (new-sound-id))
+                           &key (vol 100.0) &key (pitch 0) &key (bend 0)
+                           &key (group sfx)
+                           &key (position #t))
+  `(sound-play-by-name (static-sound-name ,name) ,id (the int (* (/ 1024.0 100.0) ,vol)) (the int (* 1524.0 ,pitch)) ,bend (sound-group ,group) ,position)
+  )
+
 ;; process-drawable
 (defmacro ja-group (&key (chan 0))
   "get the frame group for self. default channel is 0, the base channel. returns #f if no frame group."
@@ -1010,7 +1023,7 @@
               )
   "set various joint anim parameters for self and eval them.
    you can use this for playing animations!
-   
+
    chan         = the channel to modify. defaults to 0 (base channel). this is usually what you want.
    group!       = when not #f, set this as the new frame-group. defaults to #f
    num!         = set the frame playback function. this is what determines what frame an animation is at. funcs below.
@@ -1021,7 +1034,7 @@
    frame-num    = set the frame-num field.
    frame-interp = set the frame-interp field.
    dist         = set the dist field.
-   
+
    available num! functions:
    - (+!)       = advance anim.
    - (-!)       = reverse anim.
@@ -1036,7 +1049,7 @@
    - min = the start of the animation.
    - max = the end of the animation.
    "
-  
+
   (let* ((num-args (if (pair? num!) (cdr num!) '()))
         (num! (if (pair? num!) (car num!) num!))
         (nf (cond
@@ -1117,6 +1130,156 @@
                       &key (dist #f)
                       )
   `(ja :eval? #f :chan ,chan :group! ,group! :num! ,num! :param0 ,param0 :param1 ,param1 :num-func ,num-func :frame-num ,frame-num :frame-interp ,frame-interp :dist ,dist)
+  )
+
+;; gkernel-h
+
+(defconstant *scratch-memory-top* (the pointer #x70004000))
+(defconstant DPROCESS_STACK_SIZE #x8000)
+
+;; gkernel
+
+(defconstant *kernel-dram-stack* (&+ *dram-stack* DPROCESS_STACK_SIZE))
+
+;; gstate
+(defmacro process-spawn-function (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
+  "Start a new process that runs a function on its main thread.
+   Returns a pointer to the new process (or #f? on error)."
+
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(quote ,proc-type)) ,stack)
+          (run-next-time-in-process ,new-proc ,func ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )
+
+(defmacro process-spawn (proc-type &key (init #f) &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
+  "Start a new process and run an init function on it.
+   Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
+
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(quote ,proc-type)) ,stack)
+          (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )
+
+;; generic-obs
+
+(defmacro manipy-spawn (trans entity skel arg &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*))
+  `(process-spawn manipy :init manipy-init ,trans ,entity ,skel ,arg :from ,from :to ,to :name ,name :stack-size ,stack-size :stack ,stack)
+  )
+
+;; game-h
+(defmacro static-attack-info (&key (mask ()) &rest args)
+  (when (!= (length args) 1)
+      (error "static-attack-info can only have 1 arg"))
+  (let ((mask-actual mask)
+        (arg (car args))
+        )
+    (when (not (null? (assoc 'shove-up arg))) (cons! mask-actual 'shove-up))
+    (when (not (null? (assoc 'shove-back arg))) (cons! mask-actual 'shove-back))
+    (when (not (null? (assoc 'mode arg))) (cons! mask-actual 'mode))
+    (when (not (null? (assoc 'vector arg))) (cons! mask-actual 'vector))
+    (when (not (null? (assoc 'angle arg))) (cons! mask-actual 'angle))
+    (when (not (null? (assoc 'control arg))) (cons! mask-actual 'control))
+    `(let ((atk (new 'static 'attack-info :mask (attack-mask ,@mask-actual))))
+        ,@(apply (lambda (x) (if (eq? (car x) 'vector)
+                                 `(vector-copy! (-> atk ,(car x)) ,(cadr x))
+                                 `(set! (-> atk ,(car x)) ,(cadr x))
+                                )) arg)
+        atk)
+    )
+  )
+
+;; settings-h
+
+
+(defmacro setting-control-func! (func s &rest args)
+  (let ((argb #f)
+        (argi 0)
+        (argf 0.0)
+        (setting (cadr s)))
+    (cond
+      ; ((or (eq? setting 'border-mode)
+           ; (eq? setting 'allow-look-around)
+           ; (eq? setting 'ocean-off)
+           ; (eq? setting 'music)
+           ; (eq? setting 'vibration)
+           ; (eq? setting 'auto-save)
+           ; (eq? setting 'allow-pause)
+           ; (eq? setting 'allow-progress)
+           ; (eq? setting 'play-hints)
+           ; (eq? setting 'movie)
+           ; (eq? setting 'talking)
+           ; (eq? setting 'spooling)
+           ; (eq? setting 'hint)
+           ; (eq? setting 'ambient)
+           ; )
+        ; (set! argb (car args))
+        ; )
+      ; ((or (eq? setting 'bg-r)
+           ; (eq? setting 'bg-g)
+           ; (eq? setting 'bg-b)
+           ; (eq? setting 'bg-a)
+           ; (eq? setting 'bg-a-speed)
+           ; (eq? setting 'bg-a-force)
+           ; )
+        ; (set! argf (car args))
+        ; )
+      ; ((or (eq? setting 'language)
+           ; )
+        ; (set! argi (car args))
+        ; )
+      ; ((or (eq? setting 'sound-flava)
+           ; )
+        ; (set! argi (car args))
+        ; (set! argf (cadr args))
+        ; )
+      ; ((or (eq? setting 'process-mask)
+           ; (eq? setting 'common-page)
+           ; )
+        ; (set! argb (car args))
+        ; (set! argi (cadr args))
+        ; )
+      ; ((or (eq? setting 'sfx-volume)
+           ; (eq? setting 'music-volume)
+           ; (eq? setting 'ambient-volume)
+           ; (eq? setting 'dialog-volume)
+           ; (eq? setting 'sfx-volume-movie)
+           ; (eq? setting 'music-volume-movie)
+           ; (eq? setting 'ambient-volume-movie)
+           ; (eq? setting 'dialog-volume-hint)
+           ; )
+        ; (set! argb (car args))
+        ; (set! argf (cadr args))
+        ; )
+      (#t
+        (set! argb (car args))
+        (set! argf (cadr args))
+        (set! argi (caddr args))
+        )
+      )
+    `(,func *setting-control* (with-pp pp) ,s ,argb ,argf ,argi)
+    )
+  )
+
+(defmacro add-setting! (s &rest args)
+  `(setting-control-func! add-setting ,s ,@args)
+  )
+(defmacro set-setting! (s &rest args)
+  `(setting-control-func! set-setting ,s ,@args)
+  )
+(defmacro remove-setting! (s)
+  `(remove-setting *setting-control* (with-pp pp) ,s)
   )
 
 

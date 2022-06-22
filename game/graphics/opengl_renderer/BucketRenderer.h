@@ -6,7 +6,7 @@
 #include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/texture/TexturePool.h"
 #include "game/graphics/opengl_renderer/Profiler.h"
-#include "game/graphics/opengl_renderer/Loader.h"
+#include "game/graphics/opengl_renderer/loader/Loader.h"
 #include "game/graphics/opengl_renderer/buckets.h"
 
 struct LevelVis {
@@ -37,10 +37,9 @@ struct SharedRenderState {
   bool use_sky_cpu = true;
   bool use_occlusion_culling = true;
   bool enable_merc_xgkick = true;
-  bool use_direct2 = true;
   math::Vector<u8, 4> fog_color;
   float fog_intensity = 1.f;
-  bool no_multidraw = true;
+  bool no_multidraw = false;
 
   void reset();
   bool has_pc_data = false;
@@ -87,6 +86,9 @@ class RenderMux : public BucketRenderer {
             std::vector<std::unique_ptr<BucketRenderer>> renderers);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+  void init_shaders(ShaderLibrary&) override;
+  void init_textures(TexturePool&) override;
+  void set_idx(u32 i) { m_render_idx = i; };
 
  private:
   std::vector<std::unique_ptr<BucketRenderer>> m_renderers;

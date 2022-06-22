@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/mayor-ag.gc")
+
 ;; definition of type mayor
 (deftype mayor (process-taskable)
   ()
@@ -52,7 +54,7 @@
           (logtest? (-> obj draw status) (draw-status was-drawn))
           )
      (let ((v1-9 (-> obj draw shadow-ctrl)))
-       (logclear! (-> v1-9 settings flags) (shadow-flags shdf05))
+       (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
        )
      0
      (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
@@ -96,8 +98,7 @@
            :name "mayor-introduction"
            :index 4
            :parts 16
-           :command-list
-           '((0 kill "villagea-part-65")
+           :command-list '((0 kill "villagea-part-65")
              (0 kill "villagea-part-70")
              (0 kill "med-res-level-2")
              (0 kill "med-res-level-3")
@@ -188,8 +189,7 @@
           :name "mayor-reminder-donation"
           :index 6
           :parts 3
-          :command-list
-          '((0 kill "villagea-part-65")
+          :command-list '((0 kill "villagea-part-65")
             (0 kill "villagea-part-70")
             (0 kill "med-res-level-2")
             (0 kill "med-res-level-3")
@@ -272,8 +272,7 @@
           :name "mayor-reminder-beams"
           :index 5
           :parts 3
-          :command-list
-          '((0 kill "villagea-part-65")
+          :command-list '((0 kill "villagea-part-65")
             (0 kill "villagea-part-70")
             (0 kill "med-res-level-2")
             (0 kill "med-res-level-3")
@@ -359,8 +358,7 @@
           :name "mayor-reminder-beams"
           :index 5
           :parts 3
-          :command-list
-          '((0 kill "villagea-part-65")
+          :command-list '((0 kill "villagea-part-65")
             (0 kill "villagea-part-70")
             (0 kill "med-res-level-2")
             (0 kill "med-res-level-3")
@@ -446,8 +444,7 @@
            :name "mayor-reminder-donation"
            :index 6
            :parts 3
-           :command-list
-           '((0 kill "villagea-part-65")
+           :command-list '((0 kill "villagea-part-65")
              (0 kill "villagea-part-70")
              (0 kill "med-res-level-2")
              (0 kill "med-res-level-3")
@@ -550,8 +547,7 @@
            :name "mayor-resolution-donation"
            :index 8
            :parts 5
-           :command-list
-           '((0 kill "villagea-part-65")
+           :command-list '((0 kill "villagea-part-65")
              (0 kill "villagea-part-70")
              (0 kill "med-res-level-2")
              (0 kill "med-res-level-3")
@@ -661,10 +657,7 @@
 ;; definition for method 43 of type mayor
 (defmethod TODO-RENAME-43 mayor ((obj mayor))
   (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
-    (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-4 (the-as number (logior #x3f800000 v1-3)))
-           (f0-2 (+ -1.0 (the-as float v1-4)))
-           )
+    (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.8888889 f0-2)
          (if (not (closed? (-> obj tasks) (game-task jungle-lurkerm) (task-status need-reminder)))
@@ -713,16 +706,14 @@
 ;; failed to figure out what this is:
 (defstate idle (mayor)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not (should-display? self))
         (go-virtual hidden)
         )
     ((-> (method-of-type process-taskable idle) trans))
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (let ((t9-0 (-> (method-of-type process-taskable idle) post)))
       (if t9-0
           ((the-as (function none) t9-0))

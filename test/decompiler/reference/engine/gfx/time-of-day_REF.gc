@@ -80,8 +80,7 @@
 
 ;; failed to figure out what this is:
 (defstate time-of-day-tick (time-of-day-proc)
-  :code
-  (behavior ()
+  :code (behavior ()
     (loop
       (+! (-> self frame) (the int (* (-> self time-ratio) (-> *display* time-adjust-ratio))))
       (when (>= (-> self frame) 300)
@@ -138,8 +137,7 @@
       )
     (none)
     )
-  :post
-  time-of-day-update
+  :post time-of-day-update
   )
 
 ;; definition for function init-time-of-day
@@ -171,19 +169,7 @@
 ;; INFO: Return type mismatch (pointer process) vs none.
 (defun start-time-of-day ()
   (kill-by-name 'time-of-day-proc *active-pool*)
-  (let ((gp-0 (get-process *default-dead-pool* time-of-day-proc #x4000)))
-    (set! *time-of-day-proc*
-          (the-as (pointer time-of-day-proc)
-            (when gp-0
-              (let ((t9-2 (method-of-type time-of-day-proc activate)))
-                (t9-2 (the-as time-of-day-proc gp-0) *default-pool* 'time-of-day-proc (the-as pointer #x70004000))
-                )
-              (run-now-in-process gp-0 init-time-of-day)
-              (-> gp-0 ppointer)
-              )
-            )
-          )
-    )
+  (set! *time-of-day-proc* (process-spawn time-of-day-proc :init init-time-of-day))
   (none)
   )
 

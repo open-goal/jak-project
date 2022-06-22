@@ -6,6 +6,7 @@
 #include "cfg_builder.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/MatchParam.h"
 
 namespace decompiler {
@@ -107,6 +108,13 @@ void clean_up_cond_with_else(FormPool& pool, FormElement* ir, const Env& env) {
 void clean_up_until_loop(FormPool& pool, UntilElement* ir, const Env& env) {
   auto condition_branch = get_condition_branch(ir->condition);
   ASSERT(condition_branch.first);
+  if (condition_branch.first->op()->branch_delay().kind() != IR2_BranchDelay::Kind::NOP) {
+    ASSERT_MSG(
+        false,
+        fmt::format(
+            "bad delay slot in until loop: {} in {}\n", env.func->name(),
+            condition_branch.first->op()->branch_delay().to_form(env.file->labels, env).print()));
+  }
   ASSERT(condition_branch.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
   auto replacement = condition_branch.first->op()->get_condition_as_form(pool, env);
   replacement->invert();
@@ -708,6 +716,7 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
       ASSERT(fr.has_value());
       cne->final_destination = *fr;
     } else {
+      fmt::print("failed to clean up cond_no_else_final: {}\n", func.name());
       ASSERT(false);
     }
   }
@@ -1634,6 +1643,10 @@ Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
         ASSERT(delay_end - delay_start == 1);
         auto& op = f.ir2.atomic_ops->ops.at(delay_start);
         auto op_as_expr = dynamic_cast<SetVarOp*>(op.get());
+        if (!op_as_expr) {
+          fmt::print("bad in {}\n", f.name());
+          fmt::print("{}\n", op->to_string(f.ir2.env));
+        }
         ASSERT(op_as_expr);
         e.branch_delay = *op_as_expr;
       }

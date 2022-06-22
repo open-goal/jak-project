@@ -104,55 +104,60 @@
 
 (defun set-master-mode ((new-mode symbol))
   "Update pause masks for the given mode, and set *master-mode*"
-  (set! *master-mode* new-mode)
-  (if *debug-segment*
-      (menu-respond-to-pause)
-      )
-  (case *master-mode*
-    (('pause)
+  ;; PAL patch here
+  (let ((gp-0 *master-mode*))
+    (set! *master-mode* new-mode)
+    (if *debug-segment*
+        (menu-respond-to-pause)
+        )
+    (case *master-mode*
+      (('pause)
 
-     ;; request the pause mask to be set in prevent-from-run.
-     ;; this will block any process with pause from running, pausing most game objects.
-     (if (not *debug-pause*)
-         (logior! (-> *setting-control* default process-mask) (process-mask pause))
-         )
-
-     ;; allow the menu to run.
-     (logclear! (-> *setting-control* default process-mask) (process-mask menu))
-
-     ;; ??
-     (set! *pause-lock* #f)
-     (sound-group-pause (the-as uint 255))
-     (hide-progress-screen)
-     )
-    (('menu)
-     ;; I believe these masks are just to make the progress go away work.
-     (logior! (-> *setting-control* default process-mask) (process-mask menu))
-     (logclear! (-> *setting-control* default process-mask) (process-mask pause progress))
-     (set! *pause-lock* #f)
-     (hide-progress-screen)
-     )
-    (('progress)
-     ;; allow menu to run while in progress.
-     (logclear! (-> *setting-control* default process-mask) (process-mask menu))
-
-     ;; activate the progress menu.
-     (when (not *progress-process*)
-       (activate-progress *dproc* (progress-screen fuel-cell))
-       (if (not *progress-process*) ;; if it doesn't want to activate, back to game.
-           (set-master-mode 'game)
+       ;; request the pause mask to be set in prevent-from-run.
+       ;; this will block any process with pause from running, pausing most game objects.
+       (if (not *debug-pause*)
+           (logior! (-> *setting-control* default process-mask) (process-mask pause))
            )
+
+       ;; allow the menu to run.
+       (logclear! (-> *setting-control* default process-mask) (process-mask menu))
+
+       ;; ??
+       (set! *pause-lock* #f)
+       (sound-group-pause (sound-group sfx music dialog sog3 ambient sog5 sog6 sog7))
+       (hide-progress-screen)
        )
-     )
-    (('game)
-     ;; allow pausable/menu to run.
-     (logclear! (-> *setting-control* default process-mask) (process-mask pause menu))
-     (sound-group-continue (the-as uint 255))
-     (hide-progress-screen)
-     )
+      (('menu)
+       ;; I believe these masks are just to make the progress go away work.
+       (logior! (-> *setting-control* default process-mask) (process-mask menu))
+       (logclear! (-> *setting-control* default process-mask) (process-mask pause progress))
+       (set! *pause-lock* #f)
+       (hide-progress-screen)
+       )
+      (('progress)
+       ;; allow menu to run while in progress.
+       (logclear! (-> *setting-control* default process-mask) (process-mask menu))
+
+       ;; activate the progress menu.
+       (when (not *progress-process*)
+         (activate-progress *dproc* (progress-screen fuel-cell))
+         (if (not *progress-process*)
+             (set-master-mode 'game)
+             )
+         )
+       )
+      (('game)
+       ;; allow pausable/menu to run.
+       (logclear! (-> *setting-control* default process-mask) (process-mask pause menu))
+       (if (!= gp-0 *master-mode*)
+           (sound-group-continue (sound-group sfx music dialog sog3 ambient sog5 sog6 sog7))
+           )
+       (hide-progress-screen)
+       )
+      )
     )
   ;; apply settings now.
-  (copy-settings-from-target! *setting-control*)
+  (apply-settings *setting-control*)
   0
   (none)
   )
@@ -419,11 +424,11 @@
                (external-cam-reset!)
                )
               (set! *external-cam-mode* 'pad-1)
-              (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 1 #t)
+              (sound-play "select-menu")
               )
              (else
               (set! *external-cam-mode* #f)
-              (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
+              (sound-play "cursor-options")
               )
              )
           )
@@ -503,12 +508,12 @@
                  )
 
         ;; spawn a process that blacks out the screen, turns things off, and kills the game.
-        (if (process-new-function process :stack *scratch-memory-top*
+        (if (process-spawn-function process :stack *scratch-memory-top*
               (lambda :behavior process ()
                 (set-blackout-frames (seconds 100))
                 (set! (-> *setting-control* default allow-pause) #f)
                 (set! (-> *setting-control* default allow-progress) #f)
-                (copy-settings-from-target! *setting-control*)
+                (apply-settings *setting-control*)
                 (set! (-> *setting-control* default sfx-volume) 0.0)
                 (set! (-> *setting-control* default music-volume) 0.0)
                 (set! (-> *setting-control* default dialog-volume) 0.0)
@@ -587,7 +592,7 @@
     ;; the size is 0, so this doesn't actually do anything.
     ;; (dma-send-to-spr (the-as uint #x70000000) (the-as uint *terrain-context*) (the-as uint 0) #t)
     (set! *teleport* #t)
-    (update-per-frame-settings! *setting-control*)
+    (update *setting-control*)
     (init-time-of-day-context *time-of-day-context*)
     (display-sync disp)
     (swap-display disp)
@@ -787,14 +792,13 @@
                 (draw-string-xy (string-format "Actor Bank: ~,,1m/~,,1m (~D)" (-> *ACTOR-bank* pause-dist) (-> *ACTOR-bank* birth-dist) (-> *ACTOR-bank* birth-max)) debug-buf 512 (- 224 8) (font-color default) (font-flags shadow kerning right))
                 )
               (when (-> *pc-settings* display-bug-report)
-                (format *stdcon* "bug-report ~A~%" *user*)
+                (format *stdcon* "~0kbug-report ~A~%" *user*)
                 (format *stdcon* "nick ~A continue ~S~%" (-> *load-state* vis-nick) (-> *game-info* current-continue name))
                 (dotimes (i LEVEL_COUNT)
                   (format *stdcon* "level ~D ~12A ~A~%" i (-> *level* level i name) (-> *level* level i display?))
                   )
-                (format *stdcon* "music ~A (f: ~D/~S) sound ~A ~A~%"
-                    (-> *setting-control* current music) (-> *setting-control* current sound-flava) (enum->string music-flava (-> *setting-control* default sound-flava))
-                    *sound-bank-1* *sound-bank-2*)
+                (format *stdcon* "music ~A (f: ~D/~S)~%" (-> *setting-control* current music) (-> *setting-control* current sound-flava) (enum->string music-flava (-> *setting-control* default sound-flava)))
+                (format *stdcon* "sound ~A ~A~%" *sound-bank-1* *sound-bank-2*)
                 (let ((pos (target-pos 0)))
                     (format *stdcon* "target ~m ~m ~m~%" (-> pos x) (-> pos y) (-> pos z))
                     )
@@ -805,6 +809,7 @@
                     (matrix->quaternion rot (-> *math-camera* camera-rot))
                     (format *stdcon* "cam-rot ~f ~f ~f ~f~%" (-> rot x) (-> rot y) (-> rot z) (-> rot w))
                     )
+                (format *stdcon* "~1k")
                 )
               (when (-> *pc-settings* display-heap-status)
                 (draw-memory-bar-kheap debug-buf global :idx 0 :color (static-rgba 32 32 255 64))
@@ -947,8 +952,8 @@
         )
       )
     (set! *run* #t)
-    (let ((new-dproc (process-new-function process display-loop :name 'display
-                                                                 :from *4k-dead-pool* :to *display-pool*)))
+    (let ((new-dproc (process-spawn-function process display-loop :name 'display
+                                                                  :from *4k-dead-pool* :to *display-pool*)))
       (set! *dproc* (the process (ppointer->process new-dproc)))
       )
     (cond

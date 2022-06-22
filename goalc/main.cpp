@@ -10,19 +10,13 @@
 
 #include "common/goos/ReplUtils.h"
 #include <regex>
-#include <goalc/compiler/nrepl/ReplServer.h>
+#include "common/nrepl/ReplServer.h"
 
-void setup_logging(bool verbose) {
+void setup_logging() {
   lg::set_file(file_util::get_file_path({"log/compiler.txt"}));
-  if (verbose) {
-    lg::set_file_level(lg::level::info);
-    lg::set_stdout_level(lg::level::info);
-    lg::set_flush_level(lg::level::info);
-  } else {
-    lg::set_file_level(lg::level::warn);
-    lg::set_stdout_level(lg::level::warn);
-    lg::set_flush_level(lg::level::warn);
-  }
+  lg::set_file_level(lg::level::info);
+  lg::set_stdout_level(lg::level::info);
+  lg::set_flush_level(lg::level::info);
   lg::initialize();
 }
 
@@ -40,7 +34,6 @@ int main(int argc, char** argv) {
   app.add_option("-u,--user", username,
                  "Specify the username to use for your user profile in 'goal_src/user/'");
   app.add_option("-p,--port", nrepl_port, "Specify the nREPL port.  Defaults to 8181");
-  app.add_flag("-v,--verbose", verbose, "Enable verbose output");
   app.add_flag("--auto-lt", auto_listen,
                "Attempt to automatically connect to the listener on startup");
   app.add_flag("--auto-dbg", auto_debug,
@@ -64,11 +57,11 @@ int main(int argc, char** argv) {
       ts.seek_past_whitespace_and_comments();
       std::string found_username;
       while (ts.text_remains()) {
-        auto character = std::string(1, ts.read());
-        if (!std::regex_match(character, allowed_chars)) {
+        auto character = ts.read();
+        if (!std::regex_match(std::string(1, character), allowed_chars)) {
           break;
         }
-        found_username.push_back(ts.read());
+        found_username.push_back(character);
       }
       if (!found_username.empty()) {
         username = found_username;
@@ -78,7 +71,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  setup_logging(verbose);
+  setup_logging();
 
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 

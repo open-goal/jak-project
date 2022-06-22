@@ -19,7 +19,8 @@ struct MasterConfig {
   u16 timeout;           // todo           8
   u16 volume;            // todo           12
 
-  u16 territory;  // added. this is normally burnt onto the disc executable.
+  u16 territory;          // added. this is normally burnt onto the disc executable.
+  u16 disable_sound = 0;  // added. disables all sound code.
 };
 
 enum class RuntimeExitStatus {
@@ -28,6 +29,16 @@ enum class RuntimeExitStatus {
   EXIT = 2,
   RESTART_IN_DEBUG = 3,
 };
+
+enum class VideoMode {
+  NTSC = 0,
+  PAL = 1,
+  FPS100 = 2,
+  FPS150 = 3,
+};
+
+// Video Mode that's set based on display refresh rate on boot
+extern VideoMode BootVideoMode;
 
 // Level to load on boot
 extern char DebugBootLevel[64];
