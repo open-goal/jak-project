@@ -6,6 +6,6 @@
 (subtitle
   (jak1-v1 "game/assets/jak1/subtitle/game_subtitle_en.gd")
   (jak1-v1 "game/assets/jak1/subtitle/game_subtitle_es.gd")
+  (jak1-v1 "game/assets/jak1/subtitle/game_subtitle_it.gd")
   )
-
 
