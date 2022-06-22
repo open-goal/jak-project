@@ -43,10 +43,14 @@ void log_message(level log_level, LogTime& now, const char* message) {
   auto now_milliseconds = now.tv.tv_usec / 1000;
   strftime(date_time_buffer, 128, "%Y-%m-%d %H:%M:%S", localtime(&now_seconds));
   std::string date_string = fmt::format("[{}:{:03d}]", date_time_buffer, now_milliseconds);
+  strftime(date_time_buffer, 128, "%M:%S", localtime(&now_seconds));
+  std::string time_condensed = fmt::format("[{}]", date_time_buffer);
 #else
   char date_time_buffer[128];
   strftime(date_time_buffer, 128, "%Y-%m-%d %H:%M:%S", localtime(&now.tim));
   std::string date_string = fmt::format("[{}]", date_time_buffer);
+  strftime(date_time_buffer, 128, "%M:%S", localtime(&now.tim));
+  std::string time_condensed = fmt::format("[{}]", date_time_buffer);
 #endif
 
   {
@@ -62,7 +66,7 @@ void log_message(level log_level, LogTime& now, const char* message) {
     }
 
     if (log_level >= gLogger.stdout_log_level) {
-      fmt::print("[");
+      fmt::print("{} [", time_condensed);
       fmt::print(fg(log_colors[int(log_level)]), "{}", log_level_names[int(log_level)]);
       fmt::print("] {}\n", message);
       if (log_level >= gLogger.flush_level) {
