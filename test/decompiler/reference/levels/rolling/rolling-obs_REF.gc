@@ -819,6 +819,7 @@
   )
 
 ;; definition for function seconds->race-time
+;; INFO: Return type mismatch int vs none.
 (defun seconds->race-time ((arg0 race-time) (arg1 time-frame))
   (let* ((v1-1 (max 0 (min #x2bf1d arg1)))
          (f0-1 (* 0.0033333334 (the float v1-1)))
@@ -830,16 +831,14 @@
         (set! (-> arg0 digit 2) (the int f0-3))
         (let ((f0-4 (- f0-3 (the float (-> arg0 digit 2)))))
           (set! (-> arg0 digit 3) (the int (* 10.0 f0-4)))
-          (let* ((f0-5 (- f0-4 (* 0.1 (the float (-> arg0 digit 3)))))
-                 (v0-0 (the int (* 100.0 f0-5)))
-                 )
-            (set! (-> arg0 digit 4) v0-0)
-            v0-0
+          (let ((f0-5 (- f0-4 (* 0.1 (the float (-> arg0 digit 3))))))
+            (set! (-> arg0 digit 4) (the int (* 100.0 f0-5)))
             )
           )
         )
       )
     )
+  (none)
   )
 
 ;; definition for function race-time->seconds
@@ -872,27 +871,40 @@
   )
 
 ;; definition for function race-time-save
-(defun race-time-save ((arg0 race-time) (arg1 int) (arg2 task-control))
-  (dotimes (s3-0 5)
-    (save-reminder arg2 (-> arg0 digit s3-0) (+ arg1 s3-0))
+;; WARN: Type Propagation failed: Failed type prop at op 6 ((set! v1 (l.wu (+ a0 -4)))): Could not get type of load: (set! v1 (l.wu (+ a0 -4))). 
+;; WARN: Type Propagation failed: Type analysis failed
+;; WARN: Function may read a register that is not set: a2
+(defun race-time-save ((a0-0 race-time) (a1-0 task-control))
+  (local-vars
+    (v0-0 none)
+    (v0-1 symbol)
+    (v1-0 none)
+    (v1-1 none)
+    (a0-1 none)
+    (a1-1 none)
+    (a2-0 none)
+    (a2-1 none)
+    (s3-0 int)
+    (t9-0 none)
     )
-  #f
+  (set! s3-0 0)
+  (while (<.si s3-0 5)
+    (set! a0-1 a2-0)
+    (set! v1-0 (the-as none (l.wu (+ a0-1 -4))))
+    (set! t9-0 (the-as none (l.wu (+ v1-0 84))))
+    (set! v1-1 (the-as none (+ s3-0 a0-0)))
+    (set! a1-1 (the-as none (l.b v1-1)))
+    (set! a2-1 (the-as none (+ a1-0 s3-0)))
+    (call!)
+    (set! v1-2 (the-as none v0-0))
+    (set! s3-0 (the-as int (+ s3-0 1)))
+    )
+  (set! v0-1 #f)
+  (ret-value v0-1)
   )
 
 ;; definition for function race-time-read
-;; INFO: Return type mismatch int vs symbol.
-(defun race-time-read ((arg0 race-time) (arg1 int) (arg2 task-control) (arg3 time-frame))
-  (dotimes (s2-0 5)
-    (set! (-> arg0 digit s2-0) (get-reminder arg2 (+ arg1 s2-0)))
-    )
-  (let ((a1-3 (new 'stack 'race-time)))
-    (set! (-> a1-3 digit 4) 1)
-    (the-as symbol (if (race-time-less-than arg0 a1-3)
-                       (seconds->race-time arg0 arg3)
-                       )
-            )
-    )
-  )
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
 ;; failed to figure out what this is:
 (defskelgroup *rolling-start-whole-sg* rolling-start rolling-start-whole-lod0-jg rolling-start-idle-ja
@@ -1331,7 +1343,13 @@
            *entity-pool*
            (game-task none)
            )
-         (race-time-save (-> self this-time) 1 (-> self tasks))
+         (let ((t9-14 race-time-save)
+               (a0-20 (-> self this-time))
+               (a1-13 1)
+               )
+           (-> self tasks)
+           (t9-14 a0-20 (the-as task-control a1-13))
+           )
          )
        )
       (else
@@ -1475,7 +1493,14 @@
     (send-event (ppointer->process (-> *hud-parts* fuel-cell)) 'hide)
     (send-event (ppointer->process (-> *hud-parts* money)) 'disable)
     (send-event (ppointer->process (-> *hud-parts* money)) 'hide)
-    (race-time-read (-> self record-time) 1 (-> self tasks) (seconds 45))
+    (let ((t9-5 race-time-read)
+          (a0-8 (-> self record-time))
+          (a1-5 1)
+          (a2-1 (-> self tasks))
+          )
+      #x34bc
+      (t9-5 a0-8 (the-as task-control a1-5) (the-as time-frame a2-1))
+      )
     (set! (-> self end-banner)
           (ppointer->handle
             (process-spawn rolling-start (new 'static 'vector :x -86016.0 :y 112640.0 :z -6309888.0) 16384.0 :to self)

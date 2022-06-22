@@ -471,15 +471,17 @@
 
 (defbehavior ogreboss-super-boulder-event-handler ogreboss-super-boulder ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
-    (('touch)
+    ;; PAL patch here
+    (('touch 'attack)
      (when (and *target* ((method-of-type touching-shapes-entry prims-touching?)
                           (the-as touching-shapes-entry (-> arg3 param 0))
                           (-> self root-override)
                           (the-as uint 1)
                           )
                 )
-       (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'ogreboss-super-boulder))))
-       (go ogreboss-super-boulder-killed-player)
+       (if (send-event arg0 'attack-invinc (-> arg3 param 0) (static-attack-info ((mode 'ogreboss-super-boulder))))
+           #f
+           )
        )
      )
     (('effect)
@@ -817,7 +819,8 @@
   (set! (-> self root-override quat vec quad) (-> self parent-override 0 root quat vec quad))
   (vector-identity! (-> self root-override scale))
   (initialize-skeleton self *ogreboss-super-boulder-sg* '())
-  (logclear! (-> self mask) (process-mask actor-pause))
+  ;; PAL patch here
+  (logclear! (-> self mask) (process-mask actor-pause enemy))
   (set! (-> self lava) (entity-actor-lookup (-> self entity) 'water-actor 0))
   (logior! (-> self skel effect flags) 1)
   (set! (-> self draw origin-joint-index) (the-as uint 3))
@@ -1248,14 +1251,15 @@
   gp-0
   )
 
-(defbehavior ogreboss-shoot-boulder ogreboss ((arg0 int))
+(defbehavior ogreboss-shoot-boulder ogreboss ((arg0 pickup-type))
+  ;; TODO non U1 v1 compatibility!!
   (let ((gp-0 (new 'stack-no-clear 'ogreboss-missile-init-data)))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       (set! (-> gp-0 src) (-> self node-list data 52 bone transform vector 3))
       (set! (-> gp-0 duration)
             (the-as time-frame (the int (* 300.0 (+ 1.25 (* -0.25 (-> self level)) (/ 0.5 (-> self difficulty))))))
             )
-      (set! (-> gp-0 pickup-type) (the-as pickup-type arg0))
+      (set! (-> gp-0 pickup-type) arg0)
       (set! (-> gp-0 blast-radius) 32768.0)
       (cond
         (*target*
@@ -1506,7 +1510,7 @@
         (ja :num! (seek! max f30-0))
         )
       (countdown (gp-1 (+ gp-0 -1))
-        (let ((s5-0 0))
+        (let ((s5-0 (pickup-type none)))
           (let ((f28-0 0.0))
             (cond
               ((>= 1.0 (-> *target* fact-info-target health))
@@ -1530,7 +1534,7 @@
                           )
                   )
             (if (and *target* (< (rand-vu) f28-0))
-                (set! s5-0 4)
+                (set! s5-0 (pickup-type eco-green))
                 )
             )
           (ogreboss-shoot-boulder s5-0)
@@ -1542,7 +1546,7 @@
           )
         (ogreboss-inc-try-count)
         )
-      (ogreboss-shoot-boulder 3)
+      (ogreboss-shoot-boulder (pickup-type eco-blue))
       (ja-no-eval :group! ogreboss-attack2-last-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)

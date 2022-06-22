@@ -63,6 +63,8 @@ struct GraphicsData {
   double last_engine_time = 1. / 60.;
   float pmode_alp = 0.f;
 
+  std::string imgui_log_filename, imgui_filename;
+
   GraphicsData()
       : dma_copier(EE_MAIN_MEM_SIZE),
         texture_pool(std::make_shared<TexturePool>()),
@@ -135,6 +137,7 @@ static int gl_init(GfxSettings& settings) {
   }
   glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
   glfwWindowHint(GLFW_SAMPLES, 1);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
   return 0;
 }
@@ -234,6 +237,13 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   // this does initialization for stuff like the font data
   ImGui::CreateContext();
 
+  // Init ImGui settings
+  g_gfx_data->imgui_filename = file_util::get_file_path({"imgui.ini"});
+  g_gfx_data->imgui_log_filename = file_util::get_file_path({"imgui_log.txt"});
+  ImGuiIO& io = ImGui::GetIO();
+  io.IniFilename = g_gfx_data->imgui_filename.c_str();
+  io.LogFilename = g_gfx_data->imgui_log_filename.c_str();
+
   // set up to get inputs for this window
   ImGui_ImplGlfw_InitForOpenGL(window, true);
 
@@ -254,6 +264,9 @@ GLDisplay::GLDisplay(GLFWwindow* window, bool is_main) : m_window(window) {
 }
 
 GLDisplay::~GLDisplay() {
+  ImGuiIO& io = ImGui::GetIO();
+  io.IniFilename = nullptr;
+  io.LogFilename = nullptr;
   glfwSetWindowUserPointer(m_window, nullptr);
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
@@ -406,13 +419,15 @@ GfxDisplayMode GLDisplay::get_fullscreen() {
 void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out, s32* count_out) {
   int count = 0;
   auto vmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-  auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
-  if (vmode_idx >= 0) {
-    vmode = &vmodes[vmode_idx];
-  } else {
-    for (int i = 0; i < count; ++i) {
-      if (!vmode || vmode->height < vmodes[i].height) {
-        vmode = &vmodes[i];
+  if (get_fullscreen() == GfxDisplayMode::Fullscreen) {
+    auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
+    if (vmode_idx >= 0) {
+      vmode = &vmodes[vmode_idx];
+    } else {
+      for (int i = 0; i < count; ++i) {
+        if (!vmode || vmode->height < vmodes[i].height) {
+          vmode = &vmodes[i];
+        }
       }
     }
   }
@@ -425,6 +440,10 @@ void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out, s32* coun
   if (h_out) {
     *h_out = vmode->height;
   }
+}
+
+void GLDisplay::set_lock(bool lock) {
+  glfwSetWindowAttrib(m_window, GLFW_RESIZABLE, lock ? GLFW_TRUE : GLFW_FALSE);
 }
 
 void update_global_profiler() {

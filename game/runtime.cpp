@@ -169,8 +169,6 @@ void ee_runner(SystemThreadInterface& iface) {
   //  // kill the IOP todo
   iop::LIBRARY_kill();
 
-  munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
-
   // after main returns, trigger a shutdown.
   iface.trigger_shutdown();
 }
@@ -282,8 +280,6 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   g_argv = argv;
   g_main_thread_id = std::this_thread::get_id();
 
-  file_util::create_dir_if_needed("game_config/");
-
   // parse opengoal arguments
   bool enable_display = true;
   for (int i = 1; i < argc; i++) {
@@ -343,5 +339,6 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   // join and exit
   tm.join();
   lg::info("GOAL Runtime Shutdown (code {})", MasterExit);
+  munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
   return MasterExit;
 }

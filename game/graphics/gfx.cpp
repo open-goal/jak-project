@@ -242,6 +242,12 @@ void set_fullscreen(GfxDisplayMode mode, int screen) {
   }
 }
 
+void set_window_lock(bool lock) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->set_lock(lock);
+  }
+}
+
 void input_mode_set(u32 enable) {
   if (enable == s7.offset + jak1_symbols::FIX_SYM_TRUE) {  // #t
     Pad::g_input_mode_mapping = g_settings.pad_mapping_info;

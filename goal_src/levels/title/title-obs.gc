@@ -299,11 +299,14 @@
     (send-event (ppointer->process (-> self parent)) 'wait)
     (send-event self 'update)
     (ja-channel-set! 1)
+    ;; PAL patch here
     (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (logior! (-> self skel status) (janim-status spool))
       (suspend)
-      (ja :num! (seek!))
+      (if (not (paused?))
+          (ja :num! (seek!))
+          )
       )
     (set! (-> self anim) (-> self next-anim))
     (set! (-> self next-anim)
@@ -398,11 +401,14 @@
           )
       (set! *spawn-actors* #f)
       (ja-channel-set! 1)
+      ;; PAL patch here
       (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (logior! (-> self skel status) (janim-status spool))
         (suspend)
-        (ja :num! (seek!))
+        (if (not (paused?))
+            (ja :num! (seek!))
+            )
         )
       (set! *spawn-actors* #t)
       (ja-play-spooled-anim
@@ -671,13 +677,18 @@
   :trans (behavior ()
     (hide-hud-quick)
     (spool-push *art-control* "ndi-intro" 0 self -1.0)
-    (sound-group-pause (sound-group music))
+    ;; PAL patch here
+    (if *sound-player-enable*
+        (sound-group-pause (sound-group music))
+        )
     (none)
     )
   :code (behavior ()
     (let ((gp-0 (the-as handle #f)))
-      (case (scf-get-territory)
-        ((2)
+      ;; PAL patch here
+      (cond
+        ((and (= (scf-get-territory) 2) *first-boot*)
+         (set! *first-boot* #f)
          (set! gp-0 (ppointer->handle (static-screen-spawn
                                         5
                                         (new 'static 'texture-id :page #x649)
@@ -814,7 +825,7 @@
     (remove-setting! 'ambient-volume)
     (remove-setting! 'sfx-volume)
     (remove-setting! 'music-volume)
-    (remove-setting! 'allow-progress)
+    ;; PAL patch here (code removal)
     (sound-group-continue (sound-group music))
     (when *time-of-day-proc*
       (set! (-> *time-of-day-proc* 0 time-ratio) 18000.0)
@@ -827,15 +838,22 @@
       (set! (-> *time-of-day-proc* 0 time-ratio) 300.0)
       (set! *time-of-day-fast* #f)
       )
+    ;; PAL patch here
     (remove-setting! 'allow-pause)
+    (remove-setting! 'allow-progress)
     ((-> target-title exit))
     (none)
     )
   :trans (behavior ()
     (hide-hud-quick)
-    (if (cpad-pressed? 0 start)
-        (activate-progress *dproc* (progress-screen title))
-        )
+    ;; PAL patch here
+    (when (cpad-pressed? 0 start)
+      (set-setting! 'allow-progress #t 0.0 0)
+      (apply-settings *setting-control*)
+      (activate-progress *dproc* (progress-screen title))
+      (set-setting! 'allow-progress #f 0.0 0)
+      (apply-settings *setting-control*)
+      )
     (when (and (< (mod (-> *display* real-frame-counter) 300) 270) (not *progress-process*))
       (let ((gp-0
               (new 'stack 'font-context *font-default-matrix* 80 170 0.0 (font-color default) (font-flags shadow kerning))

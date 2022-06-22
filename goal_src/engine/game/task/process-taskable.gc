@@ -75,65 +75,56 @@
         (print-game-text (-> obj message) a1-2 #f 128 22)
         )
       )
+    ;; PAL patch here
     (cond
       ((-> obj only-allow-cancel)
        (when (-> obj no-msg)
          (clear *temp-string*)
          (format *temp-string* "; = ~S" (-> obj no-msg))
-         (let* ((s4-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-                (s5-0 (-> s4-0 base))
-                )
-           (draw-string-xy
-             *temp-string*
-             s4-0
-             (-> obj x-position)
-             (+ (-> obj y-position) 5 (-> obj message-space))
-             (font-color default)
-             (font-flags shadow kerning large)
-             )
-           (let ((a3-4 (-> s4-0 base)))
-             (let ((v1-17 (the-as object (-> s4-0 base))))
-               (set! (-> (the-as dma-packet v1-17) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-               (set! (-> (the-as dma-packet v1-17) vif0) (new 'static 'vif-tag))
-               (set! (-> (the-as dma-packet v1-17) vif1) (new 'static 'vif-tag))
-               (set! (-> s4-0 base) (&+ (the-as pointer v1-17) 16))
+         (let ((a1-5 (new
+                       'stack
+                       'font-context
+                       *font-default-matrix*
+                       (-> obj x-position)
+                       (+ (-> obj y-position) 5 (-> obj message-space))
+                       0.0
+                       (font-color default)
+                       (font-flags shadow kerning)
+                       )
+                     )
                )
-             (dma-bucket-insert-tag
-               (-> *display* frames (-> *display* on-screen) frame bucket-group)
-               (bucket-id debug)
-               s5-0
-               (the-as (pointer dma-tag) a3-4)
-               )
+           (let ((v1-15 a1-5))
+             (set! (-> v1-15 width) (the float 400))
              )
+           (let ((v1-16 a1-5))
+             (set! (-> v1-16 height) (the float 100))
+             )
+           (set! (-> a1-5 flags) (font-flags shadow kerning large))
+           (print-game-text *temp-string* a1-5 #f 128 22)
            )
          )
        )
       (else
-        (let* ((s4-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
-               (s5-1 (-> s4-1 base))
-               )
-          (draw-string-xy
-            (lookup-text! *common-text* (game-text-id confirm) #f)
-            s4-1
-            (-> obj x-position)
-            (+ (-> obj y-position) 5 (-> obj message-space))
-            (font-color default)
-            (font-flags shadow kerning large)
-            )
-          (let ((a3-7 (-> s4-1 base)))
-            (let ((v1-29 (the-as object (-> s4-1 base))))
-              (set! (-> (the-as dma-packet v1-29) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-              (set! (-> (the-as dma-packet v1-29) vif0) (new 'static 'vif-tag))
-              (set! (-> (the-as dma-packet v1-29) vif1) (new 'static 'vif-tag))
-              (set! (-> s4-1 base) (&+ (the-as pointer v1-29) 16))
+        (let ((s5-0 (new
+                      'stack
+                      'font-context
+                      *font-default-matrix*
+                      (-> obj x-position)
+                      (+ (-> obj y-position) 5 (-> obj message-space))
+                      0.0
+                      (font-color default)
+                      (font-flags shadow kerning)
+                      )
+                    )
               )
-            (dma-bucket-insert-tag
-              (-> *display* frames (-> *display* on-screen) frame bucket-group)
-              (bucket-id debug)
-              s5-1
-              (the-as (pointer dma-tag) a3-7)
-              )
+          (let ((v1-22 s5-0))
+            (set! (-> v1-22 width) (the float 400))
             )
+          (let ((v1-23 s5-0))
+            (set! (-> v1-23 height) (the float 100))
+            )
+          (set! (-> s5-0 flags) (font-flags shadow kerning large))
+          (print-game-text (lookup-text! *common-text* (game-text-id confirm) #f) s5-0 #f 128 22)
           )
         )
       )

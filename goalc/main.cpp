@@ -12,17 +12,11 @@
 #include <regex>
 #include "common/nrepl/ReplServer.h"
 
-void setup_logging(bool verbose) {
+void setup_logging() {
   lg::set_file(file_util::get_file_path({"log/compiler.txt"}));
-  if (verbose) {
-    lg::set_file_level(lg::level::info);
-    lg::set_stdout_level(lg::level::info);
-    lg::set_flush_level(lg::level::info);
-  } else {
-    lg::set_file_level(lg::level::warn);
-    lg::set_stdout_level(lg::level::warn);
-    lg::set_flush_level(lg::level::warn);
-  }
+  lg::set_file_level(lg::level::info);
+  lg::set_stdout_level(lg::level::info);
+  lg::set_flush_level(lg::level::info);
   lg::initialize();
 }
 
@@ -40,7 +34,6 @@ int main(int argc, char** argv) {
   app.add_option("-u,--user", username,
                  "Specify the username to use for your user profile in 'goal_src/user/'");
   app.add_option("-p,--port", nrepl_port, "Specify the nREPL port.  Defaults to 8181");
-  app.add_flag("-v,--verbose", verbose, "Enable verbose output");
   app.add_flag("--auto-lt", auto_listen,
                "Attempt to automatically connect to the listener on startup");
   app.add_flag("--auto-dbg", auto_debug,
@@ -78,7 +71,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  setup_logging(verbose);
+  setup_logging();
 
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
