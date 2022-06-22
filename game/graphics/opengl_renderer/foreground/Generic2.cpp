@@ -30,6 +30,18 @@ void Generic2::draw_debug_window() {
   ImGui::Checkbox("Alpha 4", &m_alpha_draw_enable[3]);
   ImGui::Checkbox("Alpha 5", &m_alpha_draw_enable[4]);
   ImGui::Checkbox("Alpha 6", &m_alpha_draw_enable[5]);
+
+  ImGui::Text("Max Seen:");
+  ImGui::Text(" frag: %d/%d %.1f%%", m_max_frags_seen, (int)m_fragments.size(),
+              100.f * m_max_frags_seen / (float)m_fragments.size());
+  ImGui::Text(" vert: %d/%d %.1f%%", m_max_verts_seen, (int)m_verts.size(),
+              100.f * m_max_verts_seen / (float)m_verts.size());
+  ImGui::Text(" adgif: %d/%d %.1f%%", m_max_frags_seen, (int)m_adgifs.size(),
+              100.f * m_max_adgifs_seen / (float)m_adgifs.size());
+  ImGui::Text(" idx: %d/%d %.1f%%", m_max_frags_seen, (int)m_indices.size(),
+              100.f * m_max_indices_seen / (float)m_indices.size());
+  ImGui::Text(" bucket: %d/%d %.1f%%", m_max_frags_seen, (int)m_fragments.size(),
+              100.f * m_max_frags_seen / (float)m_fragments.size());
 }
 
 /*!

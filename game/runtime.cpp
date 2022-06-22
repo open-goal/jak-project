@@ -169,8 +169,6 @@ void ee_runner(SystemThreadInterface& iface) {
   //  // kill the IOP todo
   iop::LIBRARY_kill();
 
-  munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
-
   // after main returns, trigger a shutdown.
   iface.trigger_shutdown();
 }
@@ -341,5 +339,6 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   // join and exit
   tm.join();
   lg::info("GOAL Runtime Shutdown (code {})", MasterExit);
+  munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
   return MasterExit;
 }
