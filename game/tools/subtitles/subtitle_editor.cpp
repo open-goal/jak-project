@@ -74,7 +74,8 @@ void SubtitleEditor::repl_play_hint(const std::string_view& hint_name) {
   repl_set_continue_point("village1-hut");
   // TODO - move into water fountain
   m_repl.eval(
-      fmt::format("(level-hint-spawn (game-text-id zero) \"{}\" (the-as entity #f) *entity-pool* (game-task none))",
+      fmt::format("(level-hint-spawn (game-text-id zero) \"{}\" (the-as entity #f) *entity-pool* "
+                  "(game-task none))",
                   hint_name));
 }
 
@@ -307,7 +308,7 @@ void SubtitleEditor::draw_repl_options() {
 
 void SubtitleEditor::draw_all_cutscene_groups() {
   for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
-    //ImGui::SetNextItemOpen(true);
+    // ImGui::SetNextItemOpen(true);
     if (ImGui::TreeNode(group_name.c_str())) {
       draw_all_scenes(group_name, false);
       draw_all_scenes(group_name, true);
@@ -318,7 +319,7 @@ void SubtitleEditor::draw_all_cutscene_groups() {
 
 void SubtitleEditor::draw_all_hint_groups() {
   for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
-    //ImGui::SetNextItemOpen(true);
+    // ImGui::SetNextItemOpen(true);
     if (ImGui::TreeNode(group_name.c_str())) {
       draw_all_hints(group_name, false);
       draw_all_hints(group_name, true);
