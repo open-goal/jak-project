@@ -324,7 +324,7 @@ bool midi_handler::tick() {
   } catch (midi_error& e) {
     m_track_complete = true;
     lg::error("MIDI Error: {}", e.what());
-    lg::error("Sequence following: ");
+    fmt::print("Sequence following: ");
     for (int i = 0; i < 10; i++) {
       fmt::print("{:x} ", m_seq_ptr[i]);
     }
