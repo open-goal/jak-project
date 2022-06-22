@@ -336,14 +336,23 @@ int GameSubtitleGroups::find_group_index(const std::string& group_name) {
 void GameSubtitleGroups::remove_scene(const std::string& group_name,
                                       const std::string& scene_name) {
   // TODO - validate group_name
+  if (m_groups.count(group_name) == 0) {
+    lg::error("Subtitle group {} doesn't exist! Abort.", group_name);
+    return;
+  }
   m_groups[group_name].erase(
       std::remove(m_groups[group_name].begin(), m_groups[group_name].end(), scene_name),
       m_groups[group_name].end());
 }
 void GameSubtitleGroups::add_scene(const std::string& group_name, const std::string& scene_name) {
+  std::string group = group_name;
   // TODO - validate group_name
+  if (m_groups.count(group_name) == 0) {
+    lg::error("Subtitle group {} doesn't exist! Add to uncategorized.", group_name);
+    group = uncategorized_group;
+  }
   // TODO - don't add duplicates
-  m_groups[group_name].push_back(scene_name);
+  m_groups[group].push_back(scene_name);
 }
 
 GameSubtitleDB load_subtitle_project() {

@@ -3,6 +3,7 @@
 #include "common/util/FontUtils.h"
 #include "common/util/Assert.h"
 #include "common/goos/Object.h"
+#include <common/log/log.h>
 #include <string>
 #include <map>
 #include <unordered_set>

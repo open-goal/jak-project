@@ -74,8 +74,7 @@ void SubtitleEditor::repl_play_hint(const std::string_view& hint_name) {
   repl_set_continue_point("village1-hut");
   // TODO - move into water fountain
   m_repl.eval(
-      fmt::format("(level-hint-spawn (game-text-id zero) \"{}\" (the-as entity #f) *entity-pool* "
-                  "(game-task none))",
+      fmt::format("(level-hint-spawn (game-text-id zero) \"{}\" (the-as entity #f) *entity-pool* (game-task none))",
                   hint_name));
 }
 
@@ -211,8 +210,8 @@ void SubtitleEditor::draw_window() {
 
   if (ImGui::TreeNode("All Hints")) {
     ImGui::InputText("New Scene Name", &m_new_scene_name);
-    // TODO - make this a dropdown
     ImGui::InputText("New Scene ID (hex)", &m_new_scene_id);
+    // TODO - make this a dropdown
     ImGui::InputText("New Scene Group", &m_new_scene_group);
     ImGui::InputText("Filter", &m_filter, ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
     if (is_scene_in_current_lang(m_new_scene_name)) {
@@ -236,8 +235,10 @@ void SubtitleEditor::draw_window() {
           newScene.m_kind = SubtitleSceneKind::HintNamed;
           newScene.m_id = strtoul(m_new_scene_id.c_str(), nullptr, 16);
         }
+        newScene.add_line(0, "", "", "", "", false);
         newScene.m_sorting_group = m_new_scene_group;
         m_subtitle_db.m_banks.at(m_current_language)->add_scene(newScene);
+        m_subtitle_db.m_subtitle_groups->add_scene(newScene.m_sorting_group, newScene.m_name);
         m_new_scene_name = "";
       }
     }
@@ -306,7 +307,7 @@ void SubtitleEditor::draw_repl_options() {
 
 void SubtitleEditor::draw_all_cutscene_groups() {
   for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
-    ImGui::SetNextItemOpen(true);
+    //ImGui::SetNextItemOpen(true);
     if (ImGui::TreeNode(group_name.c_str())) {
       draw_all_scenes(group_name, false);
       draw_all_scenes(group_name, true);
@@ -317,7 +318,7 @@ void SubtitleEditor::draw_all_cutscene_groups() {
 
 void SubtitleEditor::draw_all_hint_groups() {
   for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
-    ImGui::SetNextItemOpen(true);
+    //ImGui::SetNextItemOpen(true);
     if (ImGui::TreeNode(group_name.c_str())) {
       draw_all_hints(group_name, false);
       draw_all_hints(group_name, true);
@@ -447,6 +448,7 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       if (ImGui::Button("Play Hint")) {
         repl_play_hint(scene.m_name);
       }
+      // TODO add "Remove Hint" button (if you named it wrong or something)
       ImGui::SameLine();
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
       ImGui::TextWrapped("You may have to click twice, load times cause issues");
@@ -480,8 +482,11 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
     std::string summary;
     if (subtitleLine.line_utf8.empty()) {
       summary = fmt::format("[{}] Clear Screen", subtitleLine.frame);
-    } else {
+    } else if (subtitleLine.line_utf8.length() >= 30) {
       summary = fmt::format("[{}] {} - '{}...'", subtitleLine.frame, subtitleLine.speaker_utf8,
+                            subtitleLine.line_utf8.substr(0, 30));
+    } else {
+      summary = fmt::format("[{}] {} - '{}'", subtitleLine.frame, subtitleLine.speaker_utf8,
                             subtitleLine.line_utf8.substr(0, 30));
     }
     if (subtitleLine.line_utf8.empty()) {
@@ -499,8 +504,10 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       ImGui::InputText("Text", &subtitleLine.line_utf8);
       ImGui::Checkbox("Offscreen?", &subtitleLine.offscreen);
       ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
-      if (ImGui::Button("Remove Line")) {
-        scene.m_lines.erase(scene.m_lines.begin() + i);
+      if (scene.m_lines.size() > 1) {  // prevent creating an empty scene
+        if (ImGui::Button("Remove Line")) {
+          scene.m_lines.erase(scene.m_lines.begin() + i);
+        }
       }
       ImGui::PopStyleColor();
       ImGui::TreePop();
@@ -513,8 +520,8 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
 void SubtitleEditor::draw_new_cutscene_line_form() {
   ImGui::InputInt("Frame Number", &m_current_scene_frame,
                   ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
-  ImGui::InputText("Text", &m_current_scene_text);
   ImGui::InputText("Speaker", &m_current_scene_speaker);
+  ImGui::InputText("Text", &m_current_scene_text);
   ImGui::Checkbox("Offscreen", &m_current_scene_offscreen);
   bool rendered_text_entry_btn = false;
   if (m_current_scene_frame < 0 || m_current_scene_text.empty() ||

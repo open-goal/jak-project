@@ -45,7 +45,8 @@ bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
         }
         file_contents += "\n";
         if (scene_info.m_lines.empty()) {
-          file_contents += fmt::format("  ()\n");
+          // prevent creating empty lines, which causes crash on startup
+          file_contents += fmt::format("  (0 \"ERROR!\" \"THIS SCENE WAS EMPTY ON SAVE!\")\n ");
         } else {
           for (const auto& line : scene_info.m_lines) {
             // Clear screen entries
