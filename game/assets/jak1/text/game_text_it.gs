@@ -1,5 +1,5 @@
 (group-name "common")
-(language-id 0 6)
+(language-id 4)
 
 ;; -----------------
 ;; progress menu (insanity)
