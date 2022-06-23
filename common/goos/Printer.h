@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+
 #include "common/goos/Object.h"
 #include "common/goos/Reader.h"
 

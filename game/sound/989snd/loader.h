@@ -1,16 +1,19 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #pragma once
-#include "../common/synth.h"
-#include "common/common_types.h"
-#include "handle_allocator.h"
-#include "sound_handler.h"
-#include "musicbank.h"
-#include "soundbank.h"
-#include "sfxblock.h"
 #include <filesystem>
 #include <memory>
 #include <vector>
+
+#include "handle_allocator.h"
+#include "musicbank.h"
+#include "sfxblock.h"
+#include "sound_handler.h"
+#include "soundbank.h"
+
+#include "common/common_types.h"
+
+#include "../common/synth.h"
 
 namespace snd {
 

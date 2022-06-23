@@ -8,6 +8,7 @@
 #pragma once
 
 #include "Env.h"
+
 #include "goalc/emitter/ObjectGenerator.h"
 
 class DebugInfo;

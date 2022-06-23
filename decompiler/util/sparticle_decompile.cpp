@@ -1,8 +1,10 @@
 #include "sparticle_decompile.h"
-#include "decompiler/util/data_decompile.h"
+
 #include "common/goos/PrettyPrinter.h"
-#include "common/util/print_float.h"
 #include "common/util/Assert.h"
+#include "common/util/print_float.h"
+
+#include "decompiler/util/data_decompile.h"
 
 namespace decompiler {
 // sparticle fields.

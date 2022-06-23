@@ -1,11 +1,13 @@
-#include "goalc/compiler/Compiler.h"
-#include "third-party/fmt/core.h"
+#include "common/log/log.h"
 #include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
-#include "goalc/emitter/CallingConvention.h"
-#include "common/util/math_util.h"
 #include "common/type_system/state.h"
-#include "common/log/log.h"
+#include "common/util/math_util.h"
+
+#include "goalc/compiler/Compiler.h"
+#include "goalc/emitter/CallingConvention.h"
+
+#include "third-party/fmt/core.h"
 
 namespace {
 

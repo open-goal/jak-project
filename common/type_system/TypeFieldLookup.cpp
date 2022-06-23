@@ -4,9 +4,12 @@
  */
 
 #include <algorithm>
-#include "third-party/fmt/core.h"
+
 #include "TypeSystem.h"
+
 #include "common/log/log.h"
+
+#include "third-party/fmt/core.h"
 
 namespace {
 // debug prints for the reverse lookup

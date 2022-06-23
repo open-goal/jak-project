@@ -5,10 +5,11 @@
  * A parser for the decompiled GOAL data format.
  */
 
-#include <vector>
 #include <string>
-#include "decompiler/ObjectFile/LinkedWord.h"
+#include <vector>
+
 #include "decompiler/Disasm/DecompilerLabel.h"
+#include "decompiler/ObjectFile/LinkedWord.h"
 
 namespace decompiler {
 struct ParsedData {

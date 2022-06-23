@@ -1,8 +1,10 @@
+#include "log.h"
+
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>
+
 #include "third-party/fmt/color.h"
-#include "log.h"
 #ifdef _WIN32  // see lg::initialize
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN

@@ -3,15 +3,17 @@
 #ifndef JAK_IOP_KERNEL_H
 #define JAK_IOP_KERNEL_H
 
-#include <thread>
-#include <string>
-#include <queue>
-#include <vector>
-#include <mutex>
-#include <condition_variable>
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
+#include <queue>
+#include <string>
+#include <thread>
+#include <vector>
+
 #include "common/common_types.h"
 #include "common/util/Assert.h"
+
 #include "game/sce/iop.h"
 
 class IOP_Kernel;

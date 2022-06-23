@@ -1,6 +1,8 @@
-#include "goalc/compiler/Compiler.h"
-#include "third-party/fmt/core.h"
 #include "common/goos/PrettyPrinter.h"
+
+#include "goalc/compiler/Compiler.h"
+
+#include "third-party/fmt/core.h"
 
 using namespace goos;
 

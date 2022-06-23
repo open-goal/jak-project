@@ -1,7 +1,7 @@
 #include "BucketRenderer.h"
-#include "third-party/imgui/imgui.h"
 
 #include "third-party/fmt/core.h"
+#include "third-party/imgui/imgui.h"
 
 std::string BucketRenderer::name_and_id() const {
   return fmt::format("[{:2d}] {}", (int)m_my_id, m_name);

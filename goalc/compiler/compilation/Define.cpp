@@ -3,8 +3,9 @@
  * Forms which define or set things.
  */
 
-#include "goalc/compiler/Compiler.h"
 #include "common/log/log.h"
+
+#include "goalc/compiler/Compiler.h"
 
 /*!
  * Define or set a global value. Has some special magic to store data for functions which may be

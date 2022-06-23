@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: ISC
 
 #include "envelope.h"
+
 #include <algorithm>
 #include <array>
 

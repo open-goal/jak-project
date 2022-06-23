@@ -1,5 +1,7 @@
-#include "player.h"
 #include <filesystem>
+
+#include "player.h"
+
 #include "common/log/log.h"
 
 int main(int argc, char* argv[]) {

@@ -8,6 +8,7 @@
 #include <thread>
 
 #include "common/common_types.h"
+
 #include "game/kernel/kboot.h"
 
 extern u8* g_ee_main_mem;

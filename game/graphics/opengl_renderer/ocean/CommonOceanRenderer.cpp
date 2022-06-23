@@ -1,4 +1,5 @@
 #include "CommonOceanRenderer.h"
+
 #include "common/log/log.h"
 
 CommonOceanRenderer::CommonOceanRenderer() {

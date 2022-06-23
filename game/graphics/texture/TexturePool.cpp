@@ -1,15 +1,17 @@
-#include <regex>
-#include <algorithm>
-
 #include "TexturePool.h"
+
+#include <algorithm>
+#include <regex>
+
+#include "common/log/log.h"
+#include "common/util/Assert.h"
+#include "common/util/Timer.h"
+
+#include "game/graphics/pipelines/opengl.h"
+#include "game/graphics/texture/jak1_tpage_dir.h"
 
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
-#include "common/util/Timer.h"
-#include "common/log/log.h"
-#include "game/graphics/pipelines/opengl.h"
-#include "common/util/Assert.h"
-#include "game/graphics/texture/jak1_tpage_dir.h"
 
 namespace {
 const char empty_string[] = "";

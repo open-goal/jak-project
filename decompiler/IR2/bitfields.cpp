@@ -1,12 +1,13 @@
 #include "bitfields.h"
 
-#include "decompiler/IR2/Form.h"
 #include "common/goos/PrettyPrinter.h"
-#include "common/util/Range.h"
 #include "common/util/BitUtils.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
-#include "decompiler/IR2/GenericElementMatcher.h"
+#include "common/util/Range.h"
+
 #include "decompiler/Function/Function.h"
+#include "decompiler/IR2/Form.h"
+#include "decompiler/IR2/GenericElementMatcher.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+
 #include "common/common_types.h"
 
 float fixed_point_to_float(s64 value, s64 scale);

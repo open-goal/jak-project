@@ -5,10 +5,11 @@
  * Implementation of GOAL runtime.
  */
 
-#include "common/common_types.h"
-#include "common/goal_constants.h"
 #include "kmachine.h"
 #include "kmalloc.h"
+
+#include "common/common_types.h"
+#include "common/goal_constants.h"
 
 extern u32 FastLink;
 extern s32 NumSymbols;

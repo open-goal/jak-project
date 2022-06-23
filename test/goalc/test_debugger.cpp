@@ -1,8 +1,9 @@
-#include "gtest/gtest.h"
-#include "goalc/compiler/Compiler.h"
-#include "test/goalc/framework/test_runner.h"
 #include "common/log/log.h"
 #include "common/util/Timer.h"
+
+#include "goalc/compiler/Compiler.h"
+#include "gtest/gtest.h"
+#include "test/goalc/framework/test_runner.h"
 
 #ifdef __linux
 

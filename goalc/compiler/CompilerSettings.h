@@ -3,8 +3,9 @@
 #ifndef JAK_COMPILERSETTINGS_H
 #define JAK_COMPILERSETTINGS_H
 
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
+
 #include "common/goos/Object.h"
 
 class CompilerSettings {

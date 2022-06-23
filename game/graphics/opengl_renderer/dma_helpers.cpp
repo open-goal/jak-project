@@ -1,7 +1,8 @@
 #include "dma_helpers.h"
 
-#include "third-party/fmt/format.h"
 #include "common/log/log.h"
+
+#include "third-party/fmt/format.h"
 
 /*!
  * Make sure that the DMA Transfer is a VIF unpack (copy data to VIF memory) with the given

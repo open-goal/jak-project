@@ -4,10 +4,13 @@
  * This code is not great.
  */
 
-#include <cstring>
-#include <cstdio>
 #include "dma.h"
+
+#include <cstdio>
+#include <cstring>
+
 #include "common/common_types.h"
+
 #include "game/sce/iop.h"
 #include "game/sound/sdshim.h"
 #include "game/sound/sndshim.h"

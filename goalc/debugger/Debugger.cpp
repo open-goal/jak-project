@@ -5,15 +5,18 @@
  */
 
 #include "Debugger.h"
+
 #include "common/goal_constants.h"
+#include "common/log/log.h"
 #include "common/symbols.h"
+#include "common/util/Assert.h"
 #include "common/util/Timer.h"
+
 #include "goalc/debugger/disassemble.h"
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
+
 #include "third-party/fmt/core.h"
-#include "common/util/Assert.h"
-#include "common/log/log.h"
 
 /*!
  * Is the target halted? If we don't know or aren't connected, returns false.

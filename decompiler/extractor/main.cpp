@@ -1,13 +1,16 @@
-#include "third-party/CLI11.hpp"
+#include <regex>
+
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/read_iso_file.h"
+
 #include "decompiler/Disasm/OpcodeInfo.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
-#include "decompiler/level_extractor/extract_level.h"
 #include "decompiler/config.h"
+#include "decompiler/level_extractor/extract_level.h"
 #include "goalc/compiler/Compiler.h"
-#include "common/util/read_iso_file.h"
-#include <regex>
+
+#include "third-party/CLI11.hpp"
 
 enum class ExtractorErrorCode {
   SUCCESS = 0,

@@ -38,11 +38,14 @@
  *
  */
 
-#include <cinttypes>
 #include "Object.h"
+
+#include <cinttypes>
+
 #include "common/util/FileUtil.h"
-#include "third-party/fmt/core.h"
 #include "common/util/print_float.h"
+
+#include "third-party/fmt/core.h"
 
 namespace goos {
 

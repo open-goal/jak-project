@@ -1,10 +1,12 @@
+#include "TextureUploadHandler.h"
+
+#include "common/log/log.h"
+
+#include "game/graphics/opengl_renderer/EyeRenderer.h"
+#include "game/graphics/pipelines/opengl.h"
+
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
-
-#include "TextureUploadHandler.h"
-#include "game/graphics/pipelines/opengl.h"
-#include "game/graphics/opengl_renderer/EyeRenderer.h"
-#include "common/log/log.h"
 
 TextureUploadHandler::TextureUploadHandler(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id) {}

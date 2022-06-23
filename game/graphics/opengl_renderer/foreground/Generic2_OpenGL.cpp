@@ -1,5 +1,6 @@
-#include "Generic2.h"
 #include "common/log/log.h"
+
+#include "Generic2.h"
 
 void Generic2::opengl_setup() {
   // create OpenGL objects

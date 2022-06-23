@@ -1,8 +1,9 @@
+// clang-format off
 #include "XSocketServer.h"
 
-#include "third-party/fmt/core.h"
-
 #include "common/cross_sockets/XSocket.h"
+
+#include "third-party/fmt/core.h"
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -12,6 +13,7 @@
 #include <WS2tcpip.h>
 #endif
 #include "common/log/log.h"
+// clang-format on
 
 XSocketServer::XSocketServer(std::function<bool()> shutdown_callback,
                              int _tcp_port,

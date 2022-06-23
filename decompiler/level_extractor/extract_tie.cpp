@@ -1,10 +1,10 @@
-#include <array>
-
 #include "extract_tie.h"
 
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include <array>
 
 #include "common/util/FileUtil.h"
+
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 namespace decompiler {
 

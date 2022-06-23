@@ -9,19 +9,23 @@
  * should work.
  */
 
+#include "fake_iso.h"
+
 #include <cstring>
 #include <filesystem>
-#include "fake_iso.h"
+
+#include "isocommon.h"
+#include "overlord.h"
+
+#include "common/log/log.h"
+#include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
+
 #include "game/overlord/sbank.h"
-#include "game/sound/sndshim.h"
 #include "game/overlord/soundcommon.h"
 #include "game/overlord/srpc.h"
 #include "game/sce/iop.h"
-#include "isocommon.h"
-#include "overlord.h"
-#include "common/util/FileUtil.h"
-#include "common/log/log.h"
-#include "common/util/Assert.h"
+#include "game/sound/sndshim.h"
 
 using namespace iop;
 

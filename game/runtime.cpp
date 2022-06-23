@@ -5,9 +5,11 @@
 
 #ifdef __linux__
 #include <unistd.h>
+
 #include <sys/mman.h>
 #elif _WIN32
 #include <io.h>
+
 #include "third-party/mman/mman.h"
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -18,47 +20,43 @@
 #include <cstring>
 #include <thread>
 
-#include "common/log/log.h"
 #include "runtime.h"
-#include "system/SystemThread.h"
-#include "sce/libcdvd_ee.h"
-#include "sce/deci2.h"
-#include "sce/sif_ee.h"
-#include "sce/iop.h"
-#include "game/system/Deci2Server.h"
 
+#include "common/cross_os_debug/xdbg.h"
+#include "common/goal_constants.h"
+#include "common/log/log.h"
+#include "common/util/FileUtil.h"
+
+#include "game/graphics/gfx.h"
 #include "game/kernel/fileio.h"
 #include "game/kernel/kboot.h"
-#include "game/kernel/klink.h"
-#include "game/kernel/kscheme.h"
+#include "game/kernel/kdgo.h"
 #include "game/kernel/kdsnetm.h"
+#include "game/kernel/klink.h"
 #include "game/kernel/klisten.h"
 #include "game/kernel/kmemcard.h"
 #include "game/kernel/kprint.h"
-#include "game/kernel/kdgo.h"
-
-#include "game/system/iop_thread.h"
-
+#include "game/kernel/kscheme.h"
 #include "game/overlord/dma.h"
-#include "game/overlord/iso.h"
 #include "game/overlord/fake_iso.h"
-#include "game/overlord/iso_queue.h"
-#include "game/overlord/ramdisk.h"
+#include "game/overlord/iso.h"
 #include "game/overlord/iso_cd.h"
+#include "game/overlord/iso_queue.h"
 #include "game/overlord/overlord.h"
-#include "game/overlord/srpc.h"
-#include "game/overlord/stream.h"
+#include "game/overlord/ramdisk.h"
 #include "game/overlord/sbank.h"
+#include "game/overlord/srpc.h"
 #include "game/overlord/ssound.h"
-
-#include "game/graphics/gfx.h"
-
-#include "game/system/vm/vm.h"
+#include "game/overlord/stream.h"
+#include "game/system/Deci2Server.h"
+#include "game/system/iop_thread.h"
 #include "game/system/vm/dmac.h"
-
-#include "common/goal_constants.h"
-#include "common/cross_os_debug/xdbg.h"
-#include "common/util/FileUtil.h"
+#include "game/system/vm/vm.h"
+#include "sce/deci2.h"
+#include "sce/iop.h"
+#include "sce/libcdvd_ee.h"
+#include "sce/sif_ee.h"
+#include "system/SystemThread.h"
 
 u8* g_ee_main_mem = nullptr;
 std::thread::id g_main_thread_id = std::thread::id();

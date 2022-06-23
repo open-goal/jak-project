@@ -6,19 +6,24 @@
  * DONE!
  */
 
-#include <cstring>
-#include <cstdio>
-#include <common/versions.h>
-#include "common/log/log.h"
 #include "klink.h"
+
+#include <cstdio>
+#include <cstring>
+
 #include "fileio.h"
-#include "kscheme.h"
 #include "kboot.h"
 #include "kprint.h"
-#include "common/symbols.h"
+#include "kscheme.h"
+
 #include "common/goal_constants.h"
-#include "game/mips2c/mips2c_table.h"
+#include "common/log/log.h"
+#include "common/symbols.h"
 #include "common/util/Assert.h"
+#include <common/versions.h>
+
+#include "game/mips2c/mips2c_table.h"
+
 #include "third-party/fmt/core.h"
 
 using namespace jak1_symbols;

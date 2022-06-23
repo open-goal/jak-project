@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 
-#include "common/util/BinaryReader.h"
 #include "common/common_types.h"
+#include "common/util/BinaryReader.h"
 
 // The header data for a simple wave file
 struct WaveFileHeader {

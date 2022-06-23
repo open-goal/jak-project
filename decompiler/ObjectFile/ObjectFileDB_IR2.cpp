@@ -3,29 +3,31 @@
  * This runs the IR2 analysis passes.
  */
 
-#include "common/link_types.h"
 #include "ObjectFileDB.h"
+
+#include "common/goos/PrettyPrinter.h"
+#include "common/link_types.h"
 #include "common/log/log.h"
-#include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
-#include "decompiler/analysis/type_analysis.h"
-#include "decompiler/analysis/reg_usage.h"
+#include "common/util/Timer.h"
+
+#include "decompiler/IR2/Form.h"
+#include "decompiler/analysis/cfg_builder.h"
+#include "decompiler/analysis/expression_build.h"
+#include "decompiler/analysis/final_output.h"
+#include "decompiler/analysis/find_defpartgroup.h"
+#include "decompiler/analysis/find_defstates.h"
+#include "decompiler/analysis/find_skelgroups.h"
+#include "decompiler/analysis/inline_asm_rewrite.h"
 #include "decompiler/analysis/insert_lets.h"
 #include "decompiler/analysis/label_types.h"
-#include "decompiler/analysis/find_defstates.h"
-#include "decompiler/analysis/variable_naming.h"
-#include "decompiler/analysis/cfg_builder.h"
-#include "decompiler/analysis/final_output.h"
-#include "decompiler/analysis/expression_build.h"
-#include "decompiler/analysis/inline_asm_rewrite.h"
+#include "decompiler/analysis/mips2c.h"
+#include "decompiler/analysis/reg_usage.h"
 #include "decompiler/analysis/stack_spill.h"
 #include "decompiler/analysis/static_refs.h"
 #include "decompiler/analysis/symbol_def_map.h"
-#include "decompiler/analysis/find_skelgroups.h"
-#include "decompiler/analysis/find_defpartgroup.h"
-#include "common/goos/PrettyPrinter.h"
-#include "decompiler/IR2/Form.h"
-#include "decompiler/analysis/mips2c.h"
+#include "decompiler/analysis/type_analysis.h"
+#include "decompiler/analysis/variable_naming.h"
 
 namespace decompiler {
 

@@ -1,10 +1,13 @@
 #include "DirectRenderer.h"
+
 #include "common/dma/gs.h"
 #include "common/log/log.h"
-#include "third-party/fmt/core.h"
-#include "game/graphics/pipelines/opengl.h"
-#include "third-party/imgui/imgui.h"
 #include "common/util/Assert.h"
+
+#include "game/graphics/pipelines/opengl.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/imgui/imgui.h"
 
 DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size)
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {

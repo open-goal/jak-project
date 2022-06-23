@@ -1,8 +1,9 @@
-#include "gtest/gtest.h"
-#include "common/type_system/TypeSystem.h"
-#include "common/goos/Reader.h"
-#include "common/type_system/deftype.h"
 #include "common/goos/ParseHelpers.h"
+#include "common/goos/Reader.h"
+#include "common/type_system/TypeSystem.h"
+#include "common/type_system/deftype.h"
+
+#include "gtest/gtest.h"
 
 TEST(TypeSystem, Construction) {
   // test that we can add all builtin types without any type errors

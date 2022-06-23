@@ -6,6 +6,7 @@
  */
 
 #include "Instruction.h"
+
 #include "decompiler/util/MatchParam.h"
 
 namespace decompiler {

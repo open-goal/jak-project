@@ -1,16 +1,17 @@
 #include <cstdio>
-#include "goalc/compiler/Compiler.h"
-#include "common/versions.h"
-#include "common/util/FileUtil.h"
-#include "common/log/log.h"
-
-#include "third-party/CLI11.hpp"
-#include "third-party/fmt/core.h"
-#include "third-party/fmt/color.h"
+#include <regex>
 
 #include "common/goos/ReplUtils.h"
-#include <regex>
+#include "common/log/log.h"
 #include "common/nrepl/ReplServer.h"
+#include "common/util/FileUtil.h"
+#include "common/versions.h"
+
+#include "goalc/compiler/Compiler.h"
+
+#include "third-party/CLI11.hpp"
+#include "third-party/fmt/color.h"
+#include "third-party/fmt/core.h"
 
 void setup_logging() {
   lg::set_file(file_util::get_file_path({"log/compiler.txt"}));

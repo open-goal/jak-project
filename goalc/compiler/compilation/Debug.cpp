@@ -1,8 +1,10 @@
+#include "common/log/log.h"
+#include "common/util/FileUtil.h"
+
 #include "goalc/compiler/Compiler.h"
 #include "goalc/debugger/disassemble.h"
-#include "common/util/FileUtil.h"
+
 #include "third-party/fmt/core.h"
-#include "common/log/log.h"
 
 u32 Compiler::parse_address_spec(const goos::Object& form) {
   if (form.is_int()) {

@@ -1,7 +1,8 @@
 #include "Tfrag3.h"
 
-#include "third-party/imgui/imgui.h"
 #include "common/log/log.h"
+
+#include "third-party/imgui/imgui.h"
 
 Tfrag3::Tfrag3() {
   glGenVertexArrays(1, &m_debug_vao);

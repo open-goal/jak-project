@@ -3,11 +3,16 @@
  * Implementation of register allocation algorithms
  */
 
-#include <stdexcept>
-#include "third-party/fmt/core.h"
 #include "Allocator.h"
-#include "goalc/regalloc/allocator_interface.h"
+
+#include <stdexcept>
+
 #include "common/log/log.h"
+
+#include "goalc/regalloc/allocator_interface.h"
+
+#include "third-party/fmt/core.h"
+
 std::string LiveInfo::print_assignment() {
   std::string result = "Assignment for var " + std::to_string(var) + "\n";
   for (uint32_t i = 0; i < assignment.size(); i++) {

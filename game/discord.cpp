@@ -1,10 +1,10 @@
-#include <map>
-#include <cstring>
-#include <string>
-#include <sstream>
-#include <iomanip>
-
 #include "discord.h"
+
+#include <cstring>
+#include <iomanip>
+#include <map>
+#include <sstream>
+#include <string>
 
 int gDiscordRpcEnabled;
 int64_t gStartTime;

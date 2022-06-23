@@ -5,11 +5,12 @@
  * A GOAL TypeSpec is a reference to a type or compound type.
  */
 
-#include <vector>
-#include <string>
 #include <optional>
-#include "common/util/SmallVector.h"
+#include <string>
+#include <vector>
+
 #include "common/util/Assert.h"
+#include "common/util/SmallVector.h"
 
 /*!
  * A :name value modifier to apply to a type.

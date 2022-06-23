@@ -1,10 +1,12 @@
 #include "subtitles.h"
 
 #include <algorithm>
+#include <regex>
+
+#include "common/util/FileUtil.h"
+
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/ranges.h"
-#include <regex>
-#include "common/util/FileUtil.h"
 #include "third-party/json.hpp"
 
 bool write_subtitle_db_to_files(const GameSubtitleDB& db) {

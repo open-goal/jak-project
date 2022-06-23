@@ -1,9 +1,13 @@
-#include <stdexcept>
-#include "third-party/fmt/core.h"
 #include "Env.h"
+
+#include <stdexcept>
+
 #include "IR.h"
+
 #include "common/goos/Reader.h"
 #include "common/log/log.h"
+
+#include "third-party/fmt/core.h"
 
 ///////////////////
 // Env

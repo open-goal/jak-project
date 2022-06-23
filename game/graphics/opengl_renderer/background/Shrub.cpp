@@ -1,4 +1,5 @@
 #include "Shrub.h"
+
 #include "common/log/log.h"
 
 Shrub::Shrub(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {

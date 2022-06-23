@@ -5,12 +5,16 @@
  * Currently owns the logic for emitting the function prologues/epilogues and stack spill ops.
  */
 
-#include <unordered_set>
-#include "goalc/debugger/DebugInfo.h"
-#include "third-party/fmt/core.h"
 #include "CodeGenerator.h"
-#include "goalc/emitter/IGen.h"
+
+#include <unordered_set>
+
 #include "IR.h"
+
+#include "goalc/debugger/DebugInfo.h"
+#include "goalc/emitter/IGen.h"
+
+#include "third-party/fmt/core.h"
 
 using namespace emitter;
 

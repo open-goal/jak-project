@@ -1,5 +1,6 @@
-#include "game/graphics/opengl_renderer/ShadowRenderer.h"
 #include "common/log/log.h"
+
+#include "game/graphics/opengl_renderer/ShadowRenderer.h"
 
 void ShadowRenderer::run_mscal10_vu2c() {
   // ENTER_10:

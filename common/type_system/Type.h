@@ -5,11 +5,13 @@
  * Representation of a GOAL type in the type system.
  */
 
-#include <string>
 #include <map>
+#include <string>
 #include <unordered_map>
-#include "common/goal_constants.h"
+
 #include "TypeSpec.h"
+
+#include "common/goal_constants.h"
 #include "common/util/Assert.h"
 
 class TypeSystem;

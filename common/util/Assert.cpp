@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string_view>
+
 #include "common/log/log.h"
 
 void private_assert_failed(const char* expr,

@@ -1,11 +1,12 @@
-#include <algorithm>
-
 #include "Profiler.h"
+
+#include <algorithm>
 
 #include "common/log/log.h"
 #include "common/util/colors.h"
-#include "third-party/imgui/imgui.h"
+
 #include "third-party/fmt/core.h"
+#include "third-party/imgui/imgui.h"
 
 ProfilerNode::ProfilerNode(const std::string& name) : m_name(name) {}
 

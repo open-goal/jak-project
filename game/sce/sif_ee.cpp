@@ -1,11 +1,14 @@
-#include <cstring>
-#include <cstdio>
-#include <unordered_map>
-#include "common/util/FileUtil.h"
 #include "sif_ee.h"
-#include "game/system/iop_thread.h"
-#include "game/runtime.h"
+
+#include <cstdio>
+#include <cstring>
+#include <unordered_map>
+
 #include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
+
+#include "game/runtime.h"
+#include "game/system/iop_thread.h"
 
 namespace ee {
 

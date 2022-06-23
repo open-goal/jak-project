@@ -1,10 +1,11 @@
 #include "BspHeader.h"
 
+#include "common/dma/dma.h"
+
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "decompiler/util/goal_data_reader.h"
 #include "decompiler/util/Error.h"
-#include "common/dma/dma.h"
+#include "decompiler/util/goal_data_reader.h"
 
 namespace level_tools {
 

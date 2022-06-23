@@ -13,8 +13,10 @@
 #endif
 
 #include <cstdio>
+
 #include "CodeTester.h"
 #include "IGen.h"
+
 #include "third-party/fmt/core.h"
 
 namespace emitter {

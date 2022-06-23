@@ -3,8 +3,9 @@
  * Tests for the GOOS macro language.
  */
 
-#include "gtest/gtest.h"
 #include "common/goos/Interpreter.h"
+
+#include "gtest/gtest.h"
 
 using namespace goos;
 

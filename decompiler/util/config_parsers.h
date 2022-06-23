@@ -1,6 +1,8 @@
 #pragma once
 #include <vector>
+
 #include "decompiler/config.h"
+
 #include "third-party/json.hpp"
 
 namespace decompiler {

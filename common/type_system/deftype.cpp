@@ -4,10 +4,12 @@
  * This is used both in the compiler and in the decompiler for the type definition file.
  */
 
-#include "common/goos/ParseHelpers.h"
 #include "deftype.h"
-#include "third-party/fmt/core.h"
+
+#include "common/goos/ParseHelpers.h"
 #include "common/log/log.h"
+
+#include "third-party/fmt/core.h"
 
 /*!
  * Missing Features

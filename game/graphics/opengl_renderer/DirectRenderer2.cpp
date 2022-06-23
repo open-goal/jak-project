@@ -1,7 +1,10 @@
 #include "DirectRenderer2.h"
-#include "third-party/imgui/imgui.h"
-#include "common/log/log.h"
+
 #include <immintrin.h>
+
+#include "common/log/log.h"
+
+#include "third-party/imgui/imgui.h"
 
 DirectRenderer2::DirectRenderer2(u32 max_verts,
                                  u32 max_inds,

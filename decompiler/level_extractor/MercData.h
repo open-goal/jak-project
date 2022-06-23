@@ -2,10 +2,12 @@
 
 #include <string>
 #include <vector>
+
 #include "common/common_types.h"
-#include "decompiler/util/goal_data_reader.h"
-#include "common/math/Vector.h"
 #include "common/dma/gs.h"
+#include "common/math/Vector.h"
+
+#include "decompiler/util/goal_data_reader.h"
 
 namespace decompiler {
 

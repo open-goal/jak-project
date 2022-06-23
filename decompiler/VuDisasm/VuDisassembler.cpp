@@ -1,11 +1,13 @@
-#include <cstring>
-#include <algorithm>
-
 #include "VuDisassembler.h"
-#include "third-party/fmt/core.h"
-#include "common/util/print_float.h"
-#include "common/util/Assert.h"
+
+#include <algorithm>
+#include <cstring>
+
 #include "common/log/log.h"
+#include "common/util/Assert.h"
+#include "common/util/print_float.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 

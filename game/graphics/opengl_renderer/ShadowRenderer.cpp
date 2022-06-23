@@ -1,7 +1,8 @@
 #include "ShadowRenderer.h"
-#include "third-party/imgui/imgui.h"
 
 #include <cfloat>
+
+#include "third-party/imgui/imgui.h"
 
 ShadowRenderer::ShadowRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id) {

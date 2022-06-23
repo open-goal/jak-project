@@ -8,15 +8,16 @@
 #include <stack>
 
 #include "common/goos/ReplUtils.h"
+#include "common/log/log.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
+
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
 #include "goalc/data_compiler/dir_tpages.h"
 #include "goalc/data_compiler/game_count.h"
 #include "goalc/data_compiler/game_text_common.h"
-#include "common/log/log.h"
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
  * Will actually exit the next time the REPL runs.

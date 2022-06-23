@@ -1,8 +1,10 @@
 #include "Shader.h"
-#include "common/util/FileUtil.h"
+
 #include "common/log/log.h"
-#include "game/graphics/pipelines/opengl.h"
 #include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
+
+#include "game/graphics/pipelines/opengl.h"
 
 Shader::Shader(const std::string& shader_name) {
   // read the shader source
