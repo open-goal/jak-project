@@ -1,5 +1,6 @@
-#include "Loader.h"
 #include "LoaderStages.h"
+
+#include "Loader.h"
 
 constexpr float LOAD_BUDGET = 2.5f;
 

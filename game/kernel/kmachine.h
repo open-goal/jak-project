@@ -5,8 +5,9 @@
  * GOAL Machine.  Contains low-level hardware interfaces for GOAL.
  */
 
-#include "common/common_types.h"
 #include "Ptr.h"
+
+#include "common/common_types.h"
 
 //! Toggle to use more memory. To simulate the original game's memory layout, set this to false.
 // Make sure this matches the const in gcommon.gc.

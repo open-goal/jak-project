@@ -10,6 +10,7 @@
 #define JAK_KDSNETM_H
 
 #include "Ptr.h"
+
 #include "common/listener_common.h"
 
 struct GoalProtoBlock {

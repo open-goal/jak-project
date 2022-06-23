@@ -5,11 +5,14 @@
  */
 
 #include "ksound.h"
-#include "kscheme.h"
+
 #include "kdgo.h"
-#include "game/sound/989snd/ame_handler.h"
-#include "game/overlord/srpc.h"
+#include "kscheme.h"
+
 #include "common/common_types.h"
+
+#include "game/overlord/srpc.h"
+#include "game/sound/989snd/ame_handler.h"
 
 /*!
  * Does nothing!

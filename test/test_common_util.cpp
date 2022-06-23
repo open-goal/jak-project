@@ -1,22 +1,24 @@
-#include <string>
-#include <vector>
 #include <limits>
+#include <string>
 #include <unordered_set>
+#include <vector>
 
-#include "common/util/FileUtil.h"
-#include "common/util/Trie.h"
+#include "common/util/Assert.h"
 #include "common/util/BitUtils.h"
-#include "gtest/gtest.h"
-#include "test/all_jak1_symbols.h"
+#include "common/util/CopyOnWrite.h"
+#include "common/util/FileUtil.h"
+#include "common/util/Range.h"
+#include "common/util/SmallVector.h"
+#include "common/util/Trie.h"
+#include "common/util/crc32.h"
 #include "common/util/json_util.h"
 #include "common/util/os.h"
-#include "common/util/Range.h"
-#include "third-party/fmt/core.h"
 #include "common/util/print_float.h"
-#include "common/util/CopyOnWrite.h"
-#include "common/util/SmallVector.h"
-#include "common/util/crc32.h"
-#include "common/util/Assert.h"
+
+#include "gtest/gtest.h"
+#include "test/all_jak1_symbols.h"
+
+#include "third-party/fmt/core.h"
 
 TEST(CommonUtil, CpuInfo) {
   setup_cpu_info();

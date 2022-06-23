@@ -5,18 +5,20 @@
  * Cross platform socket library used for the listener.
  */
 
+// clang-format off
 #ifdef __linux
-#include <sys/socket.h>
-#include <netinet/tcp.h>
-#include <unistd.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+#include <unistd.h>
 #elif _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <WinSock2.h>
 #endif
+// clang-format on
 
 #ifdef __linux
 const int TCP_SOCKET_LEVEL = SOL_TCP;

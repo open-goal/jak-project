@@ -6,8 +6,9 @@
 
 #pragma once
 
-#include <string>
 #include <cstdint>
+#include <string>
+
 #include "common/common_types.h"
 
 #ifdef __linux

@@ -1,7 +1,8 @@
-#include "goalc/compiler/Compiler.h"
-#include "goalc/compiler/IR.h"
 #include "common/goos/ParseHelpers.h"
 #include "common/type_system/deftype.h"
+
+#include "goalc/compiler/Compiler.h"
+#include "goalc/compiler/IR.h"
 
 /*!
  * Parse arguments into a goos::Arguments format.

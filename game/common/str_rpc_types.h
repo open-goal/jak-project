@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/common_types.h"
+
 #include "game/common/overlord_common.h"
 
 constexpr int STR_RPC_ID = 0xdeb5;

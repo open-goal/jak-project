@@ -1,19 +1,20 @@
 
 #include "test_runner.h"
-#include "third-party/fmt/core.h"
 
+#include <filesystem>
 #include <string>
 
-#include "gtest/gtest.h"
 #include "inja.hpp"
-#include "third-party/json.hpp"
-
-#include "game/runtime.h"
-#include "goalc/listener/Listener.h"
-#include "goalc/compiler/Compiler.h"
 
 #include "common/util/FileUtil.h"
-#include <filesystem>
+
+#include "game/runtime.h"
+#include "goalc/compiler/Compiler.h"
+#include "goalc/listener/Listener.h"
+#include "gtest/gtest.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/json.hpp"
 
 namespace GoalTest {
 

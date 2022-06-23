@@ -1,9 +1,11 @@
 #pragma once
 
 #include <vector>
+
 #include "common/common_types.h"
-#include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "common/dma/gs.h"
+
+#include "game/graphics/opengl_renderer/BucketRenderer.h"
 
 class DirectRenderer2 {
  public:

@@ -5,11 +5,12 @@
  * Graphics component for the runtime. Abstraction layer for the main graphics routines.
  */
 
+#include <array>
 #include <functional>
 #include <memory>
-#include <array>
 
 #include "common/common_types.h"
+
 #include "game/kernel/kboot.h"
 #include "game/system/newpad.h"
 

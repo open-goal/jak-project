@@ -1,7 +1,9 @@
 #include "soundcommon.h"
+
 #include <cstdio>
-#include "common/util/Assert.h"
 #include <string>
+
+#include "common/util/Assert.h"
 
 // TODO strcpy_toupper
 // TODO atoi

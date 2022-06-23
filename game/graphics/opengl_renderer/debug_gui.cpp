@@ -1,6 +1,8 @@
 
 #include "debug_gui.h"
+
 #include <algorithm>
+
 #include "third-party/imgui/imgui.h"
 
 void FrameTimeRecorder::finish_frame() {

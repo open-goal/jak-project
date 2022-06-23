@@ -1,7 +1,9 @@
 #include "PrettyPrinter2.h"
+
 #include "common/common_types.h"
-#include "third-party/fmt/core.h"
 #include "common/util/Assert.h"
+
+#include "third-party/fmt/core.h"
 
 namespace pretty_print {
 

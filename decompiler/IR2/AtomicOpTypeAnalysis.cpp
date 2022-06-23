@@ -1,13 +1,16 @@
-#include "third-party/fmt/core.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "common/log/log.h"
 #include "AtomicOp.h"
-#include "decompiler/util/TP_Type.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
-#include "decompiler/IR2/bitfields.h"
+
+#include "common/log/log.h"
 #include "common/type_system/state.h"
 #include "common/util/BitUtils.h"
+
+#include "decompiler/IR2/bitfields.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/TP_Type.h"
 #include "decompiler/util/goal_constants.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 

@@ -11,16 +11,20 @@
  * This kind of file is completely custom.
  */
 
+#include "game_text_common.h"
+
 #include <algorithm>
 #include <queue>
-#include "game_text_common.h"
-#include "common/goos/Reader.h"
+
 #include "DataObjectGenerator.h"
+
+#include "common/goos/ParseHelpers.h"
+#include "common/goos/Reader.h"
+#include "common/serialization/subtitles/subtitles.h"
 #include "common/util/FileUtil.h"
 #include "common/util/FontUtils.h"
-#include "common/goos/ParseHelpers.h"
+
 #include "third-party/fmt/core.h"
-#include "common/serialization/subtitles/subtitles.h"
 
 namespace {
 

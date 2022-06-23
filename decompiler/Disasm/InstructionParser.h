@@ -7,8 +7,9 @@
 
 #include <string>
 #include <unordered_map>
-#include "Instruction.h"
+
 #include "DecompilerLabel.h"
+#include "Instruction.h"
 
 namespace decompiler {
 struct ParsedProgram {

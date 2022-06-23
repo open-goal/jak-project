@@ -1,16 +1,17 @@
 #pragma once
 
-#include <vector>
-#include <string>
 #include <array>
+#include <string>
+#include <vector>
 
 #include "common/common_types.h"
+
 #include "goalc/build_level/FileInfo.h"
 #include "goalc/build_level/Tfrag.h"
-#include "goalc/build_level/collide_pack.h"
-#include "goalc/build_level/collide_common.h"
 #include "goalc/build_level/collide_bvh.h"
+#include "goalc/build_level/collide_common.h"
 #include "goalc/build_level/collide_drawable.h"
+#include "goalc/build_level/collide_pack.h"
 
 struct VisibilityString {
   std::vector<u8> bytes;

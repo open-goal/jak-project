@@ -1,10 +1,11 @@
+#include "extract_shrub.h"
+
 #include <array>
 
-#include "extract_shrub.h"
-#include "decompiler/level_extractor/extract_common.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
-
 #include "common/util/FileUtil.h"
+
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/level_extractor/extract_common.h"
 
 namespace decompiler {
 using namespace level_tools;

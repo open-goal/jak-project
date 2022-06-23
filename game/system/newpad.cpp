@@ -5,10 +5,12 @@
  */
 
 #include "newpad.h"
+
 #include "common/log/log.h"
 #include "common/util/Assert.h"
-#include "game/graphics/pipelines/opengl.h"  // for GLFW macros
 #include <common/util/FileUtil.h>
+
+#include "game/graphics/pipelines/opengl.h"  // for GLFW macros
 
 namespace Pad {
 

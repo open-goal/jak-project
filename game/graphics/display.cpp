@@ -4,6 +4,7 @@
  */
 
 #include "display.h"
+
 #include "gfx.h"
 
 #include "common/log/log.h"

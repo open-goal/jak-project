@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <unordered_map>
+
 #include "common/util/FontUtils.h"
 
 namespace decompiler {

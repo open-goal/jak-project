@@ -1,15 +1,18 @@
 #include "Tools.h"
 
 #include <filesystem>
-#include "goalc/compiler/Compiler.h"
+
 #include "common/goos/ParseHelpers.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
-#include "third-party/fmt/core.h"
+
+#include "goalc/build_level/build_level.h"
+#include "goalc/compiler/Compiler.h"
 #include "goalc/data_compiler/dir_tpages.h"
 #include "goalc/data_compiler/game_count.h"
 #include "goalc/data_compiler/game_text_common.h"
-#include "goalc/build_level/build_level.h"
+
+#include "third-party/fmt/core.h"
 
 CompilerTool::CompilerTool(Compiler* compiler) : Tool("goalc"), m_compiler(compiler) {}
 

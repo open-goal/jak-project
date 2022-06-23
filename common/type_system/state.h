@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+
 #include "common/type_system/TypeSpec.h"
 
 /*!

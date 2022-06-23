@@ -4,21 +4,23 @@
  * from memory cards to just raw saves.
  */
 
+#include "kmemcard.h"
+
+#include <array>
 #include <cstdio>
 #include <cstring>
-#include <array>
 
-#include "third-party/fmt/core.h"
-
-#include "game/sce/sif_ee.h"
-#include "game/sce/sif_ee_memcard.h"
-#include "kmemcard.h"
-#include "game/kernel/kdgo.h"
-#include "game/common/ramdisk_rpc_types.h"
-#include "game/kernel/fileio.h"
+#include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
-#include "common/util/Assert.h"
+
+#include "game/common/ramdisk_rpc_types.h"
+#include "game/kernel/fileio.h"
+#include "game/kernel/kdgo.h"
+#include "game/sce/sif_ee.h"
+#include "game/sce/sif_ee_memcard.h"
+
+#include "third-party/fmt/core.h"
 
 static constexpr bool memcard_debug = false;
 

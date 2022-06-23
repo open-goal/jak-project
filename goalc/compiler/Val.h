@@ -5,15 +5,18 @@
  * The GOAL Value. A value represents a place (where the value is stored) and a type.
  */
 
-#include <utility>
-#include <string>
-#include <stdexcept>
 #include <optional>
-#include "common/type_system/TypeSystem.h"
-#include "goalc/regalloc/IRegister.h"
+#include <stdexcept>
+#include <string>
+#include <utility>
+
 #include "Lambda.h"
 #include "StaticObject.h"
+
+#include "common/type_system/TypeSystem.h"
+
 #include "goalc/compiler/ConstantValue.h"
+#include "goalc/regalloc/IRegister.h"
 
 class RegVal;
 class Env;

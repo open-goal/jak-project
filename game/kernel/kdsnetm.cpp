@@ -4,13 +4,17 @@
  * DONE!
  */
 
-#include <cstring>
+#include "kdsnetm.h"
+
 #include <cstdio>
+#include <cstring>
+
+#include "kprint.h"
+
+#include "common/util/Assert.h"
+
 #include "game/sce/deci2.h"
 #include "game/system/deci_common.h"  // todo, reorganize to avoid this include
-#include "kdsnetm.h"
-#include "kprint.h"
-#include "common/util/Assert.h"
 
 using namespace ee;
 

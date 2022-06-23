@@ -1,11 +1,14 @@
 #pragma once
 #include <unordered_set>
+
 #include "common/common_types.h"
 #include "common/goos/Object.h"
+
 #include "decompiler/Disasm/Register.h"
-#include "decompiler/util/TP_Type.h"
-#include "third-party/fmt/core.h"
 #include "decompiler/Function/Warnings.h"
+#include "decompiler/util/TP_Type.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 enum class AccessMode : u8 {

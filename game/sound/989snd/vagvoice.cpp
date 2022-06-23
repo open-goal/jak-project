@@ -1,9 +1,12 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #include "vagvoice.h"
-#include "util.h"
-#include "../common/voice.h"
+
 #include <stdexcept>
+
+#include "util.h"
+
+#include "../common/voice.h"
 
 namespace snd {
 voice_manager::voice_manager(synth& synth, locator& loc) : m_synth(synth), m_locator(loc) {

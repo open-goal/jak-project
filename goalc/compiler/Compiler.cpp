@@ -1,14 +1,19 @@
 #include "Compiler.h"
+
 #include <chrono>
 #include <thread>
+
 #include "CompilerException.h"
 #include "IR.h"
+
+#include "common/goos/PrettyPrinter.h"
 #include "common/link_types.h"
+
 #include "goalc/make/Tools.h"
 #include "goalc/regalloc/Allocator.h"
 #include "goalc/regalloc/Allocator_v2.h"
+
 #include "third-party/fmt/core.h"
-#include "common/goos/PrettyPrinter.h"
 
 using namespace goos;
 

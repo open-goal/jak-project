@@ -1,12 +1,13 @@
 
-#include "common/log/log.h"
-#include "common/util/FileUtil.h"
-#include "common/util/BinaryReader.h"
+#include "streamed_audio.h"
+
 #include "common/audio/audio_formats.h"
+#include "common/log/log.h"
+#include "common/util/BinaryReader.h"
+#include "common/util/FileUtil.h"
+
 #include "third-party/fmt/core.h"
 #include "third-party/json.hpp"
-
-#include "streamed_audio.h"
 
 namespace decompiler {
 

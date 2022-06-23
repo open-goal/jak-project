@@ -1,10 +1,12 @@
-#include <cstring>
-#include <cstdio>
-
 #include "compress.h"
-#include "third-party/zstd/lib/zstd.h"
+
+#include <cstdio>
+#include <cstring>
+
 #include "common/util/Assert.h"
+
 #include "third-party/fmt/core.h"
+#include "third-party/zstd/lib/zstd.h"
 
 namespace compression {
 
