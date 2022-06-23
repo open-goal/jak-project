@@ -434,23 +434,17 @@ int main(int argc, char** argv) {
     }
 
     // write out a json file with some metadata for the game
-    std::string buildinfo_json = "{\n";
-    buildinfo_json += "  \"flags\": [";
-    bool first = true;
+    nlohmann::json buildinfo_json;
+    auto flags_json = nlohmann::json::array();
     for (const auto& [n, f] : sGameIsoFlagNames) {
       if (flags & f) {
-        if (first) {
-          first = false;
-        } else {
-          buildinfo_json += ", ";
-        }
-        buildinfo_json += fmt::format("\"{}\"", n);
+        flags_json.push_back(n);
       }
     }
-    buildinfo_json += "]\n";
-    buildinfo_json += "}\n";
+    buildinfo_json["flags"] = flags_json;
     // something tells me a ps2 game is unlikely to have a json file in root
-    file_util::write_text_file((path_to_iso_files / "buildinfo.json").string(), buildinfo_json);
+    file_util::write_text_file((path_to_iso_files / "buildinfo.json").string(),
+                               buildinfo_json.dump(2));
   }
 
   if (flag_decompile) {
