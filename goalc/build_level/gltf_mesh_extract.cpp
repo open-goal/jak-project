@@ -2,6 +2,7 @@
  * Mesh extraction for GLTF meshes.
  */
 
+#include <optional>
 #include "gltf_mesh_extract.h"
 #include "goalc/build_level/color_quantization.h"
 #include "third-party/tiny_gltf/tiny_gltf.h"
