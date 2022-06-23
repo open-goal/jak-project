@@ -1,6 +1,7 @@
 #include "lzokay.hpp"
 #include <cstring>
 #include <algorithm>
+#include <array>
 
 /*
  * Based on documentation from the Linux sources: Documentation/lzo.txt
