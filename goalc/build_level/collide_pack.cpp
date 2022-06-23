@@ -36,7 +36,9 @@ float u32_to_float(u32 in) {
  */
 PackedU16Verts pack_verts_to_u16(const std::vector<math::Vector3f>& input) {
   PackedU16Verts result;
-  ASSERT(!input.empty());
+  if (input.empty()) {
+    lg::warn("Empty collide fragment");
+  }
 
   // this "magic" offset is a large float where a ulp is 16.f, or 1/256th of a meter.
   // this means that float -> int can be done as a single addition.
@@ -45,7 +47,7 @@ PackedU16Verts pack_verts_to_u16(const std::vector<math::Vector3f>& input) {
   magic_offset.fill(u32_to_float(0x4d000000));
 
   // we'll be treating everything as an offset from this minimum vertex:
-  math::Vector3f min_vtx = input[0];
+  math::Vector3f min_vtx = input.empty() ? math::Vector3f::zero() : input[0];
   for (auto& vtx : input) {
     min_vtx.min_in_place(vtx);
   }
@@ -143,8 +145,6 @@ struct Vector3fHash {
 IndexedFaces dedup_frag_mesh(const collide::CollideFrag& frag, PatMap* pat_map) {
   IndexedFaces result;
   std::unordered_map<math::Vector3f, u32, Vector3fHash> vertex_map;
-  // avoid confusion with 0 in strip table. (todo, can probably remove)
-  result.vertices_float.push_back(math::Vector3f::zero());
 
   for (auto& face_in : frag.faces) {
     auto& face_out = result.faces.emplace_back();
@@ -163,7 +163,6 @@ IndexedFaces dedup_frag_mesh(const collide::CollideFrag& frag, PatMap* pat_map) 
       }
     }
   }
-  // fmt::print("{} -> {}\n", frag.faces.size() * 3, result.vertices_float.size());
   result.vertices_u16 = pack_verts_to_u16(result.vertices_float);
   return result;
 }

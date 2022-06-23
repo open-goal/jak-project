@@ -99,7 +99,7 @@ struct PackedTfragVertices {
   struct Vertex {
     u16 xoff, yoff, zoff;
     u16 cluster_idx;
-    u16 s, t;
+    s16 s, t;
     u16 color_index;
   };
 

@@ -10,9 +10,7 @@ void tfrag_from_gltf(const gltf_mesh_extract::TfragOutput& mesh_extract_out,
                      tfrag3::TfragTree& out_pc) {
   out_pc.kind = tfrag3::TFragmentTreeKind::NORMAL;  // todo more types?
   out_pc.draws = std::move(mesh_extract_out.strip_draws);
-  fmt::print("have {} draws\n", out_pc.draws.size());
   pack_tfrag_vertices(&out_pc.packed_vertices, mesh_extract_out.vertices);
-  fmt::print("have {} vertices\n", out_pc.packed_vertices.vertices.size());
 
   for (auto& col : mesh_extract_out.color_palette) {
     tfrag3::TimeOfDayColor todc;

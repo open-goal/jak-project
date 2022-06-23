@@ -147,8 +147,6 @@ size_t generate_collide_fragment_array(DataObjectGenerator& gen,
   gen.add_word(0);                    // 24
   gen.add_word(0);                    // 28
 
-  fmt::print("have: {}\n", meshes.size());
-
   ASSERT(meshes.size() == frag_mesh_locs.size());
   for (size_t i = 0; i < meshes.size(); i++) {
     auto& mesh = meshes[i];
@@ -210,9 +208,6 @@ size_t generate_collide_draw_node_array(DataObjectGenerator& gen,
 }
 
 size_t DrawableTreeCollideFragment::add_to_object_file(DataObjectGenerator& gen) const {
-  for (auto& lev : bvh.node_arrays) {
-    fmt::print("lev: {}\n", lev.nodes.size());
-  }
   // generate pat array
   size_t pat_array_loc = generate_pat_array(gen, packed_frags.pats);
 
@@ -238,7 +233,6 @@ size_t DrawableTreeCollideFragment::add_to_object_file(DataObjectGenerator& gen)
                                                              collide_frag_meshes, children_refs);
   u32 flag = 0;
   while (array_slot >= 0) {
-    fmt::print("sizes: {} {}\n", children_refs.size(), bvh.node_arrays.at(array_slot).nodes.size());
     ASSERT(children_refs.size() == bvh.node_arrays.at(array_slot).nodes.size());
     std::vector<size_t> next_children;
 
