@@ -251,10 +251,39 @@ void SubtitleEditor::draw_window() {
 
 void SubtitleEditor::draw_edit_options() {
   if (ImGui::TreeNode("Editing Options")) {
-    // TODO - validate these / make it a dropdown
-    // - source of truth is the files
-    ImGui::InputInt("Editing language ID", &m_current_language);
-    ImGui::InputInt("Base language ID", &m_base_language);
+    if (ImGui::BeginCombo(
+            "Editing Language ID",
+            fmt::format("[{}] {}", m_subtitle_db.m_banks[m_current_language]->m_lang_id,
+                        m_subtitle_db.m_banks[m_current_language]->file_path)
+                .c_str())) {
+      for (const auto& [key, value] : m_subtitle_db.m_banks) {
+        const bool isSelected = m_current_language == key;
+        if (ImGui::Selectable(fmt::format("[{}] {}", value->m_lang_id, value->file_path).c_str(),
+                              isSelected)) {
+          m_current_language = key;
+        }
+        if (isSelected) {
+          ImGui::SetItemDefaultFocus();
+        }
+      }
+      ImGui::EndCombo();
+    }
+    if (ImGui::BeginCombo("Base Language ID",
+                          fmt::format("[{}] {}", m_subtitle_db.m_banks[m_base_language]->m_lang_id,
+                                      m_subtitle_db.m_banks[m_base_language]->file_path)
+                              .c_str())) {
+      for (const auto& [key, value] : m_subtitle_db.m_banks) {
+        const bool isSelected = m_base_language == key;
+        if (ImGui::Selectable(fmt::format("[{}] {}", value->m_lang_id, value->file_path).c_str(),
+                              isSelected)) {
+          m_base_language = key;
+        }
+        if (isSelected) {
+          ImGui::SetItemDefaultFocus();
+        }
+      }
+      ImGui::EndCombo();
+    }
     ImGui::Checkbox("Show missing cutscenes from base", &m_base_show_missing_cutscenes);
     ImGui::InputText("New Subtitle Group Name", &m_new_scene_group_name);
     if (!m_new_scene_group_name.empty()) {
