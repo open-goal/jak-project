@@ -859,8 +859,12 @@ void update_discord_rpc(u32 discord_info) {
       } else {
         strcpy(large_image_key, level);
       }
-      rpc.largeImageKey = large_image_key;
       strcpy(large_image_text, full_level_name);
+      if (!strcmp(full_level_name, "unknown")) {
+        strcpy(large_image_key, full_level_name);
+        strcpy(large_image_text, level);
+      }
+      rpc.largeImageKey = large_image_key;
       if (!strcmp(level, "finalboss")) {
         strcpy(state, "Fighting Final Boss");
       } else if (plantboss != offset_of_s7()) {
