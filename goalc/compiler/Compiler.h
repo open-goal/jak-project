@@ -1,26 +1,26 @@
 #pragma once
 
 #include <functional>
+#include <mutex>
 #include <optional>
-
-#include "third-party/fmt/color.h"
-#include "third-party/fmt/core.h"
 
 #include "common/goos/Interpreter.h"
 #include "common/goos/ReplUtils.h"
 #include "common/type_system/TypeSystem.h"
+
 #include "goalc/compiler/CompilerException.h"
 #include "goalc/compiler/CompilerSettings.h"
 #include "goalc/compiler/Env.h"
 #include "goalc/compiler/IR.h"
 #include "goalc/compiler/SymbolInfo.h"
+#include "goalc/data_compiler/game_text_common.h"
 #include "goalc/debugger/Debugger.h"
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
 #include "goalc/make/MakeSystem.h"
-#include "goalc/data_compiler/game_text_common.h"
 
-#include <mutex>
+#include "third-party/fmt/color.h"
+#include "third-party/fmt/core.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 

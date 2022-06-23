@@ -1,17 +1,19 @@
 #include "Form.h"
 #include "FormStack.h"
 #include "GenericElementMatcher.h"
+
 #include "common/goos/PrettyPrinter.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "decompiler/util/data_decompile.h"
-#include "decompiler/IR2/bitfields.h"
-#include "common/util/BitUtils.h"
 #include "common/type_system/state.h"
-#include "common/util/print_float.h"
-#include "decompiler/IR2/ExpressionHelpers.h"
-#include "decompiler/util/goal_constants.h"
 #include "common/util/Assert.h"
+#include "common/util/BitUtils.h"
+#include "common/util/print_float.h"
+
+#include "decompiler/IR2/ExpressionHelpers.h"
+#include "decompiler/IR2/bitfields.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/data_decompile.h"
+#include "decompiler/util/goal_constants.h"
 
 /*
  * TODO

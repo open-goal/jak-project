@@ -6,15 +6,18 @@
  * manages the memory for stuff generated during compiling.
  */
 
-#include <string>
 #include <memory>
+#include <string>
 #include <vector>
-#include "common/type_system/TypeSpec.h"
-#include "goalc/regalloc/allocator_interface.h"
-#include "common/goos/Object.h"
-#include "StaticObject.h"
+
 #include "Label.h"
+#include "StaticObject.h"
 #include "Val.h"
+
+#include "common/goos/Object.h"
+#include "common/type_system/TypeSpec.h"
+
+#include "goalc/regalloc/allocator_interface.h"
 
 class FileEnv;
 class BlockEnv;

@@ -3,6 +3,7 @@
 #ifndef JAK_V2_SOUNDCOMMON_H
 #define JAK_V2_SOUNDCOMMON_H
 #include "common/common_types.h"
+
 #include "game/overlord/sbank.h"
 
 void PrintBankInfo(SoundBank* buffer);

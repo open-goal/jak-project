@@ -1,7 +1,9 @@
 #include "blocksound_handler.h"
-#include "util.h"
+
 #include <random>
 #include <stdexcept>
+
+#include "util.h"
 
 namespace snd {
 void blocksound_handler::init() {

@@ -1,5 +1,7 @@
-#include <stdexcept>
 #include "stubs.h"
+
+#include <stdexcept>
+
 #include "common/util/Assert.h"
 
 namespace ee {

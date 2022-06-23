@@ -5,10 +5,13 @@
  */
 
 #include "dmac.h"
+
 #include "vm.h"
-#include "game/runtime.h"
-#include "game/kernel/kmalloc.h"
+
 #include "common/log/log.h"
+
+#include "game/kernel/kmalloc.h"
+#include "game/runtime.h"
 
 namespace VM {
 

@@ -3,21 +3,23 @@
  * Graphics component for the runtime. Abstraction layer for the main graphics routines.
  */
 
-#include <cstdio>
-#include <functional>
-#include <filesystem>
-
 #include "gfx.h"
-#include "display.h"
-#include "pipelines/opengl.h"
 
-#include "common/symbols.h"
+#include <cstdio>
+#include <filesystem>
+#include <functional>
+
+#include "display.h"
+
 #include "common/log/log.h"
+#include "common/symbols.h"
 #include "common/util/FileUtil.h"
+
 #include "game/common/file_paths.h"
 #include "game/kernel/kscheme.h"
 #include "game/runtime.h"
 #include "game/system/newpad.h"
+#include "pipelines/opengl.h"
 
 namespace {
 // initializes a gfx settings.

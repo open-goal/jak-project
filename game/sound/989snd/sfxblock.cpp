@@ -1,4 +1,5 @@
 #include "sfxblock.h"
+
 #include "blocksound_handler.h"
 
 namespace snd {

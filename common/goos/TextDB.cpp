@@ -11,10 +11,11 @@
  *   (+ 1 (+ a b)) ; compute the sum
  */
 
-#include "common/util/FileUtil.h"
-#include "third-party/fmt/core.h"
-
 #include "TextDB.h"
+
+#include "common/util/FileUtil.h"
+
+#include "third-party/fmt/core.h"
 
 namespace goos {
 

@@ -4,9 +4,11 @@
  * This is the front end for things in StaticObject.cpp
  */
 
-#include "goalc/compiler/Compiler.h"
-#include "third-party/fmt/core.h"
 #include "common/goos/ParseHelpers.h"
+
+#include "goalc/compiler/Compiler.h"
+
+#include "third-party/fmt/core.h"
 
 /*!
  * Compile the fields of a static structure into the given StaticStructure*, applying an offset.

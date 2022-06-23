@@ -8,9 +8,10 @@
 #ifndef JAK_KSOCKET_H
 #define JAK_KSOCKET_H
 
-#include "common/common_types.h"
-#include "kmachine.h"
 #include "Ptr.h"
+#include "kmachine.h"
+
+#include "common/common_types.h"
 
 /*!
  * Update GOAL message header after receiving and verify message is ok.

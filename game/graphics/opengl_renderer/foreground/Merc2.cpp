@@ -1,6 +1,8 @@
 #include "Merc2.h"
-#include "third-party/imgui/imgui.h"
+
 #include "game/graphics/opengl_renderer/background/background_common.h"
+
+#include "third-party/imgui/imgui.h"
 
 Merc2::Merc2(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
   glGenVertexArrays(1, &m_vao);

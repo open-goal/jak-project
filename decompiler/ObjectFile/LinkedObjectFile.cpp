@@ -3,17 +3,21 @@
  * An object file's data with linking information included.
  */
 
+#include "LinkedObjectFile.h"
+
 #include <algorithm>
 #include <cstring>
 #include <numeric>
-#include "third-party/fmt/core.h"
-#include "LinkedObjectFile.h"
+
+#include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
+#include "common/util/Assert.h"
+
 #include "decompiler/Disasm/InstructionDecode.h"
 #include "decompiler/config.h"
+
+#include "third-party/fmt/core.h"
 #include "third-party/json.hpp"
-#include "common/log/log.h"
-#include "common/goos/PrettyPrinter.h"
-#include "common/util/Assert.h"
 
 namespace decompiler {
 /*!

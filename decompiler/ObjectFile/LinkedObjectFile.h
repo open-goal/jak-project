@@ -6,14 +6,17 @@
  */
 
 #include <cstdint>
-#include <vector>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
+
 #include "LinkedWord.h"
+
+#include "common/common_types.h"
+
 #include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Function/Function.h"
-#include "common/common_types.h"
 #include "decompiler/IR2/LabelDB.h"
 
 namespace decompiler {

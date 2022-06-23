@@ -1,8 +1,9 @@
-#include <thread>
 #include <memory>
+#include <thread>
+
 #include "goalc/compiler/Compiler.h"
-#include "test/goalc/framework/test_runner.h"
 #include "gtest/gtest.h"
+#include "test/goalc/framework/test_runner.h"
 
 class KernelTest : public testing::Test {
  public:

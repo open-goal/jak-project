@@ -3,6 +3,7 @@
 #include <string>
 
 #include "common/custom_data/Tfrag3Data.h"
+
 #include "goalc/build_level/TexturePool.h"
 #include "goalc/build_level/gltf_mesh_extract.h"
 

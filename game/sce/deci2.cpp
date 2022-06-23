@@ -3,12 +3,15 @@
  * Implementation of SCE DECI2 library.
  */
 
+#include "deci2.h"
+
 #include <cstdio>
 #include <cstring>
+
 #include "common/log/log.h"
-#include "deci2.h"
-#include "game/system/Deci2Server.h"
 #include "common/util/Assert.h"
+
+#include "game/system/Deci2Server.h"
 
 namespace ee {
 

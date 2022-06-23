@@ -3,27 +3,30 @@
  * Implementation of GOAL runtime.
  */
 
-#include <cstring>
 #include "kscheme.h"
+
+#include <cstring>
+
+#include "fileio.h"
+#include "kboot.h"
+#include "kdgo.h"
+#include "kdsnetm.h"
+#include "klink.h"
+#include "klisten.h"
+#include "kmachine.h"
+#include "kmalloc.h"
+#include "kmemcard.h"
+#include "kprint.h"
+
 #include "common/common_types.h"
 #include "common/goal_constants.h"
-#include "kmachine.h"
-#include "klisten.h"
-#include "kmalloc.h"
-#include "kprint.h"
-#include "fileio.h"
-#include "kmemcard.h"
-#include "kboot.h"
-#include "kdsnetm.h"
-#include "kdgo.h"
-#include "klink.h"
-#include "common/symbols.h"
-#include "common/versions.h"
-#include "common/goal_constants.h"
 #include "common/log/log.h"
-#include "common/util/Timer.h"
-#include "game/mips2c/mips2c_table.h"
+#include "common/symbols.h"
 #include "common/util/Assert.h"
+#include "common/util/Timer.h"
+#include "common/versions.h"
+
+#include "game/mips2c/mips2c_table.h"
 
 using namespace jak1_symbols;
 

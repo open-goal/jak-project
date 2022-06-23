@@ -2,14 +2,16 @@
 
 #include <array>
 #include <memory>
-#include <string>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <unordered_map>
+
 #include "common/common_types.h"
-#include "game/graphics/texture/TextureConverter.h"
 #include "common/util/Serializer.h"
 #include "common/util/SmallVector.h"
+
+#include "game/graphics/texture/TextureConverter.h"
 
 // verify all texture lookups.
 // will make texture lookups slower and likely caused dropped frames when loading

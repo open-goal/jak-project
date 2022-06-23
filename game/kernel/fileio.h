@@ -8,9 +8,10 @@
 #ifndef RUNTIME_FILEIO_H
 #define RUNTIME_FILEIO_H
 
-#include "common/common_types.h"
 #include "Ptr.h"
 #include "kmalloc.h"
+
+#include "common/common_types.h"
 
 // GOAL File Types
 enum GoalFileType {

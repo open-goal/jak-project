@@ -3,9 +3,10 @@
  * Create a DGO from existing files.
  */
 
+#include "DgoWriter.h"
+
 #include "BinaryWriter.h"
 #include "FileUtil.h"
-#include "DgoWriter.h"
 
 void build_dgo(const DgoDescription& description) {
   BinaryWriter writer;

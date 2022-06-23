@@ -1,9 +1,12 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #include "loader.h"
-#include "midi_handler.h"
+
 #include <fstream>
 #include <optional>
+
+#include "midi_handler.h"
+
 #include <third-party/fmt/core.h>
 
 namespace snd {

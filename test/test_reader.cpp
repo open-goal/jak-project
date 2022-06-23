@@ -4,9 +4,10 @@
  * For some reason this runs at ~5 fps in CLion IDE.
  */
 
-#include "gtest/gtest.h"
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
+
+#include "gtest/gtest.h"
 
 using namespace goos;
 

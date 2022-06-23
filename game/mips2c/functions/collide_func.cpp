@@ -1,6 +1,6 @@
 //--------------------------MIPS2C---------------------
-#include "game/mips2c/mips2c_private.h"
 #include "game/kernel/kscheme.h"
+#include "game/mips2c/mips2c_private.h"
 
 // clang-format off
 namespace Mips2C {

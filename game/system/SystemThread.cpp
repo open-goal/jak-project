@@ -1,4 +1,5 @@
 #include "SystemThread.h"
+
 #include "common/log/log.h"
 
 //////////////////////

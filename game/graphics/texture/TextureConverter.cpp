@@ -1,8 +1,10 @@
 #include "TextureConverter.h"
-#include "third-party/fmt/core.h"
-#include "common/util/FileUtil.h"
+
 #include "common/texture/texture_conversion.h"
 #include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
+
+#include "third-party/fmt/core.h"
 
 TextureConverter::TextureConverter() {
   m_vram.resize(4 * 1024 * 1024);

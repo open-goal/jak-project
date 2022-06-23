@@ -1,7 +1,8 @@
 #pragma once
 
-#include "goalc/make/Tool.h"
 #include "common/goos/Reader.h"
+
+#include "goalc/make/Tool.h"
 
 class Compiler;
 

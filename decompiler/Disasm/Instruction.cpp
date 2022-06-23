@@ -5,9 +5,12 @@
  */
 
 #include "Instruction.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "third-party/fmt/core.h"
+
 #include "common/util/Assert.h"
+
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 /*!

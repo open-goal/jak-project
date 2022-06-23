@@ -1,9 +1,11 @@
 #include "ExpressionHelpers.h"
-#include "decompiler/IR2/Form.h"
-#include "decompiler/IR2/Env.h"
+
 #include "common/goal_constants.h"
-#include "decompiler/IR2/GenericElementMatcher.h"
+
+#include "decompiler/IR2/Env.h"
+#include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/FormStack.h"
+#include "decompiler/IR2/GenericElementMatcher.h"
 
 namespace decompiler {
 

@@ -3,32 +3,33 @@
  * Lower-level OpenGL interface. No actual rendering is performed here!
  */
 
+#include "opengl.h"
+
+#include <condition_variable>
 #include <memory>
 #include <mutex>
-#include <condition_variable>
+
+#include "common/dma/dma_copy.h"
+#include "common/global_profiler/GlobalProfiler.h"
+#include "common/goal_constants.h"
+#include "common/log/log.h"
+#include "common/util/FileUtil.h"
+#include "common/util/FrameLimiter.h"
+#include "common/util/Timer.h"
+#include "common/util/compress.h"
+
+#include "game/graphics/display.h"
+#include "game/graphics/gfx.h"
+#include "game/graphics/opengl_renderer/OpenGLRenderer.h"
+#include "game/graphics/opengl_renderer/debug_gui.h"
+#include "game/graphics/texture/TexturePool.h"
+#include "game/runtime.h"
+#include "game/system/newpad.h"
 
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_impl_glfw.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
-
-#include "opengl.h"
-
-#include "game/graphics/gfx.h"
-#include "game/graphics/display.h"
-#include "game/graphics/opengl_renderer/OpenGLRenderer.h"
-#include "game/graphics/texture/TexturePool.h"
-#include "common/dma/dma_copy.h"
-#include "game/system/newpad.h"
-#include "common/log/log.h"
-#include "common/goal_constants.h"
 #include "third-party/stb_image/stb_image.h"
-#include "game/runtime.h"
-#include "common/util/Timer.h"
-#include "game/graphics/opengl_renderer/debug_gui.h"
-#include "common/util/FileUtil.h"
-#include "common/util/compress.h"
-#include "common/util/FrameLimiter.h"
-#include "common/global_profiler/GlobalProfiler.h"
 
 namespace {
 

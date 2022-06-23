@@ -7,6 +7,7 @@
  */
 
 #include <vector>
+
 #include "OpcodeInfo.h"
 #include "Register.h"
 

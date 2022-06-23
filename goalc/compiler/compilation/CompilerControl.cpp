@@ -11,6 +11,7 @@
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
+
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
 #include "goalc/data_compiler/dir_tpages.h"

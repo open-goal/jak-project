@@ -1,7 +1,10 @@
 #include "game/graphics/sceGraphicsInterface.h"
-#include "game/graphics/gfx.h"
+
 #include <cstdio>
+
 #include "common/util/Assert.h"
+
+#include "game/graphics/gfx.h"
 #include "game/overlord/srpc.h"
 
 /*!
