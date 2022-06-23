@@ -729,7 +729,7 @@ u64 DecodeVolume() {
 // NOTE: this is originally hardcoded, and returns different values depending on the disc region.
 // it returns 0 for NTSC-U, 1 for PAL and 2 for NTSC-J
 u64 DecodeTerritory() {
-  return masterConfig.territory;
+  return GAME_TERRITORY_SCEA;
 }
 
 u64 DecodeTimeout() {

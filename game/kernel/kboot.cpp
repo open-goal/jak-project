@@ -126,9 +126,6 @@ s32 goal_main(int argc, const char* const* argv) {
     masterConfig.aspect = SCE_ASPECT_FULL;
   }
 
-  // Added - the territory is originally hardcoded. this allows us to change it whenever.
-  masterConfig.territory = GAME_TERRITORY_SCEA;
-
   // In retail game, disable debugging modes, and force on DiskBoot
   // MasterDebug = 0;
   // DiskBoot = 1;
