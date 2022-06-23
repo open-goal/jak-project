@@ -3,6 +3,8 @@
 
 #include <algorithm>
 
+#include "game/kernel/svnrev.h"
+
 #include "third-party/imgui/imgui.h"
 
 void FrameTimeRecorder::finish_frame() {
@@ -137,7 +139,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::EndMenu();
     }
 
-    if (ImGui::BeginMenu("WORK IN PROGRESS VERSION!")) {
+    if (ImGui::BeginMenu(fmt::format("WORK IN PROGRESS VERSION ({})!", GIT_VERSION).c_str())) {
       ImGui::EndMenu();
     }
   }
