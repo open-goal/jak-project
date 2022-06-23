@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+
 #include "goalc/build_level/collide_common.h"
 
 // requirements:

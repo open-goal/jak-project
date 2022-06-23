@@ -1,8 +1,9 @@
 #pragma once
 
-#include "common/type_system/TypeSystem.h"
-#include "decompiler/Disasm/Register.h"
 #include "common/goos/Reader.h"
+#include "common/type_system/TypeSystem.h"
+
+#include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
 class TP_Type;

@@ -5,11 +5,12 @@
  */
 
 #include "ksocket.h"
-#include "kdsnetm.h"
-#include "kprint.h"
-#include "kboot.h"
+
 #include "fileio.h"
+#include "kboot.h"
+#include "kdsnetm.h"
 #include "klisten.h"
+#include "kprint.h"
 
 /*!
  * Update GOAL message header after receiving and verify message is ok.

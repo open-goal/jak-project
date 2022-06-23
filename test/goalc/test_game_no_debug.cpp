@@ -1,7 +1,7 @@
 // Test the game running without loading debug segments.
 
-#include "gtest/gtest.h"
 #include "goalc/compiler/Compiler.h"
+#include "gtest/gtest.h"
 #include "test/goalc/framework/test_runner.h"
 
 TEST(GameNoDebugSegment, Init) {

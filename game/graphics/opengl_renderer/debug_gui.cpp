@@ -1,8 +1,11 @@
 
 #include "debug_gui.h"
+
 #include <algorithm>
-#include "third-party/imgui/imgui.h"
+
 #include "game/kernel/svnrev.h"
+
+#include "third-party/imgui/imgui.h"
 
 void FrameTimeRecorder::finish_frame() {
   m_frame_times[m_idx++] = m_compute_timer.getMs();

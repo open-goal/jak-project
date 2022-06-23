@@ -1,11 +1,11 @@
 #pragma once
 
-#include "common/cross_sockets/XSocket.h"
-
-#include <thread>
-#include "common/common_types.h"
 #include <functional>
 #include <mutex>
+#include <thread>
+
+#include "common/common_types.h"
+#include "common/cross_sockets/XSocket.h"
 
 /// @brief A cross platform generic socket client implementation
 class XSocketClient {

@@ -1,8 +1,11 @@
+#include "ssound.h"
+
 #include <cstdio>
 #include <cstring>
-#include "game/overlord/srpc.h"
-#include "ssound.h"
+
 #include "common/util/Assert.h"
+
+#include "game/overlord/srpc.h"
 #include "game/sound/sndshim.h"
 
 using namespace iop;

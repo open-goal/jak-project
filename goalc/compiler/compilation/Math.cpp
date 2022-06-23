@@ -1,6 +1,8 @@
-#include "goalc/compiler/Compiler.h"
-#include "common/util/BitUtils.h"
 #include <cfloat>
+
+#include "common/util/BitUtils.h"
+
+#include "goalc/compiler/Compiler.h"
 
 MathMode Compiler::get_math_mode(const TypeSpec& ts) {
   if (m_ts.tc(m_ts.make_typespec("binteger"), ts)) {

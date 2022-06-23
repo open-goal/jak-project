@@ -1,9 +1,10 @@
 #include "mips2c_table.h"
+
 #include "common/log/log.h"
+#include "common/symbols.h"
 
 #include "game/kernel/kmalloc.h"
 #include "game/kernel/kscheme.h"
-#include "common/symbols.h"
 
 using namespace jak1_symbols;
 

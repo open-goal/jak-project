@@ -1,8 +1,9 @@
+#include "collide_bvh.h"
+
 #include <algorithm>
 
-#include "collide_bvh.h"
-#include "common/util/Assert.h"
 #include "common/log/log.h"
+#include "common/util/Assert.h"
 #include "common/util/Timer.h"
 
 // Collision BVH algorithm

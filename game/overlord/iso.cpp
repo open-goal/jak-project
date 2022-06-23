@@ -4,22 +4,26 @@
  * This is a huge mess
  */
 
-#include "common/log/log.h"
-#include <cstring>
-#include <cstdio>
-#include "game/overlord/srpc.h"
-#include "game/sound/sndshim.h"
 #include "iso.h"
-#include "iso_cd.h"
-#include "iso_queue.h"
-#include "iso_api.h"
-#include "game/sce/iop.h"
-#include "stream.h"
+
+#include <cstdio>
+#include <cstring>
+
 #include "dma.h"
 #include "fake_iso.h"
-#include "game/common/dgo_rpc_types.h"
+#include "iso_api.h"
+#include "iso_cd.h"
+#include "iso_queue.h"
+#include "stream.h"
+
+#include "common/log/log.h"
 #include "common/util/Assert.h"
+
+#include "game/common/dgo_rpc_types.h"
+#include "game/overlord/srpc.h"
+#include "game/sce/iop.h"
 #include "game/sound/sdshim.h"
+#include "game/sound/sndshim.h"
 
 using namespace iop;
 

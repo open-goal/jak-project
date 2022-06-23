@@ -1,14 +1,15 @@
 
 #pragma once
 
-#include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/opengl_renderer/DirectRenderer.h"
+#include <map>
+
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
-#include "game/graphics/opengl_renderer/sprite_common.h"
-#include "game/graphics/opengl_renderer/background/background_common.h"
 
-#include <map>
+#include "game/graphics/opengl_renderer/BucketRenderer.h"
+#include "game/graphics/opengl_renderer/DirectRenderer.h"
+#include "game/graphics/opengl_renderer/background/background_common.h"
+#include "game/graphics/opengl_renderer/sprite_common.h"
 
 class Sprite3 : public BucketRenderer {
  public:

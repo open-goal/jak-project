@@ -1,8 +1,10 @@
 #include "SkyBlendCPU.h"
-#include "game/graphics/opengl_renderer/AdgifHandler.h"
-#include "common/util/os.h"
 
 #include <immintrin.h>
+
+#include "common/util/os.h"
+
+#include "game/graphics/opengl_renderer/AdgifHandler.h"
 
 SkyBlendCPU::SkyBlendCPU() {
   for (int i = 0; i < 2; i++) {

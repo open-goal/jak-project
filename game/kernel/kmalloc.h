@@ -10,9 +10,10 @@
 #ifndef JAK_KMALLOC_H
 #define JAK_KMALLOC_H
 
-#include "common/common_types.h"
 #include "Ptr.h"
 #include "kmachine.h"
+
+#include "common/common_types.h"
 
 /*!
  * A kheap has a top/bottom linear allocator

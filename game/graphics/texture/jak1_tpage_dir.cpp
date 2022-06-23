@@ -1,6 +1,8 @@
-#include <vector>
-#include "common/common_types.h"
 #include "jak1_tpage_dir.h"
+
+#include <vector>
+
+#include "common/common_types.h"
 namespace {
 
 std::vector<u32> tpage_dir = {

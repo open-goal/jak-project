@@ -1,8 +1,7 @@
 #pragma once
 
-#include "game/graphics/opengl_renderer/BucketRenderer.h"
-
 #include "game/common/vu.h"
+#include "game/graphics/opengl_renderer/BucketRenderer.h"
 
 class ShadowRenderer : public BucketRenderer {
  public:

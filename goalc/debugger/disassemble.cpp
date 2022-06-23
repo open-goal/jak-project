@@ -1,10 +1,13 @@
 #include "disassemble.h"
+
+#include "common/goos/Reader.h"
+
 #include "Zydis/Zydis.h"
-#include "third-party/fmt/core.h"
 #include "goalc/compiler/Env.h"
 #include "goalc/compiler/IR.h"
-#include "common/goos/Reader.h"
+
 #include "third-party/fmt/color.h"
+#include "third-party/fmt/core.h"
 
 std::string disassemble_x86(u8* data, int len, u64 base_addr) {
   std::string result;

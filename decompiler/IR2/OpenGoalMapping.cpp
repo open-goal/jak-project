@@ -1,6 +1,8 @@
 #include "OpenGoalMapping.h"
-#include "common/goos/PrettyPrinter.h"
+
 #include <optional>
+
+#include "common/goos/PrettyPrinter.h"
 
 namespace decompiler {
 

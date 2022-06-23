@@ -1,8 +1,9 @@
 #include "dir_tpages.h"
 
 #include "DataObjectGenerator.h"
-#include "common/goos/Reader.h"
+
 #include "common/goos/ParseHelpers.h"
+#include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
 
 void compile_dir_tpages(const std::string& filename) {

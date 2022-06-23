@@ -5,8 +5,8 @@
  * The debug menu-bar and frame timing window
  */
 
-#include "common/util/Timer.h"
 #include "common/dma/dma.h"
+#include "common/util/Timer.h"
 
 class FrameTimeRecorder {
  public:

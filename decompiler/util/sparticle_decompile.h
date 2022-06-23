@@ -2,9 +2,10 @@
 
 #include "common/goos/Object.h"
 #include "common/type_system/TypeSpec.h"
+
 #include "decompiler/Disasm/DecompilerLabel.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/IR2/Form.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 namespace decompiler {
 goos::Object decompile_sparticle_field_init(const TypeSpec& type,

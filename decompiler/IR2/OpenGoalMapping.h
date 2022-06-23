@@ -1,16 +1,19 @@
 #pragma once
 
-#include <string>
-#include <optional>
-#include <utility>
 #include <map>
-#include "common/goos/Object.h"
-#include "decompiler/Disasm/Register.h"
-#include "decompiler/Disasm/Instruction.h"
-#include "decompiler/IR2/IR2_common.h"
-#include "Env.h"
+#include <optional>
+#include <string>
+#include <utility>
+
 #include "AtomicOp.h"
+#include "Env.h"
+
+#include "common/goos/Object.h"
 #include "common/util/Assert.h"
+
+#include "decompiler/Disasm/Instruction.h"
+#include "decompiler/Disasm/Register.h"
+#include "decompiler/IR2/IR2_common.h"
 
 namespace decompiler {
 

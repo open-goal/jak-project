@@ -1,6 +1,8 @@
 #include "FileInfo.h"
-#include "goalc/data_compiler/DataObjectGenerator.h"
+
 #include "common/versions.h"
+
+#include "goalc/data_compiler/DataObjectGenerator.h"
 
 size_t FileInfo::add_to_object_file(DataObjectGenerator& gen) const {
   gen.align_to_basic();

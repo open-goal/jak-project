@@ -1,8 +1,9 @@
 #include "libpad.h"
 
-#include "game/kernel/kmachine.h"
-#include "game/graphics/gfx.h"
 #include "common/util/Assert.h"
+
+#include "game/graphics/gfx.h"
+#include "game/kernel/kmachine.h"
 
 /*!
  * @file libpad.cpp

@@ -1,4 +1,5 @@
 #include "pack_helpers.h"
+
 #include <map>
 
 constexpr float kClusterSize = 4096 * 40;  // 100 in-game meters

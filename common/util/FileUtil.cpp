@@ -4,23 +4,25 @@
  */
 
 #include "FileUtil.h"
-#include <iostream>
-#include <filesystem>
+
 #include <cstdio> /* defines FILENAME_MAX */
-#include <fstream>
-#include <sstream>
 #include <cstdlib>
-#include "common/util/BinaryReader.h"
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
 #include "BinaryWriter.h"
+
 #include "common/common_types.h"
+#include "common/util/BinaryReader.h"
 
 // This disables the use of PCLMULQDQ which is probably ok, but let's just be safe and disable it
 // because nobody will care if png compression is 10% slower.
 #define FPNG_NO_SSE 1
-#include "third-party/fpng/fpng.cpp"
-
-#include "third-party/fpng/fpng.h"
 #include "third-party/fmt/core.h"
+#include "third-party/fpng/fpng.cpp"
+#include "third-party/fpng/fpng.h"
 #include "third-party/lzokay/lzokay.hpp"
 
 #ifdef _WIN32
@@ -28,8 +30,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #else
-#include <unistd.h>
 #include <cstring>
+#include <unistd.h>
 #endif
 #include "common/util/Assert.h"
 #include <common/log/log.h>

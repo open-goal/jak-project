@@ -7,9 +7,9 @@
  * can generate prologues/epilogues, and execute them without crashing.
  */
 
-#include "gtest/gtest.h"
 #include "goalc/emitter/CodeTester.h"
 #include "goalc/emitter/IGen.h"
+#include "gtest/gtest.h"
 
 using namespace emitter;
 

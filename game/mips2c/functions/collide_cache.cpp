@@ -1,8 +1,8 @@
 //--------------------------MIPS2C---------------------
-#include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
-
 #include "common/dma/gs.h"
+
+#include "game/kernel/kscheme.h"
+#include "game/mips2c/mips2c_private.h"
 
 namespace {
 u32 vu0_buffer[1024];  // todo, maybe can be 512.

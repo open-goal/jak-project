@@ -1,9 +1,10 @@
 #pragma once
 
-#include "common/common_types.h"
-#include <vector>
-#include <string>
 #include <atomic>
+#include <string>
+#include <vector>
+
+#include "common/common_types.h"
 
 struct ProfNode {
   u64 ts;

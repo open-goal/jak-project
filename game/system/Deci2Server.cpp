@@ -4,10 +4,10 @@
  * Works with deci2.cpp (sceDeci2) to implement the networking on target
  */
 
+// clang-format off
 #include "Deci2Server.h"
 
 #include "common/cross_sockets/XSocket.h"
-
 #include "common/versions.h"
 #include <common/listener_common.h>
 #include <common/util/Assert.h>
@@ -21,6 +21,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
+// clang-format on
 
 Deci2Server::~Deci2Server() {
   // Cleanup the accept thread
