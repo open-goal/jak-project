@@ -1,14 +1,14 @@
 #pragma once
 
+#include <algorithm>
+#include <string>
+#include <map>
+#include <memory>
+#include <unordered_set>
 #include "common/util/FontUtils.h"
 #include "common/util/Assert.h"
 #include "common/goos/Object.h"
-#include <common/log/log.h>
-#include <string>
-#include <map>
-#include <unordered_set>
-#include <memory>
-#include <algorithm>
+#include "common/log/log.h"
 
 /*!
  * The text bank contains all lines (accessed with an ID) for a language.

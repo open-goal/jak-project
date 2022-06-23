@@ -276,7 +276,10 @@ void parse_subtitle(const goos::Object& data,
         scene.m_sorting_group_idx = db.m_subtitle_groups->find_group_index(scene.m_sorting_group);
 
         for_each_in_list(entries, [&](const goos::Object& entry) {
-          if (entry.is_pair()) {
+          if (entry.is_empty_list()) {
+            lg::error("Empty list found in scene {}; skip it", scene.name());
+            return;
+          } else if (entry.is_pair()) {
             // expected formats:
             // (time <args>)
             // all arguments have default values. the arguments are:
@@ -323,7 +326,7 @@ void parse_subtitle(const goos::Object& data,
             auto speaker_str = font->convert_utf8_to_game(speaker_utf8);
             scene.add_line(time, line_str, line_utf8, speaker_str, speaker_utf8, offscreen);
           } else {
-            throw std::runtime_error("Each entry must be a list");
+            throw std::runtime_error(fmt::format("Each entry must be a list", scene.name()));
           }
         });
         for (auto& [lang, bank] : banks) {
@@ -390,7 +393,6 @@ int GameSubtitleGroups::find_group_index(const std::string& group_name) {
 
 void GameSubtitleGroups::remove_scene(const std::string& group_name,
                                       const std::string& scene_name) {
-  // TODO - validate group_name
   if (m_groups.count(group_name) == 0) {
     lg::error("Subtitle group {} doesn't exist! Abort.", group_name);
     return;
@@ -399,15 +401,19 @@ void GameSubtitleGroups::remove_scene(const std::string& group_name,
       std::remove(m_groups[group_name].begin(), m_groups[group_name].end(), scene_name),
       m_groups[group_name].end());
 }
+
 void GameSubtitleGroups::add_scene(const std::string& group_name, const std::string& scene_name) {
   std::string group = group_name;
-  // TODO - validate group_name
   if (m_groups.count(group_name) == 0) {
     lg::error("Subtitle group {} doesn't exist! Add to uncategorized.", group_name);
     group = uncategorized_group;
   }
-  // TODO - don't add duplicates
-  m_groups[group].push_back(scene_name);
+  auto it = std::find(m_groups[group].begin(), m_groups[group].end(), scene_name);
+  if (it != m_groups[group].end()) {
+    lg::error("Scene {} already exists in group {}", scene_name, group);
+  } else {
+    m_groups[group].push_back(scene_name);
+  }
 }
 
 GameSubtitleDB load_subtitle_project() {
