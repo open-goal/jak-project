@@ -2,8 +2,9 @@
  * Mesh extraction for GLTF meshes.
  */
 
-#include <optional>
 #include "gltf_mesh_extract.h"
+
+#include <optional>
 
 #include "common/log/log.h"
 #include "common/math/geometry.h"
