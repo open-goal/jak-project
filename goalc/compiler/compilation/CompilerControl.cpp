@@ -8,7 +8,6 @@
 #include <stack>
 
 #include "common/goos/ReplUtils.h"
-#include "common/log/log.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"

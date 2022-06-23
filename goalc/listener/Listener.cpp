@@ -33,7 +33,6 @@
 #include "Listener.h"
 
 #include "third-party/fmt/core.h"
-#include "common/log/log.h"
 // clang-format on
 
 using namespace versions;

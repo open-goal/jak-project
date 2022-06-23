@@ -1,5 +1,6 @@
 #include "extract_merc.h"
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/colors.h"
 

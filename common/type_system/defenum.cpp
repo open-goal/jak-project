@@ -9,7 +9,6 @@
 #include "deftype.h"
 
 #include "common/goos/ParseHelpers.h"
-#include "common/log/log.h"
 #include "common/util/BitUtils.h"
 
 #include "third-party/fmt/core.h"

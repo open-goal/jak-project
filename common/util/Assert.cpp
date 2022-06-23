@@ -19,7 +19,7 @@ void private_assert_failed(const char* expr,
     lg::die(log);
   } else {
     std::string log =
-        fmt::format("Assertion failed: '{}'\n\tMessage: %s\n\tSource: {}:{}\n\tFunction: {}\n",
+        fmt::format("Assertion failed: '{}'\n\tMessage: {}\n\tSource: {}:{}\n\tFunction: {}\n",
                     expr, msg, file, line, function);
     lg::die(log);
   }

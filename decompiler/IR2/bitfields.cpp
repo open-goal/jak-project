@@ -1,6 +1,7 @@
 #include "bitfields.h"
 
 #include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
 #include "common/util/BitUtils.h"
 #include "common/util/Range.h"
 

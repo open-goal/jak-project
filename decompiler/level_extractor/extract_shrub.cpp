@@ -2,6 +2,7 @@
 
 #include <array>
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"

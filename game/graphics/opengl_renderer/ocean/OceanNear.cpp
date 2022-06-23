@@ -1,5 +1,7 @@
 #include "OceanNear.h"
 
+#include "common/log/log.h"
+
 #include "third-party/imgui/imgui.h"
 
 OceanNear::OceanNear(const std::string& name, BucketId my_id)

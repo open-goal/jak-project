@@ -7,8 +7,6 @@
 
 #include <algorithm>
 
-#include "common/log/log.h"
-
 #include "third-party/fmt/core.h"
 /*!
  * Print out the input data for debugging.

@@ -4,6 +4,7 @@
  */
 
 #include "cfg_builder.h"
+#include "common/log/log.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"

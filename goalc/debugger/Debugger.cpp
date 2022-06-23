@@ -7,7 +7,6 @@
 #include "Debugger.h"
 
 #include "common/goal_constants.h"
-#include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/Assert.h"
 #include "common/util/Timer.h"

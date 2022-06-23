@@ -3,7 +3,6 @@
 #include <vector>
 
 #include "common/dma/gs.h"
-#include "common/log/log.h"
 #include "common/math/Vector.h"
 #include "common/util/SmallVector.h"
 

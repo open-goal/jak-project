@@ -3,6 +3,7 @@
 #include "Function.h"
 
 #include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 
 #include "decompiler/Disasm/InstructionMatching.h"

@@ -5,7 +5,6 @@
 #include "IR.h"
 
 #include "common/goos/Reader.h"
-#include "common/log/log.h"
 
 #include "third-party/fmt/core.h"
 

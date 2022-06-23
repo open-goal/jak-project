@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstring>
 
-#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/print_float.h"
 

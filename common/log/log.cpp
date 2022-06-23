@@ -47,7 +47,7 @@ void log_message(level log_level, LogTime& now, const char* message) {
   strftime(date_time_buffer, 128, "%Y-%m-%d %H:%M:%S", localtime(&now_seconds));
   std::string date_string = fmt::format("[{}:{:03d}]", date_time_buffer, now_milliseconds);
   strftime(date_time_buffer, 128, "%M:%S", localtime(&now_seconds));
-  std::string time_condensed = fmt::format("[{}]", date_time_buffer);
+  std::string time_condensed = fmt::format("[{}]:{:03d}]", date_time_buffer, now_milliseconds);
 #else
   char date_time_buffer[128];
   strftime(date_time_buffer, 128, "%Y-%m-%d %H:%M:%S", localtime(&now.tim));

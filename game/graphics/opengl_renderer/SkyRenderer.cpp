@@ -1,7 +1,5 @@
 #include "SkyRenderer.h"
 
-#include "common/log/log.h"
-
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
 #include "game/graphics/pipelines/opengl.h"
 

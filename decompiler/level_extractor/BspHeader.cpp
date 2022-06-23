@@ -1,6 +1,7 @@
 #include "BspHeader.h"
 
 #include "common/dma/dma.h"
+#include "common/log/log.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"

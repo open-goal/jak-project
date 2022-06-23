@@ -2,6 +2,8 @@
 
 #include "Sprite3.h"
 
+#include "common/log/log.h"
+
 #include "game/graphics/opengl_renderer/background/background_common.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 

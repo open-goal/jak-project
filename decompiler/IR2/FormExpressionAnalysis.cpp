@@ -3,6 +3,7 @@
 #include "GenericElementMatcher.h"
 
 #include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
 #include "common/type_system/state.h"
 #include "common/util/Assert.h"
 #include "common/util/BitUtils.h"

@@ -7,6 +7,7 @@
 #include "Form.h"
 
 #include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
 #include "common/util/math_util.h"
 
 #include "decompiler/analysis/atomic_op_builder.h"

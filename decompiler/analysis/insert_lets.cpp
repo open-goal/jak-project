@@ -3,6 +3,7 @@
 #include <limits>
 #include <tuple>
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/print_float.h"
 #include "decompiler/IR2/GenericElementMatcher.h"

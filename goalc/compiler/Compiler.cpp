@@ -8,7 +8,6 @@
 
 #include "common/goos/PrettyPrinter.h"
 #include "common/link_types.h"
-#include "common/log/log.h"
 
 #include "goalc/make/Tools.h"
 #include "goalc/regalloc/Allocator.h"

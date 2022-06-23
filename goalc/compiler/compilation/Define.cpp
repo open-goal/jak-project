@@ -3,8 +3,6 @@
  * Forms which define or set things.
  */
 
-#include "common/log/log.h"
-
 #include "goalc/compiler/Compiler.h"
 
 /*!

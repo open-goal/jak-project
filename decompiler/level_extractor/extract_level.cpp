@@ -3,6 +3,7 @@
 #include <set>
 #include <thread>
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/SimpleThreadGroup.h"
 #include "common/util/compress.h"

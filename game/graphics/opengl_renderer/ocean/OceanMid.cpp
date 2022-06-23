@@ -1,5 +1,7 @@
 #include "OceanMid.h"
 
+#include "common/log/log.h"
+
 static bool is_end_tag(const DmaTag& tag, const VifCode& v0, const VifCode& v1) {
   return tag.qwc == 2 && tag.kind == DmaTag::Kind::CNT && v0.kind == VifCode::Kind::NOP &&
          v1.kind == VifCode::Kind::DIRECT;

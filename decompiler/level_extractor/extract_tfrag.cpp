@@ -3,6 +3,7 @@
 #include "common/custom_data/pack_helpers.h"
 #include "common/dma/dma.h"
 #include "common/dma/gs.h"
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
 

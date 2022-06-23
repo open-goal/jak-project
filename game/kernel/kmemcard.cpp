@@ -61,11 +61,12 @@ using namespace ee;
 template <typename... Args>
 void mc_print(const std::string& str, Args&&... args) {
   if (memcard_debug) {
-    lg::info("[MC] ");
-    if (!str.empty() && str.back() == '\n') {
-      lg::info(str, std::forward<Args>(args)...);
+    std::string strCopy = str;
+    strCopy.insert(0, "[MC] ");
+    if (!strCopy.empty() && strCopy.back() == '\n') {
+      lg::debug(strCopy, std::forward<Args>(args)...);
     } else {
-      lg::info(str + '\n', std::forward<Args>(args)...);
+      lg::debug(strCopy + '\n', std::forward<Args>(args)...);
     }
   }
 }

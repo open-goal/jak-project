@@ -1,5 +1,3 @@
-#include "common/log/log.h"
-
 #include "goalc/compiler/Compiler.h"
 
 /*!

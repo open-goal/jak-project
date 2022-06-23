@@ -1,6 +1,7 @@
 #include "ExpressionHelpers.h"
 
 #include "common/goal_constants.h"
+#include "common/log/log.h"
 
 #include "decompiler/IR2/Env.h"
 #include "decompiler/IR2/Form.h"

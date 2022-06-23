@@ -7,8 +7,6 @@
 
 #include <stdexcept>
 
-#include "common/log/log.h"
-
 #include "goalc/regalloc/allocator_interface.h"
 
 #include "third-party/fmt/core.h"
