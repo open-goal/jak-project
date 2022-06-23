@@ -179,7 +179,6 @@ void SubtitleEditor::draw_window() {
   }
 
   if (ImGui::TreeNode("All Cutscenes")) {
-    // BUG - for some reason drawing this crashes when current language != 0!!
     ImGui::InputText("New Scene Name", &m_new_scene_name);
     if (ImGui::BeginCombo("Sorting Group", m_new_scene_group.c_str())) {
       for (size_t i = 0; i < m_subtitle_db.m_subtitle_groups->m_group_order.size(); ++i) {
@@ -226,7 +225,6 @@ void SubtitleEditor::draw_window() {
   }
 
   if (ImGui::TreeNode("All Hints")) {
-    // BUG - for some reason drawing this crashes when current language != 0!!
     ImGui::InputText("New Scene Name", &m_new_scene_name);
     ImGui::InputText("New Scene ID (hex)", &m_new_scene_id);
     if (ImGui::BeginCombo("Sorting Group", m_new_scene_group.c_str())) {
@@ -237,7 +235,8 @@ void SubtitleEditor::draw_window() {
       }
       ImGui::EndCombo();
     }
-    ImGui::InputText("Filter", &m_filter, ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
+    ImGui::InputText("Filter", &m_filter_hints,
+                     ImGuiInputTextFlags_::ImGuiInputTextFlags_AutoSelectAll);
     if (is_scene_in_current_lang(m_new_scene_name)) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
       ImGui::Text("Scene already exists with that name, no!");
@@ -361,7 +360,8 @@ void SubtitleEditor::draw_repl_options() {
 
 void SubtitleEditor::draw_all_cutscene_groups() {
   for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
-    // ImGui::SetNextItemOpen(true);
+    if (!m_filter.empty() && m_filter != m_filter_placeholder)
+      ImGui::SetNextItemOpen(true);
     if (ImGui::TreeNode(group_name.c_str())) {
       draw_all_scenes(group_name, false);
       draw_all_scenes(group_name, true);
@@ -372,7 +372,8 @@ void SubtitleEditor::draw_all_cutscene_groups() {
 
 void SubtitleEditor::draw_all_hint_groups() {
   for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
-    // ImGui::SetNextItemOpen(true);
+    if (!m_filter_hints.empty() && m_filter_hints != m_filter_placeholder)
+      ImGui::SetNextItemOpen(true);
     if (ImGui::TreeNode(group_name.c_str())) {
       draw_all_hints(group_name, false);
       draw_all_hints(group_name, true);
@@ -451,8 +452,8 @@ void SubtitleEditor::draw_all_hints(std::string group_name, bool base_cutscenes)
         scene_info.m_kind != SubtitleSceneKind::HintNamed) {
       continue;
     }
-    if ((!m_filter.empty() && m_filter != m_filter_placeholder) &&
-        scene_name.find(m_filter) == std::string::npos) {
+    if ((!m_filter_hints.empty() && m_filter_hints != m_filter_placeholder) &&
+        scene_name.find(m_filter_hints) == std::string::npos) {
       continue;
     }
     if (base_cutscenes) {
