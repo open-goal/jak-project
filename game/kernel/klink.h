@@ -6,6 +6,8 @@
  * DONE!
  */
 
+#include <cstring>
+
 #include "Ptr.h"
 #include "kmalloc.h"
 

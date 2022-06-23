@@ -11,6 +11,7 @@
 #ifndef JAK_CODETESTER_H
 #define JAK_CODETESTER_H
 
+#include <cstring>
 #include <stdexcept>
 #include <string>
 
