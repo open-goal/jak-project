@@ -4,28 +4,32 @@
  * DONE!
  */
 
-#include <cstring>
+#include "kboot.h"
+
 #include <chrono>
+#include <cstring>
 #include <stdio.h>
 #include <stdlib.h>
 #include <thread>
 
-#include "common/common_types.h"
-#include "common/util/Timer.h"
-#include "game/common/game_common_types.h"
-#include "game/sce/libscf.h"
-#include "kboot.h"
+#include "klisten.h"
 #include "kmachine.h"
+#include "kprint.h"
 #include "kscheme.h"
 #include "ksocket.h"
-#include "klisten.h"
-#include "kprint.h"
+
+#include "common/common_types.h"
+#include "common/util/Timer.h"
+
+#include "game/common/game_common_types.h"
+#include "game/sce/libscf.h"
 
 #ifdef _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
-#include "Windows.h"
 #include <io.h>
+
+#include "Windows.h"
 #elif __linux__
 #include <unistd.h>
 #endif

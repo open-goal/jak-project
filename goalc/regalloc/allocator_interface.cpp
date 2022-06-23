@@ -3,10 +3,11 @@
  * Runs the register allocator.
  */
 
+#include "allocator_interface.h"
+
 #include <algorithm>
 
 #include "third-party/fmt/core.h"
-#include "allocator_interface.h"
 
 /*!
  * Print out the input data for debugging.

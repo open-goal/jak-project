@@ -3,9 +3,10 @@
  * Cross platform socket library used for the listener.
  */
 
+// clang-format off
 #ifdef __linux
-#include <sys/socket.h>
 #include <netinet/tcp.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #elif _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -17,6 +18,7 @@
 #include <string.h>
 
 #include "third-party/fmt/core.h"
+// clang-format on
 
 int open_socket(int af, int type, int protocol) {
 #ifdef __linux

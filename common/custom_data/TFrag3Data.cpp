@@ -1,6 +1,8 @@
-#include <functional>
-#include <algorithm>
 #include "Tfrag3Data.h"
+
+#include <algorithm>
+#include <functional>
+
 #include "common/util/Assert.h"
 
 namespace tfrag3 {

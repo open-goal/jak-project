@@ -7,6 +7,7 @@
  */
 
 #include "TypeSystem.h"
+
 #include "common/goos/Object.h"
 
 struct DeftypeResult {

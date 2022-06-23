@@ -1,12 +1,14 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #pragma once
+#include <array>
+
 #include "loader.h"
 #include "midi_handler.h"
 #include "sound_handler.h"
 #include "vagvoice.h"
+
 #include "common/common_types.h"
-#include <array>
 
 namespace snd {
 

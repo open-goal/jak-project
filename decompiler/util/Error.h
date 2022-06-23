@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdexcept>
+
 #include "third-party/fmt/core.h"
 
 class Error : public std::runtime_error {

@@ -3,10 +3,12 @@
  * The Listener can connect to a Deci2Server for debugging.
  */
 
+// clang-format off
 #ifdef __linux__
 #include <stdexcept>
-#include <netinet/tcp.h>
+
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <unistd.h>
 #elif _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -18,18 +20,20 @@
 #undef max
 #endif
 
-#include "common/cross_sockets/XSocket.h"
-
-#include <stdexcept>
-#include <cstring>
-#include <chrono>
-#include <thread>
 #include <algorithm>
-#include "Listener.h"
+#include <chrono>
+#include <cstring>
+#include <stdexcept>
+#include <thread>
+
+#include "common/cross_sockets/XSocket.h"
+#include "common/util/Assert.h"
 #include "common/versions.h"
 
+#include "Listener.h"
+
 #include "third-party/fmt/core.h"
-#include "common/util/Assert.h"
+// clang-format on
 
 using namespace versions;
 constexpr bool debug_listener = false;

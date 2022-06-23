@@ -4,11 +4,12 @@
 #include <memory>
 
 #include "common/dma/dma_chain_read.h"
-#include "game/graphics/opengl_renderer/Shader.h"
+
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/opengl_renderer/Profiler.h"
-#include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "game/graphics/opengl_renderer/CollideMeshRenderer.h"
+#include "game/graphics/opengl_renderer/Profiler.h"
+#include "game/graphics/opengl_renderer/Shader.h"
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "game/tools/subtitles/subtitle_editor.h"
 
 struct RenderOptions {

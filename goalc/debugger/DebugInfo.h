@@ -1,14 +1,16 @@
 #pragma once
 
-#include <vector>
-#include <string>
-#include <optional>
 #include <memory>
+#include <optional>
+#include <string>
 #include <unordered_map>
+#include <vector>
+
 #include "common/common_types.h"
-#include "goalc/emitter/Instruction.h"
-#include "goalc/debugger/disassemble.h"
 #include "common/util/Assert.h"
+
+#include "goalc/debugger/disassemble.h"
+#include "goalc/emitter/Instruction.h"
 
 class FunctionEnv;
 

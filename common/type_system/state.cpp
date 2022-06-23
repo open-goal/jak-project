@@ -1,4 +1,5 @@
 #include "state.h"
+
 #include "common/type_system/TypeSystem.h"
 
 /*!

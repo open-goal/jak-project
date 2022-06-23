@@ -1,5 +1,6 @@
-#include "goalc/compiler/Compiler.h"
 #include "common/type_system/state.h"
+
+#include "goalc/compiler/Compiler.h"
 
 /*!
  * Helper func for compiling the set!'s within defstates

@@ -4,10 +4,13 @@
  * This is the part of the disassembler that decodes MIPS instructions.
  */
 
-#include "third-party/fmt/core.h"
 #include "InstructionDecode.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
+
 #include "common/util/Assert.h"
+
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 // utility class to extract fields of an opcode.

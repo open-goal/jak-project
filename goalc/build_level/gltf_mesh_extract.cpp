@@ -4,11 +4,14 @@
 
 #include <optional>
 #include "gltf_mesh_extract.h"
-#include "goalc/build_level/color_quantization.h"
-#include "third-party/tiny_gltf/tiny_gltf.h"
+
 #include "common/log/log.h"
-#include "common/util/Timer.h"
 #include "common/math/geometry.h"
+#include "common/util/Timer.h"
+
+#include "goalc/build_level/color_quantization.h"
+
+#include "third-party/tiny_gltf/tiny_gltf.h"
 
 namespace gltf_mesh_extract {
 

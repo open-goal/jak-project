@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/goos/Interpreter.h"
+
 #include "goalc/make/Tool.h"
 
 struct MakeStep {

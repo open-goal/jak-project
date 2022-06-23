@@ -1,5 +1,13 @@
 #pragma once
 
+#include "common/common_types.h"
+#include "common/custom_data/Tfrag3Data.h"
+#include "common/util/Timer.h"
+
+#include "game/graphics/texture/TexturePool.h"
+
+#include "third-party/glad/include/glad/glad.h"
+
 struct LevelData {
   std::unique_ptr<tfrag3::Level> level;
   std::vector<GLuint> textures;

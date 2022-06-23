@@ -1,8 +1,12 @@
-#include <utility>
 #include "IR.h"
-#include "goalc/emitter/IGen.h"
-#include "third-party/fmt/core.h"
+
+#include <utility>
+
 #include "common/symbols.h"
+
+#include "goalc/emitter/IGen.h"
+
+#include "third-party/fmt/core.h"
 
 using namespace emitter;
 using namespace jak1_symbols;  // TODO jak 1 symbols

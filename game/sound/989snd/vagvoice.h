@@ -3,8 +3,11 @@
 #pragma once
 #include <list>
 #include <memory>
-#include "common/common_types.h"
+
 #include "locator.h"
+
+#include "common/common_types.h"
+
 #include "game/sound/common/synth.h"
 #include "game/sound/common/voice.h"
 

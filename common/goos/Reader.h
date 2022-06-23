@@ -12,15 +12,14 @@
  */
 
 #include <memory>
-#include <utility>
-#include <unordered_map>
 #include <optional>
-
-#include "common/goos/Object.h"
-#include "common/goos/TextDB.h"
+#include <unordered_map>
+#include <utility>
 
 #include "ReplUtils.h"
 
+#include "common/goos/Object.h"
+#include "common/goos/TextDB.h"
 #include "common/util/Assert.h"
 
 namespace goos {

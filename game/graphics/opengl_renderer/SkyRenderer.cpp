@@ -1,8 +1,11 @@
 #include "SkyRenderer.h"
-#include "third-party/imgui/imgui.h"
-#include "game/graphics/pipelines/opengl.h"
-#include "game/graphics/opengl_renderer/AdgifHandler.h"
+
 #include "common/log/log.h"
+
+#include "game/graphics/opengl_renderer/AdgifHandler.h"
+#include "game/graphics/pipelines/opengl.h"
+
+#include "third-party/imgui/imgui.h"
 
 // The sky texture system blends together sky textures from different levels and times of day
 // to create the final sky texture.

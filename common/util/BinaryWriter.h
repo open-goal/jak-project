@@ -5,10 +5,11 @@
  * Write raw data like a stream.
  */
 
-#include <stdexcept>
-#include <vector>
 #include <cstdint>
 #include <cstring>
+#include <stdexcept>
+#include <vector>
+
 #include "common/util/Assert.h"
 
 struct BinaryWriterRef {

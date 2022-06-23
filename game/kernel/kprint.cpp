@@ -3,26 +3,29 @@
  * GOAL Print.  Contains GOAL I/O, Print, Format...
  */
 
-#include <cstring>
+#include "kprint.h"
+
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
+#include <cstring>
 
-#include "common/goal_constants.h"
+#include "fileio.h"
+#include "kboot.h"
+#include "kdsnetm.h"
+#include "klink.h"
+#include "klisten.h"
+#include "kmachine.h"
+#include "kmalloc.h"
+#include "kscheme.h"
+
 #include "common/common_types.h"
 #include "common/cross_os_debug/xdbg.h"
-#include "game/sce/sif_ee.h"
-#include "kprint.h"
-#include "kmachine.h"
-#include "kboot.h"
-#include "kmalloc.h"
-#include "kdsnetm.h"
-#include "fileio.h"
-#include "kscheme.h"
-#include "klisten.h"
-#include "klink.h"
+#include "common/goal_constants.h"
 #include "common/symbols.h"
 #include "common/util/Assert.h"
+
+#include "game/sce/sif_ee.h"
 
 using namespace jak1_symbols;
 

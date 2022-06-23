@@ -2,8 +2,9 @@
 
 #include <unordered_map>
 
-#include "decompiler/VuDisasm/VuProgram.h"
 #include "common/util/Assert.h"
+
+#include "decompiler/VuDisasm/VuProgram.h"
 
 namespace decompiler {
 

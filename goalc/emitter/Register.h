@@ -6,8 +6,9 @@
  */
 
 #include <array>
-#include <vector>
 #include <string>
+#include <vector>
+
 #include "common/common_types.h"
 #include "common/goal_constants.h"
 #include "common/util/Assert.h"

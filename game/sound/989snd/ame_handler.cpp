@@ -1,8 +1,9 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #include "ame_handler.h"
-#include "game/sound/989snd/blocksound_handler.h"
+
 #include "game/kernel/ksound.h"
+#include "game/sound/989snd/blocksound_handler.h"
 
 namespace snd {
 

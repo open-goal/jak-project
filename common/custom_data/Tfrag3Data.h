@@ -5,9 +5,9 @@
 
 #include "common/common_types.h"
 #include "common/dma/gs.h"
-#include "common/util/Serializer.h"
 #include "common/math/Vector.h"
 #include "common/util/Assert.h"
+#include "common/util/Serializer.h"
 
 namespace tfrag3 {
 

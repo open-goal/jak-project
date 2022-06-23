@@ -2,8 +2,9 @@
 
 #include <optional>
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
+
 #include "Object.h"
 
 namespace goos {

@@ -1,9 +1,10 @@
 #pragma once
 
-#include "common/common_types.h"
-#include <string>
 #include <map>
+#include <string>
 #include <vector>
+
+#include "common/common_types.h"
 
 class DataObjectGenerator {
  public:

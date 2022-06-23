@@ -1,9 +1,11 @@
 
-#include "common/goal_constants.h"
-#include "common/dma/dma_chain_read.h"
 #include "dma_copy.h"
-#include "third-party/fmt/core.h"
+
+#include "common/dma/dma_chain_read.h"
+#include "common/goal_constants.h"
 #include "common/util/Timer.h"
+
+#include "third-party/fmt/core.h"
 
 /*!
  * Convert a DMA chain to an array of bytes that can be directly fed to VIF.

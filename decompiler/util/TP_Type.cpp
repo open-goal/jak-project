@@ -1,4 +1,5 @@
 #include "TP_Type.h"
+
 #include "third-party/fmt/core.h"
 
 namespace decompiler {

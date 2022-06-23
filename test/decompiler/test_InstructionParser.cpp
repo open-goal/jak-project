@@ -1,6 +1,6 @@
-#include "gtest/gtest.h"
-#include "decompiler/Disasm/InstructionParser.h"
 #include "decompiler/Disasm/DecompilerLabel.h"
+#include "decompiler/Disasm/InstructionParser.h"
+#include "gtest/gtest.h"
 
 using namespace decompiler;
 

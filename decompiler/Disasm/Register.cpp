@@ -4,9 +4,12 @@
  */
 
 #include "Register.h"
+
 #include <stdexcept>
-#include "third-party/fmt/core.h"
+
 #include "common/util/Assert.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 namespace Reg {

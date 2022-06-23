@@ -1,11 +1,12 @@
 #pragma once
 
 #include <memory>
-#include "gtest/gtest.h"
+
 #include "decompiler/Disasm/InstructionParser.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
+#include "gtest/gtest.h"
 
 namespace decompiler {
 struct RegisterTypeCast;

@@ -1,9 +1,12 @@
 #include "config.h"
-#include "third-party/json.hpp"
-#include "third-party/fmt/core.h"
+
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
+
 #include "decompiler/util/config_parsers.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/json.hpp"
 
 namespace decompiler {
 

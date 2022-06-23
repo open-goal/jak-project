@@ -1,7 +1,10 @@
-#include <cstring>
 #include "iop.h"
-#include "game/system/iop_thread.h"
+
+#include <cstring>
+
 #include "common/util/Assert.h"
+
+#include "game/system/iop_thread.h"
 
 namespace iop {
 /*!

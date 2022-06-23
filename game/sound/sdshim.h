@@ -1,5 +1,6 @@
 #pragma once
 #include "common/common_types.h"
+
 #include "game/sound/common/voice.h"
 
 #define SD_VA_SSA ((0x20 << 8) + (0x01 << 6))

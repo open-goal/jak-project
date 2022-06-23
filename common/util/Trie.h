@@ -1,7 +1,8 @@
 #pragma once
 
-#include <vector>
 #include <string>
+#include <vector>
+
 #include "common/util/Assert.h"
 
 /*!

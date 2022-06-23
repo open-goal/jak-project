@@ -1,10 +1,11 @@
 #include "ReplUtils.h"
 
 #include "common/util/FileUtil.h"
-#include "third-party/replxx/include/replxx.hxx"
 #include "common/versions.h"
+
 #include "third-party/fmt/color.h"
 #include "third-party/fmt/core.h"
+#include "third-party/replxx/include/replxx.hxx"
 
 // TODO - expand a list of hints (ie. a hint for defun to show at a glance how to write a function,
 // or perhaps, show the docstring for the current function being used?)

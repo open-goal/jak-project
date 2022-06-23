@@ -1,7 +1,8 @@
 #pragma once
 
-#include <string>
 #include <cstring>
+#include <string>
+
 #include "common/common_types.h"
 
 namespace decompiler {

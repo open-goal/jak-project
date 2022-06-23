@@ -1,14 +1,16 @@
 
-#include <string>
-#include <vector>
-#include <unordered_map>
-#include <cstring>
-
 #include "sif_ee_memcard.h"
-#include "game/sce/sif_ee.h"
-#include "common/util/Serializer.h"
-#include "common/util/FileUtil.h"
+
+#include <cstring>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 #include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
+#include "common/util/Serializer.h"
+
+#include "game/sce/sif_ee.h"
 
 namespace ee {
 /*!

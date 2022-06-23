@@ -4,12 +4,15 @@
  */
 
 #include <string>
+
 #include "runtime.h"
-#include "common/versions.h"
+
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
-#include "game/discord.h"
 #include "common/util/os.h"
+#include "common/versions.h"
+
+#include "game/discord.h"
 
 // Discord RPC
 extern int64_t gStartTime;

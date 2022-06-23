@@ -1,5 +1,7 @@
-#include "gtest/gtest.h"
 #include "common/common_types.h"
+
+#include "gtest/gtest.h"
+
 #include "third-party/zydis/include/Zydis/Zydis.h"
 
 TEST(Zydis, Basic) {
