@@ -61,7 +61,7 @@ const char* jak1_get_full_level_name(const char* level_name) {
   if (nice_name != jak1_level_names.end()) {
     return nice_name->second.c_str();
   }
-  return "Unknown";
+  return "unknown";
 };
 
 // time of day string to append to level name for icons
