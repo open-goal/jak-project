@@ -334,7 +334,7 @@ void compile(std::filesystem::path extracted_iso_path) {
       flags |= it->second;
     }
   }
-  compiler.make_system().set_constant("*jak1-full-game*", flags & FLAG_JAK1_BLACK_LABEL);
+  compiler.make_system().set_constant("*jak1-full-game*", !(flags & FLAG_JAK1_BLACK_LABEL));
 
   compiler.make_system().load_project_file(
       (file_util::get_jak_project_dir() / "goal_src" / "game.gp").string());
