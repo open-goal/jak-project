@@ -2,6 +2,7 @@
  * Mesh extraction for GLTF meshes.
  */
 
+#include <optional>
 #include "gltf_mesh_extract.h"
 #include "goalc/build_level/color_quantization.h"
 #include "third-party/tiny_gltf/tiny_gltf.h"
@@ -217,6 +218,10 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
       ASSERT_MSG(attrib_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT,
                  "NORMAL wasn't float");
       normals = extract_vec3f(data_ptr, count, byte_stride);
+      for (auto& nrm : normals) {
+        math::Vector4f nrm4(nrm.x(), nrm.y(), nrm.z(), 0.f);
+        nrm = (w_T_local * nrm4).xyz();
+      }
       ASSERT(normals.size() == result.size());
     } else {
       lg::error("No NORMAL attribute for mesh: {}", debug_name);
@@ -246,8 +251,8 @@ DrawMode make_default_draw_mode() {
   mode.set_alpha_blend(DrawMode::AlphaBlend::DISABLED);
   mode.set_aref(0);
   mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
-  mode.set_clamp_s_enable(true);
-  mode.set_clamp_t_enable(true);
+  mode.set_clamp_s_enable(false);
+  mode.set_clamp_t_enable(false);
   mode.disable_filt();  // for checkerboard...
   mode.enable_tcc();    // ?
   mode.disable_at();
@@ -527,6 +532,7 @@ void extract(const Input& in,
         if (in.get_colors) {
           all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(),
                                 verts.vtx_colors.end());
+          ASSERT(all_vtx_colors.size() == out.vertices.size());
         }
 
         // TODO: just putting it all in one material
@@ -596,6 +602,65 @@ void extract(const Input& in,
   dedup_vertices(out);
 }
 
+std::optional<std::vector<CollideFace>> subdivide_face_if_needed(CollideFace face_in) {
+  math::Vector3f v_min = face_in.v[0];
+  v_min.min_in_place(face_in.v[1]);
+  v_min.min_in_place(face_in.v[2]);
+  v_min -= 16.f;
+  bool needs_subdiv = false;
+  for (auto& vert : face_in.v) {
+    if ((vert - v_min).squared_length() > 154.f * 154.f * 4096.f * 4096.f) {
+      needs_subdiv = true;
+      break;
+    }
+  }
+
+  if (needs_subdiv) {
+    math::Vector3f a = (face_in.v[0] + face_in.v[1]) * 0.5f;
+    math::Vector3f b = (face_in.v[1] + face_in.v[2]) * 0.5f;
+    math::Vector3f c = (face_in.v[2] + face_in.v[0]) * 0.5f;
+    math::Vector3f v0 = face_in.v[0];
+    math::Vector3f v1 = face_in.v[1];
+    math::Vector3f v2 = face_in.v[2];
+    CollideFace fs[4];
+    fs[0].v[0] = v0;
+    fs[0].v[1] = a;
+    fs[0].v[2] = c;
+    fs[0].bsphere = math::bsphere_of_triangle(face_in.v);
+
+    fs[1].v[0] = a;
+    fs[1].v[1] = v1;
+    fs[1].v[2] = b;
+    fs[1].bsphere = math::bsphere_of_triangle(fs[1].v);
+    fs[1].pat = face_in.pat;
+
+    fs[2].v[0] = a;
+    fs[2].v[1] = b;
+    fs[2].v[2] = c;
+    fs[2].bsphere = math::bsphere_of_triangle(fs[2].v);
+    fs[2].pat = face_in.pat;
+
+    fs[3].v[0] = b;
+    fs[3].v[1] = v2;
+    fs[3].v[2] = c;
+    fs[3].bsphere = math::bsphere_of_triangle(fs[3].v);
+    fs[3].pat = face_in.pat;
+
+    std::vector<CollideFace> result;
+    for (auto f : fs) {
+      auto next_faces = subdivide_face_if_needed(f);
+      if (next_faces) {
+        result.insert(result.end(), next_faces->begin(), next_faces->end());
+      } else {
+        result.push_back(f);
+      }
+    }
+    return result;
+  } else {
+    return std::nullopt;
+  }
+}
+
 void extract(const Input& in,
              CollideOutput& out,
              const tinygltf::Model& model,
@@ -606,7 +671,6 @@ void extract(const Input& in,
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
-    fmt::print("node: {} {}\n", node.name, node.mesh);
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
       if (!mesh.extras.Has("collide")) {
@@ -644,7 +708,9 @@ void extract(const Input& in,
 
           if (dots[0] > 1e-3 && dots[1] > 1e-3 && dots[2] > 1e-3) {
             suspicious_faces++;
-            std::swap(face.v[2], face.v[1]);
+            auto temp = face.v[2];
+            face.v[2] = face.v[1];
+            face.v[1] = temp;
           }
 
           face.bsphere = math::bsphere_of_triangle(face.v);
@@ -665,8 +731,22 @@ void extract(const Input& in,
     }
   }
 
-  lg::info("{} out of {} faces were suspicious (a small number is ok)", suspicious_faces,
-           out.faces.size());
+  std::vector<CollideFace> fixed_faces;
+  int fix_count = 0;
+  for (auto& face : out.faces) {
+    auto try_fix = subdivide_face_if_needed(face);
+    if (try_fix) {
+      fix_count++;
+      fixed_faces.insert(fixed_faces.end(), try_fix->begin(), try_fix->end());
+    } else {
+      fixed_faces.push_back(face);
+    }
+  }
+  out.faces = std::move(fixed_faces);
+
+  lg::info("{} out of {} faces appeared to have wrong orientation and were flipped",
+           suspicious_faces, out.faces.size());
+  lg::info("{} faces were too big and were subdivided", fix_count);
   // lg::info("Collision extract{} {}", mesh_count, prim_count);
 }
 

@@ -15,7 +15,6 @@
 namespace collide {
 
 namespace {
-
 constexpr int MAX_FACES_IN_FRAG = 100;
 
 /*!
@@ -41,7 +40,6 @@ struct BBox {
  */
 void add_to_bbox_recursive(const CNode& node, BBox& bbox) {
   if (node.faces.empty()) {
-    ASSERT(node.child_nodes.size() == 8);
     for (auto& child : node.child_nodes) {
       add_to_bbox_recursive(child, bbox);
     }
@@ -68,7 +66,6 @@ BBox bbox_of_node(const CNode& node) {
  */
 void update_bsphere_recursive(const CNode& node, const math::Vector3f& origin, float& r_squared) {
   if (node.faces.empty()) {
-    ASSERT(node.child_nodes.size() == 8);
     for (auto& child : node.child_nodes) {
       update_bsphere_recursive(child, origin, r_squared);
     }
@@ -164,28 +161,35 @@ void split_node_to_8_children(CNode& node) {
   split_node_once(level1[3], &node.child_nodes[6], &node.child_nodes[7]);
 }
 
+struct SplitResult {
+  size_t max_leaf_count = 0;
+  float max_bsphere_w = 0;
+};
 /*!
  * Split all leaf nodes. Returns the number of faces in the leaf with the most faces after
  * splitting.
  * This slightly unusual recursion pattern is to make sure we split everything to same depth,
  * which we believe might be a requirement of the collision system.
  */
-size_t split_all_leaves(CNode& node) {
-  size_t worst_leaf_face_count = 0;
+SplitResult split_all_leaves(CNode& node) {
+  SplitResult result;
   if (node.child_nodes.empty()) {
     // we're a leaf!
     // split us:
     split_node_to_8_children(node);
     for (auto& child : node.child_nodes) {
-      worst_leaf_face_count = std::max(worst_leaf_face_count, child.faces.size());
+      result.max_leaf_count = std::max(result.max_leaf_count, child.faces.size());
+      result.max_bsphere_w = std::max(result.max_bsphere_w, child.bsphere.w());
     }
-    return worst_leaf_face_count;
+    return result;
   } else {
     // not a leaf, recurse
     for (auto& child : node.child_nodes) {
-      worst_leaf_face_count = std::max(worst_leaf_face_count, split_all_leaves(child));
+      auto cret = split_all_leaves(child);
+      result.max_bsphere_w = std::max(result.max_bsphere_w, cret.max_bsphere_w);
+      result.max_leaf_count = std::max(result.max_leaf_count, cret.max_leaf_count);
     }
-    return worst_leaf_face_count;
+    return result;
   }
 }
 
@@ -197,10 +201,11 @@ void split_as_needed(CNode& root) {
   int num_leaves = 1;
   bool need_to_split = true;
   while (need_to_split) {
-    int faces_in_worst = split_all_leaves(root);
+    SplitResult worst = split_all_leaves(root);
     num_leaves *= 8;
-    lg::info("after splitting, the worst leaf has {} tris", faces_in_worst);
-    if (faces_in_worst < MAX_FACES_IN_FRAG) {
+    lg::info("after splitting, the worst leaf has {} tris, {} radius", worst.max_leaf_count,
+             worst.max_bsphere_w / 4096.f);
+    if (worst.max_leaf_count < MAX_FACES_IN_FRAG && worst.max_bsphere_w < (100.f * 4096.f)) {
       need_to_split = false;
     }
   }
