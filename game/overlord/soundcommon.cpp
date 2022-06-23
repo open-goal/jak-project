@@ -17,6 +17,9 @@ void ReadBankSoundInfo(SoundBank* bank, SoundBank* unk, s32 unk2) {
 }
 
 void PrintBankInfo(SoundBank* bank) {
+  // we dont need this and it spams the console too much
+  return;
+
   printf("Bank %s\n\n", bank->name);
   for (u32 i = 0; i < bank->sound_count; i++) {
     // Some characters use the full 16 characters (bonelurker-grunt) and dont have a null terminator

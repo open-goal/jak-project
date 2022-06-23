@@ -729,7 +729,7 @@ u64 DecodeVolume() {
 // NOTE: this is originally hardcoded, and returns different values depending on the disc region.
 // it returns 0 for NTSC-U, 1 for PAL and 2 for NTSC-J
 u64 DecodeTerritory() {
-  return masterConfig.territory;
+  return GAME_TERRITORY_SCEA;
 }
 
 u64 DecodeTimeout() {
@@ -859,8 +859,12 @@ void update_discord_rpc(u32 discord_info) {
       } else {
         strcpy(large_image_key, level);
       }
-      rpc.largeImageKey = large_image_key;
       strcpy(large_image_text, full_level_name);
+      if (!strcmp(full_level_name, "unknown")) {
+        strcpy(large_image_key, full_level_name);
+        strcpy(large_image_text, level);
+      }
+      rpc.largeImageKey = large_image_key;
       if (!strcmp(level, "finalboss")) {
         strcpy(state, "Fighting Final Boss");
       } else if (plantboss != offset_of_s7()) {
@@ -1053,7 +1057,7 @@ void InitMachine_PCPort() {
   // TODO - we will eventually need a better way to know what game we are playing
   auto settings_path = file_util::get_user_settings_dir();
   intern_from_c("*pc-settings-folder*")->value = make_string_from_c(settings_path.string().c_str());
-  intern_from_c("*pc-settings-built-sha*")->value = make_string_from_c(GIT_SHORT_SHA);
+  intern_from_c("*pc-settings-built-sha*")->value = make_string_from_c(GIT_VERSION);
 }
 /*!
  * PC PORT FUNCTIONS END

@@ -15,7 +15,7 @@ struct MakeStep {
 
 class MakeSystem {
  public:
-  MakeSystem();
+  MakeSystem(const std::string& username = "#f");
   void load_project_file(const std::string& file_path);
 
   goos::Object handle_defstep(const goos::Object& obj,

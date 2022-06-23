@@ -38,7 +38,7 @@ std::string MakeStep::print() const {
   return result;
 }
 
-MakeSystem::MakeSystem() {
+MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
   m_goos.register_form("defstep", [=](const goos::Object& obj, goos::Arguments& args,
                                       const std::shared_ptr<goos::EnvironmentObject>& env) {
     return handle_defstep(obj, args, env);
