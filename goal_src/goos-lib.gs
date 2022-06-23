@@ -452,3 +452,9 @@
 (define *art-info* (make-string-hash-table))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;  build system      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define *jak1-full-game* (if (user? dass) #t #f))
+
