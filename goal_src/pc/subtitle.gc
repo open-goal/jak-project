@@ -140,7 +140,8 @@
    (text-id game-text-id)
    (cur-channel pc-subtitle-channel)
 
-   (want-subtitle subtitle-keyframe) ;; the subtitle we want to display
+   (want-subtitle  subtitle-keyframe) ;; the subtitle we want to display
+   (hint-subtitle? symbol)
    )
 
   (:methods
@@ -522,9 +523,10 @@
 
   )
 
-(defun subtitle? ()
+(defun subtitle? ((hinttitles? symbol))
   "can a subtitle be displayed right now?"
-  (and (-> *pc-settings* subtitles?)  ;; subtitles enabled
+  (and (or (and (not hinttitles?) (-> *pc-settings* subtitles?))  ;; subtitles enabled
+           (and hinttitles? (-> *pc-settings* hinttitles?)))
        (or *debug-segment* (= *master-mode* 'game))  ;; current mode is game, OR we are just debugging
        (not *progress-process*) ;; no progress open
        )
@@ -556,6 +558,7 @@
     (load-level-subtitle-files 0)
     ;; reset params
     (set! (-> self want-subtitle) (the subtitle-keyframe #f))
+    (set! (-> self hint-subtitle?) #f)
     (set! (-> self spool-name) #f)
     (set! (-> self cur-channel) (pc-subtitle-channel invalid))
 
@@ -597,6 +600,7 @@
       (case (-> self cur-channel)
         (((pc-subtitle-channel movie))
           ;; cutscenes. get our cutscene.
+          (set! (-> self hint-subtitle?) #f)
           (awhen (get-scene-by-name *subtitle-text* (-> self cur-channel) (-> self spool-name))
           
             ;; find out position in the scene.
@@ -618,6 +622,7 @@
           )
         (((pc-subtitle-channel hint) (pc-subtitle-channel hint-named))
           ;; hint! find it. or else.
+          (set! (-> self hint-subtitle?) #t)
           (awhen (if (= (-> self cur-channel) (pc-subtitle-channel hint-named))
                      (get-scene-by-name *subtitle-text* (-> self cur-channel) (-> self spool-name))
                      (get-scene-by-text-id *subtitle-text* (-> self cur-channel) (-> self text-id))
@@ -663,7 +668,7 @@
     (set-height! (-> self font) (the int (* (-> *SUBTITLE-bank* lines) 11)))
     (set-scale! (-> self font) (-> *SUBTITLE-bank* scale))
 
-    (when (and (-> self want-subtitle) (subtitle?))
+    (when (and (-> self want-subtitle) (subtitle? (-> self hint-subtitle?)))
         ;; we got a valid subtitle! render it.
         (hide-bottom-hud)
         (print-game-subtitle (subtitle-format self (-> self want-subtitle)) (-> self font) #f 128 22)
