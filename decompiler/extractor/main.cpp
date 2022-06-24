@@ -69,7 +69,7 @@ IsoFile extract_files(std::filesystem::path data_dir_path,
                       std::filesystem::path extracted_iso_path) {
   fmt::print(
       "Note: Provided game data path '{}' points to a file, not a directory. Assuming it's an ISO "
-      "file and attempting to extract!\n");
+      "file and attempting to extract!\n", data_dir_path.string());
 
   std::filesystem::create_directories(extracted_iso_path);
 
