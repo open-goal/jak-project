@@ -129,6 +129,12 @@ add_subdirectory(decompiler)
 
 add_subdirectory(third-party/cubeb)
 
+# build LSP
+# TODO - can i put these includes in the lsp cmake file?
+include_directories(third-party/json-rpc-cxx/vendor)
+include_directories(third-party/json-rpc-cxx/include)
+add_subdirectory(lsp)
+
 # build glfw library
 add_subdirectory(third-party/glfw)
 add_subdirectory(third-party/zstd)
