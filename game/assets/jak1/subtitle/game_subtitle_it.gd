@@ -162,7 +162,7 @@
   )
 
 ("sksp0004" :hint #x283
-  (0 "DAXTER" "SÌÌÌ, UN TESORO!")
+  (0 "DAXTER" "SIII, UN TESORO!")
   )
 
 ("sksp0005" :hint #x284
@@ -322,24 +322,24 @@
   (0 "CONTADINO" "RONF...")
   )
 
-("SAMOSLP03" :hint #x0
+("SAGELP03" :hint #x0
   (0 "SAMOS" "QUESTI DUE NON RIUSCIREBBERO NEMMENO A STAPPARSI LE ORECCHIE...")
   )
 
-("SAMOSLP04" :hint #x0
+("SAGELP04" :hint #x0
   (0 "SAMOS" "NON SARÀ MAI COME SUO ZIO... MH, BAH.")
   (221 "SAMOS" "NON MI IMPORTA COSA DICONO GLI ALTRI.")
   )
 
-("SAMOSLP05" :hint #x0
+("SAGELP05" :hint #x0
   (0 "SAMOS" "SALVE, SAGGIO BLU? SALVE? IN QUALE FIAMMA BLU POTRÀ MAI ESSERE...")
   )
 
-("SAMOSLP06" :hint #x0
+("SAGELP06" :hint #x0
   (0 "SAMOS" "ODDIO, DIO, DIO...")
   )
 
-("SAMOSLP11" :hint #x0
+("SAGELP11" :hint #x0
   (0 "SAMOS" "EHI? C'È NESSUNO? ENTRIAMO...")
   )
 
@@ -1871,3 +1871,4 @@
 ;; -----------------
 ;; uncategorized
 ;; -----------------
+
