@@ -1,9 +1,10 @@
 #pragma once
 
 #include <optional>
-#include "common/util/Range.h"
+
 #include "common/common_types.h"
 #include "common/util/Assert.h"
+#include "common/util/Range.h"
 
 constexpr int BITS_PER_BYTE = 8;
 template <typename T>

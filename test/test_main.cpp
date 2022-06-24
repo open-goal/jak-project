@@ -1,10 +1,10 @@
 #include <filesystem>
 
-#include "gtest/gtest.h"
-
-#include "common/util/FileUtil.h"
 #include "common/log/log.h"
+#include "common/util/FileUtil.h"
 #include "common/util/os.h"
+
+#include "gtest/gtest.h"
 
 // Running subsets of tests, see:
 // -

@@ -1,11 +1,13 @@
 
-#include "gtest/gtest.h"
-#include "decompiler/util/DataParser.h"
-#include "decompiler/Disasm/DecompilerLabel.h"
-#include "decompiler/util/data_decompile.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
-#include "third-party/fmt/core.h"
 #include "common/goos/PrettyPrinter.h"
+
+#include "decompiler/Disasm/DecompilerLabel.h"
+#include "decompiler/util/DataParser.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/data_decompile.h"
+#include "gtest/gtest.h"
+
+#include "third-party/fmt/core.h"
 
 using namespace decompiler;
 

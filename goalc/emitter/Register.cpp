@@ -1,4 +1,5 @@
 #include "Register.h"
+
 #include <stdexcept>
 
 namespace emitter {

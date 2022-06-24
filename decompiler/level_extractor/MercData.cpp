@@ -1,7 +1,10 @@
 #include "MercData.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
-#include "third-party/fmt/core.h"
+
 #include "common/dma/gs.h"
+
+#include "decompiler/util/DecompilerTypeSystem.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 void MercCtrlHeader::from_ref(TypedRef tr, const DecompilerTypeSystem& dts) {

@@ -7,8 +7,10 @@
  * Always verify the encoding if string detection suddenly goes awry.
  */
 
-#include <algorithm>
 #include "FontUtils.h"
+
+#include <algorithm>
+
 #include "third-party/fmt/core.h"
 
 GameTextFontBank::GameTextFontBank(GameTextVersion version,

@@ -1,9 +1,11 @@
+#include "Tfrag.h"
+
 #include <iostream>
 
-#include "Tfrag.h"
 #include "common/custom_data/pack_helpers.h"
-#include "goalc/data_compiler/DataObjectGenerator.h"
+
 #include "goalc/build_level/gltf_mesh_extract.h"
+#include "goalc/data_compiler/DataObjectGenerator.h"
 
 void tfrag_from_gltf(const gltf_mesh_extract::TfragOutput& mesh_extract_out,
                      DrawableTreeTfrag& out,

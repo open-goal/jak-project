@@ -1,15 +1,17 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include "gtest/gtest.h"
-#include "common/symbols.h"
+
 #include "common/goal_constants.h"
+#include "common/symbols.h"
+
+#include "all_jak1_symbols.h"
 #include "game/kernel/fileio.h"
 #include "game/kernel/kboot.h"
-#include "game/kernel/kprint.h"
 #include "game/kernel/kdsnetm.h"
+#include "game/kernel/kprint.h"
 #include "game/kernel/kscheme.h"
-#include "all_jak1_symbols.h"
+#include "gtest/gtest.h"
 
 using namespace jak1_symbols;
 

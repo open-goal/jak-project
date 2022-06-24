@@ -85,6 +85,7 @@
 (def-progress-carousell *carousell-lod-fg* (lod-high lod-low lod-ps2))
 (def-progress-carousell *carousell-subtitle-language* (english french german spanish italian japanese))
 (def-progress-carousell *carousell-speaker* (speaker-always speaker-never speaker-auto))
+(def-progress-carousell *carousell-frame-rate* (60fps 100fps 150fps))
 
 
 
@@ -94,7 +95,7 @@
 
 
 (define *game-options-pc* (new 'static 'boxed-array :type game-option
-    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vibrations) :scale #t)
+    ;(new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vibrations) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id play-hints) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id camera-options) :scale #t :param3 (game-option-menu camera-options))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id accessibility-options) :scale #t :param3 (game-option-menu accessibility-options))
@@ -109,8 +110,8 @@
     (new 'static 'game-option :option-type (game-option-type aspect-native) :name (game-text-id ps2-aspect-ratio) :scale #t)
     (new 'static 'game-option :option-type (game-option-type aspect-ratio) :name (game-text-id aspect-ratio-ps2) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
-    (new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
-    ;(new 'static 'game-option :option-type (game-option-type frame-rate) :name (game-text-id frame-rate) :scale #t)
+    ;(new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type frame-rate) :name (game-text-id frame-rate) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id ps2-options) :scale #t :param3 (game-option-menu gfx-ps2-options))
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
@@ -584,11 +585,12 @@
   (set! (-> *sound-options* 2 value-to-modify) (&-> *setting-control* default dialog-volume))
   (set! (-> *yes-no-options* 0 value-to-modify) (&-> *progress-state* yes-no-choice))
   ;; our options!
-  (set! (-> *game-options-pc* 0 value-to-modify) (&-> *setting-control* default vibration))
-  (set! (-> *game-options-pc* 1 value-to-modify) (&-> *setting-control* default play-hints))
+  ;(set! (-> *game-options-pc* 0 value-to-modify) (&-> *setting-control* default vibration))
+  (set! (-> *game-options-pc* 0 value-to-modify) (&-> *setting-control* default play-hints))
   (set! (-> *graphic-options-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 2 value-to-modify) (&-> *progress-carousell* aspect-native-choice))
   (set! (-> *graphic-options-pc* 3 value-to-modify) (&-> *progress-state* aspect-ratio-choice))
+  ;(set! (-> *graphic-options-pc* 5 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 5 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *misc-options* 0 value-to-modify) (&-> *pc-settings* discord-rpc?))
   (set! (-> *camera-options* 0 value-to-modify) (&-> *pc-settings* first-camera-h-inverted?))
@@ -731,6 +733,7 @@
                     (game-option-type lod-bg)
                     (game-option-type lod-fg)
                     (game-option-type speaker)
+                    (game-option-type frame-rate)
                     )
                    ;; a carousell like language
                    (if (> (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) 0)
@@ -842,6 +845,7 @@
                     (game-option-type lod-bg)
                     (game-option-type lod-fg)
                     (game-option-type speaker)
+                    (game-option-type frame-rate)
                     )
                    ;; same thing as before. if at last, go to first. otherwise, keep going forward.
                    (if (< (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) (1- (length (-> *progress-carousell* current-carousell))))
@@ -1104,6 +1108,13 @@
                     (('auto) (set! (-> *progress-carousell* int-backup) 2))
                     )
                   )
+                 (((game-option-type frame-rate))
+                  (case (-> *setting-control* default video-mode)
+                    (('ntsc 'pal) (set! (-> *progress-carousell* int-backup) 0))
+                    (('100fps) (set! (-> *progress-carousell* int-backup) 1))
+                    (('150fps) (set! (-> *progress-carousell* int-backup) 2))
+                    )
+                  )
                  )
                (sound-play "select-option")
                (cpad-clear! 0 x)
@@ -1127,6 +1138,7 @@
                      (((game-option-type lod-bg)) (set! (-> *progress-carousell* current-carousell) *carousell-lod-bg*))
                      (((game-option-type lod-fg)) (set! (-> *progress-carousell* current-carousell) *carousell-lod-bg*))
                      (((game-option-type speaker)) (set! (-> *progress-carousell* current-carousell) *carousell-speaker*))
+                     (((game-option-type frame-rate)) (set! (-> *progress-carousell* current-carousell) *carousell-frame-rate*))
                      (((game-option-type language-subtitles))
                           (set! (-> *progress-carousell* current-carousell) *carousell-subtitle-language*)
                           (set! (-> *progress-carousell* selection) (the int (-> (the-as (pointer pc-subtitle-lang) (-> options (-> obj option-index) value-to-modify)))))
@@ -1196,6 +1208,14 @@
                   ((1) (set! (-> *pc-settings* subtitle-speaker?) #f))
                   ((2) (set! (-> *pc-settings* subtitle-speaker?) 'auto))
                   )
+                )
+               (((game-option-type frame-rate))
+                (case (-> *progress-carousell* int-backup)
+                  ((0) (set! (-> *setting-control* default video-mode) 'ntsc))
+                  ((1) (set! (-> *setting-control* default video-mode) '100fps))
+                  ((2) (set! (-> *setting-control* default video-mode) '150fps))
+                  )
+                (set-video-mode (-> *setting-control* default video-mode))
                 )
                )
              )
@@ -1554,6 +1574,7 @@
                    (game-option-type lod-bg)
                    (game-option-type lod-fg)
                    (game-option-type speaker)
+                   (game-option-type frame-rate)
                    )
                   ;; crunched down to one generic function.
                   (progress-draw-carousell-from-string-list (-> *progress-carousell* current-carousell) font y-off (-> (the-as (pointer int) (-> options index value-to-modify))))
@@ -1647,6 +1668,7 @@
                     (game-option-type lod-bg)
                     (game-option-type lod-fg)
                     (game-option-type speaker)
+                    (game-option-type frame-rate)
                     (game-option-type normal-inverted)
                     )
                    ;; slider and aspect ratio options just show their text

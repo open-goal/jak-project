@@ -8,12 +8,12 @@
 #ifndef RUNTIME_SYSTEMTHREAD_H
 #define RUNTIME_SYSTEMTHREAD_H
 
-#include <string>
-#include <functional>
 #include <array>
-#include <mutex>
-#include <thread>
 #include <condition_variable>
+#include <functional>
+#include <mutex>
+#include <string>
+#include <thread>
 
 #include "common/util/Timer.h"
 

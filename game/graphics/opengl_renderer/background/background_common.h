@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/math/Vector.h"
+
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 
 // data passed from game to PC renderers

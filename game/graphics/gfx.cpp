@@ -3,21 +3,24 @@
  * Graphics component for the runtime. Abstraction layer for the main graphics routines.
  */
 
-#include <cstdio>
-#include <functional>
-#include <filesystem>
-
 #include "gfx.h"
-#include "display.h"
-#include "pipelines/opengl.h"
 
-#include "common/symbols.h"
+#include <cstdio>
+#include <filesystem>
+#include <functional>
+
+#include "display.h"
+
 #include "common/log/log.h"
+#include "common/symbols.h"
 #include "common/util/FileUtil.h"
+
 #include "game/common/file_paths.h"
 #include "game/kernel/kscheme.h"
+#include "game/kernel/svnrev.h"
 #include "game/runtime.h"
 #include "game/system/newpad.h"
+#include "pipelines/opengl.h"
 
 namespace {
 // initializes a gfx settings.
@@ -121,7 +124,8 @@ u32 Init() {
   if (g_main_thread_id != std::this_thread::get_id()) {
     lg::error("Ran Gfx::Init outside main thread. Init display elsewhere?");
   } else {
-    Display::InitMainDisplay(640, 480, "OpenGOAL GL Window", g_settings);
+    Display::InitMainDisplay(
+        640, 480, fmt::format("OpenGOAL - Work in Progress - {}", GIT_VERSION).c_str(), g_settings);
   }
 
   return 0;

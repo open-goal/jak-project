@@ -6,8 +6,9 @@
  * This is a huge mess
  */
 
-#include "common/common_types.h"
 #include "isocommon.h"
+
+#include "common/common_types.h"
 
 extern s32 gFakeVAGClockPaused;
 extern s32 gFakeVAGClockRunning;

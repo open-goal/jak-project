@@ -1,10 +1,12 @@
 #include "subtitles.h"
 
 #include <algorithm>
+#include <regex>
+
+#include "common/util/FileUtil.h"
+
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/ranges.h"
-#include <regex>
-#include "common/util/FileUtil.h"
 #include "third-party/json.hpp"
 
 bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
@@ -44,7 +46,7 @@ bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
           file_contents += fmt::format(" :hint #x{0:x}", scene_info.m_id);
         }
         file_contents += "\n";
-          for (const auto& line : scene_info.m_lines) {
+        for (const auto& line : scene_info.m_lines) {
           // Clear screen entries
           if (line.line_utf8.empty()) {
             file_contents += fmt::format("  ({})\n", line.frame);

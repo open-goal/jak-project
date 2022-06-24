@@ -1,8 +1,9 @@
 #pragma once
 
-#include "common/cross_sockets/XSocketServer.h"
-#include <set>
 #include <optional>
+#include <set>
+
+#include "common/cross_sockets/XSocketServer.h"
 
 enum ReplServerMessageType { PING = 0, EVAL = 10, SHUTDOWN = 20 };
 

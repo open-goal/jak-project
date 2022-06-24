@@ -3,8 +3,10 @@
  * A GOAL TypeSpec is a reference to a type or compound type.
  */
 
-#include <stdexcept>
 #include "TypeSpec.h"
+
+#include <stdexcept>
+
 #include "third-party/fmt/core.h"
 
 bool TypeTag::operator==(const TypeTag& other) const {

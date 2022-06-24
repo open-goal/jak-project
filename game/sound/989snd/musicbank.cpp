@@ -1,6 +1,8 @@
 #include "musicbank.h"
+
 #include "ame_handler.h"
 #include "midi_handler.h"
+
 #include "../common/synth.h"
 
 namespace snd {

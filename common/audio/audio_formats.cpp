@@ -1,5 +1,7 @@
 #include "audio_formats.h"
+
 #include "common/util/BinaryWriter.h"
+
 #include "third-party/fmt/core.h"
 
 /*!

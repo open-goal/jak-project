@@ -1,17 +1,19 @@
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include <memory>
+
+#include "common/common_types.h"
+#include "common/log/log.h"
+#include "common/util/FileUtil.h"
+#include "common/util/Timer.h"
+#include "common/util/diff.h"
+#include "common/util/json_util.h"
+
+#include "decompiler/ObjectFile/ObjectFileDB.h"
+#include "goalc/compiler/Compiler.h"
 
 #include "third-party/fmt/format.h"
-#include "common/log/log.h"
-#include "common/common_types.h"
-#include "common/util/FileUtil.h"
-#include "common/util/json_util.h"
-#include "decompiler/ObjectFile/ObjectFileDB.h"
-#include "common/util/diff.h"
-#include "goalc/compiler/Compiler.h"
-#include "common/util/Timer.h"
 
 namespace fs = std::filesystem;
 

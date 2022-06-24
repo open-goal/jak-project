@@ -1,10 +1,12 @@
 #pragma once
 
-#include "common/serialization/subtitles/subtitles.h"
 #include <optional>
-#include "common/nrepl/ReplClient.h"
-#include "third-party/imgui/imgui.h"
 #include <string_view>
+
+#include "common/nrepl/ReplClient.h"
+#include "common/serialization/subtitles/subtitles.h"
+
+#include "third-party/imgui/imgui.h"
 
 class SubtitleEditorDB {
  public:

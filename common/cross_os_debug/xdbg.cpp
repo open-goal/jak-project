@@ -4,28 +4,32 @@
  * Nothing in here should hold state, that should all be managed in Debugger.
  */
 
-#include <cstring>
-#include "common/goal_constants.h"
-#include "common/util/Timer.h"
-#include "third-party/fmt/core.h"
 #include "xdbg.h"
 
+#include <cstring>
+
+#include "common/goal_constants.h"
+#include "common/util/Timer.h"
+
+#include "third-party/fmt/core.h"
+
 #ifdef __linux
+#include <fcntl.h>
 #include <unistd.h>
+
+#include <sys/prctl.h>
+#include <sys/ptrace.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
-#include <sys/ptrace.h>
-#include <sys/prctl.h>
 #include <sys/types.h>
 #include <sys/user.h>
 #include <sys/wait.h>
-#include <fcntl.h>
 #elif _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
 #endif
 
 namespace xdbg {

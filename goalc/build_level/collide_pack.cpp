@@ -1,8 +1,9 @@
+#include "collide_pack.h"
+
 #include <functional>
 
-#include "collide_pack.h"
-#include "common/util/Assert.h"
 #include "common/log/log.h"
+#include "common/util/Assert.h"
 #include "common/util/Timer.h"
 
 struct PackedU16Verts {

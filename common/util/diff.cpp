@@ -32,12 +32,12 @@
 
 #include "diff.h"
 
-#include <vector>
 #include <algorithm>
-#include <map>
 #include <list>
+#include <map>
 #include <ostream>
 #include <sstream>
+#include <vector>
 
 namespace {
 enum EditType { kMatch, kAdd, kRemove, kReplace };

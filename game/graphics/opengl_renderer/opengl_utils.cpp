@@ -1,8 +1,11 @@
 #include "opengl_utils.h"
-#include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "common/util/Assert.h"
-#include <cstdio>
+
 #include <array>
+#include <cstdio>
+
+#include "common/util/Assert.h"
+
+#include "game/graphics/opengl_renderer/BucketRenderer.h"
 
 FramebufferTexturePair::FramebufferTexturePair(int w, int h, u64 texture_format, int num_levels)
     : m_w(w), m_h(h) {

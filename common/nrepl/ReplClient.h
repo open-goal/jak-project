@@ -1,7 +1,8 @@
 #pragma once
 
-#include "common/cross_sockets/XSocketClient.h"
 #include "ReplServer.h"
+
+#include "common/cross_sockets/XSocketClient.h"
 
 class ReplClient : public XSocketClient {
  public:

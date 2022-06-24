@@ -1,8 +1,10 @@
 #pragma once
 
 #include <utility>
-#include "game/sound/989snd/vagvoice.h"
+
 #include "common/common_types.h"
+
+#include "game/sound/989snd/vagvoice.h"
 
 namespace snd {
 

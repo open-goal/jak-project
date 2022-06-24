@@ -1,7 +1,9 @@
 #include "Loader.h"
-#include "common/util/Timer.h"
+
 #include "common/util/FileUtil.h"
+#include "common/util/Timer.h"
 #include "common/util/compress.h"
+
 #include "game/graphics/opengl_renderer/loader/LoaderStages.h"
 
 namespace {

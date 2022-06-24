@@ -1,6 +1,7 @@
 #pragma once
-#include "common/common_types.h"
 #include <algorithm>
+
+#include "common/common_types.h"
 
 namespace snd {
 

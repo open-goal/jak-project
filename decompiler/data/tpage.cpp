@@ -14,12 +14,15 @@
  * check duplicate names
  */
 
-#include "common/util/FileUtil.h"
 #include "tpage.h"
-#include "common/versions.h"
-#include "decompiler/ObjectFile/ObjectFileDB.h"
-#include "third-party/fmt/core.h"
+
 #include "common/texture/texture_conversion.h"
+#include "common/util/FileUtil.h"
+#include "common/versions.h"
+
+#include "decompiler/ObjectFile/ObjectFileDB.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 namespace {

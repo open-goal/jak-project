@@ -1,7 +1,9 @@
 #include "EyeRenderer.h"
-#include "game/graphics/opengl_renderer/AdgifHandler.h"
 
 #include "common/util/FileUtil.h"
+
+#include "game/graphics/opengl_renderer/AdgifHandler.h"
+
 #include "third-party/imgui/imgui.h"
 
 /////////////////////////

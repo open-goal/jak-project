@@ -1,10 +1,10 @@
-#include <map>
-#include <cstring>
-#include <string>
-#include <sstream>
-#include <iomanip>
-
 #include "discord.h"
+
+#include <cstring>
+#include <iomanip>
+#include <map>
+#include <sstream>
+#include <string>
 
 int gDiscordRpcEnabled;
 int64_t gStartTime;
@@ -61,7 +61,7 @@ const char* jak1_get_full_level_name(const char* level_name) {
   if (nice_name != jak1_level_names.end()) {
     return nice_name->second.c_str();
   }
-  return "Unknown";
+  return "unknown";
 };
 
 // time of day string to append to level name for icons

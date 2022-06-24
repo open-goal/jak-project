@@ -1,4 +1,5 @@
 #include "FrameLimiter.h"
+
 #include <thread>
 
 double FrameLimiter::round_to_nearest_60fps(double current) {

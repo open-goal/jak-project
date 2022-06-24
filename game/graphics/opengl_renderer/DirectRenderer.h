@@ -1,12 +1,14 @@
 #pragma once
 
 #include <vector>
-#include "game/graphics/opengl_renderer/BucketRenderer.h"
+
 #include "common/dma/gs.h"
+#include "common/log/log.h"
 #include "common/math/Vector.h"
 #include "common/util/SmallVector.h"
+
+#include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/pipelines/opengl.h"
-#include "common/log/log.h"
 
 /*!
  * The direct renderer will handle rendering GIFtags directly.

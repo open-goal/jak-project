@@ -1,19 +1,27 @@
 #include "Compiler.h"
+
 #include <chrono>
 #include <thread>
+
 #include "CompilerException.h"
 #include "IR.h"
+
+#include "common/goos/PrettyPrinter.h"
 #include "common/link_types.h"
+
 #include "goalc/make/Tools.h"
 #include "goalc/regalloc/Allocator.h"
 #include "goalc/regalloc/Allocator_v2.h"
+
 #include "third-party/fmt/core.h"
-#include "common/goos/PrettyPrinter.h"
 
 using namespace goos;
 
 Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper> repl)
-    : m_goos(user_profile), m_debugger(&m_listener, &m_goos.reader), m_repl(std::move(repl)) {
+    : m_goos(user_profile),
+      m_debugger(&m_listener, &m_goos.reader),
+      m_repl(std::move(repl)),
+      m_make(user_profile) {
   m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
   m_global_env = std::make_unique<GlobalEnv>();
@@ -26,6 +34,7 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
 
+  // user profile stuff
   if (user_profile != "#f") {
     try {
       Object user_code =

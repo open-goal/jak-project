@@ -1,5 +1,7 @@
 #include "OceanTexture.h"
+
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
+
 #include "third-party/imgui/imgui.h"
 
 constexpr int OCEAN_TEX_TBP = 8160;  // todo

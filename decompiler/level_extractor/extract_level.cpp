@@ -1,16 +1,18 @@
+#include "extract_level.h"
+
 #include <set>
 #include <thread>
 
-#include "extract_level.h"
-#include "decompiler/level_extractor/BspHeader.h"
-#include "decompiler/level_extractor/extract_tfrag.h"
-#include "decompiler/level_extractor/extract_tie.h"
-#include "decompiler/level_extractor/extract_shrub.h"
-#include "decompiler/level_extractor/extract_collide_frags.h"
-#include "decompiler/level_extractor/extract_merc.h"
-#include "common/util/compress.h"
 #include "common/util/FileUtil.h"
 #include "common/util/SimpleThreadGroup.h"
+#include "common/util/compress.h"
+
+#include "decompiler/level_extractor/BspHeader.h"
+#include "decompiler/level_extractor/extract_collide_frags.h"
+#include "decompiler/level_extractor/extract_merc.h"
+#include "decompiler/level_extractor/extract_shrub.h"
+#include "decompiler/level_extractor/extract_tfrag.h"
+#include "decompiler/level_extractor/extract_tie.h"
 
 namespace decompiler {
 

@@ -1,12 +1,16 @@
+#include "game_text.h"
+
+#include <algorithm>
 #include <cstring>
 #include <map>
 #include <vector>
-#include <algorithm>
-#include "third-party/fmt/core.h"
-#include "game_text.h"
-#include "decompiler/ObjectFile/ObjectFileDB.h"
+
 #include "common/goos/Reader.h"
 #include "common/util/BitUtils.h"
+
+#include "decompiler/ObjectFile/ObjectFileDB.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 namespace {

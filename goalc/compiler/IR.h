@@ -1,11 +1,13 @@
 #pragma once
 
 #include <string>
+
 #include "CodeGenerator.h"
-#include "goalc/regalloc/allocator_interface.h"
 #include "Val.h"
+
 #include "goalc/emitter/ObjectGenerator.h"
 #include "goalc/emitter/Register.h"
+#include "goalc/regalloc/allocator_interface.h"
 
 class IR {
  public:

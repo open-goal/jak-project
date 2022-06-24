@@ -1,14 +1,16 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <unordered_set>
-#include <unordered_map>
 #include <optional>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+#include "common/common_types.h"
+#include "common/versions.h"
+
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/data/game_text.h"
-#include "common/versions.h"
-#include "common/common_types.h"
 
 namespace decompiler {
 struct RegisterTypeCast {

@@ -1,9 +1,11 @@
 #include "subtitles.h"
+
 #include "common/goos/ParseHelpers.h"
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
-#include "third-party/fmt/core.h"
 #include "common/util/json_util.h"
+
+#include "third-party/fmt/core.h"
 
 static const std::unordered_map<std::string, GameTextVersion> s_text_ver_enum_map = {
     {"jak1-v1", GameTextVersion::JAK1_V1},

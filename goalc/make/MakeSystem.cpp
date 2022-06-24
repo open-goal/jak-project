@@ -1,15 +1,15 @@
-#include <filesystem>
-
 #include "MakeSystem.h"
 
-#include "third-party/fmt/color.h"
-#include "third-party/fmt/core.h"
+#include <filesystem>
 
 #include "common/goos/ParseHelpers.h"
+#include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 
 #include "goalc/make/Tools.h"
-#include "common/util/FileUtil.h"
+
+#include "third-party/fmt/color.h"
+#include "third-party/fmt/core.h"
 
 std::string MakeStep::print() const {
   std::string result = fmt::format("Tool {} with inputs", tool);
@@ -38,7 +38,7 @@ std::string MakeStep::print() const {
   return result;
 }
 
-MakeSystem::MakeSystem() {
+MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
   m_goos.register_form("defstep", [=](const goos::Object& obj, goos::Arguments& args,
                                       const std::shared_ptr<goos::EnvironmentObject>& env) {
     return handle_defstep(obj, args, env);

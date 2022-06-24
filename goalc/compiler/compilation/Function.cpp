@@ -5,6 +5,7 @@
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/emitter/CallingConvention.h"
+
 #include "third-party/fmt/core.h"
 
 namespace {

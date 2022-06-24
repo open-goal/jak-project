@@ -1,17 +1,19 @@
 #pragma once
 
-#include <vector>
-#include <unordered_set>
-#include <memory>
 #include <functional>
+#include <memory>
+#include <unordered_set>
+#include <vector>
+
+#include "common/goos/Object.h"
+#include "common/math/Vector.h"
+#include "common/type_system/TypeSystem.h"
+#include "common/type_system/state.h"
+
+#include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/AtomicOp.h"
-#include "common/goos/Object.h"
-#include "common/type_system/TypeSystem.h"
-#include "decompiler/Disasm/DecompilerLabel.h"
-#include "common/type_system/state.h"
 #include "decompiler/IR2/LabelDB.h"
-#include "common/math/Vector.h"
 #include "decompiler/ObjectFile/LinkedWord.h"
 
 namespace decompiler {

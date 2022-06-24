@@ -6,6 +6,7 @@
 
 #include <string>
 #include <vector>
+
 #include "goalc/emitter/Register.h"
 
 struct IRegister {

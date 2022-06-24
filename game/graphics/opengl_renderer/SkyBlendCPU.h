@@ -1,9 +1,10 @@
 #pragma once
 
 #include "common/dma/dma_chain_read.h"
+
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/opengl_renderer/SkyBlendCommon.h"
+#include "game/graphics/pipelines/opengl.h"
 
 class SkyBlendCPU {
  public:

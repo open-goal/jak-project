@@ -1,12 +1,13 @@
 #pragma once
-#include "common/util/FontUtils.h"
-#include "common/util/Assert.h"
-#include <string>
 #include <map>
+#include <memory>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <memory>
+
 #include "common/serialization/subtitles/subtitles.h"
+#include "common/util/Assert.h"
+#include "common/util/FontUtils.h"
 
 void compile_game_text(const std::vector<std::string>& filenames,
                        GameTextVersion text_ver,

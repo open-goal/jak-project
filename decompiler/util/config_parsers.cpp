@@ -1,4 +1,5 @@
 #include "config_parsers.h"
+
 #include "common/util/json_util.h"
 
 namespace decompiler {
