@@ -45,7 +45,7 @@ int64_t get_int(const goos::Object& obj) {
 
 const goos::Object& car(const goos::Object& x) {
   if (!x.is_pair()) {
-    throw std::runtime_error("invalid pair");
+    throw std::runtime_error("car: invalid pair");
   }
 
   return x.as_pair()->car;
@@ -53,7 +53,7 @@ const goos::Object& car(const goos::Object& x) {
 
 const goos::Object& cdr(const goos::Object& x) {
   if (!x.is_pair()) {
-    throw std::runtime_error("invalid pair");
+    throw std::runtime_error("cdr: invalid pair");
   }
 
   return x.as_pair()->cdr;
@@ -251,6 +251,10 @@ void parse_subtitle(const goos::Object& data,
         auto kind = SubtitleSceneKind::Movie;
         int id = 0;
         auto entries = cdr(obj);
+        if (!(entries.is_pair())) {
+          lg::warn("{} | Not a pair! Empty movie subtitle?", head.as_string()->data);
+          return;
+        }
         if (head.is_int()) {
           kind = SubtitleSceneKind::Hint;
         } else if (car(entries).is_symbol()) {
@@ -326,7 +330,7 @@ void parse_subtitle(const goos::Object& data,
             auto speaker_str = font->convert_utf8_to_game(speaker_utf8);
             scene.add_line(time, line_str, line_utf8, speaker_str, speaker_utf8, offscreen);
           } else {
-            throw std::runtime_error(fmt::format("Each entry must be a list", scene.name()));
+            throw std::runtime_error(fmt::format("{} | Each entry must be a list", scene.name()));
           }
         });
         for (auto& [lang, bank] : banks) {
