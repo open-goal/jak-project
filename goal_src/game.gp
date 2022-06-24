@@ -133,7 +133,7 @@
 
 (define *game-directory* (get-environment-variable "OPENGOAL_DECOMP_DIR" :default "jak1/"))
 (when (user? dass)
-    (set! *game-directory* "jak1_pal/"))
+    (set! *game-directory* "jak1_us2/"))
 
 (defmacro copy-texture (tpage-id)
   "Copy a texture from the game, using the given tpage ID"

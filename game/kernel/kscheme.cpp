@@ -2006,7 +2006,7 @@ s32 InitHeapAndSymbol() {
   method_set_symbol->value = 0;
 
   // set *boot-video-mode*
-  intern_from_c("*boot-video-mode*")->value = (u32)BootVideoMode;
+  intern_from_c("*boot-video-mode*")->value = 0;  // (u32)BootVideoMode;
 
   lg::info("Initialized GOAL heap in {:.2} ms", heap_init_timer.getMs());
   // load the kernel!
