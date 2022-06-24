@@ -69,7 +69,8 @@ IsoFile extract_files(std::filesystem::path data_dir_path,
                       std::filesystem::path extracted_iso_path) {
   fmt::print(
       "Note: Provided game data path '{}' points to a file, not a directory. Assuming it's an ISO "
-      "file and attempting to extract!\n", data_dir_path.string());
+      "file and attempting to extract!\n",
+      data_dir_path.string());
 
   std::filesystem::create_directories(extracted_iso_path);
 
@@ -418,13 +419,18 @@ int main(int argc, char** argv) {
 
     int flags = 0;
     if (std::filesystem::is_regular_file(data_dir_path)) {
-      // it's a file, make sure it's an .iso file
-      //to-do: verify game header data as well
-      if (data_dir_path.extension() != ".iso") {
+      // it's a file, normalize extension case and verify it's an ISO file
+      std::string ext = data_dir_path.extension().string();
+      std::transform(ext.begin(), ext.end(), ext.begin(),
+                     [](unsigned char c) { return std::tolower(c); });
+
+      if (ext != ".iso") {
         fmt::print(stderr, "ERROR: Provided game data path contains a file that isn't a .ISO!");
         return static_cast<int>(ExtractorErrorCode::EXTRACTION_INVALID_ISO_PATH);
       }
+
       // make sure the .iso is greater than 1GB in size
+      // to-do: verify game header data as well
       if (std::filesystem::file_size(data_dir_path) < 1000000000) {
         fmt::print(
             stderr,
