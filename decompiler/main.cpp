@@ -29,7 +29,6 @@ int main(int argc, char** argv) {
   lg::set_stdout_level(lg::level::info);
   lg::set_flush_level(lg::level::info);
   lg::initialize();
-  lg::info("GOAL Decompiler version {}\n", versions::DECOMPILER_VERSION);
 
   init_opcode_info();
 
