@@ -34,7 +34,7 @@ constexpr int bits_for_sym() {
   }
   return b + 1;
 }
-static_assert(bits_for_sym() != 1, "symbol table invalid length");
+static_assert(bits_for_sym() != -1, "symbol table invalid length");
 
 enum class RegClass { GPR_64, FLOAT, INT_128, VECTOR_FLOAT, INVALID };
 
