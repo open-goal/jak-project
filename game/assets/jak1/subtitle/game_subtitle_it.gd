@@ -1774,7 +1774,7 @@
   )
 
 ("asstvb47" :hint #x906
-  (0 "KEIRA" "RICORDATE, QUELLA E' UNA BATTERIA. DOVETE RACCOGLIERNE IL PIU' POSSSIBILE.")
+  (0 "KEIRA" "RICORDATE, QUELLA È UNA BATTERIA. DOVETE RACCOGLIERNE IL PIÙ POSSSIBILE.")
   )
 
 ("asstvb48" :hint #x907
@@ -1821,7 +1821,7 @@
   )
 
 ("sagevb29" :hint #x910
-  (0 "SAMOS" "QUESTO NON E' UN CALCIO ROTANTE, PROVA DI NUOVO.")
+  (0 "SAMOS" "QUESTO NON È UN CALCIO ROTANTE, PROVA DI NUOVO.")
   )
 
 ("sagevb30" :hint #x911
@@ -1829,7 +1829,7 @@
   )
 
 ("sagevb31" :hint #x912
-  (0 "SAMOS" "BEL LAVORO! USA IL CALCIO ROTANTE QUANDO HAI BISOGNO DI UN'ATTACCO AD AMPIO RAGGIO.")
+  (0 "SAMOS" "BEL LAVORO! USA IL CALCIO ROTANTE QUANDO HAI BISOGNO DI UN ATTACCO AD AMPIO RAGGIO.")
   )
 
 ("sagevb32" :hint #x913
@@ -1837,7 +1837,7 @@
   )
 
 ("sagevb33" :hint #x914
-  (0 "SAMOS" "QUELLO NON è UN PUGNO! UN BEL PUGNO, ANDIAMO!")
+  (0 "SAMOS" "QUELLO NON È UN PUGNO! UN BEL PUGNO, ANDIAMO!")
   )
 
 ("sagevb34" :hint #x915
@@ -1871,4 +1871,3 @@
 ;; -----------------
 ;; uncategorized
 ;; -----------------
-
