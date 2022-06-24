@@ -73,7 +73,7 @@ IsoFile extract_files(std::filesystem::path data_dir_path,
 
   // assuming ISO size and extension checks are only needed if input is not a folder
   if (data_dir_path.extension() != ".iso") {
-    fmt::print(stderr, "ERROR: an ISO file could not be located in data path";
+    fmt::print(stderr, "ERROR: an ISO file could not be located in data path");
     // return {ExtractorErrorCode::VALIDATION_MISSING_ISO, std::nullopt};
   }
   auto fp = fopen(data_dir_path.string().c_str(), "rb");
