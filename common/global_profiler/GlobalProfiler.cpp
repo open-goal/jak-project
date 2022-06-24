@@ -1,12 +1,15 @@
+// clang-format off
 #include "GlobalProfiler.h"
 
-#include <thread>
-#include <cstring>
 #include <chrono>
-#include "third-party/fmt/core.h"
-#include "third-party/json.hpp"
+#include <cstring>
+#include <thread>
+
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/json.hpp"
 
 #ifdef __linux__
 u32 get_current_tid() {
@@ -21,6 +24,7 @@ u32 get_current_tid() {
   return (u32)GetCurrentThreadId();
 }
 #endif
+// clang-format on
 
 u64 get_current_ts() {
   return std::chrono::steady_clock::now().time_since_epoch().count();

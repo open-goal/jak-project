@@ -4,23 +4,25 @@
  */
 
 #include "FileUtil.h"
-#include <iostream>
-#include <filesystem>
+
 #include <cstdio> /* defines FILENAME_MAX */
-#include <fstream>
-#include <sstream>
 #include <cstdlib>
-#include "common/util/BinaryReader.h"
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
 #include "BinaryWriter.h"
+
 #include "common/common_types.h"
+#include "common/util/BinaryReader.h"
 
 // This disables the use of PCLMULQDQ which is probably ok, but let's just be safe and disable it
 // because nobody will care if png compression is 10% slower.
 #define FPNG_NO_SSE 1
-#include "third-party/fpng/fpng.cpp"
-
-#include "third-party/fpng/fpng.h"
 #include "third-party/fmt/core.h"
+#include "third-party/fpng/fpng.cpp"
+#include "third-party/fpng/fpng.h"
 #include "third-party/lzokay/lzokay.hpp"
 
 #ifdef _WIN32
@@ -28,10 +30,11 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #else
-#include <unistd.h>
 #include <cstring>
+#include <unistd.h>
 #endif
 #include "common/util/Assert.h"
+#include <common/log/log.h>
 
 namespace file_util {
 std::filesystem::path get_user_home_dir() {
@@ -70,7 +73,11 @@ std::string get_current_executable_path() {
 #ifdef _WIN32
   char buffer[FILENAME_MAX];
   GetModuleFileNameA(NULL, buffer, FILENAME_MAX);
-  return std::string(buffer);
+  std::string file_path(buffer);
+  if (file_path.rfind("\\\\?\\", 0) == 0) {
+    return file_path.substr(4);
+  }
+  return file_path;
 #else
   // do Linux stuff
   char buffer[FILENAME_MAX + 1];
@@ -201,7 +208,7 @@ void write_rgba_png(const std::string& name, void* data, int w, int h) {
 void write_text_file(const std::string& file_name, const std::string& text) {
   FILE* fp = fopen(file_name.c_str(), "w");
   if (!fp) {
-    printf("Failed to fopen %s\n", file_name.c_str());
+    lg::error("Failed to fopen {}\n", file_name);
     throw std::runtime_error("Failed to open file");
   }
   fprintf(fp, "%s\n", text.c_str());

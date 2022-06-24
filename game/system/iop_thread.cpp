@@ -5,9 +5,9 @@
 #elif _WIN32
 #include <io.h>
 #endif
-#include "SystemThread.h"
-
 #include <cstring>
+
+#include "SystemThread.h"
 
 IOP::IOP() {}
 

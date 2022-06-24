@@ -829,14 +829,14 @@
           (logtest? (-> obj draw status) (draw-status was-drawn))
           )
      (let ((v1-9 (-> obj draw shadow-ctrl)))
-       (logclear! (-> v1-9 settings flags) (shadow-flags shdf05))
+       (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
        )
      0
      (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
      )
     (else
       (let ((v1-14 (-> obj draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) (shadow-flags shdf05))
+        (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
         )
       0
       )
@@ -853,14 +853,7 @@
     (set! (-> *part-id-table* 118 init-specs 1 initial-valuef) 0.05)
     (set! (-> *part-id-table* 118 init-specs 2 initial-valuef) 0.0)
     (set! (-> *part-id-table* 118 init-specs 13 initial-valuef) 0.35555556)
-    (sp-launch-particles-var
-      *sp-particle-system-3d*
-      (-> *part-id-table* 118)
-      gp-0
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
+    (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 118) gp-0)
     )
   0
   (none)
@@ -922,7 +915,7 @@
   :code (behavior ()
     (case (-> self mode)
       (('deadly 'bad)
-       (sound-play-by-name (static-sound-name "caught-eel") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "caught-eel")
        (ambient-hint-spawn "sksp0a42" (-> self root trans) *entity-pool* 'ambient)
        (send-event (ppointer->process (-> self parent)) 'deadly)
        )
@@ -938,7 +931,7 @@
          (-> self root trans)
          :to *entity-pool*
          )
-       (sound-play-by-name (static-sound-name "get-big-fish") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "get-big-fish")
        (send-event (ppointer->process (-> self parent)) 'fisher-fish-caught 5)
        )
       (else
@@ -953,7 +946,7 @@
           (-> self root trans)
           :to *entity-pool*
           )
-        (sound-play-by-name (static-sound-name "get-small-fish") (new-sound-id) 1024 0 0 1 #t)
+        (sound-play "get-small-fish")
         (send-event (ppointer->process (-> self parent)) 'fisher-fish-caught 1)
         )
       )
@@ -1356,32 +1349,28 @@
       ((< (-> self caught) 0)
        )
       (else
-        (when (< (mod (-> *display* base-frame-counter) 300) 150)
-          (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-                 (gp-0 (-> s5-0 base))
-                 )
-            (draw-string-xy
-              (lookup-text! *common-text* (game-text-id lose!) #f)
-              s5-0
-              256
-              100
-              (font-color orange-red)
-              (font-flags shadow kerning middle large)
-              )
-            (let ((a3-1 (-> s5-0 base)))
-              (let ((v1-13 (the-as dma-packet (-> s5-0 base))))
-                (set! (-> v1-13 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                (set! (-> v1-13 vif0) (new 'static 'vif-tag))
-                (set! (-> v1-13 vif1) (new 'static 'vif-tag))
-                (set! (-> s5-0 base) (&+ (the-as pointer v1-13) 16))
+        (when (< (mod (-> *display* base-frame-counter) (seconds 1)) (seconds 0.5))
+          ;; PAL patch here
+          (let ((gp-0 (new
+                        'stack
+                        'font-context
+                        *font-default-matrix*
+                        56
+                        100
+                        0.0
+                        (font-color orange-red)
+                        (font-flags shadow kerning)
+                        )
+                      )
                 )
-              (dma-bucket-insert-tag
-                (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                (bucket-id debug)
-                gp-0
-                (the-as (pointer dma-tag) a3-1)
-                )
+            (let ((v1-10 gp-0))
+              (set! (-> v1-10 width) (the float 400))
               )
+            (let ((v1-11 gp-0))
+              (set! (-> v1-11 height) (the float 50))
+              )
+            (set! (-> gp-0 flags) (font-flags shadow kerning middle large))
+            (print-game-text (lookup-text! *common-text* (game-text-id lose!) #f) gp-0 #f 128 22)
             )
           )
         (fisher-draw-display self)
@@ -1496,7 +1485,7 @@
           )
       (set! (-> self spawner-last) (-> self spawner))
       (set! (-> self spawn-time) (-> *display* base-frame-counter))
-      (sound-play-by-name (static-sound-name "fish-spawn") (new-sound-id) 716 0 0 1 #t)
+      (sound-play "fish-spawn" :vol 70)
       (fisher-spawn-ambient)
       (process-spawn fisher-fish gp-0 (-> self spawner) (* 1.85 (-> self params fish-vel)) :to self)
       )
@@ -1523,7 +1512,7 @@
     (local-vars (v0-2 object))
     (case arg2
       (('fisher-fish-die)
-       (sound-play-by-name (static-sound-name "fish-miss") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "fish-miss")
        (set! v0-2 (+ (-> self missed) (-> arg3 param 0)))
        (set! (-> self missed) (the-as int v0-2))
        v0-2
@@ -1545,7 +1534,7 @@
       )
     )
   :enter (behavior ()
-    (set-setting! *setting-control* self 'ambient-volume 'rel 50.0 0)
+    (set-setting! 'ambient-volume 'rel 50.0 0)
     (send-event *target* 'reset-pickup 'eco)
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self root-override))
@@ -1567,7 +1556,7 @@
     (none)
     )
   :exit (behavior ()
-    (clear-pending-settings-from-process *setting-control* self 'ambient-volume)
+    (remove-setting! 'ambient-volume)
     (let* ((v1-2 *camera-other-matrix*)
            (a3-0 (-> *camera-combiner* inv-camera-rot))
            (a0-2 (-> a3-0 vector 0 quad))
@@ -1742,42 +1731,14 @@
     (when (-> self training)
       (let ((gp-0 (new-stack-vector0)))
         (vector<-cspace! gp-0 (-> self node-list data 74))
-        (sp-launch-particles-var
-          *sp-particle-system-2d*
-          (-> *part-id-table* 2001)
-          gp-0
-          (the-as sparticle-launch-state #f)
-          (the-as sparticle-launch-control #f)
-          1.0
-          )
+        (launch-particles (-> *part-id-table* 2001) gp-0)
         (fisher-fish-water gp-0 (+ 32768.0 (vector-y-angle (-> self node-list data 75 bone transform vector 1))))
         (vector<-cspace! gp-0 (-> self node-list data 77))
-        (sp-launch-particles-var
-          *sp-particle-system-2d*
-          (-> *part-id-table* 2001)
-          gp-0
-          (the-as sparticle-launch-state #f)
-          (the-as sparticle-launch-control #f)
-          1.0
-          )
+        (launch-particles (-> *part-id-table* 2001) gp-0)
         (fisher-fish-water gp-0 (+ 32768.0 (vector-y-angle (-> self node-list data 78 bone transform vector 1))))
         (vector<-cspace! gp-0 (-> self node-list data 80))
-        (sp-launch-particles-var
-          *sp-particle-system-2d*
-          (-> *part-id-table* 828)
-          gp-0
-          (the-as sparticle-launch-state #f)
-          (the-as sparticle-launch-control #f)
-          1.0
-          )
-        (sp-launch-particles-var
-          *sp-particle-system-2d*
-          (-> *part-id-table* 2013)
-          gp-0
-          (the-as sparticle-launch-state #f)
-          (the-as sparticle-launch-control #f)
-          1.0
-          )
+        (launch-particles (-> *part-id-table* 828) gp-0)
+        (launch-particles (-> *part-id-table* 2013) gp-0)
         (fisher-fish-water gp-0 (+ 32768.0 (vector-y-angle (-> self node-list data 80 bone transform vector 1))))
         )
       )
@@ -2024,13 +1985,13 @@
     )
   :enter (behavior ((arg0 handle))
     (set! (-> self control unknown-surface00) *empty-mods*)
-    (logior! (-> self state-flags) (state-flags sf04))
+    (logior! (-> self state-flags) (state-flags invulnerable))
     (set-zero! (-> self control unknown-smush00))
     (set! (-> self control unknown-uint20) (the-as uint #f))
     (none)
     )
   :exit (behavior ()
-    (logclear! (-> self state-flags) (state-flags sf04))
+    (logclear! (-> self state-flags) (state-flags invulnerable))
     (let ((v1-2 (-> self manipy)))
       (when v1-2
         (deactivate (-> v1-2 0))
@@ -2067,7 +2028,7 @@
                                           a2-2
                                           (if v1-16
                                               (-> v1-16 entity)
-                                              (the-as entity #f)
+                                              (the-as entity-actor #f)
                                               )
                                           *fish-net-sg*
                                           #f

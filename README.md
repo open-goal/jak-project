@@ -46,7 +46,7 @@ This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 98% of t
 - create tools to repack game assets into a format that our port uses.
 
 Our objectives are:
-- make the port a "native application" on x86-64, with high performance. It shouldn't emulated, interpreted, or transpiled.
+- make the port a "native application" on x86-64, with high performance. It shouldn't be emulated, interpreted, or transpiled.
 - Our GOAL compiler's performance should be around the same as unoptimized C.
 - try to match things from the original game and development as possible. For example, the original GOAL compiler supported live modification of code while the game is running, so we do the same, even though it's not required for just porting the game.
 - support modifications. It should be possible to make edits to the code without everything else breaking.
@@ -59,7 +59,7 @@ We have a Discord server where we discuss development: https://discord.gg/VZbXMH
 
 ## Current Status
 
-So far, we've decompiled around 400,000 lines of GOAL code, out of an estimated 500,000 total lines. We have a working OpenGL renderer which renders most of the game world and foreground. Levels are fully playable, and you can finish the game with 100% completion! There is currently *no* audio.
+So far, we've decompiled around 400,000 lines of GOAL code, out of an estimated 500,000 total lines from the original game. We have a working OpenGL renderer which renders most of the game world and foreground. Levels are fully playable, and you can finish the game with 100% completion!
 
 Here are some screenshots of the renderer:
 ![](./docs/img/promosmall1.png)
@@ -85,7 +85,7 @@ We don't save any assets from the game - you must bring your own copy of the gam
 Install packages and init repository:
 
 ```sh
-sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev python
+sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libpulse-dev libxi-dev python
 sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 ```
 
@@ -118,14 +118,38 @@ cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse
 Install packages and init repository:
 
 ```sh
-sudo pacman -S gcc make cmake base-devel g++ nasm python
-yay -S taskfile-git
+sudo pacman -S cmake libpulse base-devel nasm python
+yay -S go-task
 ```
+
+For Arch only, replace `task` with `go-task` in the rest of the instructions.
 
 Compile:
 
 ```sh
 cmake -B build && cmake --build build -j 8
+```
+
+Run tests:
+
+```sh
+./test.sh
+```
+
+### Fedora
+
+Install packages and init repository:
+
+```sh
+sudo dnf install cmake lld clang nasm libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel pulseaudio-libs-devel
+sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+```
+
+Compile with `clang`:
+
+```sh
+cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -B build
+cmake --build build -j$(nproc)
 ```
 
 Run tests:
@@ -293,14 +317,15 @@ The second component to the project is the decompiler. You must have a copy of t
 
 Then run `decomp.sh` (Linux) or `decomp-jak1.bat` (Windows) to run the decompiler. The decompiler will extract assets to the `assets` folder. These assets will be used by the compiler when building the port, and you may want to turn asset extraction off after running it once. The decompiler will output code and other data intended to be inspected by humans in the `decompiler_out` folder. Stuff in this folder will not be used by the compiler.
 
-The third is the game source code, written in OpenGOAL. This is located in `goal_src`. All GOAL and GOOS code should be in this folder. Right now most of this is placeholders or incomplete, but you can take a look at `kernel/gcommon.gc` or `goal-lib.gc` to see some in-progress source code.
+The third is the game source code, written in OpenGOAL. This is located in `goal_src`. All GOAL and GOOS code should be in this folder.
 
 The final component is the "runtime", located in `game`. This is the part of the game that's written in C++. In the port, that includes:
 - The "C Kernel", which contains the GOAL linker and some low-level GOAL language features. GOAL has a completely custom dynamically linked object file format so in order to load the first GOAL code, you need a linker written in C++. Some low-level functions for memory allocation, communicating with the I/O Processor, symbol table, strings, and the type system are also implemented in C, as these are required for the linker. It also listens for incoming messages from the compiler and passes them to the running game. This also initializes the game, by initializing the PS2 hardware, allocating the GOAL heaps, loading the GOAL kernel off of the DVD, and executing the kernel dispatcher function. This is in the `game/kernel` folder. This should be as close as possible to the game, and all differences should be noted with a comment.
 - Implementation of Sony's standard library. GOAL code can call C library functions, and Naughty Dog used some Sony library functions to access files, memory cards, controllers, and communicate with the separate I/O Processor. The library functions are in `game/sce`. Implementations of library features specific to the PC port are located in `game/system`.
-- The I/O Processor driver, Overlord. The PS2 had a separate CPU called the I/O Processor (IOP) that was directly connected to the DVD drive hardware and the sound hardware. Naughty Dog created a custom driver for the IOP that handled streaming data off of the DVD. It is much more complicated than I first expected. It's located in `game/overlord`. Like the C kernel, we try to keep this as close as possible to the actual game.
-- Sound Code. Naughty Dog used a third party library for sound. We have not started on this yet.
-- PC specific graphics stuff. We have a functional OpenGL renderer and context that can create a game window and display graphics on it. The specific renderers used by the game however are mostly unimplemented. We have a debug, sprite and tfrag renderers, which is enough to render most of the game world, on-screen text and sprites like the progress menu. This is located in `game/graphics`. Many liberties will be taken to make this work, but the end result should closely match the actual game.
+- The I/O Processor driver, OVERLORD. The PS2 had a separate CPU called the I/O Processor (IOP) that was directly connected to the DVD drive hardware and the sound hardware. Naughty Dog created a custom driver for the IOP that handled streaming data off of the DVD. It is much more complicated than I first expected. It's located in `game/overlord`. Like the C kernel, we try to keep this as close as possible to the actual game.
+- Sound code. Naughty Dog used a third party library for sound called `989SND`. Code for the library and an interface for it is located in `game/sound`.
+- PC specific graphics code. We have a functional OpenGL renderer and context that can create a game window and display graphics on it. The specific renderers used by the game however are mostly implemented. Aside from post-processing effects, everything in the game is rendered. This is located in `game/graphics`. While many liberties will be taken to make this work, the end result should very closely match the actual game.
+- Extra assets used by the port in some fashion, located in `game/assets`. These include extra text files, icons, etc.
 
 ## Directory Layout
 
@@ -356,7 +381,7 @@ The final component is the "runtime", located in `game`. This is the part of the
     - `listener`: The OpenGOAL listener, which connects the compiler to a running GOAL program for the interactive REPL.
     - `make`: The OpenGOAL build system, builds both code and data files.
     - `regalloc`: Register allocator.
-- `iso_data`:
+- `iso_data`: Location of the user-provided DVD contents of the game that the decompiler extracts game assets and code from.
 - `out`: Outputs from the build process. Only the `iso` subfolder should contain assets used by the game.
     - `iso`: Final outputs that are used by the game.
     - `obj`: Object files generated by the compiler.
@@ -365,7 +390,8 @@ The final component is the "runtime", located in `game`. This is the part of the
 - `test`: Unit tests (run on GitHub Actions).
 - `third-party`: Third party libraries.
     - CMake Code Coverage. For code coverage statistics on GitHub builds.
-    - `fmt`. String formatting library.
+    - `discord-rpc`: Discord Rich Presence library.
+    - `fmt`: String formatting library.
     - `googletest`: Test framework.
     - `inja`: templating library used for generating test code for compiler tests.
     - `lzokay`: decompression code for Jak 2 and later DGOs.

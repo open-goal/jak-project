@@ -1,18 +1,20 @@
 #include "FormRegressionTest.h"
 
-#include "decompiler/analysis/type_analysis.h"
-#include "decompiler/analysis/variable_naming.h"
-#include "decompiler/analysis/reg_usage.h"
+#include "common/goos/PrettyPrinter.h"
+#include "common/util/json_util.h"
+
+#include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/expression_build.h"
 #include "decompiler/analysis/final_output.h"
-#include "decompiler/analysis/stack_spill.h"
-#include "decompiler/analysis/insert_lets.h"
 #include "decompiler/analysis/inline_asm_rewrite.h"
+#include "decompiler/analysis/insert_lets.h"
+#include "decompiler/analysis/reg_usage.h"
+#include "decompiler/analysis/stack_spill.h"
+#include "decompiler/analysis/type_analysis.h"
+#include "decompiler/analysis/variable_naming.h"
 #include "decompiler/util/config_parsers.h"
-#include "common/goos/PrettyPrinter.h"
-#include "common/util/json_util.h"
-#include "decompiler/IR2/Form.h"
+
 #include "third-party/json.hpp"
 
 using namespace decompiler;

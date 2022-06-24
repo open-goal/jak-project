@@ -1,35 +1,48 @@
 #pragma once
 
 #include <functional>
+#include <mutex>
 #include <optional>
-
-#include "third-party/fmt/color.h"
-#include "third-party/fmt/core.h"
 
 #include "common/goos/Interpreter.h"
 #include "common/goos/ReplUtils.h"
 #include "common/type_system/TypeSystem.h"
+
 #include "goalc/compiler/CompilerException.h"
 #include "goalc/compiler/CompilerSettings.h"
 #include "goalc/compiler/Env.h"
 #include "goalc/compiler/IR.h"
 #include "goalc/compiler/SymbolInfo.h"
+#include "goalc/data_compiler/game_text_common.h"
 #include "goalc/debugger/Debugger.h"
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
 #include "goalc/make/MakeSystem.h"
-#include "goalc/data_compiler/game_text_common.h"
 
-#include <mutex>
+#include "third-party/fmt/color.h"
+#include "third-party/fmt/core.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
 enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
 
+struct CompilationOptions {
+  std::string filename;                 // input file
+  std::string disassembly_output_file;  // file to write, containing x86 assembly output
+  bool load = false;                    // send to target
+  bool color = false;                   // do register allocation/code generation passes
+  bool write = false;                   // write object file to out/obj
+  bool no_code = false;                 // file shouldn't generate code, throw error if it does
+  bool disassemble = false;             // either print disassembly to stdout or output_file
+  bool print_time = false;              // print timing statistics
+};
+
 class Compiler {
  public:
   Compiler(const std::string& user_profile = "#f", std::unique_ptr<ReplWrapper> repl = nullptr);
   ~Compiler();
+  void asm_file(const CompilationOptions& options);
+
   void save_repl_history();
   void print_to_repl(const std::string_view& str);
   std::string get_prompt();

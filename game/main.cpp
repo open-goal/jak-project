@@ -4,12 +4,15 @@
  */
 
 #include <string>
+
 #include "runtime.h"
-#include "common/versions.h"
+
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
-#include "game/discord.h"
 #include "common/util/os.h"
+#include "common/versions.h"
+
+#include "game/discord.h"
 
 // Discord RPC
 extern int64_t gStartTime;
@@ -81,7 +84,7 @@ int main(int argc, char** argv) {
 
 #ifndef __AVX2__
   if (get_cpu_info().has_avx2) {
-    printf("Note: your CPU supports AVX2, but this build was not compiled with AVX2 support\n");
+    // printf("Note: your CPU supports AVX2, but this build was not compiled with AVX2 support\n");
     get_cpu_info().has_avx2 = false;
   }
 #endif

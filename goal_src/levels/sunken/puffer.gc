@@ -5,11 +5,6 @@
 ;; name in dgo: puffer
 ;; dgos: L1, SUN, SUNKEN
 
-(define-extern *puffer-sg* skeleton-group)
-(define-extern *puffer-mean-sg* skeleton-group)
-
-(declare-type puffer process-drawable)
-
 
 ;; DECOMP BEGINS
 
@@ -134,7 +129,10 @@
 (defbehavior puffer-post puffer ()
   (when (and (-> self hit-player?)
              (or (not *target*)
-                 (and (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+                 (and (zero? (logand (-> *target* state-flags)
+                                     (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                                     )
+                             )
                       (>= (- (-> *display* base-frame-counter) (-> self hit-player-time)) (seconds 0.05))
                       )
                  )
@@ -167,12 +165,12 @@
                 (collide-kind background cak-3 ground-object)
                 obj
                 s5-0
-                1
+                (new 'static 'pat-surface :noentity #x1)
                 )
               0.0
               )
           (let ((v1-11 (-> obj draw shadow-ctrl)))
-            (logclear! (-> v1-11 settings flags) (shadow-flags shdf05))
+            (logclear! (-> v1-11 settings flags) (shadow-flags disable-draw))
             )
           0
           (let ((v1-14 (-> obj draw shadow-ctrl)))
@@ -186,7 +184,7 @@
           )
          (else
            (let ((v1-19 (-> obj draw shadow-ctrl)))
-             (logior! (-> v1-19 settings flags) (shadow-flags shdf05))
+             (logior! (-> v1-19 settings flags) (shadow-flags disable-draw))
              )
            0
            )
@@ -195,7 +193,7 @@
      )
     (else
       (let ((v1-21 (-> obj draw shadow-ctrl)))
-        (logior! (-> v1-21 settings flags) (shadow-flags shdf05))
+        (logior! (-> v1-21 settings flags) (shadow-flags disable-draw))
         )
       0
       )
@@ -230,7 +228,10 @@
 (defmethod dummy-25 puffer ((obj puffer) (arg0 float))
   (when *target*
     (let ((gp-0 (target-pos 0)))
-      (when (and (zero? (logand (-> *target* state-flags) (state-flags sf03 sf04 sf05 sf06 sf07 sf15)))
+      (when (and (zero? (logand (-> *target* state-flags)
+                                (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                                )
+                        )
                  (dummy-24 obj gp-0)
                  (>= (-> gp-0 y) (+ -14336.0 (-> obj attack-bottom-y)))
                  (>= (+ 2048.0 (-> obj top-y)) (-> gp-0 y))
@@ -570,7 +571,7 @@
     (set! (-> self attacking?) #f)
     (shut-down! (-> self neck))
     (let ((v1-5 (-> self draw shadow-ctrl)))
-      (logior! (-> v1-5 settings flags) (shadow-flags shdf05))
+      (logior! (-> v1-5 settings flags) (shadow-flags disable-draw))
       )
     0
     (none)
@@ -1159,7 +1160,7 @@
   (set! (-> obj look-mean?) #f)
   (set! (-> obj travel-turn-speed) 16384.0)
   (dummy-21 obj)
-  (process-drawable-from-entity! obj (the-as entity-actor (-> obj entity)))
+  (process-drawable-from-entity! obj (-> obj entity))
   (initialize-skeleton obj *puffer-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
   (logclear! (-> obj mask) (process-mask actor-pause))

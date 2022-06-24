@@ -1,6 +1,6 @@
-#include "third-party/fmt/core.h"
-
 #include "LabelDB.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 

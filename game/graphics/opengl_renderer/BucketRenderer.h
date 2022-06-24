@@ -1,13 +1,15 @@
 #pragma once
 
-#include <string>
 #include <memory>
+#include <string>
+
 #include "common/dma/dma_chain_read.h"
-#include "game/graphics/opengl_renderer/Shader.h"
-#include "game/graphics/texture/TexturePool.h"
+
 #include "game/graphics/opengl_renderer/Profiler.h"
-#include "game/graphics/opengl_renderer/loader/Loader.h"
+#include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/opengl_renderer/buckets.h"
+#include "game/graphics/opengl_renderer/loader/Loader.h"
+#include "game/graphics/texture/TexturePool.h"
 
 struct LevelVis {
   bool valid = false;
@@ -37,11 +39,9 @@ struct SharedRenderState {
   bool use_sky_cpu = true;
   bool use_occlusion_culling = true;
   bool enable_merc_xgkick = true;
-  bool use_direct2 = true;
   math::Vector<u8, 4> fog_color;
   float fog_intensity = 1.f;
   bool no_multidraw = false;
-  bool merc2 = true;
 
   void reset();
   bool has_pc_data = false;

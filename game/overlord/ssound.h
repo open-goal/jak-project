@@ -2,8 +2,9 @@
 #ifndef JAK_V2_SSOUND_H
 #define JAK_V2_SSOUND_H
 
-#include "game/sce/iop.h"
 #include "sbank.h"
+
+#include "game/sce/iop.h"
 
 struct VolumePair {
   s16 left;

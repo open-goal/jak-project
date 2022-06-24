@@ -1,9 +1,10 @@
 #pragma once
 
-#include <vector>
 #include <stdexcept>
-#include "IRegSet.h"
 #include <unordered_map>
+#include <vector>
+
+#include "IRegSet.h"
 #include "IRegister.h"
 #include "allocator_interface.h"
 

@@ -104,55 +104,60 @@
 
 (defun set-master-mode ((new-mode symbol))
   "Update pause masks for the given mode, and set *master-mode*"
-  (set! *master-mode* new-mode)
-  (if *debug-segment*
-      (menu-respond-to-pause)
-      )
-  (case *master-mode*
-    (('pause)
+  ;; PAL patch here
+  (let ((gp-0 *master-mode*))
+    (set! *master-mode* new-mode)
+    (if *debug-segment*
+        (menu-respond-to-pause)
+        )
+    (case *master-mode*
+      (('pause)
 
-     ;; request the pause mask to be set in prevent-from-run.
-     ;; this will block any process with pause from running, pausing most game objects.
-     (if (not *debug-pause*)
-         (logior! (-> *setting-control* default process-mask) (process-mask pause))
-         )
-
-     ;; allow the menu to run.
-     (logclear! (-> *setting-control* default process-mask) (process-mask menu))
-
-     ;; ??
-     (set! *pause-lock* #f)
-     (sound-group-pause (the-as uint 255))
-     (hide-progress-screen)
-     )
-    (('menu)
-     ;; I believe these masks are just to make the progress go away work.
-     (logior! (-> *setting-control* default process-mask) (process-mask menu))
-     (logclear! (-> *setting-control* default process-mask) (process-mask pause progress))
-     (set! *pause-lock* #f)
-     (hide-progress-screen)
-     )
-    (('progress)
-     ;; allow menu to run while in progress.
-     (logclear! (-> *setting-control* default process-mask) (process-mask menu))
-
-     ;; activate the progress menu.
-     (when (not *progress-process*)
-       (activate-progress *dproc* (progress-screen fuel-cell))
-       (if (not *progress-process*) ;; if it doesn't want to activate, back to game.
-           (set-master-mode 'game)
+       ;; request the pause mask to be set in prevent-from-run.
+       ;; this will block any process with pause from running, pausing most game objects.
+       (if (not *debug-pause*)
+           (logior! (-> *setting-control* default process-mask) (process-mask pause))
            )
+
+       ;; allow the menu to run.
+       (logclear! (-> *setting-control* default process-mask) (process-mask menu))
+
+       ;; ??
+       (set! *pause-lock* #f)
+       (sound-group-pause (sound-group sfx music dialog sog3 ambient sog5 sog6 sog7))
+       (hide-progress-screen)
        )
-     )
-    (('game)
-     ;; allow pausable/menu to run.
-     (logclear! (-> *setting-control* default process-mask) (process-mask pause menu))
-     (sound-group-continue (the-as uint 255))
-     (hide-progress-screen)
-     )
+      (('menu)
+       ;; I believe these masks are just to make the progress go away work.
+       (logior! (-> *setting-control* default process-mask) (process-mask menu))
+       (logclear! (-> *setting-control* default process-mask) (process-mask pause progress))
+       (set! *pause-lock* #f)
+       (hide-progress-screen)
+       )
+      (('progress)
+       ;; allow menu to run while in progress.
+       (logclear! (-> *setting-control* default process-mask) (process-mask menu))
+
+       ;; activate the progress menu.
+       (when (not *progress-process*)
+         (activate-progress *dproc* (progress-screen fuel-cell))
+         (if (not *progress-process*)
+             (set-master-mode 'game)
+             )
+         )
+       )
+      (('game)
+       ;; allow pausable/menu to run.
+       (logclear! (-> *setting-control* default process-mask) (process-mask pause menu))
+       (if (!= gp-0 *master-mode*)
+           (sound-group-continue (sound-group sfx music dialog sog3 ambient sog5 sog6 sog7))
+           )
+       (hide-progress-screen)
+       )
+      )
     )
   ;; apply settings now.
-  (copy-settings-from-target! *setting-control*)
+  (apply-settings *setting-control*)
   0
   (none)
   )
@@ -337,6 +342,17 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;
+;; opengoal territory override
+;;;;;;;;;;;;;;;;;;;;;;
+
+(defun scf-get-territory ()
+  "this overrides the kernel version."
+  (if (and *jak1-full-game* (= (language-enum japanese) (-> *setting-control* default language)))
+      GAME_TERRITORY_SCEI
+      GAME_TERRITORY_SCEA)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;
 ;; Cheat Codes
 ;;;;;;;;;;;;;;;;;;;;;;
 
@@ -419,11 +435,11 @@
                (external-cam-reset!)
                )
               (set! *external-cam-mode* 'pad-1)
-              (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 1 #t)
+              (sound-play "select-menu")
               )
              (else
               (set! *external-cam-mode* #f)
-              (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
+              (sound-play "cursor-options")
               )
              )
           )
@@ -508,7 +524,7 @@
                 (set-blackout-frames (seconds 100))
                 (set! (-> *setting-control* default allow-pause) #f)
                 (set! (-> *setting-control* default allow-progress) #f)
-                (copy-settings-from-target! *setting-control*)
+                (apply-settings *setting-control*)
                 (set! (-> *setting-control* default sfx-volume) 0.0)
                 (set! (-> *setting-control* default music-volume) 0.0)
                 (set! (-> *setting-control* default dialog-volume) 0.0)
@@ -587,7 +603,7 @@
     ;; the size is 0, so this doesn't actually do anything.
     ;; (dma-send-to-spr (the-as uint #x70000000) (the-as uint *terrain-context*) (the-as uint 0) #t)
     (set! *teleport* #t)
-    (update-per-frame-settings! *setting-control*)
+    (update *setting-control*)
     (init-time-of-day-context *time-of-day-context*)
     (display-sync disp)
     (swap-display disp)

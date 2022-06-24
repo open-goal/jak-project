@@ -53,19 +53,23 @@
 (defmethod set-display-mode! pc-settings ((obj pc-settings) (mode symbol))
   "sets the game's display mode"
 
-  ;; changing to same mode, no-op
-  (if (= (pc-get-fullscreen) mode)
-    (return 0))
-
-  ;; else change it and update it
+  ;; change the display mode.
   (set! (-> obj display-mode) mode)
-  (pc-set-fullscreen mode 0)
   0)
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
   "sets the size of the display window"
   (format #t "Setting size to ~D x ~D~%" width height)
-  (pc-set-window-size width height)
+  (cond
+    ((= 'windowed (-> obj display-mode))
+      (set! (-> obj win-width) width)
+      (set! (-> obj win-height) height)
+      )
+    (else
+      (format 0  "Nope! No changing fullscreen resolution for now!")
+      (format #t "Nope! No changing fullscreen resolution for now!")
+      )
+    )
   (none))
 
 
@@ -87,10 +91,15 @@
   (set! (-> obj aspect-ratio-reciprocal) (/ ASPECT_4X3 aspect))
   (none))
 
+(defmethod set-window-lock! pc-settings ((obj pc-settings) (lock symbol))
+  "set the aspect ratio used for rendering."
+  (pc-set-window-lock lock)
+  (set! (-> obj window-lock?) lock))
+
 (defmethod commit-to-file pc-settings ((obj pc-settings))
   "commits the current settings to the file"
   ;; auto load settings if available
-  
+
   (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
   (pc-mkdir-file-path *pc-temp-string-1*)
   (write-to-file obj *pc-temp-string-1*)
@@ -100,9 +109,8 @@
   "Update settings from the C kernel to GOAL."
 
   (set! (-> obj os) (pc-get-os))
-  (pc-get-window-size (&-> obj win-width) (&-> obj win-height))
+  (pc-get-window-size (&-> obj real-width) (&-> obj real-height))
   (pc-get-window-scale (&-> obj dpi-x) (&-> obj dpi-y))
-  (set! (-> obj display-mode) 'windowed)
 
   (when (-> obj use-vis?)
     (if (= (-> *setting-control* default aspect-ratio) 'aspect4x3)
@@ -111,28 +119,28 @@
         )
     )
 
-  (let ((win-aspect (/ (the float (-> obj win-width)) (the float (-> obj win-height)))))
+  (let ((win-aspect (/ (the float (-> obj real-width)) (the float (-> obj real-height)))))
     (cond
       ((and (not (-> obj use-vis?)) (-> obj aspect-ratio-auto?))
        ;; the window determines the resolution
        (set-aspect-ratio! obj win-aspect)
-       (set! (-> obj width) (-> obj win-width))
-       (set! (-> obj height) (-> obj win-height))
+       (set! (-> obj lbox-width) (-> obj real-width))
+       (set! (-> obj lbox-height) (-> obj real-height))
        )
       ((> win-aspect (-> obj aspect-ratio))
        ;; too wide
-       (set! (-> obj width) (the int (* (the float (-> obj win-height)) (-> obj aspect-ratio))))
-       (set! (-> obj height) (-> obj win-height))
+       (set! (-> obj lbox-width) (the int (* (the float (-> obj real-height)) (-> obj aspect-ratio))))
+       (set! (-> obj lbox-height) (-> obj real-height))
        )
       ((< win-aspect (-> obj aspect-ratio))
        ;; too tall
-       (set! (-> obj width) (-> obj win-width))
-       (set! (-> obj height) (the int (/ (the float (-> obj win-width)) (-> obj aspect-ratio))))
+       (set! (-> obj lbox-width) (-> obj real-width))
+       (set! (-> obj lbox-height) (the int (/ (the float (-> obj real-width)) (-> obj aspect-ratio))))
        )
       (else
        ;; just right
-       (set! (-> obj width) (-> obj win-width))
-       (set! (-> obj height) (-> obj win-height))
+       (set! (-> obj lbox-width) (-> obj real-width))
+       (set! (-> obj lbox-height) (-> obj real-height))
        )
       )
     )
@@ -145,13 +153,19 @@
 
   (cond
     ((-> obj letterbox?)
-     ;; AGH bad idea, this is meant for resolution! TODO fix this crap
-     (pc-set-letterbox (-> obj width) (-> obj height))
+     (pc-set-letterbox (-> obj lbox-width) (-> obj lbox-height))
      )
     (else
-     (pc-set-letterbox (-> obj win-width) (-> obj win-height))
+     (pc-set-letterbox (-> obj real-width) (-> obj real-height))
      )
     )
+
+  (pc-set-fullscreen (-> obj display-mode) 0)
+  (if (and (= 'windowed (-> obj display-mode))
+           (-> obj window-lock?)
+           (or (!= (-> obj win-width) (-> obj real-width))
+               (!= (-> obj win-height) (-> obj real-height))))
+      (pc-set-window-size (max 320 (-> obj win-width)) (max 240 (-> obj win-height))))
 
   (pc-discord-rpc-set (if (-> obj discord-rpc?) 1 0))
 
@@ -320,44 +334,58 @@
 
   (when *target*
 
-      ;; TODO green eco hack here as well
+      (with-pp (protect ((-> *target* fact-info-target eco-source) *sound-player-enable*)
+      ;; act as if this isnt a new source of eco to prevent spamming sounds. then restore the old source!
+      (when (< 0 (-> *target* fact-info-target eco-level))
+          (set! (-> *target* fact-info-target eco-source) (process->handle pp))
+          (false! *sound-player-enable*)
+          )
+
+      ;; blue eco!
       (when (and (pc-cheats? obj eco-blue)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-blue))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
-        (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc)))
+        (protect ((-> *target* event-hook))
+          (set! (-> *target* event-hook) target-generic-event-handler)
+          (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc))
+          )
+        (send-event *target* 'boost (-> *FACT-bank* eco-single-inc)))
 
+      ;; yellow eco!
       (when (and (pc-cheats? obj eco-yellow)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-yellow))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
         (send-event *target* 'get-pickup (pickup-type eco-yellow) (-> *FACT-bank* eco-full-inc)))
 
+      ;; red eco!
       (when (and (pc-cheats? obj eco-red)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-red))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
         (send-event *target* 'get-pickup (pickup-type eco-red) (-> *FACT-bank* eco-full-inc)))
 
+      ;; green eco!
       (when (and (pc-cheats? obj eco-green)
                  (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-green))
                      (<= (-> *target* fact-info-target eco-level) 0.0)))
-       (with-pp
         (define-extern vent type)
-        (protect ((-> (the basic pp) type) (-> *target* control root-prim prim-core action))
-        (set! (-> (the basic pp) type) vent)
-        (logior! (-> *target* control root-prim prim-core action) #x200)
+        (protect ((-> pp type) (-> *target* control root-prim prim-core action))
+        (set! (-> pp type) vent)
+        (logior! (-> *target* control root-prim prim-core action) (collide-action ca-9))
         (send-event *target* 'get-pickup (pickup-type eco-green) (-> *FACT-bank* eco-full-inc)))
-        ))
+        )
+      ))
 
       (when (pc-cheats? obj invinc)
-        (logior! (-> *target* state-flags) 16)
+        (logior! (-> *target* state-flags) (state-flags invulnerable))
         )
 
       )
-      
+
   (if (pc-cheats? obj tunes)
       (set! (-> obj flava-hack) -1)
       (set! (-> obj flava-hack) 0)
       )
-  
+
   (logior! (-> obj cheats-known) (-> obj cheats))
   0)
 
@@ -365,7 +393,7 @@
 (defmethod add-to-music-log pc-settings ((obj pc-settings) (music symbol) (flava int))
   "add music and flava information to the music log.
    if music already exists, adds flava. if flava already exists, nothing happens."
-  
+
   ;; go through our music log
   (dotimes (i PC_MUSIC_LOG_LENGTH)
     (cond
@@ -383,15 +411,15 @@
       ;; something else. maybe the wrong entry, in which case nothing to do.
       )
     )
-  
+
   0)
 
 (defmethod update-music-log pc-settings ((obj pc-settings))
   "update music log settings."
-  
+
   ;; add whatever is playing to the music log.
   (add-to-music-log obj (-> *setting-control* current music) (the int (-> *setting-control* current sound-flava)))
-  
+
   ;; special cases. for example, npc's that despawn and you can't hear their music anymore.
   (if (task-closed? (game-task beach-ecorocks) (task-status need-introduction))
       (add-to-music-log obj 'village1 1))
@@ -428,7 +456,7 @@
       (add-to-music-log obj 'credits 1)
       (add-to-music-log obj 'credits 2)
       )
-  
+
   0)
 
 
@@ -445,8 +473,8 @@
 
   (clear *pc-temp-string*)
   (format *pc-temp-string* "game resolution: ~D x ~D~%" (-> obj width) (-> obj height))
-  (format *pc-temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj win-width) (-> obj win-height) (-> obj dpi-x) (-> obj dpi-y))
-  (format *pc-temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A L: ~A~%" (-> obj aspect-ratio) (/ (the float (-> obj win-width)) (the float (-> obj win-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
+  (format *pc-temp-string* "window size: ~D x ~D (~,,1f x ~,,1f)~%" (-> obj real-width) (-> obj real-height) (-> obj dpi-x) (-> obj dpi-y))
+  (format *pc-temp-string* "target aspect: ~,,3f/~,,3f A: ~A/~A L: ~A~%" (-> obj aspect-ratio) (/ (the float (-> obj real-width)) (the float (-> obj real-height))) (-> obj aspect-ratio-auto?) (-> obj use-vis?) (-> obj letterbox?))
   (format *pc-temp-string* "display-type: ~A ~A~%" (-> obj display-mode) (-> obj vsync?))
 
   (draw-string-xy *pc-temp-string* buf 0 (- 224 (* 8 4)) (font-color default) (font-flags shadow kerning))
@@ -472,12 +500,12 @@
 
 (defun-debug print-music-log ((out object))
   "prints the *pc-settings* music log."
-  
+
   (dotimes (i PC_MUSIC_LOG_LENGTH)
     (if (-> *pc-settings* secrets music i name)
         (format out "music log ~D: ~A (f #x~x)~%" i (-> *pc-settings* secrets music i name) (-> *pc-settings* secrets music i flava-mask)))
     )
-  
+
   0)
 
 
@@ -665,10 +693,13 @@
             (dosettings (file)
               (case-str *pc-temp-string*
                 (("fps") (set! (-> obj target-fps) (file-stream-read-int file)))
-                (("size")
+                (("window-size")
+                  (set! (-> obj win-width) (file-stream-read-int file))
+                  (set! (-> obj win-height) (file-stream-read-int file))
+                  )
+                (("game-size")
                   (set! (-> obj width) (file-stream-read-int file))
                   (set! (-> obj height) (file-stream-read-int file))
-                  (set-size! obj (-> obj width) (-> obj height))
                   )
                 (("aspect") (set-aspect! obj (file-stream-read-int file) (file-stream-read-int file)))
                 (("aspect-test")
@@ -677,6 +708,7 @@
                   )
                 (("aspect-auto") (set! (-> obj aspect-ratio-auto?) (file-stream-read-symbol file)))
                 (("aspect-game") (set! (-> *setting-control* default aspect-ratio) (file-stream-read-symbol file)))
+                (("video-mode") (set! (-> *setting-control* default video-mode) (file-stream-read-symbol file)))
                 (("display-mode") (set-display-mode! obj (file-stream-read-symbol file)))
                 (("letterbox") (set! (-> obj letterbox?) (file-stream-read-symbol file)))
                 (("vsync") (set! (-> obj vsync?) (file-stream-read-symbol file)))
@@ -787,11 +819,13 @@
     (format file "(settings #x~X~%" (-> obj version))
 
     (format file "  (fps ~D)~%" (-> obj target-fps))
-    (format file "  (size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
+    (format file "  (game-size ~D ~D)~%" (-> obj width) (-> obj height))
+    (format file "  (window-size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
     (format file "  (aspect ~D ~D)~%" (-> obj width) (-> obj height))
     (format file "  (aspect-test ~D ~D)~%" (-> obj aspect-custom-x) (-> obj aspect-custom-y))
     (format file "  (aspect-auto ~A)~%" (-> obj aspect-ratio-auto?))
     (format file "  (aspect-game ~A)~%" (-> *setting-control* default aspect-ratio))
+    (format file "  (video-mode ~A)~%" (-> *setting-control* default video-mode))
     (format file "  (display-mode ~A)~%" (-> obj display-mode))
     (format file "  (letterbox ~A)~%" (-> obj letterbox?))
     (format file "  (vsync ~A)~%" (-> obj vsync?))
@@ -861,7 +895,7 @@
     (format file "    (hard-rats-hiwave ~D)~%" (-> obj secrets hard-rats-hiwave))
     |#
 
-    (format file "    (music")
+    (format file "    (music~%")
     (dotimes (i PC_MUSIC_LOG_LENGTH)
       (if (-> obj secrets music i name)
     (format file "      (~A #x~X)~%" (-> obj secrets music i name) (-> obj secrets music i flava-mask))
@@ -883,7 +917,7 @@
 
 (defmethod load-settings pc-settings ((obj pc-settings))
   "load"
-  
+
   (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
   (if (pc-filepath-exists? *pc-temp-string-1*)
     (begin

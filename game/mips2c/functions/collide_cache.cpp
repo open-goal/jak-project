@@ -1,8 +1,8 @@
 //--------------------------MIPS2C---------------------
-#include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
-
 #include "common/dma/gs.h"
+
+#include "game/kernel/kscheme.h"
+#include "game/mips2c/mips2c_private.h"
 
 namespace {
 u32 vu0_buffer[1024];  // todo, maybe can be 512.
@@ -1740,7 +1740,7 @@ u64 execute(void* ctxt) {
   printf("too many prims\n");
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
   //beq r0, r0, L147                                // beq r0, r0, L147
   // nop                                            // sll r0, r0, 0
   goto block_15;                                    // branch always

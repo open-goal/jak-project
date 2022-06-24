@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/AtomicOp.h"
 

@@ -1,9 +1,16 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <optional>
 #include <utility>
+
+#include "Env.h"
+
 #include "common/goos/Object.h"
+#include "common/util/Assert.h"
+
+#include "decompiler/Disasm/Instruction.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/Disasm/Instruction.h"
 #include "decompiler/IR2/IR2_common.h"

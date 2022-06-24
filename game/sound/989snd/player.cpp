@@ -1,8 +1,10 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #include "player.h"
-#include <third-party/fmt/core.h>
+
 #include <fstream>
+
+#include <third-party/fmt/core.h>
 
 #ifdef _WIN32
 #include <windows.h>

@@ -1,7 +1,7 @@
-#include "gtest/gtest.h"
 #include "decompiler/Disasm/InstructionDecode.h"
 #include "decompiler/Disasm/OpcodeInfo.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "gtest/gtest.h"
 
 using namespace decompiler;
 

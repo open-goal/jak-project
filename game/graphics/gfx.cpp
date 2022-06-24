@@ -3,21 +3,24 @@
  * Graphics component for the runtime. Abstraction layer for the main graphics routines.
  */
 
-#include <cstdio>
-#include <functional>
-#include <filesystem>
-
 #include "gfx.h"
-#include "display.h"
-#include "pipelines/opengl.h"
 
-#include "common/symbols.h"
+#include <cstdio>
+#include <filesystem>
+#include <functional>
+
+#include "display.h"
+
 #include "common/log/log.h"
+#include "common/symbols.h"
 #include "common/util/FileUtil.h"
+
 #include "game/common/file_paths.h"
 #include "game/kernel/kscheme.h"
+#include "game/kernel/svnrev.h"
 #include "game/runtime.h"
 #include "game/system/newpad.h"
+#include "pipelines/opengl.h"
 
 namespace {
 // initializes a gfx settings.
@@ -55,6 +58,7 @@ GfxSettings g_settings;
 void LoadSettings() {
   const auto filename = file_util::get_file_path({GAME_CONFIG_DIR_NAME, SETTINGS_GFX_FILE_NAME});
   if (std::filesystem::exists(filename)) {
+    // this is just wrong LOL
     FILE* fp = fopen(filename.c_str(), "rb");
     lg::info("Found graphics configuration file. Checking version.");
     u64 version;
@@ -83,13 +87,12 @@ void SaveSettings() {
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
   switch (pipeline) {
     case GfxPipeline::Invalid:
-      lg::error("Requested invalid graphics pipeline!");
+      lg::error("Requested invalid renderer", pipeline);
       return NULL;
-      break;
     case GfxPipeline::OpenGL:
-      return &moduleOpenGL;
+      return &gRendererOpenGL;
     default:
-      lg::error("Unknown graphics pipeline {}", (u64)pipeline);
+      lg::error("Requested unknown renderer {}", (u64)pipeline);
       return NULL;
   }
 }
@@ -119,9 +122,10 @@ u32 Init() {
   }
 
   if (g_main_thread_id != std::this_thread::get_id()) {
-    lg::warn("Ran Gfx::Init outside main thread. Init display elsewhere?");
+    lg::error("Ran Gfx::Init outside main thread. Init display elsewhere?");
   } else {
-    Display::InitMainDisplay(640, 480, "OpenGOAL GL Window", g_settings);
+    Display::InitMainDisplay(
+        640, 480, fmt::format("OpenGOAL - Work in Progress - {}", GIT_VERSION).c_str(), g_settings);
   }
 
   return 0;
@@ -133,7 +137,7 @@ void Loop(std::function<bool()> f) {
     // check if we have a display
     if (Display::GetMainDisplay()) {
       // lg::debug("run display");
-      Display::GetMainDisplay()->render_graphics();
+      Display::GetMainDisplay()->render();
     }
   }
 }
@@ -184,7 +188,9 @@ void set_levels(const std::vector<std::string>& levels) {
 }
 
 void poll_events() {
-  GetCurrentRenderer()->poll_events();
+  if (GetCurrentRenderer()) {
+    GetCurrentRenderer()->poll_events();
+  }
 }
 
 u64 get_window_width() {
@@ -215,11 +221,11 @@ void get_window_scale(float* x, float* y) {
   }
 }
 
-int get_fullscreen() {
+GfxDisplayMode get_fullscreen() {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->fullscreen_mode();
+    return Display::GetMainDisplay()->get_fullscreen();
   } else {
-    return DisplayMode::Windowed;
+    return GfxDisplayMode::Windowed;
   }
 }
 
@@ -234,9 +240,15 @@ void set_letterbox(int w, int h) {
   g_global_settings.lbox_h = h;
 }
 
-void set_fullscreen(DisplayMode mode, int screen) {
+void set_fullscreen(GfxDisplayMode mode, int screen) {
   if (Display::GetMainDisplay()) {
     Display::GetMainDisplay()->set_fullscreen(mode, screen);
+  }
+}
+
+void set_window_lock(bool lock) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->set_lock(lock);
   }
 }
 

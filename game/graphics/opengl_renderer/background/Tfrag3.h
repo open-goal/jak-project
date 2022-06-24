@@ -2,10 +2,11 @@
 
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/math/Vector.h"
+
 #include "game/graphics/gfx.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/opengl_renderer/background/background_common.h"
+#include "game/graphics/pipelines/opengl.h"
 
 class Tfrag3 {
  public:
@@ -64,6 +65,7 @@ class Tfrag3 {
     const tfrag3::BVH* vis = nullptr;
     const u32* index_data = nullptr;
     SwizzledTimeOfDay tod_cache;
+    u64 draw_mode = 0;
 
     void reset_stats() {
       rendered_this_frame = false;

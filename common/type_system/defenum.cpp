@@ -4,11 +4,14 @@
  * This is used both in the compiler and in the decompiler for the type definition file.
  */
 
-#include "common/goos/ParseHelpers.h"
 #include "defenum.h"
+
 #include "deftype.h"
-#include "third-party/fmt/core.h"
+
+#include "common/goos/ParseHelpers.h"
 #include "common/util/BitUtils.h"
+
+#include "third-party/fmt/core.h"
 
 namespace {
 const goos::Object& car(const goos::Object* x) {

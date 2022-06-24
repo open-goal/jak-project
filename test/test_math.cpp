@@ -1,5 +1,6 @@
-#include "gtest/gtest.h"
 #include "common/math/geometry.h"
+
+#include "gtest/gtest.h"
 
 TEST(Math, RaySphereOrigin) {
   math::Vector<float, 3> sphere(0, 0, 0);

@@ -434,7 +434,7 @@
                           (v1-7 (-> obj draw shadow-ctrl))
                           )
                       (let ((a0-1 v1-7))
-                        (logclear! (-> a0-1 settings flags) (shadow-flags shdf05))
+                        (logclear! (-> a0-1 settings flags) (shadow-flags disable-draw))
                         )
                       0
                       (let ((a0-3 v1-7))
@@ -447,7 +447,7 @@
                     )
                    (else
                      (let ((v1-9 (-> obj draw shadow-ctrl)))
-                       (logior! (-> v1-9 settings flags) (shadow-flags shdf05))
+                       (logior! (-> v1-9 settings flags) (shadow-flags disable-draw))
                        )
                      0
                      )
@@ -505,15 +505,7 @@
                (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self sound-delay))
                )
       (set! (-> self played-sound?) #t)
-      (sound-play-by-name
-        (static-sound-name "blob-jump")
-        (new-sound-id)
-        1024
-        (the int (* 1524.0 (nav-enemy-rnd-float-range -0.5 0.5)))
-        0
-        1
-        #t
-        )
+      (sound-play "blob-jump" :pitch (nav-enemy-rnd-float-range -0.5 0.5))
       )
     (dummy-53 self)
     0
@@ -521,15 +513,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (sound-play-by-name
-      (static-sound-name "blob-out")
-      (new-sound-id)
-      1024
-      (the int (* 1524.0 (nav-enemy-rnd-float-range -1.0 1.0)))
-      0
-      1
-      #t
-      )
+    (sound-play "blob-out" :pitch (nav-enemy-rnd-float-range -1.0 1.0))
     (cond
       ((zero? (nav-enemy-rnd-int-count 2))
        (ja-no-eval :group! green-eco-lurker-jump-with-flip-ja :num! (seek!) :frame-num 0.0)
@@ -562,15 +546,7 @@
     )
   :code (behavior ()
     (activate! *camera-smush-control* 409.6 37 150 1.0 0.99)
-    (sound-play-by-name
-      (static-sound-name "blob-land")
-      (new-sound-id)
-      1024
-      (the int (* 1524.0 (nav-enemy-rnd-float-range -1.0 1.0)))
-      0
-      1
-      #t
-      )
+    (sound-play "blob-land" :pitch (nav-enemy-rnd-float-range -1.0 1.0))
     (let ((v1-4 (-> self draw shadow-ctrl)))
       (let ((a0-4 v1-4))
         (set! (-> a0-4 settings bot-plane w) (- -7168.0))
@@ -582,7 +558,7 @@
       0
       (logclear! (-> v1-4 settings flags) (shadow-flags shdf03))
       (logclear! (-> v1-4 settings flags) (shadow-flags shdf02))
-      (logclear! (-> v1-4 settings flags) (shadow-flags shdf05))
+      (logclear! (-> v1-4 settings flags) (shadow-flags disable-draw))
       )
     0
     (ja-channel-push! 1 (seconds 0.2))
@@ -678,10 +654,10 @@
       (-> self collide-info trans)
       :to *entity-pool*
       )
-    (sound-play-by-name (static-sound-name "blob-explode") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "blob-explode")
     (activate! *camera-smush-control* 409.6 37 150 1.0 0.99)
     (let ((v1-14 (-> self draw shadow-ctrl)))
-      (logior! (-> v1-14 settings flags) (shadow-flags shdf05))
+      (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
       )
     0
     (let ((t9-7 (-> (method-of-type nav-enemy nav-enemy-die) enter)))
@@ -786,7 +762,7 @@
   (none)
   )
 
-(defbehavior green-eco-lurker-init-by-other green-eco-lurker ((arg0 entity) (arg1 green-eco-lurker-gen) (arg2 vector))
+(defbehavior green-eco-lurker-init-by-other green-eco-lurker ((arg0 entity-actor) (arg1 green-eco-lurker-gen) (arg2 vector))
   (initialize-collision self)
   (set! (-> self collide-info trans quad) (-> arg2 quad))
   (vector-identity! (-> self collide-info scale))
@@ -842,7 +818,7 @@
     )
   )
 
-(defbehavior green-eco-lurker-gen-init-by-other green-eco-lurker-gen ((arg0 entity) (arg1 vector) (arg2 int))
+(defbehavior green-eco-lurker-gen-init-by-other green-eco-lurker-gen ((arg0 entity-actor) (arg1 vector) (arg2 int))
   (set! (-> self num-to-spawn) arg2)
   (set! (-> self num-spawned) 0)
   (set! (-> self num-alive) 0)

@@ -1,9 +1,12 @@
-#include <algorithm>
-#include <stdexcept>
-#include <optional>
-#include "common/common_types.h"
 #include "InstructionParser.h"
+
+#include <algorithm>
+#include <optional>
+#include <stdexcept>
+
+#include "common/common_types.h"
 #include "common/util/Assert.h"
+
 #include "third-party/fmt/core.h"
 
 namespace decompiler {

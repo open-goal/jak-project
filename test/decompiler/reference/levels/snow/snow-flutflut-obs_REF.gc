@@ -58,12 +58,13 @@
 
 ;; definition of type snow-button
 (deftype snow-button (process-drawable)
-  ((root-override    collide-shape-moving         :offset        112)
-   (wiggled?         symbol                       :offset-assert 176)
-   (timeout          time-frame                   :offset-assert 184)
-   (delay-til-wiggle time-frame                   :offset-assert 192)
-   (prev-button      entity-actor                 :offset-assert 200)
-   (ticker           ticky                :inline :offset-assert 208)
+  ((root-override         collide-shape-moving         :offset        112)
+   (wiggled?              symbol                       :offset-assert 176)
+   (trying-for-fuel-cell? symbol                       :offset-assert 180)
+   (timeout               time-frame                   :offset-assert 184)
+   (delay-til-wiggle      time-frame                   :offset-assert 192)
+   (prev-button           entity-actor                 :offset-assert 200)
+   (ticker                ticky                :inline :offset-assert 208)
    )
   :heap-base #x80
   :method-count-assert 20
@@ -345,7 +346,7 @@
     (none)
     )
   :code (behavior ()
-    (sound-play-by-name (static-sound-name "prec-button1") (new-sound-id) 1024 -1524 0 1 #t)
+    (sound-play "prec-button1" :pitch -1)
     (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
@@ -908,7 +909,7 @@
   :trans (behavior ()
     (when *target*
       (if (and (>= 798720.0 (-> (target-pos 0) y))
-               (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+               (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
                          (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
                          )
                     )

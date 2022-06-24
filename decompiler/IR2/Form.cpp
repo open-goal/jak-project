@@ -2,13 +2,15 @@
 
 #include <algorithm>
 #include <utility>
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
+
 #include "common/goos/PrettyPrinter.h"
 #include "common/type_system/TypeSystem.h"
+#include "common/util/print_float.h"
+
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/data_decompile.h"
 #include "decompiler/util/sparticle_decompile.h"
-#include "common/util/print_float.h"
 
 namespace decompiler {
 

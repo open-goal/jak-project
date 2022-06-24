@@ -103,6 +103,17 @@
     )
   )
 
+(defun custom-level-cgo (output-name desc-file-name)
+  "Add a CGO with the given output name (in out/iso) and input name (in custom_levels/)"
+  (let ((out-name (string-append "out/iso/" output-name)))
+    (defstep :in (string-append "custom_levels/" desc-file-name)
+      :tool 'dgo
+      :out `(,out-name)
+      )
+    (set! *all-cgos* (cons out-name *all-cgos*))
+    )
+  )
+
 (defun cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
   (let ((out-name (string-append "out/iso/" output-name)))
@@ -121,6 +132,8 @@
 
 
 (define *game-directory* (get-environment-variable "OPENGOAL_DECOMP_DIR" :default "jak1/"))
+(when (user? dass)
+    (set! *game-directory* "jak1_us2/"))
 
 (defmacro copy-texture (tpage-id)
   "Copy a texture from the game, using the given tpage ID"
@@ -146,6 +159,12 @@
     ,@(apply (lambda (x) `(copy-go ,x)) gos)
     )
   )
+
+(defmacro build-custom-level (name)
+  (let* ((path (string-append "custom_levels/" name "/" name ".jsonc")))
+    `(defstep :in ,path
+              :tool 'build-level
+              :out '(,(string-append "out/obj/" name ".go")))))
 
 (defun get-iso-data-path ()
   (if *use-iso-data-path*
@@ -367,7 +386,11 @@
 
 ;; as we find objects that exist in multiple levels, put them here
 
-(copy-sbk-files "COMMON" "EMPTY1" "EMPTY2")
+;; early versions of the game - including the black label release - do not have all files.
+(if *jak1-full-game*
+    (copy-sbk-files "COMMON" "COMMONJ" "EMPTY1" "EMPTY2")
+    (copy-sbk-files "COMMON" "EMPTY1" "EMPTY2")
+    )
 
 (copy-gos
  "sharkey-ag"
@@ -1553,6 +1576,17 @@
   "ndi-volumes-ag"
   "title-vis")
 
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Example Custom Level
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Set up the build system to build the level geometry
+;; this path is relative to the custom_levels/ folder
+;; it should point to the .jsonc file that specifies the level.
+(build-custom-level "test-zone")
+;; the DGO file
+(custom-level-cgo "TESTZONE.DGO" "test-zone/testzone.gd")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Game Engine Code
 ;;;;;;;;;;;;;;;;;;;;;
@@ -1930,8 +1964,8 @@
  )
 
 
-(fmt #t "found {} spools\n" (count *all-str*))
-(group-list "spools" (reverse *all-str*))
+;;(fmt #t "found {} spools\n" (count *all-str*))
+(group-list "spools" *all-str*)
 
 
 (group-list "text"

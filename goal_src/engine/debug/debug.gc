@@ -907,31 +907,20 @@
 
 (defun-debug add-debug-light ((arg0 symbol) (arg1 bucket-id) (arg2 light) (arg3 vector) (arg4 string))
   (if (not arg0)
-   (return #f)
-   )
+    (return #f)
+    )
   (when (!= (-> arg2 levels x) 0.0)
-   (add-debug-vector arg0 arg1
-    arg3
-    (-> arg2 direction)
-    (meters 3)
-    (static-rgba #xff #xff #xff #x80)
+    (add-debug-vector arg0 arg1 arg3 (-> arg2 direction) (meters 3) (static-rgba #xff #xff #xff #x80))
+    (let ((light-vec-end (vector+*! (new-stack-vector0) arg3 (-> arg2 direction) (* (meters 3) (-> arg2 levels x))))
+          ;; the original code here uses w for alpha but that looks terrible
+          (light-rgba (new 'static 'rgba :r (the int (* 128.0 (-> arg2 color x)))
+                                         :g (the int (* 128.0 (-> arg2 color y)))
+                                         :b (the int (* 128.0 (-> arg2 color z)))
+                                         :a 128
+                                         )))
+      (add-debug-text-sphere arg0 arg1 light-vec-end (* (meters 0.5) (-> arg2 levels x)) (string-format "~S ~,,2f" arg4 (-> arg2 levels x)) light-rgba)
+      )
     )
-   ;; this might be wrong
-   (let ((light-vec-end (vector+*! (new-stack-vector0) arg3 (-> arg2 direction) (* (meters 3) (-> arg2 levels x))))
-         (light-rgba (new 'static 'rgba :r (the int (* 128.0 (-> arg2 color x)))
-                                        :g (the int (* 128.0 (-> arg2 color y)))
-                                        :b (the int (* 128.0 (-> arg2 color z)))
-                                        :a (the int (* 128.0 (-> arg2 color w)))
-                                        ))
-         )
-    (add-debug-text-sphere arg0 arg1
-     light-vec-end
-     (* (meters 0.5) (-> arg2 levels x))
-     (string-format "~S ~,,2f" arg4 (-> arg2 levels x))
-     light-rgba
-     )
-    )
-   )
   #f
   )
 

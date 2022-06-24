@@ -17,41 +17,32 @@
 (declare-type water-control basic)
 (declare-type collide-shape basic)
 
+;; These flags are a bit of a hack and are mostly only meaningful on *target*
+;; except for "fade-out-particles" which is meaninful for eco only.
 (defenum state-flags
   :bitfield #t
   :type uint32
-  (sf00)
-  (sf01)
-  (sf02)
-  (sf03)
-  (sf04)
-  (sf05)
-  (sf06)
-  (sf07)
-  (sf08)
-  (sf09)
-  (sf10)
-  (sf11)
-  (sf12)
-  (sf13)
-  (sf14)
-  (sf15)
-  (sf16)
-  (sf17)
-  (sf18)
-  (sf19)
-  (sf20)
-  (sf21)
-  (sf22)
-  (sf23)
-  (sf24)
-  (sf25)
-  (sf26)
-  (sf27)
-  (sf28)
-  (sf29)
-  (sf30)
-  (sf31)
+  (fade-out-particles) ;; set so particle callbacks can fade out before death
+  (dangerous)          ;; set on jak if he is "dangerous" (currently attacking)
+  (sf02)               ;; never sent, blocks tripping
+  (being-attacked)     ;; set when attacked
+  (invulnerable)       ;; set from the debug menu
+  (timed-invulnerable) ;; after being attacked
+  (invuln-powerup)     ;; unused invulnerable mode from powerup
+  (do-not-notice)      ;; enemies etc shouldn't notice jak
+  (grabbed)            ;; something else has "grabbed" control of jak
+  (first-person-mode)  ;; triangle, billy game
+  (use-alt-cam-pos)    ;; target-cam-pos should use an alternate position (jumping in warp gate, on to flutflut...)
+  (prevent-jump)       ;; target cannot do any jumps
+  (prevent-attack)     ;; target cannot do attacks
+  (prevent-duck)       ;; can't duck or roll
+  (remove-prevents)    ;; when set, removes the previous 3 prevents on the next frame.
+  (dying)                ;; set during death anim
+  (sf16)                 ;; unused
+  (has-saved-position)       ;; is there a saved position?
+  (looking-at-enemy)         ;; neck mod active to look at enemy
+  (falling-into-pool-of-bad) ;; falling into lava, dark eco, or melt
+  (flop-hit-ground)          ;; set when ground pound hit ground
   )
 
 (defmacro static-attack-info (&key (mask ()) &rest args)
@@ -117,7 +108,7 @@
 
    ;; state related to entering and being in water
    (water       water-control             :offset-assert 156)
-   
+
    ;; any sound that we're playing
    (sound       ambient-sound             :offset-assert 160)
 
@@ -134,7 +125,7 @@
   (:methods
     (initialize-skeleton (_type_ skeleton-group pair) none 14)
     (initialize-skeleton-by-name (_type_ string object) _type_ 15)
-    (apply-alignment (_type_ int transformq vector) collide-shape 16)
+    (apply-alignment (_type_ align-opts transformq vector) collide-shape 16)
     (do-joint-math! (_type_) none 17)
     (cleanup-for-death (_type_) none 18)
     (evaluate-joint-control (_type_) none 19)

@@ -5,52 +5,33 @@
 ;; name in dgo: shadow-cpu-h
 ;; dgos: GAME, ENGINE
 
+;; The shadow renderer is partially on the EE and on VU1.
+;; This "shadow-cpu" portion is what runs on the EE.
+
+;; The renderer generates a shadow volume and uses some bits in the alpha plane like a stencil buffer.
+;; It reuses the bones of the merc renderer, but uses a simplified mesh and at most 2 bones per vertex.
+
 (defenum shadow-flags
   :bitfield #t
   :type int32
   (shdf00)
-  (shdf01)
+  (disable-fade) ;; ignore max distance settings
   (shdf02)
   (shdf03)
   (shdf04)
-  (shdf05)
-  (shdf06)
-  (shdf07)
-  (shdf08)
-  (shdf09)
-  (shdf10)
-  (shdf11)
-  (shdf12)
-  (shdf13)
-  (shdf14)
-  (shdf15)
-  (shdf16)
-  (shdf17)
-  (shdf18)
-  (shdf19)
-  (shdf20)
-  (shdf21)
-  (shdf22)
-  (shdf23)
-  (shdf24)
-  (shdf25)
-  (shdf26)
-  (shdf27)
-  (shdf28)
-  (shdf29)
-  (shdf30)
-  (shdf31)
+  (disable-draw) ;; disable completely.
   )
 
+;; settings computed by the user, consumed by the shadow renderer
 (deftype shadow-settings (structure)
-  ((center        vector :inline :offset-assert 0)
-   (flags         shadow-flags   :offset 12)
+  ((center        vector :inline :offset-assert 0)  ;; unused?
+   (flags         shadow-flags   :offset 12)        ;; used to disable, most other flags do nothing?
    (shadow-dir    vector :inline :offset-assert 16)
    (dist-to-locus float          :offset 28)
-   (bot-plane     plane  :inline :offset-assert 32)
+   (bot-plane     plane  :inline :offset-assert 32) ;; volume clip plane
    (top-plane     plane  :inline :offset-assert 48)
-   (fade-dist     float          :offset-assert 64)
-   (fade-start    float          :offset-assert 68)
+   (fade-dist     float          :offset-assert 64) ;; if past this, stop drawing shadow
+   (fade-start    float          :offset-assert 68) ;; distance where fadeout starts
    (dummy-2       int32          :offset-assert 72)
    (dummy-3       int32          :offset-assert 76)
    (fade-vec      vector :inline :offset 64) ;; added
@@ -72,7 +53,7 @@
     (set-offset-bit (shadow-control) int 10)
     (set-top-plane-offset (shadow-control float) int 11)
     (set-bottom-plane-offset (shadow-control float) int 12)
-    (dummy-13 (_type_) none 13)
+    (unused-13 (_type_) none 13)
     (update-direction-from-time-of-day (_type_) none 14)
     (collide-to-find-planes (_type_ vector float float float) none 15)
     )

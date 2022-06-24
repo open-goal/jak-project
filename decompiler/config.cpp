@@ -1,9 +1,12 @@
 #include "config.h"
-#include "third-party/json.hpp"
-#include "third-party/fmt/core.h"
+
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
+
 #include "decompiler/util/config_parsers.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/json.hpp"
 
 namespace decompiler {
 
@@ -242,6 +245,17 @@ Config read_config_file(const std::string& path_to_config_file,
   auto import_deps = read_json_file_from_config(cfg, "import_deps_file");
   config.import_deps_by_file =
       import_deps.get<std::unordered_map<std::string, std::vector<std::string>>>();
+
+  config.write_patches = cfg.at("write_patches").get<bool>();
+  config.apply_patches = cfg.at("apply_patches").get<bool>();
+  const auto& object_patches = cfg.at("object_patches");
+  for (auto& [obj, pch] : object_patches.items()) {
+    ObjectPatchInfo new_pch;
+    new_pch.crc = (u32)std::stoull(pch.at("crc32").get<std::string>(), nullptr, 16);
+    new_pch.target_file = pch.at("in").get<std::string>();
+    new_pch.patch_file = pch.at("out").get<std::string>();
+    config.object_patches.insert({obj, new_pch});
+  }
 
   return config;
 }

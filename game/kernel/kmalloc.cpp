@@ -5,12 +5,15 @@
  * DONE
  */
 
-#include <cstring>
-#include <cstdio>
-#include "common/goal_constants.h"
 #include "kmalloc.h"
+
+#include <cstdio>
+#include <cstring>
+
 #include "kprint.h"
 #include "kscheme.h"
+
+#include "common/goal_constants.h"
 
 // global and debug kernel heaps
 Ptr<kheapinfo> kglobalheap;

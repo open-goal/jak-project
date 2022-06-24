@@ -1,9 +1,10 @@
 #pragma once
 
-#include <vector>
-#include <unordered_map>
 #include <set>
 #include <string>
+#include <unordered_map>
+#include <vector>
+
 #include "common/common_types.h"
 
 namespace decompiler {

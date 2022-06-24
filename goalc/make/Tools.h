@@ -1,7 +1,8 @@
 #pragma once
 
-#include "goalc/make/Tool.h"
 #include "common/goos/Reader.h"
+
+#include "goalc/make/Tool.h"
 
 class Compiler;
 
@@ -59,6 +60,13 @@ class GroupTool : public Tool {
 class SubtitleTool : public Tool {
  public:
   SubtitleTool();
+  bool run(const ToolInput& task) override;
+  bool needs_run(const ToolInput& task) override;
+};
+
+class BuildLevelTool : public Tool {
+ public:
+  BuildLevelTool();
   bool run(const ToolInput& task) override;
   bool needs_run(const ToolInput& task) override;
 };

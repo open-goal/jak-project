@@ -1,12 +1,15 @@
-#include <vector>
 #include "Function.h"
+
+#include <vector>
+
 #include "common/log/log.h"
+#include "common/util/Assert.h"
+#include "common/util/BitUtils.h"
+
 #include "decompiler/Disasm/InstructionMatching.h"
+#include "decompiler/IR2/Form.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "decompiler/IR2/Form.h"
-#include "common/util/BitUtils.h"
-#include "common/util/Assert.h"
 
 namespace decompiler {
 namespace {

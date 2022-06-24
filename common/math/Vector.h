@@ -89,6 +89,14 @@ class Vector {
     return result;
   }
 
+  Vector<T, Size> operator+(const T& other) const {
+    Vector<T, Size> result;
+    for (int i = 0; i < Size; i++) {
+      result[i] = m_data[i] + other;
+    }
+    return result;
+  }
+
   Vector<T, Size>& operator+=(const Vector<T, Size>& other) {
     for (int i = 0; i < Size; i++) {
       m_data[i] += other[i];
@@ -99,6 +107,13 @@ class Vector {
   Vector<T, Size>& operator-=(const Vector<T, Size>& other) {
     for (int i = 0; i < Size; i++) {
       m_data[i] -= other[i];
+    }
+    return *this;
+  }
+
+  Vector<T, Size>& operator-=(const T& other) {
+    for (int i = 0; i < Size; i++) {
+      m_data[i] -= other;
     }
     return *this;
   }
@@ -180,6 +195,18 @@ class Vector {
 
   void normalize(const T& norm = T(1)) { *this = normalized(norm); }
 
+  void max_in_place(const Vector<T, Size>& other) {
+    for (int i = 0; i < Size; i++) {
+      m_data[i] = std::max(m_data[i], other[i]);
+    }
+  }
+
+  void min_in_place(const Vector<T, Size>& other) {
+    for (int i = 0; i < Size; i++) {
+      m_data[i] = std::min(m_data[i], other[i]);
+    }
+  }
+
   std::string to_string_aligned() const {
     std::string result = "[";
     for (auto x : m_data) {
@@ -229,6 +256,8 @@ class Vector {
     }
   }
 
+  void set_zero() { fill(0); }
+
  private:
   T m_data[Size];
 };
@@ -246,8 +275,24 @@ struct Matrix {
     return result;
   }
 
-  //  const T& operator()(int r, int c) const { return m_data[c + r * Cols]; }
-  //  T& operator()(int r, int c) { return m_data[r + c * Rows]; }
+  static Matrix identity() {
+    Matrix result;
+    for (int c = 0; c < Cols; c++) {
+      for (int r = 0; r < Rows; r++) {
+        result(r, c) = r == c ? T(1) : T(0);
+      }
+    }
+    return result;
+  }
+
+  void set_zero() {
+    for (auto& x : m_data) {
+      x = 0;
+    }
+  }
+
+  T& operator()(int r, int c) { return m_data[r + c * Rows]; }
+  const T& operator()(int r, int c) const { return m_data[r + c * Rows]; }
 
   Vector<T, Rows> col(int c) const {
     Vector<T, Rows> result;
@@ -271,6 +316,31 @@ struct Matrix {
       result += "]\n";
     }
 
+    return result;
+  }
+
+  template <int OtherCols>
+  Matrix<T, Rows, OtherCols> operator*(const Matrix<T, Cols, OtherCols>& y) const {
+    Matrix<T, Rows, OtherCols> result;
+    result.set_zero();
+    for (int rx = 0; rx < Rows; rx++) {
+      for (int cx = 0; cx < Cols; cx++) {
+        for (int yi = 0; yi < OtherCols; yi++) {
+          result(rx, yi) += operator()(rx, cx) * y(cx, yi);
+        }
+      }
+    }
+    return result;
+  }
+
+  Vector<T, Rows> operator*(const Vector<T, Cols>& y) const {
+    Vector<T, Rows> result;
+    result.set_zero();
+    for (int rx = 0; rx < Rows; rx++) {
+      for (int cx = 0; cx < Cols; cx++) {
+        result[rx] += operator()(rx, cx) * y[cx];
+      }
+    }
     return result;
   }
 

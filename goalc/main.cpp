@@ -1,33 +1,27 @@
 #include <cstdio>
-#include "goalc/compiler/Compiler.h"
-#include "common/versions.h"
-#include "common/util/FileUtil.h"
-#include "common/log/log.h"
-
-#include "third-party/CLI11.hpp"
-#include "third-party/fmt/core.h"
-#include "third-party/fmt/color.h"
+#include <regex>
 
 #include "common/goos/ReplUtils.h"
-#include <regex>
-#include <goalc/compiler/nrepl/ReplServer.h>
+#include "common/log/log.h"
+#include "common/nrepl/ReplServer.h"
+#include "common/util/FileUtil.h"
+#include "common/versions.h"
 
-void setup_logging(bool verbose) {
+#include "goalc/compiler/Compiler.h"
+
+#include "third-party/CLI11.hpp"
+#include "third-party/fmt/color.h"
+#include "third-party/fmt/core.h"
+
+void setup_logging() {
   lg::set_file(file_util::get_file_path({"log/compiler.txt"}));
-  if (verbose) {
-    lg::set_file_level(lg::level::info);
-    lg::set_stdout_level(lg::level::info);
-    lg::set_flush_level(lg::level::info);
-  } else {
-    lg::set_file_level(lg::level::warn);
-    lg::set_stdout_level(lg::level::warn);
-    lg::set_flush_level(lg::level::warn);
-  }
+  lg::set_file_level(lg::level::info);
+  lg::set_stdout_level(lg::level::info);
+  lg::set_flush_level(lg::level::info);
   lg::initialize();
 }
 
 int main(int argc, char** argv) {
-  bool verbose = false;
   bool auto_listen = false;
   bool auto_debug = false;
   bool auto_find_user = false;
@@ -40,7 +34,6 @@ int main(int argc, char** argv) {
   app.add_option("-u,--user", username,
                  "Specify the username to use for your user profile in 'goal_src/user/'");
   app.add_option("-p,--port", nrepl_port, "Specify the nREPL port.  Defaults to 8181");
-  app.add_flag("-v,--verbose", verbose, "Enable verbose output");
   app.add_flag("--auto-lt", auto_listen,
                "Attempt to automatically connect to the listener on startup");
   app.add_flag("--auto-dbg", auto_debug,
@@ -78,7 +71,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  setup_logging(verbose);
+  setup_logging();
 
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 

@@ -3,9 +3,10 @@
  * Cross platform socket library used for the listener.
  */
 
+// clang-format off
 #ifdef __linux
-#include <sys/socket.h>
 #include <netinet/tcp.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #elif _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -17,6 +18,7 @@
 #include <string.h>
 
 #include "third-party/fmt/core.h"
+// clang-format on
 
 int open_socket(int af, int type, int protocol) {
 #ifdef __linux
@@ -32,6 +34,14 @@ int open_socket(int af, int type, int protocol) {
   }
   return socket(af, type, protocol);
 #endif
+}
+
+int connect_socket(int socket, sockaddr* addr, int nameLen) {
+  int result = connect(socket, addr, nameLen);
+  if (result == -1) {
+    return -1;
+  }
+  return result;
 }
 
 #ifdef __linux
@@ -138,7 +148,7 @@ int set_socket_timeout(int socket, long microSeconds) {
 int write_to_socket(int socket, const char* buf, int len) {
   int bytes_wrote = 0;
 #ifdef __linux
-  bytes_wrote = write(socket, buf, len);
+  bytes_wrote = send(socket, buf, len, MSG_NOSIGNAL);
 #elif _WIN32
   bytes_wrote = send(socket, buf, len, 0);
 #endif

@@ -1,8 +1,10 @@
 #pragma once
 
-#include "Register.h"
-#include "Instruction.h"
 #include <stdexcept>
+
+#include "Instruction.h"
+#include "Register.h"
+
 #include "common/util/Assert.h"
 
 namespace emitter {

@@ -276,7 +276,7 @@
     (until (or (or (not *target*)
                    (< 28672.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
                    )
-               (and (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+               (and (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
                               (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
                               )
                          )
@@ -293,7 +293,7 @@
     (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (when (and (and *target* (>= 28672.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
-                 (or (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+                 (or (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
                           (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
                           )
                      (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-7))
@@ -483,26 +483,12 @@
       (cond
         ((< gp-0 a0-1)
          (when (sphere-in-view-frustum? (the-as sphere (-> self root-override root-prim prim-core)))
-           (sp-launch-particles-var
-             *sp-particle-system-2d*
-             (-> *part-id-table* 704)
-             (the-as vector (-> self launch-pos))
-             (the-as sparticle-launch-state #f)
-             (the-as sparticle-launch-control #f)
-             1.0
-             )
-           (sp-launch-particles-var
-             *sp-particle-system-2d*
-             (-> *part-id-table* 705)
-             (the-as vector (&-> self stack 112))
-             (the-as sparticle-launch-state #f)
-             (the-as sparticle-launch-control #f)
-             1.0
-             )
+           (launch-particles (-> *part-id-table* 704) (the-as vector (-> self launch-pos)))
+           (launch-particles (-> *part-id-table* 705) (the-as vector (&-> self stack 112)))
            )
          (when (-> self should-play-sound?)
            (set! (-> self should-play-sound?) #f)
-           (sound-play-by-name (static-sound-name "hot-flame") (new-sound-id) 1024 0 0 1 #t)
+           (sound-play "hot-flame")
            )
          (cond
            ((< gp-0 30)

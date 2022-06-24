@@ -1,4 +1,5 @@
 #include "SimpleThreadGroup.h"
+
 #include "common/util/Assert.h"
 
 void SimpleThreadGroup::run(const std::function<void(int)>& func, int num_runs) {

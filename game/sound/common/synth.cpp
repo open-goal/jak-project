@@ -1,6 +1,7 @@
 // Copyright: 2021 - 2022, Ziemas
 // SPDX-License-Identifier: ISC
 #include "synth.h"
+
 #include <stdexcept>
 
 namespace snd {

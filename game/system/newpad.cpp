@@ -5,10 +5,12 @@
  */
 
 #include "newpad.h"
+
 #include "common/log/log.h"
 #include "common/util/Assert.h"
-#include "game/graphics/pipelines/opengl.h"  // for GLFW macros
 #include <common/util/FileUtil.h>
+
+#include "game/graphics/pipelines/opengl.h"  // for GLFW macros
 
 namespace Pad {
 
@@ -196,6 +198,11 @@ void DefaultMapping(MappingInfo& mapping) {
       MapButton(mapping, (Button)i, p, -1);
     }
   }
+
+  // TODO - these are different from the analog bindings above and cause
+  // the keyboard to be bound to controls regardless
+  //
+  // Need someway to toggle off -- where do we have access to the game's settings?
 
   // R1 / L1
   MapButton(mapping, Button::L1, 0, GLFW_KEY_Q);

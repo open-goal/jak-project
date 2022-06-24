@@ -1,4 +1,4 @@
 @echo off
 cd ..\..
-out\build\Release\bin\goalc -v --user-auto
+out\build\Release\bin\goalc --user-auto
 pause

@@ -42,7 +42,8 @@ files_with_modifications = [
   "citadel-sages",
   "racer-part",
   "collectables-part",
-  "collectables"
+  "collectables",
+  "basebutton"
 ]
 
 for file in files:

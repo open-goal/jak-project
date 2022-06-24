@@ -4,16 +4,19 @@
  * Supports loading a file directly to the EE, or loading chunks of a chunked file.
  */
 
-#include <cstring>
 #include "stream.h"
-#include "game/sce/iop.h"
-#include "game/common/str_rpc_types.h"
-#include "game/common/play_rpc_types.h"
-#include "game/overlord/isocommon.h"
-#include "game/overlord/iso_api.h"
-#include "game/overlord/iso.h"
-#include "game/overlord/srpc.h"
+
+#include <cstring>
+
 #include "common/util/Assert.h"
+
+#include "game/common/play_rpc_types.h"
+#include "game/common/str_rpc_types.h"
+#include "game/overlord/iso.h"
+#include "game/overlord/iso_api.h"
+#include "game/overlord/isocommon.h"
+#include "game/overlord/srpc.h"
+#include "game/sce/iop.h"
 
 using namespace iop;
 

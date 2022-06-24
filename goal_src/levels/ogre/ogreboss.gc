@@ -50,7 +50,7 @@
 
 (define *ogreboss-missile-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
-                                           :center (new 'static 'vector :w (the-as float #xe))
+                                           :flags (shadow-flags disable-fade shdf02 shdf03)
                                            :shadow-dir (new 'static 'vector :y -1.0 :w 614400.0)
                                            :bot-plane (new 'static 'plane :y 1.0 :w -102400.0)
                                            :top-plane (new 'static 'plane :y 1.0 :w -143360.0)
@@ -60,7 +60,7 @@
 
 (define *ogreboss-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
-                                           :center (new 'static 'vector :w (the-as float #xc))
+                                           :flags (shadow-flags shdf02 shdf03)
                                            :shadow-dir (new 'static 'vector :y -1.0 :w 614400.0)
                                            :bot-plane (new 'static 'plane :y 1.0 :w -102400.0)
                                            :top-plane (new 'static 'plane :y 1.0 :w -143360.0)
@@ -115,7 +115,7 @@
                       (-> self root-override root-prim collide-with)
                       (-> self parent-override 0)
                       s4-0
-                      1
+                      (new 'static 'pat-surface :noentity #x1)
                       )
                     )
               )
@@ -164,7 +164,7 @@
                       (-> self root-override root-prim collide-with)
                       (-> self parent-override 0)
                       s4-0
-                      1
+                      (new 'static 'pat-surface :noentity #x1)
                       )
                     )
               )
@@ -195,7 +195,7 @@
 
 (defun ogreboss-rock-explosion-effect ((arg0 basic))
   (with-pp
-    (sound-play-by-name (static-sound-name "ogre-explode") (new-sound-id) 1024 0 0 1 (the-as symbol arg0))
+    (sound-play "ogre-explode" :position (the-as symbol arg0))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -289,7 +289,7 @@
                              (-> self root-override root-prim collide-with)
                              t1-0
                              t2-0
-                             1
+                             (new 'static 'pat-surface :noentity #x1)
                              )
                            )
                          )
@@ -374,7 +374,7 @@
   )
 
 
-(defbehavior ogreboss-missile-init-by-other ogreboss-missile ((arg0 ogreboss-missile-init-data) (arg1 entity))
+(defbehavior ogreboss-missile-init-by-other ogreboss-missile ((arg0 ogreboss-missile-init-data) (arg1 entity-actor))
   (set! (-> self entity) arg1)
   (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -471,15 +471,17 @@
 
 (defbehavior ogreboss-super-boulder-event-handler ogreboss-super-boulder ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
-    (('touch)
+    ;; PAL patch here
+    (('touch 'attack)
      (when (and *target* ((method-of-type touching-shapes-entry prims-touching?)
                           (the-as touching-shapes-entry (-> arg3 param 0))
                           (-> self root-override)
                           (the-as uint 1)
                           )
                 )
-       (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'ogreboss-super-boulder))))
-       (go ogreboss-super-boulder-killed-player)
+       (if (send-event arg0 'attack-invinc (-> arg3 param 0) (static-attack-info ((mode 'ogreboss-super-boulder))))
+           #f
+           )
        )
      )
     (('effect)
@@ -566,15 +568,7 @@
           )
         )
       (spawn (-> self part) (-> self node-list data 3 bone transform vector 3))
-      (sound-play-by-name
-        (static-sound-name "ogre-rock")
-        (-> self sound-id)
-        1024
-        0
-        0
-        1
-        (the-as symbol (-> self joint transform))
-        )
+      (sound-play "ogre-rock" :id (-> self sound-id) :position (the-as symbol (-> self joint transform)))
       (suspend)
       )
     (none)
@@ -583,15 +577,7 @@
   )
 
 (defbehavior ogreboss-super-boulder-impact-effect ogreboss-super-boulder ()
-  (sound-play-by-name
-    (static-sound-name "ogre-boulder")
-    (new-sound-id)
-    1024
-    0
-    0
-    1
-    (the-as symbol (-> self draw origin))
-    )
+  (sound-play "ogre-boulder" :position (the-as symbol (-> self draw origin)))
   (activate! *camera-smush-control* (the-as float 819.2) 37 600 (the-as float 1.0) (the-as float 0.995))
   (process-spawn
     part-tracker
@@ -807,7 +793,7 @@
     )
   )
 
-(defbehavior ogreboss-super-boulder-init-by-other ogreboss-super-boulder ((arg0 vector) (arg1 float) (arg2 entity))
+(defbehavior ogreboss-super-boulder-init-by-other ogreboss-super-boulder ((arg0 vector) (arg1 float) (arg2 entity-actor))
   (set! (-> self entity) arg2)
   (let ((s4-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-others))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -833,7 +819,8 @@
   (set! (-> self root-override quat vec quad) (-> self parent-override 0 root quat vec quad))
   (vector-identity! (-> self root-override scale))
   (initialize-skeleton self *ogreboss-super-boulder-sg* '())
-  (logclear! (-> self mask) (process-mask actor-pause))
+  ;; PAL patch here
+  (logclear! (-> self mask) (process-mask actor-pause enemy))
   (set! (-> self lava) (entity-actor-lookup (-> self entity) 'water-actor 0))
   (logior! (-> self skel effect flags) 1)
   (set! (-> self draw origin-joint-index) (the-as uint 3))
@@ -938,7 +925,7 @@
     )
   )
 
-(defbehavior ogreboss-bounce-boulder-init-by-other ogreboss-bounce-boulder ((arg0 int) (arg1 entity))
+(defbehavior ogreboss-bounce-boulder-init-by-other ogreboss-bounce-boulder ((arg0 int) (arg1 entity-actor))
   (set! (-> self entity) arg1)
   (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1199,7 +1186,7 @@
       (send-event *target* 'continue (get-continue-by-name *game-info* "ogre-start"))
       (ogreboss-inc-try-count)
       )
-    (set-setting! *setting-control* self 'music 'ogreboss (the-as float 0.0) 0)
+    (set-setting! 'music 'ogreboss 0.0 0)
     (go ogreboss-wait-for-player)
     (none)
     )
@@ -1264,14 +1251,15 @@
   gp-0
   )
 
-(defbehavior ogreboss-shoot-boulder ogreboss ((arg0 int))
+(defbehavior ogreboss-shoot-boulder ogreboss ((arg0 pickup-type))
+  ;; TODO non U1 v1 compatibility!!
   (let ((gp-0 (new 'stack-no-clear 'ogreboss-missile-init-data)))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 src) (-> self node-list data 52 bone transform vector 3))
+      (set! (-> gp-0 src) (-> self node-list data (#if *jak1-full-game* 50 52) bone transform vector 3))
       (set! (-> gp-0 duration)
             (the-as time-frame (the int (* 300.0 (+ 1.25 (* -0.25 (-> self level)) (/ 0.5 (-> self difficulty))))))
             )
-      (set! (-> gp-0 pickup-type) (the-as pickup-type arg0))
+      (set! (-> gp-0 pickup-type) arg0)
       (set! (-> gp-0 blast-radius) 32768.0)
       (cond
         (*target*
@@ -1297,15 +1285,7 @@
         )
       (set! (-> gp-0 dest) s5-0)
       )
-    (sound-play-by-name
-      (static-sound-name "ogre-fires")
-      (new-sound-id)
-      1024
-      0
-      0
-      1
-      (the-as symbol (-> self root-override trans))
-      )
+    (sound-play "ogre-fires" :position (the-as symbol (-> self root-override trans)))
     (process-spawn
       part-tracker
       :init part-tracker-init
@@ -1530,7 +1510,7 @@
         (ja :num! (seek! max f30-0))
         )
       (countdown (gp-1 (+ gp-0 -1))
-        (let ((s5-0 0))
+        (let ((s5-0 (pickup-type none)))
           (let ((f28-0 0.0))
             (cond
               ((>= 1.0 (-> *target* fact-info-target health))
@@ -1554,7 +1534,7 @@
                           )
                   )
             (if (and *target* (< (rand-vu) f28-0))
-                (set! s5-0 4)
+                (set! s5-0 (pickup-type eco-green))
                 )
             )
           (ogreboss-shoot-boulder s5-0)
@@ -1566,7 +1546,7 @@
           )
         (ogreboss-inc-try-count)
         )
-      (ogreboss-shoot-boulder 3)
+      (ogreboss-shoot-boulder (pickup-type eco-blue))
       (ja-no-eval :group! ogreboss-attack2-last-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
@@ -1587,15 +1567,7 @@
   )
 
 (defbehavior ogreboss-roll-boulder ogreboss ()
-  (sound-play-by-name
-    (static-sound-name "ogre-fires")
-    (new-sound-id)
-    1024
-    0
-    0
-    1
-    (the-as symbol (-> self root-override trans))
-    )
+  (sound-play "ogre-fires" :position (the-as symbol (-> self root-override trans)))
   (+! (-> self roll-boulder) (rand-vu-int-range 1 2))
   (if (>= (-> self roll-boulder) 3)
       (+! (-> self roll-boulder) -3)
@@ -1680,37 +1652,13 @@
                        (let ((v1-17 (rand-vu-int-range 0 2)))
                          (cond
                            ((zero? v1-17)
-                            (sound-play-by-name
-                              (static-sound-name "ogre-grunt1")
-                              (new-sound-id)
-                              1024
-                              0
-                              0
-                              1
-                              (the-as symbol (-> self root-override trans))
-                              )
+                            (sound-play "ogre-grunt1" :position (the-as symbol (-> self root-override trans)))
                             )
                            ((= v1-17 1)
-                            (sound-play-by-name
-                              (static-sound-name "ogre-grunt2")
-                              (new-sound-id)
-                              1024
-                              0
-                              0
-                              1
-                              (the-as symbol (-> self root-override trans))
-                              )
+                            (sound-play "ogre-grunt2" :position (the-as symbol (-> self root-override trans)))
                             )
                            (else
-                             (sound-play-by-name
-                               (static-sound-name "ogre-grunt3")
-                               (new-sound-id)
-                               1024
-                               0
-                               0
-                               1
-                               (the-as symbol (-> self root-override trans))
-                               )
+                             (sound-play "ogre-grunt3" :position (the-as symbol (-> self root-override trans)))
                              )
                            )
                          )
@@ -2012,7 +1960,7 @@
     process-drawable-fuel-cell-handler
     )
   :code (behavior ()
-    (clear-pending-settings-from-process *setting-control* self 'music)
+    (remove-setting! 'music)
     (ogreboss-reset-camera)
     (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> gp-0 from) self)
@@ -2036,8 +1984,8 @@
     (ja-post)
     (when (not (task-complete? *game-info* (-> self entity extra perm task)))
       (let ((gp-1 (new 'stack-no-clear 'vector)))
-        (let ((a0-9 (the-as entity (entity-actor-lookup (-> self entity) 'trigger-actor 2))))
-          (if (not (the-as entity-actor a0-9))
+        (let ((a0-9 (entity-actor-lookup (-> self entity) 'trigger-actor 2)))
+          (if (not a0-9)
               (set! a0-9 (-> self entity))
               )
           (set! (-> gp-1 quad) (-> a0-9 extra trans quad))

@@ -1,13 +1,19 @@
-#include "third-party/CLI11.hpp"
+#include <map>
+#include <regex>
+#include <unordered_map>
+
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/json_util.h"
+#include "common/util/read_iso_file.h"
+
 #include "decompiler/Disasm/OpcodeInfo.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
-#include "decompiler/level_extractor/extract_level.h"
 #include "decompiler/config.h"
+#include "decompiler/level_extractor/extract_level.h"
 #include "goalc/compiler/Compiler.h"
-#include "common/util/read_iso_file.h"
-#include <regex>
+
+#include "third-party/CLI11.hpp"
 
 enum class ExtractorErrorCode {
   SUCCESS = 0,
@@ -16,8 +22,16 @@ enum class ExtractorErrorCode {
   VALIDATION_ELF_MISSING_FROM_DB = 4002,
   VALIDATION_BAD_ISO_CONTENTS = 4010,
   VALIDATION_INCORRECT_EXTRACTION_COUNT = 4011,
-  VALIDATION_BAD_EXTRACTION = 4020
+  VALIDATION_BAD_EXTRACTION = 4020,
+  DECOMPILATION_GENERIC_ERROR = 4030,
+  EXTRACTION_INVALID_ISO_PATH = 4040,
+  EXTRACTION_ISO_UNEXPECTED_SIZE = 4041
 };
+
+enum GameIsoFlags { FLAG_JAK1_BLACK_LABEL = (1 << 0) };
+
+static const std::unordered_map<std::string, GameIsoFlags> sGameIsoFlagNames = {
+    {"jak1-black-label", FLAG_JAK1_BLACK_LABEL}};
 
 struct ISOMetadata {
   std::string canonical_name;
@@ -25,17 +39,27 @@ struct ISOMetadata {
   int num_files;
   xxh::hash64_t contents_hash;
   std::string decomp_config;
+  GameIsoFlags flags = (GameIsoFlags)0;
 };
 
 // TODO - when we support jak2 and beyond, add which game it's for as well
 // this will let the installer reject (or gracefully handle) jak2 isos on the jak1 page, etc.
 
 // { SERIAL : { ELF_HASH : ISOMetadataDatabase } }
-static std::map<std::string, std::map<xxh::hash64_t, ISOMetadata>> isoDatabase{
+static const std::map<std::string, std::map<xxh::hash64_t, ISOMetadata>> isoDatabase{
     {"SCUS-97124",
      {{7280758013604870207U,
-       {"Jak and Daxter: The Precursor Legacy - Black Label", "NTSC-U", 337, 11363853835861842434U,
-        "jak1_ntsc_black_label"}}}}};
+       {"Jak & Daxter™: The Precursor Legacy (Black Label)", "NTSC-U", 337, 11363853835861842434U,
+        "jak1_ntsc_black_label", FLAG_JAK1_BLACK_LABEL}},
+      {744661860962747854,
+       {"Jak & Daxter™: The Precursor Legacy", "NTSC-U", 338, 8538304367812415885U, "jak1_jp"}}}},
+    {"SCES-50361",
+     {{12150718117852276522U,
+       {"Jak & Daxter™: The Precursor Legacy", "PAL", 338, 16850370297611763875U, "jak1_pal"}}}},
+    {"SCPS-15021",
+     {{16909372048085114219U,
+       {"ジャックＸダクスター　～　旧世界の遺産", "NTSC-J", 338, 1262350561338887717,
+        "jak1_jp"}}}}};
 
 void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_path_override) {
   decompiler::init_opcode_info();
@@ -44,13 +68,16 @@ void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_
 
 IsoFile extract_files(std::filesystem::path data_dir_path,
                       std::filesystem::path extracted_iso_path) {
-  fmt::print("Note: input isn't a folder, assuming it's an ISO file...\n");
+  fmt::print(
+      "Note: Provided game data path '{}' points to a file, not a directory. Assuming it's an ISO "
+      "file and attempting to extract!\n",
+      data_dir_path.string());
 
   std::filesystem::create_directories(extracted_iso_path);
 
   auto fp = fopen(data_dir_path.string().c_str(), "rb");
   ASSERT_MSG(fp, "failed to open input ISO file\n");
-  IsoFile iso = unpack_iso_files(fp, extracted_iso_path, true);
+  IsoFile iso = unpack_iso_files(fp, extracted_iso_path, true, true);
   fclose(fp);
   return iso;
 }
@@ -78,11 +105,12 @@ std::pair<std::optional<std::string>, std::optional<xxh::hash64_t>> findElfFile(
   return {serial, elf_hash};
 }
 
-ExtractorErrorCode validate(const IsoFile& iso_file,
-                            const std::filesystem::path& extracted_iso_path) {
+std::pair<ExtractorErrorCode, std::optional<ISOMetadata>> validate(
+    const IsoFile& iso_file,
+    const std::filesystem::path& extracted_iso_path) {
   if (!std::filesystem::exists(extracted_iso_path / "DGO")) {
     fmt::print(stderr, "ERROR: input folder doesn't have a DGO folder. Is this the right input?\n");
-    return ExtractorErrorCode::VALIDATION_BAD_EXTRACTION;
+    return {ExtractorErrorCode::VALIDATION_BAD_EXTRACTION, std::nullopt};
   }
 
   std::optional<ExtractorErrorCode> error_code;
@@ -104,12 +132,12 @@ ExtractorErrorCode validate(const IsoFile& iso_file,
       error_code = std::make_optional(ExtractorErrorCode::VALIDATION_CANT_LOCATE_ELF);
     }
     // No point in continuing here
-    return error_code.value();
+    return {*error_code, std::nullopt};
   }
 
   // Find the game in our tracking database
-  auto dbEntry = isoDatabase.find(serial.value());
-  if (dbEntry == isoDatabase.end()) {
+  std::optional<ISOMetadata> meta_res = std::nullopt;
+  if (auto dbEntry = isoDatabase.find(serial.value()); dbEntry == isoDatabase.end()) {
     fmt::print(stderr, "ERROR: Serial '{}' not found in the validation database\n", serial.value());
     if (!error_code.has_value()) {
       error_code = std::make_optional(ExtractorErrorCode::VALIDATION_SERIAL_MISSING_FROM_DB);
@@ -126,7 +154,8 @@ ExtractorErrorCode validate(const IsoFile& iso_file,
         error_code = std::make_optional(ExtractorErrorCode::VALIDATION_ELF_MISSING_FROM_DB);
       }
     } else {
-      auto meta = meta_entry->second;
+      meta_res = std::make_optional<ISOMetadata>(meta_entry->second);
+      const auto& meta = *meta_res;
       // Print out some information
       fmt::print("Detected Game Metadata:\n");
       fmt::print("\tDetected - {}\n", meta.canonical_name);
@@ -176,12 +205,12 @@ ExtractorErrorCode validate(const IsoFile& iso_file,
     } else {
       fmt::print(stderr,
                  "Validation has failed to match with expected values, see the above errors for "
-                 "specific.  This may be an error in the validation database!\n");
+                 "specifics. This may be an error in the validation database!\n");
     }
-    return error_code.value();
+    return {*error_code, std::nullopt};
   }
 
-  return ExtractorErrorCode::SUCCESS;
+  return {ExtractorErrorCode::SUCCESS, meta_res};
 }
 
 std::optional<ISOMetadata> determineRelease(const std::filesystem::path& jak1_input_files) {
@@ -242,7 +271,7 @@ void decompile(std::filesystem::path jak1_input_files) {
   // grab all the object files we need (just text)
   for (const auto& obj_name : config.object_file_names) {
     if (obj_name.length() > 3 && obj_name.substr(obj_name.length() - 3) == "TXT") {
-      // ends in DGO, it's a level
+      // ends in TXT
       objs.push_back((jak1_input_files / obj_name).string());
     }
   }
@@ -260,6 +289,9 @@ void decompile(std::filesystem::path jak1_input_files) {
   db.process_link_data(config);
   db.find_code(config);
   db.process_labels();
+
+  // ensure asset dir exists
+  file_util::create_dir_if_needed(file_util::get_file_path({"assets"}));
 
   // text files
   {
@@ -299,13 +331,24 @@ void compile(std::filesystem::path extracted_iso_path) {
   compiler.make_system().set_constant("*iso-data*", absolute(extracted_iso_path).string());
   compiler.make_system().set_constant("*use-iso-data-path*", true);
 
+  auto buildinfo_path = (extracted_iso_path / "buildinfo.json").string();
+  auto bi = parse_commented_json(file_util::read_text_file(buildinfo_path), buildinfo_path);
+  auto all_flags = bi.at("flags").get<std::vector<std::string>>();
+  int flags = 0;
+  for (const auto& n : all_flags) {
+    if (auto it = sGameIsoFlagNames.find(n); it != sGameIsoFlagNames.end()) {
+      flags |= it->second;
+    }
+  }
+  compiler.make_system().set_constant("*jak1-full-game*", !(flags & FLAG_JAK1_BLACK_LABEL));
+
   compiler.make_system().load_project_file(
       (file_util::get_jak_project_dir() / "goal_src" / "game.gp").string());
   compiler.run_front_end_on_string("(mi)");
 }
 
 void launch_game() {
-  system((file_util::get_jak_project_dir() / "../gk").string().c_str());
+  system(fmt::format("\"{}\"", (file_util::get_jak_project_dir() / "../gk").string()).c_str());
 }
 
 int main(int argc, char** argv) {
@@ -346,6 +389,12 @@ int main(int argc, char** argv) {
     fmt::print("Running all steps, no flags provided!\n");
     flag_runall = true;
   }
+  if (flag_runall) {
+    flag_extract = true;
+    flag_decompile = true;
+    flag_compile = true;
+    flag_play = true;
+  }
 
   // todo: print revision here.
   if (!project_path_override.empty()) {
@@ -354,8 +403,7 @@ int main(int argc, char** argv) {
     setup_global_decompiler_stuff(std::nullopt);
   }
 
-  std::filesystem::path path_to_iso_files = file_util::get_jak_project_dir() / "iso_data" / "jak1";
-  std::filesystem::create_directories(path_to_iso_files);
+  std::filesystem::path path_to_iso_files = file_util::get_jak_project_dir() / "iso_data" / "_temp";
 
   // make sure the input looks right
   if (!std::filesystem::exists(data_dir_path)) {
@@ -363,16 +411,42 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  if (flag_runall || flag_extract) {
+  if (flag_extract) {
+    if (data_dir_path != path_to_iso_files) {
+      // in case input is also output, don't just wipe everything (weird)
+      std::filesystem::remove_all(path_to_iso_files);
+    }
+    std::filesystem::create_directories(path_to_iso_files);
+
+    int flags = 0;
     if (std::filesystem::is_regular_file(data_dir_path)) {
-      // it's a file, treat it as an ISO
+      // it's a file, normalize extension case and verify it's an ISO file
+      std::string ext = data_dir_path.extension().string();
+      std::transform(ext.begin(), ext.end(), ext.begin(),
+                     [](unsigned char c) { return std::tolower(c); });
+
+      if (ext != ".iso") {
+        fmt::print(stderr, "ERROR: Provided game data path contains a file that isn't a .ISO!");
+        return static_cast<int>(ExtractorErrorCode::EXTRACTION_INVALID_ISO_PATH);
+      }
+
+      // make sure the .iso is greater than 1GB in size
+      // to-do: verify game header data as well
+      if (std::filesystem::file_size(data_dir_path) < 1000000000) {
+        fmt::print(
+            stderr,
+            "ERROR: Provided game data file appears to be too small or corrupted! Size is {}",
+            std::filesystem::file_size(data_dir_path));
+        return static_cast<int>(ExtractorErrorCode::EXTRACTION_ISO_UNEXPECTED_SIZE);
+      }
       auto iso_file = extract_files(data_dir_path, path_to_iso_files);
       auto validation_res = validate(iso_file, path_to_iso_files);
-      if (validation_res == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION) {
+      flags = validation_res.second->flags;
+      if (validation_res.first == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION) {
         // We fail here regardless of the flag
-        return static_cast<int>(validation_res);
-      } else if (flag_fail_on_validation && validation_res != ExtractorErrorCode::SUCCESS) {
-        return static_cast<int>(validation_res);
+        return static_cast<int>(validation_res.first);
+      } else if (flag_fail_on_validation && validation_res.first != ExtractorErrorCode::SUCCESS) {
+        return static_cast<int>(validation_res.first);
       }
     } else if (std::filesystem::is_directory(data_dir_path)) {
       if (!flag_folder) {
@@ -382,17 +456,35 @@ int main(int argc, char** argv) {
       }
       path_to_iso_files = data_dir_path;
     }
+
+    // write out a json file with some metadata for the game
+    nlohmann::json buildinfo_json;
+    auto flags_json = nlohmann::json::array();
+    for (const auto& [n, f] : sGameIsoFlagNames) {
+      if (flags & f) {
+        flags_json.push_back(n);
+      }
+    }
+    buildinfo_json["flags"] = flags_json;
+    // something tells me a ps2 game is unlikely to have a json file in root
+    file_util::write_text_file((path_to_iso_files / "buildinfo.json").string(),
+                               buildinfo_json.dump(2));
   }
 
-  if (flag_runall || flag_decompile) {
-    decompile(path_to_iso_files);
+  if (flag_decompile) {
+    try {
+      decompile(path_to_iso_files);
+    } catch (std::exception& e) {
+      lg::error("Error during decompile: {}", e.what());
+      return static_cast<int>(ExtractorErrorCode::DECOMPILATION_GENERIC_ERROR);
+    }
   }
 
-  if (flag_runall || flag_compile) {
+  if (flag_compile) {
     compile(path_to_iso_files);
   }
 
-  if (flag_runall || flag_play) {
+  if (flag_play) {
     launch_game();
   }
 

@@ -5,6 +5,8 @@
 ;; name in dgo: process-drawable
 ;; dgos: GAME, ENGINE
 
+;; TODO: there are some missing functions here...
+
 ;; DECOMP BEGINS
 
 (defun cspace-by-name ((arg0 process-drawable) (arg1 string))
@@ -170,7 +172,7 @@
           (set! gp-0 (the-as cspace-array #f))
           (goto cfg-16)
           )
-        (let ((v1-10 ((method-of-type cspace dummy-9) (the-as cspace (-> gp-0 data)) #f)))
+        (let ((v1-10 ((method-of-type cspace reset-and-assign-geo!) (the-as cspace (-> gp-0 data)) #f)))
           (set! (-> v1-10 bone) (the-as bone (-> s4-1 bones)))
           (let ((a0-6 (-> gp-0 data)))
             (set! (-> a0-6 0 param0) cspace<-transformq!)
@@ -179,13 +181,13 @@
           (set! (-> v1-10 bone cache bone-matrix) (the-as uint 0))
           )
         0
-        (let ((v1-14 (dummy-9 (-> gp-0 data 1) #f)))
+        (let ((v1-14 (reset-and-assign-geo! (-> gp-0 data 1) #f)))
           (set! (-> v1-14 joint) (-> arg0 data 0))
           (set! (-> v1-14 bone) (-> s4-1 bones 1))
           (set! (-> v1-14 parent) (the-as cspace (-> gp-0 data)))
           (set! (-> v1-14 bone cache bone-matrix) (the-as uint 128))
           )
-        (let ((v1-17 (dummy-9 (-> gp-0 data 2) #f)))
+        (let ((v1-17 (reset-and-assign-geo! (-> gp-0 data 2) #f)))
           (set! (-> v1-17 joint) (-> arg0 data 1))
           (set! (-> v1-17 bone) (-> s4-1 bones 2))
           (set! (-> v1-17 parent) (the-as cspace (-> gp-0 data)))
@@ -203,7 +205,7 @@
                              0
                              )
                          )
-                   (v1-29 (dummy-9 (-> gp-0 data s3-0) #f))
+                   (v1-29 (reset-and-assign-geo! (-> gp-0 data s3-0) #f))
                    )
               (set! (-> v1-29 joint) s1-0)
               (set! (-> v1-29 bone) (-> s4-1 bones s3-0))
@@ -383,7 +385,7 @@
     )
   ; (draw-bone-lines obj)
   ;; (draw-joint-spheres obj)
-  
+
   0
   (none)
   )
@@ -620,48 +622,51 @@
   obj
   )
 
-(defmethod apply-alignment process-drawable ((obj process-drawable) (arg0 int) (arg1 transformq) (arg2 vector))
-  (when (logtest? arg0 7)
+(defmethod apply-alignment process-drawable ((obj process-drawable) (arg0 align-opts) (arg1 transformq) (arg2 vector))
+  (when (logtest? arg0 (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel))
     (let* ((body-T-world (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root quat)))
            (world-T-body (matrix-transpose! (new 'stack-no-clear 'matrix) body-T-world))
            (grav-rt-body (vector-matrix*! (new 'stack-no-clear 'vector) (-> *standard-dynamics* gravity) world-T-body))
            (vel-rt-body (vector-matrix*! (new 'stack-no-clear 'vector) (-> obj root transv) world-T-body))
            )
-      (if (logtest? arg0 2048)
+      (if (logtest? arg0 (align-opts no-gravity))
           (set-vector! grav-rt-body 0.0 0.0 0.0 1.0)
           )
-      (when (logtest? arg0 1)
+      (when (logtest? arg0 (align-opts adjust-x-vel))
         (set! (-> vel-rt-body x) (+ (* (-> arg1 trans x) (-> arg2 x) (-> *display* frames-per-second))
                                     (* (-> grav-rt-body x) (-> *display* seconds-per-frame))
                                     )
               )
-        (if (zero? (logand arg0 12))
+        (if (zero? (logand arg0 (align-opts adjust-xz-vel keep-other-velocities)))
             (set! (-> vel-rt-body z) 0.0)
             )
         )
-      (if (and (logtest? arg0 2) (not (and (logtest? arg0 4096) (= (-> arg1 trans y) 0.0))))
+      (if (and (logtest? arg0 (align-opts adjust-y-vel))
+               (not (and (logtest? arg0 (align-opts ignore-y-if-zero)) (= (-> arg1 trans y) 0.0)))
+               )
           (set! (-> vel-rt-body y) (+ (* (-> arg1 trans y) (-> arg2 y) (-> *display* frames-per-second))
                                       (* (-> grav-rt-body y) (-> *display* seconds-per-frame))
                                       )
                 )
           )
-      (when (logtest? arg0 4)
+      (when (logtest? arg0 (align-opts adjust-xz-vel))
         (set! (-> vel-rt-body z) (+ (* (-> arg1 trans z) (-> arg2 z) (-> *display* frames-per-second))
                                     (* (-> grav-rt-body z) (-> *display* seconds-per-frame))
                                     )
               )
-        (if (zero? (logand arg0 9))
+        (if (zero? (logand arg0 (align-opts adjust-x-vel keep-other-velocities)))
             (set! (-> vel-rt-body x) 0.0)
             )
         )
       (vector-matrix*! (-> obj root transv) vel-rt-body body-T-world)
       )
     )
-  (if (logtest? arg0 16)
+  (if (logtest? arg0 (align-opts adjust-quat))
       (quaternion-normalize! (quaternion*! (-> obj root quat) (-> obj root quat) (-> arg1 quat)))
       )
   (the-as collide-shape (-> obj root))
   )
+
 
 (defbehavior ja-done? process-drawable ((arg0 int))
   (let ((v1-2 (-> self skel root-channel arg0)))
@@ -687,18 +692,6 @@
   (let ((v1-2 (-> self skel root-channel arg0)))
     (>= (-> v1-2 frame-num) (the float (+ (-> v1-2 frame-group data 0 length) -1)))
     )
-  )
-
-
-(defmacro ja-group (&key (chan 0))
-  "get the frame group for self. default channel is 0, the base channel. returns #f if no frame group."
-  `(if (> (-> self skel active-channels) ,chan)
-       (-> self skel root-channel ,chan frame-group))
-  )
-
-(defmacro ja-group? (group &key (chan 0))
-  "is self in this frame group on this channel? default is channel 0, which is the base channel."
-  `(= (ja-group) ,group)
   )
 
 (defbehavior ja-num-frames process-drawable ((arg0 int))
@@ -876,128 +869,6 @@
       )
   )
 
-(defmacro ja (&key (chan 0)
-              &key (group! #f)
-              &key (num! #f)
-              &key (param0 #f)
-              &key (param1 #f)
-              &key (num-func #f)
-              &key (frame-num #f)
-              &key (frame-interp #f)
-              &key (dist #f)
-              &key (eval? #t)
-              )
-  "set various joint anim parameters for self and eval them.
-   you can use this for playing animations!
-   
-   chan         = the channel to modify. defaults to 0 (base channel). this is usually what you want.
-   group!       = when not #f, set this as the new frame-group. defaults to #f
-   num!         = set the frame playback function. this is what determines what frame an animation is at. funcs below.
-                  #f = no func will be set, and there wont be a frame eval.
-   num-func     = sets the num-func field for the channel. this lets you change the function with eval'ing.
-   param0       = 1st parameter for the playback function. ONLY USE THESE WITH num-func !!
-   param1       = 2nd parameter for the playback function. ONLY USE THESE WITH num-func !!
-   frame-num    = set the frame-num field.
-   frame-interp = set the frame-interp field.
-   dist         = set the dist field.
-   
-   available num! functions:
-   - (+!)       = advance anim.
-   - (-!)       = reverse anim.
-   - (identity num) = play 'num' frame.
-   - (seek! target speed) = animate towards frame target at a speed.
-                            speed is optional and defaults to 1.0 when not provided.
-                            target is optional and defaults to the last frame of the animation.
-                            if you want to set the speed, you therefore must also set the target.
-                            target can be max (no quote), which is just the same as the default value.
-   - (loop! speed)  = loop animation at a speed. default speed is 1.0 when not provided.
-   - (chan channel) = copy frame from another channel.
-   - min = the start of the animation.
-   - max = the end of the animation.
-   "
-  
-  (let* ((num-args (if (pair? num!) (cdr num!) '()))
-        (num! (if (pair? num!) (car num!) num!))
-        (nf (cond
-              ((or (eq? num! 'identity)
-                   (eq? num! 'min)
-                   (eq? num! 'max)
-                   )
-                   'num-func-identity)
-              ((eq? num! 'none) 'num-func-none)
-              ((eq? num! '+!) 'num-func-+!)
-              ((eq? num! '-!) 'num-func--!)
-              ((eq? num! 'seek!) 'num-func-seek!)
-              ((eq? num! 'loop!) 'num-func-loop!)
-              ((eq? num! 'blend-in!) 'num-func-blend-in!)
-              ((eq? num! 'chan) 'num-func-chan)
-              ))
-        (p0 (if param0 param0
-                (cond
-                  ((eq? num! 'chan) `(the float ,(car num-args)))
-                  ((eq? num! '+!)    (if (null? num-args) 1.0 (car num-args)))
-                  ((eq? num! '-!)    (if (null? num-args) 1.0 (car num-args)))
-                  ((eq? num! 'loop!) (if (null? num-args) 1.0 (if (eq? 'max (car num-args))
-                                                                  (if group!
-                                                                      `(the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
-                                                                      `(the float (1- (-> ja-ch frame-group data 0 length)))
-                                                                      )
-                                                                  (car num-args))))
-                  ((eq? num! 'seek!) (if (or (null? num-args) (eq? (car num-args) 'max))
-                                         (if group!
-                                             `(the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
-                                             `(the float (1- (-> ja-ch frame-group data 0 length)))
-                                             )
-                                         (car num-args)))
-                  )))
-        (p1 (if param1 param1
-                (cond
-                  ((eq? num! 'seek!) (if (or (null? num-args) (null? (cdr num-args))) 1.0 (cadr num-args)))
-                  )))
-        (frame-num (if (eq? 'max frame-num) (if group!
-                                                `(the float (1- (-> (the art-joint-anim ,group!) data 0 length)))
-                                                `(the float (1- (-> ja-ch frame-group data 0 length)))
-                                                )
-                                            frame-num))
-        (frame-group (if (or p0 p1 frame-num (not nf)) group! #f))
-      )
-  `(let ((ja-ch (-> self skel root-channel ,chan)))
-      ,(if frame-interp `(set! (-> ja-ch frame-interp) ,frame-interp) `(none))
-      ,(if dist `(set! (-> ja-ch dist) ,dist) `(none))
-      ,(if frame-group `(set! (-> ja-ch frame-group) (the art-joint-anim ,frame-group)) `(none))
-      ,(if p0 `(set! (-> ja-ch param 0) ,p0) `(none))
-      ,(if p1 `(set! (-> ja-ch param 1) ,p1) `(none))
-      ,(if num-func `(set! (-> ja-ch num-func) ,num-func) `(none))
-      ,(if frame-num `(set! (-> ja-ch frame-num) ,frame-num) `(none))
-      ,(if nf
-          `(,(if eval? 'joint-control-channel-group-eval! 'joint-control-channel-group!)
-              ja-ch (the art-joint-anim ,group!) ,nf)
-          `(none))
-      ,(cond
-        ((eq? num! 'min) `(set! (-> ja-ch frame-num) 0.0))
-        ((eq? num! 'max) (if group!
-                             `(set! (-> ja-ch frame-num) (the float (1- (-> (the art-joint-anim ,group!) data 0 length))))
-                             `(set! (-> ja-ch frame-num) (the float (1- (-> ja-ch frame-group data 0 length))))
-                             ))
-        ((eq? num! 'identity) `(set! (-> ja-ch frame-num) ,(car num-args)))
-        (#t `(none))
-        )
-      ))
-  )
-
-(defmacro ja-no-eval (&key (chan 0)
-                      &key (group! #f)
-                      &key (num! #f)
-                      &key (param0 #f)
-                      &key (param1 #f)
-                      &key (num-func #f)
-                      &key (frame-num #f)
-                      &key (frame-interp #f)
-                      &key (dist #f)
-                      )
-  `(ja :eval? #f :chan ,chan :group! ,group! :num! ,num! :param0 ,param0 :param1 ,param1 :num-func ,num-func :frame-num ,frame-num :frame-interp ,frame-interp :dist ,dist)
-  )
-
 (defbehavior ja-eval process-drawable ()
   (let ((gp-0 (-> self skel root-channel 0))
         (s5-0 (-> self skel channel (-> self skel active-channels)))
@@ -1136,7 +1007,7 @@
   (none)
   )
 
-(defmethod dummy-9 joint-control ((obj joint-control))
+(defmethod current-cycle-distance joint-control ((obj joint-control))
   (cond
     ((< (the-as int (-> obj root-channel)) (the-as int (-> obj channel (-> obj active-channels))))
      (let ((s5-0 (-> obj root-channel (-> obj root-channel 0 group-size)))
@@ -1209,7 +1080,7 @@
 
 (defbehavior process-drawable-delay-player process-drawable ((arg0 time-frame))
   (while (and *target*
-              (logtest? (-> *target* control unknown-surface00 flags) (surface-flags surf11))
+              (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
               (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
               )
     (suspend)
@@ -1263,7 +1134,7 @@
           )
       (set! (-> s4-0 options) (fact-options))
       (if arg2
-          (set! (-> s4-0 options) (fact-options fop6))
+          (set! (-> s4-0 options) (fact-options instant-collect))
           )
       (when (and (nonzero? s5-0) (not (task-complete? *game-info* s5-0)))
         (label cfg-12)

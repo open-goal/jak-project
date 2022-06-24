@@ -14,10 +14,13 @@
  */
 
 #include "ObjectGenerator.h"
-#include "goalc/debugger/DebugInfo.h"
+
 #include "common/goal_constants.h"
-#include "common/versions.h"
 #include "common/type_system/TypeSystem.h"
+#include "common/versions.h"
+
+#include "goalc/debugger/DebugInfo.h"
+
 #include "third-party/fmt/core.h"
 
 namespace emitter {

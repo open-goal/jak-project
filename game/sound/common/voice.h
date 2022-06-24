@@ -5,7 +5,9 @@
 #include "envelope.h"
 #include "fifo.h"
 #include "sound_types.h"
+
 #include "common/common_types.h"
+
 #include "third-party/fmt/core.h"
 
 namespace snd {
