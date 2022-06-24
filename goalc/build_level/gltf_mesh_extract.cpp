@@ -748,6 +748,21 @@ void extract(const Input& in,
   }
   out.faces = std::move(fixed_faces);
 
+  if (in.auto_wall_enable) {
+    lg::info("automatically detecting walls with angle {}", in.auto_wall_angle);
+    int wall_count = 0;
+    float wall_cos = std::cos(in.auto_wall_angle * 2.f * M_PI / 360.f);
+    for (auto& face : out.faces) {
+      math::Vector3f face_normal =
+          (face.v[1] - face.v[0]).cross(face.v[2] - face.v[0]).normalized();
+      if (face_normal[1] < wall_cos) {
+        face.pat.set_mode(PatSurface::Mode::WALL);
+        wall_count++;
+      }
+    }
+    lg::info("automatic wall: {}/{} converted to walls", wall_count, out.faces.size());
+  }
+
   lg::info("{} out of {} faces appeared to have wrong orientation and were flipped",
            suspicious_faces, out.faces.size());
   lg::info("{} faces were too big and were subdivided", fix_count);

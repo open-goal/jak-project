@@ -12,6 +12,7 @@
 #include "goalc/build_level/collide_common.h"
 #include "goalc/build_level/collide_drawable.h"
 #include "goalc/build_level/collide_pack.h"
+#include "goalc/build_level/Entity.h"
 
 struct VisibilityString {
   std::vector<u8> bytes;
@@ -40,10 +41,6 @@ struct TextureRemap {};
 struct TextureId {};
 
 struct VisInfo {};
-
-struct DrawableActor {};
-
-struct DrawableInlineArrayActor {};
 
 struct EntityCamera {};
 
@@ -94,7 +91,7 @@ struct LevelFile {
   std::array<VisInfo, 8> vis_infos;
 
   //  (actors                 drawable-inline-array-actor      :offset-assert 112)
-  DrawableInlineArrayActor actors;
+  std::vector<EntityActor> actors;
 
   //  (cameras                (array entity-camera)            :offset-assert 116)
   std::vector<EntityCamera> cameras;
