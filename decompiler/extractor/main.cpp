@@ -58,7 +58,8 @@ static const std::map<std::string, std::map<xxh::hash64_t, ISOMetadata>> isoData
        {"Jak & Daxter™: The Precursor Legacy", "PAL", 338, 16850370297611763875U, "jak1_pal"}}}},
     {"SCPS-15021",
      {{16909372048085114219U,
-       {"ジャックＸダクスター　～　旧世界の遺産", "NTSC-J", 338, 1262350561338887717, "jak1_jp"}}}}};
+       {"ジャックＸダクスター　～　旧世界の遺産", "NTSC-J", 338, 1262350561338887717,
+        "jak1_jp"}}}}};
 
 void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_path_override) {
   decompiler::init_opcode_info();
