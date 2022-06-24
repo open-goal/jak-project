@@ -103,9 +103,9 @@ TEST_F(VariableTests, StackStructureAlignment) {
 
 TEST_F(VariableTests, GetSymbol) {
   shared_compiler->runner.run_static_test(env, testCategory, "get-symbol-1.static.gc",
-                                          {"1342756\n"});  // 0x147d24 in hex
+                                          {"1375524\n"});  // 0x14fd24 in hex
   shared_compiler->runner.run_static_test(env, testCategory, "get-symbol-2.static.gc",
-                                          {"1342764\n"});  // 0x147d2c in hex
+                                          {"1375532\n"});  // 0x14fd2c in hex
 }
 
 TEST_F(VariableTests, Constants) {
