@@ -23,8 +23,9 @@ enum class ExtractorErrorCode {
   VALIDATION_BAD_ISO_CONTENTS = 4010,
   VALIDATION_INCORRECT_EXTRACTION_COUNT = 4011,
   VALIDATION_BAD_EXTRACTION = 4020,
-  VALIDATION_MISSING_ISO = 4025,
-  DECOMPILATION_GENERIC_ERROR = 4030
+  DECOMPILATION_GENERIC_ERROR = 4030,
+  EXTRACTION_INVALID_ISO_PATH = 4040,
+  EXTRACTION_ISO_UNEXPECTED_SIZE = 4041
 };
 
 enum GameIsoFlags { FLAG_JAK1_BLACK_LABEL = (1 << 0) };
@@ -57,8 +58,7 @@ static const std::map<std::string, std::map<xxh::hash64_t, ISOMetadata>> isoData
        {"Jak & Daxter™: The Precursor Legacy", "PAL", 338, 16850370297611763875U, "jak1_pal"}}}},
     {"SCPS-15021",
      {{16909372048085114219U,
-       {"ジャックＸダクスター　～　旧世界の遺産", "NTSC-J", 338, 1262350561338887717,
-        "jak1_jp"}}}}};
+       {"ジャックＸダクスター　～　旧世界の遺産", "NTSC-J", 338, 1262350561338887717, "jak1_jp"}}}}};
 
 void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_path_override) {
   decompiler::init_opcode_info();
@@ -67,15 +67,12 @@ void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_
 
 IsoFile extract_files(std::filesystem::path data_dir_path,
                       std::filesystem::path extracted_iso_path) {
-  fmt::print("Note: could not find game data folder, attempting to locate ISO file.\n");
+  fmt::print(
+      "Note: Provided game data path '{}' points to a file, not a directory. Assuming it's an ISO "
+      "file and attempting to extract!\n");
 
   std::filesystem::create_directories(extracted_iso_path);
 
-  // assuming ISO size and extension checks are only needed if input is not a folder
-  if (data_dir_path.extension() != ".iso") {
-    fmt::print(stderr, "ERROR: an ISO file could not be located in data path");
-    // return {ExtractorErrorCode::VALIDATION_MISSING_ISO, std::nullopt};
-  }
   auto fp = fopen(data_dir_path.string().c_str(), "rb");
   ASSERT_MSG(fp, "failed to open input ISO file\n");
   IsoFile iso = unpack_iso_files(fp, extracted_iso_path, true, true);
@@ -421,7 +418,20 @@ int main(int argc, char** argv) {
 
     int flags = 0;
     if (std::filesystem::is_regular_file(data_dir_path)) {
-      // it's a file, treat it as an ISO
+      // it's a file, make sure it's an .iso file
+      //to-do: verify game header data as well
+      if (data_dir_path.extension() != ".iso") {
+        fmt::print(stderr, "ERROR: Provided game data path contains a file that isn't a .ISO!");
+        return static_cast<int>(ExtractorErrorCode::EXTRACTION_INVALID_ISO_PATH);
+      }
+      // make sure the .iso is greater than 1GB in size
+      if (std::filesystem::file_size(data_dir_path) < 1000000000) {
+        fmt::print(
+            stderr,
+            "ERROR: Provided game data file appears to be too small or corrupted! Size is {}",
+            std::filesystem::file_size(data_dir_path));
+        return static_cast<int>(ExtractorErrorCode::EXTRACTION_ISO_UNEXPECTED_SIZE);
+      }
       auto iso_file = extract_files(data_dir_path, path_to_iso_files);
       auto validation_res = validate(iso_file, path_to_iso_files);
       flags = validation_res.second->flags;
