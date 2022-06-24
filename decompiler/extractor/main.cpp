@@ -72,9 +72,9 @@ IsoFile extract_files(std::filesystem::path data_dir_path,
   std::filesystem::create_directories(extracted_iso_path);
 
   // assuming ISO size and extension checks are only needed if input is not a folder
-  if (!data_dir_path.extension() != ".iso"))
+  if (data_dir_path.extension() != ".iso"))
   {
-      fmt::print(stderr, "ERROR: file type is not ISO");
+      fmt::print(stderr, "ERROR: file type is not ISO\n");
       // fmt::print(stderr, "ERROR: an ISO file could not be located in path {}\n", data_dir_path);
       // return {ExtractorErrorCode::VALIDATION_MISSING_ISO, std::nullopt};
     }
