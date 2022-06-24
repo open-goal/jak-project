@@ -222,7 +222,7 @@ class VarAssignment {
     }
   }
 
-  const std::vector<bool> live_vector() const { return m_live; }
+  const std::vector<bool>& live_vector() const { return m_live; }
 
  private:
   // common info

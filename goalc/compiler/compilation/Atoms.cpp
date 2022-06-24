@@ -286,8 +286,8 @@ Val* Compiler::compile_no_const_prop(const goos::Object& code, Env* env) {
  * Highest level compile function
  */
 Val* Compiler::compile(const goos::Object& code, Env* env) {
-  auto propagated = try_constant_propagation(code, env);
-  return compile_no_const_prop(propagated.value, env);
+  // auto propagated = try_constant_propagation(code, env);
+  return compile_no_const_prop(code, env);
 }
 
 /*!

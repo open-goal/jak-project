@@ -267,7 +267,7 @@ bool Compiler::expand_macro_once(const goos::Object& src, goos::Object* out, Env
 
   auto goos_result = m_goos.eval_list_return_last(macro->body, macro->body, mac_env);
   // make the macro expanded form point to the source where the macro was used for error messages.
-  m_goos.reader.db.inherit_info(src, goos_result);
+  // m_goos.reader.db.inherit_info(src, goos_result);
 
   *out = goos_result;
   return true;

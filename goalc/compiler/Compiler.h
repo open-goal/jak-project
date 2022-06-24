@@ -26,10 +26,23 @@ enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
 enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
 
+struct CompilationOptions {
+  std::string filename;                 // input file
+  std::string disassembly_output_file;  // file to write, containing x86 assembly output
+  bool load = false;                    // send to target
+  bool color = false;                   // do register allocation/code generation passes
+  bool write = false;                   // write object file to out/obj
+  bool no_code = false;                 // file shouldn't generate code, throw error if it does
+  bool disassemble = false;             // either print disassembly to stdout or output_file
+  bool print_time = false;              // print timing statistics
+};
+
 class Compiler {
  public:
   Compiler(const std::string& user_profile = "#f", std::unique_ptr<ReplWrapper> repl = nullptr);
   ~Compiler();
+  void asm_file(const CompilationOptions& options);
+
   void save_repl_history();
   void print_to_repl(const std::string_view& str);
   std::string get_prompt();

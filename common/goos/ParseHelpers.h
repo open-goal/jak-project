@@ -19,7 +19,7 @@ template <typename T>
 void for_each_in_list(const goos::Object& list, T f) {
   const goos::Object* iter = &list;
   while (iter->is_pair()) {
-    auto lap = iter->as_pair();
+    const auto& lap = iter->as_pair();
     f(lap->car);
     iter = &lap->cdr;
   }
