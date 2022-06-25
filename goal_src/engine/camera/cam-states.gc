@@ -474,24 +474,24 @@
                             )
                           )
                     )
-                (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))) ;; changed for high fps
-                (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))) ;; changed for high fps
+                (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))))
+                (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))))
                 )
               )
             (cond
-              ((< (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 x)) ;; changed for high fps
-               (set! (-> s4-0 x) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))) ;; changed for high fps
+              ((< (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 x))
+               (set! (-> s4-0 x) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))
                )
-              ((< (-> s4-0 x) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; changed for high fps
-               (set! (-> s4-0 x) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; changed for high fps
+              ((< (-> s4-0 x) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))
+               (set! (-> s4-0 x) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))
                )
               )
             (cond
-              ((< (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 y)) ;; changed for high fps
-               (set! (-> s4-0 y) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))) ;; changed for high fps
+              ((< (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 y))
+               (set! (-> s4-0 y) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))
                )
-              ((< (-> s4-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; changed for high fps
-               (set! (-> s4-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; changed for high fps
+              ((< (-> s4-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))
+               (set! (-> s4-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))
                )
               )
             (cond
@@ -1213,20 +1213,14 @@
 (deftype cam-string-bank (basic)
   ((los-coll-rad  meters  :offset-assert   4)
    (los-coll-rad2 meters  :offset-assert   8)
-   (y-adjust-ratio float)
-   (z-adjust-ratio float)
    )
   :method-count-assert 9
- ; :size-assert         #xc
- ; :flag-assert         #x90000000c
+  :size-assert         #xc
+  :flag-assert         #x90000000c
   )
 
 
-(define *CAM_STRING-bank* (new 'static 'cam-string-bank
-                               :los-coll-rad (meters 1)
-                               :los-coll-rad2 (meters 0.5)
-                               :y-adjust-ratio 1.0
-                               :z-adjust-ratio 1.0))
+(define *CAM_STRING-bank* (new 'static 'cam-string-bank :los-coll-rad (meters 1) :los-coll-rad2 (meters 0.5)))
 
 (defun cam-string-find-position-rel! ((arg0 vector))
   (let ((s5-0 (new 'stack-no-clear 'vector))
@@ -2294,7 +2288,7 @@
 ;; main third-person camera
 (defbehavior cam-string-joystick camera-slave ()
   (set! (-> self options) (logand -257 (-> self options)))
-   (let ((f28-0 (cam-dist-analog-input (the-as int (-> *cpad-list* cpads 0 righty)) (the-as float 0.05)))
+  (let ((f28-0 (cam-dist-analog-input (the-as int (-> *cpad-list* cpads 0 righty)) (the-as float 0.05)))
         (f0-2 (/ (- (vector-length (-> self view-flat)) (-> self string-min-val z))
                  (- (-> self string-max-val z) (-> self string-min-val z))
                  )
@@ -2371,35 +2365,17 @@
           )
         )
       )
+    (if (= f28-0 0.0)
+        (set! (-> self view-off z) (-> self string-max-val z))
+        (set! (-> self view-off z)
+              (lerp (-> self string-min-val z) (-> self string-max-val z) (-> self view-off-param))
+              )
+        )
+    (if (-> *camera* being-attacked)
+        (set! (-> self view-off-param) f30-0)
+        )
     )
   (when *camera-read-analog*
-    (let ((f0-29 (analog-input-vertical-third   ;; changed for pc port
-                  (the-as int (-> *cpad-list* cpads 0 righty))
-                  (the-as float 128.0) ;; offset
-                  (the-as float 32.0) ;; center
-                  (the-as float 110.0) ;; max
-                  (* 21845.334 (-> *display* seconds-per-frame))
-                  )
-            )
-          (s4-0 (new-stack-matrix0))
-          (gp-2 (new-stack-vector0))
-          (s5-2 (new-stack-vector0))
-          )
-      (cond
-        ((!= f0-29 0.0)
-         (logior! (-> self options) 256)
-         (let ((vec (new 'stack-no-clear 'vector))
-               (view-flat-unit (new 'stack-no-clear 'vector))
-               )
-           (vector-normalize-copy! view-flat-unit (-> self view-flat) 64.0)
-           (vector-cross! vec (-> *camera* local-down) view-flat-unit)
-           (matrix-axis-angle! s4-0 vec f0-29)
-           (vector-matrix*! (-> self view-flat) (-> self view-flat) s4-0)
-           )
-         )
-        )
-      )
-    
     (let ((f0-29 (analog-input-horizontal-third   ;; changed for pc port
                    (the-as int (-> *cpad-list* cpads 0 rightx))
                    (the-as float 128.0)
@@ -2437,6 +2413,19 @@
         ((!= f0-29 0.0)
          (logior! (-> self options) 256)
          (matrix-axis-angle! s4-0 (-> *camera* local-down) f0-29)
+         (vector-matrix*! (-> self view-flat) (-> self view-flat) s4-0)
+         )
+        ((logtest? (-> self options) 1)
+         (vector-normalize-copy! gp-2 (-> self view-flat) (the-as float 1.0))
+         (vector-flatten! s5-2 (-> *camera* tgt-rot-mat vector 2) (-> *camera* local-down))
+         (vector-normalize! s5-2 (the-as float -1.0))
+         (matrix-from-two-vectors-max-angle-partial!
+           s4-0
+           gp-2
+           s5-2
+           (* 10922.667 (-> *display* seconds-per-frame))
+           (the-as float 0.05)
+           )
          (vector-matrix*! (-> self view-flat) (-> self view-flat) s4-0)
          )
         )
