@@ -82,6 +82,17 @@ struct GfxGlobalSettings {
   bool collision_enable = false;
   bool collision_wireframe = true;
 
+  // vsync enable
+  bool vsync = true;
+  bool old_vsync = false;
+  // target frame rate
+  float target_fps = 60;
+  // use custom frame limiter
+  bool framelimiter = true;
+
+  bool experimental_accurate_lag = false;
+  bool sleep_in_frame_limiter = true;
+
   // matching enum in kernel-defs.gc !!
   enum CollisionRendererMode { None, Mode, Event, Material, Skip } collision_mode = Mode;
   std::array<u32, (PAT_MOD_COUNT + 31) / 32> collision_mode_mask = {UINT32_MAX};
@@ -113,7 +124,11 @@ u64 get_window_height();
 void set_window_size(u64 w, u64 h);
 void get_window_scale(float* x, float* y);
 GfxDisplayMode get_fullscreen();
-void get_screen_size(s64 vmode_idx, s32* w, s32* h, s32* c);
+int get_screen_vmode_count();
+int get_screen_rate(s64 vmode_idx);
+void get_screen_size(s64 vmode_idx, s32* w, s32* h);
+void set_frame_rate(int rate);
+void set_vsync(bool vsync);
 void set_letterbox(int w, int h);
 void set_fullscreen(GfxDisplayMode mode, int screen);
 void set_window_lock(bool lock);

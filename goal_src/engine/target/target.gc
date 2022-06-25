@@ -4,6 +4,7 @@
 ;; name: target.gc
 ;; name in dgo: target
 ;; dgos: GAME, ENGINE
+;; note: changed for high fps
 
 ;; TODO - almost all of these are in target-handler or target2, temporary
 
@@ -568,7 +569,7 @@
       (loop
         (ground-tween-update gp-0 (-> self control unknown-float61) (-> self control unknown-float62))
         (suspend)
-        (ja :num! (loop!))
+        (ja :num! (loop! (-> *display* time-adjust-ratio))) ;; changed for high fps, fixes ambient wind on jak
         (ja :chan 1 :num! (chan 0))
         (ja :chan 2 :num! (chan 0))
         (if (can-play-stance-amibent?)
@@ -884,11 +885,7 @@
             (set! f30-0 (seek
                           f30-0
                           (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -16384.0 (-> self control unknown-float01)))))
-                          ;; Jaks' walk animation felt sped up in > 60fps. I'm thinking it shouldn't be tied to seconds-per-frame but I'm not positive
-                          (* 2.0 (if (or (= (-> *setting-control* current video-mode) '150fps)
-                                         (= (-> *setting-control* current video-mode) '100fps))
-                                     0.016666668
-                                     (-> *display* seconds-per-frame)))
+                          (* 2.0 (-> *display* seconds-per-frame))
                           )
                   )
             (let ((v1-317 (-> self skel effect)))
@@ -2756,10 +2753,9 @@
                               (or (= v1-6 eichar-flop-down-loop-ja) (= v1-6 eichar-moving-flop-down-ja))
                               )
                  )
-        (when (and (or (< (target-move-dist (if (or (= (-> *setting-control* current video-mode) '150fps)  (= (-> *setting-control* current video-mode) '150fps))
-                                                (if (= (-> *setting-control* current video-mode) '150ps) (seconds 0.04) (seconds 0.06))
-                                                (seconds 0.1)))
-                          (if (or (= (-> *setting-control* current video-mode) '150fps) (= (-> *setting-control* current video-mode) '100fps)) (if (= (-> *setting-control* current video-mode) '150fps) 655.36 983.04) 1638.4)
+        ;; changed for high fps. This fixes the invisible wall when flopping
+        (when (and (or (< (target-move-dist (the time-frame (* (-> *display* time-adjust-ratio) (seconds 0.1))))
+                          (* (-> *display* time-adjust-ratio) 1638.4)
                           )
                           (and (logtest? (-> self control status) (cshape-moving-flags twall)) (< 0.7 (-> self control poly-angle)))
                           )

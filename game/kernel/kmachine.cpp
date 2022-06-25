@@ -812,18 +812,29 @@ void get_window_scale(u32 x_ptr, u32 y_ptr) {
 /*!
  * Returns resolution of the monitor.
  */
-void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr, u32 c_ptr) {
-  s32 *w_out = 0, *h_out = 0, *c_out = 0;
+void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr) {
+  s32 *w_out = 0, *h_out = 0;
   if (w_ptr) {
     w_out = Ptr<s32>(w_ptr).c();
   }
   if (h_ptr) {
     h_out = Ptr<s32>(h_ptr).c();
   }
-  if (c_ptr) {
-    c_out = Ptr<s32>(c_ptr).c();
-  }
-  Gfx::get_screen_size(vmode_idx, w_out, h_out, c_out);
+  Gfx::get_screen_size(vmode_idx, w_out, h_out);
+}
+
+/*!
+ * Returns refresh rate of the monitor.
+ */
+s64 get_screen_rate(s64 vmode_idx) {
+  return Gfx::get_screen_rate(vmode_idx);
+}
+
+/*!
+ * Returns amount of video modes of the monitor.
+ */
+s64 get_screen_vmode_count() {
+  return Gfx::get_screen_vmode_count();
 }
 
 void update_discord_rpc(u32 discord_info) {
@@ -970,6 +981,14 @@ void set_fullscreen(u32 symptr, s64 screen) {
   }
 }
 
+void set_frame_rate(s64 rate) {
+  Gfx::set_frame_rate(rate);
+}
+
+void set_vsync(u32 symptr) {
+  Gfx::set_vsync(symptr != s7.offset);
+}
+
 void set_window_lock(u32 symptr) {
   Gfx::set_window_lock(symptr == s7.offset);
 }
@@ -1020,8 +1039,12 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
   make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
   make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
+  make_function_symbol_from_c("pc-get-screen-rate", (void*)get_screen_rate);
+  make_function_symbol_from_c("pc-get-screen-vmode-count", (void*)get_screen_vmode_count);
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
   make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
+  make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
+  make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
   make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
 
   // graphics things
