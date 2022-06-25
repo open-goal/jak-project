@@ -8,5 +8,5 @@
 #include "common/common_types.h"
 
 extern "C" {
-s32 format_impl(uint64_t* args);
+s32 format_impl_jak1(uint64_t* args);
 }

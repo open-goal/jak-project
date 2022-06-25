@@ -1954,7 +1954,7 @@ s32 InitHeapAndSymbol() {
   make_function_symbol_from_c("load", (void*)load);
   make_function_symbol_from_c("loado", (void*)loado);
   make_function_symbol_from_c("unload", (void*)unload);
-  make_stack_arg_function_symbol_from_c("_format", (void*)format_impl);
+  make_stack_arg_function_symbol_from_c("_format", (void*)format_impl_jak1);
 
   // allocations
   make_function_symbol_from_c("malloc", (void*)alloc_heap_memory);

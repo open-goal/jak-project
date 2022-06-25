@@ -26,13 +26,16 @@ set(RUNTIME_SOURCE
         kernel/common/fileio.cpp
         kernel/common/kboot.cpp
         kernel/common/kdsnetm.cpp
+        kernel/common/kmachine.cpp
         kernel/common/kmalloc.cpp
         kernel/common/kprint.cpp
         kernel/common/kscheme.cpp
         kernel/common/ksocket.cpp
         kernel/jak1/kboot.cpp
+        kernel/jak1/kmachine.cpp
         kernel/jak1/kprint.cpp
         kernel/jak2/kboot.cpp
+        kernel/jak2/kmachine.cpp
         kernel/jak2/kmalloc.cpp
         kernel/jak2/kprint.cpp
         kernel/asm_funcs.asm

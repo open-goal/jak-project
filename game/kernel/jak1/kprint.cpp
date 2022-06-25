@@ -42,7 +42,7 @@ struct format_struct {
  * defined in format_wrapper.nasm that places the GOAL arguments on the stack and calls this
  * format_impl function with a single argument that is a pointer to the argument array.
  */
-s32 format_impl(uint64_t* args) {
+s32 format_impl_jak1(uint64_t* args) {
   // first two args are dest, format string
   uint64_t* arg_regs = args + 2;
 

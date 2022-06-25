@@ -32,9 +32,11 @@
 #include "game/kernel/common/kdsnetm.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
+#include "game/kernel/common/kmachine.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/fileio.h"
 #include "game/kernel/jak1/kboot.h"
+#include "game/kernel/jak2/kboot.h"
 #include "game/kernel/kdgo.h"
 #include "game/kernel/klink.h"
 #include "game/kernel/klisten.h"
@@ -150,12 +152,15 @@ void ee_runner(SystemThreadInterface& iface) {
   mprotect((void*)g_ee_main_mem, EE_MAIN_MEM_LOW_PROTECT, PROT_NONE);
   fileio_init_globals();
   jak1::kboot_init_globals();
+  jak2::kboot_init_globals();
+
   kboot_init_globals_common();
   kdgo_init_globals();
   kdsnetm_init_globals_common();
   klink_init_globals();
 
   kmachine_init_globals();
+  kmachine_init_globals_common();
   kscheme_init_globals();
   kscheme_init_globals_common();
   kmalloc_init_globals_common();

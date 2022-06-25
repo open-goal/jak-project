@@ -3,12 +3,21 @@
 #include <cstring>
 
 #include "game/common/game_common_types.h"
-#include "game/sce/libscf.h"
 #include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/Symbol4.h"
+#include "game/sce/libscf.h"
 
-/*
 namespace jak2 {
+
+char DebugBootUser[64];
+char DebugBootArtGroup[64];
+
+void kboot_init_globals() {
+  memset(DebugBootUser, 0, sizeof(DebugBootUser));
+  memset(DebugBootArtGroup, 0, sizeof(DebugBootArtGroup));
+  strcpy(DebugBootUser, "unknown");
+}
+/*
 s32 goal_main(int argc, const char* const* argv) {
   // only in PC port
   InitParms(argc, argv);
@@ -129,6 +138,5 @@ void KernelCheckAndDispatch() {
   }
 }
 
-
-}  // namespace jak2
  */
+}  // namespace jak2

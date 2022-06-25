@@ -11,22 +11,7 @@
 
 
 
-/*!
- * Where does OVERLORD load its data from?
- */
-enum OverlordDataSource : u32 {
-  fakeiso = 0,  //! some sort of development way of getting data
-  deviso = 1,   //! some sort of development way of getting data
-  iso_cd = 2,   //! use the actual DVD drive
-};
 
-extern OverlordDataSource isodrv;
-
-// Get IOP modules from DVD or from dsefilesv
-extern u32 modsrc;
-
-// Reboot IOP on start?
-extern u32 reboot;
 
 // Discord RPC
 struct DiscordRichPresence;
@@ -39,15 +24,8 @@ extern int64_t gStartTime;
  */
 void kmachine_init_globals();
 
-/*!
- * Initialize global variables based on command line parameters
- */
-void InitParms(int argc, const char* const* argv);
 
-/*!
- * Initialize the CD Drive
- */
-void InitCD();
+
 
 /*!
  * Initialize the I/O Processor

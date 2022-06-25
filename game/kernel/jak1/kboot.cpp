@@ -22,6 +22,7 @@
 #include "game/kernel/klisten.h"
 #include "game/kernel/kmachine.h"
 #include "game/kernel/kscheme.h"
+#include "game/kernel/jak1/kmachine.h"
 #include "game/sce/libscf.h"
 
 using namespace ee;
