@@ -589,7 +589,7 @@ void ObjectFileDB::find_code(const Config& config) {
   for_each_obj([&](ObjectFileData& obj) {
     //      printf("fc %s\n", obj.record.to_unique_name().c_str());
     obj.linked_data.find_code();
-    obj.linked_data.find_functions();
+    obj.linked_data.find_functions(config.game_version);
     obj.linked_data.disassemble_functions();
 
     if (config.game_version == GameVersion::Jak1 || obj.to_unique_name() != "effect-control-v0") {

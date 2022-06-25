@@ -105,7 +105,20 @@ void ObjectFileDB::analyze_functions_ir2(
     }
 
     if (!config.generate_all_types) {
+      // this frees ir2 memory, but means future passes can't look back on this function.
       for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
+    } else {
+      for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
+        if (seg == 0) {
+          return;  // keep top-levels
+        }
+        if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD &&
+            f.guessed_name.method_id == GOAL_INSPECT_METHOD) {
+          return;  // keep inspects
+        }
+        // otherwise free memory
+        f.ir2 = {};
+      });
     }
 
     fmt::print("Done in {:.2f}ms\n", file_timer.getMs());
@@ -326,7 +339,7 @@ void ObjectFileDB::ir2_analyze_all_types(const std::string& output_file,
   for (auto& obj : per_object) {
     result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
     result += fmt::format(";; {:30s} ;;\n", obj.object_name);
-    result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
+    result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n\n");
     for (auto& t : obj.type_defs) {
       result += t;
       result += "\n";

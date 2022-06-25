@@ -1,5 +1,3 @@
-
-
 #include "analyze_inspect_method.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -588,14 +586,6 @@ bool get_ptr_offset_constant_nonzero(const SimpleExpression& math, Register base
   return true;
 }
 
-// bool get_ptr_offset_zero(IR_IntMath2* math, Register base, int* result) {
-//   if (!is_reg(math->arg0.get(), make_gpr(Reg::R0)) || !is_reg(math->arg1.get(), base)) {
-//     return false;
-//   }
-//   *result = 0;
-//   return true;
-// }
-
 bool get_ptr_offset(AtomicOp* ir, Register dst, Register base, int* result) {
   auto as_set = dynamic_cast<SetVarOp*>(ir);
   if (!as_set) {
@@ -604,17 +594,8 @@ bool get_ptr_offset(AtomicOp* ir, Register dst, Register base, int* result) {
   if (as_set->dst().reg() != dst) {
     return false;
   }
-  //
-  //  if (!is_reg(as_set->dst.get(), dst)) {
-  //    return false;
-  //  }
 
-  //  auto as_math = dynamic_cast<IR_IntMath2*>(as_set->src.get());
-  //  if (!as_math) {
-  //    return false;
-  //  }
   return get_ptr_offset_constant_nonzero(as_set->src(), base, result);
-  // || get_ptr_offset_zero(as_math, base, result);
 }
 
 int identify_array_field(int idx,
@@ -755,10 +736,6 @@ int detect(int idx, Function& function, LinkedObjectFile& file, TypeInspectorRes
       idx = identify_struct_inline_field(idx, function, result, info);
     }
   }
-  //  else if (is_set_shift(first_get_op.get())) {
-  //    result->warnings += "likely a bitfield type";
-  //    return -1;
-  //  }
 
   else {
     printf("couldn't do %s, %s\n", sstr->c_str(),
