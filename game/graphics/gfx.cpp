@@ -16,7 +16,7 @@
 #include "common/util/FileUtil.h"
 
 #include "game/common/file_paths.h"
-#include "game/kernel/kscheme.h"
+#include "game/kernel/common/kscheme.h"
 #include "game/kernel/svnrev.h"
 #include "game/runtime.h"
 #include "game/system/newpad.h"

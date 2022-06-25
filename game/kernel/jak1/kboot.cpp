@@ -16,10 +16,11 @@
 #include "common/util/Timer.h"
 
 #include "game/common/game_common_types.h"
+#include "game/kernel/common/kprint.h"
+#include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/ksocket.h"
 #include "game/kernel/klisten.h"
 #include "game/kernel/kmachine.h"
-#include "game/kernel/kprint.h"
 #include "game/kernel/kscheme.h"
 #include "game/sce/libscf.h"
 

@@ -46,7 +46,6 @@ enum GoalFileType {
 
 constexpr char FOLDER_PREFIX[] = "";
 
-char* strend(char* str);
 u32 ReadHufWord(u8** loc_ptr);
 void kstrcpyup(char* dst, const char* src);
 void kstrcat(char* dest, const char* src);

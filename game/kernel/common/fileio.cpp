@@ -16,3 +16,14 @@ void kstrcpy(char* dst, const char* src) {
   }
   *dst_ptr = 0;
 }
+
+/*!
+ * Return pointer to null terminator of string.
+ * const is for losers.
+ * DONE, EXACT
+ */
+char* strend(char* str) {
+  while (*str)
+    str++;
+  return str;
+}

@@ -13,7 +13,6 @@
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/memory_layout.h"
 #include "game/kernel/fileio.h"
-#include "game/kernel/kprint.h"
 #include "game/kernel/kscheme.h"
 #include "gtest/gtest.h"
 

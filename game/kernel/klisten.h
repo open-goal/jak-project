@@ -6,8 +6,6 @@
  * Done
  */
 
-#ifndef JAK_KLISTEN_H
-#define JAK_KLISTEN_H
 
 #include "kmachine.h"
 #include "kscheme.h"
@@ -23,4 +21,3 @@ void ClearPending();
 void SendAck();
 void ProcessListenerMessage(Ptr<char> msg);
 
-#endif  // JAK_KLISTEN_H

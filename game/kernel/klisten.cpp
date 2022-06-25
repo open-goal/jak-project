@@ -11,14 +11,15 @@
 #include <cstring>
 
 #include "klink.h"
-#include "kprint.h"
 #include "kscheme.h"
 
 #include "common/symbols.h"
 
 #include "game/kernel/common/kboot.h"
 #include "game/kernel/common/kdsnetm.h"
+#include "game/kernel/common/klink.h"
 #include "game/kernel/common/kprint.h"
+#include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/ksocket.h"
 
 using namespace jak1_symbols;

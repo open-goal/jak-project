@@ -10,7 +10,6 @@
 
 #include "fileio.h"
 #include "klink.h"
-#include "kprint.h"
 
 #include "common/log/log.h"
 

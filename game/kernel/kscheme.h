@@ -14,7 +14,6 @@
 
 extern u32 FastLink;
 extern Ptr<u32> EnableMethodSet;
-extern Ptr<u32> s7;
 extern Ptr<u32> SymbolTable2;
 extern Ptr<u32> LastSymbol;
 

@@ -13,7 +13,6 @@
 #include "klisten.h"
 #include "kmachine.h"
 #include "kmemcard.h"
-#include "kprint.h"
 
 #include "common/common_types.h"
 #include "common/goal_constants.h"
@@ -26,10 +25,12 @@
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kboot.h"
 #include "game/kernel/common/kdsnetm.h"
+#include "game/kernel/common/klink.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/mips2c/mips2c_table.h"
+#include "game/kernel/jak1/kprint.h"
 
 using namespace jak1_symbols;
 
@@ -54,14 +55,10 @@ Ptr<u32> EnableMethodSet;
 // used for crc32 calculation
 u32 crc_table[0x100];
 
-// value of the GOAL s7 register, pointing to the middle of the symbol table
-Ptr<u32> s7;
-
 void kscheme_init_globals() {
   for (auto& x : crc_table) {
     x = 0;
   }
-  s7.offset = 0;
   SymbolTable2.offset = 0;
   LastSymbol.offset = 0;
   EnableMethodSet.offset = 0;

@@ -31,8 +31,10 @@ set(RUNTIME_SOURCE
         kernel/common/kscheme.cpp
         kernel/common/ksocket.cpp
         kernel/jak1/kboot.cpp
+        kernel/jak1/kprint.cpp
         kernel/jak2/kboot.cpp
         kernel/jak2/kmalloc.cpp
+        kernel/jak2/kprint.cpp
         kernel/asm_funcs.asm
         kernel/fileio.cpp
         kernel/kdgo.cpp
@@ -40,7 +42,6 @@ set(RUNTIME_SOURCE
         kernel/klisten.cpp
         kernel/kmachine.cpp
         kernel/kmemcard.cpp
-        kernel/kprint.cpp
         kernel/kscheme.cpp
         kernel/ksound.cpp
         mips2c/mips2c_table.cpp

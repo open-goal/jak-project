@@ -12,7 +12,6 @@
 #include <cstring>
 
 #include "fileio.h"
-#include "kprint.h"
 #include "kscheme.h"
 
 #include "common/goal_constants.h"
@@ -23,7 +22,9 @@
 
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kboot.h"
+#include "game/kernel/common/klink.h"
 #include "game/kernel/common/kprint.h"
+#include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/memory_layout.h"
 #include "game/mips2c/mips2c_table.h"
 

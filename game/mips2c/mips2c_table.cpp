@@ -4,6 +4,7 @@
 #include "common/symbols.h"
 
 #include "game/kernel/common/kmalloc.h"
+#include "game/kernel/common/kscheme.h"
 #include "game/kernel/kscheme.h"
 
 using namespace jak1_symbols;

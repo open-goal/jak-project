@@ -9,8 +9,6 @@
 #include <cstdio>
 #include <cstring>
 
-#include "kprint.h"
-
 #include "common/util/Assert.h"
 #include "common/versions.h"
 
@@ -28,17 +26,6 @@ void fileio_init_globals() {
 }
 
 using namespace ee;
-
-/*!
- * Return pointer to null terminator of string.
- * const is for losers.
- * DONE, EXACT
- */
-char* strend(char* str) {
-  while (*str)
-    str++;
-  return str;
-}
 
 /*!
  * An implementation of Huffman decoding.
