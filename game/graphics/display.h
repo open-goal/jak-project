@@ -57,7 +57,6 @@ class GfxDisplay {
 
   bool fullscreen_pending() { return get_fullscreen() != m_fullscreen_target_mode; }
   void fullscreen_flush() {
-    printf("going from fullscreen %d to %d\n", get_fullscreen(), m_fullscreen_target_mode);
     update_fullscreen(m_fullscreen_target_mode, m_fullscreen_target_screen);
     // TODO no
     m_fullscreen_screen = m_fullscreen_target_screen;
