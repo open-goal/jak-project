@@ -66,6 +66,8 @@
         "ASPECT RATIO (PS2)")
 (#x103a "FIT TO SCREEN"
         "FIT TO SCREEN")
+(#x103b "V-SYNC"
+        "V-SYNC")
 
 (#x1050 "MSAA"
         "MSAA")

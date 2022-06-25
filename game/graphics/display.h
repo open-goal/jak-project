@@ -42,18 +42,22 @@ class GfxDisplay {
   virtual void set_size(int w, int h) = 0;
   virtual void update_fullscreen(GfxDisplayMode mode, int screen) = 0;
   virtual void get_scale(float* x, float* y) = 0;
-  virtual void get_screen_size(int vmode_idx, s32* w, s32* h, s32* c) = 0;
+  virtual int get_screen_vmode_count() = 0;
+  virtual void get_screen_size(int vmode_idx, s32* w, s32* h) = 0;
+  virtual int get_screen_rate(int vmode_idx) = 0;
   virtual void get_position(int* x, int* y) = 0;
   virtual void get_size(int* w, int* h) = 0;
   virtual GfxDisplayMode get_fullscreen() = 0;
   virtual void render() = 0;
   virtual void set_lock(bool lock) = 0;
+  virtual bool minimized() = 0;
   bool is_active() const { return get_window() != nullptr; }
   void set_title(const char* title);
   const char* title() const { return m_title; }
 
   bool fullscreen_pending() { return get_fullscreen() != m_fullscreen_target_mode; }
   void fullscreen_flush() {
+    printf("going from fullscreen %d to %d\n", get_fullscreen(), m_fullscreen_target_mode);
     update_fullscreen(m_fullscreen_target_mode, m_fullscreen_target_screen);
     // TODO no
     m_fullscreen_screen = m_fullscreen_target_screen;
