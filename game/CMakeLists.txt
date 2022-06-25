@@ -23,19 +23,25 @@ set(RUNTIME_SOURCE
         sce/sif_ee_memcard.cpp
         sce/iop.cpp
         sce/stubs.cpp
+        kernel/common/fileio.cpp
+        kernel/common/kboot.cpp
+        kernel/common/kdsnetm.cpp
+        kernel/common/kmalloc.cpp
+        kernel/common/kprint.cpp
+        kernel/common/kscheme.cpp
+        kernel/common/ksocket.cpp
+        kernel/jak1/kboot.cpp
+        kernel/jak2/kboot.cpp
+        kernel/jak2/kmalloc.cpp
         kernel/asm_funcs.asm
         kernel/fileio.cpp
-        kernel/kboot.cpp
         kernel/kdgo.cpp
-        kernel/kdsnetm.cpp
         kernel/klink.cpp
         kernel/klisten.cpp
         kernel/kmachine.cpp
-        kernel/kmalloc.cpp
         kernel/kmemcard.cpp
         kernel/kprint.cpp
         kernel/kscheme.cpp
-        kernel/ksocket.cpp
         kernel/ksound.cpp
         mips2c/mips2c_table.cpp
         mips2c/functions/bones.cpp

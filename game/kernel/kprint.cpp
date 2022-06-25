@@ -11,20 +11,21 @@
 #include <cstring>
 
 #include "fileio.h"
-#include "kboot.h"
-#include "kdsnetm.h"
 #include "klink.h"
 #include "klisten.h"
 #include "kmachine.h"
-#include "kmalloc.h"
 #include "kscheme.h"
 
 #include "common/common_types.h"
 #include "common/cross_os_debug/xdbg.h"
 #include "common/goal_constants.h"
+#include "common/listener_common.h"
 #include "common/symbols.h"
 #include "common/util/Assert.h"
 
+#include "game/kernel/common/fileio.h"
+#include "game/kernel/common/kboot.h"
+#include "game/kernel/common/kprint.h"
 #include "game/sce/sif_ee.h"
 
 using namespace jak1_symbols;
@@ -32,44 +33,6 @@ using namespace jak1_symbols;
 ///////////
 // SDATA
 ///////////
-
-// Pointer set to something in the middle of the output buffer, if there is something in the buffer.
-Ptr<u8> OutputPending;
-
-// Pointer set to something in the middle of the print buffer, if there is something in the buffer
-Ptr<u8> PrintPending;
-
-// Size of incoming message.
-s32 MessCount;
-
-// Pointer to message buffer, the compiler to target buffer
-Ptr<u8> MessBufArea;
-
-// Pointer to the output buffer, the runtime to compiler buffer
-Ptr<u8> OutputBufArea;
-
-// Pointer to print buffer, the buffer for printing and string formatting.
-Ptr<u8> PrintBufArea;
-
-// integer printing conversion table
-char ConvertTable[16];
-
-// buffer for sending an "acknowledge" message to the compiler
-char AckBufArea[40];
-
-/*!
- * Initialize global variables for kprint
- */
-void kprint_init_globals() {
-  OutputPending.offset = 0;
-  PrintPending.offset = 0;
-  MessCount = 0;
-  MessBufArea.offset = 0;
-  OutputBufArea.offset = 0;
-  PrintBufArea.offset = 0;
-  memcpy(ConvertTable, "0123456789abcdef", 16);
-  memset(AckBufArea, 0, sizeof(AckBufArea));
-}
 
 /*!
  * Initialize GOAL Kernel printing/messaging system.
@@ -186,43 +149,6 @@ void cprintf(const char* format, ...) {
   PrintPending = make_ptr(strend(str)).cast<u8>();
   vsprintf((char*)PrintPending.c(), format, args);
 
-  va_end(args);
-}
-
-/*!
- * Print directly to the C stdout
- * The "k" parameter is ignored, so this is just like printf
- * DONE, EXACT
- */
-void Msg(s32 k, const char* format, ...) {
-  (void)k;
-  va_list args;
-  va_start(args, format);
-  vprintf(format, args);
-  va_end(args);
-}
-
-/*!
- * Print directly to the C stdout
- * This is idential to Msg
- * DONE, EXACT
- */
-void MsgWarn(const char* format, ...) {
-  va_list args;
-  va_start(args, format);
-  vprintf(format, args);
-  va_end(args);
-}
-
-/*!
- * Print directly to the C stdout
- * This is idential to Msg
- * DONE, EXACT
- */
-void MsgErr(const char* format, ...) {
-  va_list args;
-  va_start(args, format);
-  vprintf(format, args);
   va_end(args);
 }
 

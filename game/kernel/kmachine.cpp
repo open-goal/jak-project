@@ -11,20 +11,14 @@
 #include <string>
 
 #include "fileio.h"
-#include "kboot.h"
 #include "kdgo.h"
-#include "kdsnetm.h"
 #include "klink.h"
 #include "klisten.h"
-#include "kmalloc.h"
 #include "kprint.h"
 #include "kscheme.h"
-#include "ksocket.h"
 #include "ksound.h"
 #include "svnrev.h"
 
-#include "common/dma/dma_chain_read.h"
-#include "common/dma/dma_copy.h"
 #include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
@@ -35,6 +29,14 @@
 #include "game/discord.h"
 #include "game/graphics/gfx.h"
 #include "game/graphics/sceGraphicsInterface.h"
+#include "game/kernel/common/fileio.h"
+#include "game/kernel/common/kboot.h"
+#include "game/kernel/common/kdsnetm.h"
+#include "game/kernel/common/kmalloc.h"
+#include "game/kernel/common/kprint.h"
+#include "game/kernel/common/ksocket.h"
+#include "game/kernel/common/memory_layout.h"
+#include "game/kernel/jak1/kboot.h"
 #include "game/mips2c/mips2c_table.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/libdma.h"
@@ -1136,8 +1138,8 @@ void InitMachineScheme() {
   make_function_symbol_from_c("scf-get-timeout", (void*)DecodeTimeout);                   // used
   make_function_symbol_from_c("scf-get-inactive-timeout", (void*)DecodeInactiveTimeout);  // used
   make_function_symbol_from_c("dma-to-iop", (void*)dma_to_iop);                           // unused
-  make_function_symbol_from_c("kernel-shutdown", (void*)KernelShutdown);                  // used
-  make_function_symbol_from_c("aybabtu", (void*)sceCdMmode);                              // used
+  make_function_symbol_from_c("kernel-shutdown", (void*)jak1::KernelShutdown);  // used TODO jak1
+  make_function_symbol_from_c("aybabtu", (void*)sceCdMmode);                    // used
 
   InitMachine_PCPort();
   InitSoundScheme();

@@ -1,17 +1,16 @@
 #pragma once
 
-/*!
- * @file ksocket.h
- * GOAL Socket connection to listener using DECI2/DSNET
- */
-
-#ifndef JAK_KSOCKET_H
-#define JAK_KSOCKET_H
-
-#include "Ptr.h"
-#include "kmachine.h"
-
 #include "common/common_types.h"
+#include "game/kernel/common/Ptr.h"
+
+/*!
+ * Update GOAL message header after receiving and verify message is ok.
+ * Return the size of the message in bytes (not including DECI or GOAL headers)
+ * Return -1 on error.
+ * The buffer parameter is unused.
+ * DONE, removed call to FlushCache(0);
+ */
+u32 ReceiveToBuffer(char* buff);
 
 /*!
  * Update GOAL message header after receiving and verify message is ok.
@@ -50,5 +49,3 @@ Ptr<char> WaitForMessageAndAck();
  * Doesn't close anything, just print a closed message.
  */
 void CloseListener();
-
-#endif  // JAK_KSOCKET_H

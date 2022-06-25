@@ -8,11 +8,11 @@
 
 #include <cstring>
 
-#include "Ptr.h"
-#include "kmalloc.h"
-
 #include "common/common_types.h"
 #include "common/link_types.h"
+
+#include "game/kernel/common/Ptr.h"
+#include "game/kernel/common/kmalloc.h"
 
 constexpr int LINK_FLAG_OUTPUT_LOAD = 0x1;
 constexpr int LINK_FLAG_OUTPUT_TRUE = 0x2;

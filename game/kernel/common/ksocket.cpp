@@ -1,16 +1,8 @@
-/*!
- * @file ksocket.cpp
- * GOAL Socket connection to listener using DECI2/DSNET
- * DONE!
- */
-
 #include "ksocket.h"
 
-#include "fileio.h"
-#include "kboot.h"
-#include "kdsnetm.h"
-#include "klisten.h"
-#include "kprint.h"
+#include "game/kernel/common/fileio.h"
+#include "game/kernel/common/kdsnetm.h"
+#include "game/kernel/common/kprint.h"
 
 /*!
  * Update GOAL message header after receiving and verify message is ok.

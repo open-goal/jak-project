@@ -5,32 +5,8 @@
  * GOAL Print.  Contains GOAL I/O, Print, Format...
  */
 
-#ifndef RUNTIME_KPRINT_H
-#define RUNTIME_KPRINT_H
-
-#include "kmachine.h"
-
-constexpr u32 DEBUG_MESSAGE_BUFFER_SIZE = 0x80000;
-constexpr u32 DEBUG_OUTPUT_BUFFER_SIZE = 0x80000;
-constexpr u32 DEBUG_PRINT_BUFFER_SIZE = 0x200000;
-constexpr u32 PRINT_BUFFER_SIZE = 0x2000;
-
-///////////
-// SDATA
-///////////
-extern Ptr<u8> OutputPending;
-extern Ptr<u8> PrintPending;
-extern s32 MessCount;
-
-extern char AckBufArea[40];
-extern Ptr<u8> MessBufArea;
-extern Ptr<u8> OutputBufArea;
-extern Ptr<u8> PrintBufArea;
-
-/*!
- * Initialize global variables for kprint
- */
-void kprint_init_globals();
+#include "common/common_types.h"
+#include "game/kernel/common/Ptr.h"
 
 /*!
  * Initialize GOAL Kernel printing/messaging system.
@@ -76,48 +52,6 @@ void cprintf(const char* format, ...) __attribute__((format(printf, 1, 2)));
 void cprintf(const char* format, ...);
 #endif
 
-#ifdef __linux__
-/*!
- * Print directly to the C stdout
- * The "k" parameter is ignored, so this is just like printf
- */
-void Msg(s32 k, const char* format, ...) __attribute__((format(printf, 2, 3)));
-#elif _WIN32
-/*!
- * Print directly to the C stdout
- * The "k" parameter is ignored, so this is just like printf
- */
-void Msg(s32 k, const char* format, ...);
-#endif
-
-#ifdef __linux__
-/*!
- * Print directly to the C stdout
- * This is identical to Msg.
- */
-void MsgWarn(const char* format, ...) __attribute__((format(printf, 1, 2)));
-#elif _WIN32
-/*!
- * Print directly to the C stdout
- * This is identical to Msg.
- */
-void MsgWarn(const char* format, ...);
-#endif
-
-#ifdef __linux__
-/*!
- * Print directly to the C stdout
- * This is identical to Msg.
- */
-void MsgErr(const char* format, ...) __attribute__((format(printf, 1, 2)));
-#elif _WIN32
-/*!
- * Print directly to the C stdout
- * This is identical to Msg.
- */
-void MsgErr(const char* format, ...);
-#endif
-
 /*!
  * Reverse string in place.
  */
@@ -148,5 +82,3 @@ void kqtoa();
 extern "C" {
 s32 format_impl(uint64_t* args);
 }
-
-#endif  // RUNTIME_KPRINT_H

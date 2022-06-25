@@ -6,13 +6,13 @@
  */
 
 #include "kmachine.h"
-#include "kmalloc.h"
 
 #include "common/common_types.h"
 #include "common/goal_constants.h"
 
+#include "game/kernel/common/kmalloc.h"
+
 extern u32 FastLink;
-extern s32 NumSymbols;
 extern Ptr<u32> EnableMethodSet;
 extern Ptr<u32> s7;
 extern Ptr<u32> SymbolTable2;
@@ -21,7 +21,7 @@ extern Ptr<u32> LastSymbol;
 constexpr u32 EMPTY_HASH = 0x8454B6E6;
 constexpr u32 OFFSET_MASK = 7;
 constexpr u32 CRC_POLY = 0x04c11db7;
-constexpr u32 SYM_TABLE_END = GOAL_MAX_SYMBOLS - 32;
+constexpr u32 SYM_TABLE_END = jak1::GOAL_MAX_SYMBOLS - 32;
 
 constexpr u32 DEFAULT_METHOD_COUNT = 12;
 constexpr u32 FALLBACK_UNKNOWN_METHOD_COUNT = 44;
@@ -41,7 +41,7 @@ struct Symbol {
 };
 
 inline Ptr<SymInfo> info(Ptr<Symbol> s) {
-  return s.cast<SymInfo>() + SYM_INFO_OFFSET;
+  return s.cast<SymInfo>() + jak1::SYM_INFO_OFFSET;
 }
 
 struct Function {};

@@ -10,15 +10,16 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "kboot.h"
-#include "kdsnetm.h"
 #include "klink.h"
-#include "kmalloc.h"
 #include "kprint.h"
 #include "kscheme.h"
-#include "ksocket.h"
 
 #include "common/symbols.h"
+
+#include "game/kernel/common/kboot.h"
+#include "game/kernel/common/kdsnetm.h"
+#include "game/kernel/common/kprint.h"
+#include "game/kernel/common/ksocket.h"
 
 using namespace jak1_symbols;
 

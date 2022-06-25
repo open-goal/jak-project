@@ -12,66 +12,23 @@
 #include <stdlib.h>
 #include <thread>
 
-#include "klisten.h"
-#include "kmachine.h"
-#include "kprint.h"
-#include "kscheme.h"
-#include "ksocket.h"
-
 #include "common/common_types.h"
 #include "common/util/Timer.h"
 
 #include "game/common/game_common_types.h"
+#include "game/kernel/common/ksocket.h"
+#include "game/kernel/klisten.h"
+#include "game/kernel/kmachine.h"
+#include "game/kernel/kprint.h"
+#include "game/kernel/kscheme.h"
 #include "game/sce/libscf.h"
-
-#ifdef _WIN32
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <io.h>
-
-#include "Windows.h"
-#elif __linux__
-#include <unistd.h>
-#endif
 
 using namespace ee;
 
+namespace jak1 {
 VideoMode BootVideoMode;
 
-// Level to load on boot
-char DebugBootLevel[64];
-
-// Pass to GOAL kernel on boot
-char DebugBootMessage[64];
-
-// game configuration
-MasterConfig masterConfig;
-
-// Set to 1 to kill GOAL kernel
-RuntimeExitStatus MasterExit;
-
-// Set to 1 to enable debug heap
-u32 MasterDebug;
-
-// Set to 1 to load debug code
-u32 DebugSegment;
-
-// Set to 1 to load game engine after boot automatically
-u32 DiskBoot;
-
-u32 MasterUseKernel;
-
-void kboot_init_globals() {
-  strcpy(DebugBootLevel, "#f");      // no specified level
-  strcpy(DebugBootMessage, "play");  // play mode, the default retail mode
-
-  MasterExit = RuntimeExitStatus::RUNNING;
-  MasterDebug = 1;
-  MasterUseKernel = 1;
-  DebugSegment = 1;
-  DiskBoot = 0;
-  memset(&masterConfig, 0, sizeof(MasterConfig));
-}
+void kboot_init_globals() {}
 
 /*!
  * Launch the GOAL Kernel (EE).
@@ -205,3 +162,4 @@ void KernelCheckAndDispatch() {
 void KernelShutdown() {
   MasterExit = RuntimeExitStatus::EXIT;  // GOAL Kernel Dispatch loop will stop now.
 }
+}  // namespace jak1

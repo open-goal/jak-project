@@ -5,13 +5,10 @@
  * GOAL Low-Level File I/O and String Utilities
  */
 
-#ifndef RUNTIME_FILEIO_H
-#define RUNTIME_FILEIO_H
-
-#include "Ptr.h"
-#include "kmalloc.h"
-
 #include "common/common_types.h"
+
+#include "game/kernel/common/Ptr.h"
+#include "game/kernel/common/kmalloc.h"
 
 // GOAL File Types
 enum GoalFileType {
@@ -51,7 +48,6 @@ constexpr char FOLDER_PREFIX[] = "";
 
 char* strend(char* str);
 u32 ReadHufWord(u8** loc_ptr);
-void kstrcpy(char* dst, const char* src);
 void kstrcpyup(char* dst, const char* src);
 void kstrcat(char* dest, const char* src);
 void kstrncat(char* dest, const char* src, s32 count);
@@ -66,5 +62,3 @@ s32 FileLength(char* filename);
 Ptr<u8> FileLoad(char* name, Ptr<kheapinfo> heap, Ptr<u8> memory, u32 malloc_flags, s32* size_out);
 s32 FileSave(char* name, u8* data, s32 size);
 void fileio_init_globals();
-
-#endif  // RUNTIME_FILEIO_H

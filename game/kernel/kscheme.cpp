@@ -8,13 +8,10 @@
 #include <cstring>
 
 #include "fileio.h"
-#include "kboot.h"
 #include "kdgo.h"
-#include "kdsnetm.h"
 #include "klink.h"
 #include "klisten.h"
 #include "kmachine.h"
-#include "kmalloc.h"
 #include "kmemcard.h"
 #include "kprint.h"
 
@@ -26,6 +23,12 @@
 #include "common/util/Timer.h"
 #include "common/versions.h"
 
+#include "game/kernel/common/fileio.h"
+#include "game/kernel/common/kboot.h"
+#include "game/kernel/common/kdsnetm.h"
+#include "game/kernel/common/kmalloc.h"
+#include "game/kernel/common/kprint.h"
+#include "game/kernel/common/kscheme.h"
 #include "game/mips2c/mips2c_table.h"
 
 using namespace jak1_symbols;
@@ -43,9 +46,6 @@ Ptr<u32> SymbolTable2;
 // pointer to the last symbol
 Ptr<u32> LastSymbol;
 
-// total number of symbols in the table
-s32 NumSymbols;
-
 // set to true to enable propagating method overrides to child types
 // this is an O(N_max_symbols) operation, so it is avoided when loading DGOs for levels.
 // but is enabled when loading the engine.
@@ -61,7 +61,6 @@ void kscheme_init_globals() {
   for (auto& x : crc_table) {
     x = 0;
   }
-  NumSymbols = 0;
   s7.offset = 0;
   SymbolTable2.offset = 0;
   LastSymbol.offset = 0;
@@ -710,7 +709,7 @@ Ptr<Symbol> find_symbol_from_c(const char* name) {
     }
   }
 
-  auto bits = bits_for_sym() - 1;
+  auto bits = jak1::bits_for_sym() - 1;
   s32 sh1 = hash << (0x20 - bits);
   s32 sh2 = sh1 >> (0x20 - bits - 3);
   // will be signed, bottom 3 bits 0 (for alignment, symbols are every 8 bytes)
@@ -1719,10 +1718,10 @@ s32 InitHeapAndSymbol() {
   Mips2C::gLinkedFunctionTable = {};
   // allocate memory for the symbol table
   auto symbol_table =
-      kmalloc(kglobalheap, SYM_TABLE_MEM_SIZE, KMALLOC_MEMSET, "symbol-table").cast<u32>();
+      kmalloc(kglobalheap, jak1::SYM_TABLE_MEM_SIZE, KMALLOC_MEMSET, "symbol-table").cast<u32>();
 
   // pointer to the middle symbol is stored in the s7 register.
-  s7 = symbol_table + (GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET;
+  s7 = symbol_table + (jak1::GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET;
   // pointer to the first symbol (SymbolTable2 is the "lower" symbol table)
   SymbolTable2 = symbol_table + BASIC_OFFSET;
   // the last symbol we will ever access.

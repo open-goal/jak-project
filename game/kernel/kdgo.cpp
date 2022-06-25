@@ -10,7 +10,6 @@
 
 #include "fileio.h"
 #include "klink.h"
-#include "kmalloc.h"
 #include "kprint.h"
 
 #include "common/log/log.h"
@@ -21,6 +20,7 @@
 #include "game/common/player_rpc_types.h"
 #include "game/common/ramdisk_rpc_types.h"
 #include "game/common/str_rpc_types.h"
+#include "game/kernel/common/kprint.h"
 #include "game/sce/sif_ee.h"
 
 using namespace ee;

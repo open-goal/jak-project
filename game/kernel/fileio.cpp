@@ -14,6 +14,8 @@
 #include "common/util/Assert.h"
 #include "common/versions.h"
 
+#include "game/kernel/common/fileio.h"
+#include "game/kernel/common/kprint.h"
 #include "game/sce/sif_ee.h"
 
 namespace {
@@ -76,23 +78,6 @@ u32 ReadHufWord(u8** loc_ptr) {
   // update location pointer
   *loc_ptr = next_loc;
   return value;
-}
-
-/*!
- * Copy a string from src to dst. The null terminator is copied too.
- * This is identical to normal strcpy.
- * DONE, EXACT
- */
-void kstrcpy(char* dst, const char* src) {
-  char* dst_ptr = dst;
-  const char* src_ptr = src;
-
-  while (*src_ptr != 0) {
-    *dst_ptr = *src_ptr;
-    src_ptr++;
-    dst_ptr++;
-  }
-  *dst_ptr = 0;
 }
 
 /*!

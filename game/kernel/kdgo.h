@@ -6,10 +6,10 @@
  * DONE!
  */
 
-#include "Ptr.h"
-#include "kmalloc.h"
-
 #include "common/common_types.h"
+
+#include "game/kernel/common/Ptr.h"
+#include "game/kernel/common/kmalloc.h"
 
 void kdgo_init_globals();
 u32 InitRPC();

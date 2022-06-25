@@ -1,25 +1,19 @@
-/*!
- * @file kmalloc.cpp
- * GOAL Kernel memory allocator.
- * Simple two-sided bump allocator.
- * DONE
- */
-
 #include "kmalloc.h"
 
-#include <cstdio>
 #include <cstring>
-
-#include "kprint.h"
-#include "kscheme.h"
+#include <cstdio>
 
 #include "common/goal_constants.h"
+
+#include "game/kernel/common/kprint.h"
+#include "game/kernel/common/kscheme.h"
+#include "game/kernel/common/memory_layout.h"
 
 // global and debug kernel heaps
 Ptr<kheapinfo> kglobalheap;
 Ptr<kheapinfo> kdebugheap;
 
-void kmalloc_init_globals() {
+void kmalloc_init_globals_common() {
   // _globalheap and _debugheap
   kglobalheap.offset = GLOBAL_HEAP_INFO_ADDR;
   kdebugheap.offset = DEBUG_HEAP_INFO_ADDR;
@@ -60,7 +54,7 @@ Ptr<u8> ksmalloc(Ptr<kheapinfo> heap, s32 size, u32 flags, char const* name) {
  * which will not be sent to the Listener.
  * DONE, EXACT
  */
-void kheapstatus(Ptr<kheapinfo> heap) {
+Ptr<kheapinfo> kheapstatus(Ptr<kheapinfo> heap) {
   Msg(6,
       "[%8x] kheap\n"
       "\tbase: #x%x\n"
@@ -69,16 +63,20 @@ void kheapstatus(Ptr<kheapinfo> heap) {
       "\ttop: #x%x\n",
       heap.offset, heap->base.offset, heap->top_base.offset, heap->current.offset,
       heap->top.offset);
+  // note: max symbols here is game-version dependent
   Msg(6,
       "\t used bot: %d of %d bytes\n"
       "\t used top: %d of %d bytes\n"
       "\t symbols: %d of %d\n",
       heap->current - heap->base, heap->top_base - heap->base, heap->top_base - heap->top,
-      heap->top_base - heap->base, NumSymbols, GOAL_MAX_SYMBOLS);
+      heap->top_base - heap->base, NumSymbols, max_symbols(g_game_version));
 
   if (heap == kglobalheap) {
     Msg(6, "\t %d bytes before stack\n", GLOBAL_HEAP_END - heap->current.offset);
   }
+
+  // might not have returned heap in jak 1
+  return heap;
 }
 
 /*!
@@ -116,7 +114,8 @@ Ptr<u8> kmalloc(Ptr<kheapinfo> heap, s32 size, u32 flags, char const* name) {
 
   // if we got a null heap, put it on the global heap, but warn about it
   if (!heap.offset) {
-    Msg(6, "-----------> kmalloc: alloc %s,  mem %s #x%x (a:%d  %dbytes)\n", "DEBUG", name, -1,
+    // the 0 is uninitialized in jak1, set to zero in jak 2. might just be compiler differences.
+    Msg(6, "-----------> kmalloc: alloc %s,  mem %s #x%x (a:%d  %dbytes)\n", "DEBUG", name, 0,
         alignment_flag, size);
     heap = kglobalheap;
   }

@@ -3,12 +3,16 @@
 #include <unordered_set>
 
 #include "common/goal_constants.h"
+#include "common/listener_common.h"
 #include "common/symbols.h"
 
 #include "all_jak1_symbols.h"
+#include "game/kernel/common/fileio.h"
+#include "game/kernel/common/kboot.h"
+#include "game/kernel/common/kprint.h"
+#include "game/kernel/common/kscheme.h"
+#include "game/kernel/common/memory_layout.h"
 #include "game/kernel/fileio.h"
-#include "game/kernel/kboot.h"
-#include "game/kernel/kdsnetm.h"
 #include "game/kernel/kprint.h"
 #include "game/kernel/kscheme.h"
 #include "gtest/gtest.h"
@@ -181,7 +185,7 @@ TEST(Kernel, ftoa) {
 TEST(Kernel, itoa_base_10) {
   char buffer[128];
 
-  kprint_init_globals();
+  kprint_init_globals_common();
 
   // simple print 1
   kitoa(buffer, 1, 10, -1, ' ', 0);
@@ -228,7 +232,7 @@ TEST(Kernel, itoa_base_10) {
 TEST(Kernel, itoa_base_2) {
   char buffer[128];
 
-  kprint_init_globals();
+  kprint_init_globals_common();
   kitoa(buffer, 1, 2, -1, ' ', 0);
   EXPECT_EQ("1", std::string(buffer));
 
@@ -263,7 +267,7 @@ TEST(Kernel, itoa_base_2) {
 TEST(Kernel, itoa_base_16) {
   char buffer[128];
 
-  kprint_init_globals();
+  kprint_init_globals_common();
   kitoa(buffer, 1, 16, -1, ' ', 0);
   EXPECT_EQ("1", std::string(buffer));
 
@@ -295,8 +299,8 @@ void setup_hack_heaps(void* mem, int size) {
   int heap_size = (size - HEAP_START) / 2;
   MasterDebug = 1;
   EXPECT_TRUE(heap_size > 8 * 1024 * 1024);
-  kmalloc_init_globals();
-  kprint_init_globals();
+  kmalloc_init_globals_common();
+  kprint_init_globals_common();
 
   kinitheap(kglobalheap, Ptr<u8>(HEAP_START), heap_size);
   kinitheap(kdebugheap, Ptr<u8>(HEAP_START + heap_size), heap_size);
@@ -305,8 +309,8 @@ void setup_hack_heaps(void* mem, int size) {
 
   // create a fake symbol table
   auto symbol_table =
-      kmalloc(kglobalheap, SYM_TABLE_MEM_SIZE, KMALLOC_MEMSET, "symbol-table").cast<u32>();
-  s7 = symbol_table + (GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET;
+      kmalloc(kglobalheap, jak1::SYM_TABLE_MEM_SIZE, KMALLOC_MEMSET, "symbol-table").cast<u32>();
+  s7 = symbol_table + (jak1::GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET;
   SymbolTable2 = symbol_table + BASIC_OFFSET;
   LastSymbol = symbol_table + 0xff00;
   NumSymbols = 0;

@@ -6,12 +6,9 @@
  * DONE!
  */
 
-#ifndef JAK_KDSNETM_H
-#define JAK_KDSNETM_H
-
-#include "Ptr.h"
-
 #include "common/listener_common.h"
+
+#include "game/kernel/common/Ptr.h"
 
 struct GoalProtoBlock {
   s32 socket = 0;
@@ -42,7 +39,8 @@ extern GoalProtoBlock protoBlock;
 /*!
  * Initialize global variables for kdsnetm
  */
-void kdsnetm_init_globals();
+void kdsnetm_init_globals_common();
+
 
 /*!
  * Register GOAL DECI2 Protocol Driver with DECI2 service
@@ -75,5 +73,3 @@ s32 SendFromBufferD(s32 p1, u64 msg_id, char* data, s32 size);
  * Print GOAL Protocol status
  */
 void GoalProtoStatus();
-
-#endif  // JAK_KDSNETM_H

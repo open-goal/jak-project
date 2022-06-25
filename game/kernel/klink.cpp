@@ -12,7 +12,6 @@
 #include <cstring>
 
 #include "fileio.h"
-#include "kboot.h"
 #include "kprint.h"
 #include "kscheme.h"
 
@@ -20,8 +19,12 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/Assert.h"
-#include <common/versions.h>
+#include "common/versions.h"
 
+#include "game/kernel/common/fileio.h"
+#include "game/kernel/common/kboot.h"
+#include "game/kernel/common/kprint.h"
+#include "game/kernel/common/memory_layout.h"
 #include "game/mips2c/mips2c_table.h"
 
 #include "third-party/fmt/core.h"

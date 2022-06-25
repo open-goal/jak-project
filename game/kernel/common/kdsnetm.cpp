@@ -1,22 +1,10 @@
-/*!
- * @file kdsnetm.cpp
- * Low-level DECI2 wrapper for ksocket
- * DONE!
- */
-
 #include "kdsnetm.h"
 
 #include <cstdio>
-#include <cstring>
 
-#include "kprint.h"
-
-#include "common/util/Assert.h"
-
+#include "game/kernel/common/kprint.h"
 #include "game/sce/deci2.h"
-#include "game/system/deci_common.h"  // todo, reorganize to avoid this include
-
-using namespace ee;
+#include "game/system/deci_common.h"
 
 /*!
  * Current state of the GOAL Protocol
@@ -27,7 +15,7 @@ GoalProtoBlock protoBlock;
 /*!
  * Initialize global variables for kdsnetm
  */
-void kdsnetm_init_globals() {
+void kdsnetm_init_globals_common() {
   protoBlock.reset();
 }
 
@@ -36,7 +24,7 @@ void kdsnetm_init_globals() {
  * DONE, EXACT
  */
 void InitGoalProto() {
-  protoBlock.socket = sceDeci2Open(DECI2_PROTOCOL, &protoBlock, GoalProtoHandler);
+  protoBlock.socket = ee::sceDeci2Open(DECI2_PROTOCOL, &protoBlock, GoalProtoHandler);
   if (protoBlock.socket < 0) {
     MsgErr("gproto: open proto error\n");
   } else {
@@ -56,7 +44,7 @@ void InitGoalProto() {
  */
 void ShutdownGoalProto() {
   if (protoBlock.socket > 0) {
-    sceDeci2Close(protoBlock.socket);
+    ee::sceDeci2Close(protoBlock.socket);
   }
 }
 
@@ -90,7 +78,7 @@ void GoalProtoHandler(int event, int param, void* opt) {
       if (pb->receive_progress + param <= (int)DEBUG_MESSAGE_BUFFER_SIZE) {
         // actually get data from DECI2
         s32 received =
-            sceDeci2ExRecv(pb->socket, ((u8*)pb->receive_buffer) + pb->receive_progress, param);
+            ee::sceDeci2ExRecv(pb->socket, ((u8*)pb->receive_buffer) + pb->receive_progress, param);
 
         if (received < 0) {
           // receive failure
@@ -108,21 +96,21 @@ void GoalProtoHandler(int event, int param, void* opt) {
       }
       break;
 
-    // read is finished!
+      // read is finished!
     case DECI2_READDONE:
       // set last_receive_size to indicate that there is a pending message in the buffer.
       pb->last_receive_size = pb->receive_progress;
       pb->receive_progress = 0;
       break;
 
-    // send some data
+      // send some data
     case DECI2_WRITE: {
       // note that we should not attempt to send more than 0xffff bytes at a time, or this will be
       // wrong.  This is correctly checked for prints, but not for outputs.
       ASSERT(pb->send_remaining < 0xffff);
       // why and it with 0xffff?  Seems like saturation would be better.  Either way some data
       // will be lost, so I guess it doesn't matter.
-      s32 sent = sceDeci2ExSend(pb->socket, (void*)pb->send_ptr, pb->send_remaining & 0xffff);
+      s32 sent = ee::sceDeci2ExSend(pb->socket, (void*)pb->send_ptr, pb->send_remaining & 0xffff);
       if (sent < 0) {
         // if we got an error, put it in send status, signaling a send error (negative)
         pb->send_status = sent;
@@ -133,7 +121,7 @@ void GoalProtoHandler(int event, int param, void* opt) {
       }
     } break;
 
-    // done sending!
+      // done sending!
     case DECI2_WRITEDONE:
       if (pb->send_remaining <= 0) {
         // if we've send everything we want, set status to zero to indicate success
@@ -152,7 +140,7 @@ void GoalProtoHandler(int event, int param, void* opt) {
     case DECI2_CHSTATUS:
       break;
 
-    // other events are undefined, so we just error.
+      // other events are undefined, so we just error.
     default:
       pb->last_receive_size = -1;
       break;
@@ -169,7 +157,7 @@ s32 SendFromBufferD(s32 msg_kind, u64 msg_id, char* data, s32 size) {
   // wait for send to finish or error first...
   while (protoBlock.send_status > 0) {
     // on actual PS2, the kernel will run this in another thread.
-    LIBRARY_sceDeci2_run_sends();
+    ee::LIBRARY_sceDeci2_run_sends();
   }
 
   // retry at most 10 times until we complete without an error.
@@ -197,7 +185,7 @@ s32 SendFromBufferD(s32 msg_kind, u64 msg_id, char* data, s32 size) {
     header->msg_id = msg_id;
 
     // start send!
-    auto rv = sceDeci2ReqSend(protoBlock.socket, header->deci2_header.dst);
+    auto rv = ee::sceDeci2ReqSend(protoBlock.socket, header->deci2_header.dst);
     if (rv < 0) {
       printf("1sceDeci2ReqSend fail, reason code = %08x\n", rv);
       return 0xfffffffa;
@@ -205,7 +193,7 @@ s32 SendFromBufferD(s32 msg_kind, u64 msg_id, char* data, s32 size) {
 
     // wait for send to complete or error.
     while (protoBlock.send_status > 0) {
-      LIBRARY_sceDeci2_run_sends();
+      ee::LIBRARY_sceDeci2_run_sends();
     }
 
     // if send completes, exit.  Otherwise if there's an error, just try again.
