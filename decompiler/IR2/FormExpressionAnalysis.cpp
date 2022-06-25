@@ -714,7 +714,6 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
 
       fmt::print("Got 1: {}\n", frm->to_string(env));
       if (int_constant && (*int_constant <= UINT32_MAX)) {
-
         float flt;
 
         memcpy(&flt, &int_constant.value(), sizeof(float));
@@ -726,8 +725,7 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
     }
     // converting something else to an FPR, put an expression around it.
     result->push_back(pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::GPR_TO_FPR),
-        frm));
+        GenericOperator::make_fixed(FixedOperatorKind::GPR_TO_FPR), frm));
   }
 }
 
@@ -3554,6 +3552,12 @@ void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
   }
 
   stack.push_form_element(this, true);
+  if (false_destination) {
+    env.func->warnings.general_warning("new jak 2 until loop case, check carefully");
+    stack.push_value_to_reg(*false_destination,
+                            pool.form<SimpleAtomElement>(SimpleAtom::make_sym_val("#f")), true,
+                            TypeSpec("symbol"));
+  }
 }
 
 void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {

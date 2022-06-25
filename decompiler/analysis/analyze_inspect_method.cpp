@@ -22,7 +22,7 @@ struct TypeInspectorResult {
   std::string parent_type_name;
   u64 flags = 0;
 
-  std::string print_as_deftype();
+  std::string print_as_deftype(StructureType* old_game_type);
 };
 
 bool is_set_reg_to_int(AtomicOp* op, Register dst, s64 value) {
@@ -779,7 +779,6 @@ std::string inspect_inspect_method(Function& inspect_method,
                                    const std::string& type_name,
                                    DecompilerTypeSystem& dts,
                                    LinkedObjectFile& file,
-                                   TypeSystem& scratch_ts,
                                    TypeSystem& previous_game_ts) {
   fmt::print(" iim: {}\n", inspect_method.name());
   TypeInspectorResult result;
@@ -809,11 +808,15 @@ std::string inspect_inspect_method(Function& inspect_method,
   result.parent_type_name = dts.lookup_parent_from_inspects(type_name);
   int idx = get_start_idx(inspect_method, file, &result, result.parent_type_name, type_name,
                           inspect_method.ir2.env);
+  StructureType* old_game_type = nullptr;
+  if (previous_game_ts.fully_defined_type_exists(type_name)) {
+    old_game_type = dynamic_cast<StructureType*>(previous_game_ts.lookup_type(type_name));
+  }
   if (idx <= 0) {
     // can't get any field...
     result.warnings += "Failed to read fields. ";
     idx = -2;
-    return result.print_as_deftype();
+    return result.print_as_deftype(old_game_type);
   }
   while (idx < int(inspect_method.ir2.atomic_ops->ops.size()) - 2 && idx != -1) {
     idx = detect(idx, inspect_method, file, &result);
@@ -823,10 +826,39 @@ std::string inspect_inspect_method(Function& inspect_method,
     result.warnings += "Failed to read some fields. ";
   }
 
-  return result.print_as_deftype();
+  return result.print_as_deftype(old_game_type);
 }
 
-std::string TypeInspectorResult::print_as_deftype() {
+std::string old_method_string(const MethodInfo& info) {
+  if (info.type.arg_count() > 0) {
+    if (info.type.base_type() == "function" || info.type.base_type() == "state") {
+      std::string result = fmt::format(" ;; ({} (", info.name);
+      bool add = false;
+      for (int i = 0; i < (int)info.type.arg_count() - 1; i++) {
+        result += info.type.get_arg(i).print();
+        result += ' ';
+        add = true;
+      }
+      if (add) {
+        result.pop_back();
+      }
+      result += ") ";
+      result += info.type.get_arg(info.type.arg_count() - 1).print();
+      if (info.type.base_type() == "state") {
+        result += " :state";
+      }
+      result += fmt::format(" {})", info.id);
+      return result;
+    }
+  }
+
+  return fmt::format(" ;; ({} {}) weird method", info.name, info.type.print());
+}
+
+/*
+ * old_game_type may be null
+ */
+std::string TypeInspectorResult::print_as_deftype(StructureType* old_game_type) {
   std::string result;
 
   result += fmt::format("(deftype {} ({})\n  (", type_name, parent_type_name);
@@ -891,7 +923,25 @@ std::string TypeInspectorResult::print_as_deftype() {
 
     result.append(":offset-assert ");
     result.append(std::to_string(field.offset()));
-    result.append(")\n   ");
+    result.append(")");
+    if (old_game_type) {
+      Field old_field;
+      if (old_game_type->lookup_field(field.name(), &old_field)) {
+        if (old_field.type() != field.type()) {
+          result += fmt::format(" ;; {}", old_field.type().print());
+          if (old_field.is_array() && !old_field.is_dynamic()) {
+            result += fmt::format(" {}", old_field.array_size());
+          }
+          if (old_field.is_inline()) {
+            result += " :inline";
+          }
+          if (old_field.is_dynamic()) {
+            result += " :dynamic";
+          }
+        }
+      }
+    }
+    result.append("\n   ");
   }
   result.append(")\n");
 
@@ -906,13 +956,56 @@ std::string TypeInspectorResult::print_as_deftype() {
 
   if (type_method_count > 9) {
     result.append("(:methods\n    ");
+    MethodInfo old_new_method;
+    if (old_game_type && old_game_type->get_my_new_method(&old_new_method)) {
+      result.append(old_method_string(old_new_method));
+      result.append("\n    ");
+    }
     for (int i = parent_method_count; i < type_method_count; i++) {
-      result.append(fmt::format("(dummy-{} () none {})\n    ", i, i));
+      result.append(fmt::format("(dummy-{} () none {})", i, i));
+      if (old_game_type) {
+        MethodInfo info;
+        if (old_game_type->get_my_method(i, &info)) {
+          result += old_method_string(info);
+        }
+      }
+      result.append("\n    ");
     }
     result.append(")\n  ");
   }
   result.append(")\n");
 
+  return result;
+}
+
+std::string inspect_top_level_symbol_defines(std::unordered_set<std::string>& already_seen,
+                                             Function& top_level,
+                                             LinkedObjectFile& file,
+                                             DecompilerTypeSystem& dts,
+                                             DecompilerTypeSystem& previous_game_ts) {
+  if (!top_level.ir2.atomic_ops) {
+    return {};
+  }
+  std::string result;
+  for (auto& aop : top_level.ir2.atomic_ops->ops) {
+    auto* as_store = dynamic_cast<StoreOp*>(aop.get());
+    if (as_store && as_store->addr().kind() == SimpleExpression::Kind::IDENTITY &&
+        as_store->addr().get_arg(0).is_sym_val()) {
+      auto& sym_name = as_store->addr().get_arg(0).get_str();
+      if (already_seen.find(sym_name) == already_seen.end()) {
+        already_seen.insert(sym_name);
+        if (dts.ts.partially_defined_type_exists(sym_name)) {
+          continue;
+        }
+        result += fmt::format(";; (define-extern {} object)", sym_name);
+        auto it = previous_game_ts.symbol_types.find(sym_name);
+        if (it != previous_game_ts.symbol_types.end()) {
+          result += fmt::format(" ;; {}", it->second.print());
+        }
+        result += '\n';
+      }
+    }
+  }
   return result;
 }
 }  // namespace decompiler

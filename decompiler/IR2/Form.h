@@ -801,6 +801,7 @@ class UntilElement : public FormElement {
   bool allow_in_if() const override { return false; }
   Form* condition = nullptr;
   Form* body = nullptr;
+  std::optional<RegisterAccess> false_destination;  // used in jak 2, sometimes.
 };
 
 /*!

@@ -7,15 +7,13 @@
 
 #include "common/goos/PrettyPrinter.h"
 #include "common/link_types.h"
-#include "ObjectFileDB.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 
 #include "decompiler/IR2/Form.h"
-#include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/analyze_inspect_method.h"
-#include "decompiler/analysis/final_output.h"
+#include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/expression_build.h"
 #include "decompiler/analysis/final_output.h"
 #include "decompiler/analysis/find_defpartgroup.h"
@@ -296,20 +294,28 @@ void ObjectFileDB::ir2_analyze_all_types(const std::string& output_file,
 
   std::vector<PerObject> per_object;
 
-  TypeSystem scratch_ts;
   DecompilerTypeSystem previous_game_ts;
   if (previous_game_types) {
     previous_game_ts.parse_type_defs({*previous_game_types});
   }
 
+  std::unordered_set<std::string> already_seen;
   for_each_obj([&](ObjectFileData& data) {
+    if (data.obj_version != 3) {
+      return;
+    }
     auto& object_result = per_object.emplace_back();
     object_result.object_name = data.to_unique_name();
 
-    for_each_function_def_order_in_obj(data, [&](Function& f, int) {
-      if (f.is_inspect_method && bad_types.find(f.guessed_name.type_name) == bad_types.end()) {
-        object_result.type_defs.push_back(inspect_inspect_method(
-            f, f.guessed_name.type_name, dts, data.linked_data, scratch_ts, previous_game_ts.ts));
+    for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
+      if (seg == TOP_LEVEL_SEGMENT) {
+        object_result.symbol_defs += inspect_top_level_symbol_defines(
+            already_seen, f, data.linked_data, dts, previous_game_ts);
+      } else {
+        if (f.is_inspect_method && bad_types.find(f.guessed_name.type_name) == bad_types.end()) {
+          object_result.type_defs.push_back(inspect_inspect_method(
+              f, f.guessed_name.type_name, dts, data.linked_data, previous_game_ts.ts));
+        }
       }
     });
   });
@@ -325,6 +331,7 @@ void ObjectFileDB::ir2_analyze_all_types(const std::string& output_file,
       result += t;
       result += "\n";
     }
+    result += obj.symbol_defs;
     result += "\n";
   }
 
