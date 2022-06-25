@@ -43,7 +43,6 @@ set(RUNTIME_SOURCE
         kernel/kdgo.cpp
         kernel/klink.cpp
         kernel/klisten.cpp
-        kernel/kmachine.cpp
         kernel/kmemcard.cpp
         kernel/kscheme.cpp
         kernel/ksound.cpp

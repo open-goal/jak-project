@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/common_types.h"
+
 //! Toggle to use more memory. To simulate the original game's memory layout, set this to false.
 // Make sure this matches the const in gcommon.gc.
 constexpr bool BIG_MEMORY = true;
@@ -23,3 +25,7 @@ constexpr u32 LINK_CONTROL_NAME_ADDR = 0x13AD80;
 
 //! Where to place the debug heap
 constexpr u32 DEBUG_HEAP_START = 0x5000000;
+
+namespace jak2 {
+constexpr u32 DEBUG_HEAP_SIZE = 0x2f00000;
+}

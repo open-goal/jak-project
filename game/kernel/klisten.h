@@ -7,7 +7,6 @@
  */
 
 
-#include "kmachine.h"
 #include "kscheme.h"
 
 extern Ptr<Symbol> ListenerFunction;

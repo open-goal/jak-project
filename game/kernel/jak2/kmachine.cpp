@@ -1,12 +1,26 @@
 #include "kmachine.h"
 
+#include <cstring>
 #include <string>
 
+#include "common/log/log.h"
+
+#include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kboot.h"
+#include "game/kernel/common/kdsnetm.h"
+#include "game/kernel/common/kernel_types.h"
 #include "game/kernel/common/kmachine.h"
+#include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
+#include "game/kernel/common/kscheme.h"
+#include "game/kernel/common/memory_layout.h"
 #include "game/kernel/jak2/kboot.h"
+#include "game/kernel/jak2/kmalloc.h"
+#include "game/sce/sif_ee.h"
+#include "game/system/vm/vm.h"
+
+using namespace ee;
 
 namespace jak2 {
 /*!
@@ -148,4 +162,290 @@ void InitParms(int argc, const char* const* argv) {
     }
   }
 }
+
+void InitIOP() {
+  Msg(6, "dkernel: boot:%d debug:%d mem:%d dev:%d mod:%d\n", DiskBoot, MasterDebug, DebugSegment,
+      isodrv, modsrc);
+  sceSifInitRpc(0);
+
+  // init cd if we need it
+  if (((isodrv == iso_cd) || (modsrc == 1)) || (reboot == 1)) {
+    InitCD();
+  }
+
+  if (reboot == 0) {
+    // iop with dev kernel
+    printf("Rebooting IOP...\n");
+    while (!sceSifRebootIop("host0:/usr/local/sce/iop/modules/ioprp271.img")) {
+      printf("Failed, retrying...\n");
+    }
+    while (!sceSifSyncIop()) {
+    }
+  } else {
+    printf("Rebooting IOP...\n");
+    while (!sceSifRebootIop("cdrom0:\\DRIVERS\\IOPRP271.IMG")) {
+      printf("Failed, retrying...\n");
+    }
+    while (!sceSifSyncIop()) {
+    }
+  }
+  sceSifInitRpc(0);
+  if ((isodrv == iso_cd) || (modsrc == 1)) {
+    InitCD();
+    sceFsReset();
+  }
+
+  char overlord_boot_command[256];
+  char* cmd = overlord_boot_command;
+  kstrcpy(cmd, init_types[(int)isodrv]);
+  cmd = cmd + strlen(cmd) + 1;
+  if (!strncmp(DebugBootMessage, "demo", 4)) {
+    kstrcpy(cmd, "SCREEN1.DEM");
+  } else {
+    kstrcpy(cmd, "SCREEN1.USA");
+  }
+  cmd = cmd + strlen(cmd) + 1;
+  if (masterConfig.disable_sound) {
+    kstrcpy(cmd, "-nosound");
+    cmd = cmd + strlen(cmd) + 1;
+  }
+
+  int total_len = cmd - overlord_boot_command;
+
+  if (modsrc == 0) {
+    if (sceSifLoadModule("host0:/usr/local/sce/iop/modules/sio2man.irx", 0, nullptr) < 0) {
+      MsgErr("loading sio2man.irx failed\n");
+      exit(0);
+    }
+
+    if (sceSifLoadModule("host0:/usr/local/sce/iop/modules/padman.irx", 0, nullptr) < 0) {
+      MsgErr("loading padman.irx failed\n");
+      exit(0);
+    }
+    if (sceSifLoadModule("host0:/usr/local/sce/iop/modules/libsd.irx", 0, nullptr) < 0) {
+      MsgErr("loading libsd.irx failed\n");
+      exit(0);
+    }
+    if (sceSifLoadModule("host0:/usr/local/sce/iop/modules/mcman.irx", 0, nullptr) < 0) {
+      MsgErr("loading mcman.irx failed\n");
+      exit(0);
+    }
+    if (sceSifLoadModule("host0:/usr/local/sce/iop/modules/mcserv.irx", 0, nullptr) < 0) {
+      MsgErr("loading mcserv.irx failed\n");
+      exit(0);
+    }
+    if (sceSifLoadModule("host0:/usr/home/src/989snd23/iop/sce27/989nostr.irx", 0, nullptr) < 0) {
+      MsgErr("loading %s failed\n", "host0:/usr/home/src/989snd23/iop/sce27/989nostr.irx");
+      exit(0);
+    }
+    if (DebugSegment) {
+      sceSifLoadModule("host0:/usr/home/src/989snd23/iop/sce27/989err.irx", 0, nullptr);
+    }
+    if (sceSifLoadModule("host0:/usr/local/sce/iop/modules/scrtchpd.irx", 0, nullptr) < 0) {
+      MsgErr("loading scrtchpd.irx failed\n");
+      exit(0);
+    }
+    printf("Initializing CD library in FAKEISO mode\n");
+    if (sceSifLoadModule("host0:bin/overlord.irx", total_len, overlord_boot_command) < 0) {
+      MsgErr("loading overlord.irx <3> failed\n");
+      exit(0);
+    }
+  } else {
+    if (modsrc == 1) {
+      if (sceSifLoadModule("cdrom0:\\DRIVERS\\SIO2MAN.IRX;1", 0, nullptr) < 0) {
+        MsgErr("loading SIO2MAN.IRX failed\n");
+        exit(0);
+      }
+      if (sceSifLoadModule("cdrom0:\\DRIVERS\\PADMAN.IRX;1", 0, nullptr) < 0) {
+        MsgErr("loading PADMAN.IRX failed\n");
+        exit(0);
+      }
+      if (sceSifLoadModule("cdrom0:\\DRIVERS\\LIBSD.IRX;1", 0, nullptr) < 0) {
+        MsgErr("loading LIBSD.IRX failed\n");
+        exit(0);
+      }
+      if (sceSifLoadModule("cdrom0:\\DRIVERS\\MCMAN.IRX;1", 0, nullptr) < 0) {
+        MsgErr("loading MCMAN.IRX failed\n");
+        exit(0);
+      }
+
+      if (sceSifLoadModule("cdrom0:\\DRIVERS\\MCSERV.IRX;1", 0, nullptr) < 0) {
+        MsgErr("loading MCSERV.IRX failed\n");
+        exit(0);
+      }
+      if (sceSifLoadModule("cdrom0:\\DRIVERS\\989NOSTR.IRX;1", 0, nullptr) < 0) {
+        MsgErr("loading 989SND.IRX failed\n");
+        exit(0);
+      }
+      if (sceSifLoadModule("cdrom0:\\DRIVERS\\SCRTCHPD.IRX;1", 0, nullptr) < 0) {
+        MsgErr("loading SCRTCHPD.IRX failed\n");
+        exit(0);
+      }
+      printf("Initializing CD library in ISO_CD mode\n");
+      auto rv =
+          sceSifLoadModule("cdrom0:\\DRIVERS\\OVERLORD.IRX;1", total_len, overlord_boot_command);
+      if (rv < 0) {
+        MsgErr("loading OVERLORD.IRX failed %d\n", rv);
+        exit(0);
+      }
+    } else {
+      if (modsrc == 2) {
+        if (sceSifLoadModule("host0:isoimage/DRIVERS/SIO2MAN.IRX", 0, nullptr) < 0) {
+          MsgErr("loading sio2man.irx failed\n");
+          exit(0);
+        }
+        if (sceSifLoadModule("host0:isoimage/DRIVERS/PADMAN.IRX", 0, nullptr) < 0) {
+          MsgErr("loading padman.irx failed\n");
+          exit(0);
+        }
+        if (sceSifLoadModule("host0:isoimage/DRIVERS/LIBSD.IRX", 0, nullptr) < 0) {
+          MsgErr("loading libsd.irx failed\n");
+          exit(0);
+        }
+        if (sceSifLoadModule("host0:isoimage/DRIVERS/MCMAN.IRX", 0, nullptr) < 0) {
+          MsgErr("loading mcman.irx failed\n");
+          exit(0);
+        }
+        if (sceSifLoadModule("host0:isoimage/DRIVERS/MCSERV.IRX", 0, nullptr) < 0) {
+          MsgErr("loading mcserv.irx failed\n");
+          exit(0);
+        }
+        if (sceSifLoadModule("host:isoimage/DRIVERS/989NOSTR.IRX", 1, "do_rpc=0") < 0) {
+          MsgErr("loading 989snd.irx failed\n");
+          exit(0);
+        }
+        sceSifLoadModule("host0:/usr/home/src/989snd23/iop/sce27/989err.irx", 0, nullptr);
+
+        if (sceSifLoadModule("host0:isoimage/DRIVERS/SCRTCHPD.IRX;1", 0, nullptr) < 0) {
+          MsgErr("loading scrtchpd.irx failed\n");
+          exit(0);
+        }
+        printf("Initializing CD library in DEVISO mode\n");
+
+        auto rv = sceSifLoadModule("host0:isoimage/DRIVERS/OVERLORD.IRX", total_len,
+                                   overlord_boot_command);
+        if (rv < 0) {
+          MsgErr("loading overlord.irx <2> failed\n");
+          exit(0);
+        }
+      }
+    }
+  }
+  int rv = sceMcInit();
+  if (rv < 0) {
+    MsgErr("MC driver init failed %d\n", rv);
+    exit(0);
+  }
+  printf("InitIOP OK\n");
+}
+
+int InitMachine() {
+  // heap_start = malloc(0x10);
+  // set up global heap (modified, the default size in the release game is 32 MB in all cases)
+  u32 global_heap_size = GLOBAL_HEAP_END - HEAP_START;
+  float size_mb = ((float)global_heap_size) / (float)(1 << 20);
+  lg::info("gkernel: global heap 0x{:08x} to 0x{:08x} (size {:.3f} MB)", HEAP_START,
+           GLOBAL_HEAP_END, size_mb);
+  kinitheap(kglobalheap, Ptr<u8>(HEAP_START), global_heap_size);
+
+  kmemopen_from_c(kglobalheap, "global");
+  kmemopen_from_c(kglobalheap, "scheme-globals");
+  if (!MasterDebug && !DebugSegment) {
+    // if no debug, we make the kheapinfo structure NULL so GOAL knows not to use it.
+    // note: either MasterDebug or DebugSegment is enough to give use the debug heap.
+    kdebugheap.offset = 0;
+  } else {
+    kinitheap(kdebugheap, Ptr<u8>(DEBUG_HEAP_START), jak2::DEBUG_HEAP_SIZE);
+  }
+  init_output();
+  InitIOP();
+  // sceGsResetPath();
+  InitVideo();
+  // FlushCache(0);
+  // FlushCache(2);
+  // sceGsSyncV(0);
+  // if (scePadInit(0) != 1) {
+  //   MsgErr("dkernel: !init pad\n");
+  // }
+  // if (MasterDebug != 0) {
+  InitGoalProto();
+  // }
+
+  ASSERT_MSG(false, "nyi");
+  return -1;
+
+  /*
+  printf("InitSound\n");
+  InitSound();
+  printf("InitRPC\n");
+  InitRPC();
+  reset_output();
+  clear_print();
+  auto status = InitHeapAndSymbol();
+  if (status >= 0) {
+    printf("InitListenerConnect\n");
+    InitListenerConnect();
+    printf("InitCheckListener\n");
+    InitCheckListener();
+    Msg(6, "kernel: machine started\n");
+    return 0;
+  } else {
+    return status;
+  }
+   */
+}
+
+/*!
+ * Shutdown the runtime.
+ */
+int ShutdownMachine() {
+  Msg(6, "kernel: machine shutdown (reason %d)\n", MasterExit);
+  ASSERT(false);
+  /*
+  StopIOP();
+  ShutdownSound();
+  CloseListener();
+   */
+  ShutdownGoalProto();
+
+  // OpenGOAL only - kill ps2 VM
+  if (VM::use) {
+    VM::vm_kill();
+  }
+  return 0;
+}
+
+Ptr<MouseInfo> MouseGetData(Ptr<MouseInfo> mouse) {
+  // stubbed out in the actual game
+  return mouse;
+}
+
+/*!
+ * Open a file-stream.  Name is a GOAL string. Mode is a GOAL symbol.  Use 'read for readonly
+ * and anything else for write only.
+ */
+u64 kopen(u64 fs, u64 name, u64 mode) {
+  auto file_stream = Ptr<FileStream>(fs).c();
+  file_stream->mode = mode;
+  file_stream->name = name;
+  file_stream->flags = 0;
+  printf("****** CALL TO kopen() ******\n");
+  char buffer[128];
+  // sprintf(buffer, "host:%s", Ptr<String>(name)->data());
+  sprintf(buffer, "%s", Ptr<String>(name)->data());
+  if (!strcmp(Ptr<Symbol4<u8>>(mode)->name_cstr(), "read")) {
+    // 0x1
+    file_stream->file = sceOpen(buffer, SCE_RDONLY);
+  } else if (!strcmp(Ptr<Symbol4<u8>>(mode)->name_cstr(), "append")) {
+    // new in jak 2!
+    // 0x202
+    file_stream->file = sceOpen(buffer, SCE_CREAT | SCE_WRONLY);
+  } else {
+    // 0x602
+    file_stream->file = sceOpen(buffer, SCE_TRUNC | SCE_CREAT | SCE_WRONLY);
+  }
+
+  return fs;
+}
+
 }  // namespace jak2

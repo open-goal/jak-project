@@ -5,12 +5,11 @@
  * Implementation of GOAL runtime.
  */
 
-#include "kmachine.h"
-
 #include "common/common_types.h"
 #include "common/goal_constants.h"
 
 #include "game/kernel/common/kmalloc.h"
+#include "game/kernel/common/kscheme.h"
 
 extern u32 FastLink;
 extern Ptr<u32> EnableMethodSet;
@@ -25,10 +24,6 @@ constexpr u32 SYM_TABLE_END = jak1::GOAL_MAX_SYMBOLS - 32;
 constexpr u32 DEFAULT_METHOD_COUNT = 12;
 constexpr u32 FALLBACK_UNKNOWN_METHOD_COUNT = 44;
 
-struct String {
-  u32 len;
-  char* data() { return ((char*)this) + sizeof(String); }
-};
 
 struct SymInfo {
   u32 hash;
@@ -43,7 +38,7 @@ inline Ptr<SymInfo> info(Ptr<Symbol> s) {
   return s.cast<SymInfo>() + jak1::SYM_INFO_OFFSET;
 }
 
-struct Function {};
+
 
 /*!
  * GOAL Type
@@ -89,8 +84,6 @@ u64 print_binteger(u64 obj);
 u64 inspect_pair(u32 obj);
 u64 inspect_binteger(u64 obj);
 s32 InitHeapAndSymbol();
-u64 call_goal(Ptr<Function> f, u64 a, u64 b, u64 c, u64 st, void* offset);
-u64 call_goal_on_stack(Ptr<Function> f, u64 rsp, u64 st, void* offset);
 void print_symbol_table();
 u64 make_string_from_c(const char* c_str);
 Ptr<Symbol> find_symbol_from_c(const char* name);

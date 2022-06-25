@@ -5,9 +5,9 @@
  * Memory card interface. Very messy code.
  */
 
-#include "kmachine.h"
-
 #include "common/common_types.h"
+
+#include "game/kernel/common/Ptr.h"
 
 void kmemcard_init_globals();
 

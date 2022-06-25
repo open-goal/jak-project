@@ -20,7 +20,6 @@
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/ksocket.h"
 #include "game/kernel/klisten.h"
-#include "game/kernel/kmachine.h"
 #include "game/kernel/kscheme.h"
 #include "game/kernel/jak1/kmachine.h"
 #include "game/sce/libscf.h"

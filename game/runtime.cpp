@@ -159,7 +159,6 @@ void ee_runner(SystemThreadInterface& iface) {
   kdsnetm_init_globals_common();
   klink_init_globals();
 
-  kmachine_init_globals();
   kmachine_init_globals_common();
   kscheme_init_globals();
   kscheme_init_globals_common();

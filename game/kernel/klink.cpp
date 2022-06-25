@@ -24,6 +24,7 @@
 #include "game/kernel/common/kboot.h"
 #include "game/kernel/common/klink.h"
 #include "game/kernel/common/kprint.h"
+#include "game/kernel/common/kmachine.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/memory_layout.h"
 #include "game/mips2c/mips2c_table.h"
