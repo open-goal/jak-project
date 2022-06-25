@@ -48,9 +48,7 @@ class OpenGlDebugGui {
   const char* screenshot_name() const { return m_screenshot_save_name; }
 
   bool should_advance_frame() { return m_frame_timer.should_advance_frame(); }
-  bool should_gl_finish() { return m_frame_timer.do_gl_finish; }
-
-  void init_framerate_settings();
+  bool should_gl_finish() const { return m_frame_timer.do_gl_finish; }
 
   bool get_screenshot_flag() {
     if (m_want_screenshot) {
@@ -60,17 +58,10 @@ class OpenGlDebugGui {
     return false;
   }
 
-  bool get_vsync_flag() { return m_vsync; }
-
-  bool framelimiter = false;
-  float target_fps = 60.f;
-  bool experimental_accurate_lag = false;
-  bool sleep_in_frame_limiter = true;
   bool small_profiler = false;
   bool record_events = false;
   bool dump_events = false;
   bool want_reboot_in_debug = false;
-  bool m_vsync = true;
 
  private:
   FrameTimeRecorder m_frame_timer;
