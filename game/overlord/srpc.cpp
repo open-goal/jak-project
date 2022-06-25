@@ -14,6 +14,7 @@
 #include "game/common/game_common_types.h"
 #include "game/common/loader_rpc_types.h"
 #include "game/common/player_rpc_types.h"
+#include "game/graphics/gfx.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
 
@@ -459,7 +460,7 @@ s32 VBlank_Handler() {
   gFrameNum++;
 
   if (gFakeVAGClockRunning && !gFakeVAGClockPaused) {
-    gFakeVAGClock += 17;
+    gFakeVAGClock += (s32)(1024 / Gfx::g_global_settings.target_fps);
   }
 
   // We don't need this, our DMA's are instant
