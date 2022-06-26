@@ -26,11 +26,14 @@ int main(int argc, char** argv) {
   bool auto_debug = false;
   bool auto_find_user = false;
   std::string cmd = "";
+  std::string startup_cmd = "";
   std::string username = "#f";
   int nrepl_port = 8181;
 
   CLI::App app{"OpenGOAL Compiler / REPL"};
   app.add_option("-c,--cmd", cmd, "Specify a command to run");
+  app.add_option("--startup-cmd", startup_cmd,
+                 "Specify a command to run and keep the REPL open afterwards");
   app.add_option("-u,--user", username,
                  "Specify the username to use for your user profile in 'goal_src/user/'");
   app.add_option("-p,--port", nrepl_port, "Specify the nREPL port.  Defaults to 8181");
@@ -124,6 +127,11 @@ int main(int argc, char** argv) {
           compiler->save_repl_history();
         }
         compiler = std::make_unique<Compiler>(username, std::make_unique<ReplWrapper>());
+        if (!startup_cmd.empty()) {
+          compiler->handle_repl_string(startup_cmd);
+          // reset to prevent re-executing on manual reload
+          startup_cmd = "";
+        }
         status = ReplStatus::OK;
       }
       std::string input_from_stdin = compiler->get_repl_input();
