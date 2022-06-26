@@ -153,59 +153,6 @@ char* kstrinsert(char* str, char pad, s32 count) {
 }
 
 /*!
- * Get filename from path.
- * This function is renamed to basename_goal so it doesn't conflict with "basename" that is
- * already defined on my computer.
- * For example:
- *   a/b/c.e will return c.e
- *   a\b\c.e will return c.e
- *   asdf.asdf will return asdf.asdf
- *   DONE, EXACT
- */
-char* basename_goal(char* s) {
-  char* input = s;
-  char* pt = s;
-
-  // seek to end
-  for (;;) {
-    char c = *pt;
-    if (c) {
-      pt++;
-    } else {
-      break;
-    }
-  }
-
-  /* Original code, has memory bug.
-  // back up...
-  for (;;) {
-    if (pt < input) {
-      return input;
-    }
-    pt--;
-    char c = *pt;
-    // until we hit a slash.
-    if (c == '\\' || c == '/') {  // slashes
-      return pt + 1;              // and return one past
-    }
-  }
-   */
-
-  // back up...
-  for (;;) {
-    if (pt <= input) {
-      return input;
-    }
-    pt--;
-    char c = *pt;
-    // until we hit a slash.
-    if (c == '\\' || c == '/') {  // slashes
-      return pt + 1;              // and return one past
-    }
-  }
-}
-
-/*!
  * Turn file name into file's path.
  * DONE, EXACT
  */

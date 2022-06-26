@@ -7,9 +7,6 @@
 
 namespace jak2 {
 
-// from the "off-by-one" symbol pointer
-constexpr int SYM_TO_STRING_OFFSET = 0xff37;
-constexpr int SYM_TO_HASH_OFFSET = 0x1fe6f;
 constexpr s32 SYMBOL_OFFSET = 1;
 
 /*!
@@ -42,4 +39,7 @@ struct Type {
 
 void kscheme_init_globals();
 Ptr<Symbol4<u32>> intern_from_c(const char* name);
+Ptr<Type> intern_type_from_c(const char* name, u64 methods);
+u64 call_method_of_type_arg2(u32 arg, Ptr<Type> type, u32 method_id, u32 a1, u32 a2);
+Ptr<Symbol4<u32>> find_symbol_from_c(const char* name);
 }  // namespace jak2

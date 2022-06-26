@@ -51,7 +51,6 @@ void kstrcpyup(char* dst, const char* src);
 void kstrcat(char* dest, const char* src);
 void kstrncat(char* dest, const char* src, s32 count);
 char* kstrinsert(char* str, char pad, s32 count);
-char* basename_goal(char* s);
 char* DecodeFileName(const char* name);
 char* MakeFileName(int type, const char* name, int new_string);
 u32 FileExists(const char* name);

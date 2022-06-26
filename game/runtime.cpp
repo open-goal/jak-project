@@ -30,6 +30,7 @@
 
 #include "game/graphics/gfx.h"
 #include "game/kernel/common/kdsnetm.h"
+#include "game/kernel/common/klink.h"
 #include "game/kernel/common/kmachine.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
@@ -40,7 +41,6 @@
 #include "game/kernel/jak2/kboot.h"
 #include "game/kernel/jak2/kscheme.h"
 #include "game/kernel/kdgo.h"
-#include "game/kernel/klink.h"
 #include "game/kernel/klisten.h"
 #include "game/kernel/kmemcard.h"
 #include "game/overlord/dma.h"

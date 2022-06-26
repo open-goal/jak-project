@@ -10,8 +10,6 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "klink.h"
-
 #include "common/symbols.h"
 
 #include "game/kernel/common/kboot.h"
@@ -20,6 +18,9 @@
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/ksocket.h"
+
+// todo
+#include "game/kernel/jak1/klink.h"
 
 using namespace jak1_symbols;
 
@@ -159,9 +160,10 @@ void ProcessListenerMessage(Ptr<char> msg) {
 
       // we have added the LINK_FLAG_OUTPUT_LOAD
       // jump from c to goal because this is called from the C++ stack.
-      ListenerFunction->value = link_and_exec(buffer, "*listener*", 0, kdebugheap,
-                                              LINK_FLAG_FORCE_DEBUG | LINK_FLAG_OUTPUT_LOAD, true)
-                                    .offset;
+      ListenerFunction->value =
+          jak1::link_and_exec(buffer, "*listener*", 0, kdebugheap,
+                              LINK_FLAG_FORCE_DEBUG | LINK_FLAG_OUTPUT_LOAD, true)
+              .offset;
       return;  // don't ack yet, this will happen after the function runs.
     } break;
     default:

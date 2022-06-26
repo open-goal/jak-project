@@ -9,7 +9,6 @@
 #include <cstring>
 
 #include "fileio.h"
-#include "klink.h"
 
 #include "common/log/log.h"
 
@@ -21,6 +20,9 @@
 #include "game/common/str_rpc_types.h"
 #include "game/kernel/common/kprint.h"
 #include "game/sce/sif_ee.h"
+
+// todo remove
+#include "game/kernel/jak1/klink.h"
 
 using namespace ee;
 
@@ -374,7 +376,7 @@ void load_and_link_dgo_from_c(const char* name,
     lg::debug("[link and exec] {:18s} {} {:6d} heap-use {:8d} {:8d}: 0x{:x}", objName,
               lastObjectLoaded, objSize, kheapused(kglobalheap),
               kdebugheap.offset ? kheapused(kdebugheap) : 0, kglobalheap->current.offset);
-    link_and_exec(obj, objName, objSize, heap, linkFlag, jump_from_c_to_goal);  // link now!
+    jak1::link_and_exec(obj, objName, objSize, heap, linkFlag, jump_from_c_to_goal);  // link now!
 
     // inform IOP we are done
     if (!lastObjectLoaded) {

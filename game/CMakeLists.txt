@@ -26,16 +26,19 @@ set(RUNTIME_SOURCE
         kernel/common/fileio.cpp
         kernel/common/kboot.cpp
         kernel/common/kdsnetm.cpp
+        kernel/common/klink.cpp
         kernel/common/kmachine.cpp
         kernel/common/kmalloc.cpp
         kernel/common/kprint.cpp
         kernel/common/kscheme.cpp
         kernel/common/ksocket.cpp
         kernel/jak1/kboot.cpp
+        kernel/jak1/klink.cpp
         kernel/jak1/kmachine.cpp
         kernel/jak1/kprint.cpp
         kernel/jak1/kscheme.cpp
         kernel/jak2/kboot.cpp
+        kernel/jak2/klink.cpp
         kernel/jak2/kmachine.cpp
         kernel/jak2/kmalloc.cpp
         kernel/jak2/kprint.cpp
@@ -43,7 +46,6 @@ set(RUNTIME_SOURCE
         kernel/asm_funcs.asm
         kernel/fileio.cpp
         kernel/kdgo.cpp
-        kernel/klink.cpp
         kernel/klisten.cpp
         kernel/kmemcard.cpp
         kernel/ksound.cpp

@@ -1,271 +1,41 @@
-/*!
- * @file klink.cpp
- * GOAL Linker for x86-64
- * Note - this is significantly different from the MIPS linker because the object file format is
- * different.
- * DONE!
- */
-
 #include "klink.h"
-
-#include <cstdio>
-#include <cstring>
-
-#include "fileio.h"
 
 #include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
-#include "common/util/Assert.h"
-#include "common/versions.h"
 
 #include "game/kernel/common/fileio.h"
-#include "game/kernel/common/kboot.h"
 #include "game/kernel/common/klink.h"
 #include "game/kernel/common/kmachine.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/memory_layout.h"
-#include "game/kernel/jak1/kscheme.h"
-#include "game/mips2c/mips2c_table.h"
+#include "game/kernel/jak2/kscheme.h"
 
 #include "third-party/fmt/core.h"
-
-using namespace jak1_symbols;
-
-namespace {
-// turn on printf's for debugging linking issues.
-constexpr bool link_debug_printfs = false;
-
-bool is_opengoal_object(const void* data) {
-  auto* header = (const LinkHeaderV2*)data;
-  return !(header->type_tag == 0xffffffff && (header->version == 2 || header->version == 4));
-}
-}  // namespace
-
-// space to store a single in-progress linking state.
-link_control saved_link_control;
-
-// pointer to GOAL *ultimate-memcpy*, if its loaded.
-Ptr<Function> gfunc_774;
-
-void klink_init_globals() {
-  saved_link_control.reset();
-  gfunc_774.offset = 0;
-}
-
-/*!
- * Initialize the link control.
- */
-void link_control::begin(Ptr<uint8_t> object_file,
-                         const char* name,
-                         int32_t size,
-                         Ptr<kheapinfo> heap,
-                         uint32_t flags) {
-  if (is_opengoal_object(object_file.c())) {
-    // save data from call to begin
-    m_object_data = object_file;
-    kstrcpy(m_object_name, name);
-    m_object_size = size;
-    m_heap = heap;
-    m_flags = flags;
-
-    // initialize link control
-    m_entry.offset = 0;
-    m_heap_top = m_heap->top;
-    m_keep_debug = false;
-    m_opengoal = true;
-
-    if (link_debug_printfs) {
-      char* goal_name = object_file.cast<char>().c();
-      printf("link %s\n", m_object_name);
-      printf("link_control::begin %c%c%c%c\n", goal_name[0], goal_name[1], goal_name[2],
-             goal_name[3]);
-    }
-
-    // points to the beginning of the linking data
-    m_link_block_ptr = object_file + BASIC_OFFSET;
-    m_code_size = 0;
-    m_code_start = object_file;
-    m_state = 0;
-    m_segment_process = 0;
-
-    ObjectFileHeader* ofh = m_link_block_ptr.cast<ObjectFileHeader>().c();
-    if (ofh->goal_version_major != versions::GOAL_VERSION_MAJOR) {
-      fprintf(
-          stderr,
-          "VERSION ERROR: C Kernel built from GOAL %d.%d, but object file %s is from GOAL %d.%d\n",
-          versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR, name, ofh->goal_version_major,
-          ofh->goal_version_minor);
-      ASSERT(false);
-    }
-    if (link_debug_printfs) {
-      printf("Object file header:\n");
-      printf(" GOAL ver %d.%d obj %d len %d\n", ofh->goal_version_major, ofh->goal_version_minor,
-             ofh->object_file_version, ofh->link_block_length);
-      printf(" segment count %d\n", ofh->segment_count);
-      for (int i = 0; i < N_SEG; i++) {
-        printf(" seg %d link 0x%04x, 0x%04x data 0x%04x, 0x%04x\n", i, ofh->link_infos[i].offset,
-               ofh->link_infos[i].size, ofh->code_infos[i].offset, ofh->code_infos[i].size);
-      }
-    }
-
-    m_version = ofh->object_file_version;
-    if (ofh->object_file_version < 4) {
-      // three segment file
-
-      // seek past the header
-      m_object_data.offset += ofh->link_block_length;
-      // todo, set m_code_size
-
-      if (m_link_block_ptr.offset < m_heap->base.offset ||
-          m_link_block_ptr.offset >= m_heap->top.offset) {
-        // the link block is outside our heap, or in the top of our heap.  It's somebody else's
-        // problem.
-        if (link_debug_printfs) {
-          printf("Link block somebody else's problem\n");
-        }
-
-        if (m_heap->base.offset <= m_object_data.offset &&    // above heap base
-            m_object_data.offset < m_heap->top.offset &&      // less than heap top (not needed?)
-            m_object_data.offset < m_heap->current.offset) {  // less than heap current
-          if (link_debug_printfs) {
-            printf("Code block in the heap, kicking it out for copy into heap\n");
-          }
-          m_heap->current = m_object_data;
-        }
-      } else {
-        // in our heap, we need to move it so we can free up its space later on
-        if (link_debug_printfs) {
-          printf("Link block needs to be moved!\n");
-        }
-
-        // allocate space for a new one
-        auto new_link_block = kmalloc(m_heap, ofh->link_block_length, KMALLOC_TOP, "link-block");
-        auto old_link_block = m_link_block_ptr - BASIC_OFFSET;
-
-        // copy it
-        ultimate_memcpy(new_link_block.c(), old_link_block.c(), ofh->link_block_length);
-        m_link_block_ptr = new_link_block + BASIC_OFFSET;
-
-        // if we can save some memory here
-        if (old_link_block.offset < m_heap->current.offset) {
-          if (link_debug_printfs) {
-            printf("Kick out old link block\n");
-          }
-          m_heap->current = old_link_block;
-        }
-      }
-    } else {
-      ASSERT_MSG(false, "UNHANDLED OBJECT FILE VERSION");
-    }
-
-    if ((m_flags & LINK_FLAG_FORCE_DEBUG) && MasterDebug && !DiskBoot) {
-      m_keep_debug = true;
-    }
-  } else {
-    m_opengoal = false;
-    // not an open goal object.
-    if (link_debug_printfs) {
-      printf("Linking GOAL style object\n");
-    }
-
-    // initialize
-    m_object_data = object_file;
-    kstrcpy(m_object_name, name);
-    m_object_size = size;
-    m_heap = heap;
-    m_flags = flags;
-    m_entry.offset = 0;
-    m_heap_top = m_heap->top;
-    m_keep_debug = false;
-    m_link_block_ptr = object_file + BASIC_OFFSET;
-    m_code_size = 0;
-    m_code_start = object_file;
-    m_state = 0;
-    m_segment_process = 0;
-
-    const auto* header = (LinkHeaderV2*)(m_link_block_ptr.c() - 4);
-
-    m_version = header->version;
-    if (header->version < 4) {
-      // seek past header
-      m_object_data.offset += header->length;
-      m_code_size = m_object_size - header->length;
-      if (m_link_block_ptr.offset < m_heap->base.offset ||
-          m_link_block_ptr.offset >= m_heap->top.offset) {
-        // the link block is outside our heap, or in the top of our heap.  It's somebody else's
-        // problem.
-        if (link_debug_printfs) {
-          printf("Link block somebody else's problem\n");
-        }
-
-        if (m_heap->base.offset <= m_object_data.offset &&    // above heap base
-            m_object_data.offset < m_heap->top.offset &&      // less than heap top (not needed?)
-            m_object_data.offset < m_heap->current.offset) {  // less than heap current
-          if (link_debug_printfs) {
-            printf("Code block in the heap, kicking it out for copy into heap\n");
-          }
-          m_heap->current = m_object_data;
-        }
-      } else {
-        // in our heap, we need to move it so we can free up its space later on
-        if (link_debug_printfs) {
-          printf("Link block needs to be moved!\n");
-        }
-
-        // allocate space for a new one
-        auto new_link_block = kmalloc(m_heap, header->length, KMALLOC_TOP, "link-block");
-        auto old_link_block = m_link_block_ptr - BASIC_OFFSET;
-
-        // copy it
-        ultimate_memcpy(new_link_block.c(), old_link_block.c(), header->length);
-        m_link_block_ptr = new_link_block + BASIC_OFFSET;
-
-        // if we can save some memory here
-        if (old_link_block.offset < m_heap->current.offset) {
-          if (link_debug_printfs) {
-            printf("Kick out old link block\n");
-          }
-          m_heap->current = old_link_block;
-        }
-      }
-
-    } else {
-      auto header_v4 = (const LinkHeaderV4*)header;
-      auto old_object_data = m_object_data;
-      m_link_block_ptr =
-          old_object_data + header_v4->code_size + sizeof(LinkHeaderV4) + BASIC_OFFSET;
-      m_object_data = old_object_data + sizeof(LinkHeaderV4);
-      m_code_size = header_v4->code_size;
-    }
-
-    if ((m_flags & LINK_FLAG_FORCE_DEBUG) && MasterDebug && !DiskBoot) {
-      m_keep_debug = true;
-    }
-  }
-}
+static constexpr bool link_debug_printfs = false;
 
 /*!
  * Make progress on linking.
  */
-uint32_t link_control::work() {
+uint32_t link_control::jak2_work() {
   auto old_debug_segment = DebugSegment;
   if (m_keep_debug) {
-    DebugSegment = s7.offset + FIX_SYM_TRUE;
+    DebugSegment = s7.offset + true_symbol_offset(g_game_version);
   }
 
   // set type tag of link block
-  *((m_link_block_ptr - 4).cast<u32>()) = *((s7 + FIX_SYM_LINK_BLOCK).cast<u32>());
+  *((m_link_block_ptr - 4).cast<u32>()) =
+      *((s7 + jak2_symbols::FIX_SYM_LINK_BLOCK - 1).cast<u32>());
 
   uint32_t rv;
 
   if (m_version == 3) {
     ASSERT(m_opengoal);
-    rv = work_v3();
+    rv = jak2_work_v3();
   } else if (m_version == 2 || m_version == 4) {
     ASSERT(!m_opengoal);
-    rv = work_v2();
+    rv = jak2_work_v2();
   } else {
     ASSERT_MSG(false, fmt::format("UNHANDLED OBJECT FILE VERSION {} IN WORK!", m_version));
     return 0;
@@ -275,87 +45,7 @@ uint32_t link_control::work() {
   return rv;
 }
 
-/*!
- * Link type pointers for a single type in "v3 equivalent" link data
- * Returns a pointer to the link table data after the typelinking data.
- */
-uint32_t typelink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
-  // get the name of the type
-  uint32_t seek = 0;
-  char sym_name[256];
-  while (link.c()[seek]) {
-    sym_name[seek] = link.c()[seek];
-    seek++;
-    ASSERT(seek < 256);
-  }
-  sym_name[seek] = 0;
-  seek++;
-
-  // determine the number of methods
-  uint8_t method_count = link.c()[seek++];
-
-  // intern the GOAL type, creating the vtable if it doesn't exist.
-  auto type_ptr = jak1::intern_type_from_c(sym_name, method_count);
-
-  // prepare to read the locations of the type pointers
-  Ptr<uint32_t> offsets = link.cast<uint32_t>() + seek;
-  uint32_t offset_count = *offsets;
-  offsets = offsets + 4;
-  seek += 4;
-
-  // write the type pointers into memory
-  for (uint32_t i = 0; i < offset_count; i++) {
-    *(data + offsets.c()[i]).cast<int32_t>() = type_ptr.offset;
-    seek += 4;
-  }
-
-  return seek;
-}
-
-/*!
- * Link symbols (both offsets and pointers) in "v3 equivalent" link data.
- * Returns a pointer to the link table data after the linking data for this symbol.
- */
-uint32_t symlink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
-  // get the symbol name
-  uint32_t seek = 0;
-  char sym_name[256];
-  while (link.c()[seek]) {
-    sym_name[seek] = link.c()[seek];
-    seek++;
-    ASSERT(seek < 256);
-  }
-  sym_name[seek] = 0;
-  seek++;
-
-  // intern
-  auto sym = jak1::intern_from_c(sym_name);
-  int32_t sym_offset = sym.cast<u32>() - s7;
-  uint32_t sym_addr = sym.cast<u32>().offset;
-
-  // prepare to read locations of symbol links
-  Ptr<uint32_t> offsets = link.cast<uint32_t>() + seek;
-  uint32_t offset_count = *offsets;
-  offsets = offsets + 4;
-  seek += 4;
-
-  for (uint32_t i = 0; i < offset_count; i++) {
-    uint32_t offset = offsets.c()[i];
-    seek += 4;
-    auto data_ptr = (data + offset).cast<int32_t>();
-
-    if (*data_ptr == -1) {
-      // a "-1" indicates that we should store the address.
-      *(data + offset).cast<int32_t>() = sym_addr;
-    } else {
-      // otherwise store the offset to st.  Eventually this should become an s16 instead.
-      *(data + offset).cast<int32_t>() = sym_offset;
-    }
-  }
-
-  return seek;
-}
-
+namespace {
 /*!
  * Link a single relative offset (used for RIP)
  */
@@ -373,7 +63,8 @@ uint32_t cross_seg_dist_link_v3(Ptr<uint8_t> link,
   int32_t diff = tgt - mine;
   uint32_t offset_of_patch = link_data[2] + ofh->code_infos[current_seg].offset;
 
-  if (!ofh->code_infos[target_seg].offset) {
+  // second debug segment case added for jak 2.
+  if (!ofh->code_infos[target_seg].offset || (!DebugSegment && target_seg == DEBUG_SEGMENT)) {
     // we want to address GOAL 0. In the case where this is a rip-relative load or store, this
     // will crash, which is what we want. If it's an lea and just getting an address, this will get
     // us a nullptr. If you do a method-set! with a null pointer it does nothing, so it's safe to
@@ -405,10 +96,96 @@ uint32_t ptr_link_v3(Ptr<u8> link, ObjectFileHeader* ofh, int current_seg) {
 }
 
 /*!
+ * Link type pointers for a single type in "v3 equivalent" link data
+ * Returns a pointer to the link table data after the typelinking data.
+ */
+uint32_t typelink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
+  // get the name of the type
+  uint32_t seek = 0;
+  char sym_name[256];
+  while (link.c()[seek]) {
+    sym_name[seek] = link.c()[seek];
+    seek++;
+    ASSERT(seek < 256);
+  }
+  sym_name[seek] = 0;
+  seek++;
+
+  // determine the number of methods
+  uint32_t method_count = link.c()[seek++];
+  // jak2 special
+  method_count *= 4;
+  if (method_count) {
+    method_count += 3;
+  }
+
+  // intern the GOAL type, creating the vtable if it doesn't exist.
+  auto type_ptr = jak2::intern_type_from_c(sym_name, method_count);
+
+  // prepare to read the locations of the type pointers
+  Ptr<uint32_t> offsets = link.cast<uint32_t>() + seek;
+  uint32_t offset_count = *offsets;
+  offsets = offsets + 4;
+  seek += 4;
+
+  // write the type pointers into memory
+  for (uint32_t i = 0; i < offset_count; i++) {
+    *(data + offsets.c()[i]).cast<int32_t>() = type_ptr.offset;
+    seek += 4;
+  }
+
+  return seek;
+}
+/*!
+ * Link symbols (both offsets and pointers) in "v3 equivalent" link data.
+ * Returns a pointer to the link table data after the linking data for this symbol.
+ */
+uint32_t symlink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
+  // get the symbol name
+  uint32_t seek = 0;
+  char sym_name[256];
+  while (link.c()[seek]) {
+    sym_name[seek] = link.c()[seek];
+    seek++;
+    ASSERT(seek < 256);
+  }
+  sym_name[seek] = 0;
+  seek++;
+
+  // intern
+  auto sym = jak2::intern_from_c(sym_name);
+  int32_t sym_offset = sym.cast<u32>() - s7;
+  uint32_t sym_addr = sym.cast<u32>().offset;
+
+  // prepare to read locations of symbol links
+  Ptr<uint32_t> offsets = link.cast<uint32_t>() + seek;
+  uint32_t offset_count = *offsets;
+  offsets = offsets + 4;
+  seek += 4;
+
+  for (uint32_t i = 0; i < offset_count; i++) {
+    uint32_t offset = offsets.c()[i];
+    seek += 4;
+    auto data_ptr = (data + offset).cast<int32_t>();
+
+    if (*data_ptr == -1) {
+      // a "-1" indicates that we should store the address.
+      *(data + offset).cast<int32_t>() = sym_addr;
+    } else {
+      // otherwise store the offset to st.  Eventually this should become an s16 instead.
+      *(data + offset).cast<int32_t>() = sym_offset;
+    }
+  }
+
+  return seek;
+}
+}  // namespace
+
+/*!
  * Run the linker. For now, all linking is done in two runs.  If this turns out to be too slow,
  * this should be modified to do incremental linking over multiple runs.
  */
-uint32_t link_control::work_v3() {
+uint32_t link_control::jak2_work_v3() {
   ObjectFileHeader* ofh = m_link_block_ptr.cast<ObjectFileHeader>().c();
   if (m_state == 0) {
     // state 0 <- copying data.
@@ -439,8 +216,8 @@ uint32_t link_control::work_v3() {
                      ofh->code_infos[seg_id].size);
               return 1;
             }
-            ultimate_memcpy(Ptr<u8>(ofh->code_infos[seg_id].offset).c(), src.c(),
-                            ofh->code_infos[seg_id].size);
+            jak2::ultimate_memcpy(Ptr<u8>(ofh->code_infos[seg_id].offset).c(), src.c(),
+                                  ofh->code_infos[seg_id].size);
           }
         }
       } else if (seg_id == MAIN_SEGMENT) {
@@ -455,8 +232,8 @@ uint32_t link_control::work_v3() {
                    ofh->code_infos[seg_id].size);
             return 1;
           }
-          ultimate_memcpy(Ptr<u8>(ofh->code_infos[seg_id].offset).c(), src.c(),
-                          ofh->code_infos[seg_id].size);
+          jak2::ultimate_memcpy(Ptr<u8>(ofh->code_infos[seg_id].offset).c(), src.c(),
+                                ofh->code_infos[seg_id].size);
         }
       } else if (seg_id == TOP_LEVEL_SEGMENT) {
         if (ofh->code_infos[seg_id].size == 0) {
@@ -471,8 +248,8 @@ uint32_t link_control::work_v3() {
                    ofh->code_infos[seg_id].size);
             return 1;
           }
-          ultimate_memcpy(Ptr<u8>(ofh->code_infos[seg_id].offset).c(), src.c(),
-                          ofh->code_infos[seg_id].size);
+          jak2::ultimate_memcpy(Ptr<u8>(ofh->code_infos[seg_id].offset).c(), src.c(),
+                                ofh->code_infos[seg_id].size);
         }
       } else {
         printf("UNHANDLED SEG ID IN WORK V3 STATE 1\n");
@@ -536,49 +313,13 @@ uint32_t link_control::work_v3() {
   }
 }
 
-Ptr<u8> c_symlink2(Ptr<u8> objData, Ptr<u8> linkObj, Ptr<u8> relocTable) {
-  u8* relocPtr = relocTable.c();
-  Ptr<u8> objPtr = objData;
-
-  do {
-    u8 table_value = *relocPtr;
-    u32 result = table_value;
-    u8* next_reloc = relocPtr + 1;
-
-    if (result & 3) {
-      result = (relocPtr[1] << 8) | table_value;
-      next_reloc = relocPtr + 2;
-      if (result & 2) {
-        result = (relocPtr[2] << 16) | result;
-        next_reloc = relocPtr + 3;
-        if (result & 1) {
-          result = (relocPtr[3] << 24) | result;
-          next_reloc = relocPtr + 4;
-        }
-      }
-    }
-
-    relocPtr = next_reloc;
-    objPtr = objPtr + (result & 0xfffffffc);
-    u32 objValue = *(objPtr.cast<u32>());
-    if (objValue == 0xffffffff) {
-      *(objPtr.cast<u32>()) = linkObj.offset;
-    } else {
-      // I don't think we should hit this ever.
-      ASSERT(false);
-    }
-  } while (*relocPtr);
-
-  return make_ptr(relocPtr + 1);
-}
-
 #define LINK_V2_STATE_INIT_COPY 0
 #define LINK_V2_STATE_OFFSETS 1
 #define LINK_V2_STATE_SYMBOL_TABLE 2
 #define OBJ_V2_CLOSE_ENOUGH 0x90
 #define OBJ_V2_MAX_TRANSFER 0x80000
 
-uint32_t link_control::work_v2() {
+uint32_t link_control::jak2_work_v2() {
   //  u32 startCycle = kernel.read_clock(); todo
 
   if (m_state == LINK_V2_STATE_INIT_COPY) {  // initialization and copying to heap
@@ -625,14 +366,15 @@ uint32_t link_control::work_v2() {
       u32 size = m_code_size - m_segment_process;
 
       if (size > OBJ_V2_MAX_TRANSFER) {  // around .5 MB
-        ultimate_memcpy((m_object_data + m_segment_process).c(), source.c(), OBJ_V2_MAX_TRANSFER);
+        jak2::ultimate_memcpy((m_object_data + m_segment_process).c(), source.c(),
+                              OBJ_V2_MAX_TRANSFER);
         m_segment_process += OBJ_V2_MAX_TRANSFER;
         return 0;  // return, don't want to take too long.
       }
 
       // if we have bytes to copy, but they are less than the max transfer, do it in one shot!
       if (size) {
-        ultimate_memcpy((m_object_data + m_segment_process).c(), source.c(), size);
+        jak2::ultimate_memcpy((m_object_data + m_segment_process).c(), source.c(), size);
         if (m_segment_process > 0) {  // if we did a previous copy, we return now....
           m_state = LINK_V2_STATE_OFFSETS;
           m_segment_process = 0;
@@ -742,7 +484,7 @@ uint32_t link_control::work_v2() {
           if (link_debug_printfs) {
             printf("[work_v2] symlink: %s\n", name);
           }
-          goalObj = jak1::intern_from_c(name).cast<u8>();
+          goalObj = jak2::intern_from_c(name).cast<u8>();
         } else {
           // type!
           u8 nMethods = relocation & 0x7f;
@@ -753,7 +495,7 @@ uint32_t link_control::work_v2() {
           if (link_debug_printfs) {
             printf("[work_v2] symlink -type: %s\n", name);
           }
-          goalObj = jak1::intern_type_from_c(name, nMethods).cast<u8>();
+          goalObj = jak2::intern_type_from_c(name, nMethods).cast<u8>();
         }
         m_reloc_ptr.offset += strlen(name) + 1;
         // DECOMPILER->hookStartSymlinkV3(_state - 1, _objectData, std::string(name));
@@ -778,12 +520,12 @@ uint32_t link_control::work_v2() {
 /*!
  * Complete linking. This will execute the top-level code for v3 object files, if requested.
  */
-void link_control::finish(bool jump_from_c_to_goal) {
+void link_control::jak2_finish(bool jump_from_c_to_goal) {
   CacheFlush(m_code_start.c(), m_code_size);
   auto old_debug_segment = DebugSegment;
   if (m_keep_debug) {
     // note - this probably doesn't work because DebugSegment isn't *debug-segment*.
-    DebugSegment = s7.offset + FIX_SYM_TRUE;
+    DebugSegment = s7.offset + jak2_symbols::FIX_SYM_TRUE;
   }
   if (m_flags & LINK_FLAG_FORCE_FAST_LINK) {
     FastLink = 1;
@@ -796,9 +538,11 @@ void link_control::finish(bool jump_from_c_to_goal) {
     // todo check function type of entry
 
     // setup mips2c functions
+    /*
     for (auto& x : Mips2C::gMips2CLinkCallbacks[m_object_name]) {
       x();
     }
+     */
 
     // execute top level!
     if (m_entry.offset && (m_flags & LINK_FLAG_EXECUTE)) {
@@ -819,7 +563,7 @@ void link_control::finish(bool jump_from_c_to_goal) {
       auto entry = m_entry;
       auto name = basename_goal(m_object_name);
       strcpy(Ptr<char>(LINK_CONTROL_NAME_ADDR).c(), name);
-      jak1::call_method_of_type_arg2(entry.offset, Ptr<jak1::Type>(*((entry - 4).cast<u32>())),
+      jak2::call_method_of_type_arg2(entry.offset, Ptr<jak2::Type>(*((entry - 4).cast<u32>())),
                                      GOAL_RELOC_METHOD, m_heap.offset,
                                      Ptr<char>(LINK_CONTROL_NAME_ADDR).offset);
     }
@@ -829,25 +573,35 @@ void link_control::finish(bool jump_from_c_to_goal) {
   FastLink = 0;  // nested fast links won't work right.
   m_heap->top = m_heap_top;
   DebugSegment = old_debug_segment;
+  m_busy = false;
 }
 
-/*!
- * Immediately link and execute an object file.
- * DONE, EXACT
- */
+namespace jak2 {
+u32 link_busy() {
+  return saved_link_control.m_busy;
+}
+
+void link_reset() {
+  // seems like a bad idea to do this - you'll probably leak memory.
+  saved_link_control.m_busy = 0;
+}
 Ptr<uint8_t> link_and_exec(Ptr<uint8_t> data,
                            const char* name,
                            int32_t size,
                            Ptr<kheapinfo> heap,
                            uint32_t flags,
                            bool jump_from_c_to_goal) {
+  if (link_busy()) {
+    printf("-------------> saved link is busy\n");
+    // probably won't end well...
+  }
   link_control lc;
   lc.begin(data, name, size, heap, flags);
   uint32_t done;
   do {
-    done = lc.work();
+    done = lc.jak2_work();
   } while (!done);
-  lc.finish(jump_from_c_to_goal);
+  lc.jak2_finish(jump_from_c_to_goal);
   return lc.m_entry;
 }
 
@@ -870,11 +624,11 @@ uint64_t link_begin(u64* args) {
   // object data, name size, heap flags
   saved_link_control.begin(Ptr<u8>(args[0]), Ptr<char>(args[1]).c(), args[2],
                            Ptr<kheapinfo>(args[3]), args[4]);
-  auto work_result = saved_link_control.work();
+  auto work_result = saved_link_control.jak2_work();
   // if we managed to finish in one shot, take care of calling finish
   if (work_result) {
     // called from goal
-    saved_link_control.finish(false);
+    saved_link_control.jak2_finish(false);
   }
 
   return work_result != 0;
@@ -884,10 +638,10 @@ uint64_t link_begin(u64* args) {
  * GOAL exported function for doing a small amount of linking work on the saved_link_control
  */
 uint64_t link_resume() {
-  auto work_result = saved_link_control.work();
+  auto work_result = saved_link_control.jak2_work();
   if (work_result) {
     // called from goal
-    saved_link_control.finish(false);
+    saved_link_control.jak2_finish(false);
   }
   return work_result != 0;
 }
@@ -903,12 +657,12 @@ void ultimate_memcpy(void* dst, void* src, uint32_t size) {
   if (!(u64(dst) & 0xf) && !(u64(src) & 0xf) && !(u64(size) & 0xf) && size > 0xfff) {
     if (!gfunc_774.offset) {
       // GOAL function is unknown, lets see if its loaded:
-      auto sym = jak1::find_symbol_from_c("ultimate-memcpy");
-      if (sym->value == 0) {
+      auto sym = jak2::find_symbol_from_c("ultimate-memcpy");
+      if (sym->value() == 0) {
         memmove(dst, src, size);
         return;
       }
-      gfunc_774.offset = sym->value;
+      gfunc_774.offset = sym->value();
     }
 
     Ptr<u8>(call_goal(gfunc_774, make_u8_ptr(dst).offset, make_u8_ptr(src).offset, size, s7.offset,
@@ -918,16 +672,4 @@ void ultimate_memcpy(void* dst, void* src, uint32_t size) {
     memmove(dst, src, size);
   }
 }
-
-// The functions below are not ported because they are specific to the MIPS implementation.
-// In the MIPS implementation, the c_ functions are used until GOAL loads its GOAL-implemented
-// versions of the same functions.  The update_goal_fns detects this and causes the linker to use
-// the GOAL versions once possible. The GOAL version is much faster, but functionally equivalent to
-// the C version. The C version is compiled without optimization, so this isn't too surprising.
-// the rellink function is unused.
-/*
-c_rellink3__FPvP12link_segmentPUc
-c_symlink2__FPvUiPUc
-c_symlink3__FPvUiPUc
-update_goal_fns__Fv
- */
+}  // namespace jak2
