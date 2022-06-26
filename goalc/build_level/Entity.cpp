@@ -112,7 +112,7 @@ std::unique_ptr<Res> res_from_json_array(const std::string& name,
     for (size_t i = 1; i < json_array.size(); i++) {
       data.push_back(json_array[i].get<int>());
     }
-    return std::make_unique<ResInt32>(name, data,  -1000000000.0000);
+    return std::make_unique<ResInt32>(name, data, -1000000000.0000);
   } else {
     ASSERT_MSG(false, fmt::format("unsupported array type: {}\n", array_type));
   }

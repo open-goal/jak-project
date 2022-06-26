@@ -1,6 +1,7 @@
 #pragma once
 
 #include "goalc/build_level/ResLump.h"
+
 #include "third-party/json.hpp"
 
 /*
@@ -29,8 +30,6 @@ struct EntityActor {
 
 size_t generate_inline_array_actors(DataObjectGenerator& gen,
                                     const std::vector<EntityActor>& actors);
-
-
 
 void add_actors_from_json(const nlohmann::json& json,
                           std::vector<EntityActor>& actor_list,
