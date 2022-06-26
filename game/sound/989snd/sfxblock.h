@@ -5,6 +5,27 @@
 
 namespace snd {
 
+struct SFXBlockData2 : BankTag {
+  /*  10 */ s8 BlockNum;
+  /*  11 */ s8 pad1;
+  /*  12 */ s16 pad2;
+  /*  14 */ s16 pad3;
+  /*  16 */ s16 NumSounds;
+  /*  18 */ s16 NumGrains;
+  /*  1a */ s16 NumVAGs;
+  /*  1c */ /* SFX2Ptr */ u32 FirstSound;
+  /*  20 */ /* SFXGrain2Ptr */ u32 FirstGrain;
+  /*  24 */ u32 VagsInSR;
+  /*  28 */ u32 VagDataSize;
+  /*  2c */ u32 SRAMAllocSize;
+  /*  30 */ u32 NextBlock;
+  /*  34 */ u32 GrainData;  // new
+  /*  38 */ /* SFXBlockNames* */ u32 BlockNames;
+  /*  3c */ /* SFXUserData* */ u32 SFXUD;
+};
+
+static_assert(sizeof(SFXBlockData2) == 0x3c + 4);
+
 struct SFXBlockData : BankTag {
   /*  10 */ s8 BlockNum;
   /*  11 */ s8 pad1;
@@ -70,10 +91,6 @@ struct LargestGrainParamStruct {
   /*   0 */ char blank[32];
 };
 
-/*
-** Type 1 = Tone
-*/
-
 struct SFXGrain {
   /*   0 */ u32 Type;
   /*   4 */ s32 Delay;
@@ -87,6 +104,19 @@ struct SFXGrain {
     /*   8 */ PluginParams plugin_params;
     /*   8 */ LargestGrainParamStruct junk;
   } GrainParams;
+};
+
+struct SFXGrain2 {
+  union {
+    struct {
+      s8 arg[3];
+      u8 type;
+    };
+
+    u32 Opcode;
+  } OpcodeData;
+
+  s32 Delay;
 };
 
 struct SFXData {
