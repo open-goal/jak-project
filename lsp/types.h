@@ -1,6 +1,19 @@
 #pragma once
+
 #include <third-party/json.hpp>
 
+
+
+
+
+
+
+
+
+
+
+
+/*
 enum class category { order, cash_carry };
 
 struct Product {
@@ -24,3 +37,4 @@ inline void from_json(const nlohmann::json& j, Product& p) {
   j.at("price").get_to(p.price);
   j.at("category").get_to(p.cat);
 }
+*/

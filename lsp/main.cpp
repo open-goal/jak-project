@@ -1,26 +1,31 @@
-#include "inmemoryconnector.h"
-#include "cpphttplibconnector.h"
-#include "warehouseapp.h"
-
 #include <iostream>
 #include <vector>
+
+#include "lsp_server.h"
+#include "transport.h"
+#include <chrono>
+#include <thread>
+
 #include <jsonrpccxx/client.hpp>
 #include <jsonrpccxx/server.hpp>
 
-using namespace jsonrpccxx;
 using namespace std;
 
-class WareHouseClient {
-public:
-  explicit WareHouseClient(JsonRpcClient &client) : client(client) {}
-  bool AddProduct(const Product &p) { return client.CallMethod<bool>(1, "AddProduct", {p}); }
-  Product GetProduct(const std::string &id) { return client.CallMethod<Product>(1, "GetProduct", {id}); }
-  vector<Product> AllProducts() { return client.CallMethod<vector<Product>>(1, "AllProducts", {}); }
+int main() {
+  jsonrpccxx::JsonRpc2Server rpcServer;
 
-private:
-  JsonRpcClient &client;
-};
+  // Bindings
+  LspServer lsp;
+  rpcServer.Add("TestServer", jsonrpccxx::GetHandle(&LspServer::TestServer, lsp), {"id"});
 
+  HttpServerConnector httpServer(rpcServer, 8484);
+
+  httpServer.start_listening();
+
+  return 0;
+}
+
+/*
 void doWarehouseStuff(IClientConnector &clientConnector) {
   JsonRpcClient client(clientConnector, version::v2);
   WareHouseClient appClient(client);
@@ -44,26 +49,4 @@ void doWarehouseStuff(IClientConnector &clientConnector) {
     cout << p.name << endl;
   }
 }
-
-int main() {
-  JsonRpc2Server rpcServer;
-
-  // Bindings
-  WarehouseServer app;
-  rpcServer.Add("GetProduct", GetHandle(&WarehouseServer::GetProduct, app), {"id"});
-  rpcServer.Add("AddProduct", GetHandle(&WarehouseServer::AddProduct, app), {"product"});
-  rpcServer.Add("AllProducts", GetHandle(&WarehouseServer::AllProducts, app), {});
-
-  cout << "Running in-memory example" << "\n";
-  InMemoryConnector inMemoryConnector(rpcServer);
-  doWarehouseStuff(inMemoryConnector);
-
-  cout << "Running http example" << "\n";
-  CppHttpLibServerConnector httpServer(rpcServer, 8484);
-  cout << "Starting http server: " << std::boolalpha << httpServer.StartListening() << "\n";
-  CppHttpLibClientConnector httpClient("localhost", 8484);
-  std::this_thread::sleep_for(0.5s);
-  doWarehouseStuff(httpClient);
-
-  return 0;
-}
+*/

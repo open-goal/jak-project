@@ -1,9 +1,16 @@
-#include "warehouseapp.h"
+#include "lsp_server.h"
 
 #include <jsonrpccxx/common.hpp>
 
 using namespace jsonrpccxx;
 
+LspServer::LspServer() {}
+
+bool LspServer::TestServer(const std::string& id) {
+  return true;
+}
+
+/*
 bool WarehouseServer::AddProduct(const Product& p) {
   if (products.find(p.id) != products.end())
     return false;
@@ -22,3 +29,4 @@ std::vector<Product> WarehouseServer::AllProducts() {
     result.push_back(p.second);
   return result;
 }
+*/
