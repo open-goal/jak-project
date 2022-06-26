@@ -1,14 +1,16 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <unordered_set>
-#include <unordered_map>
 #include <optional>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+#include "common/common_types.h"
+#include "common/versions.h"
+
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/data/game_text.h"
-#include "common/versions.h"
-#include "common/common_types.h"
 
 namespace decompiler {
 struct RegisterTypeCast {
@@ -120,6 +122,9 @@ struct Config {
   bool print_cfgs = false;
 
   bool generate_symbol_definition_map = false;
+
+  bool generate_all_types = false;
+  std::optional<std::string> old_all_types_file;
 
   bool is_pal = false;
 

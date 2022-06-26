@@ -1,17 +1,20 @@
 #include <cstdio>
 #include <string>
 #include <vector>
-#include "ObjectFile/ObjectFileDB.h"
-#include "common/log/log.h"
+
 #include "config.h"
+
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/Timer.h"
+#include "common/util/diff.h"
+#include "common/util/os.h"
 #include "common/versions.h"
+
+#include "ObjectFile/ObjectFileDB.h"
+#include "decompiler/data/TextureDB.h"
 #include "decompiler/data/streamed_audio.h"
 #include "decompiler/level_extractor/extract_level.h"
-#include "decompiler/data/TextureDB.h"
-#include "common/util/os.h"
-#include "common/util/diff.h"
-#include "common/util/Timer.h"
 
 int main(int argc, char** argv) {
   Timer decomp_timer;
@@ -26,7 +29,6 @@ int main(int argc, char** argv) {
   lg::set_stdout_level(lg::level::info);
   lg::set_flush_level(lg::level::info);
   lg::initialize();
-  lg::info("GOAL Decompiler version {}\n", versions::DECOMPILER_VERSION);
 
   init_opcode_info();
 
@@ -170,6 +172,13 @@ int main(int argc, char** argv) {
   // main decompile.
   if (config.decompile_code) {
     db.analyze_functions_ir2(out_folder, config, {});
+  }
+
+  if (config.generate_all_types) {
+    ASSERT_MSG(config.decompile_code, "Must decompile code to generate all-types");
+    db.ir2_analyze_all_types(file_util::combine_path(out_folder, "new-all-types.gc"),
+                             config.old_all_types_file,
+                             config.hacks.types_with_bad_inspect_methods);
   }
 
   fmt::print("[Mem] After decomp: {} MB\n", get_peak_rss() / (1024 * 1024));

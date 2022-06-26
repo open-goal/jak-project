@@ -1,10 +1,13 @@
 #include "DecompilerTypeSystem.h"
+
+#include "TP_Type.h"
+
 #include "common/goos/Reader.h"
+#include "common/log/log.h"
 #include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
+
 #include "decompiler/Disasm/Register.h"
-#include "common/log/log.h"
-#include "TP_Type.h"
 
 namespace decompiler {
 DecompilerTypeSystem::DecompilerTypeSystem() {
@@ -400,8 +403,8 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
   }
 
   static const std::vector<char> single_char_ignore_list = {'%', 'T'};
-  static const std::vector<std::string> multi_char_ignore_list = {"0L", "1L", "3L", "1K",
-                                                                  "2j", "0k", "30L"};
+  static const std::vector<std::string> multi_char_ignore_list = {"0L", "1L", "3L",  "1K",
+                                                                  "2j", "0k", "30L", "1T"};
 
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {

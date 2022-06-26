@@ -1,4 +1,5 @@
 #include "LevelFile.h"
+
 #include "goalc/data_compiler/DataObjectGenerator.h"
 
 size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {

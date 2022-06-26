@@ -1,18 +1,24 @@
-#include <cstring>
-#include <cstdio>
-#include "game/sound/sndshim.h"
 #include "srpc.h"
-#include "game/sce/iop.h"
+
+#include <cstdio>
+#include <cstring>
+
+#include "iso.h"
+#include "iso_api.h"
+#include "ramdisk.h"
+#include "sbank.h"
+
+#include "common/util/Assert.h"
+#include "common/versions.h"
+
+#include "game/common/game_common_types.h"
 #include "game/common/loader_rpc_types.h"
 #include "game/common/player_rpc_types.h"
-#include "game/common/game_common_types.h"
-#include "common/versions.h"
-#include "sbank.h"
-#include "iso_api.h"
-#include "common/util/Assert.h"
+#include "game/graphics/gfx.h"
+#include "game/sce/iop.h"
+#include "game/sound/sndshim.h"
+
 #include "third-party/fmt/core.h"
-#include "iso.h"
-#include "ramdisk.h"
 
 using namespace iop;
 
@@ -454,7 +460,7 @@ s32 VBlank_Handler() {
   gFrameNum++;
 
   if (gFakeVAGClockRunning && !gFakeVAGClockPaused) {
-    gFakeVAGClock += 17;
+    gFakeVAGClock += (s32)(1024 / Gfx::g_global_settings.target_fps);
   }
 
   // We don't need this, our DMA's are instant

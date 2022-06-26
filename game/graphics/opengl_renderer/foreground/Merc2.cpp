@@ -1,6 +1,8 @@
 #include "Merc2.h"
-#include "third-party/imgui/imgui.h"
+
 #include "game/graphics/opengl_renderer/background/background_common.h"
+
+#include "third-party/imgui/imgui.h"
 
 Merc2::Merc2(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
   glGenVertexArrays(1, &m_vao);
@@ -8,7 +10,8 @@ Merc2::Merc2(const std::string& name, BucketId my_id) : BucketRenderer(name, my_
 
   glGenBuffers(1, &m_bones_buffer);
   glBindBuffer(GL_UNIFORM_BUFFER, m_bones_buffer);
-  glBufferData(GL_UNIFORM_BUFFER, MAX_SHADER_BONE_VECTORS * sizeof(math::Vector4f), nullptr,
+  std::vector<u8> temp(MAX_SHADER_BONE_VECTORS * sizeof(math::Vector4f));
+  glBufferData(GL_UNIFORM_BUFFER, MAX_SHADER_BONE_VECTORS * sizeof(math::Vector4f), temp.data(),
                GL_DYNAMIC_DRAW);
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 

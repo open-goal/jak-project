@@ -132,6 +132,8 @@
 
 
 (define *game-directory* (get-environment-variable "OPENGOAL_DECOMP_DIR" :default "jak1/"))
+(when (user? dass)
+    (set! *game-directory* "jak1_us2/"))
 
 (defmacro copy-texture (tpage-id)
   "Copy a texture from the game, using the given tpage ID"
@@ -384,7 +386,11 @@
 
 ;; as we find objects that exist in multiple levels, put them here
 
-(copy-sbk-files "COMMON" "EMPTY1" "EMPTY2")
+;; early versions of the game - including the black label release - do not have all files.
+(if *jak1-full-game*
+    (copy-sbk-files "COMMON" "COMMONJ" "EMPTY1" "EMPTY2")
+    (copy-sbk-files "COMMON" "EMPTY1" "EMPTY2")
+    )
 
 (copy-gos
  "sharkey-ag"
@@ -1958,8 +1964,8 @@
  )
 
 
-(fmt #t "found {} spools\n" (count *all-str*))
-(group-list "spools" (reverse *all-str*))
+;;(fmt #t "found {} spools\n" (count *all-str*))
+(group-list "spools" *all-str*)
 
 
 (group-list "text"
@@ -1970,7 +1976,7 @@
 
 ;; Custom or Modified Code
 (goal-src "pc/pckernel-h.gc" "dma-disasm")
-(goal-src "pc/pckernel.gc" "settings")
+(goal-src "pc/pckernel.gc" "settings" "video")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
 (goal-src "pc/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")

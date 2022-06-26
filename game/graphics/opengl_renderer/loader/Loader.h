@@ -1,14 +1,15 @@
 #pragma once
 
-#include <thread>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
+#include <thread>
 
-#include "game/graphics/pipelines/opengl.h"
-#include "game/graphics/texture/TexturePool.h"
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/util/Timer.h"
+
 #include "game/graphics/opengl_renderer/loader/common.h"
+#include "game/graphics/pipelines/opengl.h"
+#include "game/graphics/texture/TexturePool.h"
 
 class Loader {
  public:

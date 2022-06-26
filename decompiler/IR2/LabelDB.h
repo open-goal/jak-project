@@ -1,13 +1,15 @@
 #pragma once
 
 #include <optional>
-#include <vector>
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
+#include <vector>
+
 #include "common/link_types.h"
 #include "common/type_system/TypeSpec.h"
-#include "decompiler/config.h"
+
 #include "decompiler/Disasm/DecompilerLabel.h"
+#include "decompiler/config.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {

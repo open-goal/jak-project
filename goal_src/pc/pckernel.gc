@@ -96,6 +96,33 @@
   (pc-set-window-lock lock)
   (set! (-> obj window-lock?) lock))
 
+(defmethod set-frame-rate! pc-settings ((obj pc-settings) (rate int))
+  "set the aspect ratio used for rendering."
+  
+  (pc-set-frame-rate rate)
+  (if (and (!= 'fullscreen (-> obj display-mode))
+           (!= (pc-get-screen-rate -1) rate))
+      (set! (-> obj vsync?) #f))
+  (case rate
+    ((60)
+      (set! (-> obj target-fps) rate)
+      (set! (-> *setting-control* default video-mode) 'ntsc)
+      (set-video-mode 'ntsc)
+      )
+    ((100)
+      (set! (-> obj target-fps) rate)
+      (set! (-> *setting-control* default video-mode) '100fps)
+      (set-video-mode '100fps)
+      )
+    ((150)
+      (set! (-> obj target-fps) rate)
+      (set! (-> *setting-control* default video-mode) '150fps)
+      (set-video-mode '150fps)
+      )
+    )
+  
+  rate)
+
 (defmethod commit-to-file pc-settings ((obj pc-settings))
   "commits the current settings to the file"
   ;; auto load settings if available
@@ -161,11 +188,19 @@
     )
 
   (pc-set-fullscreen (-> obj display-mode) 0)
-  (if (and (= 'windowed (-> obj display-mode))
-           (-> obj window-lock?)
-           (or (!= (-> obj win-width) (-> obj real-width))
-               (!= (-> obj win-height) (-> obj real-height))))
-      (pc-set-window-size (max 320 (-> obj win-width)) (max 240 (-> obj win-height))))
+  (when (-> obj window-lock?)
+    (pc-set-vsync (-> obj vsync?))
+
+    (when (!= 'fullscreen (-> obj display-mode))
+        (if (< (pc-get-screen-rate -1) (-> obj target-fps))
+            (pc-set-vsync #f))
+        (pc-set-frame-rate (-> obj target-fps)))
+
+    (if (and (= 'windowed (-> obj display-mode))
+             (or (!= (-> obj win-width) (-> obj real-width))
+                 (!= (-> obj win-height) (-> obj real-height))))
+        (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
+    )
 
   (pc-discord-rpc-set (if (-> obj discord-rpc?) 1 0))
 
@@ -708,6 +743,7 @@
                   )
                 (("aspect-auto") (set! (-> obj aspect-ratio-auto?) (file-stream-read-symbol file)))
                 (("aspect-game") (set! (-> *setting-control* default aspect-ratio) (file-stream-read-symbol file)))
+                (("video-mode") (set! (-> *setting-control* default video-mode) (file-stream-read-symbol file)))
                 (("display-mode") (set-display-mode! obj (file-stream-read-symbol file)))
                 (("letterbox") (set! (-> obj letterbox?) (file-stream-read-symbol file)))
                 (("vsync") (set! (-> obj vsync?) (file-stream-read-symbol file)))
@@ -824,6 +860,7 @@
     (format file "  (aspect-test ~D ~D)~%" (-> obj aspect-custom-x) (-> obj aspect-custom-y))
     (format file "  (aspect-auto ~A)~%" (-> obj aspect-ratio-auto?))
     (format file "  (aspect-game ~A)~%" (-> *setting-control* default aspect-ratio))
+    (format file "  (video-mode ~A)~%" (-> *setting-control* default video-mode))
     (format file "  (display-mode ~A)~%" (-> obj display-mode))
     (format file "  (letterbox ~A)~%" (-> obj letterbox?))
     (format file "  (vsync ~A)~%" (-> obj vsync?))

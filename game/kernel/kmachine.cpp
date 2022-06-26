@@ -5,44 +5,46 @@
  * are just stubs or commented out for now.  Legal splash screen stuff is also missing.
  */
 
-#include <string>
-#include <cstring>
 #include "kmachine.h"
-#include "kboot.h"
-#include "kprint.h"
+
+#include <cstring>
+#include <string>
+
 #include "fileio.h"
-#include "kmalloc.h"
-#include "kdsnetm.h"
-#include "ksocket.h"
-#include "kscheme.h"
-#include "ksound.h"
+#include "kboot.h"
 #include "kdgo.h"
-#include "ksound.h"
+#include "kdsnetm.h"
 #include "klink.h"
 #include "klisten.h"
-#include "game/sce/sif_ee.h"
+#include "kmalloc.h"
+#include "kprint.h"
+#include "kscheme.h"
+#include "ksocket.h"
+#include "ksound.h"
+#include "svnrev.h"
+
+#include "common/dma/dma_chain_read.h"
+#include "common/dma/dma_copy.h"
+#include "common/global_profiler/GlobalProfiler.h"
+#include "common/log/log.h"
+#include "common/symbols.h"
+#include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
+#include "common/util/Timer.h"
+
+#include "game/discord.h"
+#include "game/graphics/gfx.h"
+#include "game/graphics/sceGraphicsInterface.h"
+#include "game/mips2c/mips2c_table.h"
 #include "game/sce/libcdvd_ee.h"
-#include "game/sce/stubs.h"
 #include "game/sce/libdma.h"
 #include "game/sce/libgraph.h"
 #include "game/sce/libpad.h"
-#include "common/symbols.h"
-#include "common/log/log.h"
-#include "common/util/FileUtil.h"
-#include "common/util/Timer.h"
-#include "game/graphics/sceGraphicsInterface.h"
-#include "game/graphics/gfx.h"
-#include "common/dma/dma_chain_read.h"
-#include "common/dma/dma_copy.h"
-#include "game/mips2c/mips2c_table.h"
-#include "game/system/vm/vm.h"
-#include "game/system/newpad.h"
 #include "game/sce/libscf.h"
-#include "common/util/Assert.h"
-#include "game/discord.h"
-#include "common/global_profiler/GlobalProfiler.h"
-
-#include "svnrev.h"
+#include "game/sce/sif_ee.h"
+#include "game/sce/stubs.h"
+#include "game/system/newpad.h"
+#include "game/system/vm/vm.h"
 
 using namespace jak1_symbols;
 using namespace ee;
@@ -727,7 +729,7 @@ u64 DecodeVolume() {
 // NOTE: this is originally hardcoded, and returns different values depending on the disc region.
 // it returns 0 for NTSC-U, 1 for PAL and 2 for NTSC-J
 u64 DecodeTerritory() {
-  return masterConfig.territory;
+  return GAME_TERRITORY_SCEA;
 }
 
 u64 DecodeTimeout() {
@@ -810,18 +812,29 @@ void get_window_scale(u32 x_ptr, u32 y_ptr) {
 /*!
  * Returns resolution of the monitor.
  */
-void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr, u32 c_ptr) {
-  s32 *w_out = 0, *h_out = 0, *c_out = 0;
+void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr) {
+  s32 *w_out = 0, *h_out = 0;
   if (w_ptr) {
     w_out = Ptr<s32>(w_ptr).c();
   }
   if (h_ptr) {
     h_out = Ptr<s32>(h_ptr).c();
   }
-  if (c_ptr) {
-    c_out = Ptr<s32>(c_ptr).c();
-  }
-  Gfx::get_screen_size(vmode_idx, w_out, h_out, c_out);
+  Gfx::get_screen_size(vmode_idx, w_out, h_out);
+}
+
+/*!
+ * Returns refresh rate of the monitor.
+ */
+s64 get_screen_rate(s64 vmode_idx) {
+  return Gfx::get_screen_rate(vmode_idx);
+}
+
+/*!
+ * Returns amount of video modes of the monitor.
+ */
+s64 get_screen_vmode_count() {
+  return Gfx::get_screen_vmode_count();
 }
 
 void update_discord_rpc(u32 discord_info) {
@@ -857,8 +870,12 @@ void update_discord_rpc(u32 discord_info) {
       } else {
         strcpy(large_image_key, level);
       }
-      rpc.largeImageKey = large_image_key;
       strcpy(large_image_text, full_level_name);
+      if (!strcmp(full_level_name, "unknown")) {
+        strcpy(large_image_key, full_level_name);
+        strcpy(large_image_text, level);
+      }
+      rpc.largeImageKey = large_image_key;
       if (!strcmp(level, "finalboss")) {
         strcpy(state, "Fighting Final Boss");
       } else if (plantboss != offset_of_s7()) {
@@ -964,6 +981,14 @@ void set_fullscreen(u32 symptr, s64 screen) {
   }
 }
 
+void set_frame_rate(s64 rate) {
+  Gfx::set_frame_rate(rate);
+}
+
+void set_vsync(u32 symptr) {
+  Gfx::set_vsync(symptr != s7.offset);
+}
+
 void set_window_lock(u32 symptr) {
   Gfx::set_window_lock(symptr == s7.offset);
 }
@@ -1014,8 +1039,12 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
   make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
   make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
+  make_function_symbol_from_c("pc-get-screen-rate", (void*)get_screen_rate);
+  make_function_symbol_from_c("pc-get-screen-vmode-count", (void*)get_screen_vmode_count);
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
   make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
+  make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
+  make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
   make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
 
   // graphics things
@@ -1051,7 +1080,7 @@ void InitMachine_PCPort() {
   // TODO - we will eventually need a better way to know what game we are playing
   auto settings_path = file_util::get_user_settings_dir();
   intern_from_c("*pc-settings-folder*")->value = make_string_from_c(settings_path.string().c_str());
-  intern_from_c("*pc-settings-built-sha*")->value = make_string_from_c(GIT_SHORT_SHA);
+  intern_from_c("*pc-settings-built-sha*")->value = make_string_from_c(GIT_VERSION);
 }
 /*!
  * PC PORT FUNCTIONS END

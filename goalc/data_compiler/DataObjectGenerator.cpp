@@ -1,6 +1,8 @@
-#include <cstring>
-#include <algorithm>
 #include "DataObjectGenerator.h"
+
+#include <algorithm>
+#include <cstring>
+
 #include "common/link_types.h"
 #include "common/util/Assert.h"
 

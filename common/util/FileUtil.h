@@ -5,10 +5,11 @@
  * Utility functions for reading and writing files.
  */
 
-#include <string>
-#include <vector>
 #include <filesystem>
 #include <optional>
+#include <string>
+#include <vector>
+
 #include "common/common_types.h"
 
 namespace fs = std::filesystem;

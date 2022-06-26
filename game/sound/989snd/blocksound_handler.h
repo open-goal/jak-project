@@ -1,8 +1,10 @@
 #pragma once
 #include <unordered_map>
+
 #include "sfxblock.h"
-#include "vagvoice.h"
 #include "sound_handler.h"
+#include "vagvoice.h"
+
 #include "common/common_types.h"
 
 namespace snd {

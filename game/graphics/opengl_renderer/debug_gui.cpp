@@ -1,6 +1,11 @@
 
 #include "debug_gui.h"
+
 #include <algorithm>
+
+#include "game/graphics/gfx.h"
+#include "game/kernel/svnrev.h"
+
 #include "third-party/imgui/imgui.h"
 
 void FrameTimeRecorder::finish_frame() {
@@ -109,16 +114,16 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     }
 
     if (ImGui::BeginMenu("Frame Rate")) {
-      ImGui::Checkbox("Enable V-Sync", &m_vsync);
+      ImGui::Checkbox("Enable V-Sync", &Gfx::g_global_settings.vsync);
       ImGui::Separator();
-      ImGui::Checkbox("Framelimiter", &framelimiter);
+      ImGui::Checkbox("Framelimiter", &Gfx::g_global_settings.framelimiter);
       ImGui::InputFloat("Target FPS", &target_fps_input);
       if (ImGui::MenuItem("Apply")) {
-        target_fps = target_fps_input;
+        Gfx::g_global_settings.target_fps = target_fps_input;
       }
       ImGui::Separator();
-      ImGui::Checkbox("Accurate Lag Mode", &experimental_accurate_lag);
-      ImGui::Checkbox("Sleep in Frame Limiter", &sleep_in_frame_limiter);
+      ImGui::Checkbox("Accurate Lag Mode", &Gfx::g_global_settings.experimental_accurate_lag);
+      ImGui::Checkbox("Sleep in Frame Limiter", &Gfx::g_global_settings.sleep_in_frame_limiter);
       ImGui::EndMenu();
     }
 
@@ -135,7 +140,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::EndMenu();
     }
 
-    if (ImGui::BeginMenu("WORK IN PROGRESS VERSION!")) {
+    if (ImGui::BeginMenu(fmt::format("WORK IN PROGRESS VERSION ({})!", GIT_VERSION).c_str())) {
       ImGui::EndMenu();
     }
   }

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "bitfield.h"
+
 #include "common/common_types.h"
 
 namespace snd {

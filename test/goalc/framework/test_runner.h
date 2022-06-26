@@ -1,10 +1,11 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
 
 #include "inja.hpp"
+
 #include "goalc/compiler/Compiler.h"
 
 namespace GoalTest {

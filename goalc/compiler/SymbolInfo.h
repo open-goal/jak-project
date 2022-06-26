@@ -1,11 +1,12 @@
 #pragma once
 
-#include <vector>
-#include <string>
 #include <set>
-#include "common/util/Trie.h"
+#include <string>
+#include <vector>
+
 #include "common/goos/Object.h"
 #include "common/util/Assert.h"
+#include "common/util/Trie.h"
 
 /*!
  * Info about a single symbol, representing one of:

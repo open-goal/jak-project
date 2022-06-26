@@ -5,8 +5,8 @@
  * Create a DGO from existing files.
  */
 
-#include <vector>
 #include <string>
+#include <vector>
 
 struct DgoDescription {
   std::string dgo_name;

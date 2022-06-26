@@ -1,10 +1,10 @@
 
 #pragma once
+#include "game/graphics//opengl_renderer/SkyBlendCPU.h"
+#include "game/graphics//opengl_renderer/SkyBlendGPU.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/background/TFragment.h"
-#include "game/graphics//opengl_renderer/SkyBlendGPU.h"
-#include "game/graphics//opengl_renderer/SkyBlendCPU.h"
 
 /*!
  * Handles texture blending for the sky.

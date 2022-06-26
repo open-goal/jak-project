@@ -1,8 +1,10 @@
-#include "gtest/gtest.h"
-#include "common/goos/Reader.h"
-#include "common/util/FileUtil.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/goos/PrettyPrinter2.h"
+#include "common/goos/Reader.h"
+#include "common/util/FileUtil.h"
+
+#include "gtest/gtest.h"
+
 #include "third-party/fmt/core.h"
 
 using namespace goos;

@@ -1,9 +1,11 @@
 #pragma once
 
 #include "extract_tie.h"
-#include "decompiler/level_extractor/BspHeader.h"
-#include "decompiler/data/TextureDB.h"
+
 #include "common/custom_data/Tfrag3Data.h"
+
+#include "decompiler/data/TextureDB.h"
+#include "decompiler/level_extractor/BspHeader.h"
 
 namespace decompiler {
 

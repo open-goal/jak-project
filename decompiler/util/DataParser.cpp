@@ -1,7 +1,10 @@
-#include <stdexcept>
 #include "DataParser.h"
-#include "third-party/fmt/core.h"
+
+#include <stdexcept>
+
 #include "common/util/Assert.h"
+
+#include "third-party/fmt/core.h"
 
 /*
  * Allowable lines:

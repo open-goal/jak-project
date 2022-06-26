@@ -1,11 +1,12 @@
 
+#include "Tool.h"
+
 #include <chrono>
 #include <filesystem>
 
-#include "third-party/fmt/core.h"
-
-#include "Tool.h"
 #include "common/util/FileUtil.h"
+
+#include "third-party/fmt/core.h"
 
 Tool::Tool(const std::string& name) : m_name(name) {}
 

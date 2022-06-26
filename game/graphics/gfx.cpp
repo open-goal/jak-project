@@ -3,21 +3,24 @@
  * Graphics component for the runtime. Abstraction layer for the main graphics routines.
  */
 
-#include <cstdio>
-#include <functional>
-#include <filesystem>
-
 #include "gfx.h"
-#include "display.h"
-#include "pipelines/opengl.h"
 
-#include "common/symbols.h"
+#include <cstdio>
+#include <filesystem>
+#include <functional>
+
+#include "display.h"
+
 #include "common/log/log.h"
+#include "common/symbols.h"
 #include "common/util/FileUtil.h"
+
 #include "game/common/file_paths.h"
 #include "game/kernel/kscheme.h"
+#include "game/kernel/svnrev.h"
 #include "game/runtime.h"
 #include "game/system/newpad.h"
+#include "pipelines/opengl.h"
 
 namespace {
 // initializes a gfx settings.
@@ -121,7 +124,8 @@ u32 Init() {
   if (g_main_thread_id != std::this_thread::get_id()) {
     lg::error("Ran Gfx::Init outside main thread. Init display elsewhere?");
   } else {
-    Display::InitMainDisplay(640, 480, "OpenGOAL GL Window", g_settings);
+    Display::InitMainDisplay(
+        640, 480, fmt::format("OpenGOAL - Work in Progress - {}", GIT_VERSION).c_str(), g_settings);
   }
 
   return 0;
@@ -225,10 +229,32 @@ GfxDisplayMode get_fullscreen() {
   }
 }
 
-void get_screen_size(s64 vmode_idx, s32* w, s32* h, s32* c) {
+int get_screen_vmode_count() {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_screen_size(vmode_idx, w, h, c);
+    return Display::GetMainDisplay()->get_screen_vmode_count();
   }
+  return 0;
+}
+
+int get_screen_rate(s64 vmode_idx) {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_screen_rate(vmode_idx);
+  }
+  return 0;
+}
+
+void get_screen_size(s64 vmode_idx, s32* w, s32* h) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_screen_size(vmode_idx, w, h);
+  }
+}
+
+void set_vsync(bool vsync) {
+  g_global_settings.vsync = vsync;
+}
+
+void set_frame_rate(int rate) {
+  g_global_settings.target_fps = rate;
 }
 
 void set_letterbox(int w, int h) {

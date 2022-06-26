@@ -1,9 +1,10 @@
 #pragma once
 
-#include "decompiler/level_extractor/BspHeader.h"
-#include "common/math/Vector.h"
 #include "common/custom_data/Tfrag3Data.h"
+#include "common/math/Vector.h"
+
 #include "decompiler/data/TextureDB.h"
+#include "decompiler/level_extractor/BspHeader.h"
 
 namespace decompiler {
 

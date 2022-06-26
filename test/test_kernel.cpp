@@ -1,15 +1,17 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include "gtest/gtest.h"
-#include "common/symbols.h"
+
 #include "common/goal_constants.h"
+#include "common/symbols.h"
+
+#include "all_jak1_symbols.h"
 #include "game/kernel/fileio.h"
 #include "game/kernel/kboot.h"
-#include "game/kernel/kprint.h"
 #include "game/kernel/kdsnetm.h"
+#include "game/kernel/kprint.h"
 #include "game/kernel/kscheme.h"
-#include "all_jak1_symbols.h"
+#include "gtest/gtest.h"
 
 using namespace jak1_symbols;
 
@@ -302,7 +304,8 @@ void setup_hack_heaps(void* mem, int size) {
   init_crc();
 
   // create a fake symbol table
-  auto symbol_table = kmalloc(kglobalheap, 0x20000, KMALLOC_MEMSET, "symbol-table").cast<u32>();
+  auto symbol_table =
+      kmalloc(kglobalheap, SYM_TABLE_MEM_SIZE, KMALLOC_MEMSET, "symbol-table").cast<u32>();
   s7 = symbol_table + (GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET;
   SymbolTable2 = symbol_table + BASIC_OFFSET;
   LastSymbol = symbol_table + 0xff00;

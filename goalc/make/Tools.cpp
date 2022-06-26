@@ -1,15 +1,18 @@
 #include "Tools.h"
 
 #include <filesystem>
-#include "goalc/compiler/Compiler.h"
+
 #include "common/goos/ParseHelpers.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
-#include "third-party/fmt/core.h"
+
+#include "goalc/build_level/build_level.h"
+#include "goalc/compiler/Compiler.h"
 #include "goalc/data_compiler/dir_tpages.h"
 #include "goalc/data_compiler/game_count.h"
 #include "goalc/data_compiler/game_text_common.h"
-#include "goalc/build_level/build_level.h"
+
+#include "third-party/fmt/core.h"
 
 CompilerTool::CompilerTool(Compiler* compiler) : Tool("goalc"), m_compiler(compiler) {}
 
@@ -27,8 +30,11 @@ bool CompilerTool::needs_run(const ToolInput& task) {
 bool CompilerTool::run(const ToolInput& task) {
   // todo check inputs
   try {
-    m_compiler->run_front_end_on_string(
-        fmt::format("(asm-file \"{}\" :no-time-prints :color :write)", task.input.at(0)));
+    CompilationOptions options;
+    options.filename = task.input.at(0);
+    options.color = true;
+    options.write = true;
+    m_compiler->asm_file(options);
   } catch (std::exception& e) {
     fmt::print("Compilation failed: {}\n", e.what());
     return false;

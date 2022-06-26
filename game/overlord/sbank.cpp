@@ -1,5 +1,7 @@
-#include <cstring>
 #include "sbank.h"
+
+#include <cstring>
+
 #include "soundcommon.h"
 
 constexpr int N_BANKS = 3;

@@ -1,6 +1,8 @@
-#include "third-party/fmt/core.h"
-#include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "dir_tpages.h"
+
+#include "decompiler/ObjectFile/ObjectFileDB.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 std::string DirTpageResult::to_source() const {

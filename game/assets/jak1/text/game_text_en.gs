@@ -66,6 +66,8 @@
         "ASPECT RATIO (PS2)")
 (#x103a "FIT TO SCREEN"
         "FIT TO SCREEN")
+(#x103b "V-SYNC"
+        "V-SYNC")
 
 (#x1050 "MSAA"
         "MSAA")
@@ -80,8 +82,11 @@
 (#x1055 "16X"
         "16X")
 
-(#x1060 "FRAME RATE"
-        "FRAME RATE")
+(#x1060 "FRAME RATE (EXPERIMENTAL)"
+        "FRAME RATE (EXPERIMENTAL)")
+(#x1061 "60" "60")
+(#x1062 "100" "100")
+(#x1063 "150" "150")
 
 (#x1070 "LEVEL OF DETAIL (BACKGROUND)"
         "LEVEL OF DETAIL (BACKGROUND)")

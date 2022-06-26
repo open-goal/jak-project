@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "third-party/discord-rpc/include/discord_rpc.h"
 
 void init_discord_rpc();

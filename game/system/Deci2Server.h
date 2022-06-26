@@ -1,9 +1,10 @@
 #pragma once
 
-#include "common/cross_sockets/XSocketServer.h"
+#include <condition_variable>
 
 #include "deci_common.h"
-#include <condition_variable>
+
+#include "common/cross_sockets/XSocketServer.h"
 
 /// @brief Basic implementation of a DECI2 server.
 /// Works with deci2.cpp(sceDeci2) to implement the networking on target

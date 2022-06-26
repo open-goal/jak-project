@@ -1,14 +1,16 @@
 #pragma once
 
 #include <optional>
+
 #include "common/goos/Object.h"
-#include "decompiler/Disasm/DecompilerLabel.h"
-#include "decompiler/ObjectFile/LinkedWord.h"
 #include "common/type_system/TypeSpec.h"
 #include "common/type_system/TypeSystem.h"
+
+#include "decompiler/Disasm/DecompilerLabel.h"
+#include "decompiler/IR2/LabelDB.h"
+#include "decompiler/ObjectFile/LinkedWord.h"
 #include "decompiler/config.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "decompiler/IR2/LabelDB.h"
 
 namespace decompiler {
 class LinkedObjectFile;

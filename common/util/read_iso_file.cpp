@@ -1,6 +1,7 @@
 #include "read_iso_file.h"
-#include "common/log/log.h"
+
 #include "common/common_types.h"
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
 

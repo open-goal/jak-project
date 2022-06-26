@@ -1,11 +1,13 @@
 #include "extract_tfrag.h"
+
+#include "common/custom_data/pack_helpers.h"
 #include "common/dma/dma.h"
-#include "decompiler/util/Error.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "common/util/FileUtil.h"
 #include "common/dma/gs.h"
 #include "common/util/Assert.h"
-#include "common/custom_data/pack_helpers.h"
+#include "common/util/FileUtil.h"
+
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/util/Error.h"
 
 namespace decompiler {
 namespace {

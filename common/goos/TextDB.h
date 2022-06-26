@@ -13,12 +13,12 @@
  *   (+ 1 (+ a b)) ; compute the sum
  */
 
-#include <string>
-#include <vector>
-#include <stdexcept>
-#include <unordered_map>
 #include <memory>
 #include <optional>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "common/goos/Object.h"
 

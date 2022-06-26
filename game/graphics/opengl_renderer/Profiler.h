@@ -1,12 +1,12 @@
 #pragma once
 
+#include <array>
 #include <string>
 #include <vector>
-#include <array>
 
 #include "common/common_types.h"
-#include "common/util/Timer.h"
 #include "common/global_profiler/GlobalProfiler.h"
+#include "common/util/Timer.h"
 
 #include "game/graphics/opengl_renderer/buckets.h"
 

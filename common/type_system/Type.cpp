@@ -3,10 +3,13 @@
  * Representation of a GOAL type in the type system.
  */
 
-#include <stdexcept>
-#include "third-party/fmt/core.h"
 #include "Type.h"
+
+#include <stdexcept>
+
 #include "common/util/Assert.h"
+
+#include "third-party/fmt/core.h"
 
 namespace {
 std::string reg_kind_to_string(RegClass kind) {

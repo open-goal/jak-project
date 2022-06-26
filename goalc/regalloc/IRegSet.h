@@ -14,12 +14,13 @@
  * The space used is (highest_set_reg + 63) / 64 + constant overhead (vector + int)
  */
 #include <vector>
+
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
 class IRegSet {
  public:
-  IRegSet() { m_data.reserve(4); }
+  IRegSet() { resize(64 * 4); }
 
   /*!
    * Add the given ireg to the set.
