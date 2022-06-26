@@ -20,6 +20,7 @@ struct TestSettings {
   std::string casts_json;
   std::string var_map_json;
   std::string stack_structure_json;
+  GameVersion version = GameVersion::Jak1;
 };
 
 class FormRegressionTest : public ::testing::Test {
@@ -31,7 +32,7 @@ class FormRegressionTest : public ::testing::Test {
   static void TearDownTestCase();
 
   struct TestData {
-    explicit TestData(int instrs) : func(0, instrs) {}
+    explicit TestData(int instrs, GameVersion version) : func(0, instrs, version) {}
     decompiler::Function func;
     decompiler::LinkedObjectFile file;
 
@@ -41,28 +42,28 @@ class FormRegressionTest : public ::testing::Test {
   std::unique_ptr<TestData> make_function(const std::string& code,
                                           const TypeSpec& function_type,
                                           const TestSettings& settings);
-
   void test(const std::string& code,
             const std::string& type,
             const std::string& expected,
             const TestSettings& settings);
 
-  void test_final_function(const std::string& code,
-                           const std::string& type,
-                           const std::string& expected,
-                           bool allow_pairs = false,
-                           const std::vector<std::pair<std::string, std::string>>& strings = {},
-                           const std::string& cast_json = "",
-                           const std::string& var_map_json = "");
+  void test_final_function_jak1(
+      const std::string& code,
+      const std::string& type,
+      const std::string& expected,
+      bool allow_pairs = false,
+      const std::vector<std::pair<std::string, std::string>>& strings = {},
+      const std::string& cast_json = "",
+      const std::string& var_map_json = "");
 
-  void test_no_expr(const std::string& code,
-                    const std::string& type,
-                    const std::string& expected,
-                    bool allow_pairs = false,
-                    const std::string& method_name = "",
-                    const std::vector<std::pair<std::string, std::string>>& strings = {},
-                    const std::string& cast_json = "",
-                    const std::string& var_map_json = "") {
+  void test_no_expr_jak1(const std::string& code,
+                         const std::string& type,
+                         const std::string& expected,
+                         bool allow_pairs = false,
+                         const std::string& method_name = "",
+                         const std::vector<std::pair<std::string, std::string>>& strings = {},
+                         const std::string& cast_json = "",
+                         const std::string& var_map_json = "") {
     TestSettings settings;
     settings.allow_pairs = allow_pairs;
     settings.method_name = method_name;
@@ -73,14 +74,14 @@ class FormRegressionTest : public ::testing::Test {
     test(code, type, expected, settings);
   }
 
-  void test_with_expr(const std::string& code,
-                      const std::string& type,
-                      const std::string& expected,
-                      bool allow_pairs = false,
-                      const std::string& method_name = "",
-                      const std::vector<std::pair<std::string, std::string>>& strings = {},
-                      const std::string& cast_json = "",
-                      const std::string& var_map_json = "") {
+  void test_with_expr_jak1(const std::string& code,
+                           const std::string& type,
+                           const std::string& expected,
+                           bool allow_pairs = false,
+                           const std::string& method_name = "",
+                           const std::vector<std::pair<std::string, std::string>>& strings = {},
+                           const std::string& cast_json = "",
+                           const std::string& var_map_json = "") {
     TestSettings settings;
     settings.allow_pairs = allow_pairs;
     settings.method_name = method_name;
@@ -91,10 +92,10 @@ class FormRegressionTest : public ::testing::Test {
     test(code, type, expected, settings);
   }
 
-  void test_with_stack_structures(const std::string& code,
-                                  const std::string& type,
-                                  const std::string& expected,
-                                  const std::string& stack_map_json,
-                                  const std::string& cast_json = "",
-                                  const std::string& var_map_json = "");
+  void test_with_stack_structures_jak1(const std::string& code,
+                                       const std::string& type,
+                                       const std::string& expected,
+                                       const std::string& stack_map_json,
+                                       const std::string& cast_json = "",
+                                       const std::string& var_map_json = "");
 };

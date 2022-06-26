@@ -4,6 +4,155 @@
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
 
+void Compiler::save_repl_history() {
+  m_repl->save_history();
+}
+
+void Compiler::print_to_repl(const std::string_view& str) {
+  m_repl->print_to_repl(str);
+}
+
+std::string Compiler::get_prompt() {
+  std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
+  if (m_listener.is_connected()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
+  }
+  if (m_debugger.is_halted()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
+  } else if (m_debugger.is_attached()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
+  }
+  return "\033[0m" + prompt;
+}
+
+std::string Compiler::get_repl_input() {
+  auto str = m_repl->readline(get_prompt());
+  if (str) {
+    m_repl->add_to_history(str);
+    return str;
+  } else {
+    return "";
+  }
+}
+
+void Compiler::compile_and_send_from_string(const std::string& source_code) {
+  if (!connect_to_target()) {
+    throw std::runtime_error(
+        "Compiler failed to connect to target for compile_and_send_from_string.");
+  }
+
+  auto code = m_goos.reader.read_from_string(source_code);
+  auto compiled = compile_object_file("test-code", code, true);
+  ASSERT(!compiled->is_empty());
+  color_object_file(compiled);
+  auto data = codegen_object_file(compiled);
+  m_listener.send_code(data);
+  if (!m_listener.most_recent_send_was_acked()) {
+    print_compiler_warning("Runtime is not responding after sending test code. Did it crash?\n");
+  }
+}
+
+std::vector<std::string> Compiler::run_test_from_file(const std::string& source_code) {
+  try {
+    if (!connect_to_target()) {
+      throw std::runtime_error("Compiler::run_test_from_file couldn't connect!");
+    }
+
+    auto code = m_goos.reader.read_from_file({source_code});
+    auto compiled = compile_object_file("test-code", code, true);
+    if (compiled->is_empty()) {
+      return {};
+    }
+    color_object_file(compiled);
+    auto data = codegen_object_file(compiled);
+    m_listener.record_messages(ListenerMessageKind::MSG_PRINT);
+    m_listener.send_code(data);
+    if (!m_listener.most_recent_send_was_acked()) {
+      print_compiler_warning("Runtime is not responding after sending test code. Did it crash?\n");
+    }
+    return m_listener.stop_recording_messages();
+  } catch (std::exception& e) {
+    fmt::print("[Compiler] Failed to compile test program {}: {}\n", source_code, e.what());
+    throw e;
+  }
+}
+
+std::vector<std::string> Compiler::run_test_from_string(const std::string& src,
+                                                        const std::string& obj_name) {
+  try {
+    if (!connect_to_target()) {
+      throw std::runtime_error("Compiler::run_test_from_file couldn't connect!");
+    }
+
+    auto code = m_goos.reader.read_from_string({src});
+    auto compiled = compile_object_file(obj_name, code, true);
+    if (compiled->is_empty()) {
+      return {};
+    }
+    color_object_file(compiled);
+    auto data = codegen_object_file(compiled);
+    m_listener.record_messages(ListenerMessageKind::MSG_PRINT);
+    m_listener.send_code(data);
+    if (!m_listener.most_recent_send_was_acked()) {
+      print_compiler_warning("Runtime is not responding after sending test code. Did it crash?\n");
+    }
+    return m_listener.stop_recording_messages();
+  } catch (std::exception& e) {
+    fmt::print("[Compiler] Failed to compile test program from string {}: {}\n", src, e.what());
+    throw e;
+  }
+}
+
+/*!
+ * Just run the front end on a string. Will not do register allocation or code generation.
+ * Useful for typechecking, defining types,  or running strings that invoke the compiler again.
+ */
+void Compiler::run_front_end_on_string(const std::string& src) {
+  auto code = m_goos.reader.read_from_string({src});
+  compile_object_file("run-on-string", code, true);
+}
+
+/*!
+ * Just run the front end on a file. Will not do register allocation or code generation.
+ * Useful for typechecking, defining types,  or running strings that invoke the compiler again.
+ */
+void Compiler::run_front_end_on_file(const std::vector<std::string>& path) {
+  auto code = m_goos.reader.read_from_file(path);
+  compile_object_file("run-on-file", code, true);
+}
+
+/*!
+ * Run the entire compilation process on the input source code. Will generate an object file, but
+ * won't save it anywhere.
+ */
+void Compiler::run_full_compiler_on_string_no_save(const std::string& src,
+                                                   const std::optional<std::string>& string_name) {
+  auto code = m_goos.reader.read_from_string(src, true, string_name);
+  auto compiled = compile_object_file("run-on-string", code, true);
+  color_object_file(compiled);
+  codegen_object_file(compiled);
+}
+
+std::vector<std::string> Compiler::run_test_no_load(const std::string& source_code) {
+  auto code = m_goos.reader.read_from_file({source_code});
+  compile_object_file("test-code", code, true);
+  return {};
+}
+
+void Compiler::shutdown_target() {
+  if (m_debugger.is_attached()) {
+    m_debugger.detach();
+  }
+
+  if (m_listener.is_connected()) {
+    m_listener.send_reset(true);
+  }
+}
+
+bool Compiler::knows_object_file(const std::string& name) {
+  return m_debugger.knows_object(name);
+}
+
 /*!
  * Parse arguments into a goos::Arguments format.
  */

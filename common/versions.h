@@ -9,10 +9,8 @@
 
 namespace versions {
 // language version (OpenGOAL)
-constexpr s32 GOAL_VERSION_MAJOR = 0;
-constexpr s32 GOAL_VERSION_MINOR = 9;
-
-constexpr int DECOMPILER_VERSION = 4;
+constexpr s32 GOAL_VERSION_MAJOR = 1;
+constexpr s32 GOAL_VERSION_MINOR = 0;
 
 namespace jak1 {
 // these versions are from the game

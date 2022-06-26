@@ -52,7 +52,7 @@ class LinkedObjectFile {
   uint32_t set_ordered_label_names();
   void find_code();
   std::string print_words();
-  void find_functions();
+  void find_functions(GameVersion version);
   void disassemble_functions();
   void process_fp_relative_links();
   std::string print_scripts();

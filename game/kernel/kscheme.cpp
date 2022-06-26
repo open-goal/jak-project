@@ -713,7 +713,7 @@ Ptr<Symbol> find_symbol_from_c(const char* name) {
   auto bits = bits_for_sym() - 1;
   s32 sh1 = hash << (0x20 - bits);
   s32 sh2 = sh1 >> (0x20 - bits - 3);
-  // will be signed, bottom 3 bits 0 (for alignment, symbol are every 8 bytes)
+  // will be signed, bottom 3 bits 0 (for alignment, symbols are every 8 bytes)
   // upper 16 bits are the same, so we will reach +/- 8 kb around 0.
 
   if (sh2 > 0) {
@@ -2006,7 +2006,7 @@ s32 InitHeapAndSymbol() {
   method_set_symbol->value = 0;
 
   // set *boot-video-mode*
-  intern_from_c("*boot-video-mode*")->value = (u32)BootVideoMode;
+  intern_from_c("*boot-video-mode*")->value = 0;  // (u32)BootVideoMode;
 
   lg::info("Initialized GOAL heap in {:.2} ms", heap_init_timer.getMs());
   // load the kernel!

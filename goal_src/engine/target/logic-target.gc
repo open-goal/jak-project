@@ -4,6 +4,7 @@
 ;; name: logic-target.gc
 ;; name in dgo: logic-target
 ;; dgos: GAME, ENGINE
+;; note: changed for high fps
 
 ;; target-start is modified due to changing the size of the stack in gkernel.gc
 
@@ -1134,7 +1135,8 @@
       (set! (-> self control unknown-dword20) (-> *display* base-frame-counter))
       )
   (when (logtest? (-> self state-flags) (state-flags timed-invulnerable))
-    (if (< (logand (- (-> *display* base-frame-counter) (-> self control unknown-dword80)) 3) 1)
+    ;; changed for high fps. This fixes the flicker speed when damaged
+    (if (< (logand (- (-> *display* base-frame-counter) (-> self control unknown-dword80)) 3) (/ 1.0 (-> *display* time-adjust-ratio)))
         (logior! (-> self draw status) (draw-status hidden))
         (logclear! (-> self draw status) (draw-status hidden))
         )

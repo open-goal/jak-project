@@ -50,10 +50,10 @@ TEST_F(FormRegressionTest, MatrixPMult) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_stack_structures(func, type, expected,
-                             "[\n"
-                             "        [16, \"matrix\"]\n"
-                             "    ]");
+  test_with_stack_structures_jak1(func, type, expected,
+                                  "[\n"
+                                  "        [16, \"matrix\"]\n"
+                                  "    ]");
 }
 
 // TODO- this should also work without the cast, but be uglier.
@@ -96,11 +96,11 @@ TEST_F(FormRegressionTest, VectorXQuaternionWithCast) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_stack_structures(func, type, expected,
-                             "[\n"
-                             "        [16, \"matrix\"]\n"
-                             "    ]",
-                             "[[10, \"v1\", \"(pointer uint128)\"]]");
+  test_with_stack_structures_jak1(func, type, expected,
+                                  "[\n"
+                                  "        [16, \"matrix\"]\n"
+                                  "    ]",
+                                  "[[10, \"v1\", \"(pointer uint128)\"]]");
 }
 
 TEST_F(FormRegressionTest, EliminateFloatDeadSet) {
@@ -227,7 +227,7 @@ TEST_F(FormRegressionTest, EliminateFloatDeadSet) {
       "    )\n"
       "   )\n"
       "  )";
-  test_with_stack_structures(func, type, expected, "[]");
+  test_with_stack_structures_jak1(func, type, expected, "[]");
 }
 
 TEST_F(FormRegressionTest, IterateProcessTree) {
@@ -319,7 +319,7 @@ TEST_F(FormRegressionTest, IterateProcessTree) {
       "   )\n"
       "  s4-0\n"
       "  )";
-  test_with_stack_structures(func, type, expected, "[]");
+  test_with_stack_structures_jak1(func, type, expected, "[]");
 }
 
 TEST_F(FormRegressionTest, InspectVifStatBitfield) {
@@ -451,18 +451,18 @@ TEST_F(FormRegressionTest, InspectVifStatBitfield) {
       "  (format #t \"~T ~D~%\" (-> arg0 fqc))\n"
       "  arg0\n"
       "  )";
-  test_with_expr(func, type, expected, false, "",
-                 {{"L37", "[~8x] ~A~%"},
-                  {"L36", "~T ~D~%"},
-                  {"L35", "~T ~D~%"},
-                  {"L34", "~T ~D~%"},
-                  {"L33", "~T ~D~%"},
-                  {"L32", "~T ~D~%"},
-                  {"L31", "~T ~D~%"},
-                  {"L30", "~T ~D~%"},
-                  {"L29", "~T ~D~%"},
-                  {"L28", "~T ~D~%"},
-                  {"L27", "~T ~D~%"}});
+  test_with_expr_jak1(func, type, expected, false, "",
+                      {{"L37", "[~8x] ~A~%"},
+                       {"L36", "~T ~D~%"},
+                       {"L35", "~T ~D~%"},
+                       {"L34", "~T ~D~%"},
+                       {"L33", "~T ~D~%"},
+                       {"L32", "~T ~D~%"},
+                       {"L31", "~T ~D~%"},
+                       {"L30", "~T ~D~%"},
+                       {"L29", "~T ~D~%"},
+                       {"L28", "~T ~D~%"},
+                       {"L27", "~T ~D~%"}});
 }
 
 TEST_F(FormRegressionTest, InspectHandleBitfield) {
@@ -512,8 +512,9 @@ TEST_F(FormRegressionTest, InspectHandleBitfield) {
       "  (format #t \"~Tpid: ~D~%\" (-> arg0 pid))\n"
       "  arg0\n"
       "  )";
-  test_with_expr(func, type, expected, false, "",
-                 {{"L79", "[~8x] ~A~%"}, {"L32", "~Tprocess: #x~X~%"}, {"L31", "~Tpid: ~D~%"}});
+  test_with_expr_jak1(
+      func, type, expected, false, "",
+      {{"L79", "[~8x] ~A~%"}, {"L32", "~Tprocess: #x~X~%"}, {"L31", "~Tpid: ~D~%"}});
 }
 
 TEST_F(FormRegressionTest, InspectDmaTagBitfield) {
@@ -598,16 +599,16 @@ TEST_F(FormRegressionTest, InspectDmaTagBitfield) {
       "  (format #t \"~Ta: ~D~%\" (-> arg0 spr))\n"
       "  arg0\n"
       "  )";
-  test_with_expr(func, type, expected, false, "",
-                 {
-                     {"L65", "[~8x] ~A~%"},
-                     {"L37", "~Ta: ~D~%"},
-                     {"L36", "~Ta: ~D~%"},
-                     {"L35", "~Ta: ~D~%"},
-                     {"L34", "~Ta: ~D~%"},
-                     {"L33", "~Ta: ~D~%"},
-                     {"L32", "~Ta: ~D~%"},
-                 });
+  test_with_expr_jak1(func, type, expected, false, "",
+                      {
+                          {"L65", "[~8x] ~A~%"},
+                          {"L37", "~Ta: ~D~%"},
+                          {"L36", "~Ta: ~D~%"},
+                          {"L35", "~Ta: ~D~%"},
+                          {"L34", "~Ta: ~D~%"},
+                          {"L33", "~Ta: ~D~%"},
+                          {"L32", "~Ta: ~D~%"},
+                      });
 }
 
 // Tests nonzero-check on bitfield
@@ -661,7 +662,7 @@ TEST_F(FormRegressionTest, DmaSyncCrash) {
       "   )\n"
       "  0\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, DmaSend) {
@@ -742,7 +743,7 @@ TEST_F(FormRegressionTest, DmaSend) {
       "  (.sync.l)\n"
       "  0\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, DmaInitialize) {
@@ -776,9 +777,9 @@ TEST_F(FormRegressionTest, DmaInitialize) {
       "  (set! (-> (the-as vif-bank #x10003c00) err me0) 1)\n"
       "  0\n"
       "  )";
-  test_with_expr(func, type, expected, false, "", {},
-                 "[[1, \"v1\", \"vif-bank\"], [8, \"v1\", \"vif-bank\"], [6, \"a0\", "
-                 "\"vif-bank\"], [13, \"a0\", \"vif-bank\"]]");
+  test_with_expr_jak1(func, type, expected, false, "", {},
+                      "[[1, \"v1\", \"vif-bank\"], [8, \"v1\", \"vif-bank\"], [6, \"a0\", "
+                      "\"vif-bank\"], [13, \"a0\", \"vif-bank\"]]");
 }
 
 // Dynamic bitfield stuff.
@@ -859,7 +860,7 @@ TEST_F(FormRegressionTest, SetDisplayEnv) {
       "  (set! (-> arg0 bgcolor) (new 'static 'gs-bgcolor))\n"
       "  arg0\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, DmaBufferAddVuFunction) {
@@ -974,7 +975,7 @@ TEST_F(FormRegressionTest, DmaBufferAddVuFunction) {
       "   )\n"
       "  #f\n"
       "  )";
-  test_with_expr(func, type, expected, false, "", {}, "[[[9, 33], \"t2\", \"dma-packet\"]]");
+  test_with_expr_jak1(func, type, expected, false, "", {}, "[[[9, 33], \"t2\", \"dma-packet\"]]");
 }
 
 TEST_F(FormRegressionTest, DmaBucketInsertTag) {
@@ -997,11 +998,11 @@ TEST_F(FormRegressionTest, DmaBucketInsertTag) {
       "   )\n"
       "  arg2\n"
       "  )";
-  test_with_expr(func, type, expected, false, "", {},
-                 "[\n"
-                 "    [[2, 6], \"v1\", \"dma-bucket\"],\n"
-                 "    [3, \"a0\", \"dma-bucket\"]\n"
-                 "  ]");
+  test_with_expr_jak1(func, type, expected, false, "", {},
+                      "[\n"
+                      "    [[2, 6], \"v1\", \"dma-bucket\"],\n"
+                      "    [3, \"a0\", \"dma-bucket\"]\n"
+                      "  ]");
 }
 
 TEST_F(FormRegressionTest, StupidFloatMove) {
@@ -1109,7 +1110,7 @@ TEST_F(FormRegressionTest, StupidFloatMove) {
       "   )\n"
       "  0.0\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 // gpr->fpr not being propagated
@@ -1128,7 +1129,7 @@ TEST_F(FormRegressionTest, Method11FontContext) {
       "  (set! (-> arg0 origin z) (the float arg1))\n"
       "  arg0\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 // 128-bit bitfields, also type for pextuw
@@ -1166,7 +1167,7 @@ TEST_F(FormRegressionTest, Method4ResTag) {
       "            (* (-> arg0 elt-count) (-> arg0 elt-type size))\n"
       "            )\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, MakeSqrtTable) {
@@ -1240,7 +1241,7 @@ TEST_F(FormRegressionTest, MakeSqrtTable) {
       "  0\n"
       "  (none)\n"
       "  )";
-  test_with_expr(
+  test_with_expr_jak1(
       func, type, expected, false, "",
       {{"L190", "static int sqrt_table[256] =~%{~%"}, {"L189", "~D,~%"}, {"L188", "};~%"}});
 }
@@ -1288,7 +1289,7 @@ TEST_F(FormRegressionTest, Method2Vec4s) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_expr(func, type, expected, false, "", {{"L344", "#<vector ~F ~F ~F ~F @ #x~X>"}});
+  test_with_expr_jak1(func, type, expected, false, "", {{"L344", "#<vector ~F ~F ~F ~F @ #x~X>"}});
 }
 
 TEST_F(FormRegressionTest, SoundNameEqual) {
@@ -1310,7 +1311,7 @@ TEST_F(FormRegressionTest, SoundNameEqual) {
   std::string type = "(function sound-name sound-name symbol)";
   std::string expected =
       "(and (= (the-as uint arg0) (the-as uint arg1)) (= (-> arg0 hi) (-> arg1 hi)))";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, DebugMenuFuncDecode) {
@@ -1376,7 +1377,7 @@ TEST_F(FormRegressionTest, DebugMenuFuncDecode) {
       "                    )\n"
       "   )\n"
       "  )";
-  test_with_expr(func, type, expected, false, "", {}, "[[13, \"a0\", \"symbol\"]]");
+  test_with_expr_jak1(func, type, expected, false, "", {}, "[[13, \"a0\", \"symbol\"]]");
 }
 
 TEST_F(FormRegressionTest, MatrixNewInlineProp) {
@@ -1431,7 +1432,7 @@ TEST_F(FormRegressionTest, MatrixNewInlineProp) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_stack_structures(func, type, expected, R"([[16, "matrix"]])");
+  test_with_stack_structures_jak1(func, type, expected, R"([[16, "matrix"]])");
 }
 
 TEST_F(FormRegressionTest, VectorNewInlineProp) {
@@ -1491,7 +1492,7 @@ TEST_F(FormRegressionTest, VectorNewInlineProp) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_stack_structures(func, type, expected, R"([[16, "vector"]])");
+  test_with_stack_structures_jak1(func, type, expected, R"([[16, "vector"]])");
 }
 
 TEST_F(FormRegressionTest, Method23Trsqv) {
@@ -1517,7 +1518,7 @@ TEST_F(FormRegressionTest, Method23Trsqv) {
   std::string type = "(function trsqv vector float)";
   std::string expected =
       "(vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg1 (-> arg0 trans)))";
-  test_with_stack_structures(func, type, expected, R"([[16, "vector"]])");
+  test_with_stack_structures_jak1(func, type, expected, R"([[16, "vector"]])");
 }
 
 TEST_F(FormRegressionTest, VectorLineDistance) {
@@ -1612,6 +1613,6 @@ TEST_F(FormRegressionTest, VectorLineDistance) {
       "   )\n"
       "  (vector-length (vector-! (new-stack-vector0) gp-1 v1-3))\n"
       "  )";
-  test_with_stack_structures(func, type, expected,
-                             R"([[16, "vector"], [32, "vector"], [48, "vector"], [64, "vector"]])");
+  test_with_stack_structures_jak1(
+      func, type, expected, R"([[16, "vector"], [32, "vector"], [48, "vector"], [64, "vector"]])");
 }

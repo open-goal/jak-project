@@ -3,6 +3,7 @@
 #include "Function.h"
 
 #include "common/goos/PrettyPrinter.h"
+#include "common/symbols.h"
 #include "common/util/Assert.h"
 
 #include "decompiler/Disasm/InstructionMatching.h"
@@ -2559,13 +2560,14 @@ void ControlFlowGraph::flag_early_exit(const std::vector<BasicBlock>& blocks) {
   }
 }
 
-CfgVtx::DelaySlotKind get_delay_slot(const Instruction& i) {
+CfgVtx::DelaySlotKind get_delay_slot(const Instruction& i, GameVersion version) {
   if (is_nop(i)) {
     return CfgVtx::DelaySlotKind::NOP;
   } else if (is_gpr_3(i, InstructionKind::OR, {}, Register(Reg::GPR, Reg::S7),
                       Register(Reg::GPR, Reg::R0))) {
     return CfgVtx::DelaySlotKind::SET_REG_FALSE;
-  } else if (is_gpr_2_imm_int(i, InstructionKind::DADDIU, {}, Register(Reg::GPR, Reg::S7), 8)) {
+  } else if (is_gpr_2_imm_int(i, InstructionKind::DADDIU, {}, Register(Reg::GPR, Reg::S7),
+                              true_symbol_offset(version))) {
     return CfgVtx::DelaySlotKind::SET_REG_TRUE;
   } else {
     return CfgVtx::DelaySlotKind::OTHER;
@@ -2576,7 +2578,7 @@ namespace {
 /*!
  * Is this instruction possible in the delay slot, without using inline assembly?
  */
-bool branch_delay_asm(const Instruction& i) {
+bool branch_delay_asm(const Instruction& i, GameVersion version) {
   if (is_nop(i)) {
     // nop can be used as a delay
     return false;
@@ -2584,7 +2586,8 @@ bool branch_delay_asm(const Instruction& i) {
                       Register(Reg::GPR, Reg::R0))) {
     // set false is used in ifs, etc
     return false;
-  } else if (is_gpr_2_imm_int(i, InstructionKind::DADDIU, {}, Register(Reg::GPR, Reg::S7), 8)) {
+  } else if (is_gpr_2_imm_int(i, InstructionKind::DADDIU, {}, Register(Reg::GPR, Reg::S7),
+                              true_symbol_offset(version))) {
     // set true is used in sc
     return false;
   } else if (is_gpr_3(i, InstructionKind::OR, {}, {}, Register(Reg::GPR, Reg::R0))) {
@@ -2609,12 +2612,12 @@ bool branch_delay_asm(const Instruction& i) {
 /*!
  * Build and resolve a Control Flow Graph as much as possible.
  */
-std::shared_ptr<ControlFlowGraph> build_cfg(
-    const LinkedObjectFile& file,
-    int seg,
-    Function& func,
-    const CondWithElseLengthHack& cond_with_else_hack,
-    const std::unordered_set<int>& blocks_ending_in_asm_br) {
+std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
+                                            int seg,
+                                            Function& func,
+                                            const CondWithElseLengthHack& cond_with_else_hack,
+                                            const std::unordered_set<int>& blocks_ending_in_asm_br,
+                                            GameVersion version) {
   // fmt::print("START {}\n", func.guessed_name.to_string());
   auto cfg = std::make_shared<ControlFlowGraph>();
 
@@ -2708,7 +2711,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
           if (is_branch(branch_candidate, false)) {
             blocks.at(i)->end_branch.has_branch = true;
             blocks.at(i)->end_branch.branch_likely = false;
-            blocks.at(i)->end_branch.kind = get_delay_slot(delay_slot_candidate);
+            blocks.at(i)->end_branch.kind = get_delay_slot(delay_slot_candidate, version);
             bool branch_always = is_always_branch(branch_candidate);
 
             // need to find block target
@@ -2779,7 +2782,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
     if (is_branch(likely_branch_candidate, true)) {
       // likely branch!
       auto following = func.instructions.at(likely_branch_idx + 1);
-      if (branch_delay_asm(following)) {
+      if (branch_delay_asm(following, version)) {
         b->end_branch.asm_branch = true;
         if (debug_asm_branch) {
           fmt::print("LIKELY ASM BRANCH: {} and {}\n",
@@ -2795,7 +2798,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(
       auto& branch_candidate = func.instructions.at(idx);
       auto& delay_slot_candidate = func.instructions.at(idx + 1);
       if (is_branch(branch_candidate, false)) {
-        if (branch_delay_asm(delay_slot_candidate)) {
+        if (branch_delay_asm(delay_slot_candidate, version)) {
           b->end_branch.asm_branch = true;
           if (debug_asm_branch) {
             fmt::print("NORMAL ASM BRANCH: {} and {}\n", branch_candidate.to_string(file.labels),

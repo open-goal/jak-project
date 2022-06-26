@@ -133,7 +133,7 @@
 
 (define *game-directory* (get-environment-variable "OPENGOAL_DECOMP_DIR" :default "jak1/"))
 (when (user? dass)
-    (set! *game-directory* "jak1_pal/"))
+    (set! *game-directory* "jak1_us2/"))
 
 (defmacro copy-texture (tpage-id)
   "Copy a texture from the game, using the given tpage ID"
@@ -1976,7 +1976,7 @@
 
 ;; Custom or Modified Code
 (goal-src "pc/pckernel-h.gc" "dma-disasm")
-(goal-src "pc/pckernel.gc" "settings")
+(goal-src "pc/pckernel.gc" "settings" "video")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
 (goal-src "pc/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")

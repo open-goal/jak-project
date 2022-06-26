@@ -158,7 +158,6 @@ class ObjectFileDB {
   void extract_art_info();
   void dump_art_info(const std::string& output_dir);
   void dump_raw_objects(const std::string& output_dir);
-
   void write_object_file_words(const std::string& output_dir, bool dump_data, bool dump_code);
   void write_disassembly(const std::string& output_dir,
                          bool disassemble_data,
@@ -192,6 +191,9 @@ class ObjectFileDB {
   void ir2_do_segment_analysis_phase2(int seg, const Config& config, ObjectFileData& data);
   void ir2_setup_labels(const Config& config, ObjectFileData& data);
   void ir2_run_mips2c(const Config& config, ObjectFileData& data);
+  void ir2_analyze_all_types(const std::string& output_file,
+                             const std::optional<std::string>& previous_game_types,
+                             const std::unordered_set<std::string>& bad_types);
   std::string ir2_to_file(ObjectFileData& data, const Config& config);
   std::string ir2_function_to_string(ObjectFileData& data, Function& function, int seg);
   std::string ir2_final_out(ObjectFileData& data,

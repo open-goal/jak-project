@@ -4,6 +4,7 @@
 ;; name: cam-states.gc
 ;; name in dgo: cam-states
 ;; dgos: GAME, ENGINE
+;; note: changed for high fps
 
 
 ;; DECOMP BEGINS
@@ -409,6 +410,7 @@
   )
 
 ;; main first-person camera
+;; note: modified for high fps
 (defstate cam-eye (camera-slave)
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
@@ -472,24 +474,24 @@
                             )
                           )
                     )
-                (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) (-> *CAM_EYE-bank* rot-speed))))
-                (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) (-> *CAM_EYE-bank* rot-speed))))
+                (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))) ;; changed for high fps
+                (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))) ;; changed for high fps
                 )
               )
             (cond
-              ((< (-> *CAM_EYE-bank* rot-speed) (-> s4-0 x))
-               (set! (-> s4-0 x) (-> *CAM_EYE-bank* rot-speed))
+              ((< (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 x)) ;; changed for high fps
+               (set! (-> s4-0 x) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))) ;; changed for high fps
                )
-              ((< (-> s4-0 x) (- (-> *CAM_EYE-bank* rot-speed)))
-               (set! (-> s4-0 x) (- (-> *CAM_EYE-bank* rot-speed)))
+              ((< (-> s4-0 x) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; changed for high fps
+               (set! (-> s4-0 x) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; changed for high fps
                )
               )
             (cond
-              ((< (-> *CAM_EYE-bank* rot-speed) (-> s4-0 y))
-               (set! (-> s4-0 y) (-> *CAM_EYE-bank* rot-speed))
+              ((< (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 y)) ;; changed for high fps
+               (set! (-> s4-0 y) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))) ;; changed for high fps
                )
-              ((< (-> s4-0 y) (- (-> *CAM_EYE-bank* rot-speed)))
-               (set! (-> s4-0 y) (- (-> *CAM_EYE-bank* rot-speed)))
+              ((< (-> s4-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; changed for high fps
+               (set! (-> s4-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; changed for high fps
                )
               )
             (cond
