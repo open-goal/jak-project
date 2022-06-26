@@ -20,14 +20,6 @@ using namespace jak1_symbols;
 // SDATA
 ///////////
 
-struct format_struct {
-  char data[0x40];
-  void reset() {
-    for (auto& c : data)
-      c = -1;
-  }
-};
-
 /*!
  * The GOAL "format" function.  The actual function is named "format".  However, GOAL's calling
  * convention differs from x86-64, so GOAL cannot directly call format.  There is an assembly

@@ -1,10 +1,21 @@
 #include "kboot.h"
 
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
+
+#include "common/goal_constants.h"
+#include "common/util/Timer.h"
 
 #include "game/common/game_common_types.h"
 #include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/Symbol4.h"
+#include "game/kernel/common/klisten.h"
+#include "game/kernel/common/kprint.h"
+#include "game/kernel/common/kscheme.h"
+#include "game/kernel/common/ksocket.h"
+#include "game/kernel/jak2/klisten.h"
+#include "game/kernel/jak2/kmachine.h"
 #include "game/sce/libscf.h"
 
 namespace jak2 {
@@ -17,7 +28,9 @@ void kboot_init_globals() {
   memset(DebugBootArtGroup, 0, sizeof(DebugBootArtGroup));
   strcpy(DebugBootUser, "unknown");
 }
-/*
+
+void KernelCheckAndDispatch();
+
 s32 goal_main(int argc, const char* const* argv) {
   // only in PC port
   InitParms(argc, argv);
@@ -68,7 +81,6 @@ s32 goal_main(int argc, const char* const* argv) {
   return 0;
 }
 
-
 void KernelDispatch(u32 dispatcher_func) {
   // place our stack at the end of EE memory
   u64 goal_stack = u64(g_ee_main_mem) + EE_MAIN_MEM_SIZE - 8;
@@ -80,7 +92,7 @@ void KernelDispatch(u32 dispatcher_func) {
   }
 
   // remember the old listener
-  Function old_listener_function = ListenerFunction->value;
+  auto old_listener_function = ListenerFunction->value();
 
   // run the kernel!
   Timer dispatch_timer;
@@ -88,15 +100,15 @@ void KernelDispatch(u32 dispatcher_func) {
     call_goal_on_stack(Ptr<Function>(dispatcher_func), goal_stack, s7.offset, g_ee_main_mem);
   } else {
     // added, just calls the listener function
-    if (ListenerFunction->value != s7.offset) {
-      auto result = call_goal_on_stack(Ptr<Function>(ListenerFunction->value), goal_stack,
+    if (ListenerFunction->value() != s7.offset) {
+      auto result = call_goal_on_stack(Ptr<Function>(ListenerFunction->value()), goal_stack,
                                        s7.offset, g_ee_main_mem);
 #ifdef __linux__
       cprintf("%ld\n", result);
 #else
       cprintf("%lld\n", result);
 #endif
-      ListenerFunction->value = s7.offset;
+      ListenerFunction->value() = s7.offset;
     }
   }
 
@@ -109,16 +121,16 @@ void KernelDispatch(u32 dispatcher_func) {
   ClearPending();
 
   // now run the extra "kernel function"
-  Ptr<Function> bonus_function = KernelFunction->value;
-  if (bonus_function.offset != s7.offset) {
+  auto bonus_function = KernelFunction->value();
+  if (bonus_function != s7.offset) {
     // clear the pending kernel function
-    KernelFunction->value.offset = s7.offset;
+    KernelFunction->value() = s7.offset;
     // and run
-    call_goal_on_stack(bonus_function, goal_stack, s7.offset, g_ee_main_mem);
+    call_goal_on_stack(Ptr<Function>(bonus_function), goal_stack, s7.offset, g_ee_main_mem);
   }
 
   // send ack to indicate that the listener function has been processed and the result printed
-  if (MasterDebug && ListenerFunction->value != old_listener) {
+  if (MasterDebug && ListenerFunction->value() != old_listener_function) {
     SendAck();
   }
 
@@ -134,13 +146,8 @@ void KernelShutdown(u32 reason) {
 
 void KernelCheckAndDispatch() {
   while (MasterExit == RuntimeExitStatus::RUNNING) {
-    KernelDispatch(kernel_dispatcher.value());
+    KernelDispatch(kernel_dispatcher->value());
   }
 }
 
- */
-
-void KernelDispatch(u32 /*dispatcher_func*/) {
-  ASSERT(false);  // stub
-}
 }  // namespace jak2

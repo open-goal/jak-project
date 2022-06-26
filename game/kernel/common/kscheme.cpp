@@ -278,3 +278,12 @@ u64 inspect_vu_function(u32 obj) {
           vf->origin, vf->qlength);
   return obj;
 }
+
+/*!
+ * This doesn't exist in the game, but we add it as a wrapper around kheapstatus.
+ * Note that this isn't a great inspect as it prints to stdout instead of the printbuffer.
+ */
+u64 inspect_kheap(u32 obj) {
+  kheapstatus(Ptr<kheapinfo>(obj));
+  return obj;
+}

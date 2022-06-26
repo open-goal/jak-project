@@ -9,6 +9,7 @@
  * interested for us to track memory usage.
  */
 
+namespace jak2 {
 void kmemopen_from_c(Ptr<kheapinfo> heap, const char* name) {
   (void)heap;
   (void)name;
@@ -20,3 +21,4 @@ void kmemopen(u32 heap, u32 name) {
 }
 
 void kmemclose() {}
+}  // namespace jak2

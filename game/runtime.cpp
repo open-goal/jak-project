@@ -182,6 +182,9 @@ void ee_runner(SystemThreadInterface& iface) {
     case GameVersion::Jak1:
       jak1::goal_main(g_argc, g_argv);
       break;
+    case GameVersion::Jak2:
+      jak2::goal_main(g_argc, g_argv);
+      break;
     default:
       ASSERT_MSG(false, "Unsupported game version");
   }

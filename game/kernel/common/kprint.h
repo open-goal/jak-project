@@ -21,6 +21,14 @@ constexpr u32 DEBUG_OUTPUT_BUFFER_SIZE = 0x80000;
 constexpr u32 DEBUG_PRINT_BUFFER_SIZE = 0x200000;
 constexpr u32 PRINT_BUFFER_SIZE = 0x2000;
 
+struct format_struct {
+  char data[0x40];
+  void reset() {
+    for (auto& c : data)
+      c = -1;
+  }
+};
+
 void kprint_init_globals_common();
 
 /*!

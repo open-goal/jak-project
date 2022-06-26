@@ -4,20 +4,35 @@
 #include <string>
 
 #include "common/log/log.h"
+#include "common/symbols.h"
+#include "common/util/FileUtil.h"
 
 #include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kboot.h"
+#include "game/kernel/common/kdgo.h"
 #include "game/kernel/common/kdsnetm.h"
 #include "game/kernel/common/kernel_types.h"
+#include "game/kernel/common/klink.h"
 #include "game/kernel/common/kmachine.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
+#include "game/kernel/common/ksocket.h"
+#include "game/kernel/common/ksound.h"
 #include "game/kernel/common/memory_layout.h"
 #include "game/kernel/jak2/kboot.h"
+#include "game/kernel/jak2/kdgo.h"
+#include "game/kernel/jak2/klink.h"
+#include "game/kernel/jak2/klisten.h"
 #include "game/kernel/jak2/kmalloc.h"
+#include "game/kernel/jak2/kscheme.h"
+#include "game/kernel/jak2/ksound.h"
+#include "game/kernel/svnrev.h"
+#include "game/sce/libdma.h"
+#include "game/sce/libgraph.h"
 #include "game/sce/sif_ee.h"
+#include "game/sce/stubs.h"
 #include "game/system/vm/vm.h"
 
 using namespace ee;
@@ -371,10 +386,6 @@ int InitMachine() {
   InitGoalProto();
   // }
 
-  ASSERT_MSG(false, "nyi");
-  return -1;
-
-  /*
   printf("InitSound\n");
   InitSound();
   printf("InitRPC\n");
@@ -392,7 +403,6 @@ int InitMachine() {
   } else {
     return status;
   }
-   */
 }
 
 /*!
@@ -448,9 +458,167 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
   return fs;
 }
 
-void InitMachineScheme() {
-  // todo also the pc port functions
+void InitMachine_PCPort() {
+  // PC Port added functions
+
+  make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
+  make_function_symbol_from_c("__mem-move", (void*)c_memmove);
+  // make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
+  // make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
+  // make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
+  // make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
+  // make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+
+  // pad stuff
+  make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
+  make_function_symbol_from_c("pc-pad-input-map-save!", (void*)Gfx::input_mode_save);
+  make_function_symbol_from_c("pc-pad-input-mode-set", (void*)Gfx::input_mode_set);
+  make_function_symbol_from_c("pc-pad-input-pad-set", (void*)Pad::input_mode_pad_set);
+  make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
+  make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
+  make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);
+
+  // os stuff
+  // make_function_symbol_from_c("pc-get-os", (void*)get_os);
+  make_function_symbol_from_c("pc-get-window-size", (void*)get_window_size);
+  make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
+  // make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
+  make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
+  make_function_symbol_from_c("pc-get-screen-rate", (void*)get_screen_rate);
+  make_function_symbol_from_c("pc-get-screen-vmode-count", (void*)get_screen_vmode_count);
+  make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
+  // make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
+  make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
+  make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
+  make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
+
+  // graphics things
+  make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
+  make_function_symbol_from_c("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
+  make_function_symbol_from_c("pc-set-collision-mode", (void*)Gfx::CollisionRendererSetMode);
+  make_function_symbol_from_c("pc-set-collision-mask", (void*)set_collision_mask);
+  make_function_symbol_from_c("pc-get-collision-mask", (void*)get_collision_mask);
+  make_function_symbol_from_c("pc-set-collision-wireframe", (void*)set_collision_wireframe);
+  make_function_symbol_from_c("pc-set-collision", (void*)set_collision);
+
+  // file related functions
+  make_function_symbol_from_c("pc-filepath-exists?", (void*)filepath_exists);
+  make_function_symbol_from_c("pc-mkdir-file-path", (void*)mkdir_path);
+
+  // discord rich presence
+  // make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
+  // make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
+
+  // profiler
+  make_function_symbol_from_c("pc-prof", (void*)prof_event);
+
+  // init ps2 VM
+  if (VM::use) {
+    make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
+    VM::vm_init();
+  }
+
+  // setup string constants
+  auto user_dir_path = file_util::get_user_game_dir();
+  intern_from_c("*pc-user-dir-base-path*")->value() =
+      make_string_from_c(user_dir_path.string().c_str());
+  // TODO - we will eventually need a better way to know what game we are playing
+  auto settings_path = file_util::get_user_settings_dir();
+  intern_from_c("*pc-settings-folder*")->value() =
+      make_string_from_c(settings_path.string().c_str());
+  intern_from_c("*pc-settings-built-sha*")->value() = make_string_from_c(GIT_VERSION);
+}
+
+void PutDisplayEnv(u32 /*ptr*/) {
   ASSERT(false);
+}
+
+u32 sceGsSyncV(u32 mode) {
+  // stub, jak2 probably works differently here
+  ASSERT(false);
+  return 0;
+  /*
+  ASSERT(mode == 0);
+  VBlank_Handler();
+  return Gfx::vsync();
+   */
+}
+
+u32 sceGsSyncPath(u32 mode, u32 timeout) {
+  // stub, jak2 probably works differently here
+  ASSERT(mode == 0 && timeout == 0);
+  ASSERT(false);
+  return 0;
+  // return Gfx::sync_path();
+}
+
+void aybabtu() {}
+
+void InitMachineScheme() {
+  make_function_symbol_from_c("put-display-env", (void*)PutDisplayEnv);
+  make_function_symbol_from_c("syncv", (void*)sceGsSyncV);
+  make_function_symbol_from_c("sync-path", (void*)sceGsSyncPath);
+  make_function_symbol_from_c("reset-path", (void*)ee::sceGsResetPath);
+  make_function_symbol_from_c("reset-graph", (void*)sceGsResetGraph);
+  make_function_symbol_from_c("dma-sync", (void*)sceDmaSync);
+  make_function_symbol_from_c("gs-put-imr", (void*)sceGsPutIMR);
+  make_function_symbol_from_c("gs-get-imr", (void*)sceGsGetIMR);
+  make_function_symbol_from_c("gs-store-image", (void*)sceGsExecStoreImage);
+  make_function_symbol_from_c("flush-cache", (void*)FlushCache);
+  make_function_symbol_from_c("cpad-open", (void*)CPadOpen);
+  make_function_symbol_from_c("cpad-get-data", (void*)CPadGetData);
+  make_function_symbol_from_c("mouse-get-data", (void*)MouseGetData);
+  make_function_symbol_from_c("install-handler", (void*)InstallHandler);
+  make_function_symbol_from_c("install-debug-handler", (void*)InstallDebugHandler);
+  make_function_symbol_from_c("file-stream-open", (void*)kopen);
+  make_function_symbol_from_c("file-stream-close", (void*)kclose);
+  make_function_symbol_from_c("file-stream-length", (void*)klength);
+  make_function_symbol_from_c("file-stream-seek", (void*)kseek);
+  make_function_symbol_from_c("file-stream-read", (void*)kread);
+  make_function_symbol_from_c("file-stream-write", (void*)kwrite);
+  make_function_symbol_from_c("scf-get-language", (void*)DecodeLanguage);
+  make_function_symbol_from_c("scf-get-time", (void*)DecodeTime);
+  make_function_symbol_from_c("scf-get-aspect", (void*)DecodeAspect);
+  make_function_symbol_from_c("scf-get-volume", (void*)DecodeVolume);
+  make_function_symbol_from_c("scf-get-territory", (void*)DecodeTerritory);
+  make_function_symbol_from_c("scf-get-timeout", (void*)DecodeTimeout);
+  make_function_symbol_from_c("scf-get-inactive-timeout", (void*)DecodeInactiveTimeout);
+  make_function_symbol_from_c("dma-to-iop", (void*)dma_to_iop);
+  make_function_symbol_from_c("kernel-shutdown", (void*)KernelShutdown);
+  make_function_symbol_from_c("aybabtu", (void*)aybabtu);  // was nothing function
+
+  InitMachine_PCPort();
+
+  InitSoundScheme();
+  intern_from_c("*stack-top*")->value() = 0x7f00000;
+  intern_from_c("*stack-base*")->value() = 0x7ffffff;
+  intern_from_c("*stack-size*")->value() = 0x100000;
+  intern_from_c("*kernel-boot-message*")->value() = intern_from_c(DebugBootMessage).offset;
+  intern_from_c("*user*")->value() = make_string_from_c(DebugBootUser);
+  if (DiskBoot) {
+    intern_from_c("*kernel-boot-mode*")->value() = intern_from_c("boot").offset;
+  }
+  intern_from_c("*kernel-boot-level*")->value() = intern_from_c(DebugBootLevel).offset;
+  intern_from_c("*kernel-boot-art-group*")->value() = make_string_from_c(DebugBootArtGroup);
+  if (DiskBoot) {
+    *EnableMethodSet = *EnableMethodSet + 1;
+    load_and_link_dgo_from_c("game", kglobalheap,
+                             LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
+                             0x400000, true);
+    *EnableMethodSet = *EnableMethodSet + -1;
+    using namespace jak2_symbols;
+    kernel_packages->value() =
+        new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE - 1).cast<u32>()),
+                 make_string_from_c("engine"), kernel_packages->value());
+    kernel_packages->value() =
+        new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE - 1).cast<u32>()),
+                 make_string_from_c("art"), kernel_packages->value());
+    kernel_packages->value() =
+        new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE).cast<u32>()),
+                 make_string_from_c("common"), kernel_packages->value());
+    printf("calling play-boot!\n");
+    call_goal_function_by_name("play-boot");  // new function for jak2!
+  }
 }
 
 }  // namespace jak2

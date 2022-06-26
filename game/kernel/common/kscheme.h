@@ -46,3 +46,4 @@ u64 inspect_binteger(u64 obj);
 u64 inspect_float(u32 f);
 u64 inspect_structure(u32 obj);
 u64 inspect_vu_function(u32 obj);
+u64 inspect_kheap(u32 obj);

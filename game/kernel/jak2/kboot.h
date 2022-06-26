@@ -10,4 +10,5 @@ extern char DebugBootArtGroup[64];
 s32 goal_main(int argc, const char* const* argv);
 void kboot_init_globals();
 void KernelDispatch(u32 dispatcher_func);
+void KernelShutdown(u32 reason);
 }  // namespace jak2

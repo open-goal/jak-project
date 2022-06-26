@@ -1384,15 +1384,6 @@ u64 inspect_link_block(u32 ob) {
 }
 
 /*!
- * This doesn't exist in the game, but we add it as a wrapper around kheapstatus.
- * Note that this isn't a great inspect as it prints to stdout instead of the printbuffer.
- */
-u64 inspect_kheap(u32 obj) {
-  kheapstatus(Ptr<kheapinfo>(obj));
-  return obj;
-}
-
-/*!
  * Doesn't exist in the game. Maybe it was a macro?
  */
 u64 pack_type_flag(u64 methods, u64 heap_base, u64 size) {
@@ -1709,7 +1700,6 @@ s32 InitHeapAndSymbol() {
 
   lg::info("Initialized GOAL heap in {:.2} ms", heap_init_timer.getMs());
   // load the kernel!
-  // todo, remove MasterUseKernel
   if (MasterUseKernel) {
     Timer kernel_load_timer;
     method_set_symbol->value++;

@@ -44,6 +44,6 @@ enum class GameVersion { Jak1 = 1, Jak2 = 2 };
 template <typename T>
 struct PerGameVersion {
   constexpr PerGameVersion(T jak1, T jak2) : data{jak1, jak2} {}
-  constexpr T operator[](GameVersion v) const { return data[(int)v]; }
+  constexpr T operator[](GameVersion v) const { return data[(int)v - 1]; }
   T data[2];
 };

@@ -13,4 +13,8 @@ Ptr<uint8_t> link_and_exec(Ptr<uint8_t> data,
                            Ptr<kheapinfo> heap,
                            uint32_t flags,
                            bool jump_from_c_to_goal);
+u32 link_busy();
+void link_reset();
+uint64_t link_begin(u64* args);
+uint64_t link_resume();
 }  // namespace jak2

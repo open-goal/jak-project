@@ -50,4 +50,11 @@ u64 inspect_object(u32 obj);
 u64 print_object(u32 obj);
 Ptr<Function> make_function_symbol_from_c(const char* name, void* f);
 Ptr<Function> make_stack_arg_function_symbol_from_c(const char* name, void* f);
+int InitHeapAndSymbol();
+u64 load(u32 file_name_in, u32 heap_in);
+u64 loadb(u32 file_name_in, u32 heap_in, u32 param3);
+u64 loado(u32 file_name_in, u32 heap_in);
+u64 unload(u32 name);
+u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id);
+u64 call_goal_function_by_name(const char* name);
 }  // namespace jak2
