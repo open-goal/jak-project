@@ -6,8 +6,9 @@
  */
 
 #include "common/common_types.h"
+#include "common/versions.h"
 
-constexpr int DGO_RPC_ID = 0xdeb4;
+constexpr PerGameVersion<int> DGO_RPC_ID(0xdeb4, 0xfab3);
 constexpr int DGO_RPC_CHANNEL = 3;
 constexpr int DGO_RPC_LOAD_FNO = 0;
 constexpr int DGO_RPC_LOAD_NEXT_FNO = 1;

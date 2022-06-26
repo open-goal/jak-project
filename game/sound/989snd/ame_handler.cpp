@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: ISC
 #include "ame_handler.h"
 
-#include "game/kernel/ksound.h"
 #include "game/sound/989snd/blocksound_handler.h"
 
 namespace snd {

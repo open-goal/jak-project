@@ -25,32 +25,37 @@ set(RUNTIME_SOURCE
         sce/stubs.cpp
         kernel/common/fileio.cpp
         kernel/common/kboot.cpp
+        kernel/common/kdgo.cpp
         kernel/common/kdsnetm.cpp
         kernel/common/klink.cpp
         kernel/common/klisten.cpp
         kernel/common/kmachine.cpp
         kernel/common/kmalloc.cpp
+        kernel/common/kmemcard.cpp
         kernel/common/kprint.cpp
         kernel/common/kscheme.cpp
         kernel/common/ksocket.cpp
+        kernel/common/ksound.cpp
+        kernel/jak1/fileio.cpp
         kernel/jak1/kboot.cpp
+        kernel/jak1/kdgo.cpp
         kernel/jak1/klink.cpp
         kernel/jak1/klisten.cpp
         kernel/jak1/kmachine.cpp
         kernel/jak1/kprint.cpp
         kernel/jak1/kscheme.cpp
+        kernel/jak1/ksound.cpp
+        kernel/jak2/fileio.cpp
         kernel/jak2/kboot.cpp
+        kernel/jak2/kdgo.cpp
         kernel/jak2/klink.cpp
         kernel/jak2/klisten.cpp
         kernel/jak2/kmachine.cpp
         kernel/jak2/kmalloc.cpp
         kernel/jak2/kprint.cpp
         kernel/jak2/kscheme.cpp
+        kernel/jak2/ksound.cpp
         kernel/asm_funcs.asm
-        kernel/fileio.cpp
-        kernel/kdgo.cpp
-        kernel/kmemcard.cpp
-        kernel/ksound.cpp
         mips2c/mips2c_table.cpp
         mips2c/functions/bones.cpp
         mips2c/functions/collide_cache.cpp

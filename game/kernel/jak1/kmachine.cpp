@@ -12,6 +12,7 @@
 #include "game/graphics/sceGraphicsInterface.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kboot.h"
+#include "game/kernel/common/kdgo.h"
 #include "game/kernel/common/kdsnetm.h"
 #include "game/kernel/common/kernel_types.h"
 #include "game/kernel/common/klink.h"
@@ -20,10 +21,13 @@
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/ksocket.h"
+#include "game/kernel/common/ksound.h"
 #include "game/kernel/common/memory_layout.h"
 #include "game/kernel/jak1/kboot.h"
+#include "game/kernel/jak1/kdgo.h"
 #include "game/kernel/jak1/klisten.h"
 #include "game/kernel/jak1/kscheme.h"
+#include "game/kernel/jak1/ksound.h"
 #include "game/kernel/svnrev.h"
 #include "game/mips2c/mips2c_table.h"
 #include "game/sce/libcdvd_ee.h"
@@ -32,10 +36,6 @@
 #include "game/sce/sif_ee.h"
 #include "game/sce/stubs.h"
 #include "game/system/vm/vm.h"
-
-// todo fix
-#include "game/kernel/kdgo.h"
-#include "game/kernel/ksound.h"
 
 using namespace ee;
 

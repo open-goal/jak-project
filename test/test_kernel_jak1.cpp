@@ -12,7 +12,7 @@
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/memory_layout.h"
-#include "game/kernel/fileio.h"
+#include "game/kernel/jak1/fileio.h"
 #include "game/kernel/jak1/kscheme.h"
 #include "gtest/gtest.h"
 

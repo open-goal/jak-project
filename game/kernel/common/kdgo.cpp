@@ -1,14 +1,6 @@
-/*!
- * @file kdgo.cpp
- * Loading DGO Files.  Also has some general SIF RPC stuff used for RPCs other than DGO loading.
- * DONE!
- */
-
 #include "kdgo.h"
 
 #include <cstring>
-
-#include "fileio.h"
 
 #include "common/log/log.h"
 
@@ -18,24 +10,20 @@
 #include "game/common/player_rpc_types.h"
 #include "game/common/ramdisk_rpc_types.h"
 #include "game/common/str_rpc_types.h"
+#include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/kprint.h"
 #include "game/sce/sif_ee.h"
 
-// todo remove
-#include "game/kernel/jak1/klink.h"
-
-using namespace ee;
-
-sceSifClientData cd[6];  //! client data for each IOP Remove Procedure Call.
-u16 x[8];                //! stupid temporary for storing a message
-u32 sShowStallMsg;       //! setting to show a "stalled on iop" message
-u32 sMsgNum;             //! Toggle for double buffered message sending.
-RPC_Dgo_Cmd* sLastMsg;   //! Last DGO command sent to IOP
-RPC_Dgo_Cmd sMsg[2];     //! DGO message buffers
+ee::sceSifClientData cd[6];  //! client data for each IOP Remove Procedure Call.
+u32 sShowStallMsg;           //! setting to show a "stalled on iop" message
+u16 x[8];                    //! stupid temporary for storing a message
+u32 sMsgNum;                 //! Toggle for double buffered message sending.
+RPC_Dgo_Cmd* sLastMsg;       //! Last DGO command sent to IOP
+RPC_Dgo_Cmd sMsg[2];         //! DGO message buffers
 
 void kdgo_init_globals() {
-  memset(cd, 0, sizeof(cd));
   memset(x, 0, sizeof(x));
+  memset(cd, 0, sizeof(cd));
   sShowStallMsg = 1;
   sLastMsg = nullptr;
   memset(sMsg, 0, sizeof(sMsg));
@@ -121,6 +109,7 @@ u32 RpcBind(s32 channel, s32 id) {
     }
     Msg(6, "kernel: RPC port #%d started [%4.4X]\n", channel, id);
     //    FlushCache(0);
+    // In Jak 2 they do a sceSifCheckStatRpc, but we can just skip that.
 
     // this was not optimized out in Jak 1, but is _almost_ optimized out in Jak 2 and later.
     u32 i = 0;
@@ -145,9 +134,12 @@ u32 RpcBind(s32 channel, s32 id) {
  * Setup all RPCs
  */
 u32 InitRPC() {
-  if (!RpcBind(PLAYER_RPC_CHANNEL, PLAYER_RPC_ID) && !RpcBind(LOADER_RPC_CHANNEL, LOADER_RPC_ID) &&
-      !RpcBind(RAMDISK_RPC_CHANNEL, RAMDISK_RPC_ID) && !RpcBind(DGO_RPC_CHANNEL, DGO_RPC_ID) &&
-      !RpcBind(STR_RPC_CHANNEL, STR_RPC_ID) && !RpcBind(PLAY_RPC_CHANNEL, PLAY_RPC_ID)) {
+  if (!RpcBind(PLAYER_RPC_CHANNEL, PLAYER_RPC_ID[g_game_version]) &&
+      !RpcBind(LOADER_RPC_CHANNEL, LOADER_RPC_ID[g_game_version]) &&
+      !RpcBind(RAMDISK_RPC_CHANNEL, RAMDISK_RPC_ID[g_game_version]) &&
+      !RpcBind(DGO_RPC_CHANNEL, DGO_RPC_ID[g_game_version]) &&
+      !RpcBind(STR_RPC_CHANNEL, STR_RPC_ID[g_game_version]) &&
+      !RpcBind(PLAY_RPC_CHANNEL, PLAY_RPC_ID[g_game_version])) {
     return 0;
   }
   printf("Entering endless loop ... please wait\n");
@@ -160,8 +152,8 @@ u32 InitRPC() {
  */
 void StopIOP() {
   x[2] = 0x14;  // todo - this type and message
-                //  RpcSync(PLAYER_RPC_CHANNEL);
-                //  RpcCall(PLAYER_RPC_CHANNEL, 0, false, x, 0x50, nullptr, 0);
+  //  RpcSync(PLAYER_RPC_CHANNEL);
+  //  RpcCall(PLAYER_RPC_CHANNEL, 0, false, x, 0x50, nullptr, 0);
   printf("IOP shut down\n");
   //  sceDmaSync(0x10009000, 0, 0);
   printf("DMA shut down\n");
@@ -303,85 +295,4 @@ void LoadDGOTest() {
   }
 
   sShowStallMsg = lastShowStall;
-}
-
-/*!
- * Load and link a DGO file.
- * This does not use the mutli-threaded linker and will block until the entire file is done.
- */
-void load_and_link_dgo(u64 name_gstr, u64 heap_info, u64 flag, u64 buffer_size) {
-  auto name = Ptr<char>(name_gstr + 4).c();
-  auto heap = Ptr<kheapinfo>(heap_info);
-  load_and_link_dgo_from_c(name, heap, flag, buffer_size, false);
-}
-
-/*!
- * Load and link a DGO file.
- * This does not use the mutli-threaded linker and will block until the entire file is done.e
- */
-void load_and_link_dgo_from_c(const char* name,
-                              Ptr<kheapinfo> heap,
-                              u32 linkFlag,
-                              s32 bufferSize,
-                              bool jump_from_c_to_goal) {
-  lg::debug("[Load and Link DGO From C] {}", name);
-  u32 oldShowStall = sShowStallMsg;
-
-  // remember where the heap top point is so we can clear temporary allocations
-  auto oldHeapTop = heap->top;
-
-  // allocate temporary buffers from top of the given heap
-  // align 64 for IOP DMA
-  // note: both buffers named dgo-buffer-2
-  auto buffer2 = kmalloc(heap, bufferSize, KMALLOC_TOP | KMALLOC_ALIGN_64, "dgo-buffer-2");
-  auto buffer1 = kmalloc(heap, bufferSize, KMALLOC_TOP | KMALLOC_ALIGN_64, "dgo-buffer-2");
-
-  // build filename.  If no extension is given, default to CGO.
-  char fileName[16];
-  kstrcpyup(fileName, name);
-  if (fileName[strlen(fileName) - 4] != '.') {
-    strcat(fileName, ".CGO");
-  }
-
-  // no stall messages, as this is a blocking load and when spending 100% CPU time on linking,
-  // the linker can beat the DVD drive.
-  sShowStallMsg = 0;
-
-  // start load on IOP.
-  BeginLoadingDGO(
-      fileName, buffer1, buffer2,
-      Ptr<u8>((heap->current + 0x3f).offset & 0xffffffc0));  // 64-byte aligned for IOP DMA
-
-  u32 lastObjectLoaded = 0;
-  while (!lastObjectLoaded) {
-    // check to see if next object is loaded (I believe it always is?)
-    auto dgoObj = GetNextDGO(&lastObjectLoaded);
-    if (!dgoObj.offset) {
-      continue;
-    }
-
-    // if we're on the last object, it is loaded at cheap->current.  So we can safely reset the two
-    // dgo-buffer allocations. We do this _before_ we link! This way, the last file loaded has more
-    // heap available, which is important when we need to use the entire memory.
-    if (lastObjectLoaded) {
-      heap->top = oldHeapTop;
-    }
-
-    // determine the size and name of the object we got
-    auto obj = dgoObj + 0x40;             // seek past dgo object header
-    u32 objSize = *(dgoObj.cast<u32>());  // size from object's link block
-
-    char objName[64];
-    strcpy(objName, (dgoObj + 4).cast<char>().c());  // name from dgo object header
-    lg::debug("[link and exec] {:18s} {} {:6d} heap-use {:8d} {:8d}: 0x{:x}", objName,
-              lastObjectLoaded, objSize, kheapused(kglobalheap),
-              kdebugheap.offset ? kheapused(kdebugheap) : 0, kglobalheap->current.offset);
-    jak1::link_and_exec(obj, objName, objSize, heap, linkFlag, jump_from_c_to_goal);  // link now!
-
-    // inform IOP we are done
-    if (!lastObjectLoaded) {
-      ContinueLoadingDGO(Ptr<u8>((heap->current + 0x3f).offset & 0xffffffc0));
-    }
-  }
-  sShowStallMsg = oldShowStall;
 }

@@ -2,6 +2,8 @@
  * @file kmemcard.cpp
  * Memory card interface. Very messy code. Most of it is commented out now, as we've switched away
  * from memory cards to just raw saves.
+ *
+ * Not checked carefully for differences in jak 2.
  */
 
 #include "kmemcard.h"
@@ -14,9 +16,6 @@
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 
-#include "game/common/ramdisk_rpc_types.h"
-#include "game/kernel/fileio.h"
-#include "game/kernel/kdgo.h"
 #include "game/sce/sif_ee.h"
 #include "game/sce/sif_ee_memcard.h"
 

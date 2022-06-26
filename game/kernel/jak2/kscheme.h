@@ -48,4 +48,6 @@ u64 make_string_from_c(const char* c_str);
 u64 new_pair(u32 heap, u32 type, u32 car, u32 cdr);
 u64 inspect_object(u32 obj);
 u64 print_object(u32 obj);
+Ptr<Function> make_function_symbol_from_c(const char* name, void* f);
+Ptr<Function> make_stack_arg_function_symbol_from_c(const char* name, void* f);
 }  // namespace jak2

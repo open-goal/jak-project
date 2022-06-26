@@ -14,9 +14,6 @@
 #include "game/kernel/jak1/kscheme.h"
 #include "game/sce/sif_ee.h"
 
-// remove these
-#include "game/kernel/fileio.h"
-
 using namespace jak1_symbols;
 
 ///////////

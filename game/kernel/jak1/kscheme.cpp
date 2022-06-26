@@ -8,21 +8,20 @@
 #include "common/util/Timer.h"
 
 #include "game/kernel/common/fileio.h"
+#include "game/kernel/common/kdgo.h"
 #include "game/kernel/common/kdsnetm.h"
 #include "game/kernel/common/klink.h"
 #include "game/kernel/common/kmalloc.h"
+#include "game/kernel/common/kmemcard.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
+#include "game/kernel/jak1/fileio.h"
+#include "game/kernel/jak1/kdgo.h"
 #include "game/kernel/jak1/klink.h"
 #include "game/kernel/jak1/klisten.h"
 #include "game/kernel/jak1/kmachine.h"
 #include "game/kernel/jak1/kprint.h"
 #include "game/mips2c/mips2c_table.h"
-
-// todo
-#include "game/kernel/fileio.h"
-#include "game/kernel/kdgo.h"
-#include "game/kernel/kmemcard.h"
 
 using namespace jak1_symbols;
 

@@ -260,7 +260,7 @@ FieldPrint get_field_print(const std::string& str) {
 int get_start_idx(Function& function,
                   LinkedObjectFile& file,
                   TypeInspectorResult* result,
-                  const std::string& parent_type,
+                  const std::string& /*parent_type*/,
                   const std::string& type_name,
                   Env& env) {
   if (function.basic_blocks.size() != 5) {
@@ -957,7 +957,7 @@ std::string TypeInspectorResult::print_as_deftype(StructureType* old_game_type) 
 
 std::string inspect_top_level_symbol_defines(std::unordered_set<std::string>& already_seen,
                                              Function& top_level,
-                                             LinkedObjectFile& file,
+                                             LinkedObjectFile& /*file*/,
                                              DecompilerTypeSystem& dts,
                                              DecompilerTypeSystem& previous_game_ts) {
   if (!top_level.ir2.atomic_ops) {
