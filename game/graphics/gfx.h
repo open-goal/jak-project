@@ -11,7 +11,7 @@
 
 #include "common/common_types.h"
 
-#include "game/kernel/kboot.h"
+#include "game/kernel/common/kboot.h"
 #include "game/system/newpad.h"
 
 // forward declarations

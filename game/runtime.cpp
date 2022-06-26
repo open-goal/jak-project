@@ -26,17 +26,25 @@
 #include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/versions.h"
 
 #include "game/graphics/gfx.h"
-#include "game/kernel/fileio.h"
-#include "game/kernel/kboot.h"
-#include "game/kernel/kdgo.h"
-#include "game/kernel/kdsnetm.h"
-#include "game/kernel/klink.h"
-#include "game/kernel/klisten.h"
-#include "game/kernel/kmemcard.h"
-#include "game/kernel/kprint.h"
-#include "game/kernel/kscheme.h"
+#include "game/kernel/common/fileio.h"
+#include "game/kernel/common/kdgo.h"
+#include "game/kernel/common/kdsnetm.h"
+#include "game/kernel/common/klink.h"
+#include "game/kernel/common/klisten.h"
+#include "game/kernel/common/kmachine.h"
+#include "game/kernel/common/kmalloc.h"
+#include "game/kernel/common/kmemcard.h"
+#include "game/kernel/common/kprint.h"
+#include "game/kernel/common/kscheme.h"
+#include "game/kernel/jak1/kboot.h"
+#include "game/kernel/jak1/klisten.h"
+#include "game/kernel/jak1/kscheme.h"
+#include "game/kernel/jak2/kboot.h"
+#include "game/kernel/jak2/klisten.h"
+#include "game/kernel/jak2/kscheme.h"
 #include "game/overlord/dma.h"
 #include "game/overlord/fake_iso.h"
 #include "game/overlord/iso.h"
@@ -60,6 +68,7 @@
 
 u8* g_ee_main_mem = nullptr;
 std::thread::id g_main_thread_id = std::thread::id();
+GameVersion g_game_version = GameVersion::Jak1;
 
 namespace {
 
@@ -145,23 +154,40 @@ void ee_runner(SystemThreadInterface& iface) {
   // this may not work well on systems with a page size > 1 MB.
   mprotect((void*)g_ee_main_mem, EE_MAIN_MEM_LOW_PROTECT, PROT_NONE);
   fileio_init_globals();
-  kboot_init_globals();
+  jak1::kboot_init_globals();
+  jak2::kboot_init_globals();
+
+  kboot_init_globals_common();
   kdgo_init_globals();
-  kdsnetm_init_globals();
+  kdsnetm_init_globals_common();
   klink_init_globals();
 
-  kmachine_init_globals();
-  kscheme_init_globals();
-  kmalloc_init_globals();
+  kmachine_init_globals_common();
+  jak1::kscheme_init_globals();
+  jak2::kscheme_init_globals();
+  kscheme_init_globals_common();
+  kmalloc_init_globals_common();
 
   klisten_init_globals();
+  jak1::klisten_init_globals();
+  jak2::klisten_init_globals();
+
   kmemcard_init_globals();
-  kprint_init_globals();
+  kprint_init_globals_common();
 
   // Added for OpenGOAL's debugger
   xdbg::allow_debugging();
 
-  goal_main(g_argc, g_argv);
+  switch (g_game_version) {
+    case GameVersion::Jak1:
+      jak1::goal_main(g_argc, g_argv);
+      break;
+    case GameVersion::Jak2:
+      jak2::goal_main(g_argc, g_argv);
+      break;
+    default:
+      ASSERT_MSG(false, "Unsupported game version");
+  }
   lg::debug("[EE] Done!");
 
   //  // kill the IOP todo
@@ -287,6 +313,8 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
       VM::use = true;
     } else if (std::string("-novm") == argv[i]) {  // disable debug ps2 VM
       VM::use = false;
+    } else if (std::string("-jak2") == argv[i]) {
+      g_game_version = GameVersion::Jak2;
     }
   }
 

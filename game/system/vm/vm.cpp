@@ -14,8 +14,6 @@
 
 #include "common/log/log.h"
 
-#include "game/kernel/kscheme.h"
-
 namespace VM {
 
 bool use = true;  // enable VM by default, since we're debugging right now

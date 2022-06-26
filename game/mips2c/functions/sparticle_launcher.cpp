@@ -1,7 +1,8 @@
 //--------------------------MIPS2C---------------------
 // clang-format off
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+#include "game/kernel/jak1/kscheme.h"
+using namespace jak1;
 namespace Mips2C {
 namespace sp_init_fields {
 struct Cache {
@@ -341,7 +342,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace particle_adgif {
 struct Cache {
@@ -471,7 +472,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace sp_launch_particles_var {
 struct Cache {

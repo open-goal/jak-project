@@ -21,6 +21,7 @@
 
 #include "game/common/dgo_rpc_types.h"
 #include "game/overlord/srpc.h"
+#include "game/runtime.h"
 #include "game/sce/iop.h"
 #include "game/sound/sdshim.h"
 #include "game/sound/sndshim.h"
@@ -1271,7 +1272,7 @@ u32 DGOThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, DGO_RPC_ID, RPC_DGO, sRPCBuff, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, DGO_RPC_ID[g_game_version], RPC_DGO, sRPCBuff, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;

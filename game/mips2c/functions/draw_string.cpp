@@ -1,7 +1,8 @@
 //--------------------------MIPS2C---------------------
 // clang-format off
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+#include "game/kernel/jak1/kscheme.h"
+using namespace jak1;
 namespace Mips2C {
 namespace draw_string {
 struct Cache {

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "common_types.h"
+#include "common/common_types.h"
+#include "common/versions.h"
 
 constexpr s32 BINTEGER_OFFSET = 0;
 constexpr s32 PAIR_OFFSET = 2;
@@ -15,6 +16,8 @@ constexpr int ARRAY_DATA_OFFSET = 12;  // not including type tag
  */
 // constexpr s32 GOAL_MAX_SYMBOLS = 8192;  // this MUST be a multiple of 2!!
 // constexpr s32 SYM_INFO_OFFSET = 8167 * 8 - 4;
+
+namespace jak1 {
 constexpr s32 GOAL_MAX_SYMBOLS = 16384;
 constexpr s32 SYM_INFO_OFFSET = GOAL_MAX_SYMBOLS * 8 - 4;
 
@@ -35,6 +38,25 @@ constexpr int bits_for_sym() {
   return b + 1;
 }
 static_assert(bits_for_sym() != -1, "symbol table invalid length");
+}  // namespace jak1
+
+namespace jak2 {
+// for now, we don't have the ability to extend the size of the symbol table
+constexpr s32 GOAL_MAX_SYMBOLS = 0x4000;
+constexpr s32 SYM_TABLE_MEM_SIZE = 0x30000;
+// from the "off-by-one" symbol pointer
+constexpr int SYM_TO_STRING_OFFSET = 0xff37;
+constexpr int SYM_TO_HASH_OFFSET = 0x1fe6f;
+}  // namespace jak2
+
+constexpr s32 max_symbols(GameVersion version) {
+  switch (version) {
+    case GameVersion::Jak1:
+      return jak1::GOAL_MAX_SYMBOLS;
+    case GameVersion::Jak2:
+      return jak2::GOAL_MAX_SYMBOLS;
+  }
+}
 
 enum class RegClass { GPR_64, FLOAT, INT_128, VECTOR_FLOAT, INVALID };
 

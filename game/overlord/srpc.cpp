@@ -15,6 +15,7 @@
 #include "game/common/loader_rpc_types.h"
 #include "game/common/player_rpc_types.h"
 #include "game/graphics/gfx.h"
+#include "game/runtime.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
 
@@ -65,7 +66,8 @@ u32 Thread_Player() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, PLAYER_RPC_ID, RPC_Player, gPlayerBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, PLAYER_RPC_ID[g_game_version], RPC_Player, gPlayerBuf, nullptr, nullptr,
+                    &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -81,7 +83,8 @@ u32 Thread_Loader() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, LOADER_RPC_ID, RPC_Loader, gLoaderBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, LOADER_RPC_ID[g_game_version], RPC_Loader, gLoaderBuf, nullptr, nullptr,
+                    &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;

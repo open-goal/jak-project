@@ -23,7 +23,11 @@ constexpr u32 TX_PAGE_VERSION = 7;
 
 namespace jak2 {
 constexpr u32 ART_FILE_VERSION = 7;
-}
+constexpr u32 DGO_FILE_VERSION = 1;
+constexpr u32 LEVEL_FILE_VERSION = 36;
+constexpr u32 TX_PAGE_VERSION = 8;
+
+}  // namespace jak2
 
 }  // namespace versions
 
@@ -36,3 +40,10 @@ constexpr int IRX_VERSION_MAJOR = 2;
 constexpr int IRX_VERSION_MINOR = 0;
 
 enum class GameVersion { Jak1 = 1, Jak2 = 2 };
+
+template <typename T>
+struct PerGameVersion {
+  constexpr PerGameVersion(T jak1, T jak2) : data{jak1, jak2} {}
+  constexpr T operator[](GameVersion v) const { return data[(int)v - 1]; }
+  T data[2];
+};
