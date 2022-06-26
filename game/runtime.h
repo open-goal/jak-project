@@ -10,7 +10,6 @@
 #include "common/common_types.h"
 #include "common/versions.h"
 
-
 #include "game/kernel/common/kboot.h"
 
 extern u8* g_ee_main_mem;

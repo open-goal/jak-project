@@ -1,7 +1,8 @@
 //--------------------------MIPS2C---------------------
-#include "game/kernel/kscheme.h"
-#include "game/mips2c/mips2c_private.h"
 
+#include "game/kernel/jak1/kscheme.h"
+#include "game/mips2c/mips2c_private.h"
+using namespace jak1;
 namespace Mips2C {
 
 ExecutionContext sky_regs_vfs;
@@ -11,7 +12,7 @@ ExecutionContext sky_regs_vfs;
 // clang-format off
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace init_sky_regs {
 struct Cache {
@@ -106,7 +107,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace set_tex_offset {
 u64 execute(void* ctxt) {
@@ -154,7 +155,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace clip_polygon_against_positive_hyperplane {
 u64 execute(void* ctxt) {
@@ -439,7 +440,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace clip_polygon_against_negative_hyperplane {
 u64 execute(void* ctxt) {
@@ -734,7 +735,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace draw_large_polygon {
 struct Cache {
@@ -884,7 +885,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace render_sky_quad {
 struct Cache {
@@ -988,7 +989,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace render_sky_tri {
 struct Cache {

@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "common/common_types.h"
 
 struct Deci2Driver {
@@ -21,4 +20,3 @@ struct Deci2Driver {
 #define DECI2_WRITE 3
 #define DECI2_WRITEDONE 4
 #define DECI2_CHSTATUS 5
-

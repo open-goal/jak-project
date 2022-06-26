@@ -5,7 +5,5 @@ void InitParms(int argc, const char* const* argv);
 void InitIOP();
 int InitMachine();
 
-struct MouseInfo {
-
-};
-}
+struct MouseInfo {};
+}  // namespace jak2

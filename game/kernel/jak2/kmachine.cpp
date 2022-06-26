@@ -448,4 +448,9 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
   return fs;
 }
 
+void InitMachineScheme() {
+  // todo also the pc port functions
+  ASSERT(false);
+}
+
 }  // namespace jak2

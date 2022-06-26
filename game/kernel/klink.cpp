@@ -12,7 +12,6 @@
 #include <cstring>
 
 #include "fileio.h"
-#include "kscheme.h"
 
 #include "common/goal_constants.h"
 #include "common/log/log.h"
@@ -23,10 +22,11 @@
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kboot.h"
 #include "game/kernel/common/klink.h"
-#include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kmachine.h"
+#include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/memory_layout.h"
+#include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_table.h"
 
 #include "third-party/fmt/core.h"
@@ -295,7 +295,7 @@ uint32_t typelink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
   uint8_t method_count = link.c()[seek++];
 
   // intern the GOAL type, creating the vtable if it doesn't exist.
-  auto type_ptr = intern_type_from_c(sym_name, method_count);
+  auto type_ptr = jak1::intern_type_from_c(sym_name, method_count);
 
   // prepare to read the locations of the type pointers
   Ptr<uint32_t> offsets = link.cast<uint32_t>() + seek;
@@ -329,7 +329,7 @@ uint32_t symlink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
   seek++;
 
   // intern
-  auto sym = intern_from_c(sym_name);
+  auto sym = jak1::intern_from_c(sym_name);
   int32_t sym_offset = sym.cast<u32>() - s7;
   uint32_t sym_addr = sym.cast<u32>().offset;
 
@@ -742,7 +742,7 @@ uint32_t link_control::work_v2() {
           if (link_debug_printfs) {
             printf("[work_v2] symlink: %s\n", name);
           }
-          goalObj = intern_from_c(name).cast<u8>();
+          goalObj = jak1::intern_from_c(name).cast<u8>();
         } else {
           // type!
           u8 nMethods = relocation & 0x7f;
@@ -753,7 +753,7 @@ uint32_t link_control::work_v2() {
           if (link_debug_printfs) {
             printf("[work_v2] symlink -type: %s\n", name);
           }
-          goalObj = intern_type_from_c(name, nMethods).cast<u8>();
+          goalObj = jak1::intern_type_from_c(name, nMethods).cast<u8>();
         }
         m_reloc_ptr.offset += strlen(name) + 1;
         // DECOMPILER->hookStartSymlinkV3(_state - 1, _objectData, std::string(name));
@@ -819,9 +819,9 @@ void link_control::finish(bool jump_from_c_to_goal) {
       auto entry = m_entry;
       auto name = basename_goal(m_object_name);
       strcpy(Ptr<char>(LINK_CONTROL_NAME_ADDR).c(), name);
-      call_method_of_type_arg2(entry.offset, Ptr<Type>(*((entry - 4).cast<u32>())),
-                               GOAL_RELOC_METHOD, m_heap.offset,
-                               Ptr<char>(LINK_CONTROL_NAME_ADDR).offset);
+      jak1::call_method_of_type_arg2(entry.offset, Ptr<jak1::Type>(*((entry - 4).cast<u32>())),
+                                     GOAL_RELOC_METHOD, m_heap.offset,
+                                     Ptr<char>(LINK_CONTROL_NAME_ADDR).offset);
     }
   }
 
@@ -903,7 +903,7 @@ void ultimate_memcpy(void* dst, void* src, uint32_t size) {
   if (!(u64(dst) & 0xf) && !(u64(src) & 0xf) && !(u64(size) & 0xf) && size > 0xfff) {
     if (!gfunc_774.offset) {
       // GOAL function is unknown, lets see if its loaded:
-      auto sym = find_symbol_from_c("ultimate-memcpy");
+      auto sym = jak1::find_symbol_from_c("ultimate-memcpy");
       if (sym->value == 0) {
         memmove(dst, src, size);
         return;

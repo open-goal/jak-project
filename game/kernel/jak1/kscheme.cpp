@@ -1,94 +1,37 @@
-/*!
- * @file kscheme.cpp
- * Implementation of GOAL runtime.
- */
-
 #include "kscheme.h"
 
 #include <cstring>
 
-#include "fileio.h"
-#include "kdgo.h"
-#include "klink.h"
-#include "klisten.h"
-#include "kmemcard.h"
-
 #include "common/common_types.h"
-#include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
-#include "common/util/Assert.h"
 #include "common/util/Timer.h"
-#include "common/versions.h"
 
 #include "game/kernel/common/fileio.h"
-#include "game/kernel/common/kboot.h"
 #include "game/kernel/common/kdsnetm.h"
 #include "game/kernel/common/klink.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
-#include "game/mips2c/mips2c_table.h"
-#include "game/kernel/jak1/kprint.h"
 #include "game/kernel/jak1/kmachine.h"
+#include "game/kernel/jak1/kprint.h"
+#include "game/mips2c/mips2c_table.h"
+
+// todo
+#include "game/kernel/fileio.h"
+#include "game/kernel/kdgo.h"
+#include "game/kernel/klink.h"
+#include "game/kernel/klisten.h"
+#include "game/kernel/kmemcard.h"
 
 using namespace jak1_symbols;
 
-//! Controls link mode when EnableMethodSet = 0, MasterDebug = 1, DiskBoot = 0. Will enable a
-//! warning message if EnableMethodSet = 1
-u32 FastLink;
-
+namespace jak1 {
 // where to put a new symbol for the most recently searched for symbol that wasn't found
 u32 symbol_slot;
 
-// pointer to the "second" symbol table
-Ptr<u32> SymbolTable2;
-
-// pointer to the last symbol
-Ptr<u32> LastSymbol;
-
-// set to true to enable propagating method overrides to child types
-// this is an O(N_max_symbols) operation, so it is avoided when loading DGOs for levels.
-// but is enabled when loading the engine.
-Ptr<u32> EnableMethodSet;
-
-// used for crc32 calculation
-u32 crc_table[0x100];
-
 void kscheme_init_globals() {
-  for (auto& x : crc_table) {
-    x = 0;
-  }
-  SymbolTable2.offset = 0;
-  LastSymbol.offset = 0;
-  EnableMethodSet.offset = 0;
-  FastLink = 0;
-}
-
-/*!
- * Initialize CRC Table.
- */
-void init_crc() {
-  for (u32 i = 0; i < 0x100; i++) {
-    u32 n = i << 24;
-    for (u32 j = 0; j < 8; j++) {
-      n = n & 0x80000000 ? (n << 1) ^ CRC_POLY : (n << 1);
-    }
-    crc_table[i] = n;
-  }
-}
-
-/*!
- * Take the CRC32 hash of some data
- */
-u32 crc32(const u8* data, s32 size) {
-  uint32_t crc = 0;
-  for (int i = size; i != 0; i--, data++) {
-    crc = crc_table[crc >> 24] ^ ((crc << 8) | *data);
-  }
-
-  ASSERT(~crc);
-  return ~crc;
+  symbol_slot = 0;
 }
 
 /*!
@@ -103,22 +46,6 @@ u64 new_illegal(u32 allocation, u32 type) {
 }
 
 /*!
- * Delete method for types which cannot have "delete" used on them.
- * Prints an error to stdout and returns false.
- */
-u64 delete_illegal(u32 obj) {
-  MsgErr("dkernel: illegal attempt to call delete of static object @ #x%x\n", obj);
-  return s7.offset;  // todo, maybe don't return anything?
-}
-
-/*!
- * Wrapper around kmalloc to allow GOAL programs to allocate on kernel heaps.
- */
-u64 goal_malloc(u32 heap, u32 size, u32 flags, u32 name) {
-  return kmalloc(Ptr<kheapinfo>(heap), size, flags, Ptr<String>(name)->data()).offset;
-}
-
-/*!
  * Allocate memory from the specified heap. If symbol is 'process, does a process allocation.
  * If symbol is 'scratch, does a scratch allocation (this is not used).
  *
@@ -130,6 +57,7 @@ u64 goal_malloc(u32 heap, u32 size, u32 flags, u32 name) {
  * UNKNOWN_PROCESS (UINT32_MAX).
  */
 u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size, u32 pp) {
+  using namespace jak1_symbols;
   ASSERT(size > 0);
 
   // align to 16 bytes (part one)
@@ -296,6 +224,7 @@ void delete_pair(u32 s) {
  * Allocates from the global heap.
  */
 u64 make_string(u32 size) {
+  using namespace jak1_symbols;
   auto mem_size = size + 1;  // null
   if (mem_size < 8) {
     mem_size = 8;  // min size of string
@@ -848,12 +777,28 @@ Ptr<Type> intern_type_from_c(const char* name, u64 methods) {
     return type;
   }
 }
-
 /*!
  * Wrapper of intern_type_from_c to use with GOAL. It accepts a gstring as a name.
  */
 u64 intern_type(u32 name, u64 methods) {
   return intern_type_from_c(Ptr<String>(name)->data(), methods).offset;
+}
+
+/*!
+ * Configure a type.
+ */
+Ptr<Type> set_type_values(Ptr<Type> type, Ptr<Type> parent, u64 flags) {
+  type->parent = parent;
+  type->allocated_size = (flags & 0xffff);
+  type->heap_base = (flags >> 16) & 0xffff;
+  type->padded_size = ((type->allocated_size + 0xf) & 0xfff0);
+
+  u16 new_methods = (flags >> 32) & 0xffff;
+  if (type->num_methods < new_methods) {
+    type->num_methods = new_methods;
+  }
+
+  return type;
 }
 
 /*!
@@ -935,13 +880,6 @@ u64 new_type(u32 symbol, u32 parent, u64 flags) {
   Ptr<Function>* child_slots = &(new_type->new_method);
   Ptr<Function>* parent_slots = &(Ptr<Type>(parent)->new_method);
 
-  //  if (Ptr<Type>(parent)->num_methods < n_methods) {
-  //    printf("%s %d %d\n", info(Ptr<Symbol>(symbol))->str.c()->data(),
-  //    Ptr<Type>(parent)->num_methods,
-  //           n_methods);
-  //    ASSERT(false);
-  //  }
-
   // BUG! This uses the child method count, but should probably use the parent method count.
   for (u32 i = 0; i < n_methods; i++) {
     // for (u32 i = 0; i < Ptr<Type>(parent)->num_methods; i++) {
@@ -949,23 +887,6 @@ u64 new_type(u32 symbol, u32 parent, u64 flags) {
   }
 
   return set_type_values(new_type, Ptr<Type>(parent), flags).offset;
-}
-
-/*!
- * Configure a type.
- */
-Ptr<Type> set_type_values(Ptr<Type> type, Ptr<Type> parent, u64 flags) {
-  type->parent = parent;
-  type->allocated_size = (flags & 0xffff);
-  type->heap_base = (flags >> 16) & 0xffff;
-  type->padded_size = ((type->allocated_size + 0xf) & 0xfff0);
-
-  u16 new_methods = (flags >> 32) & 0xffff;
-  if (type->num_methods < new_methods) {
-    type->num_methods = new_methods;
-  }
-
-  return type;
 }
 
 /*!
@@ -1134,13 +1055,6 @@ u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id) {
 }
 
 /*!
- * Call a GOAL function with no arguments.
- */
-u64 call_goal_function(Ptr<Function> func) {
-  return call_goal(func, 0, 0, 0, s7.offset, g_ee_main_mem);
-}
-
-/*!
  * Call a global GOAL function by name.
  */
 u64 call_goal_function_by_name(const char* name) {
@@ -1168,6 +1082,9 @@ u64 call_method_of_type_arg2(u32 arg, Ptr<Type> type, u32 method_id, u32 a1, u32
   ASSERT_MSG(false, "[ERROR] call_method_of_type_arg2 failed!");
   return arg;
 }
+
+u64 print_object(u32 obj);
+u64 print_pair(u32 obj);
 
 /*!
  * Print an object with a newline after it to the GOAL PrintBuffer (not stdout)
@@ -1199,15 +1116,6 @@ u64 print_object(u32 obj) {
     }
   }
   return obj;
-}
-
-/*!
- * Default print method for structures.
- * Structures have no runtime type info, so there's not much we can do here.
- */
-u64 print_structure(u32 s) {
-  cprintf("#<structure @ #x%x>", s);
-  return s;
 }
 
 /*!
@@ -1258,53 +1166,6 @@ u64 print_pair(u32 obj) {
     }
   }
   return obj;
-}
-
-/*!
- * Print an integer. Works correctly for 64-bit integers.
- */
-u64 print_integer(u64 obj) {
-  // not sure why this is any better than cprintf("%ld") or similar. Maybe a tiny bit faster?
-  char* str = PrintPending.cast<char>().c();
-  if (!str) {
-    str = (PrintBufArea + 0x18).cast<char>().c();
-  }
-
-  PrintPending = make_ptr(strend(str)).cast<u8>();
-  kitoa((char*)PrintPending.c(), obj, 10, 0xffffffff, '0', 0);
-  return obj;
-}
-
-/*!
- * Print a boxed integer. Works correctly for 64-bit integers. Assumes signed.
- */
-u64 print_binteger(u64 obj) {
-  char* str = PrintPending.cast<char>().c();
-  if (!PrintPending.offset) {
-    str = (PrintBufArea + 0x18).cast<char>().c();
-  }
-
-  PrintPending = make_ptr(strend(str)).cast<u8>();
-  kitoa((char*)PrintPending.c(), ((s64)obj) >> 3, 10, 0xffffffff, '0', 0);
-  return obj;
-}
-
-/*!
- * Print floating point number.
- */
-u64 print_float(u32 f) {
-  // again not sure why this is any better than cprintf("%f") or similar. Maybe a tiny bit faster?
-  float ff;
-  *(u32*)&ff = f;
-  char* str = PrintPending.cast<char>().c();
-  if (!PrintPending.offset) {
-    str = (PrintBufArea + 0x18).cast<char>().c();
-  }
-
-  PrintPending = make_ptr(strend(str)).cast<u8>();
-
-  ftoa((char*)PrintPending.c(), ff, 0xffffffff, ' ', 4, 0);
-  return f;
 }
 
 /*!
@@ -1361,35 +1222,11 @@ u64 print_function(u32 obj) {
 }
 
 /*!
- * Print method for VU functions.  Again, just prints address.
- */
-u64 print_vu_function(u32 obj) {
-  cprintf("#<compiled vu-function @ #x%x>", obj);
-  return obj;
-}
-
-/*!
  * Get the allocated size field of a basic.  By default we grab this from the type struct.
  * Dynamically sized basics should override this method.
  */
 u64 asize_of_basic(u32 it) {
   return Ptr<Type>(*Ptr<u32>(it - BASIC_OFFSET))->allocated_size;
-}
-
-/*!
- * Copy method that does no copying.
- */
-u64 copy_fixed(u32 it) {
-  return it;
-}
-
-/*!
- * Default copy for a structure. Since this has no idea of the actual type, it doesn't know what
- * size to copy.  So we do no copy and return a reference to the original data.
- */
-u64 copy_structure(u32 it, u32 unknown) {
-  (void)unknown;
-  return it;
 }
 
 /*!
@@ -1417,6 +1254,8 @@ u64 copy_basic(u32 obj, u32 heap, u32 /*unused*/, u32 pp) {
   }
   return result;
 }
+
+u64 inspect_pair(u32 obj);
 
 /*!
  * Highest level inspect method. Won't inspect 64-bit bintegers correctly.
@@ -1448,44 +1287,6 @@ u64 inspect_pair(u32 obj) {
   print_pair(obj);
   cprintf("\n");
   return obj;
-}
-
-/*!
- * Inspect an integer (works correctly on 64-bit integers)
- */
-u64 inspect_integer(u64 obj) {
-  // and now we're using cprintf. Why doesn't print do this?
-  cprintf("[%16lx] fixnum %ld\n", obj, obj);
-  return obj;
-}
-
-/*!
- * Inspect a boxed integer (works correctly on 64-integers)
- */
-u64 inspect_binteger(u64 obj) {
-  cprintf("[%16lx] boxed-fixnum %ld\n", obj, s64(obj) >> 3);
-  return obj;
-}
-
-/*!
- * Inspect a floating point number
- */
-u64 inspect_float(u32 f) {
-  float ff;
-  ff = *(float*)(&f);
-  cprintf("[%8x] float ", f);
-
-  // likely copy-pasta - no need for this check because of the cprintf immediately before.
-  char* str = PrintPending.cast<char>().c();
-  if (!str) {
-    str = (PrintBufArea + 0x18).cast<char>().c();
-  }
-
-  PrintPending = make_ptr(strend(str)).cast<u8>();
-
-  ftoa(PrintPending.cast<char>().c(), ff, -1, ' ', 4, 0);
-  cprintf("\n");
-  return f;
 }
 
 /*!
@@ -1550,14 +1351,6 @@ u64 inspect_type(u32 obj) {
 }
 
 /*!
- * Inspect a structure.
- */
-u64 inspect_structure(u32 obj) {
-  cprintf("[%8x] structure\n", obj);
-  return obj;
-}
-
-/*!
  * Inspect a basic. This is just a fallback for basics which don't know how to inspect themselves.
  * We just use print_object.
  */
@@ -1592,24 +1385,6 @@ u64 inspect_link_block(u32 ob) {
 }
 
 /*!
- * Inspect a VU Function. Doesn't seem to be used. Also the concept of "vu-function"
- * isn't really used. VU0 macro mode stuff goes in normal functions, and micro-mode stuff goes
- * in a giant dump of many functions thats loaded and unloaded all at the same time.
- */
-u64 inspect_vu_function(u32 obj) {
-  struct VuFunction {
-    u32 length;
-    u32 origin;
-    u32 qlength;
-  };
-
-  auto vf = Ptr<VuFunction>(obj);
-  cprintf("[%8x] vu-function\n\tlength: %d\n\torigin: #x%x\n\tqlength: %d\n", obj, vf->length,
-          vf->origin, vf->qlength);
-  return obj;
-}
-
-/*!
  * This doesn't exist in the game, but we add it as a wrapper around kheapstatus.
  * Note that this isn't a great inspect as it prints to stdout instead of the printbuffer.
  */
@@ -1624,31 +1399,6 @@ u64 inspect_kheap(u32 obj) {
 u64 pack_type_flag(u64 methods, u64 heap_base, u64 size) {
   return (methods << 32) + (heap_base << 16) + (size);
 }
-
-// void iterate_symbol_table(std::function<void(u32)> f) {
-//  auto sym = s7.offset;
-//  for (; sym < LastSymbol.offset; sym += 8) {
-//    f(sym);
-//  }
-//
-//  sym = SymbolTable2.offset;
-//  for (; sym < s7.offset; sym += 8) {
-//    f(sym);
-//  }
-//}
-//
-// void print_symbol_table() {
-//  u32 sym_cnt = 0;
-//  iterate_symbol_table([&](u32 sym) {
-//    if (info(Ptr<Symbol>(sym))->hash) {
-//      sym_cnt++;
-//      inspect_object(sym);
-//      //      inspect_object(Ptr<Symbol>(sym)->value);
-//      //      printf("\n");
-//    }
-//  });
-//  cprintf("Total %d symbols\n", sym_cnt);
-//}
 
 /*!
  * TODO remove me!
@@ -2093,4 +1843,4 @@ s64 load_and_link(const char* filename, char* decode_name, kheapinfo* heap, u32 
   return (s32)rv.offset;
 }
 
-// todo, read lcock code
+}  // namespace jak1

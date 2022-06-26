@@ -1,7 +1,7 @@
 #include "kmalloc.h"
 
-#include <cstring>
 #include <cstdio>
+#include <cstring>
 
 #include "common/goal_constants.h"
 

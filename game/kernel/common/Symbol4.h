@@ -3,6 +3,8 @@
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
+#include "game/kernel/common/Ptr.h"
+
 template <typename T>
 struct Symbol4 {
   u8 foo;

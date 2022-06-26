@@ -22,6 +22,7 @@
 #include "game/kernel/common/ksocket.h"
 #include "game/kernel/common/memory_layout.h"
 #include "game/kernel/jak1/kboot.h"
+#include "game/kernel/jak1/kscheme.h"
 #include "game/kernel/svnrev.h"
 #include "game/mips2c/mips2c_table.h"
 #include "game/sce/libcdvd_ee.h"
@@ -34,7 +35,6 @@
 // todo fix
 #include "game/kernel/kdgo.h"
 #include "game/kernel/klisten.h"
-#include "game/kernel/kscheme.h"
 #include "game/kernel/ksound.h"
 
 using namespace ee;
@@ -715,7 +715,7 @@ void InitMachineScheme() {
         new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE).cast<u32>()),
                  make_string_from_c("common"), kernel_packages->value);
 
-    lg::info("calling fake play");
+    lg::info("calling play");
     call_goal_function_by_name("play");
   }
 }

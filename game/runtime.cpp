@@ -30,18 +30,19 @@
 
 #include "game/graphics/gfx.h"
 #include "game/kernel/common/kdsnetm.h"
+#include "game/kernel/common/kmachine.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
-#include "game/kernel/common/kmachine.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/fileio.h"
 #include "game/kernel/jak1/kboot.h"
+#include "game/kernel/jak1/kscheme.h"
 #include "game/kernel/jak2/kboot.h"
+#include "game/kernel/jak2/kscheme.h"
 #include "game/kernel/kdgo.h"
 #include "game/kernel/klink.h"
 #include "game/kernel/klisten.h"
 #include "game/kernel/kmemcard.h"
-#include "game/kernel/kscheme.h"
 #include "game/overlord/dma.h"
 #include "game/overlord/fake_iso.h"
 #include "game/overlord/iso.h"
@@ -160,7 +161,8 @@ void ee_runner(SystemThreadInterface& iface) {
   klink_init_globals();
 
   kmachine_init_globals_common();
-  kscheme_init_globals();
+  jak1::kscheme_init_globals();
+  jak2::kscheme_init_globals();
   kscheme_init_globals_common();
   kmalloc_init_globals_common();
 

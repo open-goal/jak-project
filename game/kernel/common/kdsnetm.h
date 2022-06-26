@@ -41,7 +41,6 @@ extern GoalProtoBlock protoBlock;
  */
 void kdsnetm_init_globals_common();
 
-
 /*!
  * Register GOAL DECI2 Protocol Driver with DECI2 service
  * DONE, EXACT

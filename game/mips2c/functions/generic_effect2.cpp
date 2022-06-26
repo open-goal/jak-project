@@ -1,6 +1,8 @@
 //--------------------------MIPS2C---------------------
-#include "game/kernel/kscheme.h"
+
+#include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
+using namespace jak1;
 namespace Mips2C {
 
 // clang-format off
@@ -656,7 +658,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace generic_interp_dproc {
 struct Cache {
@@ -835,7 +837,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace generic_no_light_dproc {
 struct Cache {

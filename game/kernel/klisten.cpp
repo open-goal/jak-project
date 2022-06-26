@@ -11,7 +11,6 @@
 #include <cstring>
 
 #include "klink.h"
-#include "kscheme.h"
 
 #include "common/symbols.h"
 
@@ -24,10 +23,10 @@
 
 using namespace jak1_symbols;
 
-Ptr<Symbol> ListenerLinkBlock;
-Ptr<Symbol> ListenerFunction;
-Ptr<Symbol> kernel_dispatcher;
-Ptr<Symbol> kernel_packages;
+Ptr<jak1::Symbol> ListenerLinkBlock;
+Ptr<jak1::Symbol> ListenerFunction;
+Ptr<jak1::Symbol> kernel_dispatcher;
+Ptr<jak1::Symbol> kernel_packages;
 Ptr<u32> print_column;
 u32 ListenerStatus;
 
@@ -46,17 +45,17 @@ void klisten_init_globals() {
  * There was an "ACK" message sent here, but this is removed because we don't need it.
  */
 void InitListener() {
-  ListenerLinkBlock = intern_from_c("*listener-link-block*");
-  ListenerFunction = intern_from_c("*listener-function*");
-  kernel_dispatcher = intern_from_c("kernel-dispatcher");
-  kernel_packages = intern_from_c("*kernel-packages*");
-  print_column = intern_from_c("*print-column*").cast<u32>();
+  ListenerLinkBlock = jak1::intern_from_c("*listener-link-block*");
+  ListenerFunction = jak1::intern_from_c("*listener-function*");
+  kernel_dispatcher = jak1::intern_from_c("kernel-dispatcher");
+  kernel_packages = jak1::intern_from_c("*kernel-packages*");
+  print_column = jak1::intern_from_c("*print-column*").cast<u32>();
   ListenerLinkBlock->value = s7.offset;
   ListenerFunction->value = s7.offset;
 
   kernel_packages->value =
-      new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE).cast<u32>()),
-               make_string_from_c("kernel"), kernel_packages->value);
+      jak1::new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE).cast<u32>()),
+                     jak1::make_string_from_c("kernel"), kernel_packages->value);
   //  if(MasterDebug) {
   //    SendFromBufferD(MSG_ACK, 0, AckBufArea + sizeof(ListenerMessageHeader), 0);
   //  }
@@ -131,11 +130,11 @@ void ProcessListenerMessage(Ptr<char> msg) {
       ClearPending();
       break;
     case LTT_MSG_INSEPCT:
-      inspect_object(atoi(msg.c()));
+      jak1::inspect_object(atoi(msg.c()));
       ClearPending();
       break;
     case LTT_MSG_PRINT:
-      print_object(atoi(msg.c()));
+      jak1::print_object(atoi(msg.c()));
       ClearPending();
       break;
     case LTT_MSG_PRINT_SYMBOLS:

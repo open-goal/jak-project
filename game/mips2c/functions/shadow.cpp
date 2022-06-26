@@ -1,6 +1,7 @@
 //--------------------------MIPS2C---------------------
-#include "game/kernel/kscheme.h"
+#include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
+using namespace jak1;
 namespace Mips2C {
 // clang-format off
 namespace {
@@ -374,7 +375,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_calc_dual_verts {
 u64 execute(void* ctxt) {
@@ -580,7 +581,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_scissor_edges {
 u64 execute(void* ctxt) {
@@ -688,7 +689,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_scissor_top {
 u64 execute(void* ctxt) {
@@ -764,7 +765,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_init_vars {
 struct Cache {
@@ -830,7 +831,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_find_facing_single_tris {
 u64 execute(void* ctxt) {
@@ -1134,7 +1135,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_find_single_edges {
 u64 execute(void* ctxt) {
@@ -1234,7 +1235,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_find_facing_double_tris {
 u64 execute(void* ctxt) {
@@ -1516,7 +1517,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_find_double_edges {
 u64 execute(void* ctxt) {
@@ -1622,7 +1623,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_add_verts {
 struct Cache {
@@ -1806,7 +1807,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_add_facing_single_tris {
 struct Cache {
@@ -1885,7 +1886,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_add_single_edges {
 struct Cache {
@@ -1968,7 +1969,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_add_double_tris {
 struct Cache {
@@ -2045,7 +2046,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_add_double_edges {
 struct Cache {
@@ -2128,7 +2129,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace shadow_execute {
 struct Cache {

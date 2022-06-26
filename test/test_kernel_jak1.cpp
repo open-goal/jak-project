@@ -13,10 +13,11 @@
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/memory_layout.h"
 #include "game/kernel/fileio.h"
-#include "game/kernel/kscheme.h"
+#include "game/kernel/jak1/kscheme.h"
 #include "gtest/gtest.h"
 
 using namespace jak1_symbols;
+using namespace jak1;
 
 TEST(Kernel, strend) {
   char test[] = "test";

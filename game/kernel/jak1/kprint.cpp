@@ -10,6 +10,7 @@
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
+#include "game/kernel/jak1/kscheme.h"
 #include "game/sce/sif_ee.h"
 
 // remove these
@@ -43,6 +44,7 @@ struct format_struct {
  * format_impl function with a single argument that is a pointer to the argument array.
  */
 s32 format_impl_jak1(uint64_t* args) {
+  using namespace jak1;
   // first two args are dest, format string
   uint64_t* arg_regs = args + 2;
 
