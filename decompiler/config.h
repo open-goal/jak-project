@@ -123,6 +123,9 @@ struct Config {
 
   bool generate_symbol_definition_map = false;
 
+  bool generate_all_types = false;
+  std::optional<std::string> old_all_types_file;
+
   bool is_pal = false;
 
   bool write_patches = false;

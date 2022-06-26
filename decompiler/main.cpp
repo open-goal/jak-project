@@ -174,6 +174,13 @@ int main(int argc, char** argv) {
     db.analyze_functions_ir2(out_folder, config, {});
   }
 
+  if (config.generate_all_types) {
+    ASSERT_MSG(config.decompile_code, "Must decompile code to generate all-types");
+    db.ir2_analyze_all_types(file_util::combine_path(out_folder, "new-all-types.gc"),
+                             config.old_all_types_file,
+                             config.hacks.types_with_bad_inspect_methods);
+  }
+
   fmt::print("[Mem] After decomp: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   // write out all symbols
