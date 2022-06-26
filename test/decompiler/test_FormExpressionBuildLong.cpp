@@ -665,32 +665,32 @@ TEST_F(FormRegressionTest, ExprArrayMethod2) {
       "  (format #t \")\")\n"
       "  arg0\n"
       "  )";
-  test_with_expr(func, type, expected, true, "array",
-                 {{"L343", "~f"},
-                  {"L342", "#("},
-                  {"L341", "~D"},
-                  {"L340", " ~D"},
-                  {"L339", "#x~X"},
-                  {"L338", " #x~X"},
-                  {"L337", " ~f"},
-                  {"L336", "~A"},
-                  {"L335", " ~A"},
-                  {"L334", ")"}},
-                 "["
-                 "\t\t[23, \"gp\", \"(array int32)\"],\n"
-                 "\t\t[43, \"gp\", \"(array uint32)\"],\n"
-                 "\t\t[63, \"gp\", \"(array int64)\"],\n"
-                 "\t\t[83, \"gp\", \"(array uint64)\"],\n"
-                 "\t\t[102, \"gp\", \"(array int8)\"],\n"
-                 "\t\t[121, \"gp\", \"(array uint8)\"],\n"
-                 "\t\t[141, \"gp\", \"(array int16)\"],\n"
-                 "\t\t[161, \"gp\", \"(array uint16)\"],\n"
-                 "\t\t[186, \"gp\", \"(array uint128)\"],\n"
-                 "\t\t[204, \"gp\", \"(array int32)\"],\n"
-                 "\t\t[223, \"gp\", \"(array float)\"],\n"
-                 "\t\t[232, \"gp\", \"(array float)\"],\n"
-                 "\t\t[249, \"gp\", \"(array basic)\"],\n"
-                 "\t\t[258, \"gp\", \"(array basic)\"]]");
+  test_with_expr_jak1(func, type, expected, true, "array",
+                      {{"L343", "~f"},
+                       {"L342", "#("},
+                       {"L341", "~D"},
+                       {"L340", " ~D"},
+                       {"L339", "#x~X"},
+                       {"L338", " #x~X"},
+                       {"L337", " ~f"},
+                       {"L336", "~A"},
+                       {"L335", " ~A"},
+                       {"L334", ")"}},
+                      "["
+                      "\t\t[23, \"gp\", \"(array int32)\"],\n"
+                      "\t\t[43, \"gp\", \"(array uint32)\"],\n"
+                      "\t\t[63, \"gp\", \"(array int64)\"],\n"
+                      "\t\t[83, \"gp\", \"(array uint64)\"],\n"
+                      "\t\t[102, \"gp\", \"(array int8)\"],\n"
+                      "\t\t[121, \"gp\", \"(array uint8)\"],\n"
+                      "\t\t[141, \"gp\", \"(array int16)\"],\n"
+                      "\t\t[161, \"gp\", \"(array uint16)\"],\n"
+                      "\t\t[186, \"gp\", \"(array uint128)\"],\n"
+                      "\t\t[204, \"gp\", \"(array int32)\"],\n"
+                      "\t\t[223, \"gp\", \"(array float)\"],\n"
+                      "\t\t[232, \"gp\", \"(array float)\"],\n"
+                      "\t\t[249, \"gp\", \"(array basic)\"],\n"
+                      "\t\t[258, \"gp\", \"(array basic)\"]]");
 }
 
 TEST_F(FormRegressionTest, ExprArrayMethod3) {
@@ -1226,28 +1226,28 @@ TEST_F(FormRegressionTest, ExprArrayMethod3) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_expr(func, type, expected, true, "array",
-                 {{"L333", "[~8x] ~A~%"},
-                  {"L332", "~Tallocated-length: ~D~%"},
-                  {"L331", "~Tlength: ~D~%"},
-                  {"L330", " ~Tcontent-type: ~A~%"},
-                  {"L329", "~Tdata[~D]: @ #x~X~%"},
-                  {"L328", "~T  [~D] ~D~%"},
-                  {"L327", "~T  [~D] #x~X~%"},
-                  {"L326", "~T  [~D] ~f~%"},
-                  {"L325", "~T  [~D] ~A~%"}},
-                 "[\t\t[44, \"gp\", \"(array int32)\"],\n"
-                 "\t\t[62, \"gp\", \"(array uint32)\"],\n"
-                 "\t\t[80, \"gp\", \"(array int64)\"],\n"
-                 "\t\t[98, \"gp\", \"(array uint64)\"],\n"
-                 "\t\t[115, \"gp\", \"(array int8)\"],\n"
-                 "\t\t[132, \"gp\", \"(array int8)\"],\n"
-                 "\t\t[150, \"gp\", \"(array int16)\"],\n"
-                 "\t\t[168, \"gp\", \"(array uint16)\"],\n"
-                 "\t\t[191, \"gp\", \"(array uint128)\"],\n"
-                 "\t\t[207, \"gp\", \"(array int32)\"],\n"
-                 "\t\t[226, \"gp\", \"(array float)\"],\n"
-                 "\t\t[243, \"gp\", \"(array basic)\"]]");
+  test_with_expr_jak1(func, type, expected, true, "array",
+                      {{"L333", "[~8x] ~A~%"},
+                       {"L332", "~Tallocated-length: ~D~%"},
+                       {"L331", "~Tlength: ~D~%"},
+                       {"L330", " ~Tcontent-type: ~A~%"},
+                       {"L329", "~Tdata[~D]: @ #x~X~%"},
+                       {"L328", "~T  [~D] ~D~%"},
+                       {"L327", "~T  [~D] #x~X~%"},
+                       {"L326", "~T  [~D] ~f~%"},
+                       {"L325", "~T  [~D] ~A~%"}},
+                      "[\t\t[44, \"gp\", \"(array int32)\"],\n"
+                      "\t\t[62, \"gp\", \"(array uint32)\"],\n"
+                      "\t\t[80, \"gp\", \"(array int64)\"],\n"
+                      "\t\t[98, \"gp\", \"(array uint64)\"],\n"
+                      "\t\t[115, \"gp\", \"(array int8)\"],\n"
+                      "\t\t[132, \"gp\", \"(array int8)\"],\n"
+                      "\t\t[150, \"gp\", \"(array int16)\"],\n"
+                      "\t\t[168, \"gp\", \"(array uint16)\"],\n"
+                      "\t\t[191, \"gp\", \"(array uint128)\"],\n"
+                      "\t\t[207, \"gp\", \"(array int32)\"],\n"
+                      "\t\t[226, \"gp\", \"(array float)\"],\n"
+                      "\t\t[243, \"gp\", \"(array basic)\"]]");
 }
 
 TEST_F(FormRegressionTest, ExprValid) {
@@ -2013,7 +2013,7 @@ TEST_F(FormRegressionTest, ExprValid) {
       "   )\n"
       "  )\n"
       "\n";
-  test_with_expr(
+  test_with_expr_jak1(
       func, type, expected, false, "",
       {{"L321", "ERROR: object #x~X ~S is not a valid object (misaligned)~%"},
        {"L320", "ERROR: object #x~X ~S is not a valid object (bad address)~%"},
@@ -2397,7 +2397,7 @@ TEST_F(FormRegressionTest, ExprStringToInt) {
       "    )\n"
       "   )\n"
       "  )";
-  test_final_function(func, type, expected);
+  test_final_function_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, Method19ResTag) {
@@ -2888,11 +2888,11 @@ TEST_F(FormRegressionTest, Method19ResTag) {
       "   (logior (logand 0 t0-6) (shl v1-14 32))\n"
       "   )\n"
       "  )";
-  test_with_expr(func, type, expected, false, "", {},
-                 "[\n"
-                 "    [46, \"t2\", \"(pointer uint64)\"],\n"
-                 "    [100, \"t3\", \"(pointer uint64)\"],\n"
-                 "    [184, \"t5\", \"(pointer uint64)\"],\n"
-                 "    [64, \"t6\", \"(pointer uint64)\"]\n"
-                 "  ]");
+  test_with_expr_jak1(func, type, expected, false, "", {},
+                      "[\n"
+                      "    [46, \"t2\", \"(pointer uint64)\"],\n"
+                      "    [100, \"t3\", \"(pointer uint64)\"],\n"
+                      "    [184, \"t5\", \"(pointer uint64)\"],\n"
+                      "    [64, \"t6\", \"(pointer uint64)\"]\n"
+                      "  ]");
 }

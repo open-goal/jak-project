@@ -12,6 +12,7 @@
 #include "decompiler/Disasm/Instruction.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/IR2_common.h"
+#include "decompiler/util/MatchParam.h"
 
 namespace decompiler {
 class FormElement;
@@ -807,4 +808,11 @@ class StackSpillLoadOp : public AtomicOp {
 };
 
 bool get_as_reg_offset(const SimpleExpression& expr, IR2_RegOffset* out);
+
+bool is_op_2(AtomicOp* op,
+             MatchParam<SimpleExpression::Kind> kind,
+             MatchParam<Register> dst,
+             MatchParam<Register> src0,
+             Register* dst_out = nullptr,
+             Register* src0_out = nullptr);
 }  // namespace decompiler

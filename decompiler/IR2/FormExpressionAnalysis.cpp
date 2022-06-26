@@ -708,10 +708,28 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
       result->push_back(x);
     }
   } else {
-    // converting something else to an FPR, put an expression around it.
-    result->push_back(pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::GPR_TO_FPR),
-        pool.alloc_sequence_form(nullptr, src_fes)));
+    if (env.version != GameVersion::Jak1) {
+      auto frm = pool.alloc_sequence_form(nullptr, src_fes);
+      if (src_fes.size() == 1) {
+        auto int_constant = get_goal_integer_constant(frm, env);
+
+        if (int_constant && (*int_constant <= UINT32_MAX)) {
+          float flt;
+
+          memcpy(&flt, &int_constant.value(), sizeof(float));
+
+          result->push_back(pool.alloc_element<ConstantFloatElement>(flt));
+          return;
+        }
+      }
+      // converting something else to an FPR, put an expression around it.
+      result->push_back(pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::GPR_TO_FPR), frm));
+    } else {
+      result->push_back(pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::GPR_TO_FPR),
+          pool.alloc_sequence_form(nullptr, src_fes)));
+    }
   }
 }
 
@@ -3538,6 +3556,22 @@ void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
   }
 
   stack.push_form_element(this, true);
+  if (false_destination) {
+    env.func->warnings.general_warning("new jak 2 until loop case, check carefully");
+    stack.push_value_to_reg(*false_destination,
+                            pool.form<SimpleAtomElement>(SimpleAtom::make_sym_val("#f")), true,
+                            TypeSpec("symbol"));
+    RegAccessSet accessed_regs;
+    body->collect_vars(accessed_regs, true);
+    condition->collect_vars(accessed_regs, true);
+    auto check_name = env.get_variable_name(*false_destination);
+    for (auto& reg : accessed_regs) {
+      if (env.get_variable_name(reg) == check_name) {
+        ASSERT_MSG(false, fmt::format("Jak 2 loop uses delay slot variable improperly: {} {}\n",
+                                      env.func->name(), check_name));
+      }
+    }
+  }
 }
 
 void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {

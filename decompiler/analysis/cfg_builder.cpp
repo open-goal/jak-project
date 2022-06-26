@@ -110,12 +110,12 @@ void clean_up_until_loop(FormPool& pool, UntilElement* ir, const Env& env) {
   ASSERT(condition_branch.first);
   if (condition_branch.first->op()->branch_delay().kind() != IR2_BranchDelay::Kind::NOP) {
     ASSERT_MSG(
-        false,
+        condition_branch.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::SET_REG_FALSE,
         fmt::format(
             "bad delay slot in until loop: {} in {}\n", env.func->name(),
             condition_branch.first->op()->branch_delay().to_form(env.file->labels, env).print()));
+    ir->false_destination = condition_branch.first->op()->branch_delay().var(0);
   }
-  ASSERT(condition_branch.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
   auto replacement = condition_branch.first->op()->get_condition_as_form(pool, env);
   replacement->invert();
   *(condition_branch.second) = replacement;
@@ -573,7 +573,7 @@ bool try_splitting_nested_sc(FormPool& pool, Function& func, ShortCircuitElement
     ASSERT(ir->entries.at(i).branch_delay.has_value());
     bool is_and = delay_slot_sets_false(branch.first, *ir->entries.at(i).branch_delay);
     bool is_or = delay_slot_sets_truthy(branch.first, *ir->entries.at(i).branch_delay);
-    ASSERT(is_and != is_or);
+    ASSERT_MSG(is_and != is_or, fmt::format("bad nested sc in {}", func.name()));
 
     if (first_different == -1) {
       // haven't seen a change yet.
@@ -922,47 +922,6 @@ bool is_op_3(AtomicOp* op,
   if (src1_out) {
     *src1_out = arg1.var().reg();
   }
-  return true;
-}
-
-bool is_op_2(AtomicOp* op,
-             MatchParam<SimpleExpression::Kind> kind,
-             MatchParam<Register> dst,
-             MatchParam<Register> src0,
-             Register* dst_out = nullptr,
-             Register* src0_out = nullptr) {
-  // should be a set reg to int math 2 ir
-  auto set = dynamic_cast<SetVarOp*>(op);
-  if (!set) {
-    return false;
-  }
-
-  // destination should be a register
-  auto dest = set->dst();
-  if (dst != dest.reg()) {
-    return false;
-  }
-
-  auto math = set->src();
-  if (kind != math.kind()) {
-    return false;
-  }
-
-  auto arg = math.get_arg(0);
-
-  if (!arg.is_var() || src0 != arg.var().reg()) {
-    return false;
-  }
-
-  // it's a match!
-  if (dst_out) {
-    *dst_out = dest.reg();
-  }
-
-  if (src0_out) {
-    *src0_out = arg.var().reg();
-  }
-
   return true;
 }
 
