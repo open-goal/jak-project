@@ -585,6 +585,7 @@ void link_reset() {
   // seems like a bad idea to do this - you'll probably leak memory.
   saved_link_control.m_busy = 0;
 }
+
 Ptr<uint8_t> link_and_exec(Ptr<uint8_t> data,
                            const char* name,
                            int32_t size,

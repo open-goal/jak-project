@@ -22,6 +22,7 @@
 #include "game/kernel/common/ksocket.h"
 #include "game/kernel/common/memory_layout.h"
 #include "game/kernel/jak1/kboot.h"
+#include "game/kernel/jak1/klisten.h"
 #include "game/kernel/jak1/kscheme.h"
 #include "game/kernel/svnrev.h"
 #include "game/mips2c/mips2c_table.h"
@@ -34,7 +35,6 @@
 
 // todo fix
 #include "game/kernel/kdgo.h"
-#include "game/kernel/klisten.h"
 #include "game/kernel/ksound.h"
 
 using namespace ee;

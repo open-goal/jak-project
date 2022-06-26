@@ -8,6 +8,7 @@
 
 #include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/fileio.h"
+#include "game/kernel/common/klisten.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/jak1/kscheme.h"
@@ -15,7 +16,6 @@
 
 // remove these
 #include "game/kernel/fileio.h"
-#include "game/kernel/klisten.h"
 
 using namespace jak1_symbols;
 

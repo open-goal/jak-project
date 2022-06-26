@@ -139,4 +139,8 @@ void KernelCheckAndDispatch() {
 }
 
  */
+
+void KernelDispatch(u32 dispatcher_func) {
+  ASSERT(false);  // stub
+}
 }  // namespace jak2

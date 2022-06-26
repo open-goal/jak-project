@@ -20,11 +20,13 @@ u32 symbol_slot;
 
 Ptr<Symbol4<u32>> LevelTypeList;
 Ptr<Symbol4<u32>> CollapseQuote;
+Ptr<Symbol4<u32>> SqlResult;
 
 void kscheme_init_globals() {
   symbol_slot = 0;
   LevelTypeList.offset = 0;
   CollapseQuote.offset = 0;
+  SqlResult.offset = 0;
 }
 
 /*!

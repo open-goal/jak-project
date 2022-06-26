@@ -16,11 +16,12 @@
 #include "common/util/Timer.h"
 
 #include "game/common/game_common_types.h"
+#include "game/kernel/common/klisten.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/ksocket.h"
+#include "game/kernel/jak1/klisten.h"
 #include "game/kernel/jak1/kmachine.h"
-#include "game/kernel/klisten.h"
 #include "game/sce/libscf.h"
 
 using namespace ee;
