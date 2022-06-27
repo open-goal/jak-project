@@ -255,7 +255,7 @@ void split_as_needed(CNode& root) {
     num_leaves *= 8;
     lg::info("after splitting, the worst leaf has {} tris, {} radius", worst.max_leaf_count,
              worst.max_bsphere_w / 4096.f);
-    if (worst.max_leaf_count < MAX_FACES_IN_FRAG && worst.max_bsphere_w < (100.f * 4096.f)) {
+    if (worst.max_leaf_count < MAX_FACES_IN_FRAG && worst.max_bsphere_w < (125.f * 4096.f)) {
       need_to_split = false;
     }
   }
