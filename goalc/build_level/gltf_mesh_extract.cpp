@@ -6,8 +6,6 @@
 
 #include <optional>
 
-#define M_PI 3.14159265358979323846
-
 #include "common/log/log.h"
 #include "common/math/geometry.h"
 #include "common/util/Timer.h"
@@ -753,7 +751,7 @@ void extract(const Input& in,
   if (in.auto_wall_enable) {
     lg::info("automatically detecting walls with angle {}", in.auto_wall_angle);
     int wall_count = 0;
-    float wall_cos = std::cos(in.auto_wall_angle * 2.f * M_PI / 360.f);
+    float wall_cos = std::cos(in.auto_wall_angle * 2.f * 3.14159 / 360.f);
     for (auto& face : out.faces) {
       math::Vector3f face_normal =
           (face.v[1] - face.v[0]).cross(face.v[2] - face.v[0]).normalized();
