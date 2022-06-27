@@ -702,8 +702,9 @@ void extract(const Input& in,
           }
 
           // now face normal
-          math::Vector3f face_normal =
-              (face.v[2] - face.v[0]).cross(face.v[1] - face.v[0]).normalized();
+          math::Vector3f face_normal_area_scale =
+              (face.v[2] - face.v[0]).cross(face.v[1] - face.v[0]);
+          math::Vector3f face_normal = face_normal_area_scale.normalized();
 
           float dots[3];
           for (int j = 0; j < 3; j++) {
@@ -718,7 +719,7 @@ void extract(const Input& in,
           }
 
           face.bsphere = math::bsphere_of_triangle(face.v);
-          face.bsphere.w() += 1e-1;
+          face.bsphere.w() += 5e-1;
           for (int j = 0; j < 3; j++) {
             float output_dist = face.bsphere.w() - (face.bsphere.xyz() - face.v[j]).length();
             if (output_dist < 0) {
@@ -726,6 +727,7 @@ void extract(const Input& in,
               fmt::print("BAD:\n{}\n{}\n{}\n", face.v[0].to_string_aligned(),
                          face.v[1].to_string_aligned(), face.v[2].to_string_aligned());
               fmt::print("bsphere: {}\n", face.bsphere.to_string_aligned());
+              fmt::print("normal: {}\n", face_normal_area_scale.to_string_aligned());
             }
           }
 
