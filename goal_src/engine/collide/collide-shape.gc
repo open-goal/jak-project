@@ -694,7 +694,7 @@
       (set! (-> s5-0 quad) (-> arg0 quad))
       (set! (-> s5-0 y) (+ 20480.0 (-> s5-0 y)))
       (let ((f0-2
-              (fill-and-probe-using-y-probe *collide-cache* s5-0 f30-0 (collide-kind background) (the process-drawable #f) t1-0 (the-as uint 1))
+              (fill-and-probe-using-y-probe *collide-cache* s5-0 f30-0 (collide-kind background) (the process-drawable #f) t1-0 (the-as pat-surface 1))
               )
             )
         (if (< f0-2 0.0)
@@ -708,17 +708,63 @@
   0
   )
 
+
+(define *color-black* (new 'static 'rgba :a #x80))
+
+(define *color-white* (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
+
+(define *color-gray* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+
+(define *color-red* (new 'static 'rgba :r #xff :a #x80))
+
+(define *color-green* (new 'static 'rgba :g #xff :a #x80))
+
+(define *color-blue* (new 'static 'rgba :b #xff :a #x80))
+
+(define *color-cyan* (new 'static 'rgba :g #xff :b #xff :a #x80))
+
+(define *color-magenta* (new 'static 'rgba :r #xff :b #xff :a #x80))
+
+(define *color-yellow* (new 'static 'rgba :r #xff :g #xff :a #x80))
+
+(define *color-light-red* (new 'static 'rgba :r #xff :g #x80 :b #x80 :a #x80))
+
+(define *color-light-green* (new 'static 'rgba :r #x80 :g #xff :b #x80 :a #x80))
+
+(define *color-light-blue* (new 'static 'rgba :r #x80 :g #x80 :b #xff :a #x80))
+
+(define *color-light-cyan* (new 'static 'rgba :r #x80 :g #xff :b #xff :a #x80))
+
+(define *color-light-magenta* (new 'static 'rgba :r #xff :g #x80 :b #xff :a #x80))
+
+(define *color-light-yellow* (new 'static 'rgba :r #xff :g #xff :b #x80 :a #x80))
+
+(define *color-dark-red* (new 'static 'rgba :r #x80 :a #x80))
+
+(define *color-dark-green* (new 'static 'rgba :g #x80 :a #x80))
+
+(define *color-dark-blue* (new 'static 'rgba :b #x80 :a #x80))
+
+(define *color-dark-cyan* (new 'static 'rgba :g #x80 :b #x80 :a #x80))
+
+(define *color-dark-magenta* (new 'static 'rgba :r #x80 :b #x80 :a #x80))
+
+(define *color-dark-yellow* (new 'static 'rgba :r #x80 :g #x80 :a #x80))
+
+(define *color-orange* (new 'static 'rgba :r #xff :g #x80 :a #x80))
+
+
 (defun debug-draw-find-ground-point ((target-pos vector) (target-transv vector) (start-len float) (max-len float) (y-angle-of-target-control float) (ck collide-kind))
   "Draws find-ground-point."
   (local-vars (direction-idx int) (sv-192 int))
-  
+
   (format *stdcon* "vel: ~f m/s~%" (/ (vector-xz-length target-transv) 4096.0))
   (if (< 819.2 (vector-xz-length target-transv))
       (format *stdcon* "  using velocity~%")
       (format *stdcon* "  using facing~%")
       )
 
-  
+
   ;; first, let's find our heading
   (let ((current-heading (if (< 819.2 (vector-xz-length target-transv)) ;; if we're moving in the xz plane
                              (vector-y-angle target-transv)             ;; use the direction we're moving
@@ -732,16 +778,16 @@
         (ground-result (new 'stack 'vector))
         )
     (set! (-> current-pos quad) (-> target-pos quad))
-    
+
     (when (not (find-jak-land-point current-pos))
       (format *stdcon* "jak not above ground...~%")
       )
-  
+
     ;; draw sphere for jak's expected landing position.
-    (add-debug-sphere #t (bucket-id debug-draw0) current-pos (meters 1.0) *color-orange*)
-    
-  
-    
+    (add-debug-sphere #t (bucket-id debug) current-pos (meters 1.0) *color-orange*)
+
+
+
     ;; create a bounding box, centered around our current location.
     (let ((bbox (new 'stack-no-clear 'bounding-box)))
       (set! (-> ground-result w) 0.0)
@@ -753,7 +799,7 @@
       ;; except for in y (height). Look 10m down, and 5m up.
       (set! (-> bbox min y) (+ -40960.0 (-> current-pos y)))
       (set! (-> bbox max y) (+ 20480.0 (-> current-pos y)))
-      
+
       ;; fill the collide cache will all the triangles in bounding box.
       (fill-using-bounding-box
         *collide-cache*
@@ -762,10 +808,10 @@
         (the process-drawable #f)
         (new 'static 'pat-surface :skip #x1 :noentity #x1)
         )
-      
-      (add-debug-box #t (bucket-id debug-draw0) (-> bbox min) (-> bbox max) (new 'static 'rgba :g #x80 :a #x80))
+
+      (add-debug-box #t (bucket-id debug) (-> bbox min) (-> bbox max) (new 'static 'rgba :g #x80 :a #x80))
       )
-    
+
     ;; loop over 8 directions to check.
     (set! direction-idx 0)
     (while (< direction-idx 8)
@@ -778,23 +824,23 @@
                               )
                            )
             )
-        
+
         ;; this will count the number of hits we have in this direction.
         (set! sv-192 0)
-        
+
         ;; we don't know anything, so assume we can go the maximum length in this direction
         (let ((max-len-this-dir max-len))
           ;; but, if we did max-len bounce in this direction, we might hit some wall mid-bounce.
-          
+
           ;; start with a probe of max len, pointing straight forward.
           (set-vector! probe-dir 0.0 0.0 max-len 1.0)
           ;; rotate to point along our heading
           (vector-rotate-y! probe-dir probe-dir probe-heading)
-          
+
           (let ((probe-start (vector+! (new 'stack-no-clear 'vector) current-pos (new 'static 'vector :y 20480.0 :w 1.0))))
-            (add-debug-line 
+            (add-debug-line
               #t
-              (bucket-id debug-draw0)
+              (bucket-id debug)
               probe-start
               (vector+! (new 'stack-no-clear 'vector) probe-start probe-dir)
               *color-blue*
@@ -802,7 +848,7 @@
               (the rgba -1)
               )
             )
-          
+
           ;; see how far we can go, 10m above the current target.
           ;; this is likely checking to see if we'll hit a wall mid-bounce
           (when (>= (probe-using-line-sphere
@@ -812,29 +858,29 @@
                     2048.0
                     ck
                     result-tri
-                    1
+                    (the pat-surface 1)
                     )
                   0.0
                   )
               (set! max-len-this-dir (+ -6144.0 (vector-vector-xz-distance current-pos (-> result-tri intersect))))
               (add-debug-sphere
                 #t
-                (bucket-id debug-draw0)
+                (bucket-id debug)
                 (-> result-tri intersect)
                 (meters 0.5)
                 *color-light-cyan*
                 )
               )
-          
 
-          
+
+
           ;; now, let's search between start-len and max-len-this-dir to see if there's somewhere safe to bounce.
           (let ((current-len start-len))
             (while (>= max-len-this-dir current-len)
               ;; probe heading
               (set-vector! probe-dir 0.0 0.0 current-len 1.0)
               (vector-rotate-y! probe-dir probe-dir probe-heading)
-              
+
               ;; put probe dir at the end of the probe
               (vector+! probe-dir current-pos probe-dir)
               ;; start 10m above the curren pos.
@@ -842,7 +888,7 @@
               ;; and probe straight down, to find the first ground after a 10m jump.
               (add-debug-line
                 #t
-                (bucket-id debug-draw0)
+                (bucket-id debug)
                 probe-dir
                 (vector+! (new-stack-vector0) probe-dir (new 'static 'vector :y (meters -10.0)))
                 *color-light-cyan*
@@ -856,7 +902,7 @@
                           10240.0
                           ck
                           result-tri
-                          1
+                          (the pat-surface 1)
                           )
                         0.0
                         )
@@ -873,7 +919,7 @@
                      (format *stdcon* "found ground~%")
                      (add-debug-sphere
                        #t
-                       (bucket-id debug-draw0)
+                       (bucket-id debug)
                        (-> result-tri intersect)
                        (meters 0.5)
                        *color-magenta*
@@ -889,7 +935,7 @@
                     (when (>= (+ 4096.0 current-len) max-len-this-dir)
                       (add-debug-sphere
                         #t
-                        (bucket-id debug-draw0)
+                        (bucket-id debug)
                         (-> result-tri intersect)
                         10240.0
                         *color-gray*
