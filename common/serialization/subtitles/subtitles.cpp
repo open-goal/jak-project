@@ -47,7 +47,7 @@ int64_t get_int(const goos::Object& obj) {
 
 const goos::Object& car(const goos::Object& x) {
   if (!x.is_pair()) {
-    throw std::runtime_error("invalid pair");
+    throw std::runtime_error("car: invalid pair");
   }
 
   return x.as_pair()->car;
@@ -55,7 +55,7 @@ const goos::Object& car(const goos::Object& x) {
 
 const goos::Object& cdr(const goos::Object& x) {
   if (!x.is_pair()) {
-    throw std::runtime_error("invalid pair");
+    throw std::runtime_error("cdr: invalid pair");
   }
 
   return x.as_pair()->cdr;
@@ -255,7 +255,7 @@ void parse_subtitle(const goos::Object& data,
         auto entries = cdr(obj);
         if (head.is_int()) {
           kind = SubtitleSceneKind::Hint;
-        } else if (car(entries).is_symbol()) {
+        } else if (entries.is_pair() && car(entries).is_symbol()) {
           const auto& parm = car(entries).as_symbol()->name;
           if (parm == ":hint") {
             entries = cdr(entries);
@@ -325,7 +325,8 @@ void parse_subtitle(const goos::Object& data,
             auto speaker_str = font->convert_utf8_to_game(speaker_utf8);
             scene.add_line(time, line_str, line_utf8, speaker_str, speaker_utf8, offscreen);
           } else {
-            throw std::runtime_error("Each entry must be a list");
+            throw std::runtime_error(
+                fmt::format("{} | Each entry must be a non-empty list", scene.name()));
           }
         });
         for (auto& [lang, bank] : banks) {
@@ -392,15 +393,27 @@ int GameSubtitleGroups::find_group_index(const std::string& group_name) {
 
 void GameSubtitleGroups::remove_scene(const std::string& group_name,
                                       const std::string& scene_name) {
-  // TODO - validate group_name
+  if (m_groups.count(group_name) == 0) {
+    lg::error("Subtitle group {} doesn't exist! Abort.", group_name);
+    return;
+  }
   m_groups[group_name].erase(
       std::remove(m_groups[group_name].begin(), m_groups[group_name].end(), scene_name),
       m_groups[group_name].end());
 }
+
 void GameSubtitleGroups::add_scene(const std::string& group_name, const std::string& scene_name) {
-  // TODO - validate group_name
-  // TODO - don't add duplicates
-  m_groups[group_name].push_back(scene_name);
+  std::string group = group_name;
+  if (m_groups.count(group_name) == 0) {
+    lg::error("Subtitle group {} doesn't exist! Add to uncategorized.", group_name);
+    group = uncategorized_group;
+  }
+  auto it = std::find(m_groups[group].begin(), m_groups[group].end(), scene_name);
+  if (it != m_groups[group].end()) {
+    lg::error("Scene {} already exists in group {}", scene_name, group);
+  } else {
+    m_groups[group].push_back(scene_name);
+  }
 }
 
 GameSubtitleDB load_subtitle_project() {
