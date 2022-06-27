@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/warrior-ag.gc")
+
 ;; definition of type warrior
 (deftype warrior (process-taskable)
   ()
@@ -19,14 +21,11 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *warrior-sg* warrior
-  0
-  5
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :shadow 4
-  )
+(defskelgroup *warrior-sg* warrior warrior-lod0-jg warrior-idle-ja
+              ((warrior-lod0-mg (meters 20)) (warrior-lod1-mg (meters 40)) (warrior-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow warrior-shadow-mg
+              )
 
 ;; definition for method 52 of type warrior
 ;; INFO: Return type mismatch int vs none.
@@ -55,14 +54,14 @@
           (logtest? (-> obj draw status) (draw-status was-drawn))
           )
      (let ((v1-9 (-> obj draw shadow-ctrl)))
-       (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
+       (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
        )
      0
      (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
      )
     (else
       (let ((v1-14 (-> obj draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) 32)
+        (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
         )
       0
       )
@@ -83,8 +82,7 @@
          :name "warrior-introduction"
          :index 6
          :parts 29
-         :command-list
-         '((125 joint "cameraB")
+         :command-list '((125 joint "cameraB")
            (260 joint "camera")
            (574 joint "cameraB")
            (918 joint "camera")
@@ -137,8 +135,7 @@
          :name "warrior-resolution"
          :index 8
          :parts 6
-         :command-list
-         '((508 blackout 10) (511 blackout 0))
+         :command-list '((508 blackout 10) (511 blackout 0))
          )
        )
       (else
@@ -164,8 +161,7 @@
 ;; failed to figure out what this is:
 (defstate play-anim (warrior)
   :virtual #t
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (send-event (-> (entity-by-type allpontoons) extra process) 'end-mode)
     ((-> (method-of-type process-taskable play-anim) exit))
     (none)
@@ -175,10 +171,7 @@
 ;; definition for method 43 of type warrior
 (defmethod TODO-RENAME-43 warrior ((obj warrior))
   (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 2) 61440.0 obj)
-    (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-4 (the-as number (logior #x3f800000 v1-3)))
-           (f0-2 (+ -1.0 (the-as float v1-4)))
-           )
+    (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.66 f0-2)
          (play-ambient (-> obj ambient) "WAR-LO1A" #f (-> obj root-override trans))

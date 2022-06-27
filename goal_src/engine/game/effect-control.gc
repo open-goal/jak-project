@@ -84,39 +84,39 @@
   (while (> arg2 0)
     (case (the int (-> arg1 0))
       ((3)
-       (logior! (-> arg0 mask) 1)
+       (logior! (-> arg0 mask) (sound-mask volume))
        (set! (-> arg0 volume) (the int (* 10.24 (-> arg1 1))))
        )
       ((4)
-       (logior! (-> arg0 mask) 1)
+       (logior! (-> arg0 mask) (sound-mask volume))
        (+! (-> arg0 volume) (the int (* 10.24 (* (-> arg1 1) (rand-vu)))))
        )
       ((5)
-       (logior! (-> arg0 mask) 2)
+       (logior! (-> arg0 mask) (sound-mask pitch))
        (set! (-> arg0 pitch-mod) (the int (* 1524.0 (-> arg1 1))))
        )
       ((6)
-       (logior! (-> arg0 mask) 2)
+       (logior! (-> arg0 mask) (sound-mask pitch))
        (+! (-> arg0 pitch-mod) (the int (* 1524.0 (* (-> arg1 1) (rand-vu)))))
        )
       ((9)
-       (logior! (-> arg0 mask) 4)
+       (logior! (-> arg0 mask) (sound-mask bend))
        (set! (-> arg0 bend) (the int (* 327.66998 (-> arg1 1))))
        )
       ((10)
-       (logior! (-> arg0 mask) 4)
+       (logior! (-> arg0 mask) (sound-mask bend))
        (+! (-> arg0 bend) (the int (* 327.66998 (* (-> arg1 1) (rand-vu)))))
        )
       ((11)
-       (logior! (-> arg0 mask) 64)
+       (logior! (-> arg0 mask) (sound-mask fo-min))
        (set! (-> arg0 fo-min) (the int (-> arg1 1)))
        )
       ((12)
-       (logior! (-> arg0 mask) 128)
+       (logior! (-> arg0 mask) (sound-mask fo-max))
        (set! (-> arg0 fo-max) (the int (-> arg1 1)))
        )
       ((13)
-       (logior! (-> arg0 mask) 256)
+       (logior! (-> arg0 mask) (sound-mask fo-curve))
        (set! (-> arg0 fo-curve) (the int (-> arg1 1)))
        )
       ((19)
@@ -280,167 +280,87 @@
     (sv-272 symbol)
     (sv-288 res-lump)
     )
-  (with-pp
-    (let ((s3-0 (-> arg0 value))
-          (s5-0 (cond
-                  ((< arg2 0)
-                   (let ((v0-0 (get-property-value (-> obj res) 'effect-joint 'exact arg1 (the-as uint128 0) (the-as (pointer res-tag) #f) *res-static-buf*)
+  (let ((s3-0 (-> arg0 value))
+        (s5-0 (cond
+                ((< arg2 0)
+                 (let ((v0-0 (get-property-value
+                               (-> obj res)
+                               'effect-joint
+                               'exact
+                               arg1
+                               (the-as uint128 0)
+                               (the-as (pointer res-tag) #f)
+                               *res-static-buf*
                                )
-                         )
-                     (if (zero? v0-0)
-                         0
-                         (the-as int (+ v0-0 1))
-                         )
-                     )
-                   )
-                  (else
-                    (empty)
-                    arg2
-                    )
-                  )
-                )
-          )
-      (when (logtest? (-> obj flags) 1)
-        (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-2 from) pp)
-          (set! (-> a1-2 num-params) 3)
-          (set! (-> a1-2 message) 'effect)
-          (set! (-> a1-2 param 0) (the-as uint arg0))
-          (set! (-> a1-2 param 1) (the-as uint arg1))
-          (set! (-> a1-2 param 2) (the-as uint s5-0))
-          (if (send-event-function (-> obj process) a1-2)
-              (return (the-as object 0))
-              )
-          )
-        )
-      (let ((v1-10 (symbol->string arg0)))
-        (cond
-          ((and (= (-> v1-10 data 0) 101)
-                (= (-> v1-10 data 1) 102)
-                (= (-> v1-10 data 2) 102)
-                (= (-> v1-10 data 3) 101)
-                (= (-> v1-10 data 4) 99)
-                (= (-> v1-10 data 5) 116)
-                (= (-> v1-10 data 6) 45)
-                )
-           (let* ((s3-1 (-> obj process root))
-                  (v1-14 (if (and (nonzero? s3-1) (type-type? (-> s3-1 type) collide-shape-moving))
-                             s3-1
                              )
-                         )
-                  (t1-1 (if v1-14
-                            (the-as int (-> (the-as collide-shape-moving v1-14) ground-pat))
-                            *footstep-surface*
-                            )
-                        )
-                  )
-             (dummy-11 obj arg0 arg1 s5-0 (-> obj res) (the-as pat-surface t1-1))
-             )
-           )
-          ((let ((v1-18 (symbol->string arg0)))
-             (and (= (-> v1-18 data 0) 103)
-                  (= (-> v1-18 data 1) 114)
-                  (= (-> v1-18 data 2) 111)
-                  (= (-> v1-18 data 3) 117)
-                  (= (-> v1-18 data 4) 112)
-                  (= (-> v1-18 data 5) 45)
-                  )
-             )
-           (set! s3-0 (cond
-                        ((zero? s3-0)
-                         (let ((v0-5 (lookup-part-group-pointer-by-name (symbol->string arg0))))
-                           (when v0-5
-                             (set! (-> arg0 value) v0-5)
-                             (set! s3-0 (-> v0-5 0))
-                             )
-                           )
-                         (the-as (pointer sparticle-launch-group) s3-0)
-                         )
-                        (else
-                          (-> (the-as (pointer sparticle-launch-group) s3-0) 0)
-                          )
-                        )
-                 )
-           (when (and (nonzero? s3-0) (= (-> (the-as sparticle-launch-group s3-0) type) sparticle-launch-group))
-             (if *debug-effect-control*
-                 (format
-                   #t
-                   "(~5D) effect group ~A ~A frame ~F joint ~D~%"
-                   (-> *display* base-frame-counter)
-                   (-> obj process name)
-                   arg0
-                   arg1
-                   s5-0
-                   )
-                 )
-             (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
-               (when s4-1
-                 (let ((t9-7 (method-of-type part-tracker activate)))
-                   (t9-7 (the-as part-tracker s4-1) (-> obj process) 'part-tracker (the-as pointer #x70004000))
-                   )
-                 (let ((s2-1 run-function-in-process)
-                       (s1-0 s4-1)
-                       (s0-0 part-tracker-init)
                        )
-                   (set! sv-160 -1)
-                   (set! sv-176 (the-as symbol #f))
-                   (set! sv-192 (the-as symbol #f))
-                   (set! sv-208 (the-as symbol #f))
-                   (let ((t3-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data s5-0))))
-                     ((the-as (function object object object object object object object object none) s2-1)
-                      s1-0
-                      s0-0
-                      (the-as sparticle-launch-group s3-0)
-                      sv-160
-                      sv-176
-                      sv-192
-                      sv-208
-                      t3-0
-                      )
-                     )
+                   (if (zero? v0-0)
+                       0
+                       (the-as int (+ v0-0 1))
+                       )
                    )
-                 (-> s4-1 ppointer)
                  )
+                (else
+                  (empty)
+                  arg2
+                  )
+                )
+              )
+        )
+    (when (logtest? (-> obj flags) 1)
+      (if (send-event (-> obj process) 'effect arg0 arg1 s5-0)
+          (return (the-as object 0))
+          )
+      )
+    (let ((v1-10 (symbol->string arg0)))
+      (cond
+        ((and (= (-> v1-10 data 0) 101)
+              (= (-> v1-10 data 1) 102)
+              (= (-> v1-10 data 2) 102)
+              (= (-> v1-10 data 3) 101)
+              (= (-> v1-10 data 4) 99)
+              (= (-> v1-10 data 5) 116)
+              (= (-> v1-10 data 6) 45)
+              )
+         (let* ((s3-1 (-> obj process root))
+                (v1-14 (if (and (nonzero? s3-1) (type-type? (-> s3-1 type) collide-shape-moving))
+                           s3-1
+                           )
+                       )
+                (t1-1 (if v1-14
+                          (the-as int (-> (the-as collide-shape-moving v1-14) ground-pat))
+                          *footstep-surface*
+                          )
+                      )
+                )
+           (dummy-11 obj arg0 arg1 s5-0 (-> obj res) (the-as pat-surface t1-1))
+           )
+         )
+        ((let ((v1-18 (symbol->string arg0)))
+           (and (= (-> v1-18 data 0) 103)
+                (= (-> v1-18 data 1) 114)
+                (= (-> v1-18 data 2) 111)
+                (= (-> v1-18 data 3) 117)
+                (= (-> v1-18 data 4) 112)
+                (= (-> v1-18 data 5) 45)
+                )
+           )
+         (set! s3-0 (cond
+                      ((zero? s3-0)
+                       (let ((v0-5 (lookup-part-group-pointer-by-name (symbol->string arg0))))
+                         (when v0-5
+                           (set! (-> arg0 value) v0-5)
+                           (set! s3-0 (-> v0-5 0))
+                           )
+                         )
+                       (the-as (pointer sparticle-launch-group) s3-0)
+                       )
+                      (else
+                        (-> (the-as (pointer sparticle-launch-group) s3-0) 0)
+                        )
+                      )
                )
-             )
-           )
-          ((= arg0 'camera-shake)
-           (activate! *camera-smush-control* 819.2 37 600 1.0 0.995)
-           )
-          ((zero? s3-0)
-           (dummy-12 obj arg0 arg1 s5-0 (-> obj res) (string->sound-name (symbol->string arg0)))
-           )
-          ((= (-> (the-as basic s3-0) type) sparticle-launcher)
-           (if *debug-effect-control*
-               (format
-                 #t
-                 "(~5D) effect part  ~A ~A frame ~F joint ~D~%"
-                 (-> *display* base-frame-counter)
-                 (-> obj process name)
-                 arg0
-                 arg1
-                 s5-0
-                 )
-               )
-           (format
-             #t
-             "-----> (~5D) effect part  ~A ~A frame ~F joint ~D~%"
-             (-> *display* base-frame-counter)
-             (-> obj process name)
-             arg0
-             arg1
-             s5-0
-             )
-           (sp-launch-particles-var
-             *sp-particle-system-2d*
-             (the-as sparticle-launcher s3-0)
-             (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data s5-0))
-             (the-as sparticle-launch-state #f)
-             (the-as sparticle-launch-control #f)
-             1.0
-             )
-           )
-          ((= (-> (the-as basic s3-0) type) sparticle-launch-group)
+         (when (and (nonzero? s3-0) (= (-> (the-as sparticle-launch-group s3-0) type) sparticle-launch-group))
            (if *debug-effect-control*
                (format
                  #t
@@ -452,96 +372,170 @@
                  s5-0
                  )
                )
-           (let ((s4-3 (get-process *default-dead-pool* part-tracker #x4000)))
-             (when s4-3
-               (let ((t9-19 (method-of-type part-tracker activate)))
-                 (t9-19 (the-as part-tracker s4-3) (-> obj process) 'part-tracker (the-as pointer #x70004000))
+           (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
+             (when s4-1
+               (let ((t9-7 (method-of-type part-tracker activate)))
+                 (t9-7 (the-as part-tracker s4-1) (-> obj process) 'part-tracker (the-as pointer #x70004000))
                  )
-               (let ((s2-3 run-function-in-process)
-                     (s1-2 s4-3)
-                     (s0-2 part-tracker-init)
+               (let ((s2-1 run-function-in-process)
+                     (s1-0 s4-1)
+                     (s0-0 part-tracker-init)
                      )
-                 (set! sv-224 -1)
-                 (set! sv-240 (the-as symbol #f))
-                 (set! sv-256 (the-as symbol #f))
-                 (set! sv-272 (the-as symbol #f))
-                 (let ((t3-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data s5-0))))
-                   ((the-as (function object object object object object object object object none) s2-3)
-                    s1-2
-                    s0-2
-                    s3-0
-                    sv-224
-                    sv-240
-                    sv-256
-                    sv-272
-                    t3-1
+                 (set! sv-160 -1)
+                 (set! sv-176 (the-as symbol #f))
+                 (set! sv-192 (the-as symbol #f))
+                 (set! sv-208 (the-as symbol #f))
+                 (let ((t3-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data s5-0))))
+                   ((the-as (function object object object object object object object object none) s2-1)
+                    s1-0
+                    s0-0
+                    (the-as sparticle-launch-group s3-0)
+                    sv-160
+                    sv-176
+                    sv-192
+                    sv-208
+                    t3-0
                     )
                    )
                  )
-               (-> s4-3 ppointer)
+               (-> s4-1 ppointer)
                )
              )
            )
-          ((= (-> (the-as basic s3-0) type) sound-spec)
-           (sound-play-by-spec
-             (the-as sound-spec s3-0)
-             (new-sound-id)
-             (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data s5-0))
+         )
+        ((= arg0 'camera-shake)
+         (activate! *camera-smush-control* 819.2 37 600 1.0 0.995)
+         )
+        ((zero? s3-0)
+         (dummy-12 obj arg0 arg1 s5-0 (-> obj res) (string->sound-name (symbol->string arg0)))
+         )
+        ((= (-> (the-as basic s3-0) type) sparticle-launcher)
+         (if *debug-effect-control*
+             (format
+               #t
+               "(~5D) effect part  ~A ~A frame ~F joint ~D~%"
+               (-> *display* base-frame-counter)
+               (-> obj process name)
+               arg0
+               arg1
+               s5-0
+               )
+             )
+         (format
+           #t
+           "-----> (~5D) effect part  ~A ~A frame ~F joint ~D~%"
+           (-> *display* base-frame-counter)
+           (-> obj process name)
+           arg0
+           arg1
+           s5-0
+           )
+         (launch-particles :rate 1.0
+          (the-as sparticle-launcher s3-0)
+          (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data s5-0))
+          )
+         )
+        ((= (-> (the-as basic s3-0) type) sparticle-launch-group)
+         (if *debug-effect-control*
+             (format
+               #t
+               "(~5D) effect group ~A ~A frame ~F joint ~D~%"
+               (-> *display* base-frame-counter)
+               (-> obj process name)
+               arg0
+               arg1
+               s5-0
+               )
+             )
+         (let ((s4-3 (get-process *default-dead-pool* part-tracker #x4000)))
+           (when s4-3
+             (let ((t9-19 (method-of-type part-tracker activate)))
+               (t9-19 (the-as part-tracker s4-3) (-> obj process) 'part-tracker (the-as pointer #x70004000))
+               )
+             (let ((s2-3 run-function-in-process)
+                   (s1-2 s4-3)
+                   (s0-2 part-tracker-init)
+                   )
+               (set! sv-224 -1)
+               (set! sv-240 (the-as symbol #f))
+               (set! sv-256 (the-as symbol #f))
+               (set! sv-272 (the-as symbol #f))
+               (let ((t3-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data s5-0))))
+                 ((the-as (function object object object object object object object object none) s2-3)
+                  s1-2
+                  s0-2
+                  s3-0
+                  sv-224
+                  sv-240
+                  sv-256
+                  sv-272
+                  t3-1
+                  )
+                 )
+               )
+             (-> s4-3 ppointer)
              )
            )
-          ((= (-> (the-as basic s3-0) type) death-info)
-           (let ((v1-67 (-> obj process draw)))
-             (let ((a1-42 (-> (the-as death-info s3-0) vertex-skip))
-                   (a0-55
-                     (max
-                       2
-                       (the-as int (/ (-> (the-as death-info s3-0) timer) (the-as uint (the int (-> *display* time-factor)))))
-                       )
+         )
+        ((= (-> (the-as basic s3-0) type) sound-spec)
+         (sound-play-by-spec
+           (the-as sound-spec s3-0)
+           (new-sound-id)
+           (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj process node-list data s5-0))
+           )
+         )
+        ((= (-> (the-as basic s3-0) type) death-info)
+         (let ((v1-67 (-> obj process draw)))
+           (let ((a1-42 (-> (the-as death-info s3-0) vertex-skip))
+                 (a0-55
+                   (max
+                     2
+                     (the-as int (/ (-> (the-as death-info s3-0) timer) (the-as uint (the int (-> *display* time-factor)))))
                      )
                    )
-               (when (= (-> *setting-control* current video-mode) 'pal)
-                 (if (< (the-as uint 1) a1-42)
-                     (set! a1-42 (/ (the-as uint (* (the-as uint 50) a1-42)) (the-as uint 60)))
-                     )
                  )
-               (let ((a2-29 (-> *display* frames (-> *display* last-screen) frame run-time)))
-                 (cond
-                   ((< 9000 (the-as int a2-29))
-                    (set! a1-42 (* a1-42 4))
-                    )
-                   ((< 7000 (the-as int a2-29))
-                    (set! a1-42 (* a1-42 2))
-                    )
+             (when (= (-> *setting-control* current video-mode) 'pal)
+               (if (< (the-as uint 1) a1-42)
+                   (set! a1-42 (/ (the-as uint (* (the-as uint 50) a1-42)) (the-as uint 60)))
                    )
-                 )
-               (set! (-> v1-67 death-vertex-skip) a1-42)
-               (set! (-> v1-67 death-effect) (-> (the-as death-info s3-0) effect))
-               (set! (-> v1-67 death-timer) (+ a0-55 1))
                )
-             (set! (-> v1-67 death-timer-org) (-> v1-67 death-timer))
-             (set! (-> v1-67 death-draw-overlap) (-> (the-as death-info s3-0) overlap))
-             )
-           (when (-> (the-as death-info s3-0) sound)
-             (let* ((s2-5 obj)
-                    (s1-3 (method-of-object s2-5 dummy-12))
-                    (s0-3 (-> (the-as death-info s3-0) sound))
-                    )
-               (set! sv-288 (-> obj res))
-               (let ((t1-11 (string->sound-name (symbol->string (-> (the-as death-info s3-0) sound)))))
-                 (s1-3 s2-5 s0-3 arg1 s5-0 sv-288 t1-11)
+             (let ((a2-29 (-> *display* frames (-> *display* last-screen) frame run-time)))
+               (cond
+                 ((< 9000 a2-29)
+                  (set! a1-42 (* a1-42 4))
+                  )
+                 ((< 7000 a2-29)
+                  (set! a1-42 (* a1-42 2))
+                  )
                  )
                )
+             (set! (-> v1-67 death-vertex-skip) a1-42)
+             (set! (-> v1-67 death-effect) (-> (the-as death-info s3-0) effect))
+             (set! (-> v1-67 death-timer) (+ a0-55 1))
              )
-           (send-event (-> obj process) 'death-start (the-as death-info s3-0))
+           (set! (-> v1-67 death-timer-org) (-> v1-67 death-timer))
+           (set! (-> v1-67 death-draw-overlap) (-> (the-as death-info s3-0) overlap))
            )
-          (else
-            (dummy-12 obj arg0 arg1 s5-0 (-> obj res) (string->sound-name (symbol->string arg0)))
-            )
+         (when (-> (the-as death-info s3-0) sound)
+           (let* ((s2-5 obj)
+                  (s1-3 (method-of-object s2-5 dummy-12))
+                  (s0-3 (-> (the-as death-info s3-0) sound))
+                  )
+             (set! sv-288 (-> obj res))
+             (let ((t1-11 (string->sound-name (symbol->string (-> (the-as death-info s3-0) sound)))))
+               (s1-3 s2-5 s0-3 arg1 s5-0 sv-288 t1-11)
+               )
+             )
+           )
+         (send-event (-> obj process) 'death-start (the-as death-info s3-0))
+         )
+        (else
+          (dummy-12 obj arg0 arg1 s5-0 (-> obj res) (string->sound-name (symbol->string arg0)))
           )
         )
       )
-    0
     )
+  0
   )
 
 (defmethod dummy-11 effect-control ((obj effect-control) (arg0 symbol) (arg1 float) (arg2 int) (arg3 basic) (arg4 pat-surface))
@@ -583,7 +577,7 @@
          (set! s1-0 (sound-name-with-material 'flut-land arg4 ""))
          )
         (('effect-land-poof)
-         (when (< (the-as int a0-4) 9000)
+         (when (< a0-4 9000)
            (let* ((a0-13 obj)
                   (t9-8 (method-of-object a0-13 dummy-10))
                   (v1-15 (-> arg4 material))
@@ -650,7 +644,7 @@
            )
          )
         (('effect-run-poof)
-         (when (< (the-as int a0-4) 9000)
+         (when (< a0-4 9000)
            (let* ((a0-14 obj)
                   (t9-9 (method-of-object a0-14 dummy-10))
                   (v1-20 (-> arg4 material))
@@ -782,7 +776,7 @@
            )
          )
         (('effect-just-poof)
-         (when (< (the-as int a0-4) 9000)
+         (when (< a0-4 9000)
            (let* ((a0-16 obj)
                   (t9-11 (method-of-object a0-16 dummy-10))
                   (v1-29 (-> arg4 material))
@@ -1064,14 +1058,7 @@
   )
 
 (defmethod dummy-12 effect-control ((obj effect-control) (arg0 symbol) (arg1 float) (arg2 int) (arg3 basic) (arg4 sound-name))
-  (local-vars
-    (r0-0 uint128)
-    (v1-10 uint128)
-    (sv-112 int)
-    (sv-128 sound-name)
-    (sv-144 basic)
-    (sv-160 (function vector vector float))
-    )
+  (local-vars (sv-112 res-tag) (sv-128 sound-name) (sv-144 basic) (sv-160 (function vector vector float)))
   (set! sv-144 arg3)
   (let ((s0-0 arg4)
         (gp-0 (new 'stack 'sound-spec))
@@ -1082,32 +1069,23 @@
               )
         )
     (set! (-> gp-0 sound-name) s0-0)
-    (logior! (-> gp-0 mask) 1)
+    (logior! (-> gp-0 mask) (sound-mask volume))
     (set! (-> gp-0 volume) 1024)
-    (logior! (-> gp-0 mask) 4)
+    (logior! (-> gp-0 mask) (sound-mask bend))
     (set! (-> gp-0 bend) (the int (* 327.66998 (rand-vu-float-range -100.0 100.0))))
-    (set! sv-112 0)
+    (set! sv-112 (new 'static 'res-tag))
     (let* ((t9-3 (method-of-type res-lump get-property-data))
            (a1-6 'effect-param)
            (a2-1 'exact)
            (a3-1 arg1)
            (t0-1 #f)
-           (t1-1 (the-as (pointer int) (& sv-112)))
+           (t1-1 (the-as (pointer res-tag) (& sv-112)))
            (t2-0 *res-static-buf*)
-           (a1-7
-             (t9-3 (the-as res-lump sv-144) a1-6 a2-1 a3-1 (the-as pointer t0-1) (the-as (pointer res-tag) t1-1) t2-0)
-             )
+           (a1-7 (t9-3 (the-as res-lump sv-144) a1-6 a2-1 a3-1 (the-as pointer t0-1) t1-1 t2-0))
            )
-      (when a1-7
-        (let ((t9-4 effect-param->sound-spec)
-              (a0-5 gp-0)
-              )
-          (let ((v1-9 (the-as uint128 sv-112)))
-            (.pcpyud v1-10 v1-9 r0-0)
-            )
-          (t9-4 a0-5 (the-as (pointer float) a1-7) (shr (* (the-as int v1-10) 2) 49))
+      (if a1-7
+          (effect-param->sound-spec gp-0 (the-as (pointer float) a1-7) (the-as int (-> sv-112 elt-count)))
           )
-        )
       )
     (if (and (nonzero? (-> gp-0 fo-max)) (let ((f30-1 (* 4096.0 (the float (-> gp-0 fo-max)))))
                                            (set! sv-160 vector-vector-distance)
@@ -1160,11 +1138,11 @@
             )
        0
        0
-       1
+       (sound-group sfx)
        #t
        )
      )
-    ((logtest? (-> self water flags) 512)
+    ((logtest? (-> self water flags) (water-flags wt09))
      (dummy-10 (-> self skel effect) 'effect-land-water -1.0 -1)
      )
     (else

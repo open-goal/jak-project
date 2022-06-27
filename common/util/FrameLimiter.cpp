@@ -1,4 +1,5 @@
 #include "FrameLimiter.h"
+
 #include <thread>
 
 double FrameLimiter::round_to_nearest_60fps(double current) {
@@ -41,6 +42,7 @@ void FrameLimiter::run(double target_fps,
 
 #else
 
+#define NOMINMAX
 #include <Windows.h>
 
 FrameLimiter::FrameLimiter() {

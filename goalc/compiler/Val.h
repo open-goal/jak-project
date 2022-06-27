@@ -5,15 +5,18 @@
  * The GOAL Value. A value represents a place (where the value is stored) and a type.
  */
 
-#include <utility>
-#include <string>
-#include <stdexcept>
 #include <optional>
-#include "common/type_system/TypeSystem.h"
-#include "goalc/regalloc/IRegister.h"
+#include <stdexcept>
+#include <string>
+#include <utility>
+
 #include "Lambda.h"
 #include "StaticObject.h"
+
+#include "common/type_system/TypeSystem.h"
+
 #include "goalc/compiler/ConstantValue.h"
+#include "goalc/regalloc/IRegister.h"
 
 class RegVal;
 class Env;
@@ -293,3 +296,18 @@ class BitFieldVal : public Val {
   bool m_sign_extend = false;
   bool m_use_128 = false;
 };
+
+template <typename T>
+struct ValOrConstant {
+  explicit ValOrConstant(const T& c) : constant(c), val(nullptr) {}
+  explicit ValOrConstant(Val* v) : val(v) {}
+
+  T constant;
+  Val* val = nullptr;
+
+  bool is_constant() const { return val == nullptr; }
+  bool is_variable() const { return val != nullptr; }
+};
+
+using ValOrConstInt = ValOrConstant<s64>;
+using ValOrConstFloat = ValOrConstant<float>;

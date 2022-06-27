@@ -104,6 +104,14 @@
   )
 
 (defun upload-vu0-program ((func vu-function) (wait-ptr pointer))
+  "Upload and block until done.
+   Generating the DMA is highly optimized."
+  (none)
+  )
+
+(defun generic-upload-vu0 ()
+  "Start upload, but don't sync yet.
+   Generating the DMA chain is not as optimized."
   (none)
   )
 
@@ -137,11 +145,35 @@
   (none)
   )
 
+(defun generic-initialize ((arg0 generic-dma-foreground-sink) (arg1 matrix) (arg2 vu-lights))
+  (generic-work-init arg0)
+  (generic-upload-vu0)
+  ;;(let ((a2-1 (+ #x2e20 (the-as int #x70000000)))
+  (let ((a2-1 (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work consts matrix))
+        (v1-1 (-> arg1 vector 0 quad))
+        (a0-2 (-> arg1 vector 1 quad))
+        (a1-1 (-> arg1 vector 2 quad))
+        (a3-0 (-> arg1 vector 3 quad))
+        )
+    (set! (-> a2-1 vector 0 quad) v1-1)
+    (set! (-> a2-1 vector 1 quad) a0-2)
+    (set! (-> a2-1 vector 2 quad) a1-1)
+    (set! (-> a2-1 vector 3 quad) a3-0)
+    )
+  (if arg2
+      (quad-copy! (the-as pointer (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work lights)) (the-as pointer arg2) 7)
+      )
+  0
+  (none)
+  )
+
+(defun generic-wrapup ((arg0 generic-dma-foreground-sink))
+  (set! (-> arg0 state gifbuf-adr) (-> (scratchpad-object terrain-context) work foreground generic-work saves gifbuf-adr))
+  (set! (-> arg0 state inbuf-adr) (-> (scratchpad-object terrain-context) work foreground generic-work saves inbuf-adr))
+  (none)
+  )
+
 (def-mips2c generic-prepare-dma-single function)
-
-
 (def-mips2c generic-prepare-dma-double function)
-
 (def-mips2c generic-light-proc function)
-
 (def-mips2c generic-envmap-proc function)

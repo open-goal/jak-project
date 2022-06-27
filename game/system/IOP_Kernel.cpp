@@ -1,7 +1,10 @@
-#include <cstring>
 #include "IOP_Kernel.h"
-#include "game/sce/iop.h"
+
+#include <cstring>
+
 #include "common/util/Assert.h"
+
+#include "game/sce/iop.h"
 
 /*!
  * Create a new thread.  Will not run the thread.
@@ -103,6 +106,21 @@ void IOP_Kernel::WakeupThread(s32 id) {
     threads.at(id).started = true;
   }
   // todo, should we ever switch directly to that thread?
+}
+
+bool IOP_Kernel::OnlyThreadAlive(s32 thid) {
+  bool yes = false;
+  for (u64 i = 0; i < threads.size(); i++) {
+    if (threads[i].started && !threads[i].done) {
+      if ((s32)i != thid) {
+        return false;
+      }
+      if ((s32)i == thid) {
+        yes = true;
+      }
+    }
+  }
+  return yes;
 }
 
 /*!

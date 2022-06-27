@@ -108,16 +108,25 @@ void Generic2::determine_draw_modes() {
 
     u64 bonus_adgif_data[4];
     memcpy(bonus_adgif_data, frag.header + (5 * 16), 4 * sizeof(u64));
-    // ADGIF 5
-    ASSERT((u8)bonus_adgif_data[1] == (u8)(GsRegisterAddress::TEST_1));
-    u64 final_test = bonus_adgif_data[0];
 
-    // ADGIF 6
-    if ((u8)bonus_adgif_data[3] == (u8)(GsRegisterAddress::ALPHA_1)) {
-      final_alpha = bonus_adgif_data[2];
-    } else {
+    u64 final_test;
+    if ((u8)bonus_adgif_data[1] == (u8)(GsRegisterAddress::ALPHA_1)) {
+      ASSERT((u8)bonus_adgif_data[1] == (u8)(GsRegisterAddress::ALPHA_1));
+      final_alpha = bonus_adgif_data[0];
       ASSERT((u8)bonus_adgif_data[3] == (u8)(GsRegisterAddress::TEST_1));
       final_test = bonus_adgif_data[2];
+    } else {
+      // ADGIF 5
+      ASSERT((u8)bonus_adgif_data[1] == (u8)(GsRegisterAddress::TEST_1));
+      final_test = bonus_adgif_data[0];
+
+      // ADGIF 6
+      if ((u8)bonus_adgif_data[3] == (u8)(GsRegisterAddress::ALPHA_1)) {
+        final_alpha = bonus_adgif_data[2];
+      } else {
+        ASSERT((u8)bonus_adgif_data[3] == (u8)(GsRegisterAddress::TEST_1));
+        final_test = bonus_adgif_data[2];
+      }
     }
 
     if (final_alpha) {
@@ -146,10 +155,12 @@ void Generic2::determine_draw_modes() {
         } else if (a == GsAlpha::BlendMode::SOURCE && b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                    c == GsAlpha::BlendMode::DEST && d == GsAlpha::BlendMode::DEST) {
           current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
+        } else if (a == GsAlpha::BlendMode::SOURCE && b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+                   c == GsAlpha::BlendMode::ZERO_OR_FIXED && d == GsAlpha::BlendMode::DEST) {
+          current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_FIX_DST);
         } else {
-          // unsupported blend: a 0 b 2 c 2 d 1
-          // lg::error("unsupported blend: a {} b {} c {} d {}", (int)a, (int)b, (int)c, (int)d);
-          //      ASSERT(false);
+          fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)a, (int)b, (int)c, (int)d);
+          // ASSERT(false);
         }
       }
     }

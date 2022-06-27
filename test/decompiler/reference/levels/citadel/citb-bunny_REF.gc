@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/citb-bunny-ag.gc")
+
 ;; definition of type citb-bunny
 (deftype citb-bunny (snow-bunny)
   ()
@@ -22,13 +24,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-bunny-sg* citb-bunny
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0.25 0 2)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-bunny-sg* citb-bunny citb-bunny-lod0-jg citb-bunny-idle-ja
+              ((citb-bunny-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0.25 0 2)
+              )
 
 ;; definition for symbol *citb-bunny-nav-enemy-info*, type nav-enemy-info
 (define *citb-bunny-nav-enemy-info* (new 'static 'nav-enemy-info
@@ -77,7 +76,7 @@
                                       :use-proximity-notice #f
                                       :use-jump-blocked #f
                                       :use-jump-patrol #f
-                                      :gnd-collide-with #x1
+                                      :gnd-collide-with (collide-kind background)
                                       :debug-draw-neck #f
                                       :debug-draw-jump #f
                                       )
@@ -97,7 +96,7 @@
 (defmethod TODO-RENAME-48 citb-bunny ((obj citb-bunny) (arg0 object))
   (dummy-60 obj)
   (TODO-RENAME-45 obj *citb-bunny-nav-enemy-info*)
-  (set! (-> obj draw shadow-ctrl settings flags) (logand -9 (-> obj draw shadow-ctrl settings flags)))
+  (logclear! (-> obj draw shadow-ctrl settings flags) (shadow-flags shdf03))
   (cond
     ((zero? (res-lump-value (-> obj entity) 'mode uint128))
      (set! (-> obj defense) (the-as uint 1))

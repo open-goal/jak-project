@@ -1,24 +1,25 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <unordered_map>
 #include <stdexcept>
+#include <string>
+#include <unordered_map>
 #include <unordered_set>
-#include "decompiler/analysis/atomic_op_builder.h"
-#include "decompiler/Disasm/Instruction.h"
-#include "decompiler/Disasm/Register.h"
+#include <vector>
+
 #include "BasicBlocks.h"
 #include "CfgVtx.h"
-#include "common/type_system/TypeSpec.h"
-#include "decompiler/config.h"
 #include "Warnings.h"
+
+#include "common/type_system/TypeSpec.h"
 #include "common/type_system/state.h"
+
+#include "decompiler/Disasm/Instruction.h"
+#include "decompiler/Disasm/Register.h"
+#include "decompiler/analysis/atomic_op_builder.h"
+#include "decompiler/config.h"
 
 namespace decompiler {
 class DecompilerTypeSystem;
-class IR_Atomic;
-class IR;
 
 struct FunctionName {
   enum class FunctionKind {
@@ -98,26 +99,19 @@ struct FunctionName {
 
 class Function {
  public:
-  Function(int _start_word, int _end_word);
+  Function(int _start_word, int _end_word, GameVersion version);
   ~Function();
   void analyze_prologue(const LinkedObjectFile& file);
   void find_global_function_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
   void find_method_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
   void find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
-  void add_basic_op(std::shared_ptr<IR_Atomic> op, int start_instr, int end_instr);
-  bool has_basic_ops() { return !basic_ops.empty(); }
   bool instr_starts_basic_op(int idx);
-  std::shared_ptr<IR_Atomic> get_basic_op_at_instr(int idx);
   bool instr_starts_atomic_op(int idx);
   const AtomicOp& get_atomic_op_at_instr(int idx);
-  int get_basic_op_count();
-  int get_failed_basic_op_count();
   BlockTopologicalSort bb_topo_sort();
   std::string name() const;
 
   TypeSpec type;
-
-  std::shared_ptr<IR> ir = nullptr;
 
   int segment = -1;
   int start_word = -1;
@@ -175,7 +169,6 @@ class Function {
   } prologue;
 
   bool uses_fp_register = false;
-  std::vector<std::shared_ptr<IR_Atomic>> basic_ops;
 
   struct {
     bool atomic_ops_attempted = false;

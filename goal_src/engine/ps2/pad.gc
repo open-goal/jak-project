@@ -63,7 +63,7 @@
    ;; DUALSHOCK 2 data
    ;; status = 0x70 | (data length / 2)
    (abutton uint8  12 :offset-assert 12) ;; pressure sensitivity information
-   
+
    ;; pad buffer needs to be 32 bytes large.
    (dummy   uint8  12 :offset-assert 24)
    )
@@ -198,6 +198,42 @@
        )
       )
     )
+  )
+
+(defmacro analog-input-horizontal-first (in offset center-val max-val out-range)
+  "Same as analog-input but respects First-Person Horizontal camera control setting."
+  `(#if PC_PORT ;; first-person horizontal is NOT inverted in original game
+        (* (if (-> *pc-settings* first-camera-h-inverted?) -1.0 1.0)
+           (analog-input ,in ,offset ,center-val ,max-val ,out-range))
+        (analog-input ,in ,offset ,center-val ,max-val ,out-range)
+        )
+  )
+
+(defmacro analog-input-vertical-first (in offset center-val max-val out-range)
+  "Same as analog-input but respects First-Person Vertical camera control setting."
+  `(#if PC_PORT ;; first-person vertical is already inverted in original game
+        (* (if (-> *pc-settings* first-camera-v-inverted?) 1.0 -1.0)
+           (analog-input ,in ,offset ,center-val ,max-val ,out-range))
+        (analog-input ,in ,offset ,center-val ,max-val ,out-range)
+        )
+  )
+
+(defmacro analog-input-horizontal-third (in offset center-val max-val out-range)
+  "Same as analog-input but respects Third-Person Horizontal camera control setting."
+  `(#if PC_PORT ;; third-person horizontal is already inverted in original game
+        (* (if (-> *pc-settings* third-camera-h-inverted?) 1.0 -1.0)
+           (analog-input ,in ,offset ,center-val ,max-val ,out-range))
+        (analog-input ,in ,offset ,center-val ,max-val ,out-range)
+        )
+  )
+
+(defmacro analog-input-vertical-third (in offset center-val max-val out-range)
+  "Same as analog-input but respects Third-Person Vertical camera control setting."
+  `(#if PC_PORT ;; third-person vertical is already inverted in original game
+        (* (if (-> *pc-settings* third-camera-v-inverted?) 1.0 -1.0)
+           (analog-input ,in ,offset ,center-val ,max-val ,out-range))
+        (analog-input ,in ,offset ,center-val ,max-val ,out-range)
+        )
   )
 
 (defun cpad-set-buzz! ((pad cpad-info) (buzz-idx int) (buzz-amount int) (duration time-frame))
@@ -359,7 +395,7 @@
   `(logtest? (cpad-hold ,pad-idx) (pad-buttons ,@buttons))
   )
 
-(defmacro cpad-clear-buttons! (pad-idx &rest buttons)
+(defmacro cpad-clear! (pad-idx &rest buttons)
   `(begin
       (logclear! (cpad-pressed ,pad-idx) (pad-buttons ,@buttons))
       (logclear! (cpad-hold ,pad-idx) (pad-buttons ,@buttons))
@@ -381,10 +417,10 @@
               (if (cpad-pressed? ,pad-idx ,x)
                 ,(if (< i (- (length buttons) 1))
                     `(1+! ,cheat-var)
-                    
+
                     `(begin ,@body (set! ,cheat-var 0))
                     )
-                
+
                 (set! ,cheat-var 0)
                 )
               )
@@ -398,8 +434,8 @@
   "play the appropriate sound for inputting a cheat code"
 
   `(if ,cheat?
-      (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 1 #t)
-      (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 1 #t)
+      (sound-play "select-menu")
+      (sound-play "cursor-options")
       )
   )
 

@@ -1,9 +1,10 @@
 #pragma once
 
 #include <string>
+
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/opengl_renderer/opengl_utils.h"
+#include "game/graphics/pipelines/opengl.h"
 
 constexpr int EYE_BASE_BLOCK = 8160;
 constexpr int NUM_EYE_PAIRS = 11;

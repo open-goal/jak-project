@@ -38,11 +38,11 @@
    (transv                vector     :inline :offset-assert  64)  ;; velocity (meters/second)
    (rotv                  vector     :inline :offset-assert  80)  ;; angular velocity (deg/second)
    (scalev                vector     :inline :offset-assert  96)  ;; scale velocity (unused?)
-   
+
    ;; there's a hacky ~first-order orientation yaw control with hysteresis
    ;; it makes the yaw change smoothly and attempts to cancel out oscillations from the collision system
    (dir-targ              quaternion :inline :offset-assert 112)  ;; direction target
-   (angle-change-time     time-frame              :offset-assert 128)  ;; the time when we change rotation directions
+   (angle-change-time     time-frame         :offset-assert 128)  ;; the time when we change rotation directions
    (old-y-angle-diff      float              :offset-assert 136)  ;; the amount we moved last time
    )
   :method-count-assert 28
@@ -66,8 +66,8 @@
    (global-y-angle-to-point (_type_ vector) float 23)
    (relative-y-angle-to-point (_type_ vector) float 24)
    (roll-relative-to-gravity (_type_) float 25)
-   (TODO-RENAME-26 (_type_ int vector float) trsqv 26)
-   
+   (set-and-limit-velocity (_type_ int vector float) trsqv 26)
+
    ;; note: child classes can override this method to use a different quaternion
    ;; to represent the "current" orientation for the above methods.
    (get-quaternion (_type_) quaternion 27)
@@ -75,7 +75,7 @@
   )
 
 (defmethod global-y-angle-to-point trsqv ((obj trsqv) (arg0 vector))
-  "Get the angle in the xy plane from the position of this trsqv to the point arg0."
+  "Get the angle in the xz plane from the position of this trsqv to the point arg0."
   (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)))
   )
 

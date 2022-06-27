@@ -7,6 +7,8 @@
 
 ;; DECOMP BEGINS
 
+(import "goal_src/import/spiderwebs-ag.gc")
+
 (define *spider-jump-mods* (new 'static 'surface
                              :name 'jump
                              :turnv 131072.0
@@ -32,7 +34,7 @@
                              :slope-up-traction 1.0
                              :align-speed 1.0
                              :mode 'air
-                             :flags #xc00
+                             :flags (surface-flags allow-edge-grab jump)
                              )
         )
 
@@ -50,28 +52,17 @@
   )
 
 
-(defskelgroup *spiderwebs-sg* spiderwebs
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *spiderwebs-sg* spiderwebs spiderwebs-good-lod0-jg -1
+              ((spiderwebs-good-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3.5)
+              )
 
 (defbehavior spiderwebs-default-event-handler spiderwebs ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('bonk)
-     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-1 from) self)
-       (set! (-> a1-1 num-params) 3)
-       (set! (-> a1-1 message) 'jump)
-       (set! (-> a1-1 param 0) (the-as uint (-> self spring-height)))
-       (set! (-> a1-1 param 1) (the-as uint (-> self spring-height)))
-       (set! (-> a1-1 param 2) (the-as uint *spider-jump-mods*))
-       (if (send-event-function arg0 a1-1)
-           (go spiderwebs-bounce)
-           )
-       )
+     (if (send-event arg0 'jump (-> self spring-height) (-> self spring-height) *spider-jump-mods*)
+         (go spiderwebs-bounce)
+         )
      )
     (('touch)
      (when (= (-> arg0 type) target)
@@ -100,21 +91,12 @@
   )
 
 (defstate spiderwebs-idle (spiderwebs)
-  :event
-  spiderwebs-default-event-handler
-  :code
-  (behavior ()
+  :event spiderwebs-default-event-handler
+  :code (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) 0.0)
-      )
+    (ja :group! spiderwebs-bounce-ja :num! min)
     (transform-post)
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -123,48 +105,24 @@
   )
 
 (defstate spiderwebs-bounce (spiderwebs)
-  :code
-  (behavior ()
+  :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
-    (sound-play-by-name (static-sound-name "web-tramp") (new-sound-id) 1024 0 0 1 #t)
-    (let ((gp-1 (-> self skel root-channel 0)))
-      (set! (-> gp-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-      (set! (-> gp-1 param 0) (ja-aframe 10.0 0))
-      (set! (-> gp-1 param 1) 1.0)
-      (set! (-> gp-1 frame-num) 0.0)
-      (joint-control-channel-group! gp-1 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-      )
+    (sound-play "web-tramp")
+    (ja-no-eval :group! spiderwebs-bounce-ja :num! (seek! (ja-aframe 10.0 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((gp-2 (-> self skel root-channel 0)))
-        (set! (-> gp-2 param 0) (ja-aframe 10.0 0))
-        (set! (-> gp-2 param 1) 1.0)
-        (joint-control-channel-group-eval! gp-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe 10.0 0)))
       )
     (set! (-> self event-hook) (-> spiderwebs-idle event))
-    (let ((gp-3 (-> self skel root-channel 0)))
-      (set! (-> gp-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-      (set! (-> gp-3 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
-            )
-      (set! (-> gp-3 param 1) 1.0)
-      (set! (-> gp-3 frame-num) (ja-aframe 10.0 0))
-      (joint-control-channel-group! gp-3 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-      )
+    (ja-no-eval :group! spiderwebs-bounce-ja :num! (seek!) :frame-num (ja-aframe 10.0 0))
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-10 (-> self skel root-channel 0)))
-        (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
-        (set! (-> a0-10 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go spiderwebs-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior spiderwebs) transform-post)
+  :post (the-as (function none :behavior spiderwebs) transform-post)
   )
 
 (defmethod init-from-entity! spiderwebs ((obj spiderwebs) (arg0 entity-actor))

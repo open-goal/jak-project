@@ -2,10 +2,12 @@
 
 #include <string>
 #include <vector>
+
 #include "common/type_system/TypeSpec.h"
-#include "goalc/emitter/ObjectGenerator.h"
-#include "goalc/compiler/ConstantValue.h"
 #include "common/util/BitUtils.h"
+
+#include "goalc/compiler/ConstantValue.h"
+#include "goalc/emitter/ObjectGenerator.h"
 
 class FunctionEnv;
 

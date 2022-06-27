@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/plant-boss-ag.gc")
+
 ;; definition of type plant-boss
 (deftype plant-boss (process-drawable)
   ((root-override    collide-shape               :offset        112)
@@ -39,12 +41,7 @@
     plant-boss-idle
     plant-boss-intro
     (plant-boss-reset int)
-    (plant-boss-root-die symbol)
-    plant-boss-root-idle
     plant-boss-spawn
-    (plant-boss-vine-die symbol)
-    (plant-boss-vine-hit basic)
-    plant-boss-vine-idle
     plant-boss-vulnerable
     )
   )
@@ -116,6 +113,11 @@
     (plant-boss-back-arms-die symbol)
     (plant-boss-back-arms-hit symbol)
     plant-boss-back-arms-idle
+    (plant-boss-root-die symbol)
+    plant-boss-root-idle
+    (plant-boss-vine-die symbol)
+    (plant-boss-vine-hit basic)
+    plant-boss-vine-idle
     )
   )
 
@@ -161,71 +163,50 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *plant-boss-sg* plant-boss
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 10 20)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *plant-boss-sg* plant-boss plant-boss-main-lod0-jg plant-boss-main-idle-ja
+              ((plant-boss-main-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 10 20)
+              :shadow plant-boss-main-shadow-mg
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *plant-boss-arm-sg* plant-boss
-  22
-  25
-  ((23 (meters 999999)))
-  :bounds (static-spherem 0 0 0 20)
-  :longest-edge (meters 0)
-  :shadow 24
-  )
+(defskelgroup *plant-boss-arm-sg* plant-boss plant-boss-arms-lod0-jg plant-boss-arms-idle-ja
+              ((plant-boss-arms-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 20)
+              :shadow plant-boss-arms-shadow-mg
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *plant-boss-leaf-sg* plant-boss
-  37
-  42
-  ((38 (meters 999999)))
-  :bounds (static-spherem 0 0 0 6)
-  :longest-edge (meters 0)
-  :shadow 39
-  )
+(defskelgroup *plant-boss-leaf-sg* plant-boss plant-boss-leaf-lod0-jg plant-boss-leaf-idle-left-ja
+              ((plant-boss-leaf-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              :shadow plant-boss-leaf-shadow-mg
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *plant-boss-back-arms-sg* plant-boss
-  30
-  33
-  ((31 (meters 999999)))
-  :bounds (static-spherem 0 0 0 8)
-  :longest-edge (meters 0)
-  :shadow 32
-  )
+(defskelgroup *plant-boss-back-arms-sg* plant-boss plant-boss-back-arms-lod0-jg plant-boss-back-arms-idle-ja
+              ((plant-boss-back-arms-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              :shadow plant-boss-back-arms-shadow-mg
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *plant-boss-vine-sg* plant-boss
-  48
-  50
-  ((49 (meters 999999)))
-  :bounds (static-spherem 0 0 0 10)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plant-boss-vine-sg* plant-boss plant-boss-vine-lod0-jg plant-boss-vine-idle-ja
+              ((plant-boss-vine-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *plant-boss-root-sg* plant-boss
-  53
-  55
-  ((54 (meters 999999)))
-  :bounds (static-spherem 0 20 0 20)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plant-boss-root-sg* plant-boss plant-boss-root-lod0-jg plant-boss-root-idle-ja
+              ((plant-boss-root-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 20 0 20)
+              )
 
 ;; definition for symbol *plant-boss-shadow-control*, type shadow-control
-(define
-  *plant-boss-shadow-control*
+(define *plant-boss-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
-                                           :center
-                                           (new 'static 'vector :w (the-as float #x2))
-                                           :shadow-dir
-                                           (new 'static 'vector :y -1.0 :w 409600.0)
+                                           :flags (shadow-flags disable-fade)
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 409600.0)
                                            :bot-plane (new 'static 'plane :y 1.0 :w 37683.2)
                                            :top-plane (new 'static 'plane :y 1.0 :w 4096.0)
                                            )
@@ -282,12 +263,7 @@
                (the-as collide-shape-moving (-> self root-override))
                (the-as uint 1)
                )
-              (not (= (if (> (-> self skel active-channels) 0)
-                          (-> self skel root-channel 0 frame-group)
-                          )
-                      (-> self draw art-group data 13)
-                      )
-                   )
+              (not (ja-group? plant-boss-main-vulnerable2idle-ja))
               )
          (send-event arg0 'attack-or-shove (-> arg3 param 0) (new 'static 'attack-info))
          )
@@ -313,8 +289,7 @@
 
 ;; failed to figure out what this is:
 (defstate plant-boss-arm-idle (plant-boss-arm)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('hide 'die)
        (go plant-boss-arm-die (the-as symbol (-> arg3 param 0)))
@@ -324,97 +299,46 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 2)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 25))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) 0.0)
-      )
-    (let ((gp-1 (-> self skel root-channel 1)))
-      (joint-control-channel-group-eval!
-        gp-1
-        (the-as art-joint-anim (-> self draw art-group data 26))
-        num-func-identity
-        )
-      (set! (-> gp-1 frame-num) 0.0)
-      )
-    (while #t
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-loop!)
-        )
-      (let ((v1-16 (-> self skel root-channel 1)))
-        (set! (-> v1-16 frame-interp) (- (-> (new 'static 'array float 1 1.0) 0) (-> self parent-override 0 energy)))
-        )
+    (ja :group! plant-boss-arms-idle-ja :num! min)
+    (ja :chan 1 :group! plant-boss-arms-still-ja :num! min)
+    (loop
+      (ja :num! (loop!))
+      (ja :chan 1 :frame-interp (- 1.0 (-> self parent-override 0 energy)))
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-arm-hit (plant-boss-arm)
-  :event
-  (-> plant-boss-arm-idle event)
-  :code
-  (behavior ((arg0 basic))
-    (ja-channel-push! 1 30)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 29)))
-      (set! (-> gp-0 param 0) (ja-aframe (the-as float 90.0) 0))
-      (set! (-> gp-0 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (set! (-> gp-0 frame-num) 0.0)
-      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 29)) num-func-seek!)
-      )
+  :event (-> plant-boss-arm-idle event)
+  :code (behavior ((arg0 basic))
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! plant-boss-arms-hit-ja :num! (seek! (ja-aframe (the-as float 90.0) 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((gp-1 (-> self skel root-channel 0)))
-        (set! (-> gp-1 param 0) (ja-aframe (the-as float 90.0) 0))
-        (set! (-> gp-1 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe (the-as float 90.0) 0)))
       )
-    (let ((a0-7 (-> self skel root-channel 0)))
-      (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-      (set! (-> a0-7 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (joint-control-channel-group! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-      )
-    (ja-channel-push! 1 75)
-    (let ((gp-2 (-> self skel root-channel 0)))
-      (set! (-> gp-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 25)))
-      (set! (-> gp-2 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 25)) data 0 length) -1))
-            )
-      (set! (-> gp-2 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (set! (-> gp-2 frame-num) (ja-aframe (the-as float 90.0) 0))
-      (joint-control-channel-group! gp-2 (the-as art-joint-anim (-> self draw art-group data 25)) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek!))
+    (ja-channel-push! 1 (seconds 0.25))
+    (ja-no-eval :group! plant-boss-arms-idle-ja :num! (seek!) :frame-num (ja-aframe (the-as float 90.0) 0))
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-11 (-> self skel root-channel 0)))
-        (set! (-> a0-11 param 0) (the float (+ (-> a0-11 frame-group data 0 length) -1)))
-        (set! (-> a0-11 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go plant-boss-arm-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-arm-die (plant-boss-arm)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (let ((a0-1 (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) prims 0)))
       (set! (-> self root-override root-prim local-sphere w) 81920.0)
       (set! (-> (the-as collide-shape-prim-mesh a0-1) local-sphere w) 69632.0)
@@ -436,48 +360,23 @@
         (ja-channel-set! 1)
         )
       (else
-        (ja-channel-push! 1 75)
-        (let ((f30-0 (rand-vu-float-range (-> (new 'static 'array float 1 0.8) 0) (-> (new 'static 'array float 1 1.0) 0)))
-              )
+        (ja-channel-push! 1 (seconds 0.25))
+        (let ((f30-0 (rand-vu-float-range (the-as float 0.8) (the-as float 1.0))))
           (case (-> self side)
             ((1)
-             (let ((a0-6 (-> self skel root-channel 0)))
-               (set! (-> a0-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 28)))
-               (set! (-> a0-6 param 0)
-                     (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 28)) data 0 length) -1))
-                     )
-               (set! (-> a0-6 param 1) f30-0)
-               (set! (-> a0-6 frame-num) 0.0)
-               (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> self draw art-group data 28)) num-func-seek!)
-               )
+             (ja-no-eval :group! plant-boss-arms-die-right-ja :num! (seek! max f30-0) :frame-num 0.0)
              (until (ja-done? 0)
                (ja-blend-eval)
                (suspend)
-               (let ((a0-7 (-> self skel root-channel 0)))
-                 (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-                 (set! (-> a0-7 param 1) f30-0)
-                 (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-                 )
+               (ja :num! (seek! max f30-0))
                )
              )
             (else
-              (let ((a0-9 (-> self skel root-channel 0)))
-                (set! (-> a0-9 frame-group) (the-as art-joint-anim (-> self draw art-group data 27)))
-                (set! (-> a0-9 param 0)
-                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 27)) data 0 length) -1))
-                      )
-                (set! (-> a0-9 param 1) f30-0)
-                (set! (-> a0-9 frame-num) 0.0)
-                (joint-control-channel-group! a0-9 (the-as art-joint-anim (-> self draw art-group data 27)) num-func-seek!)
-                )
+              (ja-no-eval :group! plant-boss-arms-die-ja :num! (seek! max f30-0) :frame-num 0.0)
               (until (ja-done? 0)
                 (ja-blend-eval)
                 (suspend)
-                (let ((a0-10 (-> self skel root-channel 0)))
-                  (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
-                  (set! (-> a0-10 param 1) f30-0)
-                  (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
-                  )
+                (ja :num! (seek! max f30-0))
                 )
               )
             )
@@ -486,28 +385,10 @@
       )
     (case (-> self side)
       ((1)
-       (let ((gp-1 (-> self skel root-channel 0)))
-         (joint-control-channel-group-eval!
-           gp-1
-           (the-as art-joint-anim (-> self draw art-group data 28))
-           num-func-identity
-           )
-         (set! (-> gp-1 frame-num)
-               (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 28)) data 0 length) -1))
-               )
-         )
+       (ja :group! plant-boss-arms-die-right-ja :num! max)
        )
       (else
-        (let ((gp-2 (-> self skel root-channel 0)))
-          (joint-control-channel-group-eval!
-            gp-2
-            (the-as art-joint-anim (-> self draw art-group data 27))
-            num-func-identity
-            )
-          (set! (-> gp-2 frame-num)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 27)) data 0 length) -1))
-                )
-          )
+        (ja :group! plant-boss-arms-die-ja :num! max)
         )
       )
     (set! (-> (find-prim-by-id (-> self root-override) (the-as uint 1)) prim-core action) (collide-action))
@@ -515,20 +396,18 @@
     (set! (-> (find-prim-by-id (-> self root-override) (the-as uint 2)) prim-core action) (collide-action))
     0
     (update-transforms! (-> self root-override))
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-back-arms-idle (plant-boss-arm)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (if (or (= arg2 'touch) (= arg2 'attack))
         (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
         )
@@ -541,160 +420,89 @@
        )
       )
     )
-  :code
-  (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 33)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 33)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 33)) num-func-seek!)
-        )
+  :code (behavior ()
+    (loop
+      (ja-no-eval :group! plant-boss-back-arms-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-back-arms-hit (plant-boss-arm)
-  :event
-  (-> plant-boss-back-arms-idle event)
-  :code
-  (behavior ((arg0 symbol))
-    (ja-channel-push! 1 30)
+  :event (-> plant-boss-back-arms-idle event)
+  :code (behavior ((arg0 symbol))
+    (ja-channel-push! 1 (seconds 0.1))
     (cond
       ((or (= arg0 'spin) (= arg0 'spin-air))
-       (let ((gp-1 (-> self skel root-channel 0)))
-         (set! (-> gp-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 36)))
-         (set! (-> gp-1 param 0) (ja-aframe (the-as float 45.0) 0))
-         (set! (-> gp-1 param 1) (-> (new 'static 'array float 1 1.0) 0))
-         (set! (-> gp-1 frame-num) 0.0)
-         (joint-control-channel-group! gp-1 (the-as art-joint-anim (-> self draw art-group data 36)) num-func-seek!)
-         )
+       (ja-no-eval :group! plant-boss-back-arms-hit-kick-ja
+                   :num! (seek! (ja-aframe (the-as float 45.0) 0))
+                   :frame-num 0.0
+                   )
        (until (ja-done? 0)
          (suspend)
-         (let ((gp-2 (-> self skel root-channel 0)))
-           (set! (-> gp-2 param 0) (ja-aframe (the-as float 45.0) 0))
-           (set! (-> gp-2 param 1) (-> (new 'static 'array float 1 1.0) 0))
-           (joint-control-channel-group-eval! gp-2 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek! (ja-aframe (the-as float 45.0) 0)))
          )
        )
       (else
-        (let ((gp-3 (-> self skel root-channel 0)))
-          (set! (-> gp-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 35)))
-          (set! (-> gp-3 param 0) (ja-aframe (the-as float 45.0) 0))
-          (set! (-> gp-3 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (set! (-> gp-3 frame-num) 0.0)
-          (joint-control-channel-group! gp-3 (the-as art-joint-anim (-> self draw art-group data 35)) num-func-seek!)
-          )
+        (ja-no-eval :group! plant-boss-back-arms-hit-ja
+                    :num! (seek! (ja-aframe (the-as float 45.0) 0))
+                    :frame-num 0.0
+                    )
         (until (ja-done? 0)
           (suspend)
-          (let ((gp-4 (-> self skel root-channel 0)))
-            (set! (-> gp-4 param 0) (ja-aframe (the-as float 45.0) 0))
-            (set! (-> gp-4 param 1) (-> (new 'static 'array float 1 1.0) 0))
-            (joint-control-channel-group-eval! gp-4 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek! (ja-aframe (the-as float 45.0) 0)))
           )
         )
       )
-    (let ((a0-13 (-> self skel root-channel 0)))
-      (set! (-> a0-13 param 0) (the float (+ (-> a0-13 frame-group data 0 length) -1)))
-      (set! (-> a0-13 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (joint-control-channel-group! a0-13 (the-as art-joint-anim #f) num-func-seek!)
-      )
-    (ja-channel-push! 1 75)
-    (let ((gp-5 (-> self skel root-channel 0)))
-      (set! (-> gp-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 33)))
-      (set! (-> gp-5 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 33)) data 0 length) -1))
-            )
-      (set! (-> gp-5 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (set! (-> gp-5 frame-num) (ja-aframe (the-as float 45.0) 0))
-      (joint-control-channel-group! gp-5 (the-as art-joint-anim (-> self draw art-group data 33)) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek!))
+    (ja-channel-push! 1 (seconds 0.25))
+    (ja-no-eval :group! plant-boss-back-arms-idle-ja :num! (seek!) :frame-num (ja-aframe (the-as float 45.0) 0))
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-17 (-> self skel root-channel 0)))
-        (set! (-> a0-17 param 0) (the float (+ (-> a0-17 frame-group data 0 length) -1)))
-        (set! (-> a0-17 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group-eval! a0-17 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go plant-boss-back-arms-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-back-arms-die (plant-boss-arm)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (cond
       (arg0
         (ja-channel-set! 1)
         )
       (else
-        (ja-channel-push! 1 75)
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 34)))
-          (set! (-> a0-3 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 34)) data 0 length) -1))
-                )
-          (set! (-> a0-3 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (set! (-> a0-3 frame-num) 0.0)
-          (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 34)) num-func-seek!)
-          )
+        (ja-channel-push! 1 (seconds 0.25))
+        (ja-no-eval :group! plant-boss-back-arms-die-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (ja-blend-eval)
           (suspend)
-          (let ((a0-4 (-> self skel root-channel 0)))
-            (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
-            (set! (-> a0-4 param 1) (-> (new 'static 'array float 1 1.0) 0))
-            (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           )
         )
       )
     (clear-collide-with-as (-> self root-override))
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 34))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 34)) data 0 length) -1))
-            )
-      )
-    (while #t
+    (ja :group! plant-boss-back-arms-die-ja :num! max)
+    (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-arm) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
-(defstate plant-boss-vine-idle (plant-boss)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defstate plant-boss-vine-idle (plant-boss-arm)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('hide 'die)
        (go plant-boss-vine-die (the-as symbol (-> arg3 param 0)))
@@ -704,172 +512,96 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((f30-0 (rand-vu-float-range (the-as float 0.9) (the-as float 1.1))))
-      (while #t
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 50)))
-          (set! (-> a0-1 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 50)) data 0 length) -1))
-                )
-          (set! (-> a0-1 param 1) f30-0)
-          (set! (-> a0-1 frame-num) 0.0)
-          (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 50)) num-func-seek!)
-          )
+      (loop
+        (ja-no-eval :group! plant-boss-vine-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
-          (let ((a0-2 (-> self skel root-channel 0)))
-            (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-            (set! (-> a0-2 param 1) f30-0)
-            (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek! max f30-0))
           )
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
-(defstate plant-boss-vine-hit (plant-boss)
-  :event
-  (-> plant-boss-vine-idle event)
-  :code
-  (behavior ((arg0 basic))
-    (ja-channel-push! 1 30)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 52)))
-      (set! (-> gp-0 param 0) (ja-aframe (the-as float 45.0) 0))
-      (set! (-> gp-0 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (set! (-> gp-0 frame-num) 0.0)
-      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 52)) num-func-seek!)
-      )
+(defstate plant-boss-vine-hit (plant-boss-arm)
+  :event (-> plant-boss-vine-idle event)
+  :code (behavior ((arg0 basic))
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! plant-boss-vine-hit-ja :num! (seek! (ja-aframe (the-as float 45.0) 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((gp-1 (-> self skel root-channel 0)))
-        (set! (-> gp-1 param 0) (ja-aframe (the-as float 45.0) 0))
-        (set! (-> gp-1 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe (the-as float 45.0) 0)))
       )
-    (let ((a0-7 (-> self skel root-channel 0)))
-      (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-      (set! (-> a0-7 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (joint-control-channel-group! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-      )
-    (ja-channel-push! 1 75)
-    (let ((gp-2 (-> self skel root-channel 0)))
-      (set! (-> gp-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 50)))
-      (set! (-> gp-2 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 50)) data 0 length) -1))
-            )
-      (set! (-> gp-2 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (set! (-> gp-2 frame-num) (ja-aframe (the-as float 45.0) 0))
-      (joint-control-channel-group! gp-2 (the-as art-joint-anim (-> self draw art-group data 50)) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek!))
+    (ja-channel-push! 1 (seconds 0.25))
+    (ja-no-eval :group! plant-boss-vine-idle-ja :num! (seek!) :frame-num (ja-aframe (the-as float 45.0) 0))
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-11 (-> self skel root-channel 0)))
-        (set! (-> a0-11 param 0) (the float (+ (-> a0-11 frame-group data 0 length) -1)))
-        (set! (-> a0-11 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go plant-boss-vine-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
-(defstate plant-boss-vine-die (plant-boss)
-  :code
-  (behavior ((arg0 symbol))
+(defstate plant-boss-vine-die (plant-boss-arm)
+  :code (behavior ((arg0 symbol))
     (when (not arg0)
-      (let ((f30-0 (rand-vu-float-range (-> (new 'static 'array float 1 0.0) 0) (-> (new 'static 'array float 1 1.0) 0)))
+      (let ((f30-0 (rand-vu-float-range (the-as float 0.0) (the-as float 1.0)))
             (gp-0 (-> *display* base-frame-counter))
             )
         (until (>= (- (-> *display* base-frame-counter) gp-0) (the int (* 300.0 f30-0)))
-          (let ((a0-2 (-> self skel root-channel 0)))
-            (set! (-> a0-2 param 0) (-> (new 'static 'array float 1 1.0) 0))
-            (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-loop!)
-            )
+          (ja :num! (loop!))
           (suspend)
           )
         )
-      (ja-channel-push! 1 75)
-      (let ((a0-6 (-> self skel root-channel 0)))
-        (set! (-> a0-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 51)))
-        (set! (-> a0-6 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 51)) data 0 length) -1))
-              )
-        (set! (-> a0-6 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (set! (-> a0-6 frame-num) 0.0)
-        (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> self draw art-group data 51)) num-func-seek!)
-        )
+      (ja-channel-push! 1 (seconds 0.25))
+      (ja-no-eval :group! plant-boss-vine-die-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (ja-blend-eval)
         (suspend)
-        (let ((a0-7 (-> self skel root-channel 0)))
-          (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-          (set! (-> a0-7 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
-(defstate plant-boss-root-idle (plant-boss)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defstate plant-boss-root-idle (plant-boss-arm)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('hide 'die)
        (go plant-boss-root-die (the-as symbol (-> arg3 param 0)))
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((f30-0 (rand-vu-float-range (the-as float 0.9) (the-as float 1.1))))
-      (while #t
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 55)))
-          (set! (-> a0-1 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 55)) data 0 length) -1))
-                )
-          (set! (-> a0-1 param 1) f30-0)
-          (set! (-> a0-1 frame-num) 0.0)
-          (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 55)) num-func-seek!)
-          )
+      (loop
+        (ja-no-eval :group! plant-boss-root-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
-          (let ((a0-2 (-> self skel root-channel 0)))
-            (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-            (set! (-> a0-2 param 1) f30-0)
-            (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek! max f30-0))
           )
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; failed to figure out what this is:
-(defstate plant-boss-root-die (plant-boss)
-  :code
-  (behavior ((arg0 symbol))
+(defstate plant-boss-root-die (plant-boss-arm)
+  :code (behavior ((arg0 symbol))
     (when (not arg0)
       (let ((gp-0 (-> *display* base-frame-counter)))
         (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 4))
@@ -880,8 +612,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss) ja-post)
+  :post (the-as (function none :behavior plant-boss-arm) ja-post)
   )
 
 ;; definition for function plant-boss-arm-init
@@ -985,7 +716,7 @@
 (defbehavior plant-boss-vine-init plant-boss-arm ((arg0 vector) (arg1 vector) (arg2 float) (arg3 int))
   (stack-size-set! (-> self main-thread) 128)
   (set! (-> self root-override) (the-as collide-shape (new 'process 'trsqv)))
-  (set-vector! (-> self root-override scale) arg2 arg2 arg2 (-> (new 'static 'array float 1 1.0) 0))
+  (set-vector! (-> self root-override scale) arg2 arg2 arg2 1.0)
   (set! (-> self root-override trans quad) (-> arg0 quad))
   (quaternion-zxy! (-> self root-override quat) arg1)
   (set! (-> self side) arg3)
@@ -1011,8 +742,7 @@
 
 ;; failed to figure out what this is:
 (defstate plant-boss-leaf-idle (plant-boss-leaf)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (go plant-boss-leaf-open (the-as symbol (-> arg3 param 0)))
@@ -1022,49 +752,24 @@
        )
       )
     )
-  :code
-  (behavior ((arg0 symbol))
-    (while #t
+  :code (behavior ((arg0 symbol))
+    (loop
       (case (-> self side)
         ((1)
          (dotimes (gp-0 4)
-           (let ((a0-2 (-> self skel root-channel 0)))
-             (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 43)))
-             (set! (-> a0-2 param 0)
-                   (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 43)) data 0 length) -1))
-                   )
-             (set! (-> a0-2 param 1) (-> (new 'static 'array float 1 1.0) 0))
-             (set! (-> a0-2 frame-num) 0.0)
-             (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 43)) num-func-seek!)
-             )
+           (ja-no-eval :group! plant-boss-leaf-stubby-right-ja :num! (seek!) :frame-num 0.0)
            (until (ja-done? 0)
              (suspend)
-             (let ((a0-3 (-> self skel root-channel 0)))
-               (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-               (set! (-> a0-3 param 1) (-> (new 'static 'array float 1 1.0) 0))
-               (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-               )
+             (ja :num! (seek!))
              )
            )
          )
         (else
           (dotimes (gp-1 5)
-            (let ((a0-5 (-> self skel root-channel 0)))
-              (set! (-> a0-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 40)))
-              (set! (-> a0-5 param 0)
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 40)) data 0 length) -1))
-                    )
-              (set! (-> a0-5 param 1) (-> (new 'static 'array float 1 1.0) 0))
-              (set! (-> a0-5 frame-num) 0.0)
-              (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> self draw art-group data 40)) num-func-seek!)
-              )
+            (ja-no-eval :group! plant-boss-leaf-stubby-left-ja :num! (seek!) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
-              (let ((a0-6 (-> self skel root-channel 0)))
-                (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-                (set! (-> a0-6 param 1) (-> (new 'static 'array float 1 1.0) 0))
-                (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-                )
+              (ja :num! (seek!))
               )
             )
           )
@@ -1072,14 +777,12 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-leaf) ja-post)
+  :post (the-as (function none :behavior plant-boss-leaf) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-leaf-open (plant-boss-leaf)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('kill)
        (go plant-boss-leaf-close)
@@ -1089,100 +792,55 @@
        )
       )
     )
-  :trans
-  (the-as (function none :behavior plant-boss-leaf) rider-trans)
-  :code
-  (behavior ((arg0 symbol))
-    (let ((a0-1 (-> self skel root-channel 0)))
-      (set! (-> a0-1 param 0) (-> (new 'static 'array float 1 1.0) 0))
-      (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
-      )
-    (ja-channel-push! 1 30)
+  :trans (the-as (function none :behavior plant-boss-leaf) rider-trans)
+  :code (behavior ((arg0 symbol))
+    (ja-no-eval :num! (loop!))
+    (ja-channel-push! 1 (seconds 0.1))
     (case (-> self side)
       ((1)
-       (let ((gp-0 (-> self skel root-channel 0)))
-         (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 44)))
-         (set! (-> gp-0 param 0) (ja-aframe (the-as float 30.0) 0))
-         (set! (-> gp-0 param 1) (-> (new 'static 'array float 1 1.0) 0))
-         (set! (-> gp-0 frame-num) 0.0)
-         (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 44)) num-func-seek!)
-         )
+       (ja-no-eval :group! plant-boss-leaf-grow-right-ja
+                   :num! (seek! (ja-aframe (the-as float 30.0) 0))
+                   :frame-num 0.0
+                   )
        (until (ja-done? 0)
          (ja-blend-eval)
          (suspend)
-         (let ((gp-1 (-> self skel root-channel 0)))
-           (set! (-> gp-1 param 0) (ja-aframe (the-as float 30.0) 0))
-           (set! (-> gp-1 param 1) (-> (new 'static 'array float 1 1.0) 0))
-           (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek! (ja-aframe (the-as float 30.0) 0)))
          )
-       (sound-play-by-name (static-sound-name "plant-leaf") (new-sound-id) 1024 0 0 1 #t)
-       (let ((gp-3 (-> self skel root-channel 0)))
-         (set! (-> gp-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 44)))
-         (set! (-> gp-3 param 0)
-               (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 44)) data 0 length) -1))
-               )
-         (set! (-> gp-3 param 1) (-> (new 'static 'array float 1 1.0) 0))
-         (set! (-> gp-3 frame-num) (ja-aframe (the-as float 30.0) 0))
-         (joint-control-channel-group! gp-3 (the-as art-joint-anim (-> self draw art-group data 44)) num-func-seek!)
-         )
+       (sound-play "plant-leaf")
+       (ja-no-eval :group! plant-boss-leaf-grow-right-ja :num! (seek!) :frame-num (ja-aframe (the-as float 30.0) 0))
        (until (ja-done? 0)
          (suspend)
-         (let ((a0-14 (-> self skel root-channel 0)))
-           (set! (-> a0-14 param 0) (the float (+ (-> a0-14 frame-group data 0 length) -1)))
-           (set! (-> a0-14 param 1) (-> (new 'static 'array float 1 1.0) 0))
-           (joint-control-channel-group-eval! a0-14 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek!))
          )
        )
       (else
-        (let ((gp-4 (-> self skel root-channel 0)))
-          (set! (-> gp-4 frame-group) (the-as art-joint-anim (-> self draw art-group data 41)))
-          (set! (-> gp-4 param 0) (ja-aframe (the-as float 30.0) 0))
-          (set! (-> gp-4 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (set! (-> gp-4 frame-num) 0.0)
-          (joint-control-channel-group! gp-4 (the-as art-joint-anim (-> self draw art-group data 41)) num-func-seek!)
-          )
+        (ja-no-eval :group! plant-boss-leaf-grow-left-ja
+                    :num! (seek! (ja-aframe (the-as float 30.0) 0))
+                    :frame-num 0.0
+                    )
         (until (ja-done? 0)
           (ja-blend-eval)
           (suspend)
-          (let ((gp-5 (-> self skel root-channel 0)))
-            (set! (-> gp-5 param 0) (ja-aframe (the-as float 30.0) 0))
-            (set! (-> gp-5 param 1) (-> (new 'static 'array float 1 1.0) 0))
-            (joint-control-channel-group-eval! gp-5 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek! (ja-aframe (the-as float 30.0) 0)))
           )
-        (sound-play-by-name (static-sound-name "plant-leaf") (new-sound-id) 1024 0 0 1 #t)
-        (let ((gp-7 (-> self skel root-channel 0)))
-          (set! (-> gp-7 frame-group) (the-as art-joint-anim (-> self draw art-group data 41)))
-          (set! (-> gp-7 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 41)) data 0 length) -1))
-                )
-          (set! (-> gp-7 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (set! (-> gp-7 frame-num) (ja-aframe (the-as float 30.0) 0))
-          (joint-control-channel-group! gp-7 (the-as art-joint-anim (-> self draw art-group data 41)) num-func-seek!)
-          )
+        (sound-play "plant-leaf")
+        (ja-no-eval :group! plant-boss-leaf-grow-left-ja :num! (seek!) :frame-num (ja-aframe (the-as float 30.0) 0))
         (until (ja-done? 0)
           (suspend)
-          (let ((a0-26 (-> self skel root-channel 0)))
-            (set! (-> a0-26 param 0) (the float (+ (-> a0-26 frame-group data 0 length) -1)))
-            (set! (-> a0-26 param 1) (-> (new 'static 'array float 1 1.0) 0))
-            (joint-control-channel-group-eval! a0-26 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           )
         )
       )
     (go plant-boss-leaf-open-idle #f)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-leaf) rider-post)
+  :post (the-as (function none :behavior plant-boss-leaf) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-leaf-open-idle (plant-boss-leaf)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('kill)
        (set! (-> self state-object) #t)
@@ -1201,50 +859,37 @@
        )
       )
     )
-  :trans
-  (the-as (function none :behavior plant-boss-leaf) rider-trans)
-  :code
-  (behavior ((arg0 symbol))
+  :trans (the-as (function none :behavior plant-boss-leaf) rider-trans)
+  :code (behavior ((arg0 symbol))
     (local-vars (v1-19 symbol))
     (set! (-> self state-object) arg0)
-    (case (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-      (((-> self draw art-group data 47) (-> self draw art-group data 46))
-       (ja-channel-push! 1 30)
+    (case (ja-group)
+      ((plant-boss-leaf-right-bounce-ja plant-boss-leaf-left-bounce-ja)
+       (ja-channel-push! 1 (seconds 0.1))
        )
       )
     (case (-> self side)
       ((1)
-       (let ((v1-10 (-> self skel root-channel 0)))
-         (set! (-> v1-10 frame-group) (the-as art-joint-anim (-> self draw art-group data 45)))
-         )
+       (ja :group! plant-boss-leaf-idle-right-ja)
        )
       (else
-        (let ((v1-13 (-> self skel root-channel 0)))
-          (set! (-> v1-13 frame-group) (the-as art-joint-anim (-> self draw art-group data 42)))
-          )
+        (ja :group! plant-boss-leaf-idle-left-ja)
         )
       )
     (until v1-19
       (suspend)
-      (let ((a0-16 (-> self skel root-channel 0)))
-        (set! (-> a0-16 param 0) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group-eval! a0-16 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop!))
       (set! v1-19 (and (-> self state-object) (< (-> self state-time-frame) (-> *display* base-frame-counter))))
       )
     (go plant-boss-leaf-close)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-leaf) rider-post)
+  :post (the-as (function none :behavior plant-boss-leaf) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-leaf-bounce (plant-boss-leaf)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('kill)
        (set! (-> self state-object) #t)
@@ -1258,135 +903,78 @@
        )
       )
     )
-  :trans
-  (the-as (function none :behavior plant-boss-leaf) rider-trans)
-  :code
-  (behavior ()
-    (ja-channel-push! 1 30)
+  :trans (the-as (function none :behavior plant-boss-leaf) rider-trans)
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
     (case (-> self side)
       ((1)
-       (let ((a0-2 (-> self skel root-channel 0)))
-         (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 47)))
-         (set! (-> a0-2 param 0)
-               (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 47)) data 0 length) -1))
-               )
-         (set! (-> a0-2 param 1) (-> (new 'static 'array float 1 1.0) 0))
-         (set! (-> a0-2 frame-num) 0.0)
-         (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 47)) num-func-seek!)
-         )
+       (ja-no-eval :group! plant-boss-leaf-right-bounce-ja :num! (seek!) :frame-num 0.0)
        (until (ja-done? 0)
          (ja-blend-eval)
          (suspend)
-         (let ((a0-3 (-> self skel root-channel 0)))
-           (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-           (set! (-> a0-3 param 1) (-> (new 'static 'array float 1 1.0) 0))
-           (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek!))
          )
        )
       (else
-        (let ((a0-5 (-> self skel root-channel 0)))
-          (set! (-> a0-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 46)))
-          (set! (-> a0-5 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 46)) data 0 length) -1))
-                )
-          (set! (-> a0-5 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (set! (-> a0-5 frame-num) 0.0)
-          (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> self draw art-group data 46)) num-func-seek!)
-          )
+        (ja-no-eval :group! plant-boss-leaf-left-bounce-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (ja-blend-eval)
           (suspend)
-          (let ((a0-6 (-> self skel root-channel 0)))
-            (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-            (set! (-> a0-6 param 1) (-> (new 'static 'array float 1 1.0) 0))
-            (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           )
         )
       )
     (go plant-boss-leaf-open-idle (-> self state-object))
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-leaf) rider-post)
+  :post (the-as (function none :behavior plant-boss-leaf) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-leaf-close (plant-boss-leaf)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('die)
        (go plant-boss-leaf-die (the-as basic (-> arg3 param 0)))
        )
       )
     )
-  :trans
-  (the-as (function none :behavior plant-boss-leaf) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior plant-boss-leaf) rider-trans)
+  :code (behavior ()
     (case (-> self side)
       ((1)
-       (sound-play-by-name (static-sound-name "plant-leaf") (new-sound-id) 1024 0 0 1 #t)
-       (let ((a0-4 (-> self skel root-channel 0)))
-         (set! (-> a0-4 frame-group) (the-as art-joint-anim (-> self draw art-group data 44)))
-         (set! (-> a0-4 param 0) 0.0)
-         (set! (-> a0-4 param 1) (-> (new 'static 'array float 1 1.0) 0))
-         (set! (-> a0-4 frame-num)
-               (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 44)) data 0 length) -1))
-               )
-         (joint-control-channel-group! a0-4 (the-as art-joint-anim (-> self draw art-group data 44)) num-func-seek!)
-         )
+       (sound-play "plant-leaf")
+       (ja-no-eval :group! plant-boss-leaf-grow-right-ja :num! (seek! 0.0) :frame-num max)
        (until (ja-done? 0)
          (suspend)
-         (let ((a0-5 (-> self skel root-channel 0)))
-           (set! (-> a0-5 param 0) 0.0)
-           (set! (-> a0-5 param 1) (-> (new 'static 'array float 1 1.0) 0))
-           (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek! 0.0))
          )
        )
       (else
-        (sound-play-by-name (static-sound-name "plant-leaf") (new-sound-id) 1024 0 0 1 #t)
-        (let ((a0-10 (-> self skel root-channel 0)))
-          (set! (-> a0-10 frame-group) (the-as art-joint-anim (-> self draw art-group data 41)))
-          (set! (-> a0-10 param 0) 0.0)
-          (set! (-> a0-10 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (set! (-> a0-10 frame-num)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 41)) data 0 length) -1))
-                )
-          (joint-control-channel-group! a0-10 (the-as art-joint-anim (-> self draw art-group data 41)) num-func-seek!)
-          )
+        (sound-play "plant-leaf")
+        (ja-no-eval :group! plant-boss-leaf-grow-left-ja :num! (seek! 0.0) :frame-num max)
         (until (ja-done? 0)
           (suspend)
-          (let ((a0-11 (-> self skel root-channel 0)))
-            (set! (-> a0-11 param 0) 0.0)
-            (set! (-> a0-11 param 1) (-> (new 'static 'array float 1 1.0) 0))
-            (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek! 0.0))
           )
         )
       )
     (go plant-boss-leaf-idle #f)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-leaf) rider-post)
+  :post (the-as (function none :behavior plant-boss-leaf) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-leaf-die (plant-boss-leaf)
-  :code
-  (behavior ((arg0 basic))
-    (while #t
+  :code (behavior ((arg0 basic))
+    (loop
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss-leaf) ja-post)
+  :post (the-as (function none :behavior plant-boss-leaf) ja-post)
   )
 
 ;; definition for function plant-boss-leaf-init
@@ -1425,9 +1013,8 @@
 
 ;; failed to figure out what this is:
 (defstate plant-boss-far-idle (plant-boss)
-  :code
-  (behavior ()
-    (clear-pending-settings-from-process *setting-control* self 'music)
+  :code (behavior ()
+    (remove-setting! 'music)
     (let ((gp-0 (-> self child)))
       (while gp-0
         (let ((s5-0 (ppointer->process gp-0)))
@@ -1449,18 +1036,10 @@
     (set-mode! (-> self body) (joint-mod-handler-mode flex-blend))
     (set! (-> self body flex-blend) 0.0)
     (ja-channel-set! 1)
-    (while #t
-      (let ((a0-6 (-> self skel root-channel 0)))
-        (set! (-> a0-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 9)))
-        (set! (-> a0-6 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 9)) data 0 length) -1))
-              )
-        (set! (-> a0-6 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (set! (-> a0-6 frame-num) 0.0)
-        (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> self draw art-group data 9)) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! plant-boss-main-initial-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
-        (set! (-> self energy) (seek (-> self energy) (the-as float 0.25) (-> *display* seconds-per-frame)))
+        (seek! (-> self energy) (the-as float 0.25) (-> *display* seconds-per-frame))
         (if (and (and *target*
                       (>= 245760.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
                       )
@@ -1469,43 +1048,28 @@
             (go plant-boss-intro)
             )
         (suspend)
-        (let ((a0-10 (-> self skel root-channel 0)))
-          (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
-          (set! (-> a0-10 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss) ja-post)
+  :post (the-as (function none :behavior plant-boss) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-intro (plant-boss)
-  :code
-  (behavior ()
-    (set-setting! *setting-control* self 'music 'danger (-> (new 'static 'array float 1 0.0) 0) 0)
+  :code (behavior ()
+    (set-setting! 'music 'danger 0.0 0)
     (send-event *target* 'reset-pickup 'eco)
     (let ((v1-9 (-> self entity extra perm)))
       (logior! (-> v1-9 status) (entity-perm-status user-set-from-cstage))
       (b! (zero? (-> v1-9 user-int8 2)) cfg-5 :delay (empty-form))
       )
-    (ja-channel-push! 1 150)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 10))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) (ja-aframe (the-as float 510.0) 0))
-      )
+    (ja-channel-push! 1 (seconds 0.5))
+    (ja :group! plant-boss-main-intro-ja :num! (identity (ja-aframe (the-as float 510.0) 0)))
     (b! #t cfg-3 :delay (nop!))
     (label cfg-2)
-    (set! (-> self energy)
-          (seek (-> self energy) (-> (new 'static 'array float 1 1.0) 0) (* 2.0 (-> *display* seconds-per-frame)))
-          )
+    (seek! (-> self energy) (the-as float 1.0) (* 2.0 (-> *display* seconds-per-frame)))
     (suspend)
     (label cfg-3)
     (let ((v1-22 (-> self skel channel)))
@@ -1515,54 +1079,42 @@
     (set-mode! (-> self body) (joint-mod-handler-mode world-look-at))
     (b! #t cfg-17 :delay (nop!))
     (label cfg-5)
-    (when (not (handle->process (-> self cam-tracker)))
-      (let ((gp-1 (get-process *default-dead-pool* camera-tracker #x4000)))
+    (if (not (handle->process (-> self cam-tracker)))
         (set! (-> self cam-tracker)
-              (ppointer->handle (when gp-1
-                                  (let ((t9-9 (method-of-type camera-tracker activate)))
-                                    (t9-9 (the-as camera-tracker gp-1) self 'camera-tracker (the-as pointer #x70004000))
-                                    )
-                                  (run-now-in-process
-                                    gp-1
-                                    camera-tracker-init
-                                    (lambda :behavior camera-tracker
-                                      ()
-                                      (while (not (process-grab? *target*))
-                                        (suspend)
-                                        )
-                                      (ambient-hint-spawn "gamcam28" (the-as vector #f) *entity-pool* 'ambient)
-                                      (send-event *camera* 'blend-from-as-fixed)
-                                      (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 13))
-                                      (camera-change-to "camera-220" 0 #f)
-                                      (while (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-                                               (set! (-> a1-4 from) self)
-                                               (set! (-> a1-4 num-params) 0)
-                                               (set! (-> a1-4 message) 'intro-done?)
-                                               (not (send-event-function *camera* a1-4))
-                                               )
-                                        (suspend)
-                                        )
-                                      (camera-change-to "camera-222" 600 #f)
-                                      (let ((gp-0 (-> *display* base-frame-counter)))
-                                        (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 2))
-                                          (suspend)
-                                          )
-                                        )
-                                      (while (not (process-release? (handle->process (-> self grab-target))))
-                                        (suspend)
-                                        )
-                                      (send-event *camera* 'blend-from-as-fixed)
-                                      (camera-look-at (the-as pair *target*) (the-as uint 0))
-                                      (camera-change-to (the-as string 'base) 150 #f)
-                                      (none)
+              (ppointer->handle (process-spawn
+                                  camera-tracker
+                                  :init camera-tracker-init
+                                  (lambda :behavior camera-tracker
+                                    ()
+                                    (while (not (process-grab? *target*))
+                                      (suspend)
                                       )
+                                    (ambient-hint-spawn "gamcam28" (the-as vector #f) *entity-pool* 'ambient)
+                                    (send-event *camera* 'blend-from-as-fixed)
+                                    (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 13))
+                                    (camera-change-to "camera-220" 0 #f)
+                                    (while (not (send-event *camera* 'intro-done?))
+                                      (suspend)
+                                      )
+                                    (camera-change-to "camera-222" 600 #f)
+                                    (let ((gp-0 (-> *display* base-frame-counter)))
+                                      (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 2))
+                                        (suspend)
+                                        )
+                                      )
+                                    (while (not (process-release? (handle->process (-> self grab-target))))
+                                      (suspend)
+                                      )
+                                    (send-event *camera* 'blend-from-as-fixed)
+                                    (camera-look-at (the-as pair *target*) (the-as uint 0))
+                                    (camera-change-to (the-as string 'base) 150 #f)
+                                    (none)
                                     )
-                                  (-> gp-1 ppointer)
+                                  :to self
                                   )
                                 )
               )
         )
-      )
     (let ((v1-37 (-> self neck)))
       (set! (-> v1-37 blend) 0.0)
       )
@@ -1572,35 +1124,16 @@
     (set-mode! (-> self neck) (joint-mod-handler-mode world-look-at))
     (set-mode! (-> self body) (joint-mod-handler-mode world-look-at))
     (set! (-> self body flex-blend) 0.0)
-    (let ((a0-25 (-> self skel root-channel 0)))
-      (set! (-> a0-25 param 0) (-> (new 'static 'array float 1 1.0) 0))
-      (joint-control-channel-group! a0-25 (the-as art-joint-anim #f) num-func-loop!)
-      )
-    (ja-channel-push! 1 150)
-    (let ((gp-2 (-> self skel root-channel 0)))
-      (set! (-> gp-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 10)))
-      (set! (-> gp-2 param 0) (ja-aframe (the-as float 510.0) 0))
-      (set! (-> gp-2 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (set! (-> gp-2 frame-num) 0.0)
-      (joint-control-channel-group! gp-2 (the-as art-joint-anim (-> self draw art-group data 10)) num-func-seek!)
-      )
+    (ja-no-eval :num! (loop!))
+    (ja-channel-push! 1 (seconds 0.5))
+    (ja-no-eval :group! plant-boss-main-intro-ja :num! (seek! (ja-aframe (the-as float 510.0) 0)) :frame-num 0.0)
     (until (ja-done? 0)
-      (set! (-> self energy)
-            (seek (-> self energy) (-> (new 'static 'array float 1 1.0) 0) (* 0.2 (-> *display* seconds-per-frame)))
-            )
+      (seek! (-> self energy) (the-as float 1.0) (* 0.2 (-> *display* seconds-per-frame)))
       (ja-blend-eval)
       (suspend)
-      (let ((gp-3 (-> self skel root-channel 0)))
-        (set! (-> gp-3 param 0) (ja-aframe (the-as float 510.0) 0))
-        (set! (-> gp-3 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group-eval! gp-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe (the-as float 510.0) 0)))
       )
-    (let ((a0-33 (-> self skel root-channel 0)))
-      (set! (-> a0-33 param 0) (the float (+ (-> a0-33 frame-group data 0 length) -1)))
-      (set! (-> a0-33 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (joint-control-channel-group! a0-33 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek!))
     (let ((v1-77 (-> self entity extra perm)))
       (logior! (-> v1-77 status) (entity-perm-status user-set-from-cstage))
       (set! (-> v1-77 user-int8 2) 1)
@@ -1611,24 +1144,20 @@
     (go plant-boss-reset 0)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss) ja-post)
+  :post (the-as (function none :behavior plant-boss) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-idle (plant-boss)
-  :event
-  plant-boss-default-event-handler
-  :enter
-  (behavior ()
-    (set-setting! *setting-control* self 'music 'danger (-> (new 'static 'array float 1 0.0) 0) 0)
+  :event plant-boss-default-event-handler
+  :enter (behavior ()
+    (set-setting! 'music 'danger 0.0 0)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self body flex-blend) 0.0)
-    (set! (-> self neck flex-blend) (-> (new 'static 'array float 1 1.0) 0))
+    (set! (-> self neck flex-blend) 1.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((f30-0 (vector-vector-distance (target-pos 0) (-> self root-override trans))))
       (if (< 409600.0 f30-0)
           (go plant-boss-far-idle)
@@ -1650,176 +1179,88 @@
                                                                                 )
                    )
                *target*
-               (zero? (logand (-> *target* state-flags) #x80f8))
+               (zero? (logand (-> *target* state-flags)
+                              (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                              )
+                      )
                )
           (go plant-boss-attack 1)
           )
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
-      ((= (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          (-> self draw art-group data 7)
-          )
-       (ja-channel-push! 1 150)
-       (let ((gp-0 (-> self skel root-channel 0)))
-         (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-         (set! (-> gp-0 param 0)
-               (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-               )
-         (set! (-> gp-0 param 1) (-> (new 'static 'array float 1 1.0) 0))
-         (set! (-> gp-0 frame-num) (ja-aframe (the-as float 60.0) 0))
-         (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-         )
+      ((ja-group? plant-boss-main-reset-ja)
+       (ja-channel-push! 1 (seconds 0.5))
+       (ja-no-eval :group! plant-boss-main-idle-ja :num! (seek!) :frame-num (ja-aframe (the-as float 60.0) 0))
        (until (ja-done? 0)
          (ja-blend-eval)
          (suspend)
-         (let ((a0-7 (-> self skel root-channel 0)))
-           (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-           (set! (-> a0-7 param 1) (-> (new 'static 'array float 1 1.0) 0))
-           (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek!))
          )
        )
-      ((= (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          (-> self draw art-group data 12)
-          )
-       (ja-channel-push! 1 75)
-       (let ((gp-1 (-> self skel root-channel 0)))
-         (set! (-> gp-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 13)))
-         (set! (-> gp-1 param 0) (ja-aframe (the-as float 75.0) 0))
-         (set! (-> gp-1 param 1) (-> (new 'static 'array float 1 1.0) 0))
-         (set! (-> gp-1 frame-num) 0.0)
-         (joint-control-channel-group! gp-1 (the-as art-joint-anim (-> self draw art-group data 13)) num-func-seek!)
-         )
+      ((ja-group? plant-boss-main-vulnerable-ja)
+       (ja-channel-push! 1 (seconds 0.25))
+       (ja-no-eval :group! plant-boss-main-vulnerable2idle-ja
+                   :num! (seek! (ja-aframe (the-as float 75.0) 0))
+                   :frame-num 0.0
+                   )
        (until (ja-done? 0)
          (ja-blend-eval)
          (suspend)
-         (let ((gp-2 (-> self skel root-channel 0)))
-           (set! (-> gp-2 param 0) (ja-aframe (the-as float 75.0) 0))
-           (set! (-> gp-2 param 1) (-> (new 'static 'array float 1 1.0) 0))
-           (joint-control-channel-group-eval! gp-2 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek! (ja-aframe (the-as float 75.0) 0)))
          )
-       (let ((a0-19 (-> self skel root-channel 0)))
-         (set! (-> a0-19 param 0) (the float (+ (-> a0-19 frame-group data 0 length) -1)))
-         (set! (-> a0-19 param 1) (-> (new 'static 'array float 1 1.0) 0))
-         (joint-control-channel-group! a0-19 (the-as art-joint-anim #f) num-func-seek!)
-         )
-       (ja-channel-push! 1 75)
-       (let ((gp-3 (-> self skel root-channel 0)))
-         (set! (-> gp-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-         (set! (-> gp-3 param 0)
-               (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-               )
-         (set! (-> gp-3 param 1) (-> (new 'static 'array float 1 1.0) 0))
-         (set! (-> gp-3 frame-num) (ja-aframe (the-as float 75.0) 0))
-         (joint-control-channel-group! gp-3 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-         )
+       (ja-no-eval :num! (seek!))
+       (ja-channel-push! 1 (seconds 0.25))
+       (ja-no-eval :group! plant-boss-main-idle-ja :num! (seek!) :frame-num (ja-aframe (the-as float 75.0) 0))
        (until (ja-done? 0)
          (ja-blend-eval)
          (suspend)
-         (let ((a0-23 (-> self skel root-channel 0)))
-           (set! (-> a0-23 param 0) (the float (+ (-> a0-23 frame-group data 0 length) -1)))
-           (set! (-> a0-23 param 1) (-> (new 'static 'array float 1 1.0) 0))
-           (joint-control-channel-group-eval! a0-23 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek!))
          )
        )
-      ((= (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          (-> self draw art-group data 10)
-          )
+      ((ja-group? plant-boss-main-intro-ja)
        )
       (else
-        (ja-channel-push! 1 75)
+        (ja-channel-push! 1 (seconds 0.25))
         )
       )
-    (while #t
+    (loop
       (when (or (and *cheat-mode* (cpad-hold? 1 r3)) (zero? (-> self aphid-count)))
-        (let ((a0-35 (-> self skel root-channel 0)))
-          (set! (-> a0-35 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-          (set! (-> a0-35 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-                )
-          (set! (-> a0-35 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (set! (-> a0-35 frame-num) 0.0)
-          (joint-control-channel-group! a0-35 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-          )
+        (ja-no-eval :group! plant-boss-main-idle-ja :num! (seek!) :frame-num 0.0)
         (go plant-boss-vulnerable)
         )
-      (let ((a0-36 (-> self skel root-channel 0)))
-        (set! (-> a0-36 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-        (set! (-> a0-36 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-              )
-        (set! (-> a0-36 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (set! (-> a0-36 frame-num) 0.0)
-        (joint-control-channel-group! a0-36 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-        )
+      (ja-no-eval :group! plant-boss-main-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-37 (-> self skel root-channel 0)))
-          (set! (-> a0-37 param 0) (the float (+ (-> a0-37 frame-group data 0 length) -1)))
-          (set! (-> a0-37 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (joint-control-channel-group-eval! a0-37 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       (when (and *cheat-mode* (cpad-hold? 1 r3))
-        (let ((a0-43 (-> self skel root-channel 0)))
-          (set! (-> a0-43 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-          (set! (-> a0-43 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-                )
-          (set! (-> a0-43 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (set! (-> a0-43 frame-num) 0.0)
-          (joint-control-channel-group! a0-43 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-          )
+        (ja-no-eval :group! plant-boss-main-idle-ja :num! (seek!) :frame-num 0.0)
         (go plant-boss-vulnerable)
         )
       (when (rand-vu-percent? (the-as float 0.2))
-        (let ((a0-45 (-> self skel root-channel 0)))
-          (set! (-> a0-45 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-          (set! (-> a0-45 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-                )
-          (set! (-> a0-45 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (set! (-> a0-45 frame-num) 0.0)
-          (joint-control-channel-group! a0-45 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-          )
+        (ja-no-eval :group! plant-boss-main-idle-alt-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
-          (let ((a0-46 (-> self skel root-channel 0)))
-            (set! (-> a0-46 param 0) (the float (+ (-> a0-46 frame-group data 0 length) -1)))
-            (set! (-> a0-46 param 1) (-> (new 'static 'array float 1 1.0) 0))
-            (joint-control-channel-group-eval! a0-46 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           )
         )
       )
     (none)
     )
-  :post
-  plant-boss-post
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-spawn (plant-boss)
-  :event
-  plant-boss-default-event-handler
-  :enter
-  (behavior ()
+  :event plant-boss-default-event-handler
+  :enter (behavior ()
     (when (not (-> self try-inc))
       (let ((gp-0 (-> self entity extra perm)))
         (logior! (-> gp-0 status) (entity-perm-status user-set-from-cstage))
-        (set! (-> gp-0 user-int8 0) (seekl (-> gp-0 user-int8 0) 255 1))
+        (seekl! (-> gp-0 user-int8 0) 255 1)
         (set! (-> self try) (-> gp-0 user-int8 0))
         )
       (set! (-> self try-inc) #t)
@@ -1828,7 +1269,7 @@
     (+! (-> self cycle-count) 1)
     (set! (-> self snap-count) 0)
     (set! (-> self body flex-blend) 0.0)
-    (set! (-> self neck flex-blend) (-> (new 'static 'array float 1 1.0) 0))
+    (set! (-> self neck flex-blend) 1.0)
     (set! (-> self want-aphid-count) (min (- 4 (the int (-> self health))) (cond
                                                                              ((>= (-> self try) 15)
                                                                               1
@@ -1844,8 +1285,7 @@
           )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((f0-0 (vector-vector-distance (target-pos 0) (-> self root-override trans))))
       (if (< 409600.0 f0-0)
           (go plant-boss-far-idle)
@@ -1870,33 +1310,22 @@
          )
        )
       ((>= (- (-> *display* base-frame-counter) (-> self aphid-spawn-time)) (seconds 1.4))
-       (let ((gp-1 (get-process *default-dead-pool* aphid #x4000)))
-         (when (when gp-1
-                 (let ((t9-5 (method-of-type aphid activate)))
-                   (t9-5 (the-as aphid gp-1) self 'aphid (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process gp-1 aphid-init-by-other self (-> self root-override trans) (target-pos 0))
-                 (-> gp-1 ppointer)
-                 )
-           (+! (-> self aphid-count) 1)
-           (set! (-> self want-aphid-count) (seekl (-> self want-aphid-count) 0 1))
-           (set! (-> self aphid-spawn-time) (-> *display* base-frame-counter))
-           )
+       (when (process-spawn aphid self (-> self root-override trans) (target-pos 0) :to self)
+         (+! (-> self aphid-count) 1)
+         (seekl! (-> self want-aphid-count) 0 1)
+         (set! (-> self aphid-spawn-time) (-> *display* base-frame-counter))
          )
        )
       )
     (none)
     )
-  :code
-  (-> plant-boss-idle code)
-  :post
-  plant-boss-post
+  :code (-> plant-boss-idle code)
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-vulnerable (plant-boss)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('attack)
        (when ((method-of-type touching-shapes-entry prims-touching?)
@@ -1904,17 +1333,11 @@
               (the-as collide-shape-moving (-> self root-override))
               (the-as uint 1)
               )
-         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-2 from) self)
-           (set! (-> a1-2 num-params) 2)
-           (set! (-> a1-2 message) 'shove)
-           (set! (-> a1-2 param 0) (-> arg3 param 0))
-           (let ((v1-6 (new 'static 'attack-info :mask #xc0)))
-             (set! (-> v1-6 shove-up) (-> (new 'static 'array float 1 8192.0) 0))
-             (set! (-> v1-6 shove-back) 24576.0)
-             (set! (-> a1-2 param 1) (the-as uint v1-6))
-             )
-           (send-event-function arg0 a1-2)
+         (send-event
+           arg0
+           'shove
+           (-> arg3 param 0)
+           (static-attack-info ((shove-up (meters 2)) (shove-back (meters 6))))
            )
          (go plant-boss-hit (the-as symbol (-> arg3 param 1)))
          )
@@ -1924,8 +1347,7 @@
         )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self body flex-blend) 0.0)
     (set! (-> self neck flex-blend) 0.0)
@@ -1934,8 +1356,7 @@
     (logior! (-> self attack-prim 0 prim-core action) (collide-action solid))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (send-event (ppointer->process (-> self leaf 1)) 'kill 0)
     (send-event (ppointer->process (-> self leaf 0)) 'kill 150)
     (set! (-> self attack-prim 0 local-sphere w) 16384.0)
@@ -1943,58 +1364,34 @@
     (logclear! (-> self attack-prim 0 prim-core action) (collide-action solid))
     (none)
     )
-  :code
-  (behavior ()
-    (ja-channel-push! 1 75)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 11)))
-      (set! (-> gp-0 param 0) (ja-aframe (the-as float 60.0) 0))
-      (set! (-> gp-0 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (set! (-> gp-0 frame-num) 0.0)
-      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 11)) num-func-seek!)
-      )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.25))
+    (ja-no-eval :group! plant-boss-main-idle2vulnerable-ja
+                :num! (seek! (ja-aframe (the-as float 60.0) 0))
+                :frame-num 0.0
+                )
     (until (ja-done? 0)
       (ja-blend-eval)
       (suspend)
-      (let ((gp-1 (-> self skel root-channel 0)))
-        (set! (-> gp-1 param 0) (ja-aframe (the-as float 60.0) 0))
-        (set! (-> gp-1 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe (the-as float 60.0) 0)))
       )
     (send-event (ppointer->process (-> self leaf 1)) 'trigger)
-    (let ((gp-2 (-> self skel root-channel 0)))
-      (set! (-> gp-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 11)))
-      (set! (-> gp-2 param 0) (ja-aframe (the-as float 120.0) 0))
-      (set! (-> gp-2 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (set! (-> gp-2 frame-num) (ja-aframe (the-as float 60.0) 0))
-      (joint-control-channel-group! gp-2 (the-as art-joint-anim (-> self draw art-group data 11)) num-func-seek!)
-      )
+    (ja-no-eval :group! plant-boss-main-idle2vulnerable-ja
+                :num! (seek! (ja-aframe (the-as float 120.0) 0))
+                :frame-num (ja-aframe (the-as float 60.0) 0)
+                )
     (until (ja-done? 0)
       (suspend)
-      (let ((gp-3 (-> self skel root-channel 0)))
-        (set! (-> gp-3 param 0) (ja-aframe (the-as float 120.0) 0))
-        (set! (-> gp-3 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group-eval! gp-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe (the-as float 120.0) 0)))
       )
     (send-event (ppointer->process (-> self leaf 0)) 'trigger)
-    (let ((gp-4 (-> self skel root-channel 0)))
-      (set! (-> gp-4 frame-group) (the-as art-joint-anim (-> self draw art-group data 11)))
-      (set! (-> gp-4 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) data 0 length) -1))
-            )
-      (set! (-> gp-4 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (set! (-> gp-4 frame-num) (ja-aframe (the-as float 120.0) 0))
-      (joint-control-channel-group! gp-4 (the-as art-joint-anim (-> self draw art-group data 11)) num-func-seek!)
-      )
+    (ja-no-eval :group! plant-boss-main-idle2vulnerable-ja
+                :num! (seek!)
+                :frame-num (ja-aframe (the-as float 120.0) 0)
+                )
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-16 (-> self skel root-channel 0)))
-        (set! (-> a0-16 param 0) (the float (+ (-> a0-16 frame-group data 0 length) -1)))
-        (set! (-> a0-16 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group-eval! a0-16 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (let ((gp-5 (cond
                   ((>= (-> self try) 15)
@@ -2013,36 +1410,22 @@
                 )
           )
       (while (< (- (-> *display* base-frame-counter) (-> self state-time)) gp-5)
-        (let ((a0-18 (-> self skel root-channel 0)))
-          (set! (-> a0-18 frame-group) (the-as art-joint-anim (-> self draw art-group data 12)))
-          (set! (-> a0-18 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 12)) data 0 length) -1))
-                )
-          (set! (-> a0-18 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (set! (-> a0-18 frame-num) 0.0)
-          (joint-control-channel-group! a0-18 (the-as art-joint-anim (-> self draw art-group data 12)) num-func-seek!)
-          )
+        (ja-no-eval :group! plant-boss-main-vulnerable-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
-          (let ((a0-19 (-> self skel root-channel 0)))
-            (set! (-> a0-19 param 0) (the float (+ (-> a0-19 frame-group data 0 length) -1)))
-            (set! (-> a0-19 param 1) (-> (new 'static 'array float 1 1.0) 0))
-            (joint-control-channel-group-eval! a0-19 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           )
         )
       )
     (go plant-boss-spawn)
     (none)
     )
-  :post
-  plant-boss-post
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-attack (plant-boss)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('touch 'attack)
        (when (and ((method-of-type touching-shapes-entry prims-touching?)
@@ -2050,27 +1433,12 @@
                    (the-as collide-shape-moving (-> self root-override))
                    (the-as uint 1)
                    )
-                  (not (= (if (> (-> self skel active-channels) 0)
-                              (-> self skel root-channel 0 frame-group)
-                              )
-                          (-> self draw art-group data 13)
-                          )
-                       )
+                  (not (ja-group? plant-boss-main-vulnerable2idle-ja))
                   )
-         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-2 from) self)
-           (set! (-> a1-2 num-params) 2)
-           (set! (-> a1-2 message) 'attack-or-shove)
-           (set! (-> a1-2 param 0) (-> arg3 param 0))
-           (let ((a0-8 (new 'static 'attack-info :mask #x20)))
-             (set! (-> a0-8 mode) 'plant-boss)
-             (set! (-> a1-2 param 1) (the-as uint a0-8))
-             )
-           (when (send-event-function arg0 a1-2)
-             (let ((v0-1 (the-as object #t)))
-               (set! (-> self ate) (the-as symbol v0-1))
-               v0-1
-               )
+         (when (send-event arg0 'attack-or-shove (-> arg3 param 0) (static-attack-info ((mode 'plant-boss))))
+           (let ((v0-1 (the-as object #t)))
+             (set! (-> self ate) (the-as symbol v0-1))
+             v0-1
              )
            )
          )
@@ -2080,51 +1448,26 @@
         )
       )
     )
-  :code
-  (behavior ((arg0 int))
+  :code (behavior ((arg0 int))
     (local-vars (v1-64 symbol))
     (+! (-> self snap-count) 1)
     (set! (-> self ate) #f)
     (set! (-> self interp) 0.0)
     (let ((s5-0 #f))
-      (if (= (if (> (-> self skel active-channels) 0)
-                 (-> self skel root-channel 0 frame-group)
-                 )
-             (-> self draw art-group data 7)
-             )
+      (if (ja-group? plant-boss-main-reset-ja)
           (set! s5-0 #t)
           )
-      (ja-channel-push! 2 75)
-      (let ((s4-0 (-> self skel root-channel 0)))
-        (joint-control-channel-group-eval!
-          s4-0
-          (the-as art-joint-anim (-> self draw art-group data 5))
-          num-func-identity
-          )
-        (set! (-> s4-0 frame-num) 0.0)
-        )
-      (let ((s4-1 (-> self skel root-channel 1)))
-        (joint-control-channel-group-eval!
-          s4-1
-          (the-as art-joint-anim (-> self draw art-group data 6))
-          num-func-identity
-          )
-        (set! (-> s4-1 frame-num) 0.0)
-        )
+      (ja-channel-push! 2 (seconds 0.25))
+      (ja :group! plant-boss-main-attack-ja :num! min)
+      (ja :chan 1 :group! plant-boss-main-attack-close-ja :num! min)
       (when s5-0
-        (let ((s5-1 (-> self skel root-channel 0)))
-          (set! (-> s5-1 num-func) num-func-identity)
-          (set! (-> s5-1 frame-num) (ja-aframe (the-as float 100.0) 0))
-          )
-        (let ((s5-2 (-> self skel root-channel 1)))
-          (set! (-> s5-2 num-func) num-func-identity)
-          (set! (-> s5-2 frame-num) (ja-aframe (the-as float 100.0) 0))
-          )
+        (ja :num-func num-func-identity :frame-num (ja-aframe (the-as float 100.0) 0))
+        (ja :chan 1 :num-func num-func-identity :frame-num (ja-aframe (the-as float 100.0) 0))
         )
       )
     (let ((f30-0 (lerp-scale
-                   (-> (new 'static 'array float 1 0.0) 0)
-                   (-> (new 'static 'array float 1 1.0) 0)
+                   (the-as float 0.0)
+                   (the-as float 1.0)
                    (vector-vector-distance (target-pos 0) (-> self root-override trans))
                    (the-as float 26624.0)
                    (the-as float 86016.0)
@@ -2132,23 +1475,13 @@
                  )
           )
       (until (or v1-64 (ja-done? 0))
-        (set! (-> self body flex-blend) (seek
-                                          (-> self body flex-blend)
-                                          (-> (new 'static 'array float 1 1.0) 0)
-                                          (* 2.0 (-> *display* seconds-per-frame))
-                                          )
-              )
-        (set! (-> self neck flex-blend) (seek
-                                          (-> self neck flex-blend)
-                                          (-> (new 'static 'array float 1 0.0) 0)
-                                          (* 2.0 (-> *display* seconds-per-frame))
-                                          )
-              )
+        (seek! (-> self body flex-blend) (the-as float 1.0) (* 2.0 (-> *display* seconds-per-frame)))
+        (seek! (-> self neck flex-blend) (the-as float 0.0) (* 2.0 (-> *display* seconds-per-frame)))
         (set! f30-0 (seek
                       f30-0
                       (lerp-scale
-                        (-> (new 'static 'array float 1 1.0) 0)
-                        (-> (new 'static 'array float 1 0.0) 0)
+                        (the-as float 1.0)
+                        (the-as float 0.0)
                         (vector-vector-distance (target-pos 0) (-> self root-override trans))
                         (the-as float 26624.0)
                         (the-as float 86016.0)
@@ -2157,16 +1490,8 @@
                       )
               )
         (set! (-> self interp) f30-0)
-        (let ((a0-19 (-> self skel root-channel 0)))
-          (set! (-> a0-19 param 0) (the float (+ (-> a0-19 frame-group data 0 length) -1)))
-          (set! (-> a0-19 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (joint-control-channel-group-eval! a0-19 (the-as art-joint-anim #f) num-func-seek!)
-          )
-        (let ((a0-20 (-> self skel root-channel 1)))
-          (set! (-> a0-20 frame-interp) f30-0)
-          (set! (-> a0-20 param 0) 0.0)
-          (joint-control-channel-group-eval! a0-20 (the-as art-joint-anim #f) num-func-chan)
-          )
+        (ja :num! (seek!))
+        (ja :chan 1 :num! (chan 0) :frame-interp f30-0)
         (suspend)
         (set! v1-64 (>= (ja-aframe-num 0) 149.0))
         )
@@ -2174,16 +1499,13 @@
     (go plant-boss-reset arg0)
     (none)
     )
-  :post
-  plant-boss-post
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-eat (plant-boss)
-  :event
-  plant-boss-generic-event-handler
-  :exit
-  (behavior ()
+  :event plant-boss-generic-event-handler
+  :exit (behavior ()
     (logclear! (-> self skel status) (janim-status spool))
     (let ((a0-4 (handle->process (-> self camera))))
       (if a0-4
@@ -2192,56 +1514,30 @@
       )
     (none)
     )
-  :code
-  (behavior ()
-    (let ((f30-1 (if (= (if (> (-> self skel active-channels) 0)
-                            (-> self skel root-channel 0 frame-group)
-                            )
-                        (-> self draw art-group data 5)
-                        )
-                     (fmax (-> (new 'static 'array float 1 129.0) 0) (ja-aframe-num 0))
-                     (-> (new 'static 'array float 1 129.0) 0)
-                     )
+  :code (behavior ()
+    (let ((f30-1 (the-as float (if (ja-group? plant-boss-main-attack-ja)
+                                   (fmax 129.0 (ja-aframe-num 0))
+                                   129.0
+                                   )
+                         )
                  )
           (gp-0 0)
           )
       (send-event *camera* 'change-state cam-lookat 0)
       (logior! (-> self skel status) (janim-status inited))
-      (ja-channel-push! 2 30)
-      (let ((s5-0 (-> self skel root-channel 0)))
-        (joint-control-channel-group-eval!
-          s5-0
-          (the-as art-joint-anim (-> self draw art-group data 18))
-          num-func-identity
+      (ja-channel-push! 2 (seconds 0.1))
+      (ja :group! (-> self draw art-group data 18) :num! (identity (ja-aframe f30-1 0)))
+      (ja :chan 1
+          :group! (-> self draw art-group data 19)
+          :num! (identity (ja-aframe f30-1 0))
+          :frame-interp (-> self interp)
           )
-        (set! (-> s5-0 frame-num) (ja-aframe f30-1 0))
-        )
-      (let ((s5-1 (-> self skel root-channel 1)))
-        (set! (-> s5-1 frame-interp) (-> self interp))
-        (joint-control-channel-group-eval!
-          s5-1
-          (the-as art-joint-anim (-> self draw art-group data 19))
-          num-func-identity
-          )
-        (set! (-> s5-1 frame-num) (ja-aframe f30-1 0))
-        )
       (until (>= (ja-aframe-num 0) 285.0)
         (try-preload-stream *art-control* "$GAMCAM29" 0 self (the-as float -99.0))
-        (set! (-> self energy) (seek (-> self energy) (the-as float 0.5) (* 0.2 (-> *display* seconds-per-frame))))
+        (seek! (-> self energy) (the-as float 0.5) (* 0.2 (-> *display* seconds-per-frame)))
         (when (and (>= (ja-aframe-num 0) 175.0) (zero? gp-0))
           (set! gp-0 1)
-          (let ((s5-2 (get-process *default-dead-pool* othercam #x4000)))
-            (set! (-> self camera)
-                  (ppointer->handle (when s5-2
-                                      (let ((t9-11 (method-of-type othercam activate)))
-                                        (t9-11 (the-as othercam s5-2) self 'othercam (the-as pointer #x70004000))
-                                        )
-                                      (run-now-in-process s5-2 othercam-init-by-other self 28 #f #t)
-                                      (-> s5-2 ppointer)
-                                      )
-                                    )
-                  )
-            )
+          (set! (-> self camera) (ppointer->handle (process-spawn othercam self 28 #f #t :to self)))
           (logior! (-> self skel status) (janim-status spool))
           (ambient-hint-spawn "gamcam29" (the-as vector #f) *entity-pool* 'ambient)
           )
@@ -2249,129 +1545,66 @@
           (set! gp-0 2)
           (send-event (handle->process (-> self camera)) 'joint "camera2")
           )
-        (set! (-> self body flex-blend)
-              (seek (-> self body flex-blend) (-> (new 'static 'array float 1 0.0) 0) (-> *display* seconds-per-frame))
-              )
-        (set! (-> self interp)
-              (seek (-> self interp) (-> (new 'static 'array float 1 0.0) 0) (-> *display* seconds-per-frame))
-              )
-        (let ((a0-31 (-> self skel root-channel 0)))
-          (set! (-> a0-31 param 0) (the float (+ (-> a0-31 frame-group data 0 length) -1)))
-          (set! (-> a0-31 param 1) 0.66)
-          (joint-control-channel-group-eval! a0-31 (the-as art-joint-anim #f) num-func-seek!)
-          )
-        (let ((a0-32 (-> self skel root-channel 1)))
-          (set! (-> a0-32 frame-interp) (-> self interp))
-          (set! (-> a0-32 param 0) 0.0)
-          (joint-control-channel-group-eval! a0-32 (the-as art-joint-anim #f) num-func-chan)
-          )
+        (seek! (-> self body flex-blend) (the-as float 0.0) (-> *display* seconds-per-frame))
+        (seek! (-> self interp) (the-as float 0.0) (-> *display* seconds-per-frame))
+        (ja :num! (seek! max 0.66))
+        (ja :chan 1 :num! (chan 0) :frame-interp (-> self interp))
         (suspend)
         )
       )
-    (ja-channel-push! 1 75)
-    (let ((a0-35 (-> self skel root-channel 0)))
-      (set! (-> a0-35 frame-group) (the-as art-joint-anim (-> self draw art-group data 20)))
-      (set! (-> a0-35 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 20)) data 0 length) -1))
-            )
-      (set! (-> a0-35 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (set! (-> a0-35 frame-num) 0.0)
-      (joint-control-channel-group! a0-35 (the-as art-joint-anim (-> self draw art-group data 20)) num-func-seek!)
-      )
+    (ja-channel-push! 1 (seconds 0.25))
+    (ja-no-eval :group! plant-boss-main-swallow-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (ja-blend-eval)
       (suspend)
-      (let ((a0-36 (-> self skel root-channel 0)))
-        (set! (-> a0-36 param 0) (the float (+ (-> a0-36 frame-group data 0 length) -1)))
-        (set! (-> a0-36 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group-eval! a0-36 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (send-event *target* 'end-mode)
     (logclear! (-> self skel status) (janim-status inited))
     (go plant-boss-idle)
     (none)
     )
-  :post
-  plant-boss-post
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-reset (plant-boss)
-  :event
-  (-> plant-boss-eat event)
-  :code
-  (behavior ((arg0 int))
+  :event (-> plant-boss-eat event)
+  :code (behavior ((arg0 int))
     (let ((gp-0 #f))
       (cond
-        ((= (if (> (-> self skel active-channels) 0)
-                (-> self skel root-channel 0 frame-group)
-                )
-            (-> self draw art-group data 10)
-            )
+        ((ja-group? plant-boss-main-intro-ja)
          (set! gp-0 #t)
-         (ja-channel-push! 1 150)
+         (ja-channel-push! 1 (seconds 0.5))
          )
         (else
-          (ja-channel-push! 1 300)
+          (ja-channel-push! 1 (seconds 1))
           )
         )
-      (let ((s4-0 (-> self skel root-channel 0)))
-        (set! (-> s4-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-        (set! (-> s4-0 param 0) (ja-aframe (the-as float 210.0) 0))
-        (set! (-> s4-0 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (set! (-> s4-0 frame-num) 0.0)
-        (joint-control-channel-group! s4-0 (the-as art-joint-anim (-> self draw art-group data 7)) num-func-seek!)
-        )
+      (ja-no-eval :group! plant-boss-main-reset-ja :num! (seek! (ja-aframe (the-as float 210.0) 0)) :frame-num 0.0)
       (until (ja-done? 0)
         (ja-blend-eval)
-        (set! (-> self body flex-blend)
-              (seek (-> self body flex-blend) (-> (new 'static 'array float 1 0.0) 0) (-> *display* seconds-per-frame))
-              )
+        (seek! (-> self body flex-blend) (the-as float 0.0) (-> *display* seconds-per-frame))
         (if (>= 1 arg0)
-            (set! (-> self neck flex-blend)
-                  (seek (-> self neck flex-blend) (-> (new 'static 'array float 1 1.0) 0) (-> *display* seconds-per-frame))
-                  )
+            (seek! (-> self neck flex-blend) (the-as float 1.0) (-> *display* seconds-per-frame))
             )
         (suspend)
-        (let ((s4-1 (-> self skel root-channel 0)))
-          (set! (-> s4-1 param 0) (ja-aframe (the-as float 210.0) 0))
-          (set! (-> s4-1 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (joint-control-channel-group-eval! s4-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! (ja-aframe (the-as float 210.0) 0)))
         )
       (if (< 1 arg0)
           (go plant-boss-attack (+ arg0 -1))
           )
-      (let ((s5-1 (-> self skel root-channel 0)))
-        (set! (-> s5-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-        (set! (-> s5-1 param 0) (ja-aframe (the-as float 240.0) 0))
-        (set! (-> s5-1 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (set! (-> s5-1 frame-num) (ja-aframe (the-as float 210.0) 0))
-        (joint-control-channel-group! s5-1 (the-as art-joint-anim (-> self draw art-group data 7)) num-func-seek!)
-        )
+      (ja-no-eval :group! plant-boss-main-reset-ja
+                  :num! (seek! (ja-aframe (the-as float 240.0) 0))
+                  :frame-num (ja-aframe (the-as float 210.0) 0)
+                  )
       (until (ja-done? 0)
-        (set! (-> self body flex-blend)
-              (seek (-> self body flex-blend) (-> (new 'static 'array float 1 0.0) 0) (-> *display* seconds-per-frame))
-              )
-        (set! (-> self neck flex-blend) (seek
-                                          (-> self neck flex-blend)
-                                          (-> (new 'static 'array float 1 1.0) 0)
-                                          (* 2.0 (-> *display* seconds-per-frame))
-                                          )
-              )
+        (seek! (-> self body flex-blend) (the-as float 0.0) (-> *display* seconds-per-frame))
+        (seek! (-> self neck flex-blend) (the-as float 1.0) (* 2.0 (-> *display* seconds-per-frame)))
         (suspend)
-        (let ((s5-2 (-> self skel root-channel 0)))
-          (set! (-> s5-2 param 0) (ja-aframe (the-as float 240.0) 0))
-          (set! (-> s5-2 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (joint-control-channel-group-eval! s5-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! (ja-aframe (the-as float 240.0) 0)))
         )
-      (let ((a0-23 (-> self skel root-channel 0)))
-        (set! (-> a0-23 param 0) (the float (+ (-> a0-23 frame-group data 0 length) -1)))
-        (set! (-> a0-23 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group! a0-23 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja-no-eval :num! (seek!))
       (if gp-0
           (go plant-boss-spawn)
           (go plant-boss-idle)
@@ -2379,96 +1612,60 @@
       )
     (none)
     )
-  :post
-  plant-boss-post
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-hit (plant-boss)
-  :event
-  (-> plant-boss-eat event)
-  :code
-  (behavior ((arg0 symbol))
+  :event (-> plant-boss-eat event)
+  :code (behavior ((arg0 symbol))
     (let ((s5-0 (-> self child)))
       (while s5-0
         (send-event (ppointer->process s5-0) 'hit arg0)
         (set! s5-0 (-> s5-0 0 brother))
         )
       )
-    (set! (-> self health)
-          (seek (-> self health) (-> (new 'static 'array float 1 0.0) 0) (-> (new 'static 'array float 1 1.0) 0))
-          )
+    (seek! (-> self health) (the-as float 0.0) (the-as float 1.0))
     (send-event (ppointer->process (-> self leaf 1)) 'kill 0)
     (send-event (ppointer->process (-> self leaf 0)) 'kill 0)
-    (let ((a0-5 (-> self skel root-channel 0)))
-      (set! (-> a0-5 param 0) (-> (new 'static 'array float 1 1.0) 0))
-      (joint-control-channel-group! a0-5 (the-as art-joint-anim #f) num-func-loop!)
-      )
-    (ja-channel-push! 1 60)
+    (ja-no-eval :num! (loop!))
+    (ja-channel-push! 1 (seconds 0.2))
     (cond
       ((= arg0 'spin)
-       (let ((gp-1 (-> self skel root-channel 0)))
-         (set! (-> gp-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 15)))
-         (set! (-> gp-1 param 0) (ja-aframe (the-as float 20.0) 0))
-         (set! (-> gp-1 param 1) (-> (new 'static 'array float 1 1.0) 0))
-         (set! (-> gp-1 frame-num) 0.0)
-         (joint-control-channel-group! gp-1 (the-as art-joint-anim (-> self draw art-group data 15)) num-func-seek!)
-         )
+       (ja-no-eval :group! plant-boss-main-hit-kick-ja
+                   :num! (seek! (ja-aframe (the-as float 20.0) 0))
+                   :frame-num 0.0
+                   )
        (until (ja-done? 0)
          (ja-blend-eval)
          (suspend)
-         (let ((gp-2 (-> self skel root-channel 0)))
-           (set! (-> gp-2 param 0) (ja-aframe (the-as float 20.0) 0))
-           (set! (-> gp-2 param 1) (-> (new 'static 'array float 1 1.0) 0))
-           (joint-control-channel-group-eval! gp-2 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek! (ja-aframe (the-as float 20.0) 0)))
          )
        )
       ((= arg0 'spin-air)
-       (let ((gp-3 (-> self skel root-channel 0)))
-         (set! (-> gp-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 16)))
-         (set! (-> gp-3 param 0) (ja-aframe (the-as float 20.0) 0))
-         (set! (-> gp-3 param 1) (-> (new 'static 'array float 1 1.0) 0))
-         (set! (-> gp-3 frame-num) 0.0)
-         (joint-control-channel-group! gp-3 (the-as art-joint-anim (-> self draw art-group data 16)) num-func-seek!)
-         )
+       (ja-no-eval :group! plant-boss-main-hit-jumpkick-ja
+                   :num! (seek! (ja-aframe (the-as float 20.0) 0))
+                   :frame-num 0.0
+                   )
        (until (ja-done? 0)
          (ja-blend-eval)
          (suspend)
-         (let ((gp-4 (-> self skel root-channel 0)))
-           (set! (-> gp-4 param 0) (ja-aframe (the-as float 20.0) 0))
-           (set! (-> gp-4 param 1) (-> (new 'static 'array float 1 1.0) 0))
-           (joint-control-channel-group-eval! gp-4 (the-as art-joint-anim #f) num-func-seek!)
-           )
+         (ja :num! (seek! (ja-aframe (the-as float 20.0) 0)))
          )
        )
       (else
-        (let ((gp-5 (-> self skel root-channel 0)))
-          (set! (-> gp-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 14)))
-          (set! (-> gp-5 param 0) (ja-aframe (the-as float 20.0) 0))
-          (set! (-> gp-5 param 1) (-> (new 'static 'array float 1 1.0) 0))
-          (set! (-> gp-5 frame-num) 0.0)
-          (joint-control-channel-group! gp-5 (the-as art-joint-anim (-> self draw art-group data 14)) num-func-seek!)
-          )
+        (ja-no-eval :group! plant-boss-main-hit-ja :num! (seek! (ja-aframe (the-as float 20.0) 0)) :frame-num 0.0)
         (until (ja-done? 0)
           (ja-blend-eval)
           (suspend)
-          (let ((gp-6 (-> self skel root-channel 0)))
-            (set! (-> gp-6 param 0) (ja-aframe (the-as float 20.0) 0))
-            (set! (-> gp-6 param 1) (-> (new 'static 'array float 1 1.0) 0))
-            (joint-control-channel-group-eval! gp-6 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek! (ja-aframe (the-as float 20.0) 0)))
           )
         )
       )
     (if (= (-> self health) 0.0)
         (go plant-boss-dead #f)
         )
-    (let ((a0-23 (-> self skel root-channel 0)))
-      (set! (-> a0-23 param 0) (the float (+ (-> a0-23 frame-group data 0 length) -1)))
-      (set! (-> a0-23 param 1) (-> (new 'static 'array float 1 1.0) 0))
-      (joint-control-channel-group! a0-23 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
       (ja-eval)
@@ -2476,16 +1673,13 @@
     (go plant-boss-spawn)
     (none)
     )
-  :post
-  plant-boss-post
+  :post plant-boss-post
   )
 
 ;; failed to figure out what this is:
 (defstate plant-boss-dead (plant-boss)
-  :event
-  plant-boss-generic-event-handler
-  :code
-  (behavior ((arg0 symbol))
+  :event plant-boss-generic-event-handler
+  :code (behavior ((arg0 symbol))
     (logclear! (-> self mask) (process-mask actor-pause))
     (set! (-> self neck flex-blend) 0.0)
     (set! (-> self body flex-blend) 0.0)
@@ -2497,16 +1691,7 @@
     (cond
       (arg0
         (ja-channel-set! 1)
-        (let ((s5-1 (-> self skel root-channel 0)))
-          (joint-control-channel-group-eval!
-            s5-1
-            (the-as art-joint-anim (-> self draw art-group data 17))
-            num-func-identity
-            )
-          (set! (-> s5-1 frame-num)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) data 0 length) -1))
-                )
-          )
+        (ja :group! plant-boss-main-die-ja :num! max)
         (suspend)
         (if (not (task-complete? *game-info* (-> self entity extra perm task)))
             (birth-pickup-at-point
@@ -2523,21 +1708,9 @@
         (let ((s4-0 #f)
               (s5-2 #f)
               )
-          (let ((a0-10 (-> self skel root-channel 0)))
-            (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
-            (set! (-> a0-10 param 1) (-> (new 'static 'array float 1 1.0) 0))
-            (joint-control-channel-group! a0-10 (the-as art-joint-anim #f) num-func-seek!)
-            )
-          (ja-channel-push! 1 150)
-          (let ((a0-12 (-> self skel root-channel 0)))
-            (set! (-> a0-12 frame-group) (the-as art-joint-anim (-> self draw art-group data 17)))
-            (set! (-> a0-12 param 0)
-                  (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) data 0 length) -1))
-                  )
-            (set! (-> a0-12 param 1) (-> (new 'static 'array float 1 1.0) 0))
-            (set! (-> a0-12 frame-num) 0.0)
-            (joint-control-channel-group! a0-12 (the-as art-joint-anim (-> self draw art-group data 17)) num-func-seek!)
-            )
+          (ja-no-eval :num! (seek!))
+          (ja-channel-push! 1 (seconds 0.5))
+          (ja-no-eval :group! plant-boss-main-die-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (ja-blend-eval)
             (when (< 100.0 (ja-aframe-num 0))
@@ -2568,11 +1741,7 @@
                 )
               )
             (suspend)
-            (let ((a0-22 (-> self skel root-channel 0)))
-              (set! (-> a0-22 param 0) (the float (+ (-> a0-22 frame-group data 0 length) -1)))
-              (set! (-> a0-22 param 1) (-> (new 'static 'array float 1 1.0) 0))
-              (joint-control-channel-group-eval! a0-22 (the-as art-joint-anim #f) num-func-seek!)
-              )
+            (ja :num! (seek!))
             )
           )
         )
@@ -2596,12 +1765,11 @@
     (set! (-> (find-prim-by-id (-> self root-override) (the-as uint 16)) prim-core action) (collide-action))
     0
     (logior! (-> self mask) (process-mask actor-pause))
-    (clear-pending-settings-from-process *setting-control* self 'music)
+    (remove-setting! 'music)
     (go plant-boss-dead-idle)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (plant-boss-post)
     (do-push-aways! (-> self root-override))
     (none)
@@ -2610,13 +1778,12 @@
 
 ;; failed to figure out what this is:
 (defstate plant-boss-dead-idle (plant-boss)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('bonk)
        (go plant-boss-dead-bounce (lerp-scale
                                     (the-as float 0.1)
-                                    (-> (new 'static 'array float 1 1.0) 0)
+                                    (the-as float 1.0)
                                     (the-as float (-> arg3 param 1))
                                     (the-as float 40960.0)
                                     (the-as float 81920.0)
@@ -2628,19 +1795,9 @@
         )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 1)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 17))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) data 0 length) -1))
-            )
-      )
+    (ja :group! plant-boss-main-die-ja :num! max)
     (let ((gp-1 (-> *display* base-frame-counter)))
       (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 5))
         (transform-post)
@@ -2648,7 +1805,7 @@
         (suspend)
         )
       )
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
@@ -2658,18 +1815,15 @@
 
 ;; failed to figure out what this is:
 (defstate plant-boss-dead-bounce (plant-boss)
-  :event
-  plant-boss-generic-event-handler
-  :trans
-  (the-as (function none :behavior plant-boss) rider-trans)
-  :code
-  (behavior ((arg0 float))
+  :event plant-boss-generic-event-handler
+  :trans (the-as (function none :behavior plant-boss) rider-trans)
+  :code (behavior ((arg0 float))
     (let ((v1-2 (-> self entity extra perm)))
       (if (and (< 0.3 arg0) (and (not (handle->process (-> self money))) (< (-> v1-2 user-int8 1) 5)))
           (set! (-> self money) (ppointer->handle (birth-pickup-at-point
                                                     (-> self node-list data 42 bone transform vector 3)
                                                     (pickup-type money)
-                                                    (-> (new 'static 'array float 1 1.0) 0)
+                                                    (the-as float 1.0)
                                                     #t
                                                     self
                                                     (the-as fact-info #f)
@@ -2679,43 +1833,17 @@
           )
       )
     (ja-channel-set! 2)
-    (let ((s5-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        s5-0
-        (the-as art-joint-anim (-> self draw art-group data 21))
-        num-func-identity
-        )
-      (set! (-> s5-0 frame-num) 0.0)
-      )
-    (let ((s5-1 (-> self skel root-channel 1)))
-      (set! (-> s5-1 frame-interp) (- (-> (new 'static 'array float 1 1.0) 0) arg0))
-      (joint-control-channel-group-eval!
-        s5-1
-        (the-as art-joint-anim (-> self draw art-group data 17))
-        num-func-identity
-        )
-      (set! (-> s5-1 frame-num)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) data 0 length) -1))
-            )
-      )
+    (ja :group! plant-boss-main-bounce-ja :num! min)
+    (ja :chan 1 :group! plant-boss-main-die-ja :num! max :frame-interp (- 1.0 arg0))
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-13 (-> self skel root-channel 0)))
-        (set! (-> a0-13 param 0) (the float (+ (-> a0-13 frame-group data 0 length) -1)))
-        (set! (-> a0-13 param 1) (-> (new 'static 'array float 1 1.0) 0))
-        (joint-control-channel-group-eval! a0-13 (the-as art-joint-anim #f) num-func-seek!)
-        )
-      (let ((v1-39 (-> self skel root-channel 1)))
-        (set! (-> v1-39 frame-interp) (- (-> (new 'static 'array float 1 1.0) 0) arg0))
-        (set! (-> v1-39 num-func) num-func-identity)
-        (set! (-> v1-39 frame-num) (the float (+ (-> v1-39 frame-group data 0 length) -1)))
-        )
+      (ja :num! (seek!))
+      (ja :chan 1 :frame-interp (- 1.0 arg0) :num-func num-func-identity :frame-num max)
       )
     (go plant-boss-dead-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior plant-boss) rider-post)
+  :post (the-as (function none :behavior plant-boss) rider-post)
   )
 
 ;; definition for method 11 of type plant-boss
@@ -2752,7 +1880,7 @@
         (set! (-> s2-2 collide-with) (collide-kind target))
         (set! (-> s2-2 prim-core offense) (collide-offense no-offense))
         (set! (-> s2-2 transform-index) 13)
-        (set-vector! (-> s2-2 local-sphere) 0.0 (-> (new 'static 'array float 1 8192.0) 0) 0.0 16384.0)
+        (set-vector! (-> s2-2 local-sphere) 0.0 8192.0 0.0 16384.0)
         (append-prim s3-0 s2-2)
         (set! (-> obj attack-prim 0) s2-2)
         )
@@ -2761,7 +1889,7 @@
         (set! (-> s2-3 collide-with) (collide-kind))
         (set! (-> s2-3 prim-core offense) (collide-offense no-offense))
         (set! (-> s2-3 transform-index) 13)
-        (set-vector! (-> s2-3 local-sphere) 0.0 (-> (new 'static 'array float 1 8192.0) 0) 0.0 16384.0)
+        (set-vector! (-> s2-3 local-sphere) 0.0 8192.0 0.0 16384.0)
         (append-prim s3-0 s2-3)
         (set! (-> obj death-prim 0) s2-3)
         )
@@ -2782,211 +1910,120 @@
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *plant-boss-sg* '())
   (set! (-> obj draw shadow-ctrl) *plant-boss-shadow-control*)
-  (let ((s5-1 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-1
-      (let ((t9-18 (method-of-type plant-boss-arm activate)))
-        (t9-18 (the-as plant-boss-arm s5-1) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-1
-        plant-boss-arm-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x -24576.0 :z 8192.0 :w 1.0))
-        (-> (new 'static 'array float 1 -8192.0) 0)
-        1
-        )
-      (-> s5-1 ppointer)
-      )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-arm-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x -24576.0 :z 8192.0 :w 1.0))
+    -8192.0
+    1
+    :to obj
     )
-  (let ((s5-2 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-2
-      (let ((t9-21 (method-of-type plant-boss-arm activate)))
-        (t9-21 (the-as plant-boss-arm s5-2) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-2
-        plant-boss-arm-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 24576.0 :z 8192.0 :w 1.0))
-        (-> (new 'static 'array float 1 8192.0) 0)
-        0
-        )
-      (-> s5-2 ppointer)
-      )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-arm-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 24576.0 :z 8192.0 :w 1.0))
+    8192.0
+    0
+    :to obj
     )
-  (let ((s5-3 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-3
-      (let ((t9-24 (method-of-type plant-boss-arm activate)))
-        (t9-24 (the-as plant-boss-arm s5-3) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-3
-        plant-boss-back-arms-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :w 1.0))
-        (-> (new 'static 'array float 1 0.0) 0)
-        2
-        )
-      (-> s5-3 ppointer)
-      )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-back-arms-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :w 1.0))
+    0.0
+    2
+    :to obj
     )
-  (let ((s5-4 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-4
-      (let ((t9-27 (method-of-type plant-boss-arm activate)))
-        (t9-27 (the-as plant-boss-arm s5-4) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-4
-        plant-boss-vine-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 38912.0 :z 8192.0 :w 1.0))
-        (new 'static 'vector :y 14563.556)
-        (-> (new 'static 'array float 1 1.0) 0)
-        3
-        )
-      (-> s5-4 ppointer)
-      )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-vine-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 38912.0 :z 8192.0 :w 1.0))
+    (new 'static 'vector :y 14563.556)
+    1.0
+    3
+    :to obj
     )
-  (let ((s5-5 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-5
-      (let ((t9-30 (method-of-type plant-boss-arm activate)))
-        (t9-30 (the-as plant-boss-arm s5-5) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-5
-        plant-boss-vine-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x -40960.0 :z 8192.0 :w 1.0))
-        (new 'static 'vector :y -5461.3335)
-        (-> (new 'static 'array float 1 1.0) 0)
-        3
-        )
-      (-> s5-5 ppointer)
-      )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-vine-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x -40960.0 :z 8192.0 :w 1.0))
+    (new 'static 'vector :y -5461.3335)
+    1.0
+    3
+    :to obj
     )
-  (let ((s5-6 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-6
-      (let ((t9-33 (method-of-type plant-boss-arm activate)))
-        (t9-33 (the-as plant-boss-arm s5-6) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-6
-        plant-boss-vine-init
-        (vector+!
-          (new-stack-vector0)
-          (-> obj root-override trans)
-          (new 'static 'vector :x -29491.2 :z -7168.0 :w 1.0)
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-vine-init
+    (vector+!
+      (new-stack-vector0)
+      (-> obj root-override trans)
+      (new 'static 'vector :x -29491.2 :z -7168.0 :w 1.0)
+      )
+    (new 'static 'vector :x -1820.4445 :y -11286.756)
+    0.8
+    3
+    :to obj
+    )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-vine-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 32768.0 :z -3072.0 :w 1.0))
+    (new 'static 'vector :x -910.2222 :y 22755.555)
+    0.8
+    3
+    :to obj
+    )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-root-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 18841.6 :z 4096.0 :w 1.0))
+    (new 'static 'vector :y -4096.0)
+    (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+    4
+    :to obj
+    )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-root-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x -18841.6 :z 4096.0 :w 1.0))
+    (new 'static 'vector :x 364.0889 :y 4096.0)
+    (new 'static 'vector :x 1.0 :y 1.25 :z 1.0)
+    4
+    :to obj
+    )
+  (process-spawn
+    plant-boss-arm
+    :init plant-boss-root-init
+    (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :z -2048.0 :w 1.0))
+    (new 'static 'vector :x 1820.4445)
+    (new 'static 'vector :x 0.9 :y 1.5 :z 1.0)
+    4
+    :to obj
+    )
+  (set! (-> obj leaf 0)
+        (process-spawn
+          plant-boss-leaf
+          :init plant-boss-leaf-init
+          (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :w 1.0))
+          0.0
+          0
+          :to obj
           )
-        (new 'static 'vector :x -1820.4445 :y -11286.756)
-        (-> (new 'static 'array float 1 0.8) 0)
-        3
         )
-      (-> s5-6 ppointer)
-      )
-    )
-  (let ((s5-7 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-7
-      (let ((t9-36 (method-of-type plant-boss-arm activate)))
-        (t9-36 (the-as plant-boss-arm s5-7) obj 'plant-boss-arm (the-as pointer #x70004000))
+  (set! (-> obj leaf 1) (process-spawn
+                          plant-boss-leaf
+                          :init plant-boss-leaf-init
+                          (vector+!
+                            (new-stack-vector0)
+                            (-> obj root-override trans)
+                            (new 'static 'vector :x -13189.12 :y 2838.528 :z 12288.0 :w 1.0)
+                            )
+                          0.0
+                          1
+                          :to obj
+                          )
         )
-      (run-now-in-process
-        s5-7
-        plant-boss-vine-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 32768.0 :z -3072.0 :w 1.0))
-        (new 'static 'vector :x -910.2222 :y 22755.555)
-        (-> (new 'static 'array float 1 0.8) 0)
-        3
-        )
-      (-> s5-7 ppointer)
-      )
-    )
-  (let ((s5-8 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-8
-      (let ((t9-39 (method-of-type plant-boss-arm activate)))
-        (t9-39 (the-as plant-boss-arm s5-8) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-8
-        plant-boss-root-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x 18841.6 :z 4096.0 :w 1.0))
-        (new 'static 'vector :y -4096.0)
-        (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
-        4
-        )
-      (-> s5-8 ppointer)
-      )
-    )
-  (let ((s5-9 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-9
-      (let ((t9-42 (method-of-type plant-boss-arm activate)))
-        (t9-42 (the-as plant-boss-arm s5-9) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-9
-        plant-boss-root-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :x -18841.6 :z 4096.0 :w 1.0))
-        (new 'static 'vector :x 364.0889 :y 4096.0)
-        (new 'static 'vector :x 1.0 :y 1.25 :z 1.0)
-        4
-        )
-      (-> s5-9 ppointer)
-      )
-    )
-  (let ((s5-10 (get-process *default-dead-pool* plant-boss-arm #x4000)))
-    (when s5-10
-      (let ((t9-45 (method-of-type plant-boss-arm activate)))
-        (t9-45 (the-as plant-boss-arm s5-10) obj 'plant-boss-arm (the-as pointer #x70004000))
-        )
-      (run-now-in-process
-        s5-10
-        plant-boss-root-init
-        (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :z -2048.0 :w 1.0))
-        (new 'static 'vector :x 1820.4445)
-        (new 'static 'vector :x 0.9 :y 1.5 :z 1.0)
-        4
-        )
-      (-> s5-10 ppointer)
-      )
-    )
-  (let ((s5-11 (get-process *default-dead-pool* plant-boss-leaf #x4000)))
-    (set! (-> obj leaf 0)
-          (the-as
-            (pointer plant-boss-leaf)
-            (when s5-11
-              (let ((t9-48 (method-of-type plant-boss-leaf activate)))
-                (t9-48 (the-as plant-boss-leaf s5-11) obj 'plant-boss-leaf (the-as pointer #x70004000))
-                )
-              (run-now-in-process
-                s5-11
-                plant-boss-leaf-init
-                (vector+! (new-stack-vector0) (-> obj root-override trans) (new 'static 'vector :w 1.0))
-                (-> (new 'static 'array float 1 0.0) 0)
-                0
-                )
-              (-> s5-11 ppointer)
-              )
-            )
-          )
-    )
-  (let ((s5-12 (get-process *default-dead-pool* plant-boss-leaf #x4000)))
-    (set! (-> obj leaf 1)
-          (the-as
-            (pointer plant-boss-leaf)
-            (when s5-12
-              (let ((t9-51 (method-of-type plant-boss-leaf activate)))
-                (t9-51 (the-as plant-boss-leaf s5-12) obj 'plant-boss-leaf (the-as pointer #x70004000))
-                )
-              (run-now-in-process
-                s5-12
-                plant-boss-leaf-init
-                (vector+!
-                  (new-stack-vector0)
-                  (-> obj root-override trans)
-                  (new 'static 'vector :x -13189.12 :y 2838.528 :z 12288.0 :w 1.0)
-                  )
-                (-> (new 'static 'array float 1 0.0) 0)
-                1
-                )
-              (-> s5-12 ppointer)
-              )
-            )
-          )
-    )
   (set! (-> obj energy) 0.25)
   (set! (-> obj health) 3.0)
   (set! (-> obj cam-tracker) (the-as handle #f))
@@ -2994,24 +2031,12 @@
   (set! (-> obj money) (the-as handle #f))
   (set! (-> obj try-inc) #f)
   (set! (-> obj neck) (new 'process 'joint-mod (joint-mod-handler-mode flex-blend) obj 13))
-  (set-vector!
-    (-> obj neck twist-max)
-    3640.889
-    (-> (new 'static 'array float 1 8192.0) 0)
-    0.0
-    (-> (new 'static 'array float 1 1.0) 0)
-    )
+  (set-vector! (-> obj neck twist-max) 3640.889 8192.0 0.0 1.0)
   (set! (-> obj neck up) (the-as uint 0))
   (set! (-> obj neck nose) (the-as uint 1))
   (set! (-> obj neck ear) (the-as uint 2))
   (set! (-> obj body) (new 'process 'joint-mod (joint-mod-handler-mode flex-blend) obj 4))
-  (set-vector!
-    (-> obj body twist-max)
-    0.0
-    (-> (new 'static 'array float 1 8192.0) 0)
-    0.0
-    (-> (new 'static 'array float 1 1.0) 0)
-    )
+  (set-vector! (-> obj body twist-max) 0.0 8192.0 0.0 1.0)
   (set! (-> obj body up) (the-as uint 1))
   (set! (-> obj body nose) (the-as uint 0))
   (set! (-> obj body ear) (the-as uint 2))

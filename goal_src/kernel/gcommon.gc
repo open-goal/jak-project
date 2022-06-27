@@ -24,6 +24,37 @@
 ;; are monitored in the runtime for debugging.
 (defglobalconstant USE_VM #t)
 
+;; enables the with-profiler statements, which send profiling data from
+;; GOAL code to the frame profiler in C++.
+(defglobalconstant PC_PROFILER_ENABLE #t)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; GOAL language constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; distance from a symbol pointer to a (pointer string)
+;; this relies on the memory layout of the symbol table
+;; this must match SYM_INFO_OFFSET in goal_constants.h + offset of the str field in struct SymUpper.
+(defconstant SYM_TO_STRING_OFFSET #x20000) ;; changed from #xff38
+
+;; pointers larger than this are invalid by valid?
+(defconstant END_OF_MEMORY #x8000000)
+
+;; GOAL boxed offsets use the lower three bits to indicate if they are
+;; an integer (binteger), a pair, or a strucutre with type info (basic)
+(defconstant BINTEGER_OFFSET 0)
+(defconstant PAIR_OFFSET 2)
+(defconstant BASIC_OFFSET 4)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro symbol->string (sym)
+  "Convert a symbol to a goal string."
+  `(-> (the-as (pointer string) (+ SYM_TO_STRING_OFFSET (the-as int ,sym))))
+  )
+
 (defmacro get-vm-ptr (ptr)
   "Turn an EE register address into a valid PS2 VM address"
   `(#cond
@@ -36,52 +67,13 @@
      )
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; GOAL language constants
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; GOAL built-in method IDs
-(defconstant NEW_METHOD_ID 0)
-(defconstant DELETE_METHOD_ID 1)
-(defconstant PRINT_METHOD_ID 2)
-(defconstant INSPECT_METHOD_ID 3)
-(defconstant LENGTH_METHOD_ID 4)
-(defconstant ASIZE_METHOD_ID 5)
-(defconstant COPY_METHOD_ID 6)
-(defconstant RELOC_METHOD_ID 7) ;; or login?
-(defconstant MEM_USAGE_METHOD_ID 8)
-
-;; distance from a symbol pointer to a (pointer string)
-;; this relies on the memory layout of the symbol table
-;; this must match SYM_INFO_OFFSET in goal_constants.h + offset of the str field in struct SymUpper.
-(defconstant SYM_TO_STRING_OFFSET #xff38)
-
-;; pointers larger than this are invalid by valid?
-(defconstant END_OF_MEMORY #x8000000)
-
-;; GOAL boxed offsets use the lower three bits to indicate if they are
-;; an integer (binteger), a pair, or a strucutre with type info (basic)
-(defconstant BINTEGER_OFFSET 0)
-(defconstant PAIR_OFFSET 2)
-(defconstant BASIC_OFFSET 4)
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; GOAL language macros
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmacro symbol->string (sym)
-  "Convert a symbol to a goal string."
-  `(-> (the-as (pointer string) (+ SYM_TO_STRING_OFFSET (the-as int ,sym))))
-  )
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Function versions of built-in forms
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; basic operations like +, - are handled by the compiler.
 ;; these provide actual functions that wrap these common operations.
+;; this allows you to use them as actual function objects
 
 (defun identity ((x object))
   "Function which returns its input. The first function of the game!
@@ -119,7 +111,7 @@
   )
 
 (defun ash ((value int) (shift-amount int))
-  "Arithmetic shift value by shift-amount.  
+  "Arithmetic shift value by shift-amount.
   A positive shift-amount will shift to the left and a negative will shift to the right.
   "
   ;; OpenGOAL does not support ash in the compiler, so we implement it here as an inline function.
@@ -133,26 +125,24 @@
 (defun mod ((a int) (b int))
   "Compute mod.  It does what you expect for positive numbers.  For negative numbers, nobody knows what to expect.
   This is a 32-bit operation.  It uses an idiv on x86 and gets the remainder."
-  
+
   ;; The original implementation is div, mfhi
-  ;; todo - verify this is exactly the same as the PS2.
   (mod a b)
   )
 
 
 (defun rem ((a int) (b int))
   "Compute remainder (32-bit).  It is identical to mod. It uses a idiv and gets the remainder"
-  
+
   ;; The original implementation is div, mfhi
-  ;; todo - verify this is exactly the same as the PS2.
   (mod a b)
   )
 
 (defun abs ((a int))
   "Take the absolute value of an integer"
-  
+
   (declare (inline))
-  
+
   ;; OpenGOAL doesn't support abs, so we implement it here.
   (if (> a 0) ;; condition is "a > 0"
       a       ;; true case, return a
@@ -162,7 +152,7 @@
 
 (defun min ((a int) (b int))
   "Compute minimum."
-  
+
   ;; The original implementation was inline assembly, to take advantage of branch delay slots:
   ;;  (or v0 a0 r0)    ;; move first arg to output (case of second arg being min)
   ;;  (or v1 a1 r0)    ;; move second arg to v1 (likely strange coloring)
@@ -287,6 +277,7 @@
      (the-as uint result)
      )
   )
+
 ;; A "boxed float" type. Simply a float with type information.
 (deftype bfloat (basic)
   ((data float :offset-assert 4))
@@ -307,7 +298,7 @@
 
 (defmethod asize-of type ((obj type))
   "Get the size in memory of a type"
-  ;; The 28 is 8 bytes too large. It's also strange that types have a 16-byte aligned size always, 
+  ;; The 28 is 8 bytes too large. It's also strange that types have a 16-byte aligned size always,
   ;; but this matches what the runtime does as well. There's no reason that I can see for this,
   ;; as other basics don't require 16-byte aligned sizes.
   ;; - maybe the 16-byte aligned size was a requirement if types were stored in the symbol table?
@@ -486,7 +477,7 @@
   )
 
 (defun nassoc ((item-name string) (alist object))
-  "Is there an entry named item-name in the association list alist? 
+  "Is there an entry named item-name in the association list alist?
    Checks name with nmember or name= so you can have multiple keys.
    Returns the ([key|(key..)] . value) pair."
   (while (not (or (null? alist)
@@ -661,7 +652,7 @@
 ;; This is used as base class for boxed inline arrays.
 ;; The heap-base of the _type_ object will be used to store the stride
 ;; This way, you don't pay the price of storing the stride in each object.
-;; however, 250k lines in, we haven't seen anything actually use this...
+;; however, as far as we've seen, nothing actually reads the stride.
 
 (deftype inline-array-class (basic)
   ((length           int32  :offset-assert 4)
@@ -670,9 +661,9 @@
    ;; children of inline-array-class should define their own data which overlays this one.
    (_data            uint8  :dynamic :offset 16)
    )
-  
+
   (:methods (new (symbol type int) _type_ 0))
-  
+
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -760,7 +751,7 @@
   (format #t "#(")
   (cond
    ((type-type? (-> obj content-type) integer)
-    (case (-> obj content-type symbol) 
+    (case (-> obj content-type symbol)
      (('int32)
        (dotimes (s5-0 (-> obj length))
         (format #t (if (zero? s5-0)
@@ -884,7 +875,6 @@
   obj
   )
 
-;; definition for method of type array
 (defmethod inspect array ((obj array))
   "Inspect an array"
   (format #t "[~8x] ~A~%" obj (-> obj type))
@@ -894,7 +884,7 @@
   (format #t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
   (cond
    ((type-type? (-> obj content-type) integer)
-    (case (-> obj content-type symbol) 
+    (case (-> obj content-type symbol)
      (('int32)
        (dotimes (s5-0 (-> obj length))
         (format #t "~T  [~D] ~D~%" s5-0 (-> (the-as (array int32) obj) s5-0))
@@ -1100,7 +1090,10 @@
   )
 
 (defmacro printl (obj)
-  "Print out a boxed object and a newline"
+  "Print out a boxed object and a newline.
+   Note: we define both a macro and a function on purpose.
+   The compiler will use the macro over the function, which will
+   allow it to pick the correct print method for non-boxed objects"
   `(begin
      (print ,obj)
      (format #t "~%")
@@ -1424,4 +1417,52 @@
 
 (defmacro empty-form ()
   `(none)
+  )
+
+;;;;;;;;;;;;;;;;;;;;
+;; Profiler Macros
+;;;;;;;;;;;;;;;;;;;;
+
+
+(defmacro profiler-instant-event (name)
+  "Record an 'instant' event in the profile.
+   This can be used however you'd like, but there should be a
+   'ROOT' event logged every now and then (like once per frame)
+   when no timed events are in progress, to allow the profiler
+   to correctly recover the event stack."
+  `(#when PC_PROFILER_ENABLE
+     (pc-prof ,name (pc-prof-event instant))
+     )
+  )
+
+(defmacro profiler-start-event (name)
+  "Start a timed event with the given name."
+  `(#when PC_PROFILER_ENABLE
+     (pc-prof ,name (pc-prof-event begin))
+     )
+  )
+
+(defmacro profiler-end-event ()
+  "End the most recently started event that hasn't been stopped yet.
+   It is up to you to correctly balance the starts/ends, otherwise
+   the profiling data will be corrupted."
+  `(#when PC_PROFILER_ENABLE
+     (pc-prof "" (pc-prof-event end))
+     )
+  )
+
+(defmacro with-profiler (name &rest body)
+  "Execute the body in a named profiler block.
+   Do not `return` or `go` from inside this block,
+   otherwise the end will be skipped."
+  `(#if PC_PROFILER_ENABLE
+        (begin
+          (pc-prof ,name (pc-prof-event begin))
+          ,@body
+          (pc-prof ,name (pc-prof-event end))
+          )
+        (begin
+          ,@body
+          )
+        )
   )

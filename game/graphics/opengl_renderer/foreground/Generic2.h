@@ -6,15 +6,14 @@ class Generic2 : public BucketRenderer {
  public:
   Generic2(const std::string& name,
            BucketId my_id,
-           u32 num_verts,
-           u32 num_frags,
-           u32 num_adgif,
-           u32 num_buckets);
+           u32 num_verts = 200000,
+           u32 num_frags = 2000,
+           u32 num_adgif = 3000,
+           u32 num_buckets = 800);
   ~Generic2();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
   void init_shaders(ShaderLibrary& shaders) override;
-  // void init_shaders(ShaderLibrary& shaders) override;
 
   struct Vertex {
     math::Vector<float, 3> xyz;
@@ -151,18 +150,23 @@ class Generic2 : public BucketRenderer {
 
   u32 m_next_free_frag = 0;
   std::vector<Fragment> m_fragments;
+  u32 m_max_frags_seen = 0;
 
   u32 m_next_free_vert = 0;
   std::vector<Vertex> m_verts;
+  u32 m_max_verts_seen = 0;
 
   u32 m_next_free_adgif = 0;
   std::vector<Adgif> m_adgifs;
+  u32 m_max_adgifs_seen = 0;
 
   u32 m_next_free_bucket = 0;
   std::vector<Bucket> m_buckets;
+  u32 m_max_buckets_seen = 0;
 
   u32 m_next_free_idx = 0;
   std::vector<u32> m_indices;
+  u32 m_max_indices_seen = 0;
 
   Fragment& next_frag() {
     ASSERT(m_next_free_frag < m_fragments.size());
@@ -185,8 +189,8 @@ class Generic2 : public BucketRenderer {
     u32 dma_tags = 0;
   } m_stats;
 
-  static constexpr int ALPHA_MODE_COUNT = 6;
-  bool m_alpha_draw_enable[ALPHA_MODE_COUNT] = {true, true, true, true, true, true};
+  static constexpr int ALPHA_MODE_COUNT = 7;
+  bool m_alpha_draw_enable[ALPHA_MODE_COUNT] = {true, true, true, true, true, true, true};
 
   struct {
     GLuint vao;

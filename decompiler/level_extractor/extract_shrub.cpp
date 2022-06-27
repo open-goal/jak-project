@@ -1,10 +1,11 @@
-#include <array>
-
 #include "extract_shrub.h"
 
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include <array>
 
 #include "common/util/FileUtil.h"
+
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/level_extractor/extract_common.h"
 
 namespace decompiler {
 using namespace level_tools;
@@ -129,8 +130,7 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
   auto masked = original & 0xffffff00;
   for (auto& t : map) {
     if (t.original_texid == masked) {
-      fmt::print("OKAY! remapped!\n");
-      ASSERT(false);
+      ASSERT_MSG(false, "OKAY! remapped!");
       return t.new_texid | 20;
     }
   }
@@ -396,53 +396,11 @@ std::string dump_full_to_obj(const std::vector<ShrubProtoInfo>& protos) {
   return result;
 }
 
-u32 clean_up_vertex_indices(std::vector<u32>& idx) {
-  std::vector<u32> fixed;
-  u32 num_tris = 0;
-
-  bool looking_for_start = true;
-  size_t i_of_start;
-  for (size_t i = 0; i < idx.size(); i++) {
-    if (looking_for_start) {
-      if (idx[i] != UINT32_MAX) {
-        looking_for_start = false;
-        i_of_start = i;
-      }
-    } else {
-      if (idx[i] == UINT32_MAX) {
-        looking_for_start = true;
-        size_t num_verts = i - i_of_start;
-        if (num_verts >= 3) {
-          if (!fixed.empty()) {
-            fixed.push_back(UINT32_MAX);
-          }
-          fixed.insert(fixed.end(), idx.begin() + i_of_start, idx.begin() + i);
-          num_tris += (num_verts - 2);
-        }
-      }
-    }
-  }
-
-  if (!looking_for_start) {
-    size_t num_verts = idx.size() - i_of_start;
-    if (num_verts >= 3) {
-      if (!fixed.empty()) {
-        fixed.push_back(UINT32_MAX);
-      }
-      fixed.insert(fixed.end(), idx.begin() + i_of_start, idx.begin() + idx.size());
-      num_tris += (num_verts - 2);
-    }
-  }
-
-  idx = std::move(fixed);
-
-  return num_tris;
-}
-
 void make_draws(tfrag3::Level& lev,
                 tfrag3::ShrubTree& tree_out,
                 const std::vector<ShrubProtoInfo>& protos,
                 const TextureDB& tdb) {
+  std::vector<std::vector<u32>> indices_regrouped_by_draw;
   std::unordered_map<u32, std::vector<u32>> static_draws_by_tex;
   size_t global_vert_counter = 0;
   for (auto& proto : protos) {
@@ -501,14 +459,13 @@ void make_draws(tfrag3::Level& lev,
                 // we're missing a texture, just use the first one.
                 tex_it = tdb.textures.begin();
               } else {
-                fmt::print(
-                    "texture {} wasn't found. make sure it is loaded somehow. You may need to "
-                    "include "
-                    "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures.\n",
-                    combo_tex);
-                fmt::print("tpage is {}\n", combo_tex >> 16);
-                fmt::print("id is {} (0x{:x})\n", combo_tex & 0xffff, combo_tex & 0xffff);
-                ASSERT(false);
+                ASSERT_MSG(
+                    false,
+                    fmt::format(
+                        "texture {} wasn't found. make sure it is loaded somehow. You may need to "
+                        "include ART.DGO or GAME.DGO in addition to the level DGOs for shared "
+                        "textures. tpage is {} id is {} (0x{:x})",
+                        combo_tex, combo_tex >> 16, combo_tex & 0xffff, combo_tex & 0xffff));
               }
             }
             // add a new texture to the level data
@@ -528,10 +485,12 @@ void make_draws(tfrag3::Level& lev,
           // okay, we now have a texture and draw mode, let's see if we can add to an existing...
           auto existing_draws_in_tex = static_draws_by_tex.find(idx_in_lev_data);
           tfrag3::ShrubDraw* draw_to_add_to = nullptr;
+          std::vector<u32>* verts_to_add_to = nullptr;
           if (existing_draws_in_tex != static_draws_by_tex.end()) {
             for (auto idx : existing_draws_in_tex->second) {
               if (tree_out.static_draws.at(idx).mode == mode) {
                 draw_to_add_to = &tree_out.static_draws[idx];
+                verts_to_add_to = &indices_regrouped_by_draw[idx];
               }
             }
           }
@@ -543,6 +502,7 @@ void make_draws(tfrag3::Level& lev,
             draw_to_add_to = &tree_out.static_draws.back();
             draw_to_add_to->mode = mode;
             draw_to_add_to->tree_tex_id = idx_in_lev_data;
+            verts_to_add_to = &indices_regrouped_by_draw.emplace_back();
           }
 
           // now we have a draw, time to add vertices
@@ -556,25 +516,30 @@ void make_draws(tfrag3::Level& lev,
 
           for (size_t vidx = 0; vidx < draw.vertices.size(); vidx++) {
             if (draw.vertices[vidx].adc) {
-              draw_to_add_to->vertex_index_stream.push_back(vidx + global_vert_counter);
+              verts_to_add_to->push_back(vidx + global_vert_counter);
               draw_to_add_to->num_triangles++;
             } else {
-              draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
-              draw_to_add_to->vertex_index_stream.push_back(vidx + global_vert_counter - 1);
-              draw_to_add_to->vertex_index_stream.push_back(vidx + global_vert_counter);
+              verts_to_add_to->push_back(UINT32_MAX);
+              verts_to_add_to->push_back(vidx + global_vert_counter - 1);
+              verts_to_add_to->push_back(vidx + global_vert_counter);
             }
           }
-          draw_to_add_to->vertex_index_stream.push_back(UINT32_MAX);
-
+          verts_to_add_to->push_back(UINT32_MAX);
           global_vert_counter += draw.vertices.size();
         }
       }
     }
   }
 
-  for (auto& draw : tree_out.static_draws) {
-    draw.num_triangles = clean_up_vertex_indices(draw.vertex_index_stream);
+  for (size_t didx = 0; didx < tree_out.static_draws.size(); didx++) {
+    auto& draw = tree_out.static_draws[didx];
+    auto& inds = indices_regrouped_by_draw[didx];
+    draw.num_triangles = clean_up_vertex_indices(inds);
+    draw.num_indices = inds.size();
+    draw.first_index_index = tree_out.indices.size();
+    tree_out.indices.insert(tree_out.indices.end(), inds.begin(), inds.end());
   }
+
   tree_out.packed_vertices.total_vertex_count = global_vert_counter;
 }
 

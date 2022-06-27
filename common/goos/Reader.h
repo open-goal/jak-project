@@ -12,15 +12,14 @@
  */
 
 #include <memory>
-#include <utility>
-#include <unordered_map>
 #include <optional>
-
-#include "common/goos/Object.h"
-#include "common/goos/TextDB.h"
+#include <unordered_map>
+#include <utility>
 
 #include "ReplUtils.h"
 
+#include "common/goos/Object.h"
+#include "common/goos/TextDB.h"
 #include "common/util/Assert.h"
 
 namespace goos {
@@ -78,7 +77,6 @@ class Reader {
   std::optional<Object> read_from_stdin(const std::string& prompt, ReplWrapper& repl);
   Object read_from_file(const std::vector<std::string>& file_path, bool check_encoding = false);
   bool check_string_is_valid(const std::string& str) const;
-  std::string get_source_dir();
 
   SymbolTable symbolTable;
   TextDb db;

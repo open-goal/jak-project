@@ -4,11 +4,14 @@
  * This is used both in the compiler and in the decompiler for the type definition file.
  */
 
-#include "common/goos/ParseHelpers.h"
 #include "defenum.h"
+
 #include "deftype.h"
-#include "third-party/fmt/core.h"
+
+#include "common/goos/ParseHelpers.h"
 #include "common/util/BitUtils.h"
+
+#include "third-party/fmt/core.h"
 
 namespace {
 const goos::Object& car(const goos::Object* x) {
@@ -60,7 +63,7 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
   while (current.is_symbol() && symbol_string(current).at(0) == ':') {
     auto option_name = symbol_string(current);
     iter = cdr(iter);
-    auto option_value = car(iter);
+    auto& option_value = car(iter);
     iter = cdr(iter);
 
     if (option_name == ":type") {
@@ -82,7 +85,7 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
       }
       for (auto& e : other_info->entries()) {
         if (entries.find(e.first) != entries.end()) {
-          throw std::runtime_error(fmt::format("Entry {} appears multiple times.", e.first));
+          throw std::runtime_error(fmt::format("Entry {} appears multiple times", e.first));
         }
         entries[e.first] = e.second;
       }

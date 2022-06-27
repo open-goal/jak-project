@@ -2,7 +2,9 @@
 
 #include <string>
 #include <vector>
+
 #include "common/common_types.h"
+
 #include "goalc/emitter/Instruction.h"
 
 class FunctionEnv;
@@ -34,4 +36,5 @@ std::string disassemble_x86_function(u8* data,
                                      u64 highlight_addr,
                                      const std::vector<InstructionInfo>& x86_instructions,
                                      const FunctionEnv* fenv,
-                                     bool* had_failure);
+                                     bool* had_failure,
+                                     bool print_whole_function);

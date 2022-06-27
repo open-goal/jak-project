@@ -1,9 +1,10 @@
 #pragma once
 
-#include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
+
+#include "game/graphics/opengl_renderer/BucketRenderer.h"
+#include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/sprite_common.h"
 
 class SpriteRenderer : public BucketRenderer {

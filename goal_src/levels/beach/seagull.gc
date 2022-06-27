@@ -4,23 +4,22 @@
 ;; name: seagull.gc
 ;; name in dgo: seagull
 ;; dgos: BEA, L1
-
-(define-extern *seagull-sg* skeleton-group)
+;; note: modified for high fps
 
 (declare-type seagullflock process)
 
 ;; DECOMP BEGINS
 
+(import "goal_src/import/seagull-ag.gc")
+
 (defpartgroup group-seagull-takeoff
   :id 160
   :bounds (static-bspherem 0 -12 0 14)
-  :parts
-  ((sp-item 663 :fade-after (meters 20)))
+  :parts ((sp-item 663 :fade-after (meters 20)))
   )
 
 (defpart 665
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 1.0)
     (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -34,10 +33,7 @@
     )
   )
 
-(define
-  sound-seagull-squall
-  (new 'static 'sound-spec :num 1.0 :group #x1 :sound-name (static-sound-name "seagulls-2") :volume #x400)
-  )
+(define sound-seagull-squall (static-sound-spec "seagulls-2"))
 
 (deftype seagull (process-drawable)
   ((root-override     collide-shape-moving    :offset        112)
@@ -134,8 +130,7 @@
   (none)
   )
 
-(define
-  *seagull-boxes*
+(define *seagull-boxes*
   (new 'static 'inline-array air-box 10
     (new 'static 'air-box :vecs (new 'static 'inline-array vector 2
                                   (new 'static 'vector :x -1146880.0 :y 143360.0 :z -1638400.0 :w -0.6427)
@@ -190,13 +185,10 @@
     )
   )
 
-(defskelgroup *seagull-sg* seagull
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 2)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *seagull-sg* seagull seagull-lod0-jg seagull-idle-ja
+              ((seagull-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              )
 
 (defmethod dummy-25 seagull ((obj seagull) (arg0 float))
   (let ((f1-1 (the float (sar (shl (the int (- arg0 (-> obj heading))) 48) 48)))
@@ -315,7 +307,7 @@
       )
     (let ((f0-28 (+ (* (-> s5-0 x) (-> s5-0 x)) (* (-> s5-0 z) (-> s5-0 z)))))
       (set! (-> obj angletan) (/ (- (-> s5-0 y)) (sqrtf f0-28)))
-      (set! (-> obj target-dist) (sqrtf (+ f0-28 (* (-> s5-0 y) (-> s5-0 y)))))
+      (set! (-> obj target-dist) (* (-> *display* time-adjust-ratio) (sqrtf (+ f0-28 (* (-> s5-0 y) (-> s5-0 y)))))) ;; changed for high fps
       )
     )
   0
@@ -336,8 +328,7 @@
   )
 
 (defstate seagull-idle (seagull)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (let* ((v1-0 (-> self flock))
            (f30-0 (dummy-16
                     (if v1-0
@@ -348,17 +339,14 @@
                   )
            (f28-0 21845.334)
            (f26-0 -0.5)
-           (v1-5 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-6 (the-as number (logior #x3f800000 v1-5)))
            )
       (set! (-> self heading)
-            (the float (sar (shl (the int (+ f30-0 (* f28-0 (+ f26-0 (+ -1.0 (the-as float v1-6)))))) 48) 48))
+            (the float (sar (shl (the int (+ f30-0 (* f28-0 (+ f26-0 (rand-float-gen))))) 48) 48))
             )
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (nonzero? (-> self scared))
       (+! (-> self scared) -1)
       (when (zero? (-> self scared))
@@ -382,21 +370,13 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self root-override trans y) (+ 20480.0 (-> self root-override trans y)))
     (move-to-ground (-> self root-override) 40960.0 40960.0 #t (collide-kind background))
     (update-transforms! (-> self root-override))
     (clear-collide-with-as (-> self root-override))
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) (ja-aframe 0.0 0))
-      )
-    (while #t
+    (ja :group! seagull-idle-ja :num! (identity (ja-aframe 0.0 0)))
+    (loop
       (let* ((f30-0 4.0)
              (v1-14 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
              (v1-15 (the-as number (logior #x3f800000 v1-14)))
@@ -413,20 +393,10 @@
           )
         (cond
           ((zero? gp-1)
-           (let ((gp-2 (-> self skel root-channel 0)))
-             (set! (-> gp-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-             (set! (-> gp-2 param 0) (ja-aframe 4.0 0))
-             (set! (-> gp-2 param 1) 1.0)
-             (set! (-> gp-2 frame-num) (ja-aframe 0.0 0))
-             (joint-control-channel-group! gp-2 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-             )
+           (ja-no-eval :group! seagull-idle-ja :num! (seek! (ja-aframe 4.0 0)) :frame-num (ja-aframe 0.0 0))
            (until (ja-done? 0)
              (suspend)
-             (let ((gp-3 (-> self skel root-channel 0)))
-               (set! (-> gp-3 param 0) (ja-aframe 4.0 0))
-               (set! (-> gp-3 param 1) 1.0)
-               (joint-control-channel-group-eval! gp-3 (the-as art-joint-anim #f) num-func-seek!)
-               )
+             (ja :num! (seek! (ja-aframe 4.0 0)))
              )
            (let* ((f30-2 60.0)
                   (v1-37 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -437,20 +407,10 @@
                (suspend)
                )
              )
-           (let ((gp-5 (-> self skel root-channel 0)))
-             (set! (-> gp-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-             (set! (-> gp-5 param 0) (ja-aframe 10.0 0))
-             (set! (-> gp-5 param 1) 1.0)
-             (set! (-> gp-5 frame-num) (ja-aframe 4.0 0))
-             (joint-control-channel-group! gp-5 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-             )
+           (ja-no-eval :group! seagull-idle-ja :num! (seek! (ja-aframe 10.0 0)) :frame-num (ja-aframe 4.0 0))
            (until (ja-done? 0)
              (suspend)
-             (let ((gp-6 (-> self skel root-channel 0)))
-               (set! (-> gp-6 param 0) (ja-aframe 10.0 0))
-               (set! (-> gp-6 param 1) 1.0)
-               (joint-control-channel-group-eval! gp-6 (the-as art-joint-anim #f) num-func-seek!)
-               )
+             (ja :num! (seek! (ja-aframe 10.0 0)))
              )
            (let* ((f30-3 60.0)
                   (v1-55 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -461,71 +421,31 @@
                (suspend)
                )
              )
-           (let ((gp-8 (-> self skel root-channel 0)))
-             (set! (-> gp-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-             (set! (-> gp-8 param 0) (ja-aframe 14.0 0))
-             (set! (-> gp-8 param 1) 1.0)
-             (set! (-> gp-8 frame-num) (ja-aframe 10.0 0))
-             (joint-control-channel-group! gp-8 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-             )
+           (ja-no-eval :group! seagull-idle-ja :num! (seek! (ja-aframe 14.0 0)) :frame-num (ja-aframe 10.0 0))
            (until (ja-done? 0)
              (suspend)
-             (let ((gp-9 (-> self skel root-channel 0)))
-               (set! (-> gp-9 param 0) (ja-aframe 14.0 0))
-               (set! (-> gp-9 param 1) 1.0)
-               (joint-control-channel-group-eval! gp-9 (the-as art-joint-anim #f) num-func-seek!)
-               )
+             (ja :num! (seek! (ja-aframe 14.0 0)))
              )
            )
           ((= gp-1 2)
-           (let ((gp-10 (-> self skel root-channel 0)))
-             (set! (-> gp-10 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-             (set! (-> gp-10 param 0) (ja-aframe 4.0 0))
-             (set! (-> gp-10 param 1) 1.0)
-             (set! (-> gp-10 frame-num) (ja-aframe 0.0 0))
-             (joint-control-channel-group! gp-10 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-             )
+           (ja-no-eval :group! seagull-peck-ja :num! (seek! (ja-aframe 4.0 0)) :frame-num (ja-aframe 0.0 0))
            (until (ja-done? 0)
              (suspend)
-             (let ((gp-11 (-> self skel root-channel 0)))
-               (set! (-> gp-11 param 0) (ja-aframe 4.0 0))
-               (set! (-> gp-11 param 1) 1.0)
-               (joint-control-channel-group-eval! gp-11 (the-as art-joint-anim #f) num-func-seek!)
-               )
+             (ja :num! (seek! (ja-aframe 4.0 0)))
              )
            )
           ((= gp-1 3)
-           (let ((gp-12 (-> self skel root-channel 0)))
-             (set! (-> gp-12 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-             (set! (-> gp-12 param 0) (ja-aframe 8.0 0))
-             (set! (-> gp-12 param 1) 1.0)
-             (set! (-> gp-12 frame-num) (ja-aframe 4.0 0))
-             (joint-control-channel-group! gp-12 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-             )
+           (ja-no-eval :group! seagull-peck-ja :num! (seek! (ja-aframe 8.0 0)) :frame-num (ja-aframe 4.0 0))
            (until (ja-done? 0)
              (suspend)
-             (let ((gp-13 (-> self skel root-channel 0)))
-               (set! (-> gp-13 param 0) (ja-aframe 8.0 0))
-               (set! (-> gp-13 param 1) 1.0)
-               (joint-control-channel-group-eval! gp-13 (the-as art-joint-anim #f) num-func-seek!)
-               )
+             (ja :num! (seek! (ja-aframe 8.0 0)))
              )
            )
           ((= gp-1 4)
-           (let ((gp-14 (-> self skel root-channel 0)))
-             (set! (-> gp-14 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-             (set! (-> gp-14 param 0) (ja-aframe 12.0 0))
-             (set! (-> gp-14 param 1) 1.0)
-             (set! (-> gp-14 frame-num) (ja-aframe 8.0 0))
-             (joint-control-channel-group! gp-14 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-             )
+           (ja-no-eval :group! seagull-peck-ja :num! (seek! (ja-aframe 12.0 0)) :frame-num (ja-aframe 8.0 0))
            (until (ja-done? 0)
              (suspend)
-             (let ((gp-15 (-> self skel root-channel 0)))
-               (set! (-> gp-15 param 0) (ja-aframe 12.0 0))
-               (set! (-> gp-15 param 1) 1.0)
-               (joint-control-channel-group-eval! gp-15 (the-as art-joint-anim #f) num-func-seek!)
-               )
+             (ja :num! (seek! (ja-aframe 12.0 0)))
              )
            )
           )
@@ -533,8 +453,7 @@
       )
     (none)
     )
-  :post
-  seagull-post
+  :post seagull-post
   )
 
 (defmethod move-vertically! seagull ((obj seagull) (arg0 symbol))
@@ -551,7 +470,7 @@
                    )
                  )
           )
-    (set! (-> obj root-override transv y) f0-0)
+    (set! (-> obj root-override transv y) (* (-> *display* time-adjust-ratio) f0-0)) ;; changed for high fps
     )
   0
   (none)
@@ -559,26 +478,20 @@
 
 (defmethod dummy-26 seagull ((obj seagull))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (let* ((f30-0 -4096.0)
-           (f28-0 8192.0)
-           (v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-2 (the-as number (logior #x3f800000 v1-1)))
-           )
-      (set! (-> s5-0 x) (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-2))) (-> obj flock 0 target x)))
+    (let ((f30-0 -4096.0)
+          (f28-0 8192.0)
+          )
+      (set! (-> s5-0 x) (+ f30-0 (* f28-0 (rand-float-gen)) (-> obj flock 0 target x)))
       )
-    (let* ((f30-1 -4096.0)
-           (f28-1 8192.0)
-           (v1-7 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-8 (the-as number (logior #x3f800000 v1-7)))
-           )
-      (set! (-> s5-0 y) (+ f30-1 (* f28-1 (+ -1.0 (the-as float v1-8))) (-> obj flock 0 target y)))
+    (let ((f30-1 -4096.0)
+          (f28-1 8192.0)
+          )
+      (set! (-> s5-0 y) (+ f30-1 (* f28-1 (rand-float-gen)) (-> obj flock 0 target y)))
       )
-    (let* ((f30-2 -4096.0)
-           (f28-2 8192.0)
-           (v1-13 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-14 (the-as number (logior #x3f800000 v1-13)))
-           )
-      (set! (-> s5-0 z) (+ f30-2 (* f28-2 (+ -1.0 (the-as float v1-14))) (-> obj flock 0 target z)))
+    (let ((f30-2 -4096.0)
+          (f28-2 8192.0)
+          )
+      (set! (-> s5-0 z) (+ f30-2 (* f28-2 (rand-float-gen)) (-> obj flock 0 target z)))
       )
     (vector-! s5-0 s5-0 (-> obj root-override trans))
     (vector-float*! s5-0 s5-0 0.9)
@@ -592,8 +505,8 @@
   (let ((f30-1 (* arg0 (sin (-> obj heading))))
         (f0-4 (* arg0 (cos (-> obj heading))))
         )
-    (set! (-> obj root-override transv x) (+ (* 0.8 (-> obj root-override transv x)) (* 0.2 f30-1)))
-    (set! (-> obj root-override transv z) (+ (* 0.8 (-> obj root-override transv z)) (* 0.2 f0-4)))
+    (set! (-> obj root-override transv x) (* (-> *display* time-adjust-ratio) (+ (* 0.8 (-> obj root-override transv x)) (* 0.2 f30-1)))) ;; changed for high fps
+    (set! (-> obj root-override transv z) (* (-> *display* time-adjust-ratio) (+ (* 0.8 (-> obj root-override transv z)) (* 0.2 f0-4)))) ;; changed for high fps
     )
   0
   (none)
@@ -603,8 +516,8 @@
   (let ((f30-1 (* arg0 (sin (-> obj heading))))
         (f0-4 (* arg0 (cos (-> obj heading))))
         )
-    (set! (-> obj root-override transv x) f30-1)
-    (set! (-> obj root-override transv z) f0-4)
+    (set! (-> obj root-override transv x) (* (-> *display* time-adjust-ratio) f30-1)) ;; changed for high fps
+    (set! (-> obj root-override transv z) (* (-> *display* time-adjust-ratio) f0-4)) ;; changed for high fps
     )
   0
   (none)
@@ -649,24 +562,16 @@
   )
 
 (defstate seagull-takeoff (seagull)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (< (+ (-> *display* base-frame-counter) (seconds -2)) (-> self part-time))
       (-> self part)
       (-> self root-override root-prim prim-core)
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self part-time) (-> *display* base-frame-counter))
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 9)))
-      (set! (-> gp-0 param 0) (ja-aframe 4.0 0))
-      (set! (-> gp-0 param 1) 1.0)
-      (set! (-> gp-0 frame-num) (ja-aframe 1.0 0))
-      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 9)) num-func-seek!)
-      )
+    (ja-no-eval :group! seagull-takeoff-ja :num! (seek! (ja-aframe 4.0 0)) :frame-num (ja-aframe 1.0 0))
     (until (ja-done? 0)
       (when (and (>= (ja-frame-num 0) (ja-aframe 2.0 0)) (>= (ja-aframe 3.0 0) (ja-frame-num 0)))
         (let* ((v1-13 self)
@@ -685,7 +590,7 @@
                          )
                        )
                 )
-          (set! (-> v1-13 root-override transv y) f0-5)
+          (set! (-> v1-13 root-override transv y) (* (-> *display* time-adjust-ratio) f0-5)) ;; changed for high fps
           )
         0
         (let* ((gp-1 self)
@@ -693,55 +598,36 @@
                (f30-2 (* f28-0 (sin (-> gp-1 heading))))
                (f0-10 (* f28-0 (cos (-> gp-1 heading))))
                )
-          (set! (-> gp-1 root-override transv x) (+ (* 0.8 (-> gp-1 root-override transv x)) (* 0.2 f30-2)))
-          (set! (-> gp-1 root-override transv z) (+ (* 0.8 (-> gp-1 root-override transv z)) (* 0.2 f0-10)))
+          (set! (-> gp-1 root-override transv x) (* (-> *display* time-adjust-ratio) (+ (* 0.8 (-> gp-1 root-override transv x)) (* 0.2 f30-2)))) ;; changed for high fps
+          (set! (-> gp-1 root-override transv z) (* (-> *display* time-adjust-ratio) (+ (* 0.8 (-> gp-1 root-override transv z)) (* 0.2 f0-10)))) ;; changed for high fps
           )
         0
         )
       (dummy-27 self)
       (suspend)
-      (let ((gp-2 (-> self skel root-channel 0)))
-        (set! (-> gp-2 param 0) (ja-aframe 4.0 0))
-        (set! (-> gp-2 param 1) 1.0)
-        (joint-control-channel-group-eval! gp-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe 4.0 0)))
       )
-    (let ((a0-19 (-> self skel root-channel 0)))
-      (set! (-> a0-19 param 0) (the float (+ (-> a0-19 frame-group data 0 length) -1)))
-      (set! (-> a0-19 param 1) 1.0)
-      (joint-control-channel-group! a0-19 (the-as art-joint-anim #f) num-func-seek!)
-      )
-    (ja-channel-push! 1 20)
+    (ja-no-eval :num! (seek!))
+    (ja-channel-push! 1 (seconds 0.067))
     (go seagull-flying)
     (none)
     )
-  :post
-  seagull-post
+  :post seagull-post
   )
 
 (defstate seagull-flying (seagull)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (< (+ (-> *display* base-frame-counter) (seconds -2)) (-> self part-time))
       (-> self part)
       (-> self root-override root-prim prim-core)
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self max-tilt) 1820.4445)
     (let ((gp-0 0))
-      (while #t
-        (let ((a0-0 (-> self skel root-channel 0)))
-          (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-          (set! (-> a0-0 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-                )
-          (set! (-> a0-0 param 1) 1.0)
-          (set! (-> a0-0 frame-num) 0.0)
-          (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-          )
+      (loop
+        (ja-no-eval :group! seagull-fly-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (ja-blend-eval)
           (when (-> self teleport)
@@ -833,7 +719,7 @@
               )
             (let ((f0-33 (+ (* (-> s4-0 x) (-> s4-0 x)) (* (-> s4-0 z) (-> s4-0 z)))))
               (set! (-> s5-0 angletan) (/ (- (-> s4-0 y)) (sqrtf f0-33)))
-              (set! (-> s5-0 target-dist) (sqrtf (+ f0-33 (* (-> s4-0 y) (-> s4-0 y)))))
+              (set! (-> s5-0 target-dist) (* (-> *display* time-adjust-ratio) (sqrtf (+ f0-33 (* (-> s4-0 y) (-> s4-0 y)))))) ;; changed for high fps
               )
             )
           0
@@ -856,7 +742,7 @@
                                  )
                                )
                        )
-                 (set! (-> v1-44 root-override transv y) f0-38)
+                 (set! (-> v1-44 root-override transv y) (* (-> *display* time-adjust-ratio) f0-38)) ;; changed for high fps
                  )
                0
                )
@@ -877,7 +763,7 @@
                                   )
                                 )
                         )
-                  (set! (-> v1-48 root-override transv y) f0-39)
+                  (set! (-> v1-48 root-override transv y) (* (-> *display* time-adjust-ratio) f0-39)) ;; changed for high fps
                   )
                 0
                 )
@@ -894,11 +780,7 @@
           0
           (dummy-27 self)
           (suspend)
-          (let ((a0-64 (-> self skel root-channel 0)))
-            (set! (-> a0-64 param 0) (the float (+ (-> a0-64 frame-group data 0 length) -1)))
-            (set! (-> a0-64 param 1) 1.0)
-            (joint-control-channel-group-eval! a0-64 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           )
         (+! gp-0 1)
         (when (>= gp-0 0)
@@ -922,33 +804,22 @@
       )
     (none)
     )
-  :post
-  seagull-post
+  :post seagull-post
   )
 
 (defstate seagull-soaring (seagull)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (< (+ (-> *display* base-frame-counter) (seconds -2)) (-> self part-time))
       (-> self part)
       (-> self root-override root-prim prim-core)
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self max-tilt) 4551.1113)
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! seagull-slowfly-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (ja-blend-eval)
         (when (-> self teleport)
@@ -1040,7 +911,7 @@
             )
           (let ((f0-33 (+ (* (-> s5-0 x) (-> s5-0 x)) (* (-> s5-0 z) (-> s5-0 z)))))
             (set! (-> gp-0 angletan) (/ (- (-> s5-0 y)) (sqrtf f0-33)))
-            (set! (-> gp-0 target-dist) (sqrtf (+ f0-33 (* (-> s5-0 y) (-> s5-0 y)))))
+            (set! (-> gp-0 target-dist) (* (-> *display* time-adjust-ratio) (sqrtf (+ f0-33 (* (-> s5-0 y) (-> s5-0 y)))))) ;; changed for high fps
             )
           )
         0
@@ -1053,8 +924,8 @@
                (f30-0 (* f28-0 (sin (-> gp-1 heading))))
                (f0-41 (* f28-0 (cos (-> gp-1 heading))))
                )
-          (set! (-> gp-1 root-override transv x) (+ (* 0.8 (-> gp-1 root-override transv x)) (* 0.2 f30-0)))
-          (set! (-> gp-1 root-override transv z) (+ (* 0.8 (-> gp-1 root-override transv z)) (* 0.2 f0-41)))
+          (set! (-> gp-1 root-override transv x) (* (-> *display* time-adjust-ratio) (+ (* 0.8 (-> gp-1 root-override transv x)) (* 0.2 f30-0)))) ;; changed for high fps
+          (set! (-> gp-1 root-override transv z) (* (-> *display* time-adjust-ratio) (+ (* 0.8 (-> gp-1 root-override transv z)) (* 0.2 f0-41)))) ;; changed for high fps
           )
         0
         (dummy-27 self)
@@ -1089,22 +960,16 @@
               )
           )
         (suspend)
-        (let ((a0-54 (-> self skel root-channel 0)))
-          (set! (-> a0-54 param 0) (the float (+ (-> a0-54 frame-group data 0 length) -1)))
-          (set! (-> a0-54 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-54 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
     )
-  :post
-  seagull-post
+  :post seagull-post
   )
 
 (defstate seagull-landing (seagull)
-  :code
-  (behavior ((arg0 float))
+  :code (behavior ((arg0 float))
     (let ((s5-0 (new 'stack 'collide-tri-result)))
       0.0
       (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -1118,7 +983,7 @@
                        (collide-kind background)
                        self
                        s5-0
-                       1
+                       (new 'static 'pat-surface :noentity #x1)
                        )
                      )
               )
@@ -1168,27 +1033,12 @@
               )
             0
             )
-          (let ((a0-25 (-> self skel root-channel 0)))
-            (set! (-> a0-25 param 0) (the float (+ (-> a0-25 frame-group data 0 length) -1)))
-            (set! (-> a0-25 param 1) 1.0)
-            (joint-control-channel-group! a0-25 (the-as art-joint-anim #f) num-func-seek!)
-            )
-          (ja-channel-push! 1 40)
-          (let ((gp-1 (-> self skel root-channel 0)))
-            (joint-control-channel-group-eval!
-              gp-1
-              (the-as art-joint-anim (-> self draw art-group data 6))
-              num-func-identity
-              )
-            (set! (-> gp-1 frame-num) (ja-aframe 0.0 0))
-            )
+          (ja-no-eval :num! (seek!))
+          (ja-channel-push! 1 (seconds 0.135))
+          (ja :group! seagull-land-ja :num! (identity (ja-aframe 0.0 0)))
           (while (< 0.0 f30-0)
             (suspend)
-            (let ((a0-29 (-> self skel root-channel 0)))
-              (set! (-> a0-29 param 0) (the float (+ (-> a0-29 frame-group data 0 length) -1)))
-              (set! (-> a0-29 param 1) 1.0)
-              (joint-control-channel-group-eval! a0-29 (the-as art-joint-anim #f) num-func-seek!)
-              )
+            (ja :num! (seek!))
             (set! f30-0 (- f30-0 (-> *display* seconds-per-frame)))
             (fill-cache-integrate-and-collide!
               (-> self root-override)
@@ -1232,11 +1082,7 @@
       )
     (while (not (ja-done? 0))
       (suspend)
-      (let ((a0-43 (-> self skel root-channel 0)))
-        (set! (-> a0-43 param 0) (the float (+ (-> a0-43 frame-group data 0 length) -1)))
-        (set! (-> a0-43 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-43 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       (let* ((v1-59 self)
              (f1-23 (the float (sar (shl (the int (- (-> self heading) (-> v1-59 heading))) 48) 48)))
              (f0-47 (- (-> v1-59 tilt)))
@@ -1272,8 +1118,7 @@
     (go seagull-idle)
     (none)
     )
-  :post
-  seagull-post
+  :post seagull-post
   )
 
 (defun seagull-reaction ((arg0 collide-shape-moving) (arg1 collide-shape-intersect) (arg2 vector) (arg3 vector))
@@ -1293,11 +1138,11 @@
           (s4-1 (-> arg0 process))
           )
       (set! (-> (the-as seagull s4-1) temp-heading) (atan (-> v1-7 x) (-> v1-7 z)))
-      (set! (-> (the-as seagull s4-1) temp-heading-time) 300)
+      (set! (-> (the-as seagull s4-1) temp-heading-time) (seconds 1))
       )
     (let ((v0-2 (logior s5-0 3)))
-      (set! (-> arg0 status) (the-as uint v0-2))
-      (the-as uint v0-2)
+      (set! (-> arg0 status) (the-as cshape-moving-flags v0-2))
+      (the-as cshape-moving-flags v0-2)
       )
     )
   )
@@ -1328,12 +1173,10 @@
   (set! (-> self flock) (the-as (pointer seagullflock) (process->ppointer arg2)))
   (set! (-> self heading) 0.0)
   (set! (-> self tilt) 0.0)
-  (let* ((f30-0 51200.0)
-         (f28-0 20480.0)
-         (v1-23 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-         (v1-24 (the-as number (logior #x3f800000 v1-23)))
-         )
-    (set! (-> self thrust) (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-24)))))
+  (let ((f30-0 51200.0)
+        (f28-0 20480.0)
+        )
+    (set! (-> self thrust) (+ f30-0 (* f28-0 (rand-float-gen))))
     )
   (set! (-> self teleport) #f)
   (go seagull-idle)
@@ -1415,7 +1258,7 @@
     (if (>= (-> obj targetnum) 4)
         (set! (-> obj teleport-frames) 1500)
         )
-    (sound-play-by-name (static-sound-name "seagull-takeoff") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "seagull-takeoff")
     (set! (-> obj alert-time) (-> *display* base-frame-counter))
     )
   (none)
@@ -1430,8 +1273,7 @@
   )
 
 (defstate seagullflock-at-waterfall (seagullflock)
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars
       (a0-2 process)
       (a1-0 event-message-block)
@@ -1489,9 +1331,8 @@
   )
 
 (defstate seagullflock-idle (seagullflock)
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (if (> (-> self teleport-frames) 0)
           (go seagullflock-at-waterfall)
           )
@@ -1552,16 +1393,7 @@
   (if (= (-> obj birds) 64)
       (return (the-as (pointer process) #f))
       )
-  (let* ((s4-0 (get-process *default-dead-pool* seagull #x4000))
-         (v0-0 (when s4-0
-                 (let ((t9-1 (method-of-type seagull activate)))
-                   (t9-1 (the-as seagull s4-0) obj 'seagull (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process s4-0 seagull-init-by-other arg0 (-> obj birds) obj)
-                 (-> s4-0 ppointer)
-                 )
-               )
-         )
+  (let ((v0-0 (process-spawn seagull arg0 (-> obj birds) obj :to obj)))
     (set! (-> obj bird (-> obj birds)) (the-as (pointer seagull) v0-0))
     (+! (-> obj birds) 1)
     v0-0

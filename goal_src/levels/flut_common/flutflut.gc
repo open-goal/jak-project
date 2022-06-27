@@ -7,6 +7,8 @@
 
 ;; DECOMP BEGINS
 
+(import "goal_src/import/flut-saddle-ag.gc")
+
 (if (not (nmember "flutp" *kernel-packages*))
     (set! *kernel-packages* (cons "flutp" *kernel-packages*))
     )
@@ -46,28 +48,22 @@
   (the-as flutflut ((method-of-type process-drawable relocate) obj arg0))
   )
 
-(define
-  *flutflut-shadow-control*
+(define *flutflut-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
-                                           :center
-                                           (new 'static 'vector :w (the-as float #xa))
-                                           :shadow-dir
-                                           (new 'static 'vector :y -1.0 :w 614400.0)
+                                           :flags (shadow-flags disable-fade shdf03)
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 614400.0)
                                            :bot-plane (new 'static 'plane :y 1.0 :w 81920.0)
                                            :top-plane (new 'static 'plane :y 1.0 :w -2867.2)
                                            )
                                )
   )
 
-(defskelgroup *flutflut-sg* flut-saddle
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3.5)
-  :longest-edge (meters 0)
-  :shadow 2
-  :sort 1
-  )
+(defskelgroup *flutflut-sg* flut-saddle flut-saddle-lod0-jg -1
+              ((flut-saddle-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3.5)
+              :shadow flut-saddle-shadow-mg
+              :sort 1
+              )
 
 (defbehavior flutflut-effect flutflut ()
   (spawn (-> self part) (-> self root-override trans))
@@ -78,8 +74,7 @@
 
 (defstate wait-for-start (flutflut)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as
         object
@@ -101,16 +96,14 @@
         )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self root-override root-prim prim-core action) (collide-action))
     (set! (-> self root-override root-prim prim-core offense) (collide-offense no-offense))
     0
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (let ((v1-0 (-> self condition)))
         (cond
           ((or (zero? v1-0) (= v1-0 1))
@@ -183,25 +176,19 @@
 
 (defstate idle (flutflut)
   :virtual #t
-  :event
-  (-> (method-of-type flutflut wait-for-start) event)
-  :enter
-  (behavior ()
+  :event (-> (method-of-type flutflut wait-for-start) event)
+  :enter (behavior ()
     (blocking-plane-destroy)
     (blocking-plane-spawn (the-as curve-control (-> self path-target)))
     (none)
     )
-  :exit
-  (-> (method-of-type flutflut wait-for-start) exit)
-  :code
-  (behavior ()
+  :exit (-> (method-of-type flutflut wait-for-start) exit)
+  :code (behavior ()
     (ja-channel-set! 1)
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      )
+    (ja :group! (-> self draw art-group data 3))
     (set! (-> self root-override root-prim prim-core action) (collide-action solid ca-11))
     (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
-    (while #t
+    (loop
       (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14)))
           (go-virtual wait-for-return)
           )
@@ -245,27 +232,20 @@
         )
       (flutflut-effect)
       (suspend)
-      (let ((a0-26 (-> self skel root-channel 0)))
-        (set! (-> a0-26 param 0) 1.0)
-        (joint-control-channel-group-eval! a0-26 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop!))
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior flutflut) ja-post)
+  :post (the-as (function none :behavior flutflut) ja-post)
   )
 
 (defstate pickup (flutflut)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('draw)
        (ja-channel-set! 1)
-       (let ((v1-3 (-> self skel root-channel 0)))
-         (set! (-> v1-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-         )
+       (ja :group! (-> self draw art-group data 3))
        (set! (-> self root-override root-prim prim-core action) (collide-action solid ca-11))
        (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
        (transform-post)
@@ -278,13 +258,11 @@
        )
       )
     )
-  :enter
-  (behavior ((arg0 (state flutflut)))
+  :enter (behavior ((arg0 (state flutflut)))
     ((-> arg0 enter))
     (none)
     )
-  :code
-  (behavior ((arg0 (state flutflut)))
+  :code (behavior ((arg0 (state flutflut)))
     (ja-channel-set! 0)
     (ja-post)
     (while (zero? (ja-group-size))
@@ -313,8 +291,7 @@
 
 (defstate wait-for-return (flutflut)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (if (and (or (= arg2 'touch) (= arg2 'attack)) (send-event *target* 'end-mode))
         (go-virtual pickup (method-of-object self idle))
         )
@@ -325,17 +302,15 @@
           )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (blocking-plane-destroy)
     (blocking-plane-spawn (the-as curve-control (-> self path-flut)))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 0)
     (ja-post)
-    (while #t
+    (loop
       (if (not (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14))))
           (go-virtual idle)
           )
@@ -398,19 +373,8 @@
           )
       )
     )
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "zoom-teleport")
-                           :volume #x400
-                           :fo-max 30
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "zoom-teleport" :fo-max 30) (-> obj root-override trans))
         )
   (go (method-of-object obj wait-for-start))
   (none)

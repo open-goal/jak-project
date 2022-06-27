@@ -4,9 +4,10 @@
  * For some reason this runs at ~5 fps in CLion IDE.
  */
 
-#include "gtest/gtest.h"
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
+
+#include "gtest/gtest.h"
 
 using namespace goos;
 
@@ -206,9 +207,9 @@ TEST(GoosReader, Symbol) {
 
 namespace {
 bool first_list_matches(Object o, std::vector<Object> stuff) {
-  auto lst = o.as_pair()->cdr.as_pair()->car;
+  auto& lst = o.as_pair()->cdr.as_pair()->car;
   for (const auto& x : stuff) {
-    const auto check = x.as_pair()->cdr.as_pair()->car;
+    const auto& check = x.as_pair()->cdr.as_pair()->car;
     if (lst.as_pair()->car != check) {
       return false;
     }
@@ -233,11 +234,11 @@ bool first_array_matches(Object o, std::vector<Object> stuff) {
 }
 
 bool first_pair_matches(Object o, Object car, Object cdr) {
-  auto lst = o.as_pair()->cdr.as_pair()->car;
+  auto& lst = o.as_pair()->cdr.as_pair()->car;
   return (lst.as_pair()->car == car) && (lst.as_pair()->cdr == cdr);
 }
 
-bool print_matches(Object o, std::string expected) {
+bool print_matches(Object o, const std::string& expected) {
   return o.as_pair()->cdr.as_pair()->car.print() == expected;
 }
 

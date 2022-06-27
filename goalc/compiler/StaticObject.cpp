@@ -1,7 +1,10 @@
-#include "third-party/fmt/core.h"
 #include "StaticObject.h"
+
 #include "common/goal_constants.h"
+
 #include "goalc/compiler/Env.h"
+
+#include "third-party/fmt/core.h"
 
 namespace {
 template <typename T>

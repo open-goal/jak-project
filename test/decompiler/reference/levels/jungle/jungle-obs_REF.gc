@@ -1,24 +1,30 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; failed to figure out what this is:
-(defskelgroup *med-res-firecanyon-sg* medres-firecanyon
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem -200 0 -440 530)
-  :longest-edge (meters 0.01)
-  )
+(import "goal_src/import/maindoor-ag.gc")
+(import "goal_src/import/junglecam-ag.gc")
+(import "goal_src/import/precurbridge-ag.gc")
+(import "goal_src/import/sidedoor-ag.gc")
+(import "goal_src/import/towertop-ag.gc")
+(import "goal_src/import/logtrap-ag.gc")
+(import "goal_src/import/lurkerm-tall-sail-ag.gc")
+(import "goal_src/import/medres-firecanyon-ag.gc")
+(import "goal_src/import/lurkerm-piston-ag.gc")
+(import "goal_src/import/accordian-ag.gc")
 
 ;; failed to figure out what this is:
-(defskelgroup *jungle-camera-sg* jungle-camera
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *med-res-firecanyon-sg* medres-firecanyon medres-firecanyon-lod0-jg medres-firecanyon-idle-ja
+              ((medres-firecanyon-lod0-mg (meters 999999)))
+              :bounds (static-spherem -200 0 -440 530)
+              :longest-edge (meters 0.01)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup *jungle-camera-sg* jungle-camera 0 2
+              ((1 (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :texture-level 2
+              )
 
 ;; definition of type logtrap
 (deftype logtrap (process-drawable)
@@ -42,37 +48,25 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *logtrap-sg* logtrap
-  0
-  4
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 8 0 13)
-  :longest-edge (meters 6)
-  :shadow 3
-  )
+(defskelgroup *logtrap-sg* logtrap logtrap-lod0-jg logtrap-idle-ja
+              ((logtrap-lod0-mg (meters 20)) (logtrap-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 8 0 13)
+              :longest-edge (meters 6)
+              :shadow logtrap-shadow-mg
+              )
 
 ;; failed to figure out what this is:
 (defstate idle (logtrap)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (if (or (= arg2 'touch) (= arg2 'attack))
         (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
         )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-        )
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (when (logtest? (-> self draw status) (draw-status was-drawn))
           (cond
@@ -88,11 +82,7 @@
             )
           )
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
@@ -151,41 +141,24 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *towertop-sg* towertop
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 30)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *towertop-sg* towertop towertop-lod0-jg towertop-idle-ja
+              ((towertop-lod0-mg (meters 20)) (towertop-lod1-mg (meters 40)) (towertop-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 30)
+              )
 
 ;; failed to figure out what this is:
 (defstate towertop-idle (towertop)
-  :code
-  (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) 0.4)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-        )
+  :code (behavior ()
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max 0.4) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 0.4)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max 0.4))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior towertop) ja-post)
+  :post (the-as (function none :behavior towertop) ja-post)
   )
 
 ;; definition for method 11 of type towertop
@@ -226,18 +199,18 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *lurkerm-tall-sail-sg* lurkerm-tall-sail
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 5 0 7)
-  :longest-edge (meters 4)
-  )
+(defskelgroup *lurkerm-tall-sail-sg* lurkerm-tall-sail lurkerm-tall-sail-lod0-jg lurkerm-tall-sail-idle-ja
+              ((lurkerm-tall-sail-lod0-mg (meters 20))
+               (lurkerm-tall-sail-lod1-mg (meters 40))
+               (lurkerm-tall-sail-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 5 0 7)
+              :longest-edge (meters 4)
+              )
 
 ;; failed to figure out what this is:
 (defstate lurkerm-tall-sail-idle (lurkerm-tall-sail)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'stop)
                        (process-entity-status! self (entity-perm-status complete) #t)
@@ -249,20 +222,10 @@
               )
       )
     )
-  :trans
-  (the-as (function none :behavior lurkerm-tall-sail) rider-trans)
-  :code
-  (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) (* 0.5 (-> self speed)))
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-        )
+  :trans (the-as (function none :behavior lurkerm-tall-sail) rider-trans)
+  :code (behavior ()
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
       (until (ja-done? 0)
         (quaternion-rotate-local-y!
           (-> self root-override quat)
@@ -270,17 +233,12 @@
           (* 12743.111 (-> *display* seconds-per-frame) (-> self speed))
           )
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) (* 0.5 (-> self speed)))
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max (* 0.5 (-> self speed))))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior lurkerm-tall-sail) rider-post)
+  :post (the-as (function none :behavior lurkerm-tall-sail) rider-post)
   )
 
 ;; definition for method 11 of type lurkerm-tall-sail
@@ -354,18 +312,14 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *lurkerm-short-sail-sg* lurkerm-short-sail
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 5 0 9)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *lurkerm-short-sail-sg* lurkerm-short-sail 0 4
+              ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+              :bounds (static-spherem 0 5 0 9)
+              )
 
 ;; failed to figure out what this is:
 (defstate lurkerm-short-sail-idle (lurkerm-short-sail)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'stop)
                        (process-entity-status! self (entity-perm-status complete) #t)
@@ -377,20 +331,10 @@
               )
       )
     )
-  :trans
-  (the-as (function none :behavior lurkerm-short-sail) rider-trans)
-  :code
-  (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) (* 0.5 (-> self speed)))
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-        )
+  :trans (the-as (function none :behavior lurkerm-short-sail) rider-trans)
+  :code (behavior ()
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
       (until (ja-done? 0)
         (quaternion-rotate-local-y!
           (-> self root-override quat)
@@ -398,17 +342,12 @@
           (* -12743.111 (-> *display* seconds-per-frame) (-> self speed))
           )
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) (* 0.5 (-> self speed)))
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max (* 0.5 (-> self speed))))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior lurkerm-short-sail) rider-post)
+  :post (the-as (function none :behavior lurkerm-short-sail) rider-post)
   )
 
 ;; definition for method 11 of type lurkerm-short-sail
@@ -505,18 +444,14 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *lurkerm-piston-sg* lurkerm-piston
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 6)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *lurkerm-piston-sg* lurkerm-piston lurkerm-piston-geo-jg lurkerm-piston-idle-ja
+              ((lurkerm-piston-geo-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              )
 
 ;; failed to figure out what this is:
 (defstate lurkerm-piston-idle (lurkerm-piston)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'stop)
                        (process-entity-status! self (entity-perm-status complete) #t)
@@ -528,20 +463,10 @@
               )
       )
     )
-  :trans
-  (the-as (function none :behavior lurkerm-piston) rider-trans)
-  :code
-  (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) (-> self speed))
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-        )
+  :trans (the-as (function none :behavior lurkerm-piston) rider-trans)
+  :code (behavior ()
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max (-> self speed)) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((gp-0 (new-stack-vector0)))
           (set! (-> gp-0 quad) (-> self base quad))
@@ -549,17 +474,12 @@
           (move-to-point! (-> self root-override) gp-0)
           )
         (suspend)
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-          (set! (-> a0-3 param 1) (-> self speed))
-          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max (-> self speed)))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior lurkerm-piston) rider-post)
+  :post (the-as (function none :behavior lurkerm-piston) rider-post)
   )
 
 ;; definition for method 11 of type lurkerm-piston
@@ -653,18 +573,15 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *accordian-sg* accordian
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem -7 0 23 25)
-  :longest-edge (meters 4)
-  )
+(defskelgroup *accordian-sg* accordian accordian-lod0-jg accordian-idle-ja
+              ((accordian-lod0-mg (meters 20)) (accordian-lod1-mg (meters 999999)))
+              :bounds (static-spherem -7 0 23 25)
+              :longest-edge (meters 4)
+              )
 
 ;; failed to figure out what this is:
 (defstate accordian-idle (accordian)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'stop)
                        (process-entity-status! self (entity-perm-status complete) #t)
@@ -676,21 +593,13 @@
               )
       )
     )
-  :code
-  (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-loop!)
-      )
+  :code (behavior ()
+    (ja-no-eval :num! (loop!) :frame-num 0.0)
     (ja-post)
-    (while #t
+    (loop
       (suspend)
       (when (logtest? (-> self draw status) (draw-status was-drawn))
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (-> self speed))
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-loop!)
-          )
+        (ja :num! (loop! (-> self speed)))
         (ja-post)
         )
       )
@@ -715,13 +624,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *junglecam-sg* junglecam
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 80)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *junglecam-sg* junglecam junglecam-lod0-jg junglecam-beamcam-ja
+              ((junglecam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 80)
+              )
 
 ;; definition of type junglecam
 (deftype junglecam (process-hidden)
@@ -783,33 +689,16 @@
 ;; failed to figure out what this is:
 (defstate pov-camera-playing (precurbridgecam)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (ambient-hint-spawn "gamcam30" (the-as vector #f) *entity-pool* 'camera)
-    (let ((v1-2 (-> self skel root-channel 0)))
-      (set! (-> v1-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
-      )
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
-      (set! (-> gp-0 param 0) (ja-aframe 0.0 0))
-      (set! (-> gp-0 param 1) 1.0)
-      (set! (-> gp-0 frame-num) 0.0)
-      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
-      )
+    (ja :group! (-> self draw art-group data 8))
+    (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek! (ja-aframe 0.0 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((gp-1 (-> self skel root-channel 0)))
-        (set! (-> gp-1 param 0) (ja-aframe 0.0 0))
-        (set! (-> gp-1 param 1) 1.0)
-        (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe 0.0 0)))
       )
     (send-event (ppointer->process (-> self parent)) 'go)
-    (let ((a0-10 (-> self skel root-channel 0)))
-      (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
-      (set! (-> a0-10 param 1) 1.0)
-      (joint-control-channel-group! a0-10 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek!))
     (while (not (ja-done? 0))
       (suspend)
       (ja-eval)
@@ -865,89 +754,64 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *precurbridge-sg* precurbridge
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 40)
-  :longest-edge (meters 3.6)
-  )
+(defskelgroup *precurbridge-sg* precurbridge precurbridge-geo-jg precurbridge-idle-ja
+              ((precurbridge-geo-mg (meters 20)) (precurbridge-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              :longest-edge (meters 3.6)
+              )
 
 ;; failed to figure out what this is:
 (defstate precurbridge-idle (precurbridge)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('go)
        (go precurbridge-activate)
        )
       )
     )
-  :code
-  (behavior ()
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 3))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) 0.0)
-      )
+  :code (behavior ()
+    (ja :group! (-> self draw art-group data 3) :num! min)
     (transform-post)
-    (while #t
+    (loop
       (when (and *target*
                  (< (vector-vector-xz-distance (-> self activation-point) (-> *target* control trans)) 49152.0)
                  (< (-> self activation-point y) (-> *target* control trans y))
                  (< (-> *target* control trans y) (+ 20480.0 (-> self activation-point y)))
                  (not (-> self child))
                  )
-        (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-2 from) self)
-          (set! (-> a1-2 num-params) 2)
-          (set! (-> a1-2 message) 'query)
-          (set! (-> a1-2 param 0) (the-as uint 'powerup))
-          (set! (-> a1-2 param 1) (the-as uint 3))
-          (cond
-            ((send-event-function *target* a1-2)
-             (logclear! (-> self mask) (process-mask actor-pause))
-             (logclear! (-> self mask) (process-mask platform))
-             (let ((gp-1 (entity-by-name "junglecam-1")))
-               (cond
-                 (gp-1
-                   (let ((s5-0 (get-process *default-dead-pool* precurbridgecam #x4000)))
-                     (when s5-0
-                       (let ((t9-6 (method-of-type precurbridgecam activate)))
-                         (t9-6 (the-as precurbridgecam s5-0) self 'precurbridgecam (the-as pointer #x70004000))
-                         )
-                       (run-now-in-process
-                         s5-0
-                         pov-camera-init-by-other
-                         (-> gp-1 extra trans)
-                         *junglecam-sg*
-                         "precurbridgecam"
-                         0
-                         #f
-                         '()
-                         )
-                       (-> s5-0 ppointer)
-                       )
-                     )
+        (cond
+          ((send-event *target* 'query 'powerup (pickup-type eco-blue))
+           (logclear! (-> self mask) (process-mask actor-pause))
+           (logclear! (-> self mask) (process-mask platform))
+           (let ((gp-1 (entity-by-name "junglecam-1")))
+             (cond
+               (gp-1
+                 (process-spawn
+                   precurbridgecam
+                   :init pov-camera-init-by-other
+                   (-> gp-1 extra trans)
+                   *junglecam-sg*
+                   "precurbridgecam"
+                   0
+                   #f
+                   '()
+                   :to self
                    )
-                 (else
-                   (format #t "ERROR<GMJ>: position for precursor bridge camera not found~%")
-                   (go precurbridge-activate)
-                   )
+                 )
+               (else
+                 (format #t "ERROR<GMJ>: position for precursor bridge camera not found~%")
+                 (go precurbridge-activate)
                  )
                )
              )
-            (else
-              (level-hint-spawn
-                (game-text-id jungle-precursorbridge-hint)
-                "sksp0039"
-                (the-as entity #f)
-                *entity-pool*
-                (game-task none)
-                )
+           )
+          (else
+            (level-hint-spawn
+              (game-text-id jungle-precursorbridge-hint)
+              "sksp0039"
+              (the-as entity #f)
+              *entity-pool*
+              (game-task none)
               )
             )
           )
@@ -956,62 +820,36 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior precurbridge) ja-post)
+  :post (the-as (function none :behavior precurbridge) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate precurbridge-activate (precurbridge)
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :trans
-  (the-as (function none :behavior precurbridge) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior precurbridge) rider-trans)
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
-    (sound-play-by-name
-      (static-sound-name "blue-eco-on")
-      (new-sound-id)
-      1024
-      0
-      0
-      1
-      (the-as symbol (-> self root-override trans))
-      )
-    (let ((a0-3 (-> self skel root-channel 0)))
-      (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      (set! (-> a0-3 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-            )
-      (set! (-> a0-3 param 1) 0.25)
-      (set! (-> a0-3 frame-num) 0.0)
-      (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-      )
+    (sound-play "blue-eco-on" :position (the-as symbol (-> self root-override trans)))
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek! max 0.25) :frame-num 0.0)
     (until (ja-done? 0)
       (if (rand-vu-percent? 0.1)
           (spawn-projectile-blue *target*)
           )
       (suspend)
-      (let ((a0-6 (-> self skel root-channel 0)))
-        (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-        (set! (-> a0-6 param 1) 0.25)
-        (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! max 0.25))
       )
     (go precurbridge-active #f)
     (none)
     )
-  :post
-  (the-as (function none :behavior precurbridge) rider-post)
+  :post (the-as (function none :behavior precurbridge) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate precurbridge-active (precurbridge)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as
         object
@@ -1028,78 +866,41 @@
         )
       )
     )
-  :trans
-  (the-as (function none :behavior precurbridge) rider-trans)
-  :code
-  (behavior ((arg0 symbol))
+  :trans (the-as (function none :behavior precurbridge) rider-trans)
+  :code (behavior ((arg0 symbol))
     (set! (-> self draw bounds w) 81920.0)
     (when arg0
       (ja-channel-set! 1)
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (joint-control-channel-group-eval!
-          gp-0
-          (the-as art-joint-anim (-> self draw art-group data 4))
-          num-func-identity
-          )
-        (set! (-> gp-0 frame-num) 0.0)
-        )
+      (ja :group! (-> self draw art-group data 4) :num! min)
       )
     (ja-post)
     (update-transforms! (-> self root-override))
     (logior! (-> self mask) (process-mask actor-pause))
-    (while #t
+    (loop
       (if (not (movie?))
           (set! (-> self mask) (logior (process-mask platform) (-> self mask)))
           )
       (cond
         ((and *target* (>= 61440.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
-         (when (not (= (if (> (-> self skel active-channels) 0)
-                           (-> self skel root-channel 0 frame-group)
-                           )
-                       (-> self draw art-group data 5)
-                       )
-                    )
-           (ja-channel-push! 1 60)
-           (let ((gp-1 (-> self skel root-channel 0)))
-             (joint-control-channel-group-eval!
-               gp-1
-               (the-as art-joint-anim (-> self draw art-group data 5))
-               num-func-identity
-               )
-             (set! (-> gp-1 frame-num) 0.0)
-             )
+         (when (not (ja-group? (-> self draw art-group data 5)))
+           (ja-channel-push! 1 (seconds 0.2))
+           (ja :group! (-> self draw art-group data 5) :num! min)
            )
          )
         (else
-          (when (not (= (if (> (-> self skel active-channels) 0)
-                            (-> self skel root-channel 0 frame-group)
-                            )
-                        (-> self draw art-group data 4)
-                        )
-                     )
-            (ja-channel-push! 1 60)
-            (let ((gp-2 (-> self skel root-channel 0)))
-              (joint-control-channel-group-eval!
-                gp-2
-                (the-as art-joint-anim (-> self draw art-group data 4))
-                num-func-identity
-                )
-              (set! (-> gp-2 frame-num) 0.0)
-              )
+          (when (not (ja-group? (-> self draw art-group data 4)))
+            (ja-channel-push! 1 (seconds 0.2))
+            (ja :group! (-> self draw art-group data 4) :num! min)
             )
           )
         )
       (update! (-> self sound))
-      (let ((a0-19 (-> self skel root-channel 0)))
-        (set! (-> a0-19 param 0) 0.4)
-        (joint-control-channel-group-eval! a0-19 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop! 0.4))
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior precurbridge) rider-post)
+  :post (the-as (function none :behavior precurbridge) rider-post)
   )
 
 ;; definition for method 11 of type precurbridge
@@ -1316,45 +1117,30 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *maindoor-sg* maindoor
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 7)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *maindoor-sg* maindoor maindoor-lod0-jg maindoor-idle-ja
+              ((maindoor-lod0-mg (meters 20)) (maindoor-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 7)
+              )
 
 ;; failed to figure out what this is:
 (defstate maindoor-closed (maindoor)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (set! (-> self draw force-lod) 1)
     (logclear! (-> self draw status) (draw-status hidden))
-    (when arg0
-      (let ((v1-6 (-> self skel root-channel 0)))
-        (set! (-> v1-6 num-func) num-func-identity)
-        (set! (-> v1-6 frame-num) 0.0)
+    (if arg0
+        (ja :num-func num-func-identity :frame-num 0.0)
         )
-      )
     (suspend)
     (update-transforms! (-> self root-override))
-    (while #t
+    (loop
       (when (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
                 (and (and *target*
                           (>= (-> self thresh w) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
                           )
-                     (send-event *target* 'query 'powerup 3)
+                     (send-event *target* 'query 'powerup (pickup-type eco-blue))
                      )
                 )
-        (sound-play-by-name
-          (static-sound-name "blue-eco-on")
-          (new-sound-id)
-          1024
-          0
-          0
-          1
-          (the-as symbol (-> self root-override trans))
-          )
+        (sound-play "blue-eco-on" :position (the-as symbol (-> self root-override trans)))
         (go maindoor-open #f)
         )
       (if (and *target*
@@ -1372,11 +1158,7 @@
         (set! (-> self root-override root-prim prim-core action) (collide-action solid))
         (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
         )
-      (let ((a0-19 (-> self skel root-channel 0)))
-        (set! (-> a0-19 param 0) 0.0)
-        (set! (-> a0-19 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-19 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! 0.0))
       (ja-post)
       (suspend)
       )
@@ -1386,38 +1168,29 @@
 
 ;; failed to figure out what this is:
 (defstate maindoor-open (maindoor)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (set! (-> self draw force-lod) 0)
     (logclear! (-> self draw status) (draw-status hidden))
     (process-entity-status! self (entity-perm-status complete) #t)
-    (when arg0
-      (let ((v1-6 (-> self skel root-channel 0)))
-        (set! (-> v1-6 num-func) num-func-identity)
-        (set! (-> v1-6 frame-num) (the float (+ (-> v1-6 frame-group data 0 length) -1)))
+    (if arg0
+        (ja :num-func num-func-identity :frame-num max)
         )
-      )
     (set! (-> self root-override root-prim prim-core action) (collide-action))
     (set! (-> self root-override root-prim prim-core offense) (collide-offense no-offense))
     (while (not (ja-max? 0))
-      (let ((a0-10 (-> self skel root-channel 0)))
-        (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
-        (set! (-> a0-10 param 1) 2.0)
-        (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! max 2.0))
       (if (and (not arg0) (rand-vu-percent? 0.2))
           (spawn-projectile-blue *target*)
           )
       (suspend)
       )
     (logior! (-> self draw status) (draw-status hidden))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior maindoor) ja-post)
+  :post (the-as (function none :behavior maindoor) ja-post)
   )
 
 ;; definition for method 11 of type maindoor
@@ -1445,7 +1218,7 @@
           (and (and *target*
                     (>= (-> obj thresh w) (vector-vector-distance (-> obj root-override trans) (-> *target* control trans)))
                     )
-               (send-event *target* 'query 'powerup 3)
+               (send-event *target* 'query 'powerup (pickup-type eco-blue))
                )
           )
       (go maindoor-open #t)
@@ -1472,13 +1245,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *sidedoor-sg* sidedoor
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *sidedoor-sg* sidedoor sidedoor-geo-jg sidedoor-idle-ja
+              ((sidedoor-geo-mg (meters 20)) (sidedoor-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
 
 ;; definition for method 24 of type sidedoor
 ;; INFO: Return type mismatch int vs none.
@@ -1551,25 +1321,16 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *jngpusher-sg* jngpusher
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 10)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *jngpusher-sg* jngpusher 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 10))
 
 ;; failed to figure out what this is:
 (defstate jngpusher-idle (jngpusher)
-  :trans
-  (the-as (function none :behavior jngpusher) rider-trans)
-  :code
-  (behavior ()
-    (while #t
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 num-func) num-func-identity)
-        (set! (-> gp-0 frame-num) (get-current-value-with-mirror (-> self sync) (the float (ja-num-frames 0))))
-        )
+  :trans (the-as (function none :behavior jngpusher) rider-trans)
+  :code (behavior ()
+    (loop
+      (ja :num-func num-func-identity
+          :frame-num (get-current-value-with-mirror (-> self sync) (the float (ja-num-frames 0)))
+          )
       (cond
         ((< (ja-frame-num 0) (the float (/ (ja-num-frames 0) 3)))
          (set! (-> self back-prim prim-core collide-as) (collide-kind))
@@ -1585,8 +1346,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior jngpusher) rider-post)
+  :post (the-as (function none :behavior jngpusher) rider-post)
   )
 
 ;; definition for method 11 of type jngpusher
@@ -1659,8 +1419,7 @@
                                   :count 3
                                   :converted #f
                                   :normal-scale 1.5
-                                  :wave
-                                  (new 'static 'inline-array ripple-wave 4
+                                  :wave (new 'static 'inline-array ripple-wave 4
                                     (new 'static 'ripple-wave :scale 30.0 :xdiv -2 :speed 4.0)
                                     (new 'static 'ripple-wave :scale 30.0 :xdiv 1 :zdiv -1 :speed 4.0)
                                     (new 'static 'ripple-wave :scale 10.0 :xdiv -5 :zdiv -3 :speed 2.0)

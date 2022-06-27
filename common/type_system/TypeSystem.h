@@ -7,16 +7,16 @@
  * access types, and reverse type lookups.
  */
 
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <string>
-#include <memory>
-#include <stdexcept>
-#include <optional>
 
-#include "TypeSpec.h"
 #include "Type.h"
+#include "TypeSpec.h"
 
 struct TypeFlags {
   union {
@@ -128,6 +128,8 @@ class TypeSystem {
   void forward_declare_type_as_type(const std::string& name);
   void forward_declare_type_as(const std::string& new_type, const std::string& parent_type);
   void forward_declare_type_method_count(const std::string& name, int num_methods);
+  void forward_declare_type_method_count_multiple_of_4(const std::string& name, int num_methods);
+
   int get_type_method_count(const std::string& name) const;
   std::optional<int> try_get_type_method_count(const std::string& name) const;
   std::string get_runtime_type(const TypeSpec& ts);
@@ -222,7 +224,8 @@ class TypeSystem {
                              const std::string& field_name,
                              const TypeSpec& field_type,
                              int offset,
-                             int field_size);
+                             int field_size,
+                             bool skip_in_decomp);
 
   bool should_use_virtual_methods(const Type* type, int method_id) const;
   bool should_use_virtual_methods(const TypeSpec& type, int method_id) const;

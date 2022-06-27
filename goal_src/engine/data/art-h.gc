@@ -143,6 +143,7 @@
 
 ;; "art" is an overly general parent class of all art data.
 ;; it can be either a container of arts (art-group) or a single art (art-element)
+(declare-type res-lump basic)
 (deftype art (basic)
   ((name   string    :offset 8)
    (length int32     :offset-assert 12)
@@ -185,13 +186,13 @@
    (artist-step float            :offset 28)
    (master-art-group-name string :offset 32)
    (master-art-group-index int32 :offset 36)
-   
+
    ;; facial animation
    (blerc-data (pointer uint8) :offset 40) ;; todo, this is probably something else
-   
+
    ;; compressed animation data
    (frames joint-anim-compressed-control :offset 44)
-   
+
    ;; per-joint info for each joint in the animation.
    (data joint-anim-compressed :dynamic)
    )
@@ -238,7 +239,7 @@
 ;; the "skeleton group" is defined in code and tells the engine
 ;; how to actually use the art from the level data for this object.
 (deftype skeleton-group (basic)
-  ((art-group-name basic          :offset-assert   4)
+  ((art-group-name string         :offset-assert   4)
    (jgeo           int32          :offset-assert   8)
    (janim          int32          :offset-assert  12)
    (bounds         vector :inline :offset-assert  16)
@@ -384,11 +385,27 @@
   (-> obj skeleton bones 0 position)
   )
 
+;; look up the index of an art element in an art group.
+(desfun art-elt->index (ag-name elt-name)
+  (if (number? elt-name)
+      elt-name
+      (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
+          (if (not (car ag-info))
+              -1
+              (let ((elt-info (hash-table-try-ref (cdr ag-info) (symbol->string elt-name))))
+                  (if (not (car elt-info))
+                      -1
+                      (cadr (cdr elt-info)))
+                  )
+              )
+          )
+      )
+  )
 
 (defmacro defskelgroup (name art-name joint-geom joint-anim lods
                         &key (shadow 0)
                         &key bounds
-                        &key longest-edge
+                        &key (longest-edge 0.0)
                         &key (texture-level 0)
                         &key (sort 0)
                         &key (version 6) ;; do NOT use this!
@@ -402,18 +419,18 @@
                         :longest-edge ,longest-edge
                         :version ,version
                         :max-lod ,(- (length lods) 1)
-                        :shadow ,shadow
+                        :shadow ,(art-elt->index (string->symbol-format "{}-ag" art-name) shadow)
                         :texture-level ,texture-level
                         :sort ,sort
                         )))
         ;; set joint geometry and joint bones
-        (set! (-> skel jgeo) ,joint-geom)
-        (set! (-> skel janim) ,joint-anim)
-        
+        (set! (-> skel jgeo) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-geom))
+        (set! (-> skel janim) ,(art-elt->index (string->symbol-format "{}-ag" art-name) joint-anim))
+
         ;; set lods
         ,@(apply-i (lambda (x i)
                       `(begin
-                          (set! (-> skel mgeo ,i) ,(car x))
+                          (set! (-> skel mgeo ,i) ,(art-elt->index (string->symbol-format "{}-ag" art-name) (car x)))
                           (set! (-> skel lod-dist ,i) ,(cadr x))
                           )
                       ) lods)

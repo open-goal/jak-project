@@ -1,9 +1,10 @@
 #pragma once
 
 #include "common/common_types.h"
+#include "common/util/Assert.h"
+
 #include "decompiler/IR2/Form.h"
 #include "decompiler/util/data_decompile.h"
-#include "common/util/Assert.h"
 
 namespace decompiler {
 struct BitfieldManip {
@@ -203,7 +204,11 @@ Form* cast_to_int_enum(const EnumType* type_info,
                        Form* in);
 
 Form* cast_to_int_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in);
-Form* cast_to_bitfield_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in);
+Form* cast_to_bitfield_enum(const EnumType* type_info,
+                            FormPool& pool,
+                            const Env& env,
+                            s64 in,
+                            bool no_head = false);
 
 std::optional<u64> get_goal_integer_constant(Form* in, const Env&);
 

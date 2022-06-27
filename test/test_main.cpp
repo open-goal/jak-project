@@ -1,10 +1,10 @@
 #include <filesystem>
 
-#include "gtest/gtest.h"
-
-#include "common/util/FileUtil.h"
 #include "common/log/log.h"
+#include "common/util/FileUtil.h"
 #include "common/util/os.h"
+
+#include "gtest/gtest.h"
 
 // Running subsets of tests, see:
 // -
@@ -20,6 +20,7 @@
 int main(int argc, char** argv) {
   // hopefully get a debug print on github actions
   setup_cpu_info();
+  file_util::setup_project_path(std::nullopt);
   lg::initialize();
 
   ::testing::InitGoogleTest(&argc, argv);

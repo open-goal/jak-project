@@ -1,5 +1,6 @@
+#include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+using namespace jak1;
 
 namespace Mips2C {
 namespace generic_prepare_dma_single {
@@ -282,7 +283,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace generic_merc_execute_asm {
 struct Cache {
@@ -1350,7 +1351,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace mercneric_convert {
 struct Cache {
@@ -1921,8 +1922,7 @@ void vcallms_311(ExecutionContext* c, u16* vis) {
       vcallms_311_case_427(c, vis);
       break;
     default:
-      fmt::print("BAD JUMP {}\n", vis[vi01]);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("BAD JUMP {}", vis[vi01]));
   }
 }
 
@@ -1955,8 +1955,7 @@ void vcallms_311_reference(ExecutionContext* c, u16* vis) {
     case 427:
       goto JUMP_427;
     default:
-      fmt::print("BAD JUMP {}\n", vis[vi01]);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("BAD JUMP {}", vis[vi01]));
   }
 
   JUMP_314:
@@ -3539,7 +3538,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace high_speed_reject {
 struct Cache {

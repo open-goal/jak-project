@@ -1,9 +1,12 @@
-#include <unordered_map>
+#include "Allocator_v2.h"
+
 #include <algorithm>
 #include <optional>
-#include "third-party/fmt/core.h"
+#include <unordered_map>
+
 #include "common/util/Range.h"
-#include "Allocator_v2.h"
+
+#include "third-party/fmt/core.h"
 
 /*!
  Documentation:
@@ -219,7 +222,7 @@ class VarAssignment {
     }
   }
 
-  const std::vector<bool> live_vector() const { return m_live; }
+  const std::vector<bool>& live_vector() const { return m_live; }
 
  private:
   // common info

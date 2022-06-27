@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+
 #include "Object.h"
 #include "Reader.h"
 
@@ -48,13 +49,6 @@ class Interpreter {
   Reader reader;
   Object global_environment;
   Object goal_env;
-
-  // data passed from GOAL to GOOS available to any evaluation.
-  struct GoalToGoosData {
-    std::string enclosing_method_type;
-
-    void reset() { enclosing_method_type = "#f"; }
-  } goal_to_goos;
 
  private:
   friend class Goal;
@@ -188,9 +182,6 @@ class Interpreter {
   Object eval_type(const Object& form,
                    Arguments& args,
                    const std::shared_ptr<EnvironmentObject>& env);
-  Object eval_current_method_type(const Object& form,
-                                  Arguments& args,
-                                  const std::shared_ptr<EnvironmentObject>& env);
   Object eval_format(const Object& form,
                      Arguments& args,
                      const std::shared_ptr<EnvironmentObject>& env);
@@ -250,6 +241,16 @@ class Interpreter {
   Object eval_while(const Object& form,
                     const Object& rest,
                     const std::shared_ptr<EnvironmentObject>& env);
+
+  Object eval_make_string_hash_table(const Object& form,
+                                     Arguments& args,
+                                     const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_hash_table_try_ref(const Object& form,
+                                 Arguments& args,
+                                 const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_hash_table_set(const Object& form,
+                             Arguments& args,
+                             const std::shared_ptr<EnvironmentObject>& env);
 
   bool want_exit = false;
   bool disable_printing = false;

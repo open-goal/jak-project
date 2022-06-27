@@ -1,8 +1,5 @@
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
 #include "SystemThread.h"
+
 #include "common/log/log.h"
 
 //////////////////////

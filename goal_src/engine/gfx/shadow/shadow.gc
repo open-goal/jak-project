@@ -109,14 +109,31 @@
     )
   )
 
-(defun find-ground-and-draw-shadow ((arg0 vector) (arg1 vector) (arg2 float) (arg3 collide-kind) (arg4 process) (arg5 float) (arg6 float))
+(defun find-ground-and-draw-shadow ((arg0 vector)
+                           (arg1 vector)
+                           (arg2 float)
+                           (arg3 collide-kind)
+                           (arg4 process-drawable)
+                           (arg5 float)
+                           (arg6 float)
+                           )
   (let ((s2-0 (new 'stack-no-clear 'vector)))
     (set! (-> s2-0 quad) (-> arg0 quad))
     (new 'stack-no-clear 'vector)
     (+! (-> s2-0 y) arg5)
     (let ((s4-0 (new 'stack-no-clear 'collide-tri-result)))
       (cond
-        ((>= (fill-and-probe-using-y-probe *collide-cache* s2-0 arg6 arg3 arg4 s4-0 (the-as uint 1)) 0.0)
+        ((>= (fill-and-probe-using-y-probe
+               *collide-cache*
+               s2-0
+               arg6
+               arg3
+               arg4
+               s4-0
+               (new 'static 'pat-surface :noentity #x1)
+               )
+             0.0
+             )
          (if (!= arg2 0.0)
              (compute-and-draw-shadow s2-0 (-> s4-0 intersect) (-> s4-0 normal) (the-as vector arg2) arg6 (the-as float 0))
              )
@@ -137,7 +154,7 @@
   )
 
 (defbehavior do-target-shadow target ()
-  (if (and (logtest? (-> self control status) 1)
+  (if (and (logtest? (-> self control status) (cshape-moving-flags onsurf))
            (!= (-> self control unknown-surface00 mode) 'swim)
            (!= (-> self control unknown-surface00 mode) 'dive)
            (!= (-> self next-state name) 'target-flop)
@@ -159,8 +176,7 @@
   )
 
 (defpart 362
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 8.0)
     (sp-flt spt-scale-x (meters 0.3))
     (sp-rnd-flt spt-rot-z (degrees -180.0) (degrees 360.0) 1.0)

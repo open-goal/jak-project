@@ -5,6 +5,12 @@
 ;; name in dgo: merc-h
 ;; dgos: GAME, ENGINE
 
+;; The "merc" renderer is the main foreground renderer.
+;; All foreground objects are stored in merc format.
+;; See bones.gc for where it's actually used and the pc port changes.
+
+;; The "ripple" system can apply a ripple effect (for waves or similar) to merc data.
+;; This defines which vertices should be rippled.
 (deftype ripple-merc-query (inline-array-class)
   ((start-vertex int32          :offset-assert 16)
    (vertex-skip  int32          :offset-assert 20)
@@ -16,37 +22,38 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-
 (set! (-> ripple-merc-query heap-base) 16)
 
 ;; header to fragments uploaded to VU.
+;; This gets upacked with v4_8 mode.
+;; for a more detailed description of the various formats, see extract_merc.cpp
+;; Note that a fragment may rely on vertices, GS state, and matrices from a previous
+;; fragment in the same merc "effect".
 (deftype merc-byte-header (structure)
-  ((srcdest-off        uint8    :offset-assert 0)
-   (rgba-off           uint8    :offset-assert 1)
-   (lump-off           uint8    :offset-assert 2)
-   (fp-off             uint8    :offset-assert 3)
-   (mat1-cnt           uint8    :offset-assert 4)
-   (mat2-cnt           uint8    :offset-assert 5)
-   (mat3-cnt           uint8    :offset-assert 6)
-   (samecopy-cnt       uint8    :offset-assert 7)
-   (crosscopy-cnt      uint8    :offset-assert 8)
-   (strip-len          uint8    :offset-assert 9)
-   (mm-quadword-fp-off uint8    :offset-assert 10)
-   (mm-quadword-size   uint8    :offset-assert 11)
-   (perc-off           uint8    :offset-assert 12)
-   (mat-slot           uint8 10 :offset-assert 13)
+  ;; these offsets are after unpacking/upload to VU.
+  ((srcdest-off        uint8    :offset-assert 0) ;; location of srcdst table for vertex copying
+   (rgba-off           uint8    :offset-assert 1) ;; location of rgba data
+   (lump-off           uint8    :offset-assert 2) ;; location of "lump" packed vertex data
+   (fp-off             uint8    :offset-assert 3) ;; location of "fp" data (adgif shader, some floats)
+
+   (mat1-cnt           uint8    :offset-assert 4) ;; number of vertices influenced by one bone
+   (mat2-cnt           uint8    :offset-assert 5) ;; two bone
+   (mat3-cnt           uint8    :offset-assert 6) ;; three bone
+
+   (samecopy-cnt       uint8    :offset-assert 7) ;; number of vertices to copy from this fragment
+   (crosscopy-cnt      uint8    :offset-assert 8) ;; copy vertices from previous fragment count
+   (strip-len          uint8    :offset-assert 9) ;; how long is the initial strip before a shader (may be 0, if starts with shader)
+   (mm-quadword-fp-off uint8    :offset-assert 10) ;; main memory offset of fp data
+   (mm-quadword-size   uint8    :offset-assert 11) ;; main memory size of whole fragment
+   (perc-off           uint8    :offset-assert 12) ;; bone weight table offset
+   (mat-slot           uint8 10 :offset-assert 13) ;; which matrices to upload where for this fragment
    )
   :method-count-assert 9
   :size-assert         #x17
   :flag-assert         #x900000017
   )
 
-;; merc VU fragment.
-;; The mm-quadword-size includes the header.
-;; The data itself is split into two parts:
-;; - ??
-;; - fp data, containing a merc-fp-data then "fp" data.
-;; the merc-fragment-fp-data function will get a pointer to fp data.
+;; merc VU fragment: contains the header and data.
 (deftype merc-fragment (structure)
   ((header merc-byte-header :inline :offset-assert 0)
    (rest   uint8            1       :offset-assert 23)
@@ -59,16 +66,19 @@
     )
   )
 
+;; packed merc vertex, before unpack by VIF
+;; the meaning of flags is situation dependent in the renderer, see extract_merc.cpp
+;; for the details.
 (deftype merc-vtx (structure)
-  ((mat-0 uint8  :offset-assert 0)
-   (mat-1 uint8  :offset-assert 1)
-   (nrm-x uint8  :offset-assert 2)
-   (pos-x uint8  :offset-assert 3)
-   (dst-0 uint8  :offset-assert 4)
-   (dst-1 uint8  :offset-assert 5)
-   (nrm-y uint8  :offset-assert 6)
-   (pos-y uint8  :offset-assert 7)
-   (tex-s uint8  :offset-assert 8)
+  ((mat-0 uint8  :offset-assert 0)  ;; matrix number for first bone (and flags)
+   (mat-1 uint8  :offset-assert 1)  ;; matrix number for second bone (and flags)
+   (nrm-x uint8  :offset-assert 2)  ;; x component of normal
+   (pos-x uint8  :offset-assert 3)  ;; x component of position
+   (dst-0 uint8  :offset-assert 4)  ;; location to place vertex (and flags)
+   (dst-1 uint8  :offset-assert 5)  ;; location to place vertex 2 (and flags)
+   (nrm-y uint8  :offset-assert 6)  ;; normal
+   (pos-y uint8  :offset-assert 7)  ;; pos
+   (tex-s uint8  :offset-assert 8)  ;; texture coordinate
    (tex-t uint8  :offset-assert 9)
    (nrm-z uint8  :offset-assert 10)
    (pos-z uint8  :offset-assert 11)
@@ -99,9 +109,10 @@
   (the merc-fp-header (&+ arg0 (the-as uint (shl (-> arg0 header mm-quadword-fp-off) 4))))
   )
 
+;; a description of a matrix upload to merc
 (deftype merc-mat-dest (structure)
-  ((matrix-number uint8  :offset-assert 0)
-   (matrix-dest   uint8  :offset-assert 1)
+  ((matrix-number uint8  :offset-assert 0) ;; the matrix in the skeleton
+   (matrix-dest   uint8  :offset-assert 1) ;; the slot in the shader (only a small number available)
    )
   :pack-me
   :method-count-assert 9
@@ -111,6 +122,7 @@
 
 ;; some info about a merc fragment that will stay on the EE.
 ;; the merc-effect contains a ref to one of these
+;; this is all the information needed to generate merc upload dma (counts/sizes)
 (deftype merc-fragment-control (structure)
   ((unsigned-four-count uint8          :offset-assert 0)
    (lump-four-count     uint8          :offset-assert 1)
@@ -123,11 +135,13 @@
   :flag-assert         #x900000004
   )
 
+;; packed blend shape data
 (deftype merc-blend-data (structure) ;; was unknown!
   ((int8-data int8 :dynamic :offset-assert 0)
    )
   )
 
+;; info needed to set up blend shapes
 (deftype merc-blend-ctrl (structure)
   ((blend-vtx-count     uint8          :offset-assert 0)
    (nonzero-index-count uint8          :offset-assert 1)
@@ -138,10 +152,11 @@
   :flag-assert         #x900000002
   )
 
+;; info for environment map "extra"
 (deftype mei-envmap-tint (structure)
-  ((fade0 float   :offset-assert 0)
-   (fade1 float   :offset-assert 4)
-   (tint  uint32  :offset-assert 8)
+  ((fade0 float   :offset-assert 0) ;; start fade
+   (fade1 float   :offset-assert 4) ;; end fade
+   (tint  uint32  :offset-assert 8) ;; envmap color
    (dummy int32   :offset-assert 12)
    )
   :method-count-assert 9
@@ -149,6 +164,7 @@
   :flag-assert         #x900000010
   )
 
+;; info for texture scrolling "extra"
 (deftype mei-texture-scroll (structure)
   ((max-dist     float   :offset-assert 0)
    (st-int-scale uint8   :offset-assert 4)
@@ -163,6 +179,7 @@
   :flag-assert         #x900000010
   )
 
+;; info for ripple effect "extra"
 (deftype mei-ripple (structure)
   ((x-base    float  :offset-assert 0)
    (z-base    float  :offset-assert 4)
@@ -174,6 +191,7 @@
   :flag-assert         #x900000010
   )
 
+;; locations of the "extra"s.
 (deftype merc-extra-info (structure)
   ((envmap-tint-offset    uint8    :offset-assert 0)
    (shader-offset         uint8    :offset-assert 1)
@@ -186,6 +204,8 @@
   :flag-assert         #x900000010
   )
 
+;; a collection of fragments that must be sent all together.
+;; and their extra effects.
 (deftype merc-effect (structure)
   ((frag-geo         merc-fragment          :offset-assert 0)
    (frag-ctrl        merc-fragment-control  :offset-assert 4)
@@ -200,7 +220,7 @@
    (dummy1           uint8                  :offset-assert 26)
    (envmap-usage     uint8                  :offset-assert 27)
    (extra-info       merc-extra-info        :offset-assert 28)
-   
+
    ;; added
    (data uint64 4 :offset 0)
    )
@@ -212,10 +232,15 @@
     )
   )
 
+;; eye info (for a single eye)
+;; there's a pupil, iris, and lid. The pupil and iris can move around (together),
+;; The pupil/iris can be scaled (independtenly)
+;; the eyelid goes up and down
 (deftype merc-eye-ctrl (structure)
-  ((eye-slot      int8                 :offset-assert 0)
-   (shader-offset int8                 :offset-assert 1)
+  ((eye-slot      int8                 :offset-assert 0) ;; slot in anim data
+   (shader-offset int8                 :offset-assert 1) ;; offset in merc data
    (shader-count  int8                 :offset-assert 2)
+   ;; copies of the shader.
    (iris-shader   adgif-shader :inline :offset-assert 16)
    (pupil-shader  adgif-shader :inline :offset-assert 96)
    (lid-shader    adgif-shader :inline :offset-assert 176)
@@ -226,6 +251,7 @@
   :flag-assert         #x900000100
   )
 
+;; single frame for eye animation
 (deftype merc-eye-anim-frame (structure)
   ((pupil-trans-x int8   :offset-assert 0)
    (pupil-trans-y int8   :offset-assert 1)
@@ -241,6 +267,7 @@
   :flag-assert         #x900000008
   )
 
+;; just an array of eye anim frames.
 (deftype merc-eye-anim-block (structure)
   ((max-frame int16          :offset-assert 0)
    (data      merc-eye-anim-frame :inline :dynamic :offset 8)
@@ -251,7 +278,8 @@
   )
 
 
-;; metadata for merc art
+;; metadata for merc art for a single model
+;; mostly just stats and parameters used in dma/rendering.
 (deftype merc-ctrl-header (structure)
   ((xyz-scale              float            :offset-assert 0)
    (st-magic               uint32           :offset-assert 4)
@@ -297,10 +325,10 @@
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
-  ;; field xyz-scale is a float printed as hex? 
+  ;; field xyz-scale is a float printed as hex?
   )
 
-;; the actual merc art object.
+;; the actual merc art object: a header and list of effects
 (deftype merc-ctrl (art-element)
   ((num-joints int32                     :offset 20)
    (header     merc-ctrl-header :inline  :offset-assert 32)
@@ -311,6 +339,7 @@
   :flag-assert         #xd00000070
   )
 
+;; low memory upload to vu1 for merc (which merc later writes over)
 (deftype merc-vu1-low-mem (structure)
   ((tri-strip-gif gs-gif-tag   :inline :offset-assert 0) ;; was qword
    (ad-gif        gs-gif-tag   :inline :offset-assert 16) ;; was qword

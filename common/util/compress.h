@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <vector>
+
 #include "common/common_types.h"
 namespace compression {
 // compress and decompress data with zstd

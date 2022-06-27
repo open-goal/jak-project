@@ -1,11 +1,13 @@
 #pragma once
 
 #include <string>
+
 #include "CodeGenerator.h"
-#include "goalc/regalloc/allocator_interface.h"
 #include "Val.h"
+
 #include "goalc/emitter/ObjectGenerator.h"
 #include "goalc/emitter/Register.h"
+#include "goalc/regalloc/allocator_interface.h"
 
 class IR {
  public:
@@ -201,6 +203,7 @@ enum class IntegerMathKind {
   SAR_64,
   SHR_64,
   IMOD_32,
+  UMOD_32,
   OR_64,
   AND_64,
   XOR_64,

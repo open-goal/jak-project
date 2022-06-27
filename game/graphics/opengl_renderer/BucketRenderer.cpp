@@ -1,7 +1,7 @@
 #include "BucketRenderer.h"
-#include "third-party/imgui/imgui.h"
 
 #include "third-party/fmt/core.h"
+#include "third-party/imgui/imgui.h"
 
 std::string BucketRenderer::name_and_id() const {
   return fmt::format("[{:2d}] {}", (int)m_my_id, m_name);
@@ -59,7 +59,7 @@ void SkipRenderer::render(DmaFollower& dma,
 }
 
 void SharedRenderState::reset() {
-  has_camera_planes = false;
+  has_pc_data = false;
   for (auto& x : occlusion_vis) {
     x.valid = false;
   }
@@ -89,4 +89,16 @@ void RenderMux::draw_debug_window() {
   ImGui::ListBox("Pick", &m_render_idx, m_name_str_ptrs.data(), m_renderers.size());
   ImGui::Separator();
   m_renderers[m_render_idx]->draw_debug_window();
+}
+
+void RenderMux::init_textures(TexturePool& tp) {
+  for (auto& rend : m_renderers) {
+    rend->init_textures(tp);
+  }
+}
+
+void RenderMux::init_shaders(ShaderLibrary& sl) {
+  for (auto& rend : m_renderers) {
+    rend->init_shaders(sl);
+  }
 }

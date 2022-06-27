@@ -5,17 +5,16 @@
 ;; name in dgo: flying-lurker
 ;; dgos: L1, OGR
 
-(declare-type flying-lurker process-drawable)
-
 ;; DECOMP BEGINS
 
-(defskelgroup *ogrecam-sg* ogrecam
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 2 0 6)
-  :longest-edge (meters 0)
-  )
+(import "goal_src/import/ogrecam-ag.gc")
+(import "goal_src/import/plunger-lurker-ag.gc")
+(import "goal_src/import/flying-lurker-ag.gc")
+
+(defskelgroup *ogrecam-sg* ogrecam ogrecam-lod0-jg -1
+              ((ogrecam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 6)
+              )
 
 (deftype plunger-lurker (process-drawable)
   ((alt-actor entity-actor  :offset-assert 176)
@@ -34,39 +33,29 @@
   )
 
 
-(defskelgroup *plunger-lurker-sg* plunger-lurker
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 2 4 0 12)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plunger-lurker-sg* plunger-lurker plunger-lurker-lod0-jg plunger-lurker-idle-ja
+              ((plunger-lurker-lod0-mg (meters 20))
+               (plunger-lurker-lod1-mg (meters 40))
+               (plunger-lurker-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 2 4 0 12)
+              )
 
 (defstate plunger-lurker-plunge (plunger-lurker)
-  :code
-  (behavior ()
-    (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
+  :code (behavior ()
+    (set-setting! 'allow-progress #f 0.0 0)
     (logclear! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status bit-3) #t)
-    (while (or (not *target*) (logtest? (-> *target* state-flags) #x8008))
+    (while (or (not *target*) (logtest? (-> *target* state-flags) (state-flags being-attacked dying)))
       (suspend)
       )
     (while (not (process-grab? *target*))
       (suspend)
       )
-    (let* ((gp-0 (get-process *default-dead-pool* manipy #x4000))
-           (gp-1
-             (ppointer->handle
-               (when gp-0
-                 (let ((t9-4 (method-of-type manipy activate)))
-                   (t9-4 (the-as manipy gp-0) self 'manipy (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process gp-0 manipy-init (-> self entity extra trans) (-> self entity) *ogrecam-sg* #f)
-                 (-> gp-0 ppointer)
-                 )
-               )
-             )
-           )
+    (let ((gp-1
+            (ppointer->handle (manipy-spawn (-> self entity extra trans) (-> self entity) *ogrecam-sg* #f :to self))
+            )
+          )
       (let ((s5-0 (the-as othercam (get-process *default-dead-pool* othercam #x4000))))
         (ppointer->handle (when s5-0
                             (let ((t9-7 (method-of-type othercam activate)))
@@ -109,8 +98,7 @@
           :name "plunger-lurker-blowup"
           :index 7
           :parts 4
-          :command-list
-          '((200 alive "tntbarrel-223")
+          :command-list '((200 alive "tntbarrel-223")
             (200 alive "tntbarrel-222")
             (200 alive "tntbarrel-221")
             (200 alive "tntbarrel-220")
@@ -139,7 +127,7 @@
             )
           )
         (the-as art-joint-anim #f)
-        (the-as art-joint-anim (-> self draw art-group data 4))
+        (the-as art-joint-anim plunger-lurker-idle-ja)
         (the-as (function process-drawable symbol) false-func)
         )
       (if (handle->process gp-1)
@@ -164,60 +152,19 @@
     (process-release? *target*)
     (suspend)
     0
-    (let ((a1-15 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-15 from) self)
-      (set! (-> a1-15 num-params) 2)
-      (set! (-> a1-15 message) 'attack-invinc)
-      (set! (-> a1-15 param 0) (the-as uint #f))
-      (let ((a0-37 (new 'static 'array uint32 26
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x20
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     #x0
-                     )
-                   )
-            )
-        (set! (-> a0-37 17) (the-as uint 'instant-death))
-        (set! (-> a1-15 param 1) (the-as uint a0-37))
-        )
-      (send-event-function *target* a1-15)
-      )
+    (send-event *target* 'attack-invinc #f (static-attack-info ((mode 'instant-death))))
     (cleanup-for-death self)
     (deactivate self)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plunger-lurker) ja-post)
+  :post (the-as (function none :behavior plunger-lurker) ja-post)
   )
 
 (defstate plunger-lurker-flee (plunger-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'attack)
                        (let ((v0-0 #t))
@@ -228,8 +175,7 @@
               )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (-> self got-hit)
       (close-specific-task! (game-task plunger-lurker-hit) (task-status need-hint))
       (process-entity-status! self (entity-perm-status complete) #t)
@@ -240,68 +186,43 @@
         *entity-pool*
         (game-task none)
         )
-      (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when gp-0
-          (let ((t9-4 (method-of-type part-tracker activate)))
-            (t9-4 (the-as part-tracker gp-0) *entity-pool* 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process gp-0 part-tracker-init (-> *part-group-id-table* 474) -1 #f #f #f (-> self root trans))
-          (-> gp-0 ppointer)
-          )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        (-> *part-group-id-table* 474)
+        -1
+        #f
+        #f
+        #f
+        (-> self root trans)
+        :to *entity-pool*
         )
       (cleanup-for-death self)
       (deactivate self)
       )
     (none)
     )
-  :code
-  (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-      (set! (-> a0-0 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-            )
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-      )
+  :code (behavior ()
+    (ja-no-eval :group! plunger-lurker-notice-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (let ((a0-3 (-> self skel root-channel 0)))
-      (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-      (set! (-> a0-3 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
-            )
-      (set! (-> a0-3 param 1) 1.0)
-      (set! (-> a0-3 frame-num) 0.0)
-      (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-      )
+    (ja-no-eval :group! plunger-lurker-death-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-4 (-> self skel root-channel 0)))
-        (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
-        (set! (-> a0-4 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (while #t
+    (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plunger-lurker) ja-post)
+  :post (the-as (function none :behavior plunger-lurker) ja-post)
   )
 
 (defstate plunger-lurker-idle (plunger-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('plunge)
        (logclear! (-> self mask) (process-mask actor-pause))
@@ -309,8 +230,7 @@
        )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (spool-push *art-control* "plunger-lurker-blowup" 0 self -99.0)
     (when (and *target* (< (vector-vector-distance-squared (-> self root trans) (target-pos 0)) 6710886400.0))
       (logclear! (-> self mask) (process-mask actor-pause))
@@ -318,36 +238,21 @@
       )
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-        (set! (-> a0-0 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-        )
+  :code (behavior ()
+    (loop
+      (ja-no-eval :group! plunger-lurker-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior plunger-lurker) ja-post)
+  :post (the-as (function none :behavior plunger-lurker) ja-post)
   )
 
 (defstate plunger-lurker-die (plunger-lurker)
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (deactivate self)
     (suspend)
@@ -423,14 +328,15 @@
   )
 
 
-(defskelgroup *flying-lurker-sg* flying-lurker
-  0
-  5
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 2 0 6)
-  :longest-edge (meters 2.3)
-  :shadow 4
-  )
+(defskelgroup *flying-lurker-sg* flying-lurker flying-lurker-lod0-jg flying-lurker-fly-ja
+              ((flying-lurker-lod0-mg (meters 20))
+               (flying-lurker-lod1-mg (meters 40))
+               (flying-lurker-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 2 0 6)
+              :longest-edge (meters 2.3)
+              :shadow flying-lurker-shadow-mg
+              )
 
 (defmethod dummy-20 flying-lurker ((obj flying-lurker))
   (with-pp
@@ -448,7 +354,16 @@
             (set! (-> a1-1 quad) (-> obj root trans quad))
             (set! (-> a1-1 y) (+ -8192.0 (-> a1-1 y)))
             (set-vector! a2-0 0.0 -81920.0 0.0 1.0)
-            (when (>= (fill-and-probe-using-line-sphere *collide-cache* a1-1 a2-0 8192.0 (collide-kind background) pp s3-1 1)
+            (when (>= (fill-and-probe-using-line-sphere
+                        *collide-cache*
+                        a1-1
+                        a2-0
+                        8192.0
+                        (collide-kind background)
+                        pp
+                        s3-1
+                        (new 'static 'pat-surface :noentity #x1)
+                        )
                       0.0
                       )
               (set! (-> s3-1 intersect w) 8192.0)
@@ -457,7 +372,7 @@
                          )
                 (set! s4-0 #t)
                 (let ((v1-17 s5-0))
-                  (set! (-> v1-17 settings flags) (logand -33 (-> v1-17 settings flags)))
+                  (logclear! (-> v1-17 settings flags) (shadow-flags disable-draw))
                   )
                 0
                 (let ((v1-19 s5-0))
@@ -495,7 +410,7 @@
           )
         )
       (when (not s4-0)
-        (logior! (-> s5-0 settings flags) 32)
+        (logior! (-> s5-0 settings flags) (shadow-flags disable-draw))
         0
         (set! (-> obj draw bounds quad) (-> obj default-bounds quad))
         (set! (-> obj draw origin-joint-index) (the-as uint 4))
@@ -510,7 +425,7 @@
     (set! (-> self try-counted) #t)
     (let ((gp-0 (-> self entity extra perm)))
       (logior! (-> gp-0 status) (entity-perm-status user-set-from-cstage))
-      (set! (-> gp-0 user-int8 0) (seekl (-> gp-0 user-int8 0) 255 1))
+      (seekl! (-> gp-0 user-int8 0) 255 1)
       (set! (-> self try-count) (the-as uint (-> gp-0 user-int8 0)))
       )
     )
@@ -523,8 +438,7 @@
   )
 
 (defstate flying-lurker-die (flying-lurker)
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (deactivate self)
     (none)
@@ -532,11 +446,10 @@
   )
 
 (defstate flying-lurker-sleep (flying-lurker)
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (logior! (-> self draw status) (draw-status hidden))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -579,7 +492,13 @@
             (set! (-> self speed) (+ (* (+ 0.5 f0-12) (- arg2 arg3)) arg3))
             )
           )
-        (set! (-> self y-offset-desired) (fmin 65536.0 (fmax 0.0 (* 1.6 (- 40960.0 (fmin (- f28-0) f30-0))))))
+        ;; PAL patch here
+        (let ((f0-16 65536.0))
+          (if (and (< 0.6332 (-> self curve-position)) (< (-> self curve-position) 0.6928))
+              (set! f0-16 40960.0)
+              )
+          (set! (-> self y-offset-desired) (fmin f0-16 (fmax 0.0 (* 1.6 (- 40960.0 (fmin (- f28-0) f30-0))))))
+          )
         )
       )
     )
@@ -671,8 +590,7 @@
   )
 
 (defstate flying-lurker-fly (flying-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'clone-and-kill-links)
@@ -773,14 +691,12 @@
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (dummy-20 self)
     (when (not (movie?))
       (flying-lurker-calc-speed (meters 15.0) (meters 30.0) (meters 0.11666667) (meters 0.083333336))
@@ -812,43 +728,20 @@
       )
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
-      (when (not (= (if (> (-> self skel active-channels) 0)
-                        (-> self skel root-channel 0 frame-group)
-                        )
-                    (-> self draw art-group data 5)
-                    )
-                 )
-        (ja-channel-push! 1 60)
-        (let ((v1-8 (-> self skel root-channel 0)))
-          (set! (-> v1-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-          )
+  :code (behavior ()
+    (loop
+      (when (not (ja-group? flying-lurker-fly-ja))
+        (ja-channel-push! 1 (seconds 0.2))
+        (ja :group! flying-lurker-fly-ja)
         )
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 param 0) (flying-lurker-calc-anim-speed))
-        (joint-control-channel-group-eval! gp-0 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop! (flying-lurker-calc-anim-speed)))
       (suspend)
       (when (>= (- (-> *display* base-frame-counter) (-> self last-look-time)) (-> self time-to-next-look))
-        (ja-channel-push! 1 60)
-        (let ((a0-12 (-> self skel root-channel 0)))
-          (set! (-> a0-12 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-          (set! (-> a0-12 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
-                )
-          (set! (-> a0-12 param 1) 1.0)
-          (set! (-> a0-12 frame-num) 0.0)
-          (joint-control-channel-group! a0-12 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-          )
+        (ja-channel-push! 1 (seconds 0.2))
+        (ja-no-eval :group! flying-lurker-look-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
-          (let ((a0-13 (-> self skel root-channel 0)))
-            (set! (-> a0-13 param 0) (the float (+ (-> a0-13 frame-group data 0 length) -1)))
-            (set! (-> a0-13 param 1) 1.0)
-            (joint-control-channel-group-eval! a0-13 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           )
         (set! (-> self last-look-time) (-> *display* base-frame-counter))
         (let* ((f30-0 300.0)
@@ -863,8 +756,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior flying-lurker) ja-post)
+  :post (the-as (function none :behavior flying-lurker) ja-post)
   )
 
 (defbehavior flying-lurker-handler flying-lurker ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -957,8 +849,8 @@
   (logclear! (-> self mask) (process-mask actor-pause))
   (close-specific-task! (game-task plunger-lurker-hit) (task-status unknown))
   (while (and *target*
-              (logtest? (-> *target* control unknown-surface00 flags) 2048)
-              (zero? (logand (-> *target* control status) 1))
+              (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+              (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
               )
     (suspend)
     )
@@ -976,19 +868,10 @@
   (suspend)
   (kill-current-level-hint '() '() 'die)
   (suspend)
-  (let* ((gp-0 (get-process *default-dead-pool* manipy #x4000))
-         (gp-1
-           (ppointer->handle
-             (when gp-0
-               (let ((t9-5 (method-of-type manipy activate)))
-                 (t9-5 (the-as manipy gp-0) self 'manipy (the-as pointer #x70004000))
-                 )
-               (run-now-in-process gp-0 manipy-init (-> self entity extra trans) (-> self entity) *ogrecam-sg* #f)
-               (-> gp-0 ppointer)
-               )
-             )
-           )
-         )
+  (let ((gp-1
+          (ppointer->handle (manipy-spawn (-> self entity extra trans) (-> self entity) *ogrecam-sg* #f :to self))
+          )
+        )
     (let ((s5-0 (the-as othercam (get-process *default-dead-pool* othercam #x4000))))
       (ppointer->handle (when s5-0
                           (let ((t9-8 (method-of-type othercam activate)))
@@ -1038,53 +921,43 @@
         )
     )
   (process-release? *target*)
-  (let ((gp-2 (get-process *default-dead-pool* process #x4000)))
-    (when gp-2
-      (let ((t9-18 (method-of-type process activate)))
-        (t9-18 gp-2 self 'process (the-as pointer #x70004000))
+  (process-spawn-function
+    process
+    (lambda :behavior process
+      ()
+      (let ((gp-0 (-> *display* base-frame-counter)))
+        (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 0.1))
+          (suspend)
+          )
         )
-      (run-next-time-in-process gp-2 (lambda :behavior process
-                                       ()
-                                       (let ((gp-0 (-> *display* base-frame-counter)))
-                                         (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 0.1))
-                                           (suspend)
-                                           )
-                                         )
-                                       (level-hint-spawn
-                                         (game-text-id assistant-voicebox-intro-ogre-race)
-                                         "asstvb24"
-                                         (the-as entity #f)
-                                         *entity-pool*
-                                         (game-task none)
-                                         )
-                                       (none)
-                                       )
-                                )
-      (-> gp-2 ppointer)
+      (level-hint-spawn
+        (game-text-id assistant-voicebox-intro-ogre-race)
+        "asstvb24"
+        (the-as entity #f)
+        *entity-pool*
+        (game-task none)
+        )
+      (none)
       )
+    :to self
     )
   (none)
   )
 
 (defstate flying-lurker-start (flying-lurker)
-  :event
-  flying-lurker-handler
-  :exit
-  (behavior ()
-    (clear-pending-settings-from-process *setting-control* self 'allow-progress)
+  :event flying-lurker-handler
+  :exit (behavior ()
+    (remove-setting! 'allow-progress)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (play-movie?)
-      (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
+      (set-setting! 'allow-progress #f 0.0 0)
       (flying-lurker-play-intro)
       )
     (flying-lurker-inc-try-count)
     (ja-channel-set! 1)
-    (let ((v1-6 (-> self skel root-channel 0)))
-      (set! (-> v1-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-      )
+    (ja :group! flying-lurker-fly-ja)
     (let* ((v1-8 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
            (v1-9 (the-as float (logior #x3f800000 v1-8)))
            (f0-2 (+ -1.0 v1-9))
@@ -1112,13 +985,11 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior flying-lurker) ja-post)
+  :post (the-as (function none :behavior flying-lurker) ja-post)
   )
 
 (defstate flying-lurker-clone (flying-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'die)
@@ -1204,21 +1075,18 @@
               )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (ja-channel-set! 0)
     (none)
     )
-  :code
-  (behavior ((arg0 handle) (arg1 string))
+  :code (behavior ((arg0 handle) (arg1 string))
     (clone-anim arg0 3 #t arg1)
     (none)
     )
   )
 
 (defstate flying-lurker-idle (flying-lurker)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('saw-player)
        (set! (-> self take-off) #t)
@@ -1283,21 +1151,18 @@
         )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (spool-push *art-control* "flying-lurker-intro" 0 self -99.0)
     (if (and (-> self take-off) (first?))
         (go flying-lurker-start)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (local-vars (gp-0 int) (f30-0 float))
     1.0
     0
@@ -1315,7 +1180,7 @@
         (set! gp-0 11)
         )
       )
-    (while #t
+    (loop
       (cond
         ((play-movie?)
          (ja-channel-set! 0)
@@ -1336,28 +1201,14 @@
          0
          )
         (else
-          (let ((v1-27 (-> self skel root-channel 0)))
-            (set! (-> v1-27 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-            )
-          (let ((a0-9 (-> self skel root-channel 0)))
-            (set! (-> a0-9 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-            (set! (-> a0-9 param 0)
-                  (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-                  )
-            (set! (-> a0-9 param 1) f30-0)
-            (set! (-> a0-9 frame-num) (the float gp-0))
-            (joint-control-channel-group! a0-9 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-            )
+          (ja :group! flying-lurker-fly-ja)
+          (ja-no-eval :group! flying-lurker-fly-ja :num! (seek! max f30-0) :frame-num (the float gp-0))
           (until (ja-done? 0)
             (if (and *target* (>= 172032.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))))
                 (send-event self 'saw-player)
                 )
             (suspend)
-            (let ((a0-12 (-> self skel root-channel 0)))
-              (set! (-> a0-12 param 0) (the float (+ (-> a0-12 frame-group data 0 length) -1)))
-              (set! (-> a0-12 param 1) f30-0)
-              (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-seek!)
-              )
+            (ja :num! (seek! max f30-0))
             )
           (set! gp-0 0)
           )
@@ -1365,8 +1216,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior flying-lurker) ja-post)
+  :post (the-as (function none :behavior flying-lurker) ja-post)
   )
 
 (defmethod init-from-entity! flying-lurker ((obj flying-lurker) (arg0 entity-actor))
@@ -1403,7 +1253,7 @@
         (new 'process 'shadow-control 131072.0 151552.0 614400.0 (the-as float 60) 409600.0)
         )
   (let ((v1-27 (-> obj draw shadow-ctrl)))
-    (set! (-> v1-27 settings flags) (logand -33 (-> v1-27 settings flags)))
+    (logclear! (-> v1-27 settings flags) (shadow-flags disable-draw))
     )
   0
   (set! (-> obj alt-actor) (entity-actor-lookup arg0 'alt-actor 0))

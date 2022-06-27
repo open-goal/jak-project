@@ -1,29 +1,35 @@
 #include <cstdio>
 #include <string>
 #include <vector>
-#include "ObjectFile/ObjectFileDB.h"
-#include "common/log/log.h"
+
 #include "config.h"
+
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/Timer.h"
+#include "common/util/diff.h"
+#include "common/util/os.h"
 #include "common/versions.h"
+
+#include "ObjectFile/ObjectFileDB.h"
+#include "decompiler/data/TextureDB.h"
 #include "decompiler/data/streamed_audio.h"
 #include "decompiler/level_extractor/extract_level.h"
-#include "decompiler/data/TextureDB.h"
-#include "common/util/os.h"
-#include "common/util/diff.h"
 
 int main(int argc, char** argv) {
-  fmt::print("[Mem] Size of linked word: {}\n", sizeof(decompiler::LinkedWord));
+  Timer decomp_timer;
+
   fmt::print("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
   using namespace decompiler;
+  if (!file_util::setup_project_path(std::nullopt)) {
+    return 1;
+  }
   lg::set_file(file_util::get_file_path({"log/decompiler.txt"}));
   lg::set_file_level(lg::level::info);
   lg::set_stdout_level(lg::level::info);
   lg::set_flush_level(lg::level::info);
   lg::initialize();
-  lg::info("GOAL Decompiler version {}\n", versions::DECOMPILER_VERSION);
 
-  file_util::init_crc();
   init_opcode_info();
 
   if (argc < 4) {
@@ -147,17 +153,20 @@ int main(int argc, char** argv) {
   db.process_labels();
   fmt::print("[Mem] After code: {} MB\n", get_peak_rss() / (1024 * 1024));
 
+  // top level decompile (do this before printing asm so we get function names)
+  if (config.find_functions) {
+    db.ir2_top_level_pass(config);
+  }
+
   // print disassembly
   if (config.disassemble_code || config.disassemble_data) {
     db.write_disassembly(out_folder, config.disassemble_data, config.disassemble_code,
                          config.write_hex_near_instructions);
   }
 
-  // regenerate all-types if needed
-  if (config.regenerate_all_types) {
-    db.analyze_functions_ir1(config);
-    file_util::write_text_file(file_util::combine_path(out_folder, "type_defs.gc"),
-                               db.all_type_defs);
+  // process art groups (used in decompilation)
+  if (config.decompile_code || config.process_art_groups) {
+    db.extract_art_info();
   }
 
   // main decompile.
@@ -165,11 +174,23 @@ int main(int argc, char** argv) {
     db.analyze_functions_ir2(out_folder, config, {});
   }
 
+  if (config.generate_all_types) {
+    ASSERT_MSG(config.decompile_code, "Must decompile code to generate all-types");
+    db.ir2_analyze_all_types(file_util::combine_path(out_folder, "new-all-types.gc"),
+                             config.old_all_types_file,
+                             config.hacks.types_with_bad_inspect_methods);
+  }
+
   fmt::print("[Mem] After decomp: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   // write out all symbols
   file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
                              db.dts.dump_symbol_types());
+
+  // write art groups
+  if (config.process_art_groups) {
+    db.dump_art_info(out_folder);
+  }
 
   if (config.hexdump_code || config.hexdump_data) {
     db.write_object_file_words(out_folder, config.hexdump_data, config.hexdump_code);
@@ -212,10 +233,8 @@ int main(int argc, char** argv) {
   }
 
   if (config.levels_extract) {
-    extract_common(db, tex_db, "GAME.CGO");
-    for (auto& lev : config.levels_to_extract) {
-      extract_from_level(db, tex_db, lev, config.hacks, config.rip_levels);
-    }
+    extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config.hacks,
+                       config.rip_levels, config.extract_collision);
   }
 
   fmt::print("[Mem] After extraction: {} MB\n", get_peak_rss() / (1024 * 1024));
@@ -224,6 +243,6 @@ int main(int argc, char** argv) {
     process_streamed_audio(config.audio_dir_file_name, config.streamed_audio_file_names);
   }
 
-  lg::info("Disassembly has completed successfully.");
+  lg::info("Decompiler has finished successfully in {:.2f} seconds.", decomp_timer.getSeconds());
   return 0;
 }

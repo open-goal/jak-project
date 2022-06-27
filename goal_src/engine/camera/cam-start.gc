@@ -5,8 +5,8 @@
 ;; name in dgo: cam-start
 ;; dgos: GAME, ENGINE
 
-;; definition for function cam-stop
-;; INFO: Return type mismatch (state camera-slave) vs state.
+;; DECOMP BEGINS
+
 (defun cam-stop ()
   (kill-by-name 'camera-master *active-pool*)
   (kill-by-name 'camera-slave *active-pool*)
@@ -17,17 +17,25 @@
   (none)
   )
 
-;; definition for function cam-start
-;; INFO: Return type mismatch int vs none.
 (defun cam-start ((arg0 symbol))
   (cam-stop)
-  (make-init-process camera-combiner cam-combiner-init :from *camera-dead-pool* :to *camera-pool* :stack *scratch-memory-top*)
-  (set! *camera* (the-as camera-master (ppointer->process (make-init-process camera-master cam-master-init :from *camera-master-dead-pool* :to *camera-pool* :stack *scratch-memory-top*))))
+  (process-spawn camera-combiner :init cam-combiner-init :from *camera-dead-pool* :to *camera-pool*)
+  (set! *camera*
+        (the-as camera-master
+          (ppointer->process
+            (process-spawn-function camera-master cam-master-init :from *camera-master-dead-pool* :to *camera-pool*)
+            )
+          )
+        )
   (if arg0
       (reset-cameras)
       )
+  0
   (none)
   )
 
-;; failed to figure out what this is:
 (cam-start #f)
+
+
+
+

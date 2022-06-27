@@ -100,6 +100,12 @@ bool Generic2::handle_bucket_setup_dma(DmaFollower& dma, u32 next_bucket) {
 }
 
 void Generic2::reset_buffers() {
+  m_max_frags_seen = std::max(m_next_free_frag, m_max_frags_seen);
+  m_max_verts_seen = std::max(m_next_free_vert, m_max_verts_seen);
+  m_max_adgifs_seen = std::max(m_next_free_adgif, m_max_adgifs_seen);
+  m_max_buckets_seen = std::max(m_next_free_bucket, m_max_buckets_seen);
+  m_max_indices_seen = std::max(m_next_free_idx, m_max_indices_seen);
+
   m_next_free_frag = 0;
   m_next_free_vert = 0;
   m_next_free_adgif = 0;
@@ -180,8 +186,7 @@ u32 Generic2::handle_fragments_after_unpack_v4_32(const u8* data,
   // continue in this transfer
   off += first_unpack_bytes;
   if (off == end_of_vif) {
-    fmt::print("nothing after header upload\n");
-    ASSERT(false);
+    ASSERT_MSG(false, "nothing after header upload");
   }
 
   // the next thing is the vertex positions.

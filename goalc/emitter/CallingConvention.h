@@ -1,9 +1,10 @@
 #pragma once
 
-#include <vector>
 #include <optional>
+#include <vector>
 
 #include "common/type_system/TypeSystem.h"
+
 #include "goalc/emitter/Register.h"
 
 struct CallingConvention {

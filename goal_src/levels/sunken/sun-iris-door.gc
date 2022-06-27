@@ -7,6 +7,8 @@
 
 ;; DECOMP BEGINS
 
+(import "goal_src/import/sun-iris-door-ag.gc")
+
 (deftype sun-iris-door (process-drawable)
   ((root-override          collide-shape         :offset        112)
    (timeout                float                 :offset-assert 176)
@@ -37,13 +39,10 @@
   )
 
 
-(defskelgroup *sun-iris-door-sg* sun-iris-door
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *sun-iris-door-sg* sun-iris-door sun-iris-door-lod0-jg sun-iris-door-idle-ja
+              ((sun-iris-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4.5)
+              )
 
 (defmethod should-open? sun-iris-door ((obj sun-iris-door))
   (let ((f30-0 1228800.0))
@@ -81,8 +80,7 @@
   )
 
 (defstate sun-iris-door-closed (sun-iris-door)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (go sun-iris-door-opening)
@@ -94,8 +92,7 @@
        )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (-> self proximity?)
       (if (should-open? self)
           (go sun-iris-door-opening)
@@ -103,16 +100,14 @@
       )
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (when (-> self move-to?)
       (set! (-> self move-to?) #f)
       (move-to-point! (-> self root-override) (-> self move-to-pos))
@@ -124,8 +119,7 @@
   )
 
 (defstate sun-iris-door-opening (sun-iris-door)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('untrigger)
        (go sun-iris-door-closing)
@@ -137,28 +131,18 @@
        )
       )
     )
-  :code
-  (behavior ()
-    (sound-play-by-name (static-sound-name "irisdoor2") (new-sound-id) 1024 0 0 1 #t)
-    (let ((a0-2 (-> self skel root-channel 0)))
-      (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-      (set! (-> a0-2 param 1) 1.0)
-      (joint-control-channel-group! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-      )
+  :code (behavior ()
+    (sound-play "irisdoor2")
+    (ja-no-eval :num! (seek!))
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-        (set! (-> a0-3 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (ja-post)
     (go sun-iris-door-open)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (cond
       ((-> self move-to?)
        (set! (-> self move-to?) #f)
@@ -227,8 +211,7 @@
   )
 
 (defstate sun-iris-door-open (sun-iris-door)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (let ((v0-0 (the-as object (-> *display* base-frame-counter))))
@@ -246,21 +229,18 @@
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (clear-collide-with-as (-> self root-override))
     (logior! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (restore-collide-with-as (-> self root-override))
     (logclear! (-> self draw status) (draw-status hidden))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (-> self proximity?)
       (if (should-close? self)
           (go sun-iris-door-closing)
@@ -273,16 +253,14 @@
         )
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (when (-> self move-to?)
       (set! (-> self move-to?) #f)
       (move-to-point! (-> self root-override) (-> self move-to-pos))
@@ -294,8 +272,7 @@
   )
 
 (defstate sun-iris-door-closing (sun-iris-door)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (go sun-iris-door-opening)
@@ -307,28 +284,18 @@
        )
       )
     )
-  :code
-  (behavior ()
-    (sound-play-by-name (static-sound-name "irisdoor2") (new-sound-id) 1024 0 0 1 #t)
-    (let ((a0-2 (-> self skel root-channel 0)))
-      (set! (-> a0-2 param 0) 0.0)
-      (set! (-> a0-2 param 1) 1.0)
-      (joint-control-channel-group! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-      )
+  :code (behavior ()
+    (sound-play "irisdoor2")
+    (ja-no-eval :num! (seek! 0.0))
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) 0.0)
-        (set! (-> a0-3 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! 0.0))
       )
     (ja-post)
     (go sun-iris-door-closed)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (cond
       ((-> self move-to?)
        (set! (-> self move-to?) #f)
@@ -432,30 +399,10 @@
   (set! (-> self proximity?) #f)
   (set! (-> self directional-proximity?) #f)
   (ja-channel-set! 1)
-  (cond
-    (arg2
-      (let ((s5-1 (-> self skel root-channel 0)))
-        (joint-control-channel-group-eval!
-          s5-1
-          (the-as art-joint-anim (-> self draw art-group data 3))
-          num-func-identity
-          )
-        (set! (-> s5-1 frame-num)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-              )
-        )
+  (if arg2
+      (ja :group! sun-iris-door-idle-ja :num! max)
+      (ja :group! sun-iris-door-idle-ja :num! min)
       )
-    (else
-      (let ((s5-2 (-> self skel root-channel 0)))
-        (joint-control-channel-group-eval!
-          s5-2
-          (the-as art-joint-anim (-> self draw art-group data 3))
-          num-func-identity
-          )
-        (set! (-> s5-2 frame-num) 0.0)
-        )
-      )
-    )
   (transform-post)
   (if arg2
       (go sun-iris-door-open)

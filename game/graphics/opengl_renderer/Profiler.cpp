@@ -1,11 +1,12 @@
-#include <algorithm>
-
 #include "Profiler.h"
+
+#include <algorithm>
 
 #include "common/log/log.h"
 #include "common/util/colors.h"
-#include "third-party/imgui/imgui.h"
+
 #include "third-party/fmt/core.h"
+#include "third-party/imgui/imgui.h"
 
 ProfilerNode::ProfilerNode(const std::string& name) : m_name(name) {}
 
@@ -185,7 +186,7 @@ void FramePlot::draw(float max) {
         auto* me = (FramePlot*)data;
         return me->m_buffer[(me->m_idx + idx) % SIZE];
       },
-      (void*)this, SIZE, 0, nullptr, 0, max, ImVec2(300, 40));
+      (void*)this, SIZE, 0, nullptr, 0, max, ImVec2(300, 20));
 }
 
 void SmallProfiler::draw(const std::string& status, const SmallProfilerStats& stats) {

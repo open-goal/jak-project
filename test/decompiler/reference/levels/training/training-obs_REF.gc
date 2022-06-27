@@ -1,6 +1,12 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/scarecrow-b-ag.gc")
+(import "goal_src/import/pontoonfive-ag.gc")
+(import "goal_src/import/trainingcam-ag.gc")
+(import "goal_src/import/scarecrow-a-ag.gc")
+(import "goal_src/import/jng-iris-door-ag.gc")
+
 ;; definition of type training-water
 (deftype training-water (water-anim)
   ()
@@ -23,8 +29,7 @@
                                     :count 3
                                     :converted #f
                                     :normal-scale 1.0
-                                    :wave
-                                    (new 'static 'inline-array ripple-wave 4
+                                    :wave (new 'static 'inline-array ripple-wave 4
                                       (new 'static 'ripple-wave :scale 40.0 :xdiv 1 :speed 1.5)
                                       (new 'static 'ripple-wave :scale 40.0 :xdiv -1 :zdiv 1 :speed 1.5)
                                       (new 'static 'ripple-wave :scale 20.0 :xdiv 5 :zdiv 3 :speed 0.75)
@@ -51,13 +56,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *training-cam-sg* trainingcam
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 80)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *training-cam-sg* trainingcam trainingcam-lod0-jg -1
+              ((trainingcam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 80)
+              )
 
 ;; definition of type training-cam
 (deftype training-cam (process)
@@ -99,9 +101,8 @@
 ;; failed to figure out what this is:
 (defstate idle (training-cam)
   :virtual #t
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (when (and *target*
                  (< (vector-vector-distance (target-pos 0) (-> self root trans)) (-> self range))
                  (-> *setting-control* current play-hints)
@@ -113,8 +114,8 @@
                  )
         (when (!= (-> self index) 6)
           (while (and *target*
-                      (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                      (zero? (logand (-> *target* control status) 1))
+                      (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+                      (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
                       )
             (suspend)
             )
@@ -127,15 +128,15 @@
                                                                      )
                           )
                       )
-            (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
+            (set-setting! 'allow-progress #f 0.0 0)
             (let* ((a0-15 *setting-control*)
-                   (t9-6 (method-of-object a0-15 set-setting!))
+                   (t9-6 (method-of-object a0-15 set-setting))
                    (a2-3 'movie)
                    (a3-1 (process->ppointer self))
                    )
-              (t9-6 a0-15 self a2-3 (the-as symbol a3-1) 0.0 0)
+              (t9-6 a0-15 self a2-3 a3-1 0.0 0)
               )
-            (copy-settings-from-target! *setting-control*)
+            (apply-settings *setting-control*)
             (dotimes (gp-1 2)
               (while (or (-> *setting-control* current talking)
                          (-> *setting-control* current spooling)
@@ -149,8 +150,8 @@
             (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
               (suspend)
               )
-            (clear-pending-settings-from-process *setting-control* self 'movie)
-            (copy-settings-from-target! *setting-control*)
+            (remove-setting! 'movie)
+            (apply-settings *setting-control*)
             (suspend)
             (suspend)
             )
@@ -167,24 +168,7 @@
                  *entity-pool*
                  (game-task none)
                  )
-               (let ((gp-2 (get-process *default-dead-pool* pov-camera #x4000)))
-                 (when gp-2
-                   (let ((t9-13 (method-of-type pov-camera activate)))
-                     (t9-13 (the-as pov-camera gp-2) self 'pov-camera (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     gp-2
-                     pov-camera-init-by-other
-                     (-> self entity extra trans)
-                     *training-cam-sg*
-                     "orbcam"
-                     0
-                     #f
-                     '()
-                     )
-                   (-> gp-2 ppointer)
-                   )
-                 )
+               (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "orbcam" 0 #f '() :to self)
                )
               ((= v1-61 1)
                (level-hint-spawn
@@ -194,24 +178,7 @@
                  *entity-pool*
                  (game-task none)
                  )
-               (let ((gp-3 (get-process *default-dead-pool* pov-camera #x4000)))
-                 (when gp-3
-                   (let ((t9-17 (method-of-type pov-camera activate)))
-                     (t9-17 (the-as pov-camera gp-3) self 'pov-camera (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     gp-3
-                     pov-camera-init-by-other
-                     (-> self entity extra trans)
-                     *training-cam-sg*
-                     "fuelcellcam"
-                     0
-                     #f
-                     '()
-                     )
-                   (-> gp-3 ppointer)
-                   )
-                 )
+               (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "fuelcellcam" 0 #f '() :to self)
                )
               ((= v1-61 2)
                (level-hint-spawn
@@ -221,24 +188,7 @@
                  *entity-pool*
                  (game-task none)
                  )
-               (let ((gp-4 (get-process *default-dead-pool* pov-camera #x4000)))
-                 (when gp-4
-                   (let ((t9-21 (method-of-type pov-camera activate)))
-                     (t9-21 (the-as pov-camera gp-4) self 'pov-camera (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     gp-4
-                     pov-camera-init-by-other
-                     (-> self entity extra trans)
-                     *training-cam-sg*
-                     "ecocam"
-                     0
-                     #f
-                     '()
-                     )
-                   (-> gp-4 ppointer)
-                   )
-                 )
+               (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "ecocam" 0 #f '() :to self)
                )
               ((= v1-61 3)
                (level-hint-spawn
@@ -248,24 +198,7 @@
                  *entity-pool*
                  (game-task none)
                  )
-               (let ((gp-5 (get-process *default-dead-pool* pov-camera #x4000)))
-                 (when gp-5
-                   (let ((t9-25 (method-of-type pov-camera activate)))
-                     (t9-25 (the-as pov-camera gp-5) self 'pov-camera (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     gp-5
-                     pov-camera-init-by-other
-                     (-> self entity extra trans)
-                     *training-cam-sg*
-                     "precursordoorcam"
-                     0
-                     #f
-                     '()
-                     )
-                   (-> gp-5 ppointer)
-                   )
-                 )
+               (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "precursordoorcam" 0 #f '() :to self)
                )
               ((= v1-61 4)
                (level-hint-spawn
@@ -275,24 +208,7 @@
                  *entity-pool*
                  (game-task none)
                  )
-               (let ((gp-6 (get-process *default-dead-pool* pov-camera #x4000)))
-                 (when gp-6
-                   (let ((t9-29 (method-of-type pov-camera activate)))
-                     (t9-29 (the-as pov-camera gp-6) self 'pov-camera (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     gp-6
-                     pov-camera-init-by-other
-                     (-> self entity extra trans)
-                     *training-cam-sg*
-                     "ecoventcam"
-                     0
-                     #f
-                     '()
-                     )
-                   (-> gp-6 ppointer)
-                   )
-                 )
+               (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "ecoventcam" 0 #f '() :to self)
                )
               ((= v1-61 5)
                (level-hint-spawn
@@ -302,24 +218,7 @@
                  *entity-pool*
                  (game-task none)
                  )
-               (let ((gp-7 (get-process *default-dead-pool* pov-camera #x4000)))
-                 (when gp-7
-                   (let ((t9-33 (method-of-type pov-camera activate)))
-                     (t9-33 (the-as pov-camera gp-7) self 'pov-camera (the-as pointer #x70004000))
-                     )
-                   (run-now-in-process
-                     gp-7
-                     pov-camera-init-by-other
-                     (-> self entity extra trans)
-                     *training-cam-sg*
-                     "greenecocam"
-                     0
-                     #f
-                     '()
-                     )
-                   (-> gp-7 ppointer)
-                   )
-                 )
+               (process-spawn pov-camera (-> self entity extra trans) *training-cam-sg* "greenecocam" 0 #f '() :to self)
                )
               ((= v1-61 6)
                (when (not (task-complete? *game-info* (game-task training-climb)))
@@ -451,13 +350,10 @@
         )
 
 ;; failed to figure out what this is:
-(defskelgroup *tra-pontoon-sg* pontoonfive
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *tra-pontoon-sg* pontoonfive pontoonfive-lod0-jg pontoonfive-idle-ja
+              ((pontoonfive-lod0-mg (meters 20)) (pontoonfive-lod1-mg (meters 40)) (pontoonfive-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
 
 ;; definition for method 30 of type tra-pontoon
 ;; INFO: Return type mismatch int vs none.
@@ -542,13 +438,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *tra-iris-door-sg* jng-iris-door
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *tra-iris-door-sg* jng-iris-door jng-iris-door-lod0-jg jng-iris-door-idle-ja
+              ((jng-iris-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
 
 ;; definition for method 24 of type tra-iris-door
 ;; INFO: Return type mismatch int vs none.
@@ -587,14 +480,12 @@
   :id 143
   :duration 15
   :bounds (static-bspherem 0 0 0 1)
-  :parts
-  ((sp-item 2912) (sp-item 2913) (sp-item 2914) (sp-item 2915) (sp-item 2916))
+  :parts ((sp-item 2912) (sp-item 2913) (sp-item 2914) (sp-item 2915) (sp-item 2916))
   )
 
 ;; failed to figure out what this is:
 (defpart 2912
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 16.0)
     (sp-rnd-flt spt-y (meters 2.5) (meters 1) 1.0)
     (sp-rnd-flt spt-scale-x (meters 2.5) (meters 1.5) 1.0)
@@ -621,20 +512,17 @@
 
 ;; failed to figure out what this is:
 (defpart 2917
-  :init-specs
-  ((sp-flt spt-fade-a -0.4) (sp-int-plain-rnd spt-next-time 30 29 1) (sp-launcher-by-id spt-next-launcher 2918))
+  :init-specs ((sp-flt spt-fade-a -0.4) (sp-int-plain-rnd spt-next-time 30 29 1) (sp-launcher-by-id spt-next-launcher 2918))
   )
 
 ;; failed to figure out what this is:
 (defpart 2918
-  :init-specs
-  ((sp-flt spt-fade-a -0.04))
+  :init-specs ((sp-flt spt-fade-a -0.04))
   )
 
 ;; failed to figure out what this is:
 (defpart 2913
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x2))
     (sp-flt spt-num 4.0)
     (sp-flt spt-y (meters 2.5))
     (sp-rnd-flt spt-scale-x (meters 6) (meters 3) 1.0)
@@ -659,14 +547,12 @@
 
 ;; failed to figure out what this is:
 (defpart 2919
-  :init-specs
-  ((sp-flt spt-fade-a -2.1333334))
+  :init-specs ((sp-flt spt-fade-a -2.1333334))
   )
 
 ;; failed to figure out what this is:
 (defpart 2914
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
     (sp-flt spt-num 2.5)
     (sp-flt spt-y (meters 1.5))
     (sp-flt spt-scale-x (meters 12))
@@ -683,8 +569,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2915
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x6 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x6 :page #x2))
     (sp-rnd-flt spt-num 8.0 8.0 1.0)
     (sp-rnd-flt spt-x (meters -0.5) (meters 1) 1.0)
     (sp-rnd-flt spt-y (meters 2.5) (meters 1.5) 1.0)
@@ -713,8 +598,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2920
-  :init-specs
-  ((sp-flt spt-scalevel-x (meters -0.0033333334))
+  :init-specs ((sp-flt spt-scalevel-x (meters -0.0033333334))
     (sp-copy-from-other spt-scalevel-y -4)
     (sp-flt spt-fade-a -3.4)
     )
@@ -722,8 +606,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2916
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x5 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x5 :page #x2))
     (sp-rnd-flt spt-num 8.0 8.0 1.0)
     (sp-rnd-flt spt-x (meters -0.5) (meters 1) 1.0)
     (sp-rnd-flt spt-y (meters 2.5) (meters 1.5) 1.0)
@@ -755,8 +638,7 @@
   :id 144
   :duration 15
   :bounds (static-bspherem 0 0 0 1)
-  :parts
-  ((sp-item 2912))
+  :parts ((sp-item 2912))
   )
 
 ;; failed to figure out what this is:
@@ -764,8 +646,7 @@
   :id 145
   :duration 15
   :bounds (static-bspherem 0 0 0 1)
-  :parts
-  ((sp-item 2913))
+  :parts ((sp-item 2913))
   )
 
 ;; definition of type scarecrow-a
@@ -821,28 +702,21 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *scarecrow-a-sg* scarecrow-a
-  0
-  5
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 2.5 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *scarecrow-a-sg* scarecrow-a scarecrow-a-lod0-jg scarecrow-a-idle-ja
+              ((scarecrow-a-lod0-mg (meters 20)) (scarecrow-a-lod1-mg (meters 40)) (scarecrow-a-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 2.5 0 3)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *scarecrow-a-break-sg* scarecrow-a
-  0
-  5
-  ((4 (meters 999999)))
-  :bounds (static-spherem 0 -15 0 50)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *scarecrow-a-break-sg* scarecrow-a scarecrow-a-lod0-jg scarecrow-a-idle-ja
+              ((scarecrow-a-break-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -15 0 50)
+              )
 
 ;; failed to figure out what this is:
 (defstate idle (scarecrow-a)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as
         object
@@ -903,19 +777,21 @@
                        (get-middle-of-bsphere-overlap a0-24 (-> self intersection))
                        (target-pos 0)
                        )
-                   (the-as symbol (and ((method-of-type touching-shapes-entry prims-touching?)
-                                        (the-as touching-shapes-entry (-> arg3 param 0))
-                                        (the-as collide-shape-moving (-> self root-override))
-                                        (the-as uint 2)
-                                        )
-                                       (or (= (-> self type) scarecrow-a)
-                                           (and (= (-> arg0 type) target)
-                                                (logtest? (-> (the-as target arg0) control unknown-surface00 flags) 2048)
-                                                (zero? (logand (-> (the-as target arg0) control status) 1))
-                                                )
-                                           )
-                                       )
+                   (the-as
+                     symbol
+                     (and ((method-of-type touching-shapes-entry prims-touching?)
+                           (the-as touching-shapes-entry (-> arg3 param 0))
+                           (the-as collide-shape-moving (-> self root-override))
+                           (the-as uint 2)
                            )
+                          (or (= (-> self type) scarecrow-a)
+                              (and (= (-> arg0 type) target)
+                                   (logtest? (-> (the-as target arg0) control unknown-surface00 flags) (surface-flags jump))
+                                   (zero? (logand (-> (the-as target arg0) control status) (cshape-moving-flags onsurf)))
+                                   )
+                              )
+                          )
+                     )
                    )
                  )
                )
@@ -935,105 +811,53 @@
         )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target* (>= 40960.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
         (get-reminder (get-task-control (game-task training-gimmie)) 0)
         )
     (none)
     )
-  :code
-  (behavior ()
-    (ja-channel-push! 1 36)
-    (while #t
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-        (set! (-> a0-1 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-              )
-        (set! (-> a0-1 param 1) 1.0)
-        (set! (-> a0-1 frame-num) 0.0)
-        (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-        )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.12))
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior scarecrow-a) ja-post)
+  :post (the-as (function none :behavior scarecrow-a) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate hit (scarecrow-a)
   :virtual #t
-  :code
-  (behavior ((arg0 float) (arg1 vector) (arg2 symbol))
+  :code (behavior ((arg0 float) (arg1 vector) (arg2 symbol))
     (when (not arg2)
       (dummy-10 (-> self skel effect) 'group-scarecrow-hit 4.0 -1)
-      (ja-channel-push! 1 21)
+      (ja-channel-push! 1 (seconds 0.07))
       (cond
         ((< (fabs arg0) 8192.0)
-         (let ((a0-3 (-> self skel root-channel 0)))
-           (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
-           (set! (-> a0-3 param 0)
-                 (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) data 0 length) -1))
-                 )
-           (set! (-> a0-3 param 1) 1.0)
-           (set! (-> a0-3 frame-num) 0.0)
-           (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
-           )
+         (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
-           (let ((a0-4 (-> self skel root-channel 0)))
-             (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
-             (set! (-> a0-4 param 1) 1.0)
-             (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-             )
+           (ja :num! (seek!))
            )
          )
         ((and (< 8192.0 arg0) (< arg0 24576.0))
-         (let ((a0-6 (-> self skel root-channel 0)))
-           (set! (-> a0-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-           (set! (-> a0-6 param 0)
-                 (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
-                 )
-           (set! (-> a0-6 param 1) 1.0)
-           (set! (-> a0-6 frame-num) 0.0)
-           (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-           )
+         (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
-           (let ((a0-7 (-> self skel root-channel 0)))
-             (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-             (set! (-> a0-7 param 1) 1.0)
-             (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-             )
+           (ja :num! (seek!))
            )
          )
         (else
-          (let ((a0-9 (-> self skel root-channel 0)))
-            (set! (-> a0-9 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-            (set! (-> a0-9 param 0)
-                  (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) data 0 length) -1))
-                  )
-            (set! (-> a0-9 param 1) 1.0)
-            (set! (-> a0-9 frame-num) 0.0)
-            (joint-control-channel-group! a0-9 (the-as art-joint-anim (-> self draw art-group data 7)) num-func-seek!)
-            )
+          (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
-            (let ((a0-10 (-> self skel root-channel 0)))
-              (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
-              (set! (-> a0-10 param 1) 1.0)
-              (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
-              )
+            (ja :num! (seek!))
             )
           )
         )
@@ -1043,7 +867,7 @@
     (dummy-10 (-> self skel effect) 'group-scarecrow-joint-explode 12.0 -1)
     (dummy-10 (-> self skel effect) 'group-scarecrow-joint-explode 20.0 -1)
     (dummy-10 (-> self skel effect) 'group-scarecrow-explode 4.0 -1)
-    (sound-play-by-name (static-sound-name "break-dummy") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "break-dummy")
     (ja-channel-set! 0)
     (let ((s5-2 (new 'stack 'joint-exploder-tuning 1)))
       (set! (-> s5-2 duration) (seconds 1.5))
@@ -1053,38 +877,26 @@
       (set! (-> s5-2 fountain-rand-transv-hi z) 20480.0)
       (set! (-> s5-2 fountain-rand-transv-hi w) 49152.0)
       (set! (-> s5-2 fountain-rand-transv-lo quad) (-> arg1 quad))
-      (let ((gp-1 (get-process *default-dead-pool* joint-exploder #x4000)))
-        (when gp-1
-          (let ((t9-21 (method-of-type joint-exploder activate)))
-            (t9-21 (the-as joint-exploder gp-1) self 'joint-exploder (the-as pointer #x70004000))
+      (process-spawn
+        joint-exploder
+        *scarecrow-a-break-sg*
+        5
+        s5-2
+        (new 'static 'joint-exploder-static-params
+          :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+            (new 'static 'joint-exploder-static-joint-params :joint-index 12)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 10)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 20)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 4)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 5)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 11)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 9)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 7)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 14)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 13)
             )
-          (run-now-in-process
-            gp-1
-            joint-exploder-init-by-other
-            *scarecrow-a-break-sg*
-            5
-            s5-2
-            (new 'static 'joint-exploder-static-params
-              :joints
-              (new
-                'static
-                'boxed-array
-                :type joint-exploder-static-joint-params :length 10 :allocated-length 10
-                (new 'static 'joint-exploder-static-joint-params :joint-index 12)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 10)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 20)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 4)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 5)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 11)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 9)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 7)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 14)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 13)
-                )
-              )
-            )
-          (-> gp-1 ppointer)
           )
+        :to self
         )
       )
     (while (-> self child)
@@ -1093,8 +905,7 @@
     (cleanup-for-death self)
     (none)
     )
-  :post
-  (the-as (function none :behavior scarecrow-a) ja-post)
+  :post (the-as (function none :behavior scarecrow-a) ja-post)
   )
 
 ;; definition for method 11 of type scarecrow-a
@@ -1135,120 +946,62 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *scarecrow-b-sg* scarecrow-b
-  0
-  5
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 3.5 0 3.8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *scarecrow-b-sg* scarecrow-b scarecrow-b-lod0-jg scarecrow-b-idle-ja
+              ((scarecrow-b-lod0-mg (meters 20)) (scarecrow-b-lod1-mg (meters 40)) (scarecrow-b-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 3.5 0 3.8)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *scarecrow-b-break-sg* scarecrow-b
-  0
-  5
-  ((4 (meters 999999)))
-  :bounds (static-spherem 0 -15 0 50)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *scarecrow-b-break-sg* scarecrow-b scarecrow-b-lod0-jg scarecrow-b-idle-ja
+              ((scarecrow-b-break-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -15 0 50)
+              )
 
 ;; failed to figure out what this is:
 (defstate idle (scarecrow-b)
   :virtual #t
-  :event
-  (-> (method-of-type scarecrow-a idle) event)
-  :code
-  (behavior ()
-    (ja-channel-push! 1 36)
-    (while #t
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-        (set! (-> a0-1 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-              )
-        (set! (-> a0-1 param 1) 1.0)
-        (set! (-> a0-1 frame-num) 0.0)
-        (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-        )
+  :event (-> (method-of-type scarecrow-a idle) event)
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.12))
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior scarecrow-b) ja-post)
+  :post (the-as (function none :behavior scarecrow-b) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate hit (scarecrow-b)
   :virtual #t
-  :code
-  (behavior ((arg0 float) (arg1 vector) (arg2 symbol))
+  :code (behavior ((arg0 float) (arg1 vector) (arg2 symbol))
     (when (not arg2)
       (dummy-10 (-> self skel effect) 'group-scarecrow-hit 4.0 -1)
-      (ja-channel-push! 1 21)
+      (ja-channel-push! 1 (seconds 0.07))
       (cond
         ((< (fabs arg0) 8192.0)
-         (let ((a0-3 (-> self skel root-channel 0)))
-           (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
-           (set! (-> a0-3 param 0)
-                 (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) data 0 length) -1))
-                 )
-           (set! (-> a0-3 param 1) 1.0)
-           (set! (-> a0-3 frame-num) 0.0)
-           (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
-           )
+         (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
-           (let ((a0-4 (-> self skel root-channel 0)))
-             (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
-             (set! (-> a0-4 param 1) 1.0)
-             (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-             )
+           (ja :num! (seek!))
            )
          )
         ((and (< 8192.0 arg0) (< arg0 24576.0))
-         (let ((a0-6 (-> self skel root-channel 0)))
-           (set! (-> a0-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-           (set! (-> a0-6 param 0)
-                 (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
-                 )
-           (set! (-> a0-6 param 1) 1.0)
-           (set! (-> a0-6 frame-num) 0.0)
-           (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-           )
+         (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
-           (let ((a0-7 (-> self skel root-channel 0)))
-             (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-             (set! (-> a0-7 param 1) 1.0)
-             (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-             )
+           (ja :num! (seek!))
            )
          )
         (else
-          (let ((a0-9 (-> self skel root-channel 0)))
-            (set! (-> a0-9 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-            (set! (-> a0-9 param 0)
-                  (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) data 0 length) -1))
-                  )
-            (set! (-> a0-9 param 1) 1.0)
-            (set! (-> a0-9 frame-num) 0.0)
-            (joint-control-channel-group! a0-9 (the-as art-joint-anim (-> self draw art-group data 7)) num-func-seek!)
-            )
+          (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
-            (let ((a0-10 (-> self skel root-channel 0)))
-              (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
-              (set! (-> a0-10 param 1) 1.0)
-              (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-seek!)
-              )
+            (ja :num! (seek!))
             )
           )
         )
@@ -1258,7 +1011,7 @@
     (dummy-10 (-> self skel effect) 'group-scarecrow-joint-explode 12.0 -1)
     (dummy-10 (-> self skel effect) 'group-scarecrow-joint-explode 21.0 -1)
     (dummy-10 (-> self skel effect) 'group-scarecrow-explode 4.0 -1)
-    (sound-play-by-name (static-sound-name "break-dummy") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "break-dummy")
     (ja-channel-set! 0)
     (let ((s5-2 (new 'stack 'joint-exploder-tuning 1)))
       (set! (-> s5-2 duration) (seconds 1.5))
@@ -1267,42 +1020,30 @@
       (set! (-> s5-2 fountain-rand-transv-hi z) 40960.0)
       (set! (-> s5-2 fountain-rand-transv-hi w) 102400.0)
       (set! (-> s5-2 fountain-rand-transv-lo quad) (-> arg1 quad))
-      (let ((gp-1 (get-process *default-dead-pool* joint-exploder #x4000)))
-        (when gp-1
-          (let ((t9-21 (method-of-type joint-exploder activate)))
-            (t9-21 (the-as joint-exploder gp-1) self 'joint-exploder (the-as pointer #x70004000))
+      (process-spawn
+        joint-exploder
+        *scarecrow-b-break-sg*
+        5
+        s5-2
+        (new 'static 'joint-exploder-static-params
+          :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+            (new 'static 'joint-exploder-static-joint-params :joint-index 12)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 10)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 21)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 4)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 5)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 11)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 9)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 7)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 14)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 13)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 14)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 13)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 16)
+            (new 'static 'joint-exploder-static-joint-params :joint-index 15)
             )
-          (run-now-in-process
-            gp-1
-            joint-exploder-init-by-other
-            *scarecrow-b-break-sg*
-            5
-            s5-2
-            (new 'static 'joint-exploder-static-params
-              :joints
-              (new
-                'static
-                'boxed-array
-                :type joint-exploder-static-joint-params :length 14 :allocated-length 14
-                (new 'static 'joint-exploder-static-joint-params :joint-index 12)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 10)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 21)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 4)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 5)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 11)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 9)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 7)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 14)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 13)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 14)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 13)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 16)
-                (new 'static 'joint-exploder-static-joint-params :joint-index 15)
-                )
-              )
-            )
-          (-> gp-1 ppointer)
           )
+        :to self
         )
       )
     (while (-> self child)
@@ -1311,8 +1052,7 @@
     (cleanup-for-death self)
     (none)
     )
-  :post
-  (the-as (function none :behavior scarecrow-b) ja-post)
+  :post (the-as (function none :behavior scarecrow-b) ja-post)
   )
 
 ;; definition for method 11 of type scarecrow-b

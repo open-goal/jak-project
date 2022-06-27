@@ -1,8 +1,9 @@
 #pragma once
 
-#include "common/type_system/TypeSystem.h"
-#include "decompiler/Disasm/Register.h"
 #include "common/goos/Reader.h"
+#include "common/type_system/TypeSystem.h"
+
+#include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
 class TP_Type;
@@ -20,6 +21,7 @@ class DecompilerTypeSystem {
   std::unordered_map<std::string, int> bad_format_strings;
   std::unordered_map<std::string, std::vector<std::vector<int>>>
       format_ops_with_dynamic_string_by_func_name;
+  std::unordered_map<std::string, std::unordered_map<int, std::string>> art_group_info;
 
   void add_symbol(const std::string& name) {
     if (symbols.find(name) == symbols.end()) {

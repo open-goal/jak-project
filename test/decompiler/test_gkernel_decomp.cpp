@@ -1,5 +1,6 @@
-#include "gtest/gtest.h"
 #include "FormRegressionTest.h"
+
+#include "gtest/gtest.h"
 
 using namespace decompiler;
 
@@ -11,7 +12,7 @@ TEST_F(FormRegressionTest, ExprMethod7Object) {
       "    daddu sp, sp, r0\n";
   std::string type = "(function object int object)";
   std::string expected = "arg0";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprLoadPackage) {
@@ -62,14 +63,15 @@ TEST_F(FormRegressionTest, ExprLoadPackage) {
   std::string expected =
       "(when\n"
       "  (not (nmember arg0 *kernel-packages*))\n"
-      "  (dgo-load arg0 arg1 15 #x200000)\n"
+      "  (dgo-load arg0 arg1 (link-flag output-load-msg output-load-true-msg execute-login "
+      "print-login) #x200000)\n"
       "  (let\n"
       "   ((v0-1 (cons arg0 *kernel-packages*)))\n"
       "   (set! *kernel-packages* v0-1)\n"
       "   v0-1\n"
       "   )\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprUnloadPackage) {
@@ -108,7 +110,7 @@ TEST_F(FormRegressionTest, ExprUnloadPackage) {
       "   )\n"
       "  *kernel-packages*\n"
       "  )";
-  test_with_expr(func, type, expected, true);
+  test_with_expr_jak1(func, type, expected, true);
 }
 
 TEST_F(FormRegressionTest, ExprMethod1Thread) {
@@ -139,7 +141,7 @@ TEST_F(FormRegressionTest, ExprMethod1Thread) {
       "  (set! (-> arg0 process top-thread) (-> arg0 previous))\n"
       "  (none)\n"
       "  )";
-  test_with_expr(func, type, expected, false);
+  test_with_expr_jak1(func, type, expected, false);
 }
 
 TEST_F(FormRegressionTest, ExprMethod2Thread) {
@@ -185,7 +187,8 @@ TEST_F(FormRegressionTest, ExprMethod2Thread) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_expr(func, type, expected, false, "", {{"L343", "#<~A ~S of ~S pc: #x~X @ #x~X>"}});
+  test_with_expr_jak1(func, type, expected, false, "",
+                      {{"L343", "#<~A ~S of ~S pc: #x~X @ #x~X>"}});
 }
 
 TEST_F(FormRegressionTest, ExprMethod9Thread) {
@@ -286,7 +289,7 @@ TEST_F(FormRegressionTest, ExprMethod9Thread) {
       "  0\n"
       "  (none)\n"
       "  )";
-  test_with_expr(func, type, expected, false, "", {{"L342", "1 ~A ~%"}, {"L341", "2 ~A ~%"}});
+  test_with_expr_jak1(func, type, expected, false, "", {{"L342", "1 ~A ~%"}, {"L341", "2 ~A ~%"}});
 }
 
 TEST_F(FormRegressionTest, ExprMethod0Thread) {
@@ -361,9 +364,9 @@ TEST_F(FormRegressionTest, ExprMethod0Thread) {
       "  (set! (-> obj stack-size) arg4)\n"
       "  (the-as cpu-thread obj)\n"
       "  )";
-  test_with_expr(func, type, expected, false, "cpu-thread", {},
-                 "[[[13, 28], \"v0\", \"cpu-thread\"]]",
-                 "{\"vars\":{\"v0-0\":[\"obj\", \"cpu-thread\"]}}");
+  test_with_expr_jak1(func, type, expected, false, "cpu-thread", {},
+                      "[[[13, 28], \"v0\", \"cpu-thread\"]]",
+                      "{\"vars\":{\"v0-0\":[\"obj\", \"cpu-thread\"]}}");
 }
 
 TEST_F(FormRegressionTest, ExprMethod5CpuThread) {
@@ -378,7 +381,7 @@ TEST_F(FormRegressionTest, ExprMethod5CpuThread) {
       "    daddu sp, sp, r0";
   std::string type = "(function cpu-thread int)";
   std::string expected = "(the-as int (+ (-> arg0 type size) (-> arg0 stack-size)))";
-  test_with_expr(func, type, expected, false);
+  test_with_expr_jak1(func, type, expected, false);
 }
 
 TEST_F(FormRegressionTest, RemoveExit) {
@@ -404,7 +407,7 @@ TEST_F(FormRegressionTest, RemoveExit) {
       "   v0-0\n"
       "   )\n"
       "  )";
-  test_with_expr(func, type, expected, false);
+  test_with_expr_jak1(func, type, expected, false);
 }
 
 TEST_F(FormRegressionTest, RemoveMethod0ProcessTree) {
@@ -449,7 +452,7 @@ TEST_F(FormRegressionTest, RemoveMethod0ProcessTree) {
       "  (set! (-> v0-0 ppointer) (the-as (pointer process) (&-> v0-0 self)))\n"
       "  v0-0\n"
       "  )";
-  test_with_expr(func, type, expected, false, "process-tree");
+  test_with_expr_jak1(func, type, expected, false, "process-tree");
 }
 
 TEST_F(FormRegressionTest, RemoveMethod3ProcessTree) {
@@ -545,13 +548,13 @@ TEST_F(FormRegressionTest, RemoveMethod3ProcessTree) {
       "  (format #t \"~Tchild: ~A~%\" (ppointer->process (-> arg0 child)))\n"
       "  arg0\n"
       "  )";
-  test_with_expr(func, type, expected, false, "process-tree",
-                 {{"L340", "[~8x] ~A~%"},
-                  {"L339", "~Tname: ~S~%"},
-                  {"L338", "~Tmask: #x~X~%"},
-                  {"L337", "~Tparent: ~A~%"},
-                  {"L336", "~Tbrother: ~A~%"},
-                  {"L335", "~Tchild: ~A~%"}});
+  test_with_expr_jak1(func, type, expected, false, "process-tree",
+                      {{"L340", "[~8x] ~A~%"},
+                       {"L339", "~Tname: ~S~%"},
+                       {"L338", "~Tmask: #x~X~%"},
+                       {"L337", "~Tparent: ~A~%"},
+                       {"L336", "~Tbrother: ~A~%"},
+                       {"L335", "~Tchild: ~A~%"}});
 }
 
 TEST_F(FormRegressionTest, ExprMethod0Process) {
@@ -664,9 +667,9 @@ TEST_F(FormRegressionTest, ExprMethod0Process) {
       "   )\n"
       "  (the-as process v0-0)\n"
       "  )";
-  test_with_expr(func, type, expected, false, "process", {},
-                 "[\t\t[12, \"a0\", \"int\"],\n"
-                 "\t\t[[13, 43], \"v0\", \"process\"]]");
+  test_with_expr_jak1(func, type, expected, false, "process", {},
+                      "[\t\t[12, \"a0\", \"int\"],\n"
+                      "\t\t[[13, 43], \"v0\", \"process\"]]");
 }
 
 TEST_F(FormRegressionTest, ExprInspectProcessHeap) {
@@ -729,10 +732,10 @@ TEST_F(FormRegressionTest, ExprInspectProcessHeap) {
       "   )\n"
       "  #f\n"
       "  )";
-  test_with_expr(func, type, expected, false, "", {},
-                 "[\t\t[[4,11], \"s5\", \"basic\"],\n"
-                 "\t\t[[17,20], \"s5\", \"pointer\"]]",
-                 "{\"vars\":{\"s5-0\":[\"obj\", \"pointer\"]}}");
+  test_with_expr_jak1(func, type, expected, false, "", {},
+                      "[\t\t[[4,11], \"s5\", \"basic\"],\n"
+                      "\t\t[[17,20], \"s5\", \"pointer\"]]",
+                      "{\"vars\":{\"s5-0\":[\"obj\", \"pointer\"]}}");
 }
 
 // note: skipped method 3 process
@@ -748,7 +751,7 @@ TEST_F(FormRegressionTest, ExprMethod5Process) {
       "    daddu sp, sp, r0";
   std::string type = "(function process int)";
   std::string expected = "(the-as int (+ (-> process size) (-> arg0 allocated-length)))";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprMethod2Process) {
@@ -829,8 +832,9 @@ TEST_F(FormRegressionTest, ExprMethod2Process) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_expr(func, type, expected, false, "",
-                 {{"L317", "#<~A ~S ~A :state ~S "}, {"L316", ":stack ~D/~D :heap ~D/~D @ #x~X>"}});
+  test_with_expr_jak1(
+      func, type, expected, false, "",
+      {{"L317", "#<~A ~S ~A :state ~S "}, {"L316", ":stack ~D/~D :heap ~D/~D @ #x~X>"}});
 }
 
 TEST_F(FormRegressionTest, ExprMethod0DeadPool) {
@@ -943,7 +947,7 @@ TEST_F(FormRegressionTest, ExprMethod0DeadPool) {
       "   )\n"
       "  s3-0\n"
       "  )";
-  test_with_expr(func, type, expected, false, "dead-pool");
+  test_with_expr_jak1(func, type, expected, false, "dead-pool");
 }
 
 TEST_F(FormRegressionTest, ExprMethod14DeadPool) {
@@ -1083,7 +1087,7 @@ TEST_F(FormRegressionTest, ExprMethod14DeadPool) {
       "  )";
 
   // note - there's likely an actual bug here.
-  test_with_expr(
+  test_with_expr_jak1(
       func, type, expected, false, "dead-pool",
       {{"L315", "WARNING: ~A ~A had to be allocated from the debug pool, because ~A was empty.~%"},
        {"L314", "WARNING: ~A ~A could not be allocated, because ~A was empty.~%"}},
@@ -1109,7 +1113,7 @@ TEST_F(FormRegressionTest, ExprMethod15DeadPool) {
       "    daddiu sp, sp, 16";
   std::string type = "(function dead-pool process none)";
   std::string expected = "(begin (change-parent arg1 arg0) (none))";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprMethod0DeadPoolHeap) {
@@ -1254,10 +1258,10 @@ TEST_F(FormRegressionTest, ExprMethod0DeadPoolHeap) {
       "  (set! (-> obj heap top-base) (-> obj heap top))\n"
       "  obj\n"
       "  )";
-  test_with_expr(func, type, expected, false, "dead-pool-heap", {},
-                 "[\t\t[60, \"v0\", \"int\"],\n"
-                 "\t\t[61, \"a0\", \"pointer\"], [61, \"v0\", \"dead-pool-heap\"]]",
-                 "{\"vars\":{\"v0-0\":[\"obj\", \"dead-pool-heap\"]}}");
+  test_with_expr_jak1(func, type, expected, false, "dead-pool-heap", {},
+                      "[\t\t[60, \"v0\", \"int\"],\n"
+                      "\t\t[61, \"a0\", \"pointer\"], [61, \"v0\", \"dead-pool-heap\"]]",
+                      "{\"vars\":{\"v0-0\":[\"obj\", \"dead-pool-heap\"]}}");
 }
 
 TEST_F(FormRegressionTest, ExprMethod22DeadPoolHeap) {
@@ -1294,7 +1298,7 @@ TEST_F(FormRegressionTest, ExprMethod22DeadPoolHeap) {
       "                (-> arg0 heap base)\n"
       "                )\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprMethod21DeadPoolHeap) {
@@ -1380,10 +1384,10 @@ TEST_F(FormRegressionTest, ExprMethod21DeadPoolHeap) {
       "   (&- (-> arg0 heap top) (the-as uint (-> arg0 heap base)))\n"
       "   )\n"
       "  )";
-  test_with_expr(func, type, expected, false, "", {},
-                 "[\t\t[5, \"v1\", \"pointer\"],\n"
-                 "\t\t[13, \"a0\", \"pointer\"],\n"
-                 "\t\t[25, \"v1\", \"pointer\"]]");
+  test_with_expr_jak1(func, type, expected, false, "", {},
+                      "[\t\t[5, \"v1\", \"pointer\"],\n"
+                      "\t\t[13, \"a0\", \"pointer\"],\n"
+                      "\t\t[25, \"v1\", \"pointer\"]]");
 }
 
 TEST_F(FormRegressionTest, ExprMethod3DeadPoolHeap) {
@@ -1559,10 +1563,10 @@ TEST_F(FormRegressionTest, ExprMethod3DeadPoolHeap) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_expr(func, type, expected, false, "",
-                 {{"L300", "~Tprocess-list[0] @ #x~X     ~D/~D bytes used~%"},
-                  {"L299", "~T  [~3D] #<dead-pool-heap-rec @ #x~X>  ~A~%"},
-                  {"L298", "~T   gap: ~D bytes @ #x~X~%"}});
+  test_with_expr_jak1(func, type, expected, false, "",
+                      {{"L300", "~Tprocess-list[0] @ #x~X     ~D/~D bytes used~%"},
+                       {"L299", "~T  [~3D] #<dead-pool-heap-rec @ #x~X>  ~A~%"},
+                       {"L298", "~T   gap: ~D bytes @ #x~X~%"}});
 }
 
 TEST_F(FormRegressionTest, ExprMethod5DeadPoolHeap) {
@@ -1577,8 +1581,8 @@ TEST_F(FormRegressionTest, ExprMethod5DeadPoolHeap) {
   std::string type = "(function dead-pool-heap int)";
   std::string expected =
       "(+ (the-as int (- -4 (the-as int arg0))) (the-as int (-> arg0 heap top)))";
-  test_with_expr(func, type, expected, false, "", {},
-                 "[[3, \"v1\", \"int\"], [3, \"a0\", \"int\"]]");
+  test_with_expr_jak1(func, type, expected, false, "", {},
+                      "[[3, \"v1\", \"int\"], [3, \"a0\", \"int\"]]");
 }
 
 TEST_F(FormRegressionTest, ExprMethod19DeadPoolHeap) {
@@ -1630,7 +1634,7 @@ TEST_F(FormRegressionTest, ExprMethod19DeadPoolHeap) {
       "  (- (memory-total arg0) (gap-size arg0 (-> arg0 alive-list prev)))\n"
       "  0\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprMethod20DeadPoolHeap) {
@@ -1643,7 +1647,7 @@ TEST_F(FormRegressionTest, ExprMethod20DeadPoolHeap) {
       "    daddu sp, sp, r0";
   std::string type = "(function dead-pool-heap int)";
   std::string expected = "(&- (-> arg0 heap top) (the-as uint (-> arg0 heap base)))";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprMethod25DeadPoolHeap) {
@@ -1686,7 +1690,7 @@ TEST_F(FormRegressionTest, ExprMethod25DeadPoolHeap) {
       "   (&- v1-0 (the-as uint (-> arg0 heap base)))\n"
       "   )\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprMethod26DeadPoolHeap) {
@@ -1697,7 +1701,7 @@ TEST_F(FormRegressionTest, ExprMethod26DeadPoolHeap) {
       "    daddu sp, sp, r0";
   std::string type = "(function dead-pool-heap uint)";
   std::string expected = "(-> arg0 compact-time)";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprMethod24DeadPoolHeap) {
@@ -1754,7 +1758,7 @@ TEST_F(FormRegressionTest, ExprMethod24DeadPoolHeap) {
       "  (while (and gp-0 (< (gap-size arg0 gp-0) arg1)) (set! gp-0 (-> gp-0 next)))\n"
       "  gp-0\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprMethod14DeadPoolHeap) {
@@ -2030,7 +2034,7 @@ TEST_F(FormRegressionTest, ExprMethod14DeadPoolHeap) {
       "   )\n"
       "  s3-0\n"
       "  )";
-  test_with_expr(
+  test_with_expr_jak1(
       func, type, expected, false, "",
       {{"L315", "WARNING: ~A ~A had to be allocated from the debug pool, because ~A was empty.~%"},
        {"L314", "WARNING: ~A ~A could not be allocated, because ~A was empty.~%"}});
@@ -2197,8 +2201,8 @@ TEST_F(FormRegressionTest, ExprMethod15DeadPoolHeap) {
       "  0\n"
       "  (none)\n"
       "  )";
-  test_with_expr(func, type, expected, false, "",
-                 {{"L297", "ERROR: process ~A does not belong to dead-pool-heap ~A.~%"}});
+  test_with_expr_jak1(func, type, expected, false, "",
+                      {{"L297", "ERROR: process ~A does not belong to dead-pool-heap ~A.~%"}});
 }
 
 TEST_F(FormRegressionTest, ExprMethod17DeadPoolHeap) {
@@ -2323,7 +2327,7 @@ TEST_F(FormRegressionTest, ExprMethod17DeadPoolHeap) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprMethod16DeadPoolHeap) {
@@ -2572,7 +2576,7 @@ TEST_F(FormRegressionTest, ExprMethod16DeadPoolHeap) {
       "  0\n"
       "  (none)\n"
       "  )";
-  test_with_expr(func, type, expected, false, "", {{"L296", "~3LLow Actor Memory~%~0L"}});
+  test_with_expr_jak1(func, type, expected, false, "", {{"L296", "~3LLow Actor Memory~%~0L"}});
 }
 
 // nested method calls
@@ -2769,5 +2773,5 @@ TEST_F(FormRegressionTest, ExprMethod18DeadPoolHeap) {
       "  0\n"
       "  (none)\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }

@@ -11,12 +11,12 @@
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
+
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
 #include "goalc/data_compiler/dir_tpages.h"
 #include "goalc/data_compiler/game_count.h"
-#include "goalc/data_compiler/game_text.h"
-#include "goalc/data_compiler/game_subtitle.h"
+#include "goalc/data_compiler/game_text_common.h"
 
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
@@ -66,10 +66,7 @@ Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Objec
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::STRING}, {});
   auto kind = symbol_string(args.unnamed.at(0));
-  if (kind == "game-text") {
-    // TODO version
-    compile_game_text(as_string(args.unnamed.at(1)));
-  } else if (kind == "game-count") {
+  if (kind == "game-count") {
     compile_game_count(as_string(args.unnamed.at(1)));
   } else if (kind == "dir-tpages") {
     compile_dir_tpages(as_string(args.unnamed.at(1)));
@@ -85,19 +82,34 @@ Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Objec
 Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   auto args = get_va(form, rest);
-  va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::INTEGER},
-           {{"files", {true, goos::ObjectType::PAIR}}});
-  auto kind = symbol_string(args.unnamed.at(0));
+  va_check(form, args, {goos::ObjectType::SYMBOL}, {{"files", {true, goos::ObjectType::PAIR}}});
+
+  // list of files per text version.
+  std::unordered_map<GameTextVersion, std::vector<std::string>> inputs;
+
+  // what kind of text file?
+  const auto kind = symbol_string(args.unnamed.at(0));
+
+  // open all project files specified (usually one).
+  for_each_in_list(args.named.at("files"), [this, &inputs, &form, &kind](const goos::Object& o) {
+    if (o.is_string()) {
+      open_text_project(kind, o.as_string()->data, inputs);
+    } else {
+      throw_compiler_error(form, "Invalid object {} in asm-text-file files list.", o.print());
+    }
+  });
+
+  // compile files.
   if (kind == "subtitle") {
-    std::vector<std::string> files;
-    for_each_in_list(args.named.at("files"), [this, &files, &form](const goos::Object& o) {
-      if (o.is_string()) {
-        files.push_back(o.as_string()->data);
-      } else {
-        throw_compiler_error(form, "Invalid object {} in asm-text-file files list.", o.print());
-      }
-    });
-    compile_game_subtitle(files, (GameTextVersion)args.unnamed.at(1).as_int(), m_subtitle_db);
+    for (auto& [ver, in] : inputs) {
+      GameSubtitleDB db;
+      compile_game_subtitle(in, ver, db);
+    }
+  } else if (kind == "text") {
+    for (auto& [ver, in] : inputs) {
+      GameTextDB db;
+      compile_game_text(in, ver, db);
+    }
   } else {
     throw_compiler_error(form, "The option {} was not recognized for asm-text-file.", kind);
   }
@@ -111,17 +123,8 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
 Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   int i = 0;
-  std::string filename;
-  std::string disasm_filename = "";
-  bool load = false;
-  bool color = false;
-  bool write = false;
-  bool no_code = false;
-  bool disassemble = false;
-  bool no_time_prints = false;
-
-  std::vector<std::pair<std::string, double>> timing;
-  Timer total_timer;
+  CompilationOptions options;
+  bool no_throw = false;
 
   // parse arguments
   bool last_was_disasm = false;
@@ -129,28 +132,28 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     if (last_was_disasm) {
       last_was_disasm = false;
       if (o.type == goos::ObjectType::STRING) {
-        disasm_filename = as_string(o);
+        options.disassembly_output_file = as_string(o);
         i++;
         return;
       }
     }
     if (i == 0) {
-      filename = as_string(o);
+      options.filename = as_string(o);
     } else {
       auto setting = symbol_string(o);
       if (setting == ":load") {
-        load = true;
+        options.load = true;
       } else if (setting == ":color") {
-        color = true;
+        options.color = true;
       } else if (setting == ":write") {
-        write = true;
+        options.write = true;
       } else if (setting == ":no-code") {
-        no_code = true;
+        options.no_code = true;
+      } else if (setting == ":no-throw") {
+        no_throw = true;
       } else if (setting == ":disassemble") {
-        disassemble = true;
+        options.disassemble = true;
         last_was_disasm = true;
-      } else if (setting == ":no-time-prints") {
-        no_time_prints = true;
       } else {
         throw_compiler_error(form, "The option {} was not recognized for asm-file.", setting);
       }
@@ -158,89 +161,11 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     i++;
   });
 
-  // READ
-  Timer reader_timer;
-  auto code = m_goos.reader.read_from_file({filename});
-  timing.emplace_back("read", reader_timer.getMs());
-
-  Timer compile_timer;
-  std::string obj_file_name = filename;
-
-  // Extract object name from file name.
-  for (int idx = int(filename.size()) - 1; idx-- > 0;) {
-    if (filename.at(idx) == '\\' || filename.at(idx) == '/') {
-      obj_file_name = filename.substr(idx + 1);
-      break;
-    }
-  }
-  obj_file_name = obj_file_name.substr(0, obj_file_name.find_last_of('.'));
-
-  // COMPILE
-  auto obj_file = compile_object_file(obj_file_name, code, !no_code);
-  timing.emplace_back("compile", compile_timer.getMs());
-
-  if (color) {
-    // register allocation
-    Timer color_timer;
-    color_object_file(obj_file);
-    timing.emplace_back("color", color_timer.getMs());
-
-    // code/object file generation
-    Timer codegen_timer;
-    std::vector<u8> data;
-    std::string disasm;
-    if (disassemble) {
-      codegen_and_disassemble_object_file(obj_file, &data, &disasm);
-      if (disasm_filename == "") {
-        printf("%s\n", disasm.c_str());
-      } else {
-        file_util::write_text_file(disasm_filename, disasm);
-      }
-    } else {
-      data = codegen_object_file(obj_file);
-    }
-    timing.emplace_back("codegen", codegen_timer.getMs());
-
-    // send to target
-    if (load) {
-      if (m_listener.is_connected()) {
-        m_listener.send_code(data, obj_file_name);
-      } else {
-        printf("WARNING - couldn't load because listener isn't connected\n");  // todo log warn
-      }
-    }
-
-    // save file
-    if (write) {
-      auto path = file_util::get_file_path({"out", "obj", obj_file_name + ".o"});
-      file_util::create_dir_if_needed_for_file(path);
-      file_util::write_binary_file(path, (void*)data.data(), data.size());
-    }
-  } else {
-    if (load) {
-      printf("WARNING - couldn't load because coloring is not enabled\n");
-    }
-
-    if (write) {
-      printf("WARNING - couldn't write because coloring is not enabled\n");
-    }
-
-    if (disassemble) {
-      printf("WARNING - couldn't disassemble because coloring is not enabled\n");
-    }
-  }
-
-  if (m_settings.print_timing) {
-    printf("F: %36s ", obj_file_name.c_str());
-    timing.emplace_back("total", total_timer.getMs());
-    for (auto& e : timing) {
-      printf(" %12s %4.0f", e.first.c_str(), e.second);
-    }
-    printf("\n");
-  } else {
-    auto total_time = total_timer.getMs();
-    if (total_time > 10.0 && color && !no_time_prints) {
-      fmt::print("[ASM-FILE] {} took {:.2f} ms\n", obj_file_name, total_time);
+  try {
+    asm_file(options);
+  } catch (std::runtime_error& e) {
+    if (!no_throw) {
+      throw_compiler_error(form, "Error while compiling file: {}", e.what());
     }
   }
 

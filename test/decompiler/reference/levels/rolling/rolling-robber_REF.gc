@@ -1,16 +1,14 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/robber-ag.gc")
+
 ;; failed to figure out what this is:
 (defstate fuel-cell-spline-slider (fuel-cell)
-  :trans
-  (the-as (function none :behavior fuel-cell) hide-hud-quick)
-  :code
-  (behavior ((arg0 handle) (arg1 float) (arg2 float))
+  :trans (the-as (function none :behavior fuel-cell) hide-hud-quick)
+  :code (behavior ((arg0 handle) (arg1 float) (arg2 float))
     (logclear! (-> self mask) (process-mask actor-pause))
-    (let ((v1-4 (-> self skel root-channel 0)))
-      (set! (-> v1-4 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-      )
+    (ja :group! (-> self draw art-group data 2))
     (if *target*
         (process-grab? *target*)
         )
@@ -20,7 +18,7 @@
     (set! (-> *camera-other-trans* quad) (-> *math-camera* trans quad))
     (set! (-> *camera-other-root* quad) (-> *math-camera* trans quad))
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (dotimes (v1-14 (the int (-> *display* time-adjust-ratio)))
         (set! arg2 (* 0.95 arg2))
         )
@@ -51,12 +49,9 @@
         (forward-down->inv-matrix *camera-other-matrix* s4-0 (new 'static 'vector :y -1.0 :w 1.0))
         )
       (set! *camera-look-through-other* 2)
-      (set-letterbox-frames (seconds 0.033333335))
+      (set-letterbox-frames (seconds 0.035))
       (suspend)
-      (let ((a0-27 (-> self skel root-channel 0)))
-        (set! (-> a0-27 param 0) 0.5)
-        (joint-control-channel-group-eval! a0-27 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop! 0.5))
       )
     (none)
     )
@@ -136,14 +131,11 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *robber-sg* robber
-  0
-  10
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 4)
-  :longest-edge (meters 0)
-  :shadow 4
-  )
+(defskelgroup *robber-sg* robber robber-lod0-jg robber-idle-hover-ja
+              ((robber-lod0-mg (meters 20)) (robber-lod1-mg (meters 40)) (robber-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow robber-shadow-mg
+              )
 
 ;; definition for function robber-event-handler
 (defbehavior robber-event-handler robber ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -188,7 +180,7 @@
                     (collide-kind background)
                     self
                     t2-0
-                    1
+                    (new 'static 'pat-surface :noentity #x1)
                     )
                   )
             (v1-5 (new 'stack-no-clear 'vector))
@@ -330,35 +322,9 @@
 
 ;; failed to figure out what this is:
 (defstate robber-debug (robber)
-  :code
-  (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+  :code (behavior ()
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((gp-0 (new 'stack-no-clear 'vector)))
           (let ((a1-1 (new 'stack-no-clear 'vector)))
@@ -380,23 +346,17 @@
         (robber-rotate (the-as target #f) 1820.4445)
         (robber-find-ground)
         (suspend)
-        (let ((a0-7 (-> self skel root-channel 0)))
-          (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-          (set! (-> a0-7 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) ja-post)
+  :post (the-as (function none :behavior robber) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-dead (robber)
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (deactivate self)
     (none)
@@ -405,13 +365,11 @@
 
 ;; failed to figure out what this is:
 (defstate robber-die (robber)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior robber)
     process-drawable-death-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 #t))
       (when (robber-task-complete?)
         (let ((v1-3 (-> self entity extra perm)))
@@ -425,21 +383,15 @@
                               -163840.0
                               )
                           )
-                   (s5-0 (get-process *default-dead-pool* fuel-cell #x4000))
                    )
-               (when s5-0
-                 (let ((t9-2 (method-of-type fuel-cell activate)))
-                   (t9-2 (the-as fuel-cell s5-0) self 'fuel-cell (the-as pointer #x70004000))
-                   )
-                 (run-now-in-process
-                   s5-0
-                   fuel-cell-init-as-spline-slider
-                   (process->handle self)
-                   (-> self curve-position)
-                   f30-0
-                   (-> self entity extra perm task)
-                   )
-                 (-> s5-0 ppointer)
+               (process-spawn
+                 fuel-cell
+                 :init fuel-cell-init-as-spline-slider
+                 (process->handle self)
+                 (-> self curve-position)
+                 f30-0
+                 (-> self entity extra perm task)
+                 :to self
                  )
                )
              )
@@ -463,25 +415,13 @@
           )
         )
       (when gp-0
-        (let ((a0-12 (-> self skel root-channel 0)))
-          (set! (-> a0-12 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
-          (set! (-> a0-12 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) data 0 length) -1))
-                )
-          (set! (-> a0-12 param 1) 1.0)
-          (set! (-> a0-12 frame-num) 0.0)
-          (joint-control-channel-group! a0-12 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
-          )
+        (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (robber-calc-speed 4096.0 8192.0 122880.0 122880.0 #f)
           (robber-move)
           (robber-rotate (the-as target #f) 1820.4445)
           (suspend)
-          (let ((a0-15 (-> self skel root-channel 0)))
-            (set! (-> a0-15 param 0) (the float (+ (-> a0-15 frame-group data 0 length) -1)))
-            (set! (-> a0-15 param 1) 1.0)
-            (joint-control-channel-group-eval! a0-15 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           )
         )
       )
@@ -491,16 +431,13 @@
     (go robber-dead)
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-got-away (robber)
-  :event
-  robber-event-handler
-  :trans
-  (behavior ()
+  :event robber-event-handler
+  :trans (behavior ()
     (if (and (not (and *target*
                        (>= 204800.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
                        )
@@ -516,24 +453,13 @@
         )
     (none)
     )
-  :code
-  (behavior ()
-    (when (not (= (if (> (-> self skel active-channels) 0)
-                      (-> self skel root-channel 0 frame-group)
-                      )
-                  (-> self draw art-group data 7)
-                  )
-               )
-      (ja-channel-push! 1 60)
-      (let ((v1-8 (-> self skel root-channel 0)))
-        (set! (-> v1-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-        )
+  :code (behavior ()
+    (when (not (ja-group? (-> self draw art-group data 7)))
+      (ja-channel-push! 1 (seconds 0.2))
+      (ja :group! (-> self draw art-group data 7))
       )
-    (while #t
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 param 0) (robber-calc-anim-speed))
-        (joint-control-channel-group-eval! gp-0 (the-as art-joint-anim #f) num-func-loop!)
-        )
+    (loop
+      (ja :num! (loop! (robber-calc-anim-speed)))
       (if (< 27.306667 (fabs (-> self speed)))
           (set! (-> self speed) (* 0.95 (-> self speed)))
           )
@@ -543,26 +469,21 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-tired (robber)
-  :event
-  robber-event-handler
-  :enter
-  (behavior ()
+  :event robber-event-handler
+  :enter (behavior ()
     (set! (-> self y-offset-desired) -12288.0)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self y-offset-desired) 0.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not (and *target*
                   (>= 163840.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
                   )
@@ -571,49 +492,26 @@
         )
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
-      (when (not (= (if (> (-> self skel active-channels) 0)
-                        (-> self skel root-channel 0 frame-group)
-                        )
-                    (-> self draw art-group data 7)
-                    )
-                 )
-        (ja-channel-push! 1 60)
-        (let ((v1-8 (-> self skel root-channel 0)))
-          (set! (-> v1-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-          )
+  :code (behavior ()
+    (loop
+      (when (not (ja-group? (-> self draw art-group data 7)))
+        (ja-channel-push! 1 (seconds 0.2))
+        (ja :group! (-> self draw art-group data 7))
         )
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 param 0) (robber-calc-anim-speed))
-        (joint-control-channel-group-eval! gp-0 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop! (robber-calc-anim-speed)))
       (robber-calc-speed 32768.0 122880.0 122060.8 20480.0 #f)
       (robber-move)
       (robber-rotate (the-as target #f) 1820.4445)
       (suspend)
       (when (>= (- (-> *display* base-frame-counter) (-> self last-ambient-time)) (-> self time-to-next-ambient))
-        (ja-channel-push! 1 60)
-        (let ((a0-14 (-> self skel root-channel 0)))
-          (set! (-> a0-14 frame-group) (the-as art-joint-anim (-> self draw art-group data 11)))
-          (set! (-> a0-14 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) data 0 length) -1))
-                )
-          (set! (-> a0-14 param 1) 1.0)
-          (set! (-> a0-14 frame-num) 0.0)
-          (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> self draw art-group data 11)) num-func-seek!)
-          )
+        (ja-channel-push! 1 (seconds 0.2))
+        (ja-no-eval :group! (-> self draw art-group data 11) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (robber-calc-speed 32768.0 122880.0 122060.8 20480.0 #f)
           (robber-move)
           (robber-rotate (the-as target #f) 1820.4445)
           (suspend)
-          (let ((a0-17 (-> self skel root-channel 0)))
-            (set! (-> a0-17 param 0) (the float (+ (-> a0-17 frame-group data 0 length) -1)))
-            (set! (-> a0-17 param 1) 1.0)
-            (joint-control-channel-group-eval! a0-17 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           )
         (set! (-> self last-ambient-time) (-> *display* base-frame-counter))
         (let* ((f30-0 300.0)
@@ -630,23 +528,19 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-flee (robber)
-  :event
-  robber-event-handler
-  :enter
-  (behavior ()
+  :event robber-event-handler
+  :enter (behavior ()
     (set! (-> self near-timer) 3000)
     (set! (-> self far-time) (-> *display* base-frame-counter))
     (set! (-> self y-offset-desired) 0.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not (and *target*
                   (>= 163840.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
                   )
@@ -670,49 +564,26 @@
         )
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
-      (when (not (= (if (> (-> self skel active-channels) 0)
-                        (-> self skel root-channel 0 frame-group)
-                        )
-                    (-> self draw art-group data 7)
-                    )
-                 )
-        (ja-channel-push! 1 60)
-        (let ((v1-8 (-> self skel root-channel 0)))
-          (set! (-> v1-8 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-          )
+  :code (behavior ()
+    (loop
+      (when (not (ja-group? (-> self draw art-group data 7)))
+        (ja-channel-push! 1 (seconds 0.2))
+        (ja :group! (-> self draw art-group data 7))
         )
-      (let ((gp-0 (-> self skel root-channel 0)))
-        (set! (-> gp-0 param 0) (robber-calc-anim-speed))
-        (joint-control-channel-group-eval! gp-0 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop! (robber-calc-anim-speed)))
       (robber-calc-speed 61440.0 122880.0 204800.0 16384.0 #t)
       (robber-move)
       (robber-rotate (the-as target #f) 1820.4445)
       (suspend)
       (when (>= (- (-> *display* base-frame-counter) (-> self last-ambient-time)) (-> self time-to-next-ambient))
-        (ja-channel-push! 1 60)
-        (let ((a0-14 (-> self skel root-channel 0)))
-          (set! (-> a0-14 frame-group) (the-as art-joint-anim (-> self draw art-group data 11)))
-          (set! (-> a0-14 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) data 0 length) -1))
-                )
-          (set! (-> a0-14 param 1) 1.0)
-          (set! (-> a0-14 frame-num) 0.0)
-          (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> self draw art-group data 11)) num-func-seek!)
-          )
+        (ja-channel-push! 1 (seconds 0.2))
+        (ja-no-eval :group! (-> self draw art-group data 11) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (robber-calc-speed 61440.0 122880.0 204800.0 16384.0 #t)
           (robber-move)
           (robber-rotate (the-as target #f) 1820.4445)
           (suspend)
-          (let ((a0-17 (-> self skel root-channel 0)))
-            (set! (-> a0-17 param 0) (the float (+ (-> a0-17 frame-group data 0 length) -1)))
-            (set! (-> a0-17 param 1) 1.0)
-            (joint-control-channel-group-eval! a0-17 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek!))
           )
         (set! (-> self last-ambient-time) (-> *display* base-frame-counter))
         (let* ((f30-0 300.0)
@@ -729,21 +600,17 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-idle (robber)
-  :event
-  robber-event-handler
-  :enter
-  (behavior ()
+  :event robber-event-handler
+  :enter (behavior ()
     (set! (-> self speed) 0.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target*
              (>= 122880.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
              )
@@ -753,40 +620,24 @@
     (robber-move)
     (none)
     )
-  :code
-  (behavior ()
-    (ja-channel-push! 1 60)
-    (while #t
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 10)))
-        (set! (-> a0-1 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 10)) data 0 length) -1))
-              )
-        (set! (-> a0-1 param 1) 1.0)
-        (set! (-> a0-1 frame-num) 0.0)
-        (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 10)) num-func-seek!)
-        )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-initial-notice (robber)
-  :event
-  robber-event-handler
-  :trans
-  (behavior ()
+  :event robber-event-handler
+  :trans (behavior ()
     (when (logtest? (-> self draw status) (draw-status was-drawn))
       (if (and *target*
                (>= 163840.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
@@ -807,8 +658,7 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (TODO-RENAME-14 (-> self path) (-> self tangent) (-> self curve-position))
     (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (-> self root-override trans) (target-pos 0)))
           (f0-1 6.826667)
@@ -819,46 +669,30 @@
           )
       (set! (-> self speed) f0-1)
       )
-    (ja-channel-push! 1 60)
-    (while #t
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-        (set! (-> a0-3 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
-              )
-        (set! (-> a0-3 param 1) 2.0)
-        (set! (-> a0-3 frame-num) 0.0)
-        (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-        )
+    (ja-channel-push! 1 (seconds 0.2))
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek! max 2.0) :frame-num 0.0)
       (until (ja-done? 0)
         (robber-calc-speed 61440.0 122880.0 2048.0 2048.0 #t)
         (robber-rotate (the-as target #f) 1820.4445)
         (suspend)
-        (let ((a0-6 (-> self skel root-channel 0)))
-          (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-          (set! (-> a0-6 param 1) 2.0)
-          (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! max 2.0))
         )
       (go robber-flee)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate robber-initial (robber)
-  :event
-  robber-event-handler
-  :enter
-  (behavior ()
+  :event robber-event-handler
+  :enter (behavior ()
     (set! (-> self speed) 0.0)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target*
              (>= 122880.0 (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans)))
              )
@@ -867,32 +701,18 @@
     (robber-move)
     (none)
     )
-  :code
-  (behavior ()
-    (ja-channel-push! 1 60)
-    (while #t
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-        (set! (-> a0-1 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-              )
-        (set! (-> a0-1 param 1) 1.0)
-        (set! (-> a0-1 frame-num) 0.0)
-        (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-        )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior robber) transform-post)
+  :post (the-as (function none :behavior robber) transform-post)
   )
 
 ;; definition for method 11 of type robber

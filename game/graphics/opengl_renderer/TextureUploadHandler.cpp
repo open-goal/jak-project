@@ -1,9 +1,10 @@
+#include "TextureUploadHandler.h"
+
+#include "game/graphics/opengl_renderer/EyeRenderer.h"
+#include "game/graphics/pipelines/opengl.h"
+
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
-
-#include "TextureUploadHandler.h"
-#include "game/graphics/pipelines/opengl.h"
-#include "game/graphics/opengl_renderer/EyeRenderer.h"
 
 TextureUploadHandler::TextureUploadHandler(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id) {}
@@ -23,6 +24,7 @@ void TextureUploadHandler::render(DmaFollower& dma,
       // note: these uploads may have texture that we need for eye rendering.
       flush_uploads(uploads, render_state);
       render_state->eye_renderer->handle_eye_dma2(dma, render_state, prof);
+      uploads.clear();
     }
 
     auto data = dma.read_and_advance();

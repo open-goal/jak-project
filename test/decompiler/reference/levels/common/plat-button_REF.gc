@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/plat-button-ag.gc")
+
 ;; definition of type plat-button
 (deftype plat-button (process-drawable)
   ((root-override           collide-shape-moving         :offset        112)
@@ -53,13 +55,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *plat-button-sg* plat-button
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -1 0 6.6)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plat-button-sg* plat-button plat-button-geo-jg plat-button-pressed-ja
+              ((plat-button-geo-mg (meters 999999)))
+              :bounds (static-spherem 0 -1 0 6.6)
+              )
 
 ;; definition for method 30 of type plat-button
 (defmethod should-teleport? plat-button ((obj plat-button))
@@ -74,8 +73,7 @@
 ;; failed to figure out what this is:
 (defstate plat-button-idle (plat-button)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('touch)
        (when (can-activate? self)
@@ -96,67 +94,30 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((gp-0 (can-activate? self)))
-      (cond
-        (gp-0
-          (let ((a0-1 (-> self skel root-channel 0)))
-            (set! (-> a0-1 param 0) 0.0)
-            (set! (-> a0-1 param 1) 1.0)
-            (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-            )
+      (if gp-0
+          (ja-no-eval :num! (seek! 0.0))
+          (ja-no-eval :num! (seek!))
           )
-        (else
-          (let ((a0-2 (-> self skel root-channel 0)))
-            (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-            (set! (-> a0-2 param 1) 1.0)
-            (joint-control-channel-group! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-            )
-          )
-        )
-      (while #t
+      (loop
         (if (should-teleport? self)
             (go-virtual plat-button-teleport-to-other-end)
             )
         (let ((s5-0 (can-activate? self)))
           (when (!= s5-0 gp-0)
             (set! gp-0 s5-0)
-            (cond
-              (s5-0
-                (let ((a0-5 (-> self skel root-channel 0)))
-                  (set! (-> a0-5 param 0) 0.0)
-                  (set! (-> a0-5 param 1) 1.0)
-                  (joint-control-channel-group! a0-5 (the-as art-joint-anim #f) num-func-seek!)
-                  )
+            (if s5-0
+                (ja-no-eval :num! (seek! 0.0))
+                (ja-no-eval :num! (seek!))
                 )
-              (else
-                (let ((a0-6 (-> self skel root-channel 0)))
-                  (set! (-> a0-6 param 0) (the float (+ (-> a0-6 frame-group data 0 length) -1)))
-                  (set! (-> a0-6 param 1) 1.0)
-                  (joint-control-channel-group! a0-6 (the-as art-joint-anim #f) num-func-seek!)
-                  )
-                )
-              )
             )
           (when (not (ja-done? 0))
             (rider-trans)
-            (cond
-              (s5-0
-                (let ((a0-8 (-> self skel root-channel 0)))
-                  (set! (-> a0-8 param 0) 0.0)
-                  (set! (-> a0-8 param 1) 1.0)
-                  (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-seek!)
-                  )
+            (if s5-0
+                (ja :num! (seek! 0.0))
+                (ja :num! (seek!))
                 )
-              (else
-                (let ((a0-9 (-> self skel root-channel 0)))
-                  (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group data 0 length) -1)))
-                  (set! (-> a0-9 param 1) 1.0)
-                  (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
-                  )
-                )
-              )
             (rider-post)
             )
           )
@@ -170,8 +131,7 @@
 ;; failed to figure out what this is:
 (defstate plat-button-teleport-to-other-end (plat-button)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((f0-0 1.0))
       (if (>= (-> self path-pos) 0.5)
           (set! f0-0 0.0)
@@ -192,22 +152,12 @@
 ;; failed to figure out what this is:
 (defstate plat-button-pressed (plat-button)
   :virtual #t
-  :trans
-  (the-as (function none :behavior plat-button) rider-trans)
-  :code
-  (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) (the float (+ (-> a0-0 frame-group data 0 length) -1)))
-      (set! (-> a0-0 param 1) 1.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
-      )
+  :trans (the-as (function none :behavior plat-button) rider-trans)
+  :code (behavior ()
+    (ja-no-eval :num! (seek!))
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (set! (-> self go-back-if-lost-player?) #t)
     (process-entity-status! self (entity-perm-status complete) #t)
@@ -217,8 +167,7 @@
         )
     (none)
     )
-  :post
-  (the-as (function none :behavior plat-button) rider-post)
+  :post (the-as (function none :behavior plat-button) rider-post)
   )
 
 ;; definition for function plat-button-camera-on
@@ -244,41 +193,38 @@
 ;; failed to figure out what this is:
 (defstate plat-button-move-downward (plat-button)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (the-as object (when (or (= arg2 'touch) (= arg2 'attack))
                      (set! (-> self state-time) (-> *display* base-frame-counter))
                      #f
                      )
             )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (plat-button-camera-on)
-    (set-setting! *setting-control* self 'allow-look-around #f 0.0 0)
+    (set-setting! 'allow-look-around #f 0.0 0)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (plat-button-camera-off)
-    (clear-pending-settings-from-process *setting-control* self 'allow-look-around)
+    (remove-setting! 'allow-look-around)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (= (-> self path-pos) 1.0)
         (go-virtual plat-button-at-end)
         )
     (rider-trans)
     (when (-> self go-back-if-lost-player?)
-      (when (or (not *target*) (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 4))
-                                    (not (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                                              (zero? (logand (-> *target* control status) 1))
-                                              )
-                                         )
-                                    )
+      (when (or (not *target*)
+                (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 4))
+                     (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+                               (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                               )
+                          )
+                     )
                 )
         (set! (-> self go-back-if-lost-player?) #f)
         (go-virtual plat-button-move-upward)
@@ -292,7 +238,7 @@
         (move-to-point! (-> self root-override) gp-0)
         )
       )
-    (sound-play-by-name (static-sound-name "elev-loop") (-> self sound-id) 1024 0 0 1 #t)
+    (sound-play "elev-loop" :id (-> self sound-id))
     (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> gp-1 command) (sound-command set-param))
       (set! (-> gp-1 id) (-> self sound-id))
@@ -307,7 +253,7 @@
           )
         (sound-trans-convert (-> gp-1 parms trans) a1-6)
         )
-      (set! (-> gp-1 parms mask) (the-as uint 32))
+      (set! (-> gp-1 parms mask) (sound-mask trans))
       (-> gp-1 id)
       )
     (if (and (-> self grab-player?) (< 0.2 (-> self path-pos)))
@@ -315,50 +261,45 @@
         )
     (none)
     )
-  :code
-  (the-as (function none :behavior plat-button) anim-loop)
-  :post
-  (the-as (function none :behavior plat-button) rider-post)
+  :code (the-as (function none :behavior plat-button) anim-loop)
+  :post (the-as (function none :behavior plat-button) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plat-button-move-upward (plat-button)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (the-as object (when (or (= arg2 'touch) (= arg2 'attack))
                      (set! (-> self state-time) (-> *display* base-frame-counter))
                      #f
                      )
             )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (plat-button-camera-on)
-    (set-setting! *setting-control* self 'allow-look-around #f 0.0 0)
+    (set-setting! 'allow-look-around #f 0.0 0)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (plat-button-camera-off)
-    (clear-pending-settings-from-process *setting-control* self 'allow-look-around)
+    (remove-setting! 'allow-look-around)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (= (-> self path-pos) 0.0)
         (go-virtual plat-button-at-end)
         )
     (rider-trans)
     (when (-> self go-back-if-lost-player?)
-      (when (or (not *target*) (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 4))
-                                    (not (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                                              (zero? (logand (-> *target* control status) 1))
-                                              )
-                                         )
-                                    )
+      (when (or (not *target*)
+                (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 4))
+                     (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+                               (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                               )
+                          )
+                     )
                 )
         (set! (-> self go-back-if-lost-player?) #f)
         (go-virtual plat-button-move-downward)
@@ -372,7 +313,7 @@
         (move-to-point! (-> self root-override) gp-0)
         )
       )
-    (sound-play-by-name (static-sound-name "elev-loop") (-> self sound-id) 1024 0 0 1 #t)
+    (sound-play "elev-loop" :id (-> self sound-id))
     (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> gp-1 command) (sound-command set-param))
       (set! (-> gp-1 id) (-> self sound-id))
@@ -387,7 +328,7 @@
           )
         (sound-trans-convert (-> gp-1 parms trans) a1-6)
         )
-      (set! (-> gp-1 parms mask) (the-as uint 32))
+      (set! (-> gp-1 parms mask) (sound-mask trans))
       (-> gp-1 id)
       )
     (if (and (-> self grab-player?) (< (-> self path-pos) 0.8))
@@ -395,23 +336,20 @@
         )
     (none)
     )
-  :code
-  (the-as (function none :behavior plat-button) anim-loop)
-  :post
-  (the-as (function none :behavior plat-button) rider-post)
+  :code (the-as (function none :behavior plat-button) anim-loop)
+  :post (the-as (function none :behavior plat-button) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plat-button-at-end (plat-button)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (-> self allow-auto-kill)
         (process-entity-status! self (entity-perm-status bit-3) #f)
         )
     (sound-stop (-> self sound-id))
-    (sound-play-by-name (static-sound-name "elev-land") (new-sound-id) 1024 0 0 1 #t)
-    (while #t
+    (sound-play "elev-land")
+    (loop
       (if (or (not *target*)
               (< 268435460.0 (vector-vector-xz-distance-squared (-> self root-override trans) (target-pos 0)))
               )

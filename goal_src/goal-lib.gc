@@ -5,9 +5,6 @@
 ;; OTHER STUFF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; get list of all goal files
-(asm-file "goal_src/build/all_files.gc")
-
 ;; tell compiler about stuff defined/implemented in the runtime.
 (asm-file "goal_src/kernel-defs.gc")
 
@@ -37,31 +34,28 @@
   `(asm-file ,file :color :write)
   )
 
+(desfun run-frontend-command (file)
+  `(asm-file ,file :no-code)
+  )
+
+
+(defmacro load-art-import (name)
+  `(asm-file ,(string-append "goal_src/import/" (symbol->string name) "-ag.gc") :no-code :no-throw))
+
+(defmacro load-imports ()
+  `(begin
+     ,@(apply run-frontend-command all-import-files)
+     )
+  )
 
 (defmacro build-kernel ()
   "Build kernel and create the KERNEL CGO"
-  `(begin
-     ,@(apply make-build-command all-kernel-goal-files)
-     (build-dgos "goal_src/build/kernel_dgos.gc")
-     )
+  `(make-cgo "KERNEL")
   )
 
 (defmacro build-game ()
   "Build all game code and all game CGOs"
-  `(begin
-     (build-kernel)
-     ,@(apply make-build-command all-goal-files)
-     (build-dgos "goal_src/build/game_dgos.gc")
-     )
-  )
-
-(defmacro build-data ()
-  "Build all game data"
-  `(begin
-     (asm-data-file game-text "assets/game_text.txt")
-     (asm-data-file game-count "assets/game_count.txt")
-     (asm-data-file dir-tpages "assets/tpage-dir.txt")
-     )
+  `(make-group "all-code")
   )
 
 (defmacro blg ()
@@ -69,7 +63,7 @@
    Uses the blocking dgo-load."
   `(begin
      (build-game)
-     (dgo-load "kernel" global #xf #x200000)
+     (dgo-load "kernel" global (link-flag output-load-msg output-load-true-msg execute-login print-login) #x200000)
      (load-package "game" global)
      )
   )
@@ -95,6 +89,10 @@
     (set-config! print-ir #t)
     (set-config! print-regalloc #t)
     )
+  )
+
+(defmacro import (file-name)
+  `(asm-file ,file-name :no-code)
   )
 
 ;; enum for text file encoding versions
@@ -251,10 +249,9 @@
 
 ;; Define a new function
 (defmacro defun (name bindings &rest body)
-  (if (and
-        (> (length body) 1)      ;; more than one thing in function
-        (string? (first body))   ;; first thing is a string
-        )
+  (if (and (> (length body) 1)      ;; more than one thing in function
+           (string? (first body))   ;; first thing is a string
+           )
     ;; then it's a docstring and we ignore it.
     `(define ,name (lambda :name ,name ,bindings ,@(cdr body)))
     ;; otherwise don't ignore it.
@@ -438,14 +435,21 @@
      )
   )
 
-(defmacro swhen (condition &rest body)
-  "Same as when, but saves the branch condition onto a variable named bc"
+(defmacro aif (condition true &rest false)
+  "Anaphoric if, similar to Common Lisp"
 
-  `(let ((bc ,condition))
-      (if bc
-          (begin ,@body)
+  `(let ((it ,condition))
+      (if it
+          ,true
+          ,@false
           )
       )
+  )
+
+(defmacro awhen (condition &rest body)
+  "Anaphoric when"
+
+  `(aif ,condition (begin ,@body) #f)
   )
 
 (defmacro return (val)
@@ -460,7 +464,8 @@
 
 (defmacro case (switch &key (comp =) &rest cases)
   "A switch-case construct. switch is saved onto a local variable and compared against each case, sequentially.
-   else can be used like the 'default' case, but it must be the last one."
+   else can be used like the 'default' case, but it must be the last one.
+   comp is the function to use when evaluating the clauses. It can be any valid head of a form (operator or call)."
 
   (with-gensyms (sw)
     ;; save the switch to a variable (only evaluated once)
@@ -519,11 +524,11 @@
   )
 
 (defmacro 1+! (place)
-  `(set! ,place (+ 1 ,place))
+  `(+! ,place 1)
   )
 
 (defmacro 1- (var)
-  `(- ,var 1)
+  `(+ ,var -1)
   )
 
 (defmacro dec (val)
@@ -535,7 +540,7 @@
   )
 
 (defmacro 1-! (place)
-  `(set! ,place (- 1 ,place))
+  `(-! ,place 1)
   )
 
 (defmacro *! (place amount)
@@ -656,12 +661,17 @@
   )
 
 (defmacro mod-0-guard (a b)
-  "same as divide but returns the remainder when divisor is zero (EE-like)."
+  "same as modulo but returns the dividend when divisor is zero (EE-like)."
   `(let ((divisor ,b))
       (if (zero? divisor)
           ,a
           (mod ,a divisor))
       )
+  )
+
+(defmacro float->int (a)
+  "forcefully casts something as a float to int. be careful."
+  `(the int (the float ,a))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -768,6 +778,18 @@
   `(new 'debug 'pair ,a ,b)
   )
 
+(defmacro cons! (lst val)
+  `(set! ,lst (cons ,val ,lst))
+  )
+
+(defmacro swap! (a b)
+  "macro for swapping 2 variables"
+  `(let ((temp ,a))
+      (set! ,a ,b)
+      (set! ,b temp)
+      )
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ARRAYS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -799,8 +821,8 @@
 
 (defmacro object-new (allocation type-to-make &rest sz)
   (if (null? sz)
-    `(the ,(current-method-type) ((method-of-type object new) ,allocation ,type-to-make (the int (-> ,type-to-make size))))
-    `(the ,(current-method-type) ((method-of-type object new) ,allocation ,type-to-make ,@sz))
+    `(the (current-method-type) ((method-of-type object new) ,allocation ,type-to-make (the int (-> ,type-to-make size))))
+    `(the (current-method-type) ((method-of-type object new) ,allocation ,type-to-make ,@sz))
     )
   )
 
@@ -893,10 +915,11 @@
   `(make-group "engine")
   )
 
-(defmacro mh1 ()
-  "Make hub1"
-  `(make-group "hub1")
+(defmacro make-text ()
+  "Make Text"
+  `(make-group "text")
   )
+
 ;;;;;;;;;;;;;;;;;;;
 ;; enum stuff
 ;;;;;;;;;;;;;;;;;;;
@@ -928,6 +951,22 @@
     )
   )
 
+(defmacro doenum (bindings &rest body)
+  "run body while iterating through an enum.
+   WARNING: enums are NOT A RUNTIME TYPE! There is an UNWOUND loop with body in it!! Use with caution."
+  ;; (doenum (name-var val-var enum &rest result) &rest body)
+
+  `(begin ,@(apply (lambda (x)
+                      ;; (fmt #t "{}\n" x)
+                      `(let (
+                            (,(first bindings) ,(symbol->string (car x))) ;; name
+                            (,(second bindings) ,(cdr x)) ;; value
+                            )
+                        ,@body
+                        )) (get-enum-vals (third bindings))))
+
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; float macros
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -948,9 +987,6 @@
   `(sqrtf-no-fabs (fabs ,x))
   )
 
-;; load the default project
-(load-project "goal_src/game.gp")
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; user stuf
@@ -962,6 +998,60 @@
 
 (defconstant *user* (__get-user))
 
+(defmacro user? (&rest users)
+  (cond
+    ((null? users)            #f)
+    ((eq? *user* (car users)) #t)
+    (#t   `(user? ,@(cdr users)))
+    )
+  )
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; art stuff
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmacro def-art-elt (group name idx)
+  "define a new art element. adds it to a global map stored in goos."
+
+  ;; grab data about the art group
+  (let* ((group-string (symbol->string group))
+         (name-string (symbol->string name))
+         (ag-info-lookup (hash-table-try-ref *art-info* group-string))
+         (ag-info-exists (car ag-info-lookup))
+         (ag-info (cdr ag-info-lookup))
+         )
+    ;; no art group was found, make a new one and add it.
+    (when (not ag-info-exists)
+      (set! ag-info (make-string-hash-table))
+      (hash-table-set! *art-info* group-string ag-info)
+      )
+    ;; lookup art element in our art group
+    (let* ((elt-info-lookup (hash-table-try-ref ag-info name-string))
+           (elt-info-exists (car elt-info-lookup))
+           (elt-new (list name idx))) ;; this is the format of the individual entries
+      ;; found, check if valid
+      (if (and elt-info-exists (not (eq? (cdr elt-info-lookup) elt-new)))
+          (fmt #t "error redefining art element. data mismatch: {}" elt-info elt-new)
+          #f)
+      ;; not found. add to the art-group.
+      (when (not elt-info-exists)
+        (hash-table-set! ag-info name-string elt-new)
+        )
+      )
+    )
+  ;; define a constant for it!
+  `(defconstant ,name (-> self draw art-group data ,idx))
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; build system stuff
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; hack to get a goos variable in goal
+(defmacro __get_jak1_full_game () *jak1-full-game*)
+(defconstant *jak1-full-game* (__get_jak1_full_game))
+
+;; load the default project
+(load-project "goal_src/game.gp")

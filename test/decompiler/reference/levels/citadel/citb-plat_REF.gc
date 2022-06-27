@@ -1,41 +1,44 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; failed to figure out what this is:
-(defskelgroup *plat-citb-sg* plat-citb
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(import "goal_src/import/citb-exit-plat-ag.gc")
+(import "goal_src/import/plat-eco-citb-ag.gc")
+(import "goal_src/import/plat-citb-ag.gc")
+(import "goal_src/import/citb-stopbox-ag.gc")
+(import "goal_src/import/citb-firehose-ag.gc")
+(import "goal_src/import/citb-rotatebox-ag.gc")
+(import "goal_src/import/citb-chain-plat-ag.gc")
+(import "goal_src/import/citb-donut-ag.gc")
 
 ;; failed to figure out what this is:
-(defskelgroup *plat-eco-citb-unlit-sg* plat-eco-citb
-  0
-  8
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plat-citb-sg* plat-citb plat-citb-lod0-jg plat-citb-idle-ja
+              ((plat-citb-lod0-mg (meters 20)) (plat-citb-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *plat-eco-citb-lit-sg* plat-eco-citb
-  4
-  8
-  ((5 (meters 20)) (6 (meters 40)) (7 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plat-eco-citb-unlit-sg* plat-eco-citb plat-eco-citb-lod0-jg plat-eco-citb-idle-ja
+              ((plat-eco-citb-lod0-mg (meters 20))
+               (plat-eco-citb-lod1-mg (meters 40))
+               (plat-eco-citb-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-chain-plat-sg* citb-chain-plat
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plat-eco-citb-lit-sg* plat-eco-citb plat-eco-citb-lit-lod0-jg plat-eco-citb-idle-ja
+              ((plat-eco-citb-lit-lod0-mg (meters 20))
+               (plat-eco-citb-lit-lod1-mg (meters 40))
+               (plat-eco-citb-lit-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 0 0 3)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup *citb-chain-plat-sg* citb-chain-plat citb-chain-plat-lod0-jg citb-chain-plat-idle-ja
+              ((citb-chain-plat-lod0-mg (meters 20)) (citb-chain-plat-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
 
 ;; definition of type citb-base-plat
 (deftype citb-base-plat (process-drawable)
@@ -67,8 +70,7 @@
 ;; failed to figure out what this is:
 (defstate citb-base-plat-idle (citb-base-plat)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target* (>= (-> self idle-distance)
                           (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                           )
@@ -77,17 +79,14 @@
         )
     (none)
     )
-  :code
-  (the-as (function none :behavior citb-base-plat) anim-loop)
-  :post
-  (the-as (function none :behavior citb-base-plat) ja-post)
+  :code (the-as (function none :behavior citb-base-plat) anim-loop)
+  :post (the-as (function none :behavior citb-base-plat) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-base-plat-active (citb-base-plat)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (or (not *target*) (< (+ 8192.0 (-> self idle-distance))
                               (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                               )
@@ -97,10 +96,8 @@
     (rider-trans)
     (none)
     )
-  :code
-  (the-as (function none :behavior citb-base-plat) anim-loop)
-  :post
-  (the-as (function none :behavior citb-base-plat) rider-post)
+  :code (the-as (function none :behavior citb-base-plat) anim-loop)
+  :post (the-as (function none :behavior citb-base-plat) rider-post)
   )
 
 ;; definition for method 21 of type citb-base-plat
@@ -241,8 +238,7 @@
 ;; failed to figure out what this is:
 (defstate plat-path-active (citb-plat)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (set! (-> self path-pos) (if (logtest? (-> self fact options) (fact-options wrap-phase))
                                  (get-current-phase (-> self sync))
                                  (get-current-phase-with-mirror (-> self sync))
@@ -251,15 +247,7 @@
     (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
     (vector+! (-> self basetrans) (-> self basetrans) (-> self trans-offset))
     (if (< (vector-vector-distance (-> self root-override trans) (ear-trans)) 81920.0)
-        (sound-play-by-name
-          (static-sound-name "eco-plat-hover")
-          (-> self sound-id)
-          1024
-          0
-          0
-          1
-          (the-as symbol (-> self root-override trans))
-          )
+        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root-override trans)))
         )
     (plat-trans)
     (none)
@@ -355,8 +343,7 @@
 ;; failed to figure out what this is:
 (defstate citb-base-plat-idle (citb-stair-plat)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'trigger)
                        (logclear! (-> self mask) (process-mask actor-pause))
@@ -368,10 +355,8 @@
               )
       )
     )
-  :trans
-  (the-as (function none :behavior citb-stair-plat) #f)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior citb-stair-plat) #f)
+  :code (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (while (not (-> self rise))
       (suspend)
@@ -384,7 +369,7 @@
       (suspend)
       )
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (let ((f30-0 (- 1.0 (* 0.0011111111 (the float (- (-> *display* base-frame-counter) (-> self state-time)))))))
         (when (< f30-0 0.0)
           (set! (-> self root-override trans y) (-> self rise-height))
@@ -402,17 +387,14 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-stair-plat) #f)
+  :post (the-as (function none :behavior citb-stair-plat) #f)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-base-plat-active (citb-stair-plat)
   :virtual #t
-  :trans
-  (the-as (function none :behavior citb-stair-plat) #f)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior citb-stair-plat) #f)
+  :code (behavior ()
     (set! (-> self root-override trans y) (-> self rise-height))
     (suspend)
     (update-transforms! (-> self root-override))
@@ -420,8 +402,7 @@
     (anim-loop)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-stair-plat) ja-post)
+  :post (the-as (function none :behavior citb-stair-plat) ja-post)
   )
 
 ;; definition for method 22 of type citb-stair-plat
@@ -560,74 +541,62 @@
 ;; failed to figure out what this is:
 (defstate rigid-body-platform-idle (citb-chain-plat)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
       (set! (-> self state-time) (-> *display* base-frame-counter))
       (if (and (and *target* (>= (-> self info idle-distance)
                                  (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
                                  )
                     )
-               (send-event *target* 'query 'powerup 3)
+               (send-event *target* 'query 'powerup (pickup-type eco-blue))
                )
           (go-virtual rigid-body-platform-float)
           )
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (anim-loop)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-chain-plat) ja-post)
+  :post (the-as (function none :behavior citb-chain-plat) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate rigid-body-platform-float (citb-chain-plat)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior citb-chain-plat)
     rigid-body-platform-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (stop! (-> self sound))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (cond
-      ((and (and *target*
-                 (>= (-> self info idle-distance)
-                     (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
-                     )
+      ((and (and *target* (>= (-> self info idle-distance)
+                              (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
+                              )
                  )
-            (send-event *target* 'query 'powerup 3)
+            (send-event *target* 'query 'powerup (pickup-type eco-blue))
             )
        (when (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
          (if (rand-vu-percent? 0.05)
              (spawn-projectile-blue *target*)
              )
          )
-       (set! (-> self float-height-offset)
-             (seek (-> self float-height-offset) (-> self float-offset) (* 8192.0 (-> *display* seconds-per-frame)))
-             )
+       (seek! (-> self float-height-offset) (-> self float-offset) (* 8192.0 (-> *display* seconds-per-frame)))
        (draw-eco-beam (-> self root-overlay trans) (-> self beam-end))
        (update-trans! (-> self sound) (-> self root-overlay trans))
        (update! (-> self sound))
        )
       (else
-        (set! (-> self float-height-offset)
-              (seek (-> self float-height-offset) (-> self idle-offset) (* 16384.0 (-> *display* seconds-per-frame)))
-              )
+        (seek! (-> self float-height-offset) (-> self idle-offset) (* 16384.0 (-> *display* seconds-per-frame)))
         (stop! (-> self sound))
         (if (= (-> self float-height-offset) (-> self idle-offset))
             (go citb-chain-plat-settle)
@@ -636,21 +605,17 @@
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (anim-loop)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-chain-plat) rigid-body-platform-post)
+  :post (the-as (function none :behavior citb-chain-plat) rigid-body-platform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-chain-plat-settle (citb-chain-plat)
-  :trans
-  (the-as (function none :behavior citb-chain-plat) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior citb-chain-plat) rider-trans)
+  :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector))
           (s5-0 (new 'stack-no-clear 'quaternion))
           )
@@ -678,8 +643,7 @@
     (go-virtual rigid-body-platform-idle)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-chain-plat) rider-post)
+  :post (the-as (function none :behavior citb-chain-plat) rider-post)
   )
 
 ;; definition for method 30 of type citb-chain-plat
@@ -722,19 +686,8 @@
   (set! (-> obj idle-offset) 0.0)
   (set! (-> obj float-offset) (res-lump-float (-> obj entity) 'height-info :default 4096.0))
   (set! (-> obj float-height-offset) (-> obj idle-offset))
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "eco-plat-hover")
-                           :volume #x400
-                           :fo-max 50
-                           )
-                         (-> obj root-overlay trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "eco-plat-hover" :fo-max 50) (-> obj root-overlay trans))
         )
   (let ((s5-0 (-> obj info control-point-count)))
     (dotimes (s4-0 s5-0)
@@ -753,13 +706,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-rotatebox-sg* citb-rotatebox
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -5 0 10)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-rotatebox-sg* citb-rotatebox citb-rotatebox-lod0-jg citb-rotatebox-idle-ja
+              ((citb-rotatebox-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -5 0 10)
+              )
 
 ;; definition of type citb-rotatebox
 (deftype citb-rotatebox (citb-base-plat)
@@ -781,44 +731,13 @@
 ;; failed to figure out what this is:
 (defstate citb-base-plat-active (citb-rotatebox)
   :virtual #t
-  :trans
-  (the-as (function none :behavior citb-rotatebox) rider-trans)
-  :code
-  (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+  :trans (the-as (function none :behavior citb-rotatebox) rider-trans)
+  :code (behavior ()
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       (if (or (not *target*) (< (+ 8192.0 (-> self idle-distance))
                                 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
@@ -867,13 +786,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-donut-sg* citb-donut
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 10)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-donut-sg* citb-donut citb-donut-lod0-jg citb-donut-idle-ja
+              ((citb-donut-lod0-mg (meters 20)) (citb-donut-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              )
 
 ;; definition of type citb-donut
 (deftype citb-donut (citb-base-plat)
@@ -897,8 +813,7 @@
 ;; failed to figure out what this is:
 (defstate citb-base-plat-active (citb-donut)
   :virtual #t
-  :post
-  (behavior ()
+  :post (behavior ()
     (update! (-> self sound))
     (quaternion-axis-angle!
       (-> self root-override quat)
@@ -944,19 +859,8 @@
 (defmethod dummy-22 citb-donut ((obj citb-donut))
   (initialize-skeleton obj *citb-donut-sg* '())
   (setup-params! (-> obj sync) (the-as uint 9000) 0.0 0.15 0.15)
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "rotate-plat")
-                           :volume #x400
-                           :fo-max 20
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "rotate-plat" :fo-max 20) (-> obj root-override trans))
         )
   (logclear! (-> obj mask) (process-mask actor-pause))
   0
@@ -964,13 +868,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-stopbox-sg* citb-stopbox
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 -2 0 5.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-stopbox-sg* citb-stopbox citb-stopbox-lod0-jg citb-stopbox-idle-ja
+              ((citb-stopbox-lod0-mg (meters 20)) (citb-stopbox-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 -2 0 5.5)
+              )
 
 ;; definition of type citb-stopbox
 (deftype citb-stopbox (plat)
@@ -992,20 +893,11 @@
 ;; failed to figure out what this is:
 (defstate plat-path-active (citb-stopbox)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (set! (-> self path-pos) (get-current-phase (-> self sync)))
     (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
     (if (< (vector-vector-distance (-> self root-override trans) (ear-trans)) 81920.0)
-        (sound-play-by-name
-          (static-sound-name "eco-plat-hover")
-          (-> self sound-id)
-          1024
-          0
-          0
-          1
-          (the-as symbol (-> self root-override trans))
-          )
+        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root-override trans)))
         )
     (plat-trans)
     (none)
@@ -1085,18 +977,14 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-firehose-sg* citb-firehose
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 3 0 15)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-firehose-sg* citb-firehose citb-firehose-lod0-jg citb-firehose-idle-ja
+              ((citb-firehose-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 15)
+              )
 
 ;; failed to figure out what this is:
 (defstate citb-firehose-idle (citb-firehose)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target* (>= (-> self idle-distance)
                           (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                           )
@@ -1105,21 +993,18 @@
         )
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-firehose) ja-post)
+  :post (the-as (function none :behavior citb-firehose) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate citb-firehose-active (citb-firehose)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (or (not *target*) (< (+ 8192.0 (-> self idle-distance))
                               (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                               )
@@ -1136,15 +1021,13 @@
       )
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-firehose) ja-post)
+  :post (the-as (function none :behavior citb-firehose) ja-post)
   )
 
 ;; definition for function citb-firehose-blast-particles
@@ -1170,101 +1053,47 @@
 
 ;; failed to figure out what this is:
 (defstate citb-firehose-blast (citb-firehose)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('touch)
-       (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-2 from) self)
-         (set! (-> a1-2 num-params) 2)
-         (set! (-> a1-2 message) 'attack)
-         (set! (-> a1-2 param 0) (-> arg3 param 0))
-         (let ((v1-4 (new 'static 'attack-info :mask #xe0)))
-           (set! (-> v1-4 mode) 'damage)
-           (set! (-> v1-4 shove-back) 24576.0)
-           (set! (-> v1-4 shove-up) 12288.0)
-           (set! (-> a1-2 param 1) (the-as uint v1-4))
-           )
-         (send-event-function arg0 a1-2)
+       (send-event
+         arg0
+         'attack
+         (-> arg3 param 0)
+         (static-attack-info ((mode 'damage) (shove-back (meters 6)) (shove-up (meters 3))))
          )
        )
       )
     )
-  :code
-  (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      (set! (-> a0-0 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-            )
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-      )
+  :code (behavior ()
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (ja-channel-push! 1 30)
+    (ja-channel-push! 1 (seconds 0.1))
     (restore-collide-with-as (-> self root-override))
-    (sound-play-by-name
-      (static-sound-name "eco-torch")
-      (new-sound-id)
-      1024
-      0
-      0
-      1
-      (the-as symbol (-> self blast-pos))
-      )
+    (sound-play "eco-torch" :position (the-as symbol (-> self blast-pos)))
     (dotimes (gp-1 2)
-      (let ((a0-7 (-> self skel root-channel 0)))
-        (set! (-> a0-7 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-        (set! (-> a0-7 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-              )
-        (set! (-> a0-7 param 1) 1.0)
-        (set! (-> a0-7 frame-num) 0.0)
-        (joint-control-channel-group! a0-7 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-        )
+      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (set! (-> self blast-pos quad) (-> self node-list data 5 bone transform vector 3 quad))
         (citb-firehose-blast-particles)
         (suspend)
-        (let ((a0-12 (-> self skel root-channel 0)))
-          (set! (-> a0-12 param 0) (the float (+ (-> a0-12 frame-group data 0 length) -1)))
-          (set! (-> a0-12 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (clear-collide-with-as (-> self root-override))
-    (ja-channel-push! 1 30)
-    (let ((a0-16 (-> self skel root-channel 0)))
-      (set! (-> a0-16 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-      (set! (-> a0-16 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-            )
-      (set! (-> a0-16 param 1) 1.0)
-      (set! (-> a0-16 frame-num) 0.0)
-      (joint-control-channel-group! a0-16 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-      )
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-17 (-> self skel root-channel 0)))
-        (set! (-> a0-17 param 0) (the float (+ (-> a0-17 frame-group data 0 length) -1)))
-        (set! (-> a0-17 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-17 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go citb-firehose-active)
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-firehose) transform-post)
+  :post (the-as (function none :behavior citb-firehose) transform-post)
   )
 
 ;; definition for method 11 of type citb-firehose
@@ -1314,13 +1143,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-exit-plat-sg* citb-exit-plat
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 30)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-exit-plat-sg* citb-exit-plat citb-exit-plat-lod0-jg citb-exit-plat-idle-ja
+              ((citb-exit-plat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 30)
+              )
 
 ;; definition of type citb-exit-plat
 (deftype citb-exit-plat (plat-button)
@@ -1351,8 +1177,7 @@
 
 ;; failed to figure out what this is:
 (defstate citb-exit-plat-idle (citb-exit-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (let ((v1-3 (-> self entity extra perm)))
@@ -1363,11 +1188,10 @@
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (clear-collide-with-as (-> self root-override))
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -1376,14 +1200,12 @@
 
 ;; failed to figure out what this is:
 (defstate citb-exit-plat-rise (citb-exit-plat)
-  :trans
-  (the-as (function none :behavior citb-exit-plat) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior citb-exit-plat) rider-trans)
+  :code (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (restore-collide-with-as (-> self root-override))
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (let ((f30-0 (- 1.0 (* 0.0016666667 (the float (- (-> *display* base-frame-counter) (-> self state-time)))))))
         (when (< f30-0 0.0)
           (set! (-> self root-override trans y) (-> self rise-height))
@@ -1395,8 +1217,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-exit-plat) rider-post)
+  :post (the-as (function none :behavior citb-exit-plat) rider-post)
   )
 
 ;; definition for function citb-exit-plat-move-player
@@ -1424,8 +1245,7 @@
 ;; failed to figure out what this is:
 (defstate plat-button-move-downward (citb-exit-plat)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (set! (-> gp-0 quad) (-> self root-override trans quad))
       (let ((t9-1 (-> (the-as (state plat-button) (find-parent-method citb-exit-plat 23)) trans)))
@@ -1437,15 +1257,13 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-exit-plat) transform-post)
+  :post (the-as (function none :behavior citb-exit-plat) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate plat-button-move-upward (citb-exit-plat)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (set! (-> gp-0 quad) (-> self root-override trans quad))
       (let ((t9-1 (-> (the-as (state plat-button) (find-parent-method citb-exit-plat 24)) trans)))
@@ -1457,8 +1275,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior citb-exit-plat) transform-post)
+  :post (the-as (function none :behavior citb-exit-plat) transform-post)
   )
 
 ;; definition for method 26 of type citb-exit-plat

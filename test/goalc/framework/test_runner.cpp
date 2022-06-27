@@ -1,19 +1,20 @@
 
 #include "test_runner.h"
-#include "third-party/fmt/core.h"
 
+#include <filesystem>
 #include <string>
 
-#include "gtest/gtest.h"
 #include "inja.hpp"
-#include "third-party/json.hpp"
-
-#include "game/runtime.h"
-#include "goalc/listener/Listener.h"
-#include "goalc/compiler/Compiler.h"
 
 #include "common/util/FileUtil.h"
-#include <filesystem>
+
+#include "game/runtime.h"
+#include "goalc/compiler/Compiler.h"
+#include "goalc/listener/Listener.h"
+#include "gtest/gtest.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/json.hpp"
 
 namespace GoalTest {
 
@@ -99,20 +100,20 @@ void CompilerTestRunner::run_always_pass(const std::string& test_category,
 }
 
 void runtime_no_kernel() {
-  constexpr int argc = 5;
-  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel", "-nodisplay"};
+  constexpr int argc = 6;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel", "-nodisplay", "-nosound"};
   exec_runtime(argc, const_cast<char**>(argv));
 }
 
 void runtime_with_kernel() {
-  constexpr int argc = 4;
-  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nodisplay"};
+  constexpr int argc = 5;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nodisplay", "-nosound"};
   exec_runtime(argc, const_cast<char**>(argv));
 }
 
 void runtime_with_kernel_no_debug_segment() {
-  constexpr int argc = 4;
-  const char* argv[argc] = {"", "-fakeiso", "-debug-mem", "-nodisplay"};
+  constexpr int argc = 5;
+  const char* argv[argc] = {"", "-fakeiso", "-debug-mem", "-nodisplay", "-nosound"};
   exec_runtime(argc, const_cast<char**>(argv));
 }
 

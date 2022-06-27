@@ -1,9 +1,11 @@
 #pragma once
 
 #include "common/common_types.h"
+#include "common/versions.h"
+
 #include "game/common/overlord_common.h"
 
-constexpr int STR_RPC_ID = 0xdeb5;
+constexpr PerGameVersion<int> STR_RPC_ID(0xdeb5, 0xfab4);
 constexpr int STR_RPC_CHANNEL = 4;
 
 struct RPC_Str_Cmd {
@@ -17,7 +19,12 @@ struct RPC_Str_Cmd {
 };
 
 struct RPC_Play_Cmd {
-  u8 pad[1024];  // TODO everything
+  u16 rsvd;
+  u16 result;
+  u32 address;
+  u32 section;
+  u32 maxlen;
+  char name[48];
 };
 
 constexpr int STR_RPC_RESULT_ERROR = 1;

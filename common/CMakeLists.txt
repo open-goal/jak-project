@@ -1,12 +1,16 @@
 add_library(common
         audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
-        cross_sockets/xsocket.cpp
+        cross_sockets/XSocket.cpp
+        cross_sockets/XSocketServer.cpp
+        cross_sockets/XSocketClient.cpp
+        custom_data/pack_helpers.cpp
         custom_data/TFrag3Data.cpp
+        deserialization/subtitles/subtitles.cpp
         dma/dma.cpp
         dma/dma_copy.cpp
         dma/gs.cpp
-
+        global_profiler/GlobalProfiler.cpp
         goos/Interpreter.cpp
         goos/Object.cpp
         goos/ParseHelpers.cpp
@@ -16,8 +20,11 @@ add_library(common
         goos/Reader.cpp
         goos/TextDB.cpp
         goos/ReplUtils.cpp
-        math/geometry.cpp
         log/log.cpp
+        math/geometry.cpp
+        nrepl/ReplClient.cpp
+        nrepl/ReplServer.cpp
+        serialization/subtitles/subtitles.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp
         type_system/state.cpp
@@ -28,21 +35,20 @@ add_library(common
         util/Assert.cpp
         util/BitUtils.cpp
         util/compress.cpp
+        util/crc32.cpp
         util/dgo_util.cpp
         util/DgoReader.cpp
         util/DgoWriter.cpp
         util/diff.cpp
         util/FileUtil.cpp
         util/json_util.cpp
+        util/read_iso_file.cpp
+        util/SimpleThreadGroup.cpp
         util/Timer.cpp
         util/os.cpp
         util/print_float.cpp
         util/FontUtils.cpp
-        util/FrameLimiter.cpp
-        util/image_loading.cpp
-        goos/Printer.cpp
-        goos/PrettyPrinter2.cpp
-        )
+        util/FrameLimiter.cpp)
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 

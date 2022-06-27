@@ -11,8 +11,8 @@
                    )
                )
          )
-    (add-debug-text-sphere #t (bucket-id debug-draw1) (-> obj trans) 819.2 (symbol->string (-> obj name)) s5-0)
-    (add-debug-vector #t (bucket-id debug-draw1) (-> obj trans) (-> obj normal) (meters 2.0) s5-0)
+    (add-debug-text-sphere #t (bucket-id debug-no-zbuf) (-> obj trans) 819.2 (symbol->string (-> obj name)) s5-0)
+    (add-debug-vector #t (bucket-id debug-no-zbuf) (-> obj trans) (-> obj normal) (meters 2.0) s5-0)
     )
   0
   (none)
@@ -240,9 +240,9 @@
        )
       ((= v1-65 'play)
        (when *target*
-         (set-setting! *setting-control* *target* 'allow-pause #f 0.0 0)
-         (set-setting! *setting-control* *target* 'allow-progress #f 0.0 0)
-         (copy-settings-from-target! *setting-control*)
+         (set-setting *setting-control* *target* 'allow-pause #f 0.0 0)
+         (set-setting *setting-control* *target* 'allow-progress #f 0.0 0)
+         (apply-settings *setting-control*)
          )
        (send-event (handle->process (-> *game-info* auto-save-proc)) 'die)
        (set! (-> *level* border?) #f)
@@ -257,12 +257,12 @@
              )
            (let ((s2-0 (the-as (function cpu-thread function object object object object pointer) set-to-run))
                  (s1-0 (-> s3-1 main-thread))
-                 (s0-0 (lambda ((arg0 symbol) (arg1 symbol) (arg2 continue-point) (arg3 symbol))
+                 (s0-0 (lambda ((arg0 symbol) (arg1 symbol) (arg2 continue-point) (arg3 game-save))
                          (stop arg0)
                          (reset-actors arg1)
                          (set-continue! *game-info* arg2)
                          (when arg3
-                           (load-game! *game-info* (the-as game-save arg3))
+                           (load-game! *game-info* arg3)
                            (set! arg2 (get-or-create-continue! *game-info*))
                            )
                          (suspend)
@@ -294,8 +294,8 @@
   (case item
     (('life)
      (if (>= amount 0.0)
-         (set! (-> obj life) (seek (-> obj life) (-> obj life-max) amount))
-         (set! (-> obj life) (seek (-> obj life) 0.0 (- amount)))
+         (seek! (-> obj life) (-> obj life-max) amount)
+         (seek! (-> obj life) 0.0 (- amount))
          )
      (-> obj life)
      )
@@ -450,7 +450,7 @@
           (if (or (!= (handle->process source-handle) (handle->process (-> obj eco-source)))
                   (>= (- (-> *display* base-frame-counter) (-> obj eco-source-time)) (seconds 0.5))
                   )
-              (sound-play-by-name (static-sound-name "get-green-eco") (new-sound-id) 1024 0 0 1 #t)
+              (sound-play "get-green-eco")
               )
           (when (handle->process source-handle)
             (set! (-> obj eco-source) source-handle)
@@ -466,10 +466,10 @@
               )
             )
         (set! (-> obj health-pickup-time) (-> *display* base-frame-counter))
-        (set! (-> obj health) (seek (-> obj health) (-> obj health-max) amount))
+        (seek! (-> obj health) (-> obj health-max) amount)
         )
        (else
-         (set! (-> obj health) (seek (-> obj health) 0.0 (- amount)))
+         (seek! (-> obj health) 0.0 (- amount))
          (if (>= amount -10.0)
              (pickup-collectable! obj (pickup-type eco-pill) 0.0 source-handle)
              )
@@ -483,15 +483,14 @@
             (type-type? (-> (handle->process source-handle) type) vent)
             )
        cfg-80
-       :delay
-       (nop!)
+       :delay (nop!)
        )
      (-> obj health)
      )
     (((pickup-type eco-pill))
      (when (>= amount 0.0)
        (set! (-> obj eco-pill-pickup-time) (-> *display* base-frame-counter))
-       (set! (-> obj eco-pill) (seek (-> obj eco-pill) (-> obj eco-pill-max) amount))
+       (seek! (-> obj eco-pill) (-> obj eco-pill-max) amount)
        (when (and (>= (-> obj eco-pill) (-> *FACT-bank* eco-pill-max-default)) (< (-> obj health) (-> obj health-max)))
          (set! (-> obj eco-pill) (- (-> obj eco-pill) (-> *FACT-bank* eco-pill-max-default)))
          (pickup-collectable!
@@ -507,7 +506,7 @@
     (((pickup-type money))
      (when (< 0.0 amount)
        (if (>= (- (-> *display* base-frame-counter) (-> obj money-pickup-time)) (seconds 0.05))
-           (sound-play-by-name (static-sound-name "money-pickup") (new-sound-id) 1024 0 0 1 #t)
+           (sound-play "money-pickup")
            )
        (set! (-> obj money-pickup-time) (-> *display* base-frame-counter))
        )
@@ -582,16 +581,16 @@
          (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 17 (seconds 0.2))
          (case kind
            (((pickup-type eco-blue))
-            (sound-play-by-name (static-sound-name "get-blue-eco") (new-sound-id) 1024 0 0 1 #t)
+            (sound-play "get-blue-eco")
             )
            (((pickup-type eco-green))
-            (sound-play-by-name (static-sound-name "get-green-eco") (new-sound-id) 1024 0 0 1 #t)
+            (sound-play "get-green-eco")
             )
            (((pickup-type eco-yellow))
-            (sound-play-by-name (static-sound-name "get-yellow-eco") (new-sound-id) 1024 0 0 1 #t)
+            (sound-play "get-yellow-eco")
             )
            (((pickup-type eco-red))
-            (sound-play-by-name (static-sound-name "get-red-eco") (new-sound-id) 1024 0 0 1 #t)
+            (sound-play "get-red-eco")
             )
            )
          )
@@ -600,20 +599,24 @@
        (when (= kind (pickup-type eco-blue))
          (when (= eco-lev 0.0)
            (let ((s5-1 (-> obj process)))
-             (let* ((s3-5 (get-process *default-dead-pool* touch-tracker #x4000))
-                    (s4-3
-                      (when s3-5
-                        (let ((t9-28 (method-of-type touch-tracker activate)))
-                          (t9-28 (the-as touch-tracker s3-5) s5-1 'touch-tracker (the-as pointer #x70004000))
-                          )
-                        (run-now-in-process s3-5 touch-tracker-init (-> s5-1 root trans) (-> *FACT-bank* suck-bounce-dist) 300)
-                        (-> s3-5 ppointer)
-                        )
-                      )
-                    )
+             (let ((s4-3
+                     (process-spawn
+                       touch-tracker
+                       :init touch-tracker-init
+                       (-> s5-1 root trans)
+                       (-> *FACT-bank* suck-bounce-dist)
+                       300
+                       :to s5-1
+                       )
+                     )
+                   )
                (send-event (ppointer->process s4-3) 'target s5-1)
                (send-event (ppointer->process s4-3) 'event 'eco-blue)
-               (send-event (ppointer->process s4-3) 'exit (lambda () (send-event *target* 'query 'powerup 3)))
+               (send-event
+                 (ppointer->process s4-3)
+                 'exit
+                 (lambda () (send-event *target* 'query 'powerup (pickup-type eco-blue)))
+                 )
                (send-event
                  (ppointer->process s4-3)
                  'eval
@@ -626,26 +629,20 @@
                    )
                  )
                )
-             (let ((s4-4 (get-process *4k-dead-pool* process #x4000)))
-               (when s4-4
-                 (let ((t9-35 (method-of-type process activate)))
-                   (t9-35 s4-4 s5-1 'process (the-as pointer #x70004000))
-                   )
-                 (run-next-time-in-process
-                   s4-4
-                   (lambda ((arg0 process-drawable))
-                     (let ((s5-0 (-> *display* base-frame-counter)))
-                       (until (>= (- (-> *display* base-frame-counter) s5-0) (seconds 0.6))
-                         (send-event arg0 'effect 'eco-blue)
-                         (suspend)
-                         )
-                       )
-                     (none)
+             (process-spawn-function
+               process
+               (lambda ((arg0 process-drawable))
+                 (let ((s5-0 (-> *display* base-frame-counter)))
+                   (until (>= (- (-> *display* base-frame-counter) s5-0) (seconds 0.6))
+                     (send-event arg0 'effect 'eco-blue)
+                     (suspend)
                      )
-                   s5-1
                    )
-                 (-> s4-4 ppointer)
+                 (none)
                  )
+               s5-1
+               :from *4k-dead-pool*
+               :to s5-1
                )
              )
            )
@@ -734,10 +731,10 @@
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defmethod debug-draw! continue-point ((obj continue-point))
-  (add-debug-x #t (bucket-id debug-draw1) (-> obj trans) (new 'static 'rgba :r #xff :a #x80))
+  (add-debug-x #t (bucket-id debug-no-zbuf) (-> obj trans) (new 'static 'rgba :r #xff :a #x80))
   (add-debug-text-3d
     #t
-    (bucket-id debug-draw1)
+    (bucket-id debug-no-zbuf)
     (-> obj name)
     (-> obj trans)
     (font-color white)
@@ -746,7 +743,7 @@
   (let ((a3-2 (vector-z-quaternion! (new-stack-vector0) (-> obj quat))))
     (add-debug-vector
       #t
-      (bucket-id debug-draw1)
+      (bucket-id debug-no-zbuf)
       (-> obj trans)
       a3-2
       (meters 2.0)

@@ -1,10 +1,14 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <unordered_set>
-#include <unordered_map>
 #include <optional>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+#include "common/common_types.h"
+#include "common/versions.h"
+
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/data/game_text.h"
 
@@ -81,8 +85,14 @@ struct DecompileHacks {
   std::unordered_map<std::string, std::vector<std::pair<int, int>>> missing_textures_by_level;
 };
 
+struct ObjectPatchInfo {
+  u32 crc;
+  std::string target_file;
+  std::string patch_file;
+};
+
 struct Config {
-  int game_version = -1;
+  GameVersion game_version = GameVersion::Jak1;
   std::vector<std::string> dgo_names;
   std::vector<std::string> object_file_names;
   std::vector<std::string> str_file_names;
@@ -91,6 +101,7 @@ struct Config {
   std::vector<std::string> streamed_audio_file_names;
 
   std::string obj_file_name_map_file;
+  std::string all_types_file;
 
   bool disassemble_code = false;
   bool decompile_code = false;
@@ -99,9 +110,11 @@ struct Config {
   bool process_tpages = false;
   bool process_game_text = false;
   bool process_game_count = false;
+  bool process_art_groups = false;
   bool rip_levels = false;
+  bool extract_collision = false;
+  bool find_functions = false;
 
-  bool regenerate_all_types = false;
   bool write_hex_near_instructions = false;
   bool hexdump_code = false;
   bool hexdump_data = false;
@@ -110,7 +123,14 @@ struct Config {
 
   bool generate_symbol_definition_map = false;
 
+  bool generate_all_types = false;
+  std::optional<std::string> old_all_types_file;
+
   bool is_pal = false;
+
+  bool write_patches = false;
+  bool apply_patches = false;
+
   std::string game_name;
   std::string expected_elf_name;
   GameTextVersion text_version = GameTextVersion::JAK1_V1;
@@ -130,9 +150,7 @@ struct Config {
   std::unordered_map<std::string, std::unordered_map<std::string, LabelConfigInfo>> label_types;
   std::unordered_map<std::string, std::vector<StackStructureHint>>
       stack_structure_hints_by_function;
-
-  std::unordered_map<std::string, std::string> new_strings_same_across_langs;
-  std::unordered_map<std::string, std::vector<std::string>> new_strings_different_across_langs;
+  std::unordered_map<std::string, ObjectPatchInfo> object_patches;
 
   std::unordered_map<std::string, int> bad_format_strings;
 
@@ -140,6 +158,11 @@ struct Config {
   bool levels_extract;
 
   DecompileHacks hacks;
+
+  std::unordered_map<std::string, std::string> art_groups_by_file;
+  std::unordered_map<std::string, std::string> art_groups_by_function;
+
+  std::unordered_map<std::string, std::vector<std::string>> import_deps_by_file;
 };
 
 Config read_config_file(const std::string& path_to_config_file,

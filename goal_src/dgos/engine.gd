@@ -209,7 +209,6 @@
   ("level-info.o" "level-info")
   ("level.o" "level")
   ("text.o" "text")
-  ("subtitle.o" "subtitle") ;; added
   ("collide-probe.o" "collide-probe")
   ("collide-frag.o" "collide-frag")
   ("collide-mesh.o" "collide-mesh")
@@ -279,6 +278,7 @@
   ("progress-part.o" "progress-part")
   ("progress-draw.o" "progress-draw")
   ("progress.o" "progress")
+  ("progress-pc.o" "progress-pc") ;; added
   ("credits.o" "credits")
   ("projectiles.o" "projectiles")
   ("ocean.o" "ocean")
@@ -294,6 +294,8 @@
   ("anim-tester.o" "anim-tester")
   ("viewer.o" "viewer")
   ("part-tester.o" "part-tester")
+  ("anim-tester-x.o" "anim-tester-x") ;; added
   ("default-menu.o" "default-menu")
+  ("subtitle.o" "subtitle") ;; added
   )
 

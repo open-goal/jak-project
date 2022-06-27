@@ -1,7 +1,8 @@
 #include "dma.h"
 
-#include "third-party/fmt/core.h"
 #include "common/util/Assert.h"
+
+#include "third-party/fmt/core.h"
 
 std::string DmaTag::print() {
   std::string result;
@@ -79,6 +80,9 @@ std::string VifCode::print() {
     case Kind::DIRECTHL:
       result = "DIRECTHL";
       break;
+    case Kind::PC_PORT:
+      result = "PC_PORT";
+      break;
     case Kind::UNPACK_V4_8: {
       VifCodeUnpack up(*this);
       result = fmt::format("UNPACK-V4-8: {} addr: {} us: {} tops: {}", num, up.addr_qw,
@@ -115,10 +119,8 @@ std::string VifCode::print() {
     }
 
     default:
-      fmt::print("Unhandled vif code {}\n", (int)kind);
-
       result = "???";
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("Unhandled vif code {}", (int)kind));
       break;
   }
   // TODO: the rest of the VIF code.

@@ -15,13 +15,9 @@ void main() {
     if (tex_info.y == 0) {
         T0.w = 1.0;
     }
-    color = fragment_color * T0 * 2.0;
+    color = fragment_color * T0;
 
-    if (color.a < alpha_min) {
-        discard;
-    }
-
-    if (color.a > alpha_max) {
+    if (color.a < alpha_min || color.a > alpha_max) {
         discard;
     }
 }

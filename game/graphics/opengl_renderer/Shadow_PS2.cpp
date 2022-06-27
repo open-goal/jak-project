@@ -131,8 +131,7 @@ void ShadowRenderer::handle_jalr_to_end_block(u16 val, u32& first_flag, u32& sec
       // nop                        |  nop                            739
       return;
     default:
-      fmt::print("unhandled end block: {}\n", val);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("unhandled end block: {}", val));
   }
 }
 
@@ -1715,8 +1714,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm) {
     case 699:
       goto INSTR_699;
     default:
-      fmt::print("unknown vu.vi15 @ L46: {}\n", vu.vi15);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("unknown vu.vi15 @ L46: {}", vu.vi15));
   }
   // clang-format off
   // nop                        |  nop                            663
@@ -1890,7 +1888,6 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm) {
     case 527:
       goto INSTR_527;
     default:
-      fmt::print("unknown vu.vi15 @ 722: {}\n", vu.vi15);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("unknown vu.vi15 @ 722: {}", vu.vi15));
   }
 }

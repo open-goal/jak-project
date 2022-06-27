@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/whirlpool-ag.gc")
+
 ;; definition of type whirlpool
 (deftype whirlpool (process-drawable)
   ((root-override    collide-shape            :offset        112)
@@ -14,7 +16,7 @@
   :size-assert         #xcc
   :flag-assert         #x15006000cc
   (:methods
-    (dummy-20 (_type_ float) uint 20)
+    (dummy-20 (_type_ float) cshape-moving-flags 20)
     )
   (:states
     whirlpool-idle
@@ -34,21 +36,17 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *whirlpool-sg* whirlpool
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0.6 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *whirlpool-sg* whirlpool whirlpool-lod0-jg whirlpool-idle-ja
+              ((whirlpool-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0.6 0 3)
+              )
 
 ;; failed to figure out what this is:
 (defpartgroup group-whirlpool-swirl
   :id 447
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 1739 :fade-after (meters 60) :falloff-to (meters 60) :binding 1737)
+  :parts ((sp-item 1739 :fade-after (meters 60) :falloff-to (meters 60) :binding 1737)
     (sp-item 1737 :flags (bit1 start-dead launch-asap) :binding 1738)
     (sp-item 1737 :flags (bit1 start-dead launch-asap) :binding 1738)
     (sp-item 1737 :flags (bit1 start-dead launch-asap) :binding 1738)
@@ -240,8 +238,7 @@
 
 ;; failed to figure out what this is:
 (defpart 1739
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x9 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x9 :page #x2))
     (sp-flt spt-num 1.0)
     (sp-flt spt-y (meters 6.6))
     (sp-flt spt-scale-x (meters 0.2))
@@ -256,8 +253,7 @@
 
 ;; failed to figure out what this is:
 (defpart 1737
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
     (sp-flt spt-num 1.0)
     (sp-flt spt-x (meters 0))
     (sp-flt spt-y (meters 0))
@@ -283,14 +279,12 @@
 
 ;; failed to figure out what this is:
 (defpart 1740
-  :init-specs
-  ((sp-flt spt-fade-a 0.0))
+  :init-specs ((sp-flt spt-fade-a 0.0))
   )
 
 ;; failed to figure out what this is:
 (defpart 1738
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x9 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x9 :page #x2))
     (sp-flt spt-num 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.3) (meters 0.1) 1.0)
     (sp-copy-from-other spt-scale-y -4)
@@ -339,8 +333,7 @@
 
 ;; failed to figure out what this is:
 (defstate whirlpool-idle (whirlpool)
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((f30-0
             (+ (* (get-current-phase-with-mirror (-> self sync)) (-> self spin-speed-delta)) (-> self spin-speed-idle))
             )
@@ -354,7 +347,7 @@
         )
       (+! (-> self spin-ry) (* f30-0 (-> *display* seconds-per-frame)))
       (quaternion-axis-angle! (-> self root-override quat) 0.0 1.0 0.0 (-> self spin-ry))
-      (if (and *target* (logtest? (-> *target* water flags) 512))
+      (if (and *target* (logtest? (-> *target* water flags) (water-flags wt09)))
           (dummy-20 self f30-0)
           )
       (update! (-> self sound))
@@ -364,10 +357,8 @@
       )
     (none)
     )
-  :code
-  (the-as (function none :behavior whirlpool) anim-loop)
-  :post
-  (the-as (function none :behavior whirlpool) ja-post)
+  :code (the-as (function none :behavior whirlpool) anim-loop)
+  :post (the-as (function none :behavior whirlpool) ja-post)
   )
 
 ;; definition for method 10 of type whirlpool
@@ -415,19 +406,8 @@
     (set! (-> obj spin-speed-delta) (- f28-0 f30-0))
     )
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 447) obj))
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "whirlpool")
-                           :volume #x400
-                           :fo-max 55
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "whirlpool" :fo-max 55) (-> obj root-override trans))
         )
   (ja-channel-set! 1)
   (let ((s5-1 (-> obj skel root-channel 0)))

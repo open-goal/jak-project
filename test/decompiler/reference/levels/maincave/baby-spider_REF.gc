@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/baby-spider-ag.gc")
+
 ;; definition of type baby-spider-spawn-params
 (deftype baby-spider-spawn-params (structure)
   ((hatched?                          symbol      :offset-assert   0)
@@ -89,14 +91,11 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *baby-spider-sg* baby-spider
-  0
-  -1
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 1 0 2.25)
-  :longest-edge (meters 0)
-  :shadow 4
-  )
+(defskelgroup *baby-spider-sg* baby-spider baby-spider-lod0-jg -1
+              ((baby-spider-lod0-mg (meters 20)) (baby-spider-lod1-mg (meters 40)) (baby-spider-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 2.25)
+              :shadow baby-spider-shadow-mg
+              )
 
 ;; definition for symbol *baby-spider-nav-enemy-info*, type nav-enemy-info
 (define *baby-spider-nav-enemy-info* (new 'static 'nav-enemy-info
@@ -114,11 +113,11 @@
                                        :run-travel-speed (meters 7)
                                        :run-rotate-speed (degrees 7999.9995)
                                        :run-acceleration (meters 1)
-                                       :run-turn-time (seconds 0.07333333)
+                                       :run-turn-time (seconds 0.075)
                                        :walk-travel-speed (meters 2)
                                        :walk-rotate-speed (degrees 7999.9995)
                                        :walk-acceleration (meters 1)
-                                       :walk-turn-time (seconds 0.07333333)
+                                       :walk-turn-time (seconds 0.075)
                                        :attack-shove-back (meters 3)
                                        :attack-shove-up (meters 2)
                                        :shadow-size (meters 1)
@@ -146,7 +145,7 @@
                                        :use-proximity-notice #f
                                        :use-jump-blocked #f
                                        :use-jump-patrol #f
-                                       :gnd-collide-with #x1
+                                       :gnd-collide-with (collide-kind background)
                                        :debug-draw-neck #f
                                        :debug-draw-jump #f
                                        )
@@ -168,11 +167,11 @@
                                                      :run-travel-speed (meters 7)
                                                      :run-rotate-speed (degrees 7999.9995)
                                                      :run-acceleration (meters 1)
-                                                     :run-turn-time (seconds 0.07333333)
+                                                     :run-turn-time (seconds 0.075)
                                                      :walk-travel-speed (meters 2)
                                                      :walk-rotate-speed (degrees 7999.9995)
                                                      :walk-acceleration (meters 1)
-                                                     :walk-turn-time (seconds 0.07333333)
+                                                     :walk-turn-time (seconds 0.075)
                                                      :attack-shove-back (meters 3)
                                                      :attack-shove-up (meters 2)
                                                      :shadow-size (meters 1)
@@ -200,7 +199,7 @@
                                                      :use-proximity-notice #f
                                                      :use-jump-blocked #f
                                                      :use-jump-patrol #f
-                                                     :gnd-collide-with #x1
+                                                     :gnd-collide-with (collide-kind background)
                                                      :debug-draw-neck #f
                                                      :debug-draw-jump #f
                                                      )
@@ -267,7 +266,7 @@ baby-spider-default-event-handler
 ;; definition for method 39 of type baby-spider
 ;; Used lq/sq
 (defmethod common-post baby-spider ((obj baby-spider))
-  (when (logtest? (-> obj collide-info status) 1)
+  (when (logtest? (-> obj collide-info status) (cshape-moving-flags onsurf))
     (vector-deg-seek (-> obj up-vector) (-> obj up-vector) (-> obj collide-info surface-normal) 910.2222)
     (vector-normalize! (-> obj up-vector) 1.0)
     )
@@ -352,44 +351,27 @@ baby-spider-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate baby-spider-hatching (baby-spider)
-  :event
-  baby-spider-default-event-handler
-  :code
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :code (behavior ()
     (ja-channel-push! 1 0)
-    (let ((a0-1 (-> self skel root-channel 0)))
-      (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-      (set! (-> a0-1 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-            )
-      (set! (-> a0-1 param 1) 1.0)
-      (set! (-> a0-1 frame-num) 0.0)
-      (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-      )
+    (ja-no-eval :group! baby-spider-birth-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (if (dummy-53 self)
           (go baby-spider-die-fast)
           )
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-        (set! (-> a0-3 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go baby-spider-resume)
     (none)
     )
-  :post
-  (the-as (function none :behavior baby-spider) nav-enemy-simple-post)
+  :post (the-as (function none :behavior baby-spider) nav-enemy-simple-post)
   )
 
 ;; failed to figure out what this is:
 (defstate baby-spider-resume (baby-spider)
-  :event
-  baby-spider-default-event-handler
-  :code
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :code (behavior ()
     (cond
       ((not *target*)
        (go-virtual nav-enemy-idle)
@@ -416,10 +398,8 @@ baby-spider-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-idle (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :enter
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :enter (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (set! (-> gp-0 quad) (-> self collide-info trans quad))
       (let ((t9-0 (-> (method-of-type nav-enemy nav-enemy-idle) enter)))
@@ -433,8 +413,7 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -445,8 +424,7 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (ja-post)
     (none)
     )
@@ -455,10 +433,8 @@ baby-spider-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-patrol (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -469,34 +445,16 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
-      (while #t
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 frame-group)
-                (the-as art-joint-anim (-> self draw art-group data (-> self nav-info walk-anim)))
-                )
-          (set! (-> a0-1 param 0)
-                (the float
-                     (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self nav-info walk-anim))) data 0 length) -1)
-                     )
-                )
-          (set! (-> a0-1 param 1) f30-0)
-          (set! (-> a0-1 frame-num) 0.0)
-          (joint-control-channel-group!
-            a0-1
-            (the-as art-joint-anim (-> self draw art-group data (-> self nav-info walk-anim)))
-            num-func-seek!
-            )
-          )
+      (loop
+        (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim))
+                    :num! (seek! max f30-0)
+                    :frame-num 0.0
+                    )
         (until (ja-done? 0)
           (suspend)
-          (let ((a0-2 (-> self skel root-channel 0)))
-            (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-            (set! (-> a0-2 param 1) f30-0)
-            (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek! max f30-0))
           )
         )
       )
@@ -507,10 +465,8 @@ baby-spider-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-notice (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -521,36 +477,16 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) 1.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-loop!)
-      )
-    (ja-channel-push! 1 51)
-    (let ((a0-2 (-> self skel root-channel 0)))
-      (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 11)))
-      (set! (-> a0-2 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) data 0 length) -1))
-            )
-      (set! (-> a0-2 param 1) 1.0)
-      (set! (-> a0-2 frame-num) 0.0)
-      (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 11)) num-func-seek!)
-      )
+  :code (behavior ()
+    (ja-no-eval :num! (loop!))
+    (ja-channel-push! 1 (seconds 0.17))
+    (ja-no-eval :group! baby-spider-notice-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (ja-blend-eval)
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-        (set! (-> a0-3 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (let ((a0-5 (-> self skel root-channel 0)))
-      (set! (-> a0-5 param 0) (the float (+ (-> a0-5 frame-group data 0 length) -1)))
-      (set! (-> a0-5 param 1) 1.0)
-      (joint-control-channel-group! a0-5 (the-as art-joint-anim #f) num-func-seek!)
-      )
+    (ja-no-eval :num! (seek!))
     (go-virtual nav-enemy-chase)
     (none)
     )
@@ -559,10 +495,8 @@ baby-spider-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-chase (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -576,36 +510,24 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self target-nav-time) (-> *display* base-frame-counter))
     (set! (-> self wiggle-time) (+ (-> *display* base-frame-counter) (seconds -10)))
     (set! (-> self wiggle-angle) 0.0)
     (set! (-> self chase-rest-time) (rand-vu-int-range (seconds 1) (seconds 4)))
-    (ja-channel-push! 1 51)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 7))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) 0.0)
-      )
-    (while #t
+    (ja-channel-push! 1 (seconds 0.17))
+    (ja :group! baby-spider-run-ja :num! min)
+    (loop
       (when (>= (- (-> *display* base-frame-counter) (-> self wiggle-time)) (seconds 1))
         (set! (-> self wiggle-time) (-> *display* base-frame-counter))
         (dummy-51 self)
         )
       (suspend)
-      (let ((a0-5 (-> self skel root-channel 0)))
-        (set! (-> a0-5 param 0) 1.0)
-        (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-loop!)
-        )
+      (ja :num! (loop!))
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (dummy-52 self (target-pos 0))
     (nav-enemy-travel-post)
     (none)
@@ -615,10 +537,8 @@ baby-spider-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -629,17 +549,14 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (-> (method-of-type nav-enemy nav-enemy-stop-chase) code)
+  :code (-> (method-of-type nav-enemy nav-enemy-stop-chase) code)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-stare (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -650,44 +567,25 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self rotate-speed) 1456355.5)
-    (set! (-> self turn-time) (seconds 0.07333333))
+    (set! (-> self turn-time) (seconds 0.075))
     (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
-      (while #t
-        (logior! (-> self nav-enemy-flags) 16)
-        (ja-channel-push! 1 30)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 12)))
-          (set! (-> a0-2 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 12)) data 0 length) -1))
-                )
-          (set! (-> a0-2 param 1) f30-0)
-          (set! (-> a0-2 frame-num) 0.0)
-          (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 12)) num-func-seek!)
-          )
+      (loop
+        (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+        (ja-channel-push! 1 (seconds 0.1))
+        (ja-no-eval :group! baby-spider-celebrate-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
-          (let ((a0-3 (-> self skel root-channel 0)))
-            (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-            (set! (-> a0-3 param 1) f30-0)
-            (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-            )
+          (ja :num! (seek! max f30-0))
           )
-        (let ((a0-5 (-> self skel root-channel 0)))
-          (set! (-> a0-5 param 0) 1.0)
-          (joint-control-channel-group! a0-5 (the-as art-joint-anim #f) num-func-loop!)
-          )
-        (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+        (ja-no-eval :num! (loop!))
+        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
         (let ((gp-0 (rand-vu-int-range 300 600))
               (s5-0 (-> *display* base-frame-counter))
               )
           (until (>= (- (-> *display* base-frame-counter) s5-0) gp-0)
-            (let ((v1-33 (-> self skel root-channel 0)))
-              (set! (-> v1-33 num-func) num-func-identity)
-              (set! (-> v1-33 frame-num) 0.0)
-              )
+            (ja :num-func num-func-identity :frame-num 0.0)
             (ja-blend-eval)
             (suspend)
             (suspend)
@@ -702,10 +600,8 @@ baby-spider-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-give-up (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -716,37 +612,16 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
-    (ja-channel-push! 1 22)
-    (let ((a0-1 (-> self skel root-channel 0)))
-      (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-      (set! (-> a0-1 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
-            )
-      (set! (-> a0-1 param 1) 1.0)
-      (set! (-> a0-1 frame-num) 0.0)
-      (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-      )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (ja-no-eval :group! baby-spider-idle-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-        (set! (-> a0-2 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
-    (logclear! (-> self nav flags) (nav-control-flags bit17 bit19))
+    (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
     (nav-enemy-get-new-patrol-point)
-    (let ((a0-7 (-> self skel root-channel 0)))
-      (set! (-> a0-7 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-      (set! (-> a0-7 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
-            )
-      (set! (-> a0-7 param 1) 1.0)
-      (set! (-> a0-7 frame-num) 0.0)
-      (joint-control-channel-group! a0-7 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-      )
+    (ja-no-eval :group! baby-spider-idle-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (seek-to-point-toward-point!
         (-> self collide-info)
@@ -755,11 +630,7 @@ baby-spider-default-event-handler
         (-> self turn-time)
         )
       (suspend)
-      (let ((a0-9 (-> self skel root-channel 0)))
-        (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group data 0 length) -1)))
-        (set! (-> a0-9 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go-virtual nav-enemy-patrol)
     (none)
@@ -769,10 +640,8 @@ baby-spider-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-attack (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -783,25 +652,12 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
-    (ja-channel-push! 1 22)
-    (let ((a0-1 (-> self skel root-channel 0)))
-      (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-      (set! (-> a0-1 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) data 0 length) -1))
-            )
-      (set! (-> a0-1 param 1) 1.0)
-      (set! (-> a0-1 frame-num) 0.0)
-      (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-      )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (ja-no-eval :group! baby-spider-idle-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-        (set! (-> a0-2 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go-virtual nav-enemy-victory)
     (none)
@@ -811,10 +667,8 @@ baby-spider-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-victory (baby-spider)
   :virtual #t
-  :event
-  baby-spider-default-event-handler
-  :trans
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :trans (behavior ()
     (if (dummy-53 self)
         (go baby-spider-die-fast)
         )
@@ -825,20 +679,17 @@ baby-spider-default-event-handler
       )
     (none)
     )
-  :code
-  (-> (method-of-type nav-enemy nav-enemy-victory) code)
+  :code (-> (method-of-type nav-enemy nav-enemy-victory) code)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-die (baby-spider)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior baby-spider)
     process-drawable-death-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (let ((v1-0 (-> self event-death)))
       (if v1-0
           (send-event (ppointer->process (-> self parent)) v1-0)
@@ -857,10 +708,8 @@ baby-spider-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate baby-spider-die-fast (baby-spider)
-  :event
-  baby-spider-default-event-handler
-  :code
-  (behavior ()
+  :event baby-spider-default-event-handler
+  :code (behavior ()
     (cleanup-for-death self)
     (let ((v1-2 (-> self event-death)))
       (if v1-2
@@ -907,7 +756,7 @@ baby-spider-default-event-handler
       (TODO-RENAME-45 obj *baby-spider-nav-enemy-info*)
       )
   (let ((v1-11 (-> obj draw shadow-ctrl settings)))
-    (set! (-> v1-11 flags) (logand -9 (-> v1-11 flags)))
+    (logclear! (-> v1-11 flags) (shadow-flags shdf03))
     (set! (-> v1-11 fade-dist) 98304.0)
     )
   (vector-float*! (-> obj collide-info scale) *identity-vector* 0.63)
@@ -976,7 +825,7 @@ baby-spider-default-event-handler
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
   (logior! (-> obj mask) (process-mask actor-pause))
   (set! (-> obj nav) (new 'process 'nav-control (-> obj collide-info) 24 40960.0))
-  (logior! (-> obj nav flags) (nav-control-flags display-marks bit3 bit5 bit6 bit7))
+  (logior! (-> obj nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
   (set! (-> obj path) (new 'process 'path-control obj 'path 0.0))
   (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
   (create-connection!

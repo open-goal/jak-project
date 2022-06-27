@@ -229,7 +229,7 @@
                    )
                (and *target*
                     (!= (-> *target* next-state name) 'target-look-around)
-                    (zero? (logand (-> *target* state-flags) #x8008))
+                    (zero? (logand (-> *target* state-flags) (state-flags being-attacked dying)))
                     (= *master-mode* 'game)
                     )
                )
@@ -259,15 +259,7 @@
   (let ((s3-1 (level-hint-task-process arg2 (the-as uint128 arg0) arg1)))
     (when (!= s3-1 -1)
       (kill-current-level-hint '() '() 'exit)
-      (let ((s2-0 (get-process *default-dead-pool* level-hint #x4000)))
-        (when s2-0
-          (let ((t9-4 (method-of-type level-hint activate)))
-            (t9-4 (the-as level-hint s2-0) arg3 'level-hint (the-as pointer #x70004000))
-            )
-          (run-now-in-process s2-0 level-hint-init-by-other s3-1 arg1 arg2)
-          (-> s2-0 ppointer)
-          )
-        )
+      (process-spawn level-hint s3-1 arg1 arg2 :to arg3)
       )
     )
   0
@@ -281,15 +273,7 @@
      )
     )
   (the-as object (and (not *hint-semaphore*)
-                      (let ((s2-0 (get-process *default-dead-pool* level-hint #x4000)))
-                        (when s2-0
-                          (let ((t9-2 (method-of-type level-hint activate)))
-                            (t9-2 (the-as level-hint s2-0) arg2 'level-hint (the-as pointer #x70004000))
-                            )
-                          (run-now-in-process s2-0 ambient-hint-init-by-other arg0 arg1 arg3)
-                          (-> s2-0 ppointer)
-                          )
-                        )
+                      (process-spawn level-hint :init ambient-hint-init-by-other arg0 arg1 arg3 :to arg2)
                       )
           )
   )
@@ -308,6 +292,7 @@
   (none)
   )
 
+(#when PC_PORT (define *level-hint-spool-name* (the string #f)))
 (defbehavior level-hint-init-by-other level-hint ((arg0 game-text-id) (arg1 string) (arg2 entity))
   (mark-text-as-seen *game-info* arg0)
   (set! (-> self text-id-to-display) arg0)
@@ -316,7 +301,7 @@
   (set! (-> self total-off-time) 0)
   (set! (-> self last-time) (-> *display* base-frame-counter))
   (set! *hint-semaphore* (the-as (pointer level-hint) (process->ppointer self)))
-  (push-setting! *setting-control* self 'hint (process->ppointer self) 0.0 0)
+  (add-setting! 'hint (process->ppointer self) 0.0 0)
   (set! (-> self voicebox) (the-as handle #f))
   (let ((s5-1 (res-lump-struct arg2 'play-mode structure))
         (a0-6 (the-as string ((method-of-type res-lump get-property-struct)
@@ -357,12 +342,12 @@
   (set! (-> self last-time) (-> *display* base-frame-counter))
   (set! (-> self trans) arg1)
   (set! *hint-semaphore* (the-as (pointer level-hint) (process->ppointer self)))
-  (push-setting! *setting-control* self 'hint (process->ppointer self) 0.0 0)
+  (add-setting! 'hint (process->ppointer self) 0.0 0)
   (set! (-> self mode) arg2)
   (if (or (= arg2 'camera) (= arg2 'ambient) (= arg2 'stinger))
-      (push-setting! *setting-control* self 'ambient (process->ppointer self) 0.0 0)
+      (add-setting! 'ambient (process->ppointer self) 0.0 0)
       )
-  (copy-settings-from-target! *setting-control*)
+  (apply-settings *setting-control*)
   (set! (-> self event-hook) (lambda :behavior level-hint
                                ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
                                (let ((v1-0 arg2))
@@ -406,8 +391,7 @@
   )
 
 (defstate level-hint-normal (level-hint)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'exit)
@@ -420,15 +404,13 @@
               )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (if (= (ppointer->process *hint-semaphore*) self)
         (set! *hint-semaphore* (the-as (pointer level-hint) #f))
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (cond
       ((= (-> self text-id-to-display) (game-text-id zero))
        (if *debug-segment*
@@ -468,8 +450,7 @@
   )
 
 (defstate level-hint-sidekick (level-hint)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'exit)
@@ -487,22 +468,22 @@
               )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
+    (#when PC_PORT (set! *level-hint-spool-name* #f))
     (if (nonzero? (-> self sound-id))
         (sound-stop (-> self sound-id))
         )
-    (clear-pending-settings-from-process *setting-control* self 'music-volume)
-    (clear-pending-settings-from-process *setting-control* self 'sfx-volume)
-    (clear-pending-settings-from-process *setting-control* self 'dialog-volume)
+    (remove-setting! 'music-volume)
+    (remove-setting! 'sfx-volume)
+    (remove-setting! 'dialog-volume)
     (if (= (ppointer->process *hint-semaphore*) self)
         (set! *hint-semaphore* (the-as (pointer level-hint) #f))
         )
     (send-event (handle->process (-> self voicebox)) 'die)
     (none)
     )
-  :code
-  (behavior ((arg0 string))
+  :code (behavior ((arg0 string))
+    (#when PC_PORT (set! *level-hint-spool-name* arg0))
     (when (and (-> *setting-control* current play-hints) (< 0.0 (-> *setting-control* current dialog-volume)))
       (case (-> self mode)
         (('voicebox)
@@ -521,7 +502,7 @@
             (s4-1 string->sound-name)
             )
         (format (clear *temp-string*) "spool-~S" arg0)
-        (let ((s5-2 (s5-1 (s4-1 *temp-string*) (new-sound-id) 1024 0 0 1 #t)))
+        (let ((s5-2 (s5-1 (s4-1 *temp-string*) (new-sound-id) 1024 0 0 (sound-group sfx) #t)))
           (set! (-> self sound-id) s5-2)
           (let ((s4-3 (-> *display* base-frame-counter)))
             (while (and (!= (current-str-id) s5-2) (< (- (-> *display* base-frame-counter) s4-3) (seconds 5)))
@@ -530,11 +511,33 @@
             )
           (cond
             ((= (current-str-id) s5-2)
-             (push-setting! *setting-control* self 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
-             (push-setting! *setting-control* self 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
-             (push-setting! *setting-control* self 'dialog-volume 'rel (-> *setting-control* current dialog-volume-hint) 0)
-             (while (= (current-str-id) s5-2)
-               (suspend)
+             (add-setting! 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
+             (add-setting! 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
+             (add-setting! 'dialog-volume 'rel (-> *setting-control* current dialog-volume-hint) 0)
+             ;; PAL patch here
+             (let ((s5-1 -1)
+                   (s3-1 (-> *display* base-frame-counter))
+                   (s4-4 (-> *display* base-frame-counter))
+                   )
+               (label cfg-27)
+               (let ((v1-36 (current-str-pos s5-2)))
+                 (when (< s5-1 v1-36)
+                   (if (> v1-36 0)
+                       (set! s5-1 v1-36)
+                       )
+                   (set! s3-1 (-> *display* base-frame-counter))
+                   )
+                 (when (not (and (or (< v1-36 0)
+                                     (>= (- (-> *display* base-frame-counter) s3-1) (seconds 3))
+                                     (>= (- (-> *display* base-frame-counter) s4-4) (seconds 60))
+                                     )
+                                 *sound-player-enable*
+                                 )
+                            )
+                   (suspend)
+                   (goto cfg-27)
+                   )
+                 )
                )
              )
             (else
@@ -550,22 +553,19 @@
   )
 
 (defstate level-hint-ambient-sound (level-hint)
-  :event
-  (-> level-hint-sidekick event)
-  :exit
-  (behavior ()
+  :event (-> level-hint-sidekick event)
+  :exit (behavior ()
     (if (nonzero? (-> self sound-id))
         (sound-stop (-> self sound-id))
         )
-    (clear-pending-settings-from-process *setting-control* self 'music-volume)
-    (clear-pending-settings-from-process *setting-control* self 'sfx-volume)
+    (remove-setting! 'music-volume)
+    (remove-setting! 'sfx-volume)
     (if (= (ppointer->process *hint-semaphore*) self)
         (set! *hint-semaphore* (the-as (pointer level-hint) #f))
         )
     (none)
     )
-  :code
-  (behavior ((arg0 string))
+  :code (behavior ((arg0 string))
     (while (not *sound-player-enable*)
       (suspend)
       )
@@ -576,7 +576,7 @@
              )
          (format (clear *temp-string*) "spool-~S" arg0)
          (set! (-> self sound-id)
-               (s5-0 (s4-0 *temp-string*) (new-sound-id) 1024 1 0 1 (the-as symbol (-> self trans)))
+               (s5-0 (s4-0 *temp-string*) (new-sound-id) 1024 1 0 (sound-group sfx) (the-as symbol (-> self trans)))
                )
          )
        )
@@ -585,7 +585,7 @@
               (s4-2 string->sound-name)
               )
           (format (clear *temp-string*) "spool-~S" arg0)
-          (set! (-> self sound-id) (s5-1 (s4-2 *temp-string*) (new-sound-id) 1024 0 0 1 #t))
+          (set! (-> self sound-id) (s5-1 (s4-2 *temp-string*) (new-sound-id) 1024 0 0 (sound-group sfx) #t))
           )
         )
       )
@@ -597,11 +597,33 @@
     (cond
       ((= (current-str-id) (-> self sound-id))
        (when (or (= (-> self mode) 'stinger) (= (-> self mode) 'camera))
-         (push-setting! *setting-control* self 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
-         (push-setting! *setting-control* self 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
+         (add-setting! 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
+         (add-setting! 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
          )
-       (while (= (current-str-id) (-> self sound-id))
-         (suspend)
+       ;; PAL patch here
+       (let ((gp-1 -1)
+             (s4-4 (-> *display* base-frame-counter))
+             (s5-4 (-> *display* base-frame-counter))
+             )
+         (label cfg-19)
+         (let ((v1-24 (current-str-pos (-> self sound-id))))
+           (when (< gp-1 v1-24)
+             (if (> v1-24 0)
+                 (set! gp-1 v1-24)
+                 )
+             (set! s4-4 (-> *display* base-frame-counter))
+             )
+           (when (not (and (or (< v1-24 0)
+                               (>= (- (-> *display* base-frame-counter) s4-4) (seconds 3))
+                               (>= (- (-> *display* base-frame-counter) s5-4) (seconds 60))
+                               )
+                           *sound-player-enable*
+                           )
+                      )
+             (suspend)
+             (goto cfg-19)
+             )
+           )
          )
        )
       (else
@@ -614,11 +636,9 @@
   )
 
 (defstate level-hint-error (level-hint)
-  :event
-  (-> level-hint-normal event)
-  :code
-  (behavior ((arg0 string) (arg1 string))
-    (clear-pending-settings-from-process *setting-control* self 'hint)
+  :event (-> level-hint-normal event)
+  :code (behavior ((arg0 string) (arg1 string))
+    (remove-setting! 'hint)
     (let ((s4-0 (-> *display* base-frame-counter)))
       (until (>= (- (-> *display* base-frame-counter) s4-0) (seconds 1))
         (when (and *debug-segment* (not (paused?)) (not (str-is-playing?)) (bottom-hud-hidden?))
@@ -648,8 +668,7 @@
   )
 
 (defstate level-hint-exit (level-hint)
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (= (ppointer->process *hint-semaphore*) self)
         (set! *hint-semaphore* (the-as (pointer level-hint) #f))
         )
@@ -671,7 +690,7 @@
     *temp-string*
     (add-debug-text-3d
       #t
-      (bucket-id debug-draw1)
+      (bucket-id debug-no-zbuf)
       *temp-string*
       (-> arg0 bsphere)
       (font-color orange-red)
@@ -710,15 +729,7 @@
          )
         ((!= s5-0 -1)
          (kill-current-level-hint '() '() 'exit)
-         (let ((s4-0 (get-process *default-dead-pool* level-hint #x4000)))
-           (when s4-0
-             (let ((t9-8 (method-of-type level-hint activate)))
-               (t9-8 (the-as level-hint s4-0) pp 'level-hint (the-as pointer #x70004000))
-               )
-             (run-now-in-process s4-0 level-hint-init-by-other s5-0 #f (-> arg0 ambient))
-             (-> s4-0 ppointer)
-             )
-           )
+         (process-spawn level-hint s5-0 #f (-> arg0 ambient) :to pp)
          )
         )
       )
@@ -747,9 +758,9 @@
           (set! sv-16 (symbol->string (res-lump-struct s5-0 'effect-name symbol :time f30-0)))
           (let ((s4-2 (new 'stack 'sound-spec)))
             (set! (-> s4-2 sound-name) (string->sound-name sv-16))
-            (logior! (-> s4-2 mask) 1)
+            (logior! (-> s4-2 mask) (sound-mask volume))
             (set! (-> s4-2 volume) 1024)
-            (logior! (-> s4-2 mask) 4)
+            (logior! (-> s4-2 mask) (sound-mask bend))
             (set! (-> s4-2 bend) (the int (* 327.66998 (rand-vu-float-range -100.0 100.0))))
             (set! sv-112 (new 'static 'res-tag))
             (let ((a1-7 ((method-of-type res-lump get-property-data)
@@ -799,7 +810,7 @@
          (s4-0 (new 'stack 'sound-spec))
          )
     (set! (-> s4-0 sound-name) (string->sound-name s2-0))
-    (logior! (-> s4-0 mask) 1)
+    (logior! (-> s4-0 mask) (sound-mask volume))
     (set! (-> s4-0 volume) 1024)
     (when (the-as (pointer res-tag) s3-0)
       (let ((t9-2 effect-param->sound-spec)
@@ -1119,7 +1130,7 @@
        (when *display-ambient-sound-marks*
          (add-debug-text-3d
            #t
-           (bucket-id debug-draw1)
+           (bucket-id debug-no-zbuf)
            (symbol->string (res-lump-struct obj 'effect-name symbol :time 0.0))
            gp-0
            (font-color white)
@@ -1147,7 +1158,7 @@
            (when (and (nonzero? a1-7) *common-text*)
              (add-debug-text-3d
                #t
-               (bucket-id debug-draw1)
+               (bucket-id debug-no-zbuf)
                (lookup-text! *common-text* (the-as game-text-id a1-7) #f)
                gp-0
                (font-color white)
@@ -1213,7 +1224,7 @@
         )
       (add-debug-text-3d
         #t
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         (res-lump-struct obj 'name string)
         gp-0
         (font-color white)
@@ -1221,7 +1232,7 @@
         )
       (add-debug-text-3d
         #t
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         (symbol->string s5-0)
         gp-0
         (font-color white)

@@ -5,9 +5,6 @@
  * Implementation of SCE DECI2 library.
  */
 
-#ifndef JAK1_DECI2_H
-#define JAK1_DECI2_H
-
 #include "common/listener_common.h"
 
 class Deci2Server;
@@ -25,5 +22,3 @@ s32 sceDeci2ExRecv(s32 s, void* buf, u16 len);
 s32 sceDeci2ExSend(s32 s, void* buf, u16 len);
 
 }  // namespace ee
-
-#endif  // JAK1_DECI2_H

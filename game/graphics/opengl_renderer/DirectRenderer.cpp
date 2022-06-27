@@ -1,10 +1,13 @@
 #include "DirectRenderer.h"
+
 #include "common/dma/gs.h"
 #include "common/log/log.h"
-#include "third-party/fmt/core.h"
-#include "game/graphics/pipelines/opengl.h"
-#include "third-party/imgui/imgui.h"
 #include "common/util/Assert.h"
+
+#include "game/graphics/pipelines/opengl.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/imgui/imgui.h"
 
 DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size)
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {
@@ -253,8 +256,7 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
         case GsTest::AlphaTest::NEVER:
           break;
         default:
-          fmt::print("unknown alpha test: {}\n", (int)m_test_state.alpha_test);
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("unknown alpha test: {}", (int)m_test_state.alpha_test));
       }
     }
 
@@ -270,8 +272,8 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
                 m_ogl.alpha_mult);
     glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
                                      "fog_color"),
-                render_state->fog_color[0], render_state->fog_color[1], render_state->fog_color[2],
-                render_state->fog_intensity);
+                render_state->fog_color[0] / 255.f, render_state->fog_color[1] / 255.f,
+                render_state->fog_color[2] / 255.f, render_state->fog_intensity / 255);
 
   } else {
     render_state->shaders[ShaderId::DIRECT_BASIC].activate();
@@ -617,10 +619,9 @@ void DirectRenderer::render_gif(const u8* data,
   }
 
   if (size != UINT32_MAX) {
-    if (!(offset + 15) / 16 == size / 16) {
-      fmt::print("DirectRenderer size failed in {}\n", name_and_id());
-      fmt::print("expected: {}, got: {}\n", size, offset);
-      ASSERT(false);
+    if ((offset + 15) / 16 != size / 16) {
+      ASSERT_MSG(false, fmt::format("DirectRenderer size failed in {}. expected: {}, got: {}",
+                                    name_and_id(), size, offset));
     }
   }
 
@@ -693,8 +694,7 @@ void DirectRenderer::handle_ad(const u8* data,
       }
       break;
     default:
-      fmt::print("Address {} is not supported\n", register_address_name(addr));
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("Address {} is not supported", register_address_name(addr)));
   }
 }
 
@@ -1053,8 +1053,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
       }
     } break;
     default:
-      fmt::print("prim type {} is unsupported in {}.\n", (int)m_prim_building.kind, name_and_id());
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("prim type {} is unsupported in {}.", (int)m_prim_building.kind,
+                                    name_and_id()));
   }
 }
 

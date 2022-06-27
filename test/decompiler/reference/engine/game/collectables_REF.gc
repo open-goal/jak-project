@@ -1,6 +1,11 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/buzzer-ag.gc")
+(import "goal_src/import/ecovalve-ag.gc")
+(import "goal_src/import/money-ag.gc")
+(import "goal_src/import/fuel-cell-ag.gc")
+
 ;; definition for symbol *eco-pill-count*, type int
 (define *eco-pill-count* 0)
 
@@ -30,9 +35,6 @@
   (:methods
     (initialize (_type_) _type_ 20)
     (initialize-params (_type_ time-frame float) none 21)
-    )
-  (:states
-    (hud-collecting handle)
     )
   )
 
@@ -74,7 +76,7 @@
         )
   (cond
     ((or (= (vector-length (-> obj root-override transv)) 0.0)
-         (logtest? (-> obj fact options) (fact-options fop6))
+         (logtest? (-> obj fact options) (fact-options instant-collect))
          )
      (vector-reset! (-> obj root-override transv))
      )
@@ -200,60 +202,28 @@
      (set! (-> obj collect-effect) (-> *part-group-id-table* 68))
      (set! (-> obj collect-effect2) (-> *part-group-id-table* 57))
      (set! (-> obj collect-effect-time) (seconds 0.5))
-     (set! (-> obj sound-name) (new 'static 'sound-spec
-                                 :mask #x80
-                                 :num 1.0
-                                 :group #x1
-                                 :sound-name (static-sound-name "yel-eco-idle")
-                                 :volume #x400
-                                 :fo-max 15
-                                 )
-           )
+     (set! (-> obj sound-name) (static-sound-spec "yel-eco-idle" :fo-max 15))
      )
     (((pickup-type eco-red))
      (set! (-> obj eco-effect) (-> *part-group-id-table* 48))
      (set! (-> obj collect-effect) (-> *part-group-id-table* 69))
      (set! (-> obj collect-effect2) (-> *part-group-id-table* 49))
      (set! (-> obj collect-effect-time) (seconds 0.5))
-     (set! (-> obj sound-name) (new 'static 'sound-spec
-                                 :mask #x80
-                                 :num 1.0
-                                 :group #x1
-                                 :sound-name (static-sound-name "red-eco-idle")
-                                 :volume #x400
-                                 :fo-max 15
-                                 )
-           )
+     (set! (-> obj sound-name) (static-sound-spec "red-eco-idle" :fo-max 15))
      )
     (((pickup-type eco-blue))
      (set! (-> obj eco-effect) (-> *part-group-id-table* 42))
      (set! (-> obj collect-effect) (-> *part-group-id-table* 67))
      (set! (-> obj collect-effect2) (-> *part-group-id-table* 43))
      (set! (-> obj collect-effect-time) (seconds 0.5))
-     (set! (-> obj sound-name) (new 'static 'sound-spec
-                                 :mask #x80
-                                 :num 1.0
-                                 :group #x1
-                                 :sound-name (static-sound-name "blue-eco-idle")
-                                 :volume #x400
-                                 :fo-max 15
-                                 )
-           )
+     (set! (-> obj sound-name) (static-sound-spec "blue-eco-idle" :fo-max 15))
      )
     (((pickup-type eco-green))
      (set! (-> obj eco-effect) (-> *part-group-id-table* 58))
      (set! (-> obj collect-effect) (-> *part-group-id-table* 66))
      (set! (-> obj collect-effect2) (-> *part-group-id-table* 61))
      (set! (-> obj collect-effect-time) (seconds 0.5))
-     (set! (-> obj sound-name) (new 'static 'sound-spec
-                                 :mask #x80
-                                 :num 1.0
-                                 :group #x1
-                                 :sound-name (static-sound-name "green-eco-idle")
-                                 :volume #x400
-                                 :fo-max 15
-                                 )
-           )
+     (set! (-> obj sound-name) (static-sound-spec "green-eco-idle" :fo-max 15))
      )
     (((pickup-type eco-pill))
      (set! (-> obj eco-effect) (-> *part-group-id-table* 59))
@@ -461,24 +431,21 @@
 ;; failed to figure out what this is:
 (defstate blocked (eco-collectable)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (task-complete? *game-info* (-> self entity extra perm task))
         (go-virtual wait)
         )
     (none)
     )
-  :code
-  (the-as (function none :behavior eco-collectable) anim-loop)
+  :code (the-as (function none :behavior eco-collectable) anim-loop)
   )
 
 ;; failed to figure out what this is:
 (defstate jump (eco-collectable)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (type-type? (-> self type) fuel-cell)
-        (sound-play-by-name (static-sound-name "cell-prize") (new-sound-id) 1024 0 0 1 #t)
+        (sound-play "cell-prize")
         )
     (logclear! (-> self mask) (process-mask actor-pause))
     (let ((gp-1 (new 'stack 'trajectory)))
@@ -498,12 +465,9 @@
         (transform-post)
         (animate self)
         (suspend)
-        (when (nonzero? (-> self skel))
-          (let ((a0-10 (-> self skel root-channel 0)))
-            (set! (-> a0-10 param 0) 0.5)
-            (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-loop!)
+        (if (nonzero? (-> self skel))
+            (ja :num! (loop! 0.5))
             )
-          )
         )
       )
     (set! (-> self root-override trans quad) (-> self jump-pos quad))
@@ -523,8 +487,7 @@
 ;; failed to figure out what this is:
 (defstate wait (eco-collectable)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-3 none))
     (when (and (or (= arg2 'touch) (= arg2 'attack))
                (and (logtest? (-> self flags) (collectable-flags can-collect))
@@ -603,9 +566,8 @@
         )
       )
     )
-  :enter
-  (behavior ()
-    (if (and (logtest? (-> self fact options) (fact-options fop6 can-collect))
+  :enter (behavior ()
+    (if (and (logtest? (-> self fact options) (fact-options instant-collect can-collect))
              (logtest? (-> self flags) (collectable-flags can-collect))
              (!= (-> self next-state name) 'pickup)
              (send-event *target* 'get-pickup (-> self fact pickup-type) (-> self fact pickup-amount))
@@ -614,8 +576,7 @@
         )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (cond
       ((logtest? (-> self flags) (collectable-flags trans))
        (vector-v++!
@@ -642,7 +603,7 @@
                       )
                  (go-virtual notice-blue (process->handle *target*))
                  )
-             (if (and (logtest? (-> self fact options) (fact-options fop6 can-collect))
+             (if (and (logtest? (-> self fact options) (fact-options instant-collect can-collect))
                       (!= (-> self next-state name) 'pickup)
                       (send-event *target* 'get-pickup (-> self fact pickup-type) (-> self fact pickup-amount))
                       )
@@ -659,9 +620,8 @@
     (update-transforms! (-> self root-override))
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (let ((gp-0 (-> self part))
             (s5-0 (-> self root-override root-prim prim-core))
             )
@@ -681,7 +641,7 @@
                 (logclear! (-> self mask) (process-mask actor-pause))
                 (set! (-> self actor-pause) #f)
                 (logior! (-> self flags) (collectable-flags fading))
-                (logior! (-> self state-flags) 1)
+                (logior! (-> self state-flags) (state-flags fade-out-particles))
                 (set! (-> gp-0 fade) (* 0.0033333334 (the float v1-10)))
                 )
               )
@@ -701,8 +661,7 @@
 ;; failed to figure out what this is:
 (defstate notice-blue (eco-collectable)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (when (and (or (= arg2 'touch) (= arg2 'attack))
                (and (logtest? (-> self flags) (collectable-flags can-collect))
                     (>= (- (-> *display* base-frame-counter) (-> self birth-time)) (-> self collect-timeout))
@@ -714,8 +673,7 @@
       (go-virtual pickup #f (process->handle arg0))
       )
     )
-  :enter
-  (behavior ((arg0 handle))
+  :enter (behavior ((arg0 handle))
     (set! (-> self target) arg0)
     (set! (-> self speed quad) (the-as uint128 0))
     (set! (-> self speed z) (the-as float (if (rand-vu-percent? (the-as float 0.5))
@@ -728,15 +686,13 @@
     (logclear! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (if (-> self actor-pause)
         (logior! (-> self mask) (process-mask actor-pause))
         )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) self)
       (set! (-> a1-0 num-params) 2)
@@ -749,9 +705,8 @@
       )
     (none)
     )
-  :code
-  (behavior ((arg0 handle))
-    (while #t
+  :code (behavior ((arg0 handle))
+    (loop
       (set! (-> self root-override trans quad) (-> self base quad))
       (add-blue-motion #t #f #t #f)
       (update-transforms! (-> self root-override))
@@ -777,8 +732,7 @@
 ;; failed to figure out what this is:
 (defstate pickup (eco-collectable)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as
         object
@@ -817,8 +771,7 @@
         )
       )
     )
-  :enter
-  (behavior ((arg0 object) (arg1 handle))
+  :enter (behavior ((arg0 object) (arg1 handle))
     (set! (-> self pickup-handle) arg1)
     (when (-> self notify-parent)
       (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
@@ -841,8 +794,7 @@
     (logclear! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :code
-  (behavior ((arg0 object) (arg1 handle))
+  :code (behavior ((arg0 object) (arg1 handle))
     (clear-collide-with-as (-> self root-override))
     (if (not (or (= (-> self fact pickup-type) (pickup-type eco-pill))
                  (logtest? (-> self fact options) (fact-options powerup))
@@ -855,13 +807,13 @@
         )
     (case (-> self fact pickup-type)
       (((pickup-type eco-yellow))
-       (sound-play-by-name (static-sound-name "y-eco-pickup") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "y-eco-pickup")
        )
       (((pickup-type eco-red))
-       (sound-play-by-name (static-sound-name "r-eco-pickup") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "r-eco-pickup")
        )
       (((pickup-type eco-blue))
-       (sound-play-by-name (static-sound-name "b-eco-pickup") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "b-eco-pickup")
        (case (-> (level-get-target-inside *level*) name)
          (('training)
           (level-hint-spawn
@@ -875,85 +827,71 @@
          )
        )
       (((pickup-type eco-green))
-       (sound-play-by-name (static-sound-name "g-eco-pickup") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "g-eco-pickup")
        )
       (((pickup-type eco-green) (pickup-type eco-pill))
-       (sound-play-by-name (static-sound-name "pill-pickup") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "pill-pickup")
        )
       )
     (if (nonzero? (-> self part))
         (kill-and-free-particles (-> self part))
         )
     (let ((gp-6 (handle->process (-> self pickup-handle))))
-      (when (nonzero? (-> self collect-effect))
-        (let ((s5-5 (get-process *default-dead-pool* part-tracker #x4000)))
-          (when s5-5
-            (let ((t9-17 (method-of-type part-tracker activate)))
-              (t9-17 (the-as part-tracker s5-5) gp-6 'part-tracker (the-as pointer #x70004000))
-              )
-            (run-now-in-process
-              s5-5
-              part-tracker-init
-              (-> self collect-effect)
-              -1
-              part-tracker-track-target
-              #f
-              #f
-              (-> self root-override root-prim prim-core)
-              )
-            (-> s5-5 ppointer)
+      (if (nonzero? (-> self collect-effect))
+          (process-spawn
+            part-tracker
+            :init part-tracker-init
+            (-> self collect-effect)
+            -1
+            part-tracker-track-target
+            #f
+            #f
+            (-> self root-override root-prim prim-core)
+            :to gp-6
             )
           )
-        )
       )
-    (when (nonzero? (-> self collect-effect2))
-      (let ((gp-7 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when gp-7
-          (let ((t9-20 (method-of-type part-tracker activate)))
-            (t9-20 (the-as part-tracker gp-7) self 'part-tracker (the-as pointer #x70004000))
-            )
-          (run-now-in-process
-            gp-7
-            part-tracker-init
-            (-> self collect-effect2)
-            -1
-            (lambda ((arg0 part-tracker))
-              (let ((s5-0 (handle->process (-> arg0 userdata))))
-                (when s5-0
-                  (let* ((v1-4 (handle->process (-> (the-as eco-collectable s5-0) pickup-handle)))
-                         (a2-0 (cond
-                                 ((not v1-4)
-                                  (-> arg0 root trans)
-                                  )
-                                 ((= (-> v1-4 type) target)
-                                  (vector<-cspace! (new 'stack-no-clear 'vector) (-> (the-as target v1-4) node-list data 5))
-                                  )
-                                 (else
-                                   (-> (the-as target v1-4) control trans)
-                                   )
+    (if (nonzero? (-> self collect-effect2))
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          (-> self collect-effect2)
+          -1
+          (lambda ((arg0 part-tracker))
+            (let ((s5-0 (handle->process (-> arg0 userdata))))
+              (when s5-0
+                (let* ((v1-4 (handle->process (-> (the-as eco-collectable s5-0) pickup-handle)))
+                       (a2-0 (cond
+                               ((not v1-4)
+                                (-> arg0 root trans)
+                                )
+                               ((= (-> v1-4 type) target)
+                                (vector<-cspace! (new 'stack-no-clear 'vector) (-> (the-as target v1-4) node-list data 5))
+                                )
+                               (else
+                                 (-> (the-as target v1-4) control trans)
                                  )
                                )
-                         )
-                    (vector-lerp!
-                      (-> arg0 root trans)
-                      (-> arg0 offset)
-                      a2-0
-                      (/ (the float (- (-> *display* base-frame-counter) (-> arg0 start-time)))
-                         (the float (-> (the-as eco-collectable s5-0) collect-effect-time))
-                         )
-                      )
+                             )
+                       )
+                  (vector-lerp!
+                    (-> arg0 root trans)
+                    (-> arg0 offset)
+                    a2-0
+                    (/ (the float (- (-> *display* base-frame-counter) (-> arg0 start-time)))
+                       (the float (-> (the-as eco-collectable s5-0) collect-effect-time))
+                       )
                     )
                   )
                 )
               )
-            (process->handle self)
-            #f
-            (-> self root-override root-prim prim-core)
             )
-          (-> gp-7 ppointer)
+          (process->handle self)
+          #f
+          (-> self root-override root-prim prim-core)
+          :to self
           )
         )
-      )
     (while (-> self child)
       (suspend)
       )
@@ -965,8 +903,7 @@
 ;; failed to figure out what this is:
 (defstate die (eco-collectable)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status dead) #t)
     (none)
     )
@@ -1007,8 +944,7 @@
 ;; failed to figure out what this is:
 (defstate die (eco)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'fade)
@@ -1022,19 +958,17 @@
               )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (if (-> self actor-pause)
         (logior! (-> self mask) (process-mask actor-pause))
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (logclear! (-> self mask) (process-mask actor-pause))
-    (logclear! (-> self fact options) (fact-options fop6 can-collect))
+    (logclear! (-> self fact options) (fact-options instant-collect can-collect))
     (if (nonzero? (-> self part))
         (kill-and-free-particles (-> self part))
         )
@@ -1047,15 +981,8 @@
          )
        )
       (else
-        (while (let ((f30-0 0.0)
-                     (a1-1 (new 'stack-no-clear 'event-message-block))
-                     )
-                 (set! (-> a1-1 from) self)
-                 (set! (-> a1-1 num-params) 2)
-                 (set! (-> a1-1 message) 'query)
-                 (set! (-> a1-1 param 0) (the-as uint 'pickup))
-                 (set! (-> a1-1 param 1) (the-as uint (-> self fact pickup-type)))
-                 (< f30-0 (the-as float (send-event-function *target* a1-1)))
+        (while (let ((f30-0 0.0))
+                 (< f30-0 (the-as float (send-event *target* 'query 'pickup (-> self fact pickup-type))))
                  )
           (suspend)
           )
@@ -1254,24 +1181,18 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *money-sg* money
-  0
-  4
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 0.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *money-sg* money money-lod0-jg money-idle-ja
+              ((money-lod0-mg (meters 20)) (money-lod1-mg (meters 40)) (money-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 0.6)
+              :texture-level 2
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *fuel-cell-sg* fuel-cell
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 1 0 1.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *fuel-cell-sg* fuel-cell fuel-cell-lod0-jg fuel-cell-idle-ja
+              ((fuel-cell-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 2
+              )
 
 ;; definition of type money
 (deftype money (eco-collectable)
@@ -1320,9 +1241,8 @@
 ;; failed to figure out what this is:
 (defstate wait (money)
   :virtual #t
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (quaternion-rotate-y!
         (-> self root-override quat)
         (-> self root-override quat)
@@ -1355,9 +1275,8 @@
 ;; failed to figure out what this is:
 (defstate notice-blue (money)
   :virtual #t
-  :code
-  (behavior ((arg0 handle))
-    (while #t
+  :code (behavior ((arg0 handle))
+    (loop
       (quaternion-rotate-y!
         (-> self root-override quat)
         (-> self root-override quat)
@@ -1391,8 +1310,7 @@
 ;; failed to figure out what this is:
 (defstate pickup (money)
   :virtual #t
-  :code
-  (behavior ((arg0 object) (arg1 handle))
+  :code (behavior ((arg0 object) (arg1 handle))
     (logclear! (-> self mask) (process-mask actor-pause))
     (clear-collide-with-as (-> self root-override))
     (process-entity-status! self (entity-perm-status dead) #t)
@@ -1448,7 +1366,7 @@
 ;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! money ((obj money) (arg0 entity-actor))
   (initialize obj)
-  (process-drawable-from-entity! obj (the-as entity-actor (-> obj entity)))
+  (process-drawable-from-entity! obj (-> obj entity))
   (initialize-params obj 0 (the-as float 1024.0))
   (update-transforms! (-> obj root-override))
   (go (method-of-object obj wait))
@@ -1458,7 +1376,7 @@
 ;; definition for function money-init-by-other
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defbehavior money-init-by-other money ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 entity))
+(defbehavior money-init-by-other money ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 entity-actor))
   (let ((s3-0 (-> arg2 pickup-type))
         (f30-0 (-> arg2 pickup-spawn-amount))
         )
@@ -1485,7 +1403,7 @@
 ;; definition for function money-init-by-other-no-bob
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defbehavior money-init-by-other-no-bob money ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 float) (arg4 entity))
+(defbehavior money-init-by-other-no-bob money ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 float) (arg4 entity-actor))
   (set! (-> self entity) arg4)
   (set! (-> self pickup-type) (the-as pickup-type arg2))
   (set! (-> self pickup-amount) arg3)
@@ -1654,8 +1572,7 @@
 ;; failed to figure out what this is:
 (defstate wait (fuel-cell)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-3 none))
     (when (and (or (= arg2 'touch) (= arg2 'attack))
                (and (logtest? (-> self flags) (collectable-flags can-collect))
@@ -1664,12 +1581,12 @@
                          (not *progress-process*)
                          (!= (-> self next-state name) 'pickup)
                          *target*
-                         (zero? (logand (-> *target* state-flags) #x8100))
+                         (zero? (logand (-> *target* state-flags) (state-flags grabbed dying)))
                          )
                     )
                )
-      (push-setting! *setting-control* self 'allow-progress #f 0.0 0)
-      (copy-settings-from-target! *setting-control*)
+      (add-setting! 'allow-progress #f 0.0 0)
+      (apply-settings *setting-control*)
       (logclear! (-> self mask) (process-mask actor-pause))
       (go-virtual pickup #f (process->handle arg0))
       )
@@ -1715,14 +1632,11 @@
                      )
             )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     0.5
     (let ((f28-0 0.0))
-      (let ((v1-3 (-> self skel root-channel 0)))
-        (set! (-> v1-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-        )
-      (while #t
+      (ja :group! (-> self draw art-group data 2))
+      (loop
         (let ((f30-0 (vector-vector-distance (-> self base) (target-pos 0))))
           (set! f28-0
                 (if (and (< f30-0 (-> *FACT-bank* suck-suck-dist)) (zero? (logand (-> self flags) (collectable-flags anim))))
@@ -1738,10 +1652,7 @@
             (transform-post)
             (fuel-cell-animate)
             (suspend)
-            (let ((a0-11 (-> self skel root-channel 0)))
-              (set! (-> a0-11 param 0) f30-1)
-              (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-loop!)
-              )
+            (ja :num! (loop! f30-1))
             )
           )
         )
@@ -1753,8 +1664,7 @@
 ;; failed to figure out what this is:
 (defstate pickup (fuel-cell)
   :virtual #t
-  :enter
-  (behavior ((arg0 object) (arg1 handle))
+  :enter (behavior ((arg0 object) (arg1 handle))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self state-object) #t)
     (let ((t9-1 (-> (the-as (state eco-collectable) (find-parent-method fuel-cell 23)) enter)))
@@ -1764,8 +1674,7 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((f30-0 (the-as float (cond
                                  ((string= (-> self victory-anim name) "fuel-cell-victory")
                                   97.0
@@ -1810,23 +1719,21 @@
         (set! (-> self state-object) #f)
         (kill-and-free-particles (-> self part))
         (logior! (-> self draw status) (draw-status skip-bones))
-        (if (not
-              (or (logtest? (the-as int (res-lump-value (-> self entity) 'options uint128 :time (the-as float -1000000000.0)))
-                            4096
-                            )
-                  (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-9)))
-                  )
-              )
+        (if (not (or (logtest? (res-lump-value (-> self entity) 'options fact-options :time (the-as float -1000000000.0))
+                               (fact-options powerup)
+                               )
+                     (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-9)))
+                     )
+                 )
             (send-event *camera* 'teleport-to-other-start-string)
             )
         )
       )
     (none)
     )
-  :code
-  (behavior ((arg0 object) (arg1 handle))
+  :code (behavior ((arg0 object) (arg1 handle))
     (local-vars (sv-96 res-tag))
-    (sound-play-by-name (static-sound-name "pu-powercell") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "pu-powercell")
     (clear-collide-with-as (-> self root-override))
     (logclear! (-> self mask) (process-mask actor-pause))
     (logclear! (-> self draw status) (draw-status hidden))
@@ -1843,13 +1750,7 @@
       (spool-push *art-control* (-> self victory-anim name) 0 self (the-as float -99.0))
       (suspend)
       )
-    (while (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> a1-8 from) self)
-             (set! (-> a1-8 num-params) 1)
-             (set! (-> a1-8 message) 'clone-anim)
-             (set! (-> a1-8 param 0) (the-as uint self))
-             (not (send-event-function *target* a1-8))
-             )
+    (while (not (send-event *target* 'clone-anim self))
       (spool-push *art-control* (-> self victory-anim name) 0 self (the-as float -99.0))
       (format #t "WARNING: fuel-cell stall on not cloning.~%")
       (suspend)
@@ -1860,10 +1761,8 @@
                (-> self entity)
                'movie-pos
                (inline-array vector)
-               :tag-ptr
-               (& sv-96)
-               :time
-               (the-as float -1000000000.0)
+               :tag-ptr (& sv-96)
+               :time (the-as float -1000000000.0)
                )
              )
            (gp-1 (if (and v1-34 (< (-> self movie-pos-index) (the-as int (-> sv-96 elt-count))))
@@ -1901,25 +1800,10 @@
     (set! (-> self draw bounds w) 32768.0)
     (logior! (-> self skel status) (janim-status inited))
     (send-event *target* 'blend-shape #t)
-    (push-setting! *setting-control* self 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
-    (push-setting! *setting-control* self 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
-    (push-setting!
-      *setting-control*
-      self
-      'ambient-volume
-      'rel
-      (-> *setting-control* current ambient-volume-movie)
-      0
-      )
-    (let ((gp-3 (get-process *default-dead-pool* othercam #x4000)))
-      (when gp-3
-        (let ((t9-26 (method-of-type othercam activate)))
-          (t9-26 (the-as othercam gp-3) self 'othercam (the-as pointer #x70004000))
-          )
-        (run-now-in-process gp-3 othercam-init-by-other self 10 #f #t)
-        (-> gp-3 ppointer)
-        )
-      )
+    (add-setting! 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
+    (add-setting! 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
+    (add-setting! 'ambient-volume 'rel (-> *setting-control* current ambient-volume-movie) 0)
+    (process-spawn othercam self 10 #f #t :to self)
     (auto-save-command 'auto-save 0 0 *default-pool*)
     (ja-play-spooled-anim
       (-> self victory-anim)
@@ -1927,9 +1811,9 @@
       (the-as art-joint-anim #f)
       (the-as (function process-drawable symbol) false-func)
       )
-    (clear-pending-settings-from-process *setting-control* self 'music-volume)
-    (clear-pending-settings-from-process *setting-control* self 'sfx-volume)
-    (clear-pending-settings-from-process *setting-control* self 'ambient-volume)
+    (remove-setting! 'music-volume)
+    (remove-setting! 'sfx-volume)
+    (remove-setting! 'ambient-volume)
     (send-event *target* 'blend-shape #f)
     (send-event *target* 'end-mode)
     (send-event *camera* 'no-intro)
@@ -1937,264 +1821,257 @@
     (ja-channel-set! 0)
     (suspend)
     (suspend)
-    (let ((gp-4 (get-process *default-dead-pool* process #x4000)))
-      (when gp-4
-        (let ((t9-39 (method-of-type process activate)))
-          (t9-39 gp-4 self 'process (the-as pointer #x70004000))
+    (process-spawn-function
+      process
+      (lambda :behavior collectable
+        ((arg0 game-task))
+        (while (or (-> *setting-control* current ambient)
+                   (-> *setting-control* current movie)
+                   (-> *setting-control* current hint)
+                   (str-is-playing?)
+                   )
+          (suspend)
           )
-        (run-next-time-in-process
-          gp-4
-          (lambda :behavior collectable
-            ((arg0 game-task))
-            (while (or (-> *setting-control* current ambient)
-                       (-> *setting-control* current movie)
-                       (-> *setting-control* current hint)
-                       (str-is-playing?)
-                       )
-              (suspend)
-              )
-            (cond
-              ((= arg0 (game-task training-buzzer))
-               (level-hint-spawn
-                 (game-text-id training-assistant-found-scout-fly-cell)
-                 "asstvb45"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task training-door))
-               (level-hint-spawn
-                 (game-text-id training-eco-opened-door)
-                 "sagevb25"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task beach-ecorocks))
-               (level-hint-spawn
-                 (game-text-id beach-collectors-unblocked)
-                 "sagevb01"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task misty-cannon))
-               (level-hint-spawn
-                 (game-text-id misty-stopped-lurkers-at-silo)
-                 "sagevb02"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task misty-bike))
-               (level-hint-spawn
-                 (game-text-id misty-stopped-balloon-lurkers)
-                 "asstvb03"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task firecanyon-end))
-               (level-hint-spawn
-                 (game-text-id fire-canyon-we-made-it)
-                 "sksp0095"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task rolling-robbers))
-               (level-hint-spawn
-                 (game-text-id rolling-beat-lurkers)
-                 "asstvb20"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task rolling-plants))
-               (level-hint-spawn
-                 (game-text-id sage-golfclap-i-have-low-expectations)
-                 "sagevb03"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task swamp-flutflut))
-               (level-hint-spawn
-                 (game-text-id swamp-finished-with-flutflut)
-                 "asstvb21"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task ogre-boss))
-               (level-hint-spawn
-                 (game-text-id ogre-boss-killed)
-                 "asstvb23"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task ogre-end))
-               (level-hint-spawn
-                 (game-text-id assistant-finished-mountain-pass-race)
-                 "asstvb25"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task beach-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task jungle-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task misty-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task firecanyon-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task rolling-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task sunken-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task swamp-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task ogre-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task cave-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task snow-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task lavatube-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task citadel-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task village1-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task village2-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              ((= arg0 (game-task village3-buzzer))
-               (level-hint-spawn
-                 (game-text-id found-all-scout-flies)
-                 "sksp009k"
-                 (the-as entity #f)
-                 *entity-pool*
-                 (game-task none)
-                 )
-               )
-              )
-            (none)
-            )
-          (the int (-> self fact pickup-amount))
+        (cond
+          ((= arg0 (game-task training-buzzer))
+           (level-hint-spawn
+             (game-text-id training-assistant-found-scout-fly-cell)
+             "asstvb45"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task training-door))
+           (level-hint-spawn
+             (game-text-id training-eco-opened-door)
+             "sagevb25"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task beach-ecorocks))
+           (level-hint-spawn
+             (game-text-id beach-collectors-unblocked)
+             "sagevb01"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task misty-cannon))
+           (level-hint-spawn
+             (game-text-id misty-stopped-lurkers-at-silo)
+             "sagevb02"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task misty-bike))
+           (level-hint-spawn
+             (game-text-id misty-stopped-balloon-lurkers)
+             "asstvb03"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task firecanyon-end))
+           (level-hint-spawn
+             (game-text-id fire-canyon-we-made-it)
+             "sksp0095"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task rolling-robbers))
+           (level-hint-spawn
+             (game-text-id rolling-beat-lurkers)
+             "asstvb20"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task rolling-plants))
+           (level-hint-spawn
+             (game-text-id sage-golfclap-i-have-low-expectations)
+             "sagevb03"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task swamp-flutflut))
+           (level-hint-spawn
+             (game-text-id swamp-finished-with-flutflut)
+             "asstvb21"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task ogre-boss))
+           (level-hint-spawn
+             (game-text-id ogre-boss-killed)
+             "asstvb23"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task ogre-end))
+           (level-hint-spawn
+             (game-text-id assistant-finished-mountain-pass-race)
+             "asstvb25"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task beach-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task jungle-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task misty-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task firecanyon-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task rolling-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task sunken-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task swamp-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task ogre-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task cave-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task snow-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task lavatube-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task citadel-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task village1-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task village2-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
+          ((= arg0 (game-task village3-buzzer))
+           (level-hint-spawn
+             (game-text-id found-all-scout-flies)
+             "sksp009k"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+           )
           )
-        (-> gp-4 ppointer)
+        (none)
         )
+      (the int (-> self fact pickup-amount))
+      :to self
       )
     (case (the int (-> self fact pickup-amount))
       (((game-task citadel-sage-blue))
@@ -2218,8 +2095,7 @@
     (convert-to-hud-object self (the-as hud (ppointer->process (-> *hud-parts* fuel-cell))))
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (transform-post)
     (if (-> self state-object)
         (spawn (-> self part) (the-as vector (-> self root-override root-prim prim-core)))
@@ -2257,19 +2133,8 @@
   (set! (-> obj base quad) (-> obj root-override trans quad))
   (set! (-> obj old-base quad) (-> obj root-override trans quad))
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 63) obj))
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "powercell-idle")
-                           :volume #x400
-                           :fo-max 40
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "powercell-idle" :fo-max 40) (-> obj root-override trans))
         )
   (set! (-> obj victory-anim) (fuel-cell-pick-anim obj))
   obj
@@ -2279,7 +2144,7 @@
 ;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! fuel-cell ((obj fuel-cell) (arg0 entity-actor))
   (initialize obj)
-  (process-drawable-from-entity! obj (the-as entity-actor (-> obj entity)))
+  (process-drawable-from-entity! obj (-> obj entity))
   (initialize-params obj 0 (the-as float 1024.0))
   (logclear! (-> obj fact options) (fact-options can-collect))
   (update-transforms! (-> obj root-override))
@@ -2290,7 +2155,7 @@
 ;; definition for function fuel-cell-init-by-other
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defbehavior fuel-cell-init-by-other fuel-cell ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 entity))
+(defbehavior fuel-cell-init-by-other fuel-cell ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 entity-actor))
   (let ((s3-0 (-> arg2 pickup-type))
         (f30-0 (-> arg2 pickup-spawn-amount))
         )
@@ -2318,12 +2183,11 @@
        (go-virtual jump)
        )
       ((and gp-1
-            (zero?
-              (logand (the-as int (res-lump-value (-> self entity) 'options uint128 :time (the-as float -1000000000.0)))
-                      128
-                      )
-              )
-            (zero? (logand (-> self fact options) (fact-options fop7)))
+            (zero? (logand (res-lump-value (-> self entity) 'options fact-options :time (the-as float -1000000000.0))
+                           (fact-options skip-jump-anim)
+                           )
+                   )
+            (zero? (logand (-> self fact options) (fact-options skip-jump-anim)))
             )
        (set! (-> self jump-pos quad) (-> (the-as vector gp-1) quad))
        (set! (-> self jump-pos y) (+ 4096.0 (-> self jump-pos y)))
@@ -2338,8 +2202,7 @@
 
 ;; failed to figure out what this is:
 (defstate fuel-cell-clone-anim (fuel-cell)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('pickup)
        (when (!= (-> self next-state name) 'pickup)
@@ -2359,33 +2222,28 @@
        (set! (-> self root-override trans quad) (-> self draw origin quad))
        (set! (-> self base quad) (-> self root-override trans quad))
        (ja-channel-set! 1)
-       (let ((v1-20 (-> self skel root-channel 0)))
-         (set! (-> v1-20 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-         )
+       (ja :group! (-> self draw art-group data 2))
        (logclear! (-> self draw status) (draw-status hidden))
        (vector-reset! (-> self draw origin))
        (go-virtual wait)
        )
       )
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (if (-> self actor-pause)
         (logior! (-> self mask) (process-mask actor-pause))
         )
     (logclear! (-> self skel status) (janim-status spool))
     (none)
     )
-  :code
-  (behavior ((arg0 handle))
+  :code (behavior ((arg0 handle))
     (logclear! (-> self mask) (process-mask actor-pause))
     (clone-anim arg0 3 #t "")
     (format #t "ERROR<GMJ>: clone-anim returned in fuel-cell~%")
     (deactivate self)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (update-transforms! (-> self root-override))
     (animate self)
     (none)
@@ -2401,20 +2259,17 @@
   (initialize-params self 0 (the-as float 1024.0))
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self actor-pause) #f)
-  (sound-play-by-name (static-sound-name "cell-prize") (new-sound-id) 1024 0 0 1 #t)
+  (sound-play "cell-prize")
   (go fuel-cell-clone-anim arg0)
   (none)
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *buzzer-sg* buzzer
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 1 0 1.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *buzzer-sg* buzzer buzzer-lod0-jg buzzer-idle-ja
+              ((buzzer-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 2
+              )
 
 ;; definition of type buzzer
 (deftype buzzer (eco-collectable)
@@ -2465,14 +2320,13 @@
 ;; failed to figure out what this is:
 (defstate wait (buzzer)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (case (get-reminder (get-task-control (the-as game-task (logand (the int (-> self fact pickup-amount)) #xffff))) 0)
       ((127)
        (go-virtual pickup #t (the-as handle #f))
        )
       )
-    (while #t
+    (loop
       (transform-post)
       (animate self)
       (suspend)
@@ -2484,8 +2338,7 @@
 ;; failed to figure out what this is:
 (defstate pickup (buzzer)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (if (= v1-0 'notify)
                          (process-entity-status! self (entity-perm-status dead) #t)
@@ -2493,17 +2346,15 @@
               )
       )
     )
-  :enter
-  (behavior ((arg0 object) (arg1 handle))
+  :enter (behavior ((arg0 object) (arg1 handle))
     (set! (-> self pickup-handle) arg1)
     (logclear! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :code
-  (behavior ((arg0 object) (arg1 handle))
+  :code (behavior ((arg0 object) (arg1 handle))
     (logclear! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status complete) #t)
-    (sound-play-by-name (static-sound-name "buzzer-pickup") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "buzzer-pickup")
     (case (-> (level-get-target-inside *level*) name)
       (('training)
        (level-hint-spawn
@@ -2539,16 +2390,7 @@
         (stop! (-> self sound))
         )
     (when (not arg0)
-      (let* ((s5-1 (get-process *default-dead-pool* manipy #x4000))
-             (v1-18 (when s5-1
-                      (let ((t9-11 (method-of-type manipy activate)))
-                        (t9-11 (the-as manipy s5-1) *entity-pool* 'manipy (the-as pointer #x70004000))
-                        )
-                      (run-now-in-process s5-1 manipy-init (-> self root-override trans) #f *buzzer-sg* #f)
-                      (-> s5-1 ppointer)
-                      )
-                    )
-             )
+      (let ((v1-18 (manipy-spawn (-> self root-override trans) #f *buzzer-sg* #f :to *entity-pool*)))
         (send-event (ppointer->process v1-18) 'become-hud-object (ppointer->process (-> *hud-parts* buzzers)))
         )
       )
@@ -2565,7 +2407,7 @@
                  (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-9 ca-12 ca-13 ca-14))
                  (not arg0)
                  )
-            (logior! (-> self fact options) (fact-options fop6 fop7))
+            (logior! (-> self fact options) (fact-options instant-collect skip-jump-anim))
             )
         (let ((v1-47
                 (birth-pickup-at-point
@@ -2636,19 +2478,8 @@
   (set! (-> obj fact) (new 'process 'fact-info obj (pickup-type buzzer) (the-as float 0.0)))
   (initialize-skeleton obj *buzzer-sg* '())
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 65) obj))
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "buzzer")
-                           :volume #x400
-                           :fo-max 40
-                           )
-                         (-> obj root-override trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "buzzer" :fo-max 40) (-> obj root-override trans))
         )
   (set! (-> obj victory-anim) (fuel-cell-pick-anim obj))
   obj
@@ -2658,7 +2489,7 @@
 ;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! buzzer ((obj buzzer) (arg0 entity-actor))
   (initialize obj)
-  (process-drawable-from-entity! obj (the-as entity-actor (-> obj entity)))
+  (process-drawable-from-entity! obj (-> obj entity))
   (initialize-params obj 0 (the-as float 1024.0))
   (set! (-> obj collect-timeout) (seconds 2))
   (update-transforms! (-> obj root-override))
@@ -2673,7 +2504,7 @@
 ;; definition for function buzzer-init-by-other
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defbehavior buzzer-init-by-other buzzer ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 entity))
+(defbehavior buzzer-init-by-other buzzer ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 entity-actor))
   (let ((s3-0 (-> arg2 pickup-type))
         (f30-0 (-> arg2 pickup-spawn-amount))
         )
@@ -3003,9 +2834,9 @@
                   s2-1
                   (the-as float 81920.0)
                   (collide-kind background)
-                  (the-as process #f)
+                  (the-as process-drawable #f)
                   s1-1
-                  (the-as uint 1)
+                  (new 'static 'pat-surface :noentity #x1)
                   )
                 0.0
                 )
@@ -3049,23 +2880,19 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *ecovalve-sg* ecovalve
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 1 0 1.6)
-  :longest-edge (meters 0)
-  :texture-level 2
-  )
+(defskelgroup *ecovalve-sg* ecovalve ecovalve-geo-jg ecovalve-idle-ja
+              ((ecovalve-geo-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 2
+              )
 
 ;; failed to figure out what this is:
 (defstate ecovalve-idle (ecovalve)
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
     (suspend)
     (transform-post)
-    (while #t
+    (loop
       (if (not ((-> self block-func) (the-as vent (ppointer->process (-> self parent)))))
           (set-vector! (-> self offset-target) 0.0 0.0 0.0 1.0)
           )
@@ -3245,15 +3072,7 @@
                )
          )
         )
-      (let ((s5-1 (get-process *pickup-dead-pool* ecovalve #x4000)))
-        (when s5-1
-          (let ((t9-17 (method-of-type ecovalve activate)))
-            (t9-17 (the-as ecovalve s5-1) obj 'ecovalve (the-as pointer #x70004000))
-            )
-          (run-now-in-process s5-1 ecovalve-init-by-other (-> obj block-func))
-          (-> s5-1 ppointer)
-          )
-        )
+      (process-spawn ecovalve (-> obj block-func) :from *pickup-dead-pool* :to obj)
       )
     (if ((-> obj block-func) obj)
         (go vent-blocked)
@@ -3281,8 +3100,7 @@
 
 ;; failed to figure out what this is:
 (defstate vent-wait-for-touch (vent)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (if (and (or (= arg2 'touch) (= arg2 'attack))
              (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
                (set! (-> a1-1 from) self)
@@ -3299,9 +3117,8 @@
         )
     (vent-standard-event-handler arg0 arg1 arg2 arg3)
     )
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (let ((a0-0 (-> self part))
             (a1-0 (-> self root-override trans))
             (gp-0 (-> self sound))
@@ -3321,17 +3138,15 @@
 
 ;; failed to figure out what this is:
 (defstate vent-blocked (vent)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('show)
        (go vent-wait-for-touch)
        )
       )
     )
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (if (not ((-> self block-func) self))
           (go vent-wait-for-touch)
           )
@@ -3343,10 +3158,8 @@
 
 ;; failed to figure out what this is:
 (defstate vent-pickup (vent)
-  :event
-  vent-standard-event-handler
-  :code
-  (behavior ((arg0 handle))
+  :event vent-standard-event-handler
+  :code (behavior ((arg0 handle))
     (when (-> self show-particles)
       (when (nonzero? (-> self collect-effect))
         (let* ((s5-0 (handle->process arg0))
@@ -3363,41 +3176,27 @@
                          )
                    )
               (when s5-1
-                (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
-                  (when s4-1
-                    (let ((t9-3 (method-of-type part-tracker activate)))
-                      (t9-3 (the-as part-tracker s4-1) gp-0 'part-tracker (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process
-                      s4-1
-                      part-tracker-init
-                      (-> self collect-effect)
-                      -1
-                      part-tracker-track-target
-                      #f
-                      #f
-                      (-> (the-as collide-shape s5-1) root-prim prim-core)
-                      )
-                    (-> s4-1 ppointer)
-                    )
+                (process-spawn
+                  part-tracker
+                  :init part-tracker-init
+                  (-> self collect-effect)
+                  -1
+                  part-tracker-track-target
+                  #f
+                  #f
+                  (-> (the-as collide-shape s5-1) root-prim prim-core)
+                  :to gp-0
                   )
-                (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-                  (when gp-1
-                    (let ((t9-6 (method-of-type part-tracker activate)))
-                      (t9-6 (the-as part-tracker gp-1) self 'part-tracker (the-as pointer #x70004000))
-                      )
-                    (run-now-in-process
-                      gp-1
-                      part-tracker-init
-                      (-> self collect-effect2)
-                      -1
-                      part-tracker-move-to-target
-                      #f
-                      #f
-                      (-> self root-override root-prim prim-core)
-                      )
-                    (-> gp-1 ppointer)
-                    )
+                (process-spawn
+                  part-tracker
+                  :init part-tracker-init
+                  (-> self collect-effect2)
+                  -1
+                  part-tracker-move-to-target
+                  #f
+                  #f
+                  (-> self root-override root-prim prim-core)
+                  :to self
                   )
                 )
               )

@@ -18,6 +18,7 @@ class ReplWrapper {
 
   // Functionality / Commands
   void clear_screen();
+  void print_to_repl(const std::string_view& str);
   void print_welcome_message();
   void set_history_max_size(size_t len);
   const char* readline(const std::string& prompt);

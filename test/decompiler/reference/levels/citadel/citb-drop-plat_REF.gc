@@ -1,50 +1,37 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; failed to figure out what this is:
-(defskelgroup *citb-drop-plat-sg* citb-drop-plat
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(import "goal_src/import/citb-drop-plat-ag.gc")
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-drop-plat-red-sg* citb-drop-plat
-  4
-  7
-  ((5 (meters 20)) (6 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-drop-plat-sg* citb-drop-plat citb-drop-plat-lod0-jg citb-drop-plat-idle-ja
+              ((citb-drop-plat-lod0-mg (meters 20)) (citb-drop-plat-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-drop-plat-green-sg* citb-drop-plat
-  8
-  11
-  ((9 (meters 20)) (10 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-drop-plat-red-sg* citb-drop-plat citb-drop-plat-red-lod0-jg citb-drop-plat-red-idle-ja
+              ((citb-drop-plat-red-lod0-mg (meters 20)) (citb-drop-plat-red-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-drop-plat-blue-sg* citb-drop-plat
-  12
-  15
-  ((13 (meters 20)) (14 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-drop-plat-green-sg* citb-drop-plat citb-drop-plat-green-lod0-jg citb-drop-plat-green-idle-ja
+              ((citb-drop-plat-green-lod0-mg (meters 20)) (citb-drop-plat-green-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *citb-drop-plat-yellow-sg* citb-drop-plat
-  16
-  19
-  ((17 (meters 20)) (18 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *citb-drop-plat-blue-sg* citb-drop-plat citb-drop-plat-blue-lod0-jg citb-drop-plat-blue-idle-ja
+              ((citb-drop-plat-blue-lod0-mg (meters 20)) (citb-drop-plat-blue-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup *citb-drop-plat-yellow-sg* citb-drop-plat citb-drop-plat-yellow-lod0-jg citb-drop-plat-yellow-idle-ja
+              ((citb-drop-plat-yellow-lod0-mg (meters 20)) (citb-drop-plat-yellow-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; definition of type drop-plat
 (deftype drop-plat (process-drawable)
@@ -91,27 +78,25 @@
 
 ;; failed to figure out what this is:
 (defstate drop-plat-idle (drop-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('drop)
        (logclear! (-> self mask) (process-mask actor-pause))
        (go drop-plat-drop)
        )
       (('touch 'attack)
-       (send-event *target* 'no-look-around 300)
+       (send-event *target* 'no-look-around (seconds 1))
        (send-event (ppointer->process (-> self parent)) 'player-stepped (-> self color))
        #f
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (suspend)
     (update-transforms! (-> self root-override))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (logior! (-> self mask) (process-mask actor-pause))
-    (while #t
+    (loop
       (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self duration))
           (go drop-plat-drop)
           )
@@ -119,8 +104,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior drop-plat) ja-post)
+  :post (the-as (function none :behavior drop-plat) ja-post)
   )
 
 ;; definition for function drop-plat-set-fade
@@ -142,23 +126,21 @@
 
 ;; failed to figure out what this is:
 (defstate drop-plat-spawn (drop-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('drop)
        (go drop-plat-die)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self root-override trans y)
           (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y))
           )
     (logior! (-> self draw status) (draw-status hidden))
     (ja-post)
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
+    (loop
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self delay))
         (let ((v1-14 (logclear (-> self draw status) (draw-status hidden)))
               (a0-5 (-> self draw))
@@ -175,16 +157,14 @@
 
 ;; failed to figure out what this is:
 (defstate drop-plat-rise (drop-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('drop)
        (go drop-plat-drop)
        )
       )
     )
-  :code
-  (behavior ((arg0 draw-control))
+  :code (behavior ((arg0 draw-control))
     (set! (-> self interp) 1.0)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self spin-angle) 0.0)
@@ -196,7 +176,7 @@
           )
       (set! (-> gp-0 quad) (-> self root-override trans quad))
       (set! (-> gp-0 y) (-> (the-as process-drawable (-> self parent 0)) root trans y))
-      (while #t
+      (loop
         (let ((f0-6
                 (fmax 0.0 (- 1.0 (* 0.0033333334 (the float (- (-> *display* base-frame-counter) (-> self state-time))))))
                 )
@@ -208,7 +188,7 @@
               )
         (when (and (not s5-0) (< (-> self interp) 0.05))
           (set! s5-0 #t)
-          (sound-play-by-name (static-sound-name "bridge-piece-up") (new-sound-id) 1024 0 0 1 (the-as symbol gp-0))
+          (sound-play "bridge-piece-up" :position (the-as symbol gp-0))
           )
         (set! (-> self spin-angle) (* 10.0 (-> self spin-speed) (-> self interp)))
         (if (= (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root-override trans y))
@@ -219,8 +199,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'quaternion)))
       (quaternion-vector-angle! gp-0 (-> self spin-axis) (-> self spin-angle))
       (quaternion*! (-> self root-override quat) (-> (the-as process-drawable (-> self parent 0)) root quat) gp-0)
@@ -233,11 +212,10 @@
 
 ;; failed to figure out what this is:
 (defstate drop-plat-drop (drop-plat)
-  :code
-  (behavior ()
+  :code (behavior ()
     (when (= (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root-override trans y))
       (set! (-> self state-time) (-> *display* base-frame-counter))
-      (sound-play-by-name (static-sound-name "bridge-piece-dn") (new-sound-id) 1024 0 0 1 #t)
+      (sound-play "bridge-piece-dn")
       (let ((gp-1 (the int (* 300.0 (rand-vu-float-range 0.2 0.3)))))
         (while (< (- (-> *display* base-frame-counter) (-> self state-time)) gp-1)
           (set! (-> self interp)
@@ -248,7 +226,7 @@
           )
         )
       )
-    (while #t
+    (loop
       (vector-v++!
         (-> self root-override transv)
         (compute-acc-due-to-gravity (-> self root-override) (new-stack-vector0) 0.0)
@@ -264,8 +242,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'quaternion)))
       (quaternion-vector-angle! gp-0 (-> self spin-axis) (-> self spin-angle))
       (quaternion*! (-> self root-override quat) (-> (the-as process-drawable (-> self parent 0)) root quat) gp-0)
@@ -278,8 +255,7 @@
 
 ;; failed to figure out what this is:
 (defstate drop-plat-die (drop-plat)
-  :code
-  (behavior ()
+  :code (behavior ()
     (cleanup-for-death self)
     (none)
     )
@@ -551,18 +527,16 @@
 
 ;; failed to figure out what this is:
 (defstate citb-drop-plat-idle (citb-drop-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (go citb-drop-plat-active)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (citb-drop-plat-drop-all-children)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
@@ -571,8 +545,7 @@
 
 ;; failed to figure out what this is:
 (defstate citb-drop-plat-active (citb-drop-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (cond
                        ((= v1-0 'player-stepped)
@@ -588,11 +561,10 @@
               )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (citb-drop-plat-spawn-children)
-    (while #t
+    (loop
       (if (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) (+ (-> self duration) (seconds 2)))
               (or (not *target*)
                   (< (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))

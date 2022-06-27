@@ -1,13 +1,16 @@
-#include "third-party/fmt/core.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "common/log/log.h"
 #include "AtomicOp.h"
-#include "decompiler/util/TP_Type.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
-#include "decompiler/IR2/bitfields.h"
+
+#include "common/log/log.h"
 #include "common/type_system/state.h"
 #include "common/util/BitUtils.h"
+
+#include "decompiler/IR2/bitfields.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/TP_Type.h"
 #include "decompiler/util/goal_constants.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 
@@ -183,6 +186,11 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       const auto& in_type = input.get(get_arg(0).var().reg());
       if (in_type.is_integer_constant(0)) {
         // GOAL is smart enough to use binary 0b0 as floating point 0.
+        return TP_Type::make_from_ts("float");
+      }
+      // new for jak 2:
+      if (env.version == GameVersion::Jak2 && in_type.is_integer_constant() &&
+          in_type.get_integer_constant() <= UINT32_MAX) {
         return TP_Type::make_from_ts("float");
       }
       return in_type;
@@ -395,6 +403,9 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       }
 
       if (m_kind == Kind::RIGHT_SHIFT_ARITH) {
+        if (env.version == GameVersion::Jak2 && arg0_type.typespec().base_type() == "float") {
+          return TP_Type::make_from_ts(TypeSpec("float"));
+        }
         return TP_Type::make_from_ts(TypeSpec("int"));
       }
     } break;

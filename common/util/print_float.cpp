@@ -1,10 +1,12 @@
+#include "print_float.h"
+
 #include <cmath>
 
-#include "third-party/fmt/core.h"
 #include "common/goal_constants.h"
-#include "third-party/dragonbox.h"
-#include "print_float.h"
 #include "common/util/Assert.h"
+
+#include "third-party/dragonbox.h"
+#include "third-party/fmt/core.h"
 
 /*!
  * Convert a float to a string. The string is _always_ in this format:
@@ -25,6 +27,63 @@ std::string float_to_string(float value, bool append_trailing_decimal) {
  */
 std::string meters_to_string(float value, bool append_trailing_decimal) {
   return float_to_string(value / METER_LENGTH, append_trailing_decimal);
+}
+
+/*!
+ * Convert a fixed point value to a float. Fixed point values usually end up with strange numbers
+ * that were definitely not what was written when we do a naive conversion. This function
+ * is a bit more clever.
+ */
+float fixed_point_to_float(s64 value, s64 scale) {
+  float sign = value < 0 ? -1 : 1;
+  value = std::abs(value);
+  double naive = (double)value / scale;
+
+  double flt_scale = 1;
+  while (flt_scale < scale) {
+    // 1 -> 0.1
+    flt_scale *= 10;
+  }
+
+  // we have a scale with enough precision for our fixed point. now find a good decimal.
+
+  // start at something resonable.
+  s64 fixed_start = (s64)(naive * flt_scale);
+  fixed_start = fixed_start - (fixed_start % 5);
+  // add e.g. 0.005 in a 1/1000 scale
+  s64 fixed_add = 0;
+  while ((s64)((fixed_start + fixed_add) / flt_scale * scale) < value) {
+    fixed_add += 5;
+  }
+  if ((s64)((fixed_start + fixed_add) / flt_scale * scale) == value) {
+    return (fixed_start + fixed_add) / flt_scale * sign;
+  }
+
+  // add e.g. 0.001 in a 1/1000 scale
+  fixed_add = 0;
+  while ((s64)((fixed_start + fixed_add) / flt_scale * scale) < value) {
+    fixed_add += 1;
+  }
+  if ((s64)((fixed_start + fixed_add) / flt_scale * scale) == value) {
+    return (fixed_start + fixed_add) / flt_scale * sign;
+  }
+  // added too much!
+  ASSERT_MSG(false, fmt::format("fixed_point_to_float failed hard. v: {} s: {}", value, scale));
+  return 0;
+}
+
+/*!
+ * Convert a fixed point value to a string. Wrapper around fixed_point_to_string
+ */
+std::string fixed_point_to_string(s64 value, s64 scale, bool append_trailing_decimal) {
+  return float_to_string(fixed_point_to_float(value, scale), append_trailing_decimal);
+}
+
+/*!
+ * Wrapper around fixed_point_to_string, for printing seconds.
+ */
+std::string seconds_to_string(s64 value, bool append_trailing_decimal) {
+  return fixed_point_to_string(value, TICKS_PER_SECOND, append_trailing_decimal);
 }
 
 int float_to_cstr(float value, char* buffer, bool append_trailing_decimal) {

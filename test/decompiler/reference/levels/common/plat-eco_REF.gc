@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/plat-eco-ag.gc")
+
 ;; definition of type plat-eco
 (deftype plat-eco (plat)
   ((notice-dist      float           :offset-assert 264)
@@ -36,28 +38,21 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *plat-eco-unlit-sg* plat-eco
-  0
-  8
-  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plat-eco-unlit-sg* plat-eco plat-eco-lod0-jg plat-eco-idle-ja
+              ((plat-eco-lod0-mg (meters 20)) (plat-eco-lod1-mg (meters 40)) (plat-eco-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; failed to figure out what this is:
-(defskelgroup *plat-eco-lit-sg* plat-eco
-  0
-  8
-  ((5 (meters 20)) (6 (meters 40)) (7 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *plat-eco-lit-sg* plat-eco plat-eco-lod0-jg plat-eco-idle-ja
+              ((plat-eco-lit-lod0-mg (meters 20)) (plat-eco-lit-lod1-mg (meters 40)) (plat-eco-lit-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; failed to figure out what this is:
 (defstate plat-idle (plat-eco)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('wake)
        (go-virtual plat-path-active (the-as plat #f))
@@ -66,31 +61,22 @@
        (go-virtual notice-blue (process->handle arg0))
        )
       (('ridden 'edge-grabbed)
-       (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-6 from) self)
-         (set! (-> a1-6 num-params) 2)
-         (set! (-> a1-6 message) 'query)
-         (set! (-> a1-6 param 0) (the-as uint 'powerup))
-         (set! (-> a1-6 param 1) (the-as uint 3))
-         (when (send-event-function *target* a1-6)
-           (send-to-all (-> self link) 'wake)
-           (go-virtual plat-path-active (the-as plat #f))
-           )
+       (when (send-event *target* 'query 'powerup (pickup-type eco-blue))
+         (send-to-all (-> self link) 'wake)
+         (go-virtual plat-path-active (the-as plat #f))
          )
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (lods-assign! (-> self draw) (-> self unlit-look))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (and (and *target*
                     (>= (-> self notice-dist) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
                     )
-               (send-event *target* 'query 'powerup 3)
+               (send-event *target* 'query 'powerup (pickup-type eco-blue))
                )
       (send-to-all (-> self link) 'wake)
       (go-virtual plat-path-active (the-as plat #f))
@@ -108,52 +94,33 @@
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-post)
     (update-transforms! (-> self root-override))
     (anim-loop)
     (none)
     )
-  :post
-  (the-as (function none :behavior plat-eco) ja-post)
+  :post (the-as (function none :behavior plat-eco) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate notice-blue (plat-eco)
   :virtual override
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('wake)
-       (sound-play-by-name
-         (static-sound-name "blue-eco-on")
-         (new-sound-id)
-         1024
-         0
-         0
-         1
-         (the-as symbol (-> self root-override trans))
-         )
+       (sound-play "blue-eco-on" :position (the-as symbol (-> self root-override trans)))
        (go-virtual plat-path-active (the-as plat #f))
        )
       (('ridden 'edge-grabbed)
-       (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-3 from) self)
-         (set! (-> a1-3 num-params) 2)
-         (set! (-> a1-3 message) 'query)
-         (set! (-> a1-3 param 0) (the-as uint 'powerup))
-         (set! (-> a1-3 param 1) (the-as uint 3))
-         (when (send-event-function *target* a1-3)
-           (send-to-all (-> self link) 'wake)
-           (go-virtual plat-path-active (the-as plat #f))
-           )
+       (when (send-event *target* 'query 'powerup (pickup-type eco-blue))
+         (send-to-all (-> self link) 'wake)
+         (go-virtual plat-path-active (the-as plat #f))
          )
        )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     ((-> (method-of-object self plat-idle) trans))
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) self)
@@ -169,10 +136,9 @@
       )
     (none)
     )
-  :code
-  (behavior ((arg0 handle))
+  :code (behavior ((arg0 handle))
     (set! (-> self target) arg0)
-    (while #t
+    (loop
       (let* ((gp-0 (handle->process (-> self target)))
              (v1-4 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
                        gp-0
@@ -224,8 +190,7 @@
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (plat-trans)
     (plat-post)
     (none)
@@ -235,8 +200,7 @@
 ;; failed to figure out what this is:
 (defstate plat-path-active (plat-eco)
   :virtual #t
-  :enter
-  (behavior ((arg0 plat))
+  :enter (behavior ((arg0 plat))
     (lods-assign! (-> self draw) (-> self lit-look))
     (sync-now! (-> self sync) (-> self sync-linear-val))
     (set! (-> self sync-offset-faux) (-> self sync offset))
@@ -266,12 +230,9 @@
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (!= (-> self sync-offset-faux) (-> self sync-offset-dest))
-      (set! (-> self sync-offset-faux)
-            (seek (-> self sync-offset-faux) (-> self sync-offset-dest) (* 12.0 (-> *display* seconds-per-frame)))
-            )
+      (seek! (-> self sync-offset-faux) (-> self sync-offset-dest) (* 12.0 (-> *display* seconds-per-frame)))
       (let* ((f0-7 (the float (-> self sync period)))
              (f1-3 (+ (-> self sync-offset-faux) f0-7))
              )
@@ -361,7 +322,3 @@
       )
   (none)
   )
-
-
-
-

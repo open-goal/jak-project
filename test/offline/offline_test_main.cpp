@@ -1,17 +1,19 @@
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include <memory>
+
+#include "common/common_types.h"
+#include "common/log/log.h"
+#include "common/util/FileUtil.h"
+#include "common/util/Timer.h"
+#include "common/util/diff.h"
+#include "common/util/json_util.h"
+
+#include "decompiler/ObjectFile/ObjectFileDB.h"
+#include "goalc/compiler/Compiler.h"
 
 #include "third-party/fmt/format.h"
-#include "common/log/log.h"
-#include "common/common_types.h"
-#include "common/util/FileUtil.h"
-#include "common/util/json_util.h"
-#include "decompiler/ObjectFile/ObjectFileDB.h"
-#include "common/util/diff.h"
-#include "goalc/compiler/Compiler.h"
-#include "common/util/Timer.h"
 
 namespace fs = std::filesystem;
 
@@ -65,8 +67,9 @@ struct OfflineTestConfig {
  * Read and parse the json config file, config.json, located in test/offline
  */
 OfflineTestConfig parse_config() {
-  auto json_file_path = file_util::get_file_path({"test", "offline", "config.jsonc"});
-  auto json = parse_commented_json(file_util::read_text_file(json_file_path), json_file_path);
+  auto json_file_path = file_util::get_jak_project_dir() / "test" / "offline" / "config.jsonc";
+  auto json = parse_commented_json(file_util::read_text_file(json_file_path.string()),
+                                   json_file_path.string());
   OfflineTestConfig result;
   result.dgos = json["dgos"].get<std::vector<std::string>>();
   result.skip_compile_files = json["skip_compile_files"].get<std::unordered_set<std::string>>();
@@ -85,6 +88,11 @@ struct DecompilerFile {
   std::string reference;
 };
 
+struct DecompilerArtFile {
+  std::string name_in_dgo;
+  std::string unique_name;
+};
+
 std::string replaceFirstOccurrence(std::string& s,
                                    const std::string& toReplace,
                                    const std::string& replaceWith) {
@@ -98,8 +106,8 @@ std::vector<DecompilerFile> find_files(const std::vector<std::string>& dgos) {
   std::vector<DecompilerFile> result;
 
   std::unordered_map<std::string, fs::path> files_with_ref;
-  for (auto& p : fs::recursive_directory_iterator(
-           file_util::get_file_path({"test", "decompiler", "reference"}))) {
+  for (auto& p : fs::recursive_directory_iterator(file_util::get_jak_project_dir() / "test" /
+                                                  "decompiler" / "reference")) {
     if (p.is_regular_file()) {
       std::string file_name = fs::path(p.path()).replace_extension().filename().string();
       if (file_name.find("_REF") == std::string::npos) {
@@ -114,7 +122,8 @@ std::vector<DecompilerFile> find_files(const std::vector<std::string>& dgos) {
 
   // use the all_objs.json file to place them in the correct build order
   auto j = parse_commented_json(
-      file_util::read_text_file(file_util::get_file_path({"goal_src", "build", "all_objs.json"})),
+      file_util::read_text_file(
+          (file_util::get_jak_project_dir() / "goal_src" / "build" / "all_objs.json").string()),
       "all_objs.json");
 
   std::unordered_set<std::string> matched_files;
@@ -168,24 +177,84 @@ std::vector<DecompilerFile> find_files(const std::vector<std::string>& dgos) {
   return result;
 }
 
+std::vector<DecompilerArtFile> find_art_files(const std::vector<std::string>& dgos) {
+  std::vector<DecompilerArtFile> result;
+
+  // use the all_objs.json file to place them in the correct build order
+  auto j = parse_commented_json(
+      file_util::read_text_file(
+          (file_util::get_jak_project_dir() / "goal_src" / "build" / "all_objs.json").string()),
+      "all_objs.json");
+
+  for (auto& x : j) {
+    auto unique_name = x[0].get<std::string>();
+    auto version = x[2].get<int>();
+
+    std::vector<std::string> dgoList = x[3].get<std::vector<std::string>>();
+    if (version == 4) {
+      bool skip_this = false;
+
+      // Check to see if we've included atleast one of the DGO/CGOs in our hardcoded list
+      // If not BLOW UP
+      bool dgoValidated = false;
+      for (int i = 0; i < (int)dgoList.size(); i++) {
+        std::string& dgo = dgoList.at(i);
+        if (dgo == "NO-XGO") {
+          skip_this = true;
+          break;
+        }
+        // can either be in the DGO or CGO folder, and can either end with .CGO or .DGO
+        if (std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.DGO", dgo)) != dgos.end() ||
+            std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.CGO", dgo)) != dgos.end() ||
+            std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.DGO", dgo)) != dgos.end() ||
+            std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.CGO", dgo)) != dgos.end()) {
+          dgoValidated = true;
+        }
+      }
+      if (skip_this) {
+        continue;
+      }
+      if (!dgoValidated) {
+        fmt::print(
+            "File [{}] is in the following DGOs [{}], and not one of these is in our list! Add "
+            "it!\n",
+            unique_name, fmt::join(dgoList, ", "));
+        exit(1);
+      }
+
+      DecompilerArtFile file;
+      file.unique_name = unique_name;
+      file.name_in_dgo = x[1];
+      result.push_back(file);
+    }
+  }
+
+  return result;
+}
+
 struct Decompiler {
   std::unique_ptr<decompiler::ObjectFileDB> db;
   std::unique_ptr<decompiler::Config> config;
 };
 
 Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
+                            const std::vector<DecompilerArtFile>& art_files,
                             const OfflineTestArgs& args,
                             const OfflineTestConfig& offline_config) {
   Decompiler dc;
-  file_util::init_crc();
   decompiler::init_opcode_info();
   dc.config = std::make_unique<decompiler::Config>(decompiler::read_config_file(
-      file_util::get_file_path({"decompiler", "config", "jak1_ntsc_black_label.jsonc"}), {}));
+      (file_util::get_jak_project_dir() / "decompiler" / "config" / "jak1_ntsc_black_label.jsonc")
+          .string(),
+      {}));
 
   // modify the config
   std::unordered_set<std::string> object_files;
   for (auto& file : files) {
     object_files.insert(file.name_in_dgo);  // todo, make this work with unique_name
+  }
+  for (auto& file : art_files) {
+    object_files.insert(file.unique_name);
   }
 
   dc.config->allowed_objects = object_files;
@@ -195,7 +264,7 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   std::vector<std::string> dgo_paths;
   if (args.iso_data_path.empty()) {
     for (auto& x : offline_config.dgos) {
-      dgo_paths.push_back(file_util::get_file_path({"iso_data/jak1", x}));
+      dgo_paths.push_back((file_util::get_jak_project_dir() / "iso_data" / "jak1" / x).string());
     }
   } else {
     for (auto& x : offline_config.dgos) {
@@ -214,9 +283,14 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
     }
   }
 
-  if (db_files.size() != files.size()) {
+  if (db_files.size() != files.size() + art_files.size()) {
     fmt::print("DB file error.\n");
     for (auto& f : files) {
+      if (!db_files.count(f.unique_name)) {
+        fmt::print("didn't find {}\n", f.unique_name);
+      }
+    }
+    for (auto& f : art_files) {
       if (!db_files.count(f.unique_name)) {
         fmt::print("didn't find {}\n", f.unique_name);
       }
@@ -234,6 +308,8 @@ void disassemble(Decompiler& dc) {
 }
 
 void decompile(Decompiler& dc, const OfflineTestConfig& config) {
+  dc.db->extract_art_info();
+  dc.db->ir2_top_level_pass(*dc.config);
   dc.db->analyze_functions_ir2({}, *dc.config, config.skip_compile_functions,
                                config.skip_compile_states);
 }
@@ -343,6 +419,9 @@ bool compile(Decompiler& dc,
 int main(int argc, char* argv[]) {
   fmt::print("Offline Decompiler Test 2\n");
   lg::initialize();
+  if (!file_util::setup_project_path(std::nullopt)) {
+    return 1;
+  }
 
   fmt::print("Reading config...\n");
   auto args = parse_args(argc, argv);
@@ -353,9 +432,10 @@ int main(int argc, char* argv[]) {
   if (args.max_files < (int)files.size()) {
     files.erase(files.begin() + args.max_files, files.end());
   }
+  auto art_files = find_art_files(config.dgos);
 
   fmt::print("Setting up decompiler and loading files...\n");
-  auto decompiler = setup_decompiler(files, args, config);
+  auto decompiler = setup_decompiler(files, art_files, args, config);
 
   fmt::print("Disassembling files...\n");
   disassemble(decompiler);

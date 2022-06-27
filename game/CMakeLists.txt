@@ -23,20 +23,39 @@ set(RUNTIME_SOURCE
         sce/sif_ee_memcard.cpp
         sce/iop.cpp
         sce/stubs.cpp
+        kernel/common/fileio.cpp
+        kernel/common/kboot.cpp
+        kernel/common/kdgo.cpp
+        kernel/common/kdsnetm.cpp
+        kernel/common/klink.cpp
+        kernel/common/klisten.cpp
+        kernel/common/kmachine.cpp
+        kernel/common/kmalloc.cpp
+        kernel/common/kmemcard.cpp
+        kernel/common/kprint.cpp
+        kernel/common/kscheme.cpp
+        kernel/common/ksocket.cpp
+        kernel/common/ksound.cpp
+        kernel/jak1/fileio.cpp
+        kernel/jak1/kboot.cpp
+        kernel/jak1/kdgo.cpp
+        kernel/jak1/klink.cpp
+        kernel/jak1/klisten.cpp
+        kernel/jak1/kmachine.cpp
+        kernel/jak1/kprint.cpp
+        kernel/jak1/kscheme.cpp
+        kernel/jak1/ksound.cpp
+        kernel/jak2/fileio.cpp
+        kernel/jak2/kboot.cpp
+        kernel/jak2/kdgo.cpp
+        kernel/jak2/klink.cpp
+        kernel/jak2/klisten.cpp
+        kernel/jak2/kmachine.cpp
+        kernel/jak2/kmalloc.cpp
+        kernel/jak2/kprint.cpp
+        kernel/jak2/kscheme.cpp
+        kernel/jak2/ksound.cpp
         kernel/asm_funcs.asm
-        kernel/fileio.cpp
-        kernel/kboot.cpp
-        kernel/kdgo.cpp
-        kernel/kdsnetm.cpp
-        kernel/klink.cpp
-        kernel/klisten.cpp
-        kernel/kmachine.cpp
-        kernel/kmalloc.cpp
-        kernel/kmemcard.cpp
-        kernel/kprint.cpp
-        kernel/kscheme.cpp
-        kernel/ksocket.cpp
-        kernel/ksound.cpp
         mips2c/mips2c_table.cpp
         mips2c/functions/bones.cpp
         mips2c/functions/collide_cache.cpp
@@ -46,7 +65,9 @@ set(RUNTIME_SOURCE
         mips2c/functions/collide_probe.cpp
         mips2c/functions/draw_string.cpp
         mips2c/functions/generic_effect.cpp
+        mips2c/functions/generic_effect2.cpp
         mips2c/functions/generic_merc.cpp
+        mips2c/functions/generic_tie.cpp
         mips2c/functions/joint.cpp
         mips2c/functions/merc_blend_shape.cpp
         mips2c/functions/ocean.cpp
@@ -59,6 +80,7 @@ set(RUNTIME_SOURCE
         mips2c/functions/test_func.cpp
         mips2c/functions/texture.cpp
         mips2c/functions/tfrag.cpp
+        mips2c/functions/tie_methods.cpp
         mips2c/functions/time_of_day.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
@@ -70,7 +92,6 @@ set(RUNTIME_SOURCE
         overlord/overlord.cpp
         overlord/ramdisk.cpp
         overlord/sbank.cpp
-        overlord/sndshim.cpp
         overlord/soundcommon.cpp
         overlord/srpc.cpp
         overlord/ssound.cpp
@@ -83,6 +104,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/background/Tfrag3.cpp
         graphics/opengl_renderer/background/TFragment.cpp
         graphics/opengl_renderer/background/Tie3.cpp
+        graphics/opengl_renderer/foreground/Merc2.cpp
         graphics/opengl_renderer/foreground/Generic2.cpp
         graphics/opengl_renderer/foreground/Generic2_DMA.cpp
         graphics/opengl_renderer/foreground/Generic2_Build.cpp
@@ -95,17 +117,15 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/ocean/OceanNear_PS2.cpp
         graphics/opengl_renderer/ocean/OceanTexture.cpp
         graphics/opengl_renderer/ocean/OceanTexture_PC.cpp
+        graphics/opengl_renderer/loader/Loader.cpp
+        graphics/opengl_renderer/loader/LoaderStages.cpp
         graphics/opengl_renderer/BucketRenderer.cpp
+        graphics/opengl_renderer/CollideMeshRenderer.cpp
         graphics/opengl_renderer/debug_gui.cpp
         graphics/opengl_renderer/DirectRenderer.cpp
         graphics/opengl_renderer/DirectRenderer2.cpp
         graphics/opengl_renderer/EyeRenderer.cpp
-        graphics/opengl_renderer/GenericProgram.cpp
-        graphics/opengl_renderer/GenericRenderer.cpp
         graphics/opengl_renderer/dma_helpers.cpp
-        graphics/opengl_renderer/Loader.cpp
-        graphics/opengl_renderer/MercProgram.cpp
-        graphics/opengl_renderer/MercRenderer.cpp
         graphics/opengl_renderer/opengl_utils.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Profiler.cpp
@@ -118,17 +138,52 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/Sprite3.cpp
         graphics/opengl_renderer/SpriteRenderer.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
+        graphics/texture/jak1_tpage_dir.cpp
         graphics/texture/TextureConverter.cpp
         graphics/texture/TexturePool.cpp
         graphics/pipelines/opengl.cpp
         system/vm/dmac.cpp
-        system/vm/vm.cpp)
+        system/vm/vm.cpp
+        tools/subtitles/subtitle_editor.h
+        tools/subtitles/subtitle_editor.cpp)
 
+find_package(Git)
+
+function(write_svnrev_h)
+    set(GIT_VERSION "")
+    set(GIT_SHORT_SHA "")
+    set(GIT_TAG "")
+    if (GIT_FOUND AND EXISTS ${CMAKE_SOURCE_DIR}/.git)
+        EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+                OUTPUT_VARIABLE GIT_SHORT_SHA
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+        EXECUTE_PROCESS(WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} COMMAND ${GIT_EXECUTABLE} tag --points-at HEAD
+                OUTPUT_VARIABLE GIT_TAG
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET)
+    else()
+        set(GIT_VERSION "unk. rev.")
+    endif()
+    if(GIT_TAG)
+        set(GIT_VERSION ${GIT_TAG})
+    elseif(GIT_SHORT_SHA)
+        string(SUBSTRING ${GIT_SHORT_SHA} 0 6 GIT_SHORT_SHA)
+        set(GIT_VERSION "rev. ${GIT_SHORT_SHA}")
+    else()
+        set(GIT_VERSION "unk. rev.")
+    endif()
+
+    file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/kernel/svnrev.h "#define GIT_VERSION \"${GIT_VERSION}\"\n")
+endfunction()
+
+write_svnrev_h()
+
+add_subdirectory(sound)
 
 # we build the runtime as a static library.
 add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
-target_link_libraries(runtime common fmt glfw imgui discord-rpc)
+target_link_libraries(runtime common fmt glfw imgui discord-rpc sound stb_image)
 if(WIN32)
     target_link_libraries(runtime mman)
 else()

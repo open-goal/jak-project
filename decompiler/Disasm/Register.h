@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <string>
+
 #include "common/util/Assert.h"
 
 namespace decompiler {
@@ -173,6 +174,8 @@ class Register {
   Reg::Cop0 get_cop0() const;
   uint32_t get_special() const;
   bool allowed_local_gpr() const;
+
+  bool is_s6() const { return *this == Register(Reg::GPR, Reg::S6); }
 
   bool operator==(const Register& other) const;
   bool operator!=(const Register& other) const;

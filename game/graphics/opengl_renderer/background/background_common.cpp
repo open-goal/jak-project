@@ -1,11 +1,13 @@
 
 
 #include "background_common.h"
-#include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/pipelines/opengl.h"
-#include "common/util/os.h"
 
 #include <immintrin.h>
+
+#include "common/util/os.h"
+
+#include "game/graphics/opengl_renderer/BucketRenderer.h"
+#include "game/graphics/pipelines/opengl.h"
 
 DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap) {
   glActiveTexture(tex_unit);
@@ -103,9 +105,13 @@ DoubleDraw setup_opengl_from_draw_mode(DrawMode mode, u32 tex_unit, bool mipmap)
             // ok, no need for double draw
             break;
           case GsTest::AlphaFail::FB_ONLY:
-            // darn, we need to draw twice
-            double_draw.kind = DoubleDrawKind::AFAIL_NO_DEPTH_WRITE;
-            double_draw.aref_second = alpha_min;
+            if (mode.get_depth_write_enable()) {
+              // darn, we need to draw twice
+              double_draw.kind = DoubleDrawKind::AFAIL_NO_DEPTH_WRITE;
+              double_draw.aref_second = alpha_min;
+            } else {
+              alpha_min = 0.f;
+            }
             break;
           default:
             ASSERT(false);
@@ -144,21 +150,18 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings,
                             SharedRenderState* render_state,
                             ShaderId shader) {
   render_state->shaders[shader].activate();
-  glUniform1i(glGetUniformLocation(render_state->shaders[shader].id(), "tex_T0"), 0);
-  glUniformMatrix4fv(glGetUniformLocation(render_state->shaders[shader].id(), "camera"), 1,
-                     GL_FALSE, settings.math_camera.data());
-  glUniform4f(glGetUniformLocation(render_state->shaders[shader].id(), "hvdf_offset"),
-              settings.hvdf_offset[0], settings.hvdf_offset[1], settings.hvdf_offset[2],
-              settings.hvdf_offset[3]);
-  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "fog_constant"),
-              settings.fog.x());
-  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "fog_min"),
-              settings.fog.y());
-  glUniform1f(glGetUniformLocation(render_state->shaders[shader].id(), "fog_max"),
-              settings.fog.z());
-  glUniform4f(glGetUniformLocation(render_state->shaders[shader].id(), "fog_color"),
-              render_state->fog_color[0], render_state->fog_color[1], render_state->fog_color[2],
-              render_state->fog_intensity);
+  auto shid = render_state->shaders[shader].id();
+  glUniform1i(glGetUniformLocation(shid, "tex_T0"), 0);
+  glUniformMatrix4fv(glGetUniformLocation(shid, "camera"), 1, GL_FALSE,
+                     settings.math_camera.data());
+  glUniform4f(glGetUniformLocation(shid, "hvdf_offset"), settings.hvdf_offset[0],
+              settings.hvdf_offset[1], settings.hvdf_offset[2], settings.hvdf_offset[3]);
+  glUniform1f(glGetUniformLocation(shid, "fog_constant"), settings.fog.x());
+  glUniform1f(glGetUniformLocation(shid, "fog_min"), settings.fog.y());
+  glUniform1f(glGetUniformLocation(shid, "fog_max"), settings.fog.z());
+  glUniform4f(glGetUniformLocation(shid, "fog_color"), render_state->fog_color[0] / 255.f,
+              render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
+              render_state->fog_intensity / 255);
 }
 
 void interp_time_of_day_slow(const float weights[8],
@@ -396,7 +399,7 @@ void interp_time_of_day_fast(const float weights[8],
       auto result = _mm_packus_epi16(color0, color0);
 
       // store result
-      _mm_storeu_si64((__m128i*)(&out[color_quad * 4]), result);
+      _mm_storel_epi64((__m128i*)(&out[color_quad * 4]), result);
     }
 
     {
@@ -451,7 +454,7 @@ void interp_time_of_day_fast(const float weights[8],
       auto result = _mm_packus_epi16(color0, color0);
 
       // store result
-      _mm_storeu_si64((__m128i*)(&out[color_quad * 4 + 2]), result);
+      _mm_storel_epi64((__m128i*)(&out[color_quad * 4 + 2]), result);
     }
   }
 }
@@ -483,45 +486,110 @@ void cull_check_all_slow(const math::Vector4f* planes,
   }
 }
 
+void make_all_visible_multidraws(std::pair<int, int>* draw_ptrs_out,
+                                 GLsizei* counts_out,
+                                 void** index_offsets_out,
+                                 const std::vector<tfrag3::ShrubDraw>& draws) {
+  u64 md_idx = 0;
+  for (size_t i = 0; i < draws.size(); i++) {
+    const auto& draw = draws[i];
+    u64 iidx = draw.first_index_index;
+    std::pair<int, int> ds;
+    ds.first = md_idx;
+    ds.second = 1;
+    counts_out[md_idx] = draw.num_indices;
+    index_offsets_out[md_idx] = (void*)(iidx * sizeof(u32));
+    md_idx++;
+    draw_ptrs_out[i] = ds;
+  }
+}
+
+u32 make_all_visible_multidraws(std::pair<int, int>* draw_ptrs_out,
+                                GLsizei* counts_out,
+                                void** index_offsets_out,
+                                const std::vector<tfrag3::StripDraw>& draws) {
+  u64 md_idx = 0;
+  u32 num_tris = 0;
+  for (size_t i = 0; i < draws.size(); i++) {
+    const auto& draw = draws[i];
+    u64 iidx = draw.unpacked.idx_of_first_idx_in_full_buffer;
+    std::pair<int, int> ds;
+    ds.first = md_idx;
+    ds.second = 0;
+    for (auto& grp : draw.vis_groups) {
+      // visible!
+      // let's use a multidraw
+      counts_out[md_idx] = grp.num_inds;
+      index_offsets_out[md_idx] = (void*)(iidx * sizeof(u32));
+      ds.second++;
+      md_idx++;
+      num_tris += grp.num_tris;
+      iidx += grp.num_inds;
+    }
+    draw_ptrs_out[i] = ds;
+  }
+  return num_tris;
+}
+
 u32 make_all_visible_index_list(std::pair<int, int>* group_out,
                                 u32* idx_out,
-                                const std::vector<tfrag3::StripDraw>& draws) {
+                                const std::vector<tfrag3::ShrubDraw>& draws,
+                                const u32* idx_in) {
   int idx_buffer_ptr = 0;
   for (size_t i = 0; i < draws.size(); i++) {
     const auto& draw = draws[i];
     std::pair<int, int> ds;
     ds.first = idx_buffer_ptr;
-    memcpy(&idx_out[idx_buffer_ptr], draw.unpacked.vertex_index_stream.data(),
-           draw.unpacked.vertex_index_stream.size() * sizeof(u32));
-    idx_buffer_ptr += draw.unpacked.vertex_index_stream.size();
-    ds.second = idx_buffer_ptr;
+    memcpy(&idx_out[idx_buffer_ptr], idx_in + draw.first_index_index,
+           draw.num_indices * sizeof(u32));
+    idx_buffer_ptr += draw.num_indices;
+    ds.second = idx_buffer_ptr - ds.first;
     group_out[i] = ds;
   }
   return idx_buffer_ptr;
 }
 
-u32 make_all_visible_index_list(std::pair<int, int>* group_out,
-                                u32* idx_out,
-                                const std::vector<tfrag3::ShrubDraw>& draws) {
-  int idx_buffer_ptr = 0;
+u32 make_multidraws_from_vis_string(std::pair<int, int>* draw_ptrs_out,
+                                    GLsizei* counts_out,
+                                    void** index_offsets_out,
+                                    const std::vector<tfrag3::StripDraw>& draws,
+                                    const std::vector<u8>& vis_data) {
+  u64 md_idx = 0;
+  u32 num_tris = 0;
+  u32 sanity_check = 0;
   for (size_t i = 0; i < draws.size(); i++) {
     const auto& draw = draws[i];
+    u64 iidx = draw.unpacked.idx_of_first_idx_in_full_buffer;
+    ASSERT(sanity_check == iidx);
     std::pair<int, int> ds;
-    ds.first = idx_buffer_ptr;
-    memcpy(&idx_out[idx_buffer_ptr], draw.vertex_index_stream.data(),
-           draw.vertex_index_stream.size() * sizeof(u32));
-    idx_buffer_ptr += draw.vertex_index_stream.size();
-    ds.second = idx_buffer_ptr;
-    group_out[i] = ds;
+    ds.first = md_idx;
+    ds.second = 0;
+    for (auto& grp : draw.vis_groups) {
+      sanity_check += grp.num_inds;
+      if (grp.vis_idx_in_pc_bvh == 0xffffffff || vis_data[grp.vis_idx_in_pc_bvh]) {
+        // visible!
+        // let's use a multidraw
+        counts_out[md_idx] = grp.num_inds;
+        index_offsets_out[md_idx] = (void*)(iidx * sizeof(u32));
+        ds.second++;
+        md_idx++;
+        num_tris += grp.num_tris;
+      }
+      iidx += grp.num_inds;
+    }
+    draw_ptrs_out[i] = ds;
   }
-  return idx_buffer_ptr;
+  return num_tris;
 }
 
 u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
                                     u32* idx_out,
                                     const std::vector<tfrag3::StripDraw>& draws,
-                                    const std::vector<u8>& vis_data) {
+                                    const std::vector<u8>& vis_data,
+                                    const u32* idx_in,
+                                    u32* num_tris_out) {
   int idx_buffer_ptr = 0;
+  u32 num_tris = 0;
   for (size_t i = 0; i < draws.size(); i++) {
     const auto& draw = draws[i];
     int vtx_idx = 0;
@@ -532,13 +600,17 @@ u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
     int run_start_in = 0;
     for (auto& grp : draw.vis_groups) {
       bool vis = grp.vis_idx_in_pc_bvh == 0xffffffff || vis_data[grp.vis_idx_in_pc_bvh];
+      if (vis) {
+        num_tris += grp.num_tris;
+      }
+
       if (building_run) {
         if (vis) {
-          idx_buffer_ptr += grp.num;
+          idx_buffer_ptr += grp.num_inds;
         } else {
           building_run = false;
-          idx_buffer_ptr += grp.num;
-          memcpy(&idx_out[run_start_out], &draw.unpacked.vertex_index_stream[run_start_in],
+          memcpy(&idx_out[run_start_out],
+                 idx_in + draw.unpacked.idx_of_first_idx_in_full_buffer + run_start_in,
                  (idx_buffer_ptr - run_start_out) * sizeof(u32));
         }
       } else {
@@ -546,19 +618,60 @@ u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
           building_run = true;
           run_start_out = idx_buffer_ptr;
           run_start_in = vtx_idx;
-          idx_buffer_ptr += grp.num;
-        } else {
+          idx_buffer_ptr += grp.num_inds;
         }
       }
-      vtx_idx += grp.num;
+      vtx_idx += grp.num_inds;
     }
+
     if (building_run) {
-      memcpy(&idx_out[run_start_out], &draw.unpacked.vertex_index_stream[run_start_in],
+      memcpy(&idx_out[run_start_out],
+             idx_in + draw.unpacked.idx_of_first_idx_in_full_buffer + run_start_in,
              (idx_buffer_ptr - run_start_out) * sizeof(u32));
     }
 
-    ds.second = idx_buffer_ptr;
+    ds.second = idx_buffer_ptr - ds.first;
     group_out[i] = ds;
   }
+  *num_tris_out = num_tris;
   return idx_buffer_ptr;
+}
+
+u32 make_all_visible_index_list(std::pair<int, int>* group_out,
+                                u32* idx_out,
+                                const std::vector<tfrag3::StripDraw>& draws,
+                                const u32* idx_in,
+                                u32* num_tris_out) {
+  int idx_buffer_ptr = 0;
+  u32 num_tris = 0;
+  for (size_t i = 0; i < draws.size(); i++) {
+    const auto& draw = draws[i];
+    std::pair<int, int> ds;
+    ds.first = idx_buffer_ptr;
+    u32 num_inds = 0;
+    for (auto& grp : draw.vis_groups) {
+      num_inds += grp.num_inds;
+      num_tris += grp.num_tris;
+    }
+    memcpy(&idx_out[idx_buffer_ptr], idx_in + draw.unpacked.idx_of_first_idx_in_full_buffer,
+           num_inds * sizeof(u32));
+    idx_buffer_ptr += num_inds;
+    ds.second = idx_buffer_ptr - ds.first;
+    group_out[i] = ds;
+  }
+  *num_tris_out = num_tris;
+  return idx_buffer_ptr;
+}
+
+void update_render_state_from_pc_settings(SharedRenderState* state, const TfragPcPortData& data) {
+  if (!state->has_pc_data) {
+    for (int i = 0; i < 4; i++) {
+      state->camera_planes[i] = data.planes[i];
+      state->camera_matrix[i] = data.camera[i];
+    }
+    state->camera_pos = data.cam_trans;
+    state->camera_hvdf_off = data.hvdf_off;
+    state->camera_fog = data.fog;
+    state->has_pc_data = true;
+  }
 }

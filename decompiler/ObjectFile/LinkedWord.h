@@ -6,8 +6,9 @@
  */
 
 #include <cstdint>
-#include <string>
 #include <cstring>
+#include <string>
+
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 

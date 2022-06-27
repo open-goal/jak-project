@@ -1,20 +1,24 @@
-#include <string>
-#include <vector>
 #include <limits>
+#include <string>
 #include <unordered_set>
+#include <vector>
 
-#include "common/util/FileUtil.h"
-#include "common/util/Trie.h"
+#include "common/util/Assert.h"
 #include "common/util/BitUtils.h"
-#include "gtest/gtest.h"
-#include "test/all_jak1_symbols.h"
+#include "common/util/CopyOnWrite.h"
+#include "common/util/FileUtil.h"
+#include "common/util/Range.h"
+#include "common/util/SmallVector.h"
+#include "common/util/Trie.h"
+#include "common/util/crc32.h"
 #include "common/util/json_util.h"
 #include "common/util/os.h"
-#include "common/util/Range.h"
-#include "third-party/fmt/core.h"
 #include "common/util/print_float.h"
-#include "common/util/CopyOnWrite.h"
-#include "common/util/SmallVector.h"
+
+#include "gtest/gtest.h"
+#include "test/all_jak1_symbols.h"
+
+#include "third-party/fmt/core.h"
 
 TEST(CommonUtil, CpuInfo) {
   setup_cpu_info();
@@ -392,8 +396,31 @@ TEST(SmallVector, Construction) {
   EXPECT_FALSE(one.empty());
 }
 
+#ifndef NO_ASSERT
 TEST(Assert, Death) {
   EXPECT_DEATH(private_assert_failed("foo", "bar", 12, "aaa"), "");
+}
+#endif
+
+uint32_t crc_reference(const u8* data, size_t size) {
+  u32 crc = 0xffffffff;
+  while (size--) {
+    crc ^= *data++;
+    for (int k = 0; k < 8; k++)
+      crc = crc & 1 ? (crc >> 1) ^ 0x82f63b78 : crc >> 1;
+  }
+  return ~crc;
+}
+
+TEST(CRC32, Reference) {
+  for (u32 so = 0; so < 7; so++) {
+    std::vector<u8> test_data;
+    for (u32 i = 0; i < 1024 + so; i++) {
+      test_data.push_back(i & 0xff);
+    }
+    EXPECT_EQ(crc_reference(test_data.data(), test_data.size()),
+              crc32(test_data.data(), test_data.size()));
+  }
 }
 
 }  // namespace test

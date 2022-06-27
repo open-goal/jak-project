@@ -5,8 +5,12 @@
  */
 
 #include "InstructionDecode.h"
-#include "decompiler/ObjectFile/LinkedObjectFile.h"
+
 #include "common/util/Assert.h"
+
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 // utility class to extract fields of an opcode.
@@ -93,6 +97,7 @@ static InstructionKind decode_cop2(OpcodeFields fields) {
           return IK::CTC2;
 
         default:
+          ASSERT(false);
           return IK::UNKNOWN;
       }
       break;
@@ -149,6 +154,10 @@ static InstructionKind decode_cop2(OpcodeFields fields) {
       ASSERT(fields.data & (1 << 25));
       return IK::VFTOI12;
 
+    case 0b00101111111:
+      ASSERT(fields.data & (1 << 25));
+      return IK::VFTOI15;
+
     case 0b00100111100:
       ASSERT(fields.data & (1 << 25));
       return IK::VITOF0;
@@ -197,9 +206,15 @@ static InstructionKind decode_cop2(OpcodeFields fields) {
       ASSERT(fields.data & (1 << 25));
       return IK::VOPMULA;
 
+    case 0b01011111101:
+      return IK::VMSUBA;
+
     case 0b01100111100:
       ASSERT(fields.data & (1 << 25));
       return IK::VMOVE;
+
+    case 0b01100111101:
+      return IK::VMR32;
 
     case 0b01110111100:
       ASSERT(fields.data & (1 << 25));
@@ -343,6 +358,7 @@ static InstructionKind decode_cop2(OpcodeFields fields) {
           ASSERT(fields.dest() == 0b0);
           return IK::VCALLMS;
         default:
+          ASSERT_MSG(false, fmt::format("unknown cop2 lower11 case 0b{:b}\n", fields.lower11()));
           return IK::UNKNOWN;
       }
   }
@@ -355,6 +371,7 @@ static InstructionKind decode_W(OpcodeFields fields) {
       ASSERT(fields.ft() == 0);
       return IK::CVTSW;
     default:
+      ASSERT(false);
       return IK::UNKNOWN;
   }
 }
@@ -416,6 +433,7 @@ static InstructionKind decode_S(OpcodeFields fields) {
       ASSERT(fields.fd() == 0);
       return IK::CLES;
     default:
+      ASSERT(false);
       return IK::UNKNOWN;
   }
 }
@@ -432,6 +450,7 @@ static InstructionKind decode_BC1(OpcodeFields fields) {
     case 0b00011:
       return IK::BC1TL;
     default:
+      ASSERT(false);
       return IK::UNKNOWN;
   }
 }
@@ -454,6 +473,7 @@ static InstructionKind decode_cop1(OpcodeFields fields) {
     case 0b10100:
       return decode_W(fields);
     default:
+      ASSERT(false);
       return IK::UNKNOWN;
   }
 }
@@ -467,6 +487,7 @@ static InstructionKind decode_c0(OpcodeFields fields) {
       ASSERT(fields.sa() == 0 && fields.rd() == 0 && fields.rt() == 0);
       return IK::EI;
     default:
+      ASSERT(false);
       return IK::UNKNOWN;
   }
 }
@@ -486,6 +507,7 @@ static InstructionKind decode_mt0(OpcodeFields fields) {
       if (fields.rd() == 0b11001 && fields.sa() == 0 && (fields.data & 1) == 1) {
         return IK::MTPC;
       } else {
+        ASSERT(false);
         return IK::UNKNOWN;
       }
   }
@@ -500,6 +522,7 @@ static InstructionKind decode_mf0(OpcodeFields fields) {
       if (fields.rd() == 0b11001 && fields.sa() == 0 && (fields.data & 1) == 1) {
         return IK::MFPC;
       } else {
+        ASSERT(false);
         return IK::UNKNOWN;
       }
   }
@@ -514,6 +537,7 @@ static InstructionKind decode_cop0(OpcodeFields fields) {
     case 0b10000:
       return decode_c0(fields);
     default:
+      ASSERT(false);
       return InstructionKind::UNKNOWN;
   }
 }
@@ -533,6 +557,7 @@ static InstructionKind decode_mmi3(OpcodeFields fields) {
       ASSERT(fields.rs() == 0);
       return IK::PCPYH;
     default:
+      ASSERT(false);
       return IK::UNKNOWN;
   }
 }
@@ -546,6 +571,8 @@ static InstructionKind decode_mmi2(OpcodeFields fields) {
       return IK::PMADDH;
     case 0b10010:
       return IK::PAND;
+    case 0b10011:
+      return IK::PXOR;
     case 0b11100:
       return IK::PMULTH;
     case 0b11110:
@@ -553,6 +580,7 @@ static InstructionKind decode_mmi2(OpcodeFields fields) {
     case 0b11111:
       return IK::PROT3W;
     default:
+      ASSERT_MSG(false, fmt::format("unknown mmi2: 0b{:b}\n", fields.MMI_func()));
       return IK::UNKNOWN;
   }
 }
@@ -576,7 +604,10 @@ static InstructionKind decode_mmi1(OpcodeFields fields) {
       return IK::PEXTUH;
     case 0b11010:
       return IK::PEXTUB;
+    case 0b11011:
+      return IK::QFSRV;
     default:
+      ASSERT_MSG(false, fmt::format("unknown mmi1: 0b{:b}\n", fields.MMI_func()));
       return IK::UNKNOWN;
   }
 }
@@ -594,8 +625,14 @@ static InstructionKind decode_mmi0(OpcodeFields fields) {
       return IK::PMAXW;
     case 0b00100:
       return IK::PADDH;
+    case 0b00101:
+      return IK::PSUBH;
     case 0b00111:
       return IK::PMAXH;
+    case 0b01000:
+      return IK::PADDB;
+    case 0b01010:
+      return IK::PCGTB;
     case 0b10010:
       return IK::PEXTLW;
     case 0b10011:
@@ -609,6 +646,7 @@ static InstructionKind decode_mmi0(OpcodeFields fields) {
     case 0b11011:
       return IK::PPACB;
     default:
+      ASSERT_MSG(false, fmt::format("unknown mmi0: 0b{:b}\n", fields.MMI_func()));
       return IK::UNKNOWN;
   }
 }
@@ -631,6 +669,7 @@ static InstructionKind decode_pmfhl(OpcodeFields fields) {
       ASSERT(fields.rt() == 0);
       return IK::PMFHL_LH;
     default:
+      ASSERT(false);
       return IK::UNKNOWN;
   }
 }
@@ -675,13 +714,14 @@ static InstructionKind decode_mmi(OpcodeFields fields) {
     case 0b111111:
       return IK::PSRAW;
     default:
+      ASSERT(false);
       return IK::UNKNOWN;
   }
 }
 
-static InstructionKind decode_regimm(OpcodeFields files) {
+static InstructionKind decode_regimm(OpcodeFields fields) {
   typedef InstructionKind IK;
-  switch (files.rt()) {
+  switch (fields.rt()) {
     case 0b00000:
       return IK::BLTZ;
     case 0b00001:
@@ -692,7 +732,10 @@ static InstructionKind decode_regimm(OpcodeFields files) {
       return IK::BGEZL;
     case 0b10001:
       return IK::BGEZAL;
+    case 0b11000:
+      return IK::MTSAB;
     default:
+      ASSERT_MSG(false, fmt::format("unknown regimm: 0b{:b}\n", fields.rt()));
       return IK::UNKNOWN;
   }
 }
@@ -710,6 +753,7 @@ static InstructionKind decode_sync(OpcodeFields fields) {
   } else if (stype == 0b10000) {
     return IK::SYNCP;
   } else {
+    ASSERT(false);
     return IK::UNKNOWN;
   }
 }
@@ -855,6 +899,7 @@ static InstructionKind decode_special(OpcodeFields fields) {
       ASSERT(fields.rs() == 0);
       return IK::DSRA32;
     default:
+      ASSERT(false);
       return IK::UNKNOWN;
   }
 }
@@ -867,6 +912,7 @@ static InstructionKind decode_cache(OpcodeFields fields) {
     case 0b10100:
       return IK::CACHE_DXWBIN;
     default:
+      ASSERT(false);
       return IK::UNKNOWN;
   }
 }
@@ -988,6 +1034,7 @@ static InstructionKind decode_opcode(uint32_t code) {
     case 0b111111:
       return IK::SD;
     default:
+      ASSERT(false);
       return IK::UNKNOWN;
       break;
   }

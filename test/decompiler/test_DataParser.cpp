@@ -1,11 +1,13 @@
 
-#include "gtest/gtest.h"
-#include "decompiler/util/DataParser.h"
-#include "decompiler/Disasm/DecompilerLabel.h"
-#include "decompiler/util/data_decompile.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
-#include "third-party/fmt/core.h"
 #include "common/goos/PrettyPrinter.h"
+
+#include "decompiler/Disasm/DecompilerLabel.h"
+#include "decompiler/util/DataParser.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/data_decompile.h"
+#include "gtest/gtest.h"
+
+#include "third-party/fmt/core.h"
 
 using namespace decompiler;
 
@@ -210,12 +212,7 @@ TEST_F(DataDecompTest, VifDisasmArray) {
   auto decomp = decompile_at_label_guess_type(parsed.label("L148"), parsed.labels, {parsed.words},
                                               dts->ts, nullptr);
   check_forms_equal(decomp.print(),
-                    "(new 'static 'boxed-array :type\n"
-                    "  vif-disasm-element\n"
-                    "  :length\n"
-                    "  3\n"
-                    "  :allocated-length\n"
-                    "  3\n"
+                    "(new 'static 'boxed-array :type vif-disasm-element\n"
                     "  (new 'static 'vif-disasm-element :mask #x7f :string1 \"nop\")\n"
                     "  (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 stcycl) :print "
                     "#x2 :string1 \"stcycl\")\n"

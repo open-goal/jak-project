@@ -1,9 +1,13 @@
 #pragma once
 
 #include "ssound.h"
+
 #include "common/common_types.h"
 
 void srpc_init_globals();
+
+extern const char* gLanguage;
+extern s32 gVAG_Id;
 
 constexpr int MUSIC_TWEAK_COUNT = 32;
 
@@ -143,6 +147,23 @@ struct SoundRpcCommand {
 
 static_assert(sizeof(SoundRpcCommand) == 0x50);
 
+struct SoundIopInfo {
+  u32 frame;
+  s32 strpos;
+  u32 std_id;
+  u32 freemem;
+  u8 chinfo[48];
+  u32 freemem2;
+  u32 nocd;
+  u32 dirtycd;
+  u32 diskspeed[2];
+  u32 lastspeed;
+  s32 dupseg;
+  u32 times[41];
+  u32 times_seq;
+  u8 pad[10];  // pad up to transfer size
+};
+
 extern MusicTweaks gMusicTweakInfo;
 extern s32 gMusicTweak;
 
@@ -150,3 +171,6 @@ u32 Thread_Loader();
 u32 Thread_Player();
 
 s32 VBlank_Handler();
+
+// added for PC port
+extern u32 gMusicFadeHack;

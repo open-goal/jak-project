@@ -1,17 +1,19 @@
 #pragma once
 
-#include <vector>
-#include <unordered_set>
-#include <memory>
 #include <functional>
+#include <memory>
+#include <unordered_set>
+#include <vector>
+
+#include "common/goos/Object.h"
+#include "common/math/Vector.h"
+#include "common/type_system/TypeSystem.h"
+#include "common/type_system/state.h"
+
+#include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/AtomicOp.h"
-#include "common/goos/Object.h"
-#include "common/type_system/TypeSystem.h"
-#include "decompiler/Disasm/DecompilerLabel.h"
-#include "common/type_system/state.h"
 #include "decompiler/IR2/LabelDB.h"
-#include "common/math/Vector.h"
 #include "decompiler/ObjectFile/LinkedWord.h"
 
 namespace decompiler {
@@ -420,6 +422,10 @@ class SetFormFormElement : public FormElement {
   const Form* dst() const { return m_dst; }
   Form* src() { return m_src; }
   Form* dst() { return m_dst; }
+  const std::optional<TypeSpec>& cast_for_set() const { return m_cast_for_set; }
+  const std::optional<TypeSpec>& cast_for_define() const { return m_cast_for_define; }
+  void set_cast_for_set(const std::optional<TypeSpec>& ts) { m_cast_for_set = ts; }
+  void set_cast_for_define(const std::optional<TypeSpec>& ts) { m_cast_for_define = ts; }
 
  private:
   int m_real_push_count = 0;
@@ -795,6 +801,7 @@ class UntilElement : public FormElement {
   bool allow_in_if() const override { return false; }
   Form* condition = nullptr;
   Form* body = nullptr;
+  std::optional<RegisterAccess> false_destination;  // used in jak 2, sometimes.
 };
 
 /*!
@@ -1025,6 +1032,8 @@ class GenericOperator {
     return m_condition_kind;
   }
 
+  bool is_func() const { return m_kind == Kind::FUNCTION_EXPR; }
+
   const Form* func() const {
     ASSERT(m_kind == Kind::FUNCTION_EXPR);
     return m_function;
@@ -1094,92 +1103,12 @@ class CastElement : public FormElement {
   const Form* source() const { return m_source; }
   void set_type(const TypeSpec& ts) { m_type = ts; }
   Form* source() { return m_source; }
+  bool numeric() const { return m_numeric; }
 
  private:
   TypeSpec m_type;
   Form* m_source = nullptr;
   bool m_numeric = false;  // if true, use the. otherwise the-as
-};
-
-class DerefToken {
- public:
-  enum class Kind {
-    INTEGER_CONSTANT,
-    INTEGER_EXPRESSION,  // some form which evaluates to an integer index. Not offset, index.
-    FIELD_NAME,
-    EXPRESSION_PLACEHOLDER,
-    INVALID
-  };
-  static DerefToken make_int_constant(s64 int_constant);
-  static DerefToken make_int_expr(Form* expr);
-  static DerefToken make_field_name(const std::string& name);
-  static DerefToken make_expr_placeholder();
-
-  void collect_vars(RegAccessSet& vars, bool recursive) const;
-  goos::Object to_form(const Env& env) const;
-  void apply(const std::function<void(FormElement*)>& f);
-  void apply_form(const std::function<void(Form*)>& f);
-  void get_modified_regs(RegSet& regs) const;
-
-  bool is_field_name(const std::string& name) const {
-    return m_kind == Kind::FIELD_NAME && m_name == name;
-  }
-
-  bool is_int(int x) const { return m_kind == Kind::INTEGER_CONSTANT && m_int_constant == x; }
-
-  bool is_expr() const { return m_kind == Kind::INTEGER_EXPRESSION; }
-
-  Kind kind() const { return m_kind; }
-  const std::string& field_name() const {
-    ASSERT(m_kind == Kind::FIELD_NAME);
-    return m_name;
-  }
-
-  s64 int_constant() const { return m_int_constant; }
-
-  Form* expr() {
-    ASSERT(m_kind == Kind::INTEGER_EXPRESSION);
-    return m_expr;
-  }
-
- private:
-  Kind m_kind = Kind::INVALID;
-  s64 m_int_constant = -1;
-  std::string m_name;
-  Form* m_expr = nullptr;
-};
-
-DerefToken to_token(const FieldReverseLookupOutput::Token& in);
-
-class DerefElement : public FormElement {
- public:
-  DerefElement(Form* base, bool is_addr_of, DerefToken token);
-  DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> tokens);
-  goos::Object to_form_internal(const Env& env) const override;
-  void apply(const std::function<void(FormElement*)>& f) override;
-  void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars, bool recursive) const override;
-  void update_from_stack(const Env& env,
-                         FormPool& pool,
-                         FormStack& stack,
-                         std::vector<FormElement*>* result,
-                         bool allow_side_effects) override;
-  void get_modified_regs(RegSet& regs) const override;
-
-  void inline_nested();
-
-  bool is_addr_of() const { return m_is_addr_of; }
-  const Form* base() const { return m_base; }
-  Form* base() { return m_base; }
-  const std::vector<DerefToken>& tokens() const { return m_tokens; }
-  std::vector<DerefToken>& tokens() { return m_tokens; }
-  void set_base(Form* new_base);
-  void set_addr_of(bool is_addr_of) { m_is_addr_of = is_addr_of; }
-
- private:
-  Form* m_base = nullptr;
-  bool m_is_addr_of = false;
-  std::vector<DerefToken> m_tokens;
 };
 
 class DynamicMethodAccess : public FormElement {
@@ -1198,40 +1127,6 @@ class DynamicMethodAccess : public FormElement {
 
  private:
   RegisterAccess m_source;
-};
-
-class ArrayFieldAccess : public FormElement {
- public:
-  ArrayFieldAccess(RegisterAccess source,
-                   const std::vector<DerefToken>& deref_tokens,
-                   int expected_stride,
-                   int constant_offset,
-                   bool flipped);
-  goos::Object to_form_internal(const Env& env) const override;
-  void apply(const std::function<void(FormElement*)>& f) override;
-  void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars, bool recursive) const override;
-  void update_from_stack(const Env& env,
-                         FormPool& pool,
-                         FormStack& stack,
-                         std::vector<FormElement*>* result,
-                         bool allow_side_effects) override;
-  void get_modified_regs(RegSet& regs) const override;
-
-  void update_with_val(Form* new_val,
-                       const Env& env,
-                       FormPool& pool,
-                       std::vector<FormElement*>* result,
-                       bool allow_side_effects);
-
-  bool flipped() const { return m_flipped; }
-
- private:
-  RegisterAccess m_source;
-  std::vector<DerefToken> m_deref_tokens;
-  int m_expected_stride = -1;
-  int m_constant_offset = -1;
-  bool m_flipped = false;
 };
 
 class GetMethodElement : public FormElement {
@@ -1310,6 +1205,123 @@ class ConstantFloatElement : public FormElement {
   float m_value;
 };
 
+class DerefToken {
+ public:
+  enum class Kind {
+    INTEGER_CONSTANT,
+    INTEGER_EXPRESSION,  // some form which evaluates to an integer index. Not offset, index.
+    FIELD_NAME,
+    EXPRESSION_PLACEHOLDER,
+    INVALID
+  };
+  static DerefToken make_int_constant(s64 int_constant);
+  static DerefToken make_int_expr(Form* expr);
+  static DerefToken make_field_name(const std::string& name);
+  static DerefToken make_expr_placeholder();
+
+  void collect_vars(RegAccessSet& vars, bool recursive) const;
+  goos::Object to_form(const Env& env) const;
+  void apply(const std::function<void(FormElement*)>& f);
+  void apply_form(const std::function<void(Form*)>& f);
+  void get_modified_regs(RegSet& regs) const;
+
+  bool is_field_name(const std::string& name) const {
+    return m_kind == Kind::FIELD_NAME && m_name == name;
+  }
+
+  bool is_int(int x) const { return m_kind == Kind::INTEGER_CONSTANT && m_int_constant == x; }
+
+  bool is_expr() const { return m_kind == Kind::INTEGER_EXPRESSION; }
+
+  Kind kind() const { return m_kind; }
+  const std::string& field_name() const {
+    ASSERT(m_kind == Kind::FIELD_NAME);
+    return m_name;
+  }
+
+  s64 int_constant() const { return m_int_constant; }
+
+  Form* expr() {
+    ASSERT(m_kind == Kind::INTEGER_EXPRESSION);
+    return m_expr;
+  }
+
+ private:
+  Kind m_kind = Kind::INVALID;
+  s64 m_int_constant = -1;
+  std::string m_name;
+  Form* m_expr = nullptr;
+};
+
+DerefToken to_token(const FieldReverseLookupOutput::Token& in);
+
+class DerefElement : public FormElement {
+ public:
+  DerefElement(Form* base, bool is_addr_of, DerefToken token);
+  DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> tokens);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+  void inline_nested();
+
+  bool is_addr_of() const { return m_is_addr_of; }
+  const Form* base() const { return m_base; }
+  Form* base() { return m_base; }
+  const std::vector<DerefToken>& tokens() const { return m_tokens; }
+  std::vector<DerefToken>& tokens() { return m_tokens; }
+  void set_base(Form* new_base);
+  void set_addr_of(bool is_addr_of) { m_is_addr_of = is_addr_of; }
+
+ private:
+  ConstantTokenElement* try_as_art_const(const Env& env, FormPool& pool);
+
+  Form* m_base = nullptr;
+  bool m_is_addr_of = false;
+  std::vector<DerefToken> m_tokens;
+};
+
+class ArrayFieldAccess : public FormElement {
+ public:
+  ArrayFieldAccess(RegisterAccess source,
+                   const std::vector<DerefToken>& deref_tokens,
+                   int expected_stride,
+                   int constant_offset,
+                   bool flipped);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+  void update_with_val(Form* new_val,
+                       const Env& env,
+                       FormPool& pool,
+                       std::vector<FormElement*>* result,
+                       bool allow_side_effects);
+
+  bool flipped() const { return m_flipped; }
+
+ private:
+  RegisterAccess m_source;
+  std::vector<DerefToken> m_deref_tokens;
+  int m_expected_stride = -1;
+  int m_constant_offset = -1;
+  bool m_flipped = false;
+};
+
 class StorePlainDeref : public FormElement {
  public:
   StorePlainDeref(Form* dst,
@@ -1375,6 +1387,7 @@ class DecompiledDataElement : public FormElement {
   void get_modified_regs(RegSet& regs) const override;
   void do_decomp(const Env& env, const LinkedObjectFile* file);
   DecompilerLabel label() const { return m_label; }
+  std::optional<LabelInfo> label_info() const { return m_label_info; }
 
  private:
   bool m_decompiled = false;
@@ -1389,6 +1402,7 @@ class LetElement : public FormElement {
   void add_def(RegisterAccess dst, Form* value);
 
   void make_let_star();
+  void clear_let_star();
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1427,6 +1441,12 @@ class CounterLoopElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   bool allow_in_if() const override { return false; }
+  Kind kind() const { return m_kind; }
+  Form* counter_value() const { return m_check_value; }
+  Form* body() const { return m_body; }
+  RegisterAccess var_init() const { return m_var_init; }
+  RegisterAccess var_check() const { return m_var_check; }
+  RegisterAccess var_inc() const { return m_var_inc; }
 
  private:
   RegisterAccess m_var_init, m_var_check, m_var_inc;

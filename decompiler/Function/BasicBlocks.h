@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 // for RegSet:
 #include "decompiler/analysis/reg_usage.h"
@@ -13,11 +13,6 @@ class Function;
 struct BasicBlock {
   int start_word;
   int end_word;
-
-  // [start, end)
-  int start_basic_op = -1;
-  int end_basic_op = -1;
-  int basic_op_size() const { return end_basic_op - start_basic_op; }
 
   std::string label_name;
 

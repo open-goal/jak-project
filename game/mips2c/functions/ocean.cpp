@@ -2,7 +2,8 @@
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+#include "game/kernel/jak1/kscheme.h"
+using namespace jak1;
 namespace Mips2C {
 ExecutionContext ocean_regs_vfs;
 
@@ -73,7 +74,7 @@ u64 execute(void* ctxt);
 }
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace draw_large_polygon_ocean {
 struct Cache {
@@ -267,7 +268,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace render_ocean_quad {
 struct Cache {

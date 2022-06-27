@@ -1,9 +1,12 @@
 #include "config.h"
-#include "third-party/json.hpp"
-#include "third-party/fmt/core.h"
+
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
+
 #include "decompiler/util/config_parsers.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/json.hpp"
 
 namespace decompiler {
 
@@ -34,12 +37,15 @@ Config read_config_file(const std::string& path_to_config_file,
     cfg[key] = val;
   }
 
-  config.game_version = cfg.at("game_version").get<int>();
+  int version_int = cfg.at("game_version").get<int>();
+  ASSERT(version_int == 1 || version_int == 2);
+  config.game_version = (GameVersion)version_int;
   config.text_version = cfg.at("text_version").get<GameTextVersion>();
   config.game_name = cfg.at("game_name").get<std::string>();
   if (cfg.contains("expected_elf_name")) {
     config.expected_elf_name = cfg.at("expected_elf_name").get<std::string>();
   }
+  config.all_types_file = cfg.at("all_types_file").get<std::string>();
 
   auto inputs_json = read_json_file_from_config(cfg, "inputs_file");
   config.dgo_names = inputs_json.at("dgo_names").get<std::vector<std::string>>();
@@ -54,21 +60,26 @@ Config read_config_file(const std::string& path_to_config_file,
   }
   config.disassemble_code = cfg.at("disassemble_code").get<bool>();
   config.decompile_code = cfg.at("decompile_code").get<bool>();
-  config.regenerate_all_types = cfg.at("regenerate_all_types").get<bool>();
   config.write_hex_near_instructions = cfg.at("write_hex_near_instructions").get<bool>();
   config.write_scripts = cfg.at("write_scripts").get<bool>();
   config.disassemble_data = cfg.at("disassemble_data").get<bool>();
   config.process_tpages = cfg.at("process_tpages").get<bool>();
   config.process_game_text = cfg.at("process_game_text").get<bool>();
   config.process_game_count = cfg.at("process_game_count").get<bool>();
+  config.process_art_groups = cfg.at("process_art_groups").get<bool>();
   config.hexdump_code = cfg.at("hexdump_code").get<bool>();
   config.hexdump_data = cfg.at("hexdump_data").get<bool>();
+  config.find_functions = cfg.at("find_functions").get<bool>();
   config.dump_objs = cfg.at("dump_objs").get<bool>();
   config.print_cfgs = cfg.at("print_cfgs").get<bool>();
   config.generate_symbol_definition_map = cfg.at("generate_symbol_definition_map").get<bool>();
   config.is_pal = cfg.at("is_pal").get<bool>();
   config.rip_levels = cfg.at("levels_convert_to_obj").get<bool>();
-
+  config.extract_collision = cfg.at("extract_collision").get<bool>();
+  config.generate_all_types = cfg.at("generate_all_types").get<bool>();
+  if (cfg.contains("old_all_types_file")) {
+    config.old_all_types_file = cfg.at("old_all_types_file").get<std::string>();
+  }
   auto allowed = cfg.at("allowed_objects").get<std::vector<std::string>>();
   for (const auto& x : allowed) {
     config.allowed_objects.insert(x);
@@ -225,17 +236,26 @@ Config read_config_file(const std::string& path_to_config_file,
   config.levels_to_extract = inputs_json.at("levels_to_extract").get<std::vector<std::string>>();
   config.levels_extract = cfg.at("levels_extract").get<bool>();
 
-  // get new strings
-  if (!cfg.contains("new_strings_file")) {
-    return config;
-  }
+  auto art_info_json = read_json_file_from_config(cfg, "art_info_file");
+  config.art_groups_by_file =
+      art_info_json.at("files").get<std::unordered_map<std::string, std::string>>();
+  config.art_groups_by_function =
+      art_info_json.at("functions").get<std::unordered_map<std::string, std::string>>();
 
-  auto new_strings_json = read_json_file_from_config(cfg, "new_strings_file");
-  config.new_strings_same_across_langs = new_strings_json.at("same_across_languages")
-                                             .get<std::unordered_map<std::string, std::string>>();
-  config.new_strings_different_across_langs =
-      new_strings_json.at("different_across_languages")
-          .get<std::unordered_map<std::string, std::vector<std::string>>>();
+  auto import_deps = read_json_file_from_config(cfg, "import_deps_file");
+  config.import_deps_by_file =
+      import_deps.get<std::unordered_map<std::string, std::vector<std::string>>>();
+
+  config.write_patches = cfg.at("write_patches").get<bool>();
+  config.apply_patches = cfg.at("apply_patches").get<bool>();
+  const auto& object_patches = cfg.at("object_patches");
+  for (auto& [obj, pch] : object_patches.items()) {
+    ObjectPatchInfo new_pch;
+    new_pch.crc = (u32)std::stoull(pch.at("crc32").get<std::string>(), nullptr, 16);
+    new_pch.target_file = pch.at("in").get<std::string>();
+    new_pch.patch_file = pch.at("out").get<std::string>();
+    config.object_patches.insert({obj, new_pch});
+  }
 
   return config;
 }

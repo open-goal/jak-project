@@ -3,8 +3,9 @@
  * Tests for the GOOS macro language.
  */
 
-#include "gtest/gtest.h"
 #include "common/goos/Interpreter.h"
+
+#include "gtest/gtest.h"
 
 using namespace goos;
 
@@ -400,17 +401,6 @@ TEST(GoosBuiltins, Null) {
   EXPECT_EQ(e(i, "(null? '())"), "#t");
   i.disable_printfs();
   for (auto x : {"(null? 1 2)", "(null?)"}) {
-    EXPECT_ANY_THROW(e(i, x));
-  }
-}
-
-TEST(GoosBuiltins, CurrentMethodType) {
-  Interpreter i;
-  i.goal_to_goos.enclosing_method_type = "test-type";
-  EXPECT_EQ(e(i, "(current-method-type)"), "test-type");
-
-  i.disable_printfs();
-  for (auto x : {"(current-method-type 1)"}) {
     EXPECT_ANY_THROW(e(i, x));
   }
 }
@@ -1326,4 +1316,17 @@ TEST(GoosBuiltins, StringUtils) {
   EXPECT_EQ(e(i, "(string-length \"test\")"), "4");
   EXPECT_EQ(e(i, "(string-append \"hello\" \" \" \"world\")"), "\"hello world\"");
   EXPECT_EQ(e(i, "(symbol->string 'test)"), "\"test\"");
+}
+
+TEST(GoosBuiltins, HashTable) {
+  Interpreter i;
+  e(i, "(define ht (make-string-hash-table))");
+  EXPECT_EQ(e(i, "(car (hash-table-try-ref ht \"foo\"))"), "#f");
+
+  e(i, "(hash-table-set! ht \"foo\" 123)");
+  EXPECT_EQ(e(i, "(car (hash-table-try-ref ht \"bar\"))"), "#f");
+  EXPECT_EQ(e(i, "(car (hash-table-try-ref ht \"foo\"))"), "#t");
+  EXPECT_EQ(e(i, "(cdr (hash-table-try-ref ht \"foo\"))"), "123");
+  e(i, "(hash-table-set! ht \"foo\" 456)");
+  EXPECT_EQ(e(i, "(cdr (hash-table-try-ref ht \"foo\"))"), "456");
 }

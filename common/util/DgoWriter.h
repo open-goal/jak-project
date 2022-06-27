@@ -5,6 +5,7 @@
  * Create a DGO from existing files.
  */
 
+#include <string>
 #include <vector>
 
 struct DgoDescription {

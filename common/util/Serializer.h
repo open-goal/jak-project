@@ -3,6 +3,8 @@
 #include <cstring>
 #include <string>
 #include <vector>
+
+#include "common/common_types.h"
 #include "common/util/Assert.h"
 
 /*!
@@ -35,7 +37,7 @@ class Serializer {
    * later be accessed with get_save_result.
    */
   Serializer() : m_writing(true) {
-    const size_t initial_size = 32;
+    constexpr size_t initial_size = 32;
     m_data = (u8*)malloc(initial_size);
     m_size = initial_size;
   }
@@ -201,7 +203,8 @@ class Serializer {
     if (m_writing) {
       // if we would overflow, just resize the buffer.
       if (m_offset + size > m_size) {
-        m_data = (u8*)realloc(m_data, (m_offset + size) * 2);
+        m_size = (m_offset + size) * 2;
+        m_data = (u8*)realloc(m_data, m_size);
       }
       memcpy(m_data + m_offset, data, size);
     } else {

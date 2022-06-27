@@ -1,11 +1,16 @@
-#include <cstring>
 #include "overlord.h"
-#include "game/sce/iop.h"
-#include "ramdisk.h"
+
+#include <cstring>
+
 #include "iso.h"
-#include "ssound.h"
+#include "ramdisk.h"
 #include "sbank.h"
 #include "srpc.h"
+#include "ssound.h"
+
+#include "common/util/Assert.h"
+
+#include "game/sce/iop.h"
 
 using namespace iop;
 
@@ -17,9 +22,18 @@ int start_overlord(int argc, const char* const* argv) {
     sceSifInit();
   }
 
+  bool disable_sound = false;
+  for (int i = 1; i < argc; i++) {
+    if (std::string("-nosound") == argv[i]) {
+      disable_sound = true;
+    }
+  }
+
   sceSifInitRpc(0);
   InitBanks();
-  InitSound_Overlord();
+  if (!disable_sound) {
+    InitSound_Overlord();
+  }
   InitRamdisk();
   // RegisterVblankHandler(0, 0x20, VBlank_Handler, nullptr);
 

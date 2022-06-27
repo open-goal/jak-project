@@ -7,37 +7,37 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup *med-res-ogre-sg* medres-ogre
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem -200 0 -450 350)
-  :longest-edge (meters 0.01)
-  )
+(import "goal_src/import/medres-ogre-ag.gc")
+(import "goal_src/import/medres-finalboss-ag.gc")
+(import "goal_src/import/pistons-ag.gc")
+(import "goal_src/import/gondola-ag.gc")
+(import "goal_src/import/medres-ogre2-ag.gc")
+(import "goal_src/import/medres-ogre3-ag.gc")
+(import "goal_src/import/gondolacables-ag.gc")
 
-(defskelgroup *med-res-ogre2-sg* medres-ogre2
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem -200 0 -950 320)
-  :longest-edge (meters 0.01)
-  )
+(defskelgroup *med-res-ogre-sg* medres-ogre medres-ogre-lod0-jg medres-ogre-idle-ja
+              ((medres-ogre-lod0-mg (meters 999999)))
+              :bounds (static-spherem -200 0 -450 350)
+              :longest-edge (meters 0.01)
+              )
 
-(defskelgroup *med-res-ogre3-sg* medres-ogre3
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem -100 0 -1370 300)
-  :longest-edge (meters 0.01)
-  )
+(defskelgroup *med-res-ogre2-sg* medres-ogre2 medres-ogre2-lod0-jg medres-ogre2-idle-ja
+              ((medres-ogre2-lod0-mg (meters 999999)))
+              :bounds (static-spherem -200 0 -950 320)
+              :longest-edge (meters 0.01)
+              )
 
-(defskelgroup *med-res-finalboss-sg* medres-finalboss
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 80 120 -150 470)
-  :longest-edge (meters 0.01)
-  )
+(defskelgroup *med-res-ogre3-sg* medres-ogre3 medres-ogre3-lod0-jg medres-ogre3-idle-ja
+              ((medres-ogre3-lod0-mg (meters 999999)))
+              :bounds (static-spherem -100 0 -1370 300)
+              :longest-edge (meters 0.01)
+              )
+
+(defskelgroup *med-res-finalboss-sg* medres-finalboss medres-finalboss-lod0-jg medres-finalboss-idle-ja
+              ((medres-finalboss-lod0-mg (meters 999999)))
+              :bounds (static-spherem 80 120 -150 470)
+              :longest-edge (meters 0.01)
+              )
 
 (deftype villagec-lava (water-anim)
   ()
@@ -51,8 +51,7 @@
 (define ripple-for-villagec-lava (new 'static 'ripple-wave-set
                                    :count 2
                                    :converted #f
-                                   :wave
-                                   (new 'static 'inline-array ripple-wave 4
+                                   :wave (new 'static 'inline-array ripple-wave 4
                                      (new 'static 'ripple-wave :scale 40.0 :xdiv 2 :speed 1.5)
                                      (new 'static 'ripple-wave :scale 40.0 :xdiv -2 :zdiv 2 :speed 0.9)
                                      (new 'static 'ripple-wave)
@@ -70,8 +69,8 @@
     (set! (-> v1-2 global-scale) 3072.0)
     (set! (-> v1-2 waveform) ripple-for-villagec-lava)
     )
-  (set! (-> obj flags) (logand -8388609 (-> obj flags)))
-  (set! (-> obj flags) (logior #x2000000 (-> obj flags)))
+  (logclear! (-> obj flags) (water-flags wt23))
+  (set! (-> obj flags) (logior (water-flags wt25) (-> obj flags)))
   (set! (-> obj attack-event) 'lava)
   (none)
   )
@@ -93,19 +92,15 @@
   )
 
 
-(defskelgroup *gondola-sg* gondola
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -5.5 0 6.5)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *gondola-sg* gondola gondola-lod0-jg gondola-idle-down-ja
+              ((gondola-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -5.5 0 6.5)
+              :shadow gondola-shadow-mg
+              )
 
 (defstate idle (gondola)
   :virtual #t
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (ja-channel-set! 1)
     (cond
@@ -114,8 +109,7 @@
                                :name "gondola-ride-down"
                                :index 6
                                :parts 3
-                               :command-list
-                               '((0 want-levels village3 snow)
+                               :command-list '((0 want-levels village3 snow)
                                  (0 shadow target #f)
                                  (0 shadow sidekick #f)
                                  (1 display-level village3 display)
@@ -127,17 +121,14 @@
                                  )
                                )
               )
-        (let ((v1-5 (-> self skel root-channel 0)))
-          (set! (-> v1-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-          )
+        (ja :group! (-> self draw art-group data 4))
         )
       (else
         (set! (-> self anim) (new 'static 'spool-anim
                                :name "gondola-ride-up"
                                :index 5
                                :parts 3
-                               :command-list
-                               '((0 want-levels village3 snow)
+                               :command-list '((0 want-levels village3 snow)
                                  (0 shadow target #f)
                                  (400 setting-reset music snow)
                                  (400 display-level snow display)
@@ -147,13 +138,11 @@
                                  )
                                )
               )
-        (let ((v1-9 (-> self skel root-channel 0)))
-          (set! (-> v1-9 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-          )
+        (ja :group! (-> self draw art-group data 3))
         )
       )
     (transform-post)
-    (while #t
+    (loop
       (when (and *target* (and (< (vector-vector-distance
                                     (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3))
                                     (target-pos 0)
@@ -221,8 +210,8 @@
                   )
                 )
               (when (and (< (vector-vector-xz-distance s5-1 (-> *target* control trans)) 18432.0)
-                         (and (not (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                                        (zero? (logand (-> *target* control status) 1))
+                         (and (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+                                        (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
                                         )
                                    )
                               (and (< (+ -40960.0 (-> s5-1 y)) (-> *target* control trans y))
@@ -269,56 +258,40 @@
 
 (defstate ride-up (gondola)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #t)
-    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-1 from) self)
-      (set! (-> a1-1 num-params) 1)
-      (set! (-> a1-1 message) 'clone-anim)
-      (set! (-> a1-1 param 0) (the-as uint self))
-      (when (send-event-function *target* a1-1)
-        (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
-        (send-event *target* 'blend-shape #t)
-        (set-setting! *setting-control* self 'sound-flava #f 30.0 4)
-        (logclear! (-> self mask) (process-mask enemy))
-        (let ((gp-0 (get-process *default-dead-pool* othercam #x4000)))
-          (when gp-0
-            (let ((t9-6 (method-of-type othercam activate)))
-              (t9-6 (the-as othercam gp-0) self 'othercam (the-as pointer #x70004000))
-              )
-            (run-now-in-process gp-0 othercam-init-by-other self 4 #f #t)
-            (-> gp-0 ppointer)
-            )
-          )
-        (ja-play-spooled-anim
-          (-> self anim)
-          (the-as art-joint-anim (-> self draw art-group data 3))
-          (the-as art-joint-anim (-> self draw art-group data 4))
-          (the-as (function process-drawable symbol) false-func)
-          )
-        (clear-pending-settings-from-process *setting-control* self 'sound-flava)
-        (send-event *target* 'blend-shape #f)
-        (when *target*
-          (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
-          (send-event *target* 'trans 'restore (-> self old-target-pos))
-          (send-event *target* 'end-mode)
-          (update-transforms! (-> self root-override))
-          (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
-          (logior! (-> *target* control status) 7)
-          (suspend)
-          (send-event *camera* 'teleport-to-other-start-string)
-          )
-        (load-state-want-vis 'sno)
-        (set-continue! *game-info* "snow-start")
+    (when (send-event *target* 'clone-anim self)
+      (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
+      (send-event *target* 'blend-shape #t)
+      (set-setting! 'sound-flava #f 30.0 (music-flava to-snow))
+      (logclear! (-> self mask) (process-mask enemy))
+      (process-spawn othercam self 4 #f #t :to self)
+      (ja-play-spooled-anim
+        (-> self anim)
+        (the-as art-joint-anim (-> self draw art-group data 3))
+        (the-as art-joint-anim (-> self draw art-group data 4))
+        (the-as (function process-drawable symbol) false-func)
         )
+      (remove-setting! 'sound-flava)
+      (send-event *target* 'blend-shape #f)
+      (when *target*
+        (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
+        (send-event *target* 'trans 'restore (-> self old-target-pos))
+        (send-event *target* 'end-mode)
+        (update-transforms! (-> self root-override))
+        (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
+        (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
+        (suspend)
+        (send-event *camera* 'teleport-to-other-start-string)
+        )
+      (load-state-want-vis 'sno)
+      (set-continue! *game-info* "snow-start")
       )
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (go-virtual idle #t)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (ja-post)
     (update-direction-from-time-of-day (-> self draw shadow-ctrl))
     (none)
@@ -327,57 +300,41 @@
 
 (defstate ride-down (gondola)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #t)
-    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-1 from) self)
-      (set! (-> a1-1 num-params) 1)
-      (set! (-> a1-1 message) 'clone-anim)
-      (set! (-> a1-1 param 0) (the-as uint self))
-      (when (send-event-function *target* a1-1)
-        (send-event *target* 'trans 'save (-> self old-target-pos))
-        (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
-        (send-event *target* 'blend-shape #t)
-        (set-setting! *setting-control* self 'sound-flava #f 30.0 4)
-        (logclear! (-> self mask) (process-mask enemy))
-        (let ((gp-0 (get-process *default-dead-pool* othercam #x4000)))
-          (when gp-0
-            (let ((t9-7 (method-of-type othercam activate)))
-              (t9-7 (the-as othercam gp-0) self 'othercam (the-as pointer #x70004000))
-              )
-            (run-now-in-process gp-0 othercam-init-by-other self 4 #f #t)
-            (-> gp-0 ppointer)
-            )
-          )
-        (ja-play-spooled-anim
-          (-> self anim)
-          (the-as art-joint-anim (-> self draw art-group data 4))
-          (the-as art-joint-anim (-> self draw art-group data 3))
-          (the-as (function process-drawable symbol) false-func)
-          )
-        (clear-pending-settings-from-process *setting-control* self 'sound-flava)
-        (send-event *target* 'blend-shape #f)
-        (when *target*
-          (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
-          (send-event *target* 'trans 'restore (-> self old-target-pos))
-          (send-event *target* 'end-mode)
-          (update-transforms! (-> self root-override))
-          (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
-          (logior! (-> *target* control status) 7)
-          (suspend)
-          (send-event *camera* 'teleport-to-other-start-string)
-          )
-        (load-state-want-vis 'vi3)
-        (set-continue! *game-info* "village3-farside")
+    (when (send-event *target* 'clone-anim self)
+      (send-event *target* 'trans 'save (-> self old-target-pos))
+      (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
+      (send-event *target* 'blend-shape #t)
+      (set-setting! 'sound-flava #f 30.0 (music-flava to-snow))
+      (logclear! (-> self mask) (process-mask enemy))
+      (process-spawn othercam self 4 #f #t :to self)
+      (ja-play-spooled-anim
+        (-> self anim)
+        (the-as art-joint-anim (-> self draw art-group data 4))
+        (the-as art-joint-anim (-> self draw art-group data 3))
+        (the-as (function process-drawable symbol) false-func)
         )
+      (remove-setting! 'sound-flava)
+      (send-event *target* 'blend-shape #f)
+      (when *target*
+        (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
+        (send-event *target* 'trans 'restore (-> self old-target-pos))
+        (send-event *target* 'end-mode)
+        (update-transforms! (-> self root-override))
+        (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
+        (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
+        (suspend)
+        (send-event *camera* 'teleport-to-other-start-string)
+        )
+      (load-state-want-vis 'vi3)
+      (set-continue! *game-info* "village3-farside")
       )
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (go-virtual idle #f)
     (none)
     )
-  :post
-  (-> (method-of-type gondola ride-up) post)
+  :post (-> (method-of-type gondola ride-up) post)
   )
 
 (defmethod init-from-entity! gondola ((obj gondola) (arg0 entity-actor))
@@ -442,31 +399,26 @@
   :flag-assert         #x16004000b0
   (:methods
     (idle () _type_ :state 20)
-    (active (basic symbol) _type_ :state 21)
+    (active (handle symbol) _type_ :state 21)
     )
   )
 
 
-(defskelgroup *pistons-sg* pistons
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 6 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *pistons-sg* pistons pistons-lod0-jg pistons-idle-ja
+              ((pistons-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6 0 8)
+              )
 
 (defstate idle (pistons)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('update)
-       (go-virtual active (the-as basic (process->handle arg0)) #f)
+       (go-virtual active (process->handle arg0) #f)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-post)
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
@@ -477,11 +429,10 @@
 
 (defstate active (pistons)
   :virtual #t
-  :code
-  (behavior ((arg0 basic) (arg1 symbol))
+  :code (behavior ((arg0 handle) (arg1 symbol))
     (process-entity-status! self (entity-perm-status complete) #t)
     (if (not arg1)
-        (sound-play-by-name (static-sound-name "gdl-start-up") (new-sound-id) 1024 0 0 1 #t)
+        (sound-play "gdl-start-up")
         )
     (let ((f30-0 (if arg1
                      1.0
@@ -489,19 +440,16 @@
                      )
                  )
           )
-      (while #t
+      (loop
         (set! f30-0 (seek f30-0 1.0 (* 0.2 (-> *display* seconds-per-frame))))
-        (let ((a0-5 (-> self skel root-channel 0)))
-          (set! (-> a0-5 param 0) f30-0)
-          (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim #f) num-func-loop!)
-          )
+        (ja :num! (loop! f30-0))
         (ja-post)
         (update! (-> self sound))
         (suspend)
         )
       )
-    ;; note : deleted some unused trash "code" here
-    (none)
+    ;; decompiler never gets here and fails hard
+    (go-virtual idle)
     )
   )
 
@@ -509,22 +457,11 @@
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *pistons-sg* '())
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (new 'static 'sound-spec
-                           :mask #x80
-                           :num 1.0
-                           :group #x1
-                           :sound-name (static-sound-name "gdl-gen-loop")
-                           :volume #x400
-                           :fo-max 100
-                           )
-                         (-> obj root trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "gdl-gen-loop" :fo-max 100) (-> obj root trans))
         )
   (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-      (go (method-of-object obj active) #f #t)
+      (go (method-of-object obj active) (the-as handle #f) #t)
       (go (method-of-object obj idle))
       )
   (none)
@@ -542,18 +479,14 @@
   )
 
 
-(defskelgroup *gondolacables-sg* gondolacables
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 120)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *gondolacables-sg* gondolacables gondolacables-lod0-jg gondolacables-idle-ja
+              ((gondolacables-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 120)
+              )
 
 (defstate idle (gondolacables)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'update)
                        (process-entity-status! self (entity-perm-status complete) #t)
@@ -565,48 +498,17 @@
               )
       )
     )
-  :code
-  (behavior ()
-    (while #t
-      (let ((a0-0 (-> self skel root-channel 0)))
-        (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
-                                        (-> self skel root-channel 0 frame-group)
-                                        )
-              )
-        (set! (-> a0-0 param 0) (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                                                      (-> self skel root-channel 0 frame-group)
-                                                      )
-                                                  data
-                                                  0
-                                                  length
-                                                  )
-                                              -1
-                                              )
-                                     )
-              )
-        (set! (-> a0-0 param 1) 1.0)
-        (set! (-> a0-0 frame-num) 0.0)
-        (joint-control-channel-group!
-          a0-0
-          (if (> (-> self skel active-channels) 0)
-              (-> self skel root-channel 0 frame-group)
-              )
-          num-func-seek!
-          )
-        )
+  :code (behavior ()
+    (loop
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-1 (-> self skel root-channel 0)))
-          (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-          (set! (-> a0-1 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior gondolacables) ja-post)
+  :post (the-as (function none :behavior gondolacables) ja-post)
   )
 
 (defmethod init-from-entity! gondolacables ((obj gondolacables) (arg0 entity-actor))

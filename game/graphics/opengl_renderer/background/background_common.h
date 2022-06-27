@@ -1,8 +1,22 @@
 #pragma once
 
 #include "common/math/Vector.h"
+
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 
+// data passed from game to PC renderers
+// the GOAL code assumes this memory layout.
+struct TfragPcPortData {
+  math::Vector4f planes[4];
+  math::Vector<s32, 4> itimes[4];
+  math::Vector4f camera[4];
+  math::Vector4f hvdf_off;
+  math::Vector4f fog;
+  math::Vector4f cam_trans;
+  char level_name[16];
+};
+
+// inputs to background renderers.
 struct TfragRenderSettings {
   math::Matrix4f math_camera;
   math::Vector4f hvdf_offset;
@@ -12,7 +26,6 @@ struct TfragRenderSettings {
   math::Vector4f planes[4];
   bool debug_culling = false;
   const u8* occlusion_culling = nullptr;
-  // todo occlusion culling string.
 };
 
 enum class DoubleDrawKind { NONE, AFAIL_NO_DEPTH_WRITE };
@@ -50,23 +63,38 @@ void cull_check_all_slow(const math::Vector4f* planes,
                          u8* out);
 bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* planes);
 
-struct TfragPcPortData {
-  math::Vector4f planes[4];
-  math::Vector<s32, 4> itimes[4];
-  math::Vector4f camera[4];
-  math::Vector4f hvdf_off;
-  math::Vector4f fog;
-  char level_name[12];
-  u32 tree_idx;
-};
+void update_render_state_from_pc_settings(SharedRenderState* state, const TfragPcPortData& data);
+
+void make_all_visible_multidraws(std::pair<int, int>* draw_ptrs_out,
+                                 GLsizei* counts_out,
+                                 void** index_offsets_out,
+                                 const std::vector<tfrag3::ShrubDraw>& draws);
+
+u32 make_all_visible_multidraws(std::pair<int, int>* draw_ptrs_out,
+                                GLsizei* counts_out,
+                                void** index_offsets_out,
+                                const std::vector<tfrag3::StripDraw>& draws);
+
+u32 make_multidraws_from_vis_string(std::pair<int, int>* draw_ptrs_out,
+                                    GLsizei* counts_out,
+                                    void** index_offsets_out,
+                                    const std::vector<tfrag3::StripDraw>& draws,
+                                    const std::vector<u8>& vis_data);
+
+u32 make_all_visible_index_list(std::pair<int, int>* group_out,
+                                u32* idx_out,
+                                const std::vector<tfrag3::StripDraw>& draws,
+                                const u32* idx_in,
+                                u32* num_tris_out);
 
 u32 make_index_list_from_vis_string(std::pair<int, int>* group_out,
                                     u32* idx_out,
                                     const std::vector<tfrag3::StripDraw>& draws,
-                                    const std::vector<u8>& vis_data);
+                                    const std::vector<u8>& vis_data,
+                                    const u32* idx_in,
+                                    u32* num_tris_out);
+
 u32 make_all_visible_index_list(std::pair<int, int>* group_out,
                                 u32* idx_out,
-                                const std::vector<tfrag3::StripDraw>& draws);
-u32 make_all_visible_index_list(std::pair<int, int>* group_out,
-                                u32* idx_out,
-                                const std::vector<tfrag3::ShrubDraw>& draws);
+                                const std::vector<tfrag3::ShrubDraw>& draws,
+                                const u32* idx_in);

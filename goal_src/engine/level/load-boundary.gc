@@ -382,7 +382,7 @@
                    (logtest? (-> *display* real-actual-frame-counter) 4)
                    )
                ))
-    (with-dma-buffer-add-bucket ((s5-0 (-> (current-frame) global-buf)) (bucket-id debug-draw0))
+    (with-dma-buffer-add-bucket ((s5-0 (-> (current-frame) global-buf)) (bucket-id debug))
       (dma-buffer-add-gs-set-flusha s5-0
           (zbuf-1 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
           (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal)))
@@ -501,7 +501,7 @@
       (set! (-> s2-0 y) (-> s5-0 top-plane))
       (add-debug-sphere
        #t
-       (bucket-id debug-draw1)
+       (bucket-id debug-no-zbuf)
        s2-0
        8192.0
        (new 'static 'rgba :a #x80)
@@ -510,7 +510,7 @@
        (set! (-> s2-0 y) (-> s5-0 bot-plane))
        (add-debug-sphere
         #t
-        (bucket-id debug-draw1)
+        (bucket-id debug-no-zbuf)
         s2-0
         8192.0
         (new 'static 'rgba :a #x80)
@@ -2130,21 +2130,14 @@
          )
         )
        ((= v1-4 'setting-reset)
-        (set-setting!
-         *setting-control*
-         pp
-         (the-as symbol (command-get-param (car gp-0) #f))
-         (the-as symbol (command-get-param (car (cdr gp-0)) #f))
-         0.0
-         0
-         )
+        (set-setting! (the-as symbol (command-get-param (car gp-0) #f)) (command-get-param (car (cdr gp-0)) #f) 0.0 0)
         )
        ((= v1-4 'setting-unset)
-        (clear-pending-settings-from-process
-         *setting-control*
-         pp
-         (the-as symbol (command-get-param (car gp-0) #f))
-         )
+        (remove-setting! (the-as symbol (command-get-param (car gp-0) #f)))
+        )
+       ;; PAL patch here
+       ((= v1-4 'sfx-volume)
+        (set-setting! 'sfx-volume (command-get-param (car gp-0) #f) (command-get-float (car (cdr gp-0)) 0.0) 0)
         )
        ((= v1-4 'blackout)
         (set-blackout-frames

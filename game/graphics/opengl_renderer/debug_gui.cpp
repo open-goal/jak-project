@@ -1,6 +1,11 @@
 
 #include "debug_gui.h"
+
 #include <algorithm>
+
+#include "game/graphics/gfx.h"
+#include "game/kernel/svnrev.h"
+
 #include "third-party/imgui/imgui.h"
 
 void FrameTimeRecorder::finish_frame() {
@@ -97,6 +102,11 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::EndMenu();
     }
 
+    if (ImGui::BeginMenu("Tools")) {
+      ImGui::MenuItem("Subtitle Editor", nullptr, &m_subtitle_editor);
+      ImGui::EndMenu();
+    }
+
     if (ImGui::BeginMenu("Screenshot")) {
       ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
       ImGui::InputText("File", m_screenshot_save_name, 50);
@@ -104,16 +114,33 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     }
 
     if (ImGui::BeginMenu("Frame Rate")) {
-      ImGui::Checkbox("Enable V-Sync", &m_vsync);
+      ImGui::Checkbox("Enable V-Sync", &Gfx::g_global_settings.vsync);
       ImGui::Separator();
-      ImGui::Checkbox("Framelimiter", &framelimiter);
-      ImGui::InputFloat("Target FPS", &m_target_fps_text);
+      ImGui::Checkbox("Framelimiter", &Gfx::g_global_settings.framelimiter);
+      ImGui::InputFloat("Target FPS", &target_fps_input);
       if (ImGui::MenuItem("Apply")) {
-        target_fps = m_target_fps_text;
+        Gfx::g_global_settings.target_fps = target_fps_input;
       }
       ImGui::Separator();
-      ImGui::Checkbox("Accurate Lag Mode", &experimental_accurate_lag);
-      ImGui::Checkbox("Sleep in Frame Limiter", &sleep_in_frame_limiter);
+      ImGui::Checkbox("Accurate Lag Mode", &Gfx::g_global_settings.experimental_accurate_lag);
+      ImGui::Checkbox("Sleep in Frame Limiter", &Gfx::g_global_settings.sleep_in_frame_limiter);
+      ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("Event Profiler")) {
+      ImGui::Checkbox("Record", &record_events);
+      ImGui::MenuItem("Dump to file", nullptr, &dump_events);
+      ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("Debug Mode")) {
+      if (ImGui::MenuItem("Reboot now!")) {
+        want_reboot_in_debug = true;
+      }
+      ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu(fmt::format("WORK IN PROGRESS VERSION ({})!", GIT_VERSION).c_str())) {
       ImGui::EndMenu();
     }
   }

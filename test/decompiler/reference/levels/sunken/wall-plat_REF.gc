@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/wall-plat-ag.gc")
+
 ;; definition of type wall-plat
 (deftype wall-plat (process-drawable)
   ((root-override   collide-shape-moving         :offset        112)
@@ -37,31 +39,26 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *wall-plat-sg* wall-plat
-  0
-  -1
-  ((1 (meters 999999)))
-  :bounds (static-spherem 1 -2 0 6.5)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *wall-plat-sg* wall-plat wall-plat-lod0-jg -1
+              ((wall-plat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 1 -2 0 6.5)
+              )
 
 ;; failed to figure out what this is:
 (defstate wall-plat-retracted (wall-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (go wall-plat-extending)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self extended-amount) 0.0)
     (move-to-point! (-> self root-override) (-> self in-trans))
     (transform-post)
     (clear-collide-with-as (-> self root-override))
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -71,29 +68,25 @@
 
 ;; failed to figure out what this is:
 (defstate wall-plat-extending (wall-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'touch)
-                       (send-event arg0 'no-look-around 450)
+                       (send-event arg0 'no-look-around (seconds 1.5))
                        #f
                        )
               )
       )
     )
-  :enter
-  (behavior ()
-    (sound-play-by-name (static-sound-name "wall-plat") (new-sound-id) 1024 0 0 1 #t)
+  :enter (behavior ()
+    (sound-play "wall-plat")
     (none)
     )
-  :trans
-  (the-as (function none :behavior wall-plat) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior wall-plat) rider-trans)
+  :code (behavior ()
     (restore-collide-with-as (-> self root-override))
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
-      (set! (-> self extended-amount) (seek (-> self extended-amount) 1.0 (* 2.5 (-> *display* seconds-per-frame))))
+    (loop
+      (seek! (-> self extended-amount) 1.0 (* 2.5 (-> *display* seconds-per-frame)))
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
         (move-to-point! (-> self root-override) gp-0)
@@ -105,26 +98,23 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior wall-plat) rider-post)
+  :post (the-as (function none :behavior wall-plat) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate wall-plat-extended (wall-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('untrigger)
        (go wall-plat-retracting)
        )
       )
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self extended-amount) 1.0)
     (move-to-point! (-> self root-override) (-> self out-trans))
     (transform-post)
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
@@ -134,28 +124,24 @@
 
 ;; failed to figure out what this is:
 (defstate wall-plat-retracting (wall-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'touch)
-                       (send-event arg0 'no-look-around 450)
+                       (send-event arg0 'no-look-around (seconds 1.5))
                        #f
                        )
               )
       )
     )
-  :enter
-  (behavior ()
-    (sound-play-by-name (static-sound-name "wall-plat") (new-sound-id) 1024 0 0 1 #t)
+  :enter (behavior ()
+    (sound-play "wall-plat")
     (none)
     )
-  :trans
-  (the-as (function none :behavior wall-plat) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior wall-plat) rider-trans)
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (while #t
-      (set! (-> self extended-amount) (seek (-> self extended-amount) 0.0 (* 2.5 (-> *display* seconds-per-frame))))
+    (loop
+      (seek! (-> self extended-amount) 0.0 (* 2.5 (-> *display* seconds-per-frame)))
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
         (move-to-point! (-> self root-override) gp-0)
@@ -167,38 +153,32 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior wall-plat) rider-post)
+  :post (the-as (function none :behavior wall-plat) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate wall-plat-sync-idle (wall-plat)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (let ((v1-0 arg2))
       (the-as object (when (= v1-0 'touch)
-                       (send-event arg0 'no-look-around 450)
+                       (send-event arg0 'no-look-around (seconds 1.5))
                        #f
                        )
               )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (none)
     )
-  :trans
-  (the-as (function none :behavior wall-plat) rider-trans)
-  :code
-  (behavior ()
+  :trans (the-as (function none :behavior wall-plat) rider-trans)
+  :code (behavior ()
     (let ((gp-0 #f))
-      (while #t
+      (loop
         (let ((f30-0 (get-current-phase-with-mirror (-> self sync))))
           (let ((s5-0 (new 'stack-no-clear 'vector)))
             (vector-lerp! s5-0 (-> self in-trans) (-> self out-trans) f30-0)
@@ -215,7 +195,7 @@
              )
             (else
               (when (not gp-0)
-                (sound-play-by-name (static-sound-name "wall-plat") (new-sound-id) 1024 0 0 1 #t)
+                (sound-play "wall-plat")
                 (set! gp-0 #t)
                 )
               (restore-collide-with-as (-> self root-override))
@@ -227,8 +207,7 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior wall-plat) rider-post)
+  :post (the-as (function none :behavior wall-plat) rider-post)
   )
 
 ;; definition for method 11 of type wall-plat

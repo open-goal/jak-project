@@ -1,13 +1,15 @@
 #pragma once
 
-#include <string>
 #include <memory>
+#include <string>
+
 #include "common/dma/dma_chain_read.h"
-#include "game/graphics/opengl_renderer/Shader.h"
-#include "game/graphics/texture/TexturePool.h"
+
 #include "game/graphics/opengl_renderer/Profiler.h"
-#include "game/graphics/opengl_renderer/Loader.h"
+#include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/opengl_renderer/buckets.h"
+#include "game/graphics/opengl_renderer/loader/Loader.h"
+#include "game/graphics/texture/TexturePool.h"
 
 struct LevelVis {
   bool valid = false;
@@ -37,16 +39,19 @@ struct SharedRenderState {
   bool use_sky_cpu = true;
   bool use_occlusion_culling = true;
   bool enable_merc_xgkick = true;
-  bool enable_generic_xgkick = true;
-  bool use_direct2 = true;
-  bool use_generic2 = true;
   math::Vector<u8, 4> fog_color;
   float fog_intensity = 1.f;
+  bool no_multidraw = false;
 
   void reset();
-  bool has_camera_planes = false;
+  bool has_pc_data = false;
   LevelVis occlusion_vis[2];
+
   math::Vector4f camera_planes[4];
+  math::Vector4f camera_matrix[4];
+  math::Vector4f camera_hvdf_off;
+  math::Vector4f camera_fog;
+  math::Vector4f camera_pos;
 
   EyeRenderer* eye_renderer = nullptr;
 
@@ -83,6 +88,9 @@ class RenderMux : public BucketRenderer {
             std::vector<std::unique_ptr<BucketRenderer>> renderers);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+  void init_shaders(ShaderLibrary&) override;
+  void init_textures(TexturePool&) override;
+  void set_idx(u32 i) { m_render_idx = i; };
 
  private:
   std::vector<std::unique_ptr<BucketRenderer>> m_renderers;

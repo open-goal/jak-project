@@ -10,10 +10,23 @@
 ;; The EE sends commands using the IOP RPC system to the OVERLORD IOP driver telling it to load and play sounds.
 ;; There is also some sort of per-frame status update, that is not included here.
 
+(defenum sound-group
+  :bitfield #t
+  :type uint8
+  (sfx)
+  (music)
+  (dialog)
+  (sog3)
+  (ambient)
+  (sog5)
+  (sog6)
+  (sog7)
+  )
+
 (deftype sound-id (uint32)
   ()
   (:methods
-   (dummy-9 () none 9)
+   (unused-9 () none 9) ;; unused
    )
   :flag-assert #xa00000004
   )
@@ -137,6 +150,20 @@
   (default 49)
   )
 
+(defenum sound-mask
+  :bitfield #t
+  :type uint16
+  (volume)
+  (pitch)
+  (bend)
+  (unused)
+  (time)
+  (trans)
+  (fo-min)
+  (fo-max)
+  (fo-curve)
+  )
+
 ;; like should match the sound type in OVERLORD
 ;; This is shared between all sound RPCs and acts like the header for the sound messages
 (deftype sound-rpc-cmd (structure)
@@ -148,8 +175,9 @@
   :flag-assert         #x900000004
   )
 
+;; playback parameters sent to the IOP.
 (deftype sound-play-parms (structure)
-  ((mask      uint16    :offset-assert 0)
+  ((mask      sound-mask :offset-assert 0)
    (pitch-mod int16     :offset-assert 2)
    (bend      int16     :offset-assert 4)
    (fo-min    int16     :offset-assert 6)
@@ -158,7 +186,7 @@
    (priority  int8      :offset-assert 11)
    (volume    int32     :offset-assert 12)
    (trans     vector3w  :inline :offset-assert 16)
-   (group     uint8     :offset-assert 28)
+   (group     sound-group     :offset-assert 28)
    )
   :pack-me
   :method-count-assert 9
@@ -183,7 +211,7 @@
   )
 
 (deftype sound-rpc-group-cmd (sound-rpc-cmd)
-  ((group   uint8   :offset-assert 4)
+  ((group   sound-group   :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x5
@@ -416,13 +444,14 @@
   :flag-assert         #x900000050
   )
 
+;; GOAL-side sound specification.
 (deftype sound-spec (basic)
-  ((mask            uint16     :offset-assert 4)
+  ((mask            sound-mask :offset-assert 4)
    (num             float      :offset-assert 8)
-   (group           uint8      :offset-assert 12)
-   (sound-name      sound-name    :score 20 :offset 16)
-   (sound-name-char uint8 16 :offset 16) ;; moved to after sound-name
-   (trans           float 4  :offset-assert 32) ;; guess
+   (group           sound-group      :offset-assert 12)
+   (sound-name-char uint8 16   :offset 16)
+   (sound-name      sound-name :score 20 :offset 16)
+   (trans           float 4    :offset-assert 32) ;; guess
    (volume          int32      :offset-assert 48)
    (pitch-mod       int32      :offset-assert 52)
    (bend            int32      :offset-assert 56)
@@ -438,10 +467,42 @@
   :flag-assert         #x90000004c
   )
 
+(defmacro sound-vol (vol)
+  "convert to sound volume units"
+  (if (number? vol)
+      (* 1 (/ (* vol 1024) 100))
+      `(the int (/ (* ,vol 1024) 100))
+      )
+  )
+
+(defmacro static-sound-spec (name &key (num 1.0) &key (group 1)
+                                  &key (volume #f)
+                                  &key (pitch-mod 0)
+                                  &key (fo-min 0) &key (fo-max 0)
+                                  &key (mask ()))
+  (let ((snd-mask mask)
+        (snd-volume 100.0))
+    (when (nonzero? fo-max) (cons! snd-mask 'fo-max))
+    (when (nonzero? fo-min) (cons! snd-mask 'fo-min))
+    (when (nonzero? pitch-mod) (cons! snd-mask 'pitch))
+    (when volume (cons! snd-mask 'volume) (set! snd-volume volume))
+    `(new 'static 'sound-spec
+          :sound-name (static-sound-name ,name)
+          :num ,num
+          :group ,group
+          :volume (sound-vol ,snd-volume)
+          :pitch-mod ,pitch-mod
+          :fo-min ,fo-min
+          :fo-max ,fo-max
+          :mask (sound-mask ,@snd-mask)
+          ))
+  )
+
 ;; each sound command gets a unique ID.
 (define *current-sound-id* (the sound-id #x10000))
 
 ;; a in-game background sound.
+(declare-type entity basic)
 (deftype ambient-sound (basic)
   ((spec         sound-spec       :offset-assert 4)
    (playing-id   sound-id         :offset-assert 8)
@@ -455,7 +516,7 @@
    (falloff-near int32            :offset-assert 80)
    (falloff-far  int32            :offset-assert 84)
    (falloff-mode int32            :offset-assert 88)
-   (params       (pointer float)          :offset-assert 92)
+   (params       (pointer float)  :offset-assert 92)
    (param-count  int32            :offset-assert 96)
    (entity       entity           :offset-assert 100)
    (sound-count  int32            :offset-assert 104)

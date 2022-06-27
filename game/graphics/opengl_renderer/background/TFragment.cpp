@@ -1,7 +1,8 @@
 #include "TFragment.h"
 
-#include "third-party/imgui/imgui.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
+
+#include "third-party/imgui/imgui.h"
 
 namespace {
 bool looks_like_tfragment_dma(const DmaFollower& follow) {
@@ -31,15 +32,9 @@ TFragment::TFragment(const std::string& name,
   }
 }
 
-constexpr const char* level_names[] = {"bea", "cit", "dar", "fin", "int", "jub", "jun", "fic",
-                                       "lav", "mai", "mis", "ogr", "rob", "rol", "sno", "sub",
-                                       "sun", "swa", "tit", "tra", "vi1", "vi2", "vi3"};
-
 void TFragment::render(DmaFollower& dma,
                        SharedRenderState* render_state,
                        ScopedProfilerNode& prof) {
-  m_debug_string.clear();
-
   if (!m_enabled) {
     while (dma.current_tag_offset() != render_state->next_bucket) {
       dma.read_and_advance();
@@ -127,11 +122,11 @@ void TFragment::render(DmaFollower& dma,
       settings.occlusion_culling = render_state->occlusion_vis[m_level_id].data;
     }
 
+    update_render_state_from_pc_settings(render_state, m_pc_port_data);
+
     for (int i = 0; i < 4; i++) {
       settings.planes[i] = m_pc_port_data.planes[i];
-      render_state->camera_planes[i] = m_pc_port_data.planes[i];
     }
-    render_state->has_camera_planes = true;
 
     if (m_override_time_of_day) {
       for (int i = 0; i < 8; i++) {
@@ -148,50 +143,9 @@ void TFragment::render(DmaFollower& dma,
     m_tfrag3.render_matching_trees(m_tfrag3.lod(), m_tree_kinds, settings, render_state, t3prof);
   }
 
-  m_debug_string += fmt::format("fail: {}\n", dma.current_tag().print());
-
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto tag = dma.current_tag().print();
-    auto data = dma.read_and_advance();
-    m_debug_string +=
-        fmt::format("DMA {} {} bytes, {}\n", tag, data.size_bytes, data.vifcode0().print());
-  }
-
-  if (m_hack_test_many_levels) {
-    std::vector<tfrag3::TFragmentTreeKind> all_kinds = {
-        tfrag3::TFragmentTreeKind::NORMAL, tfrag3::TFragmentTreeKind::TRANS,
-        tfrag3::TFragmentTreeKind::DIRT,   tfrag3::TFragmentTreeKind::ICE,
-        tfrag3::TFragmentTreeKind::LOWRES, tfrag3::TFragmentTreeKind::LOWRES_TRANS};
-    for (int i = 0; i < HackManyLevels::NUM_LEVELS; i++) {
-      if (m_many_level_render.level_enables[i]) {
-        if (!m_many_level_render.tfrag_level_renderers[i]) {
-          m_many_level_render.tfrag_level_renderers[i] = std::make_unique<Tfrag3>();
-        }
-        if (!m_many_level_render.tie_level_renderers[i]) {
-          m_many_level_render.tie_level_renderers[i] = std::make_unique<Tie3>("tie", m_my_id, 0);
-        }
-        m_many_level_render.tfrag_level_renderers[i]->setup_for_level(all_kinds, level_names[i],
-                                                                      render_state);
-        m_many_level_render.tie_level_renderers[i]->setup_for_level(level_names[i], render_state);
-        TfragRenderSettings settings;
-        settings.hvdf_offset = m_tfrag_data.hvdf_offset;
-        settings.fog = m_tfrag_data.fog;
-        memcpy(settings.math_camera.data(),
-               &m_buffered_data[0].pad[TFragDataMem::TFragMatrix0 * 16], 64);
-        settings.tree_idx = 0;
-        for (int j = 0; j < 8; j++) {
-          settings.time_of_day_weights[j] = m_time_of_days[j];
-        }
-
-        auto t3prof = prof.make_scoped_child(level_names[i]);
-
-        m_many_level_render.tfrag_level_renderers[i]->debug_render_all_trees_nolores(
-            0, settings, render_state, t3prof);
-        // always renders max lod
-        m_many_level_render.tie_level_renderers[i]->render_all_trees(0, settings, render_state,
-                                                                     t3prof);
-      }
-    }
+    dma.read_and_advance();
   }
 }
 
@@ -203,16 +157,7 @@ void TFragment::draw_debug_window() {
     }
   }
 
-  ImGui::Checkbox("Hack Test Many (danger)", &m_hack_test_many_levels);
-  if (m_hack_test_many_levels) {
-    for (int i = 0; i < HackManyLevels::NUM_LEVELS; i++) {
-      ImGui::Checkbox(level_names[i], &m_many_level_render.level_enables[i]);
-    }
-  }
-
   m_tfrag3.draw_debug_window();
-
-  ImGui::TextUnformatted(m_debug_string.data());
 }
 
 void TFragment::handle_initialization(DmaFollower& dma) {
@@ -238,7 +183,6 @@ void TFragment::handle_initialization(DmaFollower& dma) {
   auto data_upload = dma.read_and_advance();
   unpack_to_stcycl(&m_tfrag_data, data_upload, VifCode::Kind::UNPACK_V4_32, 4, 4, sizeof(TFragData),
                    TFragDataMem::TFragFrameData, false, false);
-  m_debug_string += fmt::format("Frame Data:\n {}\n", m_tfrag_data.print());
 
   // call the setup program
   auto mscal_setup = dma.read_and_advance();
@@ -248,19 +192,6 @@ void TFragment::handle_initialization(DmaFollower& dma) {
   ASSERT(pc_port_data.size_bytes == sizeof(TfragPcPortData));
   memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
-
-  for (int i = 0; i < 4; i++) {
-    m_debug_string += fmt::format("p[{}]: {}\n", i, m_pc_port_data.planes[i].to_string_aligned());
-  }
-
-  for (int i = 0; i < 4; i++) {
-    m_debug_string += fmt::format("t[{}]: {:x} {:x} {:x} {:x}\n", i, m_pc_port_data.itimes[i].x(),
-                                  m_pc_port_data.itimes[i].y(), m_pc_port_data.itimes[i].z(),
-                                  m_pc_port_data.itimes[i].w());
-  }
-
-  m_debug_string +=
-      fmt::format("level: {}, tree: {}\n", m_pc_port_data.level_name, m_pc_port_data.tree_idx);
 
   // setup double buffering.
   auto db_setup = dma.read_and_advance();

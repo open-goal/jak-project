@@ -1,12 +1,16 @@
+#include "Env.h"
+
+#include <algorithm>
 #include <stdexcept>
 #include <unordered_set>
-#include <algorithm>
-#include "decompiler/util/DecompilerTypeSystem.h"
-#include "Env.h"
+
 #include "Form.h"
-#include "decompiler/analysis/atomic_op_builder.h"
+
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/math_util.h"
+
+#include "decompiler/analysis/atomic_op_builder.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
 
@@ -563,6 +567,22 @@ void Env::set_stack_structure_hints(const std::vector<StackStructureHint>& hints
     }
 
     m_stack_structures.push_back(entry);
+  }
+}
+
+std::optional<std::string> Env::get_art_elt_name(int idx) const {
+  ASSERT(dts);
+  auto it = dts->art_group_info.find(art_group());
+  if (it == dts->art_group_info.end()) {
+    return {};
+  } else {
+    const auto& art_group = it->second;
+    auto it2 = art_group.find(idx);
+    if (it2 == art_group.end()) {
+      return {};
+    } else {
+      return it2->second;
+    }
   }
 }
 

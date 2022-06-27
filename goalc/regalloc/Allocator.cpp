@@ -3,10 +3,13 @@
  * Implementation of register allocation algorithms
  */
 
-#include <stdexcept>
-#include "third-party/fmt/core.h"
 #include "Allocator.h"
+
+#include <stdexcept>
+
 #include "goalc/regalloc/allocator_interface.h"
+
+#include "third-party/fmt/core.h"
 
 std::string LiveInfo::print_assignment() {
   std::string result = "Assignment for var " + std::to_string(var) + "\n";
@@ -569,8 +572,7 @@ bool try_spill_coloring(int var, RegAllocCache* cache, const AllocationInput& in
         }
 
         if (spill_assignment.reg == -1) {
-          printf("SPILLING FAILED BECAUSE WE COULDN'T FIND A TEMP REGISTER!\n");
-          ASSERT(false);
+          ASSERT_MSG(false, "SPILLING FAILED BECAUSE WE COULDN'T FIND A TEMP REGISTER!");
           return false;
         }
 

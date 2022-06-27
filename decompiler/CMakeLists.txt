@@ -1,6 +1,7 @@
 add_library(
         decomp
 
+        analysis/analyze_inspect_method.cpp
         analysis/atomic_op_builder.cpp
         analysis/cfg_builder.cpp
         analysis/expression_build.cpp
@@ -37,10 +38,6 @@ add_library(
         Function/BasicBlocks.cpp
         Function/CfgVtx.cpp
         Function/Function.cpp
-        Function/TypeInspector.cpp
-
-        IR/BasicOpBuilder.cpp
-        IR/IR.cpp
 
         IR2/AtomicOp.cpp
         IR2/AtomicOpForm.cpp
@@ -55,11 +52,15 @@ add_library(
         IR2/LabelDB.cpp
         IR2/OpenGoalMapping.cpp
 
+        level_extractor/BspHeader.cpp
+        level_extractor/extract_collide_frags.cpp
+        level_extractor/extract_common.cpp
         level_extractor/extract_level.cpp
+        level_extractor/extract_merc.cpp
         level_extractor/extract_tfrag.cpp
         level_extractor/extract_tie.cpp
-        level_extractor/BspHeader.cpp
         level_extractor/extract_shrub.cpp
+        level_extractor/MercData.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp
@@ -83,6 +84,8 @@ target_link_libraries(decomp
         lzokay
         common
         fmt
+        stb_image
+        xdelta3
         )
 
 add_executable(decompiler
@@ -92,4 +95,17 @@ target_link_libraries(decompiler
         decomp
         common
         lzokay
-        fmt)
+        fmt
+        stb_image)
+
+
+add_executable(extractor
+        extractor/main.cpp)
+
+target_link_libraries(extractor
+        decomp
+        common
+        lzokay
+        fmt
+        compiler
+        stb_image)

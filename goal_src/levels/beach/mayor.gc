@@ -7,6 +7,8 @@
 
 ;; DECOMP BEGINS
 
+(import "goal_src/import/mayor-ag.gc")
+
 (deftype mayor (process-taskable)
   ()
   :heap-base #x110
@@ -16,14 +18,11 @@
   )
 
 
-(defskelgroup *mayor-sg* mayor
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 2.5)
-  :longest-edge (meters 0)
-  :shadow 2
-  )
+(defskelgroup *mayor-sg* mayor mayor-lod0-jg mayor-idle-ja
+              ((mayor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :shadow mayor-shadow-mg
+              )
 
 (defmethod dummy-52 mayor ((obj mayor))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
@@ -44,16 +43,19 @@
 (defmethod draw-npc-shadow mayor ((obj mayor))
   (-> obj draw shadow-ctrl)
   (cond
-    ((and (-> obj draw shadow) (zero? (-> obj draw cur-lod)) (logtest? (-> obj draw status) (draw-status was-drawn)))
+    ((and (-> obj draw shadow)
+          (zero? (-> obj draw cur-lod))
+          (logtest? (-> obj draw status) (draw-status was-drawn))
+          )
      (let ((v1-9 (-> obj draw shadow-ctrl)))
-       (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
+       (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
        )
      0
      (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
      )
     (else
       (let ((v1-14 (-> obj draw shadow-ctrl)))
-        (set! (-> v1-14 settings flags) (logior (the-as int (-> v1-14 settings flags)) 32))
+        (set! (-> v1-14 settings flags) (the-as shadow-flags (logior (the-as int (-> v1-14 settings flags)) 32)))
         )
       0
       )
@@ -67,7 +69,13 @@
     (close-specific-task! (game-task jungle-lurkerm) (task-status need-reward-speech))
     (first-any (-> arg0 tasks) #t)
     )
-  (new 'static 'spool-anim :name "mayor-resolution-beams" :index 7 :parts 6 :command-list '())
+  ;; PAL patch here
+  (new 'static 'spool-anim
+    :name "mayor-resolution-beams"
+    :index 7
+    :parts 6
+    :command-list '((0 setting-unset ambient-volume))
+    )
   )
 
 (defmethod play-anim! mayor ((obj mayor) (arg0 symbol))
@@ -88,8 +96,7 @@
            :name "mayor-introduction"
            :index 4
            :parts 16
-           :command-list
-           '((0 kill "villagea-part-65")
+           :command-list '((0 kill "villagea-part-65")
              (0 kill "villagea-part-70")
              (0 kill "med-res-level-2")
              (0 kill "med-res-level-3")
@@ -180,8 +187,7 @@
           :name "mayor-reminder-donation"
           :index 6
           :parts 3
-          :command-list
-          '((0 kill "villagea-part-65")
+          :command-list '((0 kill "villagea-part-65")
             (0 kill "villagea-part-70")
             (0 kill "med-res-level-2")
             (0 kill "med-res-level-3")
@@ -264,8 +270,7 @@
           :name "mayor-reminder-beams"
           :index 5
           :parts 3
-          :command-list
-          '((0 kill "villagea-part-65")
+          :command-list '((0 kill "villagea-part-65")
             (0 kill "villagea-part-70")
             (0 kill "med-res-level-2")
             (0 kill "med-res-level-3")
@@ -351,8 +356,7 @@
           :name "mayor-reminder-beams"
           :index 5
           :parts 3
-          :command-list
-          '((0 kill "villagea-part-65")
+          :command-list '((0 kill "villagea-part-65")
             (0 kill "villagea-part-70")
             (0 kill "med-res-level-2")
             (0 kill "med-res-level-3")
@@ -438,8 +442,7 @@
            :name "mayor-reminder-donation"
            :index 6
            :parts 3
-           :command-list
-           '((0 kill "villagea-part-65")
+           :command-list '((0 kill "villagea-part-65")
              (0 kill "villagea-part-70")
              (0 kill "med-res-level-2")
              (0 kill "med-res-level-3")
@@ -542,8 +545,7 @@
            :name "mayor-resolution-donation"
            :index 8
            :parts 5
-           :command-list
-           '((0 kill "villagea-part-65")
+           :command-list '((0 kill "villagea-part-65")
              (0 kill "villagea-part-70")
              (0 kill "med-res-level-2")
              (0 kill "med-res-level-3")
@@ -650,10 +652,7 @@
 
 (defmethod TODO-RENAME-43 mayor ((obj mayor))
   (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
-    (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-4 (the-as number (logior #x3f800000 v1-3)))
-           (f0-2 (+ -1.0 (the-as float v1-4)))
-           )
+    (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.8888889 f0-2)
          (if (not (closed? (-> obj tasks) (game-task jungle-lurkerm) (task-status need-reminder)))
@@ -701,16 +700,14 @@
 
 (defstate idle (mayor)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (not (should-display? self))
         (go-virtual hidden)
         )
     ((-> (method-of-type process-taskable idle) trans))
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (let ((t9-0 (-> (method-of-type process-taskable idle) post)))
       (if t9-0
           ((the-as (function none) t9-0))

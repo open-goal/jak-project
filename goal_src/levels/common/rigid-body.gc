@@ -592,7 +592,15 @@
   (set! (-> self rbody lin-momentum-damping-factor) (-> self info linear-damping))
   (set! (-> self rbody ang-momentum-damping-factor) (-> self info angular-damping))
   (if (-> self player-impulse)
-      (sound-play-by-name (string->sound-name (-> self info sound-name)) (new-sound-id) 1024 0 0 1 #t)
+      (sound-play-by-name
+        (string->sound-name (-> self info sound-name))
+        (new-sound-id)
+        1024
+        0
+        0
+        (sound-group sfx)
+        #t
+        )
       )
   (TODO-RENAME-28 self)
   (quaternion-copy! (-> self root-overlay quat) (-> self rbody rotation))
@@ -605,8 +613,7 @@
 
 (defstate rigid-body-platform-idle (rigid-body-platform)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target* (>= (-> self info idle-distance)
                           (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
                           )
@@ -615,23 +622,19 @@
         )
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior rigid-body-platform) ja-post)
+  :post (the-as (function none :behavior rigid-body-platform) ja-post)
   )
 
 (defstate rigid-body-platform-float (rigid-body-platform)
   :virtual #t
-  :event
-  rigid-body-platform-event-handler
-  :trans
-  (behavior ()
+  :event rigid-body-platform-event-handler
+  :trans (behavior ()
     (if (or (not *target*) (< (-> self info idle-distance)
                               (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
                               )
@@ -640,15 +643,13 @@
         )
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior rigid-body-platform) rigid-body-platform-post)
+  :post (the-as (function none :behavior rigid-body-platform) rigid-body-platform-post)
   )
 
 (defmethod TODO-RENAME-29 rigid-body-platform ((obj rigid-body-platform) (arg0 rigid-body-platform-constants))

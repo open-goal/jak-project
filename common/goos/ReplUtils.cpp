@@ -1,10 +1,11 @@
 #include "ReplUtils.h"
 
 #include "common/util/FileUtil.h"
-#include "third-party/replxx/include/replxx.hxx"
 #include "common/versions.h"
+
 #include "third-party/fmt/color.h"
 #include "third-party/fmt/core.h"
+#include "third-party/replxx/include/replxx.hxx"
 
 // TODO - expand a list of hints (ie. a hint for defun to show at a glance how to write a function,
 // or perhaps, show the docstring for the current function being used?)
@@ -16,6 +17,7 @@ void ReplWrapper::clear_screen() {
 }
 
 void ReplWrapper::print_welcome_message() {
+  // TODO - dont print on std-out
   // Welcome message / brief intro for documentation
   std::string ascii;
   ascii += " _____             _____ _____ _____ __    \n";
@@ -33,6 +35,10 @@ void ReplWrapper::print_welcome_message() {
   fmt::print("Run ");
   fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(lt)");
   fmt::print(" to connect to the local target.\n\n");
+}
+
+void ReplWrapper::print_to_repl(const std::string_view& str) {
+  repl.print(str.data());
 }
 
 void ReplWrapper::set_history_max_size(size_t len) {

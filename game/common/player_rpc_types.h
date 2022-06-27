@@ -5,11 +5,7 @@
  * Types used for the player Remote Procedure Call between the EE and the IOP.
  * Note that PLAY and PLAYER are different.
  */
+#include "common/versions.h"
 
-#ifndef JAK1_PLAYER_RPC_TYPES_H
-#define JAK1_PLAYER_RPC_TYPES_H
-
-constexpr int PLAYER_RPC_ID = 0xdeb1;
+constexpr PerGameVersion<int> PLAYER_RPC_ID(0xdeb1, 0xfab0);
 constexpr int PLAYER_RPC_CHANNEL = 0;
-
-#endif  // JAK1_PLAYER_RPC_TYPES_H

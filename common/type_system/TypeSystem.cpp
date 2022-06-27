@@ -5,12 +5,15 @@
  * access types, and reverse type lookups.
  */
 
-#include "third-party/fmt/core.h"
-#include "third-party/fmt/color.h"
-#include <stdexcept>
 #include "TypeSystem.h"
-#include "common/util/math_util.h"
+
+#include <stdexcept>
+
 #include "common/util/Assert.h"
+#include "common/util/math_util.h"
+
+#include "third-party/fmt/color.h"
+#include "third-party/fmt/core.h"
 
 namespace {
 template <typename... Args>
@@ -202,6 +205,34 @@ void TypeSystem::forward_declare_type_method_count(const std::string& name, int 
   if (existing_type != m_types.end()) {
     int existing_count = get_next_method_id(existing_type->second.get());
     if (existing_count != num_methods) {
+      throw_typesystem_error(
+          "Type {} was defined with {} methods and is now being forward declared with {} methods",
+          name, existing_count, num_methods);
+    }
+  }
+
+  m_forward_declared_method_counts[name] = num_methods;
+}
+
+/*!
+ * forward declare, but allow the method count to be too large by up to 3 because jak2 stores
+ * method counts in v2/v4's like n*4 + 3.
+ */
+void TypeSystem::forward_declare_type_method_count_multiple_of_4(const std::string& name,
+                                                                 int num_methods) {
+  auto existing_fwd = m_forward_declared_method_counts.find(name);
+  if (existing_fwd != m_forward_declared_method_counts.end() &&
+      existing_fwd->second + 3 < num_methods) {
+    throw_typesystem_error(
+        "Type {} was originally forward declared with {} methods and is now being forward declared "
+        "with {} methods",
+        name, existing_fwd->second, num_methods);
+  }
+
+  auto existing_type = m_types.find(name);
+  if (existing_type != m_types.end()) {
+    int existing_count = get_next_method_id(existing_type->second.get());
+    if (existing_count + 3 < num_methods) {
       throw_typesystem_error(
           "Type {} was defined with {} methods and is now being forward declared with {} methods",
           name, existing_count, num_methods);
@@ -1588,7 +1619,8 @@ void TypeSystem::add_field_to_bitfield(BitFieldType* type,
                                        const std::string& field_name,
                                        const TypeSpec& field_type,
                                        int offset,
-                                       int field_size) {
+                                       int field_size,
+                                       bool skip_in_decomp) {
   // in bits
   auto load_size = lookup_type(field_type)->get_load_size() * 8;
   if (field_size == -1) {
@@ -1616,7 +1648,7 @@ void TypeSystem::add_field_to_bitfield(BitFieldType* type,
         type->get_name(), field_name, offset, offset + field_size);
   }
 
-  BitField field(field_type, field_name, offset, field_size);
+  BitField field(field_type, field_name, offset, field_size, skip_in_decomp);
   type->m_fields.push_back(field);
 }
 

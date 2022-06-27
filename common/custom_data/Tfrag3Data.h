@@ -5,9 +5,9 @@
 
 #include "common/common_types.h"
 #include "common/dma/gs.h"
-#include "common/util/Serializer.h"
 #include "common/math/Vector.h"
 #include "common/util/Assert.h"
+#include "common/util/Serializer.h"
 
 namespace tfrag3 {
 
@@ -44,20 +44,35 @@ enum MemoryUsageCategory {
   SHRUB_TIME_OF_DAY,
   SHRUB_VERT,
   SHRUB_IND,
+
+  MERC_VERT,
+  MERC_INDEX,
+
+  COLLISION,
+
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 13;
+constexpr int TFRAG3_VERSION = 20;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
   // the vertex position
   float x, y, z;
   // texture coordinates
-  float s, t, q;
+  float s, t, q_unused;
   // color table index
   u16 color_index;
   u16 pad[3];
+
+  struct hash {
+    std::size_t operator()(const PreloadedVertex& x) const;
+  };
+
+  bool operator==(const PreloadedVertex& other) const {
+    return x == other.x && y == other.y && z == other.z && s == other.s && t == other.t &&
+           color_index == other.color_index;
+  }
 };
 static_assert(sizeof(PreloadedVertex) == 32, "PreloadedVertex size");
 
@@ -84,7 +99,7 @@ struct PackedTfragVertices {
   struct Vertex {
     u16 xoff, yoff, zoff;
     u16 cluster_idx;
-    u16 s, t;
+    s16 s, t;
     u16 color_index;
   };
 
@@ -135,24 +150,23 @@ struct StripDraw {
   u32 tree_tex_id = 0;  // the texture that should be bound for the draw
 
   struct {
-    // the list of vertices in the draw. This includes the restart code of UINT32_MAX that OpenGL
-    // will use to start a new strip.
-    std::vector<u32> vertex_index_stream;
+    u32 idx_of_first_idx_in_full_buffer = 0;
   } unpacked;
 
-  void unpack();
-
+  // indices can be specified as lists of runs and plain indices.
+  // the runs are still drawn with indexed opengl calls, it just uses less space in the file.
   struct VertexRun {
     u32 vertex0;
     u16 length;
   };
-
   std::vector<VertexRun> runs;
+  std::vector<u32> plain_indices;
 
   // to do culling, the above vertex stream is grouped.
   // by following the visgroups and checking the visibility, you can leave out invisible vertices.
   struct VisGroup {
-    u32 num = 0;                // number of vertex indices in this group
+    u32 num_inds = 0;           // number of vertex indices in this group
+    u32 num_tris = 0;           // number of triangles
     u32 vis_idx_in_pc_bvh = 0;  // the visibility group they belong to (in BVH)
   };
   std::vector<VisGroup> vis_groups;
@@ -166,9 +180,8 @@ struct ShrubDraw {
   DrawMode mode;        // the OpenGL draw settings.
   u32 tree_tex_id = 0;  // the texture that should be bound for the draw
 
-  // the list of vertices in the draw. This includes the restart code of UINT32_MAX that OpenGL
-  // will use to start a new strip.
-  std::vector<u32> vertex_index_stream;
+  u32 first_index_index;
+  u32 num_indices;
 
   // for debug counting.
   u32 num_triangles = 0;
@@ -258,9 +271,11 @@ struct TfragTree {
   PackedTfragVertices packed_vertices;
   std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)
   BVH bvh;                             // the bvh for frustum culling
+  bool use_strips = true;
 
   struct {
     std::vector<PreloadedVertex> vertices;  // mesh vertices
+    std::vector<u32> indices;
   } unpacked;
   void unpack();
   void serialize(Serializer& ser);
@@ -286,6 +301,7 @@ struct TieTree {
 
   struct {
     std::vector<PreloadedVertex> vertices;  // mesh vertices
+    std::vector<u32> indices;
   } unpacked;
 
   void serialize(Serializer& ser);
@@ -298,6 +314,7 @@ struct ShrubTree {
 
   PackedShrubVertices packed_vertices;
   std::vector<ShrubDraw> static_draws;  // the actual topology and settings
+  std::vector<u32> indices;
 
   struct {
     std::vector<ShrubGpuVertex> vertices;  // mesh vertices
@@ -306,6 +323,73 @@ struct ShrubTree {
   void serialize(Serializer& ser);
   void unpack();
 };
+
+struct CollisionMesh {
+  struct Vertex {
+    float x, y, z;
+    u32 flags;
+    s16 nx, ny, nz;
+    u16 pad;
+    u32 pat;
+    u32 pad2;
+  };
+  static_assert(sizeof(Vertex) == 32);
+  std::vector<Vertex> vertices;
+  void serialize(Serializer& ser);
+};
+
+// MERC
+
+struct MercVertex {
+  float pos[3];
+  float pad0;
+
+  float normal[3];
+  float pad1;
+
+  float weights[3];
+  float pad2;
+
+  float st[2];
+
+  u8 rgba[4];
+  u8 mats[3];
+  u8 pad3;
+};
+static_assert(sizeof(MercVertex) == 64);
+
+struct MercDraw {
+  DrawMode mode;
+  u32 tree_tex_id = 0;  // the texture that should be bound for the draw
+
+  u32 first_index;
+  u32 index_count;
+  u32 num_triangles;
+  void serialize(Serializer& ser);
+};
+
+struct MercEffect {
+  std::vector<MercDraw> draws;
+  void serialize(Serializer& ser);
+};
+
+struct MercModel {
+  std::string name;
+  std::vector<MercEffect> effects;
+  float scale_xyz;
+  u32 max_draws;
+  u32 max_bones;
+  void serialize(Serializer& ser);
+};
+
+struct MercModelGroup {
+  std::vector<MercVertex> vertices;
+  std::vector<u32> indices;
+  std::vector<MercModel> models;
+  void serialize(Serializer& ser);
+};
+
+//
 
 constexpr int TFRAG_GEOS = 3;
 constexpr int TIE_GEOS = 4;
@@ -317,10 +401,14 @@ struct Level {
   std::array<std::vector<TfragTree>, TFRAG_GEOS> tfrag_trees;
   std::array<std::vector<TieTree>, TIE_GEOS> tie_trees;
   std::vector<ShrubTree> shrub_trees;
+  CollisionMesh collision;
+  MercModelGroup merc_data;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
 
   std::array<int, MemoryUsageCategory::NUM_CATEGORIES> get_memory_usage() const;
 };
+
+void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size);
 
 }  // namespace tfrag3

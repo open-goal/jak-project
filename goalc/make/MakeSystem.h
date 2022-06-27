@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/goos/Interpreter.h"
+
 #include "goalc/make/Tool.h"
 
 struct MakeStep {
@@ -14,7 +15,7 @@ struct MakeStep {
 
 class MakeSystem {
  public:
-  MakeSystem();
+  MakeSystem(const std::string& username = "#f");
   void load_project_file(const std::string& file_path);
 
   goos::Object handle_defstep(const goos::Object& obj,
@@ -35,6 +36,8 @@ class MakeSystem {
   bool make(const std::string& target, bool force, bool verbose);
 
   void add_tool(std::shared_ptr<Tool> tool);
+  void set_constant(const std::string& name, const std::string& value);
+  void set_constant(const std::string& name, bool value);
 
   template <typename T>
   void add_tool() {

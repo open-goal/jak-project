@@ -33,13 +33,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-idle (babak-with-cannon)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     nav-enemy-default-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and (and *target* (>= (-> self enemy-info idle-distance)
                                (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
                                )
@@ -50,52 +48,28 @@ nav-enemy-default-event-handler
         )
     (none)
     )
-  :code
-  (behavior ()
-    (ja-channel-push! 1 22)
-    (let ((a0-1 (-> self skel root-channel 0)))
-      (set! (-> a0-1 frame-group)
-            (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim)))
-            )
-      (set! (-> a0-1 param 0)
-            (the float
-                 (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim))) data 0 length) -1)
-                 )
-            )
-      (set! (-> a0-1 param 1) 1.0)
-      (set! (-> a0-1 frame-num) 0.0)
-      (joint-control-channel-group!
-        a0-1
-        (the-as art-joint-anim (-> self draw art-group data (-> self nav-info idle-anim)))
-        num-func-seek!
-        )
-      )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (ja-post)
       (suspend)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-        (set! (-> a0-2 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (anim-loop)
     (none)
     )
-  :post
-  (the-as (function none :behavior babak-with-cannon) #f)
+  :post (the-as (function none :behavior babak-with-cannon) #f)
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-patrol (babak-with-cannon)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     nav-enemy-default-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
       (let ((f30-0 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
         (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
@@ -122,60 +96,42 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :code
-  (-> (method-of-type babak nav-enemy-patrol) code)
+  :code (-> (method-of-type babak nav-enemy-patrol) code)
   )
 
 ;; failed to figure out what this is:
 (defstate babak-run-to-cannon (babak)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self nav destination-pos quad) (-> self entity extra trans quad))
     (set! (-> self nav target-pos quad) (-> self entity extra trans quad))
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (nav-enemy-notice-player?)
         (go-virtual nav-enemy-chase)
         )
-    (if (logtest? (nav-control-flags bit19) (-> self nav flags))
+    (if (logtest? (nav-control-flags navcf19) (-> self nav flags))
         (go babak-with-cannon-jump-onto-cannon)
         )
     (none)
     )
-  :code
-  (behavior ()
-    (ja-channel-push! 1 22)
-    (while #t
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 8)))
-        (set! (-> a0-1 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 8)) data 0 length) -1))
-              )
-        (set! (-> a0-1 param 1) 1.0)
-        (set! (-> a0-1 frame-num) 0.0)
-        (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 8)) num-func-seek!)
-        )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (let ((a0-2 (-> self skel root-channel 0)))
-          (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-          (set! (-> a0-2 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (nav-enemy-travel-post)
     (none)
     )
@@ -236,22 +192,19 @@ nav-enemy-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate babak-with-cannon-jump-onto-cannon (babak-with-cannon)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     nav-enemy-jump-event-handler
     )
-  :exit
-  (behavior ()
-    (logior! (-> self nav-enemy-flags) 24)
+  :exit (behavior ()
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
     (set! (-> self turn-time) (-> self nav-info run-turn-time))
-    (set! (-> self nav-enemy-flags) (logand -25 (-> self nav-enemy-flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (nav-enemy-neck-control-inactive)
     (let* ((v1-7 (-> self cannon-ent))
            (gp-0 (if v1-7
@@ -274,12 +227,12 @@ nav-enemy-default-event-handler
         )
       )
     (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
-      (ja-channel-push! 1 60)
+      (ja-channel-push! 1 (seconds 0.2))
       (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
       )
-    (logior! (-> self nav-enemy-flags) 16)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
     (nav-enemy-execute-jump)
-    (set! (-> self nav-enemy-flags) (logand -25 (-> self nav-enemy-flags)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (let* ((v1-20 (-> self cannon-ent))
            (gp-1 (if v1-20
                      (-> v1-20 extra process)
@@ -293,78 +246,50 @@ nav-enemy-default-event-handler
       (when a0-9
         (let ((gp-2 (babak-with-cannon-compute-cannon-dir (the-as mistycannon a0-9) (new 'stack-no-clear 'vector))))
           (when (not (nav-enemy-facing-direction? gp-2 1820.4445))
-            (ja-channel-push! 1 60)
+            (ja-channel-push! 1 (seconds 0.2))
             (nav-enemy-turn-to-face-dir gp-2 182.04445)
             (forward-up->quaternion (-> self collide-info quat) gp-2 *y-vector*)
             )
           )
         )
       )
-    (ja-channel-push! 1 30)
-    (let ((a0-15 (-> self skel root-channel 0)))
-      (set! (-> a0-15 frame-group) (the-as art-joint-anim (-> self draw art-group data 17)))
-      (set! (-> a0-15 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) data 0 length) -1))
-            )
-      (set! (-> a0-15 param 1) 1.0)
-      (set! (-> a0-15 frame-num) 0.0)
-      (joint-control-channel-group! a0-15 (the-as art-joint-anim (-> self draw art-group data 17)) num-func-seek!)
-      )
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! (-> self draw art-group data 17) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-16 (-> self skel root-channel 0)))
-        (set! (-> a0-16 param 0) (the float (+ (-> a0-16 frame-group data 0 length) -1)))
-        (set! (-> a0-16 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-16 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go babak-with-cannon-shooting)
     (none)
     )
-  :post
-  (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
+  :post (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
   )
 
 ;; failed to figure out what this is:
 (defstate babak-with-cannon-jump-off-cannon (babak-with-cannon)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     nav-enemy-jump-event-handler
     )
-  :exit
-  (behavior ()
-    (logior! (-> self nav-enemy-flags) 24)
+  :exit (behavior ()
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (nav-enemy-initialize-jump (-> self entity extra trans))
     (nav-enemy-neck-control-look-at)
-    (set! (-> self nav-enemy-flags) (logand -25 (-> self nav-enemy-flags)))
-    (let ((a0-2 (-> self skel root-channel 0)))
-      (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 17)))
-      (set! (-> a0-2 param 0) 0.0)
-      (set! (-> a0-2 param 1) 2.0)
-      (set! (-> a0-2 frame-num)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) data 0 length) -1))
-            )
-      (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 17)) num-func-seek!)
-      )
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
+    (ja-no-eval :group! (-> self draw art-group data 17) :num! (seek! 0.0 2.0) :frame-num max)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) 0.0)
-        (set! (-> a0-3 param 1) 2.0)
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! 0.0 2.0))
       )
     (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
-      (ja-channel-push! 1 60)
+      (ja-channel-push! 1 (seconds 0.2))
       (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
       )
-    (logior! (-> self nav-enemy-flags) 16)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
     (nav-enemy-execute-jump)
     (let ((a1-6 (dummy-16 (-> self nav) (-> self jump-dest))))
       (set-current-poly! (-> self nav) a1-6)
@@ -372,19 +297,16 @@ nav-enemy-default-event-handler
     (go-virtual nav-enemy-jump-land)
     (none)
     )
-  :post
-  (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
+  :post (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
   )
 
 ;; failed to figure out what this is:
 (defstate babak-with-cannon-shooting (babak-with-cannon)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     nav-enemy-default-event-handler
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((v1-2 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
       (if v1-2
@@ -393,8 +315,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (let ((v1-0 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
       (if v1-0
           (logclear! (-> v1-0 extra perm status) (entity-perm-status complete))
@@ -402,8 +323,7 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((f0-1 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
       (if (and (< -40960.0 f0-1)
                (and (and *target*
@@ -417,27 +337,23 @@ nav-enemy-default-event-handler
       )
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (suspend)
       )
     (none)
     )
-  :post
-  babak-with-cannon-ride-cannon-post
+  :post babak-with-cannon-ride-cannon-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-die (babak-with-cannon)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     nav-enemy-default-event-handler
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (and *target* (= (-> *target* current-level name) 'beach))
         (spool-push *art-control* "beachcam-cannon" 0 self -1.0)
         )
@@ -456,13 +372,11 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-fuel-cell (babak-with-cannon)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior babak-with-cannon)
     process-drawable-fuel-cell-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self collide-info))
     (ja-post)

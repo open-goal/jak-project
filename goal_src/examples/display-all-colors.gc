@@ -1,0 +1,61 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; This script creates a simple process that draws text demonstrating
+;; all of GOAL's color constants to the on-screen debug output.
+
+;; Create somewhere for the handle to the process to live. See https://open-goal.github.io/docs/reference/process_and_state
+;; as well as kernel/gstate.gc
+(define *color-display-handle* (new 'static 'handle))
+(set! *color-display-handle* (the handle #f))
+
+
+(defun-debug start-display-text-colors ()
+  "Spawn an onscreen string displaying all possible colors"
+  (if (not (handle->process *color-display-handle*))
+    (let ((disp-proc
+      (process-spawn-function process :name 'display-proc
+        (lambda :behavior process ()
+          (stack-size-set! (-> self main-thread) 256)
+          (loop
+            ;; These constants live in engine/gfx/font-h.gc
+            (format *stdcon* "~0k~%~%
+~0L 0 default               ~1L 1 white       
+~2L 2 gray                  ~3L 3 orange-red
+~4L 4 bright-orange-red     ~5L 5 bright-orange-red
+~6L 6 bright-green          ~7L 7 dark-blue
+~8L 8 light-blue            ~9L 9 dark-pink
+~10L10 lighter-blue          ~11L11 dark-light-blue
+~12L12 dim-white             ~13L13 dim-gray
+~14L14 orange-red-2          ~15L15 yellow-green 
+~16L16 dark-green            ~17L17 another-gray
+~18L18 dark-dark-green       ~19L19 flat-dark-purple 
+~20L20 flat-yellow           ~21L21 blue-white
+~22L22 pad-back              ~23L23 pad-shine
+~24L24 pad-square            ~25L25 pad-circle
+~26L26 pad-triangle          ~27L27 pad-x
+~28L28 lighter-lighter-blue  ~29L29 yellow-orange
+~30L30 yellow-green-2        ~31L31 another-light-blue
+~32L32 light-yellow          ~33L33 red-orange
+~34L34 another-orange-red~0L~%
+ alternate names
+  ~3L3 red   ~4L4 red2   ~5L5 yellow   ~6L6 green   ~7L7 blue
+ ~10L10 cyan   ~33L33 red-reverse   ~34L34 red-obverse~0L"
+              )
+            (suspend)
+            )
+          )
+        )
+      ))
+      (set! *color-display-handle* (ppointer->handle disp-proc))
+      )
+    ;; else
+    (format #t "Colors are already being displayed")
+    )
+  )
+
+
+(defun-debug stop-display-text-colors ()
+  "Kill the example text color display"
+  (kill-by-name 'display-proc *active-pool*)
+  )

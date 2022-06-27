@@ -1,7 +1,10 @@
-#include <cstring>
 #include "iop.h"
-#include "game/system/iop_thread.h"
+
+#include <cstring>
+
 #include "common/util/Assert.h"
+
+#include "game/system/iop_thread.h"
 
 namespace iop {
 /*!
@@ -216,5 +219,13 @@ s32 SignalSema(s32 sema) {
 s32 WakeupThread(s32 thid) {
   iop->kernel.WakeupThread(thid);
   return 0;
+}
+
+bool ThreadWantsExit(s32 thid) {
+  return iop->kernel.GetWantExit(thid);
+}
+
+bool OnlyThreadAlive(s32 thid) {
+  return iop->kernel.OnlyThreadAlive(thid);
 }
 }  // namespace iop

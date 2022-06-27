@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/generic-button-ag.gc")
+
 ;; definition of type basebutton
 (deftype basebutton (process-drawable)
   ((root-override     collide-shape-moving         :offset        112)
@@ -60,13 +62,10 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *generic-button-sg* generic-button
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 3)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *generic-button-sg* generic-button generic-button-lod0-jg generic-button-idle-ja
+              ((generic-button-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; definition for method 30 of type basebutton
 ;; Used lq/sq
@@ -85,8 +84,7 @@
 ;; failed to figure out what this is:
 (defstate basebutton-startup (basebutton)
   :virtual #t
-  :code
-  (behavior ()
+  :code (behavior ()
     (if (-> self down?)
         (go-virtual basebutton-down-idle)
         (go-virtual basebutton-up-idle)
@@ -98,20 +96,19 @@
 ;; failed to figure out what this is:
 (defstate basebutton-up-idle (basebutton)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('attack)
        (case (-> arg3 param 1)
          (('flop)
           (TODO-RENAME-29 self (-> self event-going-down) (-> self notify-actor))
-          (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
+          (sound-play "silo-button")
           (go-virtual basebutton-going-down)
           )
          )
        )
       (('trigger)
-       (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "silo-button")
        (go-virtual basebutton-going-down)
        )
       (('move-to)
@@ -119,22 +116,18 @@
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (press! self #f)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (-> self move-to?)
         (rider-trans)
         )
     (none)
     )
-  :code
-  (the-as (function none :behavior basebutton) anim-loop)
-  :post
-  (behavior ()
+  :code (the-as (function none :behavior basebutton) anim-loop)
+  :post (behavior ()
     (when (-> self move-to?)
       (set! (-> self move-to?) #f)
       (set! (-> self root-override trans quad) (-> self move-to-pos quad))
@@ -148,11 +141,10 @@
 ;; failed to figure out what this is:
 (defstate basebutton-going-down (basebutton)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('untrigger)
-       (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "silo-button")
        (go-virtual basebutton-going-up)
        )
       (('move-to)
@@ -160,34 +152,22 @@
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (press! self #t)
     (none)
     )
-  :trans
-  (the-as (function none :behavior basebutton) rider-trans)
-  :code
-  (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) (the float (+ (-> a0-0 frame-group data 0 length) -1)))
-      (set! (-> a0-0 param 1) (-> self anim-speed))
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
-      )
+  :trans (the-as (function none :behavior basebutton) rider-trans)
+  :code (behavior ()
+    (ja-no-eval :num! (seek! max (-> self anim-speed)))
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) (the float (+ (-> a0-1 frame-group data 0 length) -1)))
-        (set! (-> a0-1 param 1) (-> self anim-speed))
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! max (-> self anim-speed)))
       )
     (TODO-RENAME-29 self (-> self event-down) (-> self notify-actor))
     (go-virtual basebutton-down-idle)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (when (-> self move-to?)
       (set! (-> self move-to?) #f)
       (set! (-> self root-override trans quad) (-> self move-to-pos quad))
@@ -201,11 +181,10 @@
 ;; failed to figure out what this is:
 (defstate basebutton-down-idle (basebutton)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('untrigger)
-       (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "silo-button")
        (go-virtual basebutton-going-up)
        )
       (('move-to)
@@ -213,20 +192,17 @@
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (press! self #t)
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (if (-> self move-to?)
         (rider-trans)
         )
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (cond
       ((= (-> self timeout) 0.0)
@@ -237,14 +213,13 @@
           (suspend)
           )
         (TODO-RENAME-29 self (-> self event-going-up) (-> self notify-actor))
-        (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
+        (sound-play "silo-button")
         (go-virtual basebutton-going-up)
         )
       )
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (when (-> self move-to?)
       (set! (-> self move-to?) #f)
       (set! (-> self root-override trans quad) (-> self move-to-pos quad))
@@ -258,46 +233,33 @@
 ;; failed to figure out what this is:
 (defstate basebutton-going-up (basebutton)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('move-to)
        (move-to-vec-or-quat! self (the-as vector (-> arg3 param 0)) (the-as quaternion (-> arg3 param 1)))
        )
       (('trigger)
-       (sound-play-by-name (static-sound-name "silo-button") (new-sound-id) 1024 0 0 1 #t)
+       (sound-play "silo-button")
        (go-virtual basebutton-going-down)
        )
       )
     )
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (press! self #f)
     (none)
     )
-  :trans
-  (the-as (function none :behavior basebutton) rider-trans)
-  :code
-  (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) 0.0)
-      (set! (-> a0-0 param 1) (-> self anim-speed))
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-seek!)
-      )
+  :trans (the-as (function none :behavior basebutton) rider-trans)
+  :code (behavior ()
+    (ja-no-eval :num! (seek! 0.0 (-> self anim-speed)))
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-1 (-> self skel root-channel 0)))
-        (set! (-> a0-1 param 0) 0.0)
-        (set! (-> a0-1 param 1) (-> self anim-speed))
-        (joint-control-channel-group-eval! a0-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! 0.0 (-> self anim-speed)))
       )
     (TODO-RENAME-29 self (-> self event-up) (-> self notify-actor))
     (go-virtual basebutton-up-idle)
     (none)
     )
-  :post
-  (behavior ()
+  :post (behavior ()
     (when (-> self move-to?)
       (set! (-> self move-to?) #f)
       (set! (-> self root-override trans quad) (-> self move-to-pos quad))
@@ -496,7 +458,7 @@
 ;; definition for function basebutton-init-by-other
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defbehavior basebutton-init-by-other basebutton ((arg0 basebutton) (arg1 vector) (arg2 quaternion) (arg3 entity-actor) (arg4 symbol) (arg5 float))
+(defbehavior basebutton-init-by-other basebutton ((arg0 entity-actor) (arg1 vector) (arg2 quaternion) (arg3 entity-actor) (arg4 symbol) (arg5 float))
   (reset! self)
   (set! (-> self spawned-by-other?) #t)
   (set! (-> self button-id) -1)
@@ -504,7 +466,7 @@
   (set! (-> self notify-actor) arg3)
   (set! (-> self timeout) arg5)
   (if arg0
-      (set! (-> self entity) (the-as entity arg0))
+      (set! (-> self entity) arg0)
       )
   (TODO-RENAME-27 self)
   (set! (-> self root-override trans quad) (-> arg1 quad))
@@ -517,10 +479,7 @@
   )
 
 ;; definition for symbol *warp-info*, type (array string)
-(define *warp-info* (the-as (array string) (new
-                                             'static
-                                             'boxed-array
-                                             :type string :length 5 :allocated-length 5
+(define *warp-info* (the-as (array string) (new 'static 'boxed-array :type string
                                              "training-warp"
                                              "village1-warp"
                                              "village2-warp"
@@ -564,13 +523,11 @@
 ;; failed to figure out what this is:
 (defstate use (warp-gate)
   :virtual #t
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (send-event *camera* 'joystick 0.0 0.0)
     (none)
     )
-  :code
-  (behavior ((arg0 int) (arg1 level))
+  :code (behavior ((arg0 int) (arg1 level))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (when (not arg1)
       (process-release? *target*)
@@ -633,14 +590,13 @@
                            :slope-up-traction 1.0
                            :align-speed 1.0
                            :mode 'air
-                           :flags #x20
+                           :flags (surface-flags always-rotate-toward-transv)
                            )
         )
 
 ;; failed to figure out what this is:
 (defstate target-warp-out (target)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('death-end)
        (let ((v0-0 (the-as object (logior (-> self draw status) (draw-status hidden)))))
@@ -653,43 +609,30 @@
         )
       )
     )
-  :enter
-  (behavior ((arg0 vector) (arg1 vector))
+  :enter (behavior ((arg0 vector) (arg1 vector))
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (set! (-> self control status) (logand -8 (-> self control status)))
+    (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     (set! (-> self control unknown-surface00) *warp-jump-mods*)
     (set! (-> self control unknown-vector102 quad) (-> arg0 quad))
     (set! (-> self control unknown-vector103 quad) (-> arg1 quad))
     (set! (-> self control unknown-vector102 y) (+ -4096.0 (-> self control unknown-vector102 y)))
     (set! (-> self control unknown-uint20) (the-as uint #f))
     (vector-reset! (-> self control transv))
-    (logior! (-> self state-flags) 1024)
+    (logior! (-> self state-flags) (state-flags use-alt-cam-pos))
     (set! (-> self alt-cam-pos quad) (-> arg1 quad))
     (none)
     )
-  :exit
-  (behavior ()
-    (set! (-> self state-flags) (logand -1025 (-> self state-flags)))
+  :exit (behavior ()
+    (logclear! (-> self state-flags) (state-flags use-alt-cam-pos))
     (none)
     )
-  :code
-  (behavior ((arg0 vector) (arg1 vector))
+  :code (behavior ((arg0 vector) (arg1 vector))
     (send-event *camera* 'change-state cam-fixed 0)
-    (ja-channel-push! 1 60)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 41)))
-      (set! (-> gp-0 param 0) (ja-aframe 16.0 0))
-      (set! (-> gp-0 param 1) 1.0)
-      (set! (-> gp-0 frame-num) 0.0)
-      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 41)) num-func-seek!)
-      )
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! eichar-duck-high-jump-ja :num! (seek! (ja-aframe 16.0 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((gp-1 (-> self skel root-channel 0)))
-        (set! (-> gp-1 param 0) (ja-aframe 16.0 0))
-        (set! (-> gp-1 param 1) 1.0)
-        (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe 16.0 0)))
       )
     (vector-! (-> self control transv) (-> self control unknown-vector102) (-> self control trans))
     (vector-xz-normalize! (-> self control transv) 32768.0)
@@ -764,24 +707,13 @@
               )
             )
           )
-    (let ((gp-3 (-> self skel root-channel 0)))
-      (set! (-> gp-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 41)))
-      (set! (-> gp-3 param 0) (ja-aframe 40.0 0))
-      (set! (-> gp-3 param 1) 1.0)
-      (set! (-> gp-3 frame-num) (ja-aframe 16.0 0))
-      (joint-control-channel-group! gp-3 (the-as art-joint-anim (-> self draw art-group data 41)) num-func-seek!)
-      )
+    (ja-no-eval :group! eichar-duck-high-jump-ja :num! (seek! (ja-aframe 40.0 0)) :frame-num (ja-aframe 16.0 0))
     (until (ja-done? 0)
       (suspend)
-      (let ((gp-4 (-> self skel root-channel 0)))
-        (set! (-> gp-4 param 0) (ja-aframe 40.0 0))
-        (set! (-> gp-4 param 1) 1.0)
-        (joint-control-channel-group-eval! gp-4 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe 40.0 0)))
       )
     (anim-loop)
     (none)
     )
-  :post
-  target-no-stick-post
+  :post target-no-stick-post
   )

@@ -1,7 +1,157 @@
-#include "goalc/compiler/Compiler.h"
-#include "goalc/compiler/IR.h"
 #include "common/goos/ParseHelpers.h"
 #include "common/type_system/deftype.h"
+
+#include "goalc/compiler/Compiler.h"
+#include "goalc/compiler/IR.h"
+
+void Compiler::save_repl_history() {
+  m_repl->save_history();
+}
+
+void Compiler::print_to_repl(const std::string_view& str) {
+  m_repl->print_to_repl(str);
+}
+
+std::string Compiler::get_prompt() {
+  std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
+  if (m_listener.is_connected()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
+  }
+  if (m_debugger.is_halted()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
+  } else if (m_debugger.is_attached()) {
+    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
+  }
+  return "\033[0m" + prompt;
+}
+
+std::string Compiler::get_repl_input() {
+  auto str = m_repl->readline(get_prompt());
+  if (str) {
+    m_repl->add_to_history(str);
+    return str;
+  } else {
+    return "";
+  }
+}
+
+void Compiler::compile_and_send_from_string(const std::string& source_code) {
+  if (!connect_to_target()) {
+    throw std::runtime_error(
+        "Compiler failed to connect to target for compile_and_send_from_string.");
+  }
+
+  auto code = m_goos.reader.read_from_string(source_code);
+  auto compiled = compile_object_file("test-code", code, true);
+  ASSERT(!compiled->is_empty());
+  color_object_file(compiled);
+  auto data = codegen_object_file(compiled);
+  m_listener.send_code(data);
+  if (!m_listener.most_recent_send_was_acked()) {
+    print_compiler_warning("Runtime is not responding after sending test code. Did it crash?\n");
+  }
+}
+
+std::vector<std::string> Compiler::run_test_from_file(const std::string& source_code) {
+  try {
+    if (!connect_to_target()) {
+      throw std::runtime_error("Compiler::run_test_from_file couldn't connect!");
+    }
+
+    auto code = m_goos.reader.read_from_file({source_code});
+    auto compiled = compile_object_file("test-code", code, true);
+    if (compiled->is_empty()) {
+      return {};
+    }
+    color_object_file(compiled);
+    auto data = codegen_object_file(compiled);
+    m_listener.record_messages(ListenerMessageKind::MSG_PRINT);
+    m_listener.send_code(data);
+    if (!m_listener.most_recent_send_was_acked()) {
+      print_compiler_warning("Runtime is not responding after sending test code. Did it crash?\n");
+    }
+    return m_listener.stop_recording_messages();
+  } catch (std::exception& e) {
+    fmt::print("[Compiler] Failed to compile test program {}: {}\n", source_code, e.what());
+    throw e;
+  }
+}
+
+std::vector<std::string> Compiler::run_test_from_string(const std::string& src,
+                                                        const std::string& obj_name) {
+  try {
+    if (!connect_to_target()) {
+      throw std::runtime_error("Compiler::run_test_from_file couldn't connect!");
+    }
+
+    auto code = m_goos.reader.read_from_string({src});
+    auto compiled = compile_object_file(obj_name, code, true);
+    if (compiled->is_empty()) {
+      return {};
+    }
+    color_object_file(compiled);
+    auto data = codegen_object_file(compiled);
+    m_listener.record_messages(ListenerMessageKind::MSG_PRINT);
+    m_listener.send_code(data);
+    if (!m_listener.most_recent_send_was_acked()) {
+      print_compiler_warning("Runtime is not responding after sending test code. Did it crash?\n");
+    }
+    return m_listener.stop_recording_messages();
+  } catch (std::exception& e) {
+    fmt::print("[Compiler] Failed to compile test program from string {}: {}\n", src, e.what());
+    throw e;
+  }
+}
+
+/*!
+ * Just run the front end on a string. Will not do register allocation or code generation.
+ * Useful for typechecking, defining types,  or running strings that invoke the compiler again.
+ */
+void Compiler::run_front_end_on_string(const std::string& src) {
+  auto code = m_goos.reader.read_from_string({src});
+  compile_object_file("run-on-string", code, true);
+}
+
+/*!
+ * Just run the front end on a file. Will not do register allocation or code generation.
+ * Useful for typechecking, defining types,  or running strings that invoke the compiler again.
+ */
+void Compiler::run_front_end_on_file(const std::vector<std::string>& path) {
+  auto code = m_goos.reader.read_from_file(path);
+  compile_object_file("run-on-file", code, true);
+}
+
+/*!
+ * Run the entire compilation process on the input source code. Will generate an object file, but
+ * won't save it anywhere.
+ */
+void Compiler::run_full_compiler_on_string_no_save(const std::string& src,
+                                                   const std::optional<std::string>& string_name) {
+  auto code = m_goos.reader.read_from_string(src, true, string_name);
+  auto compiled = compile_object_file("run-on-string", code, true);
+  color_object_file(compiled);
+  codegen_object_file(compiled);
+}
+
+std::vector<std::string> Compiler::run_test_no_load(const std::string& source_code) {
+  auto code = m_goos.reader.read_from_file({source_code});
+  compile_object_file("test-code", code, true);
+  return {};
+}
+
+void Compiler::shutdown_target() {
+  if (m_debugger.is_attached()) {
+    m_debugger.detach();
+  }
+
+  if (m_listener.is_connected()) {
+    m_listener.send_reset(true);
+  }
+}
+
+bool Compiler::knows_object_file(const std::string& name) {
+  return m_debugger.knows_object(name);
+}
 
 /*!
  * Parse arguments into a goos::Arguments format.
@@ -124,7 +274,11 @@ void Compiler::expect_empty_list(const goos::Object& o) {
   }
 }
 
-TypeSpec Compiler::parse_typespec(const goos::Object& src) {
+TypeSpec Compiler::parse_typespec(const goos::Object& src, Env* env) {
+  if (src.is_pair() && src.as_pair()->car.is_symbol("current-method-type") &&
+      src.as_pair()->cdr.is_empty_list()) {
+    return env->function_env()->method_of_type_name;
+  }
   return ::parse_typespec(&m_ts, src);
 }
 
@@ -180,58 +334,6 @@ bool Compiler::is_bitfield(const TypeSpec& ts) {
 
 bool Compiler::is_pair(const TypeSpec& ts) {
   return m_ts.tc(m_ts.make_typespec("pair"), ts);
-}
-
-bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env) {
-  (void)env;
-  if (in.is_int()) {
-    *out = in.as_int();
-    return true;
-  }
-
-  if (in.is_pair()) {
-    auto head = in.as_pair()->car;
-    if (head.is_symbol()) {
-      auto head_sym = head.as_symbol();
-      auto enum_type = m_ts.try_enum_lookup(head_sym->name);
-      if (enum_type) {
-        bool success;
-        u64 as_enum = enum_lookup(in, enum_type, in.as_pair()->cdr, false, &success);
-        if (success) {
-          *out = as_enum;
-          return true;
-        }
-      }
-
-      if (head_sym->name == "size-of") {
-        *out = get_size_for_size_of(in, in.as_pair()->cdr);
-        return true;
-      }
-    }
-  }
-
-  if (in.is_symbol()) {
-    auto global_constant = m_global_constants.find(in.as_symbol());
-    if (global_constant != m_global_constants.end()) {
-      // recursively get constant integer, so we can have constants set to constants, etc.
-      if (try_getting_constant_integer(global_constant->second, out, env)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-bool Compiler::try_getting_constant_float(const goos::Object& in, float* out, Env* env) {
-  (void)env;
-  if (in.is_float()) {
-    *out = in.as_float();
-    return true;
-  }
-
-  // todo, try more things like constants before giving up.
-  return false;
 }
 
 bool Compiler::get_true_or_false(const goos::Object& form, const goos::Object& boolean) {

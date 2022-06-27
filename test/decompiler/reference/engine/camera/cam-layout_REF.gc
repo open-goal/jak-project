@@ -263,7 +263,7 @@
         )
       (dma-bucket-insert-tag
         (-> *display* frames (-> *display* on-screen) frame bucket-group)
-        (bucket-id debug-draw0)
+        (bucket-id debug)
         gp-0
         (the-as (pointer dma-tag) a3-4)
         )
@@ -314,7 +314,7 @@
     (sv-288 int)
     )
   (let ((s4-0 0))
-    (while #t
+    (loop
       (set! sv-16 (new 'static 'res-tag))
       (let ((s3-0 (the-as (inline-array vector) ((method-of-type res-lump get-property-data)
                                                  arg0
@@ -362,9 +362,9 @@
                     (when (!= s1-0 sv-272)
                       (vector-float*! sv-192 (-> s3-0 sv-272) (-> s3-0 sv-272 w))
                       (vector-cross! sv-208 (-> s3-0 sv-272) (-> s3-0 s1-0))
-                      (vector-normalize! sv-208 (-> (new 'static 'array float 1 1.0) 0))
+                      (vector-normalize! sv-208 (the-as float 1.0))
                       (vector-cross! sv-224 sv-208 (-> s3-0 sv-272))
-                      (vector-normalize! sv-224 (-> (new 'static 'array float 1 1.0) 0))
+                      (vector-normalize! sv-224 (the-as float 1.0))
                       (let ((f0-6 (cam-layout-intersect-dist (-> s3-0 s1-0) sv-192 sv-224)))
                         (when (!= f0-6 409600000.0)
                           (vector+float*! sv-240 sv-192 sv-224 f0-6)
@@ -416,7 +416,7 @@
                             (else
                               (dotimes (v1-87 (the-as int (-> sv-16 elt-count)))
                                 (when (and (!= v1-87 s1-0) (!= v1-87 sv-272))
-                                  (if (< (-> (new 'static 'array float 1 4096.0) 0) (- (vector-dot sv-160 (-> s3-0 v1-87)) (-> s3-0 v1-87 w)))
+                                  (if (< 4096.0 (- (vector-dot sv-160 (-> s3-0 v1-87)) (-> s3-0 v1-87 w)))
                                       (goto cfg-47)
                                       )
                                   )
@@ -446,7 +446,7 @@
                     (set! sv-272 (+ sv-272 1))
                     )
                   (when (nonzero? sv-256)
-                    (vector-float*! s0-0 s0-0 (/ (-> (new 'static 'array float 1 1.0) 0) (the float sv-256)))
+                    (vector-float*! s0-0 s0-0 (/ 1.0 (the float sv-256)))
                     (cond
                       ((>= *volume-normal-current* 599)
                        (format 0 "ERROR <GMJ>: camera editing out of volume normals~%")
@@ -535,20 +535,20 @@
     0.0
     0.0
     (cond
-      ((< (-> (new 'static 'array float 1 1.0) 0) arg3)
-       (set! arg3 (-> (the-as (pointer float) (new 'static 'array float 1 1.0)) 0))
+      ((< 1.0 arg3)
+       (set! arg3 (the-as float 1.0))
        )
       ((< arg3 0.0)
-       (set! arg3 (-> (the-as (pointer float) (new 'static 'array float 1 0.0)) 0))
+       (set! arg3 (the-as float 0.0))
        )
       )
-    (vector-normalize-copy! s2-0 arg1 (-> (new 'static 'array float 1 1.0) 0))
-    (vector-normalize-copy! s1-0 arg2 (-> (new 'static 'array float 1 1.0) 0))
+    (vector-normalize-copy! s2-0 arg1 (the-as float 1.0))
+    (vector-normalize-copy! s1-0 arg2 (the-as float 1.0))
     (vector-cross! s0-0 s2-0 s1-0)
     (let* ((f30-0 (vector-length s0-0))
            (f28-0 (asin f30-0))
            )
-      (vector-float*! arg0 arg1 (/ (sin (* (- (-> (new 'static 'array float 1 1.0) 0) arg3) f28-0)) f30-0))
+      (vector-float*! arg0 arg1 (/ (sin (* (- 1.0 arg3) f28-0)) f30-0))
       (vector+float*! arg0 arg0 arg2 (/ (sin (* arg3 f28-0)) f30-0))
       )
     )
@@ -586,36 +586,15 @@
   (let ((s3-0 (new-stack-vector0))
         (gp-0 (new-stack-vector0))
         )
-    (arg0
-      s3-0
-      (-> arg1 from)
-      (-> arg1 to)
-      (-> (new 'static 'array float 1 0.0) 0)
-      (-> arg1 axis)
-      (-> (new 'static 'array float 1 65536.0) 0)
-      )
+    (arg0 s3-0 (-> arg1 from) (-> arg1 to) (the-as float 0.0) (-> arg1 axis) (the-as float 65536.0))
     (vector+! s3-0 s3-0 (-> arg1 origin))
     (dotimes (s2-0 10)
       (set! (-> gp-0 quad) (-> s3-0 quad))
-      (arg0
-        s3-0
-        (-> arg1 from)
-        (-> arg1 to)
-        (* 0.1 (+ (-> (new 'static 'array float 1 1.0) 0) (the float s2-0)))
-        (-> arg1 axis)
-        (-> (new 'static 'array float 1 65536.0) 0)
-        )
+      (arg0 s3-0 (-> arg1 from) (-> arg1 to) (* 0.1 (+ 1.0 (the float s2-0))) (-> arg1 axis) (the-as float 65536.0))
       (vector+! s3-0 s3-0 (-> arg1 origin))
       (camera-line s3-0 gp-0 (-> arg1 color))
       )
-    (arg0
-      gp-0
-      (-> arg1 from)
-      (-> arg1 to)
-      (-> *CAM_LAYOUT-bank* debug-t)
-      (-> arg1 axis)
-      (-> (new 'static 'array float 1 65536.0) 0)
-      )
+    (arg0 gp-0 (-> arg1 from) (-> arg1 to) (-> *CAM_LAYOUT-bank* debug-t) (-> arg1 axis) (the-as float 65536.0))
     (format *stdcon* "~S  ~f~%" (-> arg1 disp) (vector-length gp-0))
     (vector+! gp-0 gp-0 (-> arg1 origin))
     (camera-line (-> arg1 origin) gp-0 (-> arg1 color))
@@ -624,7 +603,7 @@
       (new 'static 'vector :z 1024.0)
       gp-0
       (-> arg1 color)
-      (-> (new 'static 'array float 1 4096.0) 0)
+      (meters 1.0)
       )
     )
   )
@@ -635,17 +614,11 @@
   (let ((s3-0 (new-stack-vector0))
         (gp-0 (new-stack-vector0))
         )
-    (arg0 s3-0 (-> arg1 from) (-> arg1 to) (-> arg1 axis) (-> (new 'static 'array float 1 0.0) 0))
+    (arg0 s3-0 (-> arg1 from) (-> arg1 to) (-> arg1 axis) (the-as float 0.0))
     (vector+! s3-0 s3-0 (-> arg1 origin))
     (dotimes (s2-0 10)
       (set! (-> gp-0 quad) (-> s3-0 quad))
-      (arg0
-        s3-0
-        (-> arg1 from)
-        (-> arg1 to)
-        (-> arg1 axis)
-        (* 182.04445 (* 18.0 (+ (-> (new 'static 'array float 1 1.0) 0) (the float s2-0))))
-        )
+      (arg0 s3-0 (-> arg1 from) (-> arg1 to) (-> arg1 axis) (* 182.04445 (* 18.0 (+ 1.0 (the float s2-0)))))
       (vector+! s3-0 s3-0 (-> arg1 origin))
       (camera-line s3-0 gp-0 (-> arg1 color))
       )
@@ -658,7 +631,7 @@
       (new 'static 'vector :z 1024.0)
       gp-0
       (-> arg1 color)
-      (-> (new 'static 'array float 1 4096.0) 0)
+      (meters 1.0)
       )
     )
   )
@@ -680,8 +653,8 @@
         s5-0
         s4-0
         (* 0.5 (cam-slave-get-fov arg0))
-        (-> (new 'static 'array float 1 0.75) 0)
-        (-> (new 'static 'array float 1 1.0) 0)
+        (the-as float 0.75)
+        (the-as float 1.0)
         (new 'static 'vector4w :z #xff :w #x80)
         )
       )
@@ -695,7 +668,7 @@
           (new 'static 'vector :z 1024.0)
           s5-1
           (new 'static 'vector4w :x #x80 :w #x80)
-          (-> (new 'static 'array float 1 4096.0) 0)
+          (meters 1.0)
           )
         )
     )
@@ -708,7 +681,7 @@
           (new 'static 'vector :z 1024.0)
           s5-2
           (new 'static 'vector4w :y #x80 :w #x80)
-          (-> (new 'static 'array float 1 4096.0) 0)
+          (meters 1.0)
           )
         )
     )
@@ -721,7 +694,7 @@
           (new 'static 'vector :z 1024.0)
           s5-3
           (new 'static 'vector4w :x #x80 :z #x80 :w #x80)
-          (-> (new 'static 'array float 1 4096.0) 0)
+          (meters 1.0)
           )
         )
     )
@@ -735,7 +708,7 @@
                )
       (cond
         ((cam-slave-get-vector-with-offset arg0 s4-1 'pivot)
-         (curve-get-pos! s5-4 (-> (new 'static 'array float 1 0.0) 0) s3-1)
+         (curve-get-pos! s5-4 (the-as float 0.0) s3-1)
          (vector-! s4-1 s4-1 s5-4)
          )
         (else
@@ -757,11 +730,11 @@
                 )
           )
         )
-      (curve-get-pos! s5-4 (-> (new 'static 'array float 1 0.0) 0) s3-1)
+      (curve-get-pos! s5-4 (the-as float 0.0) s3-1)
       (vector+! s5-4 s5-4 s4-1)
       (dotimes (s1-1 8)
         (set! (-> s2-0 quad) (-> s5-4 quad))
-        (curve-get-pos! s5-4 (* (-> (new 'static 'array float 1 0.125) 0) (the float (+ s1-1 1))) s3-1)
+        (curve-get-pos! s5-4 (* 0.125 (the float (+ s1-1 1))) s3-1)
         (vector+! s5-4 s5-4 s4-1)
         (camera-line s2-0 s5-4 (new 'static 'vector4w :x #xff :y #xff :w #x80))
         )
@@ -772,7 +745,7 @@
         (new 'static 'vector :z 1024.0)
         s5-4
         (new 'static 'vector4w :x #xff :y #xff :w #x80)
-        (-> (new 'static 'array float 1 4096.0) 0)
+        (meters 1.0)
         )
       )
     )
@@ -787,24 +760,24 @@
                )
       (cond
         ((cam-slave-get-vector-with-offset arg0 s4-2 'pivot)
-         (curve-get-pos! s5-5 (-> (new 'static 'array float 1 1.0) 0) s3-2)
+         (curve-get-pos! s5-5 (the-as float 1.0) s3-2)
          (vector-! s4-2 s4-2 s5-5)
          )
         ((get-curve-data! arg0 s1-2 'campath 'campath-k (the-as float -1000000000.0))
-         (curve-get-pos! s4-2 (-> (new 'static 'array float 1 0.0) 0) s1-2)
-         (curve-get-pos! s5-5 (-> (new 'static 'array float 1 1.0) 0) s3-2)
+         (curve-get-pos! s4-2 (the-as float 0.0) s1-2)
+         (curve-get-pos! s5-5 (the-as float 1.0) s3-2)
          (vector-! s4-2 s4-2 s5-5)
          )
         ((cam-slave-get-vector-with-offset arg0 s4-2 'trans)
-         (curve-get-pos! s5-5 (-> (new 'static 'array float 1 1.0) 0) s3-2)
+         (curve-get-pos! s5-5 (the-as float 1.0) s3-2)
          (vector-! s4-2 s4-2 s5-5)
          )
         )
-      (curve-get-pos! s5-5 (-> (new 'static 'array float 1 0.0) 0) s3-2)
+      (curve-get-pos! s5-5 (the-as float 0.0) s3-2)
       (vector+! s5-5 s5-5 s4-2)
       (dotimes (s1-3 8)
         (set! (-> s2-1 quad) (-> s5-5 quad))
-        (curve-get-pos! s5-5 (* (-> (new 'static 'array float 1 0.125) 0) (the float (+ s1-3 1))) s3-2)
+        (curve-get-pos! s5-5 (* 0.125 (the float (+ s1-3 1))) s3-2)
         (vector+! s5-5 s5-5 s4-2)
         (camera-line s2-1 s5-5 (new 'static 'vector4w :z #xff :w #x80))
         )
@@ -815,20 +788,20 @@
         (new 'static 'vector :z 1024.0)
         s5-5
         (new 'static 'vector4w :z #xff :w #x80)
-        (-> (new 'static 'array float 1 4096.0) 0)
+        (meters 1.0)
         )
-      (curve-get-pos! s5-5 (cam-slave-get-float arg0 'intro-exitValue (-> (new 'static 'array float 1 0.0) 0)) s3-2)
+      (curve-get-pos! s5-5 (cam-slave-get-float arg0 'intro-exitValue (the-as float 0.0)) s3-2)
       (vector+! s5-5 s5-5 s4-2)
       (camera-cross
         (new 'static 'vector :y 1024.0)
         (new 'static 'vector :z 1024.0)
         s5-5
         (new 'static 'vector4w :z #xff :w #x80)
-        (-> (new 'static 'array float 1 4096.0) 0)
+        (meters 1.0)
         )
       )
     )
-  (let ((s2-3 (res-lump-data arg0 'campoints pointer :time (-> (new 'static 'array float 1 1.0) 0)))
+  (let ((s2-3 (res-lump-data arg0 'campoints pointer :time (the-as float 1.0)))
         (v1-95 (res-lump-struct arg0 'campoints-offset structure :time (the-as float -1000000000.0)))
         (s4-3 (new 'stack-no-clear 'vector))
         (s3-3 (new 'stack-no-clear 'vector))
@@ -852,11 +825,11 @@
         (new 'static 'vector :z 1024.0)
         s5-6
         (new 'static 'vector4w :x #xff :y #xff :w #x80)
-        (-> (new 'static 'array float 1 4096.0) 0)
+        (meters 1.0)
         )
       )
     )
-  (let ((s4-4 (res-lump-data arg0 'focalpull pointer :time (-> (new 'static 'array float 1 1.0) 0)))
+  (let ((s4-4 (res-lump-data arg0 'focalpull pointer :time (the-as float 1.0)))
         (s5-7 (new 'static 'vector))
         )
     (when (and s4-4 (or (!= *camera-layout-blink* 'focalpull) (logtest? (-> *display* real-actual-frame-counter) 8)))
@@ -876,7 +849,7 @@
         (new 'static 'vector :z 1024.0)
         s5-7
         (new 'static 'vector4w :y #xff :z #xff :w #x80)
-        (-> (new 'static 'array float 1 4096.0) 0)
+        (meters 1.0)
         )
       )
     )
@@ -892,12 +865,12 @@
       (vector-! (-> s5-8 from) (-> s5-8 from) (-> s5-8 origin))
       (vector-! (-> s5-8 to) (-> s5-8 to) (-> s5-8 origin))
       (vector-cross! s4-5 (-> s5-8 from) (-> s5-8 to))
-      (vector-normalize! s4-5 (-> (new 'static 'array float 1 8192.0) 0))
+      (vector-normalize! s4-5 (the-as float 8192.0))
       (vector+! s4-5 s4-5 (-> s5-8 origin))
       (camera-line (-> s5-8 origin) s4-5 (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80))
       (when (not (paused?))
         (+! (-> *CAM_LAYOUT-bank* debug-t) (-> *CAM_LAYOUT-bank* debug-step))
-        (if (< (-> (new 'static 'array float 1 1.0) 0) (-> *CAM_LAYOUT-bank* debug-t))
+        (if (< 1.0 (-> *CAM_LAYOUT-bank* debug-t))
             (set! (-> *CAM_LAYOUT-bank* debug-t) 0.0)
             )
         )
@@ -958,10 +931,10 @@
     ((cpad-hold? arg2 l3)
      (set! (-> arg0 z) (- (-> arg0 z) (analog-input
                                         (the-as int (-> *cpad-list* cpads arg2 rightx))
-                                        (-> (new 'static 'array float 1 128.0) 0)
-                                        (-> (new 'static 'array float 1 48.0) 0)
-                                        (-> (new 'static 'array float 1 110.0) 0)
-                                        (-> (new 'static 'array float 1 1.0) 0)
+                                        (the-as float 128.0)
+                                        (the-as float 48.0)
+                                        (the-as float 110.0)
+                                        (the-as float 1.0)
                                         )
                           )
            )
@@ -969,27 +942,27 @@
     (else
       (set! (-> arg0 y) (- (-> arg0 y) (analog-input
                                          (the-as int (-> *cpad-list* cpads arg2 rightx))
-                                         (-> (new 'static 'array float 1 128.0) 0)
-                                         (-> (new 'static 'array float 1 48.0) 0)
-                                         (-> (new 'static 'array float 1 110.0) 0)
-                                         (-> (new 'static 'array float 1 1.0) 0)
+                                         (the-as float 128.0)
+                                         (the-as float 48.0)
+                                         (the-as float 110.0)
+                                         (the-as float 1.0)
                                          )
                            )
             )
       (+! (-> arg0 x) (analog-input
                         (the-as int (-> *cpad-list* cpads arg2 righty))
-                        (-> (new 'static 'array float 1 128.0) 0)
-                        (-> (new 'static 'array float 1 48.0) 0)
-                        (-> (new 'static 'array float 1 110.0) 0)
-                        (-> (new 'static 'array float 1 1.0) 0)
+                        (the-as float 128.0)
+                        (the-as float 48.0)
+                        (the-as float 110.0)
+                        (the-as float 1.0)
                         )
           )
       (set! (-> arg1 x) (- (-> arg1 x) (analog-input
                                          (the-as int (-> *cpad-list* cpads arg2 leftx))
-                                         (-> (new 'static 'array float 1 128.0) 0)
-                                         (-> (new 'static 'array float 1 48.0) 0)
-                                         (-> (new 'static 'array float 1 110.0) 0)
-                                         (-> (new 'static 'array float 1 1.0) 0)
+                                         (the-as float 128.0)
+                                         (the-as float 48.0)
+                                         (the-as float 110.0)
+                                         (the-as float 1.0)
                                          )
                            )
             )
@@ -998,9 +971,9 @@
             (set! (-> arg1 y) (+ 0.5
                                  (analog-input
                                    (the-as int (-> *cpad-list* cpads arg2 abutton 9))
-                                   (-> (new 'static 'array float 1 0.0) 0)
-                                   (-> (new 'static 'array float 1 32.0) 0)
-                                   (-> (new 'static 'array float 1 230.0) 0)
+                                   (the-as float 0.0)
+                                   (the-as float 32.0)
+                                   (the-as float 230.0)
                                    (the-as float 0.5)
                                    )
                                  (-> arg1 y)
@@ -1012,9 +985,9 @@
         (if (cpad-hold? arg2 l1)
             (set! (-> arg1 y) (- (-> arg1 y) (+ 0.5 (analog-input
                                                       (the-as int (-> *cpad-list* cpads arg2 abutton 8))
-                                                      (-> (new 'static 'array float 1 0.0) 0)
-                                                      (-> (new 'static 'array float 1 32.0) 0)
-                                                      (-> (new 'static 'array float 1 230.0) 0)
+                                                      (the-as float 0.0)
+                                                      (the-as float 32.0)
+                                                      (the-as float 230.0)
                                                       (the-as float 0.5)
                                                       )
                                                 )
@@ -1024,10 +997,10 @@
         )
       (set! (-> arg1 z) (- (-> arg1 z) (analog-input
                                          (the-as int (-> *cpad-list* cpads arg2 lefty))
-                                         (-> (new 'static 'array float 1 128.0) 0)
-                                         (-> (new 'static 'array float 1 48.0) 0)
-                                         (-> (new 'static 'array float 1 110.0) 0)
-                                         (-> (new 'static 'array float 1 1.0) 0)
+                                         (the-as float 128.0)
+                                         (the-as float 48.0)
+                                         (the-as float 110.0)
+                                         (the-as float 1.0)
                                          )
                            )
             )
@@ -1303,11 +1276,13 @@
   )
 
 ;; definition for function fov->maya
+;; INFO: Return type mismatch number vs float.
 (defun fov->maya ((arg0 float))
-  (if (= arg0 0.0)
-      (-> (new 'static 'array float 1 0.0) 0)
-      (/ 12.700255 (tan (* 0.5 arg0)))
-      )
+  (the-as float (if (= arg0 0.0)
+                    0.0
+                    (/ 12.700255 (tan (* 0.5 arg0)))
+                    )
+          )
   )
 
 ;; definition for function cam-layout-save-cam-rot
@@ -1548,7 +1523,7 @@
                 'fov
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -1562,7 +1537,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -1601,7 +1576,7 @@
                 'focalPull
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -1615,7 +1590,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -1819,7 +1794,7 @@
                 'intro-time
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -1833,7 +1808,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -1844,7 +1819,7 @@
          (if arg0
              (format #t "setup intro-time 0.0 (defaults to 1 sec)~%")
              )
-         (set! f30-0 (-> (new 'static 'array float 1 1.0) 0))
+         (set! f30-0 1.0)
          )
         (arg0
           (format #t "setup intro-time ~f~%" f30-0)
@@ -1872,7 +1847,7 @@
                 'intro-exitValue
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -1886,7 +1861,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -1920,7 +1895,7 @@
                 'interpTime
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -1934,7 +1909,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2002,7 +1977,7 @@
                                  'spline-follow-dist-offset
                                  'interp
                                  (the-as float -1000000000.0)
-                                 (-> (new 'static 'array float 1 0.0) 0)
+                                 (the-as float 0.0)
                                  (the-as (pointer res-tag) #f)
                                  *res-static-buf*
                                  )
@@ -2047,7 +2022,7 @@
                 'tiltAdjust
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2061,7 +2036,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2092,7 +2067,7 @@
                 'stringMinLength
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2106,7 +2081,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2137,7 +2112,7 @@
                 'stringMaxLength
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2151,7 +2126,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2182,7 +2157,7 @@
                 'stringMinHeight
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2196,7 +2171,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2227,7 +2202,7 @@
                 'stringMaxHeight
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2241,7 +2216,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2272,7 +2247,7 @@
                 'stringCliffHeight
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2286,7 +2261,7 @@
               (string->symbol *res-key-string*)
               'interp
               (the-as float -1000000000.0)
-              (-> (new 'static 'array float 1 0.0) 0)
+              (the-as float 0.0)
               (the-as (pointer res-tag) #f)
               *res-static-buf*
               )
@@ -2317,7 +2292,7 @@
                 'maxAngle
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2330,7 +2305,7 @@
                    (string->symbol *res-key-string*)
                    'interp
                    (the-as float -1000000000.0)
-                   (-> (new 'static 'array float 1 0.0) 0)
+                   (the-as float 0.0)
                    (the-as (pointer res-tag) #f)
                    *res-static-buf*
                    )
@@ -2681,7 +2656,7 @@
                 arg0
                 'interp
                 (the-as float -1000000000.0)
-                (-> (new 'static 'array float 1 0.0) 0)
+                (the-as float 0.0)
                 (the-as (pointer res-tag) #f)
                 *res-static-buf*
                 )
@@ -2689,15 +2664,15 @@
         (f0-0 (-> arg1 0))
         )
     (if (= f0-0 0.0)
-        (set! f0-0 (-> (new 'static 'array float 1 1.0) 0))
+        (set! f0-0 1.0)
         )
     (let ((f0-2
             (+ f30-0
                (analog-input
                  (the-as int (-> *cpad-list* cpads 0 leftx))
-                 (-> (new 'static 'array float 1 128.0) 0)
-                 (-> (new 'static 'array float 1 48.0) 0)
-                 (-> (new 'static 'array float 1 110.0) 0)
+                 (the-as float 128.0)
+                 (the-as float 48.0)
+                 (the-as float 110.0)
                  f0-0
                  )
                )
@@ -2716,7 +2691,7 @@
 
 ;; definition for function clmf-cam-meters
 (defbehavior clmf-cam-meters cam-layout ((arg0 meters) (arg1 symbol))
-  (let ((f0-0 (cam-slave-get-float (-> self cam-entity) arg1 (-> (new 'static 'array float 1 0.0) 0))))
+  (let ((f0-0 (cam-slave-get-float (-> self cam-entity) arg1 (the-as float 0.0))))
     (format arg0 ": ~M" f0-0)
     )
   #t
@@ -2730,7 +2705,7 @@
 
 ;; definition for function clmf-cam-deg
 (defbehavior clmf-cam-deg cam-layout ((arg0 degrees) (arg1 symbol))
-  (format arg0 ": ~R" (cam-slave-get-float (-> self cam-entity) arg1 (-> (new 'static 'array float 1 0.0) 0)))
+  (format arg0 ": ~R" (cam-slave-get-float (-> self cam-entity) arg1 (the-as float 0.0)))
   #t
   )
 
@@ -2751,7 +2726,7 @@
 
 ;; definition for function clmf-cam-float
 (defbehavior clmf-cam-float cam-layout ((arg0 float) (arg1 symbol))
-  (format arg0 ": ~f" (cam-slave-get-float (-> self cam-entity) arg1 (-> (new 'static 'array float 1 0.0) 0)))
+  (format arg0 ": ~f" (cam-slave-get-float (-> self cam-entity) arg1 (the-as float 0.0)))
   #t
   )
 
@@ -2773,45 +2748,30 @@
   )
 
 ;; definition for symbol *clm-focalpull-attr*, type clm
-(define
-  *clm-focalpull-attr*
+(define *clm-focalpull-attr*
   (new 'static 'clm
     :title "---focalpull attributes--"
-    :items
-    (new
-      'static
-      'boxed-array
-      :type clm-basic :length 3 :allocated-length 3
+    :items (new 'static 'boxed-array :type clm-basic
       (new 'static 'clm-item
         :description "    ok"
         :button-symbol 'square
-        :action
-        (new 'static 'clm-item-action :button #x8000 :options #x1 :func '*clm-edit*)
+        :action (new 'static 'clm-item-action :button #x8000 :options #x1 :func '*clm-edit*)
         )
       (new 'static 'clm-item
         :description "adjust"
         :button-symbol 'x
-        :action
-        (new 'static 'clm-item-action :button #x4000 :func #f)
+        :action (new 'static 'clm-item-action :button #x4000 :func #f)
         )
       (new 'static 'clm-list
         :tracker #f
-        :items
-        (new
-          'static
-          'boxed-array
-          :type clm-list-item :length 2 :allocated-length 2
+        :items (new 'static 'boxed-array :type clm-list-item
           (new 'static 'clm-list-item
             :description "radial    "
             :track-val #f
             :val-func 'clmf-cam-flag
             :val-parm0 16
             :val-parm1-basic 'focalpull-flags
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :options #x1
@@ -2827,15 +2787,14 @@
             :val-func 'clmf-cam-flag
             :val-parm0 8
             :val-parm1-basic 'focalpull-flags
-            :actions
-            (new 'static 'boxed-array :type clm-item-action :length 1 :allocated-length 1 (new 'static 'clm-item-action
-                                                                                            :button #x4000
-                                                                                            :options #x1
-                                                                                            :func 'clmf-cam-flag-toggle
-                                                                                            :parm0 8
-                                                                                            :parm1-basic 'focalpull-flags
-                                                                                            )
-                 )
+            :actions (new 'static 'boxed-array :type clm-item-action (new 'static 'clm-item-action
+                                                              :button #x4000
+                                                              :options #x1
+                                                              :func 'clmf-cam-flag-toggle
+                                                              :parm0 8
+                                                              :parm1-basic 'focalpull-flags
+                                                              )
+                                                            )
             )
           )
         )
@@ -2844,45 +2803,30 @@
   )
 
 ;; definition for symbol *clm-index-attr*, type clm
-(define
-  *clm-index-attr*
+(define *clm-index-attr*
   (new 'static 'clm
     :title "---index attributes--"
-    :items
-    (new
-      'static
-      'boxed-array
-      :type clm-basic :length 3 :allocated-length 3
+    :items (new 'static 'boxed-array :type clm-basic
       (new 'static 'clm-item
         :description "    ok"
         :button-symbol 'square
-        :action
-        (new 'static 'clm-item-action :button #x8000 :options #x1 :func '*clm-edit*)
+        :action (new 'static 'clm-item-action :button #x8000 :options #x1 :func '*clm-edit*)
         )
       (new 'static 'clm-item
         :description "adjust"
         :button-symbol 'x
-        :action
-        (new 'static 'clm-item-action :button #x4000 :func #f)
+        :action (new 'static 'clm-item-action :button #x4000 :func #f)
         )
       (new 'static 'clm-list
         :tracker #f
-        :items
-        (new
-          'static
-          'boxed-array
-          :type clm-list-item :length 2 :allocated-length 2
+        :items (new 'static 'boxed-array :type clm-list-item
           (new 'static 'clm-list-item
             :description "radial    "
             :track-val #f
             :val-func 'clmf-cam-flag
             :val-parm0 16
             :val-parm1-basic 'campoints-flags
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :options #x1
@@ -2898,15 +2842,14 @@
             :val-func 'clmf-cam-flag
             :val-parm0 8
             :val-parm1-basic 'campoints-flags
-            :actions
-            (new 'static 'boxed-array :type clm-item-action :length 1 :allocated-length 1 (new 'static 'clm-item-action
-                                                                                            :button #x4000
-                                                                                            :options #x1
-                                                                                            :func 'clmf-cam-flag-toggle
-                                                                                            :parm0 8
-                                                                                            :parm1-basic 'campoints-flags
-                                                                                            )
-                 )
+            :actions (new 'static 'boxed-array :type clm-item-action (new 'static 'clm-item-action
+                                                              :button #x4000
+                                                              :options #x1
+                                                              :func 'clmf-cam-flag-toggle
+                                                              :parm0 8
+                                                              :parm1-basic 'campoints-flags
+                                                              )
+                                                            )
             )
           )
         )
@@ -2915,167 +2858,125 @@
   )
 
 ;; definition for symbol *clm-intro-attr*, type clm
-(define
-  *clm-intro-attr*
+(define *clm-intro-attr*
   (new 'static 'clm
     :title "---intro attributes--"
-    :items
-    (new
-      'static
-      'boxed-array
-      :type clm-basic :length 3 :allocated-length 3
+    :items (new 'static 'boxed-array :type clm-basic
       (new 'static 'clm-item
         :description "    ok"
         :button-symbol 'square
-        :action
-        (new 'static 'clm-item-action :button #x8000 :options #x1 :func '*clm-edit*)
+        :action (new 'static 'clm-item-action :button #x8000 :options #x1 :func '*clm-edit*)
         )
       (new 'static 'clm-item
         :description "adjust"
         :button-symbol 'x
-        :action
-        (new 'static 'clm-item-action :button #x4000 :func #f)
+        :action (new 'static 'clm-item-action :button #x4000 :func #f)
         )
-      (new 'static 'clm-list :tracker #f :items (new
-                                                  'static
-                                                  'boxed-array
-                                                  :type clm-list-item :length 2 :allocated-length 2
-                                                  (new 'static 'clm-list-item
-                                                    :description "time     "
-                                                    :track-val #f
-                                                    :val-func 'clmf-cam-intro-time
-                                                    :val-parm0-basic 'intro-time
-                                                    :actions
-                                                    (new
-                                                      'static
-                                                      'boxed-array
-                                                      :type clm-item-action :length 1 :allocated-length 1
-                                                      (new 'static 'clm-item-action
-                                                        :button #x4000
-                                                        :func 'clmf-cam-float-adjust
-                                                        :parm0-basic 'intro-time-offset
-                                                        :parm1-basic (new 'static 'bfloat :data 0.01)
-                                                        )
-                                                      )
-                                                    )
-                                                  (new 'static 'clm-list-item
-                                                    :description "exitValue"
-                                                    :track-val #f
-                                                    :val-func 'clmf-cam-float
-                                                    :val-parm0-basic 'intro-exitValue
-                                                    :actions
-                                                    (new
-                                                      'static
-                                                      'boxed-array
-                                                      :type clm-item-action :length 1 :allocated-length 1
-                                                      (new 'static 'clm-item-action
-                                                        :button #x4000
-                                                        :func 'clmf-cam-float-adjust
-                                                        :parm0-basic 'intro-exitValue-offset
-                                                        :parm1-basic (new 'static 'bfloat :data 0.001)
-                                                        )
-                                                      )
-                                                    )
-                                                  )
-                             )
+      (new 'static 'clm-list
+        :tracker #f
+        :items (new 'static 'boxed-array :type clm-list-item
+          (new 'static 'clm-list-item
+            :description "time     "
+            :track-val #f
+            :val-func 'clmf-cam-intro-time
+            :val-parm0-basic 'intro-time
+            :actions (new 'static 'boxed-array :type clm-item-action
+              (new 'static 'clm-item-action
+                :button #x4000
+                :func 'clmf-cam-float-adjust
+                :parm0-basic 'intro-time-offset
+                :parm1-basic (new 'static 'bfloat :data 0.01)
+                )
+              )
+            )
+          (new 'static 'clm-list-item
+            :description "exitValue"
+            :track-val #f
+            :val-func 'clmf-cam-float
+            :val-parm0-basic 'intro-exitValue
+            :actions (new 'static 'boxed-array :type clm-item-action (new 'static 'clm-item-action
+                                                              :button #x4000
+                                                              :func 'clmf-cam-float-adjust
+                                                              :parm0-basic 'intro-exitValue-offset
+                                                              :parm1-basic (new 'static 'bfloat :data 0.001)
+                                                              )
+                                                            )
+            )
+          )
+        )
       )
     )
   )
 
 ;; definition for symbol *clm-spline-attr*, type clm
-(define
-  *clm-spline-attr*
+(define *clm-spline-attr*
   (new 'static 'clm
     :title "---spline attributes--"
-    :items
-    (new
-      'static
-      'boxed-array
-      :type clm-basic :length 3 :allocated-length 3
+    :items (new 'static 'boxed-array :type clm-basic
       (new 'static 'clm-item
         :description "    ok"
         :button-symbol 'square
-        :action
-        (new 'static 'clm-item-action :button #x8000 :options #x1 :func '*clm-edit*)
+        :action (new 'static 'clm-item-action :button #x8000 :options #x1 :func '*clm-edit*)
         )
       (new 'static 'clm-item
         :description "adjust"
         :button-symbol 'x
-        :action
-        (new 'static 'clm-item-action :button #x4000 :func #f)
+        :action (new 'static 'clm-item-action :button #x4000 :func #f)
         )
-      (new 'static 'clm-list :tracker #f :items (new
-                                                  'static
-                                                  'boxed-array
-                                                  :type clm-list-item :length 1 :allocated-length 1
-                                                  (new 'static 'clm-list-item
-                                                    :description "followDist"
-                                                    :track-val #f
-                                                    :val-func 'clmf-cam-meters
-                                                    :val-parm0-basic 'spline-follow-dist
-                                                    :actions
-                                                    (new
-                                                      'static
-                                                      'boxed-array
-                                                      :type clm-item-action :length 1 :allocated-length 1
-                                                      (new 'static 'clm-item-action
-                                                        :button #x4000
-                                                        :func 'clmf-cam-float-adjust
-                                                        :parm0-basic 'spline-follow-dist-offset
-                                                        :parm1-basic (new 'static 'bfloat :data 409.6)
-                                                        )
-                                                      )
-                                                    )
-                                                  )
-                             )
+      (new 'static 'clm-list
+        :tracker #f
+        :items (new 'static 'boxed-array :type clm-list-item
+          (new 'static 'clm-list-item
+            :description "followDist"
+            :track-val #f
+            :val-func 'clmf-cam-meters
+            :val-parm0-basic 'spline-follow-dist
+            :actions (new 'static 'boxed-array :type clm-item-action (new 'static 'clm-item-action
+                                                              :button #x4000
+                                                              :func 'clmf-cam-float-adjust
+                                                              :parm0-basic 'spline-follow-dist-offset
+                                                              :parm1-basic (new 'static 'bfloat :data 409.6)
+                                                              )
+                                                            )
+            )
+          )
+        )
       )
     )
   )
 
 ;; definition for symbol *clm-vol-attr*, type clm
-(define
-  *clm-vol-attr*
+(define *clm-vol-attr*
   (new 'static 'clm
     :title "---volume attributes--"
-    :items
-    (new
-      'static
-      'boxed-array
-      :type clm-basic :length 3 :allocated-length 3
+    :items (new 'static 'boxed-array :type clm-basic
       (new 'static 'clm-item
         :description "    ok"
         :button-symbol 'square
-        :action
-        (new 'static 'clm-item-action :button #x8000 :options #x1 :func '*clm-edit*)
+        :action (new 'static 'clm-item-action :button #x8000 :options #x1 :func '*clm-edit*)
         )
       (new 'static 'clm-item
         :description "adjust"
         :button-symbol 'x
-        :action
-        (new 'static 'clm-item-action :button #x4000 :func #f)
+        :action (new 'static 'clm-item-action :button #x4000 :func #f)
         )
       (new 'static 'clm-list
         :tracker #f
-        :items
-        (new
-          'static
-          'boxed-array
-          :type clm-list-item :length 1 :allocated-length 1
+        :items (new 'static 'boxed-array :type clm-list-item
           (new 'static 'clm-list-item
             :description "airSwitch"
             :track-val #f
             :val-func 'clmf-cam-flag
             :val-parm0 8
             :val-parm1-basic 'vol-flags
-            :actions
-            (new 'static 'boxed-array :type clm-item-action :length 1 :allocated-length 1 (new 'static 'clm-item-action
-                                                                                            :button #x4000
-                                                                                            :options #x1
-                                                                                            :func 'clmf-cam-flag-toggle
-                                                                                            :parm0 8
-                                                                                            :parm1-basic 'vol-flags
-                                                                                            )
-                 )
+            :actions (new 'static 'boxed-array :type clm-item-action (new 'static 'clm-item-action
+                                                              :button #x4000
+                                                              :options #x1
+                                                              :func 'clmf-cam-flag-toggle
+                                                              :parm0 8
+                                                              :parm1-basic 'vol-flags
+                                                              )
+                                                            )
             )
           )
         )
@@ -3084,45 +2985,30 @@
   )
 
 ;; definition for symbol *clm-cam-attr*, type clm
-(define
-  *clm-cam-attr*
+(define *clm-cam-attr*
   (new 'static 'clm
     :title "---camera attributes--"
-    :items
-    (new
-      'static
-      'boxed-array
-      :type clm-basic :length 3 :allocated-length 3
+    :items (new 'static 'boxed-array :type clm-basic
       (new 'static 'clm-item
         :description "    ok"
         :button-symbol 'square
-        :action
-        (new 'static 'clm-item-action :button #x8000 :options #x1 :func '*clm-edit*)
+        :action (new 'static 'clm-item-action :button #x8000 :options #x1 :func '*clm-edit*)
         )
       (new 'static 'clm-item
         :description "adjust"
         :button-symbol 'x
-        :action
-        (new 'static 'clm-item-action :button #x4000 :func #f)
+        :action (new 'static 'clm-item-action :button #x4000 :func #f)
         )
       (new 'static 'clm-list
         :tracker #f
-        :items
-        (new
-          'static
-          'boxed-array
-          :type clm-list-item :length 18 :allocated-length 18
+        :items (new 'static 'boxed-array :type clm-list-item
           (new 'static 'clm-list-item
             :description "drag       "
             :track-val #f
             :val-func 'clmf-cam-flag
             :val-parm0 #x400
             :val-parm1-basic 'flags
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :options #x1
@@ -3137,11 +3023,7 @@
             :track-val #f
             :val-func 'clmf-cam-fov
             :val-parm0-basic 'fov
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :func 'clmf-cam-float-adjust
@@ -3155,11 +3037,7 @@
             :track-val #f
             :val-func 'clmf-cam-deg
             :val-parm0-basic 'focalPull
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :func 'clmf-cam-float-adjust
@@ -3173,11 +3051,7 @@
             :track-val #f
             :val-func 'clmf-cam-interp-time
             :val-parm0-basic 'interpTime
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :func 'clmf-cam-float-adjust
@@ -3192,11 +3066,7 @@
             :val-func 'clmf-cam-flag
             :val-parm0 16
             :val-parm1-basic 'flags
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :options #x1
@@ -3212,11 +3082,7 @@
             :val-func 'clmf-cam-flag
             :val-parm0 32
             :val-parm1-basic 'flags
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :options #x1
@@ -3231,11 +3097,7 @@
             :track-val #f
             :val-func 'clmf-cam-meters
             :val-parm0-basic 'stringMinLength
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :func 'clmf-cam-float-adjust
@@ -3249,11 +3111,7 @@
             :track-val #f
             :val-func 'clmf-cam-meters
             :val-parm0-basic 'stringMaxLength
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :func 'clmf-cam-float-adjust
@@ -3267,11 +3125,7 @@
             :track-val #f
             :val-func 'clmf-cam-meters
             :val-parm0-basic 'stringMinHeight
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :func 'clmf-cam-float-adjust
@@ -3285,11 +3139,7 @@
             :track-val #f
             :val-func 'clmf-cam-meters
             :val-parm0-basic 'stringMaxHeight
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :func 'clmf-cam-float-adjust
@@ -3303,11 +3153,7 @@
             :track-val #f
             :val-func 'clmf-cam-meters
             :val-parm0-basic 'stringCliffHeight
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :func 'clmf-cam-float-adjust
@@ -3321,19 +3167,14 @@
             :track-val #f
             :val-func 'clmf-cam-string
             :val-parm0-basic 'alternates
-            :actions
-            (new 'static 'boxed-array :type clm-item-action :length 0 :allocated-length 0)
+            :actions (new 'static 'boxed-array :type clm-item-action)
             )
           (new 'static 'clm-list-item
             :description "maxAngle   "
             :track-val #f
             :val-func 'clmf-cam-deg
             :val-parm0-basic 'maxAngle
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :func 'clmf-cam-float-adjust
@@ -3348,11 +3189,7 @@
             :val-func 'clmf-cam-flag
             :val-parm0 #x4000
             :val-parm1-basic 'flags
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :options #x1
@@ -3368,11 +3205,7 @@
             :val-func 'clmf-cam-flag
             :val-parm0 #x40000
             :val-parm1-basic 'flags
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :options #x1
@@ -3387,11 +3220,7 @@
             :track-val #f
             :val-func 'clmf-cam-deg
             :val-parm0-basic 'tiltAdjust
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :func 'clmf-cam-float-adjust
@@ -3406,11 +3235,7 @@
             :val-func 'clmf-cam-flag
             :val-parm0 #x80000
             :val-parm1-basic 'flags
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 1 :allocated-length 1
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action
                 :button #x4000
                 :options #x1
@@ -3426,15 +3251,14 @@
             :val-func 'clmf-cam-flag
             :val-parm0 #x100000
             :val-parm1-basic 'flags
-            :actions
-            (new 'static 'boxed-array :type clm-item-action :length 1 :allocated-length 1 (new 'static 'clm-item-action
-                                                                                            :button #x4000
-                                                                                            :options #x1
-                                                                                            :func 'clmf-cam-flag-toggle
-                                                                                            :parm0 #x100000
-                                                                                            :parm1-basic 'flags
-                                                                                            )
-                 )
+            :actions (new 'static 'boxed-array :type clm-item-action (new 'static 'clm-item-action
+                                                              :button #x4000
+                                                              :options #x1
+                                                              :func 'clmf-cam-flag-toggle
+                                                              :parm0 #x100000
+                                                              :parm1-basic 'flags
+                                                              )
+                                                            )
             )
           )
         )
@@ -3443,32 +3267,24 @@
   )
 
 ;; definition for symbol *clm-cam-lookthrough*, type clm
-(define
-  *clm-cam-lookthrough*
+(define *clm-cam-lookthrough*
   (new 'static 'clm
     :title "---cam-lookthrough---"
-    :items
-    (new
-      'static
-      'boxed-array
-      :type clm-basic :length 5 :allocated-length 5
+    :items (new 'static 'boxed-array :type clm-basic
       (new 'static 'clm-item
         :description "       "
         :button-symbol 'x
-        :action
-        (new 'static 'clm-item-action :button #x4000 :options #x4 :func 'clmf-look-through)
+        :action (new 'static 'clm-item-action :button #x4000 :options #x4 :func 'clmf-look-through)
         )
       (new 'static 'clm-item
         :description "     ok"
         :button-symbol 'square
-        :action
-        (new 'static 'clm-item-action :button #x8000 :options #x1 :func 'clmf-to-edit)
+        :action (new 'static 'clm-item-action :button #x8000 :options #x1 :func 'clmf-to-edit)
         )
       (new 'static 'clm-item
         :description "pos/rot"
         :button-symbol 'x
-        :action
-        (new 'static 'clm-item-action
+        :action (new 'static 'clm-item-action
           :button #x4000
           :options #x8
           :func 'clmf-pos-rot
@@ -3479,93 +3295,68 @@
       (new 'static 'clm-item
         :description " adjust"
         :button-symbol 'x
-        :action
-        (new 'static 'clm-item-action :button #x4000 :func #f)
+        :action (new 'static 'clm-item-action :button #x4000 :func #f)
         )
-      (new 'static 'clm-list :tracker #f :items (new
-                                                  'static
-                                                  'boxed-array
-                                                  :type clm-list-item :length 1 :allocated-length 1
-                                                  (new 'static 'clm-list-item
-                                                    :description "fov"
-                                                    :track-val #f
-                                                    :val-func 'clmf-cam-fov
-                                                    :val-parm0-basic 'fov
-                                                    :actions
-                                                    (new
-                                                      'static
-                                                      'boxed-array
-                                                      :type clm-item-action :length 1 :allocated-length 1
-                                                      (new 'static 'clm-item-action
-                                                        :button #x4000
-                                                        :func 'clmf-cam-float-adjust
-                                                        :parm0-basic 'fov-offset
-                                                        :parm1-basic (new 'static 'bfloat :data 91.022224)
-                                                        )
-                                                      )
-                                                    )
-                                                  )
-                             )
+      (new 'static 'clm-list
+        :tracker #f
+        :items (new 'static 'boxed-array :type clm-list-item
+          (new 'static 'clm-list-item
+            :description "fov"
+            :track-val #f
+            :val-func 'clmf-cam-fov
+            :val-parm0-basic 'fov
+            :actions (new 'static 'boxed-array :type clm-item-action (new 'static 'clm-item-action
+                                                              :button #x4000
+                                                              :func 'clmf-cam-float-adjust
+                                                              :parm0-basic 'fov-offset
+                                                              :parm1-basic (new 'static 'bfloat :data 91.022224)
+                                                              )
+                                                            )
+            )
+          )
+        )
       )
     )
   )
 
 ;; definition for symbol *clm-edit*, type clm
-(define
-  *clm-edit*
+(define *clm-edit*
   (new 'static 'clm
     :title "---edit---"
-    :items
-    (new
-      'static
-      'boxed-array
-      :type clm-basic :length 6 :allocated-length 6
+    :items (new 'static 'boxed-array :type clm-basic
       (new 'static 'clm-item
         :description "        ok"
         :button-symbol 'square
-        :action
-        (new 'static 'clm-item-action :button #x8000 :options #x1 :func 'clmf-to-select)
+        :action (new 'static 'clm-item-action :button #x8000 :options #x1 :func 'clmf-to-select)
         )
       (new 'static 'clm-item
         :description "attributes"
         :button-symbol 'x
-        :action
-        (new 'static 'clm-item-action :button #x4000 :options #x1 :func #f)
+        :action (new 'static 'clm-item-action :button #x4000 :options #x1 :func #f)
         )
       (new 'static 'clm-item
         :description " edit part"
         :button-symbol 'circle
-        :action
-        (new 'static 'clm-item-action :button #x2000 :options #x1 :func #f)
+        :action (new 'static 'clm-item-action :button #x2000 :options #x1 :func #f)
         )
       (new 'static 'clm-item
         :description "scale/next"
         :button-symbol 'r2
-        :action
-        (new 'static 'clm-item-action :button #x200 :func #f)
+        :action (new 'static 'clm-item-action :button #x200 :func #f)
         )
       (new 'static 'clm-item
         :description "   pos/rot"
         :button-symbol 'l2
-        :action
-        (new 'static 'clm-item-action :button #x100 :func #f)
+        :action (new 'static 'clm-item-action :button #x100 :func #f)
         )
       (new 'static 'clm-list
         :tracker '*camera-layout-blink*
-        :items
-        (new
-          'static
-          'boxed-array
-          :type clm-list-item :length 9 :allocated-length 9
+        :items (new 'static 'boxed-array :type clm-list-item
           (new 'static 'clm-list-item
             :description "camera   "
             :track-val 'camera
             :val-func #f
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 4 :allocated-length 4
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action :button #x4000 :options #x1 :func '*clm-cam-attr*)
               (new 'static 'clm-item-action :button #x2000 :func '*clm-cam-lookthrough*)
               (new 'static 'clm-item-action :button #x200 :func 'clmf-bna)
@@ -3581,11 +3372,7 @@
             :description "volume   "
             :track-val 'volume
             :val-func #f
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 4 :allocated-length 4
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action :button #x4000 :options #x1 :func 'clmf-to-vol-attr)
               (new 'static 'clm-item-action :button #x2000 :func 'clmf-implement)
               (new 'static 'clm-item-action :button #x200 :func 'clmf-next-vol-dpad)
@@ -3596,11 +3383,7 @@
             :description "align    "
             :track-val 'align
             :val-func #f
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 4 :allocated-length 4
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action :button #x4000 :func 'clmf-bna)
               (new 'static 'clm-item-action :button #x2000 :func 'clmf-bna)
               (new 'static 'clm-item-action :button #x200 :func 'clmf-bna)
@@ -3611,11 +3394,7 @@
             :description "pivot    "
             :track-val 'pivot
             :val-func #f
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 4 :allocated-length 4
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action :button #x4000 :func 'clmf-bna)
               (new 'static 'clm-item-action :button #x2000 :func 'clmf-bna)
               (new 'static 'clm-item-action :button #x200 :func 'clmf-bna)
@@ -3626,11 +3405,7 @@
             :description "interesting"
             :track-val 'interesting
             :val-func #f
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 4 :allocated-length 4
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action :button #x4000 :func 'clmf-bna)
               (new 'static 'clm-item-action :button #x2000 :func 'clmf-bna)
               (new 'static 'clm-item-action :button #x200 :func 'clmf-bna)
@@ -3646,11 +3421,7 @@
             :description "spline   "
             :track-val 'spline
             :val-func #f
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 4 :allocated-length 4
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action :button #x4000 :func 'clmf-to-spline-attr)
               (new 'static 'clm-item-action :button #x2000 :func 'clmf-implement)
               (new 'static 'clm-item-action :button #x200 :func 'clmf-implement)
@@ -3661,11 +3432,7 @@
             :description "intro    "
             :track-val 'intro
             :val-func #f
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 4 :allocated-length 4
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action :button #x4000 :options #x1 :func 'clmf-to-intro-attr)
               (new 'static 'clm-item-action :button #x2000 :func 'clmf-implement)
               (new 'static 'clm-item-action :button #x200 :func 'clmf-implement)
@@ -3676,11 +3443,7 @@
             :description "index    "
             :track-val 'index
             :val-func #f
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 4 :allocated-length 4
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action :button #x4000 :options #x1 :func 'clmf-to-index-attr)
               (new 'static 'clm-item-action :button #x2000 :func 'clmf-implement)
               (new 'static 'clm-item-action :button #x200 :func 'clmf-implement)
@@ -3691,11 +3454,7 @@
             :description "focalpull"
             :track-val 'focalpull
             :val-func #f
-            :actions
-            (new
-              'static
-              'boxed-array
-              :type clm-item-action :length 4 :allocated-length 4
+            :actions (new 'static 'boxed-array :type clm-item-action
               (new 'static 'clm-item-action :button #x4000 :options #x1 :func 'clmf-to-focalpull-attr)
               (new 'static 'clm-item-action :button #x2000 :func 'clmf-implement)
               (new 'static 'clm-item-action :button #x200 :func 'clmf-implement)
@@ -3709,114 +3468,87 @@
   )
 
 ;; definition for symbol *clm-save-all*, type clm
-(define
-  *clm-save-all*
+(define *clm-save-all*
   (new 'static 'clm
     :title "---save all?---"
-    :items
-    (new
-      'static
-      'boxed-array
-      :type clm-basic :length 3 :allocated-length 3
+    :items (new 'static 'boxed-array :type clm-basic
       (new 'static 'clm-item
         :description " save all"
         :button-symbol 'x
-        :action
-        (new 'static 'clm-item-action :button #x4000 :options #x1 :func 'clmf-save-all :parm0 16)
+        :action (new 'static 'clm-item-action :button #x4000 :options #x1 :func 'clmf-save-all :parm0 16)
         )
       (new 'static 'clm-item
         :description "print all"
         :button-symbol 'square
-        :action
-        (new 'static 'clm-item-action :button #x8000 :options #x1 :func 'clmf-save-all :parm0 8)
+        :action (new 'static 'clm-item-action :button #x8000 :options #x1 :func 'clmf-save-all :parm0 8)
         )
       (new 'static 'clm-item
         :description "     done"
         :button-symbol 'triangle
-        :action
-        (new 'static 'clm-item-action :button #x1000 :options #x1 :func 'clmf-to-select)
+        :action (new 'static 'clm-item-action :button #x1000 :options #x1 :func 'clmf-to-select)
         )
       )
     )
   )
 
 ;; definition for symbol *clm-save-one*, type clm
-(define
-  *clm-save-one*
+(define *clm-save-one*
   (new 'static 'clm
     :title "---single save?---"
-    :items
-    (new
-      'static
-      'boxed-array
-      :type clm-basic :length 3 :allocated-length 3
+    :items (new 'static 'boxed-array :type clm-basic
       (new 'static 'clm-item
         :description " single save"
         :button-symbol 'x
-        :action
-        (new 'static 'clm-item-action :button #x4000 :options #x1 :func 'clmf-save-one :parm0 16)
+        :action (new 'static 'clm-item-action :button #x4000 :options #x1 :func 'clmf-save-one :parm0 16)
         )
       (new 'static 'clm-item
         :description "single print"
         :button-symbol 'square
-        :action
-        (new 'static 'clm-item-action :button #x8000 :options #x1 :func 'clmf-save-one :parm0 8)
+        :action (new 'static 'clm-item-action :button #x8000 :options #x1 :func 'clmf-save-one :parm0 8)
         )
       (new 'static 'clm-item
         :description "        done"
         :button-symbol 'triangle
-        :action
-        (new 'static 'clm-item-action :button #x1000 :options #x1 :func 'clmf-to-select)
+        :action (new 'static 'clm-item-action :button #x1000 :options #x1 :func 'clmf-to-select)
         )
       )
     )
   )
 
 ;; definition for symbol *clm-select*, type clm
-(define
-  *clm-select*
+(define *clm-select*
   (new 'static 'clm
     :title "---camera---"
-    :items
-    (new
-      'static
-      'boxed-array
-      :type clm-basic :length 6 :allocated-length 6
+    :items (new 'static 'boxed-array :type clm-basic
       (new 'static 'clm-item
         :description "    edit"
         :button-symbol 'x
-        :action
-        (new 'static 'clm-item-action :button #x4000 :options #x3 :func 'clmf-to-edit-cam)
+        :action (new 'static 'clm-item-action :button #x4000 :options #x3 :func 'clmf-to-edit-cam)
         )
       (new 'static 'clm-item
         :description "save one"
         :button-symbol 'triangle
-        :action
-        (new 'static 'clm-item-action :button #x1000 :options #x3 :func '*clm-save-one*)
+        :action (new 'static 'clm-item-action :button #x1000 :options #x3 :func '*clm-save-one*)
         )
       (new 'static 'clm-item
         :description "    next"
         :button-symbol 'down
-        :action
-        (new 'static 'clm-item-action :button #x40 :options #x3 :func 'clmf-next-entity :parm0 8)
+        :action (new 'static 'clm-item-action :button #x40 :options #x3 :func 'clmf-next-entity :parm0 8)
         )
       (new 'static 'clm-item
         :description "    prev"
         :button-symbol 'up
-        :action
-        (new 'static 'clm-item-action :button #x10 :options #x3 :func 'clmf-next-entity :parm0 -8)
+        :action (new 'static 'clm-item-action :button #x10 :options #x3 :func 'clmf-next-entity :parm0 -8)
         )
       (new 'static 'clm-item
         :description "  next 5"
         :button-symbol 'right
-        :action
-        (new 'static 'clm-item-action :button #x20 :options #x3 :func 'clmf-next-entity :parm0 40)
+        :action (new 'static 'clm-item-action :button #x20 :options #x3 :func 'clmf-next-entity :parm0 40)
         )
       (new 'static 'clm-item
         :description "  prev 5"
         :button-symbol 'left
-        :action
-        (new 'static 'clm-item-action :button #x80 :options #x3 :func 'clmf-next-entity :parm0 -40)
+        :action (new 'static 'clm-item-action :button #x80 :options #x3 :func 'clmf-next-entity :parm0 -40)
         )
       )
     )
@@ -4028,9 +3760,8 @@
 
 ;; failed to figure out what this is:
 (defstate cam-layout-active (cam-layout)
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (cam-layout-entity-info (the-as entity-actor (-> self cam-entity)))
       (cam-layout-entity-volume-info)
       (cam-layout-do-menu *clm*)
@@ -4078,16 +3809,7 @@
     )
   (cond
     ((not *cam-layout*)
-     (let* ((gp-0 (get-process *camera-dead-pool* cam-layout #x4000))
-            (v1-4 (when gp-0
-                    (let ((t9-3 (method-of-type cam-layout activate)))
-                      (t9-3 (the-as cam-layout gp-0) *default-pool* 'cam-layout (the-as pointer #x70004000))
-                      )
-                    (run-next-time-in-process gp-0 cam-layout-init)
-                    (-> gp-0 ppointer)
-                    )
-                  )
-            )
+     (let ((v1-4 (process-spawn-function cam-layout cam-layout-init :from *camera-dead-pool*)))
        (cond
          (v1-4
            (logclear! (-> v1-4 0 mask) (process-mask pause menu))

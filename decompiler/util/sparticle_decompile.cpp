@@ -1,8 +1,10 @@
 #include "sparticle_decompile.h"
-#include "decompiler/util/data_decompile.h"
+
 #include "common/goos/PrettyPrinter.h"
-#include "common/util/print_float.h"
 #include "common/util/Assert.h"
+#include "common/util/print_float.h"
+
+#include "decompiler/util/data_decompile.h"
 
 namespace decompiler {
 // sparticle fields.
@@ -444,11 +446,11 @@ goos::Object decompile_sparticle_sound_spec(const std::vector<LinkedWord>& /*wor
 
 goos::Object decompile_sparticle_group_item(const TypeSpec& type,
                                             const DecompilerLabel& label,
-                                            const std::vector<DecompilerLabel>& labels,
+                                            const std::vector<DecompilerLabel>& /*labels*/,
                                             const std::vector<std::vector<LinkedWord>>& words,
                                             const TypeSystem& ts,
-                                            const LinkedObjectFile* file) {
-  auto normal = decompile_structure(type, label, labels, words, ts, file, false);
+                                            const LinkedObjectFile* /*file*/) {
+  // auto normal = decompile_structure(type, label, labels, words, ts, file, false);
   // fmt::print("Doing: {}\n", normal.print());
   auto uncast_type_info = ts.lookup_type(type);
   auto type_info = dynamic_cast<StructureType*>(uncast_type_info);

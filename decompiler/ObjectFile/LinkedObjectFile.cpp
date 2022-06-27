@@ -3,18 +3,21 @@
  * An object file's data with linking information included.
  */
 
+#include "LinkedObjectFile.h"
+
 #include <algorithm>
 #include <cstring>
 #include <numeric>
-#include "decompiler/IR/IR.h"
-#include "third-party/fmt/core.h"
-#include "LinkedObjectFile.h"
+
+#include "common/goos/PrettyPrinter.h"
+#include "common/log/log.h"
+#include "common/util/Assert.h"
+
 #include "decompiler/Disasm/InstructionDecode.h"
 #include "decompiler/config.h"
+
+#include "third-party/fmt/core.h"
 #include "third-party/json.hpp"
-#include "common/log/log.h"
-#include "common/goos/PrettyPrinter.h"
-#include "common/util/Assert.h"
 
 namespace decompiler {
 /*!
@@ -397,7 +400,7 @@ void LinkedObjectFile::find_code() {
 /*!
  * Find all the functions in each segment.
  */
-void LinkedObjectFile::find_functions() {
+void LinkedObjectFile::find_functions(GameVersion version) {
   if (segments == 1) {
     // it's a v2 file, shouldn't have any functions
     ASSERT(offset_of_data_zone_by_seg.at(0) == 0);
@@ -424,7 +427,7 @@ void LinkedObjectFile::find_functions() {
         // mark this as a function, and try again from the current function start
         ASSERT(found_function_tag_loc);
         stats.function_count++;
-        functions_by_seg.at(seg).emplace_back(function_tag_loc, function_end);
+        functions_by_seg.at(seg).emplace_back(function_tag_loc, function_end, version);
         function_end = function_tag_loc;
       }
 
@@ -445,6 +448,8 @@ void LinkedObjectFile::disassemble_functions() {
             decode_instruction(words_by_seg.at(seg).at(word), *this, seg, word));
         if (function.instructions.back().is_valid()) {
           stats.decoded_ops++;
+        } else {
+          lg::error("Failed to decode op: 0x{:08x}", words_by_seg.at(seg).at(word).data);
         }
       }
     }
@@ -507,32 +512,52 @@ void LinkedObjectFile::process_fp_relative_links() {
               case InstructionKind::DADDU:
               case InstructionKind::ADDU: {
                 ASSERT(prev_instr);
-                if (prev_instr->kind != InstructionKind::ORI) {
+                if (prev_instr->kind == InstructionKind::ORI) {
+                  ASSERT(prev_instr->kind == InstructionKind::ORI);
+                  int offset_reg_src_id = instr.kind == InstructionKind::DADDU ? 0 : 1;
+                  auto offset_reg = instr.get_src(offset_reg_src_id).get_reg();
+                  ASSERT(offset_reg == prev_instr->get_dst(0).get_reg());
+                  ASSERT(offset_reg == prev_instr->get_src(0).get_reg());
+                  auto& atom = prev_instr->get_imm_src();
+                  int additional_offset = 0;
+                  if (pprev_instr && pprev_instr->kind == InstructionKind::LUI) {
+                    ASSERT(pprev_instr->get_dst(0).get_reg() == offset_reg);
+                    additional_offset = (1 << 16) * pprev_instr->get_imm_src().get_imm();
+                    pprev_instr->get_imm_src().set_label(
+                        get_label_id_for(seg, current_fp + atom.get_imm() + additional_offset));
+                  }
+                  atom.set_label(
+                      get_label_id_for(seg, current_fp + atom.get_imm() + additional_offset));
+                  stats.n_fp_reg_use_resolved++;
+                } else if (prev_instr->kind == InstructionKind::DADDIU) {
+                  /*
+                   * Jak 2 has a new use of fp to access elements of a static array that looks like
+                   * this:
+                   *     (set! v1 (* idx stride))
+                   *     daddiu v1, v1, 8128
+                   *     daddu v1, v1, fp
+                   */
+                  auto val_plus_off_reg = prev_instr->get_dst(0).get_reg();
+
+                  // it's possible that this isn't always the case, but works for all of jak 2
+                  ASSERT(val_plus_off_reg == prev_instr->get_src(0).get_reg());
+                  ASSERT(val_plus_off_reg == instr.get_src(0).get_reg());
+                  ASSERT(val_plus_off_reg == instr.get_dst(0).get_reg());
+                  auto& atom = prev_instr->get_imm_src();
+                  atom.set_label(get_label_id_for(seg, current_fp + atom.get_imm()));
+
+                  stats.n_fp_reg_use_resolved++;
+                } else {
                   lg::error("Failed to process fp relative links for (d)addu preceded by: {}",
                             prev_instr->to_string(labels));
                   return;
                 }
-                ASSERT(prev_instr->kind == InstructionKind::ORI);
-                int offset_reg_src_id = instr.kind == InstructionKind::DADDU ? 0 : 1;
-                auto offset_reg = instr.get_src(offset_reg_src_id).get_reg();
-                ASSERT(offset_reg == prev_instr->get_dst(0).get_reg());
-                ASSERT(offset_reg == prev_instr->get_src(0).get_reg());
-                auto& atom = prev_instr->get_imm_src();
-                int additional_offset = 0;
-                if (pprev_instr && pprev_instr->kind == InstructionKind::LUI) {
-                  ASSERT(pprev_instr->get_dst(0).get_reg() == offset_reg);
-                  additional_offset = (1 << 16) * pprev_instr->get_imm_src().get_imm();
-                  pprev_instr->get_imm_src().set_label(
-                      get_label_id_for(seg, current_fp + atom.get_imm() + additional_offset));
-                }
-                atom.set_label(
-                    get_label_id_for(seg, current_fp + atom.get_imm() + additional_offset));
-                stats.n_fp_reg_use_resolved++;
+
               } break;
 
               default:
-                printf("unknown fp using op: %s\n", instr.to_string(labels).c_str());
-                ASSERT(false);
+                ASSERT_MSG(false,
+                           fmt::format("unknown fp using op: {}", instr.to_string(labels).c_str()));
             }
           }
         }
@@ -584,22 +609,8 @@ std::string LinkedObjectFile::print_function_disassembly(Function& func,
       auto& word = words_by_seg[seg].at(func.start_word + i);
       append_word_to_string(result, word);
     } else {
-      // print basic op stuff
-      if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
-        if (line.length() < 30) {
-          line.append(30 - line.length(), ' ');
-        }
-        line += ";; " + func.get_basic_op_at_instr(i)->print(*this);
-        for (int iidx = 0; iidx < instr.n_src; iidx++) {
-          if (instr.get_src(iidx).is_label()) {
-            auto lab = labels.at(instr.get_src(iidx).get_label());
-            if (is_string(lab.target_segment, lab.offset)) {
-              line += " " + get_goal_string(lab.target_segment, lab.offset / 4 - 1);
-            }
-          }
-        }
-      }
-      result += line + "\n";
+      result += line;
+      result += '\n';
     }
 
     if (in_delay_slot) {
@@ -657,11 +668,6 @@ std::string LinkedObjectFile::print_function_disassembly(Function& func,
       }
     }
      */
-  }
-
-  if (func.ir) {
-    result += ";; ir\n";
-    result += func.ir->print(*this);
   }
 
   result += "\n\n\n";
@@ -935,16 +941,14 @@ goos::Object LinkedObjectFile::to_form_script_object(int seg,
       } else {
         std::string debug;
         append_word_to_string(debug, word);
-        printf("don't know how to print %s\n", debug.c_str());
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("don't know how to print {}", debug.c_str()));
       }
     } break;
 
     case 2:  // bad, a pair snuck through.
     default:
       // pointers should be aligned!
-      printf("align %d\n", byte_idx & 7);
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("align {}", byte_idx & 7));
   }
 
   return result;

@@ -1,22 +1,32 @@
-#include <cstring>
-#include <cstdio>
-#include "game/overlord/sndshim.h"
 #include "srpc.h"
-#include "game/sce/iop.h"
+
+#include <cstdio>
+#include <cstring>
+
+#include "iso.h"
+#include "iso_api.h"
+#include "ramdisk.h"
+#include "sbank.h"
+
+#include "common/util/Assert.h"
+#include "common/versions.h"
+
+#include "game/common/game_common_types.h"
 #include "game/common/loader_rpc_types.h"
 #include "game/common/player_rpc_types.h"
-#include "game/common/game_common_types.h"
-#include "common/versions.h"
-#include "sbank.h"
-#include "iso_api.h"
-#include "common/util/Assert.h"
+#include "game/graphics/gfx.h"
+#include "game/runtime.h"
+#include "game/sce/iop.h"
+#include "game/sound/sndshim.h"
+
+#include "third-party/fmt/core.h"
 
 using namespace iop;
 
 MusicTweaks gMusicTweakInfo;
 constexpr int SRPC_MESSAGE_SIZE = 0x50;
 static uint8_t gLoaderBuf[SRPC_MESSAGE_SIZE];
-static uint8_t gPlayerBuf[SRPC_MESSAGE_SIZE * 127];
+static uint8_t gPlayerBuf[SRPC_MESSAGE_SIZE * 128];
 int32_t gSoundEnable = 1;
 static u32 gInfoEE = 0;  // EE address where we should send info on each frame.
 s16 gFlava;
@@ -24,6 +34,12 @@ static s32 gMusic;
 s32 gMusicTweak = 0x80;
 s32 gMusicPause = 0;
 u32 gFreeMem = 0;
+u32 gFrameNum = 0;
+
+// added
+u32 gMusicFadeHack = 0;
+
+static SoundIopInfo info;
 
 s32 gVAG_Id = 0;  // TODO probably doesn't belong here.
 
@@ -50,7 +66,8 @@ u32 Thread_Player() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, PLAYER_RPC_ID, RPC_Player, gPlayerBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, PLAYER_RPC_ID[g_game_version], RPC_Player, gPlayerBuf, nullptr, nullptr,
+                    &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -66,7 +83,8 @@ u32 Thread_Loader() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, LOADER_RPC_ID, RPC_Loader, gLoaderBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, LOADER_RPC_ID[g_game_version], RPC_Loader, gLoaderBuf, nullptr, nullptr,
+                    &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -103,38 +121,39 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
     while (n_messages > 0) {
       switch (cmd->command) {
         case SoundCommand::PLAY: {
-          // spool- soundsn are vag sounds?
+          if (cmd->play.sound_id == 0) {
+            break;
+          }
           if (!memcmp(cmd->play.name, "spool-", 6)) {
-            char namebuf[8];
-            char langbuf[8];
-            auto name = cmd->play.name;
+            char namebuf[16];
+            const char* name = &cmd->play.name[6];
             size_t len = strlen(name);
             if (len < 9) {
-              memset(namebuf, 32, sizeof(namebuf));
+              memset(namebuf, ' ', 8);
               memcpy(namebuf, name, len);
             } else {
-              memcpy(namebuf, name, sizeof(namebuf));
+              memcpy(namebuf, name, 8);
             }
 
+            // ASCII toupper
             for (int i = 0; i < 8; i++) {
               if (namebuf[i] >= 0x61 && namebuf[i] < 0x7b) {
                 namebuf[i] -= 0x20;
               }
             }
 
-            // TODO vagfile = FindVAGFile(namebuf);
-            void* vagfile = nullptr;
+            auto vagfile = FindVAGFile(namebuf);
 
-            memcpy(namebuf, "VAGWAD ", sizeof(namebuf));
-            strcpy(langbuf, gLanguage);
+            memcpy(namebuf, "VAGWAD  ", 8);
+            strcpy(&namebuf[8], gLanguage);
 
             FileRecord* rec = isofs->find_in(namebuf);
             if (vagfile != nullptr) {
               if (cmd->play.parms.pitch_mod) {  // ??? TODO Verify what is being checked here
-                // PlayVagStream(rec, vagfile, cmd->play.sound_id, cmd->play.parms.volume, 0,
-                // cmd->play.parms.trans);
+                PlayVAGStream(rec, vagfile, cmd->play.sound_id, cmd->play.parms.volume, 0,
+                              &cmd->play.parms.trans);
               } else {
-                // PlayVagStream(rec, vagfile, cmd->play.sound_id, cmd->play.parms.volume, 0, 0);
+                PlayVAGStream(rec, vagfile, cmd->play.sound_id, cmd->play.parms.volume, 0, nullptr);
               }
             }
             break;
@@ -190,31 +209,31 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
                                                sound->params.pitch_mod, sound->params.bend);
           sound->sound_handle = handle;
           if (sound->sound_handle) {
-            sound->id = index;
+            sound->id = cmd->play.sound_id;
           }
         } break;
         case SoundCommand::PAUSE_SOUND: {
           Sound* sound = LookupSound(cmd->sound_id.sound_id);
           if (sound != nullptr) {
             snd_PauseSound(sound->sound_handle);
-          } else if (cmd->sound_id.sound_id == gVAG_Id) {
-            // TODO PauseVAGStream();
+          } else if (cmd->sound_id.sound_id == (u32)gVAG_Id) {
+            PauseVAGStream();
           }
         } break;
         case SoundCommand::STOP_SOUND: {
           Sound* sound = LookupSound(cmd->sound_id.sound_id);
           if (sound != nullptr) {
             snd_StopSound(sound->sound_handle);
-          } else if (cmd->sound_id.sound_id == gVAG_Id) {
-            // TODO StopVAGStream();
+          } else if (cmd->sound_id.sound_id == (u32)gVAG_Id) {
+            StopVAGStream(nullptr, 0);
           }
         } break;
         case SoundCommand::CONTINUE_SOUND: {
           Sound* sound = LookupSound(cmd->sound_id.sound_id);
           if (sound != nullptr) {
             snd_ContinueSound(sound->sound_handle);
-          } else if (cmd->sound_id.sound_id == gVAG_Id) {
-            // TODO UNpauseVAGStream();
+          } else if (cmd->sound_id.sound_id == (u32)gVAG_Id) {
+            UnpauseVAGStream();
           }
         } break;
         case SoundCommand::SET_PARAM: {
@@ -222,7 +241,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           u32 mask = cmd->param.parms.mask;
           if (sound != nullptr) {
             if (mask & 1) {
-              if (mask & 0x20) {
+              if (mask & 0x10) {
                 sound->auto_time = cmd->param.auto_time;
                 sound->new_volume = cmd->param.parms.volume;
               } else {
@@ -239,7 +258,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
               sound->params.pitch_mod = cmd->param.parms.pitch_mod;
               if (mask & 0x10) {
                 snd_AutoPitch(sound->sound_handle, sound->params.pitch_mod, cmd->param.auto_time,
-                              cmd->param.auto_time);
+                              cmd->param.auto_from);
               } else {
                 snd_SetSoundPitchModifier(sound->sound_handle, cmd->param.parms.pitch_mod);
               }
@@ -248,14 +267,14 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
               sound->params.bend = cmd->param.parms.bend;
               if (mask & 0x10) {
                 snd_AutoPitchBend(sound->sound_handle, sound->params.bend, cmd->param.auto_time,
-                                  cmd->param.auto_time);
+                                  cmd->param.auto_from);
               } else {
                 snd_SetSoundPitchBend(sound->sound_handle, cmd->param.parms.bend);
               }
             }
 
-          } else if (cmd->sound_id.sound_id == gVAG_Id) {
-            // TODO SetVAGStreamVolume();
+          } else if (cmd->sound_id.sound_id == (u32)gVAG_Id) {
+            SetVAGStreamVolume(cmd->param.parms.volume);
           }
         } break;
         case SoundCommand::SET_MASTER_VOLUME: {
@@ -265,7 +284,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
               if (i == 1) {
                 gMusicVol = cmd->master_volume.volume;
               } else if (i == 2) {
-                // TODO SetDialogVolume(cmd->master_volume.volume);
+                SetDialogVolume(cmd->master_volume.volume);
               } else {
                 snd_SetMasterVolume(i, cmd->master_volume.volume);
               }
@@ -275,7 +294,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
         case SoundCommand::PAUSE_GROUP: {
           snd_PauseAllSoundsInGroup(cmd->group.group);
           if ((cmd->group.group & 4) != 0) {
-            // TODO PauseVAGStream(0,0);
+            PauseVAGStream();
           }
           if (cmd->group.group & 2) {
             gMusicPause = 1;
@@ -285,13 +304,13 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           u8 group = cmd->group.group;
           KillSoundsInGroup(group);
           if ((group & 4) != 0) {
-            // TODO StopVAGStream(0,0);
+            StopVAGStream(nullptr, 0);
           }
         } break;
         case SoundCommand::CONTINUE_GROUP: {
           snd_ContinueAllSoundsInGroup(cmd->group.group);
           if (cmd->group.group & 4) {
-            //   UnpauseVAGStream();
+            UnpauseVAGStream();
           }
 
           if (cmd->group.group & 2) {
@@ -322,8 +341,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           // TODO ShutdownFilingSystem();
         } break;
         default: {
-          printf("Unhandled RPC Player command %d\n", (int)cmd->command);
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("Unhandled RPC Player command {}", (int)cmd->command));
         } break;
       }
       n_messages--;
@@ -410,8 +428,7 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           // SignalSema(gSema);
         } break;
         default:
-          printf("Unhandled RPC Loader command %d\n", (int)cmd->command);
-          ASSERT(false);
+          ASSERT_MSG(false, fmt::format("Unhandled RPC Loader command {}", (int)cmd->command));
       }
       n_messages--;
       cmd++;
@@ -420,6 +437,71 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
   return nullptr;
 }
 
+static s32 dmaid = 0;
+
 s32 VBlank_Handler() {
+  if (!gSoundEnable)
+    return 1;
+
+  if (gMusicFadeDir > 0) {
+    gMusicFade += (0x10000 / 64);
+    if (gMusicFade > 0x10000 || (gMusicFadeHack & 1)) {
+      gMusicFade = 0x10000;
+      gMusicFadeDir = 0;
+    }
+  } else if (gMusicFadeDir < 0) {
+    gMusicFade -= (0x10000 / 128);
+    if (gMusicFade < 0 || (gMusicFadeHack & 2)) {
+      gMusicFade = 0;
+      gMusicFadeDir = 0;
+    }
+  }
+
+  if (!gInfoEE)
+    return 1;
+
+  gFrameNum++;
+
+  if (gFakeVAGClockRunning && !gFakeVAGClockPaused) {
+    gFakeVAGClock += (s32)(1024 / Gfx::g_global_settings.target_fps);
+  }
+
+  // We don't need this, our DMA's are instant
+  // if (dmaid) {
+  //  if (sceSifDmaStat(dmaid) >= 0) {
+  //    return 1;
+  //  }
+  //  dmaid = 0;
+  //}
+
+  info.frame = gFrameNum;
+  info.strpos = GetVAGStreamPos();
+  info.std_id = gVAG_Id;
+  info.freemem = gFreeMem;
+  info.freemem2 = gMemFreeAtStart;
+  // info.nocd = gNoCD;
+  // info.dirtycd = gDirtyCD;
+  info.nocd = 0;
+  info.dirtycd = 0;
+  // info.diskspeed[0] = gDiskSpeed[0];
+  // info.diskspeed[1] = gDiskSpeed[1];
+  // info.lastspeed = gLastSpeed;
+  // info.dupseg = gDupSeg;
+
+  for (int i = 0; i < 48; i++) {
+    if (snd_GetVoiceStatus(i) == 1) {
+      info.chinfo[i] = -1;
+    } else {
+      info.chinfo[i] = 0;
+    }
+  }
+
+  sceSifDmaData dma;
+  dma.data = &info;
+  dma.addr = (void*)(uintptr_t)gInfoEE;
+  dma.size = 0x110;
+  dma.mode = 0;
+  dmaid = sceSifSetDma(&dma, 1);
+
   return 1;
 }

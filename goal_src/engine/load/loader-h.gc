@@ -16,10 +16,10 @@
 
 
 ;; A load-dir is a collection of references to loaded art.
-;; This type didn't have an inspect method, so these field names are made up.
+;; This type didn't have a nomral inspect method, so these field names are made up.
 (declare-type art-group basic)
 (deftype load-dir (basic)
-  ((unknown basic :offset-assert 4)
+  ((lev level :offset-assert 4)
    (string-array (array string) :offset-assert  8) ;; these are the names
    (data-array (array basic)    :offset-assert 12) ;; this is the file data.
    )
@@ -27,7 +27,7 @@
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (new (symbol type int basic) _type_ 0)
+    (new (symbol type int level) _type_ 0)
     (load-to-heap-by-name (_type_ string symbol kheap int) art-group 9)
     (set-loaded-art (_type_ art-group) art-group 10)
     )
@@ -41,15 +41,15 @@
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (new (symbol type int basic) _type_ 0)
+    (new (symbol type int level) _type_ 0)
     )
   )
 
 
-(defmethod new load-dir ((allocation symbol) (type-to-make type) (length int) (unk basic))
+(defmethod new load-dir ((allocation symbol) (type-to-make type) (length int) (lev level))
   "Allocate a new load-dir with room for length entries"
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> obj unknown) unk)
+    (set! (-> obj lev) lev)
     ;; create the name array
     (set! (-> obj string-array)
           (the-as (array string)
@@ -67,10 +67,10 @@
     )
   )
 
-(defmethod new load-dir-art-group ((allocation symbol) (type-to-make type) (length int) (unk basic))
+(defmethod new load-dir-art-group ((allocation symbol) (type-to-make type) (length int) (lev level))
   "Allocate a new load-dir with room for length art-groups"
   ;; call parent ctor.
-  (let ((obj ((method-of-type load-dir new) allocation type-to-make length unk)))
+  (let ((obj ((method-of-type load-dir new) allocation type-to-make length lev)))
     ;; override the content type
     (set! (-> obj data-array content-type) art-group)
     ;; and cast to child.

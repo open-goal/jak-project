@@ -1,9 +1,12 @@
-#include <cstring>
-#include <cstdio>
-
 #include "compress.h"
-#include "third-party/zstd/lib/zstd.h"
+
+#include <cstdio>
+#include <cstring>
+
 #include "common/util/Assert.h"
+
+#include "third-party/fmt/core.h"
+#include "third-party/zstd/lib/zstd.h"
 
 namespace compression {
 
@@ -17,8 +20,7 @@ std::vector<u8> compress_zstd(const void* data, size_t size) {
   auto compressed_size =
       ZSTD_compress(result.data() + sizeof(size_t), max_compressed, data, size, 1);
   if (ZSTD_isError(compressed_size)) {
-    printf("ZSTD error: %s\n", ZSTD_getErrorName(compressed_size));
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("ZSTD error: {}", ZSTD_getErrorName(compressed_size)));
   }
   result.resize(sizeof(size_t) + compressed_size);
   return result;
@@ -38,8 +40,7 @@ std::vector<u8> decompress_zstd(const void* data, size_t size) {
   auto decomp_size = ZSTD_decompress(result.data(), decompressed_size,
                                      (const u8*)data + sizeof(size_t), compressed_size);
   if (ZSTD_isError(decomp_size)) {
-    printf("ZSTD error: %s\n", ZSTD_getErrorName(compressed_size));
-    ASSERT(false);
+    ASSERT_MSG(false, fmt::format("ZSTD error: {}", ZSTD_getErrorName(compressed_size)));
   }
 
   ASSERT(decomp_size == decompressed_size);

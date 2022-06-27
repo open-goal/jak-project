@@ -32,8 +32,7 @@
                                   :count 3
                                   :converted #f
                                   :normal-scale 1.0
-                                  :wave
-                                  (new 'static 'inline-array ripple-wave 4
+                                  :wave (new 'static 'inline-array ripple-wave 4
                                     (new 'static 'ripple-wave :scale 40.0 :xdiv 1 :speed 1.5)
                                     (new 'static 'ripple-wave :scale 40.0 :xdiv -1 :zdiv 1 :speed 1.5)
                                     (new 'static 'ripple-wave :scale 20.0 :xdiv 5 :zdiv 3 :speed 0.75)
@@ -46,13 +45,11 @@
   :id 446
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts
-  ((sp-item 1736 :fade-after (meters 50)))
+  :parts ((sp-item 1736 :fade-after (meters 50)))
   )
 
 (defpart 1736
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
     (sp-flt spt-num 1.0)
     (sp-flt spt-y (meters 0))
     (sp-rnd-flt spt-scale-x (meters 1) (meters 4) 1.0)
@@ -72,8 +69,7 @@
   )
 
 (defpart 2022
-  :init-specs
-  ((sp-flt spt-r 255.0) (sp-rnd-flt spt-g 128.0 128.0 1.0) (sp-flt spt-b 0.0) (sp-flt spt-fade-a -1.28))
+  :init-specs ((sp-flt spt-r 255.0) (sp-rnd-flt spt-g 128.0 128.0 1.0) (sp-flt spt-b 0.0) (sp-flt spt-fade-a -1.28))
   )
 
 (defmethod draw-ripple sunken-water ((obj sunken-water))
@@ -84,14 +80,7 @@
       )
     (set! (-> gp-0 vertex-skip) 128)
     (dotimes (s5-0 (-> gp-0 vertex-count))
-      (sp-launch-particles-var
-        *sp-particle-system-2d*
-        (-> *part-id-table* 1736)
-        (-> gp-0 data s5-0)
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
-        )
+      (launch-particles (-> *part-id-table* 1736) (-> gp-0 data s5-0))
       )
     )
   #f
@@ -99,12 +88,11 @@
 
 (defstate water-vol-idle (sunken-water)
   :virtual #t
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('notify)
        (if (= (-> arg3 param 0) 'attack)
-           (sound-play-by-name (static-sound-name "get-shocked") (new-sound-id) 1024 0 0 1 #t)
+           (sound-play "get-shocked")
            )
        )
       (else
@@ -112,8 +100,7 @@
         )
       )
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (let ((t9-0 (-> (method-of-type water-anim water-vol-idle) trans)))
       (if t9-0
           (t9-0)
@@ -124,7 +111,7 @@
        (cond
          ((< (get-current-phase (-> self sync)) (-> self deadly-time))
           (when (!= (-> self deadly-fade) 1.0)
-            (set! (-> self deadly-fade) (seek (-> self deadly-fade) 1.0 (* 8.0 (-> *display* seconds-per-frame))))
+            (seek! (-> self deadly-fade) 1.0 (* 8.0 (-> *display* seconds-per-frame)))
             (let ((f30-0 (-> self deadly-fade)))
               (vector-lerp! (-> self draw color-mult) (-> self safe-color-mult) (-> self deadly-color-mult) f30-0)
               (vector-lerp!
@@ -135,21 +122,21 @@
                 )
               (set! (-> self draw color-mult w) 0.5)
               (if (= f30-0 1.0)
-                  (set! (-> self flags) (logior #x80000 (-> self flags)))
+                  (set! (-> self flags) (logior (water-flags wt19) (-> self flags)))
                   )
               )
             )
           (draw-ripple self)
           (when (not (-> self playing-deadly-sound?))
             (set! (-> self playing-deadly-sound?) #t)
-            (sound-play-by-name (static-sound-name "water-on") (new-sound-id) 1024 0 0 1 #t)
+            (sound-play "water-on")
             )
           (update! (-> self sound))
           )
          (else
-           (set! (-> self flags) (logand -524289 (-> self flags)))
+           (logclear! (-> self flags) (water-flags wt19))
            (when (!= (-> self deadly-fade) 0.0)
-             (set! (-> self deadly-fade) (seek (-> self deadly-fade) 0.0 (* 8.0 (-> *display* seconds-per-frame))))
+             (seek! (-> self deadly-fade) 0.0 (* 8.0 (-> *display* seconds-per-frame)))
              (let ((f30-1 (-> self deadly-fade)))
                (vector-lerp! (-> self draw color-mult) (-> self safe-color-mult) (-> self deadly-color-mult) f30-1)
                (vector-lerp!
@@ -160,14 +147,14 @@
                  )
                (set! (-> self draw color-mult w) 0.5)
                (if (= f30-1 0.0)
-                   (set! (-> self flags) (logand -524289 (-> self flags)))
+                   (logclear! (-> self flags) (water-flags wt19))
                    )
                )
              )
            (when (-> self playing-deadly-sound?)
              (set! (-> self playing-deadly-sound?) #f)
              (stop! (-> self sound))
-             (sound-play-by-name (static-sound-name "water-off") (new-sound-id) 1024 0 0 1 #t)
+             (sound-play "water-off")
              )
            )
          )
@@ -180,7 +167,7 @@
          )
        )
       (else
-        (when (logtest? #x80000 (-> self flags))
+        (when (logtest? (water-flags wt19) (-> self flags))
           (draw-ripple self)
           (update! (-> self sound))
           (set! (-> self playing-deadly-sound?) #t)
@@ -189,12 +176,10 @@
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior sunken-water) ja-post)
+  :post (the-as (function none :behavior sunken-water) ja-post)
   )
 
 (defmethod TODO-RENAME-25 sunken-water ((obj sunken-water))
-  (local-vars (v0-3 uint))
   (let ((t9-0 (method-of-type water-anim TODO-RENAME-25)))
     (t9-0 obj)
     )
@@ -210,7 +195,7 @@
                         (s5-0
                           0.5
                           )
-                        ((logtest? #x80000 (-> obj flags))
+                        ((logtest? (water-flags wt19) (-> obj flags))
                          1.0
                          )
                         (else
@@ -222,28 +207,21 @@
       (when (and s5-0 (or (= f0-16 0.0) (= f0-16 1.0)))
         (set! s5-0 #f)
         (if (= f0-16 0.0)
-            (set! (-> obj flags) (logior #x80000 (-> obj flags)))
-            (set! (-> obj flags) (logand -524289 (-> obj flags)))
+            (set! (-> obj flags) (logior (water-flags wt19) (-> obj flags)))
+            (logclear! (-> obj flags) (water-flags wt19))
             )
         )
       (set! (-> obj use-sync?) s5-0)
       (set! (-> obj deadly-time) f0-16)
       )
-    (the-as object (when s5-0
-                     (cond
-                       ((< (get-current-phase (-> obj sync)) (-> obj deadly-time))
-                        (set! v0-3 (logior (the-as uint #x80000) (-> obj flags)))
-                        (set! (-> obj flags) v0-3)
-                        )
-                       (else
-                         (set! v0-3 (logand (the-as uint -524289) (-> obj flags)))
-                         (set! (-> obj flags) v0-3)
-                         )
-                       )
-                     v0-3
-                     )
-            )
+    (when s5-0
+      (if (< (get-current-phase (-> obj sync)) (-> obj deadly-time))
+          (set! (-> obj flags) (the-as water-flags (logior (water-flags wt19) (-> obj flags))))
+          (set! (-> obj flags) (the-as water-flags (logclear (-> obj flags) (water-flags wt19))))
+          )
+      )
     )
+  (none)
   )
 
 (defmethod TODO-RENAME-22 sunken-water ((obj sunken-water))
@@ -252,7 +230,7 @@
     )
   (set! (-> obj play-ambient-sound?) #f)
   (cond
-    ((logtest? #x80000 (-> obj flags))
+    ((logtest? (water-flags wt19) (-> obj flags))
      (set! (-> obj draw color-mult quad) (-> obj deadly-color-mult quad))
      (set! (-> obj draw color-emissive quad) (-> obj deadly-color-emissive quad))
      (set! (-> obj deadly-fade) 1.0)

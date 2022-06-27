@@ -13,6 +13,9 @@
 ;; As the collision is resolved, shapes are added and removed from the touching list.
 ;; Once collision is done solving, you can send events or inspect what you touched!
 
+
+(defconstant TOUCHING_LIST_LENGTH 32)
+
 ;; A record of a primitive which is touching another, possibly including the triangle that is involved.
 (deftype touching-prim (structure)
   ((cprim    collide-shape-prim         :offset-assert   0)
@@ -123,11 +126,11 @@
     )
   )
 
-;; A list of (up to) 32 pairs of colliding shapes
+;; A list of (up to) TOUCHING_LIST_LENGTH pairs of colliding shapes
 (deftype touching-list (structure)
   ((num-touching-shapes int32      :offset-assert 0)
    (resolve-u           int8       :offset-assert 4)
-   (touching-shapes     touching-shapes-entry 32 :inline :offset-assert 8)
+   (touching-shapes     touching-shapes-entry TOUCHING_LIST_LENGTH :inline :offset-assert 8)
    )
   :method-count-assert 15
   :size-assert         #x208
@@ -171,6 +174,6 @@
 ;; We have a pool of prim pairs that can be used in any shape pair
 (define-perm *touching-prims-entry-pool* touching-prims-entry-pool (new 'global 'touching-prims-entry-pool))
 
-;; and a list of up to 32 shape pairs
+;; and a list of up to TOUCHING_LIST_LENGTH shape pairs
 (define-perm *touching-list* touching-list (new 'global 'touching-list))
 

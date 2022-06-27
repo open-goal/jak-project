@@ -6,14 +6,17 @@
  */
 
 #include <cstdint>
-#include <vector>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
+
 #include "LinkedWord.h"
+
+#include "common/common_types.h"
+
 #include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Function/Function.h"
-#include "common/common_types.h"
 #include "decompiler/IR2/LabelDB.h"
 
 namespace decompiler {
@@ -49,7 +52,7 @@ class LinkedObjectFile {
   uint32_t set_ordered_label_names();
   void find_code();
   std::string print_words();
-  void find_functions();
+  void find_functions(GameVersion version);
   void disassemble_functions();
   void process_fp_relative_links();
   std::string print_scripts();
@@ -65,6 +68,9 @@ class LinkedObjectFile {
   u32 read_data_word(const DecompilerLabel& label);
   const DecompilerLabel& get_label_by_name(const std::string& name) const;
   std::string get_goal_string_by_label(const DecompilerLabel& label) const;
+  std::string get_goal_string_by_label(int label_id) const {
+    return get_goal_string_by_label(labels.at(label_id));
+  }
   std::string get_goal_string(int seg, int word_idx, bool with_quotes = true) const;
   bool is_string(int seg, int byte_idx) const;
 

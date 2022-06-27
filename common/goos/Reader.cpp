@@ -10,11 +10,15 @@
  */
 
 #include "Reader.h"
+
+#include <filesystem>
+
+#include "ReplUtils.h"
+
 #include "common/util/FileUtil.h"
 #include "common/util/FontUtils.h"
+
 #include "third-party/fmt/core.h"
-#include <filesystem>
-#include "ReplUtils.h"
 
 namespace goos {
 
@@ -833,13 +837,6 @@ bool Reader::try_token_as_char(const Token& tok, Object& obj) {
 void Reader::throw_reader_error(TextStream& here, const std::string& err, int seek_offset) {
   throw std::runtime_error("Reader error:\n" + err + "\nat " +
                            db.get_info_for(here.text, here.seek + seek_offset));
-}
-
-/*!
- * Get the source directory of the current project.
- */
-std::string Reader::get_source_dir() {
-  return file_util::get_project_path();
 }
 
 /*!

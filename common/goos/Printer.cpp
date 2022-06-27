@@ -1,4 +1,5 @@
 #include "Printer.h"
+
 #include "third-party/fmt/core.h"
 
 namespace pretty_print {

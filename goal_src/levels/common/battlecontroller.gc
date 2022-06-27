@@ -150,7 +150,7 @@ battlecontroller-default-event-handler
     (let* ((s5-0 (-> self spawner-array gp-0))
            (s4-0 (handle->process (-> s5-0 creature)))
            )
-      (when (and s4-0 (logtest? (-> (the-as nav-enemy s4-0) nav-enemy-flags) 2048))
+      (when (and s4-0 (logtest? (-> (the-as nav-enemy s4-0) nav-enemy-flags) (nav-enemy-flags navenmf11)))
         (cond
           ((< (-> s5-0 state) (-> s5-0 path curve num-cverts))
            (when (or (-> self noticed-player) (= (-> s5-0 state) 1))
@@ -158,7 +158,7 @@ battlecontroller-default-event-handler
                (eval-path-curve-div! (-> s5-0 path) s3-0 (the float (-> s5-0 state)) 'interp)
                (send-event s4-0 'cue-jump-to-point s3-0)
                )
-             (if (zero? (logand (-> (the-as nav-enemy s4-0) nav-enemy-flags) 2048))
+             (if (zero? (logand (-> (the-as nav-enemy s4-0) nav-enemy-flags) (nav-enemy-flags navenmf11)))
                  (+! (-> s5-0 state) 1)
                  )
              )
@@ -206,7 +206,7 @@ battlecontroller-default-event-handler
       (when (the-as (pointer nav-enemy) gp-0)
         (logclear! (-> (the-as (pointer nav-enemy) gp-0) 0 mask) (process-mask actor-pause))
         (if (-> self misty-ambush-collision-hack)
-            (logior! (-> (the-as (pointer nav-enemy) gp-0) 0 nav-enemy-flags) #x8000)
+            (logior! (-> (the-as (pointer nav-enemy) gp-0) 0 nav-enemy-flags) (nav-enemy-flags navenmf15))
             )
         (+! (-> self spawn-count) 1)
         (-> self fact pickup-type)
@@ -323,7 +323,7 @@ battlecontroller-default-event-handler
   )
 
 (defbehavior battlecontroller-battle-begin battlecontroller ()
-  (set-setting! *setting-control* self 'music 'danger 0.0 0)
+  (set-setting! 'music 'danger 0.0 0)
   (let ((gp-0 (entity-actor-count (-> self entity) 'kill-actor)))
     (dotimes (s5-0 gp-0)
       (let ((v1-2 (entity-actor-lookup (-> self entity) 'kill-actor s5-0)))
@@ -358,7 +358,7 @@ battlecontroller-default-event-handler
   )
 
 (defbehavior battlecontroller-off battlecontroller ()
-  (clear-pending-settings-from-process *setting-control* self 'music)
+  (remove-setting! 'music)
   (let ((gp-0 (entity-actor-count (-> self entity) 'kill-actor)))
     (dotimes (s5-0 gp-0)
       (let ((v1-2 (entity-actor-lookup (-> self entity) 'kill-actor s5-0)))
@@ -390,20 +390,17 @@ battlecontroller-default-event-handler
 
 (defstate battlecontroller-idle (battlecontroller)
   :virtual #t
-  :event
-  battlecontroller-default-event-handler
-  :trans
-  (behavior ()
+  :event battlecontroller-default-event-handler
+  :trans (behavior ()
     0
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (if (-> self prespawn)
         (battlecontroller-fill-all-spawners)
         )
-    (while #t
+    (loop
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
         (set! (-> self state-time) (-> *display* base-frame-counter))
         (when (and *target*
@@ -423,26 +420,21 @@ battlecontroller-default-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior battlecontroller) #f)
+  :post (the-as (function none :behavior battlecontroller) #f)
   )
 
 (defstate battlecontroller-play-intro-camera (battlecontroller)
   :virtual #t
-  :event
-  battlecontroller-default-event-handler
-  :enter
-  (behavior ()
+  :event battlecontroller-default-event-handler
+  :enter (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (go-virtual battlecontroller-active)
     (none)
     )
@@ -458,10 +450,8 @@ battlecontroller-default-event-handler
 
 (defstate battlecontroller-active (battlecontroller)
   :virtual #t
-  :event
-  battlecontroller-default-event-handler
-  :trans
-  (behavior ()
+  :event battlecontroller-default-event-handler
+  :trans (behavior ()
     (if (and *target*
              (>= (-> self activate-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
              )
@@ -471,11 +461,10 @@ battlecontroller-default-event-handler
     (battlecontroller-update-spawners)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (battlecontroller-camera-on)
-    (while #t
+    (loop
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
         (set! (-> self state-time) (-> *display* base-frame-counter))
         (let ((gp-0 0))
@@ -504,8 +493,7 @@ battlecontroller-default-event-handler
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior battlecontroller) #f)
+  :post (the-as (function none :behavior battlecontroller) #f)
   )
 
 (defbehavior battlecontroller-special-contents? battlecontroller ()
@@ -540,14 +528,12 @@ battlecontroller-default-event-handler
 
 (defstate battlecontroller-die (battlecontroller)
   :virtual #t
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior battlecontroller)
     process-drawable-fuel-cell-handler
     )
-  :code
-  (behavior ()
-    (sound-play-by-name (static-sound-name "money-pickup") (new-sound-id) 1024 -2286 0 1 #f)
+  :code (behavior ()
+    (sound-play "money-pickup" :pitch -1.5 :position #f)
     (battlecontroller-battle-end)
     (battlecontroller-camera-off)
     (battlecontroller-set-task-completed)
@@ -610,8 +596,7 @@ battlecontroller-default-event-handler
     (process-entity-status! self (entity-perm-status dead) #t)
     (none)
     )
-  :post
-  (the-as (function none :behavior battlecontroller) #f)
+  :post (the-as (function none :behavior battlecontroller) #f)
   )
 
 (defmethod relocate battlecontroller ((obj battlecontroller) (arg0 int))

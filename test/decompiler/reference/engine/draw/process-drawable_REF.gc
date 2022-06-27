@@ -167,7 +167,7 @@
           (set! gp-0 (the-as cspace-array #f))
           (goto cfg-16)
           )
-        (let ((v1-10 ((method-of-type cspace dummy-9) (the-as cspace (-> gp-0 data)) #f)))
+        (let ((v1-10 ((method-of-type cspace reset-and-assign-geo!) (the-as cspace (-> gp-0 data)) #f)))
           (set! (-> v1-10 bone) (the-as bone (-> s4-1 bones)))
           (let ((a0-6 (-> gp-0 data)))
             (set! (-> a0-6 0 param0) cspace<-transformq!)
@@ -176,13 +176,13 @@
           (set! (-> v1-10 bone cache bone-matrix) (the-as uint 0))
           )
         0
-        (let ((v1-14 (dummy-9 (-> gp-0 data 1) #f)))
+        (let ((v1-14 (reset-and-assign-geo! (-> gp-0 data 1) #f)))
           (set! (-> v1-14 joint) (-> arg0 data 0))
           (set! (-> v1-14 bone) (-> s4-1 bones 1))
           (set! (-> v1-14 parent) (the-as cspace (-> gp-0 data)))
           (set! (-> v1-14 bone cache bone-matrix) (the-as uint 128))
           )
-        (let ((v1-17 (dummy-9 (-> gp-0 data 2) #f)))
+        (let ((v1-17 (reset-and-assign-geo! (-> gp-0 data 2) #f)))
           (set! (-> v1-17 joint) (-> arg0 data 1))
           (set! (-> v1-17 bone) (-> s4-1 bones 2))
           (set! (-> v1-17 parent) (the-as cspace (-> gp-0 data)))
@@ -200,7 +200,7 @@
                              0
                              )
                          )
-                   (v1-29 (dummy-9 (-> gp-0 data s3-0) #f))
+                   (v1-29 (reset-and-assign-geo! (-> gp-0 data s3-0) #f))
                    )
               (set! (-> v1-29 joint) s1-0)
               (set! (-> v1-29 bone) (-> s4-1 bones s3-0))
@@ -381,7 +381,7 @@
 (defun draw-joint-spheres ((arg0 process-drawable))
   (dotimes (s5-0 (-> arg0 node-list length))
     (let ((a2-0 (vector<-cspace! (new-stack-vector0) (-> arg0 node-list data s5-0))))
-      (add-debug-sphere #t (bucket-id debug-draw0) a2-0 819.2 (new 'static 'rgba :g #xff :a #x40))
+      (add-debug-sphere #t (bucket-id debug) a2-0 819.2 (new 'static 'rgba :g #xff :a #x40))
       )
     )
   #f
@@ -401,10 +401,9 @@
 
 ;; failed to figure out what this is:
 (defstate process-drawable-art-error (process-drawable)
-  :code
-  (behavior ((arg0 string))
+  :code (behavior ((arg0 string))
     (logior! (-> self entity extra perm status) (entity-perm-status bit-1))
-    (while #t
+    (loop
       (when *display-entity-errors*
         (let ((s5-0 add-debug-text-3d)
               (s4-0 #t)
@@ -429,10 +428,8 @@
 
 ;; failed to figure out what this is:
 (defstate process-drawable-idle (process-drawable)
-  :code
-  anim-loop
-  :post
-  ja-post
+  :code anim-loop
+  :post ja-post
   )
 
 ;; definition for method 14 of type process-drawable
@@ -456,15 +453,7 @@
                 )
               )
         )
-    (let ((s4-0 (load-to-heap-by-name
-                  (-> s1-0 art-group)
-                  (the-as string (-> arg0 art-group-name))
-                  #f
-                  global
-                  (-> arg0 version)
-                  )
-                )
-          )
+    (let ((s4-0 (load-to-heap-by-name (-> s1-0 art-group) (-> arg0 art-group-name) #f global (-> arg0 version))))
       (when (or (zero? s4-0) (or (not s4-0) (!= (-> s4-0 type) art-group)))
         (go process-drawable-art-error "art-group")
         (set! s3-0 (the-as draw-control #f))
@@ -616,44 +605,46 @@
 
 ;; definition for method 16 of type process-drawable
 ;; INFO: Return type mismatch trsqv vs collide-shape.
-(defmethod apply-alignment process-drawable ((obj process-drawable) (arg0 int) (arg1 transformq) (arg2 vector))
-  (when (logtest? arg0 7)
+(defmethod apply-alignment process-drawable ((obj process-drawable) (arg0 align-opts) (arg1 transformq) (arg2 vector))
+  (when (logtest? arg0 (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel))
     (let* ((body-T-world (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root quat)))
            (world-T-body (matrix-transpose! (new 'stack-no-clear 'matrix) body-T-world))
            (grav-rt-body (vector-matrix*! (new 'stack-no-clear 'vector) (-> *standard-dynamics* gravity) world-T-body))
            (vel-rt-body (vector-matrix*! (new 'stack-no-clear 'vector) (-> obj root transv) world-T-body))
            )
-      (if (logtest? arg0 2048)
+      (if (logtest? arg0 (align-opts no-gravity))
           (set-vector! grav-rt-body 0.0 0.0 0.0 1.0)
           )
-      (when (logtest? arg0 1)
+      (when (logtest? arg0 (align-opts adjust-x-vel))
         (set! (-> vel-rt-body x) (+ (* (-> arg1 trans x) (-> arg2 x) (-> *display* frames-per-second))
                                     (* (-> grav-rt-body x) (-> *display* seconds-per-frame))
                                     )
               )
-        (if (zero? (logand arg0 12))
+        (if (zero? (logand arg0 (align-opts adjust-xz-vel keep-other-velocities)))
             (set! (-> vel-rt-body z) 0.0)
             )
         )
-      (if (and (logtest? arg0 2) (not (and (logtest? arg0 4096) (= (-> arg1 trans y) 0.0))))
+      (if (and (logtest? arg0 (align-opts adjust-y-vel))
+               (not (and (logtest? arg0 (align-opts ignore-y-if-zero)) (= (-> arg1 trans y) 0.0)))
+               )
           (set! (-> vel-rt-body y) (+ (* (-> arg1 trans y) (-> arg2 y) (-> *display* frames-per-second))
                                       (* (-> grav-rt-body y) (-> *display* seconds-per-frame))
                                       )
                 )
           )
-      (when (logtest? arg0 4)
+      (when (logtest? arg0 (align-opts adjust-xz-vel))
         (set! (-> vel-rt-body z) (+ (* (-> arg1 trans z) (-> arg2 z) (-> *display* frames-per-second))
                                     (* (-> grav-rt-body z) (-> *display* seconds-per-frame))
                                     )
               )
-        (if (zero? (logand arg0 9))
+        (if (zero? (logand arg0 (align-opts adjust-x-vel keep-other-velocities)))
             (set! (-> vel-rt-body x) 0.0)
             )
         )
       (vector-matrix*! (-> obj root transv) vel-rt-body body-T-world)
       )
     )
-  (if (logtest? arg0 16)
+  (if (logtest? arg0 (align-opts adjust-quat))
       (quaternion-normalize! (quaternion*! (-> obj root quat) (-> obj root quat) (-> arg1 quat)))
       )
   (the-as collide-shape (-> obj root))
@@ -761,7 +752,7 @@
   )
 
 ;; definition for function ja-channel-push!
-(defbehavior ja-channel-push! process-drawable ((arg0 int) (arg1 int))
+(defbehavior ja-channel-push! process-drawable ((arg0 int) (arg1 time-frame))
   (cond
     ((or (zero? (-> self skel active-channels))
          (zero? arg1)
@@ -1017,7 +1008,7 @@
   )
 
 ;; definition for method 9 of type joint-control
-(defmethod dummy-9 joint-control ((obj joint-control))
+(defmethod current-cycle-distance joint-control ((obj joint-control))
   (cond
     ((< (the-as int (-> obj root-channel)) (the-as int (-> obj channel (-> obj active-channels))))
      (let ((s5-0 (-> obj root-channel (-> obj root-channel 0 group-size)))
@@ -1052,7 +1043,7 @@
 ;; definition for function anim-loop
 (defbehavior anim-loop process-drawable ()
   (logior! (-> self mask) (process-mask sleep-code))
-  (while #t
+  (loop
     (nop!)
     (suspend)
     )
@@ -1096,8 +1087,8 @@
 ;; definition for function process-drawable-delay-player
 (defbehavior process-drawable-delay-player process-drawable ((arg0 time-frame))
   (while (and *target*
-              (logtest? (-> *target* control unknown-surface00 flags) 2048)
-              (zero? (logand (-> *target* control status) 1))
+              (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+              (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
               )
     (suspend)
     )
@@ -1155,7 +1146,7 @@
           )
       (set! (-> s4-0 options) (fact-options))
       (if arg2
-          (set! (-> s4-0 options) (fact-options fop6))
+          (set! (-> s4-0 options) (fact-options instant-collect))
           )
       (when (and (nonzero? s5-0) (not (task-complete? *game-info* s5-0)))
         (label cfg-12)
@@ -1215,11 +1206,10 @@
             (else
               (set! s5-0 (cond
                            ((valid? (-> s2-0 frame-group) art-joint-anim "joint-control frame-group" #t *valid-con*)
-                            (when (not
-                                    (and (>= (the int (-> s2-0 frame-num)) 0)
-                                         (< (the int (-> s2-0 frame-num)) (-> s2-0 frame-group data 0 length))
-                                         )
-                                    )
+                            (when (not (and (>= (the int (-> s2-0 frame-num)) 0)
+                                            (< (the int (-> s2-0 frame-num)) (-> s2-0 frame-group data 0 length))
+                                            )
+                                       )
                               (format
                                 *valid-con*
                                 "ERROR: ~`joint-control-channel`P #~D has an invalid frame-num ~F/~D [0-~D]~%"

@@ -4,9 +4,12 @@
  */
 
 #include "Register.h"
+
 #include <stdexcept>
-#include "third-party/fmt/core.h"
+
 #include "common/util/Assert.h"
+
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 namespace Reg {
@@ -125,14 +128,12 @@ Register::Register(Reg::RegisterKind kind, uint32_t num) {
     case Reg::COP0:
     case Reg::VI:
       if (num > 32) {
-        fmt::print("RegisterKind: {}, greater than 32: {}\n", kind, num);
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("RegisterKind: {}, greater than 32: {}", kind, num));
       }
       break;
     case Reg::SPECIAL:
       if (num > 4) {
-        fmt::print("Special RegisterKind: {}, greater than 4: {}\n", kind, num);
-        ASSERT(false);
+        ASSERT_MSG(false, fmt::format("Special RegisterKind: {}, greater than 4: {}", kind, num));
       }
       break;
     default:

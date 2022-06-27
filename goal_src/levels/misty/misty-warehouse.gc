@@ -9,6 +9,9 @@
 
 ;; DECOMP BEGINS
 
+(import "goal_src/import/silostep-ag.gc")
+(import "goal_src/import/rounddoor-ag.gc")
+
 (deftype silostep (process-drawable)
   ((anim-limit  float   :offset-assert 176)
    (cam-tracker handle  :offset-assert 184)
@@ -25,17 +28,13 @@
   )
 
 
-(defskelgroup *silostep-sg* silostep
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 2 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *silostep-sg* silostep silostep-lod0-jg silostep-idle-ja
+              ((silostep-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 8)
+              )
 
 (defstate silostep-idle (silostep)
-  :event
-  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (case arg2
       (('trigger)
        (go silostep-camera)
@@ -45,65 +44,48 @@
        )
       )
     )
-  :code
-  (behavior ()
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-0
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        num-func-identity
-        )
-      (set! (-> gp-0 frame-num) 0.0)
-      )
+  :code (behavior ()
+    (ja :group! (-> self draw art-group data 2) :num! min)
     (transform-post)
-    (while #t
+    (loop
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior silostep) ja-post)
+  :post (the-as (function none :behavior silostep) ja-post)
   )
 
 (defbehavior misty-camera-view silostep ()
-  (let ((gp-0 (get-process *default-dead-pool* camera-tracker #x4000)))
-    (set! (-> self cam-tracker)
-          (ppointer->handle (when gp-0
-                              (let ((t9-1 (method-of-type camera-tracker activate)))
-                                (t9-1 (the-as camera-tracker gp-0) self 'camera-tracker (the-as pointer #x70004000))
+  (set! (-> self cam-tracker)
+        (ppointer->handle (process-spawn
+                            camera-tracker
+                            :init camera-tracker-init
+                            (lambda :behavior camera-tracker
+                              ()
+                              (while (not (process-grab? *target*))
+                                (suspend)
                                 )
-                              (run-now-in-process
-                                gp-0
-                                camera-tracker-init
-                                (lambda :behavior camera-tracker
-                                  ()
-                                  (while (not (process-grab? *target*))
-                                    (suspend)
-                                    )
-                                  (camera-change-to "camera-160" 150 #f)
-                                  (let ((gp-0 (-> *display* base-frame-counter)))
-                                    (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 3))
-                                      (suspend)
-                                      )
-                                    )
-                                  (while (not (process-release? (handle->process (-> self grab-target))))
-                                    (suspend)
-                                    )
-                                  (camera-change-to (the-as string 'base) 150 #f)
-                                  (none)
+                              (camera-change-to "camera-160" 150 #f)
+                              (let ((gp-0 (-> *display* base-frame-counter)))
+                                (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 3))
+                                  (suspend)
                                   )
                                 )
-                              (-> gp-0 ppointer)
+                              (while (not (process-release? (handle->process (-> self grab-target))))
+                                (suspend)
+                                )
+                              (camera-change-to (the-as string 'base) 150 #f)
+                              (none)
                               )
+                            :to self
                             )
-          )
-    )
+                          )
+        )
   (none)
   )
 
 (defstate silostep-camera (silostep)
-  :code
-  (behavior ()
+  :code (behavior ()
     (misty-camera-view)
     (let* ((gp-0 (get-task-control (game-task misty-warehouse)))
            (v1-1 (get-reminder gp-0 0))
@@ -116,55 +98,35 @@
         (suspend)
         )
       )
-    (sound-play-by-name (static-sound-name "arena-steps") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "arena-steps")
     (send-to-all-after (-> self link) 'trigger-rise)
     (go silostep-rise #f)
     (none)
     )
-  :post
-  (the-as (function none :behavior silostep) ja-post)
+  :post (the-as (function none :behavior silostep) ja-post)
   )
 
 (defstate silostep-rise (silostep)
-  :code
-  (behavior ((arg0 symbol))
+  :code (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status complete) #t)
     (when (not arg0)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 2)))
-        (set! (-> a0-2 param 0) (-> self anim-limit))
-        (set! (-> a0-2 param 1) 1.0)
-        (set! (-> a0-2 frame-num) 0.0)
-        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 2)) num-func-seek!)
-        )
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! (-> self anim-limit)) :frame-num 0.0)
       (until (ja-done? 0)
         (rider-trans)
         (rider-post)
         (suspend)
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 param 0) (-> self anim-limit))
-          (set! (-> a0-3 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek! (-> self anim-limit)))
         )
       )
-    (let ((gp-1 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-        gp-1
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        num-func-identity
-        )
-      (set! (-> gp-1 frame-num) (-> self anim-limit))
-      )
+    (ja :group! (-> self draw art-group data 2) :num! (identity (-> self anim-limit)))
     (rider-post)
-    (while #t
+    (loop
       (ja-post)
       (suspend)
       )
     (none)
     )
-  :post
-  (the-as (function none :behavior silostep) #f)
+  :post (the-as (function none :behavior silostep) #f)
   )
 
 (defmethod init-from-entity! silostep ((obj silostep) (arg0 entity-actor))
@@ -204,13 +166,10 @@
   (none)
   )
 
-(defskelgroup *rounddoor-sg* rounddoor
-  0
-  3
-  ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 0 0 8)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *rounddoor-sg* rounddoor rounddoor-lod0-jg rounddoor-idle-ja
+              ((rounddoor-lod0-mg (meters 20)) (rounddoor-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
 
 (deftype rounddoor (eco-door)
   ()

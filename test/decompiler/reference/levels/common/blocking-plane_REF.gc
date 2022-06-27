@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/ef-plane-ag.gc")
+
 ;; definition of type blocking-plane
 (deftype blocking-plane (process-drawable)
   ()
@@ -22,20 +24,16 @@
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *ef-plane-sg* ef-plane
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 0 0 30)
-  :longest-edge (meters 0)
-  )
+(defskelgroup *ef-plane-sg* ef-plane ef-plane-lod0-jg ef-plane-idle-ja
+              ((ef-plane-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 30)
+              )
 
 ;; failed to figure out what this is:
 (defstate blocking-plane-idle (blocking-plane)
-  :code
-  (behavior ()
+  :code (behavior ()
     (transform-post)
-    (while #t
+    (loop
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
@@ -96,33 +94,23 @@
 
 ;; definition for function blocking-plane-spawn
 ;; INFO: Return type mismatch int vs none.
-(defun blocking-plane-spawn ((arg0 curve-control))
-  (with-pp
-    (cond
-      ((or (not arg0) (logtest? (-> arg0 flags) (path-control-flag not-found)))
-       )
-      (else
-        (let ((s5-0 (the int (the float (+ (-> arg0 curve num-cverts) -1))))
-              (s4-0 0)
-              )
-          (while (< s4-0 s5-0)
-            (let ((s3-0 (get-process *default-dead-pool* blocking-plane #x4000)))
-              (when s3-0
-                (let ((t9-1 (method-of-type blocking-plane activate)))
-                  (t9-1 (the-as blocking-plane s3-0) pp 'blocking-plane (the-as pointer #x70004000))
-                  )
-                (run-now-in-process s3-0 blocking-plane-init-by-other arg0 s4-0)
-                (-> s3-0 ppointer)
-                )
-              )
-            (+! s4-0 2)
+(defbehavior blocking-plane-spawn process ((arg0 curve-control))
+  (cond
+    ((or (not arg0) (logtest? (-> arg0 flags) (path-control-flag not-found)))
+     )
+    (else
+      (let ((s5-0 (the int (the float (+ (-> arg0 curve num-cverts) -1))))
+            (s4-0 0)
             )
+        (while (< s4-0 s5-0)
+          (process-spawn blocking-plane arg0 s4-0 :to self)
+          (+! s4-0 2)
           )
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition for function blocking-plane-destroy

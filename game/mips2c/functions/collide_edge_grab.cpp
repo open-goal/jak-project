@@ -1,7 +1,8 @@
 
 //--------------------------MIPS2C---------------------
+#include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+using namespace jak1;
 namespace Mips2C {
 namespace method_16_collide_edge_work {
 struct Cache {
@@ -104,6 +105,12 @@ u64 execute(void* ctxt) {
   c->vmadd_bc(DEST::w, BC::z, vf9, vf0, vf9);       // vmaddz.w vf9, vf0, vf9
   // nop                                            // sll r0, r0, 0
   c->vrsqrt(vf0, BC::w, vf9, BC::w);                // vrsqrt Q, vf0.w, vf9.w
+  if (c->vfs[vf9].f[3] == 0.f) {
+    // hack to prevent NaNs from getting in the collide data if we have a zero-area triangle
+    // this value doesn't matter - the normal is zeros anyway and the triangle will be rejected
+    // by every other step.
+    c->Q = 0.f;
+  }
   // nop                                            // sll r0, r0, 0
   c->dsll32(t5, t5, 12);                            // dsll32 t5, t5, 12
   c->dsrl32(t5, t5, 26);                            // dsrl32 t5, t5, 26
@@ -589,7 +596,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_10_collide_edge_hold_list {
 u64 execute(void* ctxt) {
@@ -683,7 +690,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_18_collide_edge_work {
 struct Cache {

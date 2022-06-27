@@ -1,11 +1,13 @@
 #include <regex>
-#include "gtest/gtest.h"
+
+#include "decompiler/Disasm/InstructionParser.h"
+#include "decompiler/Function/Warnings.h"
 #include "decompiler/IR2/AtomicOp.h"
 #include "decompiler/analysis/atomic_op_builder.h"
-#include "decompiler/Disasm/InstructionParser.h"
+#include "gtest/gtest.h"
+
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/format.h"
-#include "decompiler/Function/Warnings.h"
 
 using namespace decompiler;
 
@@ -24,6 +26,7 @@ std::string assembly_from_list(std::vector<std::string> assemblyLines) {
   return str;
 }
 
+// jak 1 specific
 void test_case(std::string assembly_lines,
                std::vector<std::string> output_lines,
                std::vector<std::vector<std::string>> write_regs,
@@ -45,7 +48,7 @@ void test_case(std::string assembly_lines,
   // treat the entire program as a single basic block, and convert!
   DecompWarnings warnings;
   convert_block_to_atomic_ops(0, prg.instructions.begin(), prg.instructions.end(), prg.labels,
-                              &container, warnings);
+                              &container, warnings, GameVersion::Jak1);
 
   // count operations
   EXPECT_EQ(container.ops.size(), output_lines.size());
@@ -130,7 +133,7 @@ TEST(DecompilerAtomicOpBuilder, RegUseDuplication) {
   FunctionAtomicOps container;
   DecompWarnings warnings;
   convert_block_to_atomic_ops(0, prg.instructions.begin(), prg.instructions.end(), prg.labels,
-                              &container, warnings);
+                              &container, warnings, GameVersion::Jak1);
   ASSERT_EQ(1, container.ops.size());
   auto& op = container.ops.at(0);
   for (const auto& reg_group : {op->read_regs(), op->write_regs(), op->clobber_regs()}) {

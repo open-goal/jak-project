@@ -5,18 +5,19 @@
  * Display for graphics. This is the game window, distinct from the runtime console.
  */
 
-#include "pipelines/opengl.h"
-#include "gfx.h"
-#include <vector>
 #include <memory>
+#include <vector>
+
+#include "gfx.h"
+
+#include "common/util/Assert.h"
 
 // a GfxDisplay class is equivalent to a window that displays stuff. This holds an actual internal
 // window pointer used by whichever renderer. It also contains functions for setting and
 // retrieving certain window parameters.
+// Maybe this is better implemented as an abstract class and renderers would have overrides?
 class GfxDisplay {
   const char* m_title;
-
-  const GfxRendererModule* m_renderer = nullptr;
 
   // NOT actual size! just backups
   int m_width;
@@ -25,52 +26,59 @@ class GfxDisplay {
   int m_xpos;
   int m_ypos;
 
-  int m_fullscreen_mode = 0;
+  GfxDisplayMode m_fullscreen_target_mode = GfxDisplayMode::Windowed;
+  GfxDisplayMode m_last_fullscreen_mode;
   int m_fullscreen_screen;
-  int m_fullscreen_target_mode = 0;
   int m_fullscreen_target_screen;
+  bool m_imgui_visible;
+
+ protected:
+  bool m_main;
 
  public:
-  GfxDisplay(GLFWwindow* a_window);  // OpenGL window constructor
-  ~GfxDisplay();  // destructor - this calls the renderer's function for getting rid of a window,
-                  // and we can then get rid of the GfxDisplay itself
+  virtual ~GfxDisplay() {}
 
-  // all kinds of windows for the display
-  union {
-    void* window_generic_ptr = nullptr;
-    GLFWwindow* window_glfw;
-  };
-
-  bool is_active() const { return window_generic_ptr != nullptr; }
-  void set_renderer(GfxPipeline pipeline);
-  void set_window(GLFWwindow* window);
+  virtual void* get_window() const = 0;
+  virtual void set_size(int w, int h) = 0;
+  virtual void update_fullscreen(GfxDisplayMode mode, int screen) = 0;
+  virtual void get_scale(float* x, float* y) = 0;
+  virtual int get_screen_vmode_count() = 0;
+  virtual void get_screen_size(int vmode_idx, s32* w, s32* h) = 0;
+  virtual int get_screen_rate(int vmode_idx) = 0;
+  virtual void get_position(int* x, int* y) = 0;
+  virtual void get_size(int* w, int* h) = 0;
+  virtual GfxDisplayMode get_fullscreen() = 0;
+  virtual void render() = 0;
+  virtual void set_lock(bool lock) = 0;
+  virtual bool minimized() = 0;
+  bool is_active() const { return get_window() != nullptr; }
   void set_title(const char* title);
-  void set_size(int w, int h);
-  void get_scale(float* w, float* h);
   const char* title() const { return m_title; }
 
-  bool fullscreen_pending() { return m_fullscreen_mode != m_fullscreen_target_mode; }
+  bool fullscreen_pending() { return get_fullscreen() != m_fullscreen_target_mode; }
   void fullscreen_flush() {
-    m_renderer->set_fullscreen(this, m_fullscreen_target_mode, m_fullscreen_target_screen);
-    m_fullscreen_mode = m_fullscreen_target_mode;
+    update_fullscreen(m_fullscreen_target_mode, m_fullscreen_target_screen);
+    // TODO no
     m_fullscreen_screen = m_fullscreen_target_screen;
   }
-  void set_fullscreen(int mode, int screen) {
+  void set_fullscreen(GfxDisplayMode mode, int screen) {
     m_fullscreen_target_mode = mode;
     m_fullscreen_target_screen = screen;
   }
-  int fullscreen_mode() { return m_fullscreen_mode; }
-  int fullscreen_screen() { return m_fullscreen_screen; }
+  void update_last_fullscreen_mode() { m_last_fullscreen_mode = get_fullscreen(); }
+  GfxDisplayMode last_fullscreen_mode() const { return m_last_fullscreen_mode; }
+  int fullscreen_screen() const { return m_fullscreen_screen; }
+  void set_imgui_visible(bool visible) { m_imgui_visible = visible; }
+  bool is_imgui_visible() const { return m_imgui_visible; }
+  bool windowed() { return get_fullscreen() == GfxDisplayMode::Windowed; }
   void backup_params();
-  int width_backup() { return m_width; }
-  int height_backup() { return m_height; }
-  int xpos_backup() { return m_xpos; }
-  int ypos_backup() { return m_ypos; }
+  int width_backup() const { return m_width; }
+  int height_backup() const { return m_height; }
+  int xpos_backup() const { return m_xpos; }
+  int ypos_backup() const { return m_ypos; }
 
   int width();
   int height();
-
-  void render_graphics();
 };
 
 namespace Display {

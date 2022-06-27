@@ -74,10 +74,11 @@
   (set! (-> self foot-offset) (-> *CAMERA_MASTER-bank* onscreen-foot-height))
   (set! (-> self head-offset) (-> *CAMERA_MASTER-bank* onscreen-head-height))
   (set! (-> self target-height) (-> *CAMERA_MASTER-bank* target-height))
-  (set! (-> self on-ground) (not (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                                      (zero? (logand (-> *target* control status) 1))
-                                      )
-                                 )
+  (set! (-> self on-ground)
+        (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+                  (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                  )
+             )
         )
   (set! (-> self on-pole) #f)
   (set! (-> self ease-t) 1.0)
@@ -108,7 +109,9 @@
       )
     )
   (cond
-    ((and (logtest? (-> *target* water flags) 4096) (zero? (logand (-> *target* water flags) 16)))
+    ((and (logtest? (-> *target* water flags) (water-flags wt12))
+          (zero? (logand (-> *target* water flags) (water-flags wt04)))
+          )
      (set! (-> self under-water) 2)
      )
     (else
@@ -339,7 +342,9 @@
            )
          )
        (cond
-         ((and (logtest? (-> *target* water flags) 4096) (zero? (logand (-> *target* water flags) 16)))
+         ((and (logtest? (-> *target* water flags) (water-flags wt12))
+               (zero? (logand (-> *target* water flags) (water-flags wt04)))
+               )
           (set! (-> self under-water) 2)
           )
          ((> (-> self under-water) 0)
@@ -389,17 +394,18 @@
            (vector--float*! s5-2 (-> self tpos-curr) (-> self local-down) (-> self target-height))
            (vector-float*! gp-5 (-> self tgt-rot-mat vector 2) 4915.2)
            (vector-! s5-2 s5-2 gp-5)
-           (let ((f0-20 (fill-and-probe-using-line-sphere
-                          *collide-cache*
-                          s5-2
-                          gp-5
-                          4300.8
-                          (collide-kind background)
-                          (the-as process #f)
-                          s4-2
-                          4098
-                          )
-                        )
+           (let ((f0-20
+                   (fill-and-probe-using-line-sphere
+                     *collide-cache*
+                     s5-2
+                     gp-5
+                     4300.8
+                     (collide-kind background)
+                     (the-as process #f)
+                     s4-2
+                     (new 'static 'pat-surface :nocamera #x1 :nolineofsight #x1)
+                     )
+                   )
                  )
              (if (and (< 0.0 f0-20) (< f0-20 1.0))
                  (vector+float*! (-> self tpos-curr) (-> self tpos-curr) gp-5 (+ -1.0 f0-20))
@@ -407,16 +413,17 @@
              )
            )
          )
-       (set! (-> self on-ground) (not (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                                           (zero? (logand (-> *target* control status) 1))
-                                           )
-                                      )
+       (set! (-> self on-ground)
+             (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+                       (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                       )
+                  )
              )
        (let ((gp-6 (new-stack-vector0)))
          0.0
          (cond
-           ((and (and (logtest? (-> *target* control unknown-surface00 flags) 2048)
-                      (zero? (logand (-> *target* control status) 1))
+           ((and (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+                      (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
                       )
                  (!= (-> *target* control unknown-surface00 name) 'launch-jump)
                  )
@@ -462,7 +469,7 @@
              (vector-! gp-6 (-> self tpos-curr) (-> self tpos-old))
              (let ((f0-38 (vector-dot gp-6 (-> self local-down))))
                (cond
-                 ((logtest? (-> *target* water flags) 512)
+                 ((logtest? (-> *target* water flags) (water-flags wt09))
                   (set! (-> self upspeed) 0.0)
                   )
                  ((< 0.0 f0-38)
@@ -491,7 +498,7 @@
            (reset-follow)
            )
        (let ((v1-196 (-> *target* water flags)))
-         (when (and (logtest? v1-196 512) (logtest? v1-196 6144))
+         (when (and (logtest? v1-196 (water-flags wt09)) (logtest? v1-196 (water-flags wt11 wt12)))
            (let ((f0-45 (- (-> *target* water base-height) (-> self target-height))))
              (if (< (-> self tpos-curr-adj y) f0-45)
                  (set! (-> self tpos-curr-adj y) f0-45)
@@ -538,7 +545,7 @@
 (defun in-cam-entity-volume? ((arg0 vector) (arg1 entity) (arg2 float) (arg3 symbol))
   (local-vars (sv-16 res-tag))
   (let ((s2-0 0))
-    (while #t
+    (loop
       (set! sv-16 (new 'static 'res-tag))
       (let ((v1-1 (the-as object ((method-of-type res-lump get-property-data)
                                   arg1
@@ -588,15 +595,9 @@
     (set! (-> self stringCliffHeight) 163840.0)
     (send-event *camera* 'point-of-interest #f)
     (set! (-> *camera-combiner* tracking point-of-interest-blend target) 0.0)
-    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-1 from) self)
-      (set! (-> a1-1 num-params) 1)
-      (set! (-> a1-1 message) 'query-state)
-      (set! (-> a1-1 param 0) (the-as uint *camera-base-mode*))
-      (if (not (send-event-function *camera* a1-1))
-          (send-event *camera* 'change-state *camera-base-mode* 450)
-          )
-      )
+    (if (not (send-event *camera* 'query-state *camera-base-mode*))
+        (send-event *camera* 'change-state *camera-base-mode* (seconds 1.5))
+        )
     (set! (-> *camera-combiner* tracking tilt-adjust target) (-> *CAMERA-bank* default-tilt-adjust))
     (send-event *camera* 'clear-slave-option #x10000)
     )
@@ -626,15 +627,9 @@
       (set! (-> self stringMaxLength) (-> *CAMERA-bank* default-string-max-z))
       )
   (set! (-> self stringCliffHeight) (cam-slave-get-float arg0 'stringCliffHeight 163840.0))
-  (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-7 from) self)
-    (set! (-> a1-7 num-params) 1)
-    (set! (-> a1-7 message) 'query-state)
-    (set! (-> a1-7 param 0) (the-as uint *camera-base-mode*))
-    (if (not (send-event-function *camera* a1-7))
-        (send-event *camera* 'change-state *camera-base-mode* 450)
-        )
-    )
+  (if (not (send-event *camera* 'query-state *camera-base-mode*))
+      (send-event *camera* 'change-state *camera-base-mode* (seconds 1.5))
+      )
   (if (logtest? #x10000 (cam-slave-get-flags (-> self cam-entity) 'flags))
       (send-event *camera* 'set-slave-option #x10000)
       )
@@ -800,90 +795,82 @@
 
 ;; definition for function master-check-regions
 (defbehavior master-check-regions camera-master ()
-  (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 1)
-    (set! (-> a1-0 message) 'query-state)
-    (set! (-> a1-0 param 0) (the-as uint cam-eye))
-    (cond
-      ((send-event-function *camera* a1-0)
-       #f
-       )
-      ((or (not *target*) (logtest? (-> self master-options) 1))
-       (master-unset-region)
-       )
-      ((and (logtest? (-> self master-options) 4)
-            (not (-> self on-ground))
-            (or (not (-> self cam-entity)) (zero? (logand #x20000 (cam-slave-get-flags (-> self cam-entity) 'flags))))
-            )
-       #f
-       )
-      ((and (-> self cam-entity)
-            (not (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 0.0 'cutoutvol))
-            (or (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'pvol)
-                (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'vol)
-                (and (not ((method-of-type res-lump get-property-data)
-                           (-> self cam-entity)
-                           'pvol
-                           'exact
-                           0.0
-                           (the-as pointer #f)
-                           (the-as (pointer res-tag) #f)
-                           *res-static-buf*
-                           )
-                          )
-                     (not ((method-of-type res-lump get-property-data)
-                           (-> self cam-entity)
-                           'vol
-                           'exact
-                           0.0
-                           (the-as pointer #f)
-                           (the-as (pointer res-tag) #f)
-                           *res-static-buf*
-                           )
-                          )
-                     )
-                )
-            )
-       #f
-       )
-      (else
-        (let ((v1-17 (-> *camera-engine* alive-list next0)))
-          *camera-engine*
-          (let ((gp-5 (-> v1-17 next0)))
-            (while (!= v1-17 (-> *camera-engine* alive-list-end))
-              (let ((s5-1 (-> (the-as connection v1-17) param1)))
-                (when (and (not (in-cam-entity-volume? (target-pos 0) (the-as entity s5-1) 1024.0 'cutoutvol))
-                           (in-cam-entity-volume? (target-pos 0) (the-as entity s5-1) 0.0 'vol)
-                           )
-                  (if (master-switch-to-entity (the-as entity s5-1))
-                      (return #t)
-                      )
-                  )
-                )
-              (set! v1-17 gp-5)
-              *camera-engine*
-              (set! gp-5 (-> gp-5 next0))
+  (cond
+    ((send-event *camera* 'query-state cam-eye)
+     #f
+     )
+    ((or (not *target*) (logtest? (-> self master-options) 1))
+     (master-unset-region)
+     )
+    ((and (logtest? (-> self master-options) 4)
+          (not (-> self on-ground))
+          (or (not (-> self cam-entity)) (zero? (logand #x20000 (cam-slave-get-flags (-> self cam-entity) 'flags))))
+          )
+     #f
+     )
+    ((and (-> self cam-entity)
+          (not (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 0.0 'cutoutvol))
+          (or (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'pvol)
+              (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'vol)
+              (and (not ((method-of-type res-lump get-property-data)
+                         (-> self cam-entity)
+                         'pvol
+                         'exact
+                         0.0
+                         (the-as pointer #f)
+                         (the-as (pointer res-tag) #f)
+                         *res-static-buf*
+                         )
+                        )
+                   (not ((method-of-type res-lump get-property-data)
+                         (-> self cam-entity)
+                         'vol
+                         'exact
+                         0.0
+                         (the-as pointer #f)
+                         (the-as (pointer res-tag) #f)
+                         *res-static-buf*
+                         )
+                        )
+                   )
               )
+          )
+     #f
+     )
+    (else
+      (let ((v1-17 (-> *camera-engine* alive-list next0)))
+        *camera-engine*
+        (let ((gp-5 (-> v1-17 next0)))
+          (while (!= v1-17 (-> *camera-engine* alive-list-end))
+            (let ((s5-1 (-> (the-as connection v1-17) param1)))
+              (when (and (not (in-cam-entity-volume? (target-pos 0) (the-as entity s5-1) 1024.0 'cutoutvol))
+                         (in-cam-entity-volume? (target-pos 0) (the-as entity s5-1) 0.0 'vol)
+                         )
+                (if (master-switch-to-entity (the-as entity s5-1))
+                    (return #t)
+                    )
+                )
+              )
+            (set! v1-17 gp-5)
+            *camera-engine*
+            (set! gp-5 (-> gp-5 next0))
             )
           )
-        (master-unset-region)
         )
+      (master-unset-region)
       )
     )
   )
 
 ;; failed to figure out what this is:
 (defstate cam-master-active (camera-master)
-  :enter
-  (behavior ()
+  :enter (behavior ()
     (if (and (nonzero? camera-master-debug) *debug-segment*)
         (add-connection *debug-engine* self camera-master-debug self #f #f)
         )
     (none)
     )
-  :trans
-  (behavior ()
+  :trans (behavior ()
     (when (not (paused?))
       (vector-negate!
         (-> self local-down)
@@ -893,9 +880,8 @@
       )
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (if (and *dproc* *debug-segment*)
           (add-frame
             (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
@@ -911,15 +897,9 @@
       (master-track-target)
       (set! (-> last-try-to-look-at-data horz) 0.0)
       (set! (-> last-try-to-look-at-data vert) 0.0)
-      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-1 from) self)
-        (set! (-> a1-1 num-params) 1)
-        (set! (-> a1-1 message) 'slave-option?)
-        (set! (-> a1-1 param 0) (the-as uint #x4000))
-        (when (send-event-function *camera* a1-1)
-          (set! (-> self string-min target y) 18432.0)
-          (set! (-> self string-max target y) 18432.041)
-          )
+      (when (send-event *camera* 'slave-option? #x4000)
+        (set! (-> self string-min target y) 18432.0)
+        (set! (-> self string-max target y) 18432.041)
         )
       (when (not (paused?))
         (update! (-> self string-min) (the-as vector #f))
@@ -968,9 +948,8 @@
 
 ;; failed to figure out what this is:
 (defstate list-keeper-active (camera-master)
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (change-to-last-brother self)
       (suspend)
       )
@@ -1026,34 +1005,18 @@
     )
   (set! (-> self pov-handle) (the-as handle #f))
   (set! (-> self pov-bone) 0)
-  (let ((gp-1 (get-process *camera-dead-pool* list-keeper #x4000)))
-    (cond
-      ((when gp-1
-         (let ((t9-5 (method-of-type list-keeper activate)))
-           (t9-5 (the-as list-keeper gp-1) self 'list-keeper (the-as pointer #x70004000))
-           )
-         (run-next-time-in-process gp-1 list-keeper-init)
-         (-> gp-1 ppointer)
-         )
-       )
-      (else
-        (format 0 "ERROR <GMJ>: master camera list keeper failed to activate~%")
-        )
+  (cond
+    ((process-spawn-function list-keeper list-keeper-init :from *camera-dead-pool* :to self)
+     )
+    (else
+      (format 0 "ERROR <GMJ>: master camera list keeper failed to activate~%")
       )
     )
-  (let ((gp-2 (get-process *camera-dead-pool* camera-slave #x4000)))
-    (cond
-      ((when gp-2
-         (let ((t9-9 (method-of-type camera-slave activate)))
-           (t9-9 (the-as camera-slave gp-2) self 'camera-slave (the-as pointer #x70004000))
-           )
-         (run-next-time-in-process gp-2 cam-slave-init cam-free-floating #f)
-         (-> gp-2 ppointer)
-         )
-       )
-      (else
-        (format 0 "ERROR <GMJ>: first slave failed to activate~%")
-        )
+  (cond
+    ((process-spawn-function camera-slave cam-slave-init cam-free-floating #f :from *camera-dead-pool* :to self)
+     )
+    (else
+      (format 0 "ERROR <GMJ>: first slave failed to activate~%")
       )
     )
   (set! (-> self water-drip) (create-launch-control group-rain-screend-drop self))

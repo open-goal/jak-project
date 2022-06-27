@@ -1,6 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(import "goal_src/import/robotboss-ag.gc")
+
 ;; definition of type robotboss-dda
 (deftype robotboss-dda (structure)
   ((blue-bomb-time       float  :offset-assert   0)
@@ -178,26 +180,16 @@
 
 ;; definition for function target-has-all-the-cells?
 ;; INFO: Return type mismatch basic vs symbol.
-(defun target-has-all-the-cells? ()
-  (with-pp
-    (the-as symbol (and *target* (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-                                   (set! (-> a1-0 from) pp)
-                                   (set! (-> a1-0 num-params) 2)
-                                   (set! (-> a1-0 message) 'query)
-                                   (set! (-> a1-0 param 0) (the-as uint 'pickup))
-                                   (set! (-> a1-0 param 1) (the-as uint 6))
-                                   (>= (the int (the-as float (send-event-function *target* a1-0))) 100)
-                                   )
-                        )
-            )
+(defbehavior target-has-all-the-cells? process ()
+  (the-as
+    symbol
+    (and *target* (>= (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 100))
     )
   )
 
 ;; failed to figure out what this is:
-(defskelgroup *robotboss-sg* robotboss
-  0
-  2
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 -10 0 80)
-  :longest-edge (meters 19.9)
-  )
+(defskelgroup *robotboss-sg* robotboss robotboss-basic-lod0-jg robotboss-idle-ja
+              ((robotboss-basic-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -10 0 80)
+              :longest-edge (meters 19.9)
+              )

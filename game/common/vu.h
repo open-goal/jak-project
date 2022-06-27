@@ -1,7 +1,11 @@
 #pragma once
-#include "immintrin.h"
-#include "common/math/Vector.h"
 #include <cfloat>
+
+#include "immintrin.h"
+
+#include "common/common_types.h"
+#include "common/math/Vector.h"
+#include "common/util/Assert.h"
 
 enum class Mask {
   NONE = 0,
@@ -524,6 +528,14 @@ struct alignas(16) Accumulator {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         dest[i] = data[i] - a[i] * b;
+      }
+    }
+  }
+
+  void msuba(Mask mask, const Vf& a, float b) {
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        data[i] -= a[i] * b;
       }
     }
   }

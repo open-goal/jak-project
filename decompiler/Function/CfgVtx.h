@@ -1,8 +1,12 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
+
 #include "common/util/Assert.h"
+
+#include "decompiler/config.h"
 
 namespace goos {
 class Object;
@@ -389,5 +393,6 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
                                             int seg,
                                             Function& func,
                                             const CondWithElseLengthHack& cond_with_else_hack,
-                                            const std::unordered_set<int>& blocks_ending_in_asm_br);
+                                            const std::unordered_set<int>& blocks_ending_in_asm_br,
+                                            GameVersion version);
 }  // namespace decompiler

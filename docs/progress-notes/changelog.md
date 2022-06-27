@@ -215,3 +215,12 @@
 - 0's that are constant propagated to the input of a 128-bit instruction will use `vpxor` instruction to generate the value, instead of `xor` and a `mov`.
 - Add a `stack-singleton-no-clear` stack construction type. It will create a "singleton" inside this function - all other `(new 'stack-singleton` forms with the same type will return the same stack object.
 - Added support for using `(new 'static 'array ...)` for setting a static field of type `(pointer ...)`
+
+## V0.9 Large change to macro expansion and constant propagation
+The compiler is now much more aggressive in where and how it expands macros and handles expressions at compiler time.
+- Several places where macros could be incorrectly executed more than once (possibly causing unwanted side effects) have been fixed.
+- Fixed bug in size calculation of non-inline stack arrays. Previous behavior was a compiler assert.
+- Correctly handle `mod` for unsigned numbers. Previous behavior was to treat all inputs as 32-bit signed integers.
+
+## V1.0 Revised constant propagation, speed improvements
+Improved error messages around macros

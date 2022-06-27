@@ -2,20 +2,16 @@
 
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/math/Vector.h"
+
 #include "game/graphics/gfx.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/opengl_renderer/background/background_common.h"
+#include "game/graphics/pipelines/opengl.h"
 
 class Tfrag3 {
  public:
   Tfrag3();
   ~Tfrag3();
-
-  void debug_render_all_trees_nolores(int geom,
-                                      const TfragRenderSettings& settings,
-                                      SharedRenderState* render_state,
-                                      ScopedProfilerNode& prof);
 
   void render_all_trees(int geom,
                         const TfragRenderSettings& settings,
@@ -49,7 +45,7 @@ class Tfrag3 {
   };
 
   void update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_kinds,
-                   const Loader::LevelData* loader_data);
+                   const LevelData* loader_data);
 
   int lod() const { return Gfx::g_global_settings.lod_tfrag; }
 
@@ -57,17 +53,19 @@ class Tfrag3 {
   static constexpr int GEOM_MAX = 3;
 
   struct TreeCache {
-    tfrag3::TFragmentTreeKind kind;
+    tfrag3::TFragmentTreeKind kind = tfrag3::TFragmentTreeKind::INVALID;
     GLuint vertex_buffer = -1;
     GLuint index_buffer = -1;
-    std::vector<u32> index_list;
-    GLuint time_of_day_texture;
-    GLuint vao;
+    GLuint single_draw_index_buffer = -1;
+    GLuint time_of_day_texture = -1;
+    GLuint vao = -1;
     u32 vert_count = 0;
     const std::vector<tfrag3::StripDraw>* draws = nullptr;
     const std::vector<tfrag3::TimeOfDayColor>* colors = nullptr;
     const tfrag3::BVH* vis = nullptr;
+    const u32* index_data = nullptr;
     SwizzledTimeOfDay tod_cache;
+    u64 draw_mode = 0;
 
     void reset_stats() {
       rendered_this_frame = false;
@@ -85,6 +83,10 @@ class Tfrag3 {
   struct Cache {
     std::vector<u8> vis_temp;
     std::vector<std::pair<int, int>> draw_idx_temp;
+    std::vector<u32> index_temp;
+    std::vector<std::pair<int, int>> multidraw_offset_per_stripdraw;
+    std::vector<GLsizei> multidraw_count_buffer;
+    std::vector<void*> multidraw_index_offset_buffer;
   } m_cache;
 
   std::string m_level_name;

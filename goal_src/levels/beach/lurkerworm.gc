@@ -5,9 +5,9 @@
 ;; name in dgo: lurkerworm
 ;; dgos: BEA, L1
 
-(define-extern *lurkerworm-sg* skeleton-group)
-
 ;; DECOMP BEGINS
+
+(import "goal_src/import/lurkerworm-ag.gc")
 
 (deftype lurkerworm (process-drawable)
   ((root-override collide-shape-moving      :offset        112)
@@ -56,20 +56,17 @@
   (none)
   )
 
-(defskelgroup *lurkerworm-sg* lurkerworm
-  0
-  3
-  ((1 (meters 999999)))
-  :bounds (static-spherem 0 2 0 6.5)
-  :longest-edge (meters 1.5)
-  )
+(defskelgroup *lurkerworm-sg* lurkerworm lurkerworm-lod0-jg lurkerworm-idle-ja
+              ((lurkerworm-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 6.5)
+              :longest-edge (meters 1.5)
+              )
 
 (defpartgroup group-beach-sandworm
   :id 157
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 6)
-  :parts
-  ((sp-item 656 :fade-after (meters 90) :period 900 :length 300)
+  :parts ((sp-item 656 :fade-after (meters 90) :period 900 :length 300)
     (sp-item 657 :fade-after (meters 100) :period 900 :length 390)
     (sp-item 658 :fade-after (meters 150) :period 900 :length 420 :offset 120)
     (sp-item 659 :fade-after (meters 60) :period 900 :length 420 :offset 120)
@@ -80,16 +77,14 @@
   :id 158
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 6)
-  :parts
-  ((sp-item 656 :fade-after (meters 90) :period 900 :length 300)
+  :parts ((sp-item 656 :fade-after (meters 90) :period 900 :length 300)
     (sp-item 658 :fade-after (meters 150) :period 900 :length 420 :offset 120)
     (sp-item 659 :fade-after (meters 60) :period 900 :length 420 :offset 120)
     )
   )
 
 (defpart 656
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
     (sp-flt spt-num 4.0)
     (sp-rnd-flt spt-x (meters 3) (meters 5) 1.0)
     (sp-flt spt-y (meters 1))
@@ -113,13 +108,11 @@
   )
 
 (defpart 660
-  :init-specs
-  ((sp-flt spt-fade-a -0.21333334))
+  :init-specs ((sp-flt spt-fade-a -0.21333334))
   )
 
 (defpart 658
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
     (sp-flt spt-num 0.4)
     (sp-rnd-flt spt-x (meters 0) (meters 1) 1.0)
     (sp-rnd-flt spt-scale-x (meters 2) (meters 1) 1.0)
@@ -141,8 +134,7 @@
   )
 
 (defpart 659
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
     (sp-flt spt-num 0.6)
     (sp-rnd-flt spt-x (meters 0) (meters 1) 1.0)
     (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
@@ -164,8 +156,7 @@
   )
 
 (defpart 657
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
     (sp-flt spt-num 0.5)
     (sp-rnd-flt spt-x (meters 0) (meters 1) 1.0)
     (sp-rnd-flt spt-scale-x (meters 0.05) (meters 0.4) 1.0)
@@ -186,8 +177,7 @@
   )
 
 (defpart 661
-  :init-specs
-  ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x19 :page #x2))
     (sp-flt spt-num 0.1)
     (sp-rnd-flt spt-x (meters -0.5) (meters 1) 1.0)
     (sp-rnd-flt spt-z (meters -0.5) (meters 1) 1.0)
@@ -210,8 +200,7 @@
   )
 
 (defpart 662
-  :init-specs
-  ((sp-flt spt-fade-a -0.10666667))
+  :init-specs ((sp-flt spt-fade-a -0.10666667))
   )
 
 (defmethod TODO-RENAME-20 lurkerworm ((obj lurkerworm))
@@ -222,7 +211,7 @@
     (let* ((f0-5 (sqrtf (+ (* (-> s5-0 x) (-> s5-0 x)) (* (-> s5-0 z) (-> s5-0 z)))))
            (f0-6 (atan (-> s5-0 y) f0-5))
            )
-      (set! (-> obj head-tilt) (seek (-> obj head-tilt) f0-6 (* 5461.3335 (-> *display* seconds-per-frame))))
+      (seek! (-> obj head-tilt) f0-6 (* 5461.3335 (-> *display* seconds-per-frame)))
       )
     )
   (set! (-> obj head-tilt) (fmin 8192.0 (fmax -5461.3335 (-> obj head-tilt))))
@@ -230,10 +219,10 @@
   (none)
   )
 
-(defbehavior lurkerworm-prebind-function lurkerworm ((arg0 process) (arg1 int) (arg2 lurkerworm))
+(defbehavior lurkerworm-prebind-function lurkerworm ((arg0 pointer) (arg1 int) (arg2 lurkerworm))
   (let ((v1-0 arg2)
         (s5-0 (new 'stack-no-clear 'quaternion))
-        (gp-0 (&-> arg0 stack 324))
+        (gp-0 (&+ arg0 432))
         )
     (quaternion-axis-angle! s5-0 -1.0 0.0 0.0 (-> v1-0 head-tilt))
     (quaternion*! (the-as quaternion gp-0) (the-as quaternion gp-0) s5-0)
@@ -252,44 +241,16 @@
 
 (defmethod particle-effect lurkerworm ((obj lurkerworm))
   (let ((a2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 5))))
-    (sp-launch-particles-var
-      *sp-particle-system-2d*
-      (-> *part-id-table* 661)
-      a2-0
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
+    (launch-particles (-> *part-id-table* 661) a2-0)
     )
   (let ((a2-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 6))))
-    (sp-launch-particles-var
-      *sp-particle-system-2d*
-      (-> *part-id-table* 661)
-      a2-1
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
+    (launch-particles (-> *part-id-table* 661) a2-1)
     )
   (let ((a2-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 7))))
-    (sp-launch-particles-var
-      *sp-particle-system-2d*
-      (-> *part-id-table* 661)
-      a2-2
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
+    (launch-particles (-> *part-id-table* 661) a2-2)
     )
   (let ((a2-3 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 8))))
-    (sp-launch-particles-var
-      *sp-particle-system-2d*
-      (-> *part-id-table* 661)
-      a2-3
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
+    (launch-particles (-> *part-id-table* 661) a2-3)
     )
   0
   (none)
@@ -325,17 +286,14 @@ lurkerworm-default-event-handler
 lurkerworm-default-post-behavior
 
 (defstate lurkerworm-idle (lurkerworm)
-  :event
-  lurkerworm-default-event-handler
-  :enter
-  (behavior ()
+  :event lurkerworm-default-event-handler
+  :enter (behavior ()
     (ja-channel-set! 0)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :code
-  (behavior ()
-    (while #t
+  :code (behavior ()
+    (loop
       (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
                *target*
                (>= 81920.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
@@ -346,23 +304,19 @@ lurkerworm-default-post-behavior
       )
     (none)
     )
-  :post
-  lurkerworm-default-post-behavior
+  :post lurkerworm-default-post-behavior
   )
 
 (defstate lurkerworm-spot (lurkerworm)
-  :event
-  lurkerworm-default-event-handler
-  :enter
-  (behavior ()
+  :event lurkerworm-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (sound-play-by-name (static-sound-name "worm-rise1") (new-sound-id) 1024 0 0 1 #t)
+    (sound-play "worm-rise1")
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (set! (-> self part local-clock) 0)
-    (while #t
+    (loop
       (spawn (-> self part) (-> self root-override trans))
       (particle-effect self)
       (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
@@ -375,64 +329,43 @@ lurkerworm-default-post-behavior
       )
     (none)
     )
-  :post
-  lurkerworm-default-post-behavior
+  :post lurkerworm-default-post-behavior
   )
 
 (defstate lurkerworm-rise (lurkerworm)
-  :event
-  lurkerworm-default-event-handler
-  :enter
-  (behavior ()
+  :event lurkerworm-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (ja-channel-set! 1)
-    (let ((a0-1 (-> self skel root-channel 0)))
-      (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-      (set! (-> a0-1 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) data 0 length) -1))
-            )
-      (set! (-> a0-1 param 1) 1.0)
-      (set! (-> a0-1 frame-num) 0.0)
-      (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 4)) num-func-seek!)
-      )
+    (ja-no-eval :group! lurkerworm-rise-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (spawn (-> self part) (-> self root-override trans))
       (particle-effect self)
       (suspend)
-      (let ((a0-4 (-> self skel root-channel 0)))
-        (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group data 0 length) -1)))
-        (set! (-> a0-4 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (set! (-> self strike-count) 3)
     (go lurkerworm-rest)
     (none)
     )
-  :post
-  lurkerworm-default-post-behavior
+  :post lurkerworm-default-post-behavior
   )
 
 (defstate lurkerworm-rest (lurkerworm)
-  :event
-  lurkerworm-default-event-handler
-  :enter
-  (behavior ()
+  :event lurkerworm-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self vulnerable) #t)
     (none)
     )
-  :exit
-  (behavior ()
+  :exit (behavior ()
     (set! (-> self vulnerable) #f)
     (none)
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (let* ((f30-0 10.0)
            (f28-0 100.0)
            (v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -443,15 +376,7 @@ lurkerworm-default-post-behavior
       (if gp-1
           (+! (-> self strike-count) -1)
           )
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-        (set! (-> a0-2 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) data 0 length) -1))
-              )
-        (set! (-> a0-2 param 1) 1.0)
-        (set! (-> a0-2 frame-num) 0.0)
-        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 3)) num-func-seek!)
-        )
+      (ja-no-eval :group! lurkerworm-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (ja-blend-eval)
         (particle-effect self)
@@ -467,10 +392,8 @@ lurkerworm-default-post-behavior
                       )
                    )
                  (f30-2 (* 0.2 f0-13))
-                 (v1-31 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                 (v1-32 (the-as number (logior #x3f800000 v1-31)))
                  )
-            (if (< (+ -1.0 (the-as float v1-32)) f30-2)
+            (if (< (rand-float-gen) f30-2)
                 (go lurkerworm-strike)
                 )
             )
@@ -483,11 +406,7 @@ lurkerworm-default-post-behavior
               )
           )
         (suspend)
-        (let ((a0-7 (-> self skel root-channel 0)))
-          (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group data 0 length) -1)))
-          (set! (-> a0-7 param 1) 1.0)
-          (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
-          )
+        (ja :num! (seek!))
         )
       (if gp-1
           (go lurkerworm-strike)
@@ -496,122 +415,70 @@ lurkerworm-default-post-behavior
       )
     (none)
     )
-  :post
-  lurkerworm-default-post-behavior
+  :post lurkerworm-default-post-behavior
   )
 
 (defstate lurkerworm-strike (lurkerworm)
-  :event
-  lurkerworm-default-event-handler
-  :code
-  (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 param 0) 1.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim #f) num-func-loop!)
-      )
-    (ja-channel-push! 1 40)
-    (let ((gp-0 (-> self skel root-channel 0)))
-      (set! (-> gp-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 6)))
-      (set! (-> gp-0 param 0) (ja-aframe 13.0 0))
-      (set! (-> gp-0 param 1) 1.0)
-      (set! (-> gp-0 frame-num) 0.0)
-      (joint-control-channel-group! gp-0 (the-as art-joint-anim (-> self draw art-group data 6)) num-func-seek!)
-      )
+  :event lurkerworm-default-event-handler
+  :code (behavior ()
+    (ja-no-eval :num! (loop!))
+    (ja-channel-push! 1 (seconds 0.135))
+    (ja-no-eval :group! lurkerworm-chomp-ja :num! (seek! (ja-aframe 13.0 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (ja-blend-eval)
       (particle-effect self)
       (suspend)
-      (let ((gp-1 (-> self skel root-channel 0)))
-        (set! (-> gp-1 param 0) (ja-aframe 13.0 0))
-        (set! (-> gp-1 param 1) 1.0)
-        (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek! (ja-aframe 13.0 0)))
       )
-    (let ((a0-8 (-> self skel root-channel 0)))
-      (set! (-> a0-8 param 0) (the float (+ (-> a0-8 frame-group data 0 length) -1)))
-      (set! (-> a0-8 param 1) 1.0)
-      (joint-control-channel-group! a0-8 (the-as art-joint-anim #f) num-func-seek!)
-      )
-    (ja-channel-push! 1 40)
+    (ja-no-eval :num! (seek!))
+    (ja-channel-push! 1 (seconds 0.135))
     (go lurkerworm-rest)
     (none)
     )
-  :post
-  lurkerworm-default-post-behavior
+  :post lurkerworm-default-post-behavior
   )
 
 (defstate lurkerworm-sink (lurkerworm)
-  :event
-  lurkerworm-default-event-handler
-  :enter
-  (behavior ()
+  :event lurkerworm-default-event-handler
+  :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (none)
     )
-  :code
-  (behavior ()
-    (let ((a0-0 (-> self skel root-channel 0)))
-      (set! (-> a0-0 frame-group) (the-as art-joint-anim (-> self draw art-group data 5)))
-      (set! (-> a0-0 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) data 0 length) -1))
-            )
-      (set! (-> a0-0 param 1) 1.0)
-      (set! (-> a0-0 frame-num) 0.0)
-      (joint-control-channel-group! a0-0 (the-as art-joint-anim (-> self draw art-group data 5)) num-func-seek!)
-      )
+  :code (behavior ()
+    (ja-no-eval :group! lurkerworm-sink-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (spawn (-> self part2) (-> self root-override trans))
       (particle-effect self)
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group data 0 length) -1)))
-        (set! (-> a0-3 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (go lurkerworm-idle)
     (none)
     )
-  :post
-  lurkerworm-default-post-behavior
+  :post lurkerworm-default-post-behavior
   )
 
 (defstate lurkerworm-die (lurkerworm)
-  :event
-  (the-as
+  :event (the-as
     (function process int symbol event-message-block object :behavior lurkerworm)
     process-drawable-death-event-handler
     )
-  :code
-  (behavior ()
+  :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
     (let ((v1-3 (-> self root-override root-prim)))
       (set! (-> v1-3 collide-with) (collide-kind))
       (set! (-> v1-3 prim-core collide-as) (collide-kind))
       )
     0
-    (let ((a0-1 (-> self skel root-channel 0)))
-      (set! (-> a0-1 frame-group) (the-as art-joint-anim (-> self draw art-group data 7)))
-      (set! (-> a0-1 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) data 0 length) -1))
-            )
-      (set! (-> a0-1 param 1) 1.0)
-      (set! (-> a0-1 frame-num) 0.0)
-      (joint-control-channel-group! a0-1 (the-as art-joint-anim (-> self draw art-group data 7)) num-func-seek!)
-      )
+    (ja-no-eval :group! lurkerworm-die-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group data 0 length) -1)))
-        (set! (-> a0-2 param 1) 1.0)
-        (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-seek!)
-        )
+      (ja :num! (seek!))
       )
     (cleanup-for-death self)
     (none)
     )
-  :post
-  lurkerworm-default-post-behavior
+  :post lurkerworm-default-post-behavior
   )
 
 (defmethod init-from-entity! lurkerworm ((obj lurkerworm) (arg0 entity-actor))
@@ -698,9 +565,7 @@ lurkerworm-default-post-behavior
   (set! (-> obj twister) (new 'process 'twister 3 15 1092.2667 72.81778 0.25 0.001))
   (TODO-RENAME-9 (-> obj twister) 3 9 910.2222)
   (set! (-> obj head-tilt) 0.0)
-  (set! (-> obj skel prebind-function)
-        (the-as (function pointer int process-drawable none) lurkerworm-prebind-function)
-        )
+  (set! (-> obj skel prebind-function) lurkerworm-prebind-function)
   (set! (-> obj skel postbind-function) lurkerworm-joint-callback)
   (set! (-> obj root-override nav-radius) 12288.0)
   (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))

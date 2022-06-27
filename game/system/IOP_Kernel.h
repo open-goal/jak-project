@@ -3,15 +3,18 @@
 #ifndef JAK_IOP_KERNEL_H
 #define JAK_IOP_KERNEL_H
 
-#include <thread>
-#include <string>
-#include <queue>
-#include <vector>
-#include <mutex>
-#include <condition_variable>
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
+#include <queue>
+#include <string>
+#include <thread>
+#include <vector>
+
 #include "common/common_types.h"
 #include "common/util/Assert.h"
+
+#include "game/sce/iop.h"
 
 class IOP_Kernel;
 namespace iop {
@@ -122,11 +125,6 @@ class IOP_Kernel {
    * Returns if it got something.
    */
   s32 PollMbx(void** msg, s32 mbx) {
-    if (_currentThread != -1 && threads.at(_currentThread).wantExit) {
-      // total hack - returning this value causes the ISO thread to error out and quit.
-      return -0x1a9;
-    }
-
     ASSERT(mbx < (s32)mbxs.size());
     s32 gotSomething = mbxs[mbx].empty() ? 0 : 1;
     if (gotSomething) {
@@ -139,7 +137,7 @@ class IOP_Kernel {
       mbxs[mbx].pop();
     }
 
-    return gotSomething ? 0 : -424;
+    return gotSomething ? KE_OK : KE_MBOX_NOMSG;
   }
 
   /*!
@@ -163,6 +161,9 @@ class IOP_Kernel {
                s32 sendSize,
                void* recvBuff,
                s32 recvSize);
+
+  bool GetWantExit(s32 thid) const { return threads.at(thid).wantExit; }
+  bool OnlyThreadAlive(s32 thid);
 
  private:
   void setupThread(s32 id);

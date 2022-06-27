@@ -3,8 +3,9 @@
 #ifndef JAK1_IOP_THREAD_H
 #define JAK1_IOP_THREAD_H
 
-#include "common/common_types.h"
 #include "IOP_Kernel.h"
+
+#include "common/common_types.h"
 
 enum IOP_Status { IOP_WAIT_FOR_LOAD, IOP_OVERLORD_INIT, IOP_OVERLORD_RUN, IOP_OVERLORD_STOP };
 
@@ -18,7 +19,7 @@ class IOP {
   void wait_for_overlord_start_cmd();
   void wait_for_overlord_init_finish();
   void signal_overlord_init_finish();
-  void signal_run_iop();
+  void signal_run_iop(bool force);
   void wait_run_iop();
   void kill_from_ee();
 

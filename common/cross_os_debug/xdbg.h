@@ -6,14 +6,16 @@
 
 #pragma once
 
-#include <string>
 #include <cstdint>
+#include <string>
+
 #include "common/common_types.h"
 
 #ifdef __linux
 #include <sys/types.h>
 #elif _WIN32
 #define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #endif
 

@@ -3,15 +3,19 @@
  * IsoFs API for accessing the CD/DVD drive.
  */
 
-#include <cstring>
-#include "game/sce/iop.h"
-#include "game/sce/stubs.h"
 #include "iso_cd.h"
+
+#include <cstring>
+
 #include "isocommon.h"
 #include "overlord.h"
 #include "soundcommon.h"
 #include "srpc.h"
+
 #include "common/log/log.h"
+
+#include "game/sce/iop.h"
+#include "game/sce/stubs.h"
 
 // iso_cd is an implementation of the IsoFs API for loading files from a CD/DVD with an ISO and/or
 // DUP filesystem.
@@ -54,7 +58,7 @@ mmode_func cdmmode = nullptr;               // function to call to set the expec
 static sceCdRMode sNominalMode;             // drive settings for "nominal" reading
 static sceCdRMode sStreamMode;              // drive settings for "streaming" reading
 static sceCdRMode* sMode;                   // pointer to currently selected read mode
-LoadStackEntry* sReadInfo;                  // LoadStackEntry for currently reading file
+static LoadStackEntry* sReadInfo;           // LoadStackEntry for currently reading file
 static u8* sSecBuffer[3];                   // Buffers for a single sector
 u32 add_files;                              // Should we add files we discover to the sFiles list?
 static FileRecord sFiles[MAX_ISO_FILES];    // Info for all files on the disc

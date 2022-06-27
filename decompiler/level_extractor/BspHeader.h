@@ -1,11 +1,13 @@
 #pragma once
 
-#include "common/common_types.h"
-#include <string>
 #include <memory>
-#include <vector>
 #include <optional>
+#include <string>
+#include <vector>
 
+#include "common/common_types.h"
+
+#include "decompiler/level_extractor/common_formats.h"
 #include "decompiler/util/goal_data_reader.h"
 
 namespace decompiler {
@@ -14,6 +16,7 @@ class DecompilerTypeSystem;
 }  // namespace decompiler
 
 namespace level_tools {
+
 struct PrintSettings {
   bool print_tfrag = false;
   bool expand_draw_node = false;
@@ -23,7 +26,8 @@ struct PrintSettings {
   bool expand_drawable_tree_tie_proto_data = false;
   bool expand_drawable_tree_instance_tie = false;
   bool expand_drawable_tree_actor = false;
-  bool expand_shrub = true;
+  bool expand_shrub = false;
+  bool expand_collide = false;
 };
 
 struct DrawStats {
@@ -50,6 +54,7 @@ struct Vector {
 
   std::string print(int indent = 0) const;
   std::string print_meters(int indent = 0) const;
+  std::string print_decimal(int indent = 0) const;
 };
 
 // a matrix with 16-bit integers.
@@ -179,6 +184,68 @@ struct DrawableTreeActor : public DrawableTree {
   Vector bsphere;
 
   std::vector<std::unique_ptr<DrawableInlineArray>> arrays;
+};
+
+/////////////////////
+// Collision
+/////////////////////
+
+struct CollideFragMesh {
+  /*
+  ((packed-data     uint32         :offset-assert 4)
+   (pat-array       uint32         :offset-assert 8)
+   (strip-data-len  uint16         :offset-assert 12)
+   (poly-count      uint16         :offset-assert 14)
+   (base-trans      vector :inline :offset-assert 16)
+   ;; these go in the w of the vector above.
+   (vertex-count    uint8          :offset 28)
+   (vertex-data-qwc uint8          :offset 29)
+   (total-qwc       uint8          :offset 30)
+   (unused          uint8          :offset 31)
+   )
+   */
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
+  std::string print(const PrintSettings& settings, int indent) const;
+
+  u16 strip_data_len;
+  u16 poly_count;
+  // appears to be integers...
+  Vector base_trans;
+  u8 vertex_count;
+  u8 vertex_data_qwc;
+  u8 total_qwc;
+
+  Ref packed_data;
+  Ref pat_array;
+};
+
+struct CollideFragment {
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
+  std::string print(const PrintSettings& settings, int indent) const;
+  Vector bsphere;
+  CollideFragMesh mesh;
+};
+
+struct DrawableInlineArrayCollideFragment : public DrawableInlineArray {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+  std::vector<CollideFragment> collide_fragments;
+  s16 id;
+  s16 length;
+  Vector bsphere;
+};
+
+struct DrawableTreeCollideFragment : public DrawableTree {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+
+  DrawableInlineArrayCollideFragment last_array;
 };
 
 /////////////////////
@@ -382,6 +449,7 @@ struct PrototypeBucketTie {
 
   // todo envmap shader
   // todo collide-frag
+  DrawableInlineArrayCollideFragment collide_frag;
   // todo tie-colors
   // todo data
 
@@ -656,12 +724,6 @@ struct DrawableTreeArray {
   std::string print(const PrintSettings& settings, int indent) const;
 
   std::vector<std::unique_ptr<DrawableTree>> trees;
-};
-
-// levels may remap textures if they provide one that should be shared
-struct TextureRemap {
-  u32 original_texid;
-  u32 new_texid;
 };
 
 // The "file info"

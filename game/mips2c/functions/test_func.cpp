@@ -1,6 +1,7 @@
 //--------------------------MIPS2C---------------------
+#include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+using namespace jak1;
 namespace Mips2C {
 namespace test_func {
 u64 execute(void* ctxt) {
@@ -18,9 +19,8 @@ u64 execute(void* ctxt) {
 }  // namespace Mips2C
 
 //--------------------------MIPS2C---------------------
+
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
-#include "game/kernel/kprint.h"
 namespace Mips2C {
 namespace goal_call_test {
 struct Cache {

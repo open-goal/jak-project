@@ -1,5 +1,7 @@
-#include <cstring>
 #include "sbank.h"
+
+#include <cstring>
+
 #include "soundcommon.h"
 
 constexpr int N_BANKS = 3;
@@ -60,8 +62,8 @@ s32 LookupSoundIndex(const char* name, SoundBank** bank_out) {
       break;
     }
 
-    for (int i = 0; i < bank->sound_count; i++) {
-      if (memcmp(bank->name, name, 16) == 0) {
+    for (int i = 0; i < (int)bank->sound_count; i++) {
+      if (memcmp(bank->sound[i].name, name, 16) == 0) {
         *bank_out = bank;
         return i;
       }
