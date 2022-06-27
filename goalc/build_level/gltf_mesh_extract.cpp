@@ -665,7 +665,7 @@ std::optional<std::vector<CollideFace>> subdivide_face_if_needed(CollideFace fac
   }
 }
 
-void extract(const Input& in,
+void extract(const Input& /*in*/,
              CollideOutput& out,
              const tinygltf::Model& model,
              const std::vector<NodeWithTransform>& all_nodes) {

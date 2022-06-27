@@ -45,7 +45,7 @@ void sceFsReset() {}
 
 int sceSifLoadModule(const char* name, int arg_size, const char* args) {
   if (!strcmp(name, "cdrom0:\\\\DRIVERS\\\\OVERLORD.IRX;1") ||
-      !strcmp(name, "host0:binee/overlord.irx")) {
+      !strcmp(name, "host0:binee/overlord.irx") || !strcmp(name, "host0:bin/overlord.irx")) {
     const char* src = args;
     char* dst = iop->overlord_arg_data;
     int cnt;

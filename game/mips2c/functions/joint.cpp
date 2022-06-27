@@ -1,7 +1,7 @@
 //--------------------------MIPS2C---------------------
-#include "game/kernel/kscheme.h"
+#include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
-
+using namespace jak1;
 // clang-format off
 
 namespace {
@@ -819,7 +819,7 @@ u32 jump_table_vals[16] = {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace decompress_frame_data_to_accumulator {
 u64 execute(void* ctxt) {
@@ -1419,7 +1419,7 @@ u32 jump_table_vals[16] = {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace decompress_fixed_data_to_accumulator {
 u64 execute(void* ctxt) {
@@ -2035,7 +2035,7 @@ u32 jump_table_vals[16] = {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace normalize_frame_quaternions {
 u64 execute(void* ctxt) {
@@ -2089,7 +2089,7 @@ u64 execute(void* ctxt) {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace clear_frame_accumulator {
 u64 execute(void* ctxt) {
@@ -2149,7 +2149,7 @@ u64 execute(void* ctxt) {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace calc_animation_from_spr {
 
@@ -2395,7 +2395,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace cspace_parented_transformq_joint {
 u64 execute(void* ctxt) {

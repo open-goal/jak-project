@@ -3,8 +3,9 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 
-#include "game/kernel/kmalloc.h"
-#include "game/kernel/kscheme.h"
+#include "game/kernel/common/kmalloc.h"
+#include "game/kernel/common/kscheme.h"
+#include "game/kernel/jak1/kscheme.h"
 
 using namespace jak1_symbols;
 
@@ -413,8 +414,9 @@ void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 s
   }
 
   // this is short stub that will jump to the appropriate function.
-  auto jump_to_asm = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
-                                               *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
+  // todo jak1
+  auto jump_to_asm = Ptr<u8>(jak1::alloc_heap_object(
+      s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
   it.first->second.goal_trampoline = jump_to_asm;
 
   u8* ptr = jump_to_asm.c();

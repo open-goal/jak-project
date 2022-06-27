@@ -569,7 +569,8 @@ std::unique_ptr<AtomicOp> convert_daddiu_1(const Instruction& i0, int idx, GameV
     // get symbol pointer
     return std::make_unique<SetVarOp>(
         make_dst_var(i0, idx), SimpleAtom::make_sym_ptr(i0.get_src(1).get_sym()).as_expr(), idx);
-  } else if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_imm(empty_pair_offset(version))) {
+  } else if (i0.get_src(0).is_reg(rs7()) &&
+             i0.get_src(1).is_imm(empty_pair_offset_from_s7(version))) {
     // get empty pair
     return std::make_unique<SetVarOp>(make_dst_var(i0, idx),
                                       SimpleAtom::make_empty_list().as_expr(), idx);

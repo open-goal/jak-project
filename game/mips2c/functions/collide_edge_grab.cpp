@@ -1,7 +1,8 @@
 
 //--------------------------MIPS2C---------------------
-#include "game/kernel/kscheme.h"
+#include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
+using namespace jak1;
 namespace Mips2C {
 namespace method_16_collide_edge_work {
 struct Cache {
@@ -595,7 +596,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_10_collide_edge_hold_list {
 u64 execute(void* ctxt) {
@@ -689,7 +690,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_18_collide_edge_work {
 struct Cache {
