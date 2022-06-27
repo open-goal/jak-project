@@ -152,7 +152,7 @@ void SubtitleEditor::draw_window() {
       ImGui::Text("Saved!");
       ImGui::PopStyleColor();
     } else {
-      ImGui::PushStyleColor(ImGuiCol_Text, m_success_text_color);
+      ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
       ImGui::Text("Error!");
       ImGui::PopStyleColor();
     }
@@ -201,7 +201,8 @@ void SubtitleEditor::draw_window() {
       ImGui::Text("You must provide a group to sort the scene into!");
       ImGui::PopStyleColor();
     }
-    if (!is_scene_in_current_lang(m_new_scene_name) && !m_new_scene_group.empty()) {
+    if (!is_scene_in_current_lang(m_new_scene_name) && !m_new_scene_name.empty() &&
+        !m_new_scene_group.empty()) {
       if (ImGui::Button("Add Scene")) {
         GameSubtitleSceneInfo newScene;
         newScene.m_name = m_new_scene_name;
@@ -249,7 +250,8 @@ void SubtitleEditor::draw_window() {
       ImGui::Text("You must provide a group to sort the scene into!");
       ImGui::PopStyleColor();
     }
-    if (!is_scene_in_current_lang(m_new_scene_name) && !m_new_scene_group.empty()) {
+    if (!is_scene_in_current_lang(m_new_scene_name) && !m_new_scene_name.empty() &&
+        !m_new_scene_group.empty()) {
       if (ImGui::Button("Add Scene")) {
         GameSubtitleSceneInfo newScene;
         newScene.m_name = m_new_scene_name;
@@ -362,8 +364,9 @@ void SubtitleEditor::draw_repl_options() {
 
 void SubtitleEditor::draw_all_cutscene_groups() {
   for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
-    if (!m_filter.empty() && m_filter != m_filter_placeholder)
+    if (!m_filter.empty() && m_filter != m_filter_placeholder) {
       ImGui::SetNextItemOpen(true);
+    }
     if (ImGui::TreeNode(group_name.c_str())) {
       draw_all_scenes(group_name, false);
       draw_all_scenes(group_name, true);
@@ -374,8 +377,9 @@ void SubtitleEditor::draw_all_cutscene_groups() {
 
 void SubtitleEditor::draw_all_hint_groups() {
   for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
-    if (!m_filter_hints.empty() && m_filter_hints != m_filter_placeholder)
+    if (!m_filter_hints.empty() && m_filter_hints != m_filter_placeholder) {
       ImGui::SetNextItemOpen(true);
+    }
     if (ImGui::TreeNode(group_name.c_str())) {
       draw_all_hints(group_name, false);
       draw_all_hints(group_name, true);
@@ -600,9 +604,9 @@ void SubtitleEditor::draw_new_cutscene_line_form() {
   } else {
     if (rendered_text_entry_btn) {
       ImGui::SameLine();
-      if (ImGui::Button("Add Clear Screen Entry")) {
-        m_current_scene->add_line(m_current_scene_frame, "", "", "", "", false);
-      }
+    }
+    if (ImGui::Button("Add Clear Screen Entry")) {
+      m_current_scene->add_line(m_current_scene_frame, "", "", "", "", false);
     }
   }
   ImGui::NewLine();
