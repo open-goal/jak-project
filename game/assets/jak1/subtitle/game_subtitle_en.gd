@@ -2786,10 +2786,6 @@
 ;; snowy
 ;; -----------------
 
-("0345" :hint #x443
-  (0)
-  )
-
 ("sksp0345" :hint #x443
   (0 "DAXTER" "HOW DO WE GET INSIDE THIS FORT?")
   )
