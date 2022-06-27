@@ -39,7 +39,6 @@ struct GraphicsData {
   // vsync
   std::mutex sync_mutex;
   std::condition_variable sync_cv;
-  bool vsync_enabled = true;
 
   // dma chain transfer
   std::mutex dma_mutex;
@@ -185,39 +184,37 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   stbi_image_free(images[0].pixels);
 
   // init framerate settings
-  GLFWmonitor* primary_monitor = glfwGetPrimaryMonitor();
-  if (primary_monitor) {
+  /*
+  if (GLFWmonitor* primary_monitor = glfwGetPrimaryMonitor()) {
     auto primary_monitor_video_mode = glfwGetVideoMode(primary_monitor);
 
     if (primary_monitor_video_mode && primary_monitor_video_mode->refreshRate > 60) {
       // Use the framelimiter by default and disable vsync
-      g_gfx_data->debug_gui.framelimiter = true;
-      g_gfx_data->debug_gui.m_vsync = false;
-      g_gfx_data->vsync_enabled = false;
-      glfwSwapInterval(false);
+      Gfx::g_global_settings.framelimiter = true;
+      Gfx::g_global_settings.vsync = false;
+      glfwSwapInterval(0);
       if (primary_monitor_video_mode->refreshRate > 100) {
         BootVideoMode = VideoMode::FPS150;
-        g_gfx_data->debug_gui.target_fps = 150;
+        Gfx::g_global_settings.target_fps = 150;
       } else if (primary_monitor_video_mode->refreshRate > 60) {
         BootVideoMode = VideoMode::FPS100;
-        g_gfx_data->debug_gui.target_fps = 100;
+        Gfx::g_global_settings.target_fps = 100;
       }
     } else {
       // enable vsync
-      g_gfx_data->debug_gui.framelimiter = false;
-      g_gfx_data->debug_gui.m_vsync = true;
-      g_gfx_data->vsync_enabled = true;
+      Gfx::g_global_settings.framelimiter = false;
+      Gfx::g_global_settings.vsync = true;
       // glfwSwapInterval(1);
       glfwSwapInterval(settings.vsync);
     }
   } else {
     // enable vsync
-    g_gfx_data->debug_gui.framelimiter = false;
-    g_gfx_data->debug_gui.m_vsync = true;
-    g_gfx_data->vsync_enabled = true;
+    Gfx::g_global_settings.framelimiter = false;
+    Gfx::g_global_settings.vsync = true;
     // glfwSwapInterval(1);
     glfwSwapInterval(settings.vsync);
   }
+  */
 
   SetDisplayCallbacks(window);
   Pad::initialize();
@@ -417,23 +414,24 @@ GfxDisplayMode GLDisplay::get_fullscreen() {
   }
 }
 
-void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out, s32* count_out) {
+int GLDisplay::get_screen_vmode_count() {
   int count = 0;
+  auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
+  return count;
+}
+
+void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out) {
   auto vmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-  if (get_fullscreen() == GfxDisplayMode::Fullscreen) {
-    auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
-    if (vmode_idx >= 0) {
-      vmode = &vmodes[vmode_idx];
-    } else {
-      for (int i = 0; i < count; ++i) {
-        if (!vmode || vmode->height < vmodes[i].height) {
-          vmode = &vmodes[i];
-        }
+  int count = 0;
+  auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
+  if (vmode_idx >= 0) {
+    vmode = &vmodes[vmode_idx];
+  } else if (get_fullscreen() == GfxDisplayMode::Fullscreen) {
+    for (int i = 0; i < count; ++i) {
+      if (!vmode || vmode->height < vmodes[i].height) {
+        vmode = &vmodes[i];
       }
     }
-  }
-  if (count_out) {
-    *count_out = count;
   }
   if (w_out) {
     *w_out = vmode->width;
@@ -441,6 +439,26 @@ void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out, s32* coun
   if (h_out) {
     *h_out = vmode->height;
   }
+}
+
+int GLDisplay::get_screen_rate(int vmode_idx) {
+  auto vmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+  int count = 0;
+  auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
+  if (vmode_idx >= 0) {
+    vmode = &vmodes[vmode_idx];
+  } else if (get_fullscreen() == GfxDisplayMode::Fullscreen) {
+    for (int i = 0; i < count; ++i) {
+      if (!vmode || vmode->refreshRate < vmodes[i].refreshRate) {
+        vmode = &vmodes[i];
+      }
+    }
+  }
+  return vmode->refreshRate;
+}
+
+bool GLDisplay::minimized() {
+  return glfwGetWindowAttrib(m_window, GLFW_ICONIFIED);
 }
 
 void GLDisplay::set_lock(bool lock) {
@@ -521,10 +539,9 @@ void GLDisplay::render() {
   }
 
   // switch vsync modes, if requested
-  bool req_vsync = g_gfx_data->debug_gui.get_vsync_flag();
-  if (req_vsync != g_gfx_data->vsync_enabled) {
-    g_gfx_data->vsync_enabled = req_vsync;
-    glfwSwapInterval(req_vsync);
+  if (Gfx::g_global_settings.vsync != Gfx::g_global_settings.old_vsync) {
+    Gfx::g_global_settings.old_vsync = Gfx::g_global_settings.vsync;
+    glfwSwapInterval(Gfx::g_global_settings.vsync);
   }
 
   // actual vsync
@@ -533,17 +550,17 @@ void GLDisplay::render() {
     auto p = scoped_prof("swap-buffers");
     glfwSwapBuffers(m_window);
   }
-  if (g_gfx_data->debug_gui.framelimiter) {
+  if (Gfx::g_global_settings.framelimiter) {
     auto p = scoped_prof("frame-limiter");
     g_gfx_data->frame_limiter.run(
-        g_gfx_data->debug_gui.target_fps, g_gfx_data->debug_gui.experimental_accurate_lag,
-        g_gfx_data->debug_gui.sleep_in_frame_limiter, g_gfx_data->last_engine_time);
+        Gfx::g_global_settings.target_fps, Gfx::g_global_settings.experimental_accurate_lag,
+        Gfx::g_global_settings.sleep_in_frame_limiter, g_gfx_data->last_engine_time);
   }
   g_gfx_data->debug_gui.start_frame();
   prof().instant_event("ROOT");
   update_global_profiler();
 
-  if (fullscreen_pending()) {
+  if (!minimized() && fullscreen_pending()) {
     fullscreen_flush();
   }
   update_last_fullscreen_mode();

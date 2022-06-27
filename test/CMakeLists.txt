@@ -8,7 +8,7 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/test_reader.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_goos.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_listener_deci2.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/test_kernel.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_kernel_jak1.cpp
         ${CMAKE_CURRENT_LIST_DIR}/all_jak1_symbols.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_type_system.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_CodeTester.cpp

@@ -400,7 +400,7 @@ void LinkedObjectFile::find_code() {
 /*!
  * Find all the functions in each segment.
  */
-void LinkedObjectFile::find_functions() {
+void LinkedObjectFile::find_functions(GameVersion version) {
   if (segments == 1) {
     // it's a v2 file, shouldn't have any functions
     ASSERT(offset_of_data_zone_by_seg.at(0) == 0);
@@ -427,7 +427,7 @@ void LinkedObjectFile::find_functions() {
         // mark this as a function, and try again from the current function start
         ASSERT(found_function_tag_loc);
         stats.function_count++;
-        functions_by_seg.at(seg).emplace_back(function_tag_loc, function_end);
+        functions_by_seg.at(seg).emplace_back(function_tag_loc, function_end, version);
         function_end = function_tag_loc;
       }
 

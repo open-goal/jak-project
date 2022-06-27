@@ -34,8 +34,10 @@ Register get_expected_fpr_backup(int n, int total) {
 
 }  // namespace
 
-Function::Function(int _start_word, int _end_word) : start_word(_start_word), end_word(_end_word) {
+Function::Function(int _start_word, int _end_word, GameVersion version)
+    : start_word(_start_word), end_word(_end_word) {
   ir2.form_pool.reset(new FormPool());
+  ir2.env.version = version;
 }
 
 Function::~Function() {}

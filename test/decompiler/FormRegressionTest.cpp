@@ -128,7 +128,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   auto program = parser->parse_program(code, string_label_names);
 
   // create the test data collection
-  auto test = std::make_unique<TestData>(program.instructions.size());
+  auto test = std::make_unique<TestData>(program.instructions.size(), settings.version);
   // populate the LinkedObjectFile
   test->file.words_by_seg.resize(3);
   test->file.labels = program.labels;
@@ -160,7 +160,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   // analyze function prologue/epilogue
   test->func.analyze_prologue(test->file);
   // build control flow graph
-  test->func.cfg = build_cfg(test->file, 0, test->func, {}, {});
+  test->func.cfg = build_cfg(test->file, 0, test->func, {}, {}, settings.version);
   EXPECT_TRUE(test->func.cfg->is_fully_resolved());
   if (!test->func.cfg->is_fully_resolved()) {
     fmt::print("CFG:\n{}\n", test->func.cfg->to_dot());
@@ -176,7 +176,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   // convert instruction to atomic ops
   DecompWarnings warnings;
   auto ops = convert_function_to_atomic_ops(test->func, program.labels, warnings, false, {},
-                                            GameVersion::Jak1);
+                                            settings.version);
   test->func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
   test->func.ir2.atomic_ops_succeeded = true;
   test->func.ir2.env.set_end_var(test->func.ir2.atomic_ops->end_op().return_var());
@@ -280,7 +280,7 @@ void FormRegressionTest::test(const std::string& code,
   EXPECT_TRUE(expected_form == actual_form);
 }
 
-void FormRegressionTest::test_final_function(
+void FormRegressionTest::test_final_function_jak1(
     const std::string& code,
     const std::string& type,
     const std::string& expected,
@@ -311,12 +311,12 @@ void FormRegressionTest::test_final_function(
   EXPECT_TRUE(expected_form == actual_form);
 }
 
-void FormRegressionTest::test_with_stack_structures(const std::string& code,
-                                                    const std::string& type,
-                                                    const std::string& expected,
-                                                    const std::string& stack_map_json,
-                                                    const std::string& cast_json,
-                                                    const std::string& var_map_json) {
+void FormRegressionTest::test_with_stack_structures_jak1(const std::string& code,
+                                                         const std::string& type,
+                                                         const std::string& expected,
+                                                         const std::string& stack_map_json,
+                                                         const std::string& cast_json,
+                                                         const std::string& var_map_json) {
   TestSettings settings;
   settings.do_expressions = true;
   settings.stack_structure_json = stack_map_json;

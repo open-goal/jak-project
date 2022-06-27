@@ -3,7 +3,7 @@
 #include "common/util/Assert.h"
 
 #include "game/graphics/gfx.h"
-#include "game/kernel/kmachine.h"
+#include "game/kernel/common/kernel_types.h"
 
 /*!
  * @file libpad.cpp

@@ -10,7 +10,7 @@
 
 #include "common/log/log.h"
 
-#include "game/kernel/kmalloc.h"
+#include "game/kernel/common/kmalloc.h"
 #include "game/runtime.h"
 
 namespace VM {

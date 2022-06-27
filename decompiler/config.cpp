@@ -76,7 +76,10 @@ Config read_config_file(const std::string& path_to_config_file,
   config.is_pal = cfg.at("is_pal").get<bool>();
   config.rip_levels = cfg.at("levels_convert_to_obj").get<bool>();
   config.extract_collision = cfg.at("extract_collision").get<bool>();
-
+  config.generate_all_types = cfg.at("generate_all_types").get<bool>();
+  if (cfg.contains("old_all_types_file")) {
+    config.old_all_types_file = cfg.at("old_all_types_file").get<std::string>();
+  }
   auto allowed = cfg.at("allowed_objects").get<std::vector<std::string>>();
   for (const auto& x : allowed) {
     config.allowed_objects.insert(x);

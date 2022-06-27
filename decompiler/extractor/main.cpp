@@ -23,7 +23,9 @@ enum class ExtractorErrorCode {
   VALIDATION_BAD_ISO_CONTENTS = 4010,
   VALIDATION_INCORRECT_EXTRACTION_COUNT = 4011,
   VALIDATION_BAD_EXTRACTION = 4020,
-  DECOMPILATION_GENERIC_ERROR = 4030
+  DECOMPILATION_GENERIC_ERROR = 4030,
+  EXTRACTION_INVALID_ISO_PATH = 4040,
+  EXTRACTION_ISO_UNEXPECTED_SIZE = 4041
 };
 
 enum GameIsoFlags { FLAG_JAK1_BLACK_LABEL = (1 << 0) };
@@ -66,7 +68,10 @@ void setup_global_decompiler_stuff(std::optional<std::filesystem::path> project_
 
 IsoFile extract_files(std::filesystem::path data_dir_path,
                       std::filesystem::path extracted_iso_path) {
-  fmt::print("Note: input isn't a folder, assuming it's an ISO file...\n");
+  fmt::print(
+      "Note: Provided game data path '{}' points to a file, not a directory. Assuming it's an ISO "
+      "file and attempting to extract!\n",
+      data_dir_path.string());
 
   std::filesystem::create_directories(extracted_iso_path);
 
@@ -415,7 +420,25 @@ int main(int argc, char** argv) {
 
     int flags = 0;
     if (std::filesystem::is_regular_file(data_dir_path)) {
-      // it's a file, treat it as an ISO
+      // it's a file, normalize extension case and verify it's an ISO file
+      std::string ext = data_dir_path.extension().string();
+      std::transform(ext.begin(), ext.end(), ext.begin(),
+                     [](unsigned char c) { return std::tolower(c); });
+
+      if (ext != ".iso") {
+        fmt::print(stderr, "ERROR: Provided game data path contains a file that isn't a .ISO!");
+        return static_cast<int>(ExtractorErrorCode::EXTRACTION_INVALID_ISO_PATH);
+      }
+
+      // make sure the .iso is greater than 1GB in size
+      // to-do: verify game header data as well
+      if (std::filesystem::file_size(data_dir_path) < 1000000000) {
+        fmt::print(
+            stderr,
+            "ERROR: Provided game data file appears to be too small or corrupted! Size is {}",
+            std::filesystem::file_size(data_dir_path));
+        return static_cast<int>(ExtractorErrorCode::EXTRACTION_ISO_UNEXPECTED_SIZE);
+      }
       auto iso_file = extract_files(data_dir_path, path_to_iso_files);
       auto validation_res = validate(iso_file, path_to_iso_files);
       flags = validation_res.second->flags;

@@ -20,7 +20,7 @@
 
 class IRegSet {
  public:
-  IRegSet() { m_data.reserve(4); }
+  IRegSet() { resize(64 * 4); }
 
   /*!
    * Add the given ireg to the set.

@@ -22,7 +22,9 @@
 #include "third-party/imgui/imgui.h"
 
 // for the vif callback
-#include "game/kernel/kmachine.h"
+#include "game/kernel/common/kmachine.h"
+#include "game/runtime.h"
+
 namespace {
 std::string g_current_render;
 

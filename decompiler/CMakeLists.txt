@@ -1,6 +1,7 @@
 add_library(
         decomp
 
+        analysis/analyze_inspect_method.cpp
         analysis/atomic_op_builder.cpp
         analysis/cfg_builder.cpp
         analysis/expression_build.cpp
