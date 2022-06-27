@@ -216,7 +216,7 @@ Sound* AllocateSound() {
 
 s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 fo_max) {
   if (fo_curve == 0) {
-    return 0;
+    return volume;
   }
 
   s32 xdiff = gEarTrans.x - pos->x;
