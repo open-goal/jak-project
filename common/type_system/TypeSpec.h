@@ -93,6 +93,7 @@ class TypeSpec {
   const std::string& get_tag(const std::string& tag_name) const;
   void modify_tag(const std::string& tag_name, const std::string& tag_value);
   void add_or_modify_tag(const std::string& tag_name, const std::string& tag_value);
+  void update_definition_meta(const std::string& defining_file, int line_number, int line_offset);
 
   const std::string base_type() const { return m_type; }
 
@@ -149,4 +150,9 @@ class TypeSpec {
   // arguments (most of the time) and makes the type analysis pass in the decompiler 2x faster.
   std::vector<TypeSpec>* m_arguments = nullptr;
   cu::SmallVector<TypeTag, 1> m_tags;
+
+  // definition information
+  std::string m_defining_file;
+  int m_line_number;
+  int m_line_offset;
 };

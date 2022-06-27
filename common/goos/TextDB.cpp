@@ -137,6 +137,19 @@ std::string TextDb::get_info_for(const Object& o, bool* terminate_compiler_error
   }
 }
 
+std::optional<TextDb::ShortInfo> TextDb::get_short_info_for(const Object& o) const {
+  if (o.is_pair()) {
+    auto kv = m_map.find(o.heap_obj);
+    if (kv != m_map.end()) {
+      return get_short_info_for(kv->second.frag, kv->second.offset);
+    } else {
+      return {};
+    }
+  } else {
+    return {};
+  }
+}
+
 /*!
  * Given a source text and an offset, print a description of where it is.
  */
@@ -149,6 +162,17 @@ std::string TextDb::get_info_for(const std::shared_ptr<SourceText>& frag, int of
   std::string pointer(offset_in_line, ' ');
   pointer += "^\n";
   return result + pointer;
+}
+
+std::optional<TextDb::ShortInfo> TextDb::get_short_info_for(const std::shared_ptr<SourceText>& frag,
+                                                            int offset) const {
+  int line_idx = frag->get_line_idx(offset);
+  int offset_in_line = std::max(offset - frag->get_offset_of_line(line_idx), 1) - 1;
+  ShortInfo info_result;
+  info_result.filename = frag->get_description();
+  info_result.line_idx_to_display = line_idx;
+  info_result.pos_in_line = offset_in_line;
+  return std::make_optional(info_result);
 }
 
 std::optional<TextDb::ShortInfo> TextDb::try_get_short_info(const Object& o) const {

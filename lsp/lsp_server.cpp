@@ -1,10 +1,22 @@
 #include "lsp_server.h"
 
 #include <jsonrpccxx/common.hpp>
+#include <decompiler/util/DecompilerTypeSystem.h>
+
+#include "third-party/fmt/core.h"
+#include <common/log/log.h>
 
 using namespace jsonrpccxx;
 
-LspServer::LspServer() {}
+LspServer::LspServer() {
+  // Decompiling
+  // Read in all-types files
+  // TODO - hard-coded for now, but need to enumerate the directory eventually i think?
+  m_dts.parse_type_defs({"C:\\Users\\xtvas\\Repositories\\opengoal\\jak-project\\decompiler\\config\\all-types.gc"});
+
+  auto info = m_dts.symbol_definition_info["vector"];
+  lg::info("Loaded DTS");
+}
 
 bool LspServer::TestServer(const std::string& id) {
   return true;
