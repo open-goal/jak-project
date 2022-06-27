@@ -6,6 +6,9 @@
 
 #include <optional>
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+
 #include "common/log/log.h"
 #include "common/math/geometry.h"
 #include "common/util/Timer.h"
