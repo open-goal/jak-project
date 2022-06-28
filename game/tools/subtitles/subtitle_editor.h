@@ -30,6 +30,8 @@ class SubtitleEditor {
   void draw_window();
 
  private:
+  void update_subtitle_editor_db();
+
   void draw_edit_options();
   void draw_repl_options();
 
