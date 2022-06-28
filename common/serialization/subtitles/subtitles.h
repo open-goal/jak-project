@@ -7,6 +7,7 @@
 #include <unordered_set>
 
 #include "common/goos/Object.h"
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/FontUtils.h"
 

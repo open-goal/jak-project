@@ -52,6 +52,7 @@ class SubtitleEditor {
   std::string m_current_scene_text = "";
   std::string m_current_scene_speaker = "";
   bool m_current_scene_offscreen = false;
+  bool m_add_new_scene_as_current = false;
 
   std::string m_new_scene_name = "";
   std::string m_new_scene_group = "";
