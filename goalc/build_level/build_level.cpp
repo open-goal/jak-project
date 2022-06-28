@@ -4,6 +4,7 @@
 #include "common/util/compress.h"
 #include "common/util/json_util.h"
 
+#include "goalc/build_level/Entity.h"
 #include "goalc/build_level/FileInfo.h"
 #include "goalc/build_level/LevelFile.h"
 #include "goalc/build_level/Tfrag.h"
@@ -43,6 +44,8 @@ bool run_build_level(const std::string& input_file, const std::string& output_fi
   gltf_mesh_extract::Input mesh_extract_in;
   mesh_extract_in.filename =
       file_util::get_file_path({level_json.at("gltf_file").get<std::string>()});
+  mesh_extract_in.auto_wall_enable = level_json.value("automatic_wall_detection", true);
+  mesh_extract_in.auto_wall_angle = level_json.value("automatic_wall_angle", 30.0);
   mesh_extract_in.tex_pool = &tex_pool;
   gltf_mesh_extract::Output mesh_extract_out;
   gltf_mesh_extract::extract(mesh_extract_in, mesh_extract_out);
@@ -61,13 +64,19 @@ bool run_build_level(const std::string& input_file, const std::string& output_fi
   file.nickname = level_json.at("nickname").get<std::string>();
   // vis infos
   // actors
+  std::vector<EntityActor> actors;
+  add_actors_from_json(level_json.at("actors"), actors, 1234);
+  file.actors = std::move(actors);
   // cameras
   // nodes
   // boxes
   // ambients
   // subdivs
   // adgifs
-  // actor birht
+  // actor birth
+  for (size_t i = 0; i < file.actors.size(); i++) {
+    file.actor_birth_order.push_back(i);
+  }
   // split box
 
   // add stuff to the PC level structure

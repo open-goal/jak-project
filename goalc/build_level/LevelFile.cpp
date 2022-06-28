@@ -56,6 +56,15 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
   return result;
 }
 
+size_t generate_u32_array(const std::vector<u32>& array, DataObjectGenerator& gen) {
+  gen.align(4);
+  size_t result = gen.current_offset_bytes();
+  for (auto& entry : array) {
+    gen.add_word(entry);
+  }
+  return result;
+}
+
 std::vector<u8> LevelFile::save_object_file() const {
   DataObjectGenerator gen;
   gen.add_type_tag("bsp-header");
@@ -87,6 +96,7 @@ std::vector<u8> LevelFile::save_object_file() const {
   gen.link_word_to_symbol(nickname, 76 / 4);
   //(vis-info               level-vis-info                8  :offset-assert  80)
   //(actors                 drawable-inline-array-actor      :offset-assert 112)
+  gen.link_word_to_byte(112 / 4, generate_inline_array_actors(gen, actors));
   //(cameras                (array entity-camera)            :offset-assert 116)
   //(nodes                  (inline-array bsp-node)          :offset-assert 120)
   //(level                  level                            :offset-assert 124)
@@ -99,6 +109,7 @@ std::vector<u8> LevelFile::save_object_file() const {
   //(unk-data-5             float                            :offset-assert 164)
   //(adgifs                 adgif-shader-array               :offset-assert 168)
   //(actor-birth-order      (pointer uint32)                 :offset-assert 172)
+  gen.link_word_to_byte(172 / 4, generate_u32_array(actor_birth_order, gen));
   //(split-box-indices      (pointer uint16)                 :offset-assert 176)
   //(unk-data-8             uint32                        55 :offset-assert 180)
 

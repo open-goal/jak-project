@@ -4664,3 +4664,69 @@
 
 )
 
+(defun bg-custom ((level-name symbol))
+  "Modified version of bg for the PC Port custom levels."
+
+  ;; lookup info
+  (format 0 "(bg-custom ~A)%" level-name)
+  (let ((lev-info (lookup-level-info level-name)))
+    (when (= lev-info default-level)
+      (format 0 "Unable to (bg-custom ~A), the level was not found in *level-load-list*~%" level-name)
+      (return #f)
+      )
+
+    ;; kill jak (rip)
+    (format 0 "doing stop~%")
+    (stop 'play)
+
+    ;; kill levels
+    (dotimes (i 2)
+      (unload! (-> *level* data i))
+      )
+
+    ;; enable visiblity. the custom level won't use it, but we want it on so other levels can be loaded.
+    (set! (-> *level* vis?) #t)
+
+    ;; disable border and play mode to prevent loading levels
+    (set! (-> *level* border?) #f)
+    (set! (-> *setting-control* default border-mode) #f)
+    (set! (-> *level* play?) #f)
+
+    ;; disable actor vis
+    (set! *vis-actors* #f)
+
+    (format 0 "doing level load~%")
+    ;; allocate level. This may start the loading process, but won't finish it.
+    (let ((lev (level-get-for-use *level* level-name 'active)))
+      (when (not lev)
+        (format 0 "Unable to load level, could not level-get-for-use~%")
+        (return #f)
+        )
+      (format 0 "about to start load loop, game will freeze and hopefully come back soon~%")
+
+      ;; spin in a loop and load it. This will cause the game to freeze during the load,
+      ;; but this is good enough for now.
+      (while (or (= (-> lev status) 'loading)
+                 (= (-> lev status) 'loading-bt)
+                 (= (-> lev status) 'login)
+                 )
+        (load-continue lev)
+        )
+
+      (when (not (-> lev info continues))
+        (format 0 "level info has no continues, can't load it.~%")
+        )
+
+      (let ((cont (car (-> lev info continues))))
+        (start 'play (the continue-point cont))
+        )
+
+      (vis-load lev)
+      (set! (-> lev all-visible?) #f)
+      (set! (-> lev force-all-visible?) #t)
+
+      ;; reset things
+      ;(initialize! *game-info* 'game (the-as game-save #f) (the-as string #f))
+      )
+    )
+  )
