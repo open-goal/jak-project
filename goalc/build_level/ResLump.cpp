@@ -1,5 +1,7 @@
 #include "ResLump.h"
 
+#include <algorithm>
+
 #include "common/util/BitUtils.h"
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
