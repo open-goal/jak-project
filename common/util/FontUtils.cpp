@@ -27,6 +27,19 @@ bool hex_char(char c) {
 
 }  // namespace
 
+const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap = {
+    {"jak1-v1", GameTextVersion::JAK1_V1},
+    {"jak1-v2", GameTextVersion::JAK1_V2}};
+
+const std::string& get_text_version_name(GameTextVersion version) {
+  for (auto& [name, ver] : sTextVerEnumMap) {
+    if (ver == version) {
+      return name;
+    }
+  }
+  throw std::runtime_error(fmt::format("invalid text version {}", version));
+}
+
 GameTextFontBank::GameTextFontBank(GameTextVersion version,
                                    std::vector<EncodeInfo>* encode_info,
                                    std::vector<ReplaceInfo>* replace_info,

@@ -34,12 +34,7 @@ bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
     file_contents += fmt::format("(language-id {})\n", fmt::join(banks, " "));
     auto file_ver = parse_text_only_version(bank->file_path);
     auto font = get_font_bank(file_ver);
-    for (auto& [ver_name, ver] : sTextVerEnumMap) {
-      if (ver == file_ver) {
-        file_contents += fmt::format("(text-version {})\n", ver_name);
-        break;
-      }
-    }
+    file_contents += fmt::format("(text-version {})\n", get_text_version_name(file_ver));
 
     for (const auto& group_name : db.m_subtitle_groups->m_group_order) {
       file_contents +=

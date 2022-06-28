@@ -7,10 +7,6 @@
 
 #include "third-party/fmt/core.h"
 
-const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap = {
-    {"jak1-v1", GameTextVersion::JAK1_V1},
-    {"jak1-v2", GameTextVersion::JAK1_V2}};
-
 int64_t get_int(const goos::Object& obj) {
   if (obj.is_int()) {
     return obj.integer_obj.value;

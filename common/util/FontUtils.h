@@ -12,6 +12,7 @@
 #include <map>
 #include <string>
 #include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 #include "common/common_types.h"
@@ -25,6 +26,10 @@ enum class GameTextVersion {
   JAK3 = 30,     // jak 3
   JAKX = 40      // jak x
 };
+
+extern const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap;
+
+const std::string& get_text_version_name(GameTextVersion version);
 
 /*!
  * What bytes a set of characters (UTF-8) correspond to. You can convert to and fro.

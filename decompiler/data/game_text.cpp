@@ -7,6 +7,7 @@
 
 #include "common/goos/Reader.h"
 #include "common/util/BitUtils.h"
+#include "common/util/FontUtils.h"
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 
@@ -150,6 +151,11 @@ std::string write_game_text(
   }
   std::sort(languages.begin(), languages.end());
 
+  // hack
+  if (version == GameTextVersion::JAK1_V1) {
+    version = GameTextVersion::JAK1_V2;
+  }
+
   // build map
   std::map<int, std::vector<std::string>> text_by_id;
   std::map<int, std::vector<std::string>> text_by_id_credits;
@@ -187,6 +193,7 @@ std::string write_game_text(
     result += fmt::format(" {}", lang);
   }
   result += ")\n";
+  result += fmt::format("(text-version {})\n\n", get_text_version_name(version));
   for (auto& x : text_by_id) {
     result += fmt::format("(#x{:04x}\n  ", x.first);
     for (auto& y : x.second) {

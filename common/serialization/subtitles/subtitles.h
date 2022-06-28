@@ -193,5 +193,3 @@ void open_text_project(const std::string& kind,
                        std::vector<std::string>& inputs);
 GameSubtitleDB load_subtitle_project();
 
-
-extern const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap;
