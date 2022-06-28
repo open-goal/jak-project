@@ -428,7 +428,7 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
     }
 
     if (m_db.count(scene_name) == 0) {
-      ImGui::PushStyleColor(ImGuiCol_Text, m_selected_text_color);
+      ImGui::PushStyleColor(ImGuiCol_Text, m_warning_color);
     }
 
     if (ImGui::TreeNode(
