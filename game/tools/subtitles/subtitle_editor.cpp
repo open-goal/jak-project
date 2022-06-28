@@ -95,6 +95,7 @@ void SubtitleEditor::repl_execute_cutscene_code(const SubtitleEditorDB::Entry& e
     std::string temp = entry.execute_code;
     temp = std::regex_replace(temp, std::regex("__GET-PROCESS__"),
                               repl_get_process_string(entry.entity_type, entry.process_name));
+    m_repl.eval("(send-event *camera* 'teleport)");
     m_repl.eval(temp);
   }
 }
@@ -279,7 +280,7 @@ void SubtitleEditor::update_subtitle_editor_db() {
       } else {
         m_db[key] = new_entry;
       }
-      
+
     } catch (std::exception& ex) {
       fmt::print("Bad subtitle db entry - {} - {}", key, ex.what());
     }
@@ -373,10 +374,26 @@ void SubtitleEditor::draw_repl_options() {
   }
 }
 
+bool SubtitleEditor::any_cutscenes_in_group(const std::string& group_name) {
+  auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
+  auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
+  for (auto& scene_name : scenes_in_group) {
+    auto& scene_info = scenes[scene_name];
+    if (scene_info.m_kind == SubtitleSceneKind::Movie) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void SubtitleEditor::draw_all_cutscene_groups() {
   for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
     if (!m_filter.empty() && m_filter != m_filter_placeholder) {
       ImGui::SetNextItemOpen(true);
+    }
+    if (m_subtitle_db.m_subtitle_groups->m_groups.count(group_name) == 0 ||
+        !any_cutscenes_in_group(group_name)) {
+      continue;
     }
     if (ImGui::TreeNode(group_name.c_str())) {
       draw_all_scenes(group_name, false);
@@ -386,10 +403,26 @@ void SubtitleEditor::draw_all_cutscene_groups() {
   }
 }
 
+bool SubtitleEditor::any_hints_in_group(const std::string& group_name) {
+  auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
+  auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
+  for (auto& scene_name : scenes_in_group) {
+    auto& scene_info = scenes[scene_name];
+    if (scene_info.m_kind != SubtitleSceneKind::Movie) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void SubtitleEditor::draw_all_hint_groups() {
   for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
     if (!m_filter_hints.empty() && m_filter_hints != m_filter_placeholder) {
       ImGui::SetNextItemOpen(true);
+    }
+    if (m_subtitle_db.m_subtitle_groups->m_groups.count(group_name) == 0 ||
+        !any_hints_in_group(group_name)) {
+      continue;
     }
     if (ImGui::TreeNode(group_name.c_str())) {
       draw_all_hints(group_name, false);

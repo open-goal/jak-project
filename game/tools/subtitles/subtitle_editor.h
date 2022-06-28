@@ -35,6 +35,9 @@ class SubtitleEditor {
   void draw_edit_options();
   void draw_repl_options();
 
+  bool any_cutscenes_in_group(const std::string& group_name);
+  bool any_hints_in_group(const std::string& group_name);
+
   void draw_all_cutscene_groups();
   void draw_all_scenes(std::string group_name, bool base_cutscenes = false);
   void draw_subtitle_options(GameSubtitleSceneInfo& scene, bool current_scene = false);
