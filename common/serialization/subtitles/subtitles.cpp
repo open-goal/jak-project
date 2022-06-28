@@ -497,14 +497,18 @@ GameSubtitleDB load_subtitle_project() {
   GameSubtitleDB db;
   db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
   db.m_subtitle_groups->hydrate_from_asset_file();
-  goos::Reader reader;
-  std::vector<std::string> inputs;
-  std::string subtitle_project =
-      (file_util::get_jak_project_dir() / "game" / "assets" / "game_subtitle.gp").string();
-  open_text_project("subtitle", subtitle_project, inputs);
-  for (auto& filename : inputs) {
-    auto code = reader.read_from_file({filename});
-    parse_subtitle(code, db, filename);
+  try {
+    goos::Reader reader;
+    std::vector<std::string> inputs;
+    std::string subtitle_project =
+        (file_util::get_jak_project_dir() / "game" / "assets" / "game_subtitle.gp").string();
+    open_text_project("subtitle", subtitle_project, inputs);
+    for (auto& filename : inputs) {
+      auto code = reader.read_from_file({filename});
+      parse_subtitle(code, db, filename);
+    }
+  } catch (std::runtime_error& e) {
+    lg::error("error loading subtitle project: {}", e.what());
   }
   return db;
 }
