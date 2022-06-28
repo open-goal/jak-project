@@ -136,23 +136,15 @@ bool TextTool::needs_run(const ToolInput& task) {
   }
 
   std::vector<std::string> deps;
-  std::unordered_map<GameTextVersion, std::vector<std::string>> inputs;
-  open_text_project("text", task.input.at(0), inputs);
-  for (auto& [ver, files] : inputs) {
-    for (auto& in : files) {
-      deps.push_back(in);
-    }
-  }
+  open_text_project("text", task.input.at(0), deps);
   return Tool::needs_run({task.input, deps, task.output, task.arg});
 }
 
 bool TextTool::run(const ToolInput& task) {
   GameTextDB db;
-  std::unordered_map<GameTextVersion, std::vector<std::string>> inputs;
+  std::vector<std::string> inputs;
   open_text_project("text", task.input.at(0), inputs);
-  for (auto& [ver, in] : inputs) {
-    compile_game_text(in, ver, db);
-  }
+  compile_game_text(inputs, db);
   return true;
 }
 
@@ -170,13 +162,7 @@ bool SubtitleTool::needs_run(const ToolInput& task) {
   }
 
   std::vector<std::string> deps;
-  std::unordered_map<GameTextVersion, std::vector<std::string>> inputs;
-  open_text_project("subtitle", task.input.at(0), inputs);
-  for (auto& [ver, files] : inputs) {
-    for (auto& in : files) {
-      deps.push_back(in);
-    }
-  }
+  open_text_project("subtitle", task.input.at(0), deps);
   return Tool::needs_run({task.input, deps, task.output, task.arg});
 }
 
@@ -184,11 +170,9 @@ bool SubtitleTool::run(const ToolInput& task) {
   GameSubtitleDB db;
   db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
   db.m_subtitle_groups->hydrate_from_asset_file();
-  std::unordered_map<GameTextVersion, std::vector<std::string>> inputs;
+  std::vector<std::string> inputs;
   open_text_project("subtitle", task.input.at(0), inputs);
-  for (auto& [ver, in] : inputs) {
-    compile_game_subtitle(in, ver, db);
-  }
+  compile_game_subtitle(inputs, db);
   return true;
 }
 

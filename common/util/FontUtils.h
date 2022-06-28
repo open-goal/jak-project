@@ -68,6 +68,9 @@ class GameTextFontBank {
   const std::vector<ReplaceInfo>* replace_info() const { return m_replace_info; }
   const std::unordered_set<char>* passthrus() const { return m_passthrus; }
 
+  GameTextVersion version() const { return m_version; }
+
+  std::string convert_utf8_to_game_with_escape(const std::string& str) const;
   std::string convert_utf8_to_game(std::string str) const;
   std::string convert_game_to_utf8(const char* in) const;
 };
