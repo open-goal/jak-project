@@ -192,4 +192,3 @@ void open_text_project(const std::string& kind,
                        const std::string& filename,
                        std::vector<std::string>& inputs);
 GameSubtitleDB load_subtitle_project();
-

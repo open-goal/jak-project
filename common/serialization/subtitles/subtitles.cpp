@@ -203,9 +203,7 @@ void parse_text(const goos::Object& data, GameTextDB& db) {
  * Each scene should be (scene-name <entry 1> <entry 2> ... )
  * This adds the subtitle to each of the specified languages.
  */
-void parse_subtitle(const goos::Object& data,
-                    GameSubtitleDB& db,
-                    const std::string& file_path) {
+void parse_subtitle(const goos::Object& data, GameSubtitleDB& db, const std::string& file_path) {
   const GameTextFontBank* font = nullptr;
   std::map<int, std::shared_ptr<GameSubtitleBank>> banks;
 
