@@ -54,7 +54,7 @@
   "Add a GOAL source file with the given dependencies"
   `(let ((output-file ,(gc-file->o-file src-file)))
     (set! *all-gc* (cons output-file *all-gc*))
-    (defstep :in ,(string-append "goal_src/" src-file)
+    (defstep :in ,(string-append "goal_src/jak1/" src-file)
      ;; use goal compiler
      :tool 'goalc
      ;; will output the obj file
@@ -69,7 +69,7 @@
   "Helper for goal-src-sequence"
   `(let ((output-file ,(gc-file->o-file current)))
     (set! *all-gc* (cons output-file *all-gc*))
-    (defstep :in ,(string-append "goal_src/" prefix current)
+    (defstep :in ,(string-append "goal_src/jak1/" prefix current)
      :tool 'goalc
      :out (list output-file)
      :dep '(,(gc-file->o-file previous))
@@ -115,9 +115,9 @@
   )
 
 (defun cgo (output-name desc-file-name)
-  "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
+  "Add a CGO with the given output name (in out/iso) and input name (in goal_src/jak1/dgos)"
   (let ((out-name (string-append "out/iso/" output-name)))
-    (defstep :in (string-append "goal_src/dgos/" desc-file-name)
+    (defstep :in (string-append "goal_src/jak1/dgos/" desc-file-name)
       :tool 'dgo
       :out `(,out-name)
       )

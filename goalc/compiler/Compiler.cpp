@@ -32,7 +32,8 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
   m_make.add_tool(std::make_shared<CompilerTool>(this));
 
   // load GOAL library
-  Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
+  // TODO - Jak2 - BAD!
+  Object library_code = m_goos.reader.read_from_file({"goal_src", "jak1", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
 
   // user profile stuff
