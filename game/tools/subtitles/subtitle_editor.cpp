@@ -378,7 +378,7 @@ bool SubtitleEditor::any_cutscenes_in_group(const std::string& group_name) {
   auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
   auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
   for (auto& scene_name : scenes_in_group) {
-    auto& scene_info = scenes[scene_name];
+    auto& scene_info = scenes.at(scene_name);
     if (scene_info.m_kind == SubtitleSceneKind::Movie) {
       return true;
     }
@@ -407,7 +407,7 @@ bool SubtitleEditor::any_hints_in_group(const std::string& group_name) {
   auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
   auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
   for (auto& scene_name : scenes_in_group) {
-    auto& scene_info = scenes[scene_name];
+    auto& scene_info = scenes.at(scene_name);
     if (scene_info.m_kind != SubtitleSceneKind::Movie) {
       return true;
     }
