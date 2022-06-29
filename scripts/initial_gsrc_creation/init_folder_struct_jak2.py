@@ -496,9 +496,9 @@ with open('../../goal_src/jak2/build/all_objs.json', 'w') as json_file:
     dgo_set = dgo_set.removesuffix(", ")
     dgo_set += "]"
     if i == (len(jak2_files) - 1):
-      json_file.write("[{}{}{},{}, \"{}\"]\n".format(name, name_in_dgo, jak2_file[2], dgo_set, jak2_file[4]))
+      json_file.write("[{}{}{}, {}, \"{}\"]\n".format(name, name_in_dgo, jak2_file[2], dgo_set, jak2_file[4]))
     else:
-      json_file.write("[{}{}{},{}, \"{}\"],\n".format(name, name_in_dgo, jak2_file[2], dgo_set, jak2_file[4]))
+      json_file.write("[{}{}{}, {}, \"{}\"],\n".format(name, name_in_dgo, jak2_file[2], dgo_set, jak2_file[4]))
     i = i + 1
   json_file.write("]\n")
 
