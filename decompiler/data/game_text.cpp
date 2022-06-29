@@ -151,11 +151,6 @@ std::string write_game_text(
   }
   std::sort(languages.begin(), languages.end());
 
-  // hack
-  if (version == GameTextVersion::JAK1_V1) {
-    version = GameTextVersion::JAK1_V2;
-  }
-
   // build map
   std::map<int, std::vector<std::string>> text_by_id;
   std::map<int, std::vector<std::string>> text_by_id_credits;

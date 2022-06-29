@@ -569,6 +569,9 @@ int main(int argc, char** argv) {
         return static_cast<int>(ExtractorErrorCode::VALIDATION_BAD_ISO_CONTENTS);
       }
       path_to_iso_files = data_dir_path;
+      if (std::filesystem::exists(path_to_iso_files / "buildinfo.json")) {
+        std::filesystem::remove(path_to_iso_files / "buildinfo.json");
+      }
       auto validation_res = validate(path_to_iso_files);
       flags = validation_res.second->flags;
     }
