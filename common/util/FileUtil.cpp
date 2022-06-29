@@ -262,14 +262,18 @@ std::vector<uint8_t> read_binary_file(const std::filesystem::path& path) {
   return data;
 }
 
-std::string read_text_file(const std::string& path) {
-  std::ifstream file(path);
+std::string read_text_file(const std::filesystem::path& path) {
+  std::ifstream file(path.string());
   if (!file.good()) {
-    throw std::runtime_error("couldn't open " + path);
+    throw std::runtime_error("couldn't open " + path.string());
   }
   std::stringstream ss;
   ss << file.rdbuf();
   return ss.str();
+}
+
+std::string read_text_file(const std::string& path) {
+  return read_text_file(std::filesystem::path(path));
 }
 
 bool is_printable_char(char c) {

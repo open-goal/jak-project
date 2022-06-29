@@ -33,6 +33,7 @@ void write_text_file(const std::filesystem::path& file_name, const std::string& 
 std::vector<uint8_t> read_binary_file(const std::string& filename);
 std::vector<uint8_t> read_binary_file(const std::filesystem::path& filename);
 std::string read_text_file(const std::string& path);
+std::string read_text_file(const std::filesystem::path& path);
 bool is_printable_char(char c);
 std::string combine_path(const std::string& parent, const std::string& child);
 bool file_exists(const std::string& path);
