@@ -106,6 +106,119 @@ std::pair<std::optional<std::string>, std::optional<xxh::hash64_t>> findElfFile(
 }
 
 std::pair<ExtractorErrorCode, std::optional<ISOMetadata>> validate(
+    const std::filesystem::path& extracted_iso_path) {
+  if (!std::filesystem::exists(extracted_iso_path / "DGO")) {
+    fmt::print(stderr, "ERROR: input folder doesn't have a DGO folder. Is this the right input?\n");
+    return {ExtractorErrorCode::VALIDATION_BAD_EXTRACTION, std::nullopt};
+  }
+
+  std::optional<ExtractorErrorCode> error_code;
+  std::optional<std::string> serial = std::nullopt;
+  std::optional<xxh::hash64_t> elf_hash = std::nullopt;
+  std::tie(serial, elf_hash) = findElfFile(extracted_iso_path);
+
+  // - XOR all hashes together and hash the result.  This makes the ordering of the hashes (aka
+  // files) irrelevant
+  xxh::hash64_t combined_hash = 0;
+  int filec = 0;
+  for (auto const& dir_entry : std::filesystem::recursive_directory_iterator(extracted_iso_path)) {
+    if (dir_entry.is_regular_file()) {
+      auto buffer = file_util::read_binary_file(dir_entry.path().string());
+      auto hash = xxh::xxhash<64>(buffer);
+      combined_hash ^= hash;
+      filec++;
+    }
+  }
+  xxh::hash64_t contents_hash = xxh::xxhash<64>({combined_hash});
+
+  if (!serial || !elf_hash) {
+    fmt::print(stderr, "ERROR: Unable to locate a Serial/ELF file!\n");
+    if (!error_code.has_value()) {
+      error_code = std::make_optional(ExtractorErrorCode::VALIDATION_CANT_LOCATE_ELF);
+    }
+    // No point in continuing here
+    return {*error_code, std::nullopt};
+  }
+
+  // Find the game in our tracking database
+  std::optional<ISOMetadata> meta_res = std::nullopt;
+  if (auto dbEntry = isoDatabase.find(serial.value()); dbEntry == isoDatabase.end()) {
+    fmt::print(stderr, "ERROR: Serial '{}' not found in the validation database\n", serial.value());
+    if (!error_code.has_value()) {
+      error_code = std::make_optional(ExtractorErrorCode::VALIDATION_SERIAL_MISSING_FROM_DB);
+    }
+  } else {
+    auto& metaMap = dbEntry->second;
+    auto meta_entry = metaMap.find(elf_hash.value());
+    if (meta_entry == metaMap.end()) {
+      fmt::print(stderr,
+                 "ERROR: ELF Hash '{}' not found in the validation database, is this a new or "
+                 "modified version of the same game?\n",
+                 elf_hash.value());
+      if (!error_code.has_value()) {
+        error_code = std::make_optional(ExtractorErrorCode::VALIDATION_ELF_MISSING_FROM_DB);
+      }
+    } else {
+      meta_res = std::make_optional<ISOMetadata>(meta_entry->second);
+      const auto& meta = *meta_res;
+      // Print out some information
+      fmt::print("Detected Game Metadata:\n");
+      fmt::print("\tDetected - {}\n", meta.canonical_name);
+      fmt::print("\tRegion - {}\n", meta.region);
+      fmt::print("\tSerial - {}\n", dbEntry->first);
+      fmt::print("\tUses Decompiler Config - {}\n", meta.decomp_config);
+
+      // - Number of Files
+      if (meta.num_files != filec) {
+        fmt::print(stderr,
+                   "ERROR: Extracted an unexpected number of files. Expected '{}', Actual '{}'\n",
+                   meta.num_files, filec);
+        if (!error_code.has_value()) {
+          error_code =
+              std::make_optional(ExtractorErrorCode::VALIDATION_INCORRECT_EXTRACTION_COUNT);
+        }
+      }
+      // Check the ISO Hash
+      if (meta.contents_hash != contents_hash) {
+        fmt::print(stderr,
+                   "ERROR: Overall ISO content's hash does not match. Expected '{}', Actual '{}'\n",
+                   meta.contents_hash, contents_hash);
+      }
+    }
+  }
+
+  // Finally, return the result
+  if (error_code.has_value()) {
+    // Generate the map entry to make things simple, just convienance
+    if (error_code.value() == ExtractorErrorCode::VALIDATION_SERIAL_MISSING_FROM_DB) {
+      fmt::print(
+          "If this is a new release or version that should be supported, consider adding the "
+          "following serial entry to the database:\n");
+      fmt::print(
+          "\t'{{\"{}\", {{{{{}U, {{\"GAME_TITLE\", \"NTSC-U/PAL/NTSC-J\", {}, {}U, "
+          "\"DECOMP_CONFIF_FILENAME_NO_EXTENSION\"}}}}}}}}'\n",
+          serial.value(), elf_hash.value(), filec, contents_hash);
+    } else if (error_code.value() == ExtractorErrorCode::VALIDATION_ELF_MISSING_FROM_DB) {
+      fmt::print(
+          "If this is a new release or version that should be supported, consider adding the "
+          "following ELF entry to the database under the '{}' serial:\n",
+          serial.value());
+      fmt::print(
+          "\t'{{{}, {{\"GAME_TITLE\", \"NTSC-U/PAL/NTSC-J\", {}, {}U, "
+          "\"DECOMP_CONFIF_FILENAME_NO_EXTENSION\"}}}}'\n",
+          elf_hash.value(), filec, contents_hash);
+    } else {
+      fmt::print(stderr,
+                 "Validation has failed to match with expected values, see the above errors for "
+                 "specifics. This may be an error in the validation database!\n");
+    }
+    return {*error_code, std::nullopt};
+  }
+
+  return {ExtractorErrorCode::SUCCESS, meta_res};
+}
+
+std::pair<ExtractorErrorCode, std::optional<ISOMetadata>> validate(
     const IsoFile& iso_file,
     const std::filesystem::path& extracted_iso_path) {
   if (!std::filesystem::exists(extracted_iso_path / "DGO")) {
@@ -439,6 +552,7 @@ int main(int argc, char** argv) {
             std::filesystem::file_size(data_dir_path));
         return static_cast<int>(ExtractorErrorCode::EXTRACTION_ISO_UNEXPECTED_SIZE);
       }
+
       auto iso_file = extract_files(data_dir_path, path_to_iso_files);
       auto validation_res = validate(iso_file, path_to_iso_files);
       flags = validation_res.second->flags;
@@ -455,6 +569,11 @@ int main(int argc, char** argv) {
         return static_cast<int>(ExtractorErrorCode::VALIDATION_BAD_ISO_CONTENTS);
       }
       path_to_iso_files = data_dir_path;
+      if (std::filesystem::exists(path_to_iso_files / "buildinfo.json")) {
+        std::filesystem::remove(path_to_iso_files / "buildinfo.json");
+      }
+      auto validation_res = validate(path_to_iso_files);
+      flags = validation_res.second->flags;
     }
 
     // write out a json file with some metadata for the game

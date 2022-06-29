@@ -44,7 +44,7 @@ std::string SubtitleEditor::repl_get_process_string(const std::string_view& enti
 
 void SubtitleEditor::repl_play_hint(const std::string_view& hint_name) {
   repl_reset_game();
-  repl_set_continue_point("village1-hut");
+  // repl_set_continue_point("village1-hut");
   // TODO - move into water fountain
   m_repl.eval(
       fmt::format("(level-hint-spawn (game-text-id zero) \"{}\" (the-as entity #f) *entity-pool* "
@@ -102,7 +102,8 @@ void SubtitleEditor::repl_execute_cutscene_code(const SubtitleEditorDB::Entry& e
 
 void SubtitleEditor::repl_rebuild_text() {
   m_repl.eval("(make-text)");
-  // NOTE - still no clue how this doesn't switch languages lol
+  // increment the language id of the in-memory text file so that it won't match the current
+  // language and the game will want to reload it asap
   m_repl.eval("(1+! (-> *subtitle-text* lang))");
 }
 
@@ -176,16 +177,15 @@ void SubtitleEditor::draw_window() {
     if (!is_scene_in_current_lang(m_new_scene_name) && !m_new_scene_name.empty() &&
         !m_new_scene_group.empty()) {
       if (ImGui::Button("Add Scene")) {
-        GameSubtitleSceneInfo newScene;
+        GameSubtitleSceneInfo newScene(SubtitleSceneKind::Movie);
         newScene.m_name = m_new_scene_name;
-        newScene.m_kind = SubtitleSceneKind::Movie;
         newScene.m_id = 0;  // TODO - id is always zero, bug in subtitles.cpp?
         newScene.m_sorting_group = m_new_scene_group;
         m_subtitle_db.m_banks.at(m_current_language)->add_scene(newScene);
         m_subtitle_db.m_subtitle_groups->add_scene(newScene.m_sorting_group, newScene.m_name);
         if (m_add_new_scene_as_current) {
           auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
-          auto& scene_info = scenes[m_new_scene_name];
+          auto& scene_info = scenes.at(m_new_scene_name);
           m_current_scene = &scene_info;
         }
         m_new_scene_name = "";
@@ -225,7 +225,7 @@ void SubtitleEditor::draw_window() {
     if (!is_scene_in_current_lang(m_new_scene_name) && !m_new_scene_name.empty() &&
         !m_new_scene_group.empty()) {
       if (ImGui::Button("Add Scene")) {
-        GameSubtitleSceneInfo newScene;
+        GameSubtitleSceneInfo newScene(SubtitleSceneKind::Hint);
         newScene.m_name = m_new_scene_name;
         if (m_new_scene_id == "0") {
           newScene.m_kind = SubtitleSceneKind::Hint;
@@ -235,7 +235,7 @@ void SubtitleEditor::draw_window() {
           newScene.m_id = strtoul(m_new_scene_id.c_str(), nullptr, 16);
         }
         // currently hints have no way in the editor to add a line, so give us one for free
-        newScene.add_line(0, "", "", "", "", false);
+        newScene.add_line(0, "", "", false);
         newScene.m_sorting_group = m_new_scene_group;
         m_subtitle_db.m_banks.at(m_current_language)->add_scene(newScene);
         m_subtitle_db.m_subtitle_groups->add_scene(newScene.m_sorting_group, newScene.m_name);
@@ -378,7 +378,7 @@ bool SubtitleEditor::any_cutscenes_in_group(const std::string& group_name) {
   auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
   auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
   for (auto& scene_name : scenes_in_group) {
-    auto& scene_info = scenes[scene_name];
+    auto& scene_info = scenes.at(scene_name);
     if (scene_info.m_kind == SubtitleSceneKind::Movie) {
       return true;
     }
@@ -407,7 +407,7 @@ bool SubtitleEditor::any_hints_in_group(const std::string& group_name) {
   auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
   auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
   for (auto& scene_name : scenes_in_group) {
-    auto& scene_info = scenes[scene_name];
+    auto& scene_info = scenes.at(scene_name);
     if (scene_info.m_kind != SubtitleSceneKind::Movie) {
       return true;
     }
@@ -440,7 +440,7 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
     if (scenes.count(scene_name) == 0) {
       continue;
     }
-    auto& scene_info = scenes[scene_name];
+    auto& scene_info = scenes.at(scene_name);
     // Don't duplicate entries
     if (base_cutscenes && is_scene_in_current_lang(scene_name)) {
       continue;
@@ -497,7 +497,7 @@ void SubtitleEditor::draw_all_hints(std::string group_name, bool base_cutscenes)
     if (scenes.count(scene_name) == 0) {
       continue;
     }
-    auto& scene_info = scenes[scene_name];
+    auto& scene_info = scenes.at(scene_name);
     // Don't duplicate entries
     if (base_cutscenes && is_scene_in_current_lang(scene_name)) {
       continue;
@@ -587,31 +587,34 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
   if (current_scene) {
     draw_new_cutscene_line_form();
   }
+  auto font =
+      get_font_bank(parse_text_only_version(m_subtitle_db.m_banks[m_current_language]->file_path));
   for (size_t i = 0; i < scene.m_lines.size(); i++) {
     auto& subtitleLine = scene.m_lines.at(i);
+    auto linetext = font->convert_game_to_utf8(subtitleLine.line.c_str());
     std::string summary;
-    if (subtitleLine.line_utf8.empty()) {
+    if (linetext.empty()) {
       summary = fmt::format("[{}] Clear Screen", subtitleLine.frame);
-    } else if (subtitleLine.line_utf8.length() >= 30) {
-      summary = fmt::format("[{}] {} - '{}...'", subtitleLine.frame, subtitleLine.speaker_utf8,
-                            subtitleLine.line_utf8.substr(0, 30));
+    } else if (linetext.length() >= 30) {
+      summary = fmt::format("[{}] {} - '{}...'", subtitleLine.frame, subtitleLine.speaker,
+                            linetext.substr(0, 30));
     } else {
-      summary = fmt::format("[{}] {} - '{}'", subtitleLine.frame, subtitleLine.speaker_utf8,
-                            subtitleLine.line_utf8.substr(0, 30));
+      summary = fmt::format("[{}] {} - '{}'", subtitleLine.frame, subtitleLine.speaker,
+                            linetext.substr(0, 30));
     }
-    if (subtitleLine.line_utf8.empty()) {
+    if (linetext.empty()) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
     } else if (subtitleLine.offscreen) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_offscreen_text_color);
     }
     if (ImGui::TreeNode(fmt::format("{}", i).c_str(), "%s", summary.c_str())) {
-      if (subtitleLine.line_utf8.empty() || subtitleLine.offscreen) {
+      if (linetext.empty() || subtitleLine.offscreen) {
         ImGui::PopStyleColor();
       }
       ImGui::InputInt("Starting Frame", &subtitleLine.frame,
                       ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
-      ImGui::InputText("Speaker", &subtitleLine.speaker_utf8);
-      ImGui::InputText("Text", &subtitleLine.line_utf8);
+      ImGui::InputText("Speaker", &subtitleLine.speaker);
+      ImGui::InputText("Text", &linetext);
       ImGui::Checkbox("Offscreen?", &subtitleLine.offscreen);
       ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
       if (scene.m_lines.size() > 1) {  // prevent creating an empty scene
@@ -621,9 +624,11 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       }
       ImGui::PopStyleColor();
       ImGui::TreePop();
-    } else if (subtitleLine.line_utf8.empty() || subtitleLine.offscreen) {
+    } else if (linetext.empty() || subtitleLine.offscreen) {
       ImGui::PopStyleColor();
     }
+    auto newtext = font->convert_utf8_to_game_with_escape(linetext);
+    subtitleLine.line = newtext;
   }
 }
 
@@ -642,7 +647,7 @@ void SubtitleEditor::draw_new_cutscene_line_form() {
   } else {
     rendered_text_entry_btn = true;
     if (ImGui::Button("Add Text Entry")) {
-      m_current_scene->add_line(m_current_scene_frame, "", m_current_scene_text, "",
+      m_current_scene->add_line(m_current_scene_frame, m_current_scene_text,
                                 m_current_scene_speaker, m_current_scene_offscreen);
     }
   }
@@ -655,7 +660,7 @@ void SubtitleEditor::draw_new_cutscene_line_form() {
       ImGui::SameLine();
     }
     if (ImGui::Button("Add Clear Screen Entry")) {
-      m_current_scene->add_line(m_current_scene_frame, "", "", "", "", false);
+      m_current_scene->add_line(m_current_scene_frame, "", "", false);
     }
   }
   ImGui::NewLine();

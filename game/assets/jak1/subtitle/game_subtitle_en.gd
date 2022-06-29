@@ -1,4 +1,5 @@
 (language-id 0 6)
+(text-version jak1-v2)
 
 ;; -----------------
 ;; intro
@@ -2522,7 +2523,7 @@
   )
 
 ("MTA-AM08" :hint #x0
-  (0 "WILLARD" "EH HEH... BIRDIE IS MY BEST FRIEND<til>")
+  (0 "WILLARD" "EH HEH... BIRDIE IS MY BEST FRIEND<TIL>")
   )
 
 ("MTA-AM09" :hint #x0

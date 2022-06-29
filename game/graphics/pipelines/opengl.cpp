@@ -416,7 +416,7 @@ GfxDisplayMode GLDisplay::get_fullscreen() {
 
 int GLDisplay::get_screen_vmode_count() {
   int count = 0;
-  auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
+  glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
   return count;
 }
 

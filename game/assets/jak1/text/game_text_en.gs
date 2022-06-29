@@ -1,5 +1,6 @@
 (group-name "common")
-(language-id 0 6)
+(language-id 0 6) ;; english and uk-english
+(text-version jak1-v2)
 
 ;; -----------------
 ;; progress menu (insanity)

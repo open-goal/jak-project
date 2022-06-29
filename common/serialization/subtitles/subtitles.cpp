@@ -7,37 +7,6 @@
 
 #include "third-party/fmt/core.h"
 
-static const std::unordered_map<std::string, GameTextVersion> s_text_ver_enum_map = {
-    {"jak1-v1", GameTextVersion::JAK1_V1},
-    {"jak1-v2", GameTextVersion::JAK1_V2}};
-
-// TODO - why not just return the inputs instead of passing in an empty one?
-void open_text_project(const std::string& kind,
-                       const std::string& filename,
-                       std::unordered_map<GameTextVersion, std::vector<std::string>>& inputs) {
-  goos::Reader reader;
-  auto& proj = reader.read_from_file({filename}).as_pair()->cdr.as_pair()->car;
-  if (!proj.is_pair() || !proj.as_pair()->car.is_symbol() ||
-      proj.as_pair()->car.as_symbol()->name != kind) {
-    throw std::runtime_error(fmt::format("invalid {} project", kind));
-  }
-
-  goos::for_each_in_list(proj.as_pair()->cdr, [&](const goos::Object& o) {
-    if (!o.is_pair()) {
-      throw std::runtime_error(fmt::format("invalid entry in {} project", kind));
-    }
-
-    auto& ver = o.as_pair()->car.as_symbol()->name;
-    auto& in = o.as_pair()->cdr.as_pair()->car.as_string()->data;
-
-    if (s_text_ver_enum_map.count(ver) == 0) {
-      throw std::runtime_error(fmt::format("unknown text version {}", ver));
-    }
-
-    inputs[s_text_ver_enum_map.at(ver)].push_back(in);
-  });
-}
-
 int64_t get_int(const goos::Object& obj) {
   if (obj.is_int()) {
     return obj.integer_obj.value;
@@ -76,8 +45,8 @@ std::string get_string(const goos::Object& x) {
  * Each entry should be (id "line for 1st language" "line for 2nd language" ...)
  * This adds the text line to each of the specified languages.
  */
-void parse_text(const goos::Object& data, GameTextVersion text_ver, GameTextDB& db) {
-  auto font = get_font_bank(text_ver);
+void parse_text(const goos::Object& data, GameTextDB& db) {
+  const GameTextFontBank* font = nullptr;
   std::vector<std::shared_ptr<GameTextBank>> banks;
   std::string possible_group_name;
 
@@ -170,9 +139,29 @@ void parse_text(const goos::Object& data, GameTextVersion text_ver, GameTextDB& 
             throw std::runtime_error(fmt::format("Non-string value in text id #x{:x}", id));
           }
         });
+      } else if (head.is_symbol("text-version")) {
+        if (font) {
+          throw std::runtime_error("text version is already set");
+        }
+
+        const auto& ver_name = car(cdr(obj));
+        if (!ver_name.is_symbol()) {
+          throw std::runtime_error("invalid text version entry");
+        }
+
+        if (auto it = sTextVerEnumMap.find(ver_name.as_symbol()->name);
+            it == sTextVerEnumMap.end()) {
+          throw std::runtime_error(
+              fmt::format("unknown text version {}", ver_name.as_symbol()->name));
+        } else {
+          font = get_font_bank(it->second);
+        }
       }
 
       else if (head.is_int()) {
+        if (!font) {
+          throw std::runtime_error("Text version must be set before defining entries.");
+        }
         if (banks.size() == 0) {
           throw std::runtime_error("At least one language must be set before defining entries.");
         }
@@ -214,11 +203,8 @@ void parse_text(const goos::Object& data, GameTextVersion text_ver, GameTextDB& 
  * Each scene should be (scene-name <entry 1> <entry 2> ... )
  * This adds the subtitle to each of the specified languages.
  */
-void parse_subtitle(const goos::Object& data,
-                    GameTextVersion text_ver,
-                    GameSubtitleDB& db,
-                    const std::string& file_path) {
-  auto font = get_font_bank(text_ver);
+void parse_subtitle(const goos::Object& data, GameSubtitleDB& db, const std::string& file_path) {
+  const GameTextFontBank* font = nullptr;
   std::map<int, std::shared_ptr<GameSubtitleBank>> banks;
 
   for_each_in_list(data.as_pair()->cdr, [&](const goos::Object& obj) {
@@ -244,9 +230,29 @@ void parse_subtitle(const goos::Object& data,
             banks[lang]->file_path = file_path;
           }
         });
+      } else if (head.is_symbol("text-version")) {
+        if (font) {
+          throw std::runtime_error("text version is already set");
+        }
+
+        const auto& ver_name = car(cdr(obj));
+        if (!ver_name.is_symbol()) {
+          throw std::runtime_error("invalid text version entry");
+        }
+
+        if (auto it = sTextVerEnumMap.find(ver_name.as_symbol()->name);
+            it == sTextVerEnumMap.end()) {
+          throw std::runtime_error(
+              fmt::format("unknown text version {}", ver_name.as_symbol()->name));
+        } else {
+          font = get_font_bank(it->second);
+        }
       }
 
       else if (head.is_string() || head.is_int()) {
+        if (!font) {
+          throw std::runtime_error("Text version must be set before defining entries.");
+        }
         if (banks.size() == 0) {
           throw std::runtime_error("At least one language must be set before defining scenes.");
         }
@@ -319,11 +325,9 @@ void parse_subtitle(const goos::Object& data,
                 }
               }
             });
-            auto line_utf8 = line ? line->data : "";
-            auto line_str = font->convert_utf8_to_game(line_utf8);
-            auto speaker_utf8 = speaker ? speaker->data : "";
-            auto speaker_str = font->convert_utf8_to_game(speaker_utf8);
-            scene.add_line(time, line_str, line_utf8, speaker_str, speaker_utf8, offscreen);
+            auto line_str = font->convert_utf8_to_game(line ? line->data : "");
+            auto speaker_str = font->convert_utf8_to_game(speaker ? speaker->data : "");
+            scene.add_line(time, line_str, speaker_str, offscreen);
           } else {
             throw std::runtime_error(
                 fmt::format("{} | Each entry must be a non-empty list", scene.name()));
@@ -347,6 +351,45 @@ void parse_subtitle(const goos::Object& data,
   if (banks.size() == 0) {
     throw std::runtime_error("At least one language must be set.");
   }
+}
+
+GameTextVersion parse_text_only_version(const std::string& filename) {
+  goos::Reader reader;
+  return parse_text_only_version(reader.read_from_file({filename}));
+}
+
+GameTextVersion parse_text_only_version(const goos::Object& data) {
+  const GameTextFontBank* font = nullptr;
+
+  for_each_in_list(data.as_pair()->cdr, [&](const goos::Object& obj) {
+    if (obj.is_pair()) {
+      auto& head = car(obj);
+      if (head.is_symbol("text-version")) {
+        if (font) {
+          throw std::runtime_error("text version is already set");
+        }
+
+        const auto& ver_name = car(cdr(obj));
+        if (!ver_name.is_symbol()) {
+          throw std::runtime_error("invalid text version entry");
+        }
+
+        if (auto it = sTextVerEnumMap.find(ver_name.as_symbol()->name);
+            it == sTextVerEnumMap.end()) {
+          throw std::runtime_error(
+              fmt::format("unknown text version {}", ver_name.as_symbol()->name));
+        } else {
+          font = get_font_bank(it->second);
+        }
+      }
+    }
+  });
+
+  if (!font) {
+    throw std::runtime_error("text version not found");
+  }
+
+  return font->version();
 }
 
 void GameSubtitleGroups::hydrate_from_asset_file() {
@@ -416,21 +459,50 @@ void GameSubtitleGroups::add_scene(const std::string& group_name, const std::str
   }
 }
 
+// TODO - why not just return the inputs instead of passing in an empty one?
+void open_text_project(const std::string& kind,
+                       const std::string& filename,
+                       std::vector<std::string>& inputs) {
+  goos::Reader reader;
+  auto& proj = reader.read_from_file({filename}).as_pair()->cdr.as_pair()->car;
+  if (!proj.is_pair() || !proj.as_pair()->car.is_symbol() ||
+      proj.as_pair()->car.as_symbol()->name != kind) {
+    throw std::runtime_error(fmt::format("invalid {} project", kind));
+  }
+
+  goos::for_each_in_list(proj.as_pair()->cdr, [&](const goos::Object& o) {
+    if (o.is_pair() && o.as_pair()->cdr.is_pair()) {
+      auto& action = o.as_pair()->car.as_symbol()->name;
+
+      if (action == "file") {
+        auto& in = o.as_pair()->cdr.as_pair()->car.as_string()->data;
+        inputs.push_back(in);
+      } else {
+        throw std::runtime_error(fmt::format("unknown action {} in {} project", action, kind));
+      }
+    } else {
+      throw std::runtime_error(fmt::format("invalid entry in {} project", kind));
+    }
+  });
+}
+
 GameSubtitleDB load_subtitle_project() {
   // Load the subtitle files
   GameSubtitleDB db;
   db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
   db.m_subtitle_groups->hydrate_from_asset_file();
-  goos::Reader reader;
-  std::unordered_map<GameTextVersion, std::vector<std::string>> inputs;
-  std::string subtitle_project =
-      (file_util::get_jak_project_dir() / "game" / "assets" / "game_subtitle.gp").string();
-  open_text_project("subtitle", subtitle_project, inputs);
-  for (auto& [ver, in] : inputs) {
-    for (auto& filename : in) {
+  try {
+    goos::Reader reader;
+    std::vector<std::string> inputs;
+    std::string subtitle_project =
+        (file_util::get_jak_project_dir() / "game" / "assets" / "game_subtitle.gp").string();
+    open_text_project("subtitle", subtitle_project, inputs);
+    for (auto& filename : inputs) {
       auto code = reader.read_from_file({filename});
-      parse_subtitle(code, ver, db, filename);
+      parse_subtitle(code, db, filename);
     }
+  } catch (std::runtime_error& e) {
+    lg::error("error loading subtitle project: {}", e.what());
   }
   return db;
 }
