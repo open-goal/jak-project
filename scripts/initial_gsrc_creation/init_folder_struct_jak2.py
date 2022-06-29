@@ -241,9 +241,9 @@ def level_name(file_meta):
   elif dgos == ["SEW"] or dgos == ["SEB", "SWB"] or dgos == ["SEB"] or dgos == ["SWE", "SEW"] :
     return "levels/sewer"
   elif dgos == ["NES"] or dgos == ["NESTT", "NES"] or dgos == ["NESTT"]:
-    return "levels/metal_head_nest/part-a"
+    return "levels/metal_head_nest"
   elif dgos == ["NEB"]:
-    return "levels/metal_head_nest/part-b"
+    return "levels/metal_head_nest/boss_room"
   elif dgos == ["SWE"] or dgos == ["SWB"] or dgos == ["SEB", "SWB", "UNB"]: # interesting this is in underport too... who is 'ruf' and 'hal'?
     return "levels/sewer_escort"
   elif dgos == ["HALFPIPE"]:
