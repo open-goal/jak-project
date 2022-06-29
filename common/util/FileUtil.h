@@ -26,6 +26,7 @@ bool create_dir_if_needed_for_file(const std::string& path);
 bool setup_project_path(std::optional<std::filesystem::path> project_path_override);
 std::string get_file_path(const std::vector<std::string>& path);
 void write_binary_file(const std::string& name, const void* data, size_t size);
+void write_binary_file(const std::filesystem::path& name, const void* data, size_t size);
 void write_rgba_png(const std::filesystem::path& name, void* data, int w, int h);
 void write_text_file(const std::string& file_name, const std::string& text);
 void write_text_file(const std::filesystem::path& file_name, const std::string& text);

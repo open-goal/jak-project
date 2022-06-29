@@ -181,18 +181,22 @@ bool create_dir_if_needed_for_file(const std::string& path) {
   return std::filesystem::create_directories(std::filesystem::path(path).parent_path());
 }
 
-void write_binary_file(const std::string& name, const void* data, size_t size) {
-  FILE* fp = fopen(name.c_str(), "wb");
+void write_binary_file(const std::filesystem::path& name, const void* data, size_t size) {
+  FILE* fp = fopen(name.string().c_str(), "wb");
   if (!fp) {
-    throw std::runtime_error("couldn't open file " + name);
+    throw std::runtime_error("couldn't open file " + name.string());
   }
 
   if (fwrite(data, size, 1, fp) != 1) {
     fclose(fp);
-    throw std::runtime_error("couldn't write file " + name);
+    throw std::runtime_error("couldn't write file " + name.string());
   }
 
   fclose(fp);
+}
+
+void write_binary_file(const std::string& name, const void* data, size_t size) {
+  write_binary_file(std::filesystem::path(name), data, size);
 }
 
 void write_rgba_png(const std::filesystem::path& name, void* data, int w, int h) {
