@@ -269,7 +269,7 @@ void ObjectFileDB::get_objs_from_dgo(const std::filesystem::path& filename, cons
   BinaryReader reader(dgo_data);
   auto header = reader.read<DgoHeader>();
 
-  auto dgo_base_name = file_util::base_name(filename);
+  auto dgo_base_name = filename.filename().string();
   ASSERT(header.name == dgo_base_name);
   assert_string_empty_after(header.name, 60);
 
