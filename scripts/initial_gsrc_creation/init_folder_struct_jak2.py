@@ -19,7 +19,7 @@ engine_files = {
   "capture": "util",
   "text-id": "ui",
   "camera-defs": "camera",
-  "trail": "gfx",
+  "trail": "levels/city/common",
   "minimap": "ui",
   "bigmap": "ui",
   "blit-displays": "gfx",
@@ -58,19 +58,21 @@ engine_files = {
   "etie-vu1": "gfx/etie",
   "etie-near-vu1": "gfx/etie-near-vu1",
   "game-task": "game/task",
-  "mood-tables2": "ambient",
-  "mood-funcs": "ambient",
-  "mood-funcs2": "ambient",
+  "mood-tables": "gfx/time-of-day",
+  "mood-tables2": "gfx/time-of-day",
+  "mood-funcs": "gfx/time-of-day",
+  "mood-funcs2": "gfx/time-of-day",
+  "mood": "gfx/time-of-day",
   "sky-data": "data",
   "load-state": "load",
   "water-flow": "gfx/water",
-  "fma-sphere": "sound", # TODO - ?
+  "fma-sphere": "anim",
   "carry": "game",
   "pilot": "game",
-  "board": "game",
+  "board": "target/board",
   "darkjak": "game",
   "darkjak": "game",
-  "gun-part": "sparticle",
+  "gun-part": "target/gun",
   "debug-part": "debug",
   "task-arrow": "game/task",
   "target-anim": "target",
@@ -78,26 +80,40 @@ engine_files = {
   "target-carry": "target",
   "target-darkjak": "target",
   "target-gun": "target",
-  "gun-util": "util",
-  "gun-blue-shot": "sparticle",
-  "gun-yellow-shot": "sparticle",
-  "gun-red-shot": "sparticle",
-  "gun-dark-shot": "sparticle",
+  "gun-util": "target/gun",
+  "gun-blue-shot": "target/gun",
+  "gun-yellow-shot": "target/gun",
+  "gun-red-shot": "target/gun",
+  "gun-dark-shot": "target/gun",
   "gun-states": "game",
-  "board-util": "util",
+  "board-util": "target/board",
   "target-board": "target",
-  "board-part": "sparticle",
-  "board-states": "game",
+  "board-part": "target/board",
+  "board-states": "target/board",
   "mech": "game",
   "process-taskable-h": "game/task",
-  "gun-h": "game",
+  "gun": "target/gun",
   "collide-debug": "collide",
-  "bigmap-data": "data",
+  "bigmap-data": "ui",
   "editable": "debug/nav", # TODO - hmmm, related to the nav?
   "editable-player": "debug/nav", # TODO - hmmm, related to the nav?
   "mysql-nav-graph": "debug/nav",
   "nav-graph-editor": "debug/nav",
-  "sampler": "sound"
+  "sampler": "sound",
+  "weather-part": "gfx/time-of-day",
+  "time-of-day": "gfx/time-of-day",
+  "path": "geometry",
+  "progress": "ui/progress",
+  "sparticle": "gfx/sprite/particles",
+  "sparticle-launcher": "gfx/sprite/particles",
+  "video": "gfx/hw",
+  "target-tube": "target",
+  "oracle": "levels/city/oracle",
+  "hopper": "levels/common/enemy"
+}
+
+path_overrides = {
+  "weather-part": ""
 }
 
 # i can be smarter than this...i swear....refactor eventually!
@@ -105,13 +121,13 @@ def level_name(file_meta):
   dgos = file_meta[3]
   # Handle files unique to one level
   if dgos == ["HIDEOUT"] or dgos == ["LHIPOUT"] or dgos == ["LTHRNOUT"] or dgos == ["LTRNTESS"] or dgos == ["LTRNKRKD"]:
-    return "levels/haven/hideout"
+    return "levels/hideout"
   elif dgos == ["ORACLE"]:
-    return "levels/haven/oracle"
+    return "levels/city/oracle"
   elif dgos == ["DEMO"] or dgos == ["DEMO", "TITLE"]:
     return "levels/demo"
   elif dgos == ["ONINTENT"] or dgos == ["LTENTOB"] or dgos == ["LTENTOUT"]:
-    return "levels/haven/onin_tent"
+    return "levels/city/onin_tent"
   elif dgos == ["VI1"]:
     return "levels/jak1/village1"
   elif dgos == ["INTROCST"] or dgos == ["LINTCSTB"]:
@@ -121,25 +137,25 @@ def level_name(file_meta):
   elif dgos == ["ART", "GAME"] or dgos == ["ART"] or dgos == ["GAME"]:
     return "levels/common"
   elif dgos == ["MTX"] or dgos == ["MTN"] or dgos == ["MTX", "MCN"]:
-    return "levels/mountain_temple"
+    return "levels/temple"
   elif dgos == ["FOR"] or dgos == ["LWIDEB", "FOR"]:
-    return "levels/haven_forest"
+    return "levels/forest"
   elif dgos == ["FOB"] or dgos == ["LPROTECT"]:
-    return "levels/haven_forest/lifeseed"
+    return "levels/forest/lifeseed"
   elif dgos == ["HIPHOG"] or dgos == ["LHIPOUT"] or dgos == ["LWHACK"]:
-    return "levels/haven/hiphog"
+    return "levels/hiphog"
   elif dgos == ["GGA"]:
-    return "levels/haven/guncourse"
+    return "levels/gungame"
   elif dgos == ["DMI"]:
     return "levels/drill_platform"
   elif dgos == ["DRI"] or dgos == ["DRI", "DRILLMTN"]:
     return "levels/drill_platform"
   elif dgos == ["PAC"]:
-    return "levels/palace/access_cable"
+    return "levels/palace/cable"
   elif dgos == ["PAE", "PAC"]:
     return "levels/palace"
   elif dgos == ["PALBOSS"]:
-    return "levels/palace/baron"
+    return "levels/palace/boss"
   elif dgos == ["THR"] or dgos == ["LASHTHRN"]:
     return "levels/palace/throne_room"
   elif dgos == ["PAS"]:
@@ -151,7 +167,7 @@ def level_name(file_meta):
   elif dgos == ["PAE"]:
     return "levels/palace/explore"
   elif dgos == ["STR"]:
-    return "levels/strip_mine"
+    return "levels/strip"
   elif dgos == ["DG1", "D3A"]:
     return "levels/dig"
   elif dgos == ["D3A"] or dgos == ["D3B"]:
@@ -163,17 +179,17 @@ def level_name(file_meta):
   elif dgos == ["DRB"]:
     return "levels/drill_platform/tower"
   elif dgos == ["FEA"] or dgos == ["FEB"]:
-    return "levels/fortress/escape"
+    return "levels/fortress/exit"
   elif dgos == ["FRA"] or dgos == ["FRB"]:
     return "levels/fortress/rescue"
-  elif dgos == ["PRI"]:
-    return "levels/fortress/prison_room"
+  elif dgos == ["PRI"] or dgos == ["LPRSNCST"]:
+    return "levels/fortress/prison"
   elif dgos == ["CAS"]:
     return "levels/landing_pad"
   elif dgos == ["CAP"] or dgos == ["CASEXT"]:
-    return "levels/weapons_factory"
+    return "levels/castle/pad"
   elif dgos == ["CAB"]:
-    return "levels/weapons_factory/krew"
+    return "levels/castle/boss"
   elif dgos == ["FDB"] or dgos == ["FORDUMPC"] or dgos == ["FDA"] or dgos == ["FORDUMPD"] or dgos == ["FORDUMPC", "FDA"]:
     return "levels/fortress/ammo_dump"
   elif dgos == ["FDA", "FRB"] or dgos == ["FEB", "FDB"]:
@@ -193,27 +209,27 @@ def level_name(file_meta):
   elif dgos == ["LPOWER"]:
     return "levels/power_station/power_switches"
   elif dgos == ["ATO"] or dgos == ["ATE"]:
-    return "levels/pumping_station"
+    return "levels/atoll"
   elif dgos == ["ATE", "CTYASHA"]:
-    return "levels/pumping_station/ashelin"
+    return "levels/atoll/ashelin"
   elif dgos == ["TBO"] or dgos == ["TOMBEXT"]:
     return "levels/mars_tomb/baron"
   elif dgos == ["CTYKORA"]:
-    return "levels/haven/slums/kor"
+    return "levels/city/slums/kor"
   elif dgos == ["LKIDDOGE"]:
-    return "levels/haven/kid_escort"
+    return "levels/city/kid_escort"
   elif dgos == ["CTYASHA"]:
-    return "levels/haven/bazaar/east/ashelin"
+    return "levels/city/market/east/ashelin"
   elif dgos == ["CMA", "CMB"]:
-    return "levels/haven/bazaar"
+    return "levels/city/market"
   elif dgos == ["CMB"]:
-    return "levels/haven/bazaar/east"
+    return "levels/city/market/east"
   elif dgos == ["CMA"]:
-    return "levels/haven/bazaar/west"
+    return "levels/city/market/west"
   elif dgos == ["KIOSK"] or dgos == ["LMEETBRT"]:
-    return "levels/haven/bazaar/west/brutter_kiosk"
+    return "levels/city/market/west/brutter_kiosk"
   elif dgos == ["LPORTRUN"]:
-    return "levels/haven/port/mines"
+    return "levels/city/port/mines"
   elif dgos == ["TITLE"]:
     return "levels/title"
   elif dgos == ["LSACK"]:
@@ -221,55 +237,55 @@ def level_name(file_meta):
   elif dgos == ["LPACKAGE"]:
     return "level/haven/misc/delivery"
   elif dgos == ["GARAGE"]:
-    return "levels/haven/stadium/garage"
+    return "levels/city/stadium/garage"
   elif dgos == ["LRACELIT"]:
-    return "levels/haven/stadium/races"
+    return "levels/stadium/races"
   elif dgos == ["STADBLMP"]:
-    return "levels/haven/stadium/defend"
+    return "levels/city/stadium/defend"
   elif dgos == ["SKA"]:
-    return "levels/haven/stadium/jetboard"
+    return "levels/stadium/jetboard"
   elif dgos == ["STC"] or dgos == ["LWIDESTA"] or dgos == ["STD"] or dgos == ["STB"] or dgos == ["STA"] or dgos == ["STD", "STC", "STB"] or dgos == ["STD", "STC"]:
-    return "levels/haven/stadium"
+    return "levels/stadium"
   elif dgos == ["MCN"]:
-    return "levels/no_mans_canyon"
+    return "levels/temple/canyon"
   elif dgos == ["COA"] or dgos == ["COB"]:
-    return "levels/construction_site"
+    return "levels/consite"
   elif dgos == ["RUI"]:
-    return "levels/dead_town"
+    return "levels/ruins"
   elif dgos == ["SAG"]:
-    return "levels/dead_town/hut"
+    return "levels/ruins/hut"
   elif dgos == ["SEW"] or dgos == ["SEB", "SWB"] or dgos == ["SEB"] or dgos == ["SWE", "SEW"] :
     return "levels/sewer"
   elif dgos == ["NES"] or dgos == ["NESTT", "NES"] or dgos == ["NESTT"]:
-    return "levels/metal_head_nest"
+    return "levels/nest"
   elif dgos == ["NEB"]:
-    return "levels/metal_head_nest/boss_room"
+    return "levels/nest/boss"
   elif dgos == ["SWE"] or dgos == ["SWB"] or dgos == ["SEB", "SWB", "UNB"]: # interesting this is in underport too... who is 'ruf' and 'hal'?
     return "levels/sewer_escort"
   elif dgos == ["HALFPIPE"]:
     return "levels/test/halfpipe"
   elif dgos == ["CWI"] or dgos == ["PAC", "CWI"] or dgos == ["LWIDEA"] or dgos == ["LWIDEB"] or dgos == ["LWIDEB", "LWIDEA"] or dgos == ["LWIDEC"] or dgos == ["LWIDEC", "LWIDEA"] or dgos == ["LWIDEB", "LWIDEC", "LWIDEA"]:
-    return "levels/haven/common"
+    return "levels/city/common"
   elif dgos == ["LBBUSH"]:
-    return "levels/haven/side_missions"
+    return "levels/city/side_missions"
   elif dgos == ["CTA"] or dgos == ["CTB"] or dgos == ["CTC"]:
-    return "levels/haven/slums"
+    return "levels/city/slums"
   elif dgos == ["CPA"]:
-    return "levels/haven/palace"
+    return "levels/city/palace"
   elif dgos == ["CIA"] or dgos == ["CIB"]:
-    return "levels/haven/industrial"
+    return "levels/city/industrial"
   elif dgos == ["CPO"] or dgos == ["PORTWALL"]:
-    return "levels/haven/port"
+    return "levels/city/port"
   elif dgos == ["LPRTRACE"]:
-    return "levels/haven/port/race/side_mission"
+    return "levels/city/port/race/side_mission"
   elif dgos == ["LERLCHAL"]:
-    return "levels/haven/port/race/errol"
+    return "levels/city/port/race/errol"
   elif dgos == ["LERLCHAL", "LPRTRACE"]:
-    return "levels/haven/port/race"
+    return "levels/city/port/race"
   elif dgos == ["CFB"] or dgos == ["CFA"] or dgos == ["CFB", "CFA"]:
-    return "levels/haven/farm"
+    return "levels/city/farm"
   elif dgos == ["LBOMBBOT"]:
-    return "levels/haven/bombots"
+    return "levels/city/bombots"
   elif dgos == ["LTESS"] or dgos == ["LERLTESS", "LTESS"]:
     return "characters/tess"
   elif dgos == ["ATE", "UNB"]:
@@ -283,7 +299,7 @@ def level_name(file_meta):
   elif dgos == ["FOR", "DG1", "FRA", "CAS", "PAE", "FEA", "FDB"]:
     return "levels/common/enemy/guards"
   elif dgos == ["FOR", "ATE"]:
-    return "levels/common/enemy/crimson_spyder"
+    return "levels/common/enemy"
   elif dgos == ["STD", "STC", "LERLCHAL", "STB", "LPRTRACE"] or dgos == ["LRACEDF"] or dgos == ["LRACECF"] or dgos == ["LRACECB"] or dgos == ["LRACEBB"] or dgos == ["LRACEDB"] or dgos == ["LRACEBF"]:
     return "levels/common/races"
   elif dgos == ["LTHRNOUT", "NEB"] or dgos == ["PAS", "TOD"] or dgos == ["FRB", "TOA"] or dgos == ["FRB", "FDB"] or dgos == ["LWIDEC", "CAS"] or dgos == ["TBO", "FRB"] or dgos == ["NESTT", "NES", "LPROTECT"] or dgos == ["SEB", "SWB", "PAE", "PAC"] or dgos == ["ATO", "NESTT", "NES", "LPROTECT"] or dgos == ["ATE", "CTYKORA"] or dgos == ["PAC", "LCITYLOW", "CASCITY"] or dgos == ["FRA", "FRB"] or dgos == ["DRI", "DRB"] or dgos == ["D3B", "RUI"] or dgos == ["PAC", "HALFPIPE"] or dgos == ["CASEXT", "LWIDEC", "LWIDEA"] or dgos == ["LOUTCSTB", "LHIPOUT"] or dgos == ["CTC", "MTN", "CAS", "COA", "CFA", "CPA"] or dgos == ["LOUTCSTB", "VI1"] or dgos == ["CIB", "CAP"] or dgos == ["LKEIRIFT", "LINTCSTB"] or dgos == ["FDA", "FEA", "TOB"] or dgos == ["CTB", "SEB", "SWB", "CFA", "PAS", "CPA"]:
@@ -301,23 +317,23 @@ def level_name(file_meta):
   elif dgos == ["ATO", "SEB", "SWB", "RUI"]:
     return "characters/fodder"
   elif dgos == ["LHELLDOG"]:
-    return "characters/helldog" # TODO - what? lol
+    return "characters/enemy/hellcat"
   elif dgos == ["LJAKDAX"]:
     return "characters/jak_daxter"
   elif dgos == ["ATE", "SEB", "SWB", "RUI"] or dgos == ["ATE", "SEW", "RUI"]:
-    return "characters/amphibian"
+    return "characters/enemy/amphibian"
   elif dgos == ["LWIDEB", "STR", "DRILLMTN", "STADBLMP", "HALFPIPE", "SEW", "UNB", "RUI", "CTYASHA"]:
-    return "characters/metalhead_grunt"
+    return "characters/enemy/metalhead_grunt"
   elif dgos == ["LWIDEB", "STR", "NEB", "D3A", "STADBLMP", "RUI"]:
-    return "characters/metalhead_scout"
+    return "characters/enemy/metalhead_scout"
   elif dgos == ["NEB", "DRILLMTN"]:
-    return "characters/metalhead_wasp"
+    return "characters/enemy/metalhead_wasp"
   elif dgos == ["DMI", "MTN"] or dgos == ["DRI", "MTX"]:
-    return "characters/metalhead_shielder"
+    return "characters/enemy/metalhead_bearer"
   elif dgos == ["DG1", "D3A", "UNB", "RUI"] or dgos == ["D3A", "RUI"]:
-    return "characters/metalhead_slinger"
+    return "characters/enemy/metalhead_slinger"
   elif dgos == ["DG1", "MTN", "ATE", "D3A"] or dgos == ["ATE", "MTX", "D3A"]:
-    return "characters/metalhead_monk" # TODO - ?
+    return "characters/enemy/metalhead_brown"
   elif dgos == ["LSAMERGD"]:
     return "characters/samos_errol_guard"
   elif dgos == ["DG1", "D3A", "TOA"]:
@@ -387,17 +403,23 @@ def level_name(file_meta):
   elif dgos == ["UND"] or dgos == ["UNB"]:
     return "levels/underport"
   elif dgos == ["CGB"] or dgos == ["CGA"] or dgos == ["CGC"]:
-    return "levels/haven/generic"
+    return "levels/city/generic"
   elif dgos == ["LCITYLOW"] or dgos == ["CASCITY"]:
-    return "levels/haven/low-quality"
+    return "levels/city/low-quality"
   elif dgos == ["GAME", "COMMON"]:
     return "levels/common"
-  elif dgos == ["LASHGRD"] or dgos == ["SEB", "SWB", "LKIDDOGE", "UNB", "CTYKORA"] or dgos == ["LPRSNCST"] or dgos == ["ATE", "SEB", "SWB", "LKIDDOGE", "UNB", "CTYKORA", "CTYASHA"]:
+  elif dgos == ["ATE", "SEB", "SWB", "LKIDDOGE", "UNB", "CTYKORA", "CTYASHA"]:
+    return "levels/common/ai"
+  elif dgos == ["LASHGRD"]:
+    return "characters/ashelin_guard"
+  elif dgos == ["SEB", "SWB", "LKIDDOGE", "UNB", "CTYKORA"]:
     return "levels/undefined"
   elif dgos == ["DRILLMTN", "UNB", "RUI"] or dgos == ["UNB", "RUI"] or dgos == ["DMI", "RUI"]:
     return "levels/common/mech_suit"
 
 remaining_dgos = {}
+
+folders = {}
 
 for jak2_file in jak2_files:
   if jak2_file[3] == ["NO-XGO"]:
@@ -410,6 +432,10 @@ for jak2_file in jak2_files:
       jak2_file[4] = str.format("engine/{}", engine_files[jak2_file[0]])
     else:
       jak2_file[4] = str.format("engine/{}", engine_files[jak2_file[0].removesuffix("-h")])
+    if jak2_file[4] not in folders:
+      folders[jak2_file[4]] = 1
+    else:
+      folders[jak2_file[4]] = folders[jak2_file[4]] + 1
     continue
   # attempt to find the object with the same name in jak1
   jak1_path = None
@@ -431,6 +457,10 @@ for jak2_file in jak2_files:
       remaining_dgos[",".join(jak2_file[3])] = remaining_dgos[",".join(jak2_file[3])] + 1
     else:
       remaining_dgos[",".join(jak2_file[3])] = 1
+  if jak2_file[4] not in folders:
+    folders[jak2_file[4]] = 1
+  else:
+    folders[jak2_file[4]] = folders[jak2_file[4]] + 1
 
 with open('../../goal_src/jak2/build/all_objs.json', 'w') as json_file:
   # Calculate these to make the file as compact as possible
@@ -472,3 +502,10 @@ for dgo_set in dict(sorted(remaining_dgos.items(), reverse=True, key=lambda item
     break
   limit = limit + 1
 print(len(remaining_dgos))
+
+print("Folder | Number of Files")
+for folder in dict(sorted(folders.items(), reverse=True, key=lambda item: item[1])):
+  print("{}: {}".format(folder, folders[folder]))
+  if limit > 100:
+    break
+  limit = limit + 1
