@@ -665,7 +665,7 @@ std::optional<std::vector<CollideFace>> subdivide_face_if_needed(CollideFace fac
   }
 }
 
-void extract(const Input& /*in*/,
+void extract(const Input& in,
              CollideOutput& out,
              const tinygltf::Model& model,
              const std::vector<NodeWithTransform>& all_nodes) {
@@ -718,7 +718,7 @@ void extract(const Input& /*in*/,
           }
 
           face.bsphere = math::bsphere_of_triangle(face.v);
-          face.bsphere.w() += 1e-1;
+          face.bsphere.w() += 1e-1 * 5;
           for (int j = 0; j < 3; j++) {
             float output_dist = face.bsphere.w() - (face.bsphere.xyz() - face.v[j]).length();
             if (output_dist < 0) {
@@ -747,6 +747,21 @@ void extract(const Input& /*in*/,
     }
   }
   out.faces = std::move(fixed_faces);
+
+  if (in.auto_wall_enable) {
+    lg::info("automatically detecting walls with angle {}", in.auto_wall_angle);
+    int wall_count = 0;
+    float wall_cos = std::cos(in.auto_wall_angle * 2.f * 3.14159 / 360.f);
+    for (auto& face : out.faces) {
+      math::Vector3f face_normal =
+          (face.v[1] - face.v[0]).cross(face.v[2] - face.v[0]).normalized();
+      if (face_normal[1] < wall_cos) {
+        face.pat.set_mode(PatSurface::Mode::WALL);
+        wall_count++;
+      }
+    }
+    lg::info("automatic wall: {}/{} converted to walls", wall_count, out.faces.size());
+  }
 
   lg::info("{} out of {} faces appeared to have wrong orientation and were flipped",
            suspicious_faces, out.faces.size());

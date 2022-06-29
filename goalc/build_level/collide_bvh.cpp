@@ -32,7 +32,9 @@ struct CNode {
 struct BBox {
   math::Vector3f mins, maxs;
   std::string sz_to_string() const {
-    return fmt::format("({})", ((maxs - mins) / 4096.f).to_string_aligned());
+    return fmt::format("{} {} ({})", (mins / 4096.f).to_string_aligned(),
+                       (maxs / 4096.f).to_string_aligned(),
+                       ((maxs - mins) / 4096.f).to_string_aligned());
   }
 };
 
@@ -79,10 +81,54 @@ void update_bsphere_recursive(const CNode& node, const math::Vector3f& origin, f
   }
 }
 
+void collect_vertices(const CNode& node, std::vector<math::Vector3f>& verts) {
+  for (auto& child : node.child_nodes) {
+    collect_vertices(child, verts);
+  }
+  for (auto& face : node.faces) {
+    verts.push_back(face.v[0]);
+    verts.push_back(face.v[1]);
+    verts.push_back(face.v[2]);
+  }
+}
+
+size_t find_most_distant(math::Vector3f pt, const std::vector<math::Vector3f>& verts) {
+  float max_dist_squared = 0;
+  size_t idx_of_best = 0;
+  for (size_t i = 0; i < verts.size(); i++) {
+    float dist = (pt - verts[i]).squared_length();
+    if (dist > max_dist_squared) {
+      max_dist_squared = dist;
+      idx_of_best = i;
+    }
+  }
+  return idx_of_best;
+}
+
+void compute_my_bsphere_ritters(CNode& node) {
+  std::vector<math::Vector3f> verts;
+  collect_vertices(node, verts);
+  ASSERT(verts.size() > 0);
+  auto px = verts[0];
+  auto py = verts[find_most_distant(px, verts)];
+  auto pz = verts[find_most_distant(py, verts)];
+
+  auto origin = (pz + py) / 2.f;
+  node.bsphere.x() = origin.x();
+  node.bsphere.y() = origin.y();
+  node.bsphere.z() = origin.z();
+
+  float max_squared = 0;
+  for (auto& pt : verts) {
+    max_squared = std::max(max_squared, (pt - origin).squared_length());
+  }
+  node.bsphere.w() = std::sqrt(max_squared);
+}
+
 /*!
  * Compute the bsphere of a single node.
  */
-void compute_my_bsphere(CNode& node) {
+BBox compute_my_bsphere_bad(CNode& node) {
   // first compute bbox.
   BBox bbox = bbox_of_node(node);
   float r = 0;
@@ -92,6 +138,7 @@ void compute_my_bsphere(CNode& node) {
   node.bsphere.y() = origin.y();
   node.bsphere.z() = origin.z();
   node.bsphere.w() = std::sqrt(r);
+  return bbox;
 }
 
 /*!
@@ -114,6 +161,7 @@ void split_along_dim(std::vector<CollideFace>& faces,
  * Split a node into two nodes. The outputs should be uninitialized nodes
  */
 void split_node_once(CNode& node, CNode* out0, CNode* out1) {
+  compute_my_bsphere_ritters(node);
   CNode temps[6];
   // split_along_dim(node.faces, pick_dim_for_split(node.faces), &out0->faces, &out1->faces);
   split_along_dim(node.faces, 0, &temps[0].faces, &temps[1].faces);
@@ -121,10 +169,11 @@ void split_node_once(CNode& node, CNode* out0, CNode* out1) {
   split_along_dim(node.faces, 2, &temps[4].faces, &temps[5].faces);
   node.faces.clear();
   for (auto& t : temps) {
-    compute_my_bsphere(t);
+    compute_my_bsphere_ritters(t);
   }
 
   float max_bspheres[3] = {0, 0, 0};
+
   for (int i = 0; i < 3; i++) {
     max_bspheres[i] = std::max(temps[i * 2].bsphere.w(), temps[i * 2 + 1].bsphere.w());
   }
@@ -206,7 +255,7 @@ void split_as_needed(CNode& root) {
     num_leaves *= 8;
     lg::info("after splitting, the worst leaf has {} tris, {} radius", worst.max_leaf_count,
              worst.max_bsphere_w / 4096.f);
-    if (worst.max_leaf_count < MAX_FACES_IN_FRAG && worst.max_bsphere_w < (100.f * 4096.f)) {
+    if (worst.max_leaf_count < MAX_FACES_IN_FRAG && worst.max_bsphere_w < (125.f * 4096.f)) {
       need_to_split = false;
     }
   }
@@ -219,7 +268,7 @@ void split_as_needed(CNode& root) {
  * (note that we don't do bspheres of bspheres... I think this is better?)
  */
 void bsphere_recursive(CNode& node) {
-  compute_my_bsphere(node);
+  compute_my_bsphere_ritters(node);
   for (auto& child : node.child_nodes) {
     bsphere_recursive(child);
   }
