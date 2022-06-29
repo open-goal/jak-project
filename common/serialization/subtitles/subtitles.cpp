@@ -473,9 +473,9 @@ void open_text_project(const std::string& kind,
   goos::for_each_in_list(proj.as_pair()->cdr, [&](const goos::Object& o) {
     if (o.is_pair() && o.as_pair()->cdr.is_pair()) {
       auto& action = o.as_pair()->car.as_symbol()->name;
-      auto& in = o.as_pair()->cdr.as_pair()->car.as_string()->data;
 
       if (action == "file") {
+        auto& in = o.as_pair()->cdr.as_pair()->car.as_string()->data;
         inputs.push_back(in);
       } else {
         throw std::runtime_error(fmt::format("unknown action {} in {} project", action, kind));
