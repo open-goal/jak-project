@@ -12,36 +12,7 @@
 #include "third-party/imgui/imgui_stdlib.h"
 
 SubtitleEditor::SubtitleEditor() : m_repl(8181) {
-  std::string db_path = (file_util::get_jak_project_dir() / "game" / "assets" / "jak1" /
-                         "subtitle" / "subtitle-editor-db.json")
-                            .string();
-  auto config_str = file_util::read_text_file(db_path);
-  auto db_data = parse_commented_json(config_str, db_path);
-
-  for (const auto& [key, val] : db_data.items()) {
-    auto new_entry = SubtitleEditorDB::Entry();
-    try {
-      new_entry.entity_type = val.at("entity_type").get<std::string>();
-      new_entry.process_name = val.at("process_name").get<std::string>();
-      new_entry.continue_name = val.at("continue_name").get<std::string>();
-      new_entry.move_to = val.at("move_to").get<std::vector<double>>();
-      if (val.contains("move_first")) {
-        new_entry.move_first = val.at("move_first").get<bool>();
-      } else {
-        new_entry.move_first = false;
-      }
-      if (new_entry.move_to.size() != 0 && new_entry.move_to.size() != 3) {
-        fmt::print("Bad subtitle db entry, provide 0 or 3 coordinates for 'move_to' - {}", key);
-        continue;
-      }
-      new_entry.execute_code = val.at("execute_code").get<std::string>();
-      new_entry.requirements = val.at("requirements").get<std::vector<std::string>>();
-      m_db.emplace(key, new_entry);
-    } catch (std::exception& ex) {
-      fmt::print("Bad subtitle db entry - {} - {}", key, ex.what());
-    }
-  }
-
+  update_subtitle_editor_db();
   m_subtitle_db = load_subtitle_project();
   m_filter = m_filter_placeholder;
   m_filter_hints = m_filter_placeholder;
@@ -124,6 +95,7 @@ void SubtitleEditor::repl_execute_cutscene_code(const SubtitleEditorDB::Entry& e
     std::string temp = entry.execute_code;
     temp = std::regex_replace(temp, std::regex("__GET-PROCESS__"),
                               repl_get_process_string(entry.entity_type, entry.process_name));
+    m_repl.eval("(send-event *camera* 'teleport)");
     m_repl.eval(temp);
   }
 }
@@ -278,6 +250,43 @@ void SubtitleEditor::draw_window() {
   ImGui::End();
 }
 
+void SubtitleEditor::update_subtitle_editor_db() {
+  std::string db_path = (file_util::get_jak_project_dir() / "game" / "assets" / "jak1" /
+                         "subtitle" / "subtitle-editor-db.json")
+                            .string();
+  auto config_str = file_util::read_text_file(db_path);
+  auto db_data = parse_commented_json(config_str, db_path);
+
+  for (const auto& [key, val] : db_data.items()) {
+    auto new_entry = SubtitleEditorDB::Entry();
+    try {
+      new_entry.entity_type = val.at("entity_type").get<std::string>();
+      new_entry.process_name = val.at("process_name").get<std::string>();
+      new_entry.continue_name = val.at("continue_name").get<std::string>();
+      new_entry.move_to = val.at("move_to").get<std::vector<double>>();
+      if (val.contains("move_first")) {
+        new_entry.move_first = val.at("move_first").get<bool>();
+      } else {
+        new_entry.move_first = false;
+      }
+      if (new_entry.move_to.size() != 0 && new_entry.move_to.size() != 3) {
+        fmt::print("Bad subtitle db entry, provide 0 or 3 coordinates for 'move_to' - {}", key);
+        continue;
+      }
+      new_entry.execute_code = val.at("execute_code").get<std::string>();
+      new_entry.requirements = val.at("requirements").get<std::vector<std::string>>();
+      if (m_db.count(key) == 0) {
+        m_db.emplace(key, new_entry);
+      } else {
+        m_db[key] = new_entry;
+      }
+
+    } catch (std::exception& ex) {
+      fmt::print("Bad subtitle db entry - {} - {}", key, ex.what());
+    }
+  }
+}
+
 void SubtitleEditor::draw_edit_options() {
   if (ImGui::TreeNode("Editing Options")) {
     if (ImGui::BeginCombo(
@@ -328,6 +337,9 @@ void SubtitleEditor::draw_edit_options() {
         m_new_scene_group_name = "";
       }
     }
+    if (ImGui::Button("Update Editor DB")) {
+      update_subtitle_editor_db();
+    }
     ImGui::TreePop();
   }
 }
@@ -362,10 +374,26 @@ void SubtitleEditor::draw_repl_options() {
   }
 }
 
+bool SubtitleEditor::any_cutscenes_in_group(const std::string& group_name) {
+  auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
+  auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
+  for (auto& scene_name : scenes_in_group) {
+    auto& scene_info = scenes[scene_name];
+    if (scene_info.m_kind == SubtitleSceneKind::Movie) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void SubtitleEditor::draw_all_cutscene_groups() {
   for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
     if (!m_filter.empty() && m_filter != m_filter_placeholder) {
       ImGui::SetNextItemOpen(true);
+    }
+    if (m_subtitle_db.m_subtitle_groups->m_groups.count(group_name) == 0 ||
+        !any_cutscenes_in_group(group_name)) {
+      continue;
     }
     if (ImGui::TreeNode(group_name.c_str())) {
       draw_all_scenes(group_name, false);
@@ -375,10 +403,26 @@ void SubtitleEditor::draw_all_cutscene_groups() {
   }
 }
 
+bool SubtitleEditor::any_hints_in_group(const std::string& group_name) {
+  auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
+  auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
+  for (auto& scene_name : scenes_in_group) {
+    auto& scene_info = scenes[scene_name];
+    if (scene_info.m_kind != SubtitleSceneKind::Movie) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void SubtitleEditor::draw_all_hint_groups() {
   for (auto& group_name : m_subtitle_db.m_subtitle_groups->m_group_order) {
     if (!m_filter_hints.empty() && m_filter_hints != m_filter_placeholder) {
       ImGui::SetNextItemOpen(true);
+    }
+    if (m_subtitle_db.m_subtitle_groups->m_groups.count(group_name) == 0 ||
+        !any_hints_in_group(group_name)) {
+      continue;
     }
     if (ImGui::TreeNode(group_name.c_str())) {
       draw_all_hints(group_name, false);
@@ -416,11 +460,15 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
     }
 
+    if (m_db.count(scene_name) == 0) {
+      ImGui::PushStyleColor(ImGuiCol_Text, m_warning_color);
+    }
+
     if (ImGui::TreeNode(
             fmt::format("{}-{}", scene_name, base_cutscenes ? m_base_language : m_current_language)
                 .c_str(),
             "%s", scene_name.c_str())) {
-      if (base_cutscenes || is_current_scene) {
+      if (base_cutscenes || is_current_scene || m_db.count(scene_name) == 0) {
         ImGui::PopStyleColor();
       }
       if (!base_cutscenes && !is_current_scene) {
@@ -435,7 +483,7 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
       }
       draw_subtitle_options(scene_info);
       ImGui::TreePop();
-    } else if (base_cutscenes || is_current_scene) {
+    } else if (base_cutscenes || is_current_scene || m_db.count(scene_name) == 0) {
       ImGui::PopStyleColor();
     }
   }
@@ -495,6 +543,7 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
     // Cutscenes
     if (scene.m_kind == SubtitleSceneKind::Movie && m_db.count(scene.m_name) > 0) {
       if (ImGui::Button("Play Scene")) {
+        update_subtitle_editor_db();
         repl_execute_cutscene_code(m_db[scene.m_name]);
       }
       ImGui::SameLine();
