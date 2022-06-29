@@ -109,7 +109,11 @@ engine_files = {
   "video": "gfx/hw",
   "target-tube": "target",
   "oracle": "levels/city/oracle",
-  "hopper": "levels/common/enemy"
+  "hopper": "levels/common/enemy",
+  "nav-enemy": "levels/nav",
+  "bouncer": "levels/common/enemy",
+  "yakow": "levels/city/farm",
+  "hopper-ag": "levels/common/enemy"
 }
 
 path_overrides = {
@@ -244,8 +248,14 @@ def level_name(file_meta):
     return "levels/city/stadium/defend"
   elif dgos == ["SKA"]:
     return "levels/stadium/jetboard"
-  elif dgos == ["STC"] or dgos == ["LWIDESTA"] or dgos == ["STD"] or dgos == ["STB"] or dgos == ["STA"] or dgos == ["STD", "STC", "STB"] or dgos == ["STD", "STC"]:
+  elif dgos == ["LWIDESTA"] or dgos == ["STA"] or dgos == ["STD", "STC", "STB"] or dgos == ["STD", "STC"]:
     return "levels/stadium"
+  elif dgos == ["STB"] or dgos == ["LRACEBF"]:
+    return "levels/stadium/races/class3"
+  elif dgos == ["STC"] or dgos == ["LRACECF"]:
+    return "levels/stadium/races/class2"
+  elif dgos == ["STD"] or dgos == ["LRACEDF"]:
+    return "levels/stadium/races/class1"
   elif dgos == ["MCN"]:
     return "levels/temple/canyon"
   elif dgos == ["COA"] or dgos == ["COB"]:
@@ -261,7 +271,7 @@ def level_name(file_meta):
   elif dgos == ["NEB"]:
     return "levels/nest/boss"
   elif dgos == ["SWE"] or dgos == ["SWB"] or dgos == ["SEB", "SWB", "UNB"]: # interesting this is in underport too... who is 'ruf' and 'hal'?
-    return "levels/sewer_escort"
+    return "levels/sewer/escort"
   elif dgos == ["HALFPIPE"]:
     return "levels/test/halfpipe"
   elif dgos == ["CWI"] or dgos == ["PAC", "CWI"] or dgos == ["LWIDEA"] or dgos == ["LWIDEB"] or dgos == ["LWIDEB", "LWIDEA"] or dgos == ["LWIDEC"] or dgos == ["LWIDEC", "LWIDEA"] or dgos == ["LWIDEB", "LWIDEC", "LWIDEA"]:
@@ -285,7 +295,7 @@ def level_name(file_meta):
   elif dgos == ["CFB"] or dgos == ["CFA"] or dgos == ["CFB", "CFA"]:
     return "levels/city/farm"
   elif dgos == ["LBOMBBOT"]:
-    return "levels/city/bombots"
+    return "levels/common/enemy/bombots"
   elif dgos == ["LTESS"] or dgos == ["LERLTESS", "LTESS"]:
     return "characters/tess"
   elif dgos == ["ATE", "UNB"]:
@@ -315,29 +325,29 @@ def level_name(file_meta):
   elif dgos == ["LSHUTTLE"]:
     return "characters/underground_fighters"
   elif dgos == ["ATO", "SEB", "SWB", "RUI"]:
-    return "characters/fodder"
+    return "levels/common/enemy/fodder"
   elif dgos == ["LHELLDOG"]:
-    return "characters/enemy/hellcat"
+    return "levels/common/enemy/hellcat"
   elif dgos == ["LJAKDAX"]:
     return "characters/jak_daxter"
   elif dgos == ["ATE", "SEB", "SWB", "RUI"] or dgos == ["ATE", "SEW", "RUI"]:
-    return "characters/enemy/amphibian"
+    return "levels/common/enemy/amphibian"
   elif dgos == ["LWIDEB", "STR", "DRILLMTN", "STADBLMP", "HALFPIPE", "SEW", "UNB", "RUI", "CTYASHA"]:
-    return "characters/enemy/metalhead_grunt"
+    return "levels/common/enemy/metalhead_grunt"
   elif dgos == ["LWIDEB", "STR", "NEB", "D3A", "STADBLMP", "RUI"]:
-    return "characters/enemy/metalhead_scout"
+    return "levels/common/enemy/metalhead_scout"
   elif dgos == ["NEB", "DRILLMTN"]:
-    return "characters/enemy/metalhead_wasp"
+    return "levels/common/enemy/metalhead_wasp"
   elif dgos == ["DMI", "MTN"] or dgos == ["DRI", "MTX"]:
-    return "characters/enemy/metalhead_bearer"
+    return "levels/common/enemy/metalhead_bearer"
   elif dgos == ["DG1", "D3A", "UNB", "RUI"] or dgos == ["D3A", "RUI"]:
-    return "characters/enemy/metalhead_slinger"
+    return "levels/common/enemy/metalhead_slinger"
   elif dgos == ["DG1", "MTN", "ATE", "D3A"] or dgos == ["ATE", "MTX", "D3A"]:
-    return "characters/enemy/metalhead_brown"
+    return "levels/common/enemy/metalhead_brown"
   elif dgos == ["LSAMERGD"]:
     return "characters/samos_errol_guard"
   elif dgos == ["DG1", "D3A", "TOA"]:
-    return "characters/baby_spider"
+    return "levels/common/enemy/baby_spider"
   elif dgos == ["LERBRNGD"]:
     return "characters/errol_baron_guard"
   elif dgos == ["LSMYSBRT"]:
@@ -412,10 +422,10 @@ def level_name(file_meta):
     return "levels/common/ai"
   elif dgos == ["LASHGRD"]:
     return "characters/ashelin_guard"
-  elif dgos == ["SEB", "SWB", "LKIDDOGE", "UNB", "CTYKORA"]:
+  elif dgos == ["SEB", "SWB", "LKIDDOGE", "UNB", "CTYKORA"]: # TODO - wtf is 'hal'
     return "levels/undefined"
   elif dgos == ["DRILLMTN", "UNB", "RUI"] or dgos == ["UNB", "RUI"] or dgos == ["DMI", "RUI"]:
-    return "levels/common/mech_suit"
+    return "levels/target/mech_suit"
 
 remaining_dgos = {}
 
@@ -439,10 +449,13 @@ for jak2_file in jak2_files:
     continue
   # attempt to find the object with the same name in jak1
   jak1_path = None
-  for jak1_file in jak1_files:
-    if jak1_file[0] == jak2_file[0]:
-      jak1_path = jak1_file[4]
-      break
+  if not jak2_file[0].startswith("tpage"):
+    for jak1_file in jak1_files:
+      if jak1_file[0] == jak2_file[0]:
+        jak1_path = jak1_file[4]
+        if (jak1_path.startswith("levels")):
+          print("{} - {}".format(jak1_path, jak2_file[0]))
+        break
   if jak1_path is not None:
     jak2_file[4] = jak1_path
     num_replicated = num_replicated + 1
