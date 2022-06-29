@@ -68,7 +68,8 @@ struct GraphicsData {
   GraphicsData()
       : dma_copier(EE_MAIN_MEM_SIZE),
         texture_pool(std::make_shared<TexturePool>()),
-        loader(std::make_shared<Loader>()),
+        // TODO out dir
+        loader(std::make_shared<Loader>(file_util::get_jak_project_dir() / "out" / "fr3")),
         ogl_renderer(texture_pool, loader) {}
 };
 

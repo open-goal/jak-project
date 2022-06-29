@@ -25,6 +25,10 @@
 ;; It is an error to not provide a step to make a required file.
 ;; It is an error to have a circular dependency and this will crash the compiler due to stack overflow.
 
+;; use defmacro to define goos macros.
+(define defmacro defsmacro)
+(define defun desfun)
+
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Build Groups
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -36,14 +40,37 @@
 (define *all-vag* '())
 (define *all-gc* '())
 
+;;;;;;;;;;;;;;;;;;;;;;;
+;; ISO inputs
+;;;;;;;;;;;;;;;;;;;;;;;
+
+;; logic to find the inputs. The default is to use jak1/, but check an environment variable
+(define *game-iso-directory* (get-environment-variable "OPENGOAL_DECOMP_DIR" :default "jak1/"))
+
+;; per-user overrides
+(when (user? dass)
+    (set! *game-iso-directory* "jak1_us2/"))
+
+;; allow override from the extractor
+(defun get-iso-data-path ()
+  (if *use-iso-data-path*
+    (string-append *iso-data* "/")
+    (string-append "iso_data/" *game-iso-directory* "/")
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Decompiler Inputs
+;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the decompiler outputs stuff in decompiler_out/jak1
+(define *decompiler-out* (string-append "decompiler_out/jak1/"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Build system macros
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-;; use defmacro to define goos macros.
-(define defmacro defsmacro)
-(define defun desfun)
+
 
 (defun gc-file->o-file (filename)
   "Get the name of the object file for the given GOAL (*.gc) source file."
@@ -131,13 +158,10 @@
   )
 
 
-(define *game-directory* (get-environment-variable "OPENGOAL_DECOMP_DIR" :default "jak1/"))
-(when (user? dass)
-    (set! *game-directory* "jak1_us2/"))
 
 (defmacro copy-texture (tpage-id)
   "Copy a texture from the game, using the given tpage ID"
-  (let* ((path (string-append "decompiler_out/" *game-directory* "raw_obj/" (tpage-name tpage-id))))
+  (let* ((path (string-append *decompiler-out* "raw_obj/" (tpage-name tpage-id))))
     `(defstep :in ,path
               :tool 'copy
               :out '(,(string-append "out/obj/" (tpage-name tpage-id))))))
@@ -149,7 +173,7 @@
   )
 
 (defmacro copy-go (name)
-  (let* ((path (string-append "decompiler_out/" *game-directory* "raw_obj/" name ".go")))
+  (let* ((path (string-append *decompiler-out* "raw_obj/" name ".go")))
     `(defstep :in ,path
               :tool 'copy
               :out '(,(string-append "out/obj/" name ".go")))))
@@ -166,12 +190,6 @@
               :tool 'build-level
               :out '(,(string-append "out/obj/" name ".go")))))
 
-(defun get-iso-data-path ()
-  (if *use-iso-data-path*
-    (string-append *iso-data* "/")
-    (string-append "iso_data/" *game-directory* "/")
-    )
-  )
 
 (defun copy-iso-file (name subdir ext)
   (let* ((path (string-append (get-iso-data-path) subdir name ext))
@@ -248,13 +266,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; The tpage directory
-(defstep :in "assets/tpage-dir.txt"
+(defstep :in (string-append *decompiler-out* "textures/tpage-dir.txt")
   :tool 'tpage-dir
   :out '("out/obj/dir-tpages.go")
   )
 
 ;; the count file.
-(defstep :in "assets/game_count.txt"
+(defstep :in (string-append *decompiler-out* "assets/game_count.txt")
   :tool 'game-cnt
   :out '("out/obj/game-cnt.go")
   )

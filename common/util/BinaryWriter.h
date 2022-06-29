@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
 #include <stdexcept>
 #include <vector>
 
@@ -63,12 +64,12 @@ class BinaryWriter {
 
   void* get_data() { return data.data(); }
 
-  void write_to_file(const std::string& filename) {
-    auto fp = fopen(filename.c_str(), "wb");
+  void write_to_file(const std::filesystem::path& filename) {
+    auto fp = fopen(filename.string().c_str(), "wb");
     if (!fp)
-      throw std::runtime_error("failed to open " + filename);
+      throw std::runtime_error("failed to open " + filename.string());
     if (fwrite(get_data(), get_size(), 1, fp) != 1)
-      throw std::runtime_error("failed to write " + filename);
+      throw std::runtime_error("failed to write " + filename.string());
     fclose(fp);
   }
 

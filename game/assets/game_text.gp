@@ -5,7 +5,7 @@
 
 (text
   ;; NOTE : we compile using the fixed v2 encoding because it's what we use.
-  (jak1-v2 "assets/game_text.txt") ;; this is the decompiler-generated file!
+  (jak1-v2 "decompiler_out/jak1/assets/game_text.txt") ;; this is the decompiler-generated file!
   ;; "patch" files so we can fix some errors and perhaps maintain consistency
   (jak1-v2 "game/assets/jak1/text/text_patch_ja.gs")
   ;; add custom files down here

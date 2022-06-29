@@ -5,6 +5,7 @@
  * Utility class to read a .STR file and extract the full file name.
  */
 
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -13,7 +14,7 @@
 namespace decompiler {
 class StrFileReader {
  public:
-  explicit StrFileReader(const std::string& file_path);
+  explicit StrFileReader(const std::filesystem::path& file_path);
   int chunk_count() const;
   const std::vector<u8>& get_chunk(int idx) const;
   std::string get_full_name(const std::string& short_name) const;

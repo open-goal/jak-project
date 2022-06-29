@@ -9,7 +9,7 @@
  */
 void write_wave_file_mono(const std::vector<s16>& samples,
                           s32 sample_rate,
-                          const std::string& name) {
+                          const std::filesystem::path& name) {
   WaveFileHeader header;
   memcpy(header.chunk_id, "RIFF", 4);
   header.chunk_size = 36 + samples.size() * sizeof(s16);
