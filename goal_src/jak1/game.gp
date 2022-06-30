@@ -37,12 +37,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 (cond
+  ;; extractor can override everything by providing *use-iso-data-path*
+  (*use-iso-data-path*
+    (map-path! "$ISO" (string-append *iso-data* "/")))
   ;; user-specific places to put $ISO
   ((user? dass)
     (map-path! "$ISO" "iso_data/jak1_us2/"))
-  ;; if we're using the extractor, map to the path it gave.
-  (*use-iso-data-path*
-    (map-path! "$ISO" (string-append *iso-data* "/")))
   ;; for normal people, just use jak1.
   (#t
     (map-path! "$ISO" "iso_data/jak1/")))
@@ -92,7 +92,7 @@
   "Add a GOAL source file with the given dependencies"
   `(let ((output-file ,(gc-file->o-file src-file)))
     (set! *all-gc* (cons output-file *all-gc*))
-    (defstep :in ,(string-append "goal_src/jak1/" src-file)
+    (defstep :in ,(string-append "goal_src/" src-file)
      ;; use goal compiler
      :tool 'goalc
      ;; will output the obj file
@@ -107,7 +107,7 @@
   "Helper for goal-src-sequence"
   `(let ((output-file ,(gc-file->o-file current)))
     (set! *all-gc* (cons output-file *all-gc*))
-    (defstep :in ,(string-append "goal_src/jak1/" prefix current)
+    (defstep :in ,(string-append "goal_src/" prefix current)
      :tool 'goalc
      :out (list output-file)
      :dep '(,(gc-file->o-file previous))
@@ -153,9 +153,9 @@
   )
 
 (defun cgo (output-name desc-file-name)
-  "Add a CGO with the given output name (in out/iso) and input name (in goal_src/jak1/dgos)"
+  "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
   (let ((out-name (string-append "$OUT/iso/" output-name)))
-    (defstep :in (string-append "goal_src/jak1/dgos/" desc-file-name)
+    (defstep :in (string-append "goal_src/dgos/" desc-file-name)
       :tool 'dgo
       :out `(,out-name)
       )
@@ -277,13 +277,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; The tpage directory
-(defstep :in (string-append "$DECOMP/textures/tpage-dir.txt")
+(defstep :in "$DECOMP/textures/tpage-dir.txt"
   :tool 'tpage-dir
   :out '("$OUT/obj/dir-tpages.go")
   )
 
 ;; the count file.
-(defstep :in (string-append "$DECOMP/assets/game_count.txt")
+(defstep :in "$DECOMP/assets/game_count.txt"
   :tool 'game-cnt
   :out '("$OUT/obj/game-cnt.go")
   )
