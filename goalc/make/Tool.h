@@ -6,6 +6,11 @@
 
 #include "common/goos/Object.h"
 
+struct PathMap {
+  std::unordered_map<std::string, std::string> path_remap;
+  std::string apply_remaps(const std::string& input) const;
+};
+
 struct ToolInput {
   std::vector<std::string>& input;   // the input file
   std::vector<std::string>& deps;    // explicit dependencies
@@ -16,9 +21,12 @@ struct ToolInput {
 class Tool {
  public:
   Tool(const std::string& name);
-  virtual bool run(const ToolInput& task) = 0;
-  virtual std::vector<std::string> get_additional_dependencies(const ToolInput&) { return {}; }
-  virtual bool needs_run(const ToolInput& task);
+  virtual bool run(const ToolInput& task, const PathMap& path_map) = 0;
+  virtual std::vector<std::string> get_additional_dependencies(const ToolInput&,
+                                                               const PathMap& /*path_map*/) {
+    return {};
+  }
+  virtual bool needs_run(const ToolInput& task, const PathMap& path_map);
   virtual ~Tool() = default;
 
   const std::string& name() const { return m_name; }

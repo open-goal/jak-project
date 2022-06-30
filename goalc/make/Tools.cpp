@@ -16,7 +16,7 @@
 
 CompilerTool::CompilerTool(Compiler* compiler) : Tool("goalc"), m_compiler(compiler) {}
 
-bool CompilerTool::needs_run(const ToolInput& task) {
+bool CompilerTool::needs_run(const ToolInput& task, const PathMap& path_map) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
@@ -24,10 +24,10 @@ bool CompilerTool::needs_run(const ToolInput& task) {
   if (!m_compiler->knows_object_file(std::filesystem::path(task.input.at(0)).stem().u8string())) {
     return true;
   }
-  return Tool::needs_run(task);
+  return Tool::needs_run(task, path_map);
 }
 
-bool CompilerTool::run(const ToolInput& task) {
+bool CompilerTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
   // todo check inputs
   try {
     CompilationOptions options;
@@ -76,7 +76,7 @@ DgoDescription parse_desc_file(const std::string& filename, goos::Reader& reader
 
 DgoTool::DgoTool() : Tool("dgo") {}
 
-bool DgoTool::run(const ToolInput& task) {
+bool DgoTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
@@ -85,10 +85,12 @@ bool DgoTool::run(const ToolInput& task) {
   return true;
 }
 
-std::vector<std::string> DgoTool::get_additional_dependencies(const ToolInput& task) {
+std::vector<std::string> DgoTool::get_additional_dependencies(const ToolInput& task,
+                                                              const PathMap& /*path_map*/) {
   std::vector<std::string> result;
   auto desc = parse_desc_file(task.input.at(0), m_reader);
   for (auto& x : desc.entries) {
+    // todo out
     result.push_back(fmt::format("out/obj/{}", x.file_name));
   }
   return result;
@@ -96,7 +98,7 @@ std::vector<std::string> DgoTool::get_additional_dependencies(const ToolInput& t
 
 TpageDirTool::TpageDirTool() : Tool("tpage-dir") {}
 
-bool TpageDirTool::run(const ToolInput& task) {
+bool TpageDirTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
@@ -106,7 +108,7 @@ bool TpageDirTool::run(const ToolInput& task) {
 
 CopyTool::CopyTool() : Tool("copy") {}
 
-bool CopyTool::run(const ToolInput& task) {
+bool CopyTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
@@ -120,7 +122,7 @@ bool CopyTool::run(const ToolInput& task) {
 
 GameCntTool::GameCntTool() : Tool("game-cnt") {}
 
-bool GameCntTool::run(const ToolInput& task) {
+bool GameCntTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
@@ -130,63 +132,75 @@ bool GameCntTool::run(const ToolInput& task) {
 
 TextTool::TextTool() : Tool("text") {}
 
-bool TextTool::needs_run(const ToolInput& task) {
+bool TextTool::needs_run(const ToolInput& task, const PathMap& path_map) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
 
   std::vector<std::string> deps;
   open_text_project("text", task.input.at(0), deps);
-  return Tool::needs_run({task.input, deps, task.output, task.arg});
+  for (auto& dep : deps) {
+    dep = path_map.apply_remaps(dep);
+  }
+  return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
 
-bool TextTool::run(const ToolInput& task) {
+bool TextTool::run(const ToolInput& task, const PathMap& path_map) {
   GameTextDB db;
   std::vector<std::string> inputs;
   open_text_project("text", task.input.at(0), inputs);
+  for (auto& in : inputs) {
+    in = path_map.apply_remaps(in);
+  }
   compile_game_text(inputs, db);
   return true;
 }
 
 GroupTool::GroupTool() : Tool("group") {}
 
-bool GroupTool::run(const ToolInput&) {
+bool GroupTool::run(const ToolInput&, const PathMap& /*path_map*/) {
   return true;
 }
 
 SubtitleTool::SubtitleTool() : Tool("subtitle") {}
 
-bool SubtitleTool::needs_run(const ToolInput& task) {
+bool SubtitleTool::needs_run(const ToolInput& task, const PathMap& path_map) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
 
   std::vector<std::string> deps;
   open_text_project("subtitle", task.input.at(0), deps);
-  return Tool::needs_run({task.input, deps, task.output, task.arg});
+  for (auto& dep : deps) {
+    dep = path_map.apply_remaps(dep);
+  }
+  return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
 
-bool SubtitleTool::run(const ToolInput& task) {
+bool SubtitleTool::run(const ToolInput& task, const PathMap& path_map) {
   GameSubtitleDB db;
   db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
   db.m_subtitle_groups->hydrate_from_asset_file();
   std::vector<std::string> inputs;
   open_text_project("subtitle", task.input.at(0), inputs);
+  for (auto& in : inputs) {
+    in = path_map.apply_remaps(in);
+  }
   compile_game_subtitle(inputs, db);
   return true;
 }
 
 BuildLevelTool::BuildLevelTool() : Tool("build-level") {}
 
-bool BuildLevelTool::needs_run(const ToolInput& task) {
+bool BuildLevelTool::needs_run(const ToolInput& task, const PathMap& path_map) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
   auto deps = get_build_level_deps(task.input.at(0));
-  return Tool::needs_run({task.input, deps, task.output, task.arg});
+  return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
 
-bool BuildLevelTool::run(const ToolInput& task) {
+bool BuildLevelTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
