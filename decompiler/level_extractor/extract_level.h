@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <vector>
 
 #include "common/math/Vector.h"
@@ -15,5 +16,6 @@ void extract_all_levels(const ObjectFileDB& db,
                         const std::string& common_name,
                         const DecompileHacks& hacks,
                         bool debug_dump_level,
-                        bool extract_collision);
+                        bool extract_collision,
+                        const std::filesystem::path& path);
 }  // namespace decompiler

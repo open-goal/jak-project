@@ -169,7 +169,7 @@ std::string get_file_path(const std::vector<std::string>& input) {
   return current_path.string();
 }
 
-bool create_dir_if_needed(const std::string& path) {
+bool create_dir_if_needed(const std::filesystem::path& path) {
   if (!std::filesystem::is_directory(path)) {
     std::filesystem::create_directories(path);
     return true;
@@ -181,59 +181,70 @@ bool create_dir_if_needed_for_file(const std::string& path) {
   return std::filesystem::create_directories(std::filesystem::path(path).parent_path());
 }
 
-void write_binary_file(const std::string& name, const void* data, size_t size) {
-  FILE* fp = fopen(name.c_str(), "wb");
+void write_binary_file(const std::filesystem::path& name, const void* data, size_t size) {
+  FILE* fp = fopen(name.string().c_str(), "wb");
   if (!fp) {
-    throw std::runtime_error("couldn't open file " + name);
+    throw std::runtime_error("couldn't open file " + name.string());
   }
 
   if (fwrite(data, size, 1, fp) != 1) {
     fclose(fp);
-    throw std::runtime_error("couldn't write file " + name);
+    throw std::runtime_error("couldn't write file " + name.string());
   }
 
   fclose(fp);
 }
 
-void write_rgba_png(const std::string& name, void* data, int w, int h) {
+void write_binary_file(const std::string& name, const void* data, size_t size) {
+  write_binary_file(std::filesystem::path(name), data, size);
+}
+
+void write_rgba_png(const std::filesystem::path& name, void* data, int w, int h) {
   auto flags = 0;
 
-  auto ok = fpng::fpng_encode_image_to_file(name.c_str(), data, w, h, 4, flags);
+  auto ok = fpng::fpng_encode_image_to_file(name.string().c_str(), data, w, h, 4, flags);
 
   if (!ok) {
-    throw std::runtime_error("couldn't save png file " + name);
+    throw std::runtime_error("couldn't save png file " + name.string());
   }
 }
 
 void write_text_file(const std::string& file_name, const std::string& text) {
-  FILE* fp = fopen(file_name.c_str(), "w");
+  write_text_file(std::filesystem::path(file_name), text);
+}
+
+void write_text_file(const std::filesystem::path& file_name, const std::string& text) {
+  FILE* fp = fopen(file_name.string().c_str(), "w");
   if (!fp) {
-    lg::error("Failed to fopen {}\n", file_name);
+    lg::error("Failed to fopen {}\n", file_name.string());
     throw std::runtime_error("Failed to open file");
   }
   fprintf(fp, "%s\n", text.c_str());
   fclose(fp);
 }
-
 std::vector<uint8_t> read_binary_file(const std::string& filename) {
-  // make sure file exists and isn't a directory
-  std::filesystem::path path(filename);
+  return read_binary_file(std::filesystem::path(filename));
+}
 
-  auto status = std::filesystem::status(std::filesystem::path(filename));
+std::vector<uint8_t> read_binary_file(const std::filesystem::path& path) {
+  // make sure file exists and isn't a directory
+
+  auto status = std::filesystem::status(path);
 
   if (!std::filesystem::exists(status)) {
-    throw std::runtime_error(fmt::format("File {} cannot be opened: does not exist.", filename));
+    throw std::runtime_error(
+        fmt::format("File {} cannot be opened: does not exist.", path.string()));
   }
 
   if (status.type() != std::filesystem::file_type::regular &&
       status.type() != std::filesystem::file_type::symlink) {
     throw std::runtime_error(
-        fmt::format("File {} cannot be opened: not a regular file or symlink.", filename));
+        fmt::format("File {} cannot be opened: not a regular file or symlink.", path.string()));
   }
 
-  auto fp = fopen(filename.c_str(), "rb");
+  auto fp = fopen(path.string().c_str(), "rb");
   if (!fp)
-    throw std::runtime_error("File " + filename +
+    throw std::runtime_error("File " + path.string() +
                              " cannot be opened: " + std::string(strerror(errno)));
   fseek(fp, 0, SEEK_END);
   auto len = ftell(fp);
@@ -244,21 +255,25 @@ std::vector<uint8_t> read_binary_file(const std::string& filename) {
 
   if (fread(data.data(), len, 1, fp) != 1) {
     fclose(fp);
-    throw std::runtime_error("File " + filename + " cannot be read");
+    throw std::runtime_error("File " + path.string() + " cannot be read");
   }
   fclose(fp);
 
   return data;
 }
 
-std::string read_text_file(const std::string& path) {
-  std::ifstream file(path);
+std::string read_text_file(const std::filesystem::path& path) {
+  std::ifstream file(path.string());
   if (!file.good()) {
-    throw std::runtime_error("couldn't open " + path);
+    throw std::runtime_error("couldn't open " + path.string());
   }
   std::stringstream ss;
   ss << file.rdbuf();
   return ss.str();
+}
+
+std::string read_text_file(const std::string& path) {
+  return read_text_file(std::filesystem::path(path));
 }
 
 bool is_printable_char(char c) {

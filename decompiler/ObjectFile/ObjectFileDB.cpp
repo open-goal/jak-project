@@ -113,10 +113,10 @@ const ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) c
 /*!
  * Build an object file DB for the given list of DGOs.
  */
-ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
-                           const std::string& obj_file_name_map_file,
-                           const std::vector<std::string>& object_files,
-                           const std::vector<std::string>& str_files,
+ObjectFileDB::ObjectFileDB(const std::vector<std::filesystem::path>& _dgos,
+                           const std::filesystem::path& obj_file_name_map_file,
+                           const std::vector<std::filesystem::path>& object_files,
+                           const std::vector<std::filesystem::path>& str_files,
                            const Config& config) {
   Timer timer;
 
@@ -125,7 +125,8 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
 
   if (!obj_file_name_map_file.empty()) {
     lg::info("-Loading obj name map file...");
-    load_map_file(file_util::read_text_file(file_util::get_file_path({obj_file_name_map_file})));
+    load_map_file(
+        file_util::read_text_file(file_util::get_jak_project_dir() / obj_file_name_map_file));
   } else {
     lg::warn(
         "Not using an obj name map file! The decompiler will automatically generate object file "
@@ -138,14 +139,14 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
     try {
       get_objs_from_dgo(dgo, config);
     } catch (std::runtime_error& e) {
-      lg::warn("Error when reading DGOs: {} on {}", e.what(), dgo);
+      lg::warn("Error when reading DGOs: {} on {}", e.what(), dgo.string());
     }
   }
 
   lg::info("-Loading {} plain object files...", object_files.size());
   for (auto& obj : object_files) {
     auto data = file_util::read_binary_file(obj);
-    auto name = obj_filename_to_name(obj);
+    auto name = obj_filename_to_name(obj.string());
     if (auto it = config.object_patches.find(name); it != config.object_patches.end()) {
       // print the file CRC
       fmt::print("CRC for {} is: 0x{:X}\n", name, crc32(data.data(), data.size()));
@@ -206,7 +207,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
   for (auto& obj : str_files) {
     StrFileReader reader(obj);
     // name from the file name
-    std::string base_name = obj_filename_to_name(obj);
+    std::string base_name = obj_filename_to_name(obj.string());
     // name from inside the file (this does a lot of sanity checking)
     auto obj_name = reader.get_full_name(base_name + ".STR");
     for (int i = 0; i < reader.chunk_count(); i++) {
@@ -257,7 +258,7 @@ void ObjectFileDB::load_map_file(const std::string& map_data) {
 /*!
  * Load the objects stored in the given DGO into the ObjectFileDB
  */
-void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& config) {
+void ObjectFileDB::get_objs_from_dgo(const std::filesystem::path& filename, const Config& config) {
   auto dgo_data = file_util::read_binary_file(filename);
   stats.total_dgo_bytes += dgo_data.size();
 
@@ -268,7 +269,7 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& 
   BinaryReader reader(dgo_data);
   auto header = reader.read<DgoHeader>();
 
-  auto dgo_base_name = file_util::base_name(filename);
+  auto dgo_base_name = filename.filename().string();
   ASSERT(header.name == dgo_base_name);
   assert_string_empty_after(header.name, 60);
 
@@ -515,7 +516,7 @@ void ObjectFileDB::process_labels() {
 /*!
  * Dump object files and their linking data to text files for debugging
  */
-void ObjectFileDB::write_object_file_words(const std::string& output_dir,
+void ObjectFileDB::write_object_file_words(const std::filesystem::path& output_dir,
                                            bool dump_data,
                                            bool dump_code) {
   lg::info("- Writing object file dumps (code? {} data? {})...", dump_code, dump_data);
@@ -527,7 +528,7 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir,
     if ((obj.linked_data.segments == 3 && dump_code) ||
         (obj.linked_data.segments != 3 && dump_data)) {
       auto file_text = obj.linked_data.print_words();
-      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".txt");
+      auto file_name = output_dir / (obj.to_unique_name() + ".txt");
       total_bytes += file_text.size();
       file_util::write_text_file(file_name, file_text);
       total_files++;
@@ -544,7 +545,7 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir,
 /*!
  * Dump disassembly for object files containing code.  Data zones will also be dumped.
  */
-void ObjectFileDB::write_disassembly(const std::string& output_dir,
+void ObjectFileDB::write_disassembly(const std::filesystem::path& output_dir,
                                      bool disassemble_data,
                                      bool disassemble_code,
                                      bool print_hex) {
@@ -558,7 +559,7 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
     if ((obj.obj_version == 3 && disassemble_code) || (obj.obj_version != 3 && disassemble_data)) {
       auto file_text = obj.linked_data.print_disassembly(print_hex);
       asm_functions += obj.linked_data.print_asm_function_disassembly(obj.to_unique_name());
-      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".asm");
+      auto file_name = output_dir / (obj.to_unique_name() + ".asm");
 
       total_bytes += file_text.size();
       file_util::write_text_file(file_name, file_text);
@@ -568,8 +569,7 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
 
   total_bytes += asm_functions.size();
   total_files++;
-  file_util::write_text_file(file_util::combine_path(output_dir, "asm_functions.func"),
-                             asm_functions);
+  file_util::write_text_file(output_dir / "asm_functions.func", asm_functions);
 
   lg::info("Wrote functions dumps:");
   lg::info(" Total {} files", total_files);
@@ -623,7 +623,7 @@ void ObjectFileDB::find_code(const Config& config) {
  * Finds and writes all scripts into a file named all_scripts.lisp.
  * Doesn't change any state in ObjectFileDB.
  */
-void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
+void ObjectFileDB::find_and_write_scripts(const std::filesystem::path& output_dir) {
   lg::info("- Finding scripts in object files...");
   Timer timer;
   std::string all_scripts;
@@ -638,14 +638,15 @@ void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
     }
   });
 
-  auto file_name = file_util::combine_path(output_dir, "all_scripts.lisp");
+  auto file_name = output_dir / "all_scripts.lisp";
   file_util::write_text_file(file_name, all_scripts);
 
   lg::info("Found scripts:");
   lg::info(" Total {:.3f} ms\n", timer.getMs());
 }
 
-std::string ObjectFileDB::process_tpages(TextureDB& tex_db) {
+std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
+                                         const std::filesystem::path& output_path) {
   lg::info("- Finding textures in tpages...");
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
@@ -656,7 +657,7 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db) {
   std::string result;
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(0, tpage_string.length()) == tpage_string) {
-      auto statistics = process_tpage(data, tex_db);
+      auto statistics = process_tpage(data, tex_db, output_path);
       total += statistics.total_textures;
       success += statistics.successful_textures;
       total_px += statistics.num_px;
@@ -795,16 +796,16 @@ void ObjectFileDB::extract_art_info() {
 /*!
  * Write out the art group information.
  */
-void ObjectFileDB::dump_art_info(const std::string& output_dir) {
+void ObjectFileDB::dump_art_info(const std::filesystem::path& output_dir) {
   lg::info("Writing art group info...");
   Timer timer;
 
   if (!dts.art_group_info.empty()) {
-    file_util::create_dir_if_needed(file_util::combine_path(output_dir, "import"));
+    file_util::create_dir_if_needed(output_dir / "import");
   }
   for (const auto& [ag_name, info] : dts.art_group_info) {
     auto ag_fname = ag_name + ".gc";
-    auto filename = file_util::get_file_path({output_dir, "import", ag_fname});
+    auto filename = output_dir / "import" / ag_fname;
     std::string result = ";;-*-Lisp-*-\n";
     result += "(in-package goal)\n\n";
     result += fmt::format(";; {} - art group OpenGOAL import file\n", ag_fname);
@@ -819,9 +820,9 @@ void ObjectFileDB::dump_art_info(const std::string& output_dir) {
   lg::info("Written art group info: in {:.2f} ms\n", timer.getMs());
 }
 
-void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {
+void ObjectFileDB::dump_raw_objects(const std::filesystem::path& output_dir) {
   for_each_obj([&](ObjectFileData& data) {
-    auto dest = output_dir + "/" + data.to_unique_name();
+    auto dest = output_dir / data.to_unique_name();
     if (data.obj_version != 3) {
       dest += ".go";
     }

@@ -38,7 +38,7 @@ namespace decompiler {
  * functions, but nothing else.
  */
 void ObjectFileDB::analyze_functions_ir2(
-    const std::string& output_dir,
+    const std::filesystem::path& output_dir,
     const Config& config,
     const std::unordered_set<std::string>& skip_functions,
     const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
@@ -100,7 +100,7 @@ void ObjectFileDB::analyze_functions_ir2(
       imports = imports_it->second;
     }
 
-    if (!output_dir.empty()) {
+    if (!output_dir.string().empty()) {
       ir2_write_results(output_dir, config, imports, data);
     } else {
       if (!skip_functions.empty()) {
@@ -135,8 +135,7 @@ void ObjectFileDB::analyze_functions_ir2(
     lg::info("Generating symbol definition map...");
     map_builder.build_map();
     std::string result = map_builder.convert_to_json();
-    auto file_name = file_util::combine_path(output_dir, "symbol_map.json");
-    file_util::write_text_file(file_name, result);
+    file_util::write_text_file(output_dir / "symbol_map.json", result);
   }
 }
 
@@ -301,7 +300,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
   lg::info("{:4d} logins  {:.2f}%\n", total_top_levels, 100.f * total_top_levels / total_functions);
 }
 
-void ObjectFileDB::ir2_analyze_all_types(const std::string& output_file,
+void ObjectFileDB::ir2_analyze_all_types(const std::filesystem::path& output_file,
                                          const std::optional<std::string>& previous_game_types,
                                          const std::unordered_set<std::string>& bad_types) {
   struct PerObject {
@@ -689,7 +688,7 @@ void ObjectFileDB::ir2_insert_anonymous_functions(int seg, ObjectFileData& data)
   });
 }
 
-void ObjectFileDB::ir2_write_results(const std::string& output_dir,
+void ObjectFileDB::ir2_write_results(const std::filesystem::path& output_dir,
                                      const Config& config,
                                      const std::vector<std::string>& imports,
                                      ObjectFileData& obj) {
@@ -697,11 +696,11 @@ void ObjectFileDB::ir2_write_results(const std::string& output_dir,
     // todo
 
     auto file_text = ir2_to_file(obj, config);
-    auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_ir2.asm");
+    auto file_name = output_dir / (obj.to_unique_name() + "_ir2.asm");
     file_util::write_text_file(file_name, file_text);
 
     auto final = ir2_final_out(obj, imports, {});
-    auto final_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_disasm.gc");
+    auto final_name = output_dir / (obj.to_unique_name() + "_disasm.gc");
     file_util::write_text_file(final_name, final);
   }
 }

@@ -30,6 +30,10 @@ class MakeSystem {
                            goos::Arguments&,
                            const std::shared_ptr<goos::EnvironmentObject>& env);
 
+  goos::Object handle_map_path(const goos::Object& obj,
+                               goos::Arguments& args,
+                               const std::shared_ptr<goos::EnvironmentObject>& env);
+
   std::vector<std::string> get_dependencies(const std::string& target) const;
   std::vector<std::string> filter_dependencies(const std::vector<std::string>& all_deps);
 
@@ -62,4 +66,5 @@ class MakeSystem {
 
   std::unordered_map<std::string, std::shared_ptr<MakeStep>> m_output_to_step;
   std::unordered_map<std::string, std::shared_ptr<Tool>> m_tools;
+  PathMap m_path_map;
 };

@@ -14,7 +14,9 @@
 
 #include "third-party/fmt/core.h"
 
-void save_pc_data(const std::string& nickname, tfrag3::Level& data) {
+void save_pc_data(const std::string& nickname,
+                  tfrag3::Level& data,
+                  const std::filesystem::path& output_dir) {
   Serializer ser;
   data.serialize(ser);
   auto compressed =
@@ -23,8 +25,8 @@ void save_pc_data(const std::string& nickname, tfrag3::Level& data) {
   print_memory_usage(data, ser.get_save_result().second);
   fmt::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
              100.f * compressed.size() / ser.get_save_result().second);
-  file_util::write_binary_file(file_util::get_file_path({fmt::format("assets/{}.fr3", nickname)}),
-                               compressed.data(), compressed.size());
+  file_util::write_binary_file(output_dir / fmt::format("{}.fr3", nickname), compressed.data(),
+                               compressed.size());
 }
 
 std::vector<std::string> get_build_level_deps(const std::string& input_file) {
@@ -106,7 +108,8 @@ bool run_build_level(const std::string& input_file, const std::string& output_fi
   file_util::write_binary_file(save_path, result.data(), result.size());
 
   // Save the PC level
-  save_pc_data(file.nickname, pc_level);
+  // TODO out dir
+  save_pc_data(file.nickname, pc_level, file_util::get_jak_project_dir() / "out" / "fr3");
 
   return true;
 }

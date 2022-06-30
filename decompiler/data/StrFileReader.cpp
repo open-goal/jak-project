@@ -14,7 +14,7 @@
 #include "game/common/str_rpc_types.h"
 
 namespace decompiler {
-StrFileReader::StrFileReader(const std::string& file_path) {
+StrFileReader::StrFileReader(const std::filesystem::path& file_path) {
   auto data = file_util::read_binary_file(file_path);
   ASSERT(data.size() >= SECTOR_SIZE);      // must have at least the header sector
   ASSERT(data.size() % SECTOR_SIZE == 0);  // should be multiple of the sector size.

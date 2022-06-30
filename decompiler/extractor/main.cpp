@@ -366,18 +366,18 @@ void decompile(std::filesystem::path jak1_input_files) {
                                        .string(),
                                    {});
 
-  std::vector<std::string> dgos, objs;
+  std::vector<std::filesystem::path> dgos, objs;
 
   // grab all DGOS we need (level + common)
   for (const auto& dgo_name : config.dgo_names) {
     std::string common_name = "GAME.CGO";
     if (dgo_name.length() > 3 && dgo_name.substr(dgo_name.length() - 3) == "DGO") {
       // ends in DGO, it's a level
-      dgos.push_back((jak1_input_files / dgo_name).string());
+      dgos.push_back(jak1_input_files / dgo_name);
     } else if (dgo_name.length() >= common_name.length() &&
                dgo_name.substr(dgo_name.length() - common_name.length()) == common_name) {
       // it's COMMON.CGO, we need that too.
-      dgos.push_back((jak1_input_files / dgo_name).string());
+      dgos.push_back(jak1_input_files / dgo_name);
     }
   }
 
@@ -385,16 +385,16 @@ void decompile(std::filesystem::path jak1_input_files) {
   for (const auto& obj_name : config.object_file_names) {
     if (obj_name.length() > 3 && obj_name.substr(obj_name.length() - 3) == "TXT") {
       // ends in TXT
-      objs.push_back((jak1_input_files / obj_name).string());
+      objs.push_back(jak1_input_files / obj_name);
     }
   }
 
   // set up objects
-  ObjectFileDB db(dgos, config.obj_file_name_map_file, objs, {}, config);
+  ObjectFileDB db(dgos, std::filesystem::path(config.obj_file_name_map_file), objs, {}, config);
 
   // save object files
-  auto out_folder = (file_util::get_jak_project_dir() / "decompiler_out" / "jak1").string();
-  auto raw_obj_folder = file_util::combine_path(out_folder, "raw_obj");
+  auto out_folder = file_util::get_jak_project_dir() / "decompiler_out" / "jak1";
+  auto raw_obj_folder = out_folder / "raw_obj";
   file_util::create_dir_if_needed(raw_obj_folder);
   db.dump_raw_objects(raw_obj_folder);
 
@@ -404,22 +404,24 @@ void decompile(std::filesystem::path jak1_input_files) {
   db.process_labels();
 
   // ensure asset dir exists
-  file_util::create_dir_if_needed(file_util::get_file_path({"assets"}));
+  file_util::create_dir_if_needed(out_folder / "assets");
 
   // text files
   {
     auto result = db.process_game_text_files(config);
     if (!result.empty()) {
-      file_util::write_text_file(file_util::get_file_path({"assets", "game_text.txt"}), result);
+      file_util::write_text_file(out_folder / "assets" / "game_text.txt", result);
     }
   }
 
   // textures
   decompiler::TextureDB tex_db;
-  file_util::write_text_file(file_util::get_file_path({"assets", "tpage-dir.txt"}),
-                             db.process_tpages(tex_db));
+  auto textures_out = out_folder / "textures";
+  file_util::create_dir_if_needed(textures_out);
+  file_util::write_text_file(textures_out / "tpage-dir.txt",
+                             db.process_tpages(tex_db, textures_out));
   // texture replacements
-  auto replacements_path = file_util::get_file_path({"texture_replacements"});
+  auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
   if (std::filesystem::exists(replacements_path)) {
     tex_db.replace_textures(replacements_path);
   }
@@ -428,14 +430,17 @@ void decompile(std::filesystem::path jak1_input_files) {
   {
     auto result = db.process_game_count_file();
     if (!result.empty()) {
-      file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
+      file_util::write_text_file(out_folder / "assets" / "game_count.txt", result);
     }
   }
 
   // levels
   {
+    // TODO separate out dirs
+    auto level_out_path = file_util::get_jak_project_dir() / "out" / "fr3";
+    file_util::create_dir_if_needed(level_out_path);
     extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config.hacks,
-                       config.rip_levels, config.extract_collision);
+                       config.rip_levels, config.extract_collision, level_out_path);
   }
 }
 

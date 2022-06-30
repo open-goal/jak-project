@@ -15,6 +15,7 @@ void build_dgo(const DgoDescription& description) {
   writer.add_cstr_len(description.dgo_name.c_str(), 60);
 
   for (auto& obj : description.entries) {
+    // todo: hardcoded out
     auto obj_data =
         file_util::read_binary_file(file_util::get_file_path({"out", "obj", obj.file_name}));
     // size

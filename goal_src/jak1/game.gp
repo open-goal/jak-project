@@ -25,6 +25,50 @@
 ;; It is an error to not provide a step to make a required file.
 ;; It is an error to have a circular dependency and this will crash the compiler due to stack overflow.
 
+;; our input/output directories aren't fixed ahead of time and some users may override them.
+;; the map-path! command can be used to define path constants that can be used in in/out/dep and
+;; inside certain tool files, like text project files.
+
+;; The substitution is only used at the beginning of paths, and I hope to keep the number
+;; of these to a minimum - it's quite confusing to have all these non-fixed paths everywhere.
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Inputs from ISO
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(cond
+  ;; extractor can override everything by providing *use-iso-data-path*
+  (*use-iso-data-path*
+    (map-path! "$ISO" (string-append *iso-data* "/")))
+  ;; user-specific places to put $ISO
+  ((user? dass)
+    (map-path! "$ISO" "iso_data/jak1_us2/"))
+  ;; for normal people, just use jak1.
+  (#t
+    (map-path! "$ISO" "iso_data/jak1/")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Inputs from decompiler
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(cond
+  ;; user-specific places to put $ISO
+  ((user? dass)
+    (map-path! "$DECOMP" "decompiler_out/jak1_us2/"))
+  (#t
+    (map-path! "$DECOMP" "decompiler_out/jak1/")))
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Output
+;;;;;;;;;;;;;;;;;;;;;;;
+
+;; NOTE: this isn't perfect yet, some tools still are hardcoded to look in out/ for stuff.
+(map-path! "$OUT" "out/")
+
+
+;; use defmacro to define goos macros.
+(define defmacro defsmacro)
+(define defun desfun)
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Build Groups
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -36,18 +80,12 @@
 (define *all-vag* '())
 (define *all-gc* '())
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Build system macros
 ;;;;;;;;;;;;;;;;;;;;;;;
-
-;; use defmacro to define goos macros.
-(define defmacro defsmacro)
-(define defun desfun)
-
 (defun gc-file->o-file (filename)
   "Get the name of the object file for the given GOAL (*.gc) source file."
-  (string-append "out/obj/" (stem filename) ".o")
+  (string-append "$OUT/obj/" (stem filename) ".o")
   )
 
 (defmacro goal-src (src-file &rest deps)
@@ -105,7 +143,7 @@
 
 (defun custom-level-cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in out/iso) and input name (in custom_levels/)"
-  (let ((out-name (string-append "out/iso/" output-name)))
+  (let ((out-name (string-append "$OUT/iso/" output-name)))
     (defstep :in (string-append "custom_levels/" desc-file-name)
       :tool 'dgo
       :out `(,out-name)
@@ -116,7 +154,7 @@
 
 (defun cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in out/iso) and input name (in goal_src/jak1/dgos)"
-  (let ((out-name (string-append "out/iso/" output-name)))
+  (let ((out-name (string-append "$OUT/iso/" output-name)))
     (defstep :in (string-append "goal_src/jak1/dgos/" desc-file-name)
       :tool 'dgo
       :out `(,out-name)
@@ -131,16 +169,13 @@
   )
 
 
-(define *game-directory* (get-environment-variable "OPENGOAL_DECOMP_DIR" :default "jak1/"))
-(when (user? dass)
-    (set! *game-directory* "jak1_us2/"))
 
 (defmacro copy-texture (tpage-id)
   "Copy a texture from the game, using the given tpage ID"
-  (let* ((path (string-append "decompiler_out/" *game-directory* "raw_obj/" (tpage-name tpage-id))))
+  (let* ((path (string-append "$DECOMP/raw_obj/" (tpage-name tpage-id))))
     `(defstep :in ,path
               :tool 'copy
-              :out '(,(string-append "out/obj/" (tpage-name tpage-id))))))
+              :out '(,(string-append "$OUT/obj/" (tpage-name tpage-id))))))
 
 (defmacro copy-textures (&rest ids)
   `(begin
@@ -149,10 +184,10 @@
   )
 
 (defmacro copy-go (name)
-  (let* ((path (string-append "decompiler_out/" *game-directory* "raw_obj/" name ".go")))
+  (let* ((path (string-append "$DECOMP/raw_obj/" name ".go")))
     `(defstep :in ,path
               :tool 'copy
-              :out '(,(string-append "out/obj/" name ".go")))))
+              :out '(,(string-append "$OUT/obj/" name ".go")))))
 
 (defmacro copy-gos (&rest gos)
   `(begin
@@ -164,18 +199,12 @@
   (let* ((path (string-append "custom_levels/" name "/" name ".jsonc")))
     `(defstep :in ,path
               :tool 'build-level
-              :out '(,(string-append "out/obj/" name ".go")))))
+              :out '(,(string-append "$OUT/obj/" name ".go")))))
 
-(defun get-iso-data-path ()
-  (if *use-iso-data-path*
-    (string-append *iso-data* "/")
-    (string-append "iso_data/" *game-directory* "/")
-    )
-  )
 
 (defun copy-iso-file (name subdir ext)
-  (let* ((path (string-append (get-iso-data-path) subdir name ext))
-         (out-name (string-append "out/iso/" name ext)))
+  (let* ((path (string-append "$ISO/" subdir name ext))
+         (out-name (string-append "$OUT/iso/" name ext)))
     (defstep :in path
              :tool 'copy
              :out `(,out-name))
@@ -248,36 +277,36 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; The tpage directory
-(defstep :in "assets/tpage-dir.txt"
+(defstep :in "$DECOMP/textures/tpage-dir.txt"
   :tool 'tpage-dir
-  :out '("out/obj/dir-tpages.go")
+  :out '("$OUT/obj/dir-tpages.go")
   )
 
 ;; the count file.
-(defstep :in "assets/game_count.txt"
+(defstep :in "$DECOMP/assets/game_count.txt"
   :tool 'game-cnt
-  :out '("out/obj/game-cnt.go")
+  :out '("$OUT/obj/game-cnt.go")
   )
 
 ;; the TWEAKVAL file
-(defstep :in (string-append (get-iso-data-path) "MUS/TWEAKVAL.MUS")
+(defstep :in "$ISO/MUS/TWEAKVAL.MUS"
   :tool 'copy
-  :out '("out/iso/TWEAKVAL.MUS"))
+  :out '("$OUT/iso/TWEAKVAL.MUS"))
 
 ;; the VAGDIR file
-(defstep :in (string-append (get-iso-data-path) "VAG/VAGDIR.AYB")
+(defstep :in "$ISO/VAG/VAGDIR.AYB"
   :tool 'copy
-  :out '("out/iso/VAGDIR.AYB"))
+  :out '("$OUT/iso/VAGDIR.AYB"))
 
 ;; the save icon file
-(defstep :in (string-append (get-iso-data-path) "DRIVERS/SAVEGAME.ICO")
+(defstep :in "$ISO/DRIVERS/SAVEGAME.ICO"
   :tool 'copy
-  :out '("out/iso/SAVEGAME.ICO"))
+  :out '("$OUT/iso/SAVEGAME.ICO"))
 
 ;; the loading screen file
-(defstep :in (string-append (get-iso-data-path) "DRIVERS/SCREEN1.USA")
+(defstep :in "$ISO/DRIVERS/SCREEN1.USA"
   :tool 'copy
-  :out '("out/iso/SCREEN1.USA"))
+  :out '("$OUT/iso/SCREEN1.USA"))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Textures (Common)
@@ -350,20 +379,20 @@
 
 (defstep :in "game/assets/game_text.gp"
   :tool 'text
-  :out '("out/iso/0COMMON.TXT"
-         "out/iso/1COMMON.TXT"
-         "out/iso/2COMMON.TXT"
-         "out/iso/3COMMON.TXT"
-         "out/iso/4COMMON.TXT"
-         "out/iso/5COMMON.TXT"
-         "out/iso/6COMMON.TXT")
+  :out '("$OUT/iso/0COMMON.TXT"
+         "$OUT/iso/1COMMON.TXT"
+         "$OUT/iso/2COMMON.TXT"
+         "$OUT/iso/3COMMON.TXT"
+         "$OUT/iso/4COMMON.TXT"
+         "$OUT/iso/5COMMON.TXT"
+         "$OUT/iso/6COMMON.TXT")
   )
 
 (defstep :in "game/assets/game_subtitle.gp"
   :tool 'subtitle
-  :out '("out/iso/0SUBTIT.TXT"
-         "out/iso/3SUBTIT.TXT"
-         "out/iso/6SUBTIT.TXT")
+  :out '("$OUT/iso/0SUBTIT.TXT"
+         "$OUT/iso/3SUBTIT.TXT"
+         "$OUT/iso/6SUBTIT.TXT")
   )
 
 
@@ -374,10 +403,10 @@
 ;; the engine group is a group of files required to boot the game engine with no levels
 
 (group "engine"
-       "out/iso/0COMMON.TXT"
-       "out/iso/0SUBTIT.TXT"
-       "out/iso/KERNEL.CGO"
-       "out/iso/GAME.CGO"
+       "$OUT/iso/0COMMON.TXT"
+       "$OUT/iso/0SUBTIT.TXT"
+       "$OUT/iso/KERNEL.CGO"
+       "$OUT/iso/GAME.CGO"
        )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -417,7 +446,7 @@
 (goal-src-sequence
   "levels/"
    :deps ;; no idea what these depend on, make it depend on the whole engine
-   ("out/obj/ticky.o")
+   ("$OUT/obj/ticky.o")
 
    "village_common/villagep-obs.gc"
    "village_common/oracle.gc"
@@ -453,7 +482,7 @@
 
 (goal-src-sequence
   "levels/beach/"
-  :deps ("out/obj/ticky.o")
+  :deps ("$OUT/obj/ticky.o")
   "air-h.gc"
   "air.gc"
   "wobbler.gc"
@@ -527,7 +556,7 @@
 (goal-src-sequence
  "levels/jungle/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/ticky.o")
+ ("$OUT/obj/ticky.o")
 
  "jungle-elevator.gc"
  "bouncer.gc"
@@ -598,7 +627,7 @@
 (goal-src-sequence
  "levels/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/ticky.o")
+ ("$OUT/obj/ticky.o")
 
  "village1/farmer.gc"
  "village1/explorer.gc"
@@ -677,7 +706,7 @@
 (goal-src-sequence
  "levels/jungleb/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/ticky.o")
+ ("$OUT/obj/ticky.o")
 
  "jungleb-obs.gc"
  "plat-flip.gc"
@@ -710,7 +739,7 @@
 
 (goal-src-sequence
   "levels/misty/"
-  :deps ("out/obj/evilbro.o")
+  :deps ("$OUT/obj/evilbro.o")
   "mistycannon.gc"
   "babak-with-cannon.gc"
   "misty-obs.gc"
@@ -778,7 +807,7 @@
 
 (goal-src-sequence
  "levels/swamp/"
- :deps ("out/obj/ticky.o")
+ :deps ("$OUT/obj/ticky.o")
  "swamp-obs.gc"
  "swamp-bat.gc"
  "swamp-rat.gc"
@@ -822,7 +851,7 @@
 
 (goal-src-sequence
   "levels/sunken/"
-  :deps ("out/obj/ticky.o")
+  :deps ("$OUT/obj/ticky.o")
   "sunken-part.gc"
   "sunken-part2.gc"
   "sunken-part3.gc"
@@ -915,7 +944,7 @@
 
 (goal-src-sequence
  "levels/snow/"
- :deps ("out/obj/ticky.o")
+ :deps ("$OUT/obj/ticky.o")
  "target-snowball.gc"
  "target-ice.gc"
  "ice-cube.gc"
@@ -979,7 +1008,7 @@
 (goal-src-sequence
  "levels/firecanyon/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/ticky.o")
+ ("$OUT/obj/ticky.o")
 
  "firecanyon-part.gc"
  "assistant-firecanyon.gc"
@@ -1011,7 +1040,7 @@
 
 (goal-src-sequence
  "levels/ogre/"
- :deps ("out/obj/ticky.o")
+ :deps ("$OUT/obj/ticky.o")
  "ogre-part.gc"
  "ogreboss.gc"
  "ogre-obs.gc"
@@ -1052,7 +1081,7 @@
 
 (goal-src-sequence
  "levels/village2/"
- :deps ("out/obj/ticky.o")
+ :deps ("$OUT/obj/ticky.o")
  "village2-part.gc"
  "village2-obs.gc"
  "village2-part2.gc"
@@ -1122,7 +1151,7 @@
 
 (goal-src-sequence
  "levels/rolling/"
- :deps ("out/obj/ticky.o")
+ :deps ("$OUT/obj/ticky.o")
  "rolling-obs.gc"
  "rolling-lightning-mole.gc"
  "rolling-robber.gc"
@@ -1164,7 +1193,7 @@
 (goal-src-sequence
  "levels/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/ticky.o")
+ ("$OUT/obj/ticky.o")
  "village3/village3-part.gc"
  "village3/village3-obs.gc"
  "village3/minecart.gc"
@@ -1222,7 +1251,7 @@
 ;; The code
 (goal-src-sequence
   "levels/training/"
-  :deps ("out/obj/ticky.o") ;; makes us depend on the whole engine
+  :deps ("$OUT/obj/ticky.o") ;; makes us depend on the whole engine
 
   "training-obs.gc"
   "training-part.gc"
@@ -1251,7 +1280,7 @@
 (goal-src-sequence
  "levels/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/ticky.o"
+ ("$OUT/obj/ticky.o"
   )
  "maincave/cavecrystal-light.gc"
  "darkcave/darkcave-obs.gc"
@@ -1318,7 +1347,7 @@
 (goal-src-sequence
  "levels/robocave/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
-  ("out/obj/ticky.o")
+  ("$OUT/obj/ticky.o")
  "cave-trap.gc"
  "spider-egg.gc"
  "robocave-part.gc"
@@ -1346,7 +1375,7 @@
 
 (goal-src-sequence
   "levels/lavatube/"
-  :deps ("out/obj/ticky.o")
+  :deps ("$OUT/obj/ticky.o")
 
   "lavatube-obs.gc"
   "lavatube-energy.gc"
@@ -1391,7 +1420,7 @@
 
 (goal-src-sequence
   "levels/citadel/"
-  :deps ("out/obj/battlecontroller.o" "out/obj/snow-bunny.o")
+  :deps ("$OUT/obj/battlecontroller.o" "out/obj/snow-bunny.o")
 
   "citadel-part.gc"
   "citadel-obs.gc"
@@ -1455,7 +1484,7 @@
 
 (goal-src-sequence
   "levels/finalboss/"
-  :deps ("out/obj/assistant-citadel.o")
+  :deps ("$OUT/obj/assistant-citadel.o")
 
   "robotboss-h.gc"
   "robotboss-part.gc"
@@ -1510,7 +1539,7 @@
 (goal-src-sequence
  "levels/intro/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/ticky.o")
+ ("$OUT/obj/ticky.o")
 
  "evilbro.gc"
  )
@@ -1537,7 +1566,7 @@
 (goal-src-sequence
  "levels/demo/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/ticky.o")
+ ("$OUT/obj/ticky.o")
 
  "static-screen.gc"
  "demo-obs.gc"
@@ -1559,7 +1588,7 @@
 (goal-src-sequence
  "levels/title/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("out/obj/ticky.o")
+ ("$OUT/obj/ticky.o")
 
  "title-obs.gc"
  )
@@ -1600,10 +1629,10 @@
  "engine/"
 
  :deps
- ("out/obj/gcommon.o"
-  "out/obj/gstate.o"
-  "out/obj/gstring.o"
-  "out/obj/gkernel.o"
+ ("$OUT/obj/gcommon.o"
+  "$OUT/obj/gstate.o"
+  "$OUT/obj/gstring.o"
+  "$OUT/obj/gkernel.o"
   )
 
  ;; sources
@@ -1648,7 +1677,7 @@
  "engine/"
 
  :deps
- ("out/ps2/pad.o")
+ ("$OUT/ps2/pad.o")
  "gfx/hw/gs.gc"
  "gfx/hw/display-h.gc"
  "math/vector.gc"
@@ -1875,7 +1904,7 @@
  "engine/"
 
  :deps
- ("out/main.o")
+ ("$OUT/main.o")
 
  "collide/collide-cache.gc"
  "entity/relocate.gc"
@@ -1919,7 +1948,7 @@
 
 (goal-src-sequence
  "levels/common/"
- :deps ("out/obj/default-menu.o")
+ :deps ("$OUT/obj/default-menu.o")
  "texture-upload.gc"
  "rigid-body-h.gc"
  "water-anim.gc"
@@ -1951,10 +1980,10 @@
 ;; the iso group is a group of files built by the "(mi)" command.
 
 (group-list "iso"
- `("out/iso/0COMMON.TXT"
-   "out/iso/0SUBTIT.TXT"
-   "out/iso/TWEAKVAL.MUS"
-   "out/iso/VAGDIR.AYB"
+ `("$OUT/iso/0COMMON.TXT"
+   "$OUT/iso/0SUBTIT.TXT"
+   "$OUT/iso/TWEAKVAL.MUS"
+   "$OUT/iso/VAGDIR.AYB"
    ,@(reverse *all-vis*)
    ,@(reverse *all-str*)
    ,@(reverse *all-sbk*)
@@ -1969,8 +1998,8 @@
 
 
 (group-list "text"
- `("out/iso/0COMMON.TXT"
-   "out/iso/0SUBTIT.TXT"
+ `("$OUT/iso/0COMMON.TXT"
+   "$OUT/iso/0SUBTIT.TXT"
    )
  )
 

@@ -54,6 +54,11 @@ MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
     return handle_stem(obj, args, env);
   });
 
+  m_goos.register_form("map-path!", [=](const goos::Object& obj, goos::Arguments& args,
+                                        const std::shared_ptr<goos::EnvironmentObject>& env) {
+    return handle_map_path(obj, args, env);
+  });
+
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
 
   set_constant("*iso-data*", file_util::get_file_path({"iso_data"}));
@@ -98,7 +103,7 @@ goos::Object MakeSystem::handle_defstep(const goos::Object& form,
   auto step = std::make_shared<MakeStep>();
 
   goos::for_each_in_list(args.get_named("out"), [&](const goos::Object& obj) {
-    step->outputs.push_back(obj.as_string()->data);
+    step->outputs.push_back(m_path_map.apply_remaps(obj.as_string()->data));
   });
 
   step->tool = args.get_named("tool").as_symbol()->name;
@@ -111,16 +116,17 @@ goos::Object MakeSystem::handle_defstep(const goos::Object& form,
     const auto& in = args.get_named("in");
     if (in.is_pair()) {
       step->input.clear();
-      goos::for_each_in_list(
-          in, [&](const goos::Object& o) { step->input.push_back(o.as_string()->data); });
+      goos::for_each_in_list(in, [&](const goos::Object& o) {
+        step->input.push_back(m_path_map.apply_remaps(o.as_string()->data));
+      });
     } else {
-      step->input = {in.as_string()->data};
+      step->input = {m_path_map.apply_remaps(in.as_string()->data)};
     }
   }
 
   if (args.has_named("dep")) {
     goos::for_each_in_list(args.get_named("dep"), [&](const goos::Object& obj) {
-      step->deps.push_back(obj.as_string()->data);
+      step->deps.push_back(m_path_map.apply_remaps(obj.as_string()->data));
     });
   }
 
@@ -182,6 +188,20 @@ goos::Object MakeSystem::handle_stem(const goos::Object& form,
   return goos::StringObject::make_new(input.stem().u8string());
 }
 
+goos::Object MakeSystem::handle_map_path(const goos::Object& form,
+                                         goos::Arguments& args,
+                                         const std::shared_ptr<goos::EnvironmentObject>& env) {
+  m_goos.eval_args(&args, env);
+  va_check(form, args, {goos::ObjectType::STRING, goos::ObjectType::STRING}, {});
+  auto old_path = args.unnamed.at(0).as_string()->data;
+  if (old_path.empty() || old_path[0] != '$') {
+    throw std::runtime_error(fmt::format("Invalid path remap {}, must start with $", old_path));
+  }
+  auto new_path = args.unnamed.at(1).as_string()->data;
+  m_path_map.path_remap[old_path] = new_path;
+  return goos::Object::make_empty_list();
+}
+
 void MakeSystem::get_dependencies(const std::string& master_target,
                                   const std::string& output,
                                   std::vector<std::string>* result,
@@ -202,9 +222,9 @@ void MakeSystem::get_dependencies(const std::string& master_target,
   }
 
   const auto& rule = rule_it->second;
-  for (auto& dep :
-       m_tools.at(rule->tool)
-           ->get_additional_dependencies({rule->input, rule->deps, rule->outputs, rule->arg})) {
+  for (auto& dep : m_tools.at(rule->tool)
+                       ->get_additional_dependencies(
+                           {rule->input, rule->deps, rule->outputs, rule->arg}, m_path_map)) {
     get_dependencies(master_target, dep, result, result_set);
   }
 
@@ -247,7 +267,7 @@ std::vector<std::string> MakeSystem::filter_dependencies(const std::vector<std::
 
     bool added = false;
 
-    if (tool->needs_run(task)) {
+    if (tool->needs_run(task, m_path_map)) {
       result.push_back(to_make);
       stale_deps.insert(to_make);
       added = true;
@@ -267,7 +287,7 @@ std::vector<std::string> MakeSystem::filter_dependencies(const std::vector<std::
 
     if (!added) {
       // check transitive dependencies
-      for (auto& dep : tool->get_additional_dependencies(task)) {
+      for (auto& dep : tool->get_additional_dependencies(task, m_path_map)) {
         if (stale_deps.find(dep) != stale_deps.end()) {
           result.push_back(to_make);
           stale_deps.insert(to_make);
@@ -334,7 +354,7 @@ bool MakeSystem::make(const std::string& target, bool force, bool verbose) {
 
     bool success = false;
     try {
-      success = tool->run({rule->input, rule->deps, rule->outputs, rule->arg});
+      success = tool->run({rule->input, rule->deps, rule->outputs, rule->arg}, m_path_map);
     } catch (std::exception& e) {
       fmt::print("\n");
       fmt::print("Error: {}\n", e.what());

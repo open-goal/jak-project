@@ -86,62 +86,62 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  std::string in_folder = file_util::combine_path(argv[2], config.game_name);
-  std::string out_folder = file_util::combine_path(argv[3], config.game_name);
+  // std::string in_folder = file_util::combine_path(argv[2], config.game_name);
+  std::filesystem::path in_folder = std::filesystem::path(argv[2]) / config.game_name;
+  std::filesystem::path out_folder = std::filesystem::path(argv[3]) / config.game_name;
 
   // Verify the in_folder is correct
-  // TODO - refactor to use ghc::filesystem, cleanup file_util
-  if (!file_util::file_exists(in_folder)) {
-    fmt::print("Aborting - 'in_folder' does not exist '{}'\n", in_folder);
+  if (!exists(in_folder)) {
+    fmt::print("Aborting - 'in_folder' does not exist '{}'\n", in_folder.string());
     return 1;
   }
 
   // Warning message if expected ELF isn't found, user could be using bad assets / didn't extract
   // the ISO properly
-  if (!config.expected_elf_name.empty() &&
-      !file_util::file_exists(file_util::combine_path(in_folder, config.expected_elf_name))) {
+  if (!config.expected_elf_name.empty() && !exists(in_folder / config.expected_elf_name)) {
     fmt::print(
         "WARNING - '{}' does not contain the expected ELF file '{}'.  Was the ISO extracted "
         "properly or is there a version mismatch?\n",
-        in_folder, config.expected_elf_name);
+        in_folder.string(), config.expected_elf_name);
   }
 
-  std::vector<std::string> dgos, objs, strs;
+  std::vector<std::filesystem::path> dgos, objs, strs;
   for (const auto& dgo_name : config.dgo_names) {
-    dgos.push_back(file_util::combine_path(in_folder, dgo_name));
+    dgos.push_back(in_folder / dgo_name);
   }
 
   for (const auto& obj_name : config.object_file_names) {
-    objs.push_back(file_util::combine_path(in_folder, obj_name));
+    objs.push_back(in_folder / obj_name);
   }
 
   for (const auto& str_name : config.str_file_names) {
-    strs.push_back(file_util::combine_path(in_folder, str_name));
+    strs.push_back(in_folder / str_name);
   }
 
   file_util::create_dir_if_needed(out_folder);
+  file_util::create_dir_if_needed(out_folder / "assets");
+
   if (config.rip_levels) {
-    file_util::create_dir_if_needed(file_util::get_file_path({"debug_out"}));
+    file_util::create_dir_if_needed(file_util::get_jak_project_dir() / "debug_out");
   }
 
   fmt::print("[Mem] After config read: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   // build file database
   lg::info("Setting up object file DB...");
-  ObjectFileDB db(dgos, config.obj_file_name_map_file, objs, strs, config);
+  ObjectFileDB db(dgos, std::filesystem::path(config.obj_file_name_map_file), objs, strs, config);
 
   fmt::print("[Mem] After DB setup: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   // write out DGO file info
-  file_util::write_text_file(file_util::combine_path(out_folder, "dgo.txt"),
-                             db.generate_dgo_listing());
+  file_util::write_text_file(out_folder / "dgo.txt", db.generate_dgo_listing());
   // write out object file map (used for future decompilations, if desired)
-  file_util::write_text_file(file_util::combine_path(out_folder, "obj.txt"),
+  file_util::write_text_file(out_folder / "obj.txt",
                              db.generate_obj_listing(config.merged_objects));
 
   // dump raw objs
   if (config.dump_objs) {
-    auto path = file_util::combine_path(out_folder, "raw_obj");
+    auto path = out_folder / "raw_obj";
     file_util::create_dir_if_needed(path);
     db.dump_raw_objects(path);
   }
@@ -176,16 +176,14 @@ int main(int argc, char** argv) {
 
   if (config.generate_all_types) {
     ASSERT_MSG(config.decompile_code, "Must decompile code to generate all-types");
-    db.ir2_analyze_all_types(file_util::combine_path(out_folder, "new-all-types.gc"),
-                             config.old_all_types_file,
+    db.ir2_analyze_all_types(out_folder / "new-all-types.gc", config.old_all_types_file,
                              config.hacks.types_with_bad_inspect_methods);
   }
 
   fmt::print("[Mem] After decomp: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   // write out all symbols
-  file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
-                             db.dts.dump_symbol_types());
+  file_util::write_text_file(out_folder / "all-syms.gc", db.dts.dump_symbol_types());
 
   // write art groups
   if (config.process_art_groups) {
@@ -204,7 +202,7 @@ int main(int argc, char** argv) {
   if (config.process_game_text) {
     auto result = db.process_game_text_files(config);
     if (!result.empty()) {
-      file_util::write_text_file(file_util::get_file_path({"assets", "game_text.txt"}), result);
+      file_util::write_text_file(out_folder / "assets" / "game_text.txt", result);
     }
   }
 
@@ -212,15 +210,16 @@ int main(int argc, char** argv) {
 
   decompiler::TextureDB tex_db;
   if (config.process_tpages || config.levels_extract) {
-    auto result = db.process_tpages(tex_db);
+    auto textures_out = out_folder / "textures";
+    file_util::create_dir_if_needed(textures_out);
+    auto result = db.process_tpages(tex_db, textures_out);
     if (!result.empty() && config.process_tpages) {
-      file_util::write_text_file(file_util::get_file_path({"assets", "tpage-dir.txt"}), result);
+      file_util::write_text_file(textures_out / "tpage-dir.txt", result);
     }
   }
 
   fmt::print("[Mem] After textures: {} MB\n", get_peak_rss() / (1024 * 1024));
-  // todo config
-  auto replacements_path = file_util::get_file_path({"texture_replacements"});
+  auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
   if (std::filesystem::exists(replacements_path)) {
     tex_db.replace_textures(replacements_path);
   }
@@ -228,19 +227,25 @@ int main(int argc, char** argv) {
   if (config.process_game_count) {
     auto result = db.process_game_count_file();
     if (!result.empty()) {
-      file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
+      file_util::write_text_file(out_folder / "assets" / "game_count.txt", result);
     }
   }
 
   if (config.levels_extract) {
+    // TODO separate out dirs
+    auto level_out_path = file_util::get_jak_project_dir() / "out" / "fr3";
+    file_util::create_dir_if_needed(level_out_path);
     extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config.hacks,
-                       config.rip_levels, config.extract_collision);
+                       config.rip_levels, config.extract_collision, level_out_path);
   }
 
   fmt::print("[Mem] After extraction: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   if (!config.audio_dir_file_name.empty()) {
-    process_streamed_audio(config.audio_dir_file_name, config.streamed_audio_file_names);
+    auto streaming_audio_in = in_folder / "VAG";
+    auto streaming_audio_out = out_folder / "assets" / "streaming_audio";
+    file_util::create_dir_if_needed(streaming_audio_out);
+    process_streamed_audio(streaming_audio_out, in_folder, config.streamed_audio_file_names);
   }
 
   lg::info("Decompiler has finished successfully in {:.2f} seconds.", decomp_timer.getSeconds());

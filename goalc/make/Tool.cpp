@@ -10,7 +10,7 @@
 
 Tool::Tool(const std::string& name) : m_name(name) {}
 
-bool Tool::needs_run(const ToolInput& task) {
+bool Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
   // for this to return false, all outputs need to be newer than all inputs.
 
   for (auto& in : task.input) {
@@ -33,7 +33,7 @@ bool Tool::needs_run(const ToolInput& task) {
       }
     }
 
-    for (auto& dep : get_additional_dependencies(task)) {
+    for (auto& dep : get_additional_dependencies(task, path_map)) {
       auto dep_path = std::filesystem::path(file_util::get_file_path({dep}));
       if (std::filesystem::exists(dep_path)) {
         auto dep_time = std::filesystem::last_write_time(dep_path);
@@ -59,4 +59,32 @@ bool Tool::needs_run(const ToolInput& task) {
   }
 
   return false;
+}
+
+std::string PathMap::apply_remaps(const std::string& input) const {
+  if (!input.empty() && input[0] == '$') {
+    std::string prefix = "$";
+    size_t i = 1;
+    for (; i < input.size(); i++) {
+      char c = input[i];
+      if (c == '/') {
+        break;
+      } else {
+        prefix.push_back(c);
+      }
+    }
+    const auto& it = path_remap.find(prefix);
+    if (it == path_remap.end()) {
+      return input;
+    } else {
+      std::string result = it->second;
+      while (!result.empty() && result.back() == '/') {
+        result.pop_back();
+      }
+      result.insert(result.end(), input.begin() + i, input.end());
+      return result;
+    }
+  } else {
+    return input;
+  }
 }

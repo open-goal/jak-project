@@ -264,20 +264,20 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   // don't try to do this because we can't write the file
   dc.config->generate_symbol_definition_map = false;
 
-  std::vector<std::string> dgo_paths;
+  std::vector<std::filesystem::path> dgo_paths;
   if (args.iso_data_path.empty()) {
     for (auto& x : offline_config.dgos) {
-      dgo_paths.push_back((file_util::get_jak_project_dir() / "iso_data" / "jak1" / x).string());
+      dgo_paths.push_back(file_util::get_jak_project_dir() / "iso_data" / "jak1" / x);
     }
   } else {
     for (auto& x : offline_config.dgos) {
-      dgo_paths.push_back(file_util::combine_path(args.iso_data_path, x));
+      dgo_paths.push_back(std::filesystem::path(args.iso_data_path) / x);
     }
   }
 
-  dc.db = std::make_unique<decompiler::ObjectFileDB>(dgo_paths, dc.config->obj_file_name_map_file,
-                                                     std::vector<std::string>{},
-                                                     std::vector<std::string>{}, *dc.config);
+  dc.db = std::make_unique<decompiler::ObjectFileDB>(
+      dgo_paths, dc.config->obj_file_name_map_file, std::vector<std::filesystem::path>{},
+      std::vector<std::filesystem::path>{}, *dc.config);
 
   std::unordered_set<std::string> db_files;
   for (auto& files_by_name : dc.db->obj_files_by_name) {
