@@ -825,6 +825,14 @@ const GameTextFontBank* get_font_bank(GameTextVersion version) {
   return g_font_banks.at(version);
 }
 
+const GameTextFontBank* get_font_bank(const std::string& name) {
+  if (auto it = sTextVerEnumMap.find(name); it == sTextVerEnumMap.end()) {
+    throw std::runtime_error(fmt::format("unknown text version {}", name));
+  } else {
+    return get_font_bank(it->second);
+  }
+}
+
 bool font_bank_exists(GameTextVersion version) {
   return g_font_banks.find(version) != g_font_banks.cend();
 }

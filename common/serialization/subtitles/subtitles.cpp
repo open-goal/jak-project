@@ -149,13 +149,7 @@ void parse_text(const goos::Object& data, GameTextDB& db) {
           throw std::runtime_error("invalid text version entry");
         }
 
-        if (auto it = sTextVerEnumMap.find(ver_name.as_symbol()->name);
-            it == sTextVerEnumMap.end()) {
-          throw std::runtime_error(
-              fmt::format("unknown text version {}", ver_name.as_symbol()->name));
-        } else {
-          font = get_font_bank(it->second);
-        }
+        font = get_font_bank(ver_name.as_symbol()->name);
       }
 
       else if (head.is_int()) {
@@ -240,13 +234,7 @@ void parse_subtitle(const goos::Object& data, GameSubtitleDB& db, const std::str
           throw std::runtime_error("invalid text version entry");
         }
 
-        if (auto it = sTextVerEnumMap.find(ver_name.as_symbol()->name);
-            it == sTextVerEnumMap.end()) {
-          throw std::runtime_error(
-              fmt::format("unknown text version {}", ver_name.as_symbol()->name));
-        } else {
-          font = get_font_bank(it->second);
-        }
+        font = get_font_bank(ver_name.as_symbol()->name);
       }
 
       else if (head.is_string() || head.is_int()) {
@@ -374,13 +362,7 @@ GameTextVersion parse_text_only_version(const goos::Object& data) {
           throw std::runtime_error("invalid text version entry");
         }
 
-        if (auto it = sTextVerEnumMap.find(ver_name.as_symbol()->name);
-            it == sTextVerEnumMap.end()) {
-          throw std::runtime_error(
-              fmt::format("unknown text version {}", ver_name.as_symbol()->name));
-        } else {
-          font = get_font_bank(it->second);
-        }
+        font = get_font_bank(ver_name.as_symbol()->name);
       }
     }
   });
