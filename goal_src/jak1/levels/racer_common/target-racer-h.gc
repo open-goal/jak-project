@@ -1,0 +1,172 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: target-racer-h-FIC-LAV-MIS-OGR-ROL.gc
+;; name in dgo: target-racer-h
+;; dgos: FIC, LAV, MIS, OGR, ROL
+
+(define-extern target-racing-center-anim (function none :behavior target))
+(define-extern racer-buzz (function float none :behavior target))
+(define-extern target-racing-post (function none :behavior target))
+(define-extern target-racing-land-anim (function symbol none :behavior target))
+(define-extern target-racing-turn-anim (function none :behavior target))
+(define-extern racer-calc-gravity (function vector :behavior target))
+(define-extern target-racing-jump-anim (function basic time-frame none :behavior target))
+(define-extern racer-sounds (function object :behavior target))
+(define-extern *racer-air-mods* surface)
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/balloon-ag.gc")
+
+(deftype racer-info (basic)
+  ((entity              entity-actor          :offset-assert   4)
+   (bike-trans          vector        :inline :offset-assert  16)
+   (bike-quat           vector        :inline :offset-assert  32)
+   (bike-scale          vector        :inline :offset-assert  48)
+   (mod-x               float                 :offset-assert  64)
+   (rot                 vector        :inline :offset-assert  80)
+   (rot-old             vector        :inline :offset-assert  96)
+   (rotv                vector        :inline :offset-assert 112)
+   (lean-rotx           degrees               :offset-assert 128)
+   (change-roty         degrees               :offset-assert 132)
+   (change-roty-old     degrees               :offset-assert 136)
+   (quat                vector        :inline :offset-assert 144)
+   (surface-y           meters                :offset-assert 160)
+   (surface-vy          meters                :offset-assert 164)
+   (surface-quat        vector        :inline :offset-assert 176)
+   (surface-quat-smooth vector        :inline :offset-assert 192)
+   (cushion-base        meters                :offset-assert 208)
+   (cushion-offset      meters                :offset-assert 212)
+   (cushion-bob         meters                :offset-assert 216)
+   (cushion-bob-old     meters                :offset-assert 220)
+   (cushion-smush       smush-control :inline :offset-assert 224)
+   (shock-offset        meters                :offset-assert 256)
+   (shock-offsetv       meters                :offset-assert 260)
+   (shock-rotx          meters                :offset-assert 264)
+   (hill-value          float                 :offset-assert 268)
+   (hill-ground-value   float                 :offset-assert 272)
+   (hill-offset         meters                :offset-assert 276)
+   (hill-rotx           degrees               :offset-assert 280)
+   (hill-boost          meters                :offset-assert 284)
+   (bob-timer           float                 :offset-assert 288)
+   (bob-meta-timer      float                 :offset-assert 292)
+   (bob-meta-meta-timer float                 :offset-assert 296)
+   (bob-mult-rot        float                 :offset-assert 300)
+   (bob-mult-trans      float                 :offset-assert 304)
+   (bob-period          float                 :offset-assert 308)
+   (bob-meta-time       time-frame            :offset-assert 312)
+   (bob-hit-ground-time time-frame            :offset-assert 320)
+   (cur-rotx            degrees               :offset-assert 328)
+   (targ-rotx           degrees               :offset-assert 332)
+   (speed-rotx          float                 :offset-assert 336)
+   (mult-rotx           degrees               :offset-assert 340)
+   (front-blade         joint-mod             :offset-assert 344)
+   (front-rot           degrees               :offset-assert 348)
+   (front-rotv          degrees               :offset-assert 352)
+   (bottom-blade        joint-mod             :offset-assert 356)
+   (bottom-rot          degrees               :offset-assert 360)
+   (front               joint-mod             :offset-assert 364)
+   (front-turn          degrees               :offset-assert 368)
+   (tail                joint-mod             :offset-assert 372)
+   (tail-tilt           degrees               :offset-assert 376)
+   (transv-max          meters                :offset-assert 380)
+   (slide-down-time     time-frame    2       :offset-assert 384)
+   (slide-enter-time    time-frame            :offset-assert 400)
+   (slide-mode          int32                 :offset-assert 408)
+   (slide-amp           float                 :offset-assert 412)
+   (slide-grip-mult     float                 :offset-assert 416)
+   (slide-shift-x       float                 :offset-assert 420)
+   (slide-interp        float                 :offset-assert 424)
+   (heat                float                 :offset-assert 428)
+   (boost-time          time-frame            :offset-assert 432)
+   (boost-duration      time-frame            :offset-assert 440)
+   (boost-curve         float                 :offset-assert 448)
+   (boost-level         float                 :offset-assert 452)
+   (boost-target        float                 :offset-assert 456)
+   (boost-output        float                 :offset-assert 460)
+   (hop?                symbol                :offset-assert 464)
+   (hop-start-y         float                 :offset-assert 468)
+   (bounce              int32                 :offset-assert 472)
+   (bounce-hit          float                 :offset-assert 476)
+   (engine-sound-id     sound-id              :offset-assert 480)
+   (boost-sound-id      sound-id              :offset-assert 484)
+   (engine-sound-pitch  float                 :offset-assert 488)
+   (turn-anim-targ      float                 :offset-assert 492)
+   (turn-anim-frame     float                 :offset-assert 496)
+   (turn-anim-vel       float                 :offset-assert 500)
+   (tail-anim-vel       float                 :offset-assert 504)
+   (tail-anim-frame     float                 :offset-assert 508)
+   (rudd-anim-vel       float                 :offset-assert 512)
+   (rudd-anim-frame     float                 :offset-assert 516)
+   (racing-time         time-frame            :offset-assert 520)
+   (stick-lock          symbol                :offset-assert 528)
+   (stick-off           symbol                :offset-assert 532)
+   (heavy               symbol                :offset-assert 536)
+   (unstuck-time        time-frame            :offset-assert 544)
+   (stuck-count         int32                 :offset-assert 552)
+   (scrape-sound-id     sound-id              :offset-assert 556)
+   (heat-sound-time     time-frame            :offset-assert 560)
+   )
+  :method-count-assert 9
+  :size-assert         #x238
+  :flag-assert         #x900000238
+  )
+
+
+(deftype racer-bank (basic)
+  ((slide-hold-time            seconds  :offset-assert   8)
+   (heat-max                   float    :offset-assert  16)
+   (hotcoals-heat-inc          float    :offset-assert  20)
+   (lava-heat-inc              float    :offset-assert  24)
+   (lava-air-heat-inc          float    :offset-assert  28)
+   (surface-heat-inc           float    :offset-assert  32)
+   (jump-heat-inc              float    :offset-assert  36)
+   (lavatube-hotcoals-heat-inc float    :offset-assert  40)
+   (lavatube-lava-heat-inc     float    :offset-assert  44)
+   (lavatube-lava-air-heat-inc float    :offset-assert  48)
+   (lavatube-surface-heat-inc  float    :offset-assert  52)
+   (lavatube-jump-heat-inc     float    :offset-assert  56)
+   (boost-curve-max            meters   :offset-assert  60)
+   (boost-level-max            meters   :offset-assert  64)
+   (boost-level-inc            meters   :offset-assert  68)
+   (boost-duration             seconds  :offset-assert  72)
+   (default-front-blade        degrees  :offset-assert  80)
+   (yellow-projectile-speed    meters   :offset-assert  84)
+   )
+  :method-count-assert 9
+  :size-assert         #x58
+  :flag-assert         #x900000058
+  )
+
+
+(define *RACER-bank* (new 'static 'racer-bank
+                       :slide-hold-time (seconds 0.2)
+                       :heat-max 100.0
+                       :hotcoals-heat-inc 3.0
+                       :lava-heat-inc 20.0
+                       :lava-air-heat-inc 4.0
+                       :surface-heat-inc 1.0
+                       :jump-heat-inc 2.0
+                       :lavatube-hotcoals-heat-inc 2.0
+                       :lavatube-lava-heat-inc 4.5
+                       :lavatube-lava-air-heat-inc 4.0
+                       :lavatube-surface-heat-inc 1.0
+                       :lavatube-jump-heat-inc 10.0
+                       :boost-curve-max (meters 5)
+                       :boost-level-max (meters 12.5)
+                       :boost-level-inc (meters 2)
+                       :boost-duration (seconds 2.5)
+                       :yellow-projectile-speed (meters 80)
+                       )
+        )
+
+;; PAL patch here
+(defskelgroup *balloon-sg* balloon balloon-lod0-jg balloon-idle-ja
+              ((balloon-lod0-mg (meters 20)) (balloon-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0.3 0 6.3)
+              )
+
+
+
+

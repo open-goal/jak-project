@@ -1,0 +1,156 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: evilbro.gc
+;; name in dgo: evilbro
+;; dgos: INT, L1
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/evilbro-ag.gc")
+(import "goal_src/jak1/import/evilsis-ag.gc")
+
+(deftype evilbro (process-taskable)
+  ((evilsis entity-actor  :offset-assert 380)
+   )
+  :heap-base #x110
+  :method-count-assert 53
+  :size-assert         #x180
+  :flag-assert         #x3501100180
+  )
+
+
+(defskelgroup *evilbro-intro-sg* evilbro evilbro-lod0-jg evilbro-idle-ja
+              ((evilbro-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow evilbro-shadow-mg
+              )
+
+(defmethod play-anim! evilbro ((obj evilbro) (arg0 symbol))
+  (cond
+    (arg0
+      (close-specific-task! (game-task leaving-misty) (task-status need-introduction))
+      (send-event (-> obj evilsis extra process) 'clone (process->handle obj))
+      )
+    (else
+      (set! (-> obj will-talk) #t)
+      )
+    )
+  (the-as basic (new 'static 'spool-anim :name "evilbro-misty-end" :index 5 :parts 9 :command-list '()))
+  )
+
+(defmethod get-art-elem evilbro ((obj evilbro))
+  (-> obj draw art-group data 3)
+  )
+
+(defstate play-anim (evilbro)
+  :virtual #t
+  :exit (behavior ()
+    (send-event (-> self evilsis extra process) 'end-mode)
+    ((-> (method-of-type process-taskable play-anim) exit))
+    (none)
+    )
+  )
+
+(defstate idle (evilbro)
+  :virtual #t
+  :code (behavior ()
+    (if (!= (ja-group) (get-art-elem self))
+        (ja-channel-push! 1 (seconds 0.05))
+        )
+    (loop
+      (ja-no-eval :group! evilbro-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (let ((gp-0 (-> *display* base-frame-counter)))
+        (while (let ((s5-0 (-> *display* base-frame-counter))
+                     (f30-0 300.0)
+                     (f28-0 0.16)
+                     (f26-0 0.17000002)
+                     )
+                 (< (- s5-0 (the-as time-frame (the int (* f30-0 (+ f28-0 (* f26-0 (rand-float-gen))))))) gp-0)
+                 )
+          (suspend)
+          )
+        )
+      (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 0.0 0)) :frame-num (ja-aframe 16.0 0))
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! (ja-aframe 0.0 0)))
+        )
+      (let ((gp-3 (-> *display* base-frame-counter)))
+        (while (let ((s5-1 (-> *display* base-frame-counter))
+                     (f30-1 300.0)
+                     (f28-1 0.16)
+                     (f26-1 0.17000002)
+                     )
+                 (< (- s5-1 (the-as time-frame (the int (* f30-1 (+ f28-1 (* f26-1 (rand-float-gen))))))) gp-3)
+                 )
+          (suspend)
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(defmethod init-from-entity! evilbro ((obj evilbro) (arg0 entity-actor))
+  (dummy-40 obj arg0 *evilbro-intro-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> obj tasks) (get-task-control (game-task leaving-misty)))
+  (set! (-> obj evilsis) (entity-actor-lookup arg0 'alt-actor 0))
+  (dummy-42 obj)
+  (none)
+  )
+
+(deftype evilsis (process-taskable)
+  ()
+  :heap-base #x110
+  :method-count-assert 53
+  :size-assert         #x17c
+  :flag-assert         #x350110017c
+  )
+
+
+(defskelgroup *evilsis-intro-sg* evilsis evilsis-lod0-jg evilsis-idle-ja
+              ((evilsis-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow evilsis-shadow-mg
+              )
+
+(defmethod play-anim! evilsis ((obj evilsis) (arg0 symbol))
+  (if arg0
+      (format
+        0
+        "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+        (-> obj name)
+        (task-status->string (current-status (-> obj tasks)))
+        )
+      )
+  (the-as basic (get-art-elem obj))
+  )
+
+(defmethod get-art-elem evilsis ((obj evilsis))
+  (-> obj draw art-group data 3)
+  )
+
+(defstate idle (evilsis)
+  :virtual #t
+  :trans (behavior ()
+    (set! (-> self will-talk) #f)
+    ((-> (method-of-type process-taskable idle) trans))
+    (none)
+    )
+  )
+
+(defmethod init-from-entity! evilsis ((obj evilsis) (arg0 entity-actor))
+  (dummy-40 obj arg0 *evilsis-intro-sg* 3 0 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> obj tasks) (get-task-control (game-task leaving-misty)))
+  (dummy-42 obj)
+  (none)
+  )
+
+
+
+

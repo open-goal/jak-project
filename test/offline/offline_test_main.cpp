@@ -121,9 +121,11 @@ std::vector<DecompilerFile> find_files(const std::vector<std::string>& dgos) {
   fmt::print("  Found {} reference files\n", files_with_ref.size());
 
   // use the all_objs.json file to place them in the correct build order
+  // TODO - jak2 - Bad!
   auto j = parse_commented_json(
       file_util::read_text_file(
-          (file_util::get_jak_project_dir() / "goal_src" / "build" / "all_objs.json").string()),
+          (file_util::get_jak_project_dir() / "goal_src" / "jak1" / "build" / "all_objs.json")
+              .string()),
       "all_objs.json");
 
   std::unordered_set<std::string> matched_files;
@@ -183,7 +185,8 @@ std::vector<DecompilerArtFile> find_art_files(const std::vector<std::string>& dg
   // use the all_objs.json file to place them in the correct build order
   auto j = parse_commented_json(
       file_util::read_text_file(
-          (file_util::get_jak_project_dir() / "goal_src" / "build" / "all_objs.json").string()),
+          (file_util::get_jak_project_dir() / "goal_src" / "jak1" / "build" / "all_objs.json")
+              .string()),
       "all_objs.json");
 
   for (auto& x : j) {

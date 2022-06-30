@@ -1,0 +1,685 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: square-platform.gc
+;; name in dgo: square-platform
+;; dgos: L1, SUN, SUNKEN
+
+(declare-type square-platform baseplat)
+(declare-type square-platform-master process-drawable)
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/square-platform-ag.gc")
+
+(deftype square-platform (baseplat)
+  ((plat-id           int32                            :offset-assert 228)
+   (pos-u             float                            :offset-assert 232)
+   (water-entity      entity-actor                     :offset-assert 236)
+   (splash-counter    int32                            :offset-assert 240)
+   (start-splash-time time-frame                       :offset-assert 248)
+   (part2             sparticle-launch-control         :offset-assert 256)
+   (part3             sparticle-launch-control         :offset-assert 260)
+   (part4             sparticle-launch-control         :offset-assert 264)
+   (up-pos            vector                   :inline :offset-assert 272)
+   (down-pos          vector                   :inline :offset-assert 288)
+   )
+  :heap-base #xc0
+  :method-count-assert 28
+  :size-assert         #x130
+  :flag-assert         #x1c00c00130
+  (:methods
+    (TODO-RENAME-27 (_type_ symbol) none 27)
+    )
+  (:states
+    square-platform-lowered
+    square-platform-lowering
+    square-platform-raised
+    square-platform-rising
+    )
+  )
+
+
+(defskelgroup *square-platform-sg* square-platform square-platform-lod0-jg square-platform-idle-ja
+              ((square-platform-lod0-mg (meters 20)) (square-platform-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 -11 0 8)
+              )
+
+(deftype square-platform-button (basebutton)
+  ()
+  :heap-base #x90
+  :method-count-assert 32
+  :size-assert         #x100
+  :flag-assert         #x2000900100
+  )
+
+
+(deftype square-platform-master (process-drawable)
+  ((button-id                int32              :offset-assert 176)
+   (plat-id                  int32              :offset-assert 180)
+   (plat-mask                uint32             :offset-assert 184)
+   (plat-id-dir              int32              :offset-assert 188)
+   (wiggled?                 symbol             :offset-assert 192)
+   (timeout                  time-frame         :offset-assert 200)
+   (last-plat-activated-time time-frame         :offset-assert 208)
+   (delay-til-wiggle         time-frame         :offset-assert 216)
+   (ticker                   ticky      :inline :offset-assert 224)
+   )
+  :heap-base #x90
+  :method-count-assert 20
+  :size-assert         #x100
+  :flag-assert         #x1400900100
+  (:states
+    square-platform-master-activate
+    square-platform-master-idle
+    )
+  )
+
+
+(defpartgroup group-square-platform-breach-splash
+  :id 437
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 2222 :flags (is-3d)) (sp-item 2315 :flags (is-3d)))
+  )
+
+(defpart 2222
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+    (sp-flt spt-num 8.0)
+    (sp-rnd-flt spt-x (meters 0) (meters 3) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 3.5) (meters 3.5) 1.0)
+    (sp-rnd-flt spt-rot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 128.0 64.0 1.0)
+    (sp-rnd-flt spt-b 128.0 64.0 1.0)
+    (sp-flt spt-a 0.0)
+    (sp-rnd-flt spt-scalevel-x (meters 0.013333334) (meters 0.013333334) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a 3.2)
+    (sp-int spt-timer 600)
+    (sp-cpuinfo-flags bit2)
+    (sp-int-plain-rnd spt-next-time 10 29 1)
+    (sp-launcher-by-id spt-next-launcher 2316)
+    (sp-rnd-flt spt-conerot-x (degrees 70.0) (degrees 20.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 2316
+  :init-specs ((sp-flt spt-fade-a -0.17066666))
+  )
+
+(defpart 2315
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+    (sp-flt spt-num 8.0)
+    (sp-rnd-flt spt-x (meters 3) (meters 1.5) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 1.5) 1.0)
+    (sp-rnd-flt spt-rot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-rnd-flt spt-g 128.0 64.0 1.0)
+    (sp-rnd-flt spt-b 128.0 64.0 1.0)
+    (sp-flt spt-a 0.0)
+    (sp-rnd-flt spt-scalevel-x (meters 0.013333334) (meters 0.013333334) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a 3.2)
+    (sp-int spt-timer 600)
+    (sp-cpuinfo-flags bit2)
+    (sp-int-plain-rnd spt-next-time 10 29 1)
+    (sp-launcher-by-id spt-next-launcher 2316)
+    (sp-rnd-flt spt-conerot-x (degrees 70.0) (degrees 20.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-rotate-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpartgroup group-square-platform-submerge-bubbles
+  :id 438
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 2223))
+  )
+
+(defpart 2223
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x9 :page #x2))
+    (sp-flt spt-num 2.0)
+    (sp-rnd-flt spt-x (meters -4) (meters 8) 1.0)
+    (sp-rnd-flt spt-z (meters -4) (meters 8) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.15) (meters 0.05) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.125) (meters 0.025) 1.0)
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 255.0)
+    (sp-flt spt-a 0.0)
+    (sp-rnd-flt spt-vel-y (meters 0.013333334) (meters 0.006666667) 1.0)
+    (sp-flt spt-fade-a 0.8)
+    (sp-int spt-timer 900)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-flt spt-userdata -663298.44)
+    (sp-func spt-func 'check-water-level-above-and-die)
+    (sp-int-plain-rnd spt-next-time 30 29 1)
+    (sp-launcher-by-id spt-next-launcher 2317)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defpart 2317
+  :init-specs ((sp-flt spt-fade-a 0.0))
+  )
+
+(defpartgroup group-square-platform-submerge-splash
+  :id 439
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 2222 :flags (is-3d)) (sp-item 2315 :flags (is-3d)))
+  )
+
+(defmethod TODO-RENAME-27 square-platform ((obj square-platform) (arg0 symbol))
+  (local-vars (v0-3 sound-id) (sv-48 int))
+  (let ((s4-0 (new 'stack-no-clear 'vector)))
+    (set! (-> s4-0 quad) (-> obj root-override trans quad))
+    (set! (-> s4-0 y) (+ -20480.0 (-> s4-0 y)))
+    (let* ((v1-1 (-> obj water-entity))
+           (a0-4 (if v1-1
+                     (-> v1-1 extra process)
+                     )
+                 )
+           )
+      (when (not a0-4)
+        (set! (-> obj water-entity) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
+        (let ((v1-4 (-> obj water-entity)))
+          (set! a0-4 (if v1-4
+                         (-> v1-4 extra process)
+                         )
+                )
+          )
+        )
+      (when (the-as water-vol a0-4)
+        (let ((f0-2 (get-ripple-height (the-as water-vol a0-4) s4-0))
+              (s3-0 (new 'stack-no-clear 'vector))
+              )
+          (set! (-> s3-0 quad) (-> s4-0 quad))
+          (set! (-> s3-0 y) f0-2)
+          (if (zero? (-> obj start-splash-time))
+              (set! v0-3 (cond
+                           (arg0
+                             (if (>= (-> s4-0 y) f0-2)
+                                 (set! (-> obj start-splash-time) (-> *display* base-frame-counter))
+                                 )
+                             v0-3
+                             )
+                           (else
+                             (when (>= f0-2 (-> s4-0 y))
+                               (set! (-> obj start-splash-time) (-> *display* base-frame-counter))
+                               (let ((s2-0 sound-play-by-name)
+                                     (s1-0 (make-u128 #x6873616c (the-as uint #x70732d656772616c)))
+                                     (s0-0 (new-sound-id))
+                                     )
+                                 (set! sv-48 1024)
+                                 (let ((a3-0 (the int (* 1524.0 (rand-vu-float-range -0.8 0.8))))
+                                       (t0-0 0)
+                                       (t1-0 1)
+                                       (t2-0 #t)
+                                       )
+                                   (s2-0 (the-as sound-name s1-0) s0-0 sv-48 a3-0 t0-0 (the-as sound-group t1-0) t2-0)
+                                   )
+                                 )
+                               )
+                             )
+                           )
+                    )
+              )
+          (when (nonzero? (-> obj start-splash-time))
+            (cond
+              (arg0
+                (let ((v1-21 (-> obj splash-counter)))
+                  (when (< v1-21 2)
+                    (set! (-> obj splash-counter) (+ v1-21 1))
+                    (spawn (-> obj part2) s3-0)
+                    )
+                  )
+                )
+              (else
+                (spawn (-> obj part3) s4-0)
+                )
+              )
+            )
+          (when (not arg0)
+            (let ((v1-25 (-> obj splash-counter)))
+              (when (< v1-25 2)
+                (set! (-> obj splash-counter) (+ v1-25 1))
+                (spawn (-> obj part4) s3-0)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defstate square-platform-lowered (square-platform)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('trigger)
+       (if (and (= (-> arg0 type) square-platform-master)
+                (= (-> (the-as square-platform-master arg0) plat-id) (-> self plat-id))
+                )
+           (go square-platform-rising)
+           )
+       )
+      )
+    )
+  :code (behavior ()
+    (set! (-> self pos-u) 0.0)
+    (loop
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      )
+    (none)
+    )
+  )
+
+(defstate square-platform-rising (square-platform)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (let ((v1-0 arg2))
+      (the-as object (cond
+                       ((or (= v1-0 'bonk) (= v1-0 'bounce))
+                        (dummy-22 self)
+                        )
+                       ((= v1-0 'untrigger)
+                        (go square-platform-lowering)
+                        )
+                       )
+              )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self start-splash-time) 0)
+    (set! (-> self splash-counter) 0)
+    0
+    (none)
+    )
+  :trans (behavior ()
+    (set! (-> self pos-u)
+          (seek-with-smooth (-> self pos-u) 1.0 (/ 1.0 (* 0.75 (-> *display* frames-per-second))) 0.8 0.01)
+          )
+    (vector-lerp! (-> self basetrans) (-> self down-pos) (-> self up-pos) (-> self pos-u))
+    (plat-trans)
+    (when (= (-> self pos-u) 1.0)
+      (plat-post)
+      (go square-platform-raised)
+      )
+    (TODO-RENAME-27 self #t)
+    (none)
+    )
+  :code (behavior ()
+    (loop
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior square-platform) plat-post)
+  )
+
+(defstate square-platform-raised (square-platform)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (let ((v1-0 arg2))
+      (the-as object (cond
+                       ((or (= v1-0 'bonk) (= v1-0 'bounce))
+                        (dummy-22 self)
+                        )
+                       ((= v1-0 'untrigger)
+                        (go square-platform-lowering)
+                        )
+                       )
+              )
+      )
+    )
+  :trans (the-as (function none :behavior square-platform) plat-trans)
+  :code (behavior ()
+    (set! (-> self pos-u) 1.0)
+    (loop
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior square-platform) plat-post)
+  )
+
+(defstate square-platform-lowering (square-platform)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (let ((v1-0 arg2))
+      (the-as object (cond
+                       ((or (= v1-0 'bonk) (= v1-0 'bounce))
+                        (dummy-22 self)
+                        )
+                       ((= v1-0 'trigger)
+                        (go square-platform-rising)
+                        )
+                       ((= v1-0 'touch)
+                        (send-event arg0 'no-look-around (seconds 1.5))
+                        #f
+                        )
+                       )
+              )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self start-splash-time) 0)
+    (set! (-> self splash-counter) 0)
+    0
+    (none)
+    )
+  :trans (behavior ()
+    (set! (-> self pos-u)
+          (seek-with-smooth (-> self pos-u) 0.0 (/ 1.0 (* 0.75 (-> *display* frames-per-second))) 0.8 0.01)
+          )
+    (vector-lerp! (-> self basetrans) (-> self down-pos) (-> self up-pos) (-> self pos-u))
+    (plat-trans)
+    (when (= (-> self pos-u) 0.0)
+      (plat-post)
+      (go square-platform-lowered)
+      )
+    (TODO-RENAME-27 self #f)
+    (none)
+    )
+  :code (behavior ()
+    (loop
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior square-platform) plat-post)
+  )
+
+(defmethod deactivate square-platform ((obj square-platform))
+  (if (nonzero? (-> obj part2))
+      (kill-and-free-particles (-> obj part2))
+      )
+  (if (nonzero? (-> obj part3))
+      (kill-and-free-particles (-> obj part3))
+      )
+  (if (nonzero? (-> obj part4))
+      (kill-and-free-particles (-> obj part4))
+      )
+  ((method-of-type process-drawable deactivate) obj)
+  (none)
+  )
+
+(defmethod relocate square-platform ((obj square-platform) (arg0 int))
+  (if (nonzero? (-> obj part2))
+      (&+! (-> obj part2) arg0)
+      )
+  (if (nonzero? (-> obj part3))
+      (&+! (-> obj part3) arg0)
+      )
+  (if (nonzero? (-> obj part4))
+      (&+! (-> obj part4) arg0)
+      )
+  (the-as
+    square-platform
+    ((the-as (function baseplat int baseplat) (find-parent-method square-platform 7)) obj arg0)
+    )
+  )
+
+(defmethod init-from-entity! square-platform ((obj square-platform) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag) (sv-32 res-tag))
+  (set! (-> obj pos-u) 0.0)
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (alloc-riders s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 -24576.0 0.0 32768.0)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (set! (-> obj link) (new 'process 'actor-link-info obj))
+  (set! (-> obj plat-id) (actor-count-before (-> obj link)))
+  (initialize-skeleton obj *square-platform-sg* '())
+  (dummy-21 obj)
+  (ja-channel-set! 1)
+  (let ((s4-1 (-> obj skel root-channel 0)))
+    (joint-control-channel-group-eval!
+      s4-1
+      (the-as art-joint-anim (-> obj draw art-group data 3))
+      num-func-identity
+      )
+    (set! (-> s4-1 frame-num) 0.0)
+    )
+  (set! sv-16 (new 'static 'res-tag))
+  (let* ((v1-32 (res-lump-data (-> obj entity) 'distance pointer :tag-ptr (& sv-16)))
+         (f30-0 (if (and v1-32 (> (the-as int (-> sv-16 elt-count)) 0))
+                    (-> (the-as (pointer float) v1-32))
+                    -8192.0
+                    )
+                )
+         )
+    (set! sv-32 (new 'static 'res-tag))
+    (let* ((v1-35 (res-lump-data (-> obj entity) 'distance pointer :tag-ptr (& sv-32)))
+           (f0-10 (if (and v1-35 (< 1 (the-as int (-> sv-32 elt-count))))
+                      (-> (the-as (pointer float) v1-35) 1)
+                      16384.0
+                      )
+                  )
+           )
+      (set! (-> obj down-pos quad) (-> obj root-override trans quad))
+      (+! (-> obj down-pos y) f30-0)
+      (set! (-> obj up-pos quad) (-> obj root-override trans quad))
+      (+! (-> obj up-pos y) f0-10)
+      )
+    )
+  (set! (-> obj basetrans quad) (-> obj down-pos quad))
+  (set! (-> obj root-override trans quad) (-> obj basetrans quad))
+  (set! (-> obj part2) (create-launch-control (-> *part-group-id-table* 437) obj))
+  (set! (-> obj part3) (create-launch-control (-> *part-group-id-table* 438) obj))
+  (set! (-> obj part4) (create-launch-control (-> *part-group-id-table* 439) obj))
+  (set! (-> obj water-entity) (entity-actor-lookup arg0 'alt-actor 0))
+  (ja-post)
+  (update-transforms! (-> obj root-override))
+  (go square-platform-lowered)
+  (none)
+  )
+
+(defstate square-platform-master-idle (square-platform-master)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('trigger)
+       (when (= (-> arg0 type) square-platform-button)
+         (set! (-> self button-id) (-> (the-as square-platform-button arg0) button-id))
+         (logclear! (-> self mask) (process-mask actor-pause))
+         (process-entity-status! self (entity-perm-status bit-3) #t)
+         (go square-platform-master-activate)
+         )
+       )
+      )
+    )
+  :code (behavior ()
+    (logior! (-> self mask) (process-mask sleep-code))
+    (suspend)
+    0
+    (none)
+    )
+  )
+
+(defstate square-platform-master-activate (square-platform-master)
+  :enter (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self wiggled?) #f)
+    (sleep (-> self ticker) (-> self timeout))
+    (set! (-> self plat-id) -1)
+    (send-to-all (-> self link) 'trigger)
+    (set! (-> self plat-id) 0)
+    (let ((gp-0 1))
+      (let ((v1-7 (-> self button-id)))
+        (cond
+          ((zero? v1-7)
+           (let ((a0-4 (process-spawn
+                         sunkencam
+                         :init pov-camera-init-by-other
+                         (-> self root trans)
+                         *sunkencam-sg*
+                         "qbert-show-door-open"
+                         0
+                         #f
+                         '()
+                         :to self
+                         )
+                       )
+                 )
+             (set! (-> (the-as sunkencam (-> a0-4 0)) seq) (the-as uint 3))
+             )
+           )
+          ((= v1-7 1)
+           (let ((v1-13 (process-spawn
+                          sunkencam
+                          :init pov-camera-init-by-other
+                          (-> self root trans)
+                          *sunkencam-sg*
+                          "qbert-show-door-open"
+                          0
+                          #f
+                          '()
+                          :to self
+                          )
+                        )
+                 )
+             (set! (-> (the-as sunkencam (-> v1-13 0)) seq) (the-as uint 4))
+             )
+           (set! gp-0 -1)
+           )
+          ((= v1-7 2)
+           (let ((a0-17 (process-spawn
+                          sunkencam
+                          :init pov-camera-init-by-other
+                          (-> self root trans)
+                          *sunkencam-sg*
+                          "qbert-show-door-open"
+                          0
+                          #f
+                          '()
+                          :to self
+                          )
+                        )
+                 )
+             (set! (-> (the-as sunkencam (-> a0-17 0)) seq) (the-as uint 5))
+             )
+           )
+          ((= v1-7 3)
+           (let ((v1-24 (process-spawn
+                          sunkencam
+                          :init pov-camera-init-by-other
+                          (-> self root trans)
+                          *sunkencam-sg*
+                          "qbert-show-door-open"
+                          0
+                          #f
+                          '()
+                          :to self
+                          )
+                        )
+                 )
+             (set! (-> (the-as sunkencam (-> v1-24 0)) seq) (the-as uint 6))
+             )
+           (set! gp-0 -1)
+           )
+          )
+        )
+      (if (< gp-0 0)
+          (set! (-> self plat-id) 32)
+          )
+      (set! (-> self plat-id-dir) gp-0)
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (logior! (-> self mask) (process-mask actor-pause))
+    (process-entity-status! self (entity-perm-status bit-3) #f)
+    (none)
+    )
+  :trans (behavior ()
+    (when (completed? (-> self ticker))
+      (send-to-all (-> self link) 'untrigger)
+      (go square-platform-master-idle)
+      )
+    (when (reached-delay? (-> self ticker) (-> self delay-til-wiggle))
+      (when (not (-> self wiggled?))
+        (set! (-> self wiggled?) #t)
+        (send-to-all (-> self link) 'bounce)
+        )
+      )
+    (when (>= (- (-> *display* base-frame-counter) (-> self last-plat-activated-time)) (seconds 0.3))
+      (set! (-> self last-plat-activated-time) (-> *display* base-frame-counter))
+      (let ((v1-20 (-> self plat-id))
+            (a0-5 (-> self plat-id-dir))
+            (a1-3 (-> self plat-mask))
+            )
+        (loop
+          (+! v1-20 a0-5)
+          (cond
+            ((<= v1-20 0)
+             (set! (-> self plat-id) 0)
+             (return #f)
+             )
+            ((>= v1-20 32)
+             (set! (-> self plat-id) 32)
+             (return #f)
+             )
+            (else
+              (when (logtest? a1-3 (ash 1 v1-20))
+                (set! (-> self plat-id) v1-20)
+                (send-to-all (-> self link) 'trigger)
+                (return #f)
+                )
+              )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (logior! (-> self mask) (process-mask sleep-code))
+    (suspend)
+    0
+    (none)
+    )
+  )
+
+(defmethod init-from-entity! square-platform-master ((obj square-platform-master) (arg0 entity-actor))
+  (set! (-> obj button-id) -1)
+  (set! (-> obj plat-id) -1)
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (set! (-> obj timeout)
+        (the-as time-frame (the int (* 300.0 (res-lump-float (-> obj entity) 'timeout :default 10.0))))
+        )
+  (set! (-> obj delay-til-wiggle) (+ (-> obj timeout) (seconds -0.4)))
+  (set! (-> obj link) (new 'process 'actor-link-info obj))
+  (set! (-> obj plat-mask) (the-as uint (get-matching-actor-type-mask (-> obj link) square-platform)))
+  (go square-platform-master-idle)
+  (none)
+  )
+
+
+
+
