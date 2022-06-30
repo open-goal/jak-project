@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 
 import argparse
-import glob
 import os
+from pathlib import Path
+import json
 
-from jak1_file_list import file_list
+file_list = None
+
+with open('../../goal_src/jak2/build/all_objs.json', 'r') as f:
+  file_list = json.load(f)
 
 def dgo_names_string(names):
 	result = ""
@@ -14,7 +18,6 @@ def dgo_names_string(names):
 	return result
 
 def make_file(root, path, name, name_in_dgo, dgos, version):
-	os.makedirs(os.path.join(root, path), exist_ok=True)
 	if version == 3:
 		filename = name + ".gc"
 		text = """;;-*-Lisp-*-
@@ -25,29 +28,10 @@ def make_file(root, path, name, name_in_dgo, dgos, version):
 ;; dgos: {}
 
 """.format(filename, name_in_dgo, dgo_names_string(dgos))
-	elif version == 4:
-		filename = name + ".gd"
-		text = """;;-*-Lisp-*-
-;; GOAL Data Description File
+		Path(os.path.join(root, path)).mkdir(parents=True, exist_ok=True)
+		with open(os.path.join(root, path, filename), "w") as f:
+			f.write(text)
 
-;; name: {}
-;; name in dgo: {}
-;; dgos: {}
-""".format(filename, name_in_dgo, dgo_names_string(dgos))
+for x in file_list:
+	make_file("../../goal_src/jak2", x[4], x[0], x[1], x[3], x[2])
 
-	with open(os.path.join(root, path, filename), "w") as f:
-		f.write(text)	
-
-
-
-def main():
-	parser = argparse.ArgumentParser()
-	parser.add_argument(dest='root', help='root directory to create output in')
-	args = parser.parse_args()
-	for x in file_list:
-		make_file(args.root, x[4], x[0], x[1], x[3], x[2])
-
-
-
-if __name__ == "__main__":
-	main()
