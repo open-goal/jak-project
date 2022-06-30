@@ -85,7 +85,7 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
   va_check(form, args, {goos::ObjectType::SYMBOL}, {{"files", {true, goos::ObjectType::PAIR}}});
 
   // list of files per text version.
-  std::unordered_map<GameTextVersion, std::vector<std::string>> inputs;
+  std::vector<std::string> inputs;
 
   // what kind of text file?
   const auto kind = symbol_string(args.unnamed.at(0));
@@ -101,15 +101,11 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
 
   // compile files.
   if (kind == "subtitle") {
-    for (auto& [ver, in] : inputs) {
-      GameSubtitleDB db;
-      compile_game_subtitle(in, ver, db);
-    }
+    GameSubtitleDB db;
+    compile_game_subtitle(inputs, db);
   } else if (kind == "text") {
-    for (auto& [ver, in] : inputs) {
-      GameTextDB db;
-      compile_game_text(in, ver, db);
-    }
+    GameTextDB db;
+    compile_game_text(inputs, db);
   } else {
     throw_compiler_error(form, "The option {} was not recognized for asm-text-file.", kind);
   }
