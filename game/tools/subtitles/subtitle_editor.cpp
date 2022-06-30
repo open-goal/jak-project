@@ -3,7 +3,7 @@
 #include <regex>
 #include <string_view>
 
-#include "common/deserialization/subtitles/subtitles.h"
+#include "common/serialization/subtitles/subtitles_deser.h"
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 
@@ -25,8 +25,8 @@ void SubtitleEditor::repl_set_continue_point(const std::string_view& continue_po
 
 void SubtitleEditor::repl_move_jak(const double x, const double y, const double z) {
   m_repl.eval(
-      fmt::format("(move-to-point! (-> *target* control) (new 'static 'vector :x (meters {:.1f}) "
-                  ":y (meters {:.1f}) :z (meters {:.1f})))",
+      fmt::format("(move-to-point! (-> *target* control) (new 'static 'vector :x (meters {:.3f}) "
+                  ":y (meters {:.3f}) :z (meters {:.3f})))",
                   x, y, z));
   m_repl.eval("(send-event *camera* 'teleport)");
 }

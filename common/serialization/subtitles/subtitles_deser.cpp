@@ -1,9 +1,8 @@
-#include "subtitles.h"
+#include "subtitles_deser.h"
 
 #include <algorithm>
 #include <regex>
 
-#include "common/serialization/subtitles/subtitles.h"
 #include "common/util/FileUtil.h"
 
 #include "third-party/fmt/core.h"

@@ -4,7 +4,7 @@
 #include <string_view>
 
 #include "common/nrepl/ReplClient.h"
-#include "common/serialization/subtitles/subtitles.h"
+#include "common/serialization/subtitles/subtitles_ser.h"
 
 #include "third-party/imgui/imgui.h"
 

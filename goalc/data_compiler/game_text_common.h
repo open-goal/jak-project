@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "common/serialization/subtitles/subtitles.h"
+#include "common/serialization/subtitles/subtitles_ser.h"
 #include "common/util/Assert.h"
 #include "common/util/FontUtils.h"
 
