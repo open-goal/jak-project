@@ -16,7 +16,7 @@ namespace fs = std::filesystem;
 
 namespace file_util {
 std::filesystem::path get_user_home_dir();
-std::filesystem::path get_user_game_dir();
+std::filesystem::path get_user_config_dir();
 std::filesystem::path get_user_settings_dir();
 std::filesystem::path get_user_memcard_dir();
 std::filesystem::path get_jak_project_dir();

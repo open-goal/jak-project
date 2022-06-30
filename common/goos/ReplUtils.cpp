@@ -54,18 +54,20 @@ void ReplWrapper::add_to_history(const std::string& line) {
 }
 
 void ReplWrapper::save_history() {
-  // NOTE - library doesn't seem unicode safe on windows
-  std::filesystem::path path = file_util::get_user_home_dir();
-  if (std::filesystem::exists(path)) {
+  std::filesystem::path path = file_util::get_user_config_dir();
+  if (file_util::create_dir_if_needed(path)) {
     repl.history_save((path / ".opengoal.repl.history").string());
+  } else {
+    fmt::print("Couldn't save REPL history file to '{}'", path.string());
   }
 }
 
 void ReplWrapper::load_history() {
-  // NOTE - library doesn't seem unicode safe on windows
-  std::filesystem::path path = file_util::get_user_home_dir();
+  std::filesystem::path path = file_util::get_user_config_dir() / ".opengoal.repl.history";
   if (std::filesystem::exists(path)) {
-    repl.history_load((path / ".opengoal.repl.history").string());
+    repl.history_load(path.string());
+  } else {
+    fmt::print("Couldn't locate REPL history file at '{}'", path.string());
   }
 }
 
