@@ -36,35 +36,60 @@ bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
     file_contents += fmt::format("(text-version {})\n", get_text_version_name(file_ver));
 
     for (const auto& group_name : db.m_subtitle_groups->m_group_order) {
+      bool last_was_single = false;
       file_contents +=
           fmt::format("\n;; -----------------\n;; {}\n;; -----------------\n", group_name);
       for (const auto& [scene_name, scene_info] : bank->m_scenes) {
         if (scene_info.m_sorting_group != group_name) {
           continue;
         }
-        file_contents += fmt::format("\n(\"{}\"", scene_name);
+
+        if (last_was_single && scene_info.lines().size() == 1) {
+          file_contents += fmt::format("(\"{}\"", scene_name);
+        } else {
+          file_contents += fmt::format("\n(\"{}\"", scene_name);
+        }
         if (scene_info.m_kind == SubtitleSceneKind::Hint) {
           file_contents += " :hint #x0";
         } else if (scene_info.m_kind == SubtitleSceneKind::HintNamed) {
           file_contents += fmt::format(" :hint #x{0:x}", scene_info.m_id);
         }
-        file_contents += "\n";
-        for (auto& line : scene_info.lines()) {
-          // Clear screen entries
+        // more compact formatting for single-line entries
+        if (scene_info.lines().size() == 1) {
+          const auto& line = scene_info.lines().at(0);
           if (line.line.empty()) {
-            file_contents += fmt::format("  ({})\n", line.frame);
+            file_contents += fmt::format(" ({})", line.frame);
           } else {
-            file_contents += fmt::format("  ({}", line.frame);
+            file_contents += fmt::format(" ({}", line.frame);
             if (line.offscreen && scene_info.m_kind == SubtitleSceneKind::Movie) {
               file_contents += " :offscreen";
             }
             file_contents +=
                 fmt::format(" \"{}\"", font->convert_game_to_utf8(line.speaker.c_str()));
-            file_contents +=
-                fmt::format(" \"{}\")\n", font->convert_game_to_utf8(line.line.c_str()));
+            file_contents += fmt::format(" \"{}\")", font->convert_game_to_utf8(line.line.c_str()));
           }
+          file_contents += ")\n";
+          last_was_single = true;
+        } else {
+          file_contents += "\n";
+          for (auto& line : scene_info.lines()) {
+            // Clear screen entries
+            if (line.line.empty()) {
+              file_contents += fmt::format("  ({})\n", line.frame);
+            } else {
+              file_contents += fmt::format("  ({}", line.frame);
+              if (line.offscreen && scene_info.m_kind == SubtitleSceneKind::Movie) {
+                file_contents += " :offscreen";
+              }
+              file_contents +=
+                  fmt::format(" \"{}\"", font->convert_game_to_utf8(line.speaker.c_str()));
+              file_contents +=
+                  fmt::format(" \"{}\")\n", font->convert_game_to_utf8(line.line.c_str()));
+            }
+          }
+          file_contents += "  )\n";
+          last_was_single = false;
         }
-        file_contents += "  )\n";
       }
     }
 
