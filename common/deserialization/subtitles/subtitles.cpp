@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <regex>
 
+#include "common/serialization/subtitles/subtitles.h"
 #include "common/util/FileUtil.h"
 
 #include "third-party/fmt/core.h"
@@ -31,6 +32,9 @@ bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
 
     std::string file_contents = "";
     file_contents += fmt::format("(language-id {})\n", fmt::join(banks, " "));
+    auto file_ver = parse_text_only_version(bank->file_path);
+    auto font = get_font_bank(file_ver);
+    file_contents += fmt::format("(text-version {})\n", get_text_version_name(file_ver));
 
     for (const auto& group_name : db.m_subtitle_groups->m_group_order) {
       file_contents +=
@@ -46,20 +50,19 @@ bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
           file_contents += fmt::format(" :hint #x{0:x}", scene_info.m_id);
         }
         file_contents += "\n";
-        for (const auto& line : scene_info.m_lines) {
+        for (auto& line : scene_info.lines()) {
           // Clear screen entries
-          if (line.line_utf8.empty()) {
+          if (line.line.empty()) {
             file_contents += fmt::format("  ({})\n", line.frame);
           } else {
             file_contents += fmt::format("  ({}", line.frame);
             if (line.offscreen && scene_info.m_kind == SubtitleSceneKind::Movie) {
               file_contents += " :offscreen";
             }
-            file_contents += fmt::format(" \"{}\"", line.speaker_utf8);
-            // escape quotes
-            std::string temp = line.line_utf8;
-            temp = std::regex_replace(temp, std::regex("\""), "\\\"");
-            file_contents += fmt::format(" \"{}\")\n", temp);
+            file_contents +=
+                fmt::format(" \"{}\"", font->convert_game_to_utf8(line.speaker.c_str()));
+            file_contents +=
+                fmt::format(" \"{}\")\n", font->convert_game_to_utf8(line.line.c_str()));
           }
         }
         file_contents += "  )\n";

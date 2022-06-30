@@ -148,26 +148,22 @@ void compile_subtitle(GameSubtitleDB& db) {
 /*!
  * Read a game text description file and generate GOAL objects.
  */
-void compile_game_text(const std::vector<std::string>& filenames,
-                       GameTextVersion text_ver,
-                       GameTextDB& db) {
+void compile_game_text(const std::vector<std::string>& filenames, GameTextDB& db) {
   goos::Reader reader;
   for (auto& filename : filenames) {
     fmt::print("[Build Game Text] {}\n", filename.c_str());
     auto code = reader.read_from_file({filename});
-    parse_text(code, text_ver, db);
+    parse_text(code, db);
   }
   compile_text(db);
 }
 
-void compile_game_subtitle(const std::vector<std::string>& filenames,
-                           GameTextVersion text_ver,
-                           GameSubtitleDB& db) {
+void compile_game_subtitle(const std::vector<std::string>& filenames, GameSubtitleDB& db) {
   goos::Reader reader;
   for (auto& filename : filenames) {
     fmt::print("[Build Game Subtitle] {}\n", filename.c_str());
     auto code = reader.read_from_file({filename});
-    parse_subtitle(code, text_ver, db, filename);
+    parse_subtitle(code, db, filename);
   }
   compile_subtitle(db);
 }

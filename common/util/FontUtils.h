@@ -11,6 +11,7 @@
 
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -25,6 +26,10 @@ enum class GameTextVersion {
   JAK3 = 30,     // jak 3
   JAKX = 40      // jak x
 };
+
+extern const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap;
+
+const std::string& get_text_version_name(GameTextVersion version);
 
 /*!
  * What bytes a set of characters (UTF-8) correspond to. You can convert to and fro.
@@ -68,6 +73,9 @@ class GameTextFontBank {
   const std::vector<ReplaceInfo>* replace_info() const { return m_replace_info; }
   const std::unordered_set<char>* passthrus() const { return m_passthrus; }
 
+  GameTextVersion version() const { return m_version; }
+
+  std::string convert_utf8_to_game_with_escape(const std::string& str) const;
   std::string convert_utf8_to_game(std::string str) const;
   std::string convert_game_to_utf8(const char* in) const;
 };
