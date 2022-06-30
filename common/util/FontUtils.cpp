@@ -231,6 +231,9 @@ std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
   return replace_to_utf8(result);
 }
 
+static std::vector<EncodeInfo> s_encode_info_null = {};
+static std::vector<ReplaceInfo> s_replace_info_null = {};
+
 /*!
  * ===========================
  * GAME TEXT FONT BANK - JAK 1
@@ -239,10 +242,10 @@ std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
  * - Jak & Daxter: The Precursor Legacy (Black Label)
  */
 
-static std::unordered_set<char> passthrus = {'~', ' ', ',', '.', '-', '+', '(', ')', '!', ':', '?',
+static std::unordered_set<char> s_passthrus = {'~', ' ', ',', '.', '-', '+', '(', ')', '!', ':', '?',
                                              '=', '%', '*', '/', '#', ';', '<', '>', '@', '[', '_'};
 
-static std::vector<EncodeInfo> g_encode_info_jak1 = {
+static std::vector<EncodeInfo> s_encode_info_jak1 = {
     // random
     {"ˇ", {0x10}},      // caron
     {"`", {0x11}},      // grave accent
@@ -460,7 +463,7 @@ static std::vector<EncodeInfo> g_encode_info_jak1 = {
     {"™", {1, 0xb1}},   // trademark
 };
 
-static std::vector<ReplaceInfo> g_replace_info_jak1 = {
+static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     // \" -> " (yeah it looks confusing)
     {"\"", "\\\""},
 
@@ -572,9 +575,9 @@ static std::vector<ReplaceInfo> g_replace_info_jak1 = {
 };
 
 GameTextFontBank g_font_bank_jak1(GameTextVersion::JAK1_V1,
-                                  &g_encode_info_jak1,
-                                  &g_replace_info_jak1,
-                                  &passthrus);
+                                  &s_encode_info_jak1,
+                                  &s_replace_info_jak1,
+                                  &s_passthrus);
 
 /*!
  * ================================
@@ -582,11 +585,13 @@ GameTextFontBank g_font_bank_jak1(GameTextVersion::JAK1_V1,
  * ================================
  * This font is used in:
  * - Jak & Daxter: The Precursor Legacy (PAL)
+ * - ジャックＸダクスター　～　旧世界の遺産
+ * - Jak & Daxter: The Precursor Legacy (NTSC-U v2)
  *
  * It is the same as v1, but _ has been fixed and no longer overlaps 掘
  */
 
-static std::vector<EncodeInfo> g_encode_info_jak1_v2 = {
+static std::vector<EncodeInfo> s_encode_info_jak1_v2 = {
     // random
     {"_", {0x03}},      // large space
     {"ˇ", {0x10}},      // caron
@@ -806,9 +811,14 @@ static std::vector<EncodeInfo> g_encode_info_jak1_v2 = {
 };
 
 GameTextFontBank g_font_bank_jak1_v2(GameTextVersion::JAK1_V2,
-                                     &g_encode_info_jak1_v2,
-                                     &g_replace_info_jak1,
-                                     &passthrus);
+                                     &s_encode_info_jak1_v2,
+                                     &s_replace_info_jak1,
+                                     &s_passthrus);
+
+GameTextFontBank g_font_bank_jak2(GameTextVersion::JAK2,
+                                  &s_encode_info_null,
+                                  &s_replace_info_null,
+                                  &s_passthrus);
 
 /*!
  * ========================
@@ -819,7 +829,8 @@ GameTextFontBank g_font_bank_jak1_v2(GameTextVersion::JAK1_V2,
 
 std::map<GameTextVersion, GameTextFontBank*> g_font_banks = {
     {GameTextVersion::JAK1_V1, &g_font_bank_jak1},
-    {GameTextVersion::JAK1_V2, &g_font_bank_jak1_v2}};
+    {GameTextVersion::JAK1_V2, &g_font_bank_jak1_v2},
+    {GameTextVersion::JAK2, &g_font_bank_jak2}};
 
 const GameTextFontBank* get_font_bank(GameTextVersion version) {
   return g_font_banks.at(version);
