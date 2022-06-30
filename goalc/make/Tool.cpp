@@ -82,7 +82,7 @@ std::string PathMap::apply_remaps(const std::string& input) const {
         result.pop_back();
       }
       result.insert(result.end(), input.begin() + i, input.end());
-      return std::filesystem::path(result);
+      return result;
     }
   } else {
     return input;
