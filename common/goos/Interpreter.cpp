@@ -133,8 +133,7 @@ void Interpreter::disable_printfs() {
  * Load the goos library, by interpreting (load-file "goal_src/goos-lib.gs") in the global env.
  */
 void Interpreter::load_goos_library() {
-  // TODO - Jak2 - BAD!
-  auto cmd = "(load-file \"goal_src/jak1/goos-lib.gs\")";
+  auto cmd = "(load-file \"goal_src/goos-lib.gs\")";
   eval_with_rewind(reader.read_from_string(cmd), global_environment.as_env_ptr());
 }
 

@@ -525,8 +525,6 @@ for jak2_file in jak2_files:
     num_replicated = num_replicated + 1
   else:
     num_left = num_left + 1
-    if jak2_file[3] == ["GAME", "COMMON"]:
-      print(jak2_file[0])
     if ",".join(jak2_file[3]) in remaining_dgos:
       remaining_dgos[",".join(jak2_file[3])] = remaining_dgos[",".join(jak2_file[3])] + 1
     else:
