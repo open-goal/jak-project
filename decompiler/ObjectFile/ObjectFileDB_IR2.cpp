@@ -89,6 +89,11 @@ void ObjectFileDB::analyze_functions_ir2(
 
     ir2_symbol_definition_map(data);
 
+    // TODO - insert the game_name into the import line automatically
+    // instead of `goal_src/jak1/import/something.gc`
+    // just `import/something.gc`
+    //
+    // Can be relative to the root of the source directory
     const auto& imports_it = config.import_deps_by_file.find(data.to_unique_name());
     std::vector<std::string> imports;
     if (imports_it != config.import_deps_by_file.end()) {

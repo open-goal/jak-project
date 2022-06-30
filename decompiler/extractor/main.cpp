@@ -455,8 +455,10 @@ void compile(std::filesystem::path extracted_iso_path) {
   }
   compiler.make_system().set_constant("*jak1-full-game*", !(flags & FLAG_JAK1_BLACK_LABEL));
 
+  // TODO - jak2 - BAD!
+  // TODO - if this directory is failing, very bad (non-existant) error message
   compiler.make_system().load_project_file(
-      (file_util::get_jak_project_dir() / "goal_src" / "game.gp").string());
+      (file_util::get_jak_project_dir() / "goal_src" / "jak1" / "game.gp").string());
   compiler.run_front_end_on_string("(mi)");
 }
 

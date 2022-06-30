@@ -1,0 +1,332 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: sage-bluehut.gc
+;; name in dgo: sage-bluehut
+;; dgos: L1, VI2
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/sage-bluehut-ag.gc")
+
+(deftype assistant-bluehut (process-taskable)
+  ((sound-id   sound-id      :offset-assert 380)
+   (jaws       handle        :offset-assert 384)
+   (sage       entity-actor  :offset-assert 392)
+   (im-talking symbol        :offset-assert 396)
+   )
+  :heap-base #x120
+  :method-count-assert 53
+  :size-assert         #x190
+  :flag-assert         #x3501200190
+  )
+
+
+(deftype sage-bluehut (process-taskable)
+  ((reminder-played symbol        :offset-assert 380)
+   (assistant       entity-actor  :offset-assert 384)
+   )
+  :heap-base #x120
+  :method-count-assert 53
+  :size-assert         #x184
+  :flag-assert         #x3501200184
+  )
+
+
+(defskelgroup *sage-bluehut-sg* sage-bluehut sage-bluehut-lod0-jg sage-bluehut-idle-ja
+              ((sage-bluehut-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :shadow sage-bluehut-shadow-mg
+              )
+
+(defmethod play-anim! sage-bluehut ((obj sage-bluehut) (arg0 symbol))
+  (set! (-> obj talk-message) (game-text-id press-to-talk-to-sage))
+  (case (current-status (-> obj tasks))
+    (((task-status need-hint) (task-status need-introduction))
+     (if (not arg0)
+         (set! (-> obj will-talk) #t)
+         )
+     (case (current-task (-> obj tasks))
+       (((game-task rolling-plants))
+        (when arg0
+          (let* ((s5-1 (-> obj tasks))
+                 (s4-0 (method-of-object s5-1 save-reminder))
+                 )
+            (s4-0 s5-1 (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 1)
+            )
+          (close-status! (-> obj tasks) (task-status need-introduction))
+          (let ((s5-2 (-> obj assistant extra process)))
+            (if (and s5-2 (should-display? (the-as assistant-bluehut s5-2)))
+                (send-event s5-2 'clone (process->handle obj))
+                )
+            )
+          (set! (-> obj draw bounds w) 40960.0)
+          )
+        (new 'static 'spool-anim
+          :name "sage-bluehut-introduction-crop-dusting"
+          :index 8
+          :parts 12
+          :command-list '((678 joint "cameraB") (1166 joint "camera") (1258 joint "cameraB"))
+          )
+        )
+       (else
+         (when arg0
+           (close-status! (-> obj tasks) (task-status need-introduction))
+           (close-specific-task! (game-task swamp-tether-1) (task-status need-introduction))
+           (close-specific-task! (game-task swamp-tether-2) (task-status need-introduction))
+           (close-specific-task! (game-task swamp-tether-3) (task-status need-introduction))
+           (close-specific-task! (game-task swamp-tether-4) (task-status need-introduction))
+           )
+         (new 'static 'spool-anim
+           :name "sage-bluehut-introduction-prec-arm"
+           :index 6
+           :parts 8
+           :command-list '((141 joint "cameraB")
+             (214 joint "camera")
+             (308 joint "cameraB")
+             (686 joint "camera")
+             (786 joint "cameraB")
+             (843 joint "camera")
+             )
+           )
+         )
+       )
+     )
+    (((task-status need-reminder))
+     (set! (-> obj skippable) #t)
+     (if arg0
+         (set! (-> obj reminder-played) #t)
+         )
+     (cond
+       ((zero? (get-reminder (-> obj tasks) 0))
+        (new 'static 'spool-anim :name "sage-bluehut-reminder-1-crop-dusting" :index 9 :parts 3 :command-list '())
+        )
+       (else
+         (if arg0
+             (set! (-> obj draw bounds w) 40960.0)
+             )
+         (new 'static 'spool-anim
+           :name "sage-bluehut-reminder-1-prec-arm"
+           :index 7
+           :parts 4
+           :command-list '((90 joint "cameraB") (259 joint "camera") (352 joint "cameraB"))
+           )
+         )
+       )
+     )
+    (else
+      (if arg0
+          (format
+            0
+            "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+            (-> obj name)
+            (task-status->string (current-status (-> obj tasks)))
+            )
+          )
+      (get-art-elem obj)
+      )
+    )
+  )
+
+(defmethod dummy-45 sage-bluehut ((obj sage-bluehut))
+  (cond
+    ((= (current-status (-> obj tasks)) (task-status unknown))
+     #f
+     )
+    ((= (current-status (-> obj tasks)) (task-status invalid))
+     #f
+     )
+    ((and (closed? (-> obj tasks) (game-task rolling-plants) (task-status need-reminder))
+          (= (get-reminder (-> obj tasks) 0) 0)
+          )
+     #t
+     )
+    ((and (closed? (-> obj tasks) (game-task swamp-arm) (task-status need-reminder))
+          (= (get-reminder (-> obj tasks) 0) 1)
+          )
+     #t
+     )
+    ((and (-> obj reminder-played) (< 81920.0 (vector-vector-distance (-> obj root-override trans) (camera-pos))))
+     #t
+     )
+    (else
+      #f
+      )
+    )
+  )
+
+(defmethod get-art-elem sage-bluehut ((obj sage-bluehut))
+  (cond
+    ((and (= (current-task (-> obj tasks)) (game-task rolling-plants))
+          (or (= (current-status (-> obj tasks)) (task-status need-hint))
+              (= (current-status (-> obj tasks)) (task-status need-introduction))
+              )
+          )
+     (save-reminder (-> obj tasks) 0 0)
+     )
+    ((and (= (current-task (-> obj tasks)) (game-task swamp-arm))
+          (or (= (current-status (-> obj tasks)) (task-status need-hint))
+              (= (current-status (-> obj tasks)) (task-status need-introduction))
+              )
+          )
+     (save-reminder (-> obj tasks) 1 0)
+     )
+    ((dummy-45 obj)
+     (set! (-> obj reminder-played) #f)
+     (cond
+       ((closed? (-> obj tasks) (game-task rolling-plants) (task-status need-reminder))
+        (save-reminder (-> obj tasks) 1 0)
+        )
+       ((or (closed? (-> obj tasks) (game-task swamp-arm) (task-status need-reminder))
+            (not (closed? (-> obj tasks) (game-task swamp-arm) (task-status need-introduction)))
+            )
+        (save-reminder (-> obj tasks) 0 0)
+        )
+       ((zero? (get-reminder (-> obj tasks) 0))
+        (save-reminder (-> obj tasks) 1 0)
+        )
+       (else
+         (save-reminder (-> obj tasks) 0 0)
+         )
+       )
+     )
+    )
+  (if (zero? (get-reminder (-> obj tasks) 0))
+      (-> obj draw art-group data 4)
+      (-> obj draw art-group data 5)
+      )
+  )
+
+(defstate play-anim (sage-bluehut)
+  :virtual #t
+  :exit (behavior ()
+    (send-event (-> self assistant extra process) 'end-mode)
+    (set! (-> self draw bounds w) 10240.0)
+    ((-> (method-of-type process-taskable play-anim) exit))
+    (none)
+    )
+  )
+
+(defmethod should-display? sage-bluehut ((obj sage-bluehut))
+  (and (task-closed? (game-task village2-levitator) (task-status need-introduction)) (not (sages-kidnapped?)))
+  )
+
+(defmethod play-reminder sage-bluehut ((obj sage-bluehut))
+  (the-as
+    symbol
+    (and (-> obj will-talk) *target* (< -6365184.0 (-> (target-pos 0) z)) (< (-> (target-pos 0) x) 1612800.0))
+    )
+  )
+
+(defmethod target-above-threshold? sage-bluehut ((obj sage-bluehut))
+  (local-vars (v0-1 symbol))
+  (if (not (play-reminder obj))
+      (return #f)
+      )
+  (let ((gp-1 (-> obj assistant extra process)))
+    (if (not gp-1)
+        (return #t)
+        )
+    (target-above-threshold? (the-as assistant-bluehut gp-1))
+    (return (not (-> (the-as assistant-bluehut gp-1) im-talking)))
+    )
+  v0-1
+  )
+
+(defmethod TODO-RENAME-43 sage-bluehut ((obj sage-bluehut))
+  (when (TODO-RENAME-10 (-> obj ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 obj)
+    (let ((f0-2 (rand-float-gen)))
+      (cond
+        ((< 0.8 f0-2)
+         (play-ambient (-> obj ambient) "SAGELP20" #f (-> obj root-override trans))
+         )
+        ((< 0.6 f0-2)
+         (play-ambient (-> obj ambient) "SAGELP21" #f (-> obj root-override trans))
+         )
+        ((< 0.4 f0-2)
+         (play-ambient (-> obj ambient) "SAGELP22" #f (-> obj root-override trans))
+         )
+        ((< 0.2 f0-2)
+         (play-ambient (-> obj ambient) "SAGELP23" #f (-> obj root-override trans))
+         )
+        ((nonzero? (get-task-status (game-task citadel-sage-blue)))
+         (play-ambient (-> obj ambient) "SAGELP24" #f (-> obj root-override trans))
+         )
+        )
+      )
+    )
+  )
+
+(defstate idle (sage-bluehut)
+  :virtual #t
+  :code (behavior ()
+    (loop
+      (let ((gp-0 (get-art-elem self)))
+        (cond
+          ((= gp-0 sage-bluehut-idle-stand-ja)
+           (if (!= (ja-group) gp-0)
+               (ja-channel-push! 1 (seconds 0.2))
+               )
+           (set! (-> self skel root-channel 0 frame-group) (the-as art-joint-anim gp-0))
+           (let* ((f30-0 3.0)
+                  (v1-15 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                  (v1-16 (the-as number (logior #x3f800000 v1-15)))
+                  )
+             (countdown (gp-1 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-16)))) 5))
+               (TODO-RENAME-43 self)
+               (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+               (until (ja-done? 0)
+                 (if (dummy-45 self)
+                     (go-virtual idle)
+                     )
+                 (suspend)
+                 (ja :num! (seek!))
+                 )
+               )
+             )
+           (ja-channel-push! 1 (seconds 0.2))
+           (ja-no-eval :group! sage-bluehut-idle-ja :num! (seek!) :frame-num 0.0)
+           (until (ja-done? 0)
+             (if (dummy-45 self)
+                 (go-virtual idle)
+                 )
+             (suspend)
+             (ja :num! (seek!))
+             )
+           )
+          (else
+            (TODO-RENAME-43 self)
+            (if (!= (ja-group) gp-0)
+                (ja-channel-push! 1 (seconds 0.2))
+                )
+            (set! (-> self skel root-channel 0 frame-group) (the-as art-joint-anim gp-0))
+            (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+            (until (ja-done? 0)
+              (if (dummy-45 self)
+                  (go-virtual idle)
+                  )
+              (suspend)
+              (ja :num! (seek!))
+              )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(defmethod init-from-entity! sage-bluehut ((obj sage-bluehut) (arg0 entity-actor))
+  (dummy-40 obj arg0 *sage-bluehut-sg* 3 40 (new 'static 'vector :w 4505.6) 5)
+  (set! (-> obj tasks) (get-task-control (game-task rolling-plants)))
+  (set! (-> obj reminder-played) #f)
+  (set! (-> obj assistant) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> obj draw light-index) (the-as uint 1))
+  (set! (-> obj sound-flava) (music-flava sage))
+  (dummy-42 obj)
+  (none)
+  )
+
+
+
+

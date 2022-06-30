@@ -1,0 +1,379 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: sunken-obs.gc
+;; name in dgo: sunken-obs
+;; dgos: L1, SUN, SUNKEN
+ 
+(declare-type seaweed basic)
+(define-extern *seaweed* seaweed)
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/seaweed-ag.gc")
+(import "goal_src/jak1/import/sunkencam-ag.gc")
+(import "goal_src/jak1/import/side-to-side-plat-ag.gc")
+
+(deftype water-vol-deadly (process-hidden)
+  ()
+  :method-count-assert 15
+  :size-assert         #x70
+  :flag-assert         #xf00000070
+  )
+
+
+(deftype side-to-side-plat (plat)
+  ((part-ry float  :offset-assert 264)
+   )
+  :heap-base #xa0
+  :method-count-assert 33
+  :size-assert         #x10c
+  :flag-assert         #x2100a0010c
+  )
+
+
+(defskelgroup *side-to-side-plat-sg* side-to-side-plat side-to-side-plat-lod0-jg side-to-side-plat-idle-ja
+              ((side-to-side-plat-lod0-mg (meters 20)) (side-to-side-plat-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 14)
+              )
+
+(defpartgroup group-side-to-side-plat
+  :id 436
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1713 :fade-after (meters 60) :falloff-to (meters 60))
+    (sp-item 1714 :fade-after (meters 160) :falloff-to (meters 160))
+    )
+  )
+
+(defpart 1713
+  :init-specs ((sp-flt spt-num 4.0)
+    (sp-rnd-flt spt-x (meters -11) (meters 22) 1.0)
+    (sp-flt spt-y (meters 1))
+    (sp-int spt-rot-x 5)
+    (sp-flt spt-r 5324.8)
+    (sp-flt spt-g 4096.0)
+    (sp-flt spt-b 3686.4)
+    (sp-flt spt-vel-y (meters 0.0033333334))
+    (sp-flt spt-fade-b -16.383999)
+    (sp-int spt-timer 25)
+    (sp-cpuinfo-flags aux-list)
+    (sp-rnd-flt spt-conerot-x (degrees 140.0) (degrees 40.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 3))
+    (sp-flt spt-rotate-y (degrees 18.0))
+    )
+  )
+
+(defpart 1714
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 6.0)
+    (sp-rnd-flt spt-x (meters -11) (meters 22) 1.0)
+    (sp-flt spt-y (meters 1.5))
+    (sp-rnd-flt spt-scale-x (meters 2) (meters 1) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-g 0.0 64.0 1.0)
+    (sp-rnd-flt spt-b 128.0 128.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-flt spt-vel-y (meters 0.01))
+    (sp-flt spt-fade-g -0.42666668)
+    (sp-flt spt-fade-a -0.32)
+    (sp-flt spt-accel-y -0.13653333)
+    (sp-flt spt-friction 0.96)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-rnd-flt spt-conerot-x (degrees 130.0) (degrees 100.00001) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-conerot-radius (meters 3))
+    (sp-flt spt-rotate-y (degrees 18.0))
+    )
+  )
+
+(defmethod get-unlit-skel side-to-side-plat ((obj side-to-side-plat))
+  *side-to-side-plat-sg*
+  )
+
+(defmethod dummy-24 side-to-side-plat ((obj side-to-side-plat))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) default-collision-reaction)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (alloc-riders s5-0 1)
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 57344.0)
+      (set-root-prim! s5-0 s4-0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-override) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod dummy-26 side-to-side-plat ((obj side-to-side-plat))
+  (set! (-> obj part-ry) (+ 16384.0 (quaternion-y-angle (-> obj root-override quat))))
+  (none)
+  )
+
+(defmethod TODO-RENAME-25 side-to-side-plat ((obj side-to-side-plat))
+  (let ((v0-0 (create-launch-control (-> *part-group-id-table* 436) obj)))
+    (set! (-> obj part) v0-0)
+    (the-as sparticle-launch-group v0-0)
+    )
+  )
+
+(defmethod dummy-20 side-to-side-plat ((obj side-to-side-plat))
+  (when (nonzero? (-> obj part))
+    (set! (-> *part-id-table* 1713 init-specs 14 initial-valuef) (-> obj part-ry))
+    (set! (-> *part-id-table* 1714 init-specs 19 initial-valuef) (-> obj part-ry))
+    (spawn (-> obj part) (-> obj root-override trans))
+    )
+  (none)
+  )
+
+(deftype sunkencam (pov-camera)
+  ((ppointer-override (pointer sunkencam)  :offset         24)
+   (seq               uint64               :offset-assert 224)
+   )
+  :heap-base #x80
+  :method-count-assert 30
+  :size-assert         #xe8
+  :flag-assert         #x1e008000e8
+  )
+
+
+(defskelgroup *sunkencam-sg* sunkencam sunkencam-lod0-jg -1
+              ((sunkencam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              )
+
+(defmethod set-stack-size! sunkencam ((obj sunkencam))
+  (stack-size-set! (-> obj main-thread) 512)
+  (none)
+  )
+
+(defstate pov-camera-playing (sunkencam)
+  :virtual #t
+  :exit (behavior ()
+    (set! (-> *screen-filter* draw?) #f)
+    (none)
+    )
+  :code (behavior ()
+    (let ((v1-0 (-> self seq)))
+      (cond
+        ((zero? v1-0)
+         (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         (let ((v1-45 *screen-filter*))
+           (set! (-> v1-45 draw?) #t)
+           (set! (-> v1-45 color) (new 'static 'rgba :g #x20 :b #x40 :a #x50))
+           )
+         (set-blackout-frames (seconds 0.1))
+         (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         (set-blackout-frames (seconds 0.5))
+         (let ((gp-0 2))
+           (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
+           (until (ja-done? 0)
+             (+! gp-0 -1)
+             (if (zero? gp-0)
+                 (set! (-> *screen-filter* draw?) #f)
+                 )
+             (suspend)
+             (ja :num! (seek!))
+             )
+           )
+         (set-blackout-frames (seconds 0.1))
+         )
+        ((= v1-0 1)
+         (ja-no-eval :group! (-> self draw art-group data 9) :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         (let ((v1-116 *screen-filter*))
+           (set! (-> v1-116 draw?) #t)
+           (set! (-> v1-116 color) (new 'static 'rgba :g #x20 :b #x40 :a #x50))
+           )
+         (set-blackout-frames (seconds 0.1))
+         (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         (set-blackout-frames (seconds 0.1))
+         (let ((gp-1 2))
+           (ja-no-eval :group! (-> self draw art-group data 11) :num! (seek!) :frame-num 0.0)
+           (until (ja-done? 0)
+             (+! gp-1 -1)
+             (if (zero? gp-1)
+                 (set! (-> *screen-filter* draw?) #f)
+                 )
+             (suspend)
+             (ja :num! (seek!))
+             )
+           )
+         (let ((gp-2 *camera*))
+           (send-event gp-2 'teleport)
+           (send-event gp-2 'change-state cam-fixed 0)
+           (send-event gp-2 'change-state *camera-base-mode* 0)
+           )
+         (set! (-> self state-time) (-> *display* base-frame-counter))
+         (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
+           (suspend)
+           )
+         )
+        ((= v1-0 2)
+         (ja-no-eval :group! (-> self draw art-group data 16) :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         (ja-no-eval :group! (-> self draw art-group data 17) :num! (seek! max 0.67) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek! max 0.67))
+           )
+         (pov-camera-play-and-reposition
+           (the-as art-joint-anim (-> self draw art-group data 18))
+           (new 'static 'vector :x 2449408.0 :y -1822720.0 :z -7299072.0)
+           0.67
+           )
+         )
+        ((= v1-0 3)
+         (ambient-hint-spawn "gamcam34" (the-as vector #f) *entity-pool* 'camera)
+         (pov-camera-play-and-reposition
+           (the-as art-joint-anim (-> self draw art-group data 12))
+           (new 'static 'vector :x 2707456.0 :y -630784.0 :z -6635520.0)
+           1.0
+           )
+         )
+        ((= v1-0 4)
+         (ambient-hint-spawn "gamcam35" (the-as vector #f) *entity-pool* 'camera)
+         (pov-camera-play-and-reposition
+           (the-as art-joint-anim (-> self draw art-group data 13))
+           (new 'static 'vector :x 2834432.0 :y -634880.0 :z -6811648.0)
+           1.3
+           )
+         (set! (-> self state-time) (-> *display* base-frame-counter))
+         (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
+           (suspend)
+           )
+         )
+        ((= v1-0 5)
+         (ambient-hint-spawn "gamcam37" (the-as vector #f) *entity-pool* 'camera)
+         (pov-camera-play-and-reposition
+           (the-as art-joint-anim (-> self draw art-group data 14))
+           (new 'static 'vector :x 2695168.0 :y -544768.0 :z -7077888.0)
+           1.0
+           )
+         )
+        ((= v1-0 6)
+         (ambient-hint-spawn "gamcam36" (the-as vector #f) *entity-pool* 'camera)
+         (pov-camera-play-and-reposition
+           (the-as art-joint-anim (-> self draw art-group data 15))
+           (new 'static 'vector :x 2482176.0 :y -516096.0 :z -6922240.0)
+           1.0
+           )
+         )
+        (else
+          (suspend)
+          0
+          )
+        )
+      )
+    (go-virtual pov-camera-done-playing)
+    (none)
+    )
+  )
+
+(deftype seaweed (process-drawable)
+  ((anim-speed float  :offset-assert 176)
+   )
+  :heap-base #x50
+  :method-count-assert 20
+  :size-assert         #xb4
+  :flag-assert         #x14005000b4
+  (:states
+    seaweed-idle
+    )
+  )
+
+
+(defskelgroup *seaweed-sg* seaweed seaweed-lod0-jg -1
+              ((seaweed-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6 0 7)
+              )
+
+(defstate seaweed-idle (seaweed)
+  :code (behavior ()
+    (ja-no-eval :num! (seek! max (-> self anim-speed)))
+    (while (not (ja-done? 0))
+      (suspend)
+      (ja-eval)
+      )
+    (loop
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max (-> self anim-speed)) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max (-> self anim-speed)))
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior seaweed) ja-post)
+  )
+
+(defmethod init-from-entity! seaweed ((obj seaweed) (arg0 entity-actor))
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *seaweed-sg* '())
+  (ja-channel-set! 1)
+  (let ((s5-1 (-> obj skel root-channel 0)))
+    (joint-control-channel-group-eval!
+      s5-1
+      (the-as art-joint-anim (-> obj draw art-group data 2))
+      num-func-identity
+      )
+    (set! (-> s5-1 frame-num)
+          (rand-vu-float-range 0.0 (the float (+ (-> (if (> (-> obj skel active-channels) 0)
+                                                         (-> obj skel root-channel 0 frame-group)
+                                                         )
+                                                     data
+                                                     0
+                                                     length
+                                                     )
+                                                 -1
+                                                 )
+                                        )
+                               )
+          )
+    )
+  (set! (-> obj anim-speed) (rand-vu-float-range 0.2 0.4))
+  (set! *seaweed* obj)
+  (go seaweed-idle)
+  (none)
+  )
+
+
+
+

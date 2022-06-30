@@ -88,7 +88,7 @@ class WithMinimalGameTests : public ::testing::Test {
         "(dgo-load \"kernel\" global (link-flag output-load-msg output-load-true-msg execute-login "
         "print-login) #x200000)");
 
-    const auto minimal_files = {"goal_src/engine/math/vector-h.gc"};
+    const auto minimal_files = {"goal_src/jak1/engine/math/vector-h.gc"};
     for (auto& file : minimal_files) {
       shared_compiler->compiler.run_test_from_string(fmt::format("(ml \"{}\")", file));
     }
