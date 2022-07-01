@@ -131,7 +131,7 @@ std::vector<std::string> get_test_pass_string(const std::string& name, int count
 }  // namespace
 
 TEST_F(WithGameTests, MakeSystem) {
-  shared_compiler->compiler.run_front_end_on_string("(make \"out/iso/ENGINE.CGO\")");
+  shared_compiler->compiler.run_front_end_on_string("(make \"out/jak1/iso/ENGINE.CGO\")");
 }
 
 TEST_F(WithGameTests, ReturnConstant) {
@@ -380,8 +380,8 @@ TEST_F(WithGameTests, GameCount) {
   shared_compiler->runner.run_static_test(env, testCategory, "test-game-count.gc",
                                           get_test_pass_string("game-count", 4));
   // don't leave behind a weird version of the game-count file.
-  std::filesystem::remove(file_util::get_file_path({"out", "iso", "ENGINE.CGO"}));
-  std::filesystem::remove(file_util::get_file_path({"out", "obj", "game-cnt.go"}));
+  std::filesystem::remove(file_util::get_file_path({"out", "jak1", "iso", "ENGINE.CGO"}));
+  std::filesystem::remove(file_util::get_file_path({"out", "jak1", "obj", "game-cnt.go"}));
 }
 
 TEST_F(WithGameTests, BitFieldAccess) {

@@ -106,7 +106,7 @@ const GfxRendererModule* GetCurrentRenderer() {
   return g_global_settings.renderer;
 }
 
-u32 Init() {
+u32 Init(GameVersion version) {
   lg::info("GFX Init");
   // initialize settings
   InitSettings(g_settings);
@@ -124,8 +124,9 @@ u32 Init() {
   if (g_main_thread_id != std::this_thread::get_id()) {
     lg::error("Ran Gfx::Init outside main thread. Init display elsewhere?");
   } else {
-    Display::InitMainDisplay(
-        640, 480, fmt::format("OpenGOAL - Work in Progress - {}", GIT_VERSION).c_str(), g_settings);
+    Display::InitMainDisplay(640, 480,
+                             fmt::format("OpenGOAL - Work in Progress - {}", GIT_VERSION).c_str(),
+                             g_settings, version);
   }
 
   return 0;

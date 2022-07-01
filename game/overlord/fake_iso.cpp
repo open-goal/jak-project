@@ -24,6 +24,7 @@
 #include "game/overlord/sbank.h"
 #include "game/overlord/soundcommon.h"
 #include "game/overlord/srpc.h"
+#include "game/runtime.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
 
@@ -89,14 +90,16 @@ void fake_iso_init_globals() {
 int FS_Init(u8* buffer) {
   (void)buffer;
 
-  for (const auto& f : std::filesystem::directory_iterator(file_util::get_file_path({"out/iso"}))) {
+  for (const auto& f : std::filesystem::directory_iterator(
+           file_util::get_jak_project_dir() / "out" / game_version_names[g_game_version] / "iso")) {
     if (f.is_regular_file()) {
       ASSERT(fake_iso_entry_count < MAX_ISO_FILES);
       FakeIsoEntry* e = &fake_iso_entries[fake_iso_entry_count];
       std::string file_name = f.path().filename().string();
       ASSERT(file_name.length() < 16);  // should be 8.3.
       strcpy(e->iso_name, file_name.c_str());
-      strcpy(e->file_path, fmt::format("out/iso/{}", file_name).c_str());
+      strcpy(e->file_path,
+             fmt::format("out/{}/iso/{}", game_version_names[g_game_version], file_name).c_str());
       fake_iso_entry_count++;
     }
   }

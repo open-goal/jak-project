@@ -67,9 +67,9 @@ Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Objec
   va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::STRING}, {});
   auto kind = symbol_string(args.unnamed.at(0));
   if (kind == "game-count") {
-    compile_game_count(as_string(args.unnamed.at(1)));
+    compile_game_count(as_string(args.unnamed.at(1)), m_make.compiler_output_prefix());
   } else if (kind == "dir-tpages") {
-    compile_dir_tpages(as_string(args.unnamed.at(1)));
+    compile_dir_tpages(as_string(args.unnamed.at(1)), m_make.compiler_output_prefix());
   } else {
     throw_compiler_error(form, "The option {} was not recognized for asm-data-file.", kind);
   }
@@ -102,10 +102,10 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
   // compile files.
   if (kind == "subtitle") {
     GameSubtitleDB db;
-    compile_game_subtitle(inputs, db);
+    compile_game_subtitle(inputs, db, m_make.compiler_output_prefix());
   } else if (kind == "text") {
     GameTextDB db;
-    compile_game_text(inputs, db);
+    compile_game_text(inputs, db, m_make.compiler_output_prefix());
   } else {
     throw_compiler_error(form, "The option {} was not recognized for asm-text-file.", kind);
   }
@@ -306,13 +306,14 @@ Val* Compiler::compile_build_dgo(const goos::Object& form, const goos::Object& r
         desc.entries.push_back(o);
       } else {
         // allow data objects to be missing.
-        if (std::filesystem::exists(file_util::get_file_path({"out", "obj", o.file_name}))) {
+        if (std::filesystem::exists(file_util::get_file_path(
+                {"out", m_make.compiler_output_prefix(), "obj", o.file_name}))) {
           desc.entries.push_back(o);
         }
       }
     });
 
-    build_dgo(desc);
+    build_dgo(desc, m_make.compiler_output_prefix());
   });
 
   return get_none();

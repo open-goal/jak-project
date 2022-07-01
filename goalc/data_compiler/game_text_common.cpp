@@ -60,7 +60,7 @@ std::string uppercase(const std::string& in) {
  * Write game text data to a file. Uses the V2 object format which is identical between GOAL and
  * OpenGOAL, so this should produce exactly identical files to what is found in the game.
  */
-void compile_text(GameTextDB& db) {
+void compile_text(GameTextDB& db, const std::string& output_prefix) {
   for (const auto& [group_name, banks] : db.groups()) {
     for (const auto& [lang, bank] : banks) {
       DataObjectGenerator gen;
@@ -81,10 +81,10 @@ void compile_text(GameTextDB& db) {
 
       auto data = gen.generate_v2();
 
-      file_util::create_dir_if_needed(file_util::get_file_path({"out", "iso"}));
+      file_util::create_dir_if_needed(file_util::get_file_path({"out", output_prefix, "iso"}));
       file_util::write_binary_file(
           file_util::get_file_path(
-              {"out", "iso", fmt::format("{}{}.TXT", lang, uppercase(group_name))}),
+              {"out", output_prefix, "iso", fmt::format("{}{}.TXT", lang, uppercase(group_name))}),
           data.data(), data.size());
     }
   }
@@ -94,7 +94,7 @@ void compile_text(GameTextDB& db) {
  * Write game subtitle data to a file. Uses the V2 object format which is identical between GOAL and
  * OpenGOAL.
  */
-void compile_subtitle(GameSubtitleDB& db) {
+void compile_subtitle(GameSubtitleDB& db, const std::string& output_prefix) {
   for (const auto& [lang, bank] : db.banks()) {
     DataObjectGenerator gen;
     gen.add_type_tag("subtitle-text-info");  // type
@@ -136,10 +136,10 @@ void compile_subtitle(GameSubtitleDB& db) {
 
     auto data = gen.generate_v2();
 
-    file_util::create_dir_if_needed(file_util::get_file_path({"out", "iso"}));
+    file_util::create_dir_if_needed(file_util::get_file_path({"out", output_prefix, "iso"}));
     file_util::write_binary_file(
         file_util::get_file_path(
-            {"out", "iso", fmt::format("{}{}.TXT", lang, uppercase("subtit"))}),
+            {"out", output_prefix, "iso", fmt::format("{}{}.TXT", lang, uppercase("subtit"))}),
         data.data(), data.size());
   }
 }
@@ -148,22 +148,26 @@ void compile_subtitle(GameSubtitleDB& db) {
 /*!
  * Read a game text description file and generate GOAL objects.
  */
-void compile_game_text(const std::vector<std::string>& filenames, GameTextDB& db) {
+void compile_game_text(const std::vector<std::string>& filenames,
+                       GameTextDB& db,
+                       const std::string& output_prefix) {
   goos::Reader reader;
   for (auto& filename : filenames) {
     fmt::print("[Build Game Text] {}\n", filename.c_str());
     auto code = reader.read_from_file({filename});
     parse_text(code, db);
   }
-  compile_text(db);
+  compile_text(db, output_prefix);
 }
 
-void compile_game_subtitle(const std::vector<std::string>& filenames, GameSubtitleDB& db) {
+void compile_game_subtitle(const std::vector<std::string>& filenames,
+                           GameSubtitleDB& db,
+                           const std::string& output_prefix) {
   goos::Reader reader;
   for (auto& filename : filenames) {
     fmt::print("[Build Game Subtitle] {}\n", filename.c_str());
     auto code = reader.read_from_file({filename});
     parse_subtitle(code, db, filename);
   }
-  compile_subtitle(db);
+  compile_subtitle(db, output_prefix);
 }

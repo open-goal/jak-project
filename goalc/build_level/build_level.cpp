@@ -16,7 +16,7 @@
 
 void save_pc_data(const std::string& nickname,
                   tfrag3::Level& data,
-                  const std::filesystem::path& output_dir) {
+                  const std::filesystem::path& fr3_output_dir) {
   Serializer ser;
   data.serialize(ser);
   auto compressed =
@@ -25,7 +25,7 @@ void save_pc_data(const std::string& nickname,
   print_memory_usage(data, ser.get_save_result().second);
   fmt::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
              100.f * compressed.size() / ser.get_save_result().second);
-  file_util::write_binary_file(output_dir / fmt::format("{}.fr3", nickname), compressed.data(),
+  file_util::write_binary_file(fr3_output_dir / fmt::format("{}.fr3", nickname), compressed.data(),
                                compressed.size());
 }
 
@@ -35,7 +35,9 @@ std::vector<std::string> get_build_level_deps(const std::string& input_file) {
   return {level_json.at("gltf_file").get<std::string>()};
 }
 
-bool run_build_level(const std::string& input_file, const std::string& output_file) {
+bool run_build_level(const std::string& input_file,
+                     const std::string& bsp_output_file,
+                     const std::string& output_prefix) {
   auto level_json = parse_commented_json(
       file_util::read_text_file(file_util::get_file_path({input_file})), input_file);
   LevelFile file;          // GOAL level file
@@ -102,14 +104,14 @@ bool run_build_level(const std::string& input_file, const std::string& output_fi
   // Save the GOAL level
   auto result = file.save_object_file();
   fmt::print("Level bsp file size {} bytes\n", result.size());
-  auto save_path = file_util::get_file_path({output_file});
+  auto save_path = file_util::get_jak_project_dir() / bsp_output_file;
   file_util::create_dir_if_needed_for_file(save_path);
-  fmt::print("Saving to {}\n", save_path);
+  fmt::print("Saving to {}\n", save_path.string());
   file_util::write_binary_file(save_path, result.data(), result.size());
 
   // Save the PC level
-  // TODO out dir
-  save_pc_data(file.nickname, pc_level, file_util::get_jak_project_dir() / "out" / "fr3");
+  save_pc_data(file.nickname, pc_level,
+               file_util::get_jak_project_dir() / "out" / output_prefix / "fr3");
 
   return true;
 }

@@ -305,6 +305,7 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   g_main_thread_id = std::this_thread::get_id();
 
   // parse opengoal arguments
+  g_game_version = GameVersion::Jak1;
   bool enable_display = true;
   for (int i = 1; i < argc; i++) {
     if (std::string("-nodisplay") == argv[i]) {  // disable video display
@@ -321,7 +322,7 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   // initialize graphics first - the EE code will upload textures during boot and we
   // want the graphics system to catch them.
   if (enable_display) {
-    Gfx::Init();
+    Gfx::Init(g_game_version);
   }
 
   // step 1: sce library prep
