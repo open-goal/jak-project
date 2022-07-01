@@ -761,8 +761,17 @@
   )
 
 ;; -----------------
-;; swamp
+;; lavatube
 ;; -----------------
+
+("asstva74" :hint #x428
+  (0 "KEIRA" "IHR HABT NICHT GENUG ENERGIEZELLEN, UM DURCH DIE LAVA ZU KOMMEN!")
+  (182 "KEIRA" "IHR KÖNNT NICHT ZU GOL UND MAIAS ZITADELLE GELANGEN, BIS IHR 72 ENERGIEZELLEN GESAMMELT HABT!")
+  )
+
+("sksp0375" :hint #x70d
+  (0 "DAXTER" "SCHIESS AUF DEN ENERGIEBEREICH, UM DIE TÜR ZU ÖFFNEN!")
+  )
 
 ;; -----------------
 ;; citadel
@@ -921,10 +930,6 @@
   (519 "SAMOS" "BEI ALLEN PRECURSORN...")
   (602)
   )
-
-;; -----------------
-;; training
-;; -----------------
 
 ;; -----------------
 ;; uncategorized
