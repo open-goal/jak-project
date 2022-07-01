@@ -242,8 +242,9 @@ static std::vector<ReplaceInfo> s_replace_info_null = {};
  * - Jak & Daxter: The Precursor Legacy (Black Label)
  */
 
-static std::unordered_set<char> s_passthrus = {'~', ' ', ',', '.', '-', '+', '(', ')', '!', ':', '?',
-                                             '=', '%', '*', '/', '#', ';', '<', '>', '@', '[', '_'};
+static std::unordered_set<char> s_passthrus = {'~', ' ', ',', '.', '-', '+', '(', ')',
+                                               '!', ':', '?', '=', '%', '*', '/', '#',
+                                               ';', '<', '>', '@', '[', '_'};
 
 static std::vector<EncodeInfo> s_encode_info_jak1 = {
     // random
