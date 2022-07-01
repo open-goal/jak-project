@@ -58,6 +58,15 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         # TODO - test with add_link_options instead
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LDFLAGS} -Xlinker /debug")
     endif()
+
+    # Fuzzing
+    if(NOT STATICALLY_LINK AND ASAN_BUILD)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -O1")
+        message(STATUS "Doing ASAN build")
+    endif()
+
+    # Warnings
+    set(THIRDPARTY_IGNORED_WARNINGS "-Wno-everything")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "GCC detected - Setting Defaults")
     set(CMAKE_CXX_FLAGS
@@ -82,6 +91,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if(CMAKE_BUILD_TYPE MATCHES "Release")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
     endif()
+    set(THIRDPARTY_IGNORED_WARNINGS "-w")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     message(STATUS "MSVC detected - Setting Defaults")
 
@@ -92,13 +102,14 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:16000000,16384")
 
     # additional c++ and linker flags for specific build types
-    if(CMAKE_BUILD_TYPE MATCHES "Release" or CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+    if(CMAKE_BUILD_TYPE MATCHES "Release" OR CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /Ob2")
     endif()
 
     if(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
     endif()
+    set(THIRDPARTY_IGNORED_WARNINGS "/w")
 else()
     message(FATAL_ERROR "Unknown Compiler '${CMAKE_CXX_COMPILER_ID}', get out!")
 endif()
@@ -113,12 +124,6 @@ if(WIN32)
     message("Windows SDK version: ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
 endif()
 
-# Fuzzing
-if(ASAN_BUILD)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -O1")
-    message(STATUS "Doing ASAN build")
-endif()
-
 # Code Coverage
 option(CODE_COVERAGE "Enable Code Coverage Compiler Flags" OFF)
 
@@ -129,18 +134,16 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CODE_COVERAGE)
 endif()
 
 # Dependencies and Libraries
-set(THIRDPARTY_IGNORED_WARNINGS "-Wno-everything")
-
 # includes relative to top level jak-project folder
 include_directories(./)
 
 # build templating engine library
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS} ")
 include_directories(SYSTEM third-party/inja)
 
 # build repl library
 add_subdirectory(third-party/replxx EXCLUDE_FROM_ALL)
-string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # build common library
 add_subdirectory(common)
@@ -148,7 +151,7 @@ add_subdirectory(common)
 # build decompiler
 add_subdirectory(decompiler)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS} ")
 add_subdirectory(third-party/cubeb)
 
 # build glfw library
@@ -159,7 +162,7 @@ add_subdirectory(third-party/zstd)
 include_directories(third-party/glad/include)
 include_directories(third-party/glfw/include)
 add_subdirectory(third-party/imgui)
-string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # build the game code in C++
 add_subdirectory(game)
@@ -175,16 +178,16 @@ if(WIN32)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS} ")
 add_subdirectory(third-party/googletest EXCLUDE_FROM_ALL)
 include(GoogleTest)
-string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # build tests
 include(test/CMakeLists.txt)
 
 # build lzokay library
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS} ")
 add_subdirectory(third-party/lzokay EXCLUDE_FROM_ALL)
 
 # build format library
@@ -215,4 +218,4 @@ add_subdirectory(third-party/zydis EXCLUDE_FROM_ALL)
 if(WIN32)
     add_subdirectory(third-party/mman)
 endif()
-string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")

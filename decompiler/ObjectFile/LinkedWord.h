@@ -90,7 +90,7 @@ class LinkedWord {
     }
   }
 
-  void set_to_empty_ptr() { 
+  void set_to_empty_ptr() {
     if (holds_string()) {
       delete[]((char*)m_data_ptr);
     }
