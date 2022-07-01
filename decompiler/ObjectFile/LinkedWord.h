@@ -1,5 +1,13 @@
 #pragma once
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 /*!
  * @file LinkedWord.h
  * A word (4 bytes), possibly with some linking info.
@@ -82,7 +90,7 @@ class LinkedWord {
     }
   }
 
-  void set_to_empty_ptr() {
+  void set_to_empty_ptr() { 
     if (holds_string()) {
       delete[]((char*)m_data_ptr);
     }
@@ -152,3 +160,9 @@ class LinkedWord {
 };
 
 }  // namespace decompiler
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#elif defined(__clang__)
+#pragma clang diagnostic pop
+#endif
