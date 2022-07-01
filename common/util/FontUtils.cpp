@@ -270,8 +270,6 @@ static std::vector<EncodeInfo> s_encode_info_jak1 = {
     {"学", {0x1e}},  // gaku
     {"ß", {0x1f}},   // eszett
 
-    {"\"", {0x22}},  // double-quotes
-
     {"ワ", {0x24}},  // wa
 
     {"ヲ", {0x26}},  // wo
@@ -613,8 +611,6 @@ static std::vector<EncodeInfo> s_encode_info_jak1_v2 = {
     {"Ç", {0x1d}},   // c-cedilla
     {"学", {0x1e}},  // gaku
     {"ß", {0x1f}},   // eszett
-
-    {"\"", {0x22}},  // double-quotes
 
     {"ワ", {0x24}},  // wa
 
