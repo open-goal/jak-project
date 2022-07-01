@@ -87,7 +87,11 @@ namespace Display {
 // views.
 extern std::vector<std::shared_ptr<GfxDisplay>> g_displays;
 
-int InitMainDisplay(int width, int height, const char* title, GfxSettings& settings);
+int InitMainDisplay(int width,
+                    int height,
+                    const char* title,
+                    GfxSettings& settings,
+                    GameVersion version);
 void KillDisplay(std::shared_ptr<GfxDisplay> display);
 void KillMainDisplay();
 

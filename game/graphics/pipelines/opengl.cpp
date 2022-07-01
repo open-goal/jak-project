@@ -64,13 +64,15 @@ struct GraphicsData {
   float pmode_alp = 0.f;
 
   std::string imgui_log_filename, imgui_filename;
+  GameVersion version;
 
-  GraphicsData()
+  GraphicsData(GameVersion version)
       : dma_copier(EE_MAIN_MEM_SIZE),
         texture_pool(std::make_shared<TexturePool>()),
-        // TODO out dir
-        loader(std::make_shared<Loader>(file_util::get_jak_project_dir() / "out" / "fr3")),
-        ogl_renderer(texture_pool, loader) {}
+        loader(std::make_shared<Loader>(file_util::get_jak_project_dir() / "out" /
+                                        game_version_names[version] / "fr3")),
+        ogl_renderer(texture_pool, loader),
+        version(version) {}
 };
 
 std::unique_ptr<GraphicsData> g_gfx_data;
@@ -154,6 +156,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
                                                    int height,
                                                    const char* title,
                                                    GfxSettings& settings,
+                                                   GameVersion game_version,
                                                    bool is_main) {
   GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
 
@@ -169,7 +172,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
       lg::error("GL init fail");
       return NULL;
     }
-    g_gfx_data = std::make_unique<GraphicsData>();
+    g_gfx_data = std::make_unique<GraphicsData>(game_version);
 
     gl_inited = true;
   }

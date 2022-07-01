@@ -48,17 +48,32 @@ std::filesystem::path get_user_home_dir() {
 #endif
 }
 
-std::filesystem::path get_user_game_dir() {
-  // TODO - i anticipate UTF-8 problems on windows with our current FS api
-  return get_user_home_dir() / "OpenGOAL";
+std::filesystem::path get_user_config_dir() {
+  std::filesystem::path config_base_path;
+#ifdef _WIN32
+  auto config_base_dir = std::getenv("APPDATA");
+  config_base_path = std::filesystem::path(std::string(config_base_dir));
+#elif __linux
+  // Docs - https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+  // Prefer XDG_CONFIG_HOME if available
+  auto config_base_dir = std::getenv("XDG_CONFIG_HOME");
+  if (!config_base_dir) {
+    config_base_path = get_user_home_dir() / ".config";
+  } else {
+    config_base_path = std::string(config_base_dir);
+  }
+#endif
+  return config_base_path / "OpenGOAL";
 }
 
 std::filesystem::path get_user_settings_dir() {
-  return get_user_game_dir() / "jak1" / "settings";
+  // TODO - jak2
+  return get_user_config_dir() / "jak1" / "settings";
 }
 
 std::filesystem::path get_user_memcard_dir() {
-  return get_user_game_dir() / "jak1" / "saves";
+  // TODO - jak2
+  return get_user_config_dir() / "jak1" / "saves";
 }
 
 struct {
@@ -171,14 +186,17 @@ std::string get_file_path(const std::vector<std::string>& input) {
 
 bool create_dir_if_needed(const std::filesystem::path& path) {
   if (!std::filesystem::is_directory(path)) {
-    std::filesystem::create_directories(path);
-    return true;
+    return std::filesystem::create_directories(path);
   }
   return false;
 }
 
 bool create_dir_if_needed_for_file(const std::string& path) {
-  return std::filesystem::create_directories(std::filesystem::path(path).parent_path());
+  return create_dir_if_needed_for_file(std::filesystem::path(path));
+}
+
+bool create_dir_if_needed_for_file(const std::filesystem::path& path) {
+  return std::filesystem::create_directories(path.parent_path());
 }
 
 void write_binary_file(const std::filesystem::path& name, const void* data, size_t size) {

@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "common/common_types.h"
+#include "common/versions.h"
 
 #include "game/kernel/common/kboot.h"
 #include "game/system/newpad.h"
@@ -25,8 +26,12 @@ enum GfxDisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
 // module for the different rendering pipelines
 struct GfxRendererModule {
   std::function<int(GfxSettings&)> init;
-  std::function<std::shared_ptr<
-      GfxDisplay>(int width, int height, const char* title, GfxSettings& settings, bool is_main)>
+  std::function<std::shared_ptr<GfxDisplay>(int width,
+                                            int height,
+                                            const char* title,
+                                            GfxSettings& settings,
+                                            GameVersion version,
+                                            bool is_main)>
       make_display;
   std::function<void()> exit;
   std::function<u32()> vsync;
@@ -108,7 +113,7 @@ extern GfxSettings g_settings;
 
 const GfxRendererModule* GetCurrentRenderer();
 
-u32 Init();
+u32 Init(GameVersion version);
 void Loop(std::function<bool()> f);
 u32 Exit();
 

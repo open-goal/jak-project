@@ -59,6 +59,12 @@ MakeSystem::MakeSystem(const std::string& username) : m_goos(username) {
     return handle_map_path(obj, args, env);
   });
 
+  m_goos.register_form("set-output-prefix",
+                       [=](const goos::Object& obj, goos::Arguments& args,
+                           const std::shared_ptr<goos::EnvironmentObject>& env) {
+                         return handle_set_output_prefix(obj, args, env);
+                       });
+
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
 
   set_constant("*iso-data*", file_util::get_file_path({"iso_data"}));
@@ -202,6 +208,16 @@ goos::Object MakeSystem::handle_map_path(const goos::Object& form,
   return goos::Object::make_empty_list();
 }
 
+goos::Object MakeSystem::handle_set_output_prefix(
+    const goos::Object& form,
+    goos::Arguments& args,
+    const std::shared_ptr<goos::EnvironmentObject>& env) {
+  m_goos.eval_args(&args, env);
+  va_check(form, args, {goos::ObjectType::STRING}, {});
+  m_path_map.output_prefix = args.unnamed.at(0).as_string()->data;
+  return goos::Object::make_empty_list();
+}
+
 void MakeSystem::get_dependencies(const std::string& master_target,
                                   const std::string& output,
                                   std::vector<std::string>* result,
@@ -321,7 +337,8 @@ void print_input(const std::vector<std::string>& in, char end) {
 }
 }  // namespace
 
-bool MakeSystem::make(const std::string& target, bool force, bool verbose) {
+bool MakeSystem::make(const std::string& target_in, bool force, bool verbose) {
+  std::string target = m_path_map.apply_remaps(target_in);
   auto deps = get_dependencies(target);
   //  fmt::print("All deps:\n");
   //  for (auto& dep : deps) {

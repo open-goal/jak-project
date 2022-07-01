@@ -47,3 +47,5 @@ struct PerGameVersion {
   constexpr T operator[](GameVersion v) const { return data[(int)v - 1]; }
   T data[2];
 };
+
+constexpr PerGameVersion<const char*> game_version_names = {"jak1", "jak2"};
