@@ -189,6 +189,9 @@ std::string GameTextFontBank::convert_utf8_to_game_with_escape(const std::string
         ASSERT(value < 256);
         newstr.push_back(char(value));
         i += 3;
+      } else if (p == '"') {
+        newstr.push_back(p);
+        i += 1;
       } else {
         throw std::runtime_error("unknown string escape code");
       }
