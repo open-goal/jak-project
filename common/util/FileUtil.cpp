@@ -192,7 +192,11 @@ bool create_dir_if_needed(const std::filesystem::path& path) {
 }
 
 bool create_dir_if_needed_for_file(const std::string& path) {
-  return std::filesystem::create_directories(std::filesystem::path(path).parent_path());
+  return create_dir_if_needed_for_file(std::filesystem::path(path));
+}
+
+bool create_dir_if_needed_for_file(const std::filesystem::path& path) {
+  return std::filesystem::create_directories(path.parent_path());
 }
 
 void write_binary_file(const std::filesystem::path& name, const void* data, size_t size) {
