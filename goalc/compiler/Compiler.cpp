@@ -32,6 +32,7 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
   m_make.add_tool(std::make_shared<CompilerTool>(this));
 
   // load GOAL library
+  // TODO - Jak2 - BAD!
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
 
@@ -421,7 +422,8 @@ void Compiler::asm_file(const CompilationOptions& options) {
 
     // save file
     if (options.write) {
-      auto path = file_util::get_file_path({"out", "obj", obj_file_name + ".o"});
+      auto path = file_util::get_jak_project_dir() / "out" / m_make.compiler_output_prefix() /
+                  "obj" / (obj_file_name + ".o");
       file_util::create_dir_if_needed_for_file(path);
       file_util::write_binary_file(path, (void*)data.data(), data.size());
     }

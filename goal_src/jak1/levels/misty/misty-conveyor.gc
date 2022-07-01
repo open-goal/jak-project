@@ -1,0 +1,616 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: misty-conveyor.gc
+;; name in dgo: misty-conveyor
+;; dgos: L1, MIS
+
+(declare-type keg-conveyor process-drawable)
+(declare-type keg-conveyor-paddle process-drawable)
+(declare-type keg process-drawable)
+
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/keg-conveyor-ag.gc")
+(import "goal_src/jak1/import/keg-conveyor-paddle-ag.gc")
+(import "goal_src/jak1/import/keg-ag.gc")
+
+(defpartgroup group-keg-bounce
+  :id 197
+  :duration 10
+  :linger-duration 600
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 2014 :fade-after (meters 100) :falloff-to (meters 100)))
+  )
+
+(defpart 2014
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 12.0)
+    (sp-rnd-flt spt-x (meters -3) (meters 6) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1) (meters 1) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 32.0 1.0)
+    (sp-rnd-flt spt-g 96.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 16.0 16.0 1.0)
+    (sp-rnd-flt spt-vel-z (meters -0.013333334) (meters 0.026666667) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.013333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.6) (degrees 1.2) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.10666667)
+    (sp-flt spt-accel-y -0.68266666)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-flt spt-rotate-y (degrees 0.0))
+    )
+  )
+
+(defun keg-bounce-set-particle-rotation-callback ((arg0 part-tracker))
+  (let ((v1-0 (the-as object (-> arg0 userdata))))
+    (set! (-> *part-id-table* 2014 init-specs 18 initial-valuef)
+          (quaternion-y-angle (-> (the-as (pointer process-drawable) v1-0) 0 root quat))
+          )
+    )
+  0
+  (none)
+  )
+
+(deftype keg-conveyor (process-drawable)
+  ((pivot joint-mod-spinner         :offset-assert 176)
+   (quat  quaternion        :inline :offset-assert 192)
+   )
+  :heap-base #x60
+  :method-count-assert 20
+  :size-assert         #xd0
+  :flag-assert         #x14006000d0
+  (:states
+    keg-conveyor-idle
+    )
+  )
+
+
+(deftype keg-conveyor-paddle (process-drawable)
+  ((root-override    collide-shape-moving             :offset        112)
+   (object-on-paddle (pointer bouncing-float)         :offset-assert 176)
+   (sync             sync-info                :inline :offset-assert 180)
+   )
+  :heap-base #x50
+  :method-count-assert 20
+  :size-assert         #xbc
+  :flag-assert         #x14005000bc
+  (:states
+    keg-conveyor-paddle-idle
+    )
+  )
+
+
+(deftype keg (process-drawable)
+  ((root-override       collide-shape-moving         :offset        112)
+   (sync-offset         float                        :offset-assert 176)
+   (keg-behavior        int8                         :offset-assert 180)
+   (path-position       vector               :inline :offset-assert 192)
+   (shadow-enable-plane vector               :inline :offset-assert 208)
+   (smush               smush-control        :inline :offset-assert 224)
+   (sound-id            sound-id                     :offset-assert 256)
+   )
+  :heap-base #xa0
+  :method-count-assert 20
+  :size-assert         #x104
+  :flag-assert         #x1400a00104
+  (:states
+    keg-die
+    keg-in-chute
+    keg-on-paddle
+    keg-on-path
+    keg-paddle-to-path
+    )
+  )
+
+
+(defskelgroup *keg-conveyor-sg* keg-conveyor keg-conveyor-lod0-jg keg-conveyor-idle-ja
+              ((keg-conveyor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -6 0 8)
+              )
+
+(defskelgroup *keg-conveyor-paddle-sg* keg-conveyor-paddle keg-conveyor-paddle-lod0-jg keg-conveyor-paddle-idle-ja
+              ((keg-conveyor-paddle-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -6 0 8)
+              )
+
+(defskelgroup *keg-sg* keg keg-lod0-jg keg-idle-ja
+              ((keg-lod0-mg (meters 20)) (keg-lod1-mg (meters 40)) (keg-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow keg-shadow-mg
+              )
+
+(defun keg-update-smush ((arg0 keg) (arg1 float))
+  (set! (-> arg0 root-override scale x) (+ 1.0 (* -1.0 arg1)))
+  (set! (-> arg0 root-override scale y) (+ 1.0 (* 2.0 arg1)))
+  (set! (-> arg0 root-override scale z) (+ 1.0 (* -1.0 arg1)))
+  0
+  (none)
+  )
+
+(defbehavior keg-event-handler keg ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (let ((v1-0 arg2))
+    (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack))
+                     (when (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+                       (sound-play "icrate-break")
+                       (process-spawn
+                         part-tracker
+                         :init part-tracker-init
+                         (-> *part-group-id-table* 71)
+                         20
+                         #f
+                         #f
+                         #f
+                         (-> self root-override trans)
+                         :to *entity-pool*
+                         )
+                       (sound-stop (-> self sound-id))
+                       (deactivate self)
+                       )
+                     )
+            )
+    )
+  )
+
+(defbehavior keg-post keg ()
+  (cond
+    ((= (-> self keg-behavior) 1)
+     )
+    (else
+      (if (< (vector-vector-distance (-> self root-override trans) (ear-trans)) 163840.0)
+          (sound-play "barrel-roll" :id (-> self sound-id) :position (the-as symbol (-> self root-override trans)))
+          )
+      )
+    )
+  (transform-post)
+  )
+
+(defstate keg-on-paddle (keg)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('detach)
+       (go keg-paddle-to-path)
+       )
+      )
+    )
+  :code (behavior ()
+    (set! (-> (the-as keg (-> self parent 0)) sync-offset) (the-as float (process->ppointer self)))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (loop
+      (let ((gp-0 (-> (the-as process-drawable (-> self parent 0)) node-list data 4)))
+        (matrix->quaternion (-> self root-override quat) (-> gp-0 bone transform))
+        (vector<-cspace! (-> self root-override trans) gp-0)
+        )
+      (set! (-> self path-position quad) (-> self root-override trans quad))
+      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior keg) keg-post)
+  )
+
+(defstate keg-paddle-to-path (keg)
+  :event keg-event-handler
+  :code (behavior ()
+    (let ((gp-0 (new-stack-vector0)))
+      (set! (-> gp-0 quad) (-> self root-override trans quad))
+      (let ((s5-0
+              (eval-path-curve-div! (-> (the-as process-drawable (-> self parent 0)) path) (new-stack-vector0) 0.0 'interp)
+              )
+            (s4-0 (quaternion-copy! (new-stack-quaternion0) (-> self root-override quat)))
+            (s3-0 (new-stack-quaternion0))
+            (a1-3 (TODO-RENAME-12 (-> (the-as process-drawable (-> self parent 0)) path) (new-stack-vector0) 0.0))
+            (f30-0 45.0)
+            )
+        0.0
+        0.0
+        (forward-up-nopitch->quaternion s3-0 a1-3 (new 'static 'vector :y 1.0 :w 1.0))
+        (loop
+          (if (>= (the float (- (-> *display* base-frame-counter) (-> self state-time))) f30-0)
+              (go keg-on-path)
+              )
+          (let ((f28-0 (/ (the float (- (-> *display* base-frame-counter) (-> self state-time))) f30-0)))
+            (vector-lerp! (-> self root-override trans) gp-0 s5-0 f28-0)
+            (set! (-> self path-position quad) (-> self root-override trans quad))
+            (quaternion-slerp! (-> self root-override quat) s4-0 s3-0 f28-0)
+            )
+          (ja :num! (loop!))
+          (suspend)
+          )
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior keg) keg-post)
+  )
+
+(defstate keg-on-path (keg)
+  :event keg-event-handler
+  :code (behavior ()
+    (local-vars (sv-48 float) (sv-64 float) (sv-80 float) (sv-96 float) (sv-112 float))
+    (let ((gp-0 (new-stack-vector0))
+          (s5-0 (new 'stack 'vector3s))
+          )
+      0.0
+      (let ((f30-0 0.0))
+        0.0
+        (let ((f28-0 (the float (+ (-> (the-as keg-conveyor-paddle (-> self parent 0)) path curve num-cverts) -1))))
+          0.0
+          (let ((f26-1 (- 1.0 (get-current-phase (-> (the-as keg-conveyor-paddle (-> self parent 0)) sync))))
+                (f24-0 102379.1)
+                )
+            (/ 1.0 f24-0)
+            (let ((f22-0 1.0)
+                  (f20-0 2.5)
+                  )
+              (set! sv-48 0.0)
+              (set! sv-64 0.0)
+              (set! sv-80 (- (-> *standard-dynamics* gravity-length)))
+              (loop
+                (let ((f0-13 (+ (get-current-phase (-> (the-as keg-conveyor-paddle (-> self parent 0)) sync)) f26-1)))
+                  (set! sv-96 (- f0-13 (the float (the int f0-13))))
+                  )
+                (if (< sv-96 f30-0)
+                    (go keg-in-chute)
+                    )
+                (set! f30-0 sv-96)
+                (set! sv-112 (* sv-96 f28-0))
+                (eval-path-curve-div!
+                  (-> (the-as keg-conveyor-paddle (-> self parent 0)) path)
+                  (-> self path-position)
+                  sv-112
+                  'interp
+                  )
+                (TODO-RENAME-12 (-> (the-as keg-conveyor-paddle (-> self parent 0)) path) gp-0 sv-112)
+                (seek-toward-heading-vec! (-> self root-override) gp-0 131072.0 (seconds 0.1))
+                (set! (-> self root-override trans quad) (-> self path-position quad))
+                (when (= (-> self keg-behavior) 1)
+                  (cond
+                    ((>= (vector4-dot (camera-pos) (-> self shadow-enable-plane)) 0.0)
+                     (let ((v1-32 (-> self draw shadow-ctrl)))
+                       (logclear! (-> v1-32 settings flags) (shadow-flags disable-draw))
+                       )
+                     0
+                     (let ((v1-35 (-> self draw shadow-ctrl)))
+                       (set! (-> v1-35 settings top-plane w) (- (-> self path-position y)))
+                       )
+                     0
+                     (let ((v1-38 (-> self draw shadow-ctrl)))
+                       (set! (-> v1-38 settings bot-plane w) (- (+ -8192.0 (-> self path-position y))))
+                       )
+                     0
+                     )
+                    (else
+                      (let ((v1-41 (-> self draw shadow-ctrl)))
+                        (logior! (-> v1-41 settings flags) (shadow-flags disable-draw))
+                        )
+                      0
+                      (let ((v1-44 (-> self draw shadow-ctrl)))
+                        (set! (-> v1-44 settings top-plane w) (- (-> self path-position y)))
+                        )
+                      0
+                      (let ((v1-47 (-> self draw shadow-ctrl)))
+                        (set! (-> v1-47 settings bot-plane w) (- (+ -8192.0 (-> self path-position y))))
+                        )
+                      0
+                      )
+                    )
+                  (let ((f0-32 (- f28-0 sv-112)))
+                    (if (< f0-32 f20-0)
+                        (set! f22-0 (/ f0-32 f20-0))
+                        )
+                    )
+                  (set! sv-64 (+ sv-64 (* sv-80 (-> *display* seconds-per-frame))))
+                  (set! sv-48 (+ sv-48 (* sv-64 (-> *display* seconds-per-frame))))
+                  (when (< sv-48 0.0)
+                    (set! sv-48 0.0)
+                    (activate! (-> self smush) -0.15 90 150 1.0 1.0)
+                    (set! sv-64 f24-0)
+                    (sound-play "barrel-bounce" :vol 80)
+                    (process-spawn
+                      part-tracker
+                      :init part-tracker-init
+                      (-> *part-group-id-table* 197)
+                      -1
+                      keg-bounce-set-particle-rotation-callback
+                      (-> self ppointer)
+                      #f
+                      (-> self root-override trans)
+                      :to self
+                      )
+                    )
+                  (let ((f0-39 (update! (-> self smush))))
+                    (keg-update-smush self f0-39)
+                    )
+                  (+! (-> self root-override trans y) (* f22-0 sv-48))
+                  (set! (-> s5-0 x) 0.0)
+                  (set! (-> s5-0 y) 1.0)
+                  (set! (-> s5-0 z) 0.0)
+                  )
+                (ja :num! (loop!))
+                (suspend)
+                )
+              )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior keg) keg-post)
+  )
+
+(defstate keg-in-chute (keg)
+  :event keg-event-handler
+  :code (behavior ()
+    (let ((gp-0 (TODO-RENAME-12
+                  (-> (the-as process-drawable (-> self parent 0)) path)
+                  (new-stack-vector0)
+                  (the float (+ (-> (the-as process-drawable (-> self parent 0)) path curve num-cverts) -1))
+                  )
+                )
+          (s5-0 (new-stack-vector0))
+          (f30-0 61440.0)
+          (f28-0 0.0)
+          (f26-0 (- (-> *standard-dynamics* gravity-length)))
+          )
+      (let ((v1-10 (-> self draw shadow-ctrl)))
+        (logior! (-> v1-10 settings flags) (shadow-flags disable-draw))
+        )
+      0
+      (clear-collide-with-as (-> self root-override))
+      (vector-normalize! gp-0 1.0)
+      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (loop
+        (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
+            (go keg-die)
+            )
+        (let ((v1-23 (-> self root-override trans)))
+          (vector-float*! s5-0 gp-0 (* f30-0 (-> *display* seconds-per-frame)))
+          (set! (-> s5-0 y) (* f28-0 (-> *display* seconds-per-frame)))
+          (+! f28-0 (* f26-0 (-> *display* seconds-per-frame)))
+          (vector+! v1-23 v1-23 s5-0)
+          )
+        (ja :num! (loop!))
+        (suspend)
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior keg) keg-post)
+  )
+
+(defstate keg-die (keg)
+  :event (the-as (function process int symbol event-message-block object :behavior keg) #f)
+  :code (behavior ()
+    (sound-stop (-> self sound-id))
+    (cleanup-for-death self)
+    (none)
+    )
+  :post (the-as (function none :behavior keg) transform-post)
+  )
+
+(defbehavior keg-init-by-other keg ((arg0 keg) (arg1 int))
+  (stack-size-set! (-> self main-thread) 512)
+  (let ((s4-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 16384.0)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> self root-override) s4-0)
+    )
+  (set! (-> self root-override trans quad) (-> arg0 root-override trans quad))
+  (initialize-skeleton self *keg-sg* '())
+  (set! (-> self draw shadow-ctrl) (new 'process 'shadow-control 0.0 0.0 614400.0 (the-as float 60) 245760.0))
+  (let ((v1-25 (-> self draw shadow-ctrl)))
+    (logior! (-> v1-25 settings flags) (shadow-flags disable-draw))
+    )
+  0
+  (let ((s5-1 (new 'static 'vector :x -514715.0 :y 226968.0 :z 3906894.8 :w 1.0)))
+    (let ((v1-27 (new 'static 'vector :x 115430.4 :y 109848.9 :z 4391595.5 :w 1.0))
+          (s3-1 (new 'stack-no-clear 'vector))
+          (s4-1 (new 'stack-no-clear 'vector))
+          )
+      (vector-! s3-1 v1-27 s5-1)
+      (vector-normalize! s3-1 1.0)
+      (vector-cross! s4-1 s3-1 *y-vector*)
+      (vector-normalize! s4-1 1.0)
+      (vector-cross! (-> self shadow-enable-plane) s4-1 s3-1)
+      )
+    (vector-normalize! (-> self shadow-enable-plane) 1.0)
+    (set! (-> self shadow-enable-plane w) (- (vector-dot (-> self shadow-enable-plane) s5-1)))
+    )
+  (set! (-> self keg-behavior) arg1)
+  (logclear! (-> self mask) (process-mask actor-pause enemy))
+  (let ((gp-1 (new-stack-vector0)))
+    (TODO-RENAME-12 (-> (the-as process-drawable (-> self parent 0)) path) gp-1 0.0)
+    (set-heading-vec! (-> self root-override) gp-1)
+    )
+  (set! (-> self sound-id) (new-sound-id))
+  (go keg-on-paddle)
+  (none)
+  )
+
+(defun keg-conveyor-spawn-keg ((arg0 keg-conveyor))
+  (process-spawn keg arg0 0 :to arg0)
+  )
+
+(defun keg-conveyor-spawn-bouncing-keg ((arg0 keg-conveyor))
+  (process-spawn keg arg0 1 :to arg0)
+  )
+
+(define *keg-conveyor-keg-spawn-table*
+  (the-as (array int8) (new 'static 'boxed-array :type int8 1 2 1 1 2 1))
+  )
+
+(defstate keg-conveyor-idle (keg-conveyor)
+  :code (behavior ()
+    (ja :num-func num-func-identity :frame-num 0.0)
+    0.0
+    (loop
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior keg-conveyor) ja-post)
+  )
+
+(defstate keg-conveyor-paddle-idle (keg-conveyor-paddle)
+  :code (behavior ()
+    (let ((f30-0 57.0)
+          (gp-0 0)
+          (s5-0 (length *keg-conveyor-keg-spawn-table*))
+          )
+      (loop
+        (let ((s4-0 #f))
+          (when (or (not *target*)
+                    (< 102400.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                    )
+            (let ((v1-10 (-> *keg-conveyor-keg-spawn-table* gp-0)))
+              (cond
+                ((zero? v1-10)
+                 (nothing)
+                 )
+                ((= v1-10 1)
+                 (keg-conveyor-spawn-keg (the-as keg-conveyor self))
+                 )
+                ((= v1-10 2)
+                 (keg-conveyor-spawn-bouncing-keg (the-as keg-conveyor self))
+                 )
+                (else
+                  (nothing)
+                  )
+                )
+              )
+            )
+          (+! gp-0 1)
+          (if (>= gp-0 s5-0)
+              (set! gp-0 0)
+              )
+          (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+          (until (ja-done? 0)
+            (when (and (not s4-0) (>= (ja-aframe-num 0) f30-0))
+              (set! s4-0 #t)
+              (when (-> self object-on-paddle)
+                (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                  (set! (-> a1-2 from) self)
+                  (set! (-> a1-2 num-params) 0)
+                  (set! (-> a1-2 message) 'detach)
+                  (let ((t9-8 send-event-function)
+                        (v1-42 (-> self object-on-paddle))
+                        )
+                    (t9-8
+                      (the-as process-tree (if v1-42
+                                               (-> v1-42 0 max-value)
+                                               )
+                              )
+                      a1-2
+                      )
+                    )
+                  )
+                )
+              )
+            (suspend)
+            (ja :num! (seek!))
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior keg-conveyor-paddle) transform-post)
+  )
+
+(defbehavior keg-conveyor-paddle-init-by-other keg-conveyor-paddle ((arg0 keg-conveyor-paddle))
+  (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) default-collision-reaction)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 16384.0)
+      (set-root-prim! s5-0 s4-0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> self root-override) s5-0)
+    )
+  (set! (-> self path) (new 'process 'curve-control self 'path -1000000000.0))
+  (logior! (-> self path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> self root-override trans quad) (-> arg0 root-override trans quad))
+  (set! (-> self root-override quat vec quad) (-> arg0 root-override quat vec quad))
+  (set! (-> self root-override scale quad) (-> arg0 root-override scale quad))
+  (initialize-skeleton self *keg-conveyor-paddle-sg* '())
+  (setup-params! (-> self sync) (the-as uint 4800) 0.0 0.15 0.15)
+  (logclear! (-> self mask) (process-mask actor-pause enemy))
+  (set! (-> self object-on-paddle) (the-as (pointer bouncing-float) #f))
+  (go keg-conveyor-paddle-idle)
+  (none)
+  )
+
+(defmethod relocate keg-conveyor ((obj keg-conveyor) (arg0 int))
+  (if (nonzero? (-> obj pivot))
+      (&+! (-> obj pivot) arg0)
+      )
+  (the-as
+    keg-conveyor
+    ((the-as (function process-drawable int process-drawable) (find-parent-method keg-conveyor 7)) obj arg0)
+    )
+  )
+
+;; WARN: Expression building failed: Function (method 11 keg-conveyor) has a return type of none, but the expression builder found a return statement.
+(defmethod init-from-entity! keg-conveyor ((obj keg-conveyor) (arg0 entity-actor))
+  (set! (-> obj mask) (logior (process-mask enemy death) (-> obj mask)))
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *keg-conveyor-sg* '())
+  (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (when (logtest? (-> obj path flags) (path-control-flag not-found))
+    (go process-drawable-art-error "path")
+    (return #f)
+    )
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj pivot) (new 'process 'joint-mod-spinner obj 4 (new 'static 'vector :x 1.0 :w 1.0) 65536.0))
+  (let ((s5-1 (new-stack-vector0)))
+    (let ((s4-0 (new-stack-matrix0)))
+      (TODO-RENAME-12 (-> obj path) s5-1 0.0)
+      (set-heading-vec! (-> obj root) s5-1)
+      (quaternion->matrix s4-0 (-> obj root quat))
+      (set-vector! s5-1 -4096.0 -3072.0 -1433.6 1.0)
+      (vector-rotate*! s5-1 s5-1 s4-0)
+      )
+    (vector+! (-> obj root trans) (-> obj root trans) s5-1)
+    )
+  (process-spawn keg-conveyor-paddle obj :to obj)
+  (go keg-conveyor-idle)
+  (none)
+  )
+
+
+
+

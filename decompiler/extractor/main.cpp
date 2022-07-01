@@ -106,6 +106,119 @@ std::pair<std::optional<std::string>, std::optional<xxh::hash64_t>> findElfFile(
 }
 
 std::pair<ExtractorErrorCode, std::optional<ISOMetadata>> validate(
+    const std::filesystem::path& extracted_iso_path) {
+  if (!std::filesystem::exists(extracted_iso_path / "DGO")) {
+    fmt::print(stderr, "ERROR: input folder doesn't have a DGO folder. Is this the right input?\n");
+    return {ExtractorErrorCode::VALIDATION_BAD_EXTRACTION, std::nullopt};
+  }
+
+  std::optional<ExtractorErrorCode> error_code;
+  std::optional<std::string> serial = std::nullopt;
+  std::optional<xxh::hash64_t> elf_hash = std::nullopt;
+  std::tie(serial, elf_hash) = findElfFile(extracted_iso_path);
+
+  // - XOR all hashes together and hash the result.  This makes the ordering of the hashes (aka
+  // files) irrelevant
+  xxh::hash64_t combined_hash = 0;
+  int filec = 0;
+  for (auto const& dir_entry : std::filesystem::recursive_directory_iterator(extracted_iso_path)) {
+    if (dir_entry.is_regular_file()) {
+      auto buffer = file_util::read_binary_file(dir_entry.path().string());
+      auto hash = xxh::xxhash<64>(buffer);
+      combined_hash ^= hash;
+      filec++;
+    }
+  }
+  xxh::hash64_t contents_hash = xxh::xxhash<64>({combined_hash});
+
+  if (!serial || !elf_hash) {
+    fmt::print(stderr, "ERROR: Unable to locate a Serial/ELF file!\n");
+    if (!error_code.has_value()) {
+      error_code = std::make_optional(ExtractorErrorCode::VALIDATION_CANT_LOCATE_ELF);
+    }
+    // No point in continuing here
+    return {*error_code, std::nullopt};
+  }
+
+  // Find the game in our tracking database
+  std::optional<ISOMetadata> meta_res = std::nullopt;
+  if (auto dbEntry = isoDatabase.find(serial.value()); dbEntry == isoDatabase.end()) {
+    fmt::print(stderr, "ERROR: Serial '{}' not found in the validation database\n", serial.value());
+    if (!error_code.has_value()) {
+      error_code = std::make_optional(ExtractorErrorCode::VALIDATION_SERIAL_MISSING_FROM_DB);
+    }
+  } else {
+    auto& metaMap = dbEntry->second;
+    auto meta_entry = metaMap.find(elf_hash.value());
+    if (meta_entry == metaMap.end()) {
+      fmt::print(stderr,
+                 "ERROR: ELF Hash '{}' not found in the validation database, is this a new or "
+                 "modified version of the same game?\n",
+                 elf_hash.value());
+      if (!error_code.has_value()) {
+        error_code = std::make_optional(ExtractorErrorCode::VALIDATION_ELF_MISSING_FROM_DB);
+      }
+    } else {
+      meta_res = std::make_optional<ISOMetadata>(meta_entry->second);
+      const auto& meta = *meta_res;
+      // Print out some information
+      fmt::print("Detected Game Metadata:\n");
+      fmt::print("\tDetected - {}\n", meta.canonical_name);
+      fmt::print("\tRegion - {}\n", meta.region);
+      fmt::print("\tSerial - {}\n", dbEntry->first);
+      fmt::print("\tUses Decompiler Config - {}\n", meta.decomp_config);
+
+      // - Number of Files
+      if (meta.num_files != filec) {
+        fmt::print(stderr,
+                   "ERROR: Extracted an unexpected number of files. Expected '{}', Actual '{}'\n",
+                   meta.num_files, filec);
+        if (!error_code.has_value()) {
+          error_code =
+              std::make_optional(ExtractorErrorCode::VALIDATION_INCORRECT_EXTRACTION_COUNT);
+        }
+      }
+      // Check the ISO Hash
+      if (meta.contents_hash != contents_hash) {
+        fmt::print(stderr,
+                   "ERROR: Overall ISO content's hash does not match. Expected '{}', Actual '{}'\n",
+                   meta.contents_hash, contents_hash);
+      }
+    }
+  }
+
+  // Finally, return the result
+  if (error_code.has_value()) {
+    // Generate the map entry to make things simple, just convienance
+    if (error_code.value() == ExtractorErrorCode::VALIDATION_SERIAL_MISSING_FROM_DB) {
+      fmt::print(
+          "If this is a new release or version that should be supported, consider adding the "
+          "following serial entry to the database:\n");
+      fmt::print(
+          "\t'{{\"{}\", {{{{{}U, {{\"GAME_TITLE\", \"NTSC-U/PAL/NTSC-J\", {}, {}U, "
+          "\"DECOMP_CONFIF_FILENAME_NO_EXTENSION\"}}}}}}}}'\n",
+          serial.value(), elf_hash.value(), filec, contents_hash);
+    } else if (error_code.value() == ExtractorErrorCode::VALIDATION_ELF_MISSING_FROM_DB) {
+      fmt::print(
+          "If this is a new release or version that should be supported, consider adding the "
+          "following ELF entry to the database under the '{}' serial:\n",
+          serial.value());
+      fmt::print(
+          "\t'{{{}, {{\"GAME_TITLE\", \"NTSC-U/PAL/NTSC-J\", {}, {}U, "
+          "\"DECOMP_CONFIF_FILENAME_NO_EXTENSION\"}}}}'\n",
+          elf_hash.value(), filec, contents_hash);
+    } else {
+      fmt::print(stderr,
+                 "Validation has failed to match with expected values, see the above errors for "
+                 "specifics. This may be an error in the validation database!\n");
+    }
+    return {*error_code, std::nullopt};
+  }
+
+  return {ExtractorErrorCode::SUCCESS, meta_res};
+}
+
+std::pair<ExtractorErrorCode, std::optional<ISOMetadata>> validate(
     const IsoFile& iso_file,
     const std::filesystem::path& extracted_iso_path) {
   if (!std::filesystem::exists(extracted_iso_path / "DGO")) {
@@ -253,18 +366,18 @@ void decompile(std::filesystem::path jak1_input_files) {
                                        .string(),
                                    {});
 
-  std::vector<std::string> dgos, objs;
+  std::vector<std::filesystem::path> dgos, objs;
 
   // grab all DGOS we need (level + common)
   for (const auto& dgo_name : config.dgo_names) {
     std::string common_name = "GAME.CGO";
     if (dgo_name.length() > 3 && dgo_name.substr(dgo_name.length() - 3) == "DGO") {
       // ends in DGO, it's a level
-      dgos.push_back((jak1_input_files / dgo_name).string());
+      dgos.push_back(jak1_input_files / dgo_name);
     } else if (dgo_name.length() >= common_name.length() &&
                dgo_name.substr(dgo_name.length() - common_name.length()) == common_name) {
       // it's COMMON.CGO, we need that too.
-      dgos.push_back((jak1_input_files / dgo_name).string());
+      dgos.push_back(jak1_input_files / dgo_name);
     }
   }
 
@@ -272,16 +385,16 @@ void decompile(std::filesystem::path jak1_input_files) {
   for (const auto& obj_name : config.object_file_names) {
     if (obj_name.length() > 3 && obj_name.substr(obj_name.length() - 3) == "TXT") {
       // ends in TXT
-      objs.push_back((jak1_input_files / obj_name).string());
+      objs.push_back(jak1_input_files / obj_name);
     }
   }
 
   // set up objects
-  ObjectFileDB db(dgos, config.obj_file_name_map_file, objs, {}, config);
+  ObjectFileDB db(dgos, std::filesystem::path(config.obj_file_name_map_file), objs, {}, config);
 
   // save object files
-  auto out_folder = (file_util::get_jak_project_dir() / "decompiler_out" / "jak1").string();
-  auto raw_obj_folder = file_util::combine_path(out_folder, "raw_obj");
+  auto out_folder = file_util::get_jak_project_dir() / "decompiler_out" / "jak1";
+  auto raw_obj_folder = out_folder / "raw_obj";
   file_util::create_dir_if_needed(raw_obj_folder);
   db.dump_raw_objects(raw_obj_folder);
 
@@ -291,22 +404,24 @@ void decompile(std::filesystem::path jak1_input_files) {
   db.process_labels();
 
   // ensure asset dir exists
-  file_util::create_dir_if_needed(file_util::get_file_path({"assets"}));
+  file_util::create_dir_if_needed(out_folder / "assets");
 
   // text files
   {
     auto result = db.process_game_text_files(config);
     if (!result.empty()) {
-      file_util::write_text_file(file_util::get_file_path({"assets", "game_text.txt"}), result);
+      file_util::write_text_file(out_folder / "assets" / "game_text.txt", result);
     }
   }
 
   // textures
   decompiler::TextureDB tex_db;
-  file_util::write_text_file(file_util::get_file_path({"assets", "tpage-dir.txt"}),
-                             db.process_tpages(tex_db));
+  auto textures_out = out_folder / "textures";
+  file_util::create_dir_if_needed(textures_out);
+  file_util::write_text_file(textures_out / "tpage-dir.txt",
+                             db.process_tpages(tex_db, textures_out));
   // texture replacements
-  auto replacements_path = file_util::get_file_path({"texture_replacements"});
+  auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
   if (std::filesystem::exists(replacements_path)) {
     tex_db.replace_textures(replacements_path);
   }
@@ -315,14 +430,17 @@ void decompile(std::filesystem::path jak1_input_files) {
   {
     auto result = db.process_game_count_file();
     if (!result.empty()) {
-      file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
+      file_util::write_text_file(out_folder / "assets" / "game_count.txt", result);
     }
   }
 
   // levels
   {
+    auto level_out_path =
+        file_util::get_jak_project_dir() / "out" / game_version_names[config.game_version] / "fr3";
+    file_util::create_dir_if_needed(level_out_path);
     extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config.hacks,
-                       config.rip_levels, config.extract_collision);
+                       config.rip_levels, config.extract_collision, level_out_path);
   }
 }
 
@@ -342,8 +460,10 @@ void compile(std::filesystem::path extracted_iso_path) {
   }
   compiler.make_system().set_constant("*jak1-full-game*", !(flags & FLAG_JAK1_BLACK_LABEL));
 
+  // TODO - jak2 - BAD!
+  // TODO - if this directory is failing, very bad (non-existant) error message
   compiler.make_system().load_project_file(
-      (file_util::get_jak_project_dir() / "goal_src" / "game.gp").string());
+      (file_util::get_jak_project_dir() / "goal_src" / "jak1" / "game.gp").string());
   compiler.run_front_end_on_string("(mi)");
 }
 
@@ -439,6 +559,7 @@ int main(int argc, char** argv) {
             std::filesystem::file_size(data_dir_path));
         return static_cast<int>(ExtractorErrorCode::EXTRACTION_ISO_UNEXPECTED_SIZE);
       }
+
       auto iso_file = extract_files(data_dir_path, path_to_iso_files);
       auto validation_res = validate(iso_file, path_to_iso_files);
       flags = validation_res.second->flags;
@@ -455,6 +576,11 @@ int main(int argc, char** argv) {
         return static_cast<int>(ExtractorErrorCode::VALIDATION_BAD_ISO_CONTENTS);
       }
       path_to_iso_files = data_dir_path;
+      if (std::filesystem::exists(path_to_iso_files / "buildinfo.json")) {
+        std::filesystem::remove(path_to_iso_files / "buildinfo.json");
+      }
+      auto validation_res = validate(path_to_iso_files);
+      flags = validation_res.second->flags;
     }
 
     // write out a json file with some metadata for the game

@@ -10,8 +10,35 @@
 #include "FontUtils.h"
 
 #include <algorithm>
+#include <stdexcept>
+
+#include "common/util/Assert.h"
 
 #include "third-party/fmt/core.h"
+
+namespace {
+
+/*!
+ * Is this a valid character for a hex number?
+ */
+bool hex_char(char c) {
+  return !((c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F'));
+}
+
+}  // namespace
+
+const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap = {
+    {"jak1-v1", GameTextVersion::JAK1_V1},
+    {"jak1-v2", GameTextVersion::JAK1_V2}};
+
+const std::string& get_text_version_name(GameTextVersion version) {
+  for (auto& [name, ver] : sTextVerEnumMap) {
+    if (ver == version) {
+      return name;
+    }
+  }
+  throw std::runtime_error(fmt::format("invalid text version {}", version));
+}
 
 GameTextFontBank::GameTextFontBank(GameTextVersion version,
                                    std::vector<EncodeInfo>* encode_info,
@@ -128,6 +155,51 @@ std::string GameTextFontBank::convert_utf8_to_game(std::string str) const {
   replace_to_game(str);
   encode_utf8_to_game(str);
   return str;
+}
+
+/*!
+ * Turn a normal readable string into a string readable in the in-game font encoding and converts
+ * \cXX escape sequences
+ */
+std::string GameTextFontBank::convert_utf8_to_game_with_escape(const std::string& str) const {
+  std::string newstr;
+
+  for (int i = 0; i < str.size(); ++i) {
+    auto c = str.at(i);
+    if (c == '\\') {
+      if (i + 1 >= str.size()) {
+        throw std::runtime_error("incomplete string escape code");
+      }
+      auto p = str.at(i + 1);
+      if (p == 'c') {
+        if (i + 3 >= str.size()) {
+          throw std::runtime_error("incomplete string escape code");
+        }
+        auto first = str.at(i + 2);
+        auto second = str.at(i + 3);
+        if (!hex_char(first) || !hex_char(second)) {
+          throw std::runtime_error("invalid character escape hex number");
+        }
+        char hex_num[3] = {first, second, '\0'};
+        std::size_t end = 0;
+        auto value = std::stoul(hex_num, &end, 16);
+        if (end != 2) {
+          throw std::runtime_error("invalid character escape");
+        }
+        ASSERT(value < 256);
+        newstr.push_back(char(value));
+        i += 3;
+      } else {
+        throw std::runtime_error("unknown string escape code");
+      }
+    } else {
+      newstr.push_back(c);
+    }
+  }
+
+  replace_to_game(newstr);
+  encode_utf8_to_game(newstr);
+  return newstr;
 }
 
 /*!

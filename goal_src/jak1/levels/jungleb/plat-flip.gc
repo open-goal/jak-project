@@ -1,0 +1,189 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: plat-flip.gc
+;; name in dgo: plat-flip
+;; dgos: JUB, L1
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/plat-flip-ag.gc")
+
+(deftype plat-flip (process-drawable)
+  ((root-override         collide-shape-moving         :offset        112)
+   (path-pos              float                        :offset-assert 176)
+   (before-turn-down-time float                        :offset-assert 180)
+   (turn-down-time        float                        :offset-assert 184)
+   (before-turn-up-time   float                        :offset-assert 188)
+   (turn-up-time          float                        :offset-assert 192)
+   (total-time            float                        :offset-assert 196)
+   (sync                  sync-info            :inline :offset-assert 200)
+   (base-pos              vector               :inline :offset-assert 208)
+   (smush                 smush-control        :inline :offset-assert 224)
+   )
+  :heap-base #x90
+  :method-count-assert 20
+  :size-assert         #x100
+  :flag-assert         #x1400900100
+  (:states
+    plat-flip-idle
+    )
+  )
+
+
+(defskelgroup *plat-flip-sg* plat-flip plat-flip-geo-jg plat-flip-turn-down-ja
+              ((plat-flip-geo-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
+
+(defstate plat-flip-idle (plat-flip)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (let ((v1-0 arg2))
+      (the-as object (cond
+                       ((= v1-0 'bonk)
+                        (activate! (-> self smush) -1.0 90 300 1.0 1.0)
+                        )
+                       ((= v1-0 'touch)
+                        (send-event arg0 'no-look-around (seconds 1.5))
+                        (the-as smush-control #f)
+                        )
+                       )
+              )
+      )
+    )
+  :trans (the-as (function none :behavior plat-flip) rider-trans)
+  :code (behavior ()
+    (local-vars (f30-0 float) (f30-1 float))
+    (let ((gp-0 #f))
+      (loop
+        (let ((f0-1 (get-current-value (-> self sync) (-> self total-time))))
+          (cond
+            ((< f0-1 (-> self before-turn-down-time))
+             (ja :group! plat-flip-turn-down-ja :num! min)
+             (set! gp-0 #f)
+             )
+            ((begin (set! f30-0 (- f0-1 (-> self before-turn-down-time))) (< f30-0 (-> self turn-down-time)))
+             (when (not gp-0)
+               (set! gp-0 #t)
+               (sound-play "plat-flip")
+               )
+             (ja :group! plat-flip-turn-down-ja
+                 :num! (identity (/ (* f30-0 (the float (+ (-> (the-as art-joint-anim plat-flip-turn-down-ja) data 0 length) -1)))
+                              (-> self turn-down-time)
+                              )
+                           )
+                 )
+             )
+            ((begin (set! f30-1 (- f30-0 (-> self turn-down-time))) (< f30-1 (-> self before-turn-up-time)))
+             (set! gp-0 #f)
+             (ja :group! plat-flip-turn-down-ja :num! max)
+             )
+            (else
+              (when (not gp-0)
+                (set! gp-0 #t)
+                (sound-play "plat-flip")
+                )
+              (let ((f30-2 (- f30-1 (-> self before-turn-up-time))))
+                (ja :group! plat-flip-turn-up-ja
+                    :num! (identity (/ (* f30-2 (the float (+ (-> (the-as art-joint-anim plat-flip-turn-up-ja) data 0 length) -1)))
+                                 (-> self turn-up-time)
+                                 )
+                              )
+                    )
+                )
+              )
+            )
+          )
+        (let ((s5-5 (new 'stack-no-clear 'vector)))
+          (set! (-> s5-5 quad) (-> self base-pos quad))
+          (+! (-> s5-5 y) (* 1638.4 (update! (-> self smush))))
+          (move-to-point! (-> self root-override) s5-5)
+          )
+        (suspend)
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior plat-flip) rider-post)
+  )
+
+(defmethod init-from-entity! plat-flip ((obj plat-flip) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag) (sv-32 res-tag) (sv-48 res-tag))
+  (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (alloc-riders s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 11468.8)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (set! (-> obj base-pos quad) (-> obj root-override trans quad))
+  (initialize-skeleton obj *plat-flip-sg* '())
+  (logior! (-> obj skel status) (janim-status inited))
+  (let ((f30-0 300.0))
+    (set! sv-16 (new 'static 'res-tag))
+    (let ((v1-28 (res-lump-data arg0 'delay pointer :tag-ptr (& sv-16))))
+      (set! (-> obj before-turn-down-time) (* f30-0 (if (and v1-28 (> (the-as int (-> sv-16 elt-count)) 0))
+                                                        (-> (the-as (pointer float) v1-28))
+                                                        2.0
+                                                        )
+                                              )
+            )
+      )
+    )
+  (let ((f30-1 300.0))
+    (set! sv-32 (new 'static 'res-tag))
+    (let ((v1-31 (res-lump-data arg0 'delay pointer :tag-ptr (& sv-32))))
+      (set! (-> obj before-turn-up-time) (* f30-1 (if (and v1-31 (< 1 (the-as int (-> sv-32 elt-count))))
+                                                      (-> (the-as (pointer float) v1-31) 1)
+                                                      0.2
+                                                      )
+                                            )
+            )
+      )
+    )
+  (set! (-> obj turn-down-time) 300.0)
+  (set! (-> obj turn-up-time) 300.0)
+  (set! (-> obj total-time)
+        (+ (-> obj before-turn-down-time) (-> obj turn-down-time) (-> obj before-turn-up-time) (-> obj turn-up-time))
+        )
+  (let ((s4-1 (-> obj sync))
+        (s3-1 (method-of-type sync-info setup-params!))
+        (s2-0 (the int (-> obj total-time)))
+        )
+    (set! sv-48 (new 'static 'res-tag))
+    (let ((v1-35 (res-lump-data arg0 'sync-percent pointer :tag-ptr (& sv-48))))
+      (s3-1
+        s4-1
+        (the-as uint s2-0)
+        (if (and v1-35 (> (the-as int (-> sv-48 elt-count)) 0))
+            (-> (the-as (pointer float) v1-35) 0)
+            0.0
+            )
+        0.15
+        0.15
+        )
+      )
+    )
+  (update-transforms! (-> obj root-override))
+  (go plat-flip-idle)
+  (none)
+  )
+
+
+
+

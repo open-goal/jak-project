@@ -45,7 +45,7 @@ void TextureDB::add_texture(u32 tpage,
   }
 }
 
-void TextureDB::replace_textures(const std::string& path) {
+void TextureDB::replace_textures(const std::filesystem::path& path) {
   std::filesystem::path base_path(path);
   for (auto& tex : textures) {
     std::filesystem::path full_path =

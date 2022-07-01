@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <unordered_set>
+#include <utility>
 
 #include "common/goos/Object.h"
 #include "common/log/log.h"
@@ -74,30 +75,17 @@ enum class SubtitleSceneKind { Invalid = -1, Movie = 0, Hint = 1, HintNamed = 2 
 class GameSubtitleSceneInfo {
  public:
   struct SubtitleLine {
-    SubtitleLine(int frame,
-                 std::string line,
-                 std::string line_utf8,
-                 std::string speaker,
-                 std::string speaker_utf8,
-                 bool offscreen)
-        : frame(frame),
-          line(line),
-          line_utf8(line_utf8),
-          speaker(speaker),
-          speaker_utf8(speaker_utf8),
-          offscreen(offscreen) {}
+    SubtitleLine(int frame, std::string line, std::string speaker, bool offscreen)
+        : frame(frame), line(line), speaker(speaker), offscreen(offscreen) {}
 
     int frame;
     std::string line;
-    std::string line_utf8;
     std::string speaker;
-    std::string speaker_utf8;
     bool offscreen;
 
     bool operator<(const SubtitleLine& other) const { return (frame < other.frame); }
   };
 
-  GameSubtitleSceneInfo() {}
   GameSubtitleSceneInfo(SubtitleSceneKind kind) : m_kind(kind) {}
 
   const std::string& name() const { return m_name; }
@@ -115,13 +103,8 @@ class GameSubtitleSceneInfo {
     m_id = scene.id();
   }
 
-  void add_line(int frame,
-                std::string line,
-                std::string line_utf8,
-                std::string speaker,
-                std::string speaker_utf8,
-                bool offscreen) {
-    m_lines.emplace_back(SubtitleLine(frame, line, line_utf8, speaker, speaker_utf8, offscreen));
+  void add_line(int frame, std::string line, std::string speaker, bool offscreen) {
+    m_lines.emplace_back(SubtitleLine(frame, line, speaker, offscreen));
     std::sort(m_lines.begin(), m_lines.end());
   }
 
@@ -147,7 +130,7 @@ class GameSubtitleBank {
   GameSubtitleSceneInfo& scene_by_name(const std::string& name) { return m_scenes.at(name); }
   void add_scene(GameSubtitleSceneInfo& scene) {
     ASSERT(!scene_exists(scene.name()));
-    m_scenes[scene.name()] = scene;
+    m_scenes.insert({scene.name(), scene});
   }
 
   int m_lang_id;
@@ -199,10 +182,13 @@ class GameSubtitleDB {
 
 // TODO add docstrings
 
-void parse_text(const goos::Object& data, GameTextVersion text_ver, GameTextDB& db);
-void parse_subtitle(const goos::Object& data,
-                    GameTextVersion text_ver,
-                    GameSubtitleDB& db,
-                    const std::string& file_path);
+void parse_text(const goos::Object& data, GameTextDB& db);
+void parse_subtitle(const goos::Object& data, GameSubtitleDB& db, const std::string& file_path);
 
+GameTextVersion parse_text_only_version(const std::string& filename);
+GameTextVersion parse_text_only_version(const goos::Object& data);
+
+void open_text_project(const std::string& kind,
+                       const std::string& filename,
+                       std::vector<std::string>& inputs);
 GameSubtitleDB load_subtitle_project();

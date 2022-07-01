@@ -16,7 +16,7 @@ std::string uppercase_string(const std::string& s) {
 }
 }  // namespace
 
-Loader::Loader() {
+Loader::Loader(const std::filesystem::path& base_path) : m_base_path(base_path) {
   m_loader_thread = std::thread(&Loader::loader_thread, this);
   m_loader_stages = make_loader_stages();
 }
@@ -116,8 +116,8 @@ void Loader::loader_thread() {
 
     // load the fr3 file
     Timer disk_timer;
-    auto data = file_util::read_binary_file(
-        file_util::get_file_path({fmt::format("assets/{}.fr3", uppercase_string(lev))}));
+    auto data =
+        file_util::read_binary_file(m_base_path / fmt::format("{}.fr3", uppercase_string(lev)));
     double disk_load_time = disk_timer.getSeconds();
 
     // the FR3 files are compressed
@@ -167,8 +167,7 @@ void Loader::loader_thread() {
  * This should be called during initialization, before any threaded loading goes on.
  */
 void Loader::load_common(TexturePool& tex_pool, const std::string& name) {
-  auto data =
-      file_util::read_binary_file(file_util::get_file_path({fmt::format("assets/{}.fr3", name)}));
+  auto data = file_util::read_binary_file(m_base_path / fmt::format("{}.fr3", name));
 
   auto decomp_data = compression::decompress_zstd(data.data(), data.size());
   Serializer ser(decomp_data.data(), decomp_data.size());

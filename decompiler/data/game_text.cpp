@@ -7,6 +7,7 @@
 
 #include "common/goos/Reader.h"
 #include "common/util/BitUtils.h"
+#include "common/util/FontUtils.h"
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 
@@ -187,6 +188,7 @@ std::string write_game_text(
     result += fmt::format(" {}", lang);
   }
   result += ")\n";
+  result += fmt::format("(text-version {})\n\n", get_text_version_name(version));
   for (auto& x : text_by_id) {
     result += fmt::format("(#x{:04x}\n  ", x.first);
     for (auto& y : x.second) {

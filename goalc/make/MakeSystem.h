@@ -30,6 +30,14 @@ class MakeSystem {
                            goos::Arguments&,
                            const std::shared_ptr<goos::EnvironmentObject>& env);
 
+  goos::Object handle_map_path(const goos::Object& obj,
+                               goos::Arguments& args,
+                               const std::shared_ptr<goos::EnvironmentObject>& env);
+
+  goos::Object handle_set_output_prefix(const goos::Object& obj,
+                                        goos::Arguments& args,
+                                        const std::shared_ptr<goos::EnvironmentObject>& env);
+
   std::vector<std::string> get_dependencies(const std::string& target) const;
   std::vector<std::string> filter_dependencies(const std::vector<std::string>& all_deps);
 
@@ -45,6 +53,11 @@ class MakeSystem {
   }
 
   void clear_project();
+
+  /*!
+   * Get the prefix that the project has requested for all compiler outputs
+   */
+  const std::string& compiler_output_prefix() const { return m_path_map.output_prefix; }
 
  private:
   void va_check(const goos::Object& form,
@@ -62,4 +75,5 @@ class MakeSystem {
 
   std::unordered_map<std::string, std::shared_ptr<MakeStep>> m_output_to_step;
   std::unordered_map<std::string, std::shared_ptr<Tool>> m_tools;
+  PathMap m_path_map;
 };

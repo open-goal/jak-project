@@ -1,0 +1,133 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: assistant-citadel.gc
+;; name in dgo: assistant-citadel
+;; dgos: CIT, L1
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/assistant-lavatube-end-ag.gc")
+
+(deftype assistant-lavatube-end (process-taskable)
+  ()
+  :heap-base #x110
+  :method-count-assert 53
+  :size-assert         #x17c
+  :flag-assert         #x350110017c
+  )
+
+
+(defskelgroup *assistant-lavatube-end-sg* assistant-lavatube-end assistant-lavatube-end-lod0-jg assistant-lavatube-end-idle-ja
+              ((assistant-lavatube-end-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow assistant-lavatube-end-shadow-mg
+              )
+
+(defmethod play-anim! assistant-lavatube-end ((obj assistant-lavatube-end) (arg0 symbol))
+  (case (current-status (-> obj tasks))
+    (((task-status unknown) (task-status need-hint))
+     (new 'static 'spool-anim :name "assistant-lavatube-end-resolution" :index 4 :parts 11 :command-list '())
+     )
+    (((task-status need-reward-speech))
+     (if arg0
+         (close-current! (-> obj tasks))
+         )
+     (new 'static 'spool-anim
+       :name "assistant-lavatube-end-resolution"
+       :index 4
+       :parts 11
+       :command-list '((61 joint "cameraB")
+         (151 joint "camera")
+         (226 joint "cameraB")
+         (273 joint "camera")
+         (316 joint "cameraB")
+         (451 joint "camera")
+         (651 joint "cameraB")
+         (786 joint "camera")
+         (888 joint "cameraB")
+         (1011 joint "camera")
+         (1011 shadow target #f)
+         (1140 shadow target #t)
+         (1191 joint "cameraB")
+         )
+       )
+     )
+    (else
+      (if arg0
+          (format
+            0
+            "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+            (-> obj name)
+            (task-status->string (current-status (-> obj tasks)))
+            )
+          )
+      (get-art-elem obj)
+      )
+    )
+  )
+
+(defmethod get-art-elem assistant-lavatube-end ((obj assistant-lavatube-end))
+  (-> obj draw art-group data 3)
+  )
+
+(defstate hidden (assistant-lavatube-end)
+  :virtual #t
+  :trans (behavior ()
+    (dummy-33 self)
+    ((-> (method-of-type process-taskable hidden) trans))
+    (when (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+               (not (closed? (-> self tasks) (game-task village4-button) (task-status need-reward-speech)))
+               )
+      )
+    (none)
+    )
+  )
+
+(defstate idle (assistant-lavatube-end)
+  :virtual #t
+  :enter (behavior ()
+    ((-> (method-of-type process-taskable idle) enter))
+    (case (get-task-status (game-task village4-button))
+      (((task-status need-reward-speech))
+       (send-event self 'play-anim)
+       )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (loop
+      (when (!= (ja-group) (get-art-elem self))
+        (ja-channel-push! 1 (seconds 0.05))
+        (ja :group! (-> self draw art-group data 3))
+        )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    (none)
+    )
+  )
+
+(defmethod should-display? assistant-lavatube-end ((obj assistant-lavatube-end))
+  (first-any (-> obj tasks) #t)
+  (let ((v1-3 (current-status (-> obj tasks))))
+    (and (or (= v1-3 (task-status need-reward-speech)) (= v1-3 (task-status invalid)))
+         (not (task-closed? (game-task citadel-sage-green) (task-status need-hint)))
+         )
+    )
+  )
+
+(defmethod init-from-entity! assistant-lavatube-end ((obj assistant-lavatube-end) (arg0 entity-actor))
+  (dummy-40 obj arg0 *assistant-lavatube-end-sg* 3 29 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> obj tasks) (get-task-control (game-task village4-button)))
+  (first-any (-> obj tasks) #t)
+  (dummy-42 obj)
+  (none)
+  )
+
+
+
+

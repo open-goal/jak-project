@@ -75,7 +75,9 @@ namespace {
  */
 
 // texture format names.
-std::unordered_map<u8, std::string> psms = {{0x02, "PSMCT16"}, {0x13, "PSMT8"}, {0x14, "PSMT4"}};
+const std::unordered_map<u8, std::string> psms = {{0x02, "PSMCT16"},
+                                                  {0x13, "PSMT8"},
+                                                  {0x14, "PSMT4"}};
 
 /*!
  * GOAL texture type. Stores info about a single texture in a texture page.
@@ -417,7 +419,9 @@ TexturePage read_texture_page(ObjectFileData& data,
  * Process a texture page.
  * TODO - document
  */
-TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
+TPageResultStats process_tpage(ObjectFileData& data,
+                               TextureDB& texture_db,
+                               const std::filesystem::path& output_path) {
   TPageResultStats stats;
   auto& words = data.linked_data.words_by_seg.at(0);
   const auto& level_names = data.dgo_names;
@@ -437,6 +441,8 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
 
   // Read the texture_page struct
   TexturePage texture_page = read_texture_page(data, words, 0, end_of_texture_page);
+  auto texture_dump_dir = output_path / texture_page.name;
+  file_util::create_dir_if_needed(texture_dump_dir);
 
   // Get raw data for textures.
   std::vector<u32> tex_data;
@@ -518,12 +524,8 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       }
 
       // write texture to a PNG.
-      file_util::create_dir_if_needed(
-          file_util::get_file_path({"assets", "textures", texture_page.name}));
-      file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
-                      tex.name),
-          out.data(), tex.w, tex.h);
+      file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
+                                tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name, level_names);
       stats.successful_textures++;
@@ -565,12 +567,8 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       }
 
       // write texture to a PNG.
-      file_util::create_dir_if_needed(
-          file_util::get_file_path({"assets", "textures", texture_page.name}));
-      file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
-                      tex.name),
-          out.data(), tex.w, tex.h);
+      file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
+                                tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name, level_names);
       stats.successful_textures++;
@@ -594,12 +592,8 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       }
 
       // write texture to a PNG.
-      file_util::create_dir_if_needed(
-          file_util::get_file_path({"assets", "textures", texture_page.name}));
-      file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
-                      tex.name),
-          out.data(), tex.w, tex.h);
+      file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
+                                tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name, level_names);
       stats.successful_textures++;
@@ -639,12 +633,8 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       }
 
       // write texture to a PNG.
-      file_util::create_dir_if_needed(
-          file_util::get_file_path({"assets", "textures", texture_page.name}));
-      file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
-                      tex.name),
-          out.data(), tex.w, tex.h);
+      file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
+                                tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name, level_names);
       stats.successful_textures++;
@@ -684,12 +674,8 @@ TPageResultStats process_tpage(ObjectFileData& data, TextureDB& texture_db) {
       }
 
       // write texture to a PNG.
-      file_util::create_dir_if_needed(
-          file_util::get_file_path({"assets", "textures", texture_page.name}));
-      file_util::write_rgba_png(
-          fmt::format(file_util::get_file_path({"assets", "textures", texture_page.name, "{}.png"}),
-                      tex.name),
-          out.data(), tex.w, tex.h);
+      file_util::write_rgba_png(texture_dump_dir / fmt::format("{}.png", tex.name), out.data(),
+                                tex.w, tex.h);
       texture_db.add_texture(texture_page.id, tex_id, out, tex.w, tex.h, tex.name,
                              texture_page.name, level_names);
       stats.successful_textures++;
