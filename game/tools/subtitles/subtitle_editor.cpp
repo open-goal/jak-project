@@ -101,8 +101,9 @@ void SubtitleEditor::repl_execute_cutscene_code(const SubtitleEditorDB::Entry& e
     } else {
       // We do this in a separate thread to introduce a delay -- allow the game to catch up before
       // running the critical section
-      auto code = fmt::format(
-          "(process-spawn-function process (lambda () (dotimes (i {}) (suspend)) {}))", entry.delay_frames, temp);
+      auto code =
+          fmt::format("(process-spawn-function process (lambda () (dotimes (i {}) (suspend)) {}))",
+                      entry.delay_frames, temp);
       m_repl.eval(code);
     }
   }

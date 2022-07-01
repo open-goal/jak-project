@@ -1,48 +1,63 @@
-version: '3'
+version: "3.13"
 
 includes:
   build: ./scripts/tasks/Taskfile_{{OS}}.yml
 
+dotenv:
+  - ./scripts/tasks/.env
+  - ./scripts/tasks/.env.default
+
 tasks:
-  # TODO - make it easy to switch between games instead of having a bunch of "jak1/jak2" varients
+  # SETTINGS / CONFIGURATION
+  set-game-jak1:
+    - 'python ./scripts/tasks/update-env.py --game jak1'
+  set-game-jak2:
+    - 'python ./scripts/tasks/update-env.py --game jak2'
+  set-decomp-ntscv1:
+    desc: "aka black label"
+    cmds:
+      - 'python ./scripts/tasks/update-env.py --decomp_config ntscv1'
+  set-decomp-ntscv2:
+    desc: "aka red label"
+    cmds:
+      - 'python ./scripts/tasks/update-env.py --decomp_config ntscv2'
+  set-decomp-pal:
+    - 'python ./scripts/tasks/update-env.py --decomp_config pal'
+  set-decomp-ntscjp:
+    - 'python ./scripts/tasks/update-env.py --decomp_config ntscjp'
   # GENERAL
-  extract-jak1:
-    desc: "Extracts Jak 1 - NTSC - Black Label assets"
+  extract:
+    desc: "Extracts the game's assets from './iso_data' with the set decompiler config"
     preconditions:
       - sh: test -f {{.DECOMP_BIN_RELEASE_DIR}}/decompiler{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate decompiler executable in '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler'"
     cmds:
-      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/jak1_ntsc_black_label.jsonc" "./iso_data" "./decompiler_out" "decompile_code=false"'
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out" "decompile_code=false"'
   boot-game:
-    desc: "Boots the game"
+    desc: "Boots the game, it will fail if it's not already booted!"
     preconditions:
       - sh: test -f {{.GK_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate runtime executable in '{{.GK_BIN_RELEASE_DIR}}/gk'"
     cmds:
       - "{{.GK_BIN_RELEASE_DIR}}/gk -boot -fakeiso -debug -v"
   run-game:
-    desc: "Start the game's runtime"
+    desc: "Start the game's runtime, to start the game itself the REPL is required"
     preconditions:
       - sh: test -f {{.GK_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate runtime executable in '{{.GK_BIN_RELEASE_DIR}}/gk'"
     cmds:
       - "{{.GK_BIN_RELEASE_DIR}}/gk -fakeiso -debug -v"
-  run-game-quiet:
-    preconditions:
-      - sh: test -f {{.GK_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
-        msg: "Couldn't locate runtime executable in '{{.GK_BIN_RELEASE_DIR}}/gk'"
-    cmds:
-      - "{{.GK_BIN_RELEASE_DIR}}/gk -fakeiso"
+  # DEVELOPMENT
   repl:
     desc: "Start the REPL"
-    env:
-      OPENGOAL_DECOMP_DIR: "jak1/"
     preconditions:
       - sh: test -f {{.GOALC_BIN_RELEASE_DIR}}/goalc{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate compiler executable in '{{.GOALC_BIN_RELEASE_DIR}}/goalc'"
     cmds:
       - "{{.GOALC_BIN_RELEASE_DIR}}/goalc"
-  # DEVELOPMENT
+  repl-lt:
+    cmds:
+      - "{{.GOALC_BIN_RELEASE_DIR}}/goalc --auto-lt"
   format:
     desc: "Format code"
     cmds:
@@ -53,84 +68,76 @@ tasks:
   run-game-headless:
     cmds:
       - "{{.GK_BIN_RELEASE_DIR}}/gk -fakeiso -debug -nodisplay"
-  repl-lt:
-    env:
-      OPENGOAL_DECOMP_DIR: "jak1/"
-    cmds:
-      - "{{.GOALC_BIN_RELEASE_DIR}}/goalc --auto-lt"
   # DECOMPILING
   decomp:
     cmds:
-      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/jak1_ntsc_black_label.jsonc" "./iso_data" "./decompiler_out"'
-  decomp-jak2:
-    cmds:
-      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/jak2_ntsc_v1.jsonc" "./iso_data" "./decompiler_out"'
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out"'
   decomp-clean:
     cmds:
       - rm ./decompiler_out/**/*.asm
       - rm ./decompiler_out/**/*disasm.gc
-  decomp-file:
-    cmds:
-      - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
-      - task: decomp
-  decomp-list:
-    cmds:
-      - python ./scripts/next-decomp-file.py --list "{{.LIST}}"
-    vars:
-      LIST: '{{default "0" .LIST}}'
-  # python -m pip install -U watchdog[watchmedo]
-  decomp-watch:
-    cmds:
-      - watchmedo shell-command --drop --patterns="*.gc;*.jsonc" --recursive --command='task decomp-file FILES="{{.FILES}}"' ./decompiler/config/
+  # TODO - the below are broken, need to be updated or replaced
+  # decomp-file:
+  #   cmds:
+  #     - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
+  #     - task: decomp
+  # decomp-list:
+  #   cmds:
+  #     - python ./scripts/next-decomp-file.py --list "{{.LIST}}"
+  #   vars:
+  #     LIST: '{{default "0" .LIST}}'
+  # # python -m pip install -U watchdog[watchmedo]
+  # decomp-watch:
+  #   cmds:
+  #     - watchmedo shell-command --drop --patterns="*.gc;*.jsonc" --recursive --command='task decomp-file FILES="{{.FILES}}"' ./decompiler/config/
+  # update-gsrc:
+  #   cmds:
+  #     - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
+  #     - task: decomp
+  #     - task: find-label-types
+  #     - python ./scripts/update-goal-src.py --files "{{.FILES}}"
+  #     - task: type-test
+  #     - task: check-gsrc-file
+  # TOOLS
+  # TODO - broken!
+  # analyze-ee-memory:
+  #   cmds:
+  #     - '{{.MEMDUMP_BIN_RELEASE_DIR}}/memory_dump_tool "{{.FILE}}" ./ > ee-analysis.log'
+  # watch-pcsx2:
+  #   cmds:
+  #     - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
+  #   vars:
+  #     SAVESTATE_DIR: '{{default "." .SAVESTATE_DIR}}'
   # TESTS
   offline-tests:
     cmds:
-      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test "./iso_data/jak1"'
-  add-reference-test:
-    cmds:
-      - task: decomp-file
-      - python ./scripts/add-reference-test.py --file "{{.FILES}}"
-      - task: offline-tests
-  add-reference-test-no-decomp:
-    cmds:
-      - python ./scripts/add-reference-test.py --file "{{.FILES}}"
-      - task: offline-tests
-  update-reference-tests:
-    cmds:
-      - cmd: python ./scripts/default-file-or-folder.py --path failures
-      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test "./iso_data/jak1" --dump-mode'
-        ignore_error: true
-      - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/
-      - task: offline-tests
-  find-label-types:
-    cmds:
-      - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
-      - task: decomp
-      - python ./scripts/find-label-types.py --file "{{.FILES}}"
+      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test "./iso_data/{{.GAME}}"'
+  # TODO - update or replace
+  # add-reference-test:
+  #   cmds:
+  #     - task: decomp-file
+  #     - python ./scripts/add-reference-test.py --file "{{.FILES}}"
+  #     - task: offline-tests
+  # add-reference-test-no-decomp:
+  #   cmds:
+  #     - python ./scripts/add-reference-test.py --file "{{.FILES}}"
+  #     - task: offline-tests
+  # update-reference-tests:
+  #   cmds:
+  #     - cmd: python ./scripts/default-file-or-folder.py --path failures
+  #     - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test "./iso_data/{{.GAME}}" --dump-mode'
+  #       ignore_error: true
+  #     - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/
+  #     - task: offline-tests
+  # find-label-types:
+  #   cmds:
+  #     - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
+  #     - task: decomp
+  #     - python ./scripts/find-label-types.py --file "{{.FILES}}"
+  # check-gsrc-file:
+  #   cmds:
+  #     - python ./scripts/check-gsrc-file.py --files "{{.FILES}}"
   type-test:
     cmds:
       - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*MANUAL_TEST_TypeConsistencyWithBuildFirst*"'
         ignore_error: true
-  check-gsrc-file:
-    cmds:
-      - python ./scripts/check-gsrc-file.py --files "{{.FILES}}"
-  # TOOLS
-  analyze-ee-memory:
-    cmds:
-      - '{{.MEMDUMP_BIN_RELEASE_DIR}}/memory_dump_tool "{{.FILE}}" ./ > ee-analysis.log'
-  watch-pcsx2:
-    cmds:
-      - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
-    vars:
-      SAVESTATE_DIR: '{{default "." .SAVESTATE_DIR}}'
-  update-gsrc:
-    cmds:
-      - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
-      - task: decomp
-      - task: find-label-types
-      - python ./scripts/update-goal-src.py --files "{{.FILES}}"
-      - task: type-test
-      - task: check-gsrc-file
-  cast-repl:
-    cmds:
-      - cmd: python ./scripts/cast-repl.py
