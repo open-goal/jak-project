@@ -166,7 +166,10 @@ std::string GameTextFontBank::convert_utf8_to_game_with_escape(const std::string
 
   for (int i = 0; i < str.size(); ++i) {
     auto c = str.at(i);
-    if (c == '\\') {
+    if (c == '"') {
+      newstr.push_back('"');
+      i += 1;
+    } else if (c == '\\') {
       if (i + 1 >= str.size()) {
         throw std::runtime_error("incomplete string escape code");
       }
@@ -223,6 +226,8 @@ std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
       result += "\\t";
     } else if (*in == '\\') {
       result += "\\\\";
+    } else if (*in == '"') {
+      result += "\\\"";
     } else {
       result += fmt::format("\\c{:02x}", uint8_t(*in));
     }
@@ -465,9 +470,6 @@ static std::vector<EncodeInfo> s_encode_info_jak1 = {
 };
 
 static std::vector<ReplaceInfo> s_replace_info_jak1 = {
-    // \" -> " (yeah it looks confusing)
-    {"\"", "\\\""},
-
     // other
     {"A~Y~-21H~-5Vº~Z", "Å"},
     {"N~Y~-6Hº~Z~+10H", "Nº"},
