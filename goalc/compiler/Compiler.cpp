@@ -422,7 +422,8 @@ void Compiler::asm_file(const CompilationOptions& options) {
 
     // save file
     if (options.write) {
-      auto path = file_util::get_file_path({"out", "obj", obj_file_name + ".o"});
+      auto path = file_util::get_jak_project_dir() / "out" / m_make.compiler_output_prefix() /
+                  "obj" / (obj_file_name + ".o");
       file_util::create_dir_if_needed_for_file(path);
       file_util::write_binary_file(path, (void*)data.data(), data.size());
     }

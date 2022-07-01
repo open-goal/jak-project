@@ -8,7 +8,7 @@
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
 
-void compile_game_count(const std::string& filename) {
+void compile_game_count(const std::string& input_filename, const std::string& output_prefix) {
   struct Count {
     int buzzer;
     int money;
@@ -18,7 +18,7 @@ void compile_game_count(const std::string& filename) {
   int unknowns[2] = {0, 0};
 
   goos::Reader reader;
-  auto code = reader.read_from_file({filename});
+  auto code = reader.read_from_file({input_filename});
   int len = goos::list_length(code) - 1;
   int i = 0;
   std::string err;
@@ -74,7 +74,7 @@ void compile_game_count(const std::string& filename) {
   gen.add_word(unknowns[1]);
   auto result = gen.generate_v4();
 
-  file_util::create_dir_if_needed(file_util::get_file_path({"out", "obj"}));
-  file_util::write_binary_file(file_util::get_file_path({"out", "obj", "game-cnt.go"}),
-                               result.data(), result.size());
+  file_util::write_binary_file(
+      file_util::get_jak_project_dir() / "out" / output_prefix / "obj" / "game-cnt.go",
+      result.data(), result.size());
 }
