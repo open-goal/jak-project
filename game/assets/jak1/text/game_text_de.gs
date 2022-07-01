@@ -1,5 +1,6 @@
 (group-name "common")
 (language-id 2)
+(text-version jak1-v2)
 
 ;; -----------------
 ;; progress menu (insanity)
@@ -39,6 +40,7 @@
 (#x1038 "WENN DAS PS2-BILDSCHIRMFORMAT AKTIVIERT IST, KÖNNEN NUR 4X3 UND 16X9 AUSGEWÄHLT WERDEN. WEITER?")
 (#x1039 "BILDSCHIRMFORMAT (PS2)")
 (#x103a "AN BILDSCHIRM ANPASSEN")
+(#x103b "V-SYNC")
 
 (#x1050 "MSAA")
 (#x1051 "~DX")
