@@ -1,4 +1,5 @@
 (language-id 2)
+(text-version jak1-v2)
 
 ;; -----------------
 ;; intro
