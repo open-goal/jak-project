@@ -436,8 +436,8 @@ void decompile(std::filesystem::path jak1_input_files) {
 
   // levels
   {
-    // TODO separate out dirs
-    auto level_out_path = file_util::get_jak_project_dir() / "out" / "fr3";
+    auto level_out_path =
+        file_util::get_jak_project_dir() / "out" / game_version_names[config.game_version] / "fr3";
     file_util::create_dir_if_needed(level_out_path);
     extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config.hacks,
                        config.rip_levels, config.extract_collision, level_out_path);

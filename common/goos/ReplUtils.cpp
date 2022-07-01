@@ -34,7 +34,10 @@ void ReplWrapper::print_welcome_message() {
   fmt::print(" for help with common commands and REPL usage.\n");
   fmt::print("Run ");
   fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(lt)");
-  fmt::print(" to connect to the local target.\n\n");
+  fmt::print(" to connect to the local target.\n");
+  fmt::print("Run ");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(mi)");
+  fmt::print(" to rebuild the entire game.\n\n");
 }
 
 void ReplWrapper::print_to_repl(const std::string_view& str) {
@@ -55,7 +58,8 @@ void ReplWrapper::add_to_history(const std::string& line) {
 
 void ReplWrapper::save_history() {
   std::filesystem::path path = file_util::get_user_config_dir();
-  if (file_util::create_dir_if_needed(path)) {
+  file_util::create_dir_if_needed(path);
+  if (exists(path)) {
     repl.history_save((path / ".opengoal.repl.history").string());
   } else {
     fmt::print("Couldn't save REPL history file to '{}'", path.string());
@@ -95,7 +99,7 @@ void ReplWrapper::print_help_message() {
   fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(:clear)\n");
   fmt::print(" - Clear the current screen\n");
   fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(e)\n");
-  fmt::print(" - Exit the compiler once the current REPL command is finished\n");
+  fmt::print(" - Exit the compiler\n");
   fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(lt [ip-address] [port-number])\n");
   fmt::print(
       " - Connect the listener to a running target. The IP address defaults to `127.0.0.1` and the "
@@ -110,34 +114,24 @@ void ReplWrapper::print_help_message() {
   fmt::print(" - If the target is connected, make it exit\n");
 
   fmt::print(fmt::emphasis::bold, "\nCompiling & Building:\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::lime_green), "(mi)\n");
+  fmt::print(" - Build entire game\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::lime_green), "(mng)\n");
+  fmt::print(" - Build game engine\n");
   fmt::print(fmt::emphasis::bold | fg(fmt::color::lime_green), "(m \"filename\")\n");
   fmt::print(" - Compile an OpenGOAL source file\n");
   fmt::print(fmt::emphasis::bold | fg(fmt::color::lime_green), "(ml \"filename\")\n");
-  fmt::print(" - Compile and Load an OpenGOAL source file\n");
-  fmt::print(fmt::emphasis::bold | fg(fmt::color::lime_green), "(build-game)\n");
-  fmt::print(" - Loads and builds all game files and rebuilds DGOs\n");
+  fmt::print(" - Compile and Load (or reload) an OpenGOAL source file\n");
   fmt::print(fmt::emphasis::bold | fg(fmt::color::lime_green), "(build-kernel)\n");
-  fmt::print(" - Similar to (build-game) but only the kernel files\n");
-  fmt::print(fmt::emphasis::bold | fg(fmt::color::lime_green), "(blg)\n");
-  fmt::print(" - Performs a (build-game) and then loads all CGOs\n");
-  fmt::print(fmt::emphasis::bold | fg(fmt::color::lime_green),
-             "(build-dgos \"path/to/dgos/description/file\")\n");
+  fmt::print(" - Build the GOAL kernel\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::lime_green), "(make \"file-name\")\n");
   fmt::print(
-      " - Builds all the DGO files described in the DGO description file. See "
-      "`goal_src/builds/dgos.txt` for an example.\n");
-  fmt::print(fmt::emphasis::bold | fg(fmt::color::lime_green),
-             "(asm-data-file tool-name \"file-name\")\n");
-  fmt::print(
-      " - Build a data file. The `tool-name` refers to which data building tool should be used.\n");
-  fmt::print(fmt::emphasis::bold | fg(fmt::color::lime_green), "(build-data)\n");
-  fmt::print(" - Macro for rebuilding all data files\n");
+      " - Build a file and any out-of-date dependencies. This file must be a target in the make "
+      "system.\n");
 
   fmt::print(fmt::emphasis::bold, "\nOther:\n");
   fmt::print(fmt::emphasis::bold | fg(fmt::color::magenta), "(gs)\n");
   fmt::print(" - Enter a GOOS REPL\n");
-  fmt::print(fmt::emphasis::bold | fg(fmt::color::magenta),
-             "(set-config! config-name config-value)\n");
-  fmt::print(" - Used to set compiler configuration\n");
 }
 
 void ReplWrapper::init_default_settings() {

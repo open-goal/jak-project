@@ -62,9 +62,11 @@
 ;; Output
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-;; NOTE: this isn't perfect yet, some tools still are hardcoded to look in out/ for stuff.
-(map-path! "$OUT" "out/")
+;; NOTE: the game itself will load from out/jak1/iso and out/jak1/fr3.
+(map-path! "$OUT" "out/jak1/")
 
+;; tell the compiler to put its outputs in out/jak1/
+(set-output-prefix "jak1/")
 
 ;; use defmacro to define goos macros.
 (define defmacro defsmacro)
@@ -142,7 +144,7 @@
   )
 
 (defun custom-level-cgo (output-name desc-file-name)
-  "Add a CGO with the given output name (in out/iso) and input name (in custom_levels/)"
+  "Add a CGO with the given output name (in $OUT/iso) and input name (in custom_levels/)"
   (let ((out-name (string-append "$OUT/iso/" output-name)))
     (defstep :in (string-append "custom_levels/" desc-file-name)
       :tool 'dgo
@@ -153,7 +155,7 @@
   )
 
 (defun cgo (output-name desc-file-name)
-  "Add a CGO with the given output name (in out/iso) and input name (in goal_src/jak1/dgos)"
+  "Add a CGO with the given output name (in $OUT/iso) and input name (in goal_src/jak1/dgos)"
   (let ((out-name (string-append "$OUT/iso/" output-name)))
     (defstep :in (string-append "goal_src/jak1/dgos/" desc-file-name)
       :tool 'dgo
@@ -1420,7 +1422,7 @@
 
 (goal-src-sequence
   "levels/citadel/"
-  :deps ("$OUT/obj/battlecontroller.o" "out/obj/snow-bunny.o")
+  :deps ("$OUT/obj/battlecontroller.o" "$OUT/obj/snow-bunny.o")
 
   "citadel-part.gc"
   "citadel-obs.gc"

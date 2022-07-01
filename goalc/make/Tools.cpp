@@ -76,33 +76,33 @@ DgoDescription parse_desc_file(const std::string& filename, goos::Reader& reader
 
 DgoTool::DgoTool() : Tool("dgo") {}
 
-bool DgoTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
+bool DgoTool::run(const ToolInput& task, const PathMap& path_map) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
   auto desc = parse_desc_file(task.input.at(0), m_reader);
-  build_dgo(desc);
+  build_dgo(desc, path_map.output_prefix);
   return true;
 }
 
 std::vector<std::string> DgoTool::get_additional_dependencies(const ToolInput& task,
-                                                              const PathMap& /*path_map*/) {
+                                                              const PathMap& path_map) {
   std::vector<std::string> result;
   auto desc = parse_desc_file(task.input.at(0), m_reader);
   for (auto& x : desc.entries) {
     // todo out
-    result.push_back(fmt::format("out/obj/{}", x.file_name));
+    result.push_back(fmt::format("out/{}obj/{}", path_map.output_prefix, x.file_name));
   }
   return result;
 }
 
 TpageDirTool::TpageDirTool() : Tool("tpage-dir") {}
 
-bool TpageDirTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
+bool TpageDirTool::run(const ToolInput& task, const PathMap& path_map) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
-  compile_dir_tpages(task.input.at(0));
+  compile_dir_tpages(task.input.at(0), path_map.output_prefix);
   return true;
 }
 
@@ -122,11 +122,11 @@ bool CopyTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
 
 GameCntTool::GameCntTool() : Tool("game-cnt") {}
 
-bool GameCntTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
+bool GameCntTool::run(const ToolInput& task, const PathMap& path_map) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
-  compile_game_count(task.input.at(0));
+  compile_game_count(task.input.at(0), path_map.output_prefix);
   return true;
 }
 
@@ -152,7 +152,7 @@ bool TextTool::run(const ToolInput& task, const PathMap& path_map) {
   for (auto& in : inputs) {
     in = path_map.apply_remaps(in);
   }
-  compile_game_text(inputs, db);
+  compile_game_text(inputs, db, path_map.output_prefix);
   return true;
 }
 
@@ -186,7 +186,7 @@ bool SubtitleTool::run(const ToolInput& task, const PathMap& path_map) {
   for (auto& in : inputs) {
     in = path_map.apply_remaps(in);
   }
-  compile_game_subtitle(inputs, db);
+  compile_game_subtitle(inputs, db, path_map.output_prefix);
   return true;
 }
 
@@ -200,9 +200,9 @@ bool BuildLevelTool::needs_run(const ToolInput& task, const PathMap& path_map) {
   return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
 
-bool BuildLevelTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
+bool BuildLevelTool::run(const ToolInput& task, const PathMap& path_map) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
-  return run_build_level(task.input.at(0), task.output.at(0));
+  return run_build_level(task.input.at(0), task.output.at(0), path_map.output_prefix);
 }

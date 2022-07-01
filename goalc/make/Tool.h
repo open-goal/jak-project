@@ -7,6 +7,7 @@
 #include "common/goos/Object.h"
 
 struct PathMap {
+  std::string output_prefix;
   std::unordered_map<std::string, std::string> path_remap;
   std::string apply_remaps(const std::string& input) const;
 };
