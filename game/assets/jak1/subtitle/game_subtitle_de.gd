@@ -761,6 +761,50 @@
   )
 
 ;; -----------------
+;; snowy
+;; -----------------
+
+("sksp0345" :hint #x443
+  (0 "DAXTER" "WIE KOMMEN WIR IN DIESES FORT REIN?")
+  )
+
+("sksp0346" :hint #x444
+  (0 "DAXTER" "VIELLEICHT KANN ROTES ECO DIESEN KERL BESIEGEN!")
+  )
+
+("sksp0350" :hint #x448
+  (0 "DAXTER" "SCHNAPP IHN DIR, WENN SEINE STACHELN DRIN SIND!")
+  )
+
+("sksp0360" :hint #x44c
+  (0 "DAXTER" "JAWOLL! WIR HABEN DIE VERSIEGELTEN GELBEN ECO-ÖFFNUNGEN AUFGEMACHT!")
+  )
+
+;; -----------------
+;; spidercave
+;; -----------------
+
+("sksp0327" :hint #x432
+  (0 "DAXTER" "ICH GLAUBE, DAS WAR DER LETZTE DUNKLE ECO-KRISTALL!")
+  )
+
+("sksp0332" :hint #x437
+  (0 "DAXTER" "PASS AUF, DASS DAS LICHT NICHT AUSGEHT!")
+  )
+
+("sksp0333" :hint #x438
+  (0 "DAXTER" "STOSS AN EINEN KRISTALL, DANN BEKOMMST DU LICHT!")
+  )
+
+("sksp0334" :hint #x439
+  (0 "DAXTER" "HAU AB! DIESER KRISTALL EXPLODIERT GLEICH!")
+  )
+
+("sksp0341" :hint #x440
+  (0 "DAXTER" "ICH GLAUBE, WIR SIND HIER IN EINEM SPINNENNEST!")
+  )
+
+;; -----------------
 ;; lavatube
 ;; -----------------
 
