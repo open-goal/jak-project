@@ -256,8 +256,6 @@
 ("sksp009j" :hint #x295 (0 "DAXTER" "HEY! IT LOOKS LIKE SCOUT FLIES ARE ALWAYS IN RED BOXES."))
 ("sksp009k" :hint #x296 (0 "DAXTER" "ALRIGHT! YOU FOUND ALL THE SCOUT FLIES IN THIS AREA!"))
 
-("sksp0328" :hint #x433 (0 "DAXTER" "MAYBE YOU CAN SHOOT BETTER IF YOU AIM THROUGH YOUR GOGGLES."))
-
 ;; -----------------
 ;; oracle
 ;; -----------------
@@ -2054,6 +2052,28 @@
   )
 
 ;; -----------------
+;; spidercave
+;; -----------------
+
+("sksp0327" :hint #x432 (0 "DAXTER" "I THINK THAT WAS THE LAST DARK ECO CRYSTAL!"))
+("sksp0328" :hint #x433 (0 "DAXTER" "MAYBE YOU CAN SHOOT BETTER IF YOU AIM THROUGH YOUR GOGGLES."))
+("sksp0329" :hint #x434 (0 "DAXTER" "OH, NO! MORE DARK ECO!"))
+("sksp0330" :hint #x435 (0 "DAXTER" "I DON'T THINK WE GOT ALL OF THOSE DARK ECO CRYSTALS."))
+("sksp0331" :hint #x436 (0 "DAXTER" "SHOOT THE LURKERS EATING THE POLES!"))
+("sksp0332" :hint #x437 (0 "DAXTER" "DON'T LET THE LIGHTS GO OUT!"))
+("sksp0333" :hint #x438 (0 "DAXTER" "HIT A CRYSTAL TO GET SOME LIGHT."))
+("sksp0334" :hint #x439 (0 "DAXTER" "RUN AWAY! THAT CRYSTAL'S GONNA BLOW!"))
+("sksp0335" :hint #x43a (0 "DAXTER" "EWH, THEY FOUND A PRECURSOR ROBOT!"))
+("sksp0336" :hint #x43b (0 "DAXTER" "POP THE EGGS, BEFORE THEY HATCH!"))
+("sksp0337" :hint #x43c (0 "DAXTER" "IT'S SPOOKY IN HERE..."))
+("sksp0338" :hint #x43d (0 "DAXTER" "LOOKS LIKE SPIDER WEBS BREAK AFTER TWO BOUNCES."))
+("sksp0339" :hint #x43e (0 "DAXTER" "I. HATE. SPIDERS..."))
+("sksp0340" :hint #x43f (0 "DAXTER" "BABY SPIDERS ARE COMING!"))
+("sksp0341" :hint #x440 (0 "DAXTER" "I THINK WE'RE IN A SPIDER'S NEST HERE!"))
+("sksp0342" :hint #x441 (0 "DAXTER" "LOOK OUT, MORE SPIDERS!"))
+("sksp0343" :hint #x442 (0 "DAXTER" "LET'S GET OUTTA HERE!"))
+
+;; -----------------
 ;; snowy
 ;; -----------------
 
@@ -2061,16 +2081,6 @@
 ("sksp0346" :hint #x444 (0 "DAXTER" "MAYBE RED ECO CAN DEFEAT THIS GUY!"))
 ("sksp0350" :hint #x448 (0 "DAXTER" "HIT HIM WHEN THE SPIKES ARE IN!"))
 ("sksp0360" :hint #x44c (0 "DAXTER" "ALL RIGHT! WE TURNED ON THE CAPPED YELLOW ECO VENTS!"))
-
-;; -----------------
-;; spidercave
-;; -----------------
-
-("sksp0327" :hint #x432 (0 "DAXTER" "I THINK THAT WAS THE LAST DARK ECO CRYSTAL!"))
-("sksp0332" :hint #x437 (0 "DAXTER" "DON'T LET THE LIGHTS GO OUT!"))
-("sksp0333" :hint #x438 (0 "DAXTER" "HIT A CRYSTAL TO GET SOME LIGHT."))
-("sksp0334" :hint #x439 (0 "DAXTER" "RUN AWAY! THAT CRYSTAL'S GONNA BLOW!"))
-("sksp0341" :hint #x440 (0 "DAXTER" "I THINK WE'RE IN A SPIDER'S NEST HERE!"))
 
 ;; -----------------
 ;; lavatube
