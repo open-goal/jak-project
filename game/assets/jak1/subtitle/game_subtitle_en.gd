@@ -2079,8 +2079,16 @@
 
 ("sksp0345" :hint #x443 (0 "DAXTER" "HOW DO WE GET INSIDE THIS FORT?"))
 ("sksp0346" :hint #x444 (0 "DAXTER" "MAYBE RED ECO CAN DEFEAT THIS GUY!"))
+("sksp0347" :hint #x445 (0 "DAXTER" "WE NEED TO DO A ROLL JUMP!"))
+("sksp0348" :hint #x446 (0 "DAXTER" "WE NEED TO FIND A WAY TO OPEN THIS VENT!"))
+("sksp0349" :hint #x447 (0 "DAXTER" "THAT LOOKS LIKE AN ECO SWITCH DOWN THERE!"))
 ("sksp0350" :hint #x448 (0 "DAXTER" "HIT HIM WHEN THE SPIKES ARE IN!"))
+("sksp0351" :hint #x449 (0 "DAXTER" "PUSH THE BUTTON!"))
+("sksp0352" :hint #x44a (0 "DAXTER" "QUICK! BEFORE THEY DROP BACK DOWN!"))
+("sksp0359" :hint #x44b (0 "DAXTER" "YOU GOTTA USE RED ECO!"))
 ("sksp0360" :hint #x44c (0 "DAXTER" "ALL RIGHT! WE TURNED ON THE CAPPED YELLOW ECO VENTS!"))
+("sksp0362" :hint #x44d (0 "DAXTER" "LOOK! A FROZEN POWER CELL!"))
+("sksp0363" :hint #x44e (0 "DAXTER" "ONLY A FLUT-FLUT CAN JUMP THAT FAR!"))
 
 ;; -----------------
 ;; lavatube
