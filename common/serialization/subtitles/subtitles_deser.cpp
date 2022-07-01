@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <regex>
+#include <vector>
 
 #include "common/util/FileUtil.h"
 
@@ -39,29 +40,51 @@ bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
       bool last_was_single = false;
       file_contents +=
           fmt::format("\n;; -----------------\n;; {}\n;; -----------------\n", group_name);
-      for (const auto& [scene_name, scene_info] : bank->m_scenes) {
-        if (scene_info.m_sorting_group != group_name) {
+      std::vector<GameSubtitleSceneInfo> all_scenes;
+      for (const auto& [scene_name, scene] : bank->scenes()) {
+        all_scenes.push_back(scene);
+      }
+      std::sort(all_scenes.begin(), all_scenes.end(),
+                [](const GameSubtitleSceneInfo& a, const GameSubtitleSceneInfo& b) {
+                  if (a.kind() != b.kind()) {
+                    return a.kind() < b.kind();
+                  }
+                  if (a.kind() == SubtitleSceneKind::Movie) {
+                    return a.name() < b.name();
+                  } else if (a.kind() == SubtitleSceneKind::HintNamed) {
+                    if (a.id() == b.id()) {
+                      return a.name() < b.name();
+                    } else {
+                      return a.id() < b.id();
+                    }
+                  } else if (a.kind() == SubtitleSceneKind::Hint) {
+                    return a.id() < b.id();
+                  }
+                  return false;
+                });
+      for (const auto& scene : all_scenes) {
+        if (scene.m_sorting_group != group_name) {
           continue;
         }
 
-        if (last_was_single && scene_info.lines().size() == 1) {
-          file_contents += fmt::format("(\"{}\"", scene_name);
+        if (last_was_single && scene.lines().size() == 1) {
+          file_contents += fmt::format("(\"{}\"", scene.name());
         } else {
-          file_contents += fmt::format("\n(\"{}\"", scene_name);
+          file_contents += fmt::format("\n(\"{}\"", scene.name());
         }
-        if (scene_info.m_kind == SubtitleSceneKind::Hint) {
+        if (scene.kind() == SubtitleSceneKind::Hint) {
           file_contents += " :hint #x0";
-        } else if (scene_info.m_kind == SubtitleSceneKind::HintNamed) {
-          file_contents += fmt::format(" :hint #x{0:x}", scene_info.m_id);
+        } else if (scene.kind() == SubtitleSceneKind::HintNamed) {
+          file_contents += fmt::format(" :hint #x{0:x}", scene.id());
         }
         // more compact formatting for single-line entries
-        if (scene_info.lines().size() == 1) {
-          const auto& line = scene_info.lines().at(0);
+        if (scene.lines().size() == 1) {
+          const auto& line = scene.lines().at(0);
           if (line.line.empty()) {
             file_contents += fmt::format(" ({})", line.frame);
           } else {
             file_contents += fmt::format(" ({}", line.frame);
-            if (line.offscreen && scene_info.m_kind == SubtitleSceneKind::Movie) {
+            if (line.offscreen && scene.kind() == SubtitleSceneKind::Movie) {
               file_contents += " :offscreen";
             }
             file_contents +=
@@ -72,13 +95,13 @@ bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
           last_was_single = true;
         } else {
           file_contents += "\n";
-          for (auto& line : scene_info.lines()) {
+          for (auto& line : scene.lines()) {
             // Clear screen entries
             if (line.line.empty()) {
               file_contents += fmt::format("  ({})\n", line.frame);
             } else {
               file_contents += fmt::format("  ({}", line.frame);
-              if (line.offscreen && scene_info.m_kind == SubtitleSceneKind::Movie) {
+              if (line.offscreen && scene.kind() == SubtitleSceneKind::Movie) {
                 file_contents += " :offscreen";
               }
               file_contents +=
