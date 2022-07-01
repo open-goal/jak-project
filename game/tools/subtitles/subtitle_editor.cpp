@@ -96,7 +96,15 @@ void SubtitleEditor::repl_execute_cutscene_code(const SubtitleEditorDB::Entry& e
     temp = std::regex_replace(temp, std::regex("__GET-PROCESS__"),
                               repl_get_process_string(entry.entity_type, entry.process_name));
     m_repl.eval("(send-event *camera* 'teleport)");
-    m_repl.eval(temp);
+    if (entry.delay_frames == 0) {
+      m_repl.eval(temp);
+    } else {
+      // We do this in a separate thread to introduce a delay -- allow the game to catch up before
+      // running the critical section
+      auto code = fmt::format(
+          "(process-spawn-function process (lambda () (dotimes (i {}) (suspend)) {}))", entry.delay_frames, temp);
+      m_repl.eval(code);
+    }
   }
 }
 
@@ -264,6 +272,11 @@ void SubtitleEditor::update_subtitle_editor_db() {
       new_entry.process_name = val.at("process_name").get<std::string>();
       new_entry.continue_name = val.at("continue_name").get<std::string>();
       new_entry.move_to = val.at("move_to").get<std::vector<double>>();
+      if (val.contains("delay")) {
+        new_entry.delay_frames = val.at("delay").get<int>();
+      } else {
+        new_entry.delay_frames = 0;
+      }
       if (val.contains("move_first")) {
         new_entry.move_first = val.at("move_first").get<bool>();
       } else {

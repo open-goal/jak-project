@@ -15,6 +15,7 @@ class SubtitleEditorDB {
     std::string process_name;
     std::string continue_name;
     std::vector<double> move_to;
+    int delay_frames;
     std::string execute_code;
     bool move_first;
     std::vector<std::string> requirements;
