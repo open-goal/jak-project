@@ -224,13 +224,18 @@
 
   (none))
 
-(define *pc-cheat-temp* (the-as (pointer int32) (malloc 'global (* 4 7))))
+(define *pc-cheat-temp* (the-as (pointer int32) (malloc 'global (* 4 8))))
 (defmacro pc-cheat-toggle-and-tune (obj cheat)
   `(begin
     (cpad-clear! 0 r1)
     (logxor! (-> ,obj cheats) (pc-cheats ,cheat))
     (cheats-sound-play (logtest? (-> ,obj cheats) (pc-cheats ,cheat)))
     )
+  )
+
+(defun bcd->dec ((bcd uint))
+  "Convert a number encoded in BCD to its decimal equivalent"
+    (+ (* (shr (logand bcd #xf0) 4) 10) (logand bcd #x0f))
   )
 
 (defmethod update pc-settings ((obj pc-settings))
@@ -365,6 +370,9 @@
 
     (pc-check-cheat-code (-> *pc-cheat-temp* 6) 0 (t u n e s)
           (pc-cheat-toggle-and-tune obj tunes))
+
+    (pc-check-cheat-code (-> *pc-cheat-temp* 7) 0 (s k y)
+          (pc-cheat-toggle-and-tune obj sky))
     )
 
   (when *target*
@@ -420,6 +428,15 @@
       (set! (-> obj flava-hack) -1)
       (set! (-> obj flava-hack) 0)
       )
+
+  (if (pc-cheats? obj sky)
+      (let ((date (new 'stack 'scf-time)))
+          (scf-get-time date)
+          (when (zero? (-> date stat))
+            (set-time-of-day (+ (the float (bcd->dec (-> date hour))) (/ (the float (bcd->dec (-> date minute))) 60)))
+        )
+      )
+  )
 
   (logior! (-> obj cheats-known) (-> obj cheats))
   0)
