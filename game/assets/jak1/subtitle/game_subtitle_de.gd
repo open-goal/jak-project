@@ -905,6 +905,122 @@
 ;; finalboss
 ;; -----------------
 
+("GOL-AM01" :hint #x0
+  (0 "GOL" "IHR GEBT EINFACH NICHT AUF, WAS?")
+  )
+
+("GOL-AM02" :hint #x0
+  (0 "GOL" "BALD GEHÖRT DAS DUNKLE ECO UNS!")
+  )
+
+("GOL-AM03" :hint #x0
+  (0 "GOL" "ERLEDIGT SIE!")
+  )
+
+("GOL-AM04" :hint #x0
+  (0 "GOL" "FEUER FREI!")
+  )
+
+("GOL-AM05" :hint #x0
+  (0 "GOL" "JAGT SIE IN DIE LUFT!")
+  )
+
+("GOL-AM06" :hint #x0
+  (0 "GOL" "WAS? DIE SCHON WIEDER?!")
+  )
+
+("GOL-AM07" :hint #x0
+  (0 "GOL" "ES IST ZU SPÄT!")
+  )
+
+("GOL-AM08" :hint #x0
+  (0 "GOL" "IHR GEHÖRT MIR!")
+  )
+
+("GOL-AM09" :hint #x0
+  (0 "GOL" "JETZT HABE ICH EUCH!")
+  )
+
+("GOL-AM10" :hint #x0
+  (0 "GOL" "HA, HA, HA, HA, HA!")
+  )
+
+("GOL-AM11" :hint #x0
+  (0 "GOL" "KEINE GNADE!")
+  )
+
+("GOL-AM12" :hint #x0
+  (0 "GOL" "NIMM DAS!")
+  )
+
+("GOL-AM13" :hint #x0
+  (0 "GOL" "NETTER VERSUCH!")
+  )
+
+("GOL-AM14" :hint #x0
+  (0 "GOL" "HALT STILL!")
+  )
+
+("GOL-AM15" :hint #x0
+  (0 "GOL" "ERBÄRMLICH!")
+  )
+
+("GOL-AM16" :hint #x0
+  (0 "GOL" "NEEEIN!")
+  )
+
+("GOL-AM17" :hint #x0
+  (0 "GOL" "AHHH!")
+  )
+
+("GOL-AM18" :hint #x0
+  (0 "GOL" "WIR WERDEN DIE ECO-STATION GANZ ÖFFNEN UND EUCH ZWEI VERNICHTEN!")
+  )
+
+("GOL-AM19" :hint #x0
+  (0 "GOL" "HELLES ECO! ES EXISTIERT ALSO WIRKLICH!")
+  )
+
+("GOL-AM20" :hint #x0
+  (0 "GOL" "DAS LASSEN WIR UNS NICHT GEFALLEN!")
+  )
+
+("MAI-AM01" :hint #x0
+  (0 "MAIA" "ERLEDIGE SIE BEIDE, EIN FÜR ALLE MAL!")
+  )
+
+("MAI-AM02" :hint #x0
+  (0 "MAIA" "MACH SIE FERTIG!")
+  )
+
+("MAI-AM03" :hint #x0
+  (0 "MAIA" "HA, HA, HA!")
+  )
+
+("MAI-AM04" :hint #x0
+  (0 "MAIA" "ECO HILFT EUCH JETZT NICHT MEHR!")
+  )
+
+("MAI-AM05" :hint #x0
+  (0 "MAIA" "TU DOCH WAS!")
+  )
+
+("MAI-AM06" :hint #x0
+  (0 "MAIA" "AAAAH!")
+  )
+
+("MAI-AM07" :hint #x0
+  (0 "MAIA" "NEEEEEIN!")
+  )
+
+("MAI-AM08" :hint #x0
+  (0 "MAIA" "WIR WERDEN DIE ECO-STATION GANZ ÖFFNEN UND EUCH ZWEI VERNICHTEN!")
+  )
+
+("MAI-AM09" :hint #x0
+  (0 "MAIA" "SIE DÜRFEN ES NICHT BEKOMMEN!")
+  )
+
 ("finalbosscam-white-eco"
   (143 :offscreen "GOL" "HELLES ECO?! ES EXISTIERT ALSO WIRKLICH!")
   (268 :offscreen "MAIA" "SIE DÜRFEN ES NICHT BEKOMMEN!")
