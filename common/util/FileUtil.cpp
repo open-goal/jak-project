@@ -511,4 +511,16 @@ std::vector<u8> decompress_dgo(const std::vector<u8>& data_in) {
   return decompressed_data;
 }
 
+std::vector<fs::path> find_files_recursively(const fs::path base_dir, const std::regex& pattern) {
+  std::vector<fs::path> files = {};
+  for (auto& p : fs::recursive_directory_iterator(base_dir)) {
+    if (p.is_regular_file()) {
+      if (std::regex_match(fs::path(p.path()).filename().string(), pattern)) {
+        files.push_back(p.path());
+      }
+    }
+  }
+  return files;
+}
+
 }  // namespace file_util

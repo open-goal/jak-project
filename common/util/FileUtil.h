@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <optional>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -44,4 +45,5 @@ void ISONameFromAnimationName(char* dst, const char* src);
 void assert_file_exists(const char* path, const char* error_message);
 bool dgo_header_is_compressed(const std::vector<u8>& data);
 std::vector<u8> decompress_dgo(const std::vector<u8>& data_in);
+std::vector<fs::path> find_files_recursively(const fs::path base_dir, const std::regex& pattern);
 }  // namespace file_util

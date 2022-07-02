@@ -34,7 +34,10 @@ struct IsoFile {
 };
 
 IsoFile find_files_in_iso(FILE* fp);
-void unpack_iso_files(FILE* fp, IsoFile& layout, const std::filesystem::path& dest);
+void unpack_iso_files(FILE* fp,
+                      IsoFile& layout,
+                      const std::filesystem::path& dest,
+                      bool print_progress);
 IsoFile unpack_iso_files(FILE* fp,
                          const std::filesystem::path& dest,
                          bool print_progress,
