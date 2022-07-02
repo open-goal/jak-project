@@ -167,8 +167,7 @@ On Windows, it's recommended to use a package manager, we use Scoop. Follow the 
 Once Scoop is installed, run the following commands:
 
 ```sh
-scoop install git llvm nasm python
-scoop install task
+scoop install git llvm nasm python task
 ```
 
 ### Setting up and Opening the Project
@@ -183,7 +182,7 @@ This will create a `jak-project` folder, open the project as a CMake project via
 
 ![](./docs/img/windows/open-project.png)
 
-Then build the entire project as `Windows Release (clang-cl)`. You can also press Ctrl+Shift+B as a hotkey for Build All.  We currently prefer `clang-cl` on Windows as opposed to `msvc`, though it should work as well!
+Then build the entire project as `Windows Release (clang)`. You can also press Ctrl+Shift+B as a hotkey for Build All.  We currently prefer `clang` on Windows as opposed to `msvc`, though it should work as well!
 
 ![](./docs/img/windows/release-build.png)
 ![](./docs/img/windows/build-all.png)
