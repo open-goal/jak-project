@@ -16,6 +16,26 @@
 #include "third-party/CLI11.hpp"
 #include "third-party/fmt/format.h"
 
+// json config file data (previously was in source of offline_test_main.cpp)
+struct OfflineTestConfig {
+  std::vector<std::string> dgos;
+  std::unordered_set<std::string> skip_compile_files;
+  std::unordered_set<std::string> skip_compile_functions;
+  std::unordered_map<std::string, std::unordered_set<std::string>> skip_compile_states;
+};
+
+struct DecompilerFile {
+  std::filesystem::path path;
+  std::string name_in_dgo;
+  std::string unique_name;
+  std::string reference;
+};
+
+struct DecompilerArtFile {
+  std::string name_in_dgo;
+  std::string unique_name;
+};
+
 struct Decompiler {
   std::unique_ptr<decompiler::ObjectFileDB> db;
   std::unique_ptr<decompiler::Config> config;
@@ -25,6 +45,11 @@ struct Decompiler {
 std::unordered_map<std::string, std::string> game_name_to_config = {
     {"jak1", "jak1_ntsc_black_label.jsonc"},
     {"jak2", "jak2_ntsc_v1.jsonc"}};
+
+// TODO - i think these should be partitioned by game name instead of it being in the filename
+// (and the names not being consistent)
+std::unordered_map<std::string, std::string> game_name_to_all_types = {{"jak1", "all-types.gc"},
+                                                                       {"jak2", "all-types2.gc"}};
 
 Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
                             const std::vector<DecompilerArtFile>& art_files,
@@ -167,12 +192,14 @@ CompareResult compare(Decompiler& dc, const std::vector<DecompilerFile>& refs, b
 
 bool compile(Decompiler& dc,
              const std::vector<DecompilerFile>& refs,
-             const OfflineTestConfig& config) {
+             const OfflineTestConfig& config,
+             const std::string& game_name) {
   fmt::print("Setting up compiler...\n");
   Compiler compiler;
 
-  compiler.run_front_end_on_file({"decompiler", "config", "all-types.gc"});
-  compiler.run_front_end_on_file({"test", "decompiler", "reference", "decompiler-macros.gc"});
+  compiler.run_front_end_on_file({"decompiler", "config", game_name_to_all_types[game_name]});
+  compiler.run_front_end_on_file(
+      {"test", "decompiler", "reference", game_name, "decompiler-macros.gc"});
 
   Timer timer;
   int total_lines = 0;
@@ -201,11 +228,6 @@ bool compile(Decompiler& dc,
 
   return true;
 }
-
-struct DecompilerArtFile {
-  std::string name_in_dgo;
-  std::string unique_name;
-};
 
 std::vector<DecompilerArtFile> find_art_files(const std::string& game_name,
                                               const std::vector<std::string>& dgos) {
@@ -236,6 +258,7 @@ std::vector<DecompilerArtFile> find_art_files(const std::string& game_name,
           break;
         }
         // can either be in the DGO or CGO folder, and can either end with .CGO or .DGO
+        // TODO - Jak 2 Folder structure will be different!
         if (std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.DGO", dgo)) != dgos.end() ||
             std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.CGO", dgo)) != dgos.end() ||
             std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.DGO", dgo)) != dgos.end() ||
@@ -264,23 +287,18 @@ std::vector<DecompilerArtFile> find_art_files(const std::string& game_name,
   return result;
 }
 
-struct DecompilerFile {
-  std::filesystem::path path;
-  std::string name_in_dgo;
-  std::string unique_name;
-  std::string reference;
-};
-
 std::vector<DecompilerFile> find_files(const std::string& game_name,
                                        const std::vector<std::string>& dgos) {
   std::vector<DecompilerFile> result;
 
   auto base_dir =
       file_util::get_jak_project_dir() / "test" / "decompiler" / "reference" / game_name;
-  auto ref_file_paths = file_util::find_files_recursively(base_dir, std::regex(".*_REF\..*"));
+  auto ref_file_paths = file_util::find_files_recursively(base_dir, std::regex(".*_REF\\..*"));
   std::unordered_map<std::string, fs::path> ref_file_names = {};
   for (const auto& path : ref_file_paths) {
-    ref_file_names[path.filename().replace_extension().string()] = path;
+    auto ref_name = path.filename().replace_extension().string();
+    ref_name.erase(ref_name.begin() + ref_name.find("_REF"), ref_name.end());
+    ref_file_names[ref_name] = path;
   }
 
   lg::info("Found {} reference files", ref_file_paths.size());
@@ -305,6 +323,7 @@ std::vector<DecompilerFile> find_files(const std::string& game_name,
       for (int i = 0; i < (int)dgoList.size(); i++) {
         std::string& dgo = dgoList.at(i);
         // can either be in the DGO or CGO folder, and can either end with .CGO or .DGO
+        // TODO - Jak 2 Folder structure will be different!
         if (std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.DGO", dgo)) != dgos.end() ||
             std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.CGO", dgo)) != dgos.end() ||
             std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.DGO", dgo)) != dgos.end() ||
@@ -342,14 +361,6 @@ std::vector<DecompilerFile> find_files(const std::string& game_name,
   return result;
 }
 
-// json config file data (previously was in source of offline_test_main.cpp)
-struct OfflineTestConfig {
-  std::vector<std::string> dgos;
-  std::unordered_set<std::string> skip_compile_files;
-  std::unordered_set<std::string> skip_compile_functions;
-  std::unordered_map<std::string, std::unordered_set<std::string>> skip_compile_states;
-};
-
 /*!
  * Read and parse the json config file, config.json, located in test/offline
  */
@@ -380,6 +391,8 @@ int main(int argc, char* argv[]) {
   bool dump_current_output = false;
   std::string iso_data_path;
   std::string game_name;
+  // Useful for testing in debug mode (dont have to wait for everything to finish)
+  int max_files = -1;
 
   CLI::App app{"OpenGOAL - Offline Reference Test Runner"};
   app.add_option("--iso_data_path", iso_data_path, "The path to the folder with the ISO data files")
@@ -389,6 +402,8 @@ int main(int argc, char* argv[]) {
   app.add_flag("-d,--dump_current_output", dump_current_output,
                "Output the current output to a folder, use in conjunction with the reference test "
                "files update script");
+  app.add_flag("-m,--max_files", max_files,
+               "Limit the amount of files ran in a single test, picks the first N");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
@@ -404,6 +419,9 @@ int main(int argc, char* argv[]) {
 
   lg::info("Finding files...");
   auto files = find_files(game_name, config->dgos);
+  if (max_files > 0 && max_files < files.size()) {
+    files.erase(files.begin() + max_files, files.end());
+  }
   auto art_files = find_art_files(game_name, config->dgos);
 
   lg::info("Setting up decompiler and loading files...");
@@ -414,7 +432,7 @@ int main(int argc, char* argv[]) {
   disassemble(decompiler);
 
   lg::info("Decompiling...");
-  decompile(decompiler, config);
+  decompile(decompiler, config.value());
 
   lg::info("Comparing...");
   auto compare_result = compare(decompiler, files, dump_current_output);
@@ -428,7 +446,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  bool compile_result = compile(decompiler, files, config.value());
+  bool compile_result = compile(decompiler, files, config.value(), game_name);
 
   if (compare_result.total_pass && compile_result) {
     lg::info("Pass!");
