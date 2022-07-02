@@ -392,9 +392,11 @@ bool SubtitleEditor::any_cutscenes_in_group(const std::string& group_name) {
   auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
   auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
   for (auto& scene_name : scenes_in_group) {
-    auto& scene_info = scenes.at(scene_name);
-    if (scene_info.m_kind == SubtitleSceneKind::Movie) {
-      return true;
+    if (scenes.count(scene_name) != 0) {
+      auto& scene_info = scenes.at(scene_name);
+      if (scene_info.m_kind == SubtitleSceneKind::Movie) {
+        return true;
+      }
     }
   }
   return false;
@@ -421,9 +423,11 @@ bool SubtitleEditor::any_hints_in_group(const std::string& group_name) {
   auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
   auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
   for (auto& scene_name : scenes_in_group) {
-    auto& scene_info = scenes.at(scene_name);
-    if (scene_info.m_kind != SubtitleSceneKind::Movie) {
-      return true;
+    if (scenes.count(scene_name) != 0) {
+      auto& scene_info = scenes.at(scene_name);
+      if (scene_info.m_kind != SubtitleSceneKind::Movie) {
+        return true;
+      }
     }
   }
   return false;
@@ -472,9 +476,7 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
     }
     if (base_cutscenes) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
-    }
-
-    if (m_db.count(scene_name) == 0) {
+    } else if (m_db.count(scene_name) == 0) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_warning_color);
     }
 
@@ -630,13 +632,16 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       ImGui::InputText("Speaker", &subtitleLine.speaker);
       ImGui::InputText("Text", &linetext);
       ImGui::Checkbox("Offscreen?", &subtitleLine.offscreen);
-      ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
-      if (scene.m_lines.size() > 1) {  // prevent creating an empty scene
-        if (ImGui::Button("Remove Line")) {
-          scene.m_lines.erase(scene.m_lines.begin() + i);
-        }
-      }
-      ImGui::PopStyleColor();
+      // TODO - deleting while iterating is a bad pattern, especially with imgui's declarative
+      // style
+      // disabling this for now, it's not working in it's current state.
+      // if (scene.m_lines.size() > 1) {  // prevent creating an empty scene
+      //  ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
+      //  if (ImGui::Button("Remove Line")) {
+      //    scene.m_lines.erase(scene.m_lines.begin() + i);
+      //  }
+      //  ImGui::PopStyleColor();
+      //}
       ImGui::TreePop();
     } else if (linetext.empty() || subtitleLine.offscreen) {
       ImGui::PopStyleColor();
