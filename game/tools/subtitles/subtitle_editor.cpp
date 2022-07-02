@@ -96,7 +96,16 @@ void SubtitleEditor::repl_execute_cutscene_code(const SubtitleEditorDB::Entry& e
     temp = std::regex_replace(temp, std::regex("__GET-PROCESS__"),
                               repl_get_process_string(entry.entity_type, entry.process_name));
     m_repl.eval("(send-event *camera* 'teleport)");
-    m_repl.eval(temp);
+    if (entry.delay_frames == 0) {
+      m_repl.eval(temp);
+    } else {
+      // We do this in a separate thread to introduce a delay -- allow the game to catch up before
+      // running the critical section
+      auto code =
+          fmt::format("(process-spawn-function process (lambda () (dotimes (i {}) (suspend)) {}))",
+                      entry.delay_frames, temp);
+      m_repl.eval(code);
+    }
   }
 }
 
@@ -264,6 +273,11 @@ void SubtitleEditor::update_subtitle_editor_db() {
       new_entry.process_name = val.at("process_name").get<std::string>();
       new_entry.continue_name = val.at("continue_name").get<std::string>();
       new_entry.move_to = val.at("move_to").get<std::vector<double>>();
+      if (val.contains("delay")) {
+        new_entry.delay_frames = val.at("delay").get<int>();
+      } else {
+        new_entry.delay_frames = 0;
+      }
       if (val.contains("move_first")) {
         new_entry.move_first = val.at("move_first").get<bool>();
       } else {
@@ -378,9 +392,11 @@ bool SubtitleEditor::any_cutscenes_in_group(const std::string& group_name) {
   auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
   auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
   for (auto& scene_name : scenes_in_group) {
-    auto& scene_info = scenes.at(scene_name);
-    if (scene_info.m_kind == SubtitleSceneKind::Movie) {
-      return true;
+    if (scenes.count(scene_name) != 0) {
+      auto& scene_info = scenes.at(scene_name);
+      if (scene_info.m_kind == SubtitleSceneKind::Movie) {
+        return true;
+      }
     }
   }
   return false;
@@ -407,9 +423,11 @@ bool SubtitleEditor::any_hints_in_group(const std::string& group_name) {
   auto& scenes = m_subtitle_db.m_banks.at(m_current_language)->m_scenes;
   auto scenes_in_group = m_subtitle_db.m_subtitle_groups->m_groups[group_name];
   for (auto& scene_name : scenes_in_group) {
-    auto& scene_info = scenes.at(scene_name);
-    if (scene_info.m_kind != SubtitleSceneKind::Movie) {
-      return true;
+    if (scenes.count(scene_name) != 0) {
+      auto& scene_info = scenes.at(scene_name);
+      if (scene_info.m_kind != SubtitleSceneKind::Movie) {
+        return true;
+      }
     }
   }
   return false;
@@ -458,9 +476,7 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
     }
     if (base_cutscenes) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
-    }
-
-    if (m_db.count(scene_name) == 0) {
+    } else if (m_db.count(scene_name) == 0) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_warning_color);
     }
 
@@ -616,13 +632,16 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       ImGui::InputText("Speaker", &subtitleLine.speaker);
       ImGui::InputText("Text", &linetext);
       ImGui::Checkbox("Offscreen?", &subtitleLine.offscreen);
-      ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
-      if (scene.m_lines.size() > 1) {  // prevent creating an empty scene
-        if (ImGui::Button("Remove Line")) {
-          scene.m_lines.erase(scene.m_lines.begin() + i);
-        }
-      }
-      ImGui::PopStyleColor();
+      // TODO - deleting while iterating is a bad pattern, especially with imgui's declarative
+      // style
+      // disabling this for now, it's not working in it's current state.
+      // if (scene.m_lines.size() > 1) {  // prevent creating an empty scene
+      //  ImGui::PushStyleColor(ImGuiCol_Button, m_warning_color);
+      //  if (ImGui::Button("Remove Line")) {
+      //    scene.m_lines.erase(scene.m_lines.begin() + i);
+      //  }
+      //  ImGui::PopStyleColor();
+      //}
       ImGui::TreePop();
     } else if (linetext.empty() || subtitleLine.offscreen) {
       ImGui::PopStyleColor();
