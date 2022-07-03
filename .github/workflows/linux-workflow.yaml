@@ -1,7 +1,5 @@
 name: Linux
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
 on:
   push:
     branches:
@@ -15,7 +13,6 @@ on:
 jobs:
   build:
     strategy:
-      # Prevent one build from failing everything (although maybe those should be included as experimental builds instead)
       fail-fast: false
       matrix:
         os: [ubuntu-20.04]
@@ -23,7 +20,6 @@ jobs:
 
     name: ${{ matrix.compiler }}
     runs-on: ${{ matrix.os }}
-    # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.
     timeout-minutes: 45
 
     env: # overrides: https://github.com/mbitsnbites/buildcache/blob/master/doc/configuration.md
@@ -33,63 +29,66 @@ jobs:
       BUILDCACHE_DIRECT_MODE: true
       BUILDCACHE_LOG_FILE: ${{ github.workspace }}/buildcache.log
 
+    # TODO - separate clang and gcc into separate workflows
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Checkout Submodules
-        run: git submodule update --init --recursive -j 2
-
-      - name: Get Common Package Dependencies
-        run: sudo apt install build-essential cmake clang gcc g++ lcov make nasm libxrandr-dev libxinerama-dev libxcursor-dev libpulse-dev libxi-dev zip
-
-      - name: Get Clang
-        if: matrix.compiler == 'clang'
-        run: sudo apt install clang
+      - name: Install Package Dependencies
+        run: >
+          sudo apt install build-essential cmake
+          clang gcc g++ lcov make nasm libxrandr-dev
+          libxinerama-dev libxcursor-dev libpulse-dev
+          libxi-dev zip
 
       - name: Setup Buildcache
-        uses: mikehardy/buildcache-action@v1.2.2
+        uses: mikehardy/buildcache-action@v1.3.0
         with:
           cache_key: ${{ matrix.os }}-${{ matrix.compiler }}
 
-      - name: CMake Generation - Clang
-        if: matrix.compiler == 'clang' && !startsWith(github.ref, 'refs/tags/')
+      # TODO - CMake - replace with presets!
+      - name: CMake Generation - Clang - ASAN
+        if: matrix.compiler == 'clang'
+        env:
+          CC: clang
+          CXX: clang++
         run: |
-          export CC=clang
-          export CXX=clang++
+          ls -l ${{ github.workspace }}/buildcache/bin/buildcache
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_FOR_RELEASE=ON \
-            -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
-            -DASAN_BUILD=ON
+            -DASAN_BUILD=ON \
+            -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache
 
-      - name: CMake Generation - Clang - No ASAN
+      # TODO - CMake - replace with presets!
+      - name: CMake Generation - Clang - Statically Linked
         if: matrix.compiler == 'clang' && startsWith(github.ref, 'refs/tags/')
+        env:
+          CC: clang
+          CXX: clang++
         run: |
-          export CC=clang
-          export CXX=clang++
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_FOR_RELEASE=ON \
-            -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
-            -DASAN_BUILD=OFF
+            -DSTATICALLY_LINK=ON \
+            -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache
 
       - name: CMake Generation - GCC
         if: matrix.compiler == 'gcc'
+        env:
+          CC: gcc
+          CXX: g++
         run: |
-          export CC=gcc
-          export CXX=g++
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
-            -DCODE_COVERAGE=ON
+            -DCODE_COVERAGE=ON \
+            -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache
 
       - name: Build Project
         working-directory: ./build
-        run: make -j4
+        run: make -j$((`nproc`+1))
 
       - name: Run Tests
         if: matrix.compiler == 'clang'
@@ -105,8 +104,26 @@ jobs:
         continue-on-error: true
         with:
           project-token: ${{ secrets.CODACY_PROJECT_KEY }}
-          # lcov report
           coverage-reports: ./build/goalc-test_coverage.info
+
+      - name: Upload artifact
+        # NOTE - the GCC executables are huge as they've been compiled with coverage support
+        if: matrix.compiler == 'clang'
+        uses: actions/upload-artifact@v3
+        with:
+          name: opengoal-${{ matrix.os }}-${{ matrix.compiler }}
+          path: |
+            ./build/**/*.so
+            ./build/**/*.a
+            ./build/decompiler/decompiler
+            ./build/decompiler/extractor
+            ./build/game/gk
+            ./build/sound/sndplay
+            ./build/goalc/goalc
+            ./build/tools/dgo_packer
+            ./build/tools/dgo_unpacker
+            ./build/tools/memory_dump_tolls
+            ./build/tools/level_tools/level_dump
 
       # ---- Release / Tagging related steps ----
       - name: Prepare Build Artifacts

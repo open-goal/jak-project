@@ -39,44 +39,51 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Checkout Submodules
-        run: git submodule update --init --recursive -j 2
-
-      - name: Install Dependencies
-        run: Choco-Install -PackageName nasm
+      - name: Install NASM
+        run: choco install ${{ github.workspace }}/third-party/nasm/nasm.2.15.05.nupkg
 
       - name: Setup Buildcache
-        uses: mikehardy/buildcache-action@v1.2.2
+        uses: mikehardy/buildcache-action@v1.3.0
         with:
           cache_key: ${{ matrix.os }}-${{ matrix.compiler }}
 
-      # TODO - eventually fight with this to get it to use Ninja and such
-      - name: CMake Generation
-        shell: cmd # ideally id like everything to be powershell but running this bat file is finicky
-        run: |
-          if "${{ matrix.compiler }}" == "clang" (
-            call "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
-            cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_FOR_RELEASE=ON -DCMAKE_C_COMPILER="C:/Program Files/LLVM/bin/clang-cl.exe" -DCMAKE_CXX_COMPILER="C:/Program Files/LLVM/bin/clang-cl.exe" .
-          ) else (
-            call "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
-            cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe .
-          )
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      # TODO - separate workflows!
+
+      - name: CMake Generation - Clang
+        shell: cmd
+        if: matrix.compiler == 'clang'
+        run: cmake -B build --preset=Release-clang -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe .
+
+      - name: CMake Generation - Clang - Statically Linked
+        shell: cmd
+        if: matrix.compiler == 'clang' && startsWith(github.ref, 'refs/tags/')
+        run: cmake -B build --preset=Release-clang-static -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe .
+
+      - name: CMake Generation - MSVC
+        shell: cmd
+        if: matrix.compiler == 'msvc'
+        run: cmake -B build --preset=Release-msvc -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe .
 
       - name: Build Project
-        working-directory: ./build
         shell: cmd
         run: |
-          call "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
           if "${{ matrix.compiler }}" == "msvc" (
             set CL=/MP
           )
-          nmake
+          cmake --build build -j 2
 
       - name: Run Tests
-        timeout-minutes: 5
-        env:
-          NEXT_DIR: ${{ github.workspace }}
+        timeout-minutes: 10
         run: ./build/bin/goalc-test.exe --gtest_color=yes --gtest_filter="-*MANUAL_TEST*"
+
+      - name: Upload artifact
+        if: matrix.compiler == 'clang'
+        uses: actions/upload-artifact@v3
+        with:
+          name: opengoal-${{ matrix.os }}-${{ matrix.compiler }}
+          path: ./build/bin
 
       # ---- Release / Tagging related steps ----
       - name: Prepare Build Artifacts
