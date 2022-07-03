@@ -98,8 +98,10 @@ endif ()
 # =============================================================================================== #
 
 if (ZYDIS_BUILD_SHARED_LIB)
+    message(STATUS "zydis: dynamically linking")
     add_library("Zydis" SHARED)
 else ()
+    message(STATUS "zydis: statically linking")
     add_library("Zydis" STATIC)
     target_compile_definitions("Zydis" PUBLIC "ZYDIS_STATIC_BUILD")
 endif ()
