@@ -15,9 +15,8 @@ endif()
 
 # Potentially statically build the project
 option(STATICALLY_LINK "Build for release purposes (statically link everything)" OFF)
-
+message(STATUS "Statically Link? ${STATICALLY_LINK}")
 if(STATICALLY_LINK)
-    message(STATUS "Statically linking project")
     set(BUILD_SHARED_LIBS OFF)
 else()
     set(BUILD_SHARED_LIBS ON)
@@ -208,9 +207,10 @@ option(ZYDIS_BUILD_EXAMPLES "Zydis: Build examples" OFF)
 
 if(STATICALLY_LINK)
     message(STATUS "Statically linking zydis")
-    set(ZYDIS_BUILD_SHARED_LIB OFF)
+    option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" OFF)
 else()
-    set(ZYDIS_BUILD_SHARED_LIB ON)
+    message(STATUS "dynamically linking zydis")
+    option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" ON)
 endif()
 
 add_subdirectory(third-party/zydis EXCLUDE_FROM_ALL)
