@@ -102,6 +102,8 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
   // compile files.
   if (kind == "subtitle") {
     GameSubtitleDB db;
+    db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
+    db.m_subtitle_groups->hydrate_from_asset_file();
     compile_game_subtitle(inputs, db, m_make.compiler_output_prefix());
   } else if (kind == "text") {
     GameTextDB db;

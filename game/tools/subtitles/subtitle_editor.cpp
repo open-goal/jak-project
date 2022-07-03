@@ -3,7 +3,7 @@
 #include <regex>
 #include <string_view>
 
-#include "common/deserialization/subtitles/subtitles.h"
+#include "common/serialization/subtitles/subtitles_deser.h"
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 
@@ -25,8 +25,8 @@ void SubtitleEditor::repl_set_continue_point(const std::string_view& continue_po
 
 void SubtitleEditor::repl_move_jak(const double x, const double y, const double z) {
   m_repl.eval(
-      fmt::format("(move-to-point! (-> *target* control) (new 'static 'vector :x (meters {:.1f}) "
-                  ":y (meters {:.1f}) :z (meters {:.1f})))",
+      fmt::format("(move-to-point! (-> *target* control) (new 'static 'vector :x (meters {:.3f}) "
+                  ":y (meters {:.3f}) :z (meters {:.3f})))",
                   x, y, z));
   m_repl.eval("(send-event *camera* 'teleport)");
 }
@@ -608,15 +608,15 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
   for (size_t i = 0; i < scene.m_lines.size(); i++) {
     auto& subtitleLine = scene.m_lines.at(i);
     auto linetext = font->convert_game_to_utf8(subtitleLine.line.c_str());
+    auto linespkr = font->convert_game_to_utf8(subtitleLine.speaker.c_str());
     std::string summary;
     if (linetext.empty()) {
       summary = fmt::format("[{}] Clear Screen", subtitleLine.frame);
     } else if (linetext.length() >= 30) {
-      summary = fmt::format("[{}] {} - '{}...'", subtitleLine.frame, subtitleLine.speaker,
-                            linetext.substr(0, 30));
+      summary =
+          fmt::format("[{}] {} - '{}...'", subtitleLine.frame, linespkr, linetext.substr(0, 30));
     } else {
-      summary = fmt::format("[{}] {} - '{}'", subtitleLine.frame, subtitleLine.speaker,
-                            linetext.substr(0, 30));
+      summary = fmt::format("[{}] {} - '{}'", subtitleLine.frame, linespkr, linetext.substr(0, 30));
     }
     if (linetext.empty()) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
@@ -629,7 +629,7 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       }
       ImGui::InputInt("Starting Frame", &subtitleLine.frame,
                       ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
-      ImGui::InputText("Speaker", &subtitleLine.speaker);
+      ImGui::InputText("Speaker", &linespkr);
       ImGui::InputText("Text", &linetext);
       ImGui::Checkbox("Offscreen?", &subtitleLine.offscreen);
       // TODO - deleting while iterating is a bad pattern, especially with imgui's declarative
@@ -647,7 +647,9 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       ImGui::PopStyleColor();
     }
     auto newtext = font->convert_utf8_to_game_with_escape(linetext);
+    auto newspkr = font->convert_utf8_to_game_with_escape(linespkr);
     subtitleLine.line = newtext;
+    subtitleLine.speaker = newspkr;
   }
 }
 
