@@ -363,4 +363,12 @@ void update_gamepads() {
     clear_pad(1);
 }
 
+int rumble(int pad, float slow_motor, float fast_motor) {
+  if (g_gamepads.gamepad_idx[pad] != -1 &&
+      glfwSetJoystickRumble(g_gamepads.gamepad_idx[pad], slow_motor, fast_motor)) {
+    return 1;
+  }
+  return 0;
+}
+
 };  // namespace Pad
