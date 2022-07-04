@@ -1,8 +1,8 @@
-if (UNIX)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   set(CMAKE_CXX_FLAGS "-O3")
-else ()
+elseif(MSVC)
   set(CMAKE_CXX_FLAGS "/EHsc")
-endif (UNIX)
+endif()
 
 include_directories(../)
 add_library(fmt format.cc)

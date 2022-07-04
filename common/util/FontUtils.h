@@ -83,4 +83,5 @@ class GameTextFontBank {
 extern std::map<GameTextVersion, GameTextFontBank*> g_font_banks;
 
 const GameTextFontBank* get_font_bank(GameTextVersion version);
+const GameTextFontBank* get_font_bank(const std::string& name);
 bool font_bank_exists(GameTextVersion version);

@@ -4,7 +4,7 @@
 #include <string_view>
 
 #include "common/nrepl/ReplClient.h"
-#include "common/serialization/subtitles/subtitles.h"
+#include "common/serialization/subtitles/subtitles_ser.h"
 
 #include "third-party/imgui/imgui.h"
 
@@ -15,6 +15,7 @@ class SubtitleEditorDB {
     std::string process_name;
     std::string continue_name;
     std::vector<double> move_to;
+    int delay_frames;
     std::string execute_code;
     bool move_first;
     std::vector<std::string> requirements;

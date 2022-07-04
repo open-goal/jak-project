@@ -6,7 +6,6 @@ add_library(common
         cross_sockets/XSocketClient.cpp
         custom_data/pack_helpers.cpp
         custom_data/TFrag3Data.cpp
-        deserialization/subtitles/subtitles.cpp
         dma/dma.cpp
         dma/dma_copy.cpp
         dma/gs.cpp
@@ -24,7 +23,6 @@ add_library(common
         math/geometry.cpp
         nrepl/ReplClient.cpp
         nrepl/ReplServer.cpp
-        serialization/subtitles/subtitles.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp
         type_system/state.cpp
@@ -32,6 +30,8 @@ add_library(common
         type_system/TypeFieldLookup.cpp
         type_system/TypeSpec.cpp
         type_system/TypeSystem.cpp
+        serialization/subtitles/subtitles_ser.cpp
+        serialization/subtitles/subtitles_deser.cpp
         util/Assert.cpp
         util/BitUtils.cpp
         util/compress.cpp

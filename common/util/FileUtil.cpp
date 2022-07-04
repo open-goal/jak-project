@@ -116,15 +116,15 @@ std::optional<std::string> try_get_jak_project_path() {
     return {};
   }
 
-  return std::string(my_path).substr(
-      0, pos + 11);  // + 12 to include "/jak-project" in the returned filepath
+  return std::make_optional(std::string(my_path).substr(
+      0, pos + 11));  // + 12 to include "/jak-project" in the returned filepath
 }
 
 std::optional<std::filesystem::path> try_get_data_dir() {
   std::filesystem::path my_path = get_current_executable_path();
   auto data_dir = my_path.parent_path() / "data";
   if (std::filesystem::exists(data_dir) && std::filesystem::is_directory(data_dir)) {
-    return data_dir;
+    return std::make_optional(data_dir);
   } else {
     return {};
   }
@@ -186,7 +186,8 @@ std::string get_file_path(const std::vector<std::string>& input) {
 
 bool create_dir_if_needed(const std::filesystem::path& path) {
   if (!std::filesystem::is_directory(path)) {
-    return std::filesystem::create_directories(path);
+    std::filesystem::create_directories(path);
+    return true;
   }
   return false;
 }
