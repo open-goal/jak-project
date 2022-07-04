@@ -336,9 +336,9 @@ int InitMachine() {
   // }
 
   // do this always
-  // if (MasterDebug) {  // connect to GOAL compiler
-  InitGoalProto();
-  //}
+  if (MasterDebug) {  // connect to GOAL compiler
+    InitGoalProto();
+  }
 
   lg::info("InitSound");
   InitSound();  // do nothing!
