@@ -284,9 +284,8 @@
 
 (define-perm *temp-options-alloced* symbol #f)
 
-(defconstant RESOLUTIONS 6)
-(define *resolutions* (new 'static 'array int32 RESOLUTIONS
-    640 720 768 800 960 1080))
+(define *resolutions* (new 'static 'boxed-array :type int32
+    640 720 768 800 900 960 1080))
 
 ;; this is to avoid changing the value of *temp-options* or reallocating the options when reloading file
 (unless *temp-options-alloced*
@@ -305,13 +304,13 @@
       
     (until found
       
-      (dotimes (i RESOLUTIONS)
+      (dotimes (i (-> *resolutions* length))
         (let ((thisr (the int (* mult (the float (-> *resolutions* i))))))
         (cond
           ((< sy thisr)
            (if (zero? i)
                (*! mult 0.5))
-           (set! i RESOLUTIONS)
+           (set! i (-> *resolutions* length))
            (true! found)
            )
           (else
@@ -408,7 +407,7 @@
         (set! aspect (-> *pc-settings* aspect-ratio))
         
         (until (or done? (= (length *temp-options*) max-options))
-          (countdown (i RESOLUTIONS)
+          (countdown (i (-> *resolutions* length))
             (let* ((thisr (the int (* mult (the float (-> *resolutions* i)))))
                   (thisx (the int (* aspect (the float thisr))))
                   (thisy thisr)
