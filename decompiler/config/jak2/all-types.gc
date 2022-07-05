@@ -8,12 +8,26 @@
 (define-extern basic type)
 (define-extern pair type)
 (define-extern array type)
+(define-extern symbol type)
+(define-extern binteger type)
+(define-extern number type)
+(define-extern integer type)
+(define-extern float type)
+(define-extern boolean type) ;; not actually added as a runtime type in jak2, but valid? supports it.
+
 
 ;; some types we need.
 (declare-type sparticle-launch-group basic)
 (declare-type lightning-spec basic)
 (declare-type sparticle-launcher basic)
 (declare-type state basic)
+(declare-type res-lump basic)
+
+;; kernel types
+(define-extern *debug-segment* symbol)
+(define-extern nothing (function none))
+(define-extern _format (function _varargs_ object))
+(define-extern method-set! (function type int object none)) ;; may actually return function.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gcommon                        ;;
@@ -29,32 +43,29 @@
   )
 |#
 
-#|
 (deftype vec4s (uint128)
-  ()
+  ((x float :offset 0)
+   (y float :offset 32)
+   (z float :offset 64)
+   (w float :offset 96))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
-  ;; Failed to read some fields.
   )
-|#
 
-#|
 (deftype vector (structure)
-  ((data float   4 :offset-assert 0) ;; guessed by decompiler
-   (x    float     :offset-assert 0)
-   (y    float     :offset-assert 4)
-   (z    float     :offset-assert 8)
-   (w    float     :offset-assert 12)
-   (quad uint128   :offset-assert 0)
+  ((data float   4 :offset-assert 0)
+   (x    float     :offset 0)
+   (y    float     :offset 4)
+   (z    float     :offset 8)
+   (w    float     :offset 12)
+   (quad uint128   :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype bfloat (basic)
   ((data float  :offset-assert 4)
    )
@@ -62,72 +73,73 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype inline-array-class (basic)
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
+   ;; this is 16-byte aligned.
+   ;; children of inline-array-class should define their own data which overlays this one.
+   (_data            uint8  :score -50 :dynamic :offset 16)
    )
+  (:methods (new (symbol type int) _type_ 0))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern identity object) ;; (function object object)
-;; (define-extern 1/ object) ;; (function float float)
-;; (define-extern + object) ;; (function int int int)
-;; (define-extern - object) ;; (function int int int)
-;; (define-extern * object) ;; (function int int int)
-;; (define-extern / object) ;; (function int int int)
-;; (define-extern ash object) ;; (function int int int)
-;; (define-extern mod object) ;; (function int int int)
-;; (define-extern rem object) ;; (function int int int)
-;; (define-extern abs object) ;; (function int int)
-;; (define-extern min object) ;; (function int int int)
-;; (define-extern max object) ;; (function int int int)
-;; (define-extern logior object) ;; (function int int int)
-;; (define-extern logand object) ;; (function int int int)
-;; (define-extern lognor object) ;; (function int int int)
-;; (define-extern logxor object) ;; (function int int int)
-;; (define-extern lognot object) ;; (function int int)
-;; (define-extern false-func object) ;; (function symbol)
-;; (define-extern true-func object) ;; (function symbol)
-;; (define-extern format object) ;; (function _varargs_ object)
-;; (define-extern basic-type? object) ;; (function basic type symbol)
-;; (define-extern type-type? object) ;; (function type type symbol)
-;; (define-extern type? object)
-;; (define-extern find-parent-method object) ;; (function type int function)
-;; (define-extern ref object) ;; (function object int object)
-;; (define-extern last object) ;; (function object object)
-;; (define-extern member object) ;; (function object object object)
-;; (define-extern nmember object) ;; (function basic object object)
-;; (define-extern assoc object) ;; (function object object object)
-;; (define-extern assoce object) ;; (function object object object)
-;; (define-extern nassoc object) ;; (function string object object)
-;; (define-extern nassoce object) ;; (function string object object)
-;; (define-extern append! object) ;; (function object object object)
-;; (define-extern delete! object) ;; (function object object pair)
-;; (define-extern delete-car! object) ;; (function object object object)
-;; (define-extern insert-cons! object) ;; (function object object pair)
-;; (define-extern sort object) ;; (function pair (function object object object) pair)
-;; (define-extern mem-copy! object) ;; (function pointer pointer int pointer)
-;; (define-extern qmem-copy<-! object) ;; (function pointer pointer int pointer)
-;; (define-extern qmem-copy->! object) ;; (function pointer pointer int pointer)
-;; (define-extern mem-set32! object) ;; (function pointer int int pointer)
-;; (define-extern mem-or! object) ;; (function pointer pointer int pointer)
-;; (define-extern quad-copy! object) ;; (function pointer pointer int none)
-;; (define-extern fact object) ;; (function int int)
-;; (define-extern *print-column* object) ;; binteger
-;; (define-extern print object) ;; (function object object)
-;; (define-extern printl object) ;; (function object object)
-;; (define-extern inspect object) ;; (function object object)
-;; (define-extern mem-print object) ;; (function (pointer uint32) int symbol)
-;; (define-extern *trace-list* object) ;; pair
-;; (define-extern print-tree-bitmask object) ;; (function int int symbol)
-;; (define-extern breakpoint-range-set! object) ;; (function uint uint uint int)
-;; (define-extern valid? object) ;; (function object type basic basic object symbol)
+(define-extern identity (function object object))
+(define-extern 1/ (function float float))
+(define-extern + (function int int int))
+(define-extern - (function int int int))
+(define-extern * (function int int int))
+(define-extern / (function int int int))
+(define-extern ash (function int int int))
+(define-extern mod (function int int int))
+(define-extern rem (function int int int))
+(define-extern abs (function int int))
+(define-extern min (function int int int))
+(define-extern max (function int int int))
+(define-extern logior (function int int int))
+(define-extern logand (function int int int))
+(define-extern lognor (function int int int))
+(define-extern logxor (function int int int))
+(define-extern lognot (function int int))
+(define-extern false-func (function symbol))
+(define-extern true-func (function symbol))
+(define-extern format (function _varargs_ object))
+(define-extern basic-type? (function basic type symbol))
+(define-extern type-type? (function type type symbol))
+(define-extern type? (function object type symbol))
+(define-extern find-parent-method (function type int function))
+(define-extern ref (function object int object))
+(define-extern last (function object object))
+(define-extern member (function object object object))
+(define-extern nmember (function basic object object))
+(define-extern assoc (function object object object))
+(define-extern assoce (function object object object))
+(define-extern nassoc (function string object object))
+(define-extern nassoce  (function string object object))
+(define-extern append! (function object object object))
+(define-extern delete! (function object object pair))
+(define-extern delete-car! (function object object object))
+(define-extern insert-cons! (function object object pair))
+(define-extern sort (function pair (function object object object) pair))
+(define-extern mem-copy! (function pointer pointer int pointer))
+(define-extern qmem-copy<-! (function pointer pointer int pointer))
+(define-extern qmem-copy->! (function pointer pointer int pointer))
+(define-extern mem-set32! (function pointer int int pointer))
+(define-extern mem-or! (function pointer pointer int pointer))
+(define-extern quad-copy! (function pointer pointer int none))
+(define-extern fact (function int int))
+(define-extern *print-column* binteger)
+(define-extern print (function object object))
+(define-extern printl (function object object))
+(define-extern inspect (function object object))
+(define-extern mem-print (function (pointer uint32) int symbol))
+(define-extern *trace-list* pair)
+(define-extern print-tree-bitmask (function int int symbol))
+(define-extern breakpoint-range-set! (function uint uint uint int))
+(define-extern valid? (function object type basic basic object symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gstring-h                      ;;
@@ -540,7 +552,7 @@
 ;; (define-extern string-suffix= object)
 ;; (define-extern string-position object)
 ;; (define-extern string-charp= object) ;; (function string (pointer uint8) symbol)
-;; (define-extern name= object) ;; (function basic basic symbol)
+(define-extern name= (function basic basic symbol))
 ;; (define-extern copyn-string<-charp object) ;; (function string (pointer uint8) int string)
 ;; (define-extern string<-charp object) ;; (function string (pointer uint8) string)
 ;; (define-extern charp<-string object) ;; (function (pointer uint8) string int)

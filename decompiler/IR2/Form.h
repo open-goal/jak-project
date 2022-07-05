@@ -951,8 +951,7 @@ class AshElement : public FormElement {
 class TypeOfElement : public FormElement {
  public:
   Form* value;
-  std::optional<RegisterAccess> clobber;
-  TypeOfElement(Form* _value, std::optional<RegisterAccess> _clobber);
+  TypeOfElement(Form* _value);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
