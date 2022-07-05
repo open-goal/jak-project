@@ -1,6 +1,6 @@
 #include "MakeSystem.h"
 
-#include <filesystem>
+
 
 #include "common/goos/ParseHelpers.h"
 #include "common/util/FileUtil.h"
@@ -179,7 +179,7 @@ goos::Object MakeSystem::handle_basename(const goos::Object& form,
                                          const std::shared_ptr<goos::EnvironmentObject>& env) {
   m_goos.eval_args(&args, env);
   va_check(form, args, {goos::ObjectType::STRING}, {});
-  std::filesystem::path input(args.unnamed.at(0).as_string()->data);
+  fs::path input(args.unnamed.at(0).as_string()->data);
 
   return goos::StringObject::make_new(input.filename().u8string());
 }
@@ -189,7 +189,7 @@ goos::Object MakeSystem::handle_stem(const goos::Object& form,
                                      const std::shared_ptr<goos::EnvironmentObject>& env) {
   m_goos.eval_args(&args, env);
   va_check(form, args, {goos::ObjectType::STRING}, {});
-  std::filesystem::path input(args.unnamed.at(0).as_string()->data);
+  fs::path input(args.unnamed.at(0).as_string()->data);
 
   return goos::StringObject::make_new(input.stem().u8string());
 }

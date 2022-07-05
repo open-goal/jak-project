@@ -12,7 +12,7 @@
  */
 
 #include "TextDB.h"
-
+#include "common/util/FileUtil.h"
 #include "common/util/FileUtil.h"
 
 #include "third-party/fmt/core.h"

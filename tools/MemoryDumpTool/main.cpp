@@ -13,7 +13,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/util/Assert.h"
 
-namespace fs = std::filesystem;
+namespace fs = fs;
 
 struct Ram {
   const u8* data = nullptr;

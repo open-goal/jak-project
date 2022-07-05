@@ -38,7 +38,7 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
 
   // user profile stuff
   if (user_profile != "#f" &&
-      std::filesystem::exists(file_util::get_jak_project_dir() / "goal_src" / "user" /
+      fs::exists(file_util::get_jak_project_dir() / "goal_src" / "user" /
                               user_profile / "user.gc")) {
     try {
       Object user_code =

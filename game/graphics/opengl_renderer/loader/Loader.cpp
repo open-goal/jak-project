@@ -16,7 +16,7 @@ std::string uppercase_string(const std::string& s) {
 }
 }  // namespace
 
-Loader::Loader(const std::filesystem::path& base_path) : m_base_path(base_path) {
+Loader::Loader(const fs::path& base_path) : m_base_path(base_path) {
   m_loader_thread = std::thread(&Loader::loader_thread, this);
   m_loader_stages = make_loader_stages();
 }

@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
   // parse arguments
   bool verbose = false;
   bool disable_avx2 = false;
-  std::optional<std::filesystem::path> project_path_override = std::nullopt;
+  std::optional<fs::path> project_path_override = std::nullopt;
   for (int i = 1; i < argc; i++) {
     if (std::string("-v") == argv[i]) {
       verbose = true;
@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
     }
 
     if (std::string("-proj-path") == argv[i] && i + 1 < argc) {
-      project_path_override = std::make_optional(std::filesystem::path(argv[i + 1]));
+      project_path_override = std::make_optional(fs::path(argv[i + 1]));
     }
   }
 

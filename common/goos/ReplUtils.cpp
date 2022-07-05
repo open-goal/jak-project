@@ -57,14 +57,14 @@ void ReplWrapper::add_to_history(const std::string& line) {
 }
 
 void ReplWrapper::save_history() {
-  std::filesystem::path path = file_util::get_user_config_dir() / ".opengoal.repl.history";
+  fs::path path = file_util::get_user_config_dir() / ".opengoal.repl.history";
   file_util::create_dir_if_needed_for_file(path.string());
   repl.history_save(path.string());
 }
 
 void ReplWrapper::load_history() {
-  std::filesystem::path path = file_util::get_user_config_dir() / ".opengoal.repl.history";
-  if (std::filesystem::exists(path)) {
+  fs::path path = file_util::get_user_config_dir() / ".opengoal.repl.history";
+  if (fs::exists(path)) {
     repl.history_load(path.string());
   } else {
     fmt::print("Couldn't locate REPL history file at '{}'\n", path.string());

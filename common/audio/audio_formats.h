@@ -1,6 +1,6 @@
 #pragma once
 
-#include <filesystem>
+#include "common/util/FileUtil.h"
 #include <string>
 #include <vector>
 
@@ -31,7 +31,7 @@ struct WaveFileHeader {
 
 void write_wave_file_mono(const std::vector<s16>& samples,
                           s32 sample_rate,
-                          const std::filesystem::path& name);
+                          const fs::path& name);
 
 std::vector<s16> decode_adpcm(BinaryReader& reader);
 

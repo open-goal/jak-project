@@ -87,8 +87,8 @@ int main(int argc, char** argv) {
   }
 
   // std::string in_folder = file_util::combine_path(argv[2], config.game_name);
-  std::filesystem::path in_folder = std::filesystem::path(argv[2]) / config.game_name;
-  std::filesystem::path out_folder = std::filesystem::path(argv[3]) / config.game_name;
+  fs::path in_folder = fs::path(argv[2]) / config.game_name;
+  fs::path out_folder = fs::path(argv[3]) / config.game_name;
 
   // Verify the in_folder is correct
   if (!exists(in_folder)) {
@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
         in_folder.string(), config.expected_elf_name);
   }
 
-  std::vector<std::filesystem::path> dgos, objs, strs;
+  std::vector<fs::path> dgos, objs, strs;
   for (const auto& dgo_name : config.dgo_names) {
     dgos.push_back(in_folder / dgo_name);
   }
@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
 
   // build file database
   lg::info("Setting up object file DB...");
-  ObjectFileDB db(dgos, std::filesystem::path(config.obj_file_name_map_file), objs, strs, config);
+  ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, strs, config);
 
   fmt::print("[Mem] After DB setup: {} MB\n", get_peak_rss() / (1024 * 1024));
 
@@ -220,7 +220,7 @@ int main(int argc, char** argv) {
 
   fmt::print("[Mem] After textures: {} MB\n", get_peak_rss() / (1024 * 1024));
   auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
-  if (std::filesystem::exists(replacements_path)) {
+  if (fs::exists(replacements_path)) {
     tex_db.replace_textures(replacements_path);
   }
 

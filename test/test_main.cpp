@@ -1,4 +1,4 @@
-#include <filesystem>
+
 
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
@@ -27,10 +27,10 @@ int main(int argc, char** argv) {
 
   // Re-init failed folder
   std::string failedFolder = file_util::get_file_path({"test/goalc/source_generated/failed/"});
-  if (std::filesystem::exists(failedFolder)) {
-    std::filesystem::remove_all(failedFolder);
+  if (fs::exists(failedFolder)) {
+    fs::remove_all(failedFolder);
   }
-  std::filesystem::create_directory(failedFolder);
+  fs::create_directory(failedFolder);
 
   return RUN_ALL_TESTS();
 }
