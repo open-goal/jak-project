@@ -1,6 +1,19 @@
 (group-name "common")
-(language-id 0 6) ;; english and uk-english
+(language-id 0 6) ;; this file is for both english and uk-english
 (text-version jak1-v2)
+
+;; -----------------
+;; memcard overrides lol
+
+(#x0138
+  "PLEASE DO NOT REMOVE OR INSERT ANY PERIPHERALS, TURN OFF YOUR SYSTEM OR SHUT DOWN THE GAME"
+  "PLEASE DO NOT REMOVE OR INSERT ANY PERIPHERALS, TURN OFF YOUR SYSTEM OR SHUT DOWN THE GAME"
+  )
+
+(#x0161
+  "WHILE THIS ICON IS ON SCREEN, DO NOT REMOVE OR INSERT ANY PERIPHERALS, TURN OFF YOUR SYSTEM OR SHUT DOWN THE GAME"
+  "WHILE THIS ICON IS ON SCREEN, DO NOT REMOVE OR INSERT ANY PERIPHERALS, TURN OFF YOUR SYSTEM OR SHUT DOWN THE GAME"
+  )
 
 ;; -----------------
 ;; progress menu (insanity)
@@ -22,6 +35,10 @@
 (#x1007 "RESTORE DEFAULTS"
         "RESTORE DEFAULTS")
 
+(#x100d "ARE YOU SURE YOU WANT TO DISABLE AUTO-SAVE?"
+        "ARE YOU SURE YOU WANT TO DISABLE AUTO-SAVE?")
+(#x100e "DISABLE AUTO-SAVE"
+        "DISABLE AUTO-SAVE")
 (#x100f "MISCELLANEOUS"
         "MISCELLANEOUS")
 
@@ -69,6 +86,12 @@
         "FIT TO SCREEN")
 (#x103b "V-SYNC"
         "V-SYNC")
+(#x103c "4X3 (PS2)"
+        "4X3 (PS2)")
+(#x103d "16X9 (PS2)"
+        "16X9 (PS2)")
+(#x103e "~DX~D"
+        "~DX~D")
 
 (#x1050 "MSAA"
         "MSAA")

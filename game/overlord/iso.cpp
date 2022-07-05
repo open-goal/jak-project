@@ -601,6 +601,12 @@ u32 ISOThread() {
       StopVAG(in_progress_vag_command);
       ReleaseMessage(in_progress_vag_command);
       in_progress_vag_command = nullptr;
+      // added. this variable seems to determine whether a vag stream is actually playing, and it is
+      // possible to get into a scenario where (for example) you want to unpause a vag stream but a
+      // different sound command hasn't run yet to correct this value, which makes the game either
+      // play the wrong sound or crash right away if no actual sound is to be played with the vag
+      // stream
+      unk = 0;
     }
 
     ////////////////////////////

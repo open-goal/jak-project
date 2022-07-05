@@ -36,6 +36,8 @@
 #define InfoActSize 3
 #define InfoActCurr 4
 
+struct CPadInfo;
+
 namespace ee {
 
 // controller modes (not in the lib)
@@ -52,7 +54,7 @@ int scePadPortOpen(int port, int slot, void* data);
 int scePadGetState(int port, int slot);
 int scePadInfoMode(int port, int slot, int term, int offs);
 int scePadRead(int port, int slot, u8* rdata);
-int scePadSetActDirect(int port, int slot, const u8* data);
+int scePadSetActDirect(int port, int slot, CPadInfo* cpad);
 int scePadSetActAlign(int port, int slot, const u8* data);
 int scePadSetMainMode(int port, int slot, int offs, int lock);
 int scePadGetReqState(int port, int slot);

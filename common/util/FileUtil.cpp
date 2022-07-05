@@ -186,7 +186,8 @@ std::string get_file_path(const std::vector<std::string>& input) {
 
 bool create_dir_if_needed(const std::filesystem::path& path) {
   if (!std::filesystem::is_directory(path)) {
-    return std::filesystem::create_directories(path);
+    std::filesystem::create_directories(path);
+    return true;
   }
   return false;
 }

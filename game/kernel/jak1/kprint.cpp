@@ -229,7 +229,7 @@ s32 format_impl_jak1(uint64_t* args) {
           s8 arg0 = argument_data[0].data[0];
           s32 desired_length = arg0;
           *output_ptr = 0;
-          u32 in = arg_regs[arg_reg_idx++];
+          u64 in = arg_regs[arg_reg_idx++];
           print_object(in);
           if (desired_length != -1) {
             s32 print_len = strlen(output_ptr);
@@ -272,7 +272,7 @@ s32 format_impl_jak1(uint64_t* args) {
           s8 arg0 = argument_data[0].data[0];
           s32 desired_length = arg0;
           *output_ptr = 0;
-          u32 in = arg_regs[arg_reg_idx++];
+          u64 in = arg_regs[arg_reg_idx++];
 
           // if it's a string
           if (((in & 0x7) == 0x4) && *Ptr<u32>(in - 4) == *(s7 + FIX_SYM_STRING_TYPE)) {
@@ -329,7 +329,7 @@ s32 format_impl_jak1(uint64_t* args) {
         case 'p': {
           *output_ptr = 0;
           s8 arg0 = argument_data[0].data[0];
-          u32 in = arg_regs[arg_reg_idx++];
+          u64 in = arg_regs[arg_reg_idx++];
           if (arg0 == -1) {
             print_object(in);
           } else {
@@ -350,7 +350,7 @@ s32 format_impl_jak1(uint64_t* args) {
         case 'i': {
           *output_ptr = 0;
           s8 arg0 = argument_data[0].data[0];
-          u32 in = arg_regs[arg_reg_idx++];
+          u64 in = arg_regs[arg_reg_idx++];
           if (arg0 == -1) {
             inspect_object(in);
           } else {

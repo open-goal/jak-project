@@ -352,7 +352,7 @@ s32 format_impl_jak2(uint64_t* args) {
         case 'p': {
           *output_ptr = 0;
           s8 arg0 = argument_data[0].data[0];
-          u32 in = arg_regs[arg_reg_idx++];
+          u64 in = arg_regs[arg_reg_idx++];
           if (arg0 == -1) {
             jak2::print_object(in);
           } else {
@@ -373,7 +373,7 @@ s32 format_impl_jak2(uint64_t* args) {
         case 'i': {
           *output_ptr = 0;
           s8 arg0 = argument_data[0].data[0];
-          u32 in = arg_regs[arg_reg_idx++];
+          u64 in = arg_regs[arg_reg_idx++];
           if (arg0 == -1) {
             inspect_object(in);
           } else {
@@ -522,7 +522,17 @@ s32 format_impl_jak2(uint64_t* args) {
   output_ptr++;
 
   if (original_dest == s7.offset + FIX_SYM_TRUE) {
-    // do nothing, we're done
+    // #t means to put it in the print buffer
+
+    // change for Jak 2: if we are disk-booting and do a (format #t, immediately flush to stdout.
+    // we'd get these eventually in ClearPending, but for some reason they flush these here.
+    // This is nicer because we may crash in between here and flushing the print buffer.
+    if (DiskBoot) {
+      printf("%s", PrintPendingLocal3);
+      fflush(stdout);
+      PrintPending = make_ptr(PrintPendingLocal2).cast<u8>();
+    }
+
     return 0;
   } else if (original_dest == s7.offset + FIX_SYM_FALSE) {
     // #f means print to new string

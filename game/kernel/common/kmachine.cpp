@@ -113,8 +113,8 @@ u64 CPadGetData(u64 cpad_info) {
         // ps2 controllers would send an enabled bit if the button was NOT pressed, but we don't do
         // that here. removed code that flipped the bits.
 
-        if (cpad->change_time != 0) {
-          scePadSetActDirect(cpad->number, 0, cpad->direct);
+        if (cpad->buzz_act) {
+          scePadSetActDirect(cpad->number, 0, cpad);
         }
         cpad->valid = pad_state;
       }
@@ -142,7 +142,8 @@ u64 CPadGetData(u64 cpad_info) {
       }
       break;
     case 40:  // controller mode - check for extra modes
-      cpad->change_time = 0;
+      // cpad->change_time = 0;
+      cpad->buzz_act = 0;
       if (scePadInfoMode(cpad->number, 0, InfoModeIdTable, -1) == 0) {
         // no controller modes
         cpad->state = 90;
@@ -169,11 +170,13 @@ u64 CPadGetData(u64 cpad_info) {
       // get number of actuators (2 for DS2)
       if (scePadInfoAct(cpad->number, 0, -1, 0) < 1) {
         // no actuators means no vibration. skip to end!
-        cpad->change_time = 0;
+        // cpad->change_time = 0;
+        cpad->buzz_act = 0;
         cpad->state = 99;
       } else {
         // we have actuators to use.
-        cpad->change_time = 1;  // remember to update pad times.
+        // cpad->change_time = 1;  // remember to update pad times.
+        cpad->buzz_act = 1;
         cpad->state = 75;
       }
       break;

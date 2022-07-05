@@ -114,7 +114,7 @@ void ObjectFileDB::analyze_functions_ir2(
       for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
     } else {
       for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
-        if (seg == 0) {
+        if (seg == TOP_LEVEL_SEGMENT) {
           return;  // keep top-levels
         }
         if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD &&
@@ -317,6 +317,8 @@ void ObjectFileDB::ir2_analyze_all_types(const std::filesystem::path& output_fil
   }
 
   std::unordered_set<std::string> already_seen;
+  TypeInspectorCache ti_cache;
+
   for_each_obj([&](ObjectFileData& data) {
     if (data.obj_version != 3) {
       return;
@@ -331,7 +333,7 @@ void ObjectFileDB::ir2_analyze_all_types(const std::filesystem::path& output_fil
       } else {
         if (f.is_inspect_method && bad_types.find(f.guessed_name.type_name) == bad_types.end()) {
           object_result.type_defs.push_back(inspect_inspect_method(
-              f, f.guessed_name.type_name, dts, data.linked_data, previous_game_ts.ts));
+              f, f.guessed_name.type_name, dts, data.linked_data, previous_game_ts.ts, ti_cache));
         }
       }
     });
