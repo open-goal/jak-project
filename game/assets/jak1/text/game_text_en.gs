@@ -86,6 +86,12 @@
         "FIT TO SCREEN")
 (#x103b "V-SYNC"
         "V-SYNC")
+(#x103c "4X3 (PS2)"
+        "4X3 (PS2)")
+(#x103d "16X9 (PS2)"
+        "16X9 (PS2)")
+(#x103e "~DX~D"
+        "~DX~D")
 
 (#x1050 "MSAA"
         "MSAA")
