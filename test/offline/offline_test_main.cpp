@@ -178,9 +178,10 @@ CompareResult compare(Decompiler& dc, const std::vector<DecompilerFile>& refs, b
       fmt::print("{}\n", diff_strings(ref, result));
 
       if (dump_mode) {
-        // TODO - use project path stuff
-        file_util::create_dir_if_needed("./failures");
-        file_util::write_text_file("./failures/" + file.unique_name + "_REF.gc", result);
+        auto failure_dir = file_util::get_jak_project_dir() / "failures";
+        file_util::create_dir_if_needed(failure_dir);
+        file_util::write_text_file(failure_dir / fmt::format("{}_REF.gc", file.unique_name),
+                                   result);
       }
     } else {
       compare_result.ok_files++;
