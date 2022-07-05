@@ -91,10 +91,10 @@ int scePadRead(int port, int /*slot*/, u8* rdata) {
   return 32;
 }
 
-// buzzer control. We don't care right now, return success.
-int scePadSetActDirect(int /*port*/, int /*slot*/, const u8* /*data*/) {
-  return 1;
+int scePadSetActDirect(int port, int /*slot*/, CPadInfo* cpad) {
+  return Pad::rumble(port, ((float)cpad->buzz_val[0]) / 255, ((float)cpad->buzz_val[1]) / 255);
 }
+
 int scePadSetActAlign(int /*port*/, int /*slot*/, const u8* /*data*/) {
   return 1;
 }
