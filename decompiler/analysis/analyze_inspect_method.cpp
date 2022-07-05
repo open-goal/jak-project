@@ -4,25 +4,6 @@
 
 namespace decompiler {
 
-struct TypeInspectorResult {
-  bool success = false;
-  int type_size = -1;
-  int type_method_count = -1;
-  int parent_method_count = 9;
-  int type_heap_base = -1;
-
-  std::string warnings;
-  std::vector<Field> fields_of_type;
-  bool is_basic = false;
-  bool found_flags = false;
-
-  std::string type_name;
-  std::string parent_type_name;
-  u64 flags = 0;
-
-  std::string print_as_deftype(StructureType* old_game_type);
-};
-
 bool is_set_reg_to_int(AtomicOp* op, Register dst, s64 value) {
   // should be a set reg to int math 2 ir
   auto set = dynamic_cast<SetVarOp*>(op);
@@ -152,7 +133,7 @@ FieldPrint get_field_print(const std::string& str) {
   char c0 = next();
   ASSERT(c0 == '~');
   char c1 = next();
-  if (c1 == '1') {
+  if (c1 == '1' || c1 == '2') {
     c1 = next();
   }
   ASSERT(c1 == 'T');
@@ -255,6 +236,174 @@ FieldPrint get_field_print(const std::string& str) {
   }
 
   return field_print;
+}
+
+int get_start_idx_process(Function& function,
+                          LinkedObjectFile& file,
+                          TypeInspectorResult* result,
+                          const std::string& parent_type,
+                          const std::string& type_name,
+                          Env& env) {
+  if (function.basic_blocks.size() != 5) {
+    fmt::print("[iim] inspect {} had {} basic blocks, expected 5\n", function.name(),
+               function.basic_blocks.size());
+    return -1;
+  }
+
+  if (!function.ir2.atomic_ops) {
+    fmt::print("[iim] no atomic ops in {}\n", function.name());
+    return -1;
+  }
+  auto& aos = *function.ir2.atomic_ops;
+
+  int op_idx = 0;
+  // block 0:
+  /*
+   *   (set! gp a0)
+   *   (b! (truthy gp) L370 (set! v1 #f))
+   */
+
+  if (aos.block_id_to_end_atomic_op.at(0) != 2) {
+    fmt::print("[iim] block 0 had the wrong number of ops: {} for {}\n",
+               aos.block_id_to_end_atomic_op.at(0), function.name());
+    return -1;
+  }
+
+  if (!is_op_2(aos.ops.at(op_idx).get(), SimpleExpression::Kind::IDENTITY,
+               Register(Reg::GPR, Reg::GP), Register(Reg::GPR, Reg::A0))) {
+    fmt::print("[iim] block 0 op 0 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env),
+               function.name());
+    return -1;
+  }
+  op_idx++;
+
+  auto br = dynamic_cast<BranchOp*>(aos.ops.at(op_idx).get());
+  if (!br) {
+    fmt::print("[iim] block 0 op 1 bad in {}: {} (not branch)\n", aos.ops.at(1)->to_string(env),
+               function.name());
+    return -1;
+  }
+
+  if (br->likely() || br->condition().kind() != IR2_Condition::Kind::TRUTHY ||
+      !br->condition().src(0).is_var() ||
+      br->condition().src(0).var().reg() != Register(Reg::GPR, Reg::GP) ||
+      br->branch_delay().kind() != IR2_BranchDelay::Kind::SET_REG_FALSE ||
+      br->branch_delay().var(0).reg() != Register(Reg::GPR, Reg::V1)) {
+    fmt::print("[iim] block 0 op 1 bad in {}: {} (bad branch)\n", aos.ops.at(1)->to_string(env),
+               function.name());
+    return -1;
+  }
+  op_idx++;
+
+  // block 1:
+  /*
+   *  (set! gp gp)
+   *  (b! #t L371 (nop!))
+   */
+  if (aos.block_id_to_end_atomic_op.at(1) != 4) {
+    fmt::print("[iim] block 1 had the wrong number of ops: {} for {}\n",
+               aos.block_id_to_end_atomic_op.at(1), function.name());
+    return -1;
+  }
+
+  if (!is_op_2(aos.ops.at(op_idx).get(), SimpleExpression::Kind ::IDENTITY,
+               Register(Reg::GPR, Reg::GP), Register(Reg::GPR, Reg::GP))) {
+    fmt::print("[iim] op 2 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
+    return -1;
+  }
+  op_idx++;
+
+  auto br2 = dynamic_cast<BranchOp*>(aos.ops.at(op_idx).get());
+  if (!br2) {
+    fmt::print("[iim] op 3 bad in {}: {} (not branch)\n", aos.ops.at(op_idx)->to_string(env),
+               function.name());
+    return -1;
+  }
+
+  if (br2->likely() || br2->condition().kind() != IR2_Condition::Kind::ALWAYS ||
+      br2->branch_delay().kind() != IR2_BranchDelay::Kind::NOP) {
+    fmt::print("[iim] op3 bad in {}: {} (bad branch)\n", aos.ops.at(op_idx)->to_string(env),
+               function.name());
+    return -1;
+  }
+  op_idx++;
+
+  /*
+
+
+B2:
+    or v1, r0, r0             ;; [  4] (set! v1 0)
+B3:
+L2:
+    lw v1, process(s7)        ;; [  5] (set! v1 process)
+    lwu t9, 28(v1)            ;; [  6] (set! t9 (l.wu (+ v1 28)))
+    or a0, gp, r0             ;; [  7] (set! a0 gp)
+    jalr ra, t9               ;; [  8] (call!)
+    sll v0, ra, 0
+*/
+  if (!is_set_reg_to_int(aos.ops.at(op_idx).get(), Register(Reg::GPR, Reg::V1), 0)) {
+    fmt::print("[iim] op4 bad in {}: {} (bad set 0)\n", aos.ops.at(op_idx)->to_string(env),
+               function.name());
+    return -1;
+  }
+  op_idx++;
+
+  if (!is_set_reg_to_symbol_value(aos.ops.at(op_idx).get(), Register(Reg::GPR, Reg::V1),
+                                  parent_type)) {
+    fmt::print("[iim] op5 bad in {}: {} (bad set parent type)\n",
+               aos.ops.at(op_idx)->to_string(env), function.name());
+    return -1;
+  }
+  op_idx++;
+
+  if (aos.ops.at(op_idx).get()->to_string(env) != "(set! t9 (l.wu (+ v1 28)))") {
+    fmt::print("[iim] op6 bad in {}: {} (bad load inspect)\n", aos.ops.at(op_idx)->to_string(env),
+               function.name());
+    return -1;
+  }
+  op_idx++;
+
+  if (aos.ops.at(op_idx).get()->to_string(env) != "(set! a0 gp)") {
+    fmt::print("[iim] op7 bad in {}: {} (bad set arg)\n", aos.ops.at(op_idx)->to_string(env),
+               function.name());
+    return -1;
+  }
+  op_idx++;
+
+  if (aos.ops.at(op_idx).get()->to_string(env) != "(call!)") {
+    fmt::print("[iim] op8 bad in {}: {} (bad call)\n", aos.ops.at(op_idx)->to_string(env),
+               function.name());
+    return -1;
+  }
+  op_idx++;
+  /*
+    lw t9, format(s7)         ;; [  9] (set! t9 format)
+    daddiu a0, s7, #t         ;; [ 10] (set! a0 #t)
+    daddiu a1, fp, L16        ;; [ 11] (set! a1 L16) "~2Tformation: ~A~%"
+    lwu a2, 124(gp)           ;; [ 12] (set! a2 (l.wu (+ gp 124)))
+    jalr ra, t9               ;; [ 13] (call!)
+    sll v0, ra, 0
+
+    lw t9, format(s7)         ;; [ 14] (set! t9 format)
+    daddiu a0, s7, #t         ;; [ 15] (set! a0 #t)
+    daddiu a1, fp, L15        ;; [ 16] (set! a1 L15) "~2Tpath: ~A~%"
+    lwu a2, 128(gp)           ;; [ 17] (set! a2 (l.wu (+ gp 128)))
+    jalr ra, t9               ;; [ 18] (call!)
+    sll v0, ra, 0
+
+    lw t9, format(s7)         ;; [ 19] (set! t9 format)
+    daddiu a0, s7, #t         ;; [ 20] (set! a0 #t)
+    daddiu a1, fp, L14        ;; [ 21] (set! a1 L14) "~2Tformation-timer: ~D~%"
+    ld a2, 132(gp)            ;; [ 22] (set! a2 (l.d (+ gp 132)))
+    jalr ra, t9               ;; [ 23] (call!)
+    sll v0, ra, 0
+
+B4:
+L3:
+    or v0, gp, r0             ;; [ 24] (set! v0 gp)
+    ld ra, 0(sp)
+   */
+  return op_idx;
 }
 
 int get_start_idx(Function& function,
@@ -668,11 +817,18 @@ int identify_basic_field(int idx,
                          FieldPrint& print_info) {
   (void)file;
   auto load_info = get_load_info_from_set(function.ir2.atomic_ops->ops.at(idx++).get());
-  ASSERT(load_info.size == 4);
   ASSERT(load_info.kind == LoadVarOp::Kind::UNSIGNED || load_info.kind == LoadVarOp::Kind::SIGNED);
-
-  if (load_info.kind == LoadVarOp::Kind::SIGNED) {
-    result->warnings += "field " + print_info.field_name + " is a basic loaded with a signed load ";
+  TypeSpec field_type("basic");
+  if (load_info.size == 8) {
+    result->warnings += "field " + print_info.field_name + " uses ~A with a 64-bit load ";
+    field_type = TypeSpec("uint64");
+  } else if (load_info.size == 4) {
+    // I wonder if this actually "object", or some other type? It seems to be
+    if (load_info.kind == LoadVarOp::Kind::SIGNED) {
+      result->warnings += "field " + print_info.field_name + " uses ~A with a signed load ";
+    }
+  } else {
+    ASSERT(false);
   }
 
   int offset = load_info.offset;
@@ -680,7 +836,7 @@ int identify_basic_field(int idx,
     offset += BASIC_OFFSET;
   }
 
-  Field field(print_info.field_name, TypeSpec("basic"), offset);
+  Field field(print_info.field_name, field_type, offset);
   result->fields_of_type.push_back(field);
   return idx;
 }
@@ -756,7 +912,8 @@ std::string inspect_inspect_method(Function& inspect_method,
                                    const std::string& type_name,
                                    DecompilerTypeSystem& dts,
                                    LinkedObjectFile& file,
-                                   TypeSystem& previous_game_ts) {
+                                   TypeSystem& previous_game_ts,
+                                   TypeInspectorCache& ti_cache) {
   fmt::print(" iim: {}\n", inspect_method.name());
   TypeInspectorResult result;
   ASSERT(type_name == inspect_method.guessed_name.type_name);
@@ -785,6 +942,11 @@ std::string inspect_inspect_method(Function& inspect_method,
   result.parent_type_name = dts.lookup_parent_from_inspects(type_name);
   int idx = get_start_idx(inspect_method, file, &result, result.parent_type_name, type_name,
                           inspect_method.ir2.env);
+
+  if (idx < 0) {
+    idx = get_start_idx_process(inspect_method, file, &result, result.parent_type_name, type_name,
+                                inspect_method.ir2.env);
+  }
   StructureType* old_game_type = nullptr;
   if (previous_game_ts.fully_defined_type_exists(type_name)) {
     old_game_type = dynamic_cast<StructureType*>(previous_game_ts.lookup_type(type_name));
@@ -793,7 +955,8 @@ std::string inspect_inspect_method(Function& inspect_method,
     // can't get any field...
     result.warnings += "Failed to read fields. ";
     idx = -2;
-    return result.print_as_deftype(old_game_type);
+    ti_cache.previous_results[type_name] = result;
+    return result.print_as_deftype(old_game_type, ti_cache.previous_results);
   }
   while (idx < int(inspect_method.ir2.atomic_ops->ops.size()) - 2 && idx != -1) {
     idx = detect(idx, inspect_method, file, &result);
@@ -802,8 +965,8 @@ std::string inspect_inspect_method(Function& inspect_method,
   if (idx == -1) {
     result.warnings += "Failed to read some fields. ";
   }
-
-  return result.print_as_deftype(old_game_type);
+  ti_cache.previous_results[type_name] = result;
+  return result.print_as_deftype(old_game_type, ti_cache.previous_results);
 }
 
 std::string old_method_string(const MethodInfo& info) {
@@ -832,12 +995,34 @@ std::string old_method_string(const MethodInfo& info) {
   return fmt::format(" ;; ({} {}) weird method", info.name, info.type.print());
 }
 
+bool allow_guess(const Field& field) {
+  // allow anything UNKNOWN because we have no idea
+  if (field.type().base_type() == "UNKNOWN") {
+    return true;
+  }
+
+  // don't allow known inline's because we get that right.
+  if (field.is_inline()) {
+    return false;
+  }
+
+  auto typ = field.type().print();
+
+  if (typ == "basic" || typ == "uint32") {
+    return true;
+  }
+
+  return false;
+}
 /*
  * old_game_type may be null
  */
-std::string TypeInspectorResult::print_as_deftype(StructureType* old_game_type) {
+std::string TypeInspectorResult::print_as_deftype(
+    StructureType* old_game_type,
+    std::unordered_map<std::string, TypeInspectorResult>& previous_results) {
   std::string result;
 
+  result += "#|\n";
   result += fmt::format("(deftype {} ({})\n  (", type_name, parent_type_name);
 
   int longest_field_name = 0;
@@ -847,7 +1032,44 @@ std::string TypeInspectorResult::print_as_deftype(StructureType* old_game_type) 
   std::string inline_string = ":inline";
   std::string dynamic_string = ":dynamic";
 
+  std::vector<bool> needed, was_guess;
+  {
+    const auto& prev_it = previous_results.find(parent_type_name);
+    if (prev_it != previous_results.end()) {
+      auto& prev_fields = prev_it->second.fields_of_type;
+      for (auto& field : fields_of_type) {
+        auto field_it = std::find(prev_fields.begin(), prev_fields.end(), field);
+        needed.push_back(field_it == prev_fields.end());
+      }
+    } else {
+      needed.resize(fields_of_type.size(), true);
+    }
+  }
+
   for (auto& field : fields_of_type) {
+    if (!allow_guess(field)) {
+      was_guess.push_back(false);
+      continue;
+    }
+    if (old_game_type) {
+      Field old_field;
+      if (old_game_type->lookup_field(field.name(), &old_field) &&
+          field.type() != old_field.type()) {
+        field.type() = old_field.type();
+        was_guess.push_back(true);
+      } else {
+        was_guess.push_back(false);
+      }
+    } else {
+      was_guess.push_back(false);
+    }
+  }
+
+  for (size_t field_idx = 0; field_idx < fields_of_type.size(); field_idx++) {
+    if (!needed[field_idx]) {
+      continue;
+    }
+    auto& field = fields_of_type[field_idx];
     longest_field_name = std::max(longest_field_name, int(field.name().size()));
     longest_type_name = std::max(longest_type_name, int(field.type().print().size()));
 
@@ -873,7 +1095,11 @@ std::string TypeInspectorResult::print_as_deftype(StructureType* old_game_type) 
     longest_mods = std::max(longest_mods, mods);
   }
 
-  for (auto& field : fields_of_type) {
+  for (size_t field_idx = 0; field_idx < fields_of_type.size(); field_idx++) {
+    if (!needed[field_idx]) {
+      continue;
+    }
+    auto& field = fields_of_type[field_idx];
     result += "(";
     result += field.name();
     result.append(1 + (longest_field_name - int(field.name().size())), ' ');
@@ -918,6 +1144,10 @@ std::string TypeInspectorResult::print_as_deftype(StructureType* old_game_type) 
         }
       }
     }
+
+    if (was_guess[field_idx]) {
+      result += " ;; guessed by decompiler";
+    }
     result.append("\n   ");
   }
   result.append(")\n");
@@ -951,6 +1181,7 @@ std::string TypeInspectorResult::print_as_deftype(StructureType* old_game_type) 
     result.append(")\n  ");
   }
   result.append(")\n");
+  result += "|#\n";
 
   return result;
 }
