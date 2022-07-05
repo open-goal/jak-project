@@ -109,7 +109,7 @@
   )
 
 (define *game-options-pc* (new 'static 'boxed-array :type game-option
-    ;(new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vibrations) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vibrations) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id play-hints) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id camera-options) :scale #t :param3 (game-option-menu camera-options))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id accessibility-options) :scale #t :param3 (game-option-menu accessibility-options))
@@ -122,8 +122,6 @@
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id game-resolution) :scale #t :param3 (game-option-menu resolution))
     (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vsync) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type aspect-native) :name (game-text-id ps2-aspect-ratio) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type aspect-ratio) :name (game-text-id aspect-ratio-ps2) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
     ;(new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
     (new 'static 'game-option :option-type (game-option-type frame-rate) :name (game-text-id frame-rate) :scale #t)
@@ -136,8 +134,6 @@
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id game-resolution) :scale #t :param3 (game-option-menu resolution))
     (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vsync) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type aspect-native) :name (game-text-id ps2-aspect-ratio) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type aspect-ratio) :name (game-text-id aspect-ratio-ps2) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
     ;(new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id ps2-options) :scale #t :param3 (game-option-menu gfx-ps2-options))
@@ -177,10 +173,13 @@
 
 (define *aspect-ratio-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id fit-to-screen) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id resolution-fmt) :param1 4.0 :param2 3.0 :scale #t)
-    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id resolution-fmt) :param1 16.0 :param2 9.0 :scale #t)
-    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id resolution-fmt) :param1 21.0 :param2 9.0 :scale #t)
-    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id resolution-fmt) :param1 64.0 :param2 27.0 :scale #t)
+    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id aspect-fmt) :param1 4.0 :param2 3.0 :scale #t)
+    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id aspect-fmt) :param1 16.0 :param2 9.0 :scale #t)
+    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id aspect4x3-ps2) :param1 -1.0 :scale #t)
+    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id aspect16x9-ps2) :param1 -2.0 :scale #t)
+    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id aspect-fmt) :param1 16.0 :param2 10.0 :scale #t)
+    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id aspect-fmt) :param1 21.0 :param2 9.0 :scale #t)
+    (new 'static 'game-option :option-type (game-option-type aspect-new) :name (game-text-id aspect-fmt) :param1 64.0 :param2 27.0 :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
   )
@@ -285,9 +284,8 @@
 
 (define-perm *temp-options-alloced* symbol #f)
 
-(defconstant RESOLUTIONS 6)
-(define *resolutions* (new 'static 'array int32 RESOLUTIONS
-    640 720 768 800 960 1080))
+(define *resolutions* (new 'static 'boxed-array :type int32
+    640 720 768 800 900 960 1080))
 
 ;; this is to avoid changing the value of *temp-options* or reallocating the options when reloading file
 (unless *temp-options-alloced*
@@ -306,13 +304,13 @@
       
     (until found
       
-      (dotimes (i RESOLUTIONS)
+      (dotimes (i (-> *resolutions* length))
         (let ((thisr (the int (* mult (the float (-> *resolutions* i))))))
         (cond
           ((< sy thisr)
            (if (zero? i)
                (*! mult 0.5))
-           (set! i RESOLUTIONS)
+           (set! i (-> *resolutions* length))
            (true! found)
            )
           (else
@@ -409,7 +407,7 @@
         (set! aspect (-> *pc-settings* aspect-ratio))
         
         (until (or done? (= (length *temp-options*) max-options))
-          (countdown (i RESOLUTIONS)
+          (countdown (i (-> *resolutions* length))
             (let* ((thisr (the int (* mult (the float (-> *resolutions* i)))))
                   (thisx (the int (* aspect (the float thisr))))
                   (thisy thisr)
@@ -627,19 +625,15 @@
   (set! (-> *sound-options* 2 value-to-modify) (&-> *setting-control* default dialog-volume))
   (set! (-> *yes-no-options* 0 value-to-modify) (&-> *progress-state* yes-no-choice))
   ;; our options!
-  ;(set! (-> *game-options-pc* 0 value-to-modify) (&-> *setting-control* default vibration))
-  (set! (-> *game-options-pc* 0 value-to-modify) (&-> *setting-control* default play-hints))
+  (set! (-> *game-options-pc* 0 value-to-modify) (&-> *setting-control* default vibration))
+  (set! (-> *game-options-pc* 1 value-to-modify) (&-> *setting-control* default play-hints))
   (set! (-> *graphic-options-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
-  (set! (-> *graphic-options-pc* 3 value-to-modify) (&-> *progress-carousell* aspect-native-choice))
-  (set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-state* aspect-ratio-choice))
-  ;(set! (-> *graphic-options-pc* 6 value-to-modify) (&-> *progress-carousell* int-backup))
-  (set! (-> *graphic-options-pc* 6 value-to-modify) (&-> *progress-carousell* int-backup))
+  ;(set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-no-frame-rate-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-no-frame-rate-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
-  (set! (-> *graphic-options-no-frame-rate-pc* 3 value-to-modify) (&-> *progress-carousell* aspect-native-choice))
-  (set! (-> *graphic-options-no-frame-rate-pc* 4 value-to-modify) (&-> *progress-state* aspect-ratio-choice))
-  ;(set! (-> *graphic-options-pc* 6 value-to-modify) (&-> *progress-carousell* int-backup))
+  ;(set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *misc-options* 0 value-to-modify) (&-> *pc-settings* discord-rpc?))
   (set! (-> *camera-options* 0 value-to-modify) (&-> *pc-settings* first-camera-h-inverted?))
   (set! (-> *camera-options* 1 value-to-modify) (&-> *pc-settings* first-camera-v-inverted?))
@@ -758,8 +752,8 @@
                    (when (not (-> (the-as (pointer uint32) (-> options (-> obj option-index) value-to-modify))))
                      ;; it was on 'off' or 'no'
                      (set! sound? #t)
-                     ;; vibrate if this toggles vibration. broken in original game.
-                     (if (= (-> options (-> obj option-index) value-to-modify) (&-> *setting-control* default vibration))
+                     ;; vibrate if this toggles vibration. this doesn't actually work AND it checks the wrong field.
+                     (if (= (-> options (-> obj option-index) value-to-modify) (&-> *setting-control* current vibration))
                          (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.3))
                          )
                      )
@@ -1095,9 +1089,27 @@
                ;; aspect ratio button.
                (let ((newx (the int (-> options (-> obj option-index) param1)))
                      (newy (the int (-> options (-> obj option-index) param2))))
-                   (if (= (-> options (-> obj option-index) name) (game-text-id fit-to-screen))
-                       (true! (-> *pc-settings* aspect-ratio-auto?))
-                       (set-aspect! *pc-settings* newx newy)))
+                   (cond
+                     ((= (-> options (-> obj option-index) name) (game-text-id fit-to-screen))
+                      (set-aspect! *pc-settings* 4 3)
+                      (false! (-> *pc-settings* use-vis?))
+                      (set-aspect-ratio 'aspect4x3)
+                      (true! (-> *pc-settings* aspect-ratio-auto?))
+                      )
+                     ((= newx -1.0)
+                      (set-aspect! *pc-settings* 4 3)
+                      (true! (-> *pc-settings* use-vis?))
+                      (set! (-> *setting-control* default aspect-ratio) 'aspect4x3)
+                      (set-aspect-ratio 'aspect4x3)
+                      )
+                     ((= newx -2.0)
+                      (set-aspect! *pc-settings* 4 3)
+                      (true! (-> *pc-settings* use-vis?))
+                      (set! (-> *setting-control* default aspect-ratio) 'aspect16x9)
+                      (set-aspect-ratio 'aspect16x9)
+                      )
+                     (else
+                      (set-aspect! *pc-settings* newx newy))))
                (cpad-clear! 0 x)
                (cpad-clear! 0 circle)
                (cpad-clear! 0 square)
