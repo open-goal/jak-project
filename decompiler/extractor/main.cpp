@@ -17,27 +17,27 @@
 
 #include "third-party/CLI11.hpp"
 
-IsoFile extract_files(std::filesystem::path input_file_path,
-                      std::filesystem::path extracted_iso_path) {
+IsoFile extract_files(fs::path input_file_path,
+                      fs::path extracted_iso_path) {
   lg::info(
       "Note: Provided game data path '{}' points to a file, not a directory. Assuming it's an ISO "
       "file and attempting to extract!",
       input_file_path.string());
 
-  std::filesystem::create_directories(extracted_iso_path);
-
-  auto fp = fopen(input_file_path.string().c_str(), "rb");
-  ASSERT_MSG(fp, "failed to open input ISO file\n");
+  fs::create_directories(extracted_iso_path);
+ 
+  auto fp = file_util::open_file(input_file_path, "rb");
+  ASSERT_MSG(fp, "failed to open input ISO file");
   IsoFile iso = unpack_iso_files(fp, extracted_iso_path, true, true);
   fclose(fp);
   return iso;
 }
 
 std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
-    const std::filesystem::path& extracted_iso_path,
+    const fs::path& extracted_iso_path,
     const xxh::hash64_t expected_hash,
     const int expected_num_files) {
-  if (!std::filesystem::exists(extracted_iso_path / "DGO")) {
+  if (!fs::exists(extracted_iso_path / "DGO")) {
     lg::error("input folder doesn't have a DGO folder. Is this the right input?");
     return {std::nullopt, ExtractorErrorCode::VALIDATION_BAD_EXTRACTION};
   }
@@ -101,7 +101,7 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
   };
 }
 
-void decompile(const std::filesystem::path& iso_data_path, const std::string& data_subfolder) {
+void decompile(const fs::path& iso_data_path, const std::string& data_subfolder) {
   using namespace decompiler;
 
   // Determine which config to use from the database
@@ -112,7 +112,7 @@ void decompile(const std::filesystem::path& iso_data_path, const std::string& da
                                        .string(),
                                    {});
 
-  std::vector<std::filesystem::path> dgos, objs;
+  std::vector<fs::path> dgos, objs;
 
   // grab all DGOS we need (level + common)
   // TODO - Jak 2 - jak 1 specific code?
@@ -137,7 +137,7 @@ void decompile(const std::filesystem::path& iso_data_path, const std::string& da
   }
 
   // set up objects
-  ObjectFileDB db(dgos, std::filesystem::path(config.obj_file_name_map_file), objs, {}, config);
+  ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, {}, config);
 
   // save object files
   auto out_folder = file_util::get_jak_project_dir() / "decompiler_out" / data_subfolder;
@@ -169,7 +169,7 @@ void decompile(const std::filesystem::path& iso_data_path, const std::string& da
                              db.process_tpages(tex_db, textures_out));
   // texture replacements
   auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
-  if (std::filesystem::exists(replacements_path)) {
+  if (fs::exists(replacements_path)) {
     tex_db.replace_textures(replacements_path);
   }
 
@@ -191,7 +191,7 @@ void decompile(const std::filesystem::path& iso_data_path, const std::string& da
   }
 }
 
-ExtractorErrorCode compile(const std::filesystem::path& iso_data_path,
+ExtractorErrorCode compile(const fs::path& iso_data_path,
                            const std::string& data_subfolder) {
   // Determine which config to use from the database
   const auto version_info = get_version_info_or_default(iso_data_path);
@@ -226,9 +226,52 @@ void launch_game() {
   system(fmt::format("\"{}\"", (file_util::get_jak_project_dir() / "../gk").string()).c_str());
 }
 
+
+#include <shellapi.h>
+std::string Utf8FromUtf16(const wchar_t* utf16_string) {
+  if (utf16_string == nullptr) {
+    return std::string();
+  }
+  int target_length = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, utf16_string, -1,
+                                            nullptr, 0, nullptr, nullptr);
+  if (target_length == 0) {
+    return std::string();
+  }
+  std::string utf8_string;
+  utf8_string.resize(target_length);
+  int converted_length = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, utf16_string, -1,
+                                               utf8_string.data(), target_length, nullptr, nullptr);
+  if (converted_length == 0) {
+    return std::string();
+  }
+  return utf8_string;
+}
+
+// TODO - how do i make this nicer (return the char**)
+std::vector<std::string> ConvertCLIArgsFromWideChar() {
+  // Convert the UTF-16 command line arguments to UTF-8 for the Engine to use.
+  int argc;
+  wchar_t** argv = ::CommandLineToArgvW(::GetCommandLineW(), &argc);
+  if (argv == nullptr) {
+    return {};
+  }
+
+  std::vector<std::string> command_line_arguments;
+
+  for (int i = 0; i < argc; i++) {
+    command_line_arguments.push_back(Utf8FromUtf16(argv[i]));
+  }
+
+  ::LocalFree(argv);
+
+  return command_line_arguments;
+}
+
+
+
 int main(int argc, char** argv) {
-  std::filesystem::path input_file_path;
-  std::filesystem::path project_path_override;
+  fs::path input_file_path;
+  fs::path project_path_override;
   bool flag_runall = false;
   bool flag_extract = false;
   bool flag_fail_on_validation = false;
@@ -238,16 +281,21 @@ int main(int argc, char** argv) {
   bool flag_folder = false;
   std::string game_name = "jak1";
 
+  auto wtf = ConvertCLIArgsFromWideChar();
+  std::vector<char*> cstrings{};
+  for (auto& string : wtf) {
+    cstrings.push_back(&string.front());
+  }
+  argv = cstrings.data();
+
   lg::initialize();
 
   CLI::App app{"OpenGOAL Level Extraction Tool"};
   app.add_option("game-files-path", input_file_path,
                  "The path to the folder with the ISO extracted or the ISO itself")
-      ->check(CLI::ExistingPath)
       ->required();
   app.add_option("--proj-path", project_path_override,
-                 "Explicitly set the location of the 'data/' folder")
-      ->check(CLI::ExistingPath);
+                 "Explicitly set the location of the 'data/' folder");
   app.add_flag("-g,--game", game_name, "Specify the game name, defaults to 'jak1'");
   app.add_flag("-a,--all", flag_runall, "Run all steps, from extraction to playing the game");
   app.add_flag("-e,--extract", flag_extract, "Extract the ISO");
@@ -260,7 +308,7 @@ int main(int argc, char** argv) {
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
-  lg::info("Working Directory - {}", std::filesystem::current_path().string());
+  lg::info("Working Directory - {}", fs::current_path().string());
 
   // If no flag is set, we default to running everything
   if (!flag_extract && !flag_decompile && !flag_compile && !flag_play) {
@@ -277,13 +325,19 @@ int main(int argc, char** argv) {
   // - SETUP
   decompiler::init_opcode_info();
   if (!project_path_override.empty()) {
+    if (!fs::exists(project_path_override)) {
+      lg::error("Error: project path override '{}' does not exist", project_path_override.string());
+      return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT);
+    }
     file_util::setup_project_path(project_path_override);
+  } else {
+    file_util::setup_project_path({});
   }
 
-  std::filesystem::path iso_data_path;
+  fs::path iso_data_path;
 
   // - INPUT VALIDATION
-  if (!std::filesystem::exists(input_file_path)) {
+  if (!fs::exists(input_file_path)) {
     lg::error("Error: input game file path '{}' does not exist", input_file_path.string());
     return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT);
   }
@@ -295,19 +349,19 @@ int main(int argc, char** argv) {
 
   if (flag_extract) {
     // we extract to a temporary location because we don't know what we're extracting yet!
-    std::filesystem::path temp_iso_extract_location =
+    fs::path temp_iso_extract_location =
         file_util::get_jak_project_dir() / "iso_data" / "_temp";
     if (input_file_path != temp_iso_extract_location) {
       // in case input is also output, don't just wipe everything (weird)
-      std::filesystem::remove_all(temp_iso_extract_location);
+      fs::remove_all(temp_iso_extract_location);
     }
-    std::filesystem::create_directories(temp_iso_extract_location);
+    fs::create_directories(temp_iso_extract_location);
 
-    if (std::filesystem::is_regular_file(input_file_path)) {
+    if (fs::is_regular_file(input_file_path)) {
       // If it's a file, then it better be an iso file
-      const auto [iso_ok, code] = is_iso_file(input_file_path);
+      const auto [iso_ok, iso_code] = is_iso_file(input_file_path);
       if (!iso_ok) {
-        return static_cast<int>(code);
+        return static_cast<int>(iso_code);
       }
 
       // Extract to the temporary location
@@ -315,13 +369,13 @@ int main(int argc, char** argv) {
       // Get hash and file count
       const auto [hash, file_count] = calculate_extraction_hash(iso_file);
       // Validate the result to determine the release
-      const auto [version_info, code] = validate(temp_iso_extract_location, hash, file_count);
-      if (code == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION ||
-          (flag_fail_on_validation && code != ExtractorErrorCode::SUCCESS)) {
-        return static_cast<int>(code);
+      const auto [version_info, validate_code] = validate(temp_iso_extract_location, hash, file_count);
+      if (validate_code == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION ||
+          (flag_fail_on_validation && validate_code != ExtractorErrorCode::SUCCESS)) {
+        return static_cast<int>(validate_code);
       }
       // Finalize the folder name now that we know where it should go
-      if (code != ExtractorErrorCode::SUCCESS) {
+      if (!version_info) {
         lg::error("could not verify release, so not finalizing iso_data, leaving in '_temp'");
         iso_data_path = temp_iso_extract_location;
       } else {
@@ -330,11 +384,14 @@ int main(int argc, char** argv) {
         data_subfolder = data_subfolders[version_info->game_name];
         iso_data_path = file_util::get_jak_project_dir() / "iso_data" / data_subfolder;
         if (fs::exists(iso_data_path)) {
-          std::filesystem::remove_all(temp_iso_extract_location);
+          fs::remove_all(iso_data_path);
         }
-        std::filesystem::rename(temp_iso_extract_location, iso_data_path);
+
+        // std::filesystem doesn't have a rename for dirs...
+        fs::copy(temp_iso_extract_location, iso_data_path, fs::copy_options::recursive);
+        fs::remove_all(temp_iso_extract_location);
       }
-    } else if (std::filesystem::is_directory(input_file_path)) {
+    } else if (fs::is_directory(input_file_path)) {
       if (!flag_folder) {
         // if we didn't request a folder explicitly, but we got one, assume something went wrong.
         lg::error("got a folder, but didn't get folder flag");
@@ -344,12 +401,12 @@ int main(int argc, char** argv) {
       // Get hash and file count
       const auto [hash, file_count] = calculate_extraction_hash(iso_data_path);
       // Validate
-      const auto [version_info, code] = validate(iso_data_path, hash, file_count);
+      auto [version_info, code] = validate(iso_data_path, hash, file_count);
     }
 
     // write out a json file with some metadata for the game
-    if (std::filesystem::exists(iso_data_path / "buildinfo.json")) {
-      std::filesystem::remove(iso_data_path / "buildinfo.json");
+    if (fs::exists(iso_data_path / "buildinfo.json")) {
+      fs::remove(iso_data_path / "buildinfo.json");
     }
     const auto [serial, elf_hash] = findElfFile(iso_data_path);
     BuildInfo build_info;

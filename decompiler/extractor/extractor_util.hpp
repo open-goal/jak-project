@@ -1,6 +1,5 @@
 #pragma once
 
-#include <filesystem>
 #include <optional>
 #include <regex>
 #include <unordered_map>
@@ -36,7 +35,7 @@ static const std::unordered_map<std::string, GameIsoFlags> sGameIsoFlagNames = {
     {"jak1-black-label", FLAG_JAK1_BLACK_LABEL}};
 
 // used for - decompiler_out/<jak1> and iso_data/<jak1>
-std::unordered_map<std::string, std::string> data_subfolders = {"jak1", "jak1"};
+std::unordered_map<std::string, std::string> data_subfolders = {{"jak1", "jak1"}};
 
 struct ISOMetadata {
   std::string canonical_name;
@@ -61,11 +60,11 @@ void to_json(nlohmann::json& j, const BuildInfo& info) {
 }
 
 void from_json(const nlohmann::json& j, BuildInfo& info) {
-  j.at("serial").get_to(info.serial);
-  j.at("elf_hash").get_to(info.elf_hash);
+  j[0].at("serial").get_to(info.serial);
+  j[0].at("elf_hash").get_to(info.elf_hash);
 }
 
-std::optional<BuildInfo> get_buildinfo_from_path(std::filesystem::path iso_data_path) {
+std::optional<BuildInfo> get_buildinfo_from_path(fs::path iso_data_path) {
   if (!fs::exists(iso_data_path / "buildinfo.json")) {
     return {};
   }
@@ -74,6 +73,7 @@ std::optional<BuildInfo> get_buildinfo_from_path(std::filesystem::path iso_data_
     return parse_commented_json(file_util::read_text_file(buildinfo_path), buildinfo_path)
         .get<BuildInfo>();
   } catch (std::exception& e) {
+    lg::error("JSON parsing error on buildinfo.json - {}", e.what());
     return {};
   }
 }
@@ -135,7 +135,7 @@ std::optional<ISOMetadata> get_version_info_from_build_info(const BuildInfo& bui
   return std::make_optional(meta_entry->second);
 }
 
-ISOMetadata get_version_info_or_default(const std::filesystem::path& iso_data_path) {
+ISOMetadata get_version_info_or_default(const fs::path& iso_data_path) {
   ISOMetadata version_info = jak1_ntsc_black_label_info;
   const auto build_info = get_buildinfo_from_path(iso_data_path);
   if (!build_info) {
@@ -156,7 +156,7 @@ ISOMetadata get_version_info_or_default(const std::filesystem::path& iso_data_pa
 }
 
 std::tuple<std::optional<std::string>, std::optional<xxh::hash64_t>> findElfFile(
-    const std::filesystem::path& extracted_iso_path) {
+    const fs::path& extracted_iso_path) {
   std::optional<std::string> serial = std::nullopt;
   std::optional<xxh::hash64_t> elf_hash = std::nullopt;
   for (const auto& entry : fs::directory_iterator(extracted_iso_path)) {
@@ -165,13 +165,14 @@ std::tuple<std::optional<std::string>, std::optional<xxh::hash64_t>> findElfFile
       serial = std::make_optional(
           fmt::format("{}-{}", as_str.substr(0, 4), as_str.substr(5, 3) + as_str.substr(9, 2)));
       // We already found the path, so hash it while we're here
-      auto fp = fopen(entry.path().string().c_str(), "rb");
+      auto fp = file_util::open_file(entry.path().string().c_str(), "rb");
       fseek(fp, 0, SEEK_END);
       size_t size = ftell(fp);
       std::vector<u8> buffer(size);
       rewind(fp);
       fread(&buffer[0], sizeof(std::vector<u8>::value_type), buffer.size(), fp);
       elf_hash = std::make_optional(xxh::xxhash<64>(buffer));
+      fclose(fp);
       break;
     }
   }
@@ -205,19 +206,19 @@ void log_potential_new_db_entry(ExtractorErrorCode error_code,
   }
 }
 
-std::tuple<bool, ExtractorErrorCode> is_iso_file(std::filesystem::path path_to_supposed_iso) {
+std::tuple<bool, ExtractorErrorCode> is_iso_file(fs::path path_to_supposed_iso) {
   // it's a file, normalize extension case and verify it's an ISO file
   std::string ext = path_to_supposed_iso.extension().string();
-  if (std::regex_match(ext, std::regex("\\.(i|I)(s|S)(o|O)"))) {
+  if (!std::regex_match(ext, std::regex("\\.(iso|ISO)"))) {
     lg::error("Provided game data path contains a file that isn't a .ISO!");
     return {false, ExtractorErrorCode::EXTRACTION_INVALID_ISO_PATH};
   }
 
   // make sure the .iso is greater than 1GB in size
   // to-do: verify game header data as well
-  if (std::filesystem::file_size(path_to_supposed_iso) < 1000000000) {
+  if (fs::file_size(path_to_supposed_iso) < 1000000000) {
     lg::error("Provided game data file appears to be too small or corrupted! Size is: {}",
-              std::filesystem::file_size(path_to_supposed_iso));
+              fs::file_size(path_to_supposed_iso));
     return {false, ExtractorErrorCode::EXTRACTION_ISO_UNEXPECTED_SIZE};
   }
   return {true, ExtractorErrorCode::SUCCESS};
@@ -233,13 +234,12 @@ std::tuple<xxh::hash64_t, int> calculate_extraction_hash(const IsoFile& iso_file
   return {xxh::xxhash<64>({combined_hash}), iso_file.hashes.size()};
 }
 
-std::tuple<xxh::hash64_t, int> calculate_extraction_hash(
-    const std::filesystem::path& extracted_iso_path) {
+std::tuple<xxh::hash64_t, int> calculate_extraction_hash(const fs::path& extracted_iso_path) {
   // - XOR all hashes together and hash the result.  This makes the ordering of the hashes (aka
   // files) irrelevant
   xxh::hash64_t combined_hash = 0;
   int filec = 0;
-  for (auto const& dir_entry : std::filesystem::recursive_directory_iterator(extracted_iso_path)) {
+  for (auto const& dir_entry : fs::recursive_directory_iterator(extracted_iso_path)) {
     if (dir_entry.is_regular_file()) {
       auto buffer = file_util::read_binary_file(dir_entry.path().string());
       auto hash = xxh::xxhash<64>(buffer);
