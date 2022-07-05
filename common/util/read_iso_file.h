@@ -1,9 +1,10 @@
 #pragma once
 
-
 #include <string>
 #include <vector>
+
 #include "common/util/FileUtil.h"
+
 #include "third-party/xxhash.hpp"
 
 struct IsoFile {

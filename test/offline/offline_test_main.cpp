@@ -9,6 +9,7 @@
 #include "common/util/Timer.h"
 #include "common/util/diff.h"
 #include "common/util/json_util.h"
+#include <common/util/unicode_util.h>
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "goalc/compiler/Compiler.h"
@@ -275,9 +276,9 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
     }
   }
 
-  dc.db = std::make_unique<decompiler::ObjectFileDB>(
-      dgo_paths, dc.config->obj_file_name_map_file, std::vector<fs::path>{},
-      std::vector<fs::path>{}, *dc.config);
+  dc.db = std::make_unique<decompiler::ObjectFileDB>(dgo_paths, dc.config->obj_file_name_map_file,
+                                                     std::vector<fs::path>{},
+                                                     std::vector<fs::path>{}, *dc.config);
 
   std::unordered_set<std::string> db_files;
   for (auto& files_by_name : dc.db->obj_files_by_name) {
@@ -420,6 +421,15 @@ bool compile(Decompiler& dc,
 }
 
 int main(int argc, char* argv[]) {
+#ifdef _WIN32
+  auto utf8_args = get_widechar_cli_args();
+  std::vector<char*> string_ptrs;
+  for (auto& str : utf8_args) {
+    string_ptrs.push_back(str.data());
+  }
+  argv = string_ptrs.data();
+#endif
+
   fmt::print("Offline Decompiler Test 2\n");
   lg::initialize();
   if (!file_util::setup_project_path(std::nullopt)) {

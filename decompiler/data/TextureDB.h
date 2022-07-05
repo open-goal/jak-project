@@ -1,12 +1,12 @@
 #pragma once
 
-
 #include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "common/util/FileUtil.h"
+
 #include "common/common_types.h"
+#include "common/util/FileUtil.h"
 
 namespace decompiler {
 struct TextureDB {

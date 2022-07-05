@@ -1,13 +1,13 @@
 #pragma once
 
 #include <condition_variable>
-
 #include <mutex>
 #include <thread>
 
 #include "common/custom_data/Tfrag3Data.h"
-#include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
+#include "common/util/Timer.h"
+
 #include "game/graphics/opengl_renderer/loader/common.h"
 #include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/texture/TexturePool.h"

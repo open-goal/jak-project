@@ -21,7 +21,6 @@
 
 #include <cstring>
 
-
 #include "isocommon.h"
 #include "overlord.h"
 
@@ -98,8 +97,8 @@ void fake_iso_init_globals() {
 int FS_Init(u8* buffer) {
   (void)buffer;
 
-  for (const auto& f : fs::directory_iterator(
-           file_util::get_jak_project_dir() / "out" / game_version_names[g_game_version] / "iso")) {
+  for (const auto& f : fs::directory_iterator(file_util::get_jak_project_dir() / "out" /
+                                              game_version_names[g_game_version] / "iso")) {
     if (f.is_regular_file()) {
       ASSERT(fake_iso_entry_count < MAX_ISO_FILES);
       FakeIsoEntry* e = &fake_iso_entries[fake_iso_entry_count];

@@ -5,11 +5,11 @@
  * Utility class to read a .STR file and extract the full file name.
  */
 
-
 #include <string>
 #include <vector>
-#include "common/util/FileUtil.h"
+
 #include "common/common_types.h"
+#include "common/util/FileUtil.h"
 
 namespace decompiler {
 class StrFileReader {

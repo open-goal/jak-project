@@ -10,11 +10,12 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "common/util/FileUtil.h"
+
 #include "LinkedObjectFile.h"
 
 #include "common/common_types.h"
 #include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
 
 #include "decompiler/analysis/symbol_def_map.h"
 #include "decompiler/data/TextureDB.h"
@@ -158,9 +159,7 @@ class ObjectFileDB {
   void extract_art_info();
   void dump_art_info(const fs::path& output_dir);
   void dump_raw_objects(const fs::path& output_dir);
-  void write_object_file_words(const fs::path& output_dir,
-                               bool dump_data,
-                               bool dump_code);
+  void write_object_file_words(const fs::path& output_dir, bool dump_data, bool dump_code);
   void write_disassembly(const fs::path& output_dir,
                          bool disassemble_data,
                          bool disassemble_code,

@@ -8,6 +8,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 #include "common/util/read_iso_file.h"
+#include <common/util/unicode_util.h>
 
 #include "decompiler/Disasm/OpcodeInfo.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
@@ -17,15 +18,14 @@
 
 #include "third-party/CLI11.hpp"
 
-IsoFile extract_files(fs::path input_file_path,
-                      fs::path extracted_iso_path) {
+IsoFile extract_files(fs::path input_file_path, fs::path extracted_iso_path) {
   lg::info(
       "Note: Provided game data path '{}' points to a file, not a directory. Assuming it's an ISO "
       "file and attempting to extract!",
       input_file_path.string());
 
   fs::create_directories(extracted_iso_path);
- 
+
   auto fp = file_util::open_file(input_file_path, "rb");
   ASSERT_MSG(fp, "failed to open input ISO file");
   IsoFile iso = unpack_iso_files(fp, extracted_iso_path, true, true);
@@ -52,7 +52,6 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
   }
 
   // Find the game in our tracking database
-  std::optional<ISOMetadata> meta_res = std::nullopt;
   auto dbEntry = isoDatabase.find(serial.value());
   if (dbEntry == isoDatabase.end()) {
     lg::error("Serial '{}' not found in the validation database", serial.value());
@@ -73,30 +72,29 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
     return {std::nullopt, ExtractorErrorCode::VALIDATION_ELF_MISSING_FROM_DB};
   }
 
-  meta_res = std::make_optional<ISOMetadata>(meta_entry->second);
-  const auto& meta = *meta_res;
+  auto version_info = meta_entry->second;
   // Print out some information
   lg::info("Detected Game Metadata:");
-  lg::info("\tDetected - {}", meta.canonical_name);
-  lg::info("\tRegion - {}", meta.region);
+  lg::info("\tDetected - {}", version_info.canonical_name);
+  lg::info("\tRegion - {}", version_info.region);
   lg::info("\tSerial - {}", dbEntry->first);
-  lg::info("\tUses Decompiler Config - {}", meta.decomp_config);
+  lg::info("\tUses Decompiler Config - {}", version_info.decomp_config);
 
   // - Number of Files
-  if (meta.num_files != expected_num_files) {
-    lg::error("Extracted an unexpected number of files. Expected '{}', Actual '{}'", meta.num_files,
-              expected_num_files);
+  if (version_info.num_files != expected_num_files) {
+    lg::error("Extracted an unexpected number of files. Expected '{}', Actual '{}'",
+              version_info.num_files, expected_num_files);
     return {std::nullopt, ExtractorErrorCode::VALIDATION_INCORRECT_EXTRACTION_COUNT};
   }
   // Check the ISO Hash
-  if (meta.contents_hash != expected_hash) {
+  if (version_info.contents_hash != expected_hash) {
     lg::error("Overall ISO content's hash does not match. Expected '{}', Actual '{}'",
-              meta.contents_hash, expected_hash);
+              version_info.contents_hash, expected_hash);
     return {std::nullopt, ExtractorErrorCode::VALIDATION_FILE_CONTENTS_UNEXPECTED};
   }
 
   return {
-      meta_res,
+      std::make_optional(version_info),
       ExtractorErrorCode::SUCCESS,
   };
 }
@@ -191,8 +189,7 @@ void decompile(const fs::path& iso_data_path, const std::string& data_subfolder)
   }
 }
 
-ExtractorErrorCode compile(const fs::path& iso_data_path,
-                           const std::string& data_subfolder) {
+ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& data_subfolder) {
   // Determine which config to use from the database
   const auto version_info = get_version_info_or_default(iso_data_path);
 
@@ -226,49 +223,6 @@ void launch_game() {
   system(fmt::format("\"{}\"", (file_util::get_jak_project_dir() / "../gk").string()).c_str());
 }
 
-
-#include <shellapi.h>
-std::string Utf8FromUtf16(const wchar_t* utf16_string) {
-  if (utf16_string == nullptr) {
-    return std::string();
-  }
-  int target_length = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, utf16_string, -1,
-                                            nullptr, 0, nullptr, nullptr);
-  if (target_length == 0) {
-    return std::string();
-  }
-  std::string utf8_string;
-  utf8_string.resize(target_length);
-  int converted_length = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, utf16_string, -1,
-                                               utf8_string.data(), target_length, nullptr, nullptr);
-  if (converted_length == 0) {
-    return std::string();
-  }
-  return utf8_string;
-}
-
-// TODO - how do i make this nicer (return the char**)
-std::vector<std::string> ConvertCLIArgsFromWideChar() {
-  // Convert the UTF-16 command line arguments to UTF-8 for the Engine to use.
-  int argc;
-  wchar_t** argv = ::CommandLineToArgvW(::GetCommandLineW(), &argc);
-  if (argv == nullptr) {
-    return {};
-  }
-
-  std::vector<std::string> command_line_arguments;
-
-  for (int i = 0; i < argc; i++) {
-    command_line_arguments.push_back(Utf8FromUtf16(argv[i]));
-  }
-
-  ::LocalFree(argv);
-
-  return command_line_arguments;
-}
-
-
-
 int main(int argc, char** argv) {
   fs::path input_file_path;
   fs::path project_path_override;
@@ -281,12 +235,14 @@ int main(int argc, char** argv) {
   bool flag_folder = false;
   std::string game_name = "jak1";
 
-  auto wtf = ConvertCLIArgsFromWideChar();
-  std::vector<char*> cstrings{};
-  for (auto& string : wtf) {
-    cstrings.push_back(&string.front());
+#ifdef _WIN32
+  auto args = get_widechar_cli_args();
+  std::vector<char*> string_ptrs;
+  for (auto& str : args) {
+    string_ptrs.push_back(str.data());
   }
-  argv = cstrings.data();
+  argv = string_ptrs.data();
+#endif
 
   lg::initialize();
 
@@ -349,8 +305,7 @@ int main(int argc, char** argv) {
 
   if (flag_extract) {
     // we extract to a temporary location because we don't know what we're extracting yet!
-    fs::path temp_iso_extract_location =
-        file_util::get_jak_project_dir() / "iso_data" / "_temp";
+    fs::path temp_iso_extract_location = file_util::get_jak_project_dir() / "iso_data" / "_temp";
     if (input_file_path != temp_iso_extract_location) {
       // in case input is also output, don't just wipe everything (weird)
       fs::remove_all(temp_iso_extract_location);
@@ -369,7 +324,8 @@ int main(int argc, char** argv) {
       // Get hash and file count
       const auto [hash, file_count] = calculate_extraction_hash(iso_file);
       // Validate the result to determine the release
-      const auto [version_info, validate_code] = validate(temp_iso_extract_location, hash, file_count);
+      const auto [version_info, validate_code] =
+          validate(temp_iso_extract_location, hash, file_count);
       if (validate_code == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION ||
           (flag_fail_on_validation && validate_code != ExtractorErrorCode::SUCCESS)) {
         return static_cast<int>(validate_code);

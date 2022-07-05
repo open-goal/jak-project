@@ -5,10 +5,17 @@
  * Utility functions for reading and writing files.
  */
 
+#ifdef _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
+#endif
+
 #include "third-party/filesystem.hpp"
+
+#ifdef _WIN32
 #undef FALSE
+#endif
+
 #include <optional>
 #include <string>
 #include <vector>

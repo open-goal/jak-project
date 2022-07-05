@@ -645,8 +645,7 @@ void ObjectFileDB::find_and_write_scripts(const fs::path& output_dir) {
   lg::info(" Total {:.3f} ms\n", timer.getMs());
 }
 
-std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
-                                         const fs::path& output_path) {
+std::string ObjectFileDB::process_tpages(TextureDB& tex_db, const fs::path& output_path) {
   lg::info("- Finding textures in tpages...");
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;

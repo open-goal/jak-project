@@ -1,7 +1,6 @@
 
 #include "test_runner.h"
 
-
 #include <string>
 
 #include "inja.hpp"

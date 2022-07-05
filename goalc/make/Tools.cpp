@@ -1,7 +1,5 @@
 #include "Tools.h"
 
-
-
 #include "common/goos/ParseHelpers.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
@@ -114,8 +112,7 @@ bool CopyTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
   }
   for (auto& out : task.output) {
     fs::copy(fs::path(file_util::get_file_path({task.input.at(0)})),
-                          fs::path(file_util::get_file_path({out})),
-                          fs::copy_options::overwrite_existing);
+             fs::path(file_util::get_file_path({out})), fs::copy_options::overwrite_existing);
   }
   return true;
 }

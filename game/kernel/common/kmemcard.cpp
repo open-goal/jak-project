@@ -117,8 +117,7 @@ u32 mc_checksum(Ptr<u8> data, s32 size) {
  */
 bool file_is_present(int id, int bank = 0) {
   auto bankname = file_util::get_user_memcard_dir() / filename[4 + id * 2 + bank];
-  if (!fs::exists(bankname) ||
-      fs::file_size(bankname) < BANK_TOTAL_SIZE) {
+  if (!fs::exists(bankname) || fs::file_size(bankname) < BANK_TOTAL_SIZE) {
     // file doesn't exist, or size is bad. we do not want to open files that will crash on read!
     return false;
   }
@@ -282,8 +281,8 @@ void pc_game_load_open_file(FILE* fd) {
       if (fclose(fd) == 0) {
         // cb_closedload //
         // added : check if aux bank exists
-        if (p2 < 1 && fs::exists(file_util::get_user_memcard_dir() /
-                                              filename[op.param2 * 2 + 4 + p2 + 1])) {
+        if (p2 < 1 &&
+            fs::exists(file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p2 + 1])) {
           p2++;
           mc_print("reading next save bank {}", filename[op.param2 * 2 + 4 + p2]);
           auto new_bankname = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p2];

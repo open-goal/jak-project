@@ -510,12 +510,11 @@ std::vector<u8> decompress_dgo(const std::vector<u8>& data_in) {
   return decompressed_data;
 }
 
-
 FILE* open_file(const fs::path& path, std::string mode) {
 #ifdef _WIN32
   return _wfopen(path.wstring().c_str(), std::wstring(mode.begin(), mode.end()).c_str());
 #else
-  return fopen(path.string().c_str(), mode);
+  return fopen(path.string().c_str(), mode.c_str());
 #endif
 }
 

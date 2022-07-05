@@ -3,9 +3,9 @@
 #include <cstring>
 
 #include "common/util/Assert.h"
+#include <common/util/FileUtil.h>
 
 #include "game/sce/iop.h"
-#include <common/util/FileUtil.h>
 
 /*!
  * Create a new thread.  Will not run the thread.

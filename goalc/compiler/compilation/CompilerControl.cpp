@@ -3,7 +3,6 @@
  * Compiler implementation for forms which actually control the compiler.
  */
 
-
 #include <regex>
 #include <stack>
 

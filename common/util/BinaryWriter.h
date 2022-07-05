@@ -7,11 +7,11 @@
 
 #include <cstdint>
 #include <cstring>
-
 #include <stdexcept>
 #include <vector>
-#include "common/util/FileUtil.h"
+
 #include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
 
 struct BinaryWriterRef {
   size_t offset;

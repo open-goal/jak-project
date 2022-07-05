@@ -3,8 +3,18 @@
 #include "common/util/FileUtil.h"
 #include "common/util/BinaryWriter.h"
 #include "third-party/json.hpp"
+#include <common/util/unicode_util.h>
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+  auto args = get_widechar_cli_args();
+  std::vector<char*> string_ptrs;
+  for (auto& str : args) {
+    string_ptrs.push_back(str.data());
+  }
+  argv = string_ptrs.data();
+#endif
+
   printf("OpenGOAL version %d.%d\n", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
   printf("DGO Packing Tool\n");
 

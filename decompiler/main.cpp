@@ -10,6 +10,7 @@
 #include "common/util/diff.h"
 #include "common/util/os.h"
 #include "common/versions.h"
+#include <common/util/unicode_util.h>
 
 #include "ObjectFile/ObjectFileDB.h"
 #include "decompiler/data/TextureDB.h"
@@ -17,6 +18,15 @@
 #include "decompiler/level_extractor/extract_level.h"
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+  auto args = get_widechar_cli_args();
+  std::vector<char*> string_ptrs;
+  for (auto& str : args) {
+    string_ptrs.push_back(str.data());
+  }
+  argv = string_ptrs.data();
+#endif
+
   Timer decomp_timer;
 
   fmt::print("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));

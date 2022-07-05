@@ -118,10 +118,7 @@ IsoFile find_files_in_iso(FILE* fp) {
   return result;
 }
 
-void unpack_iso_files(FILE* fp,
-                      IsoFile& layout,
-                      const fs::path& dest,
-                      bool print_progress) {
+void unpack_iso_files(FILE* fp, IsoFile& layout, const fs::path& dest, bool print_progress) {
   unpack_entry(fp, layout, layout.root, dest, print_progress);
 }
 

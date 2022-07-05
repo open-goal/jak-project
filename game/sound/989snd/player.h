@@ -6,7 +6,7 @@
 #include <mutex>
 #include <unordered_map>
 #include <vector>
-#include "common/util/FileUtil.h"
+
 #include "ame_handler.h"
 #include "handle_allocator.h"
 #include "loader.h"
@@ -14,6 +14,7 @@
 #include "sound_handler.h"
 
 #include "common/common_types.h"
+#include "common/util/FileUtil.h"
 
 #include "../common/synth.h"
 #include "game/sound/989snd/vagvoice.h"

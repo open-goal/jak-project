@@ -6,7 +6,6 @@
 #include "gfx.h"
 
 #include <cstdio>
-
 #include <functional>
 
 #include "display.h"

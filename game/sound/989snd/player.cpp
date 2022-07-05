@@ -7,8 +7,8 @@
 #include <third-party/fmt/core.h>
 
 #ifdef _WIN32
-#include <windows.h>
 #include <combaseapi.h>
+#include <windows.h>
 #endif
 
 namespace snd {

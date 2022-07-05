@@ -8,7 +8,6 @@
 
 #include "kmachine.h"
 
-
 #include <string>
 
 #include "common/log/log.h"

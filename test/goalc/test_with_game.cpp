@@ -1,6 +1,5 @@
 #include <chrono>
 #include <cstdio>
-
 #include <iostream>
 #include <random>
 #include <regex>

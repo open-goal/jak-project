@@ -180,7 +180,7 @@ std::tuple<std::optional<std::string>, std::optional<xxh::hash64_t>> findElfFile
 }
 
 void log_potential_new_db_entry(ExtractorErrorCode error_code,
-                                const std::string serial,
+                                const std::string& serial,
                                 const xxh::hash64_t elf_hash,
                                 const int files_extracted,
                                 const xxh::hash64_t contents_hash) {

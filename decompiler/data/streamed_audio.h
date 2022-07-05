@@ -1,8 +1,9 @@
 #pragma once
 
-#include "common/util/FileUtil.h"
 #include <string>
 #include <vector>
+
+#include "common/util/FileUtil.h"
 
 namespace decompiler {
 void process_streamed_audio(const fs::path& output_path,
