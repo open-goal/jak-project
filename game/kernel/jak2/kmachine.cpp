@@ -382,9 +382,9 @@ int InitMachine() {
   // if (scePadInit(0) != 1) {
   //   MsgErr("dkernel: !init pad\n");
   // }
-  // if (MasterDebug != 0) {
-  InitGoalProto();
-  // }
+  if (MasterDebug) {
+    InitGoalProto();
+  }
 
   printf("InitSound\n");
   InitSound();
@@ -410,12 +410,11 @@ int InitMachine() {
  */
 int ShutdownMachine() {
   Msg(6, "kernel: machine shutdown (reason %d)\n", MasterExit);
-  ASSERT(false);
-  /*
+
   StopIOP();
   ShutdownSound();
   CloseListener();
-   */
+
   ShutdownGoalProto();
 
   // OpenGOAL only - kill ps2 VM
