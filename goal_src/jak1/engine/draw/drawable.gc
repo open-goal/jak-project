@@ -1560,18 +1560,15 @@
     (toggle-pause)
     )
   (when (or (not *progress-process*) (can-go-back? (-> *progress-process* 0)))
-    (if (or (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons select r3 start)) ;; push pause
-            (and ;; controller lost
-             (logtest? (-> *cpad-list* cpads 0 valid) 128)
-             (= *master-mode* 'game)
-             (>= (the-as int (-> *display* base-frame-counter)) (the-as int (-> *game-info* blackout-time)))
-             ;; this is a hack. this is initialized to #x493e0. It prevents controller-loss pause from
-             ;; triggering in the first few seconds of gameplay.
-             (< (seconds 1003) (-> *display* real-frame-counter))
-             )
-            (and (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r2)) ;; debug press
-                 (paused?)
+    (if (or (cpad-pressed? 0 select r3 start) ;; push pause
+            (and (logtest? (-> *cpad-list* cpads 0 valid) 128) ;; controller lost
+                 (= *master-mode* 'game)
+                 (>= (-> *display* base-frame-counter) (-> *game-info* blackout-time))
+                 ;; this is a hack. this is initialized to (seconds 1000). It prevents controller-loss pause from
+                 ;; triggering in the first few seconds of gameplay.
+                 (< (seconds 1003) (-> *display* real-frame-counter))
                  )
+            (and (cpad-pressed? 0 r2) (paused?)) ;; debug press
             *pause-lock*
             )
         (toggle-pause)
