@@ -1,0 +1,53 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: wind.gc
+;; name in dgo: wind
+;; dgos: GAME, ENGINE
+;; note: modified for high fps
+
+;; definition for symbol *wind-work*, type wind-work
+(define *wind-work* (new 'global 'wind-work))
+
+;; definition for function update-wind
+;; INFO: Return type mismatch int vs none.
+(defun update-wind ((arg0 wind-work) (arg1 (array uint8)))
+  (let* ((f0-1 (+ (-> arg0 wind-normal w) (rand-vu-float-range -1024.0 1024.0)))
+         (f30-1 (- f0-1 (* (the float (the int (/ f0-1 65536.0))) 65536.0)))
+         )
+    (set! (-> arg0 wind-normal w) f30-1)
+    (set! (-> arg0 wind-normal x) (cos f30-1))
+    (set! (-> arg0 wind-normal z) (sin f30-1))
+    )
+  (set! (-> arg0 wind-time) (+ (-> arg0 wind-time) 1))
+  (let* ((s4-0 (logand (the int (* (-> *display* time-adjust-ratio) (-> arg0 wind-time))) 63)) ;; changed for high fps
+         (f0-4 (rand-vu-float-range 0.0 100.0))
+         (v1-5 (/ (* (-> *display* time-adjust-ratio) (-> arg0 wind-time)) (the-as uint 120))) ;; changed for high fps
+         (f1-6 (* 0.008333334
+                  (the float (mod (the uint (* (-> *display* time-adjust-ratio) (-> arg0 wind-time))) (the-as uint 120))) ;; changed for high fps
+                  )
+           )
+         (f2-4 (* 0.0625
+                  (the float (-> arg1 (mod (the-as int v1-5) (-> arg1 length))))
+                  )
+           )
+         (f0-5 (* (+ (* (- (* 0.0625
+                              (the float (-> arg1 (mod (the-as int (+ v1-5 1)) (-> arg1 length)))
+                                   )
+                              )
+                           f2-4
+                           )
+                        f1-6
+                        )
+                     f2-4
+                     )
+                  f0-4
+                  )
+           )
+         )
+    (set! (-> *wind-work* wind-force s4-0) (* (-> *display* time-adjust-ratio) f0-5)) ;; changed for high fps
+    (vector-float*! (-> *wind-work* wind-array s4-0) (-> arg0 wind-normal) (* (-> *display* time-adjust-ratio) f0-5)) ;; changed for high fps
+    )
+  0
+  (none)
+  )

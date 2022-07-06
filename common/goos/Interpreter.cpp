@@ -1051,7 +1051,7 @@ Object Interpreter::eval_try_load_file(const Object& form,
   vararg_check(form, args, {ObjectType::STRING}, {});
 
   auto path = {args.unnamed.at(0).as_string()->data};
-  if (!std::filesystem::exists(file_util::get_file_path(path))) {
+  if (!fs::exists(file_util::get_file_path(path))) {
     return SymbolObject::make_new(reader.symbolTable, "#f");
   }
 

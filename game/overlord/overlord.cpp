@@ -8,6 +8,8 @@
 #include "srpc.h"
 #include "ssound.h"
 
+#include "common/util/Assert.h"
+
 #include "game/sce/iop.h"
 
 using namespace iop;

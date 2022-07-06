@@ -74,15 +74,20 @@ void main() {
 //    transformed += -hmat2 * position_in.z;
 
     vec4 p = vec4(position_in, 1);
-    vec4 vtx_pos = -bones[mats[0]].X * p * weights_in[0]
-                   -bones[mats[1]].X * p * weights_in[1]
-                   -bones[mats[2]].X * p * weights_in[2];
+    vec4 vtx_pos = -bones[mats[0]].X * p * weights_in[0];
+    vec3 rotated_nrm = bones[mats[0]].R * normal_in * weights_in[0];
+
+    // game may send garbage bones if the weight is 0, don't let NaNs sneak in.
+    if (weights_in[1] > 0) {
+        vtx_pos += -bones[mats[1]].X * p * weights_in[1];
+        rotated_nrm += bones[mats[1]].R * normal_in * weights_in[1];
+    }
+    if (weights_in[2] > 0) {
+        vtx_pos += -bones[mats[2]].X * p * weights_in[2];
+        rotated_nrm += bones[mats[2]].R * normal_in * weights_in[2];
+    }
 
     vec4 transformed = perspective_matrix * vtx_pos;
-
-    vec3 rotated_nrm = bones[mats[0]].R * normal_in * weights_in[0]
-                     + bones[mats[1]].R * normal_in * weights_in[1]
-                     + bones[mats[2]].R * normal_in * weights_in[2];
 
     rotated_nrm = normalize(rotated_nrm);
     vec3 light_intensity = light_dir0 * rotated_nrm.x + light_dir1 * rotated_nrm.y + light_dir2 * rotated_nrm.z;

@@ -12,8 +12,9 @@
 
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/util/Assert.h"
+#include <common/util/unicode_util.h>
 
-namespace fs = std::filesystem;
+namespace fs = fs;
 
 struct Ram {
   const u8* data = nullptr;
@@ -89,7 +90,8 @@ u32 scan_for_symbol_table(const Ram& ram, u32 start_addr, u32 end_addr) {
   fmt::print("got {} candidates for #f:\n", candidates.size());
 
   for (auto addr : candidates) {
-    auto str = addr + BASIC_OFFSET + SYM_INFO_OFFSET;
+    // todo: this is wrong
+    auto str = addr + BASIC_OFFSET + jak1::SYM_INFO_OFFSET;
     fmt::print(" trying 0x{:x}:\n", addr);
     if (ram.word_in_memory(str)) {
       auto mem = ram.word(str + 4);         // offset of str in SymInfo
@@ -125,12 +127,13 @@ SymbolMap build_symbol_map(const Ram& ram, u32 s7) {
   LastSymbol = symbol_table + 0xff00;
    */
 
-  auto symbol_table = s7 - ((GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET);
+  // todo wrong
+  auto symbol_table = s7 - ((jak1::GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET);
   auto SymbolTable2 = symbol_table + BASIC_OFFSET;
   auto LastSymbol = symbol_table + 0xff00;
 
   for (u32 sym = SymbolTable2; sym < LastSymbol; sym += 8) {
-    auto info = sym + SYM_INFO_OFFSET;  // already has basic offset
+    auto info = sym + jak1::SYM_INFO_OFFSET;  // already has basic offset
     auto str = ram.word(info + 4);
     if (str) {
       auto name = ram.string(str + 4);
@@ -552,6 +555,15 @@ void inspect_symbols(const Ram& ram,
 }
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+  auto args = get_widechar_cli_args();
+  std::vector<char*> string_ptrs;
+  for (auto& str : args) {
+    string_ptrs.push_back(str.data());
+  }
+  argv = string_ptrs.data();
+#endif
+
   fmt::print("MemoryDumpTool\n");
 
   if (argc != 2 && argc != 3) {

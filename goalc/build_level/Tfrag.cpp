@@ -8,7 +8,7 @@
 #include "goalc/data_compiler/DataObjectGenerator.h"
 
 void tfrag_from_gltf(const gltf_mesh_extract::TfragOutput& mesh_extract_out,
-                     DrawableTreeTfrag& out,
+                     DrawableTreeTfrag& /*out*/,
                      tfrag3::TfragTree& out_pc) {
   out_pc.kind = tfrag3::TFragmentTreeKind::NORMAL;  // todo more types?
   out_pc.draws = std::move(mesh_extract_out.strip_draws);

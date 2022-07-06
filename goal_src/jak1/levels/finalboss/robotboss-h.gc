@@ -1,0 +1,144 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: robotboss-h.gc
+;; name in dgo: robotboss-h
+;; dgos: FIN, L1
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/robotboss-ag.gc")
+
+(deftype robotboss-dda (structure)
+  ((blue-bomb-time       float  :offset-assert   0)
+   (num-blobs            int32  :offset-assert   4)
+   (green-bomb-time      float  :offset-assert   8)
+   (red-shots-min        int32  :offset-assert  12)
+   (red-shots-rnd        int32  :offset-assert  16)
+   (red-shot-time-min    float  :offset-assert  20)
+   (red-shot-time-rnd    float  :offset-assert  24)
+   (red-bomb-time        float  :offset-assert  28)
+   (yellow-shot-time-min float  :offset-assert  32)
+   (yellow-shot-time-rnd float  :offset-assert  36)
+   (yellow-gun-hits      int32  :offset-assert  40)
+   (yellow-bomb-time     float  :offset-assert  44)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+
+(deftype robotboss (process-drawable)
+  ((root-override    collide-shape-moving             :offset        112)
+   (alts             entity-actor             13      :offset-assert 176)
+   (desired-loc      vector                   :inline :offset-assert 240)
+   (old-loc          vector                   :inline :offset-assert 256)
+   (loc-t            float                            :offset-assert 272)
+   (loc-t-start      time-frame                       :offset-assert 280)
+   (loc-t-duration   time-frame                       :offset-assert 288)
+   (hits-to-go       int32                            :offset-assert 296)
+   (took-hit         symbol                           :offset-assert 300)
+   (children-spawned int32                            :offset-assert 304)
+   (vulnerable       int64                            :offset-assert 312)
+   (till-next-shot   int64                            :offset-assert 320)
+   (shot-attractor   handle                           :offset-assert 328)
+   (desired-pool-y   float                            :offset-assert 336)
+   (particle         sparticle-launch-control 7       :offset-assert 340)
+   (blue-smoke       symbol                           :offset-assert 368)
+   (red-smoke        symbol                           :offset-assert 372)
+   (yellow-smoke     symbol                           :offset-assert 376)
+   (white-eco        handle                           :offset-assert 384)
+   (des-cam-entity   string                           :offset-assert 392)
+   (use-interesting  symbol                           :offset-assert 396)
+   (ignore-camera    symbol                           :offset-assert 400)
+   (ambient          ambient-control          :inline :offset-assert 408)
+   (yellow-gun       joint-mod                        :offset-assert 424)
+   (palette-val      float                            :offset-assert 428)
+   (looping-sound    ambient-sound            4       :offset-assert 432)
+   (dda              robotboss-dda                    :offset-assert 448)
+   (valid-frames     int32                            :offset-assert 452)
+   (skip-cut         symbol                           :offset-assert 456)
+   (keep-charging    symbol                           :offset-assert 460)
+   )
+  :heap-base #x160
+  :method-count-assert 21
+  :size-assert         #x1d0
+  :flag-assert         #x15016001d0
+  (:methods
+    (ease-loc-t (_type_) float 20)
+    )
+  (:states
+    robotboss-blue-dark-bomb
+    robotboss-blue-dark-bomb-wait
+    robotboss-blue-wait
+    robotboss-daxter-sacrifice-movie
+    robotboss-green
+    robotboss-green-dark-bomb
+    robotboss-green-dark-bomb-wait
+    robotboss-green-wait
+    robotboss-red
+    robotboss-red-dark-bomb
+    robotboss-red-dark-bomb-wait
+    robotboss-red-wait
+    robotboss-white-eco-movie
+    robotboss-yellow
+    robotboss-yellow-dark-bomb
+    robotboss-yellow-dark-bomb-wait
+    robotboss-yellow-wait
+    )
+  )
+
+
+(defmethod relocate robotboss ((obj robotboss) (arg0 int))
+  (dotimes (v1-0 7)
+    (if (nonzero? (-> obj particle v1-0))
+        (&+! (-> obj particle v1-0) arg0)
+        )
+    )
+  (dotimes (v1-3 4)
+    (if (nonzero? (-> obj looping-sound v1-3))
+        (&+! (-> obj looping-sound v1-3) arg0)
+        )
+    )
+  (if (nonzero? (-> obj yellow-gun))
+      (&+! (-> obj yellow-gun) arg0)
+      )
+  (the-as robotboss ((method-of-type process-drawable relocate) obj arg0))
+  )
+
+(defmethod deactivate robotboss ((obj robotboss))
+  (dotimes (s5-0 7)
+    (let ((a0-1 (-> obj particle s5-0)))
+      (if (nonzero? a0-1)
+          (kill-and-free-particles a0-1)
+          )
+      )
+    )
+  (dotimes (s5-1 4)
+    (let ((a0-2 (-> obj looping-sound s5-1)))
+      (if (nonzero? a0-2)
+          (stop! a0-2)
+          )
+      )
+    )
+  ((method-of-type process-drawable deactivate) obj)
+  (none)
+  )
+
+(defbehavior target-has-all-the-cells? process ()
+  (the-as
+    symbol
+    (and *target* (>= (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 100))
+    )
+  )
+
+(defskelgroup *robotboss-sg* robotboss robotboss-basic-lod0-jg robotboss-idle-ja
+              ((robotboss-basic-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -10 0 80)
+              :longest-edge (meters 19.9)
+              )
+
+
+
+

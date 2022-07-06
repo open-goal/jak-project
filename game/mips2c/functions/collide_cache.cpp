@@ -1,9 +1,17 @@
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#elif defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-but-set-variable"
+#endif
+
 //--------------------------MIPS2C---------------------
 #include "common/dma/gs.h"
 
-#include "game/kernel/kscheme.h"
+#include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
-
+using namespace jak1;
 namespace {
 u32 vu0_buffer[1024];  // todo, maybe can be 512.
 u32 vi1 = 0;
@@ -790,7 +798,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_28_collide_cache {
 struct Cache {
@@ -1073,7 +1081,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_27_collide_cache {
 struct Cache {
@@ -1369,7 +1377,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_29_collide_cache {
 struct Cache {
@@ -1558,7 +1566,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_12_collide_shape_prim_mesh {
 struct Cache {
@@ -1804,7 +1812,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_14_collide_shape_prim_mesh {
 struct Cache {
@@ -2049,7 +2057,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_13_collide_shape_prim_mesh {
 struct Cache {
@@ -2300,7 +2308,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_30_collide_cache {
 u64 execute(void* ctxt) {
@@ -2502,7 +2510,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_9_collide_cache_prim {
 struct Cache {
@@ -2690,7 +2698,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_10_collide_cache_prim {
 struct Cache {
@@ -2902,7 +2910,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_10_collide_puss_work {
 u64 execute(void* ctxt) {
@@ -3071,7 +3079,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_9_collide_puss_work {
 struct Cache {
@@ -3274,4 +3282,8 @@ void link() {
 } // namespace method_9_collide_puss_work
 } // namespace Mips2C
 
-
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#elif defined(__clang__)
+#pragma clang diagnostic pop
+#endif

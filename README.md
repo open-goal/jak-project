@@ -12,16 +12,14 @@
   <a href="https://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt=PRs Welcome></a>
 </p>
 
-## Table of Contents
-
-<!-- toc -->
-
 - [Project Description](#project-description)
+  - [**Please read the FAQ by clicking here if you have any questions.**](#please-read-the-faq-by-clicking-here-if-you-have-any-questions)
 - [Current Status](#current-status)
 - [What's Next](#whats-next)
 - [Getting Started - Linux](#getting-started---linux)
   - [Ubuntu (20.04)](#ubuntu-2004)
   - [Arch](#arch)
+  - [Fedora](#fedora)
 - [Getting Started - Windows](#getting-started---windows)
   - [Required Software](#required-software)
   - [Setting up and Opening the Project](#setting-up-and-opening-the-project)
@@ -34,8 +32,6 @@
   - [Interacting with the Game](#interacting-with-the-game)
 - [Project Layout](#project-layout)
 - [Directory Layout](#directory-layout)
-
-<!-- tocstop -->
 
 ## Project Description
 
@@ -171,9 +167,7 @@ On Windows, it's recommended to use a package manager, we use Scoop. Follow the 
 Once Scoop is installed, run the following commands:
 
 ```sh
-scoop install git llvm nasm python
-scoop bucket add extras
-scoop install task
+scoop install git llvm nasm python task
 ```
 
 ### Setting up and Opening the Project
@@ -188,7 +182,7 @@ This will create a `jak-project` folder, open the project as a CMake project via
 
 ![](./docs/img/windows/open-project.png)
 
-Then build the entire project as `Windows Release (clang-cl)`. You can also press Ctrl+Shift+B as a hotkey for Build All.  We currently prefer `clang-cl` on Windows as opposed to `msvc`, though it should work as well!
+Then build the entire project as `Windows Release (clang)`. You can also press Ctrl+Shift+B as a hotkey for Build All.  We currently prefer `clang` on Windows as opposed to `msvc`, though it should work as well!
 
 ![](./docs/img/windows/release-build.png)
 ![](./docs/img/windows/build-all.png)
@@ -204,12 +198,23 @@ Getting a running game involves 4 steps:
 
 ### Extract Assets
 
+First, setup your settings so the following scripts know which game you are using, and which version.  In a terminal, run the following:
+
+```sh
+task set-game-jak1
+task set-decomp-ntscv1
+```
+
+> Run `task --list` to see the other available options
+
+> At the time of writing, only Jak 1 is expected to work end-to-end!
+
 The first step is to extract your ISO file contents into the `iso_data/<game-name>` folder.  In the case of Jak 1 this is `iso_data/jak1`.
 
 Once this is done, open a terminal in the `jak-project` folder and run the following:
 
 ```sh
-task extract-jak1
+task extract
 ```
 
 ### Build the Game

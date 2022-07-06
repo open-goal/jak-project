@@ -17,4 +17,4 @@ struct DgoDescription {
   std::vector<DgoEntry> entries;
 };
 
-void build_dgo(const DgoDescription& description);
+void build_dgo(const DgoDescription& description, const std::string& output_prefix);

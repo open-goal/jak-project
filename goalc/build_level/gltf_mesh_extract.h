@@ -13,6 +13,8 @@ struct Input {
   std::string filename;
   TexturePool* tex_pool = nullptr;
   bool get_colors = true;
+  bool auto_wall_enable = true;
+  float auto_wall_angle = 30.f;
 };
 
 struct TfragOutput {

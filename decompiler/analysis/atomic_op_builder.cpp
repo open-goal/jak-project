@@ -569,7 +569,8 @@ std::unique_ptr<AtomicOp> convert_daddiu_1(const Instruction& i0, int idx, GameV
     // get symbol pointer
     return std::make_unique<SetVarOp>(
         make_dst_var(i0, idx), SimpleAtom::make_sym_ptr(i0.get_src(1).get_sym()).as_expr(), idx);
-  } else if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_imm(empty_pair_offset(version))) {
+  } else if (i0.get_src(0).is_reg(rs7()) &&
+             i0.get_src(1).is_imm(empty_pair_offset_from_s7(version))) {
     // get empty pair
     return std::make_unique<SetVarOp>(make_dst_var(i0, idx),
                                       SimpleAtom::make_empty_list().as_expr(), idx);
@@ -1746,11 +1747,23 @@ std::unique_ptr<AtomicOp> convert_5(const Instruction& i0,
                                     const Instruction& i2,
                                     const Instruction& i3,
                                     const Instruction& i4,
-                                    int idx) {
+                                    int idx,
+                                    GameVersion version) {
   auto s6 = make_gpr(Reg::S6);
 
+  int process_offset = -1;
+  switch (version) {
+    case GameVersion::Jak1:
+      process_offset = 44;
+      break;
+    case GameVersion::Jak2:
+      process_offset = 48;
+      break;
+    default:
+      ASSERT(false);
+  }
   if (i0.kind == InstructionKind::LWU && i0.get_dst(0).is_reg(s6) &&
-      i0.get_src(0).get_imm() == 44 && i0.get_src(1).is_reg(s6) &&
+      i0.get_src(0).get_imm() == process_offset && i0.get_src(1).is_reg(s6) &&
       i1.kind == InstructionKind::MTLO1 && i1.get_src(0).is_reg(s6) &&
       i2.kind == InstructionKind::LWU && i2.get_dst(0).is_reg(s6) &&
       i2.get_src(0).get_imm() == 12 && i2.get_src(1).is_reg(s6) &&
@@ -2111,7 +2124,7 @@ int convert_block_to_atomic_ops(int begin_idx,
 
     if (!converted && n_instr >= 5) {
       // try 5 instructions
-      op = convert_5(instr[0], instr[1], instr[2], instr[3], instr[4], op_idx);
+      op = convert_5(instr[0], instr[1], instr[2], instr[3], instr[4], op_idx, version);
       if (op) {
         converted = true;
         length = 5;

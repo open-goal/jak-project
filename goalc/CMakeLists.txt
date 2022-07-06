@@ -10,6 +10,7 @@ add_library(compiler
         build_level/collide_drawable.cpp
         build_level/collide_pack.cpp
         build_level/color_quantization.cpp
+        build_level/Entity.cpp
         build_level/FileInfo.cpp
         build_level/gltf_mesh_extract.cpp
         build_level/LevelFile.cpp

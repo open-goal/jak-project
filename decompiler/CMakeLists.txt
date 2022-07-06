@@ -1,6 +1,7 @@
 add_library(
         decomp
 
+        analysis/analyze_inspect_method.cpp
         analysis/atomic_op_builder.cpp
         analysis/cfg_builder.cpp
         analysis/expression_build.cpp
@@ -99,7 +100,7 @@ target_link_libraries(decompiler
 
 
 add_executable(extractor
-        extractor/main.cpp)
+        extractor/main.cpp extractor/extractor_util.hpp )
 
 target_link_libraries(extractor
         decomp

@@ -15,7 +15,7 @@ TEST_F(FormRegressionTest, ExprTruncate) {
       "    daddu sp, sp, r0";
   std::string type = "(function float float)";
   std::string expected = "(the float (the int arg0))";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprIntegralP) {
@@ -37,7 +37,7 @@ TEST_F(FormRegressionTest, ExprIntegralP) {
       "    daddu sp, sp, r0";
   std::string type = "(function float float)";
   std::string expected = "(the-as float (= (the float (the int arg0)) arg0))";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprFractionalPart) {
@@ -55,7 +55,7 @@ TEST_F(FormRegressionTest, ExprFractionalPart) {
       "    daddu sp, sp, r0";
   std::string type = "(function float float)";
   std::string expected = "(- arg0 (the float (the int arg0)))";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprSeek) {
@@ -103,5 +103,5 @@ TEST_F(FormRegressionTest, ExprSeek) {
       "   (else (- arg0 arg2))\n"
       "   )\n"
       "  )";
-  test_with_expr(func, type, expected);
+  test_with_expr_jak1(func, type, expected);
 }

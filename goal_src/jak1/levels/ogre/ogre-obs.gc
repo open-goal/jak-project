@@ -1,0 +1,1507 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: ogre-obs.gc
+;; name in dgo: ogre-obs
+;; dgos: L1, OGR
+
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/ogre-step-ag.gc")
+(import "goal_src/jak1/import/tntbarrel-ag.gc")
+(import "goal_src/jak1/import/ogre-bridge-ag.gc")
+(import "goal_src/jak1/import/shortcut-boulder-ag.gc")
+(import "goal_src/jak1/import/medres-snow-ag.gc")
+(import "goal_src/jak1/import/ogre-bridgeend-ag.gc")
+(import "goal_src/jak1/import/ogre-isle-ag.gc")
+
+(defskelgroup *med-res-snow-sg* medres-snow medres-snow-lod0-jg medres-snow-idle-ja
+              ((medres-snow-lod0-mg (meters 999999)))
+              :bounds (static-spherem -390 150 70 410)
+              )
+
+(defpartgroup group-tntbarrel-BIG-explosion
+  :id 473
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 64)
+  :parts ((sp-item 2234 :period 3000 :length 5)
+    (sp-item 2235 :period 3000 :length 5)
+    (sp-item 2236 :period 3000 :length 40)
+    (sp-item 2237 :period 3000 :length 40)
+    (sp-item 2238 :period 3000 :length 40)
+    )
+  )
+
+(defpart 2236
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 32.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 1) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 2.4) (meters 1.8) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 192.0 64.0 1.0)
+    (sp-rnd-flt spt-g 192.0 64.0 1.0)
+    (sp-flt spt-b 128.0)
+    (sp-rnd-flt spt-a 32.0 96.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.32) (meters 0.42666668) 1.0)
+    (sp-flt spt-scalevel-x (meters -0.009333333))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-g -2.1333334)
+    (sp-flt spt-fade-b -1.4222223)
+    (sp-rnd-flt spt-accel-y -2.048 -2.048 1.0)
+    (sp-flt spt-friction 0.9)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit14)
+    (sp-int-plain-rnd spt-next-time 30 89 1)
+    (sp-launcher-by-id spt-next-launcher 2239)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 120.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 2) (meters 12) 1.0)
+    )
+  )
+
+(defpart 2239
+  :init-specs ((sp-flt spt-fade-r 0.0) (sp-flt spt-fade-g 0.0) (sp-flt spt-fade-b 0.0) (sp-flt spt-fade-a -1.0666667))
+  )
+
+(defpart 2238
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 6.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 1) 1.0)
+    (sp-flt spt-scale-x (meters 0.5))
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 180.0) 1.0)
+    (sp-flt spt-scale-y (meters 32))
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 196.0)
+    (sp-flt spt-b 64.0)
+    (sp-rnd-flt spt-a 32.0 64.0 1.0)
+    (sp-flt spt-scalevel-y (meters 3.4133334))
+    (sp-flt spt-fade-g -3.2666667)
+    (sp-flt spt-fade-b -1.0666667)
+    (sp-flt spt-fade-a -1.6)
+    (sp-int spt-timer 60)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    )
+  )
+
+(defpart 2234
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-y (meters 2))
+    (sp-flt spt-scale-x (meters 128))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 192.0 32.0 1.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer 900)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    )
+  )
+
+(defpart 2235
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-y (meters 2))
+    (sp-flt spt-scale-x (meters 32))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 192.0 32.0 1.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer 900)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    )
+  )
+
+(defpart 2237
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 48.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 1) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 16) (meters 10) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 128.0 64.0 1.0)
+    (sp-flt spt-b 128.0)
+    (sp-rnd-flt spt-a 48.0 48.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.32) (meters 0.21333334) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.053333335))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.6) (degrees 1.2) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.08533333)
+    (sp-rnd-flt spt-accel-y 2.048 2.048 1.0)
+    (sp-flt spt-friction 0.85)
+    (sp-int spt-timer 510)
+    (sp-cpuinfo-flags bit2 bit14)
+    (sp-int spt-next-time 42)
+    (sp-launcher-by-id spt-next-launcher 2240)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 160.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 8) 1.0)
+    )
+  )
+
+(defpart 2240
+  :init-specs ((sp-flt spt-fade-r -0.26666668)
+    (sp-flt spt-fade-g -0.26666668)
+    (sp-flt spt-fade-b -0.52916664)
+    (sp-int spt-next-time 240)
+    (sp-launcher-by-id spt-next-launcher 2241)
+    )
+  )
+
+(defpart 2241
+  :init-specs ((sp-flt spt-fade-r -0.24380952)
+    (sp-flt spt-fade-g -0.12190476)
+    (sp-flt spt-fade-b 0.0)
+    (sp-flt spt-fade-a -0.09142857)
+    (sp-int spt-next-time 525)
+    (sp-launcher-by-id spt-next-launcher 2242)
+    )
+  )
+
+(defpart 2242
+  :init-specs ((sp-flt spt-fade-r 0.0) (sp-flt spt-fade-g 0.0) (sp-flt spt-fade-b 0.0))
+  )
+
+(defpartgroup group-tntbarrel-explosion
+  :id 474
+  :duration 600
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 2079 :period 600 :length 5)
+    (sp-item 2080 :period 600 :length 40)
+    (sp-item 2081 :period 600 :length 20)
+    (sp-item 2082 :period 600 :length 20)
+    )
+  )
+
+(defpart 2080
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 8.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 1) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.4) (meters 0.8) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 192.0 64.0 1.0)
+    (sp-rnd-flt spt-g 192.0 64.0 1.0)
+    (sp-flt spt-b 128.0)
+    (sp-rnd-flt spt-a 32.0 96.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.04) (meters 0.16) 1.0)
+    (sp-flt spt-scalevel-x (meters -0.0026666666))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-g -2.1333334)
+    (sp-flt spt-fade-b -1.4222223)
+    (sp-rnd-flt spt-accel-y -0.68266666 -0.68266666 1.0)
+    (sp-flt spt-friction 0.9)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit14)
+    (sp-int-plain-rnd spt-next-time 30 89 1)
+    (sp-launcher-by-id spt-next-launcher 2083)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 120.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 2) (meters 4) 1.0)
+    )
+  )
+
+(defpart 2083
+  :init-specs ((sp-flt spt-fade-r 0.0) (sp-flt spt-fade-g 0.0) (sp-flt spt-fade-b 0.0) (sp-flt spt-fade-a -1.0666667))
+  )
+
+(defpart 2082
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 6.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 1) 1.0)
+    (sp-flt spt-scale-x (meters 0.3))
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 180.0) 1.0)
+    (sp-flt spt-scale-y (meters 12))
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 196.0)
+    (sp-flt spt-b 64.0)
+    (sp-rnd-flt spt-a 32.0 64.0 1.0)
+    (sp-flt spt-scalevel-y (meters 0.85333335))
+    (sp-flt spt-fade-g -3.2666667)
+    (sp-flt spt-fade-b -1.0666667)
+    (sp-flt spt-fade-a -1.6)
+    (sp-int spt-timer 60)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    )
+  )
+
+(defpart 2079
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-y (meters 2))
+    (sp-flt spt-scale-x (meters 24))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 192.0 32.0 1.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -2.3272727)
+    (sp-int spt-timer 54)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    )
+  )
+
+(defpart 2081
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-flt spt-y (meters 0) (meters 1) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 3) (meters 1.5) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 128.0 64.0 1.0)
+    (sp-flt spt-b 128.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.08) (meters 0.04) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.02))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.6) (degrees 1.2) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.28444445)
+    (sp-rnd-flt spt-accel-y 0.68266666 0.68266666 1.0)
+    (sp-flt spt-friction 0.8)
+    (sp-int spt-timer 510)
+    (sp-cpuinfo-flags bit2 bit14)
+    (sp-int spt-next-time 42)
+    (sp-launcher-by-id spt-next-launcher 2084)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 120.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 3) 1.0)
+    )
+  )
+
+(defpart 2084
+  :init-specs ((sp-flt spt-fade-r -1.0666667)
+    (sp-flt spt-fade-g -1.0666667)
+    (sp-flt spt-fade-b -2.1166666)
+    (sp-int spt-next-time 60)
+    (sp-launcher-by-id spt-next-launcher 2085)
+    )
+  )
+
+(defpart 2085
+  :init-specs ((sp-flt spt-fade-r -0.5688889)
+    (sp-flt spt-fade-g -0.28444445)
+    (sp-flt spt-fade-b 0.0)
+    (sp-flt spt-fade-a -0.21333334)
+    (sp-int spt-next-time 225)
+    (sp-launcher-by-id spt-next-launcher 2086)
+    )
+  )
+
+(defpart 2086
+  :init-specs ((sp-flt spt-fade-r 0.0) (sp-flt spt-fade-g 0.0) (sp-flt spt-fade-b 0.0))
+  )
+
+(defskelgroup *tntbarrel-sg* tntbarrel tntbarrel-lod0-jg tntbarrel-idle-ja
+              ((tntbarrel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 4)
+              )
+
+(deftype tntbarrel (process-drawable)
+  ((root-override collide-shape  :offset 112)
+   )
+  :heap-base #x40
+  :method-count-assert 22
+  :size-assert         #xb0
+  :flag-assert         #x16004000b0
+  (:methods
+    (idle () _type_ :state 20)
+    (die (symbol) _type_ :state 21)
+    )
+  )
+
+
+(defstate die (tntbarrel)
+  :virtual #t
+  :code (behavior ((arg0 symbol))
+    (ja-channel-set! 0)
+    (clear-collide-with-as (-> self root-override))
+    (ja-post)
+    (sound-play "dcrate-break")
+    (if arg0
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          (-> *part-group-id-table* 473)
+          -1
+          #f
+          #f
+          #f
+          (-> self root-override trans)
+          :to *entity-pool*
+          )
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          (-> *part-group-id-table* 474)
+          -1
+          #f
+          #f
+          #f
+          (-> self root-override trans)
+          :to *entity-pool*
+          )
+        )
+    (suspend)
+    (cleanup-for-death self)
+    (deactivate self)
+    (none)
+    )
+  )
+
+(defstate idle (tntbarrel)
+  :virtual #t
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('die-big)
+       (go-virtual die #t)
+       )
+      (('die)
+       (go-virtual die #f)
+       )
+      (('attack 'touch)
+       (send-event arg0 'attack-invinc (-> arg3 param 0) (static-attack-info ((mode 'death))))
+       (go-virtual die #f)
+       )
+      )
+    )
+  :code (behavior ()
+    (transform-post)
+    (logior! (-> self mask) (process-mask sleep))
+    (suspend)
+    0
+    (none)
+    )
+  )
+
+(defmethod init-from-entity! tntbarrel ((obj tntbarrel) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind crate))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense touch))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 9216.0 0.0 14336.0)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *tntbarrel-sg* '())
+  (set-vector! (-> obj draw color-mult) 1.3 1.3 1.3 1.0)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(defskelgroup *ogre-step-a-sg* ogre-step ogre-step-a-lod0-jg ogre-step-a-idle-ja
+              ((ogre-step-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 5)
+              )
+
+(defskelgroup *ogre-step-b-sg* ogre-step ogre-step-b-lod0-jg ogre-step-b-idle-ja
+              ((ogre-step-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 5)
+              )
+
+(defskelgroup *ogre-step-c-sg* ogre-step ogre-step-c-lod0-jg ogre-step-c-idle-ja
+              ((ogre-step-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 6.5)
+              )
+
+(defskelgroup *ogre-isle-a-sg* ogre-isle ogre-isle-a-lod0-jg ogre-isle-a-idle-ja
+              ((ogre-isle-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
+
+(defskelgroup *ogre-isle-b-sg* ogre-isle ogre-isle-b-lod0-jg ogre-isle-b-idle-ja
+              ((ogre-isle-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
+
+(defskelgroup *ogre-isle-c-sg* ogre-isle ogre-isle-c-lod0-jg ogre-isle-c-idle-ja
+              ((ogre-isle-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
+
+(defskelgroup *ogre-isle-d-sg* ogre-isle ogre-isle-d-lod0-jg ogre-isle-d-idle-ja
+              ((ogre-isle-d-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
+
+(deftype ogre-plat (rigid-body-platform)
+  ((anchor-point   vector       :inline :offset-assert 736)
+   (idle-y-offset  float                :offset-assert 752)
+   (float-y-offset float                :offset-assert 756)
+   (delay          time-frame           :offset-assert 760)
+   (active         symbol               :offset-assert 768)
+   (triggered      entity-actor         :offset-assert 772)
+   )
+  :heap-base #x2a0
+  :method-count-assert 35
+  :size-assert         #x308
+  :flag-assert         #x2302a00308
+  )
+
+
+(defmethod TODO-RENAME-23 ogre-plat ((obj ogre-plat) (arg0 float))
+  ((the-as (function rigid-body-platform basic none) (find-parent-method ogre-plat 23)) obj (the-as basic arg0))
+  (TODO-RENAME-27 obj (-> obj anchor-point))
+  0
+  (none)
+  )
+
+(defstate rigid-body-platform-idle (ogre-plat)
+  :virtual #t
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (let ((v1-0 arg2))
+      (the-as object (when (= v1-0 'trigger)
+                       (set! (-> self triggered) (the-as entity-actor #t))
+                       (set! (-> self delay) (the-as time-frame (-> arg3 param 0)))
+                       (let ((v0-0 (-> *display* base-frame-counter)))
+                         (set! (-> self state-time) v0-0)
+                         v0-0
+                         )
+                       )
+              )
+      )
+    )
+  :trans (behavior ()
+    (cond
+      ((-> self active)
+       (when (and *target* (>= (-> self info idle-distance)
+                               (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
+                               )
+                  )
+         (if (-> self triggered)
+             (sound-play "rock-in-lava")
+             )
+         (go-virtual rigid-body-platform-float)
+         )
+       )
+      (else
+        (if (and (-> self triggered) (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self delay)))
+            (set! (-> self active) #t)
+            )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (logior! (-> self draw status) (draw-status hidden))
+    (loop
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior ogre-plat) ja-post)
+  )
+
+(defstate rigid-body-platform-float (ogre-plat)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior ogre-plat)
+    rigid-body-platform-event-handler
+    )
+  :trans (behavior ()
+    (cond
+      ((or (not *target*) (< (-> self info idle-distance)
+                             (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
+                             )
+           )
+       (let ((f30-1 (-> self idle-y-offset)))
+         (seek! (-> self float-height-offset) f30-1 (* 2048.0 (-> *display* seconds-per-frame)))
+         (if (= (-> self float-height-offset) f30-1)
+             (go-virtual rigid-body-platform-idle)
+             )
+         )
+       )
+      (else
+        (seek! (-> self float-height-offset) (-> self float-y-offset) (* 32768.0 (-> *display* seconds-per-frame)))
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (logclear! (-> self draw status) (draw-status hidden))
+    (loop
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior ogre-plat) rigid-body-platform-post)
+  )
+
+(defmethod TODO-RENAME-30 ogre-plat ((obj ogre-plat))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) default-collision-reaction)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (alloc-riders s5-0 1)
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 32768.0)
+      (set-root-prim! s5-0 s4-0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-overlay) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-31 ogre-plat ((obj ogre-plat))
+  (set! (-> obj float-height-offset) (-> obj idle-y-offset))
+  (let ((s5-0 (-> obj info control-point-count)))
+    (dotimes (s4-0 s5-0)
+      (let ((s3-0 (-> obj control-point-array data s4-0)))
+        (let ((f30-0 (* 65536.0 (/ (the float s4-0) (the float s5-0))))
+              (f28-0 (-> obj root-overlay root-prim local-sphere w))
+              )
+          (set! (-> s3-0 local-pos x) (* f28-0 (sin f30-0)))
+          (set! (-> s3-0 local-pos y) 0.0)
+          (set! (-> s3-0 local-pos z) (* f28-0 (cos f30-0)))
+          )
+        (set! (-> s3-0 local-pos w) 1.0)
+        )
+      )
+    )
+  (set! (-> obj anchor-point quad) (-> obj root-overlay trans quad))
+  (set! (-> obj active) #f)
+  (set! (-> obj triggered) #f)
+  0
+  (none)
+  )
+
+(define *ogre-step-constants* (new 'static 'rigid-body-platform-constants
+                                :drag-factor 2.0
+                                :buoyancy-factor 2.0
+                                :max-buoyancy-depth (meters 4)
+                                :gravity-factor 1.0
+                                :gravity (meters 80)
+                                :player-weight (meters 35)
+                                :player-bonk-factor 0.5
+                                :player-dive-factor 1.0
+                                :player-force-distance (meters 5)
+                                :player-force-clamp (meters 1000000)
+                                :player-force-timeout (seconds 0.1)
+                                :explosion-force (meters 100)
+                                :linear-damping 0.9
+                                :angular-damping 0.9
+                                :control-point-count 6
+                                :mass 2.0
+                                :inertial-tensor-x (meters 4)
+                                :inertial-tensor-y (meters 10)
+                                :inertial-tensor-z (meters 4)
+                                :idle-distance (meters 150)
+                                :platform #t
+                                :sound-name "lava-plat"
+                                )
+        )
+
+(deftype ogre-step (ogre-plat)
+  ()
+  :heap-base #x2a0
+  :method-count-assert 35
+  :size-assert         #x308
+  :flag-assert         #x2302a00308
+  )
+
+
+(defmethod TODO-RENAME-31 ogre-step ((obj ogre-step))
+  (set! (-> obj idle-y-offset) -28672.0)
+  (set! (-> obj float-y-offset) 0.0)
+  (+! (-> obj root-overlay trans y) (-> obj idle-y-offset))
+  (TODO-RENAME-29 obj *ogre-step-constants*)
+  ((the-as (function ogre-plat none) (find-parent-method ogre-step 31)) obj)
+  (let ((a0-5 (entity-actor-lookup (-> obj entity) 'alt-actor 0)))
+    (if (and a0-5 (logtest? (-> a0-5 extra perm status) (entity-perm-status complete)))
+        (set! (-> obj active) #t)
+        )
+    )
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-34 ogre-step ((obj ogre-step))
+  (if (-> obj active)
+      (go (method-of-object obj rigid-body-platform-float))
+      (go (method-of-object obj rigid-body-platform-idle))
+      )
+  0
+  (none)
+  )
+
+(deftype ogre-step-a (ogre-step)
+  ()
+  :heap-base #x2a0
+  :method-count-assert 35
+  :size-assert         #x308
+  :flag-assert         #x2302a00308
+  )
+
+
+(deftype ogre-step-b (ogre-step)
+  ()
+  :heap-base #x2a0
+  :method-count-assert 35
+  :size-assert         #x308
+  :flag-assert         #x2302a00308
+  )
+
+
+(deftype ogre-step-c (ogre-step)
+  ()
+  :heap-base #x2a0
+  :method-count-assert 35
+  :size-assert         #x308
+  :flag-assert         #x2302a00308
+  )
+
+
+(deftype ogre-step-d (ogre-step)
+  ()
+  :heap-base #x2a0
+  :method-count-assert 35
+  :size-assert         #x308
+  :flag-assert         #x2302a00308
+  )
+
+
+(defmethod TODO-RENAME-31 ogre-step-a ((obj ogre-step-a))
+  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
+  (initialize-skeleton obj *ogre-step-a-sg* '())
+  ((the-as (function ogre-step none) (find-parent-method ogre-step-a 31)) obj)
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-31 ogre-step-b ((obj ogre-step-b))
+  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
+  (initialize-skeleton obj *ogre-step-b-sg* '())
+  ((the-as (function ogre-step none) (find-parent-method ogre-step-b 31)) obj)
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-31 ogre-step-c ((obj ogre-step-c))
+  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 12288.0 0.0 26624.0)
+  (initialize-skeleton obj *ogre-step-c-sg* '())
+  ((the-as (function ogre-step none) (find-parent-method ogre-step-c 31)) obj)
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-31 ogre-step-d ((obj ogre-step-d))
+  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
+  (initialize-skeleton obj *ogre-step-b-sg* '())
+  ((the-as (function ogre-step none) (find-parent-method ogre-step-d 31)) obj)
+  0
+  (none)
+  )
+
+(define *ogre-isle-constants* (new 'static 'rigid-body-platform-constants
+                                :drag-factor 2.0
+                                :buoyancy-factor 2.0
+                                :max-buoyancy-depth (meters 2)
+                                :gravity-factor 1.0
+                                :gravity (meters 80)
+                                :player-weight (meters 35)
+                                :player-bonk-factor 0.5
+                                :player-dive-factor 1.0
+                                :player-force-distance (meters 2)
+                                :player-force-clamp (meters 1000000)
+                                :player-force-timeout (seconds 0.1)
+                                :explosion-force (meters 4000)
+                                :linear-damping 0.9
+                                :angular-damping 0.9
+                                :control-point-count 6
+                                :mass 2.0
+                                :inertial-tensor-x (meters 10)
+                                :inertial-tensor-y (meters 2)
+                                :inertial-tensor-z (meters 10)
+                                :cm-joint-y (meters 1)
+                                :idle-distance (meters 150)
+                                :platform #t
+                                :sound-name #f
+                                )
+        )
+
+(deftype ogre-isle (ogre-plat)
+  ()
+  :heap-base #x2a0
+  :method-count-assert 35
+  :size-assert         #x308
+  :flag-assert         #x2302a00308
+  )
+
+
+(defmethod TODO-RENAME-31 ogre-isle ((obj ogre-isle))
+  (set! (-> obj idle-y-offset) -6144.0)
+  (set! (-> obj float-y-offset) 4096.0)
+  (TODO-RENAME-29 obj *ogre-isle-constants*)
+  ((the-as (function ogre-plat none) (find-parent-method ogre-isle 31)) obj)
+  (set! (-> obj active) #t)
+  0
+  (none)
+  )
+
+(deftype ogre-isle-b (ogre-isle)
+  ()
+  :heap-base #x2a0
+  :method-count-assert 35
+  :size-assert         #x308
+  :flag-assert         #x2302a00308
+  )
+
+
+(deftype ogre-isle-c (ogre-isle)
+  ()
+  :heap-base #x2a0
+  :method-count-assert 35
+  :size-assert         #x308
+  :flag-assert         #x2302a00308
+  )
+
+
+(deftype ogre-isle-d (ogre-isle)
+  ()
+  :heap-base #x2a0
+  :method-count-assert 35
+  :size-assert         #x308
+  :flag-assert         #x2302a00308
+  )
+
+
+(defmethod TODO-RENAME-31 ogre-isle-b ((obj ogre-isle-b))
+  (set! (-> obj root-overlay trans x) (+ -8192.0 (-> obj root-overlay trans x)))
+  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 8192.0 0.0 24576.0)
+  (initialize-skeleton obj *ogre-isle-b-sg* '())
+  ((the-as (function ogre-isle none) (find-parent-method ogre-isle-b 31)) obj)
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-31 ogre-isle-c ((obj ogre-isle-c))
+  (set! (-> obj root-overlay trans x) (+ -8192.0 (-> obj root-overlay trans x)))
+  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 8192.0 0.0 24576.0)
+  (initialize-skeleton obj *ogre-isle-b-sg* '())
+  ((the-as (function ogre-isle none) (find-parent-method ogre-isle-c 31)) obj)
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-31 ogre-isle-d ((obj ogre-isle-d))
+  (set! (-> obj root-overlay trans x) (+ -8192.0 (-> obj root-overlay trans x)))
+  (set! (-> obj root-overlay trans z) (+ -8192.0 (-> obj root-overlay trans z)))
+  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 8192.0 0.0 22528.0)
+  (initialize-skeleton obj *ogre-isle-d-sg* '())
+  ((the-as (function ogre-isle none) (find-parent-method ogre-isle-d 31)) obj)
+  0
+  (none)
+  )
+
+(defskelgroup *ogre-bridge-sg* ogre-bridge ogre-bridge-lod0-jg ogre-bridge-idle-ja
+              ((ogre-bridge-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 52)
+              :longest-edge (meters 4.5)
+              )
+
+(deftype ogre-bridge (process-drawable)
+  ((root-override    collide-shape-moving   :offset        112)
+   (joint-mod-array  joint-mod            8 :offset-assert 176)
+   (dead-joint-count int8                   :offset-assert 208)
+   )
+  :heap-base #x70
+  :method-count-assert 20
+  :size-assert         #xd1
+  :flag-assert         #x14007000d1
+  (:states
+    ogre-bridge-activate
+    ogre-bridge-activated
+    ogre-bridge-break
+    ogre-bridge-idle
+    )
+  )
+
+
+(defmethod relocate ogre-bridge ((obj ogre-bridge) (arg0 int))
+  (dotimes (v1-0 8)
+    (if (nonzero? (-> obj joint-mod-array v1-0))
+        (&+! (-> obj joint-mod-array v1-0) arg0)
+        )
+    )
+  (the-as
+    ogre-bridge
+    ((the-as (function process-drawable int process-drawable) (find-parent-method ogre-bridge 7)) obj arg0)
+    )
+  )
+
+(defbehavior ogre-bridge-update-joints ogre-bridge ()
+  (let ((v1-1 (min 8 (-> self dead-joint-count))))
+    (dotimes (a0-1 v1-1)
+      (let ((a1-2 (-> self joint-mod-array a0-1)))
+        (set! (-> a1-2 trans z) (the-as float #t))
+        (set! (-> a1-2 trans x) (the-as float #t))
+        (set! (-> a1-2 trans y) (the-as float #t))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defstate ogre-bridge-idle (ogre-bridge)
+  :exit (behavior ()
+    (ogre-bridge-update-joints)
+    (none)
+    )
+  :trans (behavior ()
+    (if (and (and *target*
+                  (>= 286720.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                  )
+             (send-event *target* 'query 'powerup (pickup-type eco-blue))
+             )
+        (go ogre-bridge-activate)
+        )
+    0
+    (none)
+    )
+  :code (behavior ()
+    (ja-post)
+    (loop
+      (suspend)
+      )
+    (none)
+    )
+  )
+
+(defstate ogre-bridge-activate (ogre-bridge)
+  :code (behavior ()
+    (let ((v1-0 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
+      (when (if v1-0
+                (not (send-event
+                       (if v1-0
+                           (-> v1-0 extra process)
+                           )
+                       'next-stage
+                       )
+                     )
+                )
+        (suspend)
+        0
+        )
+      )
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (if (rand-vu-percent? 0.2)
+          (spawn-projectile-blue *target*)
+          )
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go ogre-bridge-activated)
+    (none)
+    )
+  :post (the-as (function none :behavior ogre-bridge) rider-post)
+  )
+
+(defstate ogre-bridge-activated (ogre-bridge)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('break)
+       (+! (-> self dead-joint-count) 4)
+       (go ogre-bridge-break)
+       )
+      (('break-no-damage)
+       (go ogre-bridge-break)
+       )
+      (('complete)
+       (process-entity-status! self (entity-perm-status complete) #t)
+       #t
+       )
+      )
+    )
+  :code (behavior ()
+    (ja :group! (-> self draw art-group data 3) :num! max)
+    (transform-post)
+    (loop
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior ogre-bridge) ja-post)
+  )
+
+(defstate ogre-bridge-break (ogre-bridge)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (let ((v1-0 arg2))
+      (the-as object (when (= v1-0 'effect)
+                       (when (= (-> arg3 param 0) 'splash)
+                         (let ((gp-0 (new 'stack-no-clear 'vector)))
+                           (let ((a1-1 (-> arg3 param 2)))
+                             (set! (-> gp-0 quad) (-> self node-list data a1-1 bone transform vector 3 quad))
+                             )
+                           (set! (-> gp-0 y) 118784.0)
+                           (process-spawn
+                             part-tracker
+                             :init part-tracker-init
+                             (-> *part-group-id-table* 466)
+                             -1
+                             #f
+                             #f
+                             #f
+                             gp-0
+                             :to *entity-pool*
+                             )
+                           )
+                         )
+                       )
+              )
+      )
+    )
+  :code (behavior ()
+    (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go ogre-bridge-idle)
+    (none)
+    )
+  :post (the-as (function none :behavior ogre-bridge) rider-post)
+  )
+
+(define *ogre-bridge-joint-array*
+  (the-as (array uint8) (new 'static 'boxed-array :type uint8 #x4 #x9 #xc #x11 #x7 #xa #xf #x12))
+  )
+
+(defmethod init-from-entity! ogre-bridge ((obj ogre-bridge) (arg0 entity-actor))
+  (stack-size-set! (-> obj main-thread) 512)
+  (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (alloc-riders s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 17) 0)))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 143360.0)
+      (set-root-prim! s4-0 s3-0)
+      (let ((s2-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> s2-0 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-0 collide-with) (collide-kind target))
+        (set! (-> s2-0 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-0 transform-index) 4)
+        (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-0)
+        )
+      (let ((s2-1 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
+        (set! (-> s2-1 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-1 collide-with) (collide-kind target))
+        (set! (-> s2-1 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-1 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-1 transform-index) 5)
+        (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-1)
+        )
+      (let ((s2-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 1))))
+        (set! (-> s2-2 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-2 collide-with) (collide-kind target))
+        (set! (-> s2-2 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-2 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-2 transform-index) 6)
+        (set-vector! (-> s2-2 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-2)
+        )
+      (let ((s2-3 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
+        (set! (-> s2-3 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-3 collide-with) (collide-kind target))
+        (set! (-> s2-3 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-3 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-3 transform-index) 7)
+        (set-vector! (-> s2-3 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-3)
+        )
+      (let ((s2-4 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 1))))
+        (set! (-> s2-4 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-4 collide-with) (collide-kind target))
+        (set! (-> s2-4 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-4 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-4 transform-index) 8)
+        (set-vector! (-> s2-4 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-4)
+        )
+      (let ((s2-5 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
+        (set! (-> s2-5 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-5 collide-with) (collide-kind target))
+        (set! (-> s2-5 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-5 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-5 transform-index) 9)
+        (set-vector! (-> s2-5 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-5)
+        )
+      (let ((s2-6 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 1))))
+        (set! (-> s2-6 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-6 collide-with) (collide-kind target))
+        (set! (-> s2-6 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-6 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-6 transform-index) 10)
+        (set-vector! (-> s2-6 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-6)
+        )
+      (let ((s2-7 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
+        (set! (-> s2-7 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-7 collide-with) (collide-kind target))
+        (set! (-> s2-7 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-7 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-7 transform-index) 11)
+        (set-vector! (-> s2-7 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-7)
+        )
+      (let ((s2-8 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> s2-8 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-8 collide-with) (collide-kind target))
+        (set! (-> s2-8 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-8 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-8 transform-index) 12)
+        (set-vector! (-> s2-8 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-8)
+        )
+      (let ((s2-9 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
+        (set! (-> s2-9 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-9 collide-with) (collide-kind target))
+        (set! (-> s2-9 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-9 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-9 transform-index) 13)
+        (set-vector! (-> s2-9 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-9)
+        )
+      (let ((s2-10 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 1))))
+        (set! (-> s2-10 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-10 collide-with) (collide-kind target))
+        (set! (-> s2-10 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-10 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-10 transform-index) 14)
+        (set-vector! (-> s2-10 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-10)
+        )
+      (let ((s2-11 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
+        (set! (-> s2-11 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-11 collide-with) (collide-kind target))
+        (set! (-> s2-11 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-11 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-11 transform-index) 15)
+        (set-vector! (-> s2-11 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-11)
+        )
+      (let ((s2-12 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 1))))
+        (set! (-> s2-12 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-12 collide-with) (collide-kind target))
+        (set! (-> s2-12 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-12 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-12 transform-index) 16)
+        (set-vector! (-> s2-12 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-12)
+        )
+      (let ((s2-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
+        (set! (-> s2-13 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-13 collide-with) (collide-kind target))
+        (set! (-> s2-13 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-13 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-13 transform-index) 17)
+        (set-vector! (-> s2-13 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-13)
+        )
+      (let ((s2-14 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 1))))
+        (set! (-> s2-14 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-14 collide-with) (collide-kind target))
+        (set! (-> s2-14 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-14 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-14 transform-index) 18)
+        (set-vector! (-> s2-14 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-14)
+        )
+      (let ((s2-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
+        (set! (-> s2-15 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-15 collide-with) (collide-kind target))
+        (set! (-> s2-15 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-15 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-15 transform-index) 19)
+        (set-vector! (-> s2-15 local-sphere) 0.0 0.0 0.0 20480.0)
+        (append-prim s3-0 s2-15)
+        )
+      (let ((s2-16 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 1))))
+        (set! (-> s2-16 prim-core collide-as) (collide-kind ground-object))
+        (set! (-> s2-16 collide-with) (collide-kind target))
+        (set! (-> s2-16 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-16 prim-core offense) (collide-offense indestructible))
+        (set! (-> s2-16 transform-index) 20)
+        (set-vector! (-> s2-16 local-sphere) 0.0 0.0 0.0 45056.0)
+        (append-prim s3-0 s2-16)
+        )
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (initialize-skeleton obj *ogre-bridge-sg* '())
+  (logior! (-> obj skel effect flags) 1)
+  (dotimes (s5-1 8)
+    (let ((v1-185 (new 'process 'joint-mod-set-local obj (the-as int (-> *ogre-bridge-joint-array* s5-1)) #f #f #f)))
+      (set! (-> obj joint-mod-array s5-1) (the-as joint-mod v1-185))
+      (vector-reset! (-> v1-185 transform scale))
+      )
+    )
+  (cond
+    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
+     (set! (-> obj dead-joint-count) 8)
+     (ogre-bridge-update-joints)
+     (go ogre-bridge-activated)
+     )
+    (else
+      (go ogre-bridge-idle)
+      )
+    )
+  (none)
+  )
+
+(defskelgroup *ogre-bridgeend-sg* ogre-bridgeend ogre-bridgeend-lod0-jg ogre-bridgeend-idle-ja
+              ((ogre-bridgeend-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 -3 8.2)
+              )
+
+(deftype ogre-bridgeend (process-drawable)
+  ((root-override collide-shape  :offset 112)
+   )
+  :heap-base #x40
+  :method-count-assert 20
+  :size-assert         #xb0
+  :flag-assert         #x14004000b0
+  (:states
+    ogre-bridgeend-idle
+    )
+  )
+
+
+(defstate ogre-bridgeend-idle (ogre-bridgeend)
+  :code (behavior ()
+    (transform-post)
+    (anim-loop)
+    (none)
+    )
+  )
+
+(defmethod init-from-entity! ogre-bridgeend ((obj ogre-bridgeend) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 12288.0 32768.0)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *ogre-bridgeend-sg* '())
+  (go ogre-bridgeend-idle)
+  (none)
+  )
+
+(deftype ogre-lava (water-anim)
+  ((idle-anim int32  :offset-assert 220)
+   (anim      int32  :offset-assert 224)
+   )
+  :heap-base #x80
+  :method-count-assert 30
+  :size-assert         #xe4
+  :flag-assert         #x1e008000e4
+  )
+
+
+(defstate water-vol-idle (ogre-lava)
+  :virtual #t
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('submerge1)
+       (set! (-> self anim) 3)
+       (go-virtual water-vol-idle)
+       )
+      (('submerge2)
+       (set! (-> self anim) 5)
+       (go-virtual water-vol-idle)
+       )
+      (('emerge1)
+       (set! (-> self anim) 4)
+       (go-virtual water-vol-idle)
+       )
+      (('emerge2)
+       (set! (-> self anim) 6)
+       (go-virtual water-vol-idle)
+       )
+      (('boulder)
+       (set! (-> self anim) 7)
+       (go-virtual water-vol-idle)
+       )
+      (else
+        ((-> (method-of-type water-anim water-vol-idle) event) arg0 arg1 arg2 arg3)
+        )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 2 (seconds 0.1))
+    (ja :chan 1 :group! (-> self draw art-group data (-> self idle-anim)) :num! min)
+    (ja-no-eval :group! (-> self draw art-group data (-> self anim)) :num! (seek! max 0.5) :frame-num 0.0)
+    (until (ja-done? 0)
+      (ja :chan 1 :frame-interp 0.5)
+      (ja-post)
+      (suspend)
+      (ja :num! (seek! max 0.5))
+      )
+    (ja :group! (-> self draw art-group data (-> self idle-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (loop
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior ogre-lava) #f)
+  )
+
+(defstate water-vol-startup (ogre-lava)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self idle-anim) 2)
+    (set! (-> self anim) (-> self idle-anim))
+    (go-virtual water-vol-idle)
+    (none)
+    )
+  )
+
+(define ripple-for-ogre-lava (new 'static 'ripple-wave-set
+                               :count 2
+                               :converted #f
+                               :wave (new 'static 'inline-array ripple-wave 4
+                                 (new 'static 'ripple-wave :scale 40.0 :xdiv 2 :speed 3.0)
+                                 (new 'static 'ripple-wave :scale 40.0 :xdiv -2 :zdiv 2 :speed 1.8)
+                                 (new 'static 'ripple-wave)
+                                 (new 'static 'ripple-wave)
+                                 )
+                               )
+        )
+
+(defmethod TODO-RENAME-22 ogre-lava ((obj ogre-lava))
+  (let ((t9-0 (method-of-type water-anim TODO-RENAME-22)))
+    (t9-0 obj)
+    )
+  (let ((v1-2 (new 'process 'ripple-control)))
+    (set! (-> obj draw ripple) v1-2)
+    (set! (-> v1-2 global-scale) 2048.0)
+    (set! (-> v1-2 waveform) ripple-for-ogre-lava)
+    )
+  (logclear! (-> obj flags) (water-flags wt23))
+  (set! (-> obj flags) (logior (water-flags wt25) (-> obj flags)))
+  (set! (-> obj attack-event) 'lava)
+  (none)
+  )
+
+(deftype shortcut-boulder (process-drawable)
+  ((root-override collide-shape         :offset        112)
+   (broken-look   lod-set       :inline :offset-assert 176)
+   )
+  :heap-base #x70
+  :method-count-assert 20
+  :size-assert         #xd1
+  :flag-assert         #x14007000d1
+  (:states
+    shortcut-boulder-break
+    shortcut-boulder-idle
+    )
+  )
+
+
+(defskelgroup *shortcut-boulder-whole-sg* shortcut-boulder shortcut-boulder-whole-lod0-jg shortcut-boulder-idle-ja
+              ((shortcut-boulder-whole-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 5.5 0 7.5)
+              )
+
+(defskelgroup *shortcut-boulder-broken-sg* shortcut-boulder shortcut-boulder-broken-lod0-jg shortcut-boulder-idle-ja
+              ((shortcut-boulder-broken-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 5.5 0 20)
+              )
+
+(defpartgroup group-shortcut-boulder-explosion
+  :id 475
+  :duration 300
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 2149 :period 1500 :length 5)
+    (sp-item 2150 :period 1500 :length 5)
+    (sp-item 2151 :period 1500 :length 15)
+    )
+  )
+
+(defpart 2150
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 15))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 130.0)
+    (sp-flt spt-g 64.0)
+    (sp-flt spt-b 54.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -2.1333334)
+    (sp-int spt-timer 60)
+    (sp-cpuinfo-flags bit2 bit3)
+    )
+  )
+
+(defpart 2149
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+    (sp-rnd-flt spt-num 16.0 16.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.3) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 70.0 16.0 1.0)
+    (sp-rnd-flt spt-g 70.0 16.0 1.0)
+    (sp-flt spt-b 70.0)
+    (sp-flt spt-a 128.0)
+    (sp-rnd-flt spt-vel-y (meters 0.04) (meters 0.04) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
+    (sp-flt spt-accel-y -10.922667)
+    (sp-flt spt-friction 0.99)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2)
+    (sp-flt spt-userdata 0.0)
+    (sp-func spt-func 'check-water-level-drop)
+    (sp-rnd-flt spt-conerot-x (degrees 20.0) (degrees 50.000004) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 2151
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-flt spt-y (meters 0.5) (meters 1) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 2.5) (meters 1.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 96.0 64.0 1.0)
+    (sp-rnd-flt spt-g 64.0 48.0 1.0)
+    (sp-rnd-flt spt-b 64.0 16.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.016666668) (meters 0.016666668) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.013333334))
+    (sp-flt spt-scalevel-y (meters 0.0033333334))
+    (sp-flt spt-accel-y -1.0922667)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 600)
+    (sp-cpuinfo-flags bit2)
+    (sp-int-plain-rnd spt-next-time 30 299 1)
+    (sp-launcher-by-id spt-next-launcher 2152)
+    (sp-rnd-flt spt-conerot-x (degrees 70.0) (degrees 20.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 2152
+  :init-specs ((sp-flt spt-fade-a -0.2))
+  )
+
+(defstate shortcut-boulder-break (shortcut-boulder)
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status complete) #t)
+    (lods-assign! (-> self draw) (-> self broken-look))
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 475)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override trans)
+      :to *entity-pool*
+      )
+    (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (cleanup-for-death self)
+    (deactivate self)
+    (none)
+    )
+  :post (the-as (function none :behavior shortcut-boulder) ja-post)
+  )
+
+(defstate shortcut-boulder-idle (shortcut-boulder)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('attack)
+       (if (and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
+           (go shortcut-boulder-break)
+           )
+       )
+      )
+    )
+  :code (behavior ()
+    (transform-post)
+    (loop
+      (logior! (-> self mask) (process-mask sleep))
+      (suspend)
+      )
+    (none)
+    )
+  )
+
+(defmethod init-from-entity! shortcut-boulder ((obj shortcut-boulder) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 22528.0 0.0 30720.0)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *shortcut-boulder-whole-sg* '())
+  (setup-lods! (-> obj broken-look) *shortcut-boulder-broken-sg* (-> obj draw art-group) (-> obj entity))
+  (set-vector! (-> obj draw color-emissive) 0.125 0.0625 0.0 0.0)
+  (go shortcut-boulder-idle)
+  (none)
+  )
+
+
+
+

@@ -1,0 +1,378 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: hopper.gc
+;; name in dgo: hopper
+;; dgos: JUN, JUNGLE, L1
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/hopper-ag.gc")
+
+(deftype hopper (nav-enemy)
+  ((jump-length  float  :offset-assert 400)
+   (shadow-min-y float  :offset-assert 404)
+   )
+  :heap-base #x130
+  :method-count-assert 76
+  :size-assert         #x198
+  :flag-assert         #x4c01300198
+  )
+
+
+(defskelgroup *hopper-sg* hopper hopper-lod0-jg hopper-idle-ja
+              ((hopper-lod0-mg (meters 20)) (hopper-lod1-mg (meters 40)) (hopper-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :longest-edge (meters 1)
+              :shadow hopper-shadow-mg
+              )
+
+nav-enemy-default-event-handler
+
+(defmethod common-post hopper ((obj hopper))
+  (let ((v1-1 (-> obj draw shadow-ctrl)))
+    (set! (-> v1-1 settings bot-plane w) (- (- (-> obj shadow-min-y) (-> obj collide-info trans y))))
+    )
+  0
+  ((the-as (function nav-enemy none) (find-parent-method hopper 39)) obj)
+  0
+  (none)
+  )
+
+(defbehavior hopper-find-ground hopper ((arg0 vector))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (let ((t1-0 (new 'stack-no-clear 'collide-tri-result))
+          (f30-0 61440.0)
+          )
+      (set! (-> s5-0 quad) (-> arg0 quad))
+      (set! (-> s5-0 y) (+ 20480.0 (-> s5-0 y)))
+      (let ((f0-2 (fill-and-probe-using-y-probe
+                    *collide-cache*
+                    s5-0
+                    f30-0
+                    (collide-kind background)
+                    self
+                    t1-0
+                    (new 'static 'pat-surface :noentity #x1)
+                    )
+                  )
+            )
+        (if (< f0-2 0.0)
+            (return (the-as object #f))
+            )
+        (set! (-> s5-0 y) (- (-> s5-0 y) (* f0-2 f30-0)))
+        )
+      )
+    (set! (-> arg0 quad) (-> s5-0 quad))
+    )
+  0
+  )
+
+(defbehavior hopper-jump-to hopper ((arg0 vector))
+  (set! (-> self jump-dest quad) (-> arg0 quad))
+  (hopper-find-ground (-> self jump-dest))
+  (set! (-> self shadow-min-y)
+        (+ (fmin (-> self collide-info trans y) (-> self jump-dest y)) (-> self nav-info shadow-min-y))
+        )
+  (nav-enemy-initialize-custom-jump
+    (-> self jump-dest)
+    #f
+    (-> self nav-info jump-height-min)
+    (-> self nav-info jump-height-factor)
+    -409600.0
+    )
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags drop-jump))
+  (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+  (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
+    (ja-channel-push! 1 (seconds 0.2))
+    (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
+    )
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+  (nav-enemy-execute-jump)
+  (set! (-> self shadow-min-y) (+ (-> self collide-info trans y) (-> self nav-info shadow-min-y)))
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+  (nav-enemy-jump-land-anim)
+  0
+  (none)
+  )
+
+(defbehavior hopper-do-jump hopper ()
+  (dummy-11 (-> self nav) (-> self nav target-pos))
+  (if (< (-> self jump-length) (vector-length (-> self nav travel)))
+      (vector-normalize! (-> self nav travel) (-> self jump-length))
+      )
+  (vector+! (-> self jump-dest) (-> self collide-info trans) (-> self nav travel))
+  (hopper-jump-to (-> self jump-dest))
+  0
+  (none)
+  )
+
+(defstate nav-enemy-idle (hopper)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior hopper)
+    nav-enemy-default-event-handler
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (loop
+      (dotimes (gp-0 3)
+        (ja-no-eval :group! hopper-idle-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      (ja-no-eval :group! hopper-burp-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    (none)
+    )
+  )
+
+(defstate nav-enemy-patrol (hopper)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior hopper)
+    nav-enemy-jump-event-handler
+    )
+  :trans (behavior ()
+    (if (zero? (logand (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate)))
+        ((-> (method-of-type nav-enemy nav-enemy-patrol) trans))
+        )
+    (none)
+    )
+  :code (behavior ()
+    (vector-reset! (-> self collide-info transv))
+    (set! (-> self jump-length) 16384.0)
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+    (loop
+      (cond
+        ((ja-group? hopper-jump-long-ja)
+         (ja-channel-push! 1 (seconds 0.067))
+         (ja-no-eval :group! hopper-jump-long-land-ja :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         (ja-channel-push! 1 (seconds 0.1))
+         )
+        ((ja-group? hopper-jump-short-ja)
+         (ja-channel-push! 1 (seconds 0.1))
+         (ja-no-eval :group! hopper-jump-short-land-ja :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         (ja-channel-push! 1 (seconds 0.1))
+         )
+        (else
+          (ja-channel-push! 1 (seconds 0.075))
+          )
+        )
+      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (ja :group! hopper-idle-ja :num! min)
+      (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
+        (suspend)
+        (ja :num! (loop!))
+        )
+      (when (or (logtest? (nav-control-flags navcf19) (-> self nav flags)) (< 2.0 (-> self nav block-count)))
+        (set! (-> self nav block-count) 0.0)
+        (logior! (-> self nav flags) (nav-control-flags navcf10))
+        (nav-enemy-get-new-patrol-point)
+        (set! (-> self nav target-pos quad) (-> self nav destination-pos quad))
+        )
+      (hopper-do-jump)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior hopper) nav-enemy-jump-post)
+  )
+
+(defstate nav-enemy-notice (hopper)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior hopper)
+    nav-enemy-default-event-handler
+    )
+  :code (behavior ()
+    (go-virtual nav-enemy-chase)
+    (none)
+    )
+  )
+
+(defstate nav-enemy-chase (hopper)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior hopper)
+    nav-enemy-jump-event-handler
+    )
+  :trans (behavior ()
+    (if (zero? (logand (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate)))
+        ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
+        )
+    (none)
+    )
+  :code (behavior ()
+    (vector-reset! (-> self collide-info transv))
+    (set! (-> self jump-length) 32768.0)
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+    (loop
+      (cond
+        ((ja-group? hopper-jump-long-ja)
+         (ja-channel-push! 1 (seconds 0.067))
+         (ja-no-eval :group! hopper-jump-long-land-ja :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         (ja-channel-push! 1 (seconds 0.1))
+         )
+        ((ja-group? hopper-jump-short-ja)
+         (ja-channel-push! 1 (seconds 0.1))
+         (ja-no-eval :group! hopper-jump-short-land-ja :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         (ja-channel-push! 1 (seconds 0.1))
+         )
+        (else
+          (ja-channel-push! 1 (seconds 0.075))
+          )
+        )
+      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (ja :group! hopper-idle-ja :num! min)
+      (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
+        (suspend)
+        (ja :num! (loop!))
+        )
+      (set! (-> self nav target-pos quad) (-> (target-pos 0) quad))
+      (hopper-do-jump)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior hopper) nav-enemy-jump-post)
+  )
+
+(defstate nav-enemy-stop-chase (hopper)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior hopper)
+    nav-enemy-default-event-handler
+    )
+  :code (behavior ()
+    (go-virtual nav-enemy-stare)
+    (none)
+    )
+  )
+
+(define *hopper-nav-enemy-info* (new 'static 'nav-enemy-info
+                                  :idle-anim 5
+                                  :walk-anim 5
+                                  :turn-anim 9
+                                  :notice-anim 5
+                                  :run-anim 5
+                                  :jump-anim 7
+                                  :jump-land-anim 8
+                                  :victory-anim 6
+                                  :taunt-anim 6
+                                  :die-anim 11
+                                  :neck-joint -1
+                                  :player-look-at-joint 5
+                                  :run-travel-speed (meters 10)
+                                  :run-rotate-speed (degrees 7999.9995)
+                                  :run-acceleration (meters 1)
+                                  :run-turn-time (seconds 0.1)
+                                  :walk-travel-speed (meters 6)
+                                  :walk-rotate-speed (degrees 7999.9995)
+                                  :walk-acceleration (meters 1)
+                                  :walk-turn-time (seconds 0.1)
+                                  :attack-shove-back (meters 3)
+                                  :attack-shove-up (meters 2)
+                                  :shadow-size (meters 2)
+                                  :notice-nav-radius (meters 1)
+                                  :nav-nearest-y-threshold (meters 10)
+                                  :notice-distance (meters 30)
+                                  :stop-chase-distance (meters 40)
+                                  :frustration-distance (meters 8)
+                                  :frustration-time (seconds 4)
+                                  :die-anim-hold-frame 10000000000.0
+                                  :jump-anim-start-frame 3.0
+                                  :jump-land-anim-end-frame 10000000000.0
+                                  :jump-height-min (meters 3)
+                                  :jump-height-factor 0.5
+                                  :jump-start-anim-speed 1.0
+                                  :shadow-max-y (meters 1)
+                                  :shadow-min-y (meters -1)
+                                  :shadow-locus-dist (meters 150)
+                                  :use-align #t
+                                  :draw-shadow #t
+                                  :move-to-ground #t
+                                  :hover-if-no-ground #f
+                                  :use-momentum #f
+                                  :use-flee #t
+                                  :use-proximity-notice #f
+                                  :use-jump-blocked #f
+                                  :use-jump-patrol #f
+                                  :gnd-collide-with (collide-kind background)
+                                  :debug-draw-neck #f
+                                  :debug-draw-jump #t
+                                  )
+        )
+
+(defmethod initialize-collision hopper ((obj hopper))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) default-collision-reaction)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 4096.0 0.0 10240.0)
+      (set-root-prim! s5-0 s4-0)
+      (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+        (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+        (set! (-> s3-0 collide-with) (collide-kind target))
+        (set! (-> s3-0 prim-core action) (collide-action solid))
+        (set! (-> s3-0 prim-core offense) (collide-offense touch))
+        (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 4096.0)
+        (append-prim s4-0 s3-0)
+        )
+      (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+        (set! (-> s3-1 prim-core collide-as) (collide-kind enemy))
+        (set! (-> s3-1 collide-with) (collide-kind target))
+        (set! (-> s3-1 prim-core action) (collide-action solid))
+        (set! (-> s3-1 prim-core offense) (collide-offense touch))
+        (set-vector! (-> s3-1 local-sphere) 0.0 6963.2 0.0 4096.0)
+        (append-prim s4-0 s3-1)
+        )
+      )
+    (set! (-> s5-0 nav-radius) 6144.0)
+    (backup-collide-with-as s5-0)
+    (set! (-> s5-0 max-iteration-count) (the-as uint 2))
+    (set! (-> obj collide-info) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-48 hopper ((obj hopper))
+  (initialize-skeleton obj *hopper-sg* '())
+  (TODO-RENAME-45 obj *hopper-nav-enemy-info*)
+  (set! (-> obj shadow-min-y) (+ (-> obj collide-info trans y) (-> obj nav-info shadow-min-y)))
+  0
+  (none)
+  )
+
+
+
+

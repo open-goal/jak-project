@@ -300,7 +300,7 @@ void flush_memory_card_to_file() {
 }
 
 void read_memory_card_from_file() {
-  if (std::filesystem::exists(get_memory_card_path())) {
+  if (fs::exists(get_memory_card_path())) {
     g_mc_state.data.load_from_file(get_memory_card_path());
   }
 }

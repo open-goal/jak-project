@@ -1,7 +1,8 @@
 //--------------------------MIPS2C---------------------
-#include "game/kernel/kscheme.h"
-#include "game/mips2c/mips2c_private.h"
 
+#include "game/kernel/jak1/kscheme.h"
+#include "game/mips2c/mips2c_private.h"
+using namespace jak1;
 // clang-format off
 namespace Mips2C {
 namespace method_12_collide_mesh {
@@ -202,7 +203,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_11_collide_mesh {
 struct Cache {
@@ -377,7 +378,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_14_collide_mesh {
 u64 execute(void* ctxt) {
@@ -581,7 +582,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_15_collide_mesh {
 u64 execute(void* ctxt) {

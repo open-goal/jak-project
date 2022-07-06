@@ -21,6 +21,7 @@
 
 #include "game/common/dgo_rpc_types.h"
 #include "game/overlord/srpc.h"
+#include "game/runtime.h"
 #include "game/sce/iop.h"
 #include "game/sound/sdshim.h"
 #include "game/sound/sndshim.h"
@@ -600,6 +601,12 @@ u32 ISOThread() {
       StopVAG(in_progress_vag_command);
       ReleaseMessage(in_progress_vag_command);
       in_progress_vag_command = nullptr;
+      // added. this variable seems to determine whether a vag stream is actually playing, and it is
+      // possible to get into a scenario where (for example) you want to unpause a vag stream but a
+      // different sound command hasn't run yet to correct this value, which makes the game either
+      // play the wrong sound or crash right away if no actual sound is to be played with the vag
+      // stream
+      unk = 0;
     }
 
     ////////////////////////////
@@ -1271,7 +1278,7 @@ u32 DGOThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, DGO_RPC_ID, RPC_DGO, sRPCBuff, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, DGO_RPC_ID[g_game_version], RPC_DGO, sRPCBuff, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;

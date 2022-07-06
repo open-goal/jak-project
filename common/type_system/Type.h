@@ -209,6 +209,7 @@ class Field {
   void mark_as_user_placed() { m_placed_by_user = true; }
   std::string print() const;
   const TypeSpec& type() const { return m_type; }
+  TypeSpec& type() { return m_type; }
   bool is_inline() const { return m_inline; }
   bool is_array() const { return m_array; }
   bool is_dynamic() const { return m_dynamic; }
