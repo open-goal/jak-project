@@ -14,47 +14,8 @@
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "goalc/compiler/Compiler.h"
 
+#include "third-party/CLI11.hpp"
 #include "third-party/fmt/format.h"
-
-namespace fs = fs;
-
-// command line arguments
-struct OfflineTestArgs {
-  bool dump_current_output = false;
-  std::string iso_data_path;
-  s32 max_files = INT32_MAX;
-};
-
-/*!
- * Parse command line arguments.
- */
-OfflineTestArgs parse_args(int argc, char* argv[]) {
-  OfflineTestArgs result;
-
-  for (int i = 1; i < argc; i++) {
-    auto arg = std::string(argv[i]);
-    if (arg == "--dump-mode") {
-      result.dump_current_output = true;
-      continue;
-    }
-
-    if (arg == "--max-files") {
-      i++;
-      if (i >= argc) {
-        fmt::print("--max-files must be followed by an integer\n");
-        exit(1);
-      }
-      result.max_files = atoi(argv[i]);
-      fmt::print("Limiting to {} files\n", result.max_files);
-      continue;
-    }
-
-    result.iso_data_path = arg;
-    fmt::print("Using {} for ISO data\n", result.iso_data_path);
-  }
-
-  return result;
-}
 
 // json config file data (previously was in source of offline_test_main.cpp)
 struct OfflineTestConfig {
@@ -63,24 +24,6 @@ struct OfflineTestConfig {
   std::unordered_set<std::string> skip_compile_functions;
   std::unordered_map<std::string, std::unordered_set<std::string>> skip_compile_states;
 };
-
-/*!
- * Read and parse the json config file, config.json, located in test/offline
- */
-OfflineTestConfig parse_config() {
-  auto json_file_path = file_util::get_jak_project_dir() / "test" / "offline" / "config.jsonc";
-  auto json = parse_commented_json(file_util::read_text_file(json_file_path.string()),
-                                   json_file_path.string());
-  OfflineTestConfig result;
-  result.dgos = json["dgos"].get<std::vector<std::string>>();
-  result.skip_compile_files = json["skip_compile_files"].get<std::unordered_set<std::string>>();
-  result.skip_compile_functions =
-      json["skip_compile_functions"].get<std::unordered_set<std::string>>();
-  result.skip_compile_states =
-      json["skip_compile_states"]
-          .get<std::unordered_map<std::string, std::unordered_set<std::string>>>();
-  return result;
-}
 
 struct DecompilerFile {
   fs::path path;
@@ -94,161 +37,31 @@ struct DecompilerArtFile {
   std::string unique_name;
 };
 
-std::string replaceFirstOccurrence(std::string& s,
-                                   const std::string& toReplace,
-                                   const std::string& replaceWith) {
-  std::size_t pos = s.find(toReplace);
-  if (pos == std::string::npos)
-    return s;
-  return s.replace(pos, toReplace.length(), replaceWith);
-}
-
-std::vector<DecompilerFile> find_files(const std::vector<std::string>& dgos) {
-  std::vector<DecompilerFile> result;
-
-  std::unordered_map<std::string, fs::path> files_with_ref;
-  for (auto& p : fs::recursive_directory_iterator(file_util::get_jak_project_dir() / "test" /
-                                                  "decompiler" / "reference")) {
-    if (p.is_regular_file()) {
-      std::string file_name = fs::path(p.path()).replace_extension().filename().string();
-      if (file_name.find("_REF") == std::string::npos) {
-        continue;
-      }
-      std::string object_name = replaceFirstOccurrence(file_name, "_REF", "");
-      files_with_ref.insert({object_name, p.path()});
-    }
-  }
-
-  fmt::print("  Found {} reference files\n", files_with_ref.size());
-
-  // use the all_objs.json file to place them in the correct build order
-  // TODO - jak2 - Bad!
-  auto j = parse_commented_json(
-      file_util::read_text_file(
-          (file_util::get_jak_project_dir() / "goal_src" / "jak1" / "build" / "all_objs.json")
-              .string()),
-      "all_objs.json");
-
-  std::unordered_set<std::string> matched_files;
-  for (auto& x : j) {
-    auto unique_name = x[0].get<std::string>();
-
-    std::vector<std::string> dgoList = x[3].get<std::vector<std::string>>();
-    //    for (auto& p : reference_files_rough_order) {
-    auto it = files_with_ref.find(unique_name);
-    if (it != files_with_ref.end()) {
-      // Check to see if we've included atleast one of the DGO/CGOs in our hardcoded list
-      // If not BLOW UP
-      bool dgoValidated = false;
-      for (int i = 0; i < (int)dgoList.size(); i++) {
-        std::string& dgo = dgoList.at(i);
-        // can either be in the DGO or CGO folder, and can either end with .CGO or .DGO
-        if (std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.DGO", dgo)) != dgos.end() ||
-            std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.CGO", dgo)) != dgos.end() ||
-            std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.DGO", dgo)) != dgos.end() ||
-            std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.CGO", dgo)) != dgos.end()) {
-          dgoValidated = true;
-        }
-      }
-      if (!dgoValidated) {
-        fmt::print(
-            "File [{}] is in the following DGOs [{}], and not one of these is in our list! Add "
-            "it!\n",
-            unique_name, fmt::join(dgoList, ", "));
-        exit(1);
-      }
-
-      DecompilerFile file;
-      file.path = it->second;
-      file.unique_name = it->first;
-      file.name_in_dgo = x[1];
-      result.push_back(file);
-      matched_files.insert(unique_name);
-    }
-  }
-
-  if (matched_files.size() != files_with_ref.size()) {
-    fmt::print("Error: some REF files were not matched to files in all_objs.json:\n");
-    for (auto& f : files_with_ref) {
-      if (matched_files.count(f.first) == 0) {
-        fmt::print(" {}\n", f.first);
-      }
-    }
-    exit(1);
-  }
-
-  return result;
-}
-
-std::vector<DecompilerArtFile> find_art_files(const std::vector<std::string>& dgos) {
-  std::vector<DecompilerArtFile> result;
-
-  // use the all_objs.json file to place them in the correct build order
-  auto j = parse_commented_json(
-      file_util::read_text_file(
-          (file_util::get_jak_project_dir() / "goal_src" / "jak1" / "build" / "all_objs.json")
-              .string()),
-      "all_objs.json");
-
-  for (auto& x : j) {
-    auto unique_name = x[0].get<std::string>();
-    auto version = x[2].get<int>();
-
-    std::vector<std::string> dgoList = x[3].get<std::vector<std::string>>();
-    if (version == 4) {
-      bool skip_this = false;
-
-      // Check to see if we've included atleast one of the DGO/CGOs in our hardcoded list
-      // If not BLOW UP
-      bool dgoValidated = false;
-      for (int i = 0; i < (int)dgoList.size(); i++) {
-        std::string& dgo = dgoList.at(i);
-        if (dgo == "NO-XGO") {
-          skip_this = true;
-          break;
-        }
-        // can either be in the DGO or CGO folder, and can either end with .CGO or .DGO
-        if (std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.DGO", dgo)) != dgos.end() ||
-            std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.CGO", dgo)) != dgos.end() ||
-            std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.DGO", dgo)) != dgos.end() ||
-            std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.CGO", dgo)) != dgos.end()) {
-          dgoValidated = true;
-        }
-      }
-      if (skip_this) {
-        continue;
-      }
-      if (!dgoValidated) {
-        fmt::print(
-            "File [{}] is in the following DGOs [{}], and not one of these is in our list! Add "
-            "it!\n",
-            unique_name, fmt::join(dgoList, ", "));
-        exit(1);
-      }
-
-      DecompilerArtFile file;
-      file.unique_name = unique_name;
-      file.name_in_dgo = x[1];
-      result.push_back(file);
-    }
-  }
-
-  return result;
-}
-
 struct Decompiler {
   std::unique_ptr<decompiler::ObjectFileDB> db;
   std::unique_ptr<decompiler::Config> config;
 };
 
+// TODO - this should probably go somewhere common when it's needed eventually
+std::unordered_map<std::string, std::string> game_name_to_config = {
+    {"jak1", "jak1_ntsc_black_label.jsonc"},
+    {"jak2", "jak2_ntsc_v1.jsonc"}};
+
+// TODO - i think these should be partitioned by game name instead of it being in the filename
+// (and the names not being consistent)
+std::unordered_map<std::string, std::string> game_name_to_all_types = {{"jak1", "all-types.gc"},
+                                                                       {"jak2", "all-types2.gc"}};
+
 Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
                             const std::vector<DecompilerArtFile>& art_files,
-                            const OfflineTestArgs& args,
-                            const OfflineTestConfig& offline_config) {
+                            const fs::path& iso_data_path,
+                            const OfflineTestConfig& offline_config,
+                            const std::string& game_name) {
+  // TODO - pull out extractor logic to determine release into common and use here
   Decompiler dc;
   decompiler::init_opcode_info();
   dc.config = std::make_unique<decompiler::Config>(decompiler::read_config_file(
-      (file_util::get_jak_project_dir() / "decompiler" / "config" / "jak1_ntsc_black_label.jsonc")
+      (file_util::get_jak_project_dir() / "decompiler" / "config" / game_name_to_config[game_name])
           .string(),
       {}));
 
@@ -266,14 +79,8 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   dc.config->generate_symbol_definition_map = false;
 
   std::vector<fs::path> dgo_paths;
-  if (args.iso_data_path.empty()) {
-    for (auto& x : offline_config.dgos) {
-      dgo_paths.push_back(file_util::get_jak_project_dir() / "iso_data" / "jak1" / x);
-    }
-  } else {
-    for (auto& x : offline_config.dgos) {
-      dgo_paths.push_back(fs::path(args.iso_data_path) / x);
-    }
+  for (auto& x : offline_config.dgos) {
+    dgo_paths.push_back(iso_data_path / x);
   }
 
   dc.db = std::make_unique<decompiler::ObjectFileDB>(dgo_paths, dc.config->obj_file_name_map_file,
@@ -288,15 +95,15 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   }
 
   if (db_files.size() != files.size() + art_files.size()) {
-    fmt::print("DB file error.\n");
+    lg::error("DB file error.");
     for (auto& f : files) {
       if (!db_files.count(f.unique_name)) {
-        fmt::print("didn't find {}\n", f.unique_name);
+        lg::error("didn't find {}\n", f.unique_name);
       }
     }
     for (auto& f : art_files) {
       if (!db_files.count(f.unique_name)) {
-        fmt::print("didn't find {}\n", f.unique_name);
+        lg::error("didn't find {}\n", f.unique_name);
       }
     }
     exit(1);
@@ -372,8 +179,10 @@ CompareResult compare(Decompiler& dc, const std::vector<DecompilerFile>& refs, b
       fmt::print("{}\n", diff_strings(ref, result));
 
       if (dump_mode) {
-        file_util::create_dir_if_needed("./failures");
-        file_util::write_text_file("./failures/" + file.unique_name + "_REF.gc", result);
+        auto failure_dir = file_util::get_jak_project_dir() / "failures";
+        file_util::create_dir_if_needed(failure_dir);
+        file_util::write_text_file(failure_dir / fmt::format("{}_REF.gc", file.unique_name),
+                                   result);
       }
     } else {
       compare_result.ok_files++;
@@ -385,12 +194,14 @@ CompareResult compare(Decompiler& dc, const std::vector<DecompilerFile>& refs, b
 
 bool compile(Decompiler& dc,
              const std::vector<DecompilerFile>& refs,
-             const OfflineTestConfig& config) {
+             const OfflineTestConfig& config,
+             const std::string& game_name) {
   fmt::print("Setting up compiler...\n");
   Compiler compiler;
 
-  compiler.run_front_end_on_file({"decompiler", "config", "all-types.gc"});
-  compiler.run_front_end_on_file({"test", "decompiler", "reference", "decompiler-macros.gc"});
+  compiler.run_front_end_on_file({"decompiler", "config", game_name_to_all_types[game_name]});
+  compiler.run_front_end_on_file(
+      {"test", "decompiler", "reference", game_name, "decompiler-macros.gc"});
 
   Timer timer;
   int total_lines = 0;
@@ -420,6 +231,162 @@ bool compile(Decompiler& dc,
   return true;
 }
 
+std::vector<DecompilerArtFile> find_art_files(const std::string& game_name,
+                                              const std::vector<std::string>& dgos) {
+  std::vector<DecompilerArtFile> result;
+
+  // use the all_objs.json file to place them in the correct build order
+  auto obj_json = parse_commented_json(
+      file_util::read_text_file(
+          (file_util::get_jak_project_dir() / "goal_src" / game_name / "build" / "all_objs.json")
+              .string()),
+      "all_objs.json");
+
+  for (const auto& x : obj_json) {
+    auto unique_name = x[0].get<std::string>();
+    auto version = x[2].get<int>();
+
+    std::vector<std::string> dgoList = x[3].get<std::vector<std::string>>();
+    if (version == 4) {
+      bool skip_this = false;
+
+      // Check to see if we've included atleast one of the DGO/CGOs in our hardcoded list
+      // If not BLOW UP
+      bool dgoValidated = false;
+      for (int i = 0; i < (int)dgoList.size(); i++) {
+        std::string& dgo = dgoList.at(i);
+        if (dgo == "NO-XGO") {
+          skip_this = true;
+          break;
+        }
+        // can either be in the DGO or CGO folder, and can either end with .CGO or .DGO
+        // TODO - Jak 2 Folder structure will be different!
+        if (std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.DGO", dgo)) != dgos.end() ||
+            std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.CGO", dgo)) != dgos.end() ||
+            std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.DGO", dgo)) != dgos.end() ||
+            std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.CGO", dgo)) != dgos.end()) {
+          dgoValidated = true;
+        }
+      }
+      if (skip_this) {
+        continue;
+      }
+      if (!dgoValidated) {
+        lg::error(
+            "File [{}] is in the following DGOs [{}], and not one of these is in our list! Add "
+            "it!",
+            unique_name, fmt::join(dgoList, ", "));
+        exit(1);
+      }
+
+      DecompilerArtFile file;
+      file.unique_name = unique_name;
+      file.name_in_dgo = x[1];
+      result.push_back(file);
+    }
+  }
+
+  return result;
+}
+
+std::vector<DecompilerFile> find_files(const std::string& game_name,
+                                       const std::vector<std::string>& dgos) {
+  std::vector<DecompilerFile> result;
+
+  auto base_dir =
+      file_util::get_jak_project_dir() / "test" / "decompiler" / "reference" / game_name;
+  auto ref_file_paths = file_util::find_files_recursively(base_dir, std::regex(".*_REF\\..*"));
+  std::unordered_map<std::string, fs::path> ref_file_names = {};
+  for (const auto& path : ref_file_paths) {
+    auto ref_name = path.filename().replace_extension().string();
+    ref_name.erase(ref_name.begin() + ref_name.find("_REF"), ref_name.end());
+    ref_file_names[ref_name] = path;
+  }
+
+  lg::info("Found {} reference files", ref_file_paths.size());
+
+  // use the all_objs.json file to place them in the correct build order
+  auto obj_json = parse_commented_json(
+      file_util::read_text_file(
+          (file_util::get_jak_project_dir() / "goal_src" / game_name / "build" / "all_objs.json")
+              .string()),
+      "all_objs.json");
+
+  std::unordered_set<std::string> matched_files;
+  for (auto& x : obj_json) {
+    auto unique_name = x[0].get<std::string>();
+
+    std::vector<std::string> dgoList = x[3].get<std::vector<std::string>>();
+    auto it = ref_file_names.find(unique_name);
+    if (it != ref_file_names.end()) {
+      // Check to see if we've included atleast one of the DGO/CGOs in our hardcoded list
+      // If not BLOW UP
+      bool dgoValidated = false;
+      for (int i = 0; i < (int)dgoList.size(); i++) {
+        std::string& dgo = dgoList.at(i);
+        // can either be in the DGO or CGO folder, and can either end with .CGO or .DGO
+        // TODO - Jak 2 Folder structure will be different!
+        if (std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.DGO", dgo)) != dgos.end() ||
+            std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.CGO", dgo)) != dgos.end() ||
+            std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.DGO", dgo)) != dgos.end() ||
+            std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.CGO", dgo)) != dgos.end()) {
+          dgoValidated = true;
+        }
+      }
+      if (!dgoValidated) {
+        lg::error(
+            "File [{}] is in the following DGOs [{}], and not one of these is in our list! Add "
+            "it!",
+            unique_name, fmt::join(dgoList, ", "));
+        exit(1);
+      }
+
+      DecompilerFile file;
+      file.path = it->second;
+      file.unique_name = it->first;
+      file.name_in_dgo = x[1];
+      result.push_back(file);
+      matched_files.insert(unique_name);
+    }
+  }
+
+  if (matched_files.size() != ref_file_names.size()) {
+    lg::error("Some REF files were not matched to files in all_objs.json:");
+    for (const auto& [path, flag] : ref_file_names) {
+      if (matched_files.count(path) == 0) {
+        lg::error("- '{}'", path);
+      }
+    }
+    exit(1);
+  }
+
+  return result;
+}
+
+/*!
+ * Read and parse the json config file, config.json, located in test/offline
+ */
+std::optional<OfflineTestConfig> parse_config(const std::string_view& game_name) {
+  lg::info("Reading Configuration...");
+  auto json_file_path =
+      file_util::get_jak_project_dir() / "test" / "offline" / "config" / game_name / "config.jsonc";
+  if (!fs::exists(json_file_path)) {
+    lg::error("Couldn't load configuration, '{}' doesn't exist", json_file_path.string());
+    return {};
+  }
+  auto json = parse_commented_json(file_util::read_text_file(json_file_path.string()),
+                                   json_file_path.string());
+  OfflineTestConfig result;
+  result.dgos = json["dgos"].get<std::vector<std::string>>();
+  result.skip_compile_files = json["skip_compile_files"].get<std::unordered_set<std::string>>();
+  result.skip_compile_functions =
+      json["skip_compile_functions"].get<std::unordered_set<std::string>>();
+  result.skip_compile_states =
+      json["skip_compile_states"]
+          .get<std::unordered_map<std::string, std::unordered_set<std::string>>>();
+  return std::make_optional(result);
+}
+
 int main(int argc, char* argv[]) {
 #ifdef _WIN32
   auto utf8_args = get_widechar_cli_args();
@@ -430,55 +397,77 @@ int main(int argc, char* argv[]) {
   argv = string_ptrs.data();
 #endif
 
-  fmt::print("Offline Decompiler Test 2\n");
   lg::initialize();
+
+  bool dump_current_output = false;
+  std::string iso_data_path;
+  std::string game_name;
+  // Useful for testing in debug mode (dont have to wait for everything to finish)
+  int max_files = -1;
+
+  CLI::App app{"OpenGOAL - Offline Reference Test Runner"};
+  app.add_option("--iso_data_path", iso_data_path, "The path to the folder with the ISO data files")
+      ->check(CLI::ExistingPath)
+      ->required();
+  app.add_option("--game", game_name, "The game name, for example 'jak1'")->required();
+  app.add_flag("-d,--dump_current_output", dump_current_output,
+               "Output the current output to a folder, use in conjunction with the reference test "
+               "files update script");
+  app.add_flag("-m,--max_files", max_files,
+               "Limit the amount of files ran in a single test, picks the first N");
+  app.validate_positionals();
+  CLI11_PARSE(app, argc, argv);
+
   if (!file_util::setup_project_path(std::nullopt)) {
+    lg::error("Couldn't setup project path, tool is supposed to be ran in the jak-project repo!");
     return 1;
   }
 
-  fmt::print("Reading config...\n");
-  auto args = parse_args(argc, argv);
-  auto config = parse_config();
-
-  fmt::print("Finding files...\n");
-  auto files = find_files(config.dgos);
-  if (args.max_files < (int)files.size()) {
-    files.erase(files.begin() + args.max_files, files.end());
+  auto config = parse_config(game_name);
+  if (!config.has_value()) {
+    return 1;
   }
-  auto art_files = find_art_files(config.dgos);
 
-  fmt::print("Setting up decompiler and loading files...\n");
-  auto decompiler = setup_decompiler(files, art_files, args, config);
+  lg::info("Finding files...");
+  auto files = find_files(game_name, config->dgos);
+  if (max_files > 0 && max_files < files.size()) {
+    files.erase(files.begin() + max_files, files.end());
+  }
+  auto art_files = find_art_files(game_name, config->dgos);
 
-  fmt::print("Disassembling files...\n");
+  lg::info("Setting up decompiler and loading files...");
+  auto decompiler =
+      setup_decompiler(files, art_files, fs::path(iso_data_path), config.value(), game_name);
+
+  lg::info("Disassembling files...");
   disassemble(decompiler);
 
-  fmt::print("Decompiling...\n");
-  decompile(decompiler, config);
+  lg::info("Decompiling...");
+  decompile(decompiler, config.value());
 
-  fmt::print("Comparing...\n");
-  auto compare_result = compare(decompiler, files, args.dump_current_output);
-  fmt::print("Compared {} lines. {}/{} files passed.\n", compare_result.total_lines,
-             compare_result.ok_files, compare_result.total_files);
+  lg::info("Comparing...");
+  auto compare_result = compare(decompiler, files, dump_current_output);
+  lg::info("Compared {} lines. {}/{} files passed.", compare_result.total_lines,
+           compare_result.ok_files, compare_result.total_files);
 
   if (!compare_result.failing_files.empty()) {
-    fmt::print("Failing files:\n");
+    lg::error("Failing files:");
     for (auto& f : compare_result.failing_files) {
-      fmt::print("  {}\n", f);
+      lg::error("- {}", f);
     }
   }
 
-  bool compile_result = compile(decompiler, files, config);
+  bool compile_result = compile(decompiler, files, config.value(), game_name);
 
   if (compare_result.total_pass && compile_result) {
-    fmt::print("Pass!\n");
+    lg::info("Pass!");
     return 0;
   } else {
     if (!compile_result) {
-      fmt::print("Compilation failed.\n");
+      lg::error("Compilation failed.");
     }
     if (!compare_result.total_pass) {
-      fmt::print("Comparison failed.\n");
+      lg::error("Comparison failed.");
     }
   }
   return 1;
