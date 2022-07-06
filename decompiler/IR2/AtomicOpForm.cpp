@@ -164,7 +164,7 @@ std::optional<TypeSpec> get_typecast_for_atom(const SimpleAtom& atom,
                                               const Env& env,
                                               const TypeSpec& expected_type,
                                               int my_idx) {
-  auto type_info = env.dts->ts.lookup_type(expected_type);
+  auto type_info = env.dts->ts.lookup_type_allow_partial_def(expected_type);
   switch (atom.get_kind()) {
     case SimpleAtom::Kind::VARIABLE: {
       if (atom.var().reg().get_kind() == Reg::VF) {

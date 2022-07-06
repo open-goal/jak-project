@@ -1162,6 +1162,15 @@ bool is_set_symbol_value(SetVarOp& op, const std::string& name) {
          op.src().get_arg(0).get_str() == name;
 }
 
+bool is_set_symbol_value(SetVarElement* op, const std::string& name) {
+  auto src = op->src()->try_as_element<SimpleExpressionElement>();
+  if (!src) {
+    return false;
+  }
+  return src->expr().is_identity() && src->expr().get_arg(0).is_sym_val() &&
+         src->expr().get_arg(0).get_str() == name;
+}
+
 SetVarOp get_delay_op(const Function& f, const BlockVtx* vtx) {
   auto delay_start = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(vtx->block_id);
   auto delay_end = f.ir2.atomic_ops->block_id_to_end_atomic_op.at(vtx->block_id);
@@ -1170,14 +1179,290 @@ SetVarOp get_delay_op(const Function& f, const BlockVtx* vtx) {
   }
   auto& delay_op = f.ir2.atomic_ops->ops.at(delay_start);
   auto* delay = dynamic_cast<SetVarOp*>(delay_op.get());
+  if (!delay) {
+    fmt::print("bad delay: {}\n", delay_op->to_string(f.ir2.env));
+    ASSERT(false);
+  }
   return *delay;
+}
+
+LoadVarOp get_delay_load_op(const Function& f, const BlockVtx* vtx) {
+  auto delay_start = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(vtx->block_id);
+  auto delay_end = f.ir2.atomic_ops->block_id_to_end_atomic_op.at(vtx->block_id);
+  if (delay_end - delay_start != 1) {
+    ASSERT(false);
+  }
+  auto& delay_op = f.ir2.atomic_ops->ops.at(delay_start);
+  auto* delay = dynamic_cast<LoadVarOp*>(delay_op.get());
+  if (!delay) {
+    fmt::print("bad delay: {}\n", delay_op->to_string(f.ir2.env));
+    ASSERT(false);
+  }
+  return *delay;
+}
+
+Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vtx) {
+  /*
+    dsll32 a2, a0, 29     * temp_reg0, src
+    dsrl32 a2, a2, 29     * temp_reg0, temp_reg0
+    beql a2, r0, L289     branch0
+  B1:
+    lw a0, binteger(s7)
+
+  B2:
+    addiu a3, r0, 4
+    beql a2, a3, L289     branch1
+  B3:
+    lwu a0, -4(a0)
+
+  B4:
+    addiu a0, r0, 2
+    beql a2, a0, L289     branch2
+  B5:
+    lw a0, pair(s7)
+
+  B6:
+    lw a0, symbol(s7)
+  B7:
+  L289:
+ */
+
+  if (vtx->entries.size() != 4) {
+    return nullptr;
+  }
+
+  auto b0_c = dynamic_cast<CfgVtx*>(vtx->entries.at(0).condition);
+  auto b0_d = dynamic_cast<BlockVtx*>(vtx->entries.at(0).likely_delay);
+  auto b1_c = dynamic_cast<BlockVtx*>(vtx->entries.at(1).condition);
+  auto b1_d = dynamic_cast<BlockVtx*>(vtx->entries.at(1).likely_delay);
+  auto b2_c = dynamic_cast<BlockVtx*>(vtx->entries.at(2).condition);
+  auto b2_d = dynamic_cast<BlockVtx*>(vtx->entries.at(2).likely_delay);
+  auto b3_c = dynamic_cast<BlockVtx*>(vtx->entries.at(3).condition);
+
+  if (!b0_c || !b0_d || !b1_c || !b1_d || !b2_c || !b2_d || !b3_c ||
+      vtx->entries.at(3).likely_delay) {
+    return nullptr;
+  }
+
+  // get the branch ir's
+  auto b0_ptr = cfg_to_ir(pool, f, b0_c);  // should be begin.
+  if (b0_ptr->size() <= 2) {
+    fmt::print("fail1\n");
+    return nullptr;
+  }
+  auto b1_ptr = cfg_to_ir(pool, f, b1_c);
+  if (b1_ptr->size() <= 1) {
+    fmt::print("fail2\n");
+    return nullptr;
+  }
+  auto b2_ptr = cfg_to_ir(pool, f, b2_c);
+  if (b2_ptr->size() <= 1) {
+    fmt::print("fail3\n");
+    return nullptr;
+  }
+  auto b3_ptr = cfg_to_ir(pool, f, b3_c);
+  auto b3_ir = dynamic_cast<SetVarElement*>(b3_ptr->try_as_single_element());
+  if (!b3_ir) {
+    fmt::print("fail4\n");
+    return nullptr;
+  }
+
+  // identify the left shift
+  auto set_shift_left = dynamic_cast<SetVarElement*>(b0_ptr->at(b0_ptr->size() - 3));
+  if (!set_shift_left) {
+    fmt::print("fail5\n");
+    return nullptr;
+  }
+  auto temp_reg0 = set_shift_left->dst();
+  auto shift_left =
+      dynamic_cast<SimpleExpressionElement*>(set_shift_left->src()->try_as_single_element());
+  if (!shift_left || shift_left->expr().kind() != SimpleExpression::Kind::LEFT_SHIFT) {
+    fmt::print("fail6\n");
+    return nullptr;
+  }
+  auto src_reg = shift_left->expr().get_arg(0).var();
+  auto sa_left = shift_left->expr().get_arg(1);
+  if (!sa_left.is_int() || sa_left.get_int() != 61) {
+    fmt::print("fail7\n");
+    return nullptr;
+  }
+
+  // identify the right shift
+  auto set_shift_right = dynamic_cast<SetVarElement*>(b0_ptr->at(b0_ptr->size() - 2));
+  if (!set_shift_right) {
+    fmt::print("fail8\n");
+    return nullptr;
+  }
+  if (set_shift_right->dst().reg() != set_shift_left->dst().reg()) {
+    fmt::print("fail9\n");
+    return nullptr;
+  }
+  auto shift_right =
+      dynamic_cast<SimpleExpressionElement*>(set_shift_right->src()->try_as_single_element());
+  if (!shift_right || shift_right->expr().kind() != SimpleExpression::Kind::RIGHT_SHIFT_LOGIC) {
+    fmt::print("fail10\n");
+    return nullptr;
+  }
+  if (temp_reg0.reg() != shift_right->expr().get_arg(0).var().reg()) {
+    fmt::print("fail11\n");
+    return nullptr;
+  }
+  auto sa_right = shift_right->expr().get_arg(1);
+  if (!sa_right.is_int() || sa_right.get_int() != 61) {
+    fmt::print("fail12\n");
+    return nullptr;
+  }
+
+  // branch 0
+  auto first_branch = dynamic_cast<BranchElement*>(b0_ptr->back());
+  auto b0_delay_op = get_delay_op(f, b0_d);
+  if (!first_branch || !is_set_symbol_value(b0_delay_op, "binteger") ||
+      first_branch->op()->condition().kind() != IR2_Condition::Kind::ZERO ||
+      !first_branch->op()->likely()) {
+    fmt::print("fail13\n");
+    return nullptr;
+  }
+  auto temp_reg = first_branch->op()->condition().src(0).var();
+  ASSERT(temp_reg.reg() == temp_reg0.reg());
+  auto dst_reg = b0_delay_op.dst();
+
+  // branch 1
+  if (b1_ptr->size() != 2) {
+    fmt::print("fail14\n");
+    return nullptr;
+  }
+  auto second_branch_pre_op = dynamic_cast<SetVarElement*>(b1_ptr->at(0));
+  if (!second_branch_pre_op) {
+    fmt::print("fail15\n");
+    return nullptr;
+  }
+  {
+    auto pos = second_branch_pre_op->src();
+    auto pos_as_se = pos->try_as_element<SimpleExpressionElement>();
+    if (!pos_as_se || !pos_as_se->expr().is_identity() || !pos_as_se->expr().get_arg(0).is_int(4)) {
+      fmt::print("fail16\n");
+      return nullptr;
+    }
+  }
+  auto temp_reg1 = second_branch_pre_op->dst();
+  auto second_branch = dynamic_cast<BranchElement*>(b1_ptr->at(1));
+  /*
+    beql a2, a3, L289     branch1
+  B3:
+    lwu a0, -4(a0)
+   */
+  if (!second_branch || second_branch->op()->condition().kind() != IR2_Condition::Kind::EQUAL ||
+      !second_branch->op()->likely() || !second_branch->op()->condition().src(0).is_var() ||
+      second_branch->op()->condition().src(0).var().reg() != temp_reg0.reg() ||
+      !second_branch->op()->condition().src(1).is_var() ||
+      second_branch->op()->condition().src(1).var().reg() != temp_reg1.reg()) {
+    fmt::print("fail17\n");
+    return nullptr;
+  }
+
+  if (!b1_d) {
+    fmt::print("fail18\n");
+    return nullptr;
+  }
+  auto b1_delay_op = get_delay_load_op(f, b1_d);
+  if (b1_delay_op.kind() != LoadVarOp::Kind::UNSIGNED || b1_delay_op.size() != 4) {
+    fmt::print("fail19\n");
+    return nullptr;
+  }
+  IR2_RegOffset ro;
+  if (!get_as_reg_offset(b1_delay_op.src(), &ro)) {
+    fmt::print("fail20\n");
+    return nullptr;
+  }
+  if (ro.offset != -4) {
+    fmt::print("fail21\n");
+    return nullptr;
+  }
+  if (ro.reg != src_reg.reg() || b1_delay_op.get_set_destination().reg() != dst_reg.reg()) {
+    fmt::print("fail22\n");
+    return nullptr;
+  }
+
+  /////////////////////////////////
+  // branch2
+  /*
+   *   B4:
+    addiu a0, r0, 2
+    beql a2, a0, L289     branch2
+  B5:
+    lw a0, pair(s7)
+   */
+  if (b2_ptr->size() != 2) {
+    fmt::print("fail23\n");
+    return nullptr;
+  }
+  auto third_branch_pre_op = dynamic_cast<SetVarElement*>(b2_ptr->at(0));
+  if (!third_branch_pre_op) {
+    fmt::print("fail24\n");
+    return nullptr;
+  }
+  {
+    auto pos = third_branch_pre_op->src();
+    auto pos_as_se = pos->try_as_element<SimpleExpressionElement>();
+    if (!pos_as_se || !pos_as_se->expr().is_identity() || !pos_as_se->expr().get_arg(0).is_int(2)) {
+      fmt::print("fail25\n");
+      return nullptr;
+    }
+  }
+  auto temp_reg2 = third_branch_pre_op->dst();
+  auto third_branch = dynamic_cast<BranchElement*>(b2_ptr->at(1));
+  if (!third_branch || third_branch->op()->condition().kind() != IR2_Condition::Kind::EQUAL ||
+      !third_branch->op()->likely() || !third_branch->op()->condition().src(0).is_var() ||
+      third_branch->op()->condition().src(0).var().reg() != temp_reg0.reg() ||
+      !third_branch->op()->condition().src(1).is_var() ||
+      third_branch->op()->condition().src(1).var().reg() != temp_reg2.reg()) {
+    fmt::print("fail26\n");
+    return nullptr;
+  }
+
+  if (!b2_d) {
+    fmt::print("fail27\n");
+    return nullptr;
+  }
+  auto b2_delay_op = get_delay_op(f, b2_d);
+  if (!is_set_symbol_value(b2_delay_op, "pair") || b2_delay_op.dst().reg() != dst_reg.reg()) {
+    fmt::print("fail28\n");
+    return nullptr;
+  }
+
+  if (!is_set_symbol_value(b3_ir, "symbol")) {
+    fmt::print("fail29\n");
+    return nullptr;
+  }
+
+  // we passed, time to clean things up...
+
+  // remove the stuff from the back of block 0.
+  b0_ptr->pop_back();
+  b0_ptr->pop_back();
+  b0_ptr->pop_back();
+
+  auto obj = pool.alloc_single_element_form<SimpleExpressionElement>(
+      nullptr, shift_left->expr().get_arg(0).as_expr(), set_shift_right->dst().idx());
+  auto type_op = pool.alloc_single_element_form<TypeOfElement>(nullptr, obj);
+  auto op = pool.alloc_element<SetVarElement>(dst_reg, type_op, true, TypeSpec("type"));
+  b0_ptr->push_back(op);
+  // if (b1_delay_op.src().)
+
+  f.ir2.env.disable_def(b0_delay_op.dst(), f.warnings);
+  f.ir2.env.disable_def(b1_delay_op.get_set_destination(), f.warnings);
+  f.ir2.env.disable_def(b2_delay_op.dst(), f.warnings);
+  f.ir2.env.disable_use(shift_left->expr().get_arg(0).var());
+
+  f.warnings.general_warning("Using new Jak 2 rtype-of");
+  return b0_ptr;
 }
 
 /*!
  * Try to convert a short circuiting expression into a "type-of" expression.
  * We do this before attempting the normal and/or expressions.
  */
-Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
+Form* try_sc_as_type_of_jak1(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   // the assembly looks like this:
   /*
          dsll32 v1, a0, 29                   ;; (set! v1 (shl a0 61))
@@ -1285,11 +1570,6 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   ASSERT(src_reg3.var().reg() == src_reg.reg());
   ASSERT(offset.get_int() == -4);
 
-  std::optional<RegisterAccess> clobber;
-  if (temp_reg.reg() != dst_reg.reg()) {
-    clobber = first_branch->op()->condition().src(0).var();
-  }
-
   // remove the branch
   b0_ptr->pop_back();
   // remove the shift
@@ -1298,7 +1578,7 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   // add the type-of
   auto obj = pool.alloc_single_element_form<SimpleExpressionElement>(
       nullptr, shift->expr().get_arg(0).as_expr(), set_shift->dst().idx());
-  auto type_op = pool.alloc_single_element_form<TypeOfElement>(nullptr, obj, clobber);
+  auto type_op = pool.alloc_single_element_form<TypeOfElement>(nullptr, obj);
   auto op = pool.alloc_element<SetVarElement>(else_case->dst(), type_op, true, TypeSpec("type"));
   b0_ptr->push_back(op);
 
@@ -1308,6 +1588,18 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   f.ir2.env.disable_use(shift->expr().get_arg(0).var());
 
   return b0_ptr;
+}
+
+Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx, GameVersion version) {
+  switch (version) {
+    case GameVersion::Jak1:
+      return try_sc_as_type_of_jak1(pool, f, vtx);
+    case GameVersion::Jak2:
+      return try_sc_as_type_of_jak2(pool, f, vtx);
+    default:
+      ASSERT(false);
+      return nullptr;
+  }
 }
 
 Form* merge_cond_else_with_sc_cond(FormPool& pool,
@@ -1574,7 +1866,7 @@ Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
   } else if (dynamic_cast<const ShortCircuit*>(vtx)) {
     auto* svtx = dynamic_cast<const ShortCircuit*>(vtx);
     // try as a type of expression first
-    auto as_type_of = try_sc_as_type_of(pool, f, svtx);
+    auto as_type_of = try_sc_as_type_of(pool, f, svtx, f.ir2.env.version);
     if (as_type_of) {
       return as_type_of;
     }
