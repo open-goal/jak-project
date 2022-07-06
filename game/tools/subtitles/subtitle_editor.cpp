@@ -149,6 +149,7 @@ void SubtitleEditor::draw_window() {
     ImGui::PushStyleColor(ImGuiCol_Text, m_selected_text_color);
   }
   if (ImGui::TreeNode("Currently Selected Cutscene")) {
+    ImGui::PopStyleColor();
     if (m_current_scene) {
       draw_subtitle_options(*m_current_scene, true);
     } else {
@@ -157,8 +158,9 @@ void SubtitleEditor::draw_window() {
       ImGui::PopStyleColor();
     }
     ImGui::TreePop();
+  } else {
+    ImGui::PopStyleColor();
   }
-  ImGui::PopStyleColor();
 
   if (ImGui::TreeNode("All Cutscenes")) {
     ImGui::InputText("New Scene Name", &m_new_scene_name);
