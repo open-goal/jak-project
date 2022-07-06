@@ -92,7 +92,10 @@ void deci2_runner(SystemThreadInterface& iface) {
 
   // in our own thread, wait for the EE to register the first protocol driver
   lg::debug("[DECI2] Waiting for EE to register protos");
-  server.wait_for_protos_ready();
+  if (!server.wait_for_protos_ready()) {
+    // requested shutdown before protos became ready.
+    return;
+  }
   // then allow the server to accept connections
   bool server_ok = server.init_server();
   if (!server_ok) {
