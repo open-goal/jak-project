@@ -3,6 +3,7 @@
 #include "common/versions.h"
 #include "common/util/FileUtil.h"
 #include "common/util/DgoReader.h"
+#include <common/util/unicode_util.h>
 
 namespace {
 int run(int argc, char** argv) {
@@ -48,6 +49,15 @@ int run(int argc, char** argv) {
 }  // namespace
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+  auto args = get_widechar_cli_args();
+  std::vector<char*> string_ptrs;
+  for (auto& str : args) {
+    string_ptrs.push_back(str.data());
+  }
+  argv = string_ptrs.data();
+#endif
+
   try {
     return run(argc, argv);
   } catch (const std::exception& e) {

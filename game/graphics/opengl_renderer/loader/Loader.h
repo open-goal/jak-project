@@ -1,11 +1,11 @@
 #pragma once
 
 #include <condition_variable>
-#include <filesystem>
 #include <mutex>
 #include <thread>
 
 #include "common/custom_data/Tfrag3Data.h"
+#include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 
 #include "game/graphics/opengl_renderer/loader/common.h"
@@ -16,7 +16,7 @@ class Loader {
  public:
   static constexpr float TIE_LOAD_BUDGET = 1.5f;
   static constexpr float SHARED_TEXTURE_LOAD_BUDGET = 3.f;
-  Loader(const std::filesystem::path& base_path);
+  Loader(const fs::path& base_path);
   ~Loader();
   void update(TexturePool& tex_pool);
   void update_blocking(TexturePool& tex_pool);
@@ -52,5 +52,5 @@ class Loader {
   std::vector<std::string> m_desired_levels;
   std::vector<std::unique_ptr<LoaderStage>> m_loader_stages;
 
-  std::filesystem::path m_base_path;
+  fs::path m_base_path;
 };

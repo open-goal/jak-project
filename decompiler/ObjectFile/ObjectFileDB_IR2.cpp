@@ -38,7 +38,7 @@ namespace decompiler {
  * functions, but nothing else.
  */
 void ObjectFileDB::analyze_functions_ir2(
-    const std::filesystem::path& output_dir,
+    const fs::path& output_dir,
     const Config& config,
     const std::unordered_set<std::string>& skip_functions,
     const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
@@ -300,7 +300,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
   lg::info("{:4d} logins  {:.2f}%\n", total_top_levels, 100.f * total_top_levels / total_functions);
 }
 
-void ObjectFileDB::ir2_analyze_all_types(const std::filesystem::path& output_file,
+void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
                                          const std::optional<std::string>& previous_game_types,
                                          const std::unordered_set<std::string>& bad_types) {
   struct PerObject {
@@ -690,7 +690,7 @@ void ObjectFileDB::ir2_insert_anonymous_functions(int seg, ObjectFileData& data)
   });
 }
 
-void ObjectFileDB::ir2_write_results(const std::filesystem::path& output_dir,
+void ObjectFileDB::ir2_write_results(const fs::path& output_dir,
                                      const Config& config,
                                      const std::vector<std::string>& imports,
                                      ObjectFileData& obj) {

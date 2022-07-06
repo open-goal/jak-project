@@ -3,7 +3,6 @@
  * Compiler implementation for forms which actually control the compiler.
  */
 
-#include <filesystem>
 #include <regex>
 #include <stack>
 
@@ -308,7 +307,7 @@ Val* Compiler::compile_build_dgo(const goos::Object& form, const goos::Object& r
         desc.entries.push_back(o);
       } else {
         // allow data objects to be missing.
-        if (std::filesystem::exists(file_util::get_file_path(
+        if (fs::exists(file_util::get_file_path(
                 {"out", m_make.compiler_output_prefix(), "obj", o.file_name}))) {
           desc.entries.push_back(o);
         }

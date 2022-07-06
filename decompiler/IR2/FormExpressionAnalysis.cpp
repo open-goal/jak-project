@@ -183,7 +183,7 @@ Form* try_cast_simplify(Form* in,
     }
   }
 
-  auto type_info = env.dts->ts.lookup_type(new_type);
+  auto type_info = env.dts->ts.lookup_type_allow_partial_def(new_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
   if (bitfield_info) {
     // todo remove this.

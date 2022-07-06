@@ -105,11 +105,11 @@ s32 sceOpen(const char* filename, s32 flag) {
   auto name = file_util::get_file_path({filename});
   switch (flag) {
     case SCE_RDONLY: {
-      fp = fopen(name.c_str(), "rb");
+      fp = file_util::open_file(name.c_str(), "rb");
     } break;
 
     default: {
-      fp = fopen(name.c_str(), "w");
+      fp = file_util::open_file(name.c_str(), "w");
     } break;
   }
   if (!fp) {

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <filesystem>
-
 #include "decompiler/data/TextureDB.h"
 
 namespace decompiler {
@@ -15,5 +13,5 @@ struct TPageResultStats {
 
 TPageResultStats process_tpage(ObjectFileData& data,
                                TextureDB& texture_db,
-                               const std::filesystem::path& output_path);
+                               const fs::path& output_path);
 }  // namespace decompiler

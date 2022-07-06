@@ -113,10 +113,10 @@ const ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) c
 /*!
  * Build an object file DB for the given list of DGOs.
  */
-ObjectFileDB::ObjectFileDB(const std::vector<std::filesystem::path>& _dgos,
-                           const std::filesystem::path& obj_file_name_map_file,
-                           const std::vector<std::filesystem::path>& object_files,
-                           const std::vector<std::filesystem::path>& str_files,
+ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
+                           const fs::path& obj_file_name_map_file,
+                           const std::vector<fs::path>& object_files,
+                           const std::vector<fs::path>& str_files,
                            const Config& config) {
   Timer timer;
 
@@ -258,7 +258,7 @@ void ObjectFileDB::load_map_file(const std::string& map_data) {
 /*!
  * Load the objects stored in the given DGO into the ObjectFileDB
  */
-void ObjectFileDB::get_objs_from_dgo(const std::filesystem::path& filename, const Config& config) {
+void ObjectFileDB::get_objs_from_dgo(const fs::path& filename, const Config& config) {
   auto dgo_data = file_util::read_binary_file(filename);
   stats.total_dgo_bytes += dgo_data.size();
 
@@ -516,7 +516,7 @@ void ObjectFileDB::process_labels() {
 /*!
  * Dump object files and their linking data to text files for debugging
  */
-void ObjectFileDB::write_object_file_words(const std::filesystem::path& output_dir,
+void ObjectFileDB::write_object_file_words(const fs::path& output_dir,
                                            bool dump_data,
                                            bool dump_code) {
   lg::info("- Writing object file dumps (code? {} data? {})...", dump_code, dump_data);
@@ -545,7 +545,7 @@ void ObjectFileDB::write_object_file_words(const std::filesystem::path& output_d
 /*!
  * Dump disassembly for object files containing code.  Data zones will also be dumped.
  */
-void ObjectFileDB::write_disassembly(const std::filesystem::path& output_dir,
+void ObjectFileDB::write_disassembly(const fs::path& output_dir,
                                      bool disassemble_data,
                                      bool disassemble_code,
                                      bool print_hex) {
@@ -623,7 +623,7 @@ void ObjectFileDB::find_code(const Config& config) {
  * Finds and writes all scripts into a file named all_scripts.lisp.
  * Doesn't change any state in ObjectFileDB.
  */
-void ObjectFileDB::find_and_write_scripts(const std::filesystem::path& output_dir) {
+void ObjectFileDB::find_and_write_scripts(const fs::path& output_dir) {
   lg::info("- Finding scripts in object files...");
   Timer timer;
   std::string all_scripts;
@@ -645,8 +645,7 @@ void ObjectFileDB::find_and_write_scripts(const std::filesystem::path& output_di
   lg::info(" Total {:.3f} ms\n", timer.getMs());
 }
 
-std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
-                                         const std::filesystem::path& output_path) {
+std::string ObjectFileDB::process_tpages(TextureDB& tex_db, const fs::path& output_path) {
   lg::info("- Finding textures in tpages...");
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
@@ -796,7 +795,7 @@ void ObjectFileDB::extract_art_info() {
 /*!
  * Write out the art group information.
  */
-void ObjectFileDB::dump_art_info(const std::filesystem::path& output_dir) {
+void ObjectFileDB::dump_art_info(const fs::path& output_dir) {
   lg::info("Writing art group info...");
   Timer timer;
 
@@ -820,7 +819,7 @@ void ObjectFileDB::dump_art_info(const std::filesystem::path& output_dir) {
   lg::info("Written art group info: in {:.2f} ms\n", timer.getMs());
 }
 
-void ObjectFileDB::dump_raw_objects(const std::filesystem::path& output_dir) {
+void ObjectFileDB::dump_raw_objects(const fs::path& output_dir) {
   for_each_obj([&](ObjectFileData& data) {
     auto dest = output_dir / data.to_unique_name();
     if (data.obj_version != 3) {

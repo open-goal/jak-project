@@ -117,8 +117,7 @@ bool write_subtitle_db_to_files(const GameSubtitleDB& db) {
     }
 
     // Commit it to the file
-    std::string full_path =
-        (file_util::get_jak_project_dir() / std::filesystem::path(bank->file_path)).string();
+    std::string full_path = (file_util::get_jak_project_dir() / fs::path(bank->file_path)).string();
     file_util::write_text_file(full_path, file_contents);
   }
 

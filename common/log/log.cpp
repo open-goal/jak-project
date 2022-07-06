@@ -83,7 +83,7 @@ void log_message(level log_level, LogTime& now, const char* message) {
 void set_file(const std::string& filename) {
   ASSERT(!gLogger.fp);
   file_util::create_dir_if_needed_for_file(filename);
-  gLogger.fp = fopen(filename.c_str(), "w");
+  gLogger.fp = file_util::open_file(filename.c_str(), "w");
   ASSERT(gLogger.fp);
 }
 

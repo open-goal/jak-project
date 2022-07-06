@@ -2,7 +2,6 @@
 #include "Tool.h"
 
 #include <chrono>
-#include <filesystem>
 
 #include "common/util/FileUtil.h"
 
@@ -14,17 +13,17 @@ bool Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
   // for this to return false, all outputs need to be newer than all inputs.
 
   for (auto& in : task.input) {
-    auto in_file = std::filesystem::path(file_util::get_file_path({in}));
+    auto in_file = fs::path(file_util::get_file_path({in}));
 
-    if (!std::filesystem::exists(in_file)) {
+    if (!fs::exists(in_file)) {
       throw std::runtime_error(fmt::format("Input file {} does not exist.", in));
     }
 
-    auto newest_input = std::filesystem::last_write_time(in_file);
+    auto newest_input = fs::last_write_time(in_file);
     for (auto& dep : task.deps) {
-      auto dep_path = std::filesystem::path(file_util::get_file_path({dep}));
-      if (std::filesystem::exists(dep_path)) {
-        auto dep_time = std::filesystem::last_write_time(dep_path);
+      auto dep_path = fs::path(file_util::get_file_path({dep}));
+      if (fs::exists(dep_path)) {
+        auto dep_time = fs::last_write_time(dep_path);
         if (dep_time > newest_input) {
           newest_input = dep_time;
         }
@@ -34,9 +33,9 @@ bool Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
     }
 
     for (auto& dep : get_additional_dependencies(task, path_map)) {
-      auto dep_path = std::filesystem::path(file_util::get_file_path({dep}));
-      if (std::filesystem::exists(dep_path)) {
-        auto dep_time = std::filesystem::last_write_time(dep_path);
+      auto dep_path = fs::path(file_util::get_file_path({dep}));
+      if (fs::exists(dep_path)) {
+        auto dep_time = fs::last_write_time(dep_path);
         if (dep_time > newest_input) {
           newest_input = dep_time;
         }
@@ -46,9 +45,9 @@ bool Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
     }
 
     for (auto& out : task.output) {
-      auto out_path = std::filesystem::path(file_util::get_file_path({out}));
-      if (std::filesystem::exists(out_path)) {
-        auto out_time = std::filesystem::last_write_time(out_path);
+      auto out_path = fs::path(file_util::get_file_path({out}));
+      if (fs::exists(out_path)) {
+        auto out_time = fs::last_write_time(out_path);
         if (out_time < newest_input) {
           return true;
         }

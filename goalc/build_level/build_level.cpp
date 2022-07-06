@@ -16,7 +16,7 @@
 
 void save_pc_data(const std::string& nickname,
                   tfrag3::Level& data,
-                  const std::filesystem::path& fr3_output_dir) {
+                  const fs::path& fr3_output_dir) {
   Serializer ser;
   data.serialize(ser);
   auto compressed =
@@ -55,7 +55,7 @@ bool run_build_level(const std::string& input_file,
   gltf_mesh_extract::extract(mesh_extract_in, mesh_extract_out);
 
   // add stuff to the GOAL level structure
-  file.info = make_file_info_for_level(std::filesystem::path(input_file).filename().string());
+  file.info = make_file_info_for_level(fs::path(input_file).filename().string());
   // all vis
   // drawable trees
   // pat
