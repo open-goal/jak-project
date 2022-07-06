@@ -473,8 +473,7 @@ void SubtitleEditor::draw_all_scenes(std::string group_name, bool base_cutscenes
     }
     if (!base_cutscenes && is_current_scene) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_selected_text_color);
-    }
-    if (base_cutscenes) {
+    } else if (base_cutscenes) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_disabled_text_color);
     } else if (m_db.count(scene_name) == 0) {
       ImGui::PushStyleColor(ImGuiCol_Text, m_warning_color);
@@ -668,8 +667,12 @@ void SubtitleEditor::draw_new_cutscene_line_form() {
   } else {
     rendered_text_entry_btn = true;
     if (ImGui::Button("Add Text Entry")) {
-      m_current_scene->add_line(m_current_scene_frame, m_current_scene_text,
-                                m_current_scene_speaker, m_current_scene_offscreen);
+      auto font = get_font_bank(
+          parse_text_only_version(m_subtitle_db.m_banks[m_current_language]->file_path));
+      m_current_scene->add_line(m_current_scene_frame,
+                                font->convert_utf8_to_game_with_escape(m_current_scene_text),
+                                font->convert_utf8_to_game_with_escape(m_current_scene_speaker),
+                                m_current_scene_offscreen);
     }
   }
   if (m_current_scene_frame < 0) {

@@ -23,7 +23,6 @@
 
 (defconstant PC_SUBTITLE_FILE_SIZE (* 192 1024)) ;; 192K heap for subtitles. adjust later if necessary.
 (defconstant PC_SUBTITLE_FILE_NAME "subtit")
-(defconstant PC_SUBTITLE_STR_ADJUST 17)
 (defglobalconstant PC_SUBTITLE_DEBUG #f)
 
 
@@ -117,6 +116,8 @@
    (width float)
    (height float)
    (lines float)
+   (notice-height float)
+   (hint-height float)
    )
 
   )
@@ -125,8 +126,10 @@
     (new 'static 'subtitle-bank
                   :scale 0.49
                   :width 0.87
-                  :height 0.835
+                  :height 0.75
                   :lines 2.0
+                  :notice-height 0.2
+                  :hint-height 0.8
                   ))
 
 ;; the subtitle process! it lives on the PC actor pool and awaits for incoming subtitle messages, or a movie
@@ -134,6 +137,9 @@
   (
    (font font-context) ;; the font to use for the subtitles.
    (bank-backup subtitle-bank :inline) ;; debug backup.
+
+   (state-time time-frame) ;; a timestamp, used for notices
+   (notice-id  game-text-id) ;; what notice text to display at the top of the screen
 
    (    spool-name string)
    (old-spool-name string)
@@ -534,7 +540,7 @@
   )
 
 (defun subtitle-str-adjust ((pos int))
-  (if (< pos 0) -1 (/ pos PC_SUBTITLE_STR_ADJUST)))
+  (if (< pos 0) -1 (the int (/ pos (/ 1024.0 60)))))
 
 
 (defstate subtitle-process (subtitle)
@@ -595,7 +601,7 @@
       )
 
     ;; do subtitles
-    
+
     ;; get a subtitle info that matches our current status
     (let ((keyframe (the subtitle-keyframe #f)))
     (when *subtitle-text*
@@ -604,7 +610,7 @@
           ;; cutscenes. get our cutscene.
           (set! (-> self hint-subtitle?) #f)
           (awhen (get-scene-by-name *subtitle-text* (-> self cur-channel) (-> self spool-name))
-          
+
             ;; find out position in the scene.
             (let ((pos 0))
                 ;; get frame num
@@ -619,8 +625,6 @@
               )
             )
 
-          ;; keep this for later
-          (set! (-> self old-spool-name) (-> self spool-name))
           )
         (((pc-subtitle-channel hint) (pc-subtitle-channel hint-named))
           ;; hint! find it. or else.
@@ -629,7 +633,7 @@
                      (get-scene-by-name *subtitle-text* (-> self cur-channel) (-> self spool-name))
                      (get-scene-by-text-id *subtitle-text* (-> self cur-channel) (-> self text-id))
                      )
-          
+
             (let ((pos (subtitle-str-adjust (current-str-pos (-> *hint-semaphore* 0 sound-id)))))
                 ;; find closest keyframe
                 (dotimes (i (-> it length))
@@ -640,16 +644,29 @@
             )
           )
         ))
-        
+
         ;; save whatever subtitle we got.
         (set! (-> self want-subtitle) keyframe))
 
+    (when (and (!= (-> self old-spool-name) (-> self spool-name))
+               (string= (-> self spool-name) "sage-intro-sequence-a"))
+          (set-state-time)
+          (set! (-> self notice-id) (game-text-id subtitle-hint))
+          )
+    ;; keep this for later
+    (set! (-> self old-spool-name) (-> self spool-name))
+
     ;; during a cutscene, check if user toggled subtitles
-    (if (and (= (pc-subtitle-channel movie) (-> self cur-channel))
-             (= 'game *master-mode*)
-             (-> self want-subtitle)
-             (cpad-pressed? 0 square))
-        (not! (-> *pc-settings* subtitles?)))
+    (when (and (= (pc-subtitle-channel movie) (-> self cur-channel))
+               (= 'game *master-mode*)
+               (cpad-pressed? 0 square))
+        (not! (-> *pc-settings* subtitles?))
+        (set-state-time)
+        (if (-> *pc-settings* subtitles?)
+            (set! (-> self notice-id) (game-text-id subtitle-enabled))
+            (set! (-> self notice-id) (game-text-id subtitle-disabled))
+            )
+        )
 
     (when *debug-segment*
         (when (and (cpad-hold? 0 l3) (cpad-pressed? 0 start))
@@ -665,7 +682,10 @@
 
     ;; set font settings.
     (set! (-> self font origin x) (* (- 1.0 (-> *SUBTITLE-bank* width)) 256))
-    (set! (-> self font origin y) (* (-> *SUBTITLE-bank* height) 224))
+    (set! (-> self font origin y) (* (if (-> self hint-subtitle?)
+                                         (-> *SUBTITLE-bank* hint-height)
+                                         (-> *SUBTITLE-bank* height)
+                                         ) 224))
     (set-width! (-> self font) (the int (* (-> *SUBTITLE-bank* width) 512)))
     (set-height! (-> self font) (the int (* (-> *SUBTITLE-bank* lines) 11)))
     (set-scale! (-> self font) (-> *SUBTITLE-bank* scale))
@@ -678,6 +698,25 @@
           (draw-debug-text-box (-> self font))
           )
         )
+
+    (cond
+      ((!= *master-mode* 'game)
+       )
+      ((and (< (time-passed) (seconds 5))
+            (= (-> self notice-id) (game-text-id subtitle-hint)))
+        (when (not (-> *pc-settings* subtitles?))
+          (set-scale! (-> self font) (* (-> *SUBTITLE-bank* scale) 1.5))
+          (print-game-subtitle (lookup-text! *common-text* (-> self notice-id) #f) (-> self font) #f 128 22)
+          )
+        )
+      ((and (< (time-passed) (seconds 2))
+            (< (mod (time-passed) (seconds 1)) (seconds 0.8)))
+        (set! (-> self font origin y) (* (-> *SUBTITLE-bank* notice-height) 224))
+        (print-game-subtitle (lookup-text! *common-text* (-> self notice-id) #f) (-> self font) #f 128 22)
+        )
+      )
+
+
     0)
 
   )
