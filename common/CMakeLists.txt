@@ -1,4 +1,5 @@
 add_library(common
+        versions.cpp
         audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
         cross_sockets/XSocket.cpp

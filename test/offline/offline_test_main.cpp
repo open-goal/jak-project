@@ -49,8 +49,9 @@ std::unordered_map<std::string, std::string> game_name_to_config = {
 
 // TODO - i think these should be partitioned by game name instead of it being in the filename
 // (and the names not being consistent)
-std::unordered_map<std::string, std::string> game_name_to_all_types = {{"jak1", "all-types.gc"},
-                                                                       {"jak2", "all-types2.gc"}};
+std::unordered_map<std::string, std::string> game_name_to_all_types = {
+    {"jak1", "all-types.gc"},
+    {"jak2", "jak2/all-types.gc"}};
 
 Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
                             const std::vector<DecompilerArtFile>& art_files,
@@ -197,7 +198,7 @@ bool compile(Decompiler& dc,
              const OfflineTestConfig& config,
              const std::string& game_name) {
   fmt::print("Setting up compiler...\n");
-  Compiler compiler;
+  Compiler compiler(game_name_to_version(game_name));
 
   compiler.run_front_end_on_file({"decompiler", "config", game_name_to_all_types[game_name]});
   compiler.run_front_end_on_file(

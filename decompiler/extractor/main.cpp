@@ -193,7 +193,7 @@ ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& dat
   // Determine which config to use from the database
   const auto version_info = get_version_info_or_default(iso_data_path);
 
-  Compiler compiler;
+  Compiler compiler(game_name_to_version(version_info.game_name));
   compiler.make_system().set_constant("*iso-data*", absolute(iso_data_path).string());
   compiler.make_system().set_constant("*use-iso-data-path*", true);
 

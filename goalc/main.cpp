@@ -28,6 +28,7 @@ int main(int argc, char** argv) {
   std::string cmd = "";
   std::string startup_cmd = "";
   std::string username = "#f";
+  std::string game = "jak1";
   int nrepl_port = 8181;
 
   CLI::App app{"OpenGOAL Compiler / REPL"};
@@ -43,12 +44,15 @@ int main(int argc, char** argv) {
                "Attempt to automatically connect to the debugger on startup");
   app.add_flag("--user-auto", auto_find_user,
                "Attempt to automatically deduce the user, overrides '-user'");
+  app.add_option("-g,--game", game, "The game name: 'jak1' or 'jak2'");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
   if (!file_util::setup_project_path(std::nullopt)) {
     return 1;
   }
+
+  GameVersion game_version = game_name_to_version(game);
 
   if (auto_find_user) {
     username = "#f";
@@ -91,7 +95,7 @@ int main(int argc, char** argv) {
     std::mutex compiler_mutex;
     // if a command is provided on the command line, no REPL just run the compiler on it
     if (!cmd.empty()) {
-      compiler = std::make_unique<Compiler>();
+      compiler = std::make_unique<Compiler>(game_version);
       compiler->run_front_end_on_string(cmd);
       return 0;
     }
@@ -127,7 +131,8 @@ int main(int argc, char** argv) {
         if (compiler) {
           compiler->save_repl_history();
         }
-        compiler = std::make_unique<Compiler>(username, std::make_unique<ReplWrapper>());
+        compiler =
+            std::make_unique<Compiler>(game_version, username, std::make_unique<ReplWrapper>());
         if (!startup_cmd.empty()) {
           compiler->handle_repl_string(startup_cmd);
           // reset to prevent re-executing on manual reload
