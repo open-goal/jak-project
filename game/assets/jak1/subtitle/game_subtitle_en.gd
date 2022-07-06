@@ -2392,6 +2392,42 @@
 ("MAI-AM07" :hint #x0 (0 "MAIA" "NOOOOO!"))
 ("MAI-AM08" :hint #x0 (0 "MAIA" "WE'LL OPEN THE SILO ALL THE WAY AND DESTROY YOU TWO!"))
 ("MAI-AM09" :hint #x0 (0 "MAIA" "THEY MUST NOT BE ALLOWED TO GET IT!"))
+("sksp0394" :hint #x0 (0 "DAXTER" "GRAB THE YELLOW ECO!"))
+("sksp0395" :hint #x0 (0 "DAXTER" "SHOOT THE ROBOT, JAK!"))
+("sksp0396" :hint #x0 (0 "DAXTER" "SHOOT HIS ARM!"))
+("sksp0397" :hint #x0 (0 "DAXTER" "SHOOT HIS GUN!"))
+("sksp0398" :hint #x0 (0 "DAXTER" "SHOOT HIS HEAD!"))
+("sksp0399" :hint #x0 (0 "DAXTER" "WATCH OUT FOR THE BLAST!"))
+("sksp0400" :hint #x0 (0 "DAXTER" "HE'S CHARGING UP!"))
+("sksp0401" :hint #x0 (0 "DAXTER" "GET THE BLUE ECO!"))
+("sksp0402" :hint #x0 (0 "DAXTER" "GET THE RED ECO!"))
+("sksp0403" :hint #x0 (0 "DAXTER" "I HAVE A BAD FEELING ABOUT THIS!"))
+("sksp0404" :hint #x0 (0 "DAXTER" "USE THE LAUNCHER, QUICK!"))
+("sksp0405" :hint #x0 (0 "DAXTER" "NOW YOU'VE MADE THE ANIMAL MAD!"))
+("sksp0406" :hint #x0 (0 "DAXTER" "WE CAN'T TOUCH THESE GUYS!"))
+("sksp0407" :hint #x0 (0 "DAXTER" "USE THE YELLOW ECO!"))
+("sksp0408" :hint #x0 (0 "DAXTER" "SHOOT THOSE GUYS!"))
+("sksp0409" :hint #x0 (0 "DAXTER" "GET THE LIGHT ECO, JAK!"))
+("sksp0410" :hint #x0 (0 "DAXTER" "HE LOOKS ANGRY!"))
+("sksp0411" :hint #x0 (0 "DAXTER" "JUMP TO AVOID THE EXPLOSIONS!"))
+("sksp0412" :hint #x0 (0 "DAXTER" "NOW WE TAKE CARE OF BUSINESS!"))
+("sksp0413" :hint #x0 (0 "DAXTER" "GOOD SHOOTING, PARTNER!"))
+("sksp0414" :hint #x0 (0 "DAXTER" "THAT HURT HIM!"))
+("sksp0415" :hint #x0 (0 "DAXTER" "HERE HE COMES!"))
+("sksp0416" :hint #x0 (0 "DAXTER" "YEAH! YOU DID IT!"))
+("sksp0417" :hint #x0 (0 "DAXTER" "SAY \"GOOD NIGHT,\" GOL AND MAIA!"))
+
+;; -----------------
+;; title
+;; -----------------
+
+("sksp0444" :hint #x0 (0 "DAXTER" "WE'RE WAITING. HELLO?"))
+("sksp0449" :hint #x0 (0 "DAXTER" "PRESS START TO PLAY."))
+("sksp0450" :hint #x0 (0 "DAXTER" "YOU WANNA STOP PLAYING?"))
+("sksp0451" :hint #x0 (0 "DAXTER" "I DIDN'T THINK SO."))
+("sksp0452" :hint #x0 (0 "DAXTER" "OKAY, SEE YA LATER."))
+("sksp0455" :hint #x0 (0 "DAXTER" "MAN, WHO ARE ALL THESE PEOPLE?"))
+("sksp0466" :hint #x0 (0 "DAXTER" "I WAS GOOD. WASN'T I, GIRLS?"))
 
 ;; -----------------
 ;; uncategorized
