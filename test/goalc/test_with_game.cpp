@@ -1,6 +1,5 @@
 #include <chrono>
 #include <cstdio>
-#include <filesystem>
 #include <iostream>
 #include <random>
 #include <regex>
@@ -380,8 +379,8 @@ TEST_F(WithGameTests, GameCount) {
   shared_compiler->runner.run_static_test(env, testCategory, "test-game-count.gc",
                                           get_test_pass_string("game-count", 4));
   // don't leave behind a weird version of the game-count file.
-  std::filesystem::remove(file_util::get_file_path({"out", "jak1", "iso", "ENGINE.CGO"}));
-  std::filesystem::remove(file_util::get_file_path({"out", "jak1", "obj", "game-cnt.go"}));
+  fs::remove(file_util::get_file_path({"out", "jak1", "iso", "ENGINE.CGO"}));
+  fs::remove(file_util::get_file_path({"out", "jak1", "obj", "game-cnt.go"}));
 }
 
 TEST_F(WithGameTests, BitFieldAccess) {

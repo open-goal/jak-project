@@ -1,11 +1,12 @@
 #pragma once
 
-#include <filesystem>
 #include <string>
 #include <vector>
 
+#include "common/util/FileUtil.h"
+
 namespace decompiler {
-void process_streamed_audio(const std::filesystem::path& output_path,
-                            const std::filesystem::path& input_dir,
+void process_streamed_audio(const fs::path& output_path,
+                            const fs::path& input_dir,
                             const std::vector<std::string>& audio_files);
 }

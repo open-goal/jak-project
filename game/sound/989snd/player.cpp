@@ -7,6 +7,7 @@
 #include <third-party/fmt/core.h>
 
 #ifdef _WIN32
+#include <combaseapi.h>
 #include <windows.h>
 #endif
 
@@ -193,7 +194,7 @@ void player::set_master_volume(u32 group, s32 volume) {
   }
 }
 
-u32 player::load_bank(std::filesystem::path& filepath, size_t offset) {
+u32 player::load_bank(fs::path& filepath, size_t offset) {
   std::scoped_lock lock(m_ticklock);
   fmt::print("Loading bank {}\n", filepath.string());
   std::fstream in(filepath, std::fstream::binary | std::fstream::in);

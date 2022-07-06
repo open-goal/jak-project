@@ -11,8 +11,6 @@
 
 #include "Reader.h"
 
-#include <filesystem>
-
 #include "ReplUtils.h"
 
 #include "common/util/FileUtil.h"

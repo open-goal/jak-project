@@ -7,7 +7,6 @@
 
 #include <cstdio> /* defines FILENAME_MAX */
 #include <cstdlib>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -37,22 +36,22 @@
 #include <common/log/log.h>
 
 namespace file_util {
-std::filesystem::path get_user_home_dir() {
+fs::path get_user_home_dir() {
 #ifdef _WIN32
   // NOTE - on older systems, this may case issues if it cannot be found!
   std::string home_dir = std::getenv("USERPROFILE");
-  return std::filesystem::path(home_dir);
+  return fs::path(home_dir);
 #else
   std::string home_dir = std::getenv("HOME");
-  return std::filesystem::path(home_dir);
+  return fs::path(home_dir);
 #endif
 }
 
-std::filesystem::path get_user_config_dir() {
-  std::filesystem::path config_base_path;
+fs::path get_user_config_dir() {
+  fs::path config_base_path;
 #ifdef _WIN32
   auto config_base_dir = std::getenv("APPDATA");
-  config_base_path = std::filesystem::path(std::string(config_base_dir));
+  config_base_path = fs::path(std::string(config_base_dir));
 #elif __linux
   // Docs - https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
   // Prefer XDG_CONFIG_HOME if available
@@ -66,19 +65,19 @@ std::filesystem::path get_user_config_dir() {
   return config_base_path / "OpenGOAL";
 }
 
-std::filesystem::path get_user_settings_dir() {
+fs::path get_user_settings_dir() {
   // TODO - jak2
   return get_user_config_dir() / "jak1" / "settings";
 }
 
-std::filesystem::path get_user_memcard_dir() {
+fs::path get_user_memcard_dir() {
   // TODO - jak2
   return get_user_config_dir() / "jak1" / "saves";
 }
 
 struct {
   bool initialized = false;
-  std::filesystem::path path_to_data;
+  fs::path path_to_data;
 } gFilePathInfo;
 
 /*!
@@ -120,17 +119,17 @@ std::optional<std::string> try_get_jak_project_path() {
       0, pos + 11));  // + 12 to include "/jak-project" in the returned filepath
 }
 
-std::optional<std::filesystem::path> try_get_data_dir() {
-  std::filesystem::path my_path = get_current_executable_path();
+std::optional<fs::path> try_get_data_dir() {
+  fs::path my_path = get_current_executable_path();
   auto data_dir = my_path.parent_path() / "data";
-  if (std::filesystem::exists(data_dir) && std::filesystem::is_directory(data_dir)) {
+  if (fs::exists(data_dir) && fs::is_directory(data_dir)) {
     return std::make_optional(data_dir);
   } else {
     return {};
   }
 }
 
-bool setup_project_path(std::optional<std::filesystem::path> project_path_override) {
+bool setup_project_path(std::optional<fs::path> project_path_override) {
   if (gFilePathInfo.initialized) {
     return true;
   }
@@ -162,7 +161,7 @@ bool setup_project_path(std::optional<std::filesystem::path> project_path_overri
   return false;
 }
 
-std::filesystem::path get_jak_project_dir() {
+fs::path get_jak_project_dir() {
   ASSERT(gFilePathInfo.initialized);
   return gFilePathInfo.path_to_data;
 }
@@ -172,7 +171,7 @@ std::string get_file_path(const std::vector<std::string>& input) {
   // the project path should be explicitly provided by whatever if needed
   // TEMP HACK
   // - if the provided path is absolute, don't add the project path
-  if (input.size() == 1 && std::filesystem::path(input.at(0)).is_absolute()) {
+  if (input.size() == 1 && fs::path(input.at(0)).is_absolute()) {
     return input.at(0);
   }
 
@@ -184,24 +183,24 @@ std::string get_file_path(const std::vector<std::string>& input) {
   return current_path.string();
 }
 
-bool create_dir_if_needed(const std::filesystem::path& path) {
-  if (!std::filesystem::is_directory(path)) {
-    std::filesystem::create_directories(path);
+bool create_dir_if_needed(const fs::path& path) {
+  if (!fs::is_directory(path)) {
+    fs::create_directories(path);
     return true;
   }
   return false;
 }
 
 bool create_dir_if_needed_for_file(const std::string& path) {
-  return create_dir_if_needed_for_file(std::filesystem::path(path));
+  return create_dir_if_needed_for_file(fs::path(path));
 }
 
-bool create_dir_if_needed_for_file(const std::filesystem::path& path) {
-  return std::filesystem::create_directories(path.parent_path());
+bool create_dir_if_needed_for_file(const fs::path& path) {
+  return fs::create_directories(path.parent_path());
 }
 
-void write_binary_file(const std::filesystem::path& name, const void* data, size_t size) {
-  FILE* fp = fopen(name.string().c_str(), "wb");
+void write_binary_file(const fs::path& name, const void* data, size_t size) {
+  FILE* fp = file_util::open_file(name.string().c_str(), "wb");
   if (!fp) {
     throw std::runtime_error("couldn't open file " + name.string());
   }
@@ -215,10 +214,10 @@ void write_binary_file(const std::filesystem::path& name, const void* data, size
 }
 
 void write_binary_file(const std::string& name, const void* data, size_t size) {
-  write_binary_file(std::filesystem::path(name), data, size);
+  write_binary_file(fs::path(name), data, size);
 }
 
-void write_rgba_png(const std::filesystem::path& name, void* data, int w, int h) {
+void write_rgba_png(const fs::path& name, void* data, int w, int h) {
   auto flags = 0;
 
   auto ok = fpng::fpng_encode_image_to_file(name.string().c_str(), data, w, h, 4, flags);
@@ -229,11 +228,11 @@ void write_rgba_png(const std::filesystem::path& name, void* data, int w, int h)
 }
 
 void write_text_file(const std::string& file_name, const std::string& text) {
-  write_text_file(std::filesystem::path(file_name), text);
+  write_text_file(fs::path(file_name), text);
 }
 
-void write_text_file(const std::filesystem::path& file_name, const std::string& text) {
-  FILE* fp = fopen(file_name.string().c_str(), "w");
+void write_text_file(const fs::path& file_name, const std::string& text) {
+  FILE* fp = file_util::open_file(file_name.string().c_str(), "w");
   if (!fp) {
     lg::error("Failed to fopen {}\n", file_name.string());
     throw std::runtime_error("Failed to open file");
@@ -242,26 +241,25 @@ void write_text_file(const std::filesystem::path& file_name, const std::string& 
   fclose(fp);
 }
 std::vector<uint8_t> read_binary_file(const std::string& filename) {
-  return read_binary_file(std::filesystem::path(filename));
+  return read_binary_file(fs::path(filename));
 }
 
-std::vector<uint8_t> read_binary_file(const std::filesystem::path& path) {
+std::vector<uint8_t> read_binary_file(const fs::path& path) {
   // make sure file exists and isn't a directory
 
-  auto status = std::filesystem::status(path);
+  auto status = fs::status(path);
 
-  if (!std::filesystem::exists(status)) {
+  if (!fs::exists(status)) {
     throw std::runtime_error(
         fmt::format("File {} cannot be opened: does not exist.", path.string()));
   }
 
-  if (status.type() != std::filesystem::file_type::regular &&
-      status.type() != std::filesystem::file_type::symlink) {
+  if (status.type() != fs::file_type::regular && status.type() != fs::file_type::symlink) {
     throw std::runtime_error(
         fmt::format("File {} cannot be opened: not a regular file or symlink.", path.string()));
   }
 
-  auto fp = fopen(path.string().c_str(), "rb");
+  auto fp = file_util::open_file(path.string().c_str(), "rb");
   if (!fp)
     throw std::runtime_error("File " + path.string() +
                              " cannot be opened: " + std::string(strerror(errno)));
@@ -281,7 +279,7 @@ std::vector<uint8_t> read_binary_file(const std::filesystem::path& path) {
   return data;
 }
 
-std::string read_text_file(const std::filesystem::path& path) {
+std::string read_text_file(const fs::path& path) {
   std::ifstream file(path.string());
   if (!file.good()) {
     throw std::runtime_error("couldn't open " + path.string());
@@ -292,7 +290,7 @@ std::string read_text_file(const std::filesystem::path& path) {
 }
 
 std::string read_text_file(const std::string& path) {
-  return read_text_file(std::filesystem::path(path));
+  return read_text_file(fs::path(path));
 }
 
 bool is_printable_char(char c) {
@@ -304,7 +302,7 @@ std::string combine_path(const std::string& parent, const std::string& child) {
 }
 
 bool file_exists(const std::string& path) {
-  return std::filesystem::exists(path);
+  return fs::exists(path);
 }
 
 std::string base_name(const std::string& filename) {
@@ -448,7 +446,7 @@ void MakeISOName(char* dst, const char* src) {
 }
 
 void assert_file_exists(const char* path, const char* error_message) {
-  if (!std::filesystem::exists(path)) {
+  if (!fs::exists(path)) {
     ASSERT_MSG(false, fmt::format("File {} was not found: {}", path, error_message));
   }
 }
@@ -510,6 +508,14 @@ std::vector<u8> decompress_dgo(const std::vector<u8>& data_in) {
   }
 
   return decompressed_data;
+}
+
+FILE* open_file(const fs::path& path, std::string mode) {
+#ifdef _WIN32
+  return _wfopen(path.wstring().c_str(), std::wstring(mode.begin(), mode.end()).c_str());
+#else
+  return fopen(path.string().c_str(), mode.c_str());
+#endif
 }
 
 }  // namespace file_util

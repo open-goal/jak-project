@@ -203,7 +203,7 @@ void extract_common(const ObjectFileDB& db,
                     const TextureDB& tex_db,
                     const std::string& dgo_name,
                     bool dump_levels,
-                    const std::filesystem::path& output_folder) {
+                    const fs::path& output_folder) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
     lg::warn("Skipping common extract for {} because the DGO was not part of the input", dgo_name);
     return;
@@ -239,7 +239,7 @@ void extract_from_level(const ObjectFileDB& db,
                         const DecompileHacks& hacks,
                         bool dump_level,
                         bool extract_collision,
-                        const std::filesystem::path& output_folder) {
+                        const fs::path& output_folder) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
     lg::warn("Skipping extract for {} because the DGO was not part of the input", dgo_name);
     return;
@@ -272,7 +272,7 @@ void extract_all_levels(const ObjectFileDB& db,
                         const DecompileHacks& hacks,
                         bool debug_dump_level,
                         bool extract_collision,
-                        const std::filesystem::path& output_path) {
+                        const fs::path& output_path) {
   extract_common(db, tex_db, common_name, debug_dump_level, output_path);
   SimpleThreadGroup threads;
   threads.run(

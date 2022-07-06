@@ -89,7 +89,7 @@ struct VagFileHeader {
 /*!
  * Read the DIR file into an AudioDir
  */
-AudioDir read_audio_dir(const std::filesystem::path& path) {
+AudioDir read_audio_dir(const fs::path& path) {
   // matches the format in file.
   struct DirEntry {
     char name[8];
@@ -145,7 +145,7 @@ struct AudioFileInfo {
   double length_seconds;
 };
 
-AudioFileInfo process_audio_file(const std::filesystem::path& output_folder,
+AudioFileInfo process_audio_file(const fs::path& output_folder,
                                  const std::vector<u8>& data,
                                  const std::string& name,
                                  const std::string& suffix) {
@@ -182,8 +182,8 @@ AudioFileInfo process_audio_file(const std::filesystem::path& output_folder,
   return {vag_filename, (double)decoded_samples.size() / header.sample_rate};
 }
 
-void process_streamed_audio(const std::filesystem::path& output_path,
-                            const std::filesystem::path& input_dir,
+void process_streamed_audio(const fs::path& output_path,
+                            const fs::path& input_dir,
                             const std::vector<std::string>& audio_files) {
   auto dir_data = read_audio_dir(input_dir / "VAG" / "VAGDIR.AYB");
   double audio_len = 0.f;
@@ -201,7 +201,7 @@ void process_streamed_audio(const std::filesystem::path& output_path,
   for (size_t lang_id = 0; lang_id < audio_files.size(); lang_id++) {
     auto& file = audio_files[lang_id];
     auto wad_data = file_util::read_binary_file(input_dir / "VAG" / file);
-    auto suffix = std::filesystem::path(file).extension().u8string().substr(1);
+    auto suffix = fs::path(file).extension().u8string().substr(1);
     langs.push_back(suffix);
     dir_data.set_file_size(wad_data.size());
     for (int i = 0; i < dir_data.entry_count(); i++) {

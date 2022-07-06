@@ -1,7 +1,6 @@
 
 #include "test_runner.h"
 
-#include <filesystem>
 #include <string>
 
 #include "inja.hpp"
@@ -118,8 +117,8 @@ void runtime_with_kernel_no_debug_segment() {
 }
 
 void createDirIfAbsent(const std::string& path) {
-  if (!std::filesystem::is_directory(path) || !std::filesystem::exists(path)) {
-    std::filesystem::create_directory(path);
+  if (!fs::is_directory(path) || !fs::exists(path)) {
+    fs::create_directory(path);
   }
 }
 std::string getTemplateDir(const std::string& category) {

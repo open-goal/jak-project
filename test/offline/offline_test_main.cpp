@@ -9,13 +9,14 @@
 #include "common/util/Timer.h"
 #include "common/util/diff.h"
 #include "common/util/json_util.h"
+#include <common/util/unicode_util.h>
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "goalc/compiler/Compiler.h"
 
 #include "third-party/fmt/format.h"
 
-namespace fs = std::filesystem;
+namespace fs = fs;
 
 // command line arguments
 struct OfflineTestArgs {
@@ -82,7 +83,7 @@ OfflineTestConfig parse_config() {
 }
 
 struct DecompilerFile {
-  std::filesystem::path path;
+  fs::path path;
   std::string name_in_dgo;
   std::string unique_name;
   std::string reference;
@@ -264,20 +265,20 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   // don't try to do this because we can't write the file
   dc.config->generate_symbol_definition_map = false;
 
-  std::vector<std::filesystem::path> dgo_paths;
+  std::vector<fs::path> dgo_paths;
   if (args.iso_data_path.empty()) {
     for (auto& x : offline_config.dgos) {
       dgo_paths.push_back(file_util::get_jak_project_dir() / "iso_data" / "jak1" / x);
     }
   } else {
     for (auto& x : offline_config.dgos) {
-      dgo_paths.push_back(std::filesystem::path(args.iso_data_path) / x);
+      dgo_paths.push_back(fs::path(args.iso_data_path) / x);
     }
   }
 
-  dc.db = std::make_unique<decompiler::ObjectFileDB>(
-      dgo_paths, dc.config->obj_file_name_map_file, std::vector<std::filesystem::path>{},
-      std::vector<std::filesystem::path>{}, *dc.config);
+  dc.db = std::make_unique<decompiler::ObjectFileDB>(dgo_paths, dc.config->obj_file_name_map_file,
+                                                     std::vector<fs::path>{},
+                                                     std::vector<fs::path>{}, *dc.config);
 
   std::unordered_set<std::string> db_files;
   for (auto& files_by_name : dc.db->obj_files_by_name) {
@@ -420,6 +421,15 @@ bool compile(Decompiler& dc,
 }
 
 int main(int argc, char* argv[]) {
+#ifdef _WIN32
+  auto utf8_args = get_widechar_cli_args();
+  std::vector<char*> string_ptrs;
+  for (auto& str : utf8_args) {
+    string_ptrs.push_back(str.data());
+  }
+  argv = string_ptrs.data();
+#endif
+
   fmt::print("Offline Decompiler Test 2\n");
   lg::initialize();
   if (!file_util::setup_project_path(std::nullopt)) {

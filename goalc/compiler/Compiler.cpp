@@ -37,9 +37,8 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
   compile_object_file("goal-lib", library_code, false);
 
   // user profile stuff
-  if (user_profile != "#f" &&
-      std::filesystem::exists(file_util::get_jak_project_dir() / "goal_src" / "user" /
-                              user_profile / "user.gc")) {
+  if (user_profile != "#f" && fs::exists(file_util::get_jak_project_dir() / "goal_src" / "user" /
+                                         user_profile / "user.gc")) {
     try {
       Object user_code =
           m_goos.reader.read_from_file({"goal_src", "user", user_profile, "user.gc"});

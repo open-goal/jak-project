@@ -87,6 +87,7 @@ int main(int argc, char** argv) {
   // the compiler may throw an exception if it fails to load its standard library.
   try {
     std::unique_ptr<Compiler> compiler;
+    // TODO - allow passing in an iso_data override
     std::mutex compiler_mutex;
     // if a command is provided on the command line, no REPL just run the compiler on it
     if (!cmd.empty()) {

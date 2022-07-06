@@ -411,7 +411,7 @@ void mkdir_path(u32 filepath) {
 
 u64 filepath_exists(u32 filepath) {
   auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
-  if (std::filesystem::exists(filepath_str)) {
+  if (fs::exists(filepath_str)) {
     return s7.offset + true_symbol_offset(g_game_version);
   }
   return s7.offset;
