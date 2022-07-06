@@ -117,6 +117,7 @@
    (height float)
    (lines float)
    (notice-height float)
+   (hint-height float)
    )
 
   )
@@ -125,9 +126,10 @@
     (new 'static 'subtitle-bank
                   :scale 0.49
                   :width 0.87
-                  :height 0.835
+                  :height 0.75
                   :lines 2.0
                   :notice-height 0.2
+                  :hint-height 0.8
                   ))
 
 ;; the subtitle process! it lives on the PC actor pool and awaits for incoming subtitle messages, or a movie
@@ -680,7 +682,10 @@
 
     ;; set font settings.
     (set! (-> self font origin x) (* (- 1.0 (-> *SUBTITLE-bank* width)) 256))
-    (set! (-> self font origin y) (* (-> *SUBTITLE-bank* height) 224))
+    (set! (-> self font origin y) (* (if (-> self hint-subtitle?)
+                                         (-> *SUBTITLE-bank* hint-height)
+                                         (-> *SUBTITLE-bank* height)
+                                         ) 224))
     (set-width! (-> self font) (the int (* (-> *SUBTITLE-bank* width) 512)))
     (set-height! (-> self font) (the int (* (-> *SUBTITLE-bank* lines) 11)))
     (set-scale! (-> self font) (-> *SUBTITLE-bank* scale))
@@ -695,6 +700,8 @@
         )
 
     (cond
+      ((!= *master-mode* 'game)
+       )
       ((and (< (time-passed) (seconds 5))
             (= (-> self notice-id) (game-text-id subtitle-hint)))
         (when (not (-> *pc-settings* subtitles?))
