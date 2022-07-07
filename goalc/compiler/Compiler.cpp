@@ -18,8 +18,11 @@
 
 using namespace goos;
 
-Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper> repl)
-    : m_goos(user_profile),
+Compiler::Compiler(GameVersion version,
+                   const std::string& user_profile,
+                   std::unique_ptr<ReplWrapper> repl)
+    : m_version(version),
+      m_goos(user_profile),
       m_debugger(&m_listener, &m_goos.reader),
       m_repl(std::move(repl)),
       m_make(user_profile) {
@@ -31,8 +34,10 @@ Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper>
   // let the build system run us
   m_make.add_tool(std::make_shared<CompilerTool>(this));
 
+  // define game version before loading goal-lib.gc
+  m_goos.set_global_variable_by_name("GAME_VERSION", m_goos.intern(game_version_names[m_version]));
+
   // load GOAL library
-  // TODO - Jak2 - BAD!
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
 

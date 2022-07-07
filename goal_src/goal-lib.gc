@@ -1,13 +1,5 @@
 ;;-*-Lisp-*-
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; OTHER STUFF
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; tell compiler about stuff defined/implemented in the runtime.
-(asm-file "goal_src/jak1/kernel-defs.gc")
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; BUILD SYSTEM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -37,10 +29,6 @@
 (desfun run-frontend-command (file)
   `(asm-file ,file :no-code)
   )
-
-
-(defmacro load-art-import (name)
-  `(asm-file ,(string-append "goal_src/jak1/import/" (symbol->string name) "-ag.gc") :no-code :no-throw))
 
 (defmacro load-imports ()
   `(begin
@@ -1044,14 +1032,17 @@
   `(defconstant ,name (-> self draw art-group data ,idx))
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Load Project
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; build system stuff
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; hack to get a goos variable in goal
-(defmacro __get_jak1_full_game () *jak1-full-game*)
-(defconstant *jak1-full-game* (__get_jak1_full_game))
-
-;; todo: loading jak1 by default
-(load-project "goal_src/jak1/game.gp")
+(#cond
+  ((eq? GAME_VERSION 'jak1)
+   (asm-file "goal_src/jak1/compiler-setup.gc")
+   (seval (fmt #t "Jak 1 Mode\n"))
+   )
+  ((eq? GAME_VERSION 'jak2)
+   (asm-file "goal_src/jak2/compiler-setup.gc")
+   (seval (fmt #t "Jak 2 Mode\n"))
+   )
+  )

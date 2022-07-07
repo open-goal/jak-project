@@ -37,6 +37,7 @@
 #include "game/kernel/jak1/ksound.h"
 #include "game/kernel/svnrev.h"
 #include "game/mips2c/mips2c_table.h"
+#include "game/sce/deci2.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/libdma.h"
 #include "game/sce/libgraph.h"
@@ -336,6 +337,9 @@ int InitMachine() {
 
   if (MasterDebug) {  // connect to GOAL compiler
     InitGoalProto();
+  } else {
+    // shut down the deci2 stuff, we don't need it.
+    ee::sceDeci2Disable();
   }
 
   lg::info("InitSound");
