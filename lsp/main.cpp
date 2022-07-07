@@ -1,14 +1,16 @@
 #include <chrono>
 #include <iostream>
+#include <optional>
 #include <thread>
 #include <vector>
-#include <optional>
+
+#include "workspace.h"
+
 #include <common/log/log.h>
 
 #include "transport/stdio.h"
 
 #include "third-party/CLI11.hpp"
-#include "workspace.h"
 
 // TODO - look into replacing our xsocket with cpphttplib eventually
 
@@ -24,7 +26,7 @@
 void setup_logging(std::string log_file) {
   lg::set_file(log_file);
   lg::set_file_level(lg::level::debug);
-  lg::set_stdout_level(lg::level::debug);
+  lg::set_stdout_level(lg::level::off);
   lg::set_flush_level(lg::level::debug);
   lg::initialize();
 }
@@ -39,10 +41,10 @@ std::string make_response(const json& response) {
   content["jsonrpc"] = "2.0";
 
   std::string header;
-  header.append("Content-Length: " + std::to_string(content.dump(4).size()) + "\r\n");
-  header.append("Content-Type: application/vscode-jsonrpc;charset=utf-8\r\n");
-  header.append("\r\n");
-  return header + content.dump(4);
+  header.append("Content-Length: " + std::to_string(content.dump().size()) + "\n"); // removed \r here, doesn't seem to matter
+  header.append("Content-Type: application/vscode-jsonrpc;charset=utf-8\n"); // removed \r here, doesn't seem to matter
+  header.append("\n"); // removed \r here, doesn't seem to matter
+  return header + content.dump(); // TODO - i dump minified to get around windows being an idiot - https://stackoverflow.com/questions/16888339/what-is-the-simplest-way-to-write-to-stdout-in-binary-mode
 }
 
 std::optional<std::string> handle_message(const MessageBuffer& message_buffer, AppState& appstate) {
@@ -172,7 +174,7 @@ int main(int argc, char** argv) {
   bool use_stdin = true;
   bool verbose = false;
   std::string logfile;
-  auto stdin_option = app.add_flag("--stdin", use_stdin,
+  auto stdin_option = app.add_flag("--stdio", use_stdin,
                                    "Don't launch an HTTP server and instead accept input on stdin");
   app.add_flag("-v,--verbose", verbose, "Enable verbose logging");
   app.add_option("-l,--log", logfile, "Log file");
@@ -181,8 +183,7 @@ int main(int argc, char** argv) {
 
   AppState appstate;
   appstate.verbose = verbose;
-  setup_logging(
-      "C:\\Users\\xtvas\\Repositories\\opengoal\\jak-project\\decompiler\\config\\lsp.log");
+  setup_logging(logfile);
 
   // Decompiling
   // Read in all-types files
@@ -192,6 +193,8 @@ int main(int argc, char** argv) {
 
   auto info = m_dts.symbol_definition_info["vector"];
   lg::info("Loaded DTS");*/
+
+  lg::info("OpenGOAL LSP Initialized, ready for requests");
 
   char c;
   MessageBuffer message_buffer;
@@ -207,17 +210,18 @@ int main(int argc, char** argv) {
           auto pretty_header = fmt::format("{}: {}\n", elem.first, elem.second);
           lg::debug("{}", pretty_header);
         }
-        lg::debug("Body: \n{}\n", body.dump(4));
+        lg::debug("Body: \n{}\n", body.dump(2));
         lg::debug("Raw: \n{}\n", message_buffer.raw());
       }
 
       auto message = handle_message(message_buffer, appstate);
       if (message.has_value()) {
-        fmt::print("{}", message.value());
-        std::cout << std::flush;
+        std::cout << message.value() << std::flush;
 
         if (appstate.verbose) {
-          lg::debug( "<<< Sending message: \n{}\n", message.value());
+          lg::debug("<<< Sending message: \n{}", message.value());
+        } else {
+          lg::info("<<< Sending message");
         }
       }
       message_buffer.clear();
