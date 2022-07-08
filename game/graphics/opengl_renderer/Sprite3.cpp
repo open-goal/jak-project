@@ -221,7 +221,7 @@ void Sprite3::render_distorter(DmaFollower& dma,
 
   auto tex1 = m_sprite_distorter_setup.tex1;
   ASSERT(tex1.mmag() == true);
-  ASSERT(tex1.mmin() == true);
+  ASSERT(tex1.mmin() == 1);
   handle_tex1(tex1.data, render_state, prof);
 
   auto alpha = m_sprite_distorter_setup.alpha;
@@ -366,13 +366,11 @@ void Sprite3::render_distorter(DmaFollower& dma,
         math::Vector3f vf06_3 = vf06_2;
         math::Vector3f vf08_3 = vf08_2;
 
-        m_sprite_distorter_vertices.at(out_v_idx++) =
-            SpriteDistortVertex{.xyz = vf06_3, .st = vf07_2};
-        m_sprite_distorter_vertices.at(out_v_idx++) =
-            SpriteDistortVertex{.xyz = vf08_3, .st = vf09_2};
-        m_sprite_distorter_vertices.at(out_v_idx++) = SpriteDistortVertex{.xyz = vf10, .st = vf11};
-        m_sprite_distorter_vertices.at(out_v_idx++) = SpriteDistortVertex{.xyz = vf12, .st = vf13};
-        m_sprite_distorter_vertices.at(out_v_idx++) = SpriteDistortVertex{.xyz = vf14, .st = vf03};
+        m_sprite_distorter_vertices.at(out_v_idx++) = {vf06_3, vf07_2};
+        m_sprite_distorter_vertices.at(out_v_idx++) = {vf08_3, vf09_2};
+        m_sprite_distorter_vertices.at(out_v_idx++) = {vf10, vf11};
+        m_sprite_distorter_vertices.at(out_v_idx++) = {vf12, vf13};
+        m_sprite_distorter_vertices.at(out_v_idx++) = {vf14, vf03};
       } while (flag != 0);
 
       // Upload sprite to vertex buffer
