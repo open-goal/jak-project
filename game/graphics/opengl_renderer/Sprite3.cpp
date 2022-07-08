@@ -323,12 +323,11 @@ void Sprite3::render_distorter(DmaFollower& dma,
 
     // Build vertex data and draw
     int in_v_idx = 0;
-    int out_v_idx = 0;
     int sprites_left = num_sprites_vec.x();
 
     // This part is mostly ripped from the VU program
     do {
-      out_v_idx = 0;
+      int out_v_idx = 0;
 
       // flag seems to represent the 'resolution' of the circle sprite used to create the distortion
       // effect For example, a flag value of 3 will create a circle using 3 "pie-slice" shapes
@@ -367,11 +366,13 @@ void Sprite3::render_distorter(DmaFollower& dma,
         math::Vector3f vf06_3 = vf06_2;
         math::Vector3f vf08_3 = vf08_2;
 
-        m_sprite_distorter_vertices.at(out_v_idx++) = {.xyz = vf06_3, .st = vf07_2};
-        m_sprite_distorter_vertices.at(out_v_idx++) = {.xyz = vf08_3, .st = vf09_2};
-        m_sprite_distorter_vertices.at(out_v_idx++) = {.xyz = vf10, .st = vf11};
-        m_sprite_distorter_vertices.at(out_v_idx++) = {.xyz = vf12, .st = vf13};
-        m_sprite_distorter_vertices.at(out_v_idx++) = {.xyz = vf14, .st = vf03};
+        m_sprite_distorter_vertices.at(out_v_idx++) =
+            SpriteDistortVertex{.xyz = vf06_3, .st = vf07_2};
+        m_sprite_distorter_vertices.at(out_v_idx++) =
+            SpriteDistortVertex{.xyz = vf08_3, .st = vf09_2};
+        m_sprite_distorter_vertices.at(out_v_idx++) = SpriteDistortVertex{.xyz = vf10, .st = vf11};
+        m_sprite_distorter_vertices.at(out_v_idx++) = SpriteDistortVertex{.xyz = vf12, .st = vf13};
+        m_sprite_distorter_vertices.at(out_v_idx++) = SpriteDistortVertex{.xyz = vf14, .st = vf03};
       } while (flag != 0);
 
       // Upload sprite to vertex buffer
