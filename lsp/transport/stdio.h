@@ -12,7 +12,6 @@ class MessageBuffer {
   MessageBuffer();
   virtual ~MessageBuffer();
   void handle_char(char c);
-  void handle_string(std::string s);
   const std::map<std::string, std::string>& headers() const;
   const json& body() const;
   const std::string& raw() const;
@@ -29,4 +28,5 @@ class MessageBuffer {
   // This is set once a sole \r\n is encountered because it denotes that the
   // header is done.
   bool m_is_header_done = false;
+  bool m_reading_content = false;
 };

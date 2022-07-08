@@ -1,14 +1,21 @@
 #include <chrono>
+#include <fcntl.h>
+#include <io.h>
 #include <iostream>
 #include <optional>
+#include <stdio.h>
 #include <thread>
 #include <vector>
-
-#include "workspace.h"
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
 #include <common/log/log.h>
 
+#include "handlers/lsp_router.h"
+#include "state/workspace.h"
 #include "transport/stdio.h"
+#include <state/app.h>
 
 #include "third-party/CLI11.hpp"
 
@@ -31,143 +38,6 @@ void setup_logging(std::string log_file) {
   lg::initialize();
 }
 
-struct AppState {
-  Workspace workspace;
-  bool verbose;
-};
-
-std::string make_response(const json& response) {
-  json content = response;
-  content["jsonrpc"] = "2.0";
-
-  std::string header;
-  header.append("Content-Length: " + std::to_string(content.dump().size()) + "\n"); // removed \r here, doesn't seem to matter
-  header.append("Content-Type: application/vscode-jsonrpc;charset=utf-8\n"); // removed \r here, doesn't seem to matter
-  header.append("\n"); // removed \r here, doesn't seem to matter
-  return header + content.dump(); // TODO - i dump minified to get around windows being an idiot - https://stackoverflow.com/questions/16888339/what-is-the-simplest-way-to-write-to-stdout-in-binary-mode
-}
-
-std::optional<std::string> handle_message(const MessageBuffer& message_buffer, AppState& appstate) {
-  json body = message_buffer.body();
-
-  if (body["method"] == "initialized") {
-    return std::nullopt;
-  }
-
-  if (body["method"] == "initialize") {
-    appstate.workspace.set_initialized(true);
-
-    json text_document_sync{
-        {"openClose", true},
-        {"change", 1},  // Full sync
-        {"willSave", false},
-        {"willSaveWaitUntil", false},
-        {"save", {{"includeText", false}}},
-    };
-
-    json completion_provider{
-        {"resolveProvider", false},
-        {"triggerCharacters", {}},
-    };
-    json signature_help_provider{{"triggerCharacters", ""}};
-    json code_lens_provider{{"resolveProvider", false}};
-    json document_on_type_formatting_provider{
-        {"firstTriggerCharacter", ""},
-        {"moreTriggerCharacter", ""},
-    };
-    json document_link_provider{{"resolveProvider", false}};
-    json execute_command_provider{{"commands", {}}};
-    json result{{"capabilities",
-                 {
-                     {"textDocumentSync", text_document_sync},
-                     {"hoverProvider", false},
-                     {"completionProvider", completion_provider},
-                     {"signatureHelpProvider", signature_help_provider},
-                     {"definitionProvider", false},
-                     {"referencesProvider", false},
-                     {"documentHighlightProvider", false},
-                     {"documentSymbolProvider", false},
-                     {"workspaceSymbolProvider", false},
-                     {"codeActionProvider", false},
-                     {"codeLensProvider", code_lens_provider},
-                     {"documentFormattingProvider", false},
-                     {"documentRangeFormattingProvider", false},
-                     {"documentOnTypeFormattingProvider", document_on_type_formatting_provider},
-                     {"renameProvider", false},
-                     {"documentLinkProvider", document_link_provider},
-                     {"executeCommandProvider", execute_command_provider},
-                     {"experimental", {}},
-                 }}};
-
-    json result_body{{"id", body["id"]}, {"result", result}};
-    return make_response(result_body);
-  }
-  /*else if (body["method"] == "textDocument/didOpen") {
-    auto uri = body["params"]["textDocument"]["uri"];
-    auto text = body["params"]["textDocument"]["text"];
-    appstate.workspace.add_document(uri, text);
-
-    json diagnostics = get_diagnostics(uri, text, appstate);
-    if (diagnostics.empty()) {
-      diagnostics = json::array();
-    }
-    json result_body{{"method", "textDocument/publishDiagnostics"},
-                     {"params",
-                      {
-                          {"uri", uri},
-                          {"diagnostics", diagnostics},
-                      }}};
-    return make_response(result_body);
-  } else if (body["method"] == "textDocument/didChange") {
-    auto uri = body["params"]["textDocument"]["uri"];
-    auto change = body["params"]["contentChanges"][0]["text"];
-    appstate.workspace.change_document(uri, change);
-
-    std::string document = appstate.workspace.documents()[uri];
-    json diagnostics = get_diagnostics(uri, document, appstate);
-    if (diagnostics.empty()) {
-      diagnostics = json::array();
-    }
-    json result_body{{"method", "textDocument/publishDiagnostics"},
-                     {"params",
-                      {
-                          {"uri", uri},
-                          {"diagnostics", diagnostics},
-                      }}};
-    return make_response(result_body);
-  }*/
-
-  // If the workspace has not yet been initialized but the client sends a
-  // message that doesn't have method "initialize" then we'll return an error
-  // as per LSP spec.
-  if (body["method"] != "initialize" && !appstate.workspace.is_initialized()) {
-    json error{
-        {"code", -32002},
-        {"message", "Server not yet initialized."},
-    };
-    json result_body{{"error", error}};
-    return make_response(result_body);
-  }
-
-  // If we don't know the method requested, we end up here.
-  if (body.count("method") == 1) {
-    json error{
-        {"code", -32601},
-        {"message", fmt::format("Method '{}' not supported.", body["method"].get<std::string>())},
-    };
-    json result_body{{"error", error}};
-    return make_response(result_body);
-  }
-
-  // If we couldn't parse anything we end up here.
-  json error{
-      {"code", -32700},
-      {"message", "Couldn't parse message."},
-  };
-  json result_body{{"error", error}};
-  return make_response(result_body);
-}
-
 int main(int argc, char** argv) {
   CLI::App app{"OpenGOAL Language Server"};
 
@@ -177,13 +47,16 @@ int main(int argc, char** argv) {
   auto stdin_option = app.add_flag("--stdio", use_stdin,
                                    "Don't launch an HTTP server and instead accept input on stdin");
   app.add_flag("-v,--verbose", verbose, "Enable verbose logging");
-  app.add_option("-l,--log", logfile, "Log file");
+  app.add_option("-l,--log", logfile, "Log file path");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
   AppState appstate;
+  LspRouter lsp_router;
   appstate.verbose = verbose;
+  // TODO - only if logfile is specified
   setup_logging(logfile);
+  lsp_router.init_routes();
 
   // Decompiling
   // Read in all-types files
@@ -195,6 +68,11 @@ int main(int argc, char** argv) {
   lg::info("Loaded DTS");*/
 
   lg::info("OpenGOAL LSP Initialized, ready for requests");
+
+#ifdef _WIN32
+  _setmode(_fileno(stdout), _O_BINARY);
+  _setmode(_fileno(stdin), _O_BINARY);
+#endif
 
   char c;
   MessageBuffer message_buffer;
@@ -214,7 +92,7 @@ int main(int argc, char** argv) {
         lg::debug("Raw: \n{}\n", message_buffer.raw());
       }
 
-      auto message = handle_message(message_buffer, appstate);
+      auto message = lsp_router.route_message(message_buffer, appstate);
       if (message.has_value()) {
         std::cout << message.value() << std::flush;
 

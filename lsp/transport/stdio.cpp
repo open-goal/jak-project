@@ -11,21 +11,24 @@ MessageBuffer::~MessageBuffer() {}
 void MessageBuffer::handle_char(char c) {
   m_raw_message += c;
 
-  auto [header_name, header_value] = try_parse_header(m_raw_message);
-  // Check whether we were actually able to parse a header.
-  // If so, add it to our known headers.
-  // We'll also reset our string then.
-  if (!header_name.empty()) {
-    lg::debug("found header!");
-    m_headers[header_name] = header_value;
-    m_raw_message.clear();
+  if (!m_reading_content) {
+    auto [header_name, header_value] = try_parse_header(m_raw_message);
+    // Check whether we were actually able to parse a header.
+    // If so, add it to our known headers.
+    // We'll also reset our string then.
+    if (!header_name.empty()) {
+      lg::debug("found header!");
+      m_headers[header_name] = header_value;
+      m_raw_message.clear();
+    }
   }
 
-  // A sole \n\r is the separator between the header block and the body block
+  // A sole \r\n is the separator between the header block and the body block
   // but we don't need it.
-  if (m_raw_message == "\n") {
+  if (m_raw_message == "\r\n") {
     m_raw_message.clear();
     m_is_header_done = true;
+    m_reading_content = true;
     lg::debug("Header complete, content length: {}", m_headers["Content-Length"]);
   }
 
@@ -36,6 +39,7 @@ void MessageBuffer::handle_char(char c) {
     auto content_length = std::stoi(m_headers["Content-Length"]);
     if (m_raw_message.length() == content_length) {
       m_body = json::parse(m_raw_message);
+      m_reading_content = false;
     }
   }
 }
@@ -60,9 +64,7 @@ bool MessageBuffer::message_completed() {
 }
 
 std::tuple<std::string, std::string> MessageBuffer::try_parse_header(std::string& message) const {
-  auto eol_pos = message.find(
-      "\n");  // TODO - this should probably be \r\n, but windows is likely doing something dumb --
-              // it can never find it, if you log the char value every read, there is no \r!
+  auto eol_pos = message.find("\r\n");
   // TODO - yup, windows sucks!
   // https://stackoverflow.com/questions/48451451/carriage-return-after-cin-get-c
   if (eol_pos != std::string::npos) {
