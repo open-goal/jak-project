@@ -98,6 +98,8 @@
         "SUBTITLES ENABLED")
 (#x1041 "SUBTITLES DISABLED"
         "SUBTITLES DISABLED")
+(#x1042 "TEXT LANGUAGE"
+        "TEXT LANGUAGE")
 
 (#x1050 "MSAA"
         "MSAA")
@@ -310,6 +312,13 @@
         "FLAVOUR 1")
 (#x1107 "FLAVOR 2"
         "FLAVOUR 2")
+
+(#x1010 "ENGLISH (UK)"
+        "ENGLISH (UK)")
+(#x1011 "PORTUGUÊS"
+        "PORTUGUÊS")
+(#x1012 "PORTUGUÊS (BRASIL)"
+        "PORTUGUÊS (BRASIL)")
 
 
 ;; -----------------
