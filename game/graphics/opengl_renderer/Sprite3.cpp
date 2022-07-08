@@ -156,7 +156,8 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id)
   glBindBuffer(GL_ARRAY_BUFFER, m_distort_ogl.vertex_buffer);
   // note: each sprite shares a single vertex per slice, account for that here
   int distort_vert_buffer_len =
-       SPRITE_RENDERER_MAX_DISTORT_SPRITES * ((5 - 1) * 11 + 1); // max * ((verts_per_slice - 1) * max_slices + 1)
+      SPRITE_RENDERER_MAX_DISTORT_SPRITES *
+      ((5 - 1) * 11 + 1);  // max * ((verts_per_slice - 1) * max_slices + 1)
   glBufferData(GL_ARRAY_BUFFER, distort_vert_buffer_len * sizeof(SpriteDistortVertex), nullptr,
                GL_DYNAMIC_DRAW);
   glEnableVertexAttribArray(0);
@@ -176,10 +177,9 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id)
                         (void*)offsetof(SpriteDistortVertex, st)  // offset in array
   );
 
-
   // note: add one extra element per sprite that marks the end of a triangle strip
-  int distort_idx_buffer_len =
-      SPRITE_RENDERER_MAX_DISTORT_SPRITES * ((5 * 11) + 1);  // max * ((verts_per_slice * max_slices) + 1)
+  int distort_idx_buffer_len = SPRITE_RENDERER_MAX_DISTORT_SPRITES *
+                               ((5 * 11) + 1);  // max * ((verts_per_slice * max_slices) + 1)
   glGenBuffers(1, &m_distort_ogl.index_buffer);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_distort_ogl.index_buffer);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, distort_idx_buffer_len * sizeof(u32), nullptr,
@@ -315,8 +315,7 @@ void Sprite3::render_distorter(DmaFollower& dma,
 
   // Upload element data
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_distort_ogl.index_buffer);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-               m_sprite_distorter_indices.size() * sizeof(u32),
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_sprite_distorter_indices.size() * sizeof(u32),
                m_sprite_distorter_indices.data(), GL_DYNAMIC_DRAW);
 
   // Draw
