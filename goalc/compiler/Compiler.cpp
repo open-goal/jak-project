@@ -27,7 +27,7 @@ Compiler::Compiler(GameVersion version,
       m_repl(std::move(repl)),
       m_make(user_profile) {
   m_listener.add_debugger(&m_debugger);
-  m_ts.add_builtin_types();
+  m_ts.add_builtin_types(m_version);
   m_global_env = std::make_unique<GlobalEnv>();
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));
 
@@ -276,7 +276,7 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
   try {
     auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
     debug_info->clear();
-    CodeGenerator gen(env, debug_info);
+    CodeGenerator gen(env, debug_info, m_version);
     bool ok = true;
     auto result = gen.run(&m_ts);
     for (auto& f : env->functions()) {
@@ -299,7 +299,7 @@ bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
                                                    std::string* asm_out) {
   auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
   debug_info->clear();
-  CodeGenerator gen(env, debug_info);
+  CodeGenerator gen(env, debug_info, m_version);
   *data_out = gen.run(&m_ts);
   bool ok = true;
   *asm_out = debug_info->disassemble_all_functions(&ok, &m_goos.reader);

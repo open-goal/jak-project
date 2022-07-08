@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
     }
 
     fmt::print("Setting up types...\n");
-    decompiler::DecompilerTypeSystem dts;
+    decompiler::DecompilerTypeSystem dts(kGameVersion);
     dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
 
     std::string file_name = argv[1];

@@ -11,7 +11,7 @@ class TypeState;
 
 class DecompilerTypeSystem {
  public:
-  DecompilerTypeSystem();
+  DecompilerTypeSystem(GameVersion version);
   TypeSystem ts;
   std::unordered_map<std::string, TypeSpec> symbol_types;
   std::unordered_set<std::string> symbols;

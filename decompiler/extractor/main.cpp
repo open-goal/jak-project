@@ -42,7 +42,6 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
     return {std::nullopt, ExtractorErrorCode::VALIDATION_BAD_EXTRACTION};
   }
 
-  std::optional<ExtractorErrorCode> error_code;
   const auto [serial, elf_hash] = findElfFile(extracted_iso_path);
 
   if (!serial || !elf_hash) {
