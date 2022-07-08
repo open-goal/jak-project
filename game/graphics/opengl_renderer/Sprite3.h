@@ -46,7 +46,57 @@ class Sprite3 : public BucketRenderer {
 
   void flush_sprites(SharedRenderState* render_state, ScopedProfilerNode& prof, bool double_draw);
 
-  u8 m_sprite_distorter_setup[7 * 16];  // direct data
+  struct SpriteDistorterSetup {
+    GifTag gif_tag;
+    GsZbuf zbuf;
+    u64 zbuf_addr;
+    GsTex0 tex0;
+    u64 tex0_addr;
+    GsTex1 tex1;
+    u64 tex1_addr;
+    u64 miptbp;
+    u64 miptbp_addr;
+    u64 clamp;
+    u64 clamp_addr;
+    GsAlpha alpha;
+    u64 alpha_addr;
+  };
+  static_assert(sizeof(SpriteDistorterSetup) == (7 * 16));
+
+  struct SpriteDistorterSineTables {
+    Vector4f entry[128];
+    math::Vector<u32, 4> ientry[9];
+    GifTag gs_gif_tag;
+    math::Vector<u32, 4> color;
+  };
+  static_assert(sizeof(SpriteDistorterSineTables) == (0x8b * 16));
+
+  struct SpriteDistortFrameData {
+    math::Vector3f xyz;
+    float num_255; // always 255.0
+    math::Vector2f st;
+    float one; // always 1.0
+    u32 flag;
+    Vector4f rgba;
+  };
+  static_assert(sizeof(SpriteDistortFrameData) == 16 * 3);
+
+  struct SpriteDistortVertex {
+    math::Vector3f xyz;
+    math::Vector2f st;
+  };
+
+  GLuint m_distort_vao;
+  GLuint m_distort_vertex_buffer;
+  GLuint m_distort_fbo;
+  GLuint m_distort_fbo_texture;
+  int m_distort_fbo_width = 800;
+  int m_distort_fbo_height = 600;
+
+  SpriteDistortVertex m_sprite_distorter_vertex[14080];
+  SpriteDistortFrameData m_sprite_distorter_frame_data[256];
+  SpriteDistorterSetup m_sprite_distorter_setup;  // direct data
+  SpriteDistorterSineTables m_sprite_distorter_sine_tables;
   u8 m_sprite_direct_setup[3 * 16];
   SpriteFrameData m_frame_data;  // qwa: 980
   Sprite3DMatrixData m_3d_matrix_data;

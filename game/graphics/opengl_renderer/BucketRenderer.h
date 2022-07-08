@@ -56,6 +56,9 @@ struct SharedRenderState {
   EyeRenderer* eye_renderer = nullptr;
 
   std::string load_status_debug;
+
+  int window_width_px;
+  int window_height_px;
 };
 
 /*!
