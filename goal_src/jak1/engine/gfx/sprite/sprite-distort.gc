@@ -75,11 +75,11 @@
     ;; set up giftag
     (set! (-> tables giftag tag)
           (new 'static 'gif-tag64
-               :nloop #x1 ;; 1 byte?
-               :eop #x1 ;; end of packet
-               :pre #x1 ;; enable prim
-               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :tme #x1) ;; tri-strip primitives, texture mapping 1 (on)
-               :nreg #xf ;; 15 registers
+               :nloop 1
+               :eop 1
+               :pre 1
+               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :tme 1)
+               :nreg 15
                )
           )
     ;; set up registers
@@ -103,7 +103,6 @@
                )
           )
     ;; set color
-    ;; TODO: make set-vector! ?
     (set! (-> tables color vector4w x) 128)
     (set! (-> tables color vector4w y) 128)
     (set! (-> tables color vector4w z) 128)
@@ -126,13 +125,13 @@
   (dma-buffer-add-gs-set dma-buff
     ;; dont update zbuffer
     (zbuf-1 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk 1))
-    ;; 9x8 view into the display framebuffer?
+    ;; use framebuffer as texture
     (tex0-1 (new 'static 'gs-tex0 :tbw #x8 :tw #x9 :th #x8 :tbp0 (* frame-base-pointer 32)))
-    ;; texture with bilinear filtering
+    ;; bilinear filtering
     (tex1-1 (new 'static 'gs-tex1 :mmag 1 :mmin 1))
     ;; mipmapping
     (miptbp1-1 (new 'static 'gs-miptbp))
-    ;; set wrap mode to clamp
+    ;; set texture wrap mode to clamp
     (clamp-1
       (new 'static 'gs-clamp
           :wms (gs-tex-wrap-mode region-clamp)
