@@ -35,7 +35,7 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
 }
 
 /*!
- * Does the next DMA transfer look like the frame data for sprite distort? 
+ * Does the next DMA transfer look like the frame data for sprite distort?
  */
 bool looks_like_distort_frame_data(const DmaFollower& dma) {
   return dma.current_tag().kind == DmaTag::Kind::CNT &&
@@ -135,8 +135,7 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id)
   glBindTexture(GL_TEXTURE_2D, m_distort_ogl.fbo_texture);
 
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_distort_ogl.fbo_width, m_distort_ogl.fbo_height, 0,
-               GL_RGB,
-               GL_UNSIGNED_BYTE, NULL);
+               GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -144,8 +143,7 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                         m_distort_ogl.fbo_texture,
-                         0);  
+                         m_distort_ogl.fbo_texture, 0);
 
   ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
@@ -156,26 +154,25 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id)
   glGenVertexArrays(1, &m_distort_ogl.vao);
   glBindVertexArray(m_distort_ogl.vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_distort_ogl.vertex_buffer);
-  auto distort_verts = SPRITE_RENDERER_MAX_DISTORT_SPRITES * 5 * 11; // max * verts_per_slice * max_slices
+  auto distort_verts =
+      SPRITE_RENDERER_MAX_DISTORT_SPRITES * 5 * 11;  // max * verts_per_slice * max_slices
   auto distort_bytes = distort_verts * sizeof(SpriteDistortVertex);
   glBufferData(GL_ARRAY_BUFFER, distort_bytes, nullptr, GL_DYNAMIC_DRAW);
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(
-      0,                                         // location 0 in the shader
-      3,                                         // 3 floats per vert
-      GL_FLOAT,                                  // floats
-      GL_TRUE,                                   // normalized, ignored,
-      sizeof(SpriteDistortVertex),               //
-      (void*)offsetof(SpriteDistortVertex, xyz)  // offset in array
+  glVertexAttribPointer(0,                                         // location 0 in the shader
+                        3,                                         // 3 floats per vert
+                        GL_FLOAT,                                  // floats
+                        GL_TRUE,                                   // normalized, ignored,
+                        sizeof(SpriteDistortVertex),               //
+                        (void*)offsetof(SpriteDistortVertex, xyz)  // offset in array
   );
   glEnableVertexAttribArray(1);
-  glVertexAttribPointer(
-      1,                                         // location 1 in the shader
-      3,                                         // 2 floats per vert
-      GL_FLOAT,                                  // floats
-      GL_TRUE,                                   // normalized, ignored,
-      sizeof(SpriteDistortVertex),               //
-      (void*)offsetof(SpriteDistortVertex, st)   // offset in array
+  glVertexAttribPointer(1,                                        // location 1 in the shader
+                        3,                                        // 2 floats per vert
+                        GL_FLOAT,                                 // floats
+                        GL_TRUE,                                  // normalized, ignored,
+                        sizeof(SpriteDistortVertex),              //
+                        (void*)offsetof(SpriteDistortVertex, st)  // offset in array
   );
 
   glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -239,10 +236,10 @@ void Sprite3::render_distorter(DmaFollower& dma,
   // Next thing should be the sprite-distorter tables
   auto sprite_distorter_tables = dma.read_and_advance();
   unpack_to_stcycl(&m_sprite_distorter_sine_tables, sprite_distorter_tables,
-                   VifCode::Kind::UNPACK_V4_32,
-                   4,4,0x8b * 16,0x160,false,false);
+                   VifCode::Kind::UNPACK_V4_32, 4, 4, 0x8b * 16, 0x160, false, false);
 
-  ASSERT(GsPrim(m_sprite_distorter_sine_tables.gs_gif_tag.prim()).kind() == GsPrim::Kind::TRI_STRIP);
+  ASSERT(GsPrim(m_sprite_distorter_sine_tables.gs_gif_tag.prim()).kind() ==
+         GsPrim::Kind::TRI_STRIP);
 
   // Next would be the program, but we don't have it.
 
@@ -290,19 +287,19 @@ void Sprite3::render_distorter(DmaFollower& dma,
 
   // Read DMA packets and draw
   while (looks_like_distort_frame_data(dma)) {
-    //printf("Distort data start\n");
+    // printf("Distort data start\n");
 
     int sprite_idx = 0;
     math::Vector<u32, 4> num_sprites_vec;
 
     // Read packets
-    do  {
+    do {
       int qwc = dma.current_tag().qwc;
       int dest = dma.current_tag_vifcode1().immediate;
       auto distort_data = dma.read_and_advance();
 
-      //printf("Distort data packet qwc: %d dest: %d\n", qwc, dest);
-      
+      // printf("Distort data packet qwc: %d dest: %d\n", qwc, dest);
+
       if (dest == 511) {
         // VU address 511 specifies the number of sprites
         unpack_to_no_stcycl(&num_sprites_vec, distort_data, VifCode::Kind::UNPACK_V4_32, 16, dest,
@@ -333,13 +330,13 @@ void Sprite3::render_distorter(DmaFollower& dma,
     do {
       out_v_idx = 0;
 
-      // flag seems to represent the 'resolution' of the circle sprite used to create the distortion effect
-      // For example, a flag value of 3 will create a circle using 3 "pie-slice" shapes
+      // flag seems to represent the 'resolution' of the circle sprite used to create the distortion
+      // effect For example, a flag value of 3 will create a circle using 3 "pie-slice" shapes
       u32 flag = m_sprite_distorter_frame_data.at(in_v_idx).flag;
 
       // flag has a minimum value of 3 which represents the first ientry
-      // Additionally, the ientry index has 352 added to it (which is the start of the entry array in VU memory),
-      // so we need to subtract that as well
+      // Additionally, the ientry index has 352 added to it (which is the start of the entry array
+      // in VU memory), so we need to subtract that as well
       int entry_index = m_sprite_distorter_sine_tables.ientry[flag - 3].x() - 352;
 
       // Here would be adding the giftag, but we don't need that
@@ -380,8 +377,7 @@ void Sprite3::render_distorter(DmaFollower& dma,
       // Upload sprite to vertex buffer
       glBindBuffer(GL_ARRAY_BUFFER, m_distort_ogl.vertex_buffer);
       glBufferData(GL_ARRAY_BUFFER, out_v_idx * sizeof(SpriteDistortVertex),
-                   m_sprite_distorter_vertices.data(),
-                   GL_DYNAMIC_DRAW);
+                   m_sprite_distorter_vertices.data(), GL_DYNAMIC_DRAW);
 
       // Draw (xgkick)
       prof.add_draw_call();
@@ -917,7 +913,7 @@ void Sprite3::do_block_common(SpriteMode mode,
     bucket->ids.push_back(start_vtx_id + 2);
     bucket->ids.push_back(start_vtx_id + 3);
     bucket->ids.push_back(UINT32_MAX);
-    
+
     auto& vert1 = m_vertices_3d.at(start_vtx_id + 0);
 
     vert1.xyz_sx = m_vec_data_2d[sprite_idx].xyz_sx;

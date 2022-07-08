@@ -72,12 +72,12 @@ class Sprite3 : public BucketRenderer {
   static_assert(sizeof(SpriteDistorterSineTables) == (0x8b * 16));
 
   struct SpriteDistortFrameData {
-    math::Vector3f xyz; // position
-    float num_255;      // always 255.0
-    math::Vector2f st;  // texture coords
-    float num_1;        // always 1.0
-    u32 flag;           // 'resolution' of the sprite
-    Vector4f rgba;      // ? (doesn't seem to be color)
+    math::Vector3f xyz;  // position
+    float num_255;       // always 255.0
+    math::Vector2f st;   // texture coords
+    float num_1;         // always 1.0
+    u32 flag;            // 'resolution' of the sprite
+    Vector4f rgba;       // ? (doesn't seem to be color)
   };
   static_assert(sizeof(SpriteDistortFrameData) == 16 * 3);
 
