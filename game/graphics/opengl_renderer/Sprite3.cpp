@@ -45,7 +45,7 @@ bool looks_like_distort_frame_data(const DmaFollower& dma) {
 }  // namespace
 
 constexpr int SPRITE_RENDERER_MAX_SPRITES = 8000;
-constexpr int SPRITE_RENDERER_MAX_DISTORT_SPRITES = 256;
+constexpr int SPRITE_RENDERER_MAX_DISTORT_SPRITES = 256;  // size of sprite-aux-list in GOAL code
 
 Sprite3::Sprite3(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id), m_direct(name, my_id, 1024) {
@@ -200,21 +200,7 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id)
 void Sprite3::render_distorter(DmaFollower& dma,
                                SharedRenderState* render_state,
                                ScopedProfilerNode& prof) {
-  // First, make sure the distort framebuffer is the correct size
-  if (m_distort_ogl.fbo_width != render_state->window_width_px ||
-      m_distort_ogl.fbo_height != render_state->window_height_px) {
-    m_distort_ogl.fbo_width = render_state->window_width_px;
-    m_distort_ogl.fbo_height = render_state->window_height_px;
-
-    glBindTexture(GL_TEXTURE_2D, m_distort_ogl.fbo_texture);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_distort_ogl.fbo_width, m_distort_ogl.fbo_height, 0,
-                 GL_RGB, GL_UNSIGNED_BYTE, NULL);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-  }
-
-  // Next thing should be the sprite-distorter setup
+  // Skip to distorter DMA
   m_direct.reset_state();
   while (dma.current_tag().qwc != 7) {
     auto direct_data = dma.read_and_advance();
@@ -222,6 +208,31 @@ void Sprite3::render_distorter(DmaFollower& dma,
                         direct_data.size_bytes, render_state, prof);
   }
   m_direct.flush_pending(render_state, prof);
+
+  // Read DMA
+  {
+    auto prof_node = prof.make_scoped_child("dma");
+    distort_dma(dma);
+  }
+
+  // Setup vertex data
+  {
+    auto prof_node = prof.make_scoped_child("setup");
+    distort_setup();
+  }
+
+  // Draw
+  {
+    auto prof_node = prof.make_scoped_child("drawing");
+    distort_draw(render_state, prof_node);
+  }
+}
+
+/*!
+ * Reads all sprite distort related DMA packets.
+ */
+void Sprite3::distort_dma(DmaFollower& dma) {
+  // First should be the GS setup
   auto sprite_distorter_direct_setup = dma.read_and_advance();
   ASSERT(sprite_distorter_direct_setup.vifcode0().kind == VifCode::Kind::NOP);
   ASSERT(sprite_distorter_direct_setup.vifcode1().kind == VifCode::Kind::DIRECT);
@@ -238,29 +249,23 @@ void Sprite3::render_distorter(DmaFollower& dma,
   ASSERT(zbuf1.zbp() == 0x1c0);
   ASSERT(zbuf1.zmsk() == true);
   ASSERT(zbuf1.psm() == TextureFormat::PSMZ24);
-  handle_zbuf(zbuf1.data, render_state, prof);
 
   auto tex0 = m_sprite_distorter_setup.tex0;
   ASSERT(tex0.tbw() == 8);
   ASSERT(tex0.tw() == 9);
   ASSERT(tex0.th() == 8);
-  // Here we would bind the framebuffer as a texture, but we'll handle that further down
 
   auto tex1 = m_sprite_distorter_setup.tex1;
   ASSERT(tex1.mmag() == true);
   ASSERT(tex1.mmin() == 1);
-  handle_tex1(tex1.data, render_state, prof);
 
   auto alpha = m_sprite_distorter_setup.alpha;
   ASSERT(alpha.a_mode() == GsAlpha::BlendMode::SOURCE);
   ASSERT(alpha.b_mode() == GsAlpha::BlendMode::DEST);
   ASSERT(alpha.c_mode() == GsAlpha::BlendMode::SOURCE);
   ASSERT(alpha.d_mode() == GsAlpha::BlendMode::DEST);
-  handle_alpha(alpha.data, render_state, prof);
 
-  setup_opengl_from_draw_mode(m_current_mode, GL_TEXTURE0, false);
-
-  // Next thing should be the sprite-distorter tables
+  // Next thing should be the sine tables
   auto sprite_distorter_tables = dma.read_and_advance();
   unpack_to_stcycl(&m_sprite_distorter_sine_tables, sprite_distorter_tables,
                    VifCode::Kind::UNPACK_V4_32, 4, 4, 0x8b * 16, 0x160, false, false);
@@ -268,12 +273,153 @@ void Sprite3::render_distorter(DmaFollower& dma,
   ASSERT(GsPrim(m_sprite_distorter_sine_tables.gs_gif_tag.prim()).kind() ==
          GsPrim::Kind::TRI_STRIP);
 
-  // Next would be the program, but we don't have it.
+  // Finally, should be frame data packets (containing sprites)
+  // Up to 170 sprites will be DMA'd at a time followed by a mscalf,
+  // and this process can happen twice up to a maximum of 256 sprites DMA'd
+  // (256 is the size of sprite-aux-list which drives this).
+  int sprite_idx = 0;
+  m_distort_stats.total_sprites = 0;
 
-  // Next is the sprite-distorter frame data
-  int num_tris = read_and_create_distort_sprites(dma);
+  while (looks_like_distort_frame_data(dma)) {
+    math::Vector<u32, 4> num_sprites_vec;
 
-  if (num_tris == 0) {
+    // Read sprite packets
+    do {
+      int qwc = dma.current_tag().qwc;
+      int dest = dma.current_tag_vifcode1().immediate;
+      auto distort_data = dma.read_and_advance();
+
+      if (dest == 511) {
+        // VU address 511 specifies the number of sprites
+        unpack_to_no_stcycl(&num_sprites_vec, distort_data, VifCode::Kind::UNPACK_V4_32, 16, dest,
+                            false, false);
+      } else {
+        // VU address >= 512 is the actual vertex data
+        ASSERT(dest >= 512);
+        ASSERT(sprite_idx + (qwc / 3) <= m_sprite_distorter_frame_data.capacity());
+
+        unpack_to_no_stcycl(&m_sprite_distorter_frame_data.at(sprite_idx), distort_data,
+                            VifCode::Kind::UNPACK_V4_32, qwc * 16, dest, false, false);
+
+        sprite_idx += qwc / 3;
+      }
+    } while (looks_like_distort_frame_data(dma));
+
+    // Sprite packets should always end with a mscalf flush
+    ASSERT(dma.current_tag().kind == DmaTag::Kind::CNT);
+    ASSERT(dma.current_tag_vifcode0().kind == VifCode::Kind::MSCALF);
+    ASSERT(dma.current_tag_vifcode1().kind == VifCode::Kind::FLUSH);
+    dma.read_and_advance();
+
+    m_distort_stats.total_sprites += num_sprites_vec.x();
+  }
+
+  // Done
+  ASSERT(m_distort_stats.total_sprites <= SPRITE_RENDERER_MAX_DISTORT_SPRITES);
+}
+
+/*!
+ * Sets up OpenGL data for each distort sprite.
+ */
+void Sprite3::distort_setup() {
+  m_distort_stats.total_tris = 0;
+
+  m_sprite_distorter_vertices.clear();
+  m_sprite_distorter_indices.clear();
+
+  int sprite_idx = 0;
+  int sprites_left = m_distort_stats.total_sprites;
+
+  // This part is mostly ripped from the VU program
+  while (sprites_left != 0) {
+    // flag seems to represent the 'resolution' of the circle sprite used to create the distortion
+    // effect For example, a flag value of 3 will create a circle using 3 "pie-slice" shapes
+    u32 flag = m_sprite_distorter_frame_data.at(sprite_idx).flag;
+    u32 slices_left = flag;
+
+    // flag has a minimum value of 3 which represents the first ientry
+    // Additionally, the ientry index has 352 added to it (which is the start of the entry array
+    // in VU memory), so we need to subtract that as well
+    int entry_index = m_sprite_distorter_sine_tables.ientry[flag - 3].x() - 352;
+
+    // Here would be adding the giftag, but we don't need that
+
+    // Get the frame data for the next distort sprite
+    SpriteDistortFrameData frame_data = m_sprite_distorter_frame_data.at(sprite_idx);
+    sprite_idx++;
+
+    // Build the OpenGL data for the sprite
+    math::Vector2f vf03 = frame_data.st;
+    math::Vector3f vf14 = frame_data.xyz;
+
+    // Each slice shares a center vertex, we can use this fact and cut out duplicate vertexes
+    u32 center_vert_idx = m_sprite_distorter_vertices.size();
+    m_sprite_distorter_vertices.push_back({vf14, vf03});
+
+    do {
+      math::Vector3f vf06 = m_sprite_distorter_sine_tables.entry[entry_index++].xyz();
+      math::Vector2f vf07 = m_sprite_distorter_sine_tables.entry[entry_index++].xy();
+      math::Vector3f vf08 = m_sprite_distorter_sine_tables.entry[entry_index + 0].xyz();
+      math::Vector2f vf09 = m_sprite_distorter_sine_tables.entry[entry_index + 1].xy();
+
+      slices_left--;
+
+      math::Vector2f vf11 = (vf07 * frame_data.rgba.z()) + frame_data.st;
+      math::Vector2f vf13 = (vf09 * frame_data.rgba.z()) + frame_data.st;
+      math::Vector3f vf06_2 = (vf06 * frame_data.rgba.x()) + frame_data.xyz;
+      math::Vector2f vf07_2 = (vf07 * frame_data.rgba.x()) + frame_data.st;
+      math::Vector3f vf08_2 = (vf08 * frame_data.rgba.x()) + frame_data.xyz;
+      math::Vector2f vf09_2 = (vf09 * frame_data.rgba.x()) + frame_data.st;
+      math::Vector3f vf10 = (vf06 * frame_data.rgba.y()) + frame_data.xyz;
+      math::Vector3f vf12 = (vf08 * frame_data.rgba.y()) + frame_data.xyz;
+      math::Vector3f vf06_3 = vf06_2;
+      math::Vector3f vf08_3 = vf08_2;
+
+      m_sprite_distorter_indices.push_back(m_sprite_distorter_vertices.size());
+      m_sprite_distorter_vertices.push_back({vf06_3, vf07_2});
+
+      m_sprite_distorter_indices.push_back(m_sprite_distorter_vertices.size());
+      m_sprite_distorter_vertices.push_back({vf08_3, vf09_2});
+
+      m_sprite_distorter_indices.push_back(m_sprite_distorter_vertices.size());
+      m_sprite_distorter_vertices.push_back({vf10, vf11});
+
+      m_sprite_distorter_indices.push_back(m_sprite_distorter_vertices.size());
+      m_sprite_distorter_vertices.push_back({vf12, vf13});
+
+      // Originally, would add the shared center vertex, but in our case we can just add the index
+      m_sprite_distorter_indices.push_back(center_vert_idx);
+      // m_sprite_distorter_vertices.push_back({vf14, vf03});
+
+      m_distort_stats.total_tris += 2;
+    } while (slices_left != 0);
+
+    // Mark the end of the triangle strip
+    m_sprite_distorter_indices.push_back(UINT32_MAX);
+
+    sprites_left--;
+  }
+}
+
+/*!
+ * Draws each distort sprite.
+ */
+void Sprite3::distort_draw(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  // First, make sure the distort framebuffer is the correct size
+  if (m_distort_ogl.fbo_width != render_state->window_width_px ||
+      m_distort_ogl.fbo_height != render_state->window_height_px) {
+    m_distort_ogl.fbo_width = render_state->window_width_px;
+    m_distort_ogl.fbo_height = render_state->window_height_px;
+
+    glBindTexture(GL_TEXTURE_2D, m_distort_ogl.fbo_texture);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_distort_ogl.fbo_width, m_distort_ogl.fbo_height, 0,
+                 GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+  }
+
+  if (m_distort_stats.total_tris == 0) {
     // No distort sprites to draw, we can end early
     return;
   }
@@ -289,6 +435,16 @@ void Sprite3::render_distorter(DmaFollower& dma,
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+  // Set up OpenGL state
+  m_current_mode.set_depth_write_enable(!m_sprite_distorter_setup.zbuf.zmsk());  // zbuf
+  glBindTexture(GL_TEXTURE_2D, m_distort_ogl.fbo_texture);                       // tex0
+  m_current_mode.set_filt_enable(m_sprite_distorter_setup.tex1.mmag());          // tex1
+  update_mode_from_alpha1(m_sprite_distorter_setup.alpha.data, m_current_mode);  // alpha1
+  // note: clamp and miptbp are skipped since that is set up ahead of time with the distort
+  // framebuffer texture
+
+  setup_opengl_from_draw_mode(m_current_mode, GL_TEXTURE0, false);
+
   // Setup shader
   auto shader = &render_state->shaders[ShaderId::SPRITE_DISTORT];
   shader->activate();
@@ -298,8 +454,6 @@ void Sprite3::render_distorter(DmaFollower& dma,
                              m_sprite_distorter_sine_tables.color.z() / 255.0f,
                              m_sprite_distorter_sine_tables.color.w() / 255.0f);
   glUniform4fv(glGetUniformLocation(shader->id(), "u_color"), 1, colorf.data());
-
-  glBindTexture(GL_TEXTURE_2D, m_distort_ogl.fbo_texture);
 
   // Bind vertex array
   glBindVertexArray(m_distort_ogl.vao);
@@ -320,135 +474,14 @@ void Sprite3::render_distorter(DmaFollower& dma,
 
   // Draw
   prof.add_draw_call();
-  prof.add_tri(num_tris);
+  prof.add_tri(m_distort_stats.total_tris);
 
   glDrawElements(GL_TRIANGLE_STRIP, m_sprite_distorter_indices.size(), GL_UNSIGNED_INT, (void*)0);
 
   // Done
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
-}
-
-/*!
- * Reads sprite data DMA packets for sprite distort and builds OpenGL vertex data from them.
- * Returns the number of triangles to draw.
- */
-int Sprite3::read_and_create_distort_sprites(DmaFollower& dma) {
-  int total_tris = 0;
-
-  m_sprite_distorter_vertices.clear();
-  m_sprite_distorter_indices.clear();
-
-  // Up to 170 sprites will be DMA'd at a time followed by a mscalf,
-  // and this process can happen twice up to a maximum of 256 sprites DMA'd
-  // (256 is the size of sprite-aux-list which drives this).
-  while (looks_like_distort_frame_data(dma)) {
-    int dma_sprite_idx = 0;
-
-    math::Vector<u32, 4> num_sprites_vec;
-
-    // Read sprite packets
-    do {
-      int qwc = dma.current_tag().qwc;
-      int dest = dma.current_tag_vifcode1().immediate;
-      auto distort_data = dma.read_and_advance();
-
-      if (dest == 511) {
-        // VU address 511 specifies the number of sprites
-        unpack_to_no_stcycl(&num_sprites_vec, distort_data, VifCode::Kind::UNPACK_V4_32, 16, dest,
-                            false, false);
-      } else {
-        // VU address >= 512 is the actual vertex data
-        ASSERT(dest >= 512);
-
-        unpack_to_no_stcycl(&m_sprite_distorter_frame_data.at(dma_sprite_idx), distort_data,
-                            VifCode::Kind::UNPACK_V4_32, qwc * 16, dest, false, false);
-
-        dma_sprite_idx += qwc / 3;
-      }
-    } while (looks_like_distort_frame_data(dma));
-
-    // Sprite packets should always end with a mscalf flush
-    ASSERT(dma.current_tag().kind == DmaTag::Kind::CNT);
-    ASSERT(dma.current_tag_vifcode0().kind == VifCode::Kind::MSCALF);
-    ASSERT(dma.current_tag_vifcode1().kind == VifCode::Kind::FLUSH);
-    dma.read_and_advance();
-
-    // Build vertex data
-    int dma_vert_idx = 0;
-    int num_sprites_in_chunk = num_sprites_vec.x();
-    int sprites_left = num_sprites_in_chunk;
-
-    // This part is mostly ripped from the VU program
-    do {
-      // flag seems to represent the 'resolution' of the circle sprite used to create the distortion
-      // effect For example, a flag value of 3 will create a circle using 3 "pie-slice" shapes
-      u32 flag = m_sprite_distorter_frame_data.at(dma_vert_idx).flag;
-      u32 slices_left = flag;
-
-      // flag has a minimum value of 3 which represents the first ientry
-      // Additionally, the ientry index has 352 added to it (which is the start of the entry array
-      // in VU memory), so we need to subtract that as well
-      int entry_index = m_sprite_distorter_sine_tables.ientry[flag - 3].x() - 352;
-
-      // Here would be adding the giftag, but we don't need that
-
-      // Get the frame data for the next distort sprite
-      SpriteDistortFrameData frame_data = m_sprite_distorter_frame_data.at(dma_vert_idx++);
-
-      // Build the OpenGL data for the sprite
-      math::Vector2f vf03 = frame_data.st;
-      math::Vector3f vf14 = frame_data.xyz;
-
-      // Each slice shares a center vertex, we can use this fact and cut out duplicate vertexes
-      u32 center_vert_idx = m_sprite_distorter_vertices.size();
-      m_sprite_distorter_vertices.push_back({vf14, vf03});
-
-      do {
-        math::Vector3f vf06 = m_sprite_distorter_sine_tables.entry[entry_index++].xyz();
-        math::Vector2f vf07 = m_sprite_distorter_sine_tables.entry[entry_index++].xy();
-        math::Vector3f vf08 = m_sprite_distorter_sine_tables.entry[entry_index + 0].xyz();
-        math::Vector2f vf09 = m_sprite_distorter_sine_tables.entry[entry_index + 1].xy();
-
-        slices_left--;
-
-        math::Vector2f vf11 = (vf07 * frame_data.rgba.z()) + frame_data.st;
-        math::Vector2f vf13 = (vf09 * frame_data.rgba.z()) + frame_data.st;
-        math::Vector3f vf06_2 = (vf06 * frame_data.rgba.x()) + frame_data.xyz;
-        math::Vector2f vf07_2 = (vf07 * frame_data.rgba.x()) + frame_data.st;
-        math::Vector3f vf08_2 = (vf08 * frame_data.rgba.x()) + frame_data.xyz;
-        math::Vector2f vf09_2 = (vf09 * frame_data.rgba.x()) + frame_data.st;
-        math::Vector3f vf10 = (vf06 * frame_data.rgba.y()) + frame_data.xyz;
-        math::Vector3f vf12 = (vf08 * frame_data.rgba.y()) + frame_data.xyz;
-        math::Vector3f vf06_3 = vf06_2;
-        math::Vector3f vf08_3 = vf08_2;
-
-        m_sprite_distorter_indices.push_back(m_sprite_distorter_vertices.size());
-        m_sprite_distorter_vertices.push_back({vf06_3, vf07_2});
-
-        m_sprite_distorter_indices.push_back(m_sprite_distorter_vertices.size());
-        m_sprite_distorter_vertices.push_back({vf08_3, vf09_2});
-
-        m_sprite_distorter_indices.push_back(m_sprite_distorter_vertices.size());
-        m_sprite_distorter_vertices.push_back({vf10, vf11});
-
-        m_sprite_distorter_indices.push_back(m_sprite_distorter_vertices.size());
-        m_sprite_distorter_vertices.push_back({vf12, vf13});
-
-        // Originally, would add the shared center vertex, but in our case we can just add the index
-        m_sprite_distorter_indices.push_back(center_vert_idx);
-        // m_sprite_distorter_vertices.push_back({vf14, vf03});
-
-        total_tris += 2;
-      } while (slices_left != 0);
-
-      // Mark the end of the triangle strip
-      m_sprite_distorter_indices.push_back(UINT32_MAX);
-
-      sprites_left--;
-    } while (sprites_left != 0);
-  }
-
-  return total_tris;
 }
 
 /*!
@@ -867,7 +900,7 @@ void Sprite3::handle_clamp(u64 val,
   m_current_mode.set_clamp_t_enable(val & 0b100);
 }
 
-void update_mode_from_alpha1(u64 val, DrawMode& mode) {
+void Sprite3::update_mode_from_alpha1(u64 val, DrawMode& mode) {
   GsAlpha reg(val);
   if (reg.a_mode() == GsAlpha::BlendMode::SOURCE && reg.b_mode() == GsAlpha::BlendMode::DEST &&
       reg.c_mode() == GsAlpha::BlendMode::SOURCE && reg.d_mode() == GsAlpha::BlendMode::DEST) {

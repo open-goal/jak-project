@@ -22,7 +22,9 @@ class Sprite3 : public BucketRenderer {
   void render_distorter(DmaFollower& dma,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
-  int read_and_create_distort_sprites(DmaFollower& dma);
+  void distort_dma(DmaFollower& dma);
+  void distort_setup();
+  void distort_draw(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_sprite_frame_setup(DmaFollower& dma);
   void render_3d(DmaFollower& dma);
   void render_2d_group0(DmaFollower& dma,
@@ -38,6 +40,7 @@ class Sprite3 : public BucketRenderer {
                        SharedRenderState* render_state,
                        ScopedProfilerNode& prof);
 
+  void update_mode_from_alpha1(u64 val, DrawMode& mode);
   void handle_tex0(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_tex1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   // void handle_mip(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
@@ -97,11 +100,16 @@ class Sprite3 : public BucketRenderer {
     int fbo_height = 480;
   } m_distort_ogl;
 
+  struct {
+    int total_sprites;
+    int total_tris;
+  } m_distort_stats;
+
   std::vector<SpriteDistortVertex> m_sprite_distorter_vertices;
   std::vector<u32> m_sprite_distorter_indices;
-  std::vector<SpriteDistortFrameData> m_sprite_distorter_frame_data;
   SpriteDistorterSetup m_sprite_distorter_setup;  // direct data
   SpriteDistorterSineTables m_sprite_distorter_sine_tables;
+  std::vector<SpriteDistortFrameData> m_sprite_distorter_frame_data;
 
   u8 m_sprite_direct_setup[3 * 16];
   SpriteFrameData m_frame_data;  // qwa: 980
