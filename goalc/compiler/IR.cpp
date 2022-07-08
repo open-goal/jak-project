@@ -9,7 +9,6 @@
 #include "third-party/fmt/core.h"
 
 using namespace emitter;
-using namespace jak1_symbols;  // TODO jak 1 symbols
 namespace {
 Register get_reg(const RegVal* rv, const AllocationResult& allocs, emitter::IR_Record irec) {
   if (rv->rlet_constraint().has_value()) {
@@ -239,12 +238,15 @@ void IR_LoadSymbolPointer::do_codegen(emitter::ObjectGenerator* gen,
                                       emitter::IR_Record irec) {
   auto dest_reg = get_reg(m_dest, allocs, irec);
   if (m_name == "#f") {
-    static_assert(FIX_SYM_FALSE == 0, "false symbol location");
+    static_assert(false_symbol_offset() == 0, "false symbol location");
     gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
   } else if (m_name == "#t") {
-    gen->add_instr(IGen::lea_reg_plus_off8(dest_reg, gRegInfo.get_st_reg(), FIX_SYM_TRUE), irec);
+    gen->add_instr(IGen::lea_reg_plus_off8(dest_reg, gRegInfo.get_st_reg(),
+                                           true_symbol_offset(gen->version())),
+                   irec);
   } else if (m_name == "_empty_") {
-    gen->add_instr(IGen::lea_reg_plus_off8(dest_reg, gRegInfo.get_st_reg(), FIX_SYM_EMPTY_PAIR),
+    gen->add_instr(IGen::lea_reg_plus_off8(dest_reg, gRegInfo.get_st_reg(),
+                                           empty_pair_offset_from_s7(gen->version())),
                    irec);
   } else {
     auto instr =
@@ -274,10 +276,10 @@ void IR_SetSymbolValue::do_codegen(emitter::ObjectGenerator* gen,
                                    const AllocationResult& allocs,
                                    emitter::IR_Record irec) {
   auto src_reg = get_reg(m_src, allocs, irec);
-  auto instr =
-      gen->add_instr(IGen::store32_gpr64_gpr64_plus_gpr64_plus_s32(
-                         gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), src_reg, 0x0badbeef),
-                     irec);
+  auto instr = gen->add_instr(
+      IGen::store32_gpr64_gpr64_plus_gpr64_plus_s32(
+          gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), src_reg, LINK_SYM_NO_OFFSET_FLAG),
+      irec);
   gen->link_instruction_symbol_mem(instr, m_dest->name());
 }
 
@@ -303,16 +305,16 @@ void IR_GetSymbolValue::do_codegen(emitter::ObjectGenerator* gen,
                                    emitter::IR_Record irec) {
   auto dst_reg = get_reg(m_dest, allocs, irec);
   if (m_sext) {
-    auto instr =
-        gen->add_instr(IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s32(
-                           dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), 0x0badbeef),
-                       irec);
+    auto instr = gen->add_instr(
+        IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s32(
+            dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), LINK_SYM_NO_OFFSET_FLAG),
+        irec);
     gen->link_instruction_symbol_mem(instr, m_src->name());
   } else {
-    auto instr =
-        gen->add_instr(IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(
-                           dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), 0x0badbeef),
-                       irec);
+    auto instr = gen->add_instr(
+        IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(
+            dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), LINK_SYM_NO_OFFSET_FLAG),
+        irec);
     gen->link_instruction_symbol_mem(instr, m_src->name());
   }
 }
@@ -1379,16 +1381,16 @@ void IR_GetSymbolValueAsm::do_codegen(emitter::ObjectGenerator* gen,
                                       emitter::IR_Record irec) {
   auto dst_reg = m_use_coloring ? get_reg(m_dest, allocs, irec) : get_no_color_reg(m_dest);
   if (m_sext) {
-    auto instr =
-        gen->add_instr(IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s32(
-                           dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), 0x0badbeef),
-                       irec);
+    auto instr = gen->add_instr(
+        IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s32(
+            dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), LINK_SYM_NO_OFFSET_FLAG),
+        irec);
     gen->link_instruction_symbol_mem(instr, m_sym_name);
   } else {
-    auto instr =
-        gen->add_instr(IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(
-                           dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), 0x0badbeef),
-                       irec);
+    auto instr = gen->add_instr(
+        IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(
+            dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), LINK_SYM_NO_OFFSET_FLAG),
+        irec);
     gen->link_instruction_symbol_mem(instr, m_sym_name);
   }
 }

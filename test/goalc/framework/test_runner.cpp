@@ -104,6 +104,13 @@ void runtime_no_kernel() {
   exec_runtime(argc, const_cast<char**>(argv));
 }
 
+void runtime_no_kernel_jak2() {
+  constexpr int argc = 7;
+  const char* argv[argc] = {"",           "-fakeiso", "-debug", "-nokernel",
+                            "-nodisplay", "-nosound", "-jak2"};
+  exec_runtime(argc, const_cast<char**>(argv));
+}
+
 void runtime_with_kernel() {
   constexpr int argc = 5;
   const char* argv[argc] = {"", "-fakeiso", "-debug", "-nodisplay", "-nosound"};

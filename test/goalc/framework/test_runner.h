@@ -43,6 +43,7 @@ struct CompilerTestRunner {
 };
 
 void runtime_no_kernel();
+void runtime_no_kernel_jak2();
 void runtime_with_kernel();
 void runtime_with_kernel_no_debug_segment();
 

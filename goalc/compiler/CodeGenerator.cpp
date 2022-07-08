@@ -18,8 +18,8 @@
 
 using namespace emitter;
 
-CodeGenerator::CodeGenerator(FileEnv* env, DebugInfo* debug_info)
-    : m_fe(env), m_debug_info(debug_info) {}
+CodeGenerator::CodeGenerator(FileEnv* env, DebugInfo* debug_info, GameVersion version)
+    : m_gen(version), m_fe(env), m_debug_info(debug_info) {}
 
 /*!
  * Generate an object file.

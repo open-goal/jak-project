@@ -5,3 +5,956 @@
 ;; name in dgo: gcommon
 ;; dgos: KERNEL
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Game constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; disable PS2 only code and enable PC-specific code
+(defglobalconstant PC_PORT #t)
+
+;; whether we're allowed to use more memory than the original game or not
+(defglobalconstant BIG_MEMORY #t)
+(defglobalconstant PC_BIG_MEMORY (and PC_PORT BIG_MEMORY))
+
+;; redirects access to EE memory mapped registers through get-vm-ptr to valid addresses that
+;; are monitored in the runtime for debugging.
+(defglobalconstant USE_VM #t)
+
+;; enables the with-profiler statements, which send profiling data from
+;; GOAL code to the frame profiler in C++.
+(defglobalconstant PC_PROFILER_ENABLE #t)
+
+(defun identity ((arg0 object))
+  arg0
+  )
+
+(defun 1/ ((arg0 float))
+  (declare (inline))
+  (/ 1.0 arg0)
+  )
+
+(defun + ((arg0 int) (arg1 int))
+  (+ arg0 arg1)
+  )
+
+(defun - ((arg0 int) (arg1 int))
+  (- arg0 arg1)
+  )
+
+(defun * ((arg0 int) (arg1 int))
+  (* arg0 arg1)
+  )
+
+(defun / ((arg0 int) (arg1 int))
+  (/ arg0 arg1)
+  )
+
+(defun mod ((arg0 int) (arg1 int))
+  (mod arg0 arg1)
+  )
+
+(defun rem ((arg0 int) (arg1 int))
+  (mod arg0 arg1)
+  )
+
+
+(defun ash ((value int) (shift-amount int))
+  "Arithmetic shift value by shift-amount.
+  A positive shift-amount will shift to the left and a negative will shift to the right."
+  ;; OpenGOAL does not support ash in the compiler, so we implement it here as an inline function.
+  (declare (inline))
+  (if (> shift-amount 0)
+      (shl value shift-amount)
+      (sar value (- shift-amount))
+      )
+  )
+
+(defun abs ((a int))
+  "Take the absolute value of an integer"
+  (declare (inline))
+  ;; OpenGOAL doesn't support abs, so we implement it here.
+  (if (> a 0)
+      a
+      (- a)
+      )
+  )
+
+(defun min ((a int) (b int))
+  "Compute minimum."
+  (declare (inline))
+  ;; OpenGOAL doesn't support min, so we implement it here.
+  (if (> a b) b a)
+  )
+
+(defun max ((a int) (b int))
+  "Compute maximum."
+  (declare (inline))
+  ;; OpenGOAL doesn't support max so we implement it here.
+  (if (> a b) a b)
+  )
+
+(defun logior ((arg0 int) (arg1 int))
+  (logior arg0 arg1)
+  )
+
+(defun logand ((arg0 int) (arg1 int))
+  (logand arg0 arg1)
+  )
+
+
+(defun lognor ((a int) (b int))
+  "Compute not or."
+  ;; Note - MIPS has a 'nor' instruction, but x86 doesn't.
+  ;; the OpenGOAL x86 compiler therefore doesn't have a nor operation,
+  ;; so lognor is implemented by this inline function instead.
+  (declare (inline))
+  (lognot (logior a b))
+  )
+
+(defun logxor ((arg0 int) (arg1 int))
+  (logxor arg0 arg1)
+  )
+
+(defun lognot ((arg0 int))
+  (lognot arg0)
+  )
+
+(defun false-func ()
+  #f
+  )
+
+(defun true-func ()
+  #t
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; format
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define format _format)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; numeric types
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype vec4s (uint128)
+  ((x float :offset   0 :size  32)
+   (y float :offset  32 :size  32)
+   (z float :offset  64 :size  32)
+   (w float :offset  96 :size  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(defmethod inspect vec4s ((obj vec4s))
+  (when (not obj)
+    (return obj)
+    )
+  (format #t "[~8x] ~A~%" obj 'vec4s)
+  (format #t "~1Tx: ~f~%" (-> obj x))
+  (format #t "~1Ty: ~f~%" (-> obj y))
+  (format #t "~1Tz: ~f~%" (-> obj z))
+  (format #t "~1Tw: ~f~%" (-> obj w))
+  obj
+  )
+
+(defmethod print vec4s ((obj vec4s))
+  (format #t "#<vector ~F ~F ~F ~F @ #x~X>"
+          (-> obj x)
+          (-> obj y)
+          (-> obj z)
+          (-> obj w)
+          obj)
+  obj
+  )
+
+(defmacro print128 (value &key (stream #t))
+  "Print a 128-bit value"
+  `(let ((temp (new 'stack-no-clear 'array 'uint64 2)))
+     (set! (-> (the (pointer uint128) temp)) ,value)
+     (format ,stream "#x~16X~16X" (-> temp 1) (-> temp 0))
+     )
+  )
+
+(defmacro make-u128 (upper lower)
+  "Make a i128 from two 64-bit values."
+  `(rlet ((result :class i128)
+          (upper-xmm :class i128)
+          (lower-xmm :class i128))
+     (.mov upper-xmm ,upper)
+     (.mov lower-xmm ,lower)
+     (.pcpyld result upper-xmm lower-xmm)
+     (the-as uint result)
+     )
+  )
+
+(deftype bfloat (basic)
+  ((data float  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(defmethod print bfloat ((obj bfloat))
+  (format #t "~f" (-> obj data))
+  obj
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Type System
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod asize-of type ((obj type))
+  (the-as int (logand (the-as uint #xfffffff0) (+ (* (-> obj allocated-length) 4) 43)))
+  )
+
+(defun basic-type? ((arg0 basic) (arg1 type))
+  (let ((v1-0 (-> arg0 type))
+        (a0-1 object)
+        )
+    (until (= v1-0 a0-1)
+      (if (= v1-0 arg1)
+          (return #t)
+          )
+      (set! v1-0 (-> v1-0 parent))
+      )
+    )
+  #f
+  )
+
+(defun type-type? ((arg0 type) (arg1 type))
+  (let ((v1-0 object))
+    (if (= arg1 v1-0)
+        (return #t)
+        )
+    (until (or (= arg0 v1-0) (zero? arg0))
+      (if (= arg0 arg1)
+          (return #t)
+          )
+      (set! arg0 (-> arg0 parent))
+      )
+    )
+  #f
+  )
+
+(defun type? ((arg0 object) (arg1 type))
+  (let ((v1-0 object)
+        (a0-1 (rtype-of arg0))
+        )
+    (if (= arg1 v1-0)
+        (return #t)
+        )
+    (until (or (= a0-1 v1-0) (zero? a0-1))
+      (if (= a0-1 arg1)
+          (return #t)
+          )
+      (set! a0-1 (-> a0-1 parent))
+      )
+    )
+  #f
+  )
+
+(defun find-parent-method ((arg0 type) (arg1 int))
+  (local-vars (v0-0 function))
+  (let ((v1-2 (-> arg0 method-table arg1)))
+    (until (!= v0-0 v1-2)
+      (if (= arg0 object)
+          (return nothing)
+          )
+      (set! arg0 (-> arg0 parent))
+      (set! v0-0 (-> arg0 method-table arg1))
+      (if (zero? v0-0)
+          (return nothing)
+          )
+      )
+    )
+  v0-0
+  )
+
+(defun ref ((arg0 object) (arg1 int))
+  (dotimes (v1-0 arg1)
+    (nop!)
+    (nop!)
+    (set! arg0 (cdr arg0))
+    )
+  (car arg0)
+  )
+
+(defmethod length pair ((obj pair))
+  (local-vars (v0-0 int))
+  (cond
+    ((null? obj)
+     (set! v0-0 0)
+     )
+    (else
+      (let ((v1-1 (cdr obj)))
+        (set! v0-0 1)
+        (while (and (not (null? v1-1)) (pair? v1-1))
+          (+! v0-0 1)
+          (set! v1-1 (cdr v1-1))
+          )
+        )
+      )
+    )
+  v0-0
+  )
+
+(defmethod asize-of pair ((obj pair))
+  (the-as int (-> pair size))
+  )
+
+(defun last ((arg0 object))
+  (let ((v0-0 arg0))
+    (while (not (null? (cdr v0-0)))
+      (nop!)
+      (nop!)
+      (set! v0-0 (cdr v0-0))
+      )
+    v0-0
+    )
+  )
+
+(defun member ((arg0 object) (arg1 object))
+  (let ((v1-0 arg1))
+    (while (not (or (null? v1-0) (= (car v1-0) arg0)))
+      (set! v1-0 (cdr v1-0))
+      )
+    (if (not (null? v1-0))
+        v1-0
+        )
+    )
+  )
+
+;; need to forward declare this, we haven't loaded the string library yet.
+(define-extern name= (function basic basic symbol))
+
+(defun nmember ((arg0 basic) (arg1 object))
+  (while (not (or (null? arg1) (name= (the-as basic (car arg1)) arg0)))
+    (set! arg1 (cdr arg1))
+    )
+  (if (not (null? arg1))
+      arg1
+      )
+  )
+
+(defun assoc ((arg0 object) (arg1 object))
+  (let ((v1-0 arg1))
+    (while (not (or (null? v1-0) (= (car (car v1-0)) arg0)))
+      (set! v1-0 (cdr v1-0))
+      )
+    (if (not (null? v1-0))
+        (car v1-0)
+        )
+    )
+  )
+
+(defun assoce ((arg0 object) (arg1 object))
+  (let ((v1-0 arg1))
+    (while (not (or (null? v1-0) (= (car (car v1-0)) arg0) (= (car (car v1-0)) 'else)))
+      (set! v1-0 (cdr v1-0))
+      )
+    (if (not (null? v1-0))
+        (car v1-0)
+        )
+    )
+  )
+
+(defun nassoc ((arg0 string) (arg1 object))
+  (while (not (or (null? arg1) (let ((a1-1 (car (car arg1))))
+                                 (if (pair? a1-1)
+                                     (nmember arg0 a1-1)
+                                     (name= (the-as basic a1-1) arg0)
+                                     )
+                                 )
+                  )
+              )
+    (set! arg1 (cdr arg1))
+    )
+  (if (not (null? arg1))
+      (car arg1)
+      )
+  )
+
+(defun nassoce ((arg0 string) (arg1 object))
+  (while (not (or (null? arg1) (let ((s4-0 (car (car arg1))))
+                                 (if (pair? s4-0)
+                                     (nmember arg0 s4-0)
+                                     (or (name= (the-as basic s4-0) arg0) (= s4-0 'else))
+                                     )
+                                 )
+                  )
+              )
+    (set! arg1 (cdr arg1))
+    )
+  (if (not (null? arg1))
+      (car arg1)
+      )
+  )
+
+(defun append! ((arg0 object) (arg1 object))
+  (cond
+    ((null? arg0)
+     arg1
+     )
+    (else
+      (let ((v1-1 arg0))
+        (while (not (null? (cdr v1-1)))
+          (nop!)
+          (nop!)
+          (set! v1-1 (cdr v1-1))
+          )
+        (if (not (null? v1-1))
+            (set! (cdr v1-1) arg1)
+            )
+        )
+      arg0
+      )
+    )
+  )
+
+(defun delete! ((arg0 object) (arg1 object))
+  (the-as pair
+          (cond
+            ((= arg0 (car arg1))
+             (cdr arg1)
+             )
+            (else
+              (let ((v1-1 arg1)
+                    (a2-0 (cdr arg1))
+                    )
+                (while (not (or (null? a2-0) (= (car a2-0) arg0)))
+                  (set! v1-1 a2-0)
+                  (set! a2-0 (cdr a2-0))
+                  )
+                (if (not (null? a2-0))
+                    (set! (cdr v1-1) (cdr a2-0))
+                    )
+                )
+              arg1
+              )
+            )
+          )
+  )
+
+(defun delete-car! ((arg0 object) (arg1 object))
+  (cond
+    ((= arg0 (car (car arg1)))
+     (cdr arg1)
+     )
+    (else
+      (let ((v1-2 arg1)
+            (a2-0 (cdr arg1))
+            )
+        (while (not (or (null? a2-0) (= (car (car a2-0)) arg0)))
+          (set! v1-2 a2-0)
+          (set! a2-0 (cdr a2-0))
+          )
+        (if (not (null? a2-0))
+            (set! (cdr v1-2) (cdr a2-0))
+            )
+        )
+      arg1
+      )
+    )
+  )
+
+(defun insert-cons! ((arg0 object) (arg1 object))
+  (let ((a3-0 (delete-car! (car arg0) arg1)))
+    (cons arg0 a3-0)
+    )
+  )
+
+(defun sort ((arg0 pair) (arg1 (function object object object)))
+  (let ((s4-0 -1))
+    (while (nonzero? s4-0)
+      (set! s4-0 0)
+      (let ((s3-0 arg0))
+        (while (not (or (null? (cdr s3-0)) (not (pair? (cdr s3-0)))))
+          (let* ((s2-0 (car s3-0))
+                 (s1-0 (car (cdr s3-0)))
+                 (v1-1 (arg1 s2-0 s1-0))
+                 )
+            (when (and (or (not v1-1) (> (the-as int v1-1) 0)) (!= v1-1 #t))
+              (+! s4-0 1)
+              (set! (car s3-0) s1-0)
+              (set! (car (cdr s3-0)) s2-0)
+              )
+            )
+          (set! s3-0 (cdr s3-0))
+          )
+        )
+      )
+    )
+  arg0
+  )
+
+(deftype inline-array-class (basic)
+  ((length           int32          :offset-assert   4)
+   (allocated-length int32          :offset-assert   8)
+   (_data            uint8 :dynamic :offset         16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
+  )
+
+(defmethod new inline-array-class ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((v0-0 (object-new
+                allocation
+                type-to-make
+                (the-as int (+ (-> type-to-make size) (* (the-as uint arg0) (-> type-to-make heap-base))))
+                )
+              )
+        )
+    (when (nonzero? v0-0)
+      (set! (-> v0-0 length) arg0)
+      (set! (-> v0-0 allocated-length) arg0)
+      )
+    v0-0
+    )
+  )
+
+(defmethod length inline-array-class ((obj inline-array-class))
+  (-> obj length)
+  )
+
+(defmethod asize-of inline-array-class ((obj inline-array-class))
+  (the-as int (+ (-> obj type size) (* (-> obj allocated-length) (the-as int (-> obj type heap-base)))))
+  )
+
+(defmethod new array ((allocation symbol) (type-to-make type) (arg0 type) (arg1 int))
+  (let ((v0-1 (object-new
+                allocation
+                type-to-make
+                (the-as int (+ (-> type-to-make size) (* arg1 (if (type-type? arg0 number)
+                                                                  (the-as int (-> arg0 size))
+                                                                  4
+                                                                  )
+                                                         )
+                               )
+                        )
+                )
+              )
+        )
+    (set! (-> v0-1 allocated-length) arg1)
+    (set! (-> v0-1 length) arg1)
+    (set! (-> v0-1 content-type) arg0)
+    v0-1
+    )
+  )
+
+(defmethod print array ((obj array))
+  (format #t "#(")
+  (cond
+    ((type-type? (-> obj content-type) integer)
+     (case (-> obj content-type symbol)
+       (('int32)
+        (dotimes (s5-0 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-0)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array int32) obj) s5-0)
+            )
+          )
+        )
+       (('uint32)
+        (dotimes (s5-1 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-1)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array uint32) obj) s5-1)
+            )
+          )
+        )
+       (('int64)
+        (dotimes (s5-2 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-2)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array int64) obj) s5-2)
+            )
+          )
+        )
+       (('uint64)
+        (dotimes (s5-3 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-3)
+                "#x~X"
+                " #x~X"
+                )
+            (-> (the-as (array uint64) obj) s5-3)
+            )
+          )
+        )
+       (('int8)
+        (dotimes (s5-4 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-4)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array int8) obj) s5-4)
+            )
+          )
+        )
+       (('uint8)
+        (dotimes (s5-5 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-5)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array uint8) obj) s5-5)
+            )
+          )
+        )
+       (('int16)
+        (dotimes (s5-6 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-6)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array int16) obj) s5-6)
+            )
+          )
+        )
+       (('uint16)
+        (dotimes (s5-7 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-7)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array uint16) obj) s5-7)
+            )
+          )
+        )
+       (('uint128 'int128)
+        (dotimes (s5-8 (-> obj length))
+          (format
+            #t
+            (if (zero? s5-8)
+                "#x~X"
+                " #x~X"
+                )
+            (-> (the-as (array uint128) obj) s5-8)
+            )
+          )
+        )
+       (else
+         (dotimes (s5-9 (-> obj length))
+           (format
+             #t
+             (if (zero? s5-9)
+                 "~D"
+                 " ~D"
+                 )
+             (-> (the-as (array int32) obj) s5-9)
+             )
+           )
+         )
+       )
+     )
+    ((= (-> obj content-type) float)
+     (dotimes (s5-10 (-> obj length))
+       (if (zero? s5-10)
+           (format #t "~f" (-> (the-as (array float) obj) s5-10))
+           (format #t " ~f" (-> (the-as (array float) obj) s5-10))
+           )
+       )
+     )
+    (else
+      (dotimes (s5-11 (-> obj length))
+        (if (zero? s5-11)
+            (format #t "~A" (-> (the-as (array basic) obj) s5-11))
+            (format #t " ~A" (-> (the-as (array basic) obj) s5-11))
+            )
+        )
+      )
+    )
+  (format #t ")")
+  obj
+  )
+
+(defmethod inspect array ((obj array))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tcontent-type: ~A~%" (-> obj content-type))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
+  (cond
+    ((and (= (logand (the-as int (-> obj content-type)) 7) 4) (type-type? (-> obj content-type) integer))
+     (case (-> obj content-type symbol)
+       (('int32)
+        (dotimes (s5-0 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-0 (-> (the-as (array int32) obj) s5-0))
+          )
+        )
+       (('uint32)
+        (dotimes (s5-1 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-1 (-> (the-as (array uint32) obj) s5-1))
+          )
+        )
+       (('int64)
+        (dotimes (s5-2 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-2 (-> (the-as (array int64) obj) s5-2))
+          )
+        )
+       (('uint64)
+        (dotimes (s5-3 (-> obj length))
+          (format #t "~T  [~D] #x~X~%" s5-3 (-> (the-as (array uint64) obj) s5-3))
+          )
+        )
+       (('int8)
+        (dotimes (s5-4 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-4 (-> (the-as (array int8) obj) s5-4))
+          )
+        )
+       (('uint8)
+        (dotimes (s5-5 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-5 (-> (the-as (array int8) obj) s5-5))
+          )
+        )
+       (('int16)
+        (dotimes (s5-6 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-6 (-> (the-as (array int16) obj) s5-6))
+          )
+        )
+       (('uint16)
+        (dotimes (s5-7 (-> obj length))
+          (format #t "~T  [~D] ~D~%" s5-7 (-> (the-as (array uint16) obj) s5-7))
+          )
+        )
+       (('int128 'uint128)
+        (dotimes (s5-8 (-> obj length))
+          (format #t "~T  [~D] #x~X~%" s5-8 (-> (the-as (array uint128) obj) s5-8))
+          )
+        )
+       (else
+         (dotimes (s5-9 (-> obj length))
+           (format #t "~T  [~D] ~D~%" s5-9 (-> (the-as (array int32) obj) s5-9))
+           )
+         )
+       )
+     )
+    ((= (-> obj content-type) float)
+     (dotimes (s5-10 (-> obj length))
+       (format #t "~T  [~D] ~f~%" s5-10 (-> (the-as (array float) obj) s5-10))
+       )
+     )
+    (else
+      (dotimes (s5-11 (-> obj length))
+        (format #t "~T  [~D] ~A~%" s5-11 (-> (the-as (array basic) obj) s5-11))
+        )
+      )
+    )
+  obj
+  )
+
+(defmethod length array ((obj array))
+  (-> obj length)
+  )
+
+(defmethod asize-of array ((obj array))
+  (the-as
+    int
+    (+ (-> obj type size) (* (-> obj allocated-length) (if (type-type? (-> obj content-type) number)
+                                                           (the-as int (-> obj content-type size))
+                                                           4
+                                                           )
+                             )
+       )
+    )
+  )
+
+(defun mem-copy! ((arg0 pointer) (arg1 pointer) (arg2 int))
+  (let ((v0-0 arg0))
+    (dotimes (v1-0 arg2)
+      (set! (-> (the-as (pointer uint8) arg0)) (-> (the-as (pointer uint8) arg1)))
+      (&+! arg0 1)
+      (&+! arg1 1)
+      )
+    v0-0
+    )
+  )
+
+(defun qmem-copy<-! ((arg0 pointer) (arg1 pointer) (arg2 int))
+  (let ((v0-0 arg0))
+    (countdown (v1-1 (/ (+ arg2 15) 16))
+      (set! (-> (the-as (pointer uint128) arg0)) (-> (the-as (pointer uint128) arg1)))
+      (&+! arg0 16)
+      (&+! arg1 16)
+      )
+    v0-0
+    )
+  )
+
+(defun qmem-copy->! ((arg0 pointer) (arg1 pointer) (arg2 int))
+  (let ((v0-0 arg0))
+    (let* ((v1-1 (/ (+ arg2 15) 16))
+           (a0-1 (&+ arg0 (* v1-1 16)))
+           (a1-1 (&+ arg1 (* v1-1 16)))
+           )
+      (while (nonzero? v1-1)
+        (+! v1-1 -1)
+        (&+! a0-1 -16)
+        (&+! a1-1 -16)
+        (set! (-> (the-as (pointer uint128) a0-1)) (-> (the-as (pointer uint128) a1-1)))
+        )
+      )
+    v0-0
+    )
+  )
+
+(defun mem-set32! ((arg0 pointer) (arg1 int) (arg2 int))
+  (let ((v0-0 arg0))
+    (dotimes (v1-0 arg1)
+      (set! (-> (the-as (pointer int32) arg0)) arg2)
+      (&+! arg0 4)
+      (nop!)
+      )
+    v0-0
+    )
+  )
+
+(defun mem-or! ((arg0 pointer) (arg1 pointer) (arg2 int))
+  (let ((v0-0 arg0))
+    (dotimes (v1-0 arg2)
+      (logior! (-> (the-as (pointer uint8) arg0)) (-> (the-as (pointer uint8) arg1)))
+      (&+! arg0 1)
+      (&+! arg1 1)
+      )
+    v0-0
+    )
+  )
+
+(defun quad-copy! ((dst pointer) (src pointer) (qwc int))
+  "Optimized memory copy. The original is pretty clever, but this isn't."
+  (qmem-copy<-! dst src (* qwc 16))
+  (none)
+  )
+
+(defun-recursive fact int ((x int))
+  (if (= x 1)
+      1
+      (* x (fact (+ x -1))))
+  )
+
+(define *print-column* (the-as binteger 0))
+
+(defun print ((arg0 object))
+  ((method-of-type (rtype-of arg0) print) arg0)
+  )
+
+(defun printl ((arg0 object))
+  (let ((a0-1 arg0))
+    ((method-of-type (rtype-of a0-1) print) a0-1)
+    )
+  (format #t "~%")
+  arg0
+  )
+
+(defun inspect ((arg0 object))
+  ((method-of-type (rtype-of arg0) inspect) arg0)
+  )
+
+(defun-debug mem-print ((arg0 (pointer uint32)) (arg1 int))
+  (dotimes (s4-0 (/ arg1 4))
+    (format
+      0
+      "~X: ~X ~X ~X ~X~%"
+      (&-> arg0 (* s4-0 4))
+      (-> arg0 (* s4-0 4))
+      (-> arg0 (+ (* s4-0 4) 1))
+      (-> arg0 (+ (* s4-0 4) 2))
+      (-> arg0 (+ (* s4-0 4) 3))
+      )
+    )
+  #f
+  )
+
+(define *trace-list* '())
+
+(defun print-tree-bitmask ((arg0 int) (arg1 int))
+  (dotimes (s4-0 arg1)
+    (if (zero? (logand arg0 1))
+        (format #t "    ")
+        (format #t "|   ")
+        )
+    (set! arg0 (shr arg0 1))
+    )
+  #f
+  )
+
+(defun breakpoint-range-set! ((arg0 uint) (arg1 uint) (arg2 uint))
+  (break!)
+  )
+
+;;;;;;;;;;;;;;;;;;;;
+;; Profiler Macros
+;;;;;;;;;;;;;;;;;;;;
+
+
+(defmacro profiler-instant-event (name)
+  "Record an 'instant' event in the profile.
+   This can be used however you'd like, but there should be a
+   'ROOT' event logged every now and then (like once per frame)
+   when no timed events are in progress, to allow the profiler
+   to correctly recover the event stack."
+  `(#when PC_PROFILER_ENABLE
+     (pc-prof ,name (pc-prof-event instant))
+     )
+  )
+
+(defmacro profiler-start-event (name)
+  "Start a timed event with the given name."
+  `(#when PC_PROFILER_ENABLE
+     (pc-prof ,name (pc-prof-event begin))
+     )
+  )
+
+(defmacro profiler-end-event ()
+  "End the most recently started event that hasn't been stopped yet.
+   It is up to you to correctly balance the starts/ends, otherwise
+   the profiling data will be corrupted."
+  `(#when PC_PROFILER_ENABLE
+     (pc-prof "" (pc-prof-event end))
+     )
+  )
+
+(defmacro with-profiler (name &rest body)
+  "Execute the body in a named profiler block.
+   Do not `return` or `go` from inside this block,
+   otherwise the end will be skipped."
+  `(#if PC_PROFILER_ENABLE
+        (begin
+          (pc-prof ,name (pc-prof-event begin))
+          ,@body
+          (pc-prof ,name (pc-prof-event end))
+          )
+        (begin
+          ,@body
+          )
+        )
+  )

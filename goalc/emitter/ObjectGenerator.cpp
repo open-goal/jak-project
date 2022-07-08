@@ -25,6 +25,8 @@
 
 namespace emitter {
 
+ObjectGenerator::ObjectGenerator(GameVersion version) : m_version(version) {}
+
 /*!
  * Build an object file with the v3 format.
  */
@@ -486,7 +488,17 @@ void ObjectGenerator::emit_link_type_pointer(int seg, const TypeSystem* ts) {
     out.push_back(0);
 
     // method count
-    out.push_back(ts->get_type_method_count(rec.first));
+    switch (m_version) {
+      case GameVersion::Jak1:
+        out.push_back(ts->get_type_method_count(rec.first));
+        break;
+      case GameVersion::Jak2:
+        // the linker/intern_type functions do the +3.
+        out.push_back(ts->get_type_method_count(rec.first) / 4);
+        break;
+      default:
+        ASSERT(false);
+    }
 
     // number of links
     push_data<u32>(size, out);

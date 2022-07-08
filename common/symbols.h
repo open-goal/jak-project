@@ -83,7 +83,7 @@ constexpr int FIX_FIXED_SYM_END_OFFSET = 0x1d0;
 
 namespace jak2_symbols {
 constexpr int FIX_SYM_EMPTY_CAR = -0x8;
-constexpr int FIX_SYM_EMPTY_PAIR = -0x6;
+constexpr int S7_OFF_FIX_SYM_EMPTY_PAIR = -0x6 - 1;
 constexpr int FIX_SYM_EMPTY_CDR = -0x4;
 constexpr int FIX_SYM_FALSE = 0x0;  // GOAL boolean #f (note that this is equal to the $s7 register)
 constexpr int FIX_SYM_TRUE = 0x4;   // GOAL boolean #t
@@ -169,6 +169,6 @@ constexpr int empty_pair_offset_from_s7(GameVersion version) {
       return jak1_symbols::FIX_SYM_EMPTY_PAIR;
     case GameVersion::Jak2:
       // minus 1 for the symbol table pointer's offset.
-      return jak2_symbols::FIX_SYM_EMPTY_PAIR - 1;
+      return jak2_symbols::S7_OFF_FIX_SYM_EMPTY_PAIR;
   }
 }

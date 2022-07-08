@@ -311,7 +311,7 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
 
   std::vector<PerObject> per_object;
 
-  DecompilerTypeSystem previous_game_ts;
+  DecompilerTypeSystem previous_game_ts(GameVersion::Jak1);  // version here doesn't matter.
   if (previous_game_types) {
     previous_game_ts.parse_type_defs({*previous_game_types});
   }
