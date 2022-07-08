@@ -22,6 +22,7 @@ class Sprite3 : public BucketRenderer {
   void render_distorter(DmaFollower& dma,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
+  int read_and_create_distort_sprites(DmaFollower& dma);
   void handle_sprite_frame_setup(DmaFollower& dma);
   void render_3d(DmaFollower& dma);
   void render_2d_group0(DmaFollower& dma,
@@ -89,6 +90,7 @@ class Sprite3 : public BucketRenderer {
   struct {
     GLuint vao;
     GLuint vertex_buffer;
+    GLuint index_buffer;
     GLuint fbo;
     GLuint fbo_texture;
     int fbo_width = 640;
@@ -96,6 +98,7 @@ class Sprite3 : public BucketRenderer {
   } m_distort_ogl;
 
   std::vector<SpriteDistortVertex> m_sprite_distorter_vertices;
+  std::vector<u32> m_sprite_distorter_indices;
   std::vector<SpriteDistortFrameData> m_sprite_distorter_frame_data;
   SpriteDistorterSetup m_sprite_distorter_setup;  // direct data
   SpriteDistorterSineTables m_sprite_distorter_sine_tables;
