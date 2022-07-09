@@ -213,7 +213,7 @@ void Sprite3::render_distorter(DmaFollower& dma,
   // Read DMA
   {
     auto prof_node = prof.make_scoped_child("dma");
-    distort_dma(dma);
+    distort_dma(dma, prof_node);
   }
 
   if (!m_enabled || !m_distort_enable) {
@@ -224,7 +224,7 @@ void Sprite3::render_distorter(DmaFollower& dma,
   // Setup vertex data
   {
     auto prof_node = prof.make_scoped_child("setup");
-    distort_setup();
+    distort_setup(prof_node);
   }
 
   // Draw
@@ -237,7 +237,7 @@ void Sprite3::render_distorter(DmaFollower& dma,
 /*!
  * Reads all sprite distort related DMA packets.
  */
-void Sprite3::distort_dma(DmaFollower& dma) {
+void Sprite3::distort_dma(DmaFollower& dma, ScopedProfilerNode& /*prof*/) {
   // First should be the GS setup
   auto sprite_distorter_direct_setup = dma.read_and_advance();
   ASSERT(sprite_distorter_direct_setup.vifcode0().kind == VifCode::Kind::NOP);
@@ -327,7 +327,7 @@ void Sprite3::distort_dma(DmaFollower& dma) {
 /*!
  * Sets up OpenGL data for each distort sprite.
  */
-void Sprite3::distort_setup() {
+void Sprite3::distort_setup(ScopedProfilerNode& /*prof*/) {
   m_distort_stats.total_tris = 0;
 
   m_sprite_distorter_vertices.clear();

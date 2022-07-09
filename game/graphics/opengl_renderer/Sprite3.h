@@ -22,8 +22,8 @@ class Sprite3 : public BucketRenderer {
   void render_distorter(DmaFollower& dma,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
-  void distort_dma(DmaFollower& dma);
-  void distort_setup();
+  void distort_dma(DmaFollower& dma, ScopedProfilerNode& prof);
+  void distort_setup(ScopedProfilerNode& prof);
   void distort_draw(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_sprite_frame_setup(DmaFollower& dma);
   void render_3d(DmaFollower& dma);
