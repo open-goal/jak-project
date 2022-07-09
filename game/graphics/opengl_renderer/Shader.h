@@ -43,6 +43,7 @@ enum class ShaderId {
   COLLISION = 18,
   MERC2 = 19,
   SPRITE_DISTORT = 20,
+  SPRITE_DISTORT_INSTANCED = 21,
   MAX_SHADERS
 };
 
