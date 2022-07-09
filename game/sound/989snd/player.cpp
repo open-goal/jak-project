@@ -285,4 +285,12 @@ void player::set_sound_pmod(s32 sound_handle, s32 mod) {
 
   handler->second->set_pmod(mod);
 }
+
+void player::stop_all_sounds() {
+  for (auto it = m_handlers.begin(); it != m_handlers.end();) {
+    m_handle_allocator.free_id(it->first);
+    it = m_handlers.erase(it);
+  }
+}
+
 }  // namespace snd

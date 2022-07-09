@@ -1,3 +1,6 @@
+#include <filesystem>
+#include <iostream>
+
 #include "player.h"
 
 #include "common/log/log.h"
@@ -7,22 +10,42 @@ int main(int argc, char* argv[]) {
   unsigned bankid = 0;
 
   fs::path file = argv[1];
+  bankid = player.load_bank(file, 0);
 
   if (argc > 2) {
-    bankid = player.load_bank(file, 0);
     unsigned sound = player.play_sound(bankid, atoi(argv[2]), 0x400, 0, 0, 0);
     lg::info("sound {} started", sound);
   }
 
+  printf("commands:\n");
+  printf(" play [id]\n");
+  printf(" stop\n");
+
   while (true) {
-#ifdef __linux
-    timespec rqtp{}, rmtp{};
-    rqtp.tv_nsec = 0;
-    rqtp.tv_sec = 1;
-    if (nanosleep(&rqtp, &rmtp) == -1) {
-      break;
+    printf("> ");
+    std::string command;
+    std::getline(std::cin, command);
+
+    std::stringstream ss(command);
+    std::string tmp;
+    std::vector<std::string> parts;
+
+    while (std::getline(ss, tmp, ' ')) {
+      parts.push_back(tmp);
     }
-#endif
+
+    if (parts[0] == "play") {
+      if (parts.size() < 2) {
+        printf("invalid args\n");
+      } else {
+        player.play_sound(bankid, std::atoi(parts[1].c_str()), 0x400, 0, 0, 0);
+      }
+    }
+
+    if (parts[0] == "stop") {
+      printf("stopping all sounds\n");
+      player.stop_all_sounds();
+    }
   }
 
   return 0;

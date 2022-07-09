@@ -53,6 +53,7 @@ class player {
   void init_cubeb();
   void destroy_cubeb();
   s32 get_tick() { return m_tick; };
+  void stop_all_sounds();
 
  private:
   std::recursive_mutex m_ticklock;  // TODO does not need to recursive with some light restructuring
