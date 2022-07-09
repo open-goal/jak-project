@@ -429,9 +429,17 @@ void Sprite3::distort_draw(SharedRenderState* render_state, ScopedProfilerNode& 
   glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_distort_ogl.fbo);
 
-  glBlitFramebuffer(0, 0, m_distort_ogl.fbo_width, m_distort_ogl.fbo_height, 0, 0,
-                    m_distort_ogl.fbo_width, m_distort_ogl.fbo_height, GL_COLOR_BUFFER_BIT,
-                    GL_NEAREST);
+  glBlitFramebuffer(render_state->window_offset_x_px,                                   // srcX0
+                    render_state->window_offset_y_px,                                   // srcY0
+                    render_state->window_width_px + render_state->window_offset_x_px,   // srcX1
+                    render_state->window_height_px + render_state->window_offset_y_px,  // srcY1
+                    0,                                                                  // dstX0
+                    0,                                                                  // dstY0
+                    m_distort_ogl.fbo_width,                                            // dstX1
+                    m_distort_ogl.fbo_height,                                           // dstY1
+                    GL_COLOR_BUFFER_BIT,                                                // mask
+                    GL_NEAREST                                                          // filter
+  ); 
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
