@@ -45,7 +45,8 @@ bool looks_like_distort_frame_data(const DmaFollower& dma) {
 }  // namespace
 
 constexpr int SPRITE_RENDERER_MAX_SPRITES = 8000;
-constexpr int SPRITE_RENDERER_MAX_DISTORT_SPRITES = 256;  // size of sprite-aux-list in GOAL code
+constexpr int SPRITE_RENDERER_MAX_DISTORT_SPRITES =
+    256 * 8;  // size of sprite-aux-list in GOAL code * SPRITE_MAX_AMOUNT_MULT
 
 Sprite3::Sprite3(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id), m_direct(name, my_id, 1024) {
