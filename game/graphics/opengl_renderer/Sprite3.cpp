@@ -170,7 +170,7 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id)
   );
   glEnableVertexAttribArray(1);
   glVertexAttribPointer(1,                                        // location 1 in the shader
-                        3,                                        // 2 floats per vert
+                        2,                                        // 2 floats per vert
                         GL_FLOAT,                                 // floats
                         GL_TRUE,                                  // normalized, ignored,
                         sizeof(SpriteDistortVertex),              //
