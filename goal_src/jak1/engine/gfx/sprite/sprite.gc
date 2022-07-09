@@ -87,6 +87,9 @@
 
 (defmethod new sprite-aux-list ((allocation symbol) (type-to-make type) (size int))
   "Allocate a sprite-aux-list with room for size 4-byte entries"
+  (#when PC_BIG_MEMORY
+    (*! size SPRITE_MAX_AMOUNT_MULT)
+    )
   (let ((v0-0 (object-new allocation type-to-make
                           (the-as int (+ (-> type-to-make size) (the-as uint (* (+ size -1) 4))))
                           )
@@ -117,7 +120,6 @@
   )
 
 (defun add-to-sprite-aux-list ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sprite-vec-data-3d))
-  (return 0) ;; hack
   (let ((v1-0 *sprite-aux-list*))
     (when (< (-> v1-0 entry) (-> v1-0 num-entries))
       (set! (-> v1-0 data (-> v1-0 entry)) (-> arg1 sprite))
