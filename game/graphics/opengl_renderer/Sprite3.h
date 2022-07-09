@@ -115,8 +115,8 @@ class Sprite3 : public BucketRenderer {
 
   struct {
     GLuint vao;
-    GLuint vertex_buffer; // contains vertex data for each possible sprite resolution (3-11)
-    GLuint instance_buffer; // contains all instance specific data for each sprite per frame
+    GLuint vertex_buffer;    // contains vertex data for each possible sprite resolution (3-11)
+    GLuint instance_buffer;  // contains all instance specific data for each sprite per frame
     int last_window_width = -1;
     int last_window_height = -1;
     bool vertex_data_changed = false;

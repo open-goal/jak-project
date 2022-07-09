@@ -155,8 +155,8 @@ void Sprite3::opengl_setup_distort() {
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
-                  GL_CLAMP_TO_EDGE);  // Clamp here matches the GS init data sent via DMA
+  // Texture clamping here matches the GS init data for distort
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
@@ -167,7 +167,8 @@ void Sprite3::opengl_setup_distort() {
   glBindTexture(GL_TEXTURE_2D, 0);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-  // Build vertex array
+  // Non-instancing
+  // ----------------------
   glGenBuffers(1, &m_distort_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_distort_ogl.vao);
   glBindVertexArray(m_distort_ogl.vao);
@@ -182,7 +183,7 @@ void Sprite3::opengl_setup_distort() {
   glVertexAttribPointer(0,                                         // location 0 in the shader
                         3,                                         // 3 floats per vert
                         GL_FLOAT,                                  // floats
-                        GL_FALSE,                                  // normalized, ignored,
+                        GL_FALSE,                                  // don't normalize, ignored
                         sizeof(SpriteDistortVertex),               //
                         (void*)offsetof(SpriteDistortVertex, xyz)  // offset in array
   );
@@ -190,7 +191,7 @@ void Sprite3::opengl_setup_distort() {
   glVertexAttribPointer(1,                                        // location 1 in the shader
                         2,                                        // 2 floats per vert
                         GL_FLOAT,                                 // floats
-                        GL_FALSE,                                 // normalized, ignored,
+                        GL_FALSE,                                 // don't normalize, ignored
                         sizeof(SpriteDistortVertex),              //
                         (void*)offsetof(SpriteDistortVertex, st)  // offset in array
   );
@@ -211,7 +212,8 @@ void Sprite3::opengl_setup_distort() {
   m_sprite_distorter_indices.resize(distort_idx_buffer_len);
   m_sprite_distorter_frame_data.resize(SPRITE_RENDERER_MAX_DISTORT_SPRITES);
 
-  // instancing
+  // Instancing
+  // ----------------------
   glGenVertexArrays(1, &m_distort_instanced_ogl.vao);
   glBindVertexArray(m_distort_instanced_ogl.vao);
 
@@ -232,7 +234,7 @@ void Sprite3::opengl_setup_distort() {
   glVertexAttribPointer(0,                                         // location 0 in the shader
                         3,                                         // 3 floats per vert
                         GL_FLOAT,                                  // floats
-                        GL_FALSE,                                  // normalized, ignored,
+                        GL_FALSE,                                  // don't normalize, ignored
                         sizeof(SpriteDistortVertex),               //
                         (void*)offsetof(SpriteDistortVertex, xyz)  // offset in array
   );
@@ -240,7 +242,7 @@ void Sprite3::opengl_setup_distort() {
   glVertexAttribPointer(1,                                        // location 1 in the shader
                         2,                                        // 2 floats per vert
                         GL_FLOAT,                                 // floats
-                        GL_FALSE,                                 // normalized, ignored,
+                        GL_FALSE,                                 // don't normalize, ignored
                         sizeof(SpriteDistortVertex),              //
                         (void*)offsetof(SpriteDistortVertex, st)  // offset in array
   );
