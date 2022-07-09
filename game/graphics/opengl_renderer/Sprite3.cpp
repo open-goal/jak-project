@@ -444,7 +444,7 @@ void Sprite3::distort_draw(SharedRenderState* render_state, ScopedProfilerNode& 
                     m_distort_ogl.fbo_height,                                           // dstY1
                     GL_COLOR_BUFFER_BIT,                                                // mask
                     GL_NEAREST                                                          // filter
-  ); 
+  );
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
