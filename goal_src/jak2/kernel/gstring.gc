@@ -158,6 +158,25 @@
 
 ;; definition for function name=
 ;; ERROR: function was not converted to expressions. Cannot decompile.
+(defun name= ((arg0 object) (arg1 object))
+  "Do arg0 and arg1 have the same name?
+   This can use either strings or symbols"
+  (cond
+    ((= arg0 arg1)
+     ;; Either same symbols, or same string objects, fast check pass!
+     #t)
+    ((and (= (rtype-of arg0) string) (= (rtype-of arg1) string))
+     (string= (the-as string arg0) (the-as string arg1))
+     )
+    ((and (= (rtype-of arg0) string) (= (rtype-of arg1) symbol))
+     (string= (the-as string arg0) (symbol->string arg1))
+     )
+    ((and (= (rtype-of arg1) string) (= (rtype-of arg0) symbol))
+     (string= (the-as string arg1) (symbol->string arg0))
+     )
+    ;; no need to check symbol - symbol, that would have passed the first check.
+    )
+  )
 
 
 (defun copyn-string<-charp ((arg0 string) (arg1 (pointer uint8)) (arg2 int))

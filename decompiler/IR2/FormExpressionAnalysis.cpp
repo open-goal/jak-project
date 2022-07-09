@@ -694,6 +694,15 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
   }
 }
 
+bool u64_valid_for_float_constant(u64 in) {
+  u32 top = in >> 32;
+  if (top == 0 || top == UINT32_MAX) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
                                                            FormPool& pool,
                                                            FormStack& stack,
@@ -724,12 +733,10 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
       auto frm = pool.alloc_sequence_form(nullptr, src_fes);
       if (src_fes.size() == 1) {
         auto int_constant = get_goal_integer_constant(frm, env);
-
-        if (int_constant && (*int_constant <= UINT32_MAX)) {
+        if (int_constant && u64_valid_for_float_constant(*int_constant)) {
           float flt;
 
           memcpy(&flt, &int_constant.value(), sizeof(float));
-
           result->push_back(pool.alloc_element<ConstantFloatElement>(flt));
           return;
         }

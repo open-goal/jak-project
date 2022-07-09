@@ -190,7 +190,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       }
       // new for jak 2:
       if (env.version == GameVersion::Jak2 && in_type.is_integer_constant() &&
-          in_type.get_integer_constant() <= UINT32_MAX) {
+          (s64)((s32)in_type.get_integer_constant()) == (s64)in_type.get_integer_constant()) {
         return TP_Type::make_from_ts("float");
       }
       return in_type;
@@ -407,6 +407,8 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
           return TP_Type::make_from_ts(TypeSpec("float"));
         }
         return TP_Type::make_from_ts(TypeSpec("int"));
+      } else {
+        return TP_Type::make_from_ts(TypeSpec("uint"));
       }
     } break;
 
