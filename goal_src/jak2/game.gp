@@ -174,3 +174,8 @@
    ,@(reverse *all-vag*)
    ,@(reverse *all-cgos*))
  )
+
+;; used for the type consistency test.
+(group-list "all-code"
+  `(,@(reverse *all-gc*))
+  )

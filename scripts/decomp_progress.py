@@ -50,7 +50,7 @@ def main():
     file_stats = []
     total_gc_files = 0
     excluded_files = {"game_dgos.gc", "all_files.gc", "goal-lib.gc", "ocean-trans-tables.gc", "ocean-frames.gc",
-                      "ocean-tables.gc"}
+                      "ocean-tables.gc", "kernel-defs.gc", "compiler-setup.gc"}
     modified = set()
 
     for fn in all_files:

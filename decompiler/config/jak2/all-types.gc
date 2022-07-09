@@ -14,6 +14,7 @@
 (define-extern integer type)
 (define-extern float type)
 (define-extern boolean type) ;; not actually added as a runtime type in jak2, but valid? supports it.
+(define-extern uint32 type)
 (define-extern int64 type)
 (define-extern uint64 type)
 (define-extern process-tree type)
@@ -162,7 +163,7 @@
 (define-extern *trace-list* pair)
 (define-extern print-tree-bitmask (function int int symbol))
 (define-extern breakpoint-range-set! (function uint uint uint int))
-(define-extern valid? (function object type basic basic object symbol))
+(define-extern valid? (function object type symbol symbol object symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gstring-h                      ;;
@@ -231,7 +232,7 @@
    (self process-tree :offset-assert 32)
    )
   (:methods
-    (new (symbol type basic) _type_ 0)
+    (new (symbol type string) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
     (deactivate  (_type_) none 10)
     (init-from-entity! (_type_ entity-actor) none 11) ;; todo check
@@ -254,7 +255,7 @@
    (relocating-min     int32         :offset-assert 32)
    (relocating-max     int32         :offset-assert 36)
    (relocating-offset  int32         :offset-assert 40)
-   (relocating-level   object        :offset-assert 44) ;; guessing here
+   (relocating-level   level         :offset-assert 44) ;; guessing here
    (low-memory-message symbol        :offset-assert 48) ;; guessed by decompiler
    (login-object       basic         :offset-assert 52)
    )
@@ -271,37 +272,37 @@
 
 
 (deftype clock (basic)
-  ((index                      int32          :offset-assert 4)
-   (mask                       uint32         :offset-assert 8)
-   (clock-ratio                float          :offset-assert 12)
-   (accum                      float          :offset-assert 16)
-   (integral-accum             float          :offset-assert 20)
-   (frame-counter              uint64         :offset-assert 24)
-   (old-frame-counter          uint64         :offset-assert 32)
-   (integral-frame-counter     uint64         :offset-assert 40)
-   (old-integral-frame-counter uint64         :offset-assert 48)
-   (sparticle-data             vector :inline :offset-assert 64)
-   (seconds-per-frame          float          :offset-assert 80)
-   (frames-per-second          float          :offset-assert 84)
-   (time-adjust-ratio          float          :offset-assert 88)
+  ((index                      int32          :offset-assert   4) ;; which clock we are, in *display*
+   (mask                       process-mask   :offset-assert   8) ;; mask for ticking
+   (clock-ratio                float          :offset-assert  12) ;; how fast to run. 1.0 = realtime.
+   (accum                      float          :offset-assert  16) ;; fractional time for frame-counter (time-frame units)
+   (integral-accum             float          :offset-assert  20) ;; fractional time for integral (time-frame untis)
+   (frame-counter              time-frame     :offset-assert  24) ;; how much time has gone by since reset (time-frame units)
+   (old-frame-counter          time-frame     :offset-assert  32) ;; the frame-counter on the last engine iteration
+   (integral-frame-counter     uint64         :offset-assert  40) ;; how many vsyncs have gone by since reset
+   (old-integral-frame-counter uint64         :offset-assert  48) ;; the integral-frame-counter on the last engine iteration
+   (sparticle-data             vector :inline :offset-assert  64) ;; sparticle timescale info
+   (seconds-per-frame          float          :offset-assert  80) ;; how many seconds (not time-frames) should go by in 1 vsync
+   (frames-per-second          float          :offset-assert  84) ;; inverse of above
+   (time-adjust-ratio          float          :offset-assert  88) ;; 1, if the game runs at 60fps NTSC with clock-ratio = 1.
    )
   :method-count-assert 15
   :size-assert         #x5c
   :flag-assert         #xf0000005c
   (:methods
     (new (symbol type int) _type_ 0)
-    (dummy-9 (_type_ float) none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
+    (update-rates! (_type_ float) none 9)
+    (advance-by! (_type_ float) none 10)
+    (tick! (_type_) none 11)
+    (save! (_type_ (pointer uint64)) int 12)
+    (load! (_type_ (pointer uint64)) int 13)
+    (reset! (_type_) none 14)
     )
   )
 
 
 (deftype thread (basic)
-  ((name         basic                       :offset-assert 4)
+  ((name         symbol                      :offset-assert 4)
    (process      process                     :offset-assert 8) ;; guessed by decompiler
    (previous     thread                      :offset-assert 12) ;; guessed by decompiler
    (suspend-hook (function cpu-thread none)  :offset-assert 16) ;; guessed by decompiler
@@ -349,7 +350,7 @@
   :flag-assert         #x1000000024
   ;; Failed to read fields.
   (:methods
-    (new (symbol type int int basic) _type_ 0)
+    (new (symbol type int int string) _type_ 0)
     (dummy-13 () none 13)
     (get-process (_type_ type int) process 14)
     (return-process (_type_ process) none 15)
@@ -388,7 +389,7 @@
   :flag-assert         #x1c00000068
   ;; Failed to read fields.
   (:methods
-    (new (symbol type basic int int) _type_ 0)
+    (new (symbol type string int int) _type_ 0)
     (init (_type_ symbol int) none 16)
     (compact (dead-pool-heap int) none 17)
     (shrink-heap (dead-pool-heap process) dead-pool-heap 18)
@@ -403,8 +404,6 @@
     (find-gap-by-size (dead-pool-heap int) dead-pool-heap-rec 27)
     )
   )
-
-
 
 (deftype stack-frame (basic)
   ((name symbol :offset 4)
@@ -500,7 +499,7 @@
 
 (deftype process (process-tree)
   ((pool dead-pool)
-   (status basic :offset-assert 40)
+   (status symbol :offset-assert 40)
    (pid int32)
    (main-thread cpu-thread :offset-assert 48)
    (top-thread cpu-thread :offset-assert 52)
@@ -518,28 +517,10 @@
    (heap-cur pointer :offset-assert 104)
    (stack-frame-top stack-frame :offset-assert 108)
    (connection-list connectable :inline :offset-assert 112)
-
-   ; (pool dead-pool :offset-assert 36)
-   ; (status basic :offset-assert 40)
-   ; (pid int32 :offset-assert 44)
-   ; (main-thread cpu-thread :offset-assert 48)
-   ; (top-thread thread :offset-assert 52)
-   ; (entity entity-actor :offset-assert 56)
-   ; (state state :offset-assert 60)
-   ; (trans-hook function :offset-assert 64)
-   ; (post-hook function :offset-assert 68)
-   ; (event-hook (function process int symbol event-message-block object) :offset-assert 72)
-   ; (allocated-length int32 :offset-assert 76)
-   ; (next-state state :offset-assert 80)
-   ; (heap-base pointer :offset-assert 84)
-   ; (heap-top pointer :offset-assert 88)
-   ; (heap-cur pointer :offset-assert 92)
-   ; (stack-frame-top stack-frame :offset-assert 96)
-   ; (connection-list connectable :inline :offset-assert 112) ;; can be a connection
    (stack uint8 :dynamic :offset-assert 128)
    )
   (:methods
-    (new (symbol type basic int) _type_ 0)
+    (new (symbol type string int) _type_ 0)
     )
   (:states
     dead-state
@@ -592,7 +573,7 @@
 (define-extern *global-search-name* basic)
 (define-extern *global-search-count* int)
 (define-extern process-by-name (function string process-tree process))
-(define-extern process-not-name (function object process-tree process))
+(define-extern process-not-name (function string process-tree process))
 (define-extern process-count (function process-tree int))
 (define-extern kill-by-name (function string process-tree symbol))
 (define-extern kill-by-type (function type process-tree symbol))
@@ -617,7 +598,7 @@
 (define-extern entity-deactivate-handler (function process entity-actor none))
 (define-extern *listener-process* process)
 (define-extern *null-process* process)
-(define-extern *vis-boot* basic)
+(define-extern *vis-boot* symbol)
 (define-extern *kernel-clock* clock)
 (define-extern *16k-dead-pool* dead-pool)
 (define-extern *8k-dead-pool* dead-pool)
@@ -779,6 +760,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; math                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype rgba (uint32)
+  ((r uint8 :offset 0)
+   (g uint8 :offset 8)
+   (b uint8 :offset 16)
+   (a uint8 :offset 24)
+   )
+  :flag-assert #x900000004
+  :no-runtime-type
+  )
 
 #|
 (deftype random-generator (basic)
@@ -2275,42 +2266,66 @@
 ;; timer-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum timer-clock-selection
+  :type uint8
+  (busclk 0)
+  (busclk/16 1)
+  (busclk/256 2)
+  (hblank 3)
+  )
+
+(deftype timer-mode (uint32)
+  ((clks  timer-clock-selection :offset 0 :size 2)
+   (gate  uint8 :offset 2 :size 1) ;; gate function enable
+   (gats  uint8 :offset 3 :size 1) ;; gate selection: 0 = hblank, 1 = vblank
+   ;; gate mode:
+   ;;  0: count while gate signal is low
+   ;;  1: start when gate signal rises
+   ;;  2: start when gate signal falls
+   ;;  3: start when gate signal rises/falls
+   (gatm  uint8 :offset 4 :size 2)
+   (zret  uint8 :offset 6 :size 1) ;; zero return: clear counter when equal to reference value
+   (cue   uint8 :offset 7 :size 1) ;; count-up enable
+   (cmpe  uint8 :offset 8 :size 1) ;; compare-interrupt enable
+   (ovfe  uint8 :offset 9 :size 1) ;; overflow-interrupt enable
+   (equf  uint8 :offset 10 :size 1) ;; equal-flag
+   (ovff  uint8 :offset 11 :size 1) ;; overflow-flag
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
 (deftype timer-bank (structure)
   ((count uint32      :offset-assert 0)
-   (mode  timer-mode  :offset-assert 16) ;; guessed by decompiler
-   (comp  uint32      :offset-assert 32)
+   (mode  timer-mode  :offset 16)
+   (comp  uint32      :offset 32)
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype timer-hold-bank (timer-bank)
-  ((hold uint32  :offset-assert 48)
+  ((hold uint32  :offset 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
 (deftype stopwatch (basic)
-  ((prev-time-elapsed uint64  :offset-assert 8) ;; time-frame
-   (start-time        uint64  :offset-assert 16) ;; time-frame
-   (begin-level       int32   :offset-assert 24)
+  ((prev-time-elapsed time-frame :offset-assert 8)
+   (start-time        time-frame :offset-assert 16)
+   (begin-level       int32      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-;; (define-extern *ticks-per-frame* object) ;; int
-;; (define-extern timer-init object) ;; (function timer-bank timer-mode int)
+(define-extern *ticks-per-frame* int)
+(define-extern timer-init (function timer-bank timer-mode int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vif-h                          ;;
@@ -2447,41 +2462,107 @@
   )
 |#
 
-#|
+(defenum dma-tag-id
+    :bitfield #f
+    :type uint8
+    (refe 0)      ;; addr=ADDR, ends after this transfer
+    (cnt 1)       ;; addr=after tag, next-tag=after data
+    (next 2)      ;; addr=after tag, next-tag=ADDR
+    (ref 3)       ;; addr=ADDR, next-tag=after tag
+    (refs 4)      ;; ref, but stall controled
+    (call 5)      ;;
+    (ret 6)       ;;
+    (end 7)       ;; next, but ends.
+    )
+
 (deftype dma-tag (uint64)
-  ()
+  ((qwc uint16    :offset 0)           ;; quadword count
+   (pce uint8     :offset 26 :size 2)  ;; priority (source mode)
+   (id dma-tag-id :offset 28 :size 3)  ;; ID (what the tag means)
+   (irq uint8     :offset 31 :size 1)  ;; interrupt at the end?
+   (addr uint32   :offset 32 :size 31) ;; address (31 bits)
+   (spr uint8     :offset 63 :size 1)  ;; spr or not flag.
+   )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
-  ;; Failed to read some fields.
   )
-|#
 
-#|
 (deftype dma-bucket (structure)
-  ((tag   uint64             :offset-assert 0) ;; dma-tag
-   (last  (pointer dma-tag)  :offset-assert 8) ;; guessed by decompiler
+  ((tag   dma-tag             :offset-assert 0)
+   (last  (pointer dma-tag)  :offset-assert 8)
    (dummy uint32             :offset-assert 12)
-   (next  uint32             :offset-assert 4)
-   (clear uint64             :offset-assert 8)
-   (vif0  uint32             :offset-assert 8)
-   (vif1  uint32             :offset-assert 12)
+   (next  uint32             :offset 4)
+   (clear uint64             :offset 8)
+   (vif0  uint32             :offset 8)
+   (vif1  uint32             :offset 12)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
+;; all these have mask (only applies to unpacks) and interrupt not set.
+(defenum vif-cmd
+    :bitfield #f
+    :type uint8
+    (nop          0)  ;; no-op, can still have irq set.
+    (stcycl       1)  ;; set write recycle register
+    (offset       2)  ;; set offset register
+    (base         3)  ;; set base register
+    (itop         4)  ;; set data pointer register (itops)
+    (stmod        5)  ;; set mode register
+    (mskpath3     6)  ;; set path 3 mask
+    (mark         7)  ;; set mark register
+    (pc-port      8)  ;; special tag for PC Port data.
+    (flushe       16) ;; wait for end of microprogram
+    (flush        17) ;; wait for end of microprogram and transfer (path1/path2)
+    (flusha       19) ;; wait for end of microprogram and transfer (path1/path2/path3)
+    (mscal        20) ;; activate microprogram (call)
+    (mscalf       21) ;; flushe and activate (call)
+    (mscnt        23) ;; activate microprogram (continue)
+    (stmask       32) ;; set MASK register.
+    (strow        48) ;; set filling data
+    (stcol        49) ;; set filling data
+    (mpg          74) ;; transfer microprogram
+    (direct       80) ;; straight to GIF.
+    (directhl     81)
+    (unpack-s-32  96)
+    (unpack-s-16  97)
+    (unpack-s-8   98)
+    ;; 99 is invalid
+    (unpack-v2-32 100)
+    (unpack-v2-16 101)
+    (unpack-v2-8  102)
+    ;; 103 is invalid
+    (unpack-v3-32 104)
+    (unpack-v3-16 105)
+    (unpack-v3-8  106)
+    ;; 107 is invalid
+    (unpack-v4-32 108)
+    (unpack-v4-16 109)
+    (unpack-v4-8  110)
+    (unpack-v4-5  111)
+    (cmd-mask     239) ;; not sure what this is
+    )
+
+(defenum vif-cmd-32
+    :bitfield #f
+    :type uint32
+    :copy-entries vif-cmd
+    )
+
 (deftype vif-tag (uint32)
-  ()
+  ((imm uint16  :offset 0 :size 16)
+   (num uint8   :offset 16 :size 8)
+   (cmd vif-cmd :offset 24 :size 7)
+   (irq uint8   :offset 31 :size 1)
+   (msk uint8   :offset 28 :size 1)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; Failed to read some fields.
   )
-|#
 
 ;; (define-extern dma-sync-fast object) ;; (function dma-bank none)
 ;; (define-extern dma-send-no-scratch object) ;; (function dma-bank uint32 uint32 none)
@@ -2555,7 +2636,6 @@
 ;; profile-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype profile-segment (structure)
   ((name       basic   :offset-assert 0)
    (start-time int16   :offset-assert 4)
@@ -2564,50 +2644,49 @@
    (vu-count   uint8   :offset-assert 9)
    (depth      uint16  :offset-assert 10)
    (color      uint32  :offset-assert 12)
-   (code-time  uint16  :offset-assert 4)
-   (vu-time    uint16  :offset-assert 6)
+   (code-time  uint16  :offset 4)
+   (vu-time    uint16  :offset 6)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
+
 (deftype profile-collapse (structure)
   ((count int32      :offset-assert 0)
-   (data  UNKNOWN 48 :offset-assert 4)
+   (data  profile-segment 48 :inline :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x304
   :flag-assert         #x900000304
   )
-|#
 
-#|
+
 (deftype profile-segment-array (basic)
   ((count     int16       :offset-assert 4)
    (depth     int8        :offset-assert 6)
    (max-depth int8        :offset-assert 7)
    (base-time int16       :offset-assert 8)
-   (segment   UNKNOWN 9   :offset-assert 12)
-   (data      UNKNOWN 512 :offset-assert 48)
+   (segment   basic 9   :offset-assert 12) ;; todo
+   (data      profile-segment 512 :inline :offset-assert 48)
    )
   :method-count-assert 13
   :size-assert         #x2030
   :flag-assert         #xd00002030
   (:methods
-    (dummy-9 () none 9)
+    (get-total-time (_type_) int 9)
     (dummy-10 () none 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     )
   )
-|#
 
-#|
+
+
 (deftype profile-array (structure)
-  ((data UNKNOWN 2 :offset-assert 0)
+  ((data profile-segment-array 2 :offset-assert 0) ;; guess
    )
   :method-count-assert 12
   :size-assert         #x8
@@ -2618,45 +2697,45 @@
     (dummy-11 () none 11)
     )
   )
-|#
 
-;; (define-extern *profile-gap-color* object)
-;; (define-extern *profile-all-color* object)
-;; (define-extern *profile-particles-color* object)
-;; (define-extern *profile-target-color* object)
-;; (define-extern *profile-target-post-color* object)
-;; (define-extern *profile-joints-color* object)
-;; (define-extern *profile-debug-color* object)
-;; (define-extern *profile-draw-hook-color* object)
-;; (define-extern *profile-sky-color* object)
-;; (define-extern *profile-ocean-color* object)
-;; (define-extern *profile-background-color* object)
-;; (define-extern *profile-bsp-color* object)
-;; (define-extern *profile-foreground-color* object)
-;; (define-extern *profile-tfrag-color* object)
-;; (define-extern *profile-instance-tie-color* object)
-;; (define-extern *profile-instance-shrubbery-color* object)
-;; (define-extern *profile-generic-tie-color* object)
-;; (define-extern *profile-bones-color* object)
-;; (define-extern *profile-generic-merc-color* object)
-;; (define-extern *profile-shadow-color* object)
-;; (define-extern *profile-update-actors-color* object)
-;; (define-extern *profile-menu-hook-color* object)
-;; (define-extern *profile-texture-color* object)
-;; (define-extern *profile-effects-color* object)
-;; (define-extern *profile-sprite-color* object)
-;; (define-extern *profile-merc-color* object)
-;; (define-extern *profile-actors-color* object)
-;; (define-extern *profile-collide-color* object)
-;; (define-extern *profile-nav-color* object)
-;; (define-extern *profile-camera-color* object)
-;; (define-extern *profile-blit-color* object)
-;; (define-extern *profile-hud-color* object)
-;; (define-extern *profile-emerc-color* object)
-;; (define-extern *profile-array* object)
-;; (define-extern *profile-collapse* object)
-;; (define-extern *profile-interrupt-segment* object)
-;; (define-extern *profile-interrupt-start* object)
+
+(define-extern *profile-gap-color* rgba)
+(define-extern *profile-all-color* rgba)
+(define-extern *profile-particles-color* rgba)
+(define-extern *profile-target-color* rgba)
+(define-extern *profile-target-post-color* rgba)
+(define-extern *profile-joints-color* rgba)
+(define-extern *profile-debug-color* rgba)
+(define-extern *profile-draw-hook-color* rgba)
+(define-extern *profile-sky-color* rgba)
+(define-extern *profile-ocean-color* rgba)
+(define-extern *profile-background-color* rgba)
+(define-extern *profile-bsp-color* rgba)
+(define-extern *profile-foreground-color* rgba)
+(define-extern *profile-tfrag-color* rgba)
+(define-extern *profile-instance-tie-color* rgba)
+(define-extern *profile-instance-shrubbery-color* rgba)
+(define-extern *profile-generic-tie-color* rgba)
+(define-extern *profile-bones-color* rgba)
+(define-extern *profile-generic-merc-color* rgba)
+(define-extern *profile-shadow-color* rgba)
+(define-extern *profile-update-actors-color* rgba)
+(define-extern *profile-menu-hook-color* rgba)
+(define-extern *profile-texture-color* rgba)
+(define-extern *profile-effects-color* rgba)
+(define-extern *profile-sprite-color* rgba)
+(define-extern *profile-merc-color* rgba)
+(define-extern *profile-actors-color* rgba)
+(define-extern *profile-collide-color* rgba)
+(define-extern *profile-nav-color* rgba)
+(define-extern *profile-camera-color* rgba)
+(define-extern *profile-blit-color* rgba)
+(define-extern *profile-hud-color* rgba)
+(define-extern *profile-emerc-color* rgba)
+(define-extern *profile-array* profile-array)
+(define-extern *profile-collapse* profile-collapse)
+(define-extern *profile-interrupt-segment* profile-segment-array)
+(define-extern *profile-interrupt-start* symbol)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dma                            ;;
@@ -2686,18 +2765,17 @@
 ;; dma-buffer                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+
 (deftype dma-packet (structure)
-  ((dma  uint64   :offset-assert 0) ;; dma-tag
-   (vif0 vif-tag  :offset-assert 8) ;; guessed by decompiler
-   (vif1 vif-tag  :offset-assert 12) ;; guessed by decompiler
-   (quad uint128  :offset-assert 0)
+  ((dma  dma-tag   :offset-assert 0)
+   (vif0 vif-tag   :offset-assert 8)
+   (vif1 vif-tag   :offset-assert 12)
+   (quad uint128   :offset        0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
 #|
 (deftype dma-packet-array (inline-array-class)
@@ -2709,41 +2787,37 @@
   )
 |#
 
-#|
 (deftype dma-gif (structure)
-  ((gif  UNKNOWN 2 :offset-assert 0)
-   (quad uint128   :offset-assert 0)
+  ((gif  uint64 2  :offset-assert 0)
+   (quad uint128   :offset        0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype dma-gif-packet (structure)
   ((dma-vif dma-packet :inline :offset-assert 0)
-   (gif     uint64     2       :offset-assert 16) ;; guessed by decompiler
-   (quad    uint128    2       :offset-assert 0) ;; guessed by decompiler
+   (gif     uint64     2       :offset-assert 16)
+   (quad    uint128    2       :offset        0)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+
 (deftype dma-buffer (basic)
   ((allocated-length int32     :offset-assert 4)
-   (base             pointer   :offset-assert 8) ;; guessed by decompiler
-   (end              pointer   :offset-assert 12) ;; guessed by decompiler
-   (data             uint64  1 :offset-assert 16) ;; guessed by decompiler
+   (base             pointer   :offset-assert 8)
+   (end              pointer   :offset-assert 12)
+   (data             uint64  1 :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
+
 
 ;; (define-extern dma-buffer-inplace-new object) ;; (function dma-buffer int dma-buffer)
 ;; (define-extern dma-buffer-length object) ;; (function dma-buffer int)
@@ -3140,14 +3214,13 @@
 ;; display-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype display-frame (basic)
   ((buffer        dma-buffer    11      :offset-assert 4) ;; guessed by decompiler
-   (calc-buf      dma-buffer            :offset-assert 8) ;; guessed by decompiler
-   (vu1-buf       dma-buffer            :offset-assert 8) ;; guessed by decompiler
-   (debug-buf     dma-buffer            :offset-assert 36) ;; guessed by decompiler
-   (global-buf    dma-buffer            :offset-assert 40) ;; guessed by decompiler
-   (bucket-group  dma-bucket            :offset-assert 44) ;; (inline-array dma-bucket)
+   (calc-buf      dma-buffer            :offset 8)
+   (vu1-buf       dma-buffer            :offset 8)
+   (debug-buf     dma-buffer            :offset 36)
+   (global-buf    dma-buffer            :offset 40)
+   (bucket-group  dma-bucket            :offset 44) ;; (inline-array dma-bucket)
    (profile-array profile-array :inline :offset-assert 48)
    (start-time    uint64                :offset-assert 56)
    (run-time      uint64                :offset-assert 64) ;; int64
@@ -3156,32 +3229,30 @@
   :size-assert         #x48
   :flag-assert         #x900000048
   )
-|#
 
-#|
 (deftype display (basic)
   ((on-screen            int32            :offset-assert 4)
    (last-screen          int32            :offset-assert 8)
-   (frames               virtual-frame 2  :offset-assert 12) ;; guessed by decompiler
+   (frames               display-frame 2  :offset-assert 12)
    (bgcolor              uint64           :offset-assert 24)
    (pmode                uint64           :offset-assert 32)
-   (clock                UNKNOWN       13 :offset-assert 40)
-   (session-clock        basic            :offset-assert 40)
-   (game-clock           basic            :offset-assert 44)
-   (base-clock           basic            :offset-assert 48)
-   (real-clock           basic            :offset-assert 52)
-   (frame-clock          basic            :offset-assert 56)
-   (real-frame-clock     basic            :offset-assert 60)
-   (target-clock         basic            :offset-assert 64)
-   (entity-clock         basic            :offset-assert 68)
-   (part-clock           basic            :offset-assert 72)
-   (bg-clock             basic            :offset-assert 76)
-   (camera-clock         basic            :offset-assert 80)
-   (user0-clock          basic            :offset-assert 84)
-   (total-game-clock     basic            :offset-assert 88)
+   (clock                clock         13 :offset-assert 40)
+   (session-clock        clock            :offset        40)
+   (game-clock           clock            :offset        44)
+   (base-clock           clock            :offset        48)
+   (real-clock           clock            :offset        52)
+   (frame-clock          clock            :offset        56)
+   (real-frame-clock     clock            :offset        60)
+   (target-clock         clock            :offset        64)
+   (entity-clock         clock            :offset        68)
+   (part-clock           clock            :offset        72)
+   (bg-clock             clock            :offset        76)
+   (camera-clock         clock            :offset        80)
+   (user0-clock          clock            :offset        84)
+   (total-game-clock     clock            :offset        88)
    (time-factor          float            :offset-assert 92)
    (dog-ratio            float            :offset-assert 96)
-   (vblank-start-time    UNKNOWN       2  :offset-assert 104)
+   (vblank-start-time    uint64        2  :offset-assert 104)
    (total-run-time       uint64           :offset-assert 120)
    (run-half-speed       basic            :offset-assert 128)
    (dog-count            float            :offset-assert 132)
@@ -3197,7 +3268,6 @@
     (dummy-9 () none 9) ;; (set-time-ratios (_type_ float) float 9)
     )
   )
-|#
 
 ;; (define-extern *pre-draw-hook* object) ;; (function object none)
 ;; (define-extern *post-draw-hook* object) ;; (function dma-buffer none)
@@ -3264,17 +3334,17 @@
 ;; timer                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern timer-count object) ;; (function timer-bank uint)
-;; (define-extern disable-irq object) ;; (function none)
-;; (define-extern enable-irq object) ;; (function none)
-;; (define-extern stopwatch-init object) ;; (function stopwatch int)
-;; (define-extern stopwatch-reset object) ;; (function stopwatch int)
-;; (define-extern stopwatch-start object) ;; (function stopwatch int)
-;; (define-extern stopwatch-stop object) ;; (function stopwatch none)
-;; (define-extern stopwatch-begin object) ;; (function stopwatch int)
-;; (define-extern stopwatch-end object) ;; (function stopwatch none)
-;; (define-extern stopwatch-elapsed-ticks object) ;; (function stopwatch time-frame)
-;; (define-extern stopwatch-elapsed-seconds object) ;; (function stopwatch float)
+(define-extern timer-count (function timer-bank uint))
+(define-extern disable-irq (function none))
+(define-extern enable-irq (function none))
+(define-extern stopwatch-init (function stopwatch int))
+(define-extern stopwatch-reset (function stopwatch int))
+(define-extern stopwatch-start (function stopwatch int))
+(define-extern stopwatch-stop (function stopwatch none))
+(define-extern stopwatch-begin (function stopwatch int))
+(define-extern stopwatch-end (function stopwatch none))
+(define-extern stopwatch-elapsed-ticks (function stopwatch time-frame))
+(define-extern stopwatch-elapsed-seconds (function stopwatch float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vector                         ;;
@@ -4823,7 +4893,7 @@
 ;; profile                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+
 (deftype profile-work (structure)
   ((sprite-tmpl dma-gif-packet :inline :offset-assert 0)
    (line-tmpl   dma-gif-packet :inline :offset-assert 32)
@@ -4833,14 +4903,13 @@
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-;; (define-extern *profile-work* object)
-;; (define-extern *profile-x* object) ;; int
-;; (define-extern *profile-y* object) ;; int
-;; (define-extern *profile-w* object) ;; int
-;; (define-extern *profile-h* object) ;; int
-;; (define-extern *profile-ticks* object) ;; symbol
+(define-extern *profile-work* profile-work)
+(define-extern *profile-x* int)
+(define-extern *profile-y* int)
+(define-extern *profile-w* int)
+(define-extern *profile-h* int)
+(define-extern *profile-ticks* symbol)
 ;; (define-extern profile-texture-test object)
 ;; (define-extern profile-tfrag-test object)
 ;; (define-extern profile-tie-test object)
@@ -4868,7 +4937,7 @@
 ;; (define-extern set-display-gs-state-offset object) ;; (function dma-buffer int int int int int int int dma-buffer)
 ;; (define-extern reset-display-gs-state object) ;; (function display dma-buffer int display)
 ;; (define-extern *vu0-dma-list* object) ;; dma-buffer
-;; (define-extern *display* object) ;; display
+(define-extern *display* display)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; connect                        ;;

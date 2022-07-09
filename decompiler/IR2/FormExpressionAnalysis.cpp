@@ -97,6 +97,18 @@ Form* try_cast_simplify(Form* in,
     return in;
   }
 
+  if (env.version == GameVersion::Jak2) {
+    if (new_type == TypeSpec("float")) {
+      auto ic = get_goal_integer_constant(in, env);
+      if (ic) {
+        ASSERT(*ic <= UINT32_MAX);
+        float f;
+        memcpy(&f, &ic.value(), sizeof(float));
+        return pool.form<ConstantFloatElement>(f);
+      }
+    }
+  }
+
   if (new_type == TypeSpec("meters")) {
     auto fc = get_goal_float_constant(in);
 

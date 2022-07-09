@@ -24,6 +24,23 @@
 ;; GOAL code to the frame profiler in C++.
 (defglobalconstant PC_PROFILER_ENABLE #t)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; GOAL language constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; distance from a symbol pointer to a (pointer string)
+;; this relies on the memory layout of the symbol table
+;; this must match SYM_TO_STRING_OFFSET in goal_constants.h
+(defconstant SYM_TO_STRING_OFFSET #xff37)
+
+(defmacro symbol->string (sym)
+  "Convert a symbol to a goal string."
+  `(-> (the-as (pointer string) (+ SYM_TO_STRING_OFFSET (the-as int ,sym))))
+  )
+
+;; pointers larger than this are invalid by valid?
+(defconstant END_OF_MEMORY #x8000000)
+
 (defun identity ((arg0 object))
   arg0
   )
@@ -168,6 +185,19 @@
           (-> obj w)
           obj)
   obj
+  )
+
+(deftype vector (structure)
+  ((data float   4 :offset-assert   0)
+   (x    float     :offset          0)
+   (y    float     :offset          4)
+   (z    float     :offset          8)
+   (w    float     :offset         12)
+   (quad uint128   :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
 
 (defmacro print128 (value &key (stream #t))
@@ -909,6 +939,208 @@
 
 (defun breakpoint-range-set! ((arg0 uint) (arg1 uint) (arg2 uint))
   (break!)
+  )
+
+(defmacro start-of-symbol-table ()
+  `(rlet ((st :reg r14 :reset-here #t :type uint))
+         (the uint (- st 32768))
+         )
+  )
+
+(defmacro end-of-symbol-table ()
+  `(rlet ((st :reg r14 :reset-here #t :type uint))
+         (the uint (+ st 32768))
+         )
+  )
+
+(define-extern boolean type) ;; not really... but they use it here as if it was one.
+(define-extern valid? (function object type symbol symbol object symbol))
+
+(defun valid? ((arg0 object) (arg1 type) (arg2 symbol) (arg3 symbol) (arg4 object))
+  (let ((v1-1
+          (and (>= (the-as uint arg0) (start-of-symbol-table)) (< (the-as uint arg0) END_OF_MEMORY))
+          )
+        )
+    (cond
+      ((not arg1)
+       (cond
+         ((logtest? (the-as int arg0) 3)
+          (if arg2
+              (format arg4 "ERROR: object #x~X ~S is not a valid object (misaligned)~%" arg0 arg2)
+              )
+          #f
+          )
+         ((not v1-1)
+          (if arg2
+              (format arg4 "ERROR: object #x~X ~S is not a valid object (bad address)~%" arg0 arg2)
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((and arg3 (not arg0))
+       #t
+       )
+      ((= arg1 structure)
+       (cond
+         ((logtest? (the-as int arg0) 15)
+          (if arg2
+              (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" arg0 arg2 arg1)
+              )
+          #f
+          )
+         ((or (not v1-1) (< (the-as uint arg0) (end-of-symbol-table)))
+          (if arg2
+              (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" arg0 arg2 arg1)
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((= arg1 pair)
+       (cond
+         ((not (pair? arg0))
+          (if arg2
+              (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" arg0 arg2 arg1)
+              )
+          #f
+          )
+         ((not v1-1)
+          (if arg2
+              (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" arg0 arg2 arg1)
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((= arg1 binteger)
+       (cond
+         ((zero? (logand (the-as int arg0) 7))
+          #t
+          )
+         (else
+           (if arg2
+               (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" arg0 arg2 arg1)
+               )
+           #f
+           )
+         )
+       )
+      ((or (= arg1 symbol) (= arg1 boolean))
+       (cond
+         ((zero? (logand (the-as int arg0) 1))
+          (if arg2
+              (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" arg0 arg2 arg1)
+              )
+          #f
+          )
+         ((or (not v1-1) (< (the-as int arg0) (start-of-symbol-table))(>= (the-as int arg0) (end-of-symbol-table)))
+          (if arg2
+              (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" arg0 arg2 arg1)
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((!= (logand (the-as int arg0) 7) 4)
+       (if arg2
+           (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" arg0 arg2 arg1)
+           )
+       #f
+       )
+      ((not v1-1)
+       (if arg2
+           (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" arg0 arg2 arg1)
+           )
+       #f
+       )
+      ((and (= arg1 type) (!= (rtype-of arg0) type))
+       (if arg2
+           (format
+             arg4
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
+             arg0
+             arg2
+             arg1
+             (rtype-of arg0)
+             )
+           )
+       #f
+       )
+      ((and (!= arg1 type) (not (valid? (rtype-of arg0) type #f #t 0)))
+       (if arg2
+           (format
+             arg4
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
+             arg0
+             arg2
+             arg1
+             (rtype-of arg0)
+             )
+           )
+       #f
+       )
+      ((not (type? arg0 arg1))
+       (if arg2
+           (format
+             arg4
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (is type '~A' instead)~%"
+             arg0
+             arg2
+             arg1
+             (rtype-of arg0)
+             )
+           )
+       #f
+       )
+      ((= arg1 symbol)
+       (cond
+         ((>= (the-as uint arg0) (end-of-symbol-table))
+          (if arg2
+              (format
+                arg4
+                "ERROR: object #x~X ~S is not a valid object of type '~A' (not in symbol table)~%"
+                arg0
+                arg2
+                arg1
+                )
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((< (the-as uint arg0) (end-of-symbol-table))
+       (if arg2
+           (format
+             arg4
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (inside symbol table)~%"
+             arg0
+             arg2
+             arg1
+             )
+           )
+       #f
+       )
+      (else
+        #t
+        )
+      )
+    )
   )
 
 ;;;;;;;;;;;;;;;;;;;;

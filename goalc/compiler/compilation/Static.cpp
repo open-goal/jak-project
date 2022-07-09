@@ -139,7 +139,8 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
                              deref_info.sign_extend);
       }
 
-    } else if (is_structure(field_info.type) || is_pair(field_info.type)) {
+    } else if (is_structure(field_info.type) || is_pair(field_info.type) ||
+               is_symbol(field_info.type)) {
       if (is_pair(field_info.type)) {
         ASSERT(!field_info.field.is_inline());
       }

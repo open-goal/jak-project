@@ -5,3 +5,89 @@
 ;; name in dgo: timer-h
 ;; dgos: ENGINE, GAME
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PC Port Timer
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmacro get-cpu-clock ()
+  "Read the 300 MHz clock."
+  ;; __read-ee-timer is a 300 MHz timer from the C Kernel.
+  ;; it's a real timer.
+  `(the uint (logand #xffffffff (__read-ee-timer)))
+  )
+
+(defmacro get-bus-clock/256 ()
+  "Read the 150 MHz / 256 clock."
+  ;; 300 MHz / (2^9)
+  `(the uint (logand #xffffffff (shr (__read-ee-timer) 9)))
+  )
+
+(#when PC_PORT
+  ;; the bus clock can be reset, which just stores the current count here.
+  (define *timer-reset-value* (the uint 0))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Timer HW
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype timer-mode (uint32)
+  ((clks timer-clock-selection :offset   0 :size   2)
+   (gate uint8                 :offset   2 :size   1)
+   (gats uint8                 :offset   3 :size   1)
+   (gatm uint8                 :offset   4 :size   2)
+   (zret uint8                 :offset   6 :size   1)
+   (cue  uint8                 :offset   7 :size   1)
+   (cmpe uint8                 :offset   8 :size   1)
+   (ovfe uint8                 :offset   9 :size   1)
+   (equf uint8                 :offset  10 :size   1)
+   (ovff uint8                 :offset  11 :size   1)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype timer-bank (structure)
+  ((count uint32      :offset-assert   0)
+   (mode  timer-mode  :offset         16)
+   (comp  uint32      :offset         32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+(deftype timer-hold-bank (timer-bank)
+  ((hold uint32  :offset  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+(deftype stopwatch (basic)
+  ((prev-time-elapsed time-frame  :offset-assert   8)
+   (start-time        time-frame  :offset-assert  16)
+   (begin-level       int32       :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+(define *ticks-per-frame* 9765)
+
+(defun timer-init ((arg0 timer-bank) (arg1 timer-mode))
+  (set! (-> arg0 mode) arg1)
+  (set! (-> arg0 count) (the-as uint 0))
+  0
+  )
+
+(#unless PC_PORT
+         (timer-init
+           (the-as timer-bank #x10000800)
+           (new 'static 'timer-mode :clks (timer-clock-selection busclk/256) :cue #x1)
+           )
+         )
+
+
