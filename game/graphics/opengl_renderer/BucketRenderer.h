@@ -59,6 +59,8 @@ struct SharedRenderState {
 
   int window_width_px;
   int window_height_px;
+  int window_offset_x_px;
+  int window_offset_y_px;
 };
 
 /*!
