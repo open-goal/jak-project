@@ -131,6 +131,7 @@ class Sprite3 : public BucketRenderer {
 
   bool m_2d_enable = true;
   bool m_3d_enable = true;
+  bool m_distort_enable = true;
 
   struct SpriteVertex3D {
     math::Vector4f xyz_sx;              // position + x scale

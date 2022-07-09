@@ -215,6 +215,11 @@ void Sprite3::render_distorter(DmaFollower& dma,
     distort_dma(dma);
   }
 
+  if (!m_enabled || !m_distort_enable) {
+    // Distort disabled, we can stop here since all the DMA has been read
+    return;
+  }
+
   // Setup vertex data
   {
     auto prof_node = prof.make_scoped_child("setup");
@@ -754,6 +759,7 @@ void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
 
 void Sprite3::draw_debug_window() {
   ImGui::Separator();
+  ImGui::Text("Distort sprites: %d", m_distort_stats.total_sprites);
   ImGui::Text("2D Group 0 (World) blocks: %d sprites: %d", m_debug_stats.blocks_2d_grp0,
               m_debug_stats.count_2d_grp0);
   ImGui::Text("2D Group 1 (HUD) blocks: %d sprites: %d", m_debug_stats.blocks_2d_grp1,
@@ -762,6 +768,7 @@ void Sprite3::draw_debug_window() {
   ImGui::Checkbox("2d", &m_2d_enable);
   ImGui::SameLine();
   ImGui::Checkbox("3d", &m_3d_enable);
+  ImGui::Checkbox("Distort", &m_distort_enable);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
