@@ -4,6 +4,7 @@
 ;; name: hud-classes.gc
 ;; name in dgo: hud-classes
 ;; dgos: GAME, ENGINE
+;; note: changed for high fps
 
 ;; DECOMP BEGINS
 
@@ -296,9 +297,12 @@
      )
     (else
       (let ((f0-3 128.0))
+        ;; low health flashing
+        ;; modified to support high fps
         (when (and *target* (= (-> *target* fact-info-target health) 1.0))
-          (let ((v1-16 (logand (-> *display* integral-frame-counter) 7)))
-            (set! f0-3 (if (zero? (logand (-> *display* integral-frame-counter) 8))
+          (let* ((scaled-frame-counter (the int (* DISPLAY_FPS_RATIO (-> *display* integral-frame-counter))))
+                 (v1-16 (logand scaled-frame-counter 7)))
+            (set! f0-3 (if (zero? (logand scaled-frame-counter 8))
                            (+ 128.0 (* 18.142857 (the float v1-16)))
                            (- 255.0 (* 18.142857 (the float v1-16)))
                            )
@@ -1634,7 +1638,9 @@
         )
       )
     )
-  (if (and (< 0.0 arg1) (and (< arg1 0.2) (zero? (logand (-> *display* integral-frame-counter) 4))))
+  ;; low eco flashing
+  ;; modified to support high fps
+  (if (and (< 0.0 arg1) (and (< arg1 0.2) (zero? (logand (the int (* DISPLAY_FPS_RATIO (-> *display* integral-frame-counter))) 4))))
       (set! arg3 (* arg3 2))
       )
   (set! (-> arg5 pos y) (the float arg2))
