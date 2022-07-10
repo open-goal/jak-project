@@ -3,6 +3,8 @@
  * Main for the game. Launches the runtime.
  */
 
+#define STBI_WINDOWS_UTF8
+
 #include <string>
 
 #include "runtime.h"
