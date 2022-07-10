@@ -18,14 +18,10 @@
 #include "decompiler/level_extractor/extract_level.h"
 
 int main(int argc, char** argv) {
-#ifdef _WIN32
-  auto args = get_widechar_cli_args();
-  std::vector<char*> string_ptrs;
-  for (auto& str : args) {
-    string_ptrs.push_back(str.data());
+  fs::u8arguments u8guard(argc, argv);
+  if (!u8guard.valid()) {
+    exit(EXIT_FAILURE);
   }
-  argv = string_ptrs.data();
-#endif
 
   Timer decomp_timer;
 

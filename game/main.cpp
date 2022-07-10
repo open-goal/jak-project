@@ -3,6 +3,8 @@
  * Main for the game. Launches the runtime.
  */
 
+#define STBI_WINDOWS_UTF8
+
 #include <string>
 
 #include "runtime.h"
@@ -40,14 +42,13 @@ void setup_logging(bool verbose) {
  * Entry point for the game.
  */
 int main(int argc, char** argv) {
-#ifdef _WIN32
-  auto args = get_widechar_cli_args();
-  std::vector<char*> string_ptrs;
-  for (auto& str : args) {
-    string_ptrs.push_back(str.data());
+  fs::u8arguments u8guard(argc, argv);
+  if (!u8guard.valid()) {
+    exit(EXIT_FAILURE);
   }
-  argv = string_ptrs.data();
-#endif
+
+  // TODO - replace with CLI11 and just propagate args through
+  // - https://github.com/CLIUtils/CLI11/issues/744
 
   // Figure out if the CPU has AVX2 to enable higher performance AVX2 versions of functions.
   setup_cpu_info();
@@ -125,17 +126,21 @@ int main(int argc, char** argv) {
 
     // run the runtime in a loop so we can reset the game and have it restart cleanly
     lg::info("OpenGOAL Runtime {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
-    auto exit_status = exec_runtime(ptrs.size(), ptrs.data());
-
-    switch (exit_status) {
-      case RuntimeExitStatus::EXIT:
-        return 0;
-      case RuntimeExitStatus::RESTART_RUNTIME:
-      case RuntimeExitStatus::RUNNING:
-        break;
-      case RuntimeExitStatus::RESTART_IN_DEBUG:
-        force_debug_next_time = true;
-        break;
+    try {
+      auto exit_status = exec_runtime(ptrs.size(), ptrs.data());
+      switch (exit_status) {
+        case RuntimeExitStatus::EXIT:
+          return 0;
+        case RuntimeExitStatus::RESTART_RUNTIME:
+        case RuntimeExitStatus::RUNNING:
+          break;
+        case RuntimeExitStatus::RESTART_IN_DEBUG:
+          force_debug_next_time = true;
+          break;
+      }
+    } catch (std::exception& ex) {
+      lg::error("Unexpected exception occurred - {}", ex.what());
+      throw ex;
     }
   }
   return 0;

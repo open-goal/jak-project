@@ -19,14 +19,11 @@
 // to make it easier to test a subset of tests
 
 int main(int argc, char** argv) {
-#ifdef _WIN32
-  auto args = get_widechar_cli_args();
-  std::vector<char*> string_ptrs;
-  for (auto& str : args) {
-    string_ptrs.push_back(str.data());
+  fs::u8arguments u8guard(argc, argv);
+  if (!u8guard.valid()) {
+    std::cerr << "Bad encoding, needs UTF-8." << std::endl;
+    exit(EXIT_FAILURE);
   }
-  argv = string_ptrs.data();
-#endif
 
   // hopefully get a debug print on github actions
   setup_cpu_info();
