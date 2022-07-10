@@ -269,8 +269,10 @@ typedef enum
 // xinput.dll function pointer typedefs
 typedef DWORD (WINAPI * PFN_XInputGetCapabilities)(DWORD,DWORD,XINPUT_CAPABILITIES*);
 typedef DWORD (WINAPI * PFN_XInputGetState)(DWORD,XINPUT_STATE*);
+typedef DWORD (WINAPI * PFN_XInputSetState)(DWORD,XINPUT_VIBRATION*);
 #define XInputGetCapabilities _glfw.win32.xinput.GetCapabilities
 #define XInputGetState _glfw.win32.xinput.GetState
+#define XInputSetState _glfw.win32.xinput.SetState
 
 // dinput8.dll function pointer typedefs
 typedef HRESULT (WINAPI * PFN_DirectInput8Create)(HINSTANCE,DWORD,REFIID,LPVOID*,LPUNKNOWN);
@@ -461,6 +463,7 @@ typedef struct _GLFWlibraryWin32
         HINSTANCE                       instance;
         PFN_XInputGetCapabilities       GetCapabilities;
         PFN_XInputGetState              GetState;
+        PFN_XInputSetState              SetState;
     } xinput;
 
     struct {

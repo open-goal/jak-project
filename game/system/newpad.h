@@ -91,5 +91,6 @@ void input_mode_pad_set(s64);
 
 void initialize();
 void update_gamepads();
+int rumble(int pad, float slow_motor, float fast_motor);
 
 }  // namespace Pad

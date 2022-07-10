@@ -9,6 +9,8 @@
 
 #include "Env.h"
 
+#include "common/versions.h"
+
 #include "goalc/emitter/ObjectGenerator.h"
 
 class DebugInfo;
@@ -16,7 +18,7 @@ class TypeSystem;
 
 class CodeGenerator {
  public:
-  CodeGenerator(FileEnv* env, DebugInfo* debug_info);
+  CodeGenerator(FileEnv* env, DebugInfo* debug_info, GameVersion version);
   std::vector<u8> run(const TypeSystem* ts);
   emitter::ObjectGeneratorStats get_obj_stats() const { return m_gen.get_stats(); }
 

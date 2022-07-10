@@ -87,6 +87,7 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::SHADOW) = {"shadow"};
   at(ShaderId::COLLISION) = {"collision"};
   at(ShaderId::MERC2) = {"merc2"};
+  at(ShaderId::SPRITE_DISTORT) = {"sprite_distort"};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "Shader compiled");

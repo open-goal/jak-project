@@ -171,8 +171,10 @@ uint32_t symlink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
     if (*data_ptr == -1) {
       // a "-1" indicates that we should store the address.
       *(data + offset).cast<int32_t>() = sym_addr;
+    } else if (*(data_ptr.cast<u32>()) == LINK_SYM_NO_OFFSET_FLAG) {
+      *(data + offset).cast<int32_t>() = sym_offset - 1;
     } else {
-      // otherwise store the offset to st.  Eventually this should become an s16 instead.
+      // otherwise store the offset to st.
       *(data + offset).cast<int32_t>() = sym_offset;
     }
   }

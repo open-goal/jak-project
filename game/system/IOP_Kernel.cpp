@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "common/util/Assert.h"
+#include <common/util/FileUtil.h>
 
 #include "game/sce/iop.h"
 
@@ -299,7 +300,7 @@ void IOP_Kernel::rpc_loop(iop::sceSifQueueData* qd) {
 
 void IOP_Kernel::read_disc_sectors(u32 sector, u32 sectors, void* buffer) {
   if (!iso_disc_file) {
-    iso_disc_file = fopen("./disc.iso", "rb");
+    iso_disc_file = file_util::open_file("./disc.iso", "rb");
   }
 
   ASSERT(iso_disc_file);

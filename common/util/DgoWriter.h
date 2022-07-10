@@ -5,7 +5,6 @@
  * Create a DGO from existing files.
  */
 
-#include <filesystem>
 #include <string>
 #include <vector>
 

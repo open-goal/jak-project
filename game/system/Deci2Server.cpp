@@ -66,11 +66,20 @@ bool Deci2Server::is_client_connected() {
  * Wait for protocols to become ready.
  * This avoids the case where we receive messages before protocol handlers are set up.
  */
-void Deci2Server::wait_for_protos_ready() {
-  if (protocols_ready)
-    return;
+bool Deci2Server::wait_for_protos_ready() {
+  if (protocols_ready || want_shutdown) {
+    return !want_shutdown;
+  }
   std::unique_lock<std::mutex> lk(server_mutex);
-  cv.wait(lk, [&] { return protocols_ready; });
+  cv.wait(lk, [&] { return protocols_ready || want_shutdown; });
+  return !want_shutdown;
+}
+
+void Deci2Server::send_shutdown() {
+  lock();
+  want_shutdown = true;
+  unlock();
+  cv.notify_all();
 }
 
 /*!

@@ -125,6 +125,7 @@ std::string register_address_name(u32 reg);
 
 struct GsZbuf {
   GsZbuf(u64 val) : data(val) {}
+  GsZbuf() = default;
 
   u32 zbp() const { return data & 0b1'1111'1111; }
 

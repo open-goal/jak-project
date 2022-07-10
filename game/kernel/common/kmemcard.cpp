@@ -117,8 +117,7 @@ u32 mc_checksum(Ptr<u8> data, s32 size) {
  */
 bool file_is_present(int id, int bank = 0) {
   auto bankname = file_util::get_user_memcard_dir() / filename[4 + id * 2 + bank];
-  if (!std::filesystem::exists(bankname) ||
-      std::filesystem::file_size(bankname) < BANK_TOTAL_SIZE) {
+  if (!fs::exists(bankname) || fs::file_size(bankname) < BANK_TOTAL_SIZE) {
     // file doesn't exist, or size is bad. we do not want to open files that will crash on read!
     return false;
   }
@@ -130,7 +129,7 @@ bool file_is_present(int id, int bank = 0) {
   // file exists. but let's see if it's an empty one.
   // this prevents the game from reading a bank but classifying it as corrupt data.
   // which a file full of zeros logically is.
-  auto fp = fopen(bankname.c_str(), "rb");
+  auto fp = file_util::open_file(bankname.c_str(), "rb");
 
   // we can actually just check if the save count is over zero...
   u32 savecount = 0;
@@ -214,7 +213,7 @@ void pc_game_save_synch() {
   mc_print("open {} for saving", filename[op.param2 * 2 + 4 + p4]);
   auto save_path = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p4];
   file_util::create_dir_if_needed_for_file(save_path.string());
-  auto fd = fopen(save_path.string().c_str(), "wb");
+  auto fd = file_util::open_file(save_path.string().c_str(), "wb");
   mc_print("synchronous save file open took {:.2f}ms\n", mc_timer.getMs());
   if (fd) {
     // cb_openedsave //
@@ -282,12 +281,12 @@ void pc_game_load_open_file(FILE* fd) {
       if (fclose(fd) == 0) {
         // cb_closedload //
         // added : check if aux bank exists
-        if (p2 < 1 && std::filesystem::exists(file_util::get_user_memcard_dir() /
-                                              filename[op.param2 * 2 + 4 + p2 + 1])) {
+        if (p2 < 1 &&
+            fs::exists(file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p2 + 1])) {
           p2++;
           mc_print("reading next save bank {}", filename[op.param2 * 2 + 4 + p2]);
           auto new_bankname = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p2];
-          auto new_fd = fopen(new_bankname.string().c_str(), "rb");
+          auto new_fd = file_util::open_file(new_bankname.string().c_str(), "rb");
           pc_game_load_open_file(new_fd);
         } else {
           // let's verify the data.
@@ -404,7 +403,7 @@ void pc_game_load_synch() {
   mc_print("opening save file {}", filename[op.param2 * 2 + 4]);
 
   auto path = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4];
-  auto fd = fopen(path.string().c_str(), "rb");
+  auto fd = file_util::open_file(path.string().c_str(), "rb");
   pc_game_load_open_file(fd);
 
   mc_print("synchronous load took {:.2f}ms\n", mc_timer.getMs());

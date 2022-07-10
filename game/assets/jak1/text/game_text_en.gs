@@ -86,6 +86,18 @@
         "FIT TO SCREEN")
 (#x103b "V-SYNC"
         "V-SYNC")
+(#x103c "4X3 (PS2)"
+        "4X3 (PS2)")
+(#x103d "16X9 (PS2)"
+        "16X9 (PS2)")
+(#x103e "~DX~D"
+        "~DX~D")
+(#x103f "PRESS <PAD_SQUARE> TO TOGGLE SUBTITLES"
+        "PRESS <PAD_SQUARE> TO TOGGLE SUBTITLES")
+(#x1040 "SUBTITLES ENABLED"
+        "SUBTITLES ENABLED")
+(#x1041 "SUBTITLES DISABLED"
+        "SUBTITLES DISABLED")
 
 (#x1050 "MSAA"
         "MSAA")

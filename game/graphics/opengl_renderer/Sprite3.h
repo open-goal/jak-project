@@ -22,6 +22,9 @@ class Sprite3 : public BucketRenderer {
   void render_distorter(DmaFollower& dma,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
+  void distort_dma(DmaFollower& dma, ScopedProfilerNode& prof);
+  void distort_setup(ScopedProfilerNode& prof);
+  void distort_draw(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_sprite_frame_setup(DmaFollower& dma);
   void render_3d(DmaFollower& dma);
   void render_2d_group0(DmaFollower& dma,
@@ -37,6 +40,7 @@ class Sprite3 : public BucketRenderer {
                        SharedRenderState* render_state,
                        ScopedProfilerNode& prof);
 
+  void update_mode_from_alpha1(u64 val, DrawMode& mode);
   void handle_tex0(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_tex1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   // void handle_mip(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
@@ -46,7 +50,67 @@ class Sprite3 : public BucketRenderer {
 
   void flush_sprites(SharedRenderState* render_state, ScopedProfilerNode& prof, bool double_draw);
 
-  u8 m_sprite_distorter_setup[7 * 16];  // direct data
+  struct SpriteDistorterSetup {
+    GifTag gif_tag;
+    GsZbuf zbuf;
+    u64 zbuf_addr;
+    GsTex0 tex0;
+    u64 tex0_addr;
+    GsTex1 tex1;
+    u64 tex1_addr;
+    u64 miptbp;
+    u64 miptbp_addr;
+    u64 clamp;
+    u64 clamp_addr;
+    GsAlpha alpha;
+    u64 alpha_addr;
+  };
+  static_assert(sizeof(SpriteDistorterSetup) == (7 * 16));
+
+  struct SpriteDistorterSineTables {
+    Vector4f entry[128];
+    math::Vector<u32, 4> ientry[9];
+    GifTag gs_gif_tag;
+    math::Vector<u32, 4> color;
+  };
+  static_assert(sizeof(SpriteDistorterSineTables) == (0x8b * 16));
+
+  struct SpriteDistortFrameData {
+    math::Vector3f xyz;  // position
+    float num_255;       // always 255.0
+    math::Vector2f st;   // texture coords
+    float num_1;         // always 1.0
+    u32 flag;            // 'resolution' of the sprite
+    Vector4f rgba;       // ? (doesn't seem to be color)
+  };
+  static_assert(sizeof(SpriteDistortFrameData) == 16 * 3);
+
+  struct SpriteDistortVertex {
+    math::Vector3f xyz;
+    math::Vector2f st;
+  };
+
+  struct {
+    GLuint vao;
+    GLuint vertex_buffer;
+    GLuint index_buffer;
+    GLuint fbo;
+    GLuint fbo_texture;
+    int fbo_width = 640;
+    int fbo_height = 480;
+  } m_distort_ogl;
+
+  struct {
+    int total_sprites;
+    int total_tris;
+  } m_distort_stats;
+
+  std::vector<SpriteDistortVertex> m_sprite_distorter_vertices;
+  std::vector<u32> m_sprite_distorter_indices;
+  SpriteDistorterSetup m_sprite_distorter_setup;  // direct data
+  SpriteDistorterSineTables m_sprite_distorter_sine_tables;
+  std::vector<SpriteDistortFrameData> m_sprite_distorter_frame_data;
+
   u8 m_sprite_direct_setup[3 * 16];
   SpriteFrameData m_frame_data;  // qwa: 980
   Sprite3DMatrixData m_3d_matrix_data;
@@ -67,6 +131,7 @@ class Sprite3 : public BucketRenderer {
 
   bool m_2d_enable = true;
   bool m_3d_enable = true;
+  bool m_distort_enable = true;
 
   struct SpriteVertex3D {
     math::Vector4f xyz_sx;              // position + x scale

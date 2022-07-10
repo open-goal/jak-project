@@ -1,6 +1,5 @@
 #include <chrono>
 #include <cstdio>
-#include <filesystem>
 #include <iostream>
 #include <random>
 #include <regex>
@@ -25,7 +24,7 @@
 class WithGameTests : public ::testing::Test {
  public:
   static void SetUpTestSuite() {
-    shared_compiler = std::make_unique<SharedCompiler>();
+    shared_compiler = std::make_unique<SharedCompiler>(GameVersion::Jak1);
     try {
       shared_compiler->compiler.run_test_no_load(
           "test/goalc/source_templates/with_game/test-build-game.gc");
@@ -57,6 +56,7 @@ class WithGameTests : public ::testing::Test {
   void TearDown() {}
 
   struct SharedCompiler {
+    SharedCompiler(GameVersion v) : compiler(v) {}
     std::thread runtime_thread;
     Compiler compiler;
     GoalTest::CompilerTestRunner runner;
@@ -74,7 +74,7 @@ std::unique_ptr<WithGameTests::SharedCompiler> WithGameTests::shared_compiler;
 class WithMinimalGameTests : public ::testing::Test {
  public:
   static void SetUpTestSuite() {
-    shared_compiler = std::make_unique<SharedCompiler>();
+    shared_compiler = std::make_unique<SharedCompiler>(GameVersion::Jak1);
     try {
       shared_compiler->compiler.run_front_end_on_string("(build-kernel)");
     } catch (std::exception& e) {
@@ -110,6 +110,7 @@ class WithMinimalGameTests : public ::testing::Test {
   void TearDown() {}
 
   struct SharedCompiler {
+    SharedCompiler(GameVersion v) : compiler(v) {}
     std::thread runtime_thread;
     Compiler compiler;
     GoalTest::CompilerTestRunner runner;
@@ -380,8 +381,8 @@ TEST_F(WithGameTests, GameCount) {
   shared_compiler->runner.run_static_test(env, testCategory, "test-game-count.gc",
                                           get_test_pass_string("game-count", 4));
   // don't leave behind a weird version of the game-count file.
-  std::filesystem::remove(file_util::get_file_path({"out", "jak1", "iso", "ENGINE.CGO"}));
-  std::filesystem::remove(file_util::get_file_path({"out", "jak1", "obj", "game-cnt.go"}));
+  fs::remove(file_util::get_file_path({"out", "jak1", "iso", "ENGINE.CGO"}));
+  fs::remove(file_util::get_file_path({"out", "jak1", "obj", "game-cnt.go"}));
 }
 
 TEST_F(WithGameTests, BitFieldAccess) {
@@ -944,16 +945,16 @@ void add_expected_type_mismatches(Compiler& c) {
   c.add_ignored_define_extern_symbol("tfrag-init-buffer");
 }
 
-TEST(TypeConsistency, MANUAL_TEST_TypeConsistencyWithBuildFirst) {
-  Compiler compiler;
+TEST(Jak1TypeConsistency, MANUAL_TEST_TypeConsistencyWithBuildFirst) {
+  Compiler compiler(GameVersion::Jak1);
   compiler.enable_throw_on_redefines();
   add_expected_type_mismatches(compiler);
   compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-all-code.gc");
   compiler.run_test_no_load("decompiler/config/all-types.gc");
 }
 
-TEST(TypeConsistency, TypeConsistency) {
-  Compiler compiler;
+TEST(Jak1TypeConsistency, TypeConsistency) {
+  Compiler compiler(GameVersion::Jak1);
   compiler.enable_throw_on_redefines();
   add_expected_type_mismatches(compiler);
   compiler.run_test_no_load("decompiler/config/all-types.gc");

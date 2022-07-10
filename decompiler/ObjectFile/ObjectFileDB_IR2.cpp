@@ -38,7 +38,7 @@ namespace decompiler {
  * functions, but nothing else.
  */
 void ObjectFileDB::analyze_functions_ir2(
-    const std::filesystem::path& output_dir,
+    const fs::path& output_dir,
     const Config& config,
     const std::unordered_set<std::string>& skip_functions,
     const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
@@ -114,7 +114,7 @@ void ObjectFileDB::analyze_functions_ir2(
       for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
     } else {
       for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
-        if (seg == 0) {
+        if (seg == TOP_LEVEL_SEGMENT) {
           return;  // keep top-levels
         }
         if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD &&
@@ -300,7 +300,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
   lg::info("{:4d} logins  {:.2f}%\n", total_top_levels, 100.f * total_top_levels / total_functions);
 }
 
-void ObjectFileDB::ir2_analyze_all_types(const std::filesystem::path& output_file,
+void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
                                          const std::optional<std::string>& previous_game_types,
                                          const std::unordered_set<std::string>& bad_types) {
   struct PerObject {
@@ -311,12 +311,14 @@ void ObjectFileDB::ir2_analyze_all_types(const std::filesystem::path& output_fil
 
   std::vector<PerObject> per_object;
 
-  DecompilerTypeSystem previous_game_ts;
+  DecompilerTypeSystem previous_game_ts(GameVersion::Jak1);  // version here doesn't matter.
   if (previous_game_types) {
     previous_game_ts.parse_type_defs({*previous_game_types});
   }
 
   std::unordered_set<std::string> already_seen;
+  TypeInspectorCache ti_cache;
+
   for_each_obj([&](ObjectFileData& data) {
     if (data.obj_version != 3) {
       return;
@@ -331,7 +333,7 @@ void ObjectFileDB::ir2_analyze_all_types(const std::filesystem::path& output_fil
       } else {
         if (f.is_inspect_method && bad_types.find(f.guessed_name.type_name) == bad_types.end()) {
           object_result.type_defs.push_back(inspect_inspect_method(
-              f, f.guessed_name.type_name, dts, data.linked_data, previous_game_ts.ts));
+              f, f.guessed_name.type_name, dts, data.linked_data, previous_game_ts.ts, ti_cache));
         }
       }
     });
@@ -688,7 +690,7 @@ void ObjectFileDB::ir2_insert_anonymous_functions(int seg, ObjectFileData& data)
   });
 }
 
-void ObjectFileDB::ir2_write_results(const std::filesystem::path& output_dir,
+void ObjectFileDB::ir2_write_results(const fs::path& output_dir,
                                      const Config& config,
                                      const std::vector<std::string>& imports,
                                      ObjectFileData& obj) {

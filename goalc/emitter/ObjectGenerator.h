@@ -12,6 +12,8 @@
 #include "Instruction.h"
 #include "ObjectFileData.h"
 
+#include "common/versions.h"
+
 #include "goalc/debugger/DebugInfo.h"
 
 struct FunctionDebugInfo;
@@ -61,9 +63,8 @@ struct ObjectGeneratorStats {
 
 class ObjectGenerator {
  public:
-  ObjectGenerator() = default;
+  ObjectGenerator(GameVersion version);
   ObjectFileData generate_data_v3(const TypeSystem* ts);
-
   FunctionRecord add_function_to_seg(int seg,
                                      FunctionDebugInfo* debug,
                                      int min_align = 16);  // should align and insert function tag
@@ -95,6 +96,8 @@ class ObjectGenerator {
                                     const FunctionRecord& target_func);
   ObjectGeneratorStats get_stats() const;
   void count_eliminated_move();
+
+  GameVersion version() const { return m_version; }
 
  private:
   void handle_temp_static_type_links(int seg);
@@ -205,6 +208,7 @@ class ObjectGenerator {
 
   template <typename T>
   using seg_map = std::array<std::map<std::string, std::vector<T>>, N_SEG>;
+  GameVersion m_version;
 
   // final data
   seg_vector<u8> m_data_by_seg;

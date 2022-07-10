@@ -615,7 +615,7 @@ Ptr<Symbol4<u32>> find_symbol_from_c(const char* name) {
   // check if we've got the empty pair.
   if (hash == EMPTY_HASH) {
     if (!strcmp(name, "_empty_")) {
-      return (s7 + FIX_SYM_EMPTY_PAIR).cast<Symbol4<u32>>();
+      return (s7 + S7_OFF_FIX_SYM_EMPTY_PAIR).cast<Symbol4<u32>>();
     }
   }
 
@@ -870,13 +870,77 @@ Ptr<Type> set_fixed_type(u32 offset,
   return symbol_value;
 }
 
+static bool in_valid_memory_for_new_type(u32 addr) {
+  if (SymbolTable2.offset <= addr && addr < 0x8000000) {
+    return true;
+  }
+
+  if (addr < 0x100000 && addr >= 0x84000) {
+    return true;
+  }
+  return false;
+}
+
+static bool is_valid_type(u32 addr) {
+  if ((addr & 7) != 4) {
+    return false;
+  }
+
+  if (*Ptr<u32>(addr - 4) != u32_in_fixed_sym(FIX_SYM_TYPE_TYPE)) {
+    return false;
+  }
+
+  return true;
+}
 /*!
  * New method of type. A GOAL (deftype) will end up calling this method.
  * Internally does an intern.
  */
 u64 new_type(u32 symbol, u32 parent, u64 flags) {
-  ASSERT(false);  // nyi
-  return 0;
+  u32 n_methods = (flags >> 32) & 0xffff;
+  if (n_methods == 0) {
+    // 12 methods used as default, if the user has not provided us with a number
+    n_methods = 12;
+  }
+
+  // copy methods
+  u32 parent_num_methods = Ptr<Type>(parent)->num_methods;
+  auto new_type_obj =
+      Ptr<Type>(intern_type(sym_to_string(Ptr<Symbol4<u32>>(symbol)).offset, n_methods));
+  u32 original_type_list_value = new_type_obj->memusage_method.offset;
+  Ptr<Function>* child_slots = &(new_type_obj->new_method);
+  Ptr<Function>* parent_slots = &(Ptr<Type>(parent)->new_method);
+  for (u32 i = 0; i < n_methods; i++) {
+    if (i < parent_num_methods) {  // bug fix from jak 1
+      child_slots[i] = parent_slots[i];
+    } else {
+      child_slots[i].offset = 0;
+    }
+  }
+
+  // deal with loading-level types
+  if (u32_in_fixed_sym(FIX_SYM_LOADING_LEVEL) == u32_in_fixed_sym(FIX_SYM_GLOBAL_HEAP)) {
+    // not loading a level
+
+    // we'll consider a type list if it's #f or a valid type
+    if (original_type_list_value && (original_type_list_value == s7.offset ||
+                                     (in_valid_memory_for_new_type(original_type_list_value) &&
+                                      is_valid_type(original_type_list_value)))) {
+      printf("case 1 for new_type level types\n");
+      new_type_obj->memusage_method.offset = original_type_list_value;
+    }
+  } else {
+    if (original_type_list_value == 0) {
+      // loading a level, but the type is global
+      MsgWarn("dkernel: loading-level init of type %s, but was interned global (this is okay)\n",
+              sym_to_string(new_type_obj->symbol)->data());
+    } else {
+      printf("case 2 for new_type level types\n");
+      new_type_obj->memusage_method.offset = original_type_list_value;
+    }
+  }
+
+  return set_type_values(new_type_obj, Ptr<Type>(parent), flags).offset;
 }
 
 /*!
@@ -897,8 +961,73 @@ u64 type_typep(Ptr<Type> t1, Ptr<Type> t2) {
 }
 
 u64 method_set(u32 type_, u32 method_id, u32 method) {
-  ASSERT(false);  // nyi
-  return 0;
+  Ptr<Type> type(type_);
+  if (method_id > 127)
+    printf("[METHOD SET ERROR] tried to set method %d\n", method_id);
+
+  auto existing_method = type->get_method(method_id).offset;
+
+  if (method == 1) {
+    method = 0;
+  } else if (method == 0) {
+    return 0;
+  } else if (method == 2) {
+    method = type->parent->get_method(method_id).offset;
+    printf("[Method Set] got 2, inheriting\n");
+  }
+
+  // do the set
+  type->get_method(method_id).offset = method;
+
+  // now, propagate to children
+  // we don't track children directly, so we end up having to iterate the whole symbol to find all
+  // types. This is slow, so we only do it in some cases
+
+  // the condition is either setting *enable-method-set* in GOAL, or if we're debugging without the
+  // disk boot. The point of doing this in debug is just to print warning messages.
+  if (*EnableMethodSet || (!FastLink && MasterDebug && !DiskBoot)) {
+    auto sym = Ptr<Symbol4<Ptr<Type>>>(s7.offset);
+    for (; sym.offset < LastSymbol.offset; sym.offset += 4) {
+      auto sym_value = sym->value();
+      if (in_valid_memory_for_new_type(sym_value.offset) && (sym_value.offset & 7) == 4 &&
+          *Ptr<u32>(sym_value.offset - 4) == u32_in_fixed_sym(FIX_SYM_TYPE_TYPE) &&
+          method_id < sym_value->num_methods &&
+          sym_value->get_method(method_id).offset == existing_method &&
+          type_typep(sym_value, type) != s7.offset) {
+        if (FastLink != 0) {
+          printf("************ WARNING **************\n");
+          printf("method %d of %s redefined - you must define class heirarchies in order now\n",
+                 method_id, sym_to_string(sym)->data());
+          printf("***********************************\n");
+        }
+        // todo remove once checked
+        printf("doing method set: %s %d\n", sym_to_string(sym)->data(), method_id);
+        sym_value->get_method(method_id).offset = method;
+      }
+    }
+
+    sym = Ptr<Symbol4<Ptr<Type>>>(SymbolTable2.offset);
+    for (; sym.offset < s7.offset; sym.offset += 4) {
+      auto sym_value = sym->value();
+      if (in_valid_memory_for_new_type(sym_value.offset) && (sym_value.offset & 7) == 4 &&
+          *Ptr<u32>(sym_value.offset - 4) == u32_in_fixed_sym(FIX_SYM_TYPE_TYPE) &&
+          method_id < sym_value->num_methods &&
+          sym_value->get_method(method_id).offset == existing_method &&
+          type_typep(sym_value, type) != s7.offset) {
+        if (FastLink != 0) {
+          printf("************ WARNING **************\n");
+          printf("method %d of %s redefined - you must define class heirarchies in order now\n",
+                 method_id, sym_to_string(sym)->data());
+          printf("***********************************\n");
+        }
+        // todo remove once checked
+        printf("doing method set: %s %d\n", sym_to_string(sym)->data(), method_id);
+        sym_value->get_method(method_id).offset = method;
+      }
+    }
+  }
+
+  return method;
 }
 
 /*!
@@ -986,7 +1115,8 @@ u64 print_object(u32 obj) {
       cprintf("#<invalid object #x%x>", obj);
     } else if ((obj & OFFSET_MASK) == PAIR_OFFSET) {
       return print_pair(obj);
-    } else if ((obj & 1) == PAIR_OFFSET && obj >= SymbolTable2.offset && obj < LastSymbol.offset) {
+    } else if ((obj & 1) == SYMBOL_OFFSET && obj >= SymbolTable2.offset &&
+               obj < LastSymbol.offset) {
       return print_symbol(obj);
     } else if ((obj & OFFSET_MASK) == BASIC_OFFSET) {
       return call_method_of_type(obj, Ptr<Type>(*Ptr<u32>(obj - 4)), GOAL_PRINT_METHOD);
@@ -1017,7 +1147,7 @@ u64 print_basic(u32 obj) {
  * Can print improper lists
  */
 u64 print_pair(u32 obj) {
-  if (obj == s7.offset + FIX_SYM_EMPTY_PAIR) {
+  if (obj == s7.offset + S7_OFF_FIX_SYM_EMPTY_PAIR) {
     cprintf("()");
   } else {
     // clang-format off
@@ -1026,7 +1156,7 @@ u64 print_pair(u32 obj) {
         || ((obj & 7) != 2)                   // this object isn't a pair
         || *Ptr<u32>(obj - 2) != s7.offset + FIX_SYM_QUOTE // the car isn't 'quote
         || (*Ptr<u32>(obj + 2) & 7) != 2                   // the cdr isn't a pair
-        || *Ptr<u32>(*Ptr<u32>(obj + 2) + 2) != s7.offset + FIX_SYM_EMPTY_PAIR  // the cddr isn't '()
+        || *Ptr<u32>(*Ptr<u32>(obj + 2) + 2) != s7.offset + S7_OFF_FIX_SYM_EMPTY_PAIR  // the cddr isn't '()
         ) {
       // clang-format on
       cprintf("(");
@@ -1039,7 +1169,7 @@ u64 print_pair(u32 obj) {
           // load up CDR
           auto cdr = *Ptr<u32>(toPrint + 2);
           toPrint = cdr;
-          if (cdr == s7.offset + FIX_SYM_EMPTY_PAIR) {  // end of proper list
+          if (cdr == s7.offset + S7_OFF_FIX_SYM_EMPTY_PAIR) {  // end of proper list
             cprintf(")");
             return obj;
           } else {  // continue list
@@ -1167,7 +1297,8 @@ u64 inspect_object(u32 obj) {
       cprintf("#<invalid object #x%x>", obj);
     } else if ((obj & OFFSET_MASK) == PAIR_OFFSET) {
       return inspect_pair(obj);
-    } else if ((obj & 1) == PAIR_OFFSET && obj >= SymbolTable2.offset && obj < LastSymbol.offset) {
+    } else if ((obj & 1) == SYMBOL_OFFSET && obj >= SymbolTable2.offset &&
+               obj < LastSymbol.offset) {
       return inspect_symbol(obj);
     } else if ((obj & OFFSET_MASK) == BASIC_OFFSET) {
       return call_method_of_type(obj, Ptr<Type>(*Ptr<u32>(obj - BASIC_OFFSET)),
@@ -1308,16 +1439,13 @@ int InitHeapAndSymbol() {
   SymbolTable2 = symbol_table + 5;
   s7 = symbol_table + 0x8001;
   NumSymbols = 0;
-  printf("st alloced\n");
 
   // inform compiler of s7
   reset_output();
-  printf("reset output\n");
 
   // empty pair (this is extra confusing).
-  *Ptr<u32>(s7.offset + FIX_SYM_EMPTY_CAR - 1) = s7.offset + FIX_SYM_EMPTY_PAIR - 1;
-  *Ptr<u32>(s7.offset + FIX_SYM_EMPTY_CDR - 1) = s7.offset + FIX_SYM_EMPTY_PAIR - 1;
-  printf("setup pair\n");
+  *Ptr<u32>(s7.offset + FIX_SYM_EMPTY_CAR - 1) = s7.offset + S7_OFF_FIX_SYM_EMPTY_PAIR;
+  *Ptr<u32>(s7.offset + FIX_SYM_EMPTY_CDR - 1) = s7.offset + S7_OFF_FIX_SYM_EMPTY_PAIR;
 
   // 'global
   fixed_sym_set(FIX_SYM_GLOBAL_HEAP, kglobalheap.offset);
@@ -1521,7 +1649,7 @@ int InitHeapAndSymbol() {
   make_function_symbol_from_c("loadb", (void*)loadb);
   make_function_symbol_from_c("loado", (void*)loado);
   make_function_symbol_from_c("unload", (void*)unload);
-  make_function_symbol_from_c("_format", (void*)format_impl_jak2);
+  make_stack_arg_function_symbol_from_c("_format", (void*)format_impl_jak2);
   make_function_symbol_from_c("malloc", (void*)alloc_heap_memory);
   make_function_symbol_from_c("kmalloc", (void*)goal_malloc);
   make_function_symbol_from_c("kmemopen", (void*)kmemopen);

@@ -8,7 +8,7 @@
 TEST(TypeSystem, Construction) {
   // test that we can add all builtin types without any type errors
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
 
   // useful for debugging.
   //  fmt::print("{}", ts.print_all_type_information());
@@ -16,7 +16,7 @@ TEST(TypeSystem, Construction) {
 
 TEST(TypeSystem, DefaultMethods) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
 
   // check that default methods have the right ID's used by the kernel
   ts.assert_method_id("object", "new", GOAL_NEW_METHOD);
@@ -45,7 +45,7 @@ TEST(TypeSystemReverse, NestedInlineWeird) {
   // tests the case where we're accessing nested inline arrays, with a dynamic inner access
   // and constant outer access, which will be constant propagated by the GOAL compiler.
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
   goos::Reader reader;
   auto add_type = [&](const std::string& str) {
     auto& in = reader.read_from_string(str).as_pair()->cdr.as_pair()->car.as_pair()->cdr;
@@ -108,7 +108,7 @@ TEST(TypeSystemReverse, NestedInlineWeird) {
 
 TEST(TypeSystem, TypeSpec) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
 
   // try some simple typespecs
   auto string_typespec = ts.make_typespec("string");
@@ -135,7 +135,7 @@ TEST(TypeSystem, TypeSpec) {
 
 TEST(TypeSystem, TypeSpecEquality) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
 
   auto pointer_to_function = ts.make_pointer_typespec("function");
   auto ia_to_function = ts.make_inline_array_typespec("function");
@@ -148,7 +148,7 @@ TEST(TypeSystem, TypeSpecEquality) {
 
 TEST(TypeSystem, RuntimeTypes) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
 
   // pointers and inline arrays should all become simple pointers
   EXPECT_EQ(ts.get_runtime_type(ts.make_typespec("pointer")), "pointer");
@@ -163,7 +163,7 @@ TEST(TypeSystem, RuntimeTypes) {
 
 TEST(TypeSystem, ForwardDeclaration) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
 
   // before forward declaring, lookup and creating a typespec should fail
   EXPECT_ANY_THROW(ts.lookup_type("test-type"));
@@ -179,7 +179,7 @@ TEST(TypeSystem, ForwardDeclaration) {
 TEST(TypeSystem, DerefInfoNoLoadInfoOrStride) {
   // test the parts of deref info, other than the part where it tells you how to load or the stride.
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
 
   // can't dereference a non-pointer
   EXPECT_FALSE(ts.get_deref_info(ts.make_typespec("string")).can_deref);
@@ -229,7 +229,7 @@ TEST(TypeSystem, DerefInfoNoLoadInfoOrStride) {
 
 TEST(TypeSystem, AddMethodAndLookupMethod) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
 
   auto parent_info = ts.declare_method(ts.lookup_type("structure"), "test-method-1", false,
                                        ts.make_function_typespec({"integer"}, "string"), false);
@@ -273,7 +273,7 @@ TEST(TypeSystem, AddMethodAndLookupMethod) {
 
 TEST(TypeSystem, NewMethod) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
   ts.add_type("test-1", std::make_unique<BasicType>("basic", "test-1", false, 0));
   ts.declare_method(ts.lookup_type("test-1"), "new", false,
                     ts.make_function_typespec({"symbol", "string"}, "test-1"), false);
@@ -295,7 +295,7 @@ TEST(TypeSystem, NewMethod) {
 
 TEST(TypeSystem, MethodSubstitute) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
   ts.add_type("test-1", std::make_unique<BasicType>("basic", "test-1", false, 0));
   ts.declare_method(ts.lookup_type("test-1"), "new", false,
                     ts.make_function_typespec({"symbol", "string", "_type_"}, "_type_"), false);
@@ -312,7 +312,7 @@ bool ts_name_name(TypeSystem& ts, const std::string& ex, const std::string& act)
 
 TEST(TypeSystem, TypeCheck) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
 
   EXPECT_TRUE(ts_name_name(ts, "none",
                            "none"));  // none - none _shouldn't_ fail (for function return types!)
@@ -346,7 +346,7 @@ TEST(TypeSystem, FieldLookup) {
   // implementation of lookup_field_info
 
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
 
   EXPECT_EQ(ts.lookup_field_info("type", "parent").field.offset(), 8);
   EXPECT_EQ(ts.lookup_field_info("string", "data").type.print(), "(pointer uint8)");
@@ -356,14 +356,14 @@ TEST(TypeSystem, FieldLookup) {
 
 TEST(TypeSystem, get_path_up_tree) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
   EXPECT_EQ(ts.get_path_up_tree("type"),
             std::vector<std::string>({"type", "basic", "structure", "object"}));
 }
 
 TEST(TypeSystem, lca) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
   EXPECT_EQ(
       ts.lowest_common_ancestor(ts.make_typespec("string"), ts.make_typespec("basic")).print(),
       "basic");
@@ -393,7 +393,7 @@ TEST(TypeSystem, lca) {
 
 TEST(TypeSystem, DecompLookupsTypeOfBasic) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
 
   auto string_type = ts.make_typespec("string");
   FieldReverseLookupInput input;
@@ -417,7 +417,7 @@ TEST(TypeSystem, DecompLookupsTypeOfBasic) {
 
 TEST(TypeSystem, DecompLookupsMethod) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
 
   auto type_type = ts.make_typespec("type");
 
@@ -473,7 +473,7 @@ TEST(TypeSystem, DecompLookupsMethod) {
 
 TEST(Deftype, deftype) {
   TypeSystem ts;
-  ts.add_builtin_types();
+  ts.add_builtin_types(GameVersion::Jak1);
   std::string input =
       "(deftype my-type (basic) ((f1 int64) (f2 string) (f3 int8) (f4 type :inline) (f5 uint64 "
       ":overlay-at f1)))";

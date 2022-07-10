@@ -1,7 +1,5 @@
 #include "Tools.h"
 
-#include <filesystem>
-
 #include "common/goos/ParseHelpers.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
@@ -21,7 +19,7 @@ bool CompilerTool::needs_run(const ToolInput& task, const PathMap& path_map) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
 
-  if (!m_compiler->knows_object_file(std::filesystem::path(task.input.at(0)).stem().u8string())) {
+  if (!m_compiler->knows_object_file(fs::path(task.input.at(0)).stem().u8string())) {
     return true;
   }
   return Tool::needs_run(task, path_map);
@@ -113,9 +111,8 @@ bool CopyTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
   for (auto& out : task.output) {
-    std::filesystem::copy(std::filesystem::path(file_util::get_file_path({task.input.at(0)})),
-                          std::filesystem::path(file_util::get_file_path({out})),
-                          std::filesystem::copy_options::overwrite_existing);
+    fs::copy(fs::path(file_util::get_file_path({task.input.at(0)})),
+             fs::path(file_util::get_file_path({out})), fs::copy_options::overwrite_existing);
   }
   return true;
 }

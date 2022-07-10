@@ -421,7 +421,7 @@ TexturePage read_texture_page(ObjectFileData& data,
  */
 TPageResultStats process_tpage(ObjectFileData& data,
                                TextureDB& texture_db,
-                               const std::filesystem::path& output_path) {
+                               const fs::path& output_path) {
   TPageResultStats stats;
   auto& words = data.linked_data.words_by_seg.at(0);
   const auto& level_names = data.dgo_names;

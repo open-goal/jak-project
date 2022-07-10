@@ -967,7 +967,7 @@ int TypeSystem::add_field_to_type(StructureType* type,
 /*!
  * Add types which are built-in to GOAL.
  */
-void TypeSystem::add_builtin_types() {
+void TypeSystem::add_builtin_types(GameVersion version) {
   // some of the basic types have confusing circular dependencies, so this is done manually.
   // there are no inlined things so its ok to do some things out of order because the actual size
   // doesn't really matter.
@@ -978,7 +978,18 @@ void TypeSystem::add_builtin_types() {
 
   auto structure_type = add_builtin_structure("object", "structure");
   auto basic_type = add_builtin_basic("structure", "basic");
-  auto symbol_type = add_builtin_basic("basic", "symbol");
+  StructureType* symbol_type;
+  switch (version) {
+    case GameVersion::Jak1:
+      symbol_type = add_builtin_basic("basic", "symbol");
+      break;
+    case GameVersion::Jak2:
+      symbol_type = add_builtin_structure("object", "symbol", true);
+      symbol_type->override_offset(1);
+      break;
+    default:
+      ASSERT(false);
+  }
   auto type_type = add_builtin_basic("basic", "type");
   auto string_type = add_builtin_basic("basic", "string");
   string_type->set_final();  // no virtual calls used on string.
@@ -1059,7 +1070,9 @@ void TypeSystem::add_builtin_types() {
                  false);
 
   // SYMBOL
-  builtin_structure_inherit(symbol_type);
+  if (version == GameVersion::Jak1) {
+    builtin_structure_inherit(symbol_type);
+  }
   add_field_to_type(symbol_type, "value", make_typespec("object"));
   // a new method which returns type none means new is illegal.
   declare_method(symbol_type, "new", false, make_function_typespec({}, "none"), false);

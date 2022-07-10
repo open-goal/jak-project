@@ -1034,7 +1034,7 @@ u64 method_set(u32 type_, u32 method_id, u32 method) {
 /*!
  * Call a GOAL method of a given type.
  */
-u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id) {
+u64 call_method_of_type(u64 arg, Ptr<Type> type, u32 method_id) {
   if (((type.offset < SymbolTable2.offset || 0x7ffffff < type.offset) &&  // not in normal memory
        (type.offset < 0x84000 || 0x100000 <= type.offset))                // not in kernel memory
       || ((type.offset & OFFSET_MASK) != BASIC_OFFSET)) {                 // invalid type

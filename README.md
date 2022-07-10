@@ -12,26 +12,49 @@
   <a href="https://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt=PRs Welcome></a>
 </p>
 
+- [READ FIRST](#read-first)
+  - [How to play the game](#how-to-play-the-game)
 - [Project Description](#project-description)
-  - [**Please read the FAQ by clicking here if you have any questions.**](#please-read-the-faq-by-clicking-here-if-you-have-any-questions)
-- [Current Status](#current-status)
-- [What's Next](#whats-next)
-- [Getting Started - Linux](#getting-started---linux)
-  - [Ubuntu (20.04)](#ubuntu-2004)
-  - [Arch](#arch)
-  - [Fedora](#fedora)
-- [Getting Started - Windows](#getting-started---windows)
-  - [Required Software](#required-software)
-  - [Setting up and Opening the Project](#setting-up-and-opening-the-project)
-- [Building and Running the Game](#building-and-running-the-game)
-  - [Extract Assets](#extract-assets)
-  - [Build the Game](#build-the-game)
-  - [Run the Game](#run-the-game)
-    - [Connecting the REPL to the Game](#connecting-the-repl-to-the-game)
-    - [Running the Game Without Auto-Booting](#running-the-game-without-auto-booting)
-  - [Interacting with the Game](#interacting-with-the-game)
-- [Project Layout](#project-layout)
-- [Directory Layout](#directory-layout)
+  - [Current Status](#current-status)
+  - [Methodology](#methodology)
+- [Setting up a Development Environment](#setting-up-a-development-environment)
+  - [Linux](#linux)
+    - [Ubuntu (20.04)](#ubuntu-2004)
+    - [Arch](#arch)
+    - [Fedora](#fedora)
+  - [Windows](#windows)
+    - [Required Software](#required-software)
+    - [Using Visual Studio](#using-visual-studio)
+  - [Building and Running the Game](#building-and-running-the-game)
+    - [Extract Assets](#extract-assets)
+    - [Build the Game](#build-the-game)
+    - [Run the Game](#run-the-game)
+      - [Connecting the REPL to the Game](#connecting-the-repl-to-the-game)
+      - [Running the Game Without Auto-Booting](#running-the-game-without-auto-booting)
+    - [Interacting with the Game](#interacting-with-the-game)
+- [Technical Project Overview](#technical-project-overview)
+  - [`goalc`](#goalc)
+    - [Running the compiler](#running-the-compiler)
+  - [`decompiler`](#decompiler)
+    - [Running the decompiler](#running-the-decompiler)
+  - [`goal_src/`](#goal_src)
+  - [`game` runtime](#game-runtime)
+
+## READ FIRST
+
+The github repositories are for development of the project and tracking active issues.  Most of the information you will find here pertains to setting up the project for development purposes and is not relevant to a general user.
+
+There is a discord server where discussion occur https://discord.gg/VZbXMHXzWv
+
+Additionally you can find further information and answers to **frequently asked questions** on the project's main website https://open-goal.github.io/
+
+### How to play the game
+
+To just play the game, follow the steps in this video https://www.youtube.com/watch?v=yQBKCnS5MDY
+
+We don't save any assets from the game - you must use your own legitimately obtained copy of the game.
+
+> Note that this installation method is a temporary stop gap while we work on something more user-friendly.
 
 ## Project Description
 
@@ -49,34 +72,33 @@ Our objectives are:
 
 We support both Linux and Windows on x86-64.
 
-### **[Please read the FAQ by clicking here if you have any questions.](FAQ.md)**
+> We do not support, or plan to support the ARM architecture.  This means that this will not run on devices such as an M1 Mac or a mobile device.
 
-We have a Discord server where we discuss development: https://discord.gg/VZbXMHXzWv
+### Current Status
 
-## Current Status
+Jak 1 is largely playable from start to finish with a handful of bugs that are continually being ironed out.
 
-So far, we've decompiled around 400,000 lines of GOAL code, out of an estimated 500,000 total lines from the original game. We have a working OpenGL renderer which renders most of the game world and foreground. Levels are fully playable, and you can finish the game with 100% completion!
-
-Here are some screenshots of the renderer:
 ![](./docs/img/promosmall1.png)
 ![](./docs/img/promosmall2.png)
 
 YouTube playlist:
 https://www.youtube.com/playlist?list=PLWx9T30aAT50cLnCTY1SAbt2TtWQzKfXX
 
-To help with decompiling, we've built a decompiler that can process GOAL code and unpack game assets. We manually specify function types and locations where we believe the original code had type casts (or where they feel appropriate) until the decompiler succeeds, then we clean up the output of the decompiled code by adding comments and adjusting formatting, then save it in `goal_src`. Our decompiler is designed specifically for processing the output of the original GOAL compiler. As a result, when given correct casts, it often produces code that can be directly fed into a compiler and works perfectly. This is tested as part of our unit tests, and so far we have over 300,000 lines (460 files) that pass.
+### Methodology
 
-We don't save any assets from the game - you must bring your own copy of the game and use the decompiler to extract assets.
+To help with decompiling, we've built a decompiler that can process GOAL code and unpack game assets. We manually specify function types and locations where we believe the original code had type casts (or where they feel appropriate) until the decompiler succeeds, then we clean up the output of the decompiled code by adding comments and adjusting formatting, then save it in `goal_src`.
 
-## What's Next
+Our decompiler is designed specifically for processing the output of the original GOAL compiler. As a result, when given correct casts, it often produces code that can be directly fed into a compiler and works perfectly. This is continually tested as part of our unit tests.
 
-- Bug testing! The game can be beaten 100% from start to finish, but it's possible a few things do not work correctly.
-- Improve the decompiler and clean up decompilation of GOAL code. We are always finding new features and macros in the GOAL language.
-- Investigate and rewrite the more complicated renderers.
+## Setting up a Development Environment
 
-## Getting Started - Linux
+The remainder of this README is catered towards people interested in building the project from source, typically with the intention on contributing as a developer.
 
-### Ubuntu (20.04)
+If this does not sound like you and you just want to play the game, refer to the above section [How to play the game](#how-to-play-the-game)
+
+### Linux
+
+#### Ubuntu (20.04)
 
 Install packages and init repository:
 
@@ -109,7 +131,7 @@ and run `cmake` (in a fresh build directory) with:
 cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ ..
 ```
 
-### Arch
+#### Arch
 
 Install packages and init repository:
 
@@ -132,7 +154,7 @@ Run tests:
 ./test.sh
 ```
 
-### Fedora
+#### Fedora
 
 Install packages and init repository:
 
@@ -154,11 +176,11 @@ Run tests:
 ./test.sh
 ```
 
-## Getting Started - Windows
+### Windows
 
-### Required Software
+#### Required Software
 
-We primarily use Visual Studio on Windows for C++ development.  Download the latest community edition from [here](https://visualstudio.microsoft.com/vs/)
+We primarily use Visual Studio on Windows for C++ development.  Download the latest community edition from [here](https://visualstudio.microsoft.com/vs/).  At the time of writing this is Visual Studio 2022.
 
 You will require the `Desktop development with C++` workload.  This can be selected during the installation, or after via the `Visual Studio Installer`, modifying the Visual Studio Installation.
 
@@ -170,7 +192,7 @@ Once Scoop is installed, run the following commands:
 scoop install git llvm nasm python task
 ```
 
-### Setting up and Opening the Project
+#### Using Visual Studio
 
 Clone the repository by running the following command in your folder of choice.
 
@@ -187,7 +209,7 @@ Then build the entire project as `Windows Release (clang)`. You can also press C
 ![](./docs/img/windows/release-build.png)
 ![](./docs/img/windows/build-all.png)
 
-## Building and Running the Game
+### Building and Running the Game
 
 Getting a running game involves 4 steps:
 
@@ -196,7 +218,7 @@ Getting a running game involves 4 steps:
 3. Build the game
 4. Run the game
 
-### Extract Assets
+#### Extract Assets
 
 First, setup your settings so the following scripts know which game you are using, and which version.  In a terminal, run the following:
 
@@ -217,7 +239,7 @@ Once this is done, open a terminal in the `jak-project` folder and run the follo
 task extract
 ```
 
-### Build the Game
+#### Build the Game
 
 The next step is to build the game itself.  To do so, in the same terminal run the following:
 
@@ -246,7 +268,7 @@ Run the following to build the game:
 g > (mi)
 ```
 
-### Run the Game
+#### Run the Game
 
 Finally the game can be ran.  Open a second terminal from the `jak-project` directory and run the following:
 
@@ -256,7 +278,7 @@ task boot-game
 
 The game should boot automatically if everything was done correctly.
 
-#### Connecting the REPL to the Game
+##### Connecting the REPL to the Game
 
 Connecting the REPL to the game allows you to inspect and modify code or data while the game is running.
 
@@ -278,7 +300,7 @@ For example, running the following will print out some basic information about J
 gc> *target*
 ```
 
-#### Running the Game Without Auto-Booting
+##### Running the Game Without Auto-Booting
 
 You can also start up the game without booting.  To do so run the following in one terminal
 
@@ -304,106 +326,81 @@ gc> (test-play)
 gc>
 ```
 
-### Interacting with the Game
+#### Interacting with the Game
 
 In the graphics window, you can use the period key to bring up the debug menu. Controllers also work, using the same mapping as the original game.
 
 Check out the `pc_debug`, `examples` and `pc` folders under `goal_src` for some examples of GOAL code we wrote. The debug files that are not loaded automatically by the engine have instructions for how to run them.
 
-## Project Layout
+## Technical Project Overview
 
 There are four main components to the project.
 
-The first is `goalc`, which is a GOAL compiler for x86-64. Our implementation of GOAL is called OpenGOAL. All of the compiler source code is in `goalc`. To run the compiler on Linux, there is a script `gc.sh`. On Windows, there is a `gc.bat` scripts and a `gc-no-lt.bat` script, the latter of which will not attempt to automatically attach to a running target. The compiler is controlled through a prompt which can be used to enter commands to compile, connect to a running GOAL program for interaction, run the OpenGOAL debugger, or, if you are connected to a running GOAL program, can be used as a REPL to run code interactively. In addition to compiling code files, the compiler has features to pack and build data files.
+1. `goalc` - the GOAL compiler for x86-64
+2. `decompiler` - our decompiler
+3. `goal_src/` - the folder containing all OpenGOAL / GOOS code
+4. `game` - aka the runtime written in C++
 
-The second component to the project is the decompiler. You must have a copy of the PS2 game and place all files from the DVD inside a folder corresponding to the game within `iso_data` folder (`jak1` for Jak 1 Black Label, etc.), as seen in this picture:
+Let's break down each component.
+
+### `goalc`
+
+Our implementation of GOAL is called OpenGOAL.
+
+All of the compiler source code is in `goalc/`. The compiler is controlled through a prompt which can be used to enter commands to compile, connect to a running GOAL program for interaction, run the OpenGOAL debugger, or, if you are connected to a running GOAL program, can be used as a REPL to run code interactively. In addition to compiling code files, the compiler has features to pack and build data files.
+
+#### Running the compiler
+
+**Environment Agnostic**
+
+If you have installed `task` as recommended above, you can run the compiler with `task repl`
+
+**Linux**
+
+To run the compiler on Linux, there is a script `scripts/shell/gc.sh`.
+
+**Windows**
+
+On Windows, there is a `scripts/batch/gc.bat` scripts and a `scripts/batch/gc-no-lt.bat` script, the latter of which will not attempt to automatically attach to a running target.
+
+### `decompiler`
+
+The second component to the project is the decompiler.
+
+The decompiler will output code and other data intended to be inspected by humans in the `decompiler_out` folder. Files in this folder will not be used by the compiler.
+
+#### Running the decompiler
+
+You must have a copy of the PS2 game and place all files from the DVD inside a folder corresponding to the game within `iso_data` folder (`jak1` for Jak 1 Black Label, etc.), as seen in this picture:
 
 ![](./docs/img/iso_data-help.png)
 
-Then run `decomp.sh` (Linux) or `decomp-jak1.bat` (Windows) to run the decompiler. The decompiler will extract assets to the `assets` folder. These assets will be used by the compiler when building the port, and you may want to turn asset extraction off after running it once. The decompiler will output code and other data intended to be inspected by humans in the `decompiler_out` folder. Stuff in this folder will not be used by the compiler.
+The decompiler will extract assets to the `assets` folder. These assets will be used by the compiler when building the port, and you may want to turn asset extraction off after running it once.
 
-The third is the game source code, written in OpenGOAL. This is located in `goal_src`. All GOAL and GOOS code should be in this folder.
+**Environment Agnostic**
 
-The final component is the "runtime", located in `game`. This is the part of the game that's written in C++. In the port, that includes:
+If you have installed `task` as recommended above, you can run the compiler with `task decomp`
+
+**Linux**
+
+To run, you can use `scripts/shell/decomp.sh` to run the decompiler
+
+**Windows**
+
+To run, you can use `scripts/shell/decomp-jak1.bat` to run the decompiler
+
+### `goal_src/`
+
+The game source code, written in OpenGOAL, is located in `goal_src`. All GOAL and GOOS code should be in this folder.
+
+### `game` runtime
+
+The final component is the "runtime", located in `game`. This is the part of the game that's written in C++.
+
+In the port, that includes:
 - The "C Kernel", which contains the GOAL linker and some low-level GOAL language features. GOAL has a completely custom dynamically linked object file format so in order to load the first GOAL code, you need a linker written in C++. Some low-level functions for memory allocation, communicating with the I/O Processor, symbol table, strings, and the type system are also implemented in C, as these are required for the linker. It also listens for incoming messages from the compiler and passes them to the running game. This also initializes the game, by initializing the PS2 hardware, allocating the GOAL heaps, loading the GOAL kernel off of the DVD, and executing the kernel dispatcher function. This is in the `game/kernel` folder. This should be as close as possible to the game, and all differences should be noted with a comment.
 - Implementation of Sony's standard library. GOAL code can call C library functions, and Naughty Dog used some Sony library functions to access files, memory cards, controllers, and communicate with the separate I/O Processor. The library functions are in `game/sce`. Implementations of library features specific to the PC port are located in `game/system`.
 - The I/O Processor driver, OVERLORD. The PS2 had a separate CPU called the I/O Processor (IOP) that was directly connected to the DVD drive hardware and the sound hardware. Naughty Dog created a custom driver for the IOP that handled streaming data off of the DVD. It is much more complicated than I first expected. It's located in `game/overlord`. Like the C kernel, we try to keep this as close as possible to the actual game.
 - Sound code. Naughty Dog used a third party library for sound called `989SND`. Code for the library and an interface for it is located in `game/sound`.
 - PC specific graphics code. We have a functional OpenGL renderer and context that can create a game window and display graphics on it. The specific renderers used by the game however are mostly implemented. Aside from post-processing effects, everything in the game is rendered. This is located in `game/graphics`. While many liberties will be taken to make this work, the end result should very closely match the actual game.
 - Extra assets used by the port in some fashion, located in `game/assets`. These include extra text files, icons, etc.
-
-## Directory Layout
-
-- `assets`: extracted assets (textures, translated game text, audio) generated by the decompiler. Not included in the repository. This data is used when building the PC port.
-- `build`: C++ CMake build folder.
-- `common`: common C++ code shared between the compiler, decompiler, and game.
-    - `audio`: tools for decoding the audio files.
-    - `cross_os_debug`: platform-independent library for implementing the OpenGOAL debugger. Linux and Windows.
-    - `cross_sockets`: platform-independent library for sockets. Used to connect the compiler to a running game. Linux and Windows.
-    - `goos`: the compiler-time macro language and parser for OpenGOAL.
-    - `type_system`: the OpenGOAL type system.
-    - `texture`: texture unpacking and format conversion.
-    - `dma`: utilities for handling the transfer of PS2 DMA packets.
-    - `util`, `math`, `log`: Random utility functions for accessing files, timers, etc.
-- `decompiler`: Source code for the decompiler.
-    - `analysis`: analysis algorithms.
-    - `config`: JSON config files for the decompiler and type definition file.
-    - `data`: utilities to extract assets from the game.
-    - `Disasm`: MIPS disassembler.
-    - `Function`: Tools for analyzing GOAL functions.
-    - `gui`: an early prototype of a Python GUI for reading the output of the decompiler.
-    - `IR2`: the "Intermediate Representation" for GOAL functions and expressions.
-    - `ObjectFile`: Utilities for processing the GOAL object file format.
-    - `scripts`: Useful scripts for setting up the decompilation.
-    - `util`: random utilities.
-    - `VuDisasm`: disassembler for VU code.
-- `decompiler_out`: output of the decompiler that's not automatically used by the compiler. This is for humans to read and use. Not included in the repository.
-- `docs`: more documentation!
-- `game`: the source code for the game executable.
-    - `common`: shared stuff between the `kernel` (EE) and `overlord` (IOP).
-    - `graphics`: PC Port graphics.
-    - `kernel`: the part of the GOAL kernel written in C. The entry point for the game is in `kboot.cpp`.
-    - `overlord`: the I/O processor driver used to get data off of the DVD.
-    - `sce`: the Sony library implementation.
-    - `system`: PC-port specific OS-level stuff, like file I/O, threads, controllers, debug network connection.
-- `goal_src`: The GOAL code for the game.
-    - `build`: info related to the GOAL build system.
-    - `engine`: the game engine.
-    - `kernel`: The GOAL kernel.
-    - `levels`: Level specific code.
-    - `old`: Unused or deleted files from the original game.
-    - `dgos`: File lists for DGOs in the build system.
-    - `examples`: Example GOAL code we have written.
-    - `test`: Test code we have written.
-    - `pc_debug`: GOAL code for PC-specific debugging. Also written by us.
-    - `pc`: GOAL code for PC-specific features. Also written by us.
-    - `user`: User sandboxes. Written by you! And anyone else that wishes to share their user code.
-- `goalc`: The OpenGOAL compiler.
-    - `compiler`: The implementation of the OpenGOAL language.
-    - `data_compiler`: Tools for packing data.
-    - `debugger`: The OpenGOAL debugger (part of the compiler).
-    - `emitter`: x86-64 emitter and object file generator.
-    - `listener`: The OpenGOAL listener, which connects the compiler to a running GOAL program for the interactive REPL.
-    - `make`: The OpenGOAL build system, builds both code and data files.
-    - `regalloc`: Register allocator.
-- `iso_data`: Location of the user-provided DVD contents of the game that the decompiler extracts game assets and code from.
-- `out`: Outputs from the build process. Only the `iso` subfolder should contain assets used by the game.
-    - `iso`: Final outputs that are used by the game.
-    - `obj`: Object files generated by the compiler.
-- `resources`: To be removed. Contains fake versions of some files required to get things booting.
-- `scripts`: Utility scripts. Windows-specific batch files are in a `batch` folder while Unix shell scripts are in a `shell` folder.
-- `test`: Unit tests (run on GitHub Actions).
-- `third-party`: Third party libraries.
-    - CMake Code Coverage. For code coverage statistics on GitHub builds.
-    - `discord-rpc`: Discord Rich Presence library.
-    - `fmt`: String formatting library.
-    - `googletest`: Test framework.
-    - `inja`: templating library used for generating test code for compiler tests.
-    - `lzokay`: decompression code for Jak 2 and later DGOs.
-    - `mman`: Windows library used to emulate `mmap` on Linux.
-    - `run-clang-format`: Utility to check and enforce code formatting.
-    - `run-clang-tidy`
-    - `zydis`: x86-64 disassembler used in the OpenGOAL debugger.
-    - `json`: A JSON library.
-    - `replxx`: Used for the REPL input. Supports history and useful editing shortcuts.
-    - `svpng`: Save a PNG file.

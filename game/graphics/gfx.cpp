@@ -6,7 +6,6 @@
 #include "gfx.h"
 
 #include <cstdio>
-#include <filesystem>
 #include <functional>
 
 #include "display.h"
@@ -57,9 +56,9 @@ GfxSettings g_settings;
 // TODO serialize
 void LoadSettings() {
   const auto filename = file_util::get_file_path({GAME_CONFIG_DIR_NAME, SETTINGS_GFX_FILE_NAME});
-  if (std::filesystem::exists(filename)) {
+  if (fs::exists(filename)) {
     // this is just wrong LOL
-    FILE* fp = fopen(filename.c_str(), "rb");
+    FILE* fp = file_util::open_file(filename.c_str(), "rb");
     lg::info("Found graphics configuration file. Checking version.");
     u64 version;
     fread(&version, sizeof(u64), 1, fp);
@@ -78,7 +77,7 @@ void LoadSettings() {
 void SaveSettings() {
   const auto filename = file_util::get_file_path({GAME_CONFIG_DIR_NAME, SETTINGS_GFX_FILE_NAME});
   file_util::create_dir_if_needed(file_util::get_file_path({GAME_CONFIG_DIR_NAME}));
-  FILE* fp = fopen(filename.c_str(), "wb");
+  FILE* fp = file_util::open_file(filename.c_str(), "wb");
   fwrite(&g_settings, sizeof(GfxSettings), 1, fp);
   fclose(fp);
   lg::info("Saved graphics configuration file.");

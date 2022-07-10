@@ -1,19 +1,23 @@
-#include <string>
 #include <fstream>
 #include <iomanip>
 #include <optional>
-#include "third-party/fmt/core.h"
-#include "third-party/json.hpp"
+#include <string>
 
-#include "common/util/FileUtil.h"
 #include "common/goal_constants.h"
 #include "common/symbols.h"
 #include "common/type_system/TypeSystem.h"
+#include "common/util/Assert.h"
+#include "common/util/FileUtil.h"
+#include <common/util/unicode_util.h>
 
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "common/util/Assert.h"
 
-namespace fs = std::filesystem;
+#include "third-party/fmt/core.h"
+#include "third-party/json.hpp"
+
+namespace fs = fs;
+
+constexpr GameVersion kGameVersion = GameVersion::Jak1;
 
 struct Ram {
   const u8* data = nullptr;
@@ -554,6 +558,15 @@ void inspect_symbols(const Ram& ram,
 }
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+  auto args = get_widechar_cli_args();
+  std::vector<char*> string_ptrs;
+  for (auto& str : args) {
+    string_ptrs.push_back(str.data());
+  }
+  argv = string_ptrs.data();
+#endif
+
   fmt::print("MemoryDumpTool\n");
 
   if (argc != 2 && argc != 3) {
@@ -562,7 +575,7 @@ int main(int argc, char** argv) {
   }
 
   fmt::print("Loading type definitions from all-types.gc...\n");
-  decompiler::DecompilerTypeSystem dts;
+  decompiler::DecompilerTypeSystem dts(kGameVersion);
   dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
 
   std::string file_name = argv[1];

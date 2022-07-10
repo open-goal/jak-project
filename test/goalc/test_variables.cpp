@@ -1,6 +1,5 @@
 #include <chrono>
 #include <cstdio>
-#include <filesystem>
 #include <iostream>
 #include <random>
 #include <sstream>
@@ -24,7 +23,7 @@ struct VariableParam {
 class VariableTests : public testing::TestWithParam<VariableParam> {
  public:
   static void SetUpTestSuite() {
-    shared_compiler = std::make_unique<SharedCompiler>();
+    shared_compiler = std::make_unique<SharedCompiler>(GameVersion::Jak1);
     shared_compiler->runtime_thread = std::thread((GoalTest::runtime_no_kernel));
     shared_compiler->runner.c = &shared_compiler->compiler;
   }
@@ -43,6 +42,7 @@ class VariableTests : public testing::TestWithParam<VariableParam> {
   void TearDown() {}
 
   struct SharedCompiler {
+    SharedCompiler(GameVersion version) : compiler(version) {}
     std::thread runtime_thread;
     Compiler compiler;
     GoalTest::CompilerTestRunner runner;
