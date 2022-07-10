@@ -124,17 +124,21 @@ int main(int argc, char** argv) {
 
     // run the runtime in a loop so we can reset the game and have it restart cleanly
     lg::info("OpenGOAL Runtime {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
-    auto exit_status = exec_runtime(ptrs.size(), ptrs.data());
-
-    switch (exit_status) {
-      case RuntimeExitStatus::EXIT:
-        return 0;
-      case RuntimeExitStatus::RESTART_RUNTIME:
-      case RuntimeExitStatus::RUNNING:
-        break;
-      case RuntimeExitStatus::RESTART_IN_DEBUG:
-        force_debug_next_time = true;
-        break;
+    try {
+      auto exit_status = exec_runtime(ptrs.size(), ptrs.data());
+      switch (exit_status) {
+        case RuntimeExitStatus::EXIT:
+          return 0;
+        case RuntimeExitStatus::RESTART_RUNTIME:
+        case RuntimeExitStatus::RUNNING:
+          break;
+        case RuntimeExitStatus::RESTART_IN_DEBUG:
+          force_debug_next_time = true;
+          break;
+      }
+    } catch (std::exception& ex) {
+      lg::error("Unexpected exception occurred - {}", ex.what());
+      throw ex;
     }
   }
   return 0;
