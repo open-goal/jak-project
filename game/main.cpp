@@ -40,14 +40,13 @@ void setup_logging(bool verbose) {
  * Entry point for the game.
  */
 int main(int argc, char** argv) {
-#ifdef _WIN32
-  auto args = get_widechar_cli_args();
-  std::vector<char*> string_ptrs;
-  for (auto& str : args) {
-    string_ptrs.push_back(str.data());
+  fs::u8arguments u8guard(argc, argv);
+  if (!u8guard.valid()) {
+    exit(EXIT_FAILURE);
   }
-  argv = string_ptrs.data();
-#endif
+
+  // TODO - replace with CLI11 and just propagate args through
+  // - https://github.com/CLIUtils/CLI11/issues/744
 
   // Figure out if the CPU has AVX2 to enable higher performance AVX2 versions of functions.
   setup_cpu_info();

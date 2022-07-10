@@ -14,48 +14,66 @@
 #endif
 // clang-format on
 
-std::string utf8_from_utf16(const wchar_t* utf16_string) {
 #ifdef _WIN32
-  if (utf16_string == nullptr) {
-    return std::string();
-  }
-  int target_length = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, utf16_string, -1, nullptr,
-                                          0, nullptr, nullptr);
-  if (target_length == 0) {
-    return std::string();
-  }
-  std::string utf8_string;
-  utf8_string.resize(target_length);
-  int converted_length = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, utf16_string, -1,
-                                             utf8_string.data(), target_length, nullptr, nullptr);
-  if (converted_length == 0) {
-    return std::string();
-  }
-  return utf8_string;
-#else
-  return "don't call this on linux";
-#endif
+std::wstring utf8_string_to_wide_string(const std::string_view& str) {
+  std::wstring ret;
+  if (!utf8_string_to_wide_string(ret, str))
+    return {};
+
+  return ret;
 }
 
-std::vector<std::string> get_widechar_cli_args() {
+bool utf8_string_to_wide_string(std::wstring& dest, const std::string_view& str) {
+  int wlen =
+      MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.length()), nullptr, 0);
+  if (wlen < 0)
+    return false;
+
+  dest.resize(wlen);
+  if (wlen > 0 && MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.length()),
+                                      dest.data(), wlen) < 0)
+    return false;
+
+  return true;
+}
+
+std::string wide_string_to_utf8_string(const std::wstring_view& str) {
+  std::string ret;
+  if (!wide_string_to_utf8_string(ret, str))
+    ret.clear();
+
+  return ret;
+}
+
+bool wide_string_to_utf8_string(std::string& dest, const std::wstring_view& str) {
+  int mblen = WideCharToMultiByte(CP_UTF8, 0, str.data(), static_cast<int>(str.length()), nullptr,
+                                  0, nullptr, nullptr);
+  if (mblen < 0)
+    return false;
+
+  dest.resize(mblen);
+  if (mblen > 0 && WideCharToMultiByte(CP_UTF8, 0, str.data(), static_cast<int>(str.length()),
+                                       dest.data(), mblen, nullptr, nullptr) < 0) {
+    return false;
+  }
+
+  return true;
+}
+#endif
+
+std::string get_env(const std::string& name) {
 #ifdef _WIN32
-  // Convert the UTF-16 command line arguments to UTF-8 for the Engine to use.
-  int argc;
-  wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-  if (argv == nullptr) {
-    return {};
+  auto name_wide = utf8_string_to_wide_string(name);
+  auto val = _wgetenv(name_wide.data());
+  if (!val) {
+    return "";
   }
-
-  std::vector<std::string> command_line_arguments;
-
-  for (int i = 0; i < argc; i++) {
-    command_line_arguments.push_back(utf8_from_utf16(argv[i]));
-  }
-
-  LocalFree(argv);
-
-  return command_line_arguments;
+  return wide_string_to_utf8_string(val);
 #else
-  return {"don't call this on linux"};
+  auto val = std::getenv(name.data());
+  if (!val) {
+    return "";
+  }
+  return val;
 #endif
 }

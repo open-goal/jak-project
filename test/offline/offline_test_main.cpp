@@ -389,14 +389,11 @@ std::optional<OfflineTestConfig> parse_config(const std::string_view& game_name)
 }
 
 int main(int argc, char* argv[]) {
-#ifdef _WIN32
-  auto utf8_args = get_widechar_cli_args();
-  std::vector<char*> string_ptrs;
-  for (auto& str : utf8_args) {
-    string_ptrs.push_back(str.data());
+  fs::u8arguments u8guard(argc, argv);
+  if (!u8guard.valid()) {
+    std::cerr << "Bad encoding, needs UTF-8." << std::endl;
+    exit(EXIT_FAILURE);
   }
-  argv = string_ptrs.data();
-#endif
 
   lg::initialize();
 
