@@ -5,3 +5,187 @@
 ;; name in dgo: file-io
 ;; dgos: ENGINE, GAME
 
+(defenum file-kind
+    :bitfield #f
+    (level-bt 0) ;; aka bsp-header.
+    (art-group 1)
+    (tpage 2)
+    (dir-tpage 3)
+    (level-vs 4)
+    (tx 5)
+    (vis 6)
+    (map 7)
+    )
+
+(deftype file-stream (basic)
+  ((flags uint32  :offset-assert   4)
+   (mode  symbol  :offset-assert   8)
+   (name  string  :offset-assert  12)
+   (file  uint32  :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  (:methods
+    (new (symbol type string symbol) _type_ 0)
+    )
+  )
+
+(defmethod new file-stream ((allocation symbol) (type-to-make type) (arg0 string) (arg1 symbol))
+  (let ((a0-1 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (file-stream-open a0-1 arg0 arg1)
+    )
+  )
+(set! (-> file-stream method-table 4) file-stream-length)
+
+(defun file-stream-read-string ((arg0 file-stream) (arg1 string))
+  (clear arg1)
+  (file-stream-read arg0 (-> arg1 data) (length arg0))
+  arg1
+  )
+
+(deftype file-info (basic)
+  ((file-type      (pointer string)  :offset-assert   4) ;; something funny here...
+   (file-name      basic             :offset-assert   8)
+   (major-version  uint32            :offset-assert  12)
+   (minor-version  uint32            :offset-assert  16)
+   (maya-file-name basic             :offset-assert  20)
+   (tool-debug     basic             :offset-assert  24)
+   (mdb-file-name  basic             :offset-assert  28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(defmethod print file-info ((obj file-info))
+  (format
+    #t
+    "#<~A ~A :version ~D.~D @ #x~X>"
+    (-> obj type)
+    (-> obj file-name)
+    (-> obj major-version)
+    (-> obj minor-version)
+    obj
+    )
+  obj
+  )
+
+(define *file-temp-string* (new 'global 'string 128 (the-as string #f)))
+
+(defun make-file-name ((arg0 file-kind) (arg1 string) (arg2 int) (arg3 symbol))
+  (clear *file-temp-string*)
+  (cond
+    ((= arg0 (file-kind dir-tpage))
+     (format *file-temp-string* "texture-page~D/dir-tpages" 8)
+     )
+    ((= arg0 (file-kind tpage))
+     (format *file-temp-string* "texture-page~D/tpage-~S" 8 arg1)
+     )
+    ((= arg0 (file-kind level-bt))
+     (format *file-temp-string* "level~D/~S-bt" 36 arg1)
+     )
+    ((= arg0 (file-kind tx))
+     (format *file-temp-string* "res~D/~S-tx" 1 arg1)
+     )
+    ((= arg0 (file-kind level-vs))
+     (format *file-temp-string* "level~D/~S-vs" 36 arg1)
+     )
+    ((= arg0 (file-kind vis))
+     (format *file-temp-string* "~S.VIS" arg1)
+     )
+    ((= arg0 (file-kind map))
+     (format *file-temp-string* "map~D/~S-mp" 1 arg1)
+     )
+    ((= arg0 (file-kind art-group))
+     (format
+       *file-temp-string*
+       "art-group~D/~S-ag"
+       (cond
+         ((> arg2 0)
+          arg2
+          )
+         (else
+           7
+           )
+         )
+       arg1
+       )
+     )
+    )
+  *file-temp-string*
+  )
+
+(defun make-vfile-name ((arg0 file-kind) (arg1 string))
+  (clear *file-temp-string*)
+  (cond
+    ((= arg0 (file-kind level-bt))
+     (format *file-temp-string* "$LEVEL/~S" arg1)
+     )
+    ((= arg0 (file-kind art-group))
+     (format *file-temp-string* "$ART_GROUP/~S" arg1)
+     )
+    )
+  *file-temp-string*
+  )
+
+(defun file-info-correct-version? ((arg0 file-info) (arg1 file-kind) (arg2 int))
+  (let* ((s5-0 (cond
+                 ((zero? arg2)
+                  (case arg1
+                    (((file-kind tpage) (file-kind dir-tpage))
+                     8
+                     )
+                    (((file-kind level-bt))
+                     36
+                     )
+                    (((file-kind art-group))
+                     7
+                     )
+                    )
+                  )
+                 (else
+                   arg2
+                   )
+                 )
+               )
+         (v1-1 arg1)
+         (s4-0 (cond
+                 ((= v1-1 (file-kind tpage))
+                  "texture-page"
+                  )
+                 ((= v1-1 (file-kind level-bt))
+                  "bsp-header"
+                  )
+                 ((= v1-1 (file-kind art-group))
+                  "art-group"
+                  )
+                 )
+               )
+         )
+    (cond
+      ((not (name= (-> arg0 file-type 0) s4-0))
+       (format 0 "ERROR: file ~A is of type ~S but needs to be ~S.~%" (-> arg0 file-name) (-> arg0 file-type) s4-0)
+       #f
+       )
+      ((!= s5-0 (-> arg0 major-version))
+       (format
+         0
+         "ERROR: file ~A is version ~D.~D, but needs to be ~D.x~%"
+         (-> arg0 file-name)
+         (-> arg0 major-version)
+         (-> arg0 minor-version)
+         s5-0
+         )
+       #f
+       )
+      (else
+        #t
+        )
+      )
+    )
+  )
+
+
+
+

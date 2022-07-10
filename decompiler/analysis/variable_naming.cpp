@@ -980,6 +980,14 @@ bool is_128bit(const TP_Type& type, const DecompilerTypeSystem& dts) {
   return false;
 }
 
+bool is_float(const TP_Type& type, const DecompilerTypeSystem& dts) {
+  if (dts.ts.tc(TypeSpec("float"), type.typespec())) {
+    return true;
+  }
+
+  return false;
+}
+
 void promote_register_class(const Function& func,
                             VariableNames* result,
                             const DecompilerTypeSystem& dts) {

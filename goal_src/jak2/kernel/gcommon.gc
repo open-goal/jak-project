@@ -1190,3 +1190,57 @@
           )
         )
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; Decompiler Macros
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; inserted by the decompiler for assembly branches.
+(defmacro b! (pred destination &key (delay '()) &key (likely-delay '()))
+  "Branch!"
+  ;; evaluate the predicate
+  `(let ((should-branch ,pred))
+     ;; normal delay slot:
+     ,delay
+     (when should-branch
+       ,likely-delay
+       (goto ,destination)
+       )
+     )
+  )
+
+;; the decompiler may fail to recognize setting fields of a 128-bit bitfield
+;; and will rely on this macro:
+(defmacro copy-and-set-field (original field-name field-value)
+  `(let ((temp-copy ,original))
+     (set! (-> temp-copy ,field-name) ,field-value)
+     temp-copy
+     )
+  )
+
+;; inserted by the decompiler if a c->goal bool conversion can't be compacted into a single
+;; expression.
+(defmacro cmove-#f-zero (dest condition src)
+  `(if (zero? ,condition)
+       (set! ,dest #f)
+       (set! ,dest ,src)
+       )
+   )
+
+(defmacro empty-form ()
+  `(none)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; PC Port asm macros
+;;;;;;;;;;;;;;;;;;;;;;;
+(#when PC_PORT
+  ;; SYNC is an EE instruction that waits for various memory access and DMA to be completed
+  ;; DMA will be instant in the PC port, so these are no longer necessary
+  (fake-asm .sync.l)
+  (fake-asm .sync.p)
+  ;; Copies the contents of a cop0 (system control) register to a gpr
+  (fake-asm .mfc0 dest src)
+  ;; Copies the contents of a gpr to a cop0 (system control) register
+  (fake-asm .mtc0 dest src)
+  )

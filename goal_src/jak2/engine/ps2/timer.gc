@@ -5,3 +5,267 @@
 ;; name in dgo: timer
 ;; dgos: ENGINE, GAME
 
+(defun timer-count ((timer timer-bank))
+  "Return a timer's counter value"
+  (#when PC_PORT
+    (when (= timer TIMER1_BANK)
+      (return (- (get-bus-clock/256) *timer-reset-value*))
+      )
+    (format 0 "Unknown timer #x~X requested.~%" timer)
+    )
+
+  (.sync.l)
+  (let ((count (-> timer count)))
+    (.sync.l)
+    count
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Interrupt Control
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; cop0 status register "interrupt enable" flag
+;; if cop0 status is needed anywhere else, move this elsewhere
+(defconstant COP0_STATUS_IE (the-as uint #x1))
+
+(defun disable-irq ()
+  "Disable all interrupts. Has no effect on PC Port"
+  (rlet ((status :class gpr :type uint))
+    (let ((status-mask (lognot COP0_STATUS_IE)))
+      (.mfc0 status Status)
+      (logand! status status-mask) ;; should status-mask be replaced directly?
+      (.mtc0 Status status)
+      (.sync.p)
+      )
+    )
+  )
+
+(defun enable-irq ()
+  "Enable all interrupts. Has no effect on PC Port."
+  (rlet ((status :class gpr :type uint))
+    (.mfc0 status Status)
+    (logior! status COP0_STATUS_IE)
+    (.mtc0 Status status)
+    (.sync.p)
+    )
+  )
+
+(defun stopwatch-init ((obj stopwatch))
+  "Init a stopwatch"
+  (set! (-> obj begin-level) 0)
+  (set! (-> obj prev-time-elapsed) 0)
+  )
+
+
+(defun stopwatch-reset ((obj stopwatch))
+  "Restart a stopwatch's times"
+  (set! (-> obj prev-time-elapsed) 0)
+  (when (> (-> obj begin-level) 0)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+      (set! (-> obj start-time) count)
+      )
+    )
+  )
+
+(defun stopwatch-start ((obj stopwatch))
+  "Start a stopwatch from scratch"
+  (when (zero? (-> obj begin-level))
+    (set! (-> obj begin-level) 1)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+      (set! (-> obj start-time) count)
+      )
+    )
+  )
+
+(defun stopwatch-stop ((obj stopwatch))
+  "Fully stop a stopwatch and save its elapsed time"
+  (when (> (-> obj begin-level) 0)
+    (set! (-> obj begin-level) 0)
+    (let ((count 0))
+      (let ((count 0))
+        (.mfc0 count Count) ;; wrong register? a typo in a rlet? who knows.
+        (#when PC_PORT
+          (set! count (the int (get-cpu-clock)))
+          )
+        (+! (-> obj prev-time-elapsed) (- count (-> obj start-time)))
+        )
+      )
+    )
+  (none)
+  )
+
+(defun stopwatch-begin ((obj stopwatch))
+  "Begin a stopwatch level, and starts it if it hasn't yet"
+  (when (zero? (-> obj begin-level))
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+      (set! (-> obj start-time) count)
+      )
+    )
+  (+! (-> obj begin-level) 1)
+  )
+
+(defun stopwatch-end ((obj stopwatch))
+  "End a stopwatch level. Stops the stopwatch if it's back to level zero.
+   There is no guard against ending a stopwatch too many times, and a negative level
+   will cause errors!"
+  (+! (-> obj begin-level) -1)
+  (when (zero? (-> obj begin-level))
+    (set! (-> obj begin-level) 0)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+
+      (+! (-> obj prev-time-elapsed) (- count (-> obj start-time)))
+      )
+    )
+  (none)
+  )
+
+(defun stopwatch-elapsed-ticks ((obj stopwatch))
+  "Returns the elapsed time so far (in clock cycles) of a stopwatch"
+  (let ((elapsed (-> obj prev-time-elapsed)))
+    (when (> (-> obj begin-level) 0)
+      (let ((count 0))
+        (.mfc0 count Count)
+        (#when PC_PORT
+          (set! count (the int (get-cpu-clock)))
+          )
+
+        (+! elapsed (- count (-> obj start-time)))
+        (set! count elapsed) ;; ??
+        )
+      )
+    elapsed
+    )
+  )
+
+(defglobalconstant EE_SECONDS_PER_TICK (/ 1.0 3000000)) ;; 300MHz is a "decent enough" estimate
+(defmacro cpu-ticks-to-seconds (ticks)
+  `(* ,EE_SECONDS_PER_TICK ,ticks)
+  )
+(defun stopwatch-elapsed-seconds ((obj stopwatch))
+  "Returns the elapsed time so far (in seconds) of a stopwatch"
+  (cpu-ticks-to-seconds (stopwatch-elapsed-ticks obj))
+  )
+
+
+(defmethod update-rates! clock ((obj clock) (arg0 float))
+  "Set the clock ratio and recompute the rates."
+  ;; remember the clock-ratio
+  (set! (-> obj clock-ratio) arg0)
+
+  ;; first, figure out ticks / renderered frame
+  (let ((f0-6 (if (nonzero? *display*)
+                  ;; ticks per frame, no lag   *  how much lag          * our ratio
+                  (* (-> *display* time-factor) (-> *display* dog-ratio) arg0)
+                  (* 5.0 arg0)
+                  )
+              )
+        )
+    ;; want a time-adjust-ratio of 1.0 on NTSC, at 60fps (should be 5 ticks/frame)
+    (set! (-> obj time-adjust-ratio) (* 0.2 f0-6))
+    )
+
+  ;; time-adjust-ratio of 1 works out to 60 fps:
+  (set! (-> obj seconds-per-frame) (* 0.016666668 (-> obj time-adjust-ratio)))
+  (set! (-> obj frames-per-second) (if (= (-> obj time-adjust-ratio) 0.0)
+                                       0.0
+                                       (* 60.0 (/ 1.0 (-> obj time-adjust-ratio)))
+                                       )
+
+
+        )
+  ;; weird sparticle stuff.
+  (let* ((v1-12 (- (-> obj frame-counter) (-> obj old-frame-counter)))
+         (f0-14 v1-12)
+         (f1-9 (* 0.2 (the float v1-12)))
+         )
+    (set-vector! (-> obj sparticle-data) (the-as float f0-14) (* 5.0 f1-9) f1-9 f1-9)
+    )
+  arg0
+  )
+
+(defmethod advance-by! clock ((obj clock) (arg0 float))
+  "Advance time by the given amount (time-frame units)"
+  ;; unused
+  (the int (+ arg0 (-> obj accum)))
+
+  ;; add the time
+  (+! (-> obj integral-accum) arg0)
+  ;; remember the old frame-counter
+  (set! (-> obj old-integral-frame-counter) (-> obj integral-frame-counter))
+
+  ;; count "frames" (really vsyncs)
+  (while (>= (-> obj integral-accum) (-> *display* time-factor))
+    (+! (-> obj integral-frame-counter) 1)
+    (set! (-> obj integral-accum) (- (-> obj integral-accum) (-> *display* time-factor)))
+    )
+
+  ;; count time frames
+  (let ((v1-7 (the int (+ arg0 (-> obj accum)))))
+    (set! (-> obj accum) (- (+ arg0 (-> obj accum)) (the float v1-7)))
+    (set! (-> obj old-frame-counter) (-> obj frame-counter))
+    (+! (-> obj frame-counter) v1-7)
+    )
+
+  ;; update rates each time - this will compensate for lag, so we have to do it each time.
+  (update-rates! obj (-> obj clock-ratio))
+  obj
+  )
+
+(defmethod tick! clock ((obj clock))
+  "Per-frame update function for a clock"
+  (if (zero? (logand (-> obj mask) (-> *kernel-context* prevent-from-run)))
+      (advance-by! obj (* (-> *display* time-factor) (-> *display* dog-ratio) (-> obj clock-ratio)))
+      (set! (-> obj sparticle-data x) 0.0)
+      )
+  obj
+  )
+
+(defmethod reset! clock ((obj clock))
+  "Reset a clock to defaults."
+  (set! (-> obj frame-counter) (seconds 1000))
+  (set! (-> obj integral-frame-counter) (the-as uint #x493e0))
+  (set! (-> obj accum) 0.0)
+  (set! (-> obj old-frame-counter) (+ (-> obj frame-counter) -1))
+  (set! (-> obj old-integral-frame-counter) (+ (-> obj integral-frame-counter) -1))
+  (update-rates! obj 1.0)
+  (none)
+  )
+
+(defmethod save! clock ((obj clock) (arg0 (pointer uint64)))
+  "Save clock state, return number of bytes used (16)"
+  (set! (-> arg0 0) (the-as uint (-> obj frame-counter)))
+  (set! (-> arg0 1) (-> obj integral-frame-counter))
+  16
+  )
+
+(defmethod load! clock ((obj clock) (arg0 (pointer uint64)))
+  "Load clock state, return number of bytes used (16)"
+  (set! (-> obj frame-counter) (the-as time-frame (-> arg0 0)))
+  (set! (-> obj integral-frame-counter) (-> arg0 1))
+  (set! (-> obj accum) 0.0)
+  (set! (-> obj integral-accum) 0.0)
+  (set! (-> obj old-frame-counter) (-> obj frame-counter))
+  (set! (-> obj old-integral-frame-counter) (-> obj integral-frame-counter))
+  16
+  )
+
+
+
+

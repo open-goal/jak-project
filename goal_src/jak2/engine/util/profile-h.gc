@@ -5,3 +5,109 @@
 ;; name in dgo: profile-h
 ;; dgos: ENGINE, GAME
 
+(deftype profile-segment (structure)
+  ((name       basic   :offset-assert   0)
+   (start-time int16   :offset-assert   4)
+   (end-time   int16   :offset-assert   6)
+   (count      uint8   :offset-assert   8)
+   (vu-count   uint8   :offset-assert   9)
+   (depth      uint16  :offset-assert  10)
+   (color      uint32  :offset-assert  12)
+   (code-time  uint16  :offset          4)
+   (vu-time    uint16  :offset          6)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype profile-collapse (structure)
+  ((count int32                      :offset-assert   0)
+   (data  profile-segment 48 :inline :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x304
+  :flag-assert         #x900000304
+  )
+
+(deftype profile-segment-array (basic)
+  ((count     int16                       :offset-assert   4)
+   (depth     int8                        :offset-assert   6)
+   (max-depth int8                        :offset-assert   7)
+   (base-time int16                       :offset-assert   8)
+   (segment   basic           9           :offset-assert  12)
+   (data      profile-segment 512 :inline :offset-assert  48)
+   )
+  :method-count-assert 13
+  :size-assert         #x2030
+  :flag-assert         #xd00002030
+  (:methods
+    (get-total-time (_type_) int 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    )
+  )
+
+(deftype profile-array (structure)
+  ((data profile-segment-array 2 :offset-assert   0)
+   )
+  :method-count-assert 12
+  :size-assert         #x8
+  :flag-assert         #xc00000008
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    )
+  )
+
+(defmethod get-total-time profile-segment-array ((obj profile-segment-array))
+  (- (-> obj data 0 end-time) (-> obj data 0 start-time))
+  )
+
+(define *profile-gap-color* (new 'static 'rgba :r #x30 :g #x30 :b #x30 :a #x80))
+(define *profile-all-color* (new 'static 'rgba :r #x55 :g #x55 :b #x55 :a #x80))
+(define *profile-particles-color* (new 'static 'rgba :r #x80 :g #x40 :b #x40 :a #x80))
+(define *profile-target-color* (new 'static 'rgba :r #x40 :g #x80 :b #x40 :a #x80))
+(define *profile-target-post-color* (new 'static 'rgba :r #x40 :g #x40 :b #x80 :a #x80))
+(define *profile-joints-color* (new 'static 'rgba :r #x70 :g #x70 :b #x20 :a #x80))
+(define *profile-debug-color* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+(define *profile-draw-hook-color* (new 'static 'rgba :r #x20 :g #x70 :b #x70 :a #x80))
+(define *profile-sky-color* (new 'static 'rgba :r #x80 :g #x60 :b #x20 :a #x80))
+(define *profile-ocean-color* (new 'static 'rgba :r #x60 :g #x80 :b #x20 :a #x80))
+(define *profile-background-color* (new 'static 'rgba :r #x60 :g #x60 :b #x40 :a #x80))
+(define *profile-bsp-color* (new 'static 'rgba :r #x60 :g #x40 :b #x60 :a #x80))
+(define *profile-foreground-color* (new 'static 'rgba :r #x40 :g #x60 :b #x60 :a #x80))
+(define *profile-tfrag-color* (new 'static 'rgba :r #x80 :g #x80 :a #x80))
+(define *profile-instance-tie-color* (new 'static 'rgba :r #x80 :b #x80 :a #x80))
+(define *profile-instance-shrubbery-color* (new 'static 'rgba :g #x80 :b #x80 :a #x80))
+(define *profile-generic-tie-color* (new 'static 'rgba :r #x80 :g #x20 :b #x60 :a #x80))
+(define *profile-bones-color* (new 'static 'rgba :r #x20 :g #x80 :b #x60 :a #x80))
+(define *profile-generic-merc-color* (new 'static 'rgba :r #x20 :g #x60 :b #x80 :a #x80))
+(define *profile-shadow-color* (new 'static 'rgba :r #x48 :g #x48 :b #x70 :a #x80))
+(define *profile-update-actors-color* (new 'static 'rgba :r #x48 :g #x70 :b #x48 :a #x80))
+(define *profile-menu-hook-color* (new 'static 'rgba :r #x70 :g #x48 :b #x48 :a #x80))
+(define *profile-texture-color* (new 'static 'rgba :r #x80 :g #x70 :b #x10 :a #x80))
+(define *profile-effects-color* (new 'static 'rgba :r #x70 :g #x80 :b #x10 :a #x80))
+(define *profile-sprite-color* (new 'static 'rgba :r #x70 :g #x10 :b #x80 :a #x80))
+(define *profile-merc-color* (new 'static 'rgba :r #x10 :g #x70 :b #x80 :a #x80))
+(define *profile-actors-color* (new 'static 'rgba :r #x80 :g #x10 :b #x70 :a #x80))
+(define *profile-collide-color* (new 'static 'rgba :r #x80 :g #x40 :b #x80 :a #x80))
+(define *profile-nav-color* (new 'static 'rgba :r #x38 :g #x48 :b #x80 :a #x80))
+(define *profile-camera-color* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+(define *profile-blit-color* (new 'static 'rgba :r #xff :g #xff :b #x80 :a #x80))
+(define *profile-hud-color* (new 'static 'rgba :r #xff :g #x80 :b #xff :a #x80))
+(define *profile-emerc-color* (new 'static 'rgba :r #x80 :g #xff :b #xff :a #x80))
+(when *debug-segment*
+  (define *profile-array* (new 'debug 'profile-array))
+  (set! (-> *profile-array* data 0) (new 'debug 'profile-segment-array))
+  (set! (-> *profile-array* data 1) (new 'debug 'profile-segment-array))
+  (define *profile-collapse* (new 'debug 'profile-collapse))
+  (define *profile-interrupt-segment* (-> *profile-array* data 1))
+  (define *profile-interrupt-start* #f)
+  )
+
+
+

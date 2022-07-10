@@ -651,6 +651,17 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     }
   }
 
+  if (env.version == GameVersion::Jak2 && tc(dts, TypeSpec("symbol"), arg1_type) &&
+      !m_args[0].is_int() && is_int_or_uint(dts, arg0_type)) {
+    if (arg0_type.is_integer_constant(jak2::SYM_TO_STRING_OFFSET)) {
+      // symbol -> GOAL String
+      // NOTE - the offset doesn't fit in a s16, so it's loaded into a register first.
+      // so we expect the arg to be a variable, and the type propagation will figure out the
+      // integer constant.
+      return TP_Type::make_from_ts(dts.ts.make_pointer_typespec("string"));
+    }
+  }
+
   if (tc(dts, TypeSpec("structure"), arg1_type) && !m_args[0].is_int() &&
       is_int_or_uint(dts, arg0_type)) {
     if (arg1_type.typespec() == TypeSpec("symbol") &&
