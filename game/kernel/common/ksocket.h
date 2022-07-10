@@ -14,14 +14,6 @@
 u32 ReceiveToBuffer(char* buff);
 
 /*!
- * Update GOAL message header after receiving and verify message is ok.
- * Return the size of the message in bytes (not including DECI or GOAL headers)
- * Return -1 on error.
- * The buffer parameter is unused.
- */
-u32 ReceiveToBuffer(char* buff);
-
-/*!
  * Do a DECI2 send and block until it is complete.
  * The message type is OUTPUT
  */

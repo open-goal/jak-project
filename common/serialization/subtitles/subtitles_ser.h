@@ -75,8 +75,8 @@ enum class SubtitleSceneKind { Invalid = -1, Movie = 0, Hint = 1, HintNamed = 2 
 class GameSubtitleSceneInfo {
  public:
   struct SubtitleLine {
-    SubtitleLine(int frame, std::string line, std::string speaker, bool offscreen)
-        : frame(frame), line(line), speaker(speaker), offscreen(offscreen) {}
+    SubtitleLine(int m_frame, std::string m_line, std::string m_speaker, bool m_offscreen)
+        : frame(m_frame), line(m_line), speaker(m_speaker), offscreen(m_offscreen) {}
 
     int frame;
     std::string line;

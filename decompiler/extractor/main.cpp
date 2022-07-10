@@ -219,7 +219,20 @@ ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& dat
 }
 
 void launch_game() {
-  system(fmt::format("\"{}\"", (file_util::get_jak_project_dir() / "../gk").string()).c_str());
+  const std::string filepaths[2] = {
+      fmt::format("{}", (file_util::get_jak_project_dir() / "out\\build\\Release\\bin\\gk.exe").string()),
+      fmt::format("{}", (file_util::get_jak_project_dir() / "build/game/gk").string())};
+
+  for(uint32_t i = 0; i < sizeof(filepaths); ++i){
+    if(fs::exists(filepaths[i])){
+      lg::info("Launching: {}", filepaths[i]);
+      int status = ::system(filepaths[i].c_str());
+      lg::info("System status code: {}", status);
+      return;
+    }
+    lg::warn("File not found: {}", filepaths[i]); 
+  }
+  lg::error("Extractor could not find gk executable. Please confirm that this file exists and run it manually"); 
 }
 
 int main(int argc, char** argv) {
