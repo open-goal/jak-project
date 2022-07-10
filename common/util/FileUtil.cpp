@@ -86,9 +86,10 @@ struct {
  */
 std::string get_current_executable_path() {
 #ifdef _WIN32
-  char buffer[FILENAME_MAX];
-  GetModuleFileNameA(NULL, buffer, FILENAME_MAX);
-  std::string file_path(buffer);
+  // NOTE - MAX_PATH is kinda wrong here as you can have a path longer than 260 in windows
+  wchar_t path[MAX_PATH];
+  GetModuleFileNameW(NULL, path, MAX_PATH);
+  std::string file_path = wide_string_to_utf8_string(path);
   if (file_path.rfind("\\\\?\\", 0) == 0) {
     return file_path.substr(4);
   }
@@ -281,7 +282,7 @@ std::vector<uint8_t> read_binary_file(const fs::path& path) {
 }
 
 std::string read_text_file(const fs::path& path) {
-  std::ifstream file(path.string());
+  fs::ifstream file(path);
   if (!file.good()) {
     throw std::runtime_error("couldn't open " + path.string());
   }
