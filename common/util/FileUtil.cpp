@@ -57,7 +57,7 @@ fs::path get_user_config_dir() {
   // Docs - https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
   // Prefer XDG_CONFIG_HOME if available
   auto config_base_dir = get_env("XDG_CONFIG_HOME");
-  if (!config_base_dir) {
+  if (config_base_dir.empty()) {
     config_base_path = get_user_home_dir() / ".config";
   } else {
     config_base_path = fs::path(config_base_dir);

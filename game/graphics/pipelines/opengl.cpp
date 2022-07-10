@@ -185,7 +185,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   GLFWimage images[1];
   auto load_result = stbi_load(image_path.c_str(), &images[0].width, &images[0].height, 0, 4);
   if (load_result) {
-    images[0].pixels = load_result; // rgba channels
+    images[0].pixels = load_result;  // rgba channels
     glfwSetWindowIcon(window, 1, images);
     stbi_image_free(images[0].pixels);
   } else {
