@@ -19,12 +19,20 @@ class Sprite3 : public BucketRenderer {
   static constexpr int SPRITES_PER_CHUNK = 48;
 
  private:
+  void opengl_setup();
+  void opengl_setup_normal();
+  void opengl_setup_distort();
+
   void render_distorter(DmaFollower& dma,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
   void distort_dma(DmaFollower& dma, ScopedProfilerNode& prof);
   void distort_setup(ScopedProfilerNode& prof);
+  void distort_setup_instanced(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void distort_draw(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void distort_draw_instanced(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void distort_draw_common(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void distort_setup_framebuffer_dims(SharedRenderState* render_state);
   void handle_sprite_frame_setup(DmaFollower& dma);
   void render_3d(DmaFollower& dma);
   void render_2d_group0(DmaFollower& dma,
@@ -90,6 +98,11 @@ class Sprite3 : public BucketRenderer {
     math::Vector2f st;
   };
 
+  struct SpriteDistortInstanceData {
+    math::Vector4f x_y_z_s;     // position, S-texture coord
+    math::Vector4f sx_sy_sz_t;  // scale, T-texture coord
+  };
+
   struct {
     GLuint vao;
     GLuint vertex_buffer;
@@ -101,6 +114,15 @@ class Sprite3 : public BucketRenderer {
   } m_distort_ogl;
 
   struct {
+    GLuint vao;
+    GLuint vertex_buffer;    // contains vertex data for each possible sprite resolution (3-11)
+    GLuint instance_buffer;  // contains all instance specific data for each sprite per frame
+    int last_window_width = -1;
+    int last_window_height = -1;
+    bool vertex_data_changed = false;
+  } m_distort_instanced_ogl;
+
+  struct {
     int total_sprites;
     int total_tris;
   } m_distort_stats;
@@ -110,6 +132,8 @@ class Sprite3 : public BucketRenderer {
   SpriteDistorterSetup m_sprite_distorter_setup;  // direct data
   SpriteDistorterSineTables m_sprite_distorter_sine_tables;
   std::vector<SpriteDistortFrameData> m_sprite_distorter_frame_data;
+  std::vector<SpriteDistortVertex> m_sprite_distorter_vertices_instanced;
+  std::map<int, std::vector<SpriteDistortInstanceData>> m_sprite_distorter_instances_by_res;
 
   u8 m_sprite_direct_setup[3 * 16];
   SpriteFrameData m_frame_data;  // qwa: 980
@@ -127,6 +151,7 @@ class Sprite3 : public BucketRenderer {
     int count_2d_grp1 = 0;
   } m_debug_stats;
 
+  bool m_enable_distort_instancing = true;
   bool m_enable_culling = true;
 
   bool m_2d_enable = true;
