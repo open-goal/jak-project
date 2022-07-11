@@ -319,6 +319,14 @@
         "PORTUGUÊS")
 (#x1112 "PORTUGUÊS (BRASIL)"
         "PORTUGUÊS (BRASIL)")
+(#x1113 "SUOMI"
+        "SUOMI")
+(#x1114 "SVENSKA"
+        "SVENSKA")
+(#x1115 "DANSK"
+        "DANSK")
+(#x1116 "NORSK"
+        "NORSK")
 
 
 ;; -----------------
