@@ -414,6 +414,11 @@ void OpenGLRenderer::setup_frame(int window_width_px,
   glDepthMask(GL_TRUE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   glDisable(GL_BLEND);
+
+  m_render_state.window_width_px = window_width_px;
+  m_render_state.window_height_px = window_height_px;
+  m_render_state.window_offset_x_px = offset_x;
+  m_render_state.window_offset_y_px = offset_y;
 }
 
 /*!

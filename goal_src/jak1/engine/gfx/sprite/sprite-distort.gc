@@ -26,59 +26,64 @@
 
 (defun sprite-distorter-generate-tables ()
   "Regenerate sprite-distorter tables.  This should be done whenever the aspect ratio changes"
-  (let ((gp-0 *sprite-distorter-sine-tables*))
-    (let ((s3-0 0)
-          (s5-0 0)
-          (s4-0 3)
-          (f28-0 (- (-> *math-camera* perspective vector 0 x)))
-          (f30-0 (- (-> *math-camera* perspective vector 1 y)))
+  (let ((tables *sprite-distorter-sine-tables*))
+    (let ((entry-index 0)
+          (ientry-index 0)
+          (iterations 3)
+          ;; get camera aspect
+          (cam-aspx (- (-> *math-camera* perspective vector 0 x)))
+          (cam-aspy (- (-> *math-camera* perspective vector 1 y)))
           )
-      (when (or (!= f28-0 (-> gp-0 aspx)) (!= f30-0 (-> gp-0 aspy)))
-        (set! (-> gp-0 aspx) f28-0)
-        (set! (-> gp-0 aspy) f30-0)
-        (while (< s4-0 12)
-          (set! (-> gp-0 ientry s5-0 vector4w x) (+ s3-0 352))
-          (+! s5-0 1)
-          (dotimes (s2-0 s4-0)
-            (let ((f26-0 (* 65536.0 (/ (the float s2-0) (the float s4-0)))))
+      ;; regenerate if aspect ratio changed
+      (when (or (!= cam-aspx (-> tables aspx)) (!= cam-aspy (-> tables aspy)))
+        (set! (-> tables aspx) cam-aspx)
+        (set! (-> tables aspy) cam-aspy)
+        (while (< iterations 12)
+          ;; set ientry
+          (set! (-> tables ientry ientry-index vector4w x) (+ entry-index 352)) ;; 352 = tables.entry in VU
+          (+! ientry-index 1)
+          ;; set entries
+          (dotimes (i iterations)
+            (let ((f26-0 (* 65536.0 (/ (the float i) (the float iterations)))))
               (set-vector!
-               (-> gp-0 entry s3-0)
-               (* (sin f26-0) f28-0)
-               (* (cos f26-0) f30-0)
+               (-> tables entry entry-index)
+               (* (sin f26-0) cam-aspx)
+               (* (cos f26-0) cam-aspy)
                0.0
                0.0
                )
-              (let ((s3-1 (+ s3-0 1)))
-                (set-vector!
-                 (-> gp-0 entry s3-1)
-                 (* (* 0.001953125 f28-0) (sin f26-0))
-                 (* (* 0.00390625 f30-0) (cos f26-0))
-                 0.0
-                 0.0
-                 )
-                (set! s3-0 (+ s3-1 1))
+              (set-vector!
+                (-> tables entry (+ entry-index 1))
+                (* (* 0.001953125 cam-aspx) (sin f26-0))
+                (* (* 0.00390625 cam-aspy) (cos f26-0))
+                0.0
+                0.0
                 )
+              (+! entry-index 2)
               )
             )
-          (+! s4-0 1)
+          (+! iterations 1)
           )
-        (set-vector! (-> gp-0 entry s3-0) 0.0 f30-0 0.0 0.0)
-        (let ((v1-17 (+ s3-0 1)))
-          (set-vector! (-> gp-0 entry v1-17) 0.0 (* 0.00390625 f30-0) 0.0 0.0)
-          (+ v1-17 1)
+        ;; final entry pair
+        (set-vector! (-> tables entry entry-index) 0.0 cam-aspy 0.0 0.0)
+        (let ((v1-17 (+ entry-index 1)))
+          (set-vector! (-> tables entry v1-17) 0.0 (* 0.00390625 cam-aspy) 0.0 0.0)
+          (+ v1-17 1) ;; ?
           )
         )
       )
-    (set! (-> gp-0 giftag tag)
+    ;; set up giftag
+    (set! (-> tables giftag tag)
           (new 'static 'gif-tag64
-               :nloop #x1
-               :eop #x1
-               :pre #x1
-               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :tme #x1)
-               :nreg #xf
+               :nloop 1
+               :eop 1
+               :pre 1
+               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :tme 1)
+               :nreg 15
                )
           )
-    (set! (-> gp-0 giftag regs)
+    ;; set up registers
+    (set! (-> tables giftag regs)
           (new 'static 'gif-tag-regs
                :regs0 (gif-reg-id st)
                :regs1 (gif-reg-id rgbaq)
@@ -97,10 +102,11 @@
                :regs14 (gif-reg-id xyzf2)
                )
           )
-    (set! (-> gp-0 color vector4w x) 128)
-    (set! (-> gp-0 color vector4w y) 128)
-    (set! (-> gp-0 color vector4w z) 128)
-    (set! (-> gp-0 color vector4w w) 128)
+    ;; set color
+    (set! (-> tables color vector4w x) 128)
+    (set! (-> tables color vector4w y) 128)
+    (set! (-> tables color vector4w z) 128)
+    (set! (-> tables color vector4w w) 128)
     )
   0
   (none)
@@ -111,92 +117,40 @@
 (define sprite-distort-vu1-block (new 'static 'vu-function))
 
 
-(defun sprite-init-distorter ((arg0 dma-buffer) (arg1 uint))
+(defun sprite-init-distorter ((dma-buff dma-buffer) (frame-base-pointer uint))
   "Set up DMA for setting up the sprite-distorter renderer"
   ;;(format #t "distorter: ~d~%" (-> *sprite-aux-list* entry))
-  (let* ((v1-0 arg0)
-         (a2-0 (the-as object (-> v1-0 base)))
-         )
-    (set! (-> (the-as dma-packet a2-0) dma) (new 'static 'dma-tag :qwc #x7 :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet a2-0) vif0) (new 'static 'vif-tag))
-    (set! (-> (the-as dma-packet a2-0) vif1) (new 'static 'vif-tag :imm #x7 :cmd (vif-cmd direct) :msk #x1))
-    (set! (-> v1-0 base) (&+ (the-as pointer a2-0) 16))
+  
+  ;; set up GS registers
+  (dma-buffer-add-gs-set dma-buff
+    ;; dont update zbuffer
+    (zbuf-1 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk 1))
+    ;; use framebuffer as texture
+    (tex0-1 (new 'static 'gs-tex0 :tbw #x8 :tw #x9 :th #x8 :tbp0 (* frame-base-pointer 32)))
+    ;; bilinear filtering
+    (tex1-1 (new 'static 'gs-tex1 :mmag 1 :mmin 1))
+    ;; mipmapping
+    (miptbp1-1 (new 'static 'gs-miptbp))
+    ;; set texture wrap mode to clamp
+    (clamp-1
+      (new 'static 'gs-clamp
+          :wms (gs-tex-wrap-mode region-clamp)
+          :wmt (gs-tex-wrap-mode region-clamp)
+          :maxu #x1ff
+          :maxv (-> *video-parms* screen-masky)
+          )
+      )
+    ;; blend source and framebuffer RGB
+    (alpha-1 (new 'static 'gs-alpha :b 1 :d 1))
     )
-  (let* ((v1-1 arg0)
-         (a2-2 (the-as object (-> v1-1 base)))
-         )
-    (set! (-> (the-as gs-gif-tag a2-2) tag)
-          (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x6)
-          )
-    (set! (-> (the-as gs-gif-tag a2-2) regs)
-          (new 'static 'gif-tag-regs
-               :regs0 (gif-reg-id a+d)
-               :regs1 (gif-reg-id a+d)
-               :regs2 (gif-reg-id a+d)
-               :regs3 (gif-reg-id a+d)
-               :regs4 (gif-reg-id a+d)
-               :regs5 (gif-reg-id a+d)
-               :regs6 (gif-reg-id a+d)
-               :regs7 (gif-reg-id a+d)
-               :regs8 (gif-reg-id a+d)
-               :regs9 (gif-reg-id a+d)
-               :regs10 (gif-reg-id a+d)
-               :regs11 (gif-reg-id a+d)
-               :regs12 (gif-reg-id a+d)
-               :regs13 (gif-reg-id a+d)
-               :regs14 (gif-reg-id a+d)
-               :regs15 (gif-reg-id a+d)
-               )
-          )
-    (set! (-> v1-1 base) (&+ (the-as pointer a2-2) 16))
+  ;; send distorter sine tables
+  (dma-buffer-add-ref-vif2 dma-buff #x8b
+    (-> *sprite-distorter-sine-tables* entry)
+    (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl))
+    (new 'static 'vif-tag :imm #x160 :num #x8b :cmd (vif-cmd unpack-v4-32))
     )
-  (let* ((v1-2 arg0)
-         (a2-4 (-> v1-2 base))
-         )
-    (set! (-> (the-as (pointer gs-zbuf) a2-4) 0)
-          (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
-          )
-    (set! (-> (the-as (pointer gs-reg64) a2-4) 1) (gs-reg64 zbuf-1))
-    (set! (-> (the-as (pointer gs-tex0) a2-4) 2)
-          (new 'static 'gs-tex0 :tbw #x8 :tw #x9 :th #x8 :tbp0 (* arg1 32))
-          )
-    (set! (-> (the-as (pointer gs-reg64) a2-4) 3) (gs-reg64 tex0-1))
-    (set! (-> (the-as (pointer gs-tex1) a2-4) 4)
-          (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)
-          )
-    (set! (-> (the-as (pointer gs-reg64) a2-4) 5) (gs-reg64 tex1-1))
-    (set! (-> (the-as (pointer gs-miptbp) a2-4) 6) (new 'static 'gs-miptbp))
-    (set! (-> (the-as (pointer gs-reg64) a2-4) 7) (gs-reg64 miptbp1-1))
-    (set! (-> (the-as (pointer gs-clamp) a2-4) 8)
-          (new 'static 'gs-clamp
-               :wms (gs-tex-wrap-mode region-clamp)
-               :wmt (gs-tex-wrap-mode region-clamp)
-               :maxu #x1ff
-               :maxv (-> *video-parms* screen-masky)
-               )
-          )
-    (set! (-> (the-as (pointer gs-reg64) a2-4) 9) (gs-reg64 clamp-1))
-    (set! (-> (the-as (pointer gs-alpha) a2-4) 10)
-          (new 'static 'gs-alpha :b #x1 :d #x1)
-          )
-    (set! (-> (the-as (pointer gs-reg64) a2-4) 11) (gs-reg64 alpha-1))
-    (set! (-> v1-2 base) (&+ a2-4 96))
-    )
-  (let* ((v1-3 arg0)
-         (a1-15 (the-as object (-> v1-3 base)))
-         )
-    (set! (-> (the-as dma-packet a1-15) dma)
-          (new 'static 'dma-tag
-               :qwc #x8b
-               :id (dma-tag-id ref)
-               :addr (the-as uint (-> *sprite-distorter-sine-tables* entry))
-               )
-          )
-    (set! (-> (the-as dma-packet a1-15) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a1-15) vif1) (new 'static 'vif-tag :imm #x160 :num #x8b :cmd (vif-cmd unpack-v4-32)))
-    (set! (-> v1-3 base) (&+ (the-as pointer a1-15) 16))
-    )
-  (dma-buffer-add-vu-function arg0 sprite-distort-vu1-block 1)
+  ;; load VU1 code
+  (dma-buffer-add-vu-function dma-buff sprite-distort-vu1-block 1)
   0
   (none)
   )

@@ -10,8 +10,8 @@
 #include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
-DecompilerTypeSystem::DecompilerTypeSystem() {
-  ts.add_builtin_types();
+DecompilerTypeSystem::DecompilerTypeSystem(GameVersion version) {
+  ts.add_builtin_types(version);
 }
 
 namespace {

@@ -15,6 +15,7 @@
 
 #include "common/common_types.h"
 #include "common/util/BinaryReader.h"
+#include "common/util/unicode_util.h"
 
 // This disables the use of PCLMULQDQ which is probably ok, but let's just be safe and disable it
 // because nobody will care if png compression is 10% slower.
@@ -39,10 +40,10 @@ namespace file_util {
 fs::path get_user_home_dir() {
 #ifdef _WIN32
   // NOTE - on older systems, this may case issues if it cannot be found!
-  std::string home_dir = std::getenv("USERPROFILE");
+  std::string home_dir = get_env("USERPROFILE");
   return fs::path(home_dir);
 #else
-  std::string home_dir = std::getenv("HOME");
+  std::string home_dir = get_env("HOME");
   return fs::path(home_dir);
 #endif
 }
@@ -50,16 +51,16 @@ fs::path get_user_home_dir() {
 fs::path get_user_config_dir() {
   fs::path config_base_path;
 #ifdef _WIN32
-  auto config_base_dir = std::getenv("APPDATA");
-  config_base_path = fs::path(std::string(config_base_dir));
+  auto config_base_dir = get_env("APPDATA");
+  config_base_path = fs::path(config_base_dir);
 #elif __linux
   // Docs - https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
   // Prefer XDG_CONFIG_HOME if available
-  auto config_base_dir = std::getenv("XDG_CONFIG_HOME");
-  if (!config_base_dir) {
+  auto config_base_dir = get_env("XDG_CONFIG_HOME");
+  if (config_base_dir.empty()) {
     config_base_path = get_user_home_dir() / ".config";
   } else {
-    config_base_path = std::string(config_base_dir);
+    config_base_path = fs::path(config_base_dir);
   }
 #endif
   return config_base_path / "OpenGOAL";
@@ -85,9 +86,10 @@ struct {
  */
 std::string get_current_executable_path() {
 #ifdef _WIN32
-  char buffer[FILENAME_MAX];
-  GetModuleFileNameA(NULL, buffer, FILENAME_MAX);
-  std::string file_path(buffer);
+  // NOTE - MAX_PATH is kinda wrong here as you can have a path longer than 260 in windows
+  wchar_t path[MAX_PATH];
+  GetModuleFileNameW(NULL, path, MAX_PATH);
+  std::string file_path = wide_string_to_utf8_string(path);
   if (file_path.rfind("\\\\?\\", 0) == 0) {
     return file_path.substr(4);
   }
@@ -280,7 +282,7 @@ std::vector<uint8_t> read_binary_file(const fs::path& path) {
 }
 
 std::string read_text_file(const fs::path& path) {
-  std::ifstream file(path.string());
+  fs::ifstream file(path);
   if (!file.good()) {
     throw std::runtime_error("couldn't open " + path.string());
   }

@@ -16,7 +16,7 @@ class DataDecompTest : public ::testing::Test {
   static std::unique_ptr<decompiler::DecompilerTypeSystem> dts;
 
   static void SetUpTestCase() {
-    dts = std::make_unique<DecompilerTypeSystem>();
+    dts = std::make_unique<DecompilerTypeSystem>(GameVersion::Jak1);
     dts->parse_type_defs({"decompiler", "config", "all-types.gc"});
   }
 

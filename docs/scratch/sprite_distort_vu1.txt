@@ -1,0 +1,94 @@
+;; VU memory:
+;; 0:   GS vertex data (buffer 1)
+;; 176: GS vertex data (buffer 2)
+;; 352: sinetables.entry[128]
+;; 480: sinetables.ientry[9]
+;; 489: sinetables.giftag
+;; 490: sinetables.color
+;; 511: num sprites
+;; 512: sprite data
+
+;; Init
+  lq.xyzw vf01, 489(vi00)    |  nop                         ;; Load giftag
+  lq.xyzw vf05, 490(vi00)    |  nop                         ;; Load color
+  ilw.x vi01, 511(vi00)      |  nop                         ;; Load number of sprites
+  iaddiu vi04, vi00, 0x200   |  nop                         ;; Address of sprite data (512)
+  iaddi vi02, vi00, 0x0      |  nop                      
+
+;; Loop for each sprite
+L1:
+  ilw.w vi07, 1(vi04)        |  nop                         ;; Get sprite.flag
+                                                            ;; The flag represents the 'resolution' of the sprite,
+                                                            ;; which is a circle. The vertices are constructed below
+                                                            ;; by creating "pie-slices" of a circle where the number
+                                                            ;; of slices is the value of flag. In practice, flag
+                                                            ;; can range from 3-11.
+  ior vi05, vi02, vi00       |  nop                      
+  ilw.x vi06, 477(vi07)      |  nop                         ;; Get ptr to sinetables.entry
+                                                            ;; addr = sinetables.ientry[flag - 3]
+                                                            ;; The smallest value of flag is 3 and 3 + 477 = 480, 
+                                                            ;; which is sinetables.ientry.
+                                                            ;; The values in ientry are an index of entry + 352, 
+                                                            ;; which gives the address of an entry element.
+  sqi.xyzw vf01, vi05        |  nop                         ;; Write giftag to GS data
+  iaddiu vi08, vi07, 0x4000  |  nop                      
+  iaddiu vi08, vi08, 0x4000  |  nop                         
+  isw.x vi08, -1(vi05)       |  nop                         ;; Set giftag.nloop to flag (number of slices)
+  lqi.xyzw vf02, vi04        |  nop                         ;; Get sprite.xyz
+  lqi.xyzw vf03, vi04        |  nop                         ;; Get sprite.st
+  lqi.xyzw vf04, vi04        |  nop                         ;; Get sprite.rgba
+  nop                        |  ftoi4.xyzw vf14, vf02    
+
+;; Loop the number of times denoted by sprite.flag
+;; Here, we build the GS data for a single distort sprite
+L2:
+  lqi.xyzw vf06, vi06        |  nop                         ;; Load 4 sine table vectors
+  lqi.xyzw vf07, vi06        |  nop                      
+  lq.xyzw vf08, 0(vi06)      |  nop                      
+  lq.xyzw vf09, 1(vi06)      |  nop                      
+  iaddi vi07, vi07, -0x1     |  muly.xyzw vf10, vf06, vf04  ;; Decrement loop count
+  nop                        |  mulz.xyzw vf11, vf07, vf04  ;; Calculate vertex positions, texture coords, and color
+  nop                        |  muly.xyzw vf12, vf08, vf04
+  nop                        |  mulz.xyzw vf13, vf09, vf04
+  nop                        |  mulx.xyzw vf06, vf06, vf04
+  nop                        |  mulx.xyzw vf07, vf07, vf04
+  nop                        |  mulx.xyzw vf08, vf08, vf04
+  nop                        |  mulx.xyzw vf09, vf09, vf04
+  nop                        |  add.xyzw vf10, vf10, vf02
+  nop                        |  add.xyzw vf11, vf11, vf03
+  nop                        |  add.xyzw vf12, vf12, vf02
+  nop                        |  add.xyzw vf13, vf13, vf03
+  nop                        |  add.xyzw vf06, vf06, vf02
+  nop                        |  add.xyzw vf07, vf07, vf03
+  nop                        |  add.xyzw vf08, vf08, vf02
+  nop                        |  add.xyzw vf09, vf09, vf03
+  nop                        |  ftoi4.xyzw vf10, vf10    
+  nop                        |  ftoi4.xyzw vf12, vf12    
+  nop                        |  ftoi4.xyzw vf06, vf06    
+  nop                        |  ftoi4.xyzw vf08, vf08    
+  sqi.xyzw vf07, vi05        |  nop                         ;; Write the 5 vertexes for this "pie-slice" to GS data
+  sqi.xyzw vf05, vi05        |  nop                      
+  sqi.xyzw vf06, vi05        |  nop                      
+  sqi.xyzw vf09, vi05        |  nop                      
+  sqi.xyzw vf05, vi05        |  nop                      
+  sqi.xyzw vf08, vi05        |  nop                      
+  sqi.xyzw vf11, vi05        |  nop                      
+  sqi.xyzw vf05, vi05        |  nop                      
+  sqi.xyzw vf10, vi05        |  nop                      
+  sqi.xyzw vf13, vi05        |  nop                      
+  sqi.xyzw vf05, vi05        |  nop                      
+  sqi.xyzw vf12, vi05        |  nop                      
+  sqi.xyzw vf03, vi05        |  nop                      
+  sqi.xyzw vf05, vi05        |  nop                      
+  ibne vi00, vi07, L2        |  nop                         ;; Repeat for remaining slices
+  sqi.xyzw vf14, vi05        |  nop                      
+
+;; Finally, tell the GS to draw the current sprite and switch
+;; to the other buffer for the next sprite
+  xgkick vi02                |  nop                         ;; Draw sprite
+  iaddi vi01, vi01, -0x1     |  nop                      
+  iaddiu vi03, vi00, 0xb0    |  nop                         ;; Switch buffer
+  ibne vi00, vi01, L1        |  nop                         ;; Loop for remaining sprites
+  isub vi02, vi03, vi02      |  nop                      
+  nop                        |  nop :e                   
+  nop                        |  nop                      
