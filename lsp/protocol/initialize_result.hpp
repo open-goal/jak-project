@@ -44,7 +44,7 @@ class InitializeResult {
                    {"referencesProvider", false},
                    {"documentHighlightProvider", false},
                    {"documentSymbolProvider",
-                    false},  // TODO - there is another selectionRangeProvider i
+                    document_symbol_provder},  // TODO - there is another selectionRangeProvider i
                                                // think i need, or word boundaries need to change!
                    {"workspaceSymbolProvider", false},
                    {"codeActionProvider", false},

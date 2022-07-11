@@ -1,27 +1,23 @@
 #include <optional>
 
+#include "protocol/common_types.h"
+#include "state/workspace.h"
+
 #include "third-party/json.hpp"
 
 using json = nlohmann::json;
 
-std::optional<json> initialize_handler(int id, json params) {
-  InitializeResult result;
-  return result.to_json();
+std::optional<json> document_symbols_handler(Workspace& workspace, int id, json params) {
+  auto converted_params = params.get<LSPSpec::DocumentSymbolParams>();
+  auto tracked_file = workspace.get_tracked_ir_file(converted_params.m_textDocument.m_uri);
+
+  if (!tracked_file) {
+    return {};
+  }
+
+  json arr = json::array();
+  for (const auto& symbol : tracked_file.value().m_symbols) {
+    arr.push_back(symbol);
+  }
+  return arr;
 }
-
-
-//json range;
-//range["start"] = json{{"line", 2}, {"character", 0}};
-//range["end"] = json{{"line", 291}, {"character", 0}};
-//
-//json selectionRange;
-//selectionRange["start"] = json{{"line", 3}, {"character", 12}};
-//selectionRange["end"] = json{{"line", 3}, {"character", 27}};
-//
-//resp[0] = json{{"name", "points-in-air?"},
-//               {"kind", 12},
-//               {"range", range},
-//               {"selectionRange", selectionRange}
-//
-//};
-//json result_body{{"id", body["id"]}, {"result", resp}};

@@ -18,6 +18,7 @@
 #include <state/app.h>
 
 #include "third-party/CLI11.hpp"
+#include <regex>
 
 // TODO - look into replacing our xsocket with cpphttplib eventually
 
@@ -33,12 +34,14 @@
 void setup_logging(std::string log_file) {
   lg::set_file(log_file);
   lg::set_file_level(lg::level::debug);
+  // We use stdout to communicate with the client, so don't use it at all!
   lg::set_stdout_level(lg::level::off);
   lg::set_flush_level(lg::level::debug);
   lg::initialize();
 }
 
 int main(int argc, char** argv) {
+  // TODO - do the utf-8 thing!
   CLI::App app{"OpenGOAL Language Server"};
 
   bool use_stdin = true;
@@ -54,8 +57,9 @@ int main(int argc, char** argv) {
   AppState appstate;
   LspRouter lsp_router;
   appstate.verbose = verbose;
-  // TODO - only if logfile is specified
-  setup_logging(logfile);
+  if (!logfile.empty()) {
+    setup_logging(logfile);
+  }
   lsp_router.init_routes();
 
   // Decompiling
