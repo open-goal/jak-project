@@ -407,8 +407,6 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
           return TP_Type::make_from_ts(TypeSpec("float"));
         }
         return TP_Type::make_from_ts(TypeSpec("int"));
-      } else {
-        return TP_Type::make_from_ts(TypeSpec("uint"));
       }
     } break;
 
