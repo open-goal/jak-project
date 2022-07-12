@@ -336,6 +336,10 @@ bool Compiler::is_pair(const TypeSpec& ts) {
   return m_ts.tc(m_ts.make_typespec("pair"), ts);
 }
 
+bool Compiler::is_symbol(const TypeSpec& ts) {
+  return m_ts.tc(m_ts.make_typespec("symbol"), ts);
+}
+
 bool Compiler::get_true_or_false(const goos::Object& form, const goos::Object& boolean) {
   // todo try other things.
   if (boolean.is_symbol()) {

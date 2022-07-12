@@ -220,6 +220,7 @@ class Compiler {
   bool is_structure(const TypeSpec& ts);
   bool is_bitfield(const TypeSpec& ts);
   bool is_pair(const TypeSpec& ts);
+  bool is_symbol(const TypeSpec& ts);
   std::vector<goos::Object> get_list_as_vector(const goos::Object& o,
                                                goos::Object* rest_out = nullptr,
                                                int max_length = -1);

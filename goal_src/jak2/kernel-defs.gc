@@ -5,6 +5,26 @@
 ;;;; kscheme - InitHeapAndSymbol
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum kmalloc-flags
+  :bitfield #t
+  (align-16    4)
+  (align-64    6)
+  (align-256   8)
+  (memset     12)
+  (top        13)
+  )
+
+(defenum link-flag
+  :bitfield #t
+  :type int32
+  (output-load-msg 0)
+  (output-load-true-msg 1)
+  (execute-login 2)
+  (print-login 3)
+  (force-debug 4)
+  (fast-link 5)
+  )
+
 ;; fixed symbols
 (define-extern #f symbol)
 (define-extern #t symbol)
@@ -59,32 +79,32 @@
 ;; InitHeapAndSymbol
 (define-extern _format (function _varargs_ object))
 (define-extern method-set! (function type int object none)) ;; may actually return function.
+(define-extern kmemopen (function kheap string none))
+(define-extern kmemclose (function none))
 
 (define-extern *enable-method-set* int)
 
 (define-extern *listener-function* (function object))
 (define-extern *debug-segment* symbol)
 
+(define-extern dgo-load (function string kheap link-flag int none))
+(define-extern malloc (function symbol int pointer))
 
-(defenum kmalloc-flags
-  :bitfield #t
-  (align-16    4)
-  (align-64    6)
-  (align-256   8)
-  (memset     12)
-  (top        13)
-  )
+(declare-type cpad-info basic)
+(define-extern cpad-open (function cpad-info int cpad-info))
+(define-extern cpad-get-data (function cpad-info cpad-info))
 
-(defenum link-flag
-  :bitfield #t
-  :type int32
-  (output-load-msg 0)
-  (output-load-true-msg 1)
-  (execute-login 2)
-  (print-login 3)
-  (force-debug 4)
-  (fast-link 5)
-  )
+(declare-type mouse-info basic)
+(define-extern mouse-get-data (function mouse-info none))
+
+
+(define-extern scf-get-territory (function int)) ;; not actually a scf function...
+(define-extern __read-ee-timer (function uint))
+(define-extern __mem-move (function pointer pointer uint none))
+
+(define-extern file-stream-read (function file-stream pointer int int))
+(define-extern file-stream-open (function file-stream basic symbol file-stream))
+(define-extern file-stream-length (function file-stream int))
 
 
 ;; PC stuff

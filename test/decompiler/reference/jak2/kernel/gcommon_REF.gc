@@ -1,177 +1,105 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: gcommon.gc
-;; name in dgo: gcommon
-;; dgos: KERNEL
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Game constants
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; disable PS2 only code and enable PC-specific code
-(defglobalconstant PC_PORT #t)
-
-;; whether we're allowed to use more memory than the original game or not
-(defglobalconstant BIG_MEMORY #t)
-(defglobalconstant PC_BIG_MEMORY (and PC_PORT BIG_MEMORY))
-
-;; redirects access to EE memory mapped registers through get-vm-ptr to valid addresses that
-;; are monitored in the runtime for debugging.
-(defglobalconstant USE_VM #t)
-
-;; enables the with-profiler statements, which send profiling data from
-;; GOAL code to the frame profiler in C++.
-(defglobalconstant PC_PROFILER_ENABLE #t)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; GOAL language constants
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; distance from a symbol pointer to a (pointer string)
-;; this relies on the memory layout of the symbol table
-;; this must match SYM_TO_STRING_OFFSET in goal_constants.h
-(defconstant SYM_TO_STRING_OFFSET #xff37)
-
-(defmacro symbol->string (sym)
-  "Convert a symbol to a goal string."
-  `(-> (the-as (pointer string) (+ SYM_TO_STRING_OFFSET (the-as int ,sym))))
-  )
-
-;; pointers larger than this are invalid by valid?
-(defconstant END_OF_MEMORY #x8000000)
-
+;; definition for function identity
 (defun identity ((arg0 object))
-  "Return the input. Works for any 64-bit value."
   arg0
   )
 
+;; definition for function 1/
 (defun 1/ ((arg0 float))
-  "Floating point reciprocal"
-  (declare (inline))
   (/ 1.0 arg0)
   )
 
-;; These functions exist a function objects that wrap the compiler's built-in operators.
-
+;; definition for function +
 (defun + ((arg0 int) (arg1 int))
-  "Add two integers (64-bit)."
   (+ arg0 arg1)
   )
 
+;; definition for function -
 (defun - ((arg0 int) (arg1 int))
-  "Subtract two integers (64-bit)."
   (- arg0 arg1)
   )
 
+;; definition for function *
 (defun * ((arg0 int) (arg1 int))
-  "Multiply two integers (32-bit)"
   (* arg0 arg1)
   )
 
+;; definition for function /
 (defun / ((arg0 int) (arg1 int))
-  "Divide two integers (32-bit, signed)"
   (/ arg0 arg1)
   )
 
+;; definition for function ash
+(defun ash ((arg0 int) (arg1 int))
+  (ash arg0 arg1)
+  )
+
+;; definition for function mod
 (defun mod ((arg0 int) (arg1 int))
-  "Integer mod (signed, 32-bit)"
   (mod arg0 arg1)
   )
 
+;; definition for function rem
 (defun rem ((arg0 int) (arg1 int))
-  "Integer mod (signed, 32-bit). Even though it's called rem, it behaves the same as mod."
   (mod arg0 arg1)
   )
 
-
-(defun ash ((value int) (shift-amount int))
-  "Arithmetic shift value by shift-amount.
-  A positive shift-amount will shift to the left and a negative will shift to the right."
-  ;; OpenGOAL does not support ash in the compiler, so we implement it here as an inline function.
-  (declare (inline))
-  (if (> shift-amount 0)
-      (shl value shift-amount)
-      (sar value (- shift-amount))
-      )
+;; definition for function abs
+(defun abs ((arg0 int))
+  (abs arg0)
   )
 
-(defun abs ((a int))
-  "Take the absolute value of a 64-bit signed integer"
-  (declare (inline))
-  ;; OpenGOAL doesn't support abs, so we implement it here.
-  (if (> a 0)
-      a
-      (- a)
-      )
+;; definition for function min
+(defun min ((arg0 int) (arg1 int))
+  (min arg0 arg1)
   )
 
-(defun min ((a int) (b int))
-  "Compute minimum of two 64-bit signed integers."
-  (declare (inline))
-  ;; OpenGOAL doesn't support min, so we implement it here.
-  (if (> a b) b a)
+;; definition for function max
+(defun max ((arg0 int) (arg1 int))
+  (max arg0 arg1)
   )
 
-(defun max ((a int) (b int))
-  "Compute maximum of two 64-bit signed integer."
-  (declare (inline))
-  ;; OpenGOAL doesn't support max so we implement it here.
-  (if (> a b) a b)
-  )
-
+;; definition for function logior
 (defun logior ((arg0 int) (arg1 int))
-  "Logical or (64-bit)"
   (logior arg0 arg1)
   )
 
+;; definition for function logand
 (defun logand ((arg0 int) (arg1 int))
-  "Logical and (64-bit)"
   (logand arg0 arg1)
   )
 
-(defun lognor ((a int) (b int))
-  "Compute not or (64-bit)."
-  ;; Note - MIPS has a 'nor' instruction, but x86 doesn't.
-  ;; the OpenGOAL x86 compiler therefore doesn't have a nor operation,
-  ;; so lognor is implemented by this inline function instead.
-  (declare (inline))
-  (lognot (logior a b))
+;; definition for function lognor
+(defun lognor ((arg0 int) (arg1 int))
+  (lognor arg0 arg1)
   )
 
+;; definition for function logxor
 (defun logxor ((arg0 int) (arg1 int))
-  "Logical exclusive or (64-bit)"
   (logxor arg0 arg1)
   )
 
+;; definition for function lognot
 (defun lognot ((arg0 int))
-  "Logical not (64-bit)"
   (lognot arg0)
   )
 
+;; definition for function false-func
 (defun false-func ()
-  "Return #f."
   #f
   )
 
+;; definition for function true-func
 (defun true-func ()
-  "Return #t."
   #t
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; format
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; The "format" function is implemented in C but is called _format.
-;; This defines the format function to point to the same thing as _format.
+;; definition for symbol format, type (function _varargs_ object)
 (define format _format)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; numeric types
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; vec4s: 4 floats packed into a 128-bit integer register. This is rarely used.
+;; definition of type vec4s
 (deftype vec4s (uint128)
   ((x float :offset   0 :size  32)
    (y float :offset  32 :size  32)
@@ -183,18 +111,28 @@
   :flag-assert         #x900000010
   )
 
-(defmethod print vec4s ((obj vec4s))
-  "Custom print for vec4s that prints the 4 values."
-  (format #t "#<vector ~F ~F ~F ~F @ #x~X>"
-          (-> obj x)
-          (-> obj y)
-          (-> obj z)
-          (-> obj w)
-          obj)
+;; definition for method 3 of type vec4s
+(defmethod inspect vec4s ((obj vec4s))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vec4s)
+  (format #t "~1Tx: ~f~%" (-> obj x))
+  (format #t "~1Ty: ~f~%" (-> obj y))
+  (format #t "~1Tz: ~f~%" (-> obj z))
+  (format #t "~1Tw: ~f~%" (-> obj w))
+  (label cfg-4)
   obj
   )
 
-;; vector: main 4-element floating point vector.
+;; definition for method 2 of type vec4s
+(defmethod print vec4s ((obj vec4s))
+  (format #t "#<vector ~F ~F ~F ~F @ #x~X>" (-> obj x) (-> obj y) (-> obj z) (-> obj w) obj)
+  obj
+  )
+
+;; definition of type vector
 (deftype vector (structure)
   ((data float   4 :offset-assert   0)
    (x    float     :offset          0)
@@ -208,28 +146,25 @@
   :flag-assert         #x900000010
   )
 
-(defmacro print128 (value &key (stream #t))
-  "Print a 128-bit value"
-  `(let ((temp (new 'stack-no-clear 'array 'uint64 2)))
-     (set! (-> (the (pointer uint128) temp)) ,value)
-     (format ,stream "#x~16X~16X" (-> temp 1) (-> temp 0))
-     )
+;; definition for method 3 of type vector
+;; Used lq/sq
+(defmethod inspect vector ((obj vector))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vector)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> obj x))
+  (format #t "~1Tx: ~f~%" (-> obj x))
+  (format #t "~1Ty: ~f~%" (-> obj y))
+  (format #t "~1Tz: ~f~%" (-> obj z))
+  (format #t "~1Tw: ~f~%" (-> obj w))
+  (format #t "~1Tquad: ~D~%" (-> obj quad))
+  (label cfg-4)
+  obj
   )
 
-(defmacro make-u128 (upper lower)
-  "Make a i128 from two 64-bit values."
-  `(rlet ((result :class i128)
-          (upper-xmm :class i128)
-          (lower-xmm :class i128))
-     (.mov upper-xmm ,upper)
-     (.mov lower-xmm ,lower)
-     (.pcpyld result upper-xmm lower-xmm)
-     (the-as uint result)
-     )
-  )
-
-;; bfloat: boxed float type. A floating point number with type information.
-;; It's a heap allocated basic.
+;; definition of type bfloat
 (deftype bfloat (basic)
   ((data float  :offset-assert   4)
    )
@@ -238,22 +173,32 @@
   :flag-assert         #x900000008
   )
 
+;; definition for method 3 of type bfloat
+(defmethod inspect bfloat ((obj bfloat))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tdata: ~f~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 2 of type bfloat
 (defmethod print bfloat ((obj bfloat))
   (format #t "~f" (-> obj data))
   obj
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Type System
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;; definition for method 5 of type type
+;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of type ((obj type))
-  "Get the size in memory of a type. The value calculated here is wrong."
   (the-as int (logand (the-as uint #xfffffff0) (+ (* (-> obj allocated-length) 4) 43)))
   )
 
+;; definition for function basic-type?
 (defun basic-type? ((arg0 basic) (arg1 type))
-  "Is the given basic an object of the given type?"
   (let ((v1-0 (-> arg0 type))
         (a0-1 object)
         )
@@ -267,8 +212,8 @@
   #f
   )
 
+;; definition for function type-type?
 (defun type-type? ((arg0 type) (arg1 type))
-  "Is the given type equal to, or a child of, the second type?"
   (let ((v1-0 object))
     (if (= arg1 v1-0)
         (return #t)
@@ -283,8 +228,9 @@
   #f
   )
 
+;; definition for function type?
+;; WARN: Using new Jak 2 rtype-of
 (defun type? ((arg0 object) (arg1 type))
-  "Is the given object an object of the given type? Works for any boxed object (basic, symbol, binteger, pair)."
   (let ((v1-0 object)
         (a0-1 (rtype-of arg0))
         )
@@ -301,8 +247,8 @@
   #f
   )
 
+;; definition for function find-parent-method
 (defun find-parent-method ((arg0 type) (arg1 int))
-  "Go up the type tree and find the first parent type that has a different implementation for the given method."
   (local-vars (v0-0 function))
   (let ((v1-2 (-> arg0 method-table arg1)))
     (until (!= v0-0 v1-2)
@@ -319,8 +265,8 @@
   v0-0
   )
 
+;; definition for function ref
 (defun ref ((arg0 object) (arg1 int))
-  "Get the n-th item in a linked list. No range checking."
   (dotimes (v1-0 arg1)
     (nop!)
     (nop!)
@@ -329,8 +275,8 @@
   (car arg0)
   )
 
+;; definition for method 4 of type pair
 (defmethod length pair ((obj pair))
-  "Get the length of a linked list."
   (local-vars (v0-0 int))
   (cond
     ((null? obj)
@@ -349,13 +295,14 @@
   v0-0
   )
 
+;; definition for method 5 of type pair
+;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of pair ((obj pair))
-  "Get the size in memory of a pair."
   (the-as int (-> pair size))
   )
 
+;; definition for function last
 (defun last ((arg0 object))
-  "Get the last object in a list."
   (let ((v0-0 arg0))
     (while (not (null? (cdr v0-0)))
       (nop!)
@@ -366,8 +313,8 @@
     )
   )
 
+;; definition for function member
 (defun member ((arg0 object) (arg1 object))
-  "Is obj in the list lst? Returns pair with obj as its car, or #f if not found."
   (let ((v1-0 arg1))
     (while (not (or (null? v1-0) (= (car v1-0) arg0)))
       (set! v1-0 (cdr v1-0))
@@ -378,11 +325,8 @@
     )
   )
 
-;; need to forward declare this, we haven't loaded the string library yet.
-(define-extern name= (function object object symbol))
-
+;; definition for function nmember
 (defun nmember ((arg0 basic) (arg1 object))
-  "Is obj in the list lst? Check with the name= function."
   (while (not (or (null? arg1) (name= (car arg1) arg0)))
     (set! arg1 (cdr arg1))
     )
@@ -391,9 +335,8 @@
       )
   )
 
+;; definition for function assoc
 (defun assoc ((arg0 object) (arg1 object))
-  "Is item in the association list alist?
-   Returns the key-value pair."
   (let ((v1-0 arg1))
     (while (not (or (null? v1-0) (= (car (car v1-0)) arg0)))
       (set! v1-0 (cdr v1-0))
@@ -404,10 +347,8 @@
     )
   )
 
+;; definition for function assoce
 (defun assoce ((arg0 object) (arg1 object))
-  "Is there an entry with key item in the association list alist?
-   Returns the key-value pair.
-   Treats a key of 'else like an else case"
   (let ((v1-0 arg1))
     (while (not (or (null? v1-0) (= (car (car v1-0)) arg0) (= (car (car v1-0)) 'else)))
       (set! v1-0 (cdr v1-0))
@@ -418,14 +359,12 @@
     )
   )
 
+;; definition for function nassoc
 (defun nassoc ((arg0 string) (arg1 object))
-  "Is there an entry named item-name in the association list alist?
-   Checks name with nmember or name= so you can have multiple keys.
-   Returns the ([key|(key..)] . value) pair."
   (while (not (or (null? arg1) (let ((a1-1 (car (car arg1))))
                                  (if (pair? a1-1)
                                      (nmember arg0 a1-1)
-                                     (name= (the-as basic a1-1) arg0)
+                                     (name= a1-1 arg0)
                                      )
                                  )
                   )
@@ -437,14 +376,12 @@
       )
   )
 
+;; definition for function nassoce
 (defun nassoce ((arg0 string) (arg1 object))
-  "Is there an entry named item-name in the association list alist?
-   Checks name with nmember for multiple keys or name= for single.
-   Allows else as a single key that always matches"
   (while (not (or (null? arg1) (let ((s4-0 (car (car arg1))))
                                  (if (pair? s4-0)
                                      (nmember arg0 s4-0)
-                                     (or (name= (the-as basic s4-0) arg0) (= s4-0 'else))
+                                     (or (name= s4-0 arg0) (= s4-0 'else))
                                      )
                                  )
                   )
@@ -456,8 +393,8 @@
       )
   )
 
+;; definition for function append!
 (defun append! ((arg0 object) (arg1 object))
-  "Append back to front, return the combined list."
   (cond
     ((null? arg0)
      arg1
@@ -478,33 +415,33 @@
     )
   )
 
+;; definition for function delete!
+;; INFO: Return type mismatch object vs pair.
 (defun delete! ((arg0 object) (arg1 object))
-  "Remove the first occurance of item from lst (where item is actual a pair in the list)"
-  (the-as pair
-          (cond
-            ((= arg0 (car arg1))
-             (cdr arg1)
-             )
-            (else
-              (let ((v1-1 arg1)
-                    (a2-0 (cdr arg1))
-                    )
-                (while (not (or (null? a2-0) (= (car a2-0) arg0)))
-                  (set! v1-1 a2-0)
-                  (set! a2-0 (cdr a2-0))
+  (the-as pair (cond
+                 ((= arg0 (car arg1))
+                  (cdr arg1)
                   )
-                (if (not (null? a2-0))
-                    (set! (cdr v1-1) (cdr a2-0))
-                    )
-                )
-              arg1
-              )
-            )
+                 (else
+                   (let ((v1-1 arg1)
+                         (a2-0 (cdr arg1))
+                         )
+                     (while (not (or (null? a2-0) (= (car a2-0) arg0)))
+                       (set! v1-1 a2-0)
+                       (set! a2-0 (cdr a2-0))
+                       )
+                     (if (not (null? a2-0))
+                         (set! (cdr v1-1) (cdr a2-0))
+                         )
+                     )
+                   arg1
+                   )
+                 )
           )
   )
 
+;; definition for function delete-car!
 (defun delete-car! ((arg0 object) (arg1 object))
-  "Remove the first first occurance of an element from the list where (car elt) is item."
   (cond
     ((= arg0 (car (car arg1)))
      (cdr arg1)
@@ -526,23 +463,15 @@
     )
   )
 
+;; definition for function insert-cons!
 (defun insert-cons! ((arg0 object) (arg1 object))
-  "Update an association list to have the given (key . value) pair kv.
-   If it already exists in the list, remove it.
-   DANGER: this function allocates memory on the global heap."
   (let ((a3-0 (delete-car! (car arg0) arg1)))
     (cons arg0 a3-0)
     )
   )
 
+;; definition for function sort
 (defun sort ((arg0 pair) (arg1 (function object object object)))
-  "Sort a list, using compare-func to compare elements.
-  The comparison function can return either an integer or a true/false.
-  For integers, use a positive number to represent first > second
-  Ex: (sort lst -) will sort in ascending order
-  For booleans, you must explicitly use TRUE and not a truthy value.
-  Ex: (sort my-list (lambda ((x int) (y int)) (< x y))) will sort ascending.
-  NOTE: if you use an integer, don't accidentally return TRUE."
   (let ((s4-0 -1))
     (while (nonzero? s4-0)
       (set! s4-0 0)
@@ -566,15 +495,7 @@
   arg0
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; inline-array-class
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; This is used as base class for boxed inline arrays.
-;; The heap-base of the _type_ object will be used to store the stride
-;; This way, you don't pay the price of storing the stride in each object.
-;; however, as far as we've seen, nothing actually reads the stride.
-
+;; definition of type inline-array-class
 (deftype inline-array-class (basic)
   ((length           int32          :offset-assert   4)
    (allocated-length int32          :offset-assert   8)
@@ -588,9 +509,21 @@
     )
   )
 
+;; definition for method 3 of type inline-array-class
+(defmethod inspect inline-array-class ((obj inline-array-class))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 0 of type inline-array-class
 (defmethod new inline-array-class ((allocation symbol) (type-to-make type) (arg0 int))
-  "Allocate a new inline-array-class object with room for the given number of objects.
-   Both length and allocated-length are set to the given size"
   (let ((v0-0 (object-new
                 allocation
                 type-to-make
@@ -606,33 +539,19 @@
     )
   )
 
+;; definition for method 4 of type inline-array-class
 (defmethod length inline-array-class ((obj inline-array-class))
-  "Get the length of the inline-array-class. This is the length field,
-   not how much storage there is"
   (-> obj length)
   )
 
+;; definition for method 5 of type inline-array-class
+;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of inline-array-class ((obj inline-array-class))
-  "Get the size in memory of an inline-array-class."
   (the-as int (+ (-> obj type size) (* (-> obj allocated-length) (the-as int (-> obj type heap-base)))))
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; array
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; the GOAL array type is a boxed array.
-;; it is a basic that knows its content type, currently used length, and allocated length.
-;; It can hold:
-;;   any boxed object (gets 4 bytes, so bintegers get clipped to 32-bits)
-;;   any structure/reference/pointer
-;;   any integer/float
-;; It cannot hold any inlined structures.
-
+;; definition for method 0 of type array
 (defmethod new array ((allocation symbol) (type-to-make type) (arg0 type) (arg1 int))
-  "Allocate a new array to hold len elements of type content-type.
-   The content should either be a numeric type (child of number)
-   or the content should be a reference (will get 4-bytes for a pointer)"
   (let ((v0-1 (object-new
                 allocation
                 type-to-make
@@ -653,6 +572,8 @@
     )
   )
 
+;; definition for method 2 of type array
+;; Used lq/sq
 (defmethod print array ((obj array))
   (format #t "#(")
   (cond
@@ -801,8 +722,9 @@
   obj
   )
 
+;; definition for method 3 of type array
+;; Used lq/sq
 (defmethod inspect array ((obj array))
-  "Inspect an array"
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
   (format #t "~Tlength: ~D~%" (-> obj length))
@@ -877,13 +799,14 @@
   obj
   )
 
+;; definition for method 4 of type array
 (defmethod length array ((obj array))
-  "Get the length of an array"
   (-> obj length)
   )
 
+;; definition for method 5 of type array
+;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of array ((obj array))
-  "Get the size in memory of an array"
   (the-as
     int
     (+ (-> obj type size) (* (-> obj allocated-length) (if (type-type? (-> obj content-type) number)
@@ -895,13 +818,8 @@
     )
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;
-;; memory manipulation
-;;;;;;;;;;;;;;;;;;;;;;;;
-
+;; definition for function mem-copy!
 (defun mem-copy! ((arg0 pointer) (arg1 pointer) (arg2 int))
-  "Memory copy. Not a very efficient optimization, but has no restrictions.
-   Increasing address copy."
   (let ((v0-0 arg0))
     (dotimes (v1-0 arg2)
       (set! (-> (the-as (pointer uint8) arg0)) (-> (the-as (pointer uint8) arg1)))
@@ -912,11 +830,9 @@
     )
   )
 
+;; definition for function qmem-copy<-!
+;; Used lq/sq
 (defun qmem-copy<-! ((arg0 pointer) (arg1 pointer) (arg2 int))
-  "Memory copy by quadword. More efficient, but has restrictions:
-   - dst and src should be 16-byte aligned.
-   - size in bytes will be rounded up to 16-bytes
-   - Ascending address copy."
   (let ((v0-0 arg0))
     (countdown (v1-1 (/ (+ arg2 15) 16))
       (set! (-> (the-as (pointer uint128) arg0)) (-> (the-as (pointer uint128) arg1)))
@@ -927,11 +843,9 @@
     )
   )
 
+;; definition for function qmem-copy->!
+;; Used lq/sq
 (defun qmem-copy->! ((arg0 pointer) (arg1 pointer) (arg2 int))
-  "Memory copy by quadword (16-bytes). More efficient, but has restrictions:
-  - dst and src should be 16-byte aligned.
-  - size in bytes will be rounding up to nearest 16-bytes
-  - Descending address copy"
   (let ((v0-0 arg0))
     (let* ((v1-1 (/ (+ arg2 15) 16))
            (a0-1 (&+ arg0 (* v1-1 16)))
@@ -948,9 +862,8 @@
     )
   )
 
+;; definition for function mem-set32!
 (defun mem-set32! ((arg0 pointer) (arg1 int) (arg2 int))
-  "Normal memset, but by 32-bit word.
-   NOTE: argument order is swapped from C"
   (let ((v0-0 arg0))
     (dotimes (v1-0 arg1)
       (set! (-> (the-as (pointer int32) arg0)) arg2)
@@ -961,9 +874,8 @@
     )
   )
 
+;; definition for function mem-or!
 (defun mem-or! ((arg0 pointer) (arg1 pointer) (arg2 int))
-  "Set the dst to (logior dst src) byte by byte.
-   Not very efficient."
   (let ((v0-0 arg0))
     (dotimes (v1-0 arg2)
       (logior! (-> (the-as (pointer uint8) arg0)) (-> (the-as (pointer uint8) arg1)))
@@ -974,50 +886,29 @@
     )
   )
 
-(defun quad-copy! ((dst pointer) (src pointer) (qwc int))
-  "Optimized memory copy. The original is pretty clever, but this isn't."
-  (qmem-copy<-! dst src (* qwc 16))
-  (none)
-  )
+;; definition for function quad-copy!
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-(defun-recursive fact int ((x int))
-  (if (= x 1)
+;; definition for function fact
+(defun fact ((arg0 int))
+  (if (= arg0 1)
       1
-      (* x (fact (+ x -1))))
+      (* arg0 (fact (+ arg0 -1)))
+      )
   )
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;
-;; printing
-;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; the column that will be printed to by format.
+;; definition for symbol *print-column*, type binteger
 (define *print-column* (the-as binteger 0))
 
-;; note: normal use of print/inspect will have the compiler pick the appropriate method
-;; for non-basics.  However, it may be useful to have print/inspect available as a function
-;; as well, allowing you to use it as a function pointer.
-;; in this case, we can only do the right thing on boxed objects.
-
+;; definition for function print
+;; WARN: Using new Jak 2 rtype-of
 (defun print ((arg0 object))
-  "Print out any boxed object. Does NOT insert a newline."
   ((method-of-type (rtype-of arg0) print) arg0)
   )
 
-(defmacro printl (obj)
-  "Print out a boxed object and a newline.
-   Note: we define both a macro and a function on purpose.
-   The compiler will use the macro over the function, which will
-   allow it to pick the correct print method for non-boxed objects"
-  `(begin
-     (print ,obj)
-     (format #t "~%")
-     ,obj
-     )
-  )
-
+;; definition for function printl
+;; WARN: Using new Jak 2 rtype-of
 (defun printl ((arg0 object))
-  "Print out any boxed object and a newline at the end."
   (let ((a0-1 arg0))
     ((method-of-type (rtype-of a0-1) print) a0-1)
     )
@@ -1025,14 +916,14 @@
   arg0
   )
 
+;; definition for function inspect
+;; WARN: Using new Jak 2 rtype-of
 (defun inspect ((arg0 object))
-  "Inspect any boxed object."
   ((method-of-type (rtype-of arg0) inspect) arg0)
   )
 
+;; definition (debug) for function mem-print
 (defun-debug mem-print ((arg0 (pointer uint32)) (arg1 int))
-  "Print memory to runtime stdout by quadword.
-   Input count is in 32-bit words"
   (dotimes (s4-0 (/ arg1 4))
     (format
       0
@@ -1047,11 +938,11 @@
   #f
   )
 
-;; unused
+;; definition for symbol *trace-list*, type pair
 (define *trace-list* '())
 
+;; definition for function print-tree-bitmask
 (defun print-tree-bitmask ((arg0 int) (arg1 int))
-  "Print out a single entry for a process tree 'tree' diagram"
   (dotimes (s4-0 arg1)
     (if (zero? (logand arg0 1))
         (format #t "    ")
@@ -1062,46 +953,31 @@
   #f
   )
 
+;; definition for function breakpoint-range-set!
+;; WARN: Unsupported inline assembly instruction kind - [mtc0 Debug, a0]
+;; WARN: Unsupported inline assembly instruction kind - [mtdab a1]
+;; WARN: Unsupported inline assembly instruction kind - [mtdabm a2]
 (defun breakpoint-range-set! ((arg0 uint) (arg1 uint) (arg2 uint))
-  "Sets some debug register (COP0 Debug, dab, dabm) to break on memory access.
-   This is not supported in OpenGOAL."
-  (break!)
+  (.mtc0 Debug arg0)
+  (.mtdab arg1)
+  (.mtdabm arg2)
+  0
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;
-;; valid
-;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmacro start-of-symbol-table ()
-  `(rlet ((st :reg r14 :reset-here #t :type uint))
-         (the uint (- st 32768))
-         )
-  )
-
-(defmacro end-of-symbol-table ()
-  `(rlet ((st :reg r14 :reset-here #t :type uint))
-         (the uint (+ st 32768))
-         )
-  )
-
-(define-extern boolean type) ;; not really... but they use it here as if it was one.
-(define-extern valid? (function object type symbol symbol object symbol))
-
+;; definition for function valid?
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
+;; WARN: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
+;; WARN: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
+;; WARN: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
 (defun valid? ((arg0 object) (arg1 type) (arg2 symbol) (arg3 symbol) (arg4 object))
-  "Check if the given object is valid. This will work for structures, pairs, basics, bintegers, symbols, and types.
-   If you set expected-type to #f, it just checks for a 4-byte aligned address that's in GOAL memory.
-   If you're checking a structure, set expected-type to structure. This requires 16-byte alignment
-    Note: packed inline structures in arrays or fields will not pass this check.
-   Otherwise, set it to the type you expect. More specific types will pass.
-
-   If allow-false is #t, a #f will always pass. Otherwise, #f will fail (unless you're looking for a symbol).
-   Use allow-false if you want to allow a 'null' reference.
-
-   The name is only used when printing out an error if the check fails.
-   Use a name of #f to suppress error prints.
-   "
+  (local-vars (v1-11 int) (v1-26 int) (v1-56 int) (v1-60 int) (s7-0 none))
   (let ((v1-1
-          (and (>= (the-as uint arg0) (start-of-symbol-table)) (< (the-as uint arg0) END_OF_MEMORY))
+          (and (>= (the-as uint arg0) (the-as uint __START-OF-TABLE__)) (< (the-as uint arg0) (the-as uint #x8000000)))
           )
         )
     (cond
@@ -1135,7 +1011,13 @@
               )
           #f
           )
-         ((or (not v1-1) (< (the-as uint arg0) (end-of-symbol-table)))
+         ((or (not v1-1) (begin
+                           (let ((v1-10 #x8000))
+                             (.daddu v1-11 v1-10 s7-0)
+                             )
+                           (< (the-as uint arg0) (the-as uint v1-11))
+                           )
+              )
           (if arg2
               (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" arg0 arg2 arg1)
               )
@@ -1186,7 +1068,13 @@
               )
           #f
           )
-         ((or (not v1-1) (< (the-as int arg0) (start-of-symbol-table))(>= (the-as int arg0) (end-of-symbol-table)))
+         ((or (not v1-1) (< (the-as int arg0) (the-as int __START-OF-TABLE__)) (begin
+                                                                                 (let ((v1-25 #x8000))
+                                                                                   (.daddu v1-26 v1-25 s7-0)
+                                                                                   )
+                                                                                 (>= (the-as int arg0) v1-26)
+                                                                                 )
+              )
           (if arg2
               (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" arg0 arg2 arg1)
               )
@@ -1249,8 +1137,11 @@
        #f
        )
       ((= arg1 symbol)
+       (let ((v1-55 #x8000))
+         (.daddu v1-56 v1-55 s7-0)
+         )
        (cond
-         ((>= (the-as uint arg0) (end-of-symbol-table))
+         ((>= (the-as uint arg0) (the-as uint v1-56))
           (if arg2
               (format
                 arg4
@@ -1267,7 +1158,12 @@
            )
          )
        )
-      ((< (the-as uint arg0) (end-of-symbol-table))
+      ((begin
+         (let ((v1-59 #x8000))
+           (.daddu v1-60 v1-59 s7-0)
+           )
+         (< (the-as uint arg0) (the-as uint v1-60))
+         )
        (if arg2
            (format
              arg4
@@ -1286,104 +1182,9 @@
     )
   )
 
-;;;;;;;;;;;;;;;;;;;;
-;; Profiler Macros
-;;;;;;;;;;;;;;;;;;;;
+;; failed to figure out what this is:
+0
 
 
-(defmacro profiler-instant-event (name)
-  "Record an 'instant' event in the profile.
-   This can be used however you'd like, but there should be a
-   'ROOT' event logged every now and then (like once per frame)
-   when no timed events are in progress, to allow the profiler
-   to correctly recover the event stack."
-  `(#when PC_PROFILER_ENABLE
-     (pc-prof ,name (pc-prof-event instant))
-     )
-  )
 
-(defmacro profiler-start-event (name)
-  "Start a timed event with the given name."
-  `(#when PC_PROFILER_ENABLE
-     (pc-prof ,name (pc-prof-event begin))
-     )
-  )
 
-(defmacro profiler-end-event ()
-  "End the most recently started event that hasn't been stopped yet.
-   It is up to you to correctly balance the starts/ends, otherwise
-   the profiling data will be corrupted."
-  `(#when PC_PROFILER_ENABLE
-     (pc-prof "" (pc-prof-event end))
-     )
-  )
-
-(defmacro with-profiler (name &rest body)
-  "Execute the body in a named profiler block.
-   Do not `return` or `go` from inside this block,
-   otherwise the end will be skipped."
-  `(#if PC_PROFILER_ENABLE
-        (begin
-          (pc-prof ,name (pc-prof-event begin))
-          ,@body
-          (pc-prof ,name (pc-prof-event end))
-          )
-        (begin
-          ,@body
-          )
-        )
-  )
-
-;;;;;;;;;;;;;;;;;;;;;;;;
-;; Decompiler Macros
-;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; inserted by the decompiler for assembly branches.
-(defmacro b! (pred destination &key (delay '()) &key (likely-delay '()))
-  "Branch!"
-  ;; evaluate the predicate
-  `(let ((should-branch ,pred))
-     ;; normal delay slot:
-     ,delay
-     (when should-branch
-       ,likely-delay
-       (goto ,destination)
-       )
-     )
-  )
-
-;; the decompiler may fail to recognize setting fields of a 128-bit bitfield
-;; and will rely on this macro:
-(defmacro copy-and-set-field (original field-name field-value)
-  `(let ((temp-copy ,original))
-     (set! (-> temp-copy ,field-name) ,field-value)
-     temp-copy
-     )
-  )
-
-;; inserted by the decompiler if a c->goal bool conversion can't be compacted into a single
-;; expression.
-(defmacro cmove-#f-zero (dest condition src)
-  `(if (zero? ,condition)
-       (set! ,dest #f)
-       (set! ,dest ,src)
-       )
-   )
-
-(defmacro empty-form ()
-  `(none)
-  )
-
-;;;;;;;;;;;;;;;;;;;;;;;
-;; PC Port asm macros
-;;;;;;;;;;;;;;;;;;;;;;;
-(#when PC_PORT
-  ;; SYNC is an EE instruction that waits for various memory access and DMA to be completed
-  ;; DMA will be instant in the PC port, so these are no longer necessary
-  (fake-asm .sync.l)
-  (fake-asm .sync.p)
-  ;; Copies the contents of a cop0 (system control) register to a gpr
-  (fake-asm .mfc0 dest src)
-  ;; Copies the contents of a gpr to a cop0 (system control) register
-  (fake-asm .mtc0 dest src)
-  )
