@@ -985,7 +985,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     // try to find symbol to string stuff
     auto arg0_int = get_goal_integer_constant(args.at(0), env);
     u64 symbol_to_string_offset = -1;
-    switch(env.version) {
+    switch (env.version) {
       case GameVersion::Jak1:
         symbol_to_string_offset = DECOMP_SYM_INFO_OFFSET + 4;
         break;
