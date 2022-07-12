@@ -15,6 +15,8 @@ std::optional<json> document_symbols_handler(Workspace& workspace, int id, json 
     return {};
   }
 
+  // TODO - convert to type!
+
   json arr = json::array();
   for (const auto& symbol : tracked_file.value().m_symbols) {
     arr.push_back(symbol);

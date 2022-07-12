@@ -5,28 +5,51 @@
 #include "common/log/log.h"
 
 #include "protocol/error_codes.h"
-#include "text_document/document_synchronization.hpp"
 #include "text_document/document_symbol.hpp"
+#include "text_document/document_synchronization.hpp"
 
 #include "third-party/fmt/core.h"
 
-void LspRouter::init_routes() {
-  m_request_routes["initialize"] = initialize_handler;
-  m_request_routes["textDocument/documentSymbol"] = document_symbols_handler;
-  m_notification_routes["textDocument/didOpen"] = did_open_handler;
+LSPRoute::LSPRoute() {
+  m_route_type = LSPRouteType::NOOP;
+}
+
+LSPRoute::LSPRoute(std::function<void(Workspace&, json)> notification_handler) {
+  m_route_type = LSPRouteType::NOTIFICATION;
+  m_notification_handler = notification_handler;
+}
+
+LSPRoute::LSPRoute(std::function<void(Workspace&, json)> notification_handler,
+                   std::function<std::optional<json>(Workspace&, json)> post_notification_publish) {
+  m_route_type = LSPRouteType::NOTIFICATION;
+  m_notification_handler = notification_handler;
+  m_post_notification_publish = post_notification_publish;
+}
+
+LSPRoute::LSPRoute(std::function<std::optional<json>(Workspace&, int, json)> request_handler) {
+  m_route_type = LSPRouteType::REQUEST_RESPONSE;
+  m_request_handler = request_handler;
+}
+
+void LSPRouter::init_routes() {
+  m_routes["initialize"] = LSPRoute(initialize_handler);
+  m_routes["initialize"].m_generic_post_action = [](Workspace& workspace) {
+    workspace.set_initialized(true);
+  };
+  m_routes["initialized"] = LSPRoute();
+  m_routes["textDocument/documentSymbol"] = LSPRoute(document_symbols_handler);
+  m_routes["textDocument/didOpen"] = LSPRoute(did_open_handler, did_open_push_diagnostics);
 }
 
 json error_resp(ErrorCodes error_code, std::string error_message) {
-  lg::debug("A");
   json error{
       {"code", static_cast<int>(error_code)},
       {"message", error_message},
   };
-  lg::debug("B");
   return json{{"error", error}};
 }
 
-std::string LspRouter::make_response(const json& result) {
+std::string LSPRouter::make_response(const json& result) {
   json content = result;
   content["jsonrpc"] = "2.0";
 
@@ -37,59 +60,80 @@ std::string LspRouter::make_response(const json& result) {
   return header + content.dump();
 }
 
-std::optional<std::string> LspRouter::route_message(const MessageBuffer& message_buffer,
-                                                    AppState& appstate) {
+std::optional<std::vector<std::string>> LSPRouter::route_message(
+    const MessageBuffer& message_buffer,
+    AppState& appstate) {
   json body = message_buffer.body();
   auto method = body["method"];
   lg::info(method);
-
-  // 'initialized' request payload is special in that it doesn't have any of the parameters we'd
-  // normally expect
-  // TODO - maybe have a map of noop requests?
-  if (method == "initialized") {
-    return {};
-  }
 
   // If the workspace has not yet been initialized but the client sends a
   // message that doesn't have method "initialize" then we'll return an error
   // as per LSP spec.
   if (method != "initialize" && !appstate.workspace.is_initialized()) {
-    return make_response(
-        error_resp(ErrorCodes::ServerNotInitialized, "Server not yet initialized."));
+    auto error = {
+        make_response(error_resp(ErrorCodes::ServerNotInitialized, "Server not yet initialized."))};
+    return std::make_optional(error);
   }
 
-  if (m_request_routes.count(method) == 0 && m_notification_routes.count(method) == 0) {
+  // Exit early if we can't handle the route
+  if (m_routes.count(method) == 0) {
     lg::warn("Method not supported '{}'", method);
-    return make_response(
-        error_resp(ErrorCodes::MethodNotFound, fmt::format("Method '{}' not supported", method)));
-  } else {
-    lg::info("callin");
-    try {
-      // Figure out if it's a request (wants a response) or a notification (just informing us of something)
-      // TODO - there is probably an edge-case here where the above check doesn't hit it (request doesn't have an id and we don't support it)
-      if (!body.contains("id")) {
-        // Notificatiosn don't have an `id`
-        m_notification_routes[method](appstate.workspace, body["params"]);
-        return {};
-      }
-      // Else handle it as a request
-      auto result = m_request_routes[method](appstate.workspace, body["id"], body["params"]);
-      if (result.has_value()) {
-        json response;
-        response["id"] = body["id"];
-        response["result"] = result.value();
-        if (method == "initialize") {
-          appstate.workspace.set_initialized(true);
-          lg::info("initialized!");
+    auto error = {make_response(
+        error_resp(ErrorCodes::MethodNotFound, fmt::format("Method '{}' not supported", method)))};
+    return std::make_optional(error);
+  }
+
+  try {
+    auto route = m_routes[method];
+    std::vector<json> resp_bodies;
+    // Handle the request/notificiation
+    switch (route.m_route_type) {
+      case LSPRouteType::NOOP:
+        break;
+      case LSPRouteType::NOTIFICATION:
+        route.m_notification_handler(appstate.workspace, body["params"]);
+        break;
+      case LSPRouteType::REQUEST_RESPONSE:
+        auto resp_body = route.m_request_handler(appstate.workspace, body["id"], body["params"]);
+        if (resp_body) {
+          json resp;
+          // TODO - this should be the job of the handler, not here!
+          resp["id"] = body["id"];
+          resp["result"] = resp_body.value();
+          resp_bodies.push_back(resp);
         }
-        return std::make_optional(make_response(response));
-      } else {
-        return {};
+        break;
+    }
+
+    // Run any publish we need to do after the fact
+    if (route.m_post_notification_publish) {
+      auto resp = route.m_post_notification_publish.value()(appstate.workspace, body["params"]);
+      if (resp) {
+        lg::info("adding publish resp");
+        resp_bodies.push_back(resp.value());
       }
-    } catch (std::exception& e) {
-      lg::error("Unexpected exception occurred - {} | {}", e.what(), body.dump());
-      // TODO - return an error with the message
+    }
+
+    // Run any generic post action
+    if (route.m_generic_post_action) {
+      route.m_generic_post_action.value()(appstate.workspace);
+    }
+
+    // Serialize all payloads with headers
+    std::vector<std::string> resps;
+    for (const auto& body : resp_bodies) {
+      resps.push_back(make_response(body));
+    }
+
+    // Return
+    if (resps.empty()) {
       return {};
     }
+    return resps;
+  } catch (std::exception& e) {
+    lg::error("Unexpected exception occurred - {} | {}", e.what(), body.dump());
+    // TODO - return an error with the message
+    return {};
   }
 }

@@ -1,6 +1,9 @@
 #pragma once
 
+#include <optional>
 #include <stdint.h>
+#include <string>
+#include <vector>
 
 #include "third-party/json.hpp"
 
@@ -9,6 +12,7 @@ using json = nlohmann::json;
 namespace LSPSpec {
 // TODO - eventually parse this
 typedef std::string URI;
+typedef std::string DocumentUri;
 
 struct Position {
   /// @brief Line position in a document (zero-based).
@@ -41,9 +45,16 @@ void to_json(json& j, const TextDocumentItem& obj);
 void from_json(const json& j, TextDocumentItem& obj);
 
 struct TextDocumentIdentifier {
-  URI m_uri;
+  DocumentUri m_uri;
 };
 
 void to_json(json& j, const TextDocumentIdentifier& obj);
 void from_json(const json& j, TextDocumentIdentifier& obj);
+
+struct Location {
+  DocumentUri m_uri;
+  Range m_range;
+};
+void to_json(json& j, const Location& obj);
+void from_json(const json& j, Location& obj);
 }  // namespace LSPSpec

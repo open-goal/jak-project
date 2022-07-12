@@ -8,6 +8,7 @@
 #include <vector>
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
+#include <regex>
 #include <windows.h>
 
 #include <common/log/log.h>
@@ -18,7 +19,6 @@
 #include <state/app.h>
 
 #include "third-party/CLI11.hpp"
-#include <regex>
 
 // TODO - look into replacing our xsocket with cpphttplib eventually
 
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
   CLI11_PARSE(app, argc, argv);
 
   AppState appstate;
-  LspRouter lsp_router;
+  LSPRouter lsp_router;
   appstate.verbose = verbose;
   if (!logfile.empty()) {
     setup_logging(logfile);
@@ -96,14 +96,15 @@ int main(int argc, char** argv) {
         lg::debug("Raw: \n{}\n", message_buffer.raw());
       }
 
-      auto message = lsp_router.route_message(message_buffer, appstate);
-      if (message.has_value()) {
-        std::cout << message.value() << std::flush;
-
-        if (appstate.verbose) {
-          lg::debug("<<< Sending message: \n{}", message.value());
-        } else {
-          lg::info("<<< Sending message");
+      auto messages = lsp_router.route_message(message_buffer, appstate);
+      if (messages.has_value()) {
+        for (const auto& message : messages.value()) {
+          std::cout << message.c_str() << std::flush;
+          if (appstate.verbose) {
+            lg::debug("<<< Sending message: \n{}", message);
+          } else {
+            lg::info("<<< Sending message");
+          }
         }
       }
       message_buffer.clear();

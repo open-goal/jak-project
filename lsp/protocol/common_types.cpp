@@ -40,3 +40,12 @@ void LSPSpec::to_json(json& j, const TextDocumentIdentifier& obj) {
 void LSPSpec::from_json(const json& j, TextDocumentIdentifier& obj) {
   j.at("uri").get_to(obj.m_uri);
 }
+
+void LSPSpec::to_json(json& j, const Location& obj) {
+  j = json{{"uri", obj.m_uri}, {"range", obj.m_range}};
+}
+
+void LSPSpec::from_json(const json& j, Location& obj) {
+  j.at("uri").get_to(obj.m_uri);
+  j.at("range").get_to(obj.m_range);
+}

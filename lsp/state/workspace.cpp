@@ -38,13 +38,15 @@ WorkspaceIRFile::WorkspaceIRFile(const std::string& content) {
     m_lines.push_back(line);
     // Run any checks on that line
     find_function_symbol(m_lines.size() - 1, line);
+    identify_diagnostics(m_lines.size() - 1, line);
     prev = pos + 1;
   }
   std::string line = content.substr(prev);
   m_lines.push_back(line);
   find_function_symbol(m_lines.size() - 1, line);
+  identify_diagnostics(m_lines.size() - 1, line);
 
-  lg::info("Added new file. {} lines with {} symbols", m_lines.size(), m_symbols.size());
+  lg::info("Added new file. {} lines with {} symbols and {} diagnostics", m_lines.size(), m_symbols.size(), m_diagnostics.size());
 }
 
 void WorkspaceIRFile::find_function_symbol(const uint32_t line_num_zero_based,
@@ -81,7 +83,48 @@ void WorkspaceIRFile::find_function_symbol(const uint32_t line_num_zero_based,
     if (!m_symbols.empty()) {
       m_symbols[m_symbols.size() - 1].m_range.m_end.m_line = line_num_zero_based - 1;
     }
-  } else {
-    lg::info("NOPE! - {}", line);
+  }
+}
+
+void WorkspaceIRFile::identify_diagnostics(const uint32_t line_num_zero_based,
+                                           const std::string& line) {
+  std::regex info_regex(";; INFO: (.*)");
+  std::regex warn_regex(";; WARN: (.*)");
+  std::smatch info_matches;
+  std::smatch warn_matches;
+
+  LSPSpec::Range diag_range;
+  diag_range.m_start = {line_num_zero_based, 0};
+  diag_range.m_end = {line_num_zero_based, (uint32_t)line.length() - 1};
+
+  // Check for an info-level warnings
+  if (std::regex_search(line, info_matches, info_regex)) {
+    // NOTE - assumes we can only find 1 function per line
+    if (info_matches.size() == 2) {
+      auto match = info_matches[1];
+      lg::debug("Found info-level diagnostic - {}", match.str());
+      LSPSpec::Diagnostic new_diag;
+      new_diag.m_severity = LSPSpec::DiagnosticSeverity::Information;
+      new_diag.m_message = match.str();
+      new_diag.m_range = diag_range;
+      new_diag.m_source = "OpenGOAL LSP";
+      m_diagnostics.push_back(new_diag);
+      return;
+    }
+  }
+  // Check for a warn level warnings
+  if (std::regex_search(line, warn_matches, warn_regex)) {
+    // NOTE - assumes we can only find 1 function per line
+    if (warn_matches.size() == 2) {
+      auto match = warn_matches[1];
+      lg::debug("Found warn-level diagnostic - {}", match.str());
+      LSPSpec::Diagnostic new_diag;
+      new_diag.m_severity = LSPSpec::DiagnosticSeverity::Error;
+      new_diag.m_message = match.str();
+      new_diag.m_range = diag_range;
+      new_diag.m_source = "OpenGOAL LSP";
+      m_diagnostics.push_back(new_diag);
+      return;
+    }
   }
 }
