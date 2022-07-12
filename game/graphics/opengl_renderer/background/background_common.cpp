@@ -515,18 +515,16 @@ u32 make_all_visible_multidraws(std::pair<int, int>* draw_ptrs_out,
     u64 iidx = draw.unpacked.idx_of_first_idx_in_full_buffer;
     std::pair<int, int> ds;
     ds.first = md_idx;
-    ds.second = 0;
+    ds.second = 1;
+    int num_inds = 0;
     for (auto& grp : draw.vis_groups) {
-      // visible!
-      // let's use a multidraw
-      counts_out[md_idx] = grp.num_inds;
-      index_offsets_out[md_idx] = (void*)(iidx * sizeof(u32));
-      ds.second++;
-      md_idx++;
       num_tris += grp.num_tris;
-      iidx += grp.num_inds;
+      num_inds += grp.num_inds;
     }
+    counts_out[md_idx] = num_inds;
+    index_offsets_out[md_idx] = (void*)(iidx * sizeof(u32));
     draw_ptrs_out[i] = ds;
+    md_idx++;
   }
   return num_tris;
 }
@@ -564,19 +562,41 @@ u32 make_multidraws_from_vis_string(std::pair<int, int>* draw_ptrs_out,
     std::pair<int, int> ds;
     ds.first = md_idx;
     ds.second = 0;
+    bool building_run = false;
+    u64 run_start = 0;
     for (auto& grp : draw.vis_groups) {
       sanity_check += grp.num_inds;
-      if (grp.vis_idx_in_pc_bvh == 0xffffffff || vis_data[grp.vis_idx_in_pc_bvh]) {
-        // visible!
-        // let's use a multidraw
-        counts_out[md_idx] = grp.num_inds;
-        index_offsets_out[md_idx] = (void*)(iidx * sizeof(u32));
-        ds.second++;
-        md_idx++;
+      bool vis = grp.vis_idx_in_pc_bvh == 0xffffffff || vis_data[grp.vis_idx_in_pc_bvh];
+      if (vis) {
         num_tris += grp.num_tris;
       }
+
+      if (building_run) {
+        if (!vis) {
+          building_run = false;
+          counts_out[md_idx] = iidx - run_start;
+          index_offsets_out[md_idx] = (void*)(run_start * sizeof(u32));
+          ds.second++;
+          md_idx++;
+        }
+      } else {
+        if (vis) {
+          building_run = true;
+          run_start = iidx;
+        }
+      }
+
       iidx += grp.num_inds;
     }
+
+    if (building_run) {
+      building_run = false;
+      counts_out[md_idx] = iidx - run_start;
+      index_offsets_out[md_idx] = (void*)(run_start * sizeof(u32));
+      ds.second++;
+      md_idx++;
+    }
+
     draw_ptrs_out[i] = ds;
   }
   return num_tris;
