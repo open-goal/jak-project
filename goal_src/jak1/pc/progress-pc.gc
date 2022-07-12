@@ -83,7 +83,6 @@
 (def-progress-carousell *carousell-msaa* (off 2-times 4-times 8-times 16-times))
 (def-progress-carousell *carousell-lod-bg* (lod-high lod-low))
 (def-progress-carousell *carousell-lod-fg* (lod-high lod-low lod-ps2))
-(def-progress-carousell *carousell-subtitle-language* (english french german spanish italian japanese))
 (def-progress-carousell *carousell-speaker* (speaker-always speaker-never speaker-auto))
 (def-progress-carousell *carousell-frame-rate-150fps* (60fps 100fps 150fps))
 (def-progress-carousell *carousell-frame-rate-100fps* (60fps 100fps))
@@ -91,9 +90,9 @@
 
 
 
-;;---------------------------
-;;---------------------------
-;; pc menu defines
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  MENU OPTIONS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (define *main-options-auto-save* (new 'static 'boxed-array :type game-option
@@ -111,8 +110,13 @@
 (define *game-options-pc* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vibrations) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id play-hints) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id subtitles) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id hinttitles) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type language) :name (game-text-id language) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type language-subtitles) :name (game-text-id subtitles-language) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type language-text) :name (game-text-id text-language) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type speaker) :name (game-text-id subtitles-speaker) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id camera-options) :scale #t :param3 (game-option-menu camera-options))
-    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id accessibility-options) :scale #t :param3 (game-option-menu accessibility-options))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id misc-options) :scale #t :param3 (game-option-menu misc-options))
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
@@ -142,6 +146,7 @@
   )
 
 (define *misc-options* (new 'static 'boxed-array :type game-option
+    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id money-starburst) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id discord-rpc) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
@@ -188,11 +193,6 @@
     (new 'static 'game-option :name (game-text-id sfx-volume) :scale #t :param2 100.0)
     (new 'static 'game-option :name (game-text-id music-volume) :scale #t :param2 100.0)
     (new 'static 'game-option :name (game-text-id speech-volume) :scale #t :param2 100.0)
-    (new 'static 'game-option :option-type (game-option-type language) :name (game-text-id language) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id subtitles) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id hinttitles) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type language-subtitles) :name (game-text-id subtitles-language) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type speaker) :name (game-text-id subtitles-speaker) :scale #t)
     ;(new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id music-fadein) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
@@ -240,6 +240,13 @@
     )
   )
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  DATA LISTS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (define *music-list* '(village1 beach jungle fishgame jungleb misty firecanyon
                        village2 rolling swamp sunken ogre ogreboss
                        village3 snow maincave lavatube
@@ -281,6 +288,24 @@
     (static-text-list-array danger-mus)
     ))
 
+
+
+(defmacro def-language-remap-info (langs)
+  `(quote ,(apply (lambda (x) `((the binteger (game-text-id ,x)) (the binteger (pc-subtitle-lang ,x)))) langs))
+  )
+
+(define *language-remap-info-pc* (def-language-remap-info
+        (english uk-english french german spanish italian japanese portuguese br-portuguese swedish finnish danish norwegian)))
+(define *text-languages* (static-text-list-array
+                                  english uk-english french german spanish italian japanese))
+(define *subtitle-languages* (static-text-list-array
+                                  english spanish))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  DYNAMIC MENU THINGS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-perm *temp-options-alloced* symbol #f)
 
@@ -447,6 +472,23 @@
   (add-back-option)
   
   *temp-options*
+  )
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  CAROUSELL FUNCTIONS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun get-language-name ((lang pc-subtitle-lang))
+  "get the game-text-id from a lang"
+  (dolist (item *language-remap-info-pc*)
+    (when (= lang (the pc-subtitle-lang (/ (the int (cadr (car item))) 8)))
+        (return (the game-text-id (/ (the int (car (car item))) 8))))
+    )
+  (game-text-id zero)
   )
 
 
@@ -627,6 +669,12 @@
   ;; our options!
   (set! (-> *game-options-pc* 0 value-to-modify) (&-> *setting-control* default vibration))
   (set! (-> *game-options-pc* 1 value-to-modify) (&-> *setting-control* default play-hints))
+  (set! (-> *game-options-pc* 2 value-to-modify) (&-> *pc-settings* subtitles?))
+  (set! (-> *game-options-pc* 3 value-to-modify) (&-> *pc-settings* hinttitles?))
+  (set! (-> *game-options-pc* 4 value-to-modify) (&-> *setting-control* default language))
+  (set! (-> *game-options-pc* 5 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *game-options-pc* 6 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *game-options-pc* 7 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
   ;(set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
@@ -635,6 +683,7 @@
   (set! (-> *graphic-options-no-frame-rate-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
   ;(set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *misc-options* 0 value-to-modify) (&-> *pc-settings* discord-rpc?))
+  (set! (-> *misc-options* 1 value-to-modify) (&-> *pc-settings* money-starburst?))
   (set! (-> *camera-options* 0 value-to-modify) (&-> *pc-settings* first-camera-h-inverted?))
   (set! (-> *camera-options* 1 value-to-modify) (&-> *pc-settings* first-camera-v-inverted?))
   (set! (-> *camera-options* 2 value-to-modify) (&-> *pc-settings* third-camera-h-inverted?))
@@ -646,12 +695,7 @@
   (set! (-> *sound-options-pc* 0 value-to-modify) (&-> *setting-control* default sfx-volume))
   (set! (-> *sound-options-pc* 1 value-to-modify) (&-> *setting-control* default music-volume))
   (set! (-> *sound-options-pc* 2 value-to-modify) (&-> *setting-control* default dialog-volume))
-  (set! (-> *sound-options-pc* 3 value-to-modify) (&-> *setting-control* default language))
-  (set! (-> *sound-options-pc* 4 value-to-modify) (&-> *pc-settings* subtitles?))
-  (set! (-> *sound-options-pc* 5 value-to-modify) (&-> *pc-settings* hinttitles?))
-  (set! (-> *sound-options-pc* 6 value-to-modify) (&-> *progress-carousell* subtitle-backup))
-  (set! (-> *sound-options-pc* 7 value-to-modify) (&-> *progress-carousell* int-backup))
-  ;(set! (-> *sound-options-pc* 8 value-to-modify) (&-> *pc-settings* music-fadein?))
+  ;(set! (-> *sound-options-pc* 3 value-to-modify) (&-> *pc-settings* music-fadein?))
   (set! (-> *progress-carousell* aspect-native-choice) (-> *pc-settings* use-vis?))
   
   ;; scroll stuff!
@@ -781,22 +825,13 @@
                     (game-option-type lod-fg)
                     (game-option-type speaker)
                     (game-option-type frame-rate)
+                    (game-option-type language-subtitles)
+                    (game-option-type language-text)
                     )
                    ;; a carousell like language
                    (if (> (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) 0)
                        (+! (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) -1)
                        (set! (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) (1- (length (-> *progress-carousell* current-carousell))))
-                       )
-                   ;; updated.
-                   (set! (-> *progress-carousell* transition) #t)
-                   (set! (-> *progress-carousell* direction) #t)
-                   (set! sound? #t)
-                   )
-                  (((game-option-type language-subtitles))
-                   ;; a carousell like language
-                   (if (> (-> (the-as (pointer pc-subtitle-lang) (-> options (-> obj option-index) value-to-modify))) (the-as pc-subtitle-lang 0))
-                       (+! (-> (the-as (pointer pc-subtitle-lang) (-> options (-> obj option-index) value-to-modify))) (the-as pc-subtitle-lang -1))
-                       (set! (-> (the-as (pointer pc-subtitle-lang) (-> options (-> obj option-index) value-to-modify))) (the-as pc-subtitle-lang (1- (length (-> *progress-carousell* current-carousell)))))
                        )
                    ;; updated.
                    (set! (-> *progress-carousell* transition) #t)
@@ -893,21 +928,13 @@
                     (game-option-type lod-fg)
                     (game-option-type speaker)
                     (game-option-type frame-rate)
+                    (game-option-type language-subtitles)
+                    (game-option-type language-text)
                     )
                    ;; same thing as before. if at last, go to first. otherwise, keep going forward.
                    (if (< (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) (1- (length (-> *progress-carousell* current-carousell))))
                        (1+! (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))))
                        (set! (-> (the-as (pointer int) (-> options (-> obj option-index) value-to-modify))) 0)
-                       )
-                   (set! (-> *progress-carousell* transition) #t)
-                   (set! (-> *progress-carousell* direction) #f)
-                   (set! sound? #t)
-                   )
-                  (((game-option-type language-subtitles))
-                   ;; same thing as before. if at last, go to first. otherwise, keep going forward.
-                   (if (< (-> (the-as (pointer pc-subtitle-lang) (-> options (-> obj option-index) value-to-modify))) (1- (length (-> *progress-carousell* current-carousell))))
-                       (+! (-> (the-as (pointer pc-subtitle-lang) (-> options (-> obj option-index) value-to-modify))) (the-as pc-subtitle-lang 1))
-                       (set! (-> (the-as (pointer pc-subtitle-lang) (-> options (-> obj option-index) value-to-modify))) (the-as pc-subtitle-lang 0))
                        )
                    (set! (-> *progress-carousell* transition) #t)
                    (set! (-> *progress-carousell* direction) #f)
@@ -1132,9 +1159,6 @@
                   (set! (-> *progress-state* language-backup)
                         (-> (the-as (pointer language-enum) (-> options (-> obj option-index) value-to-modify))))
                   )
-                 (((game-option-type language-subtitles))
-                  (set! (-> (the-as (pointer pc-subtitle-lang) (-> options (-> obj option-index) value-to-modify))) (-> *pc-settings* subtitle-language))
-                  )
                  (((game-option-type on-off) (game-option-type normal-inverted))
                   (set! (-> *progress-state* on-off-backup)
                         (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
@@ -1183,6 +1207,20 @@
                     (('150fps) (set! (-> *progress-carousell* int-backup) 2))
                     )
                   )
+                 (((game-option-type language-subtitles))
+                  (let ((cur-lang (get-language-name (-> *pc-settings* subtitle-language))))
+                      (dotimes (i (-> *subtitle-languages* length))
+                        (if (= (-> *subtitle-languages* i) cur-lang)
+                            (set! (-> *progress-carousell* int-backup) i))
+                        ))
+                  )
+                 (((game-option-type language-text))
+                  (let ((cur-lang (get-language-name (-> *pc-settings* text-language))))
+                      (dotimes (i (-> *text-languages* length))
+                        (if (= (-> *text-languages* i) cur-lang)
+                            (set! (-> *progress-carousell* int-backup) i))
+                        ))
+                  )
                  )
                (sound-play "select-option")
                (cpad-clear! 0 x)
@@ -1207,10 +1245,8 @@
                      (((game-option-type lod-fg)) (set! (-> *progress-carousell* current-carousell) *carousell-lod-bg*))
                      (((game-option-type speaker)) (set! (-> *progress-carousell* current-carousell) *carousell-speaker*))
                      (((game-option-type frame-rate)) (set! (-> *progress-carousell* current-carousell) *carousell-frame-rate*))
-                     (((game-option-type language-subtitles))
-                          (set! (-> *progress-carousell* current-carousell) *carousell-subtitle-language*)
-                          (set! (-> *progress-carousell* selection) (the int (-> (the-as (pointer pc-subtitle-lang) (-> options (-> obj option-index) value-to-modify)))))
-                          )
+                     (((game-option-type language-subtitles)) (set! (-> *progress-carousell* current-carousell) *subtitle-languages*))
+                     (((game-option-type language-text)) (set! (-> *progress-carousell* current-carousell) *text-languages*))
                      )
                    )
                  )
@@ -1262,12 +1298,17 @@
                   ((1) (set! (-> *pc-settings* lod-force-actor) 0) (set! (-> *pc-settings* ps2-lod-dist?) #t))
                   )
                 )
-               (((game-option-type language))
-                (if (not (-> obj language-transition))
-                    (load-level-text-files (-> obj display-level-index)))
-                )
                (((game-option-type language-subtitles))
-                (set! (-> *pc-settings* subtitle-language) (-> (the-as (pointer pc-subtitle-lang) (-> options (-> obj option-index) value-to-modify))))
+                (let ((lang (assoc (the binteger (-> *subtitle-languages* (-> *progress-carousell* int-backup))) *language-remap-info-pc*)))
+                    (set! (-> *pc-settings* subtitle-language) (the pc-subtitle-lang (/ (the int (cadr lang)) 8)))
+                    )
+                )
+               (((game-option-type language-text))
+                (let ((lang (assoc (the binteger (-> *text-languages* (-> *progress-carousell* int-backup))) *language-remap-info-pc*)))
+                    (set! (-> *pc-settings* text-language) (the pc-subtitle-lang (/ (the int (cadr lang)) 8)))
+                    )
+                (if (not (-> *progress-carousell* transition))
+                    (load-level-text-files (-> obj display-level-index)))
                 )
                (((game-option-type speaker))
                 ;; same thing.
@@ -1658,13 +1699,11 @@
                    (game-option-type lod-fg)
                    (game-option-type speaker)
                    (game-option-type frame-rate)
+                   (game-option-type language-subtitles)
+                   (game-option-type language-text)
                    )
                   ;; crunched down to one generic function.
                   (progress-draw-carousell-from-string-list (-> *progress-carousell* current-carousell) font y-off (-> (the-as (pointer int) (-> options index value-to-modify))))
-                  )
-                 (((game-option-type language-subtitles))
-                  ;; crunched down to one generic function.
-                  (progress-draw-carousell-from-string-list (-> *progress-carousell* current-carousell) font y-off (the int (-> (the-as (pointer pc-subtitle-lang) (-> options index value-to-modify)))))
                   )
                  (((game-option-type language))
                   ;; language carousell. who knew this could be so complicated.
@@ -1771,10 +1810,12 @@
                                                         (lookup-text! *common-text* (-> *language-name-remap* (-> (the-as (pointer uint64) (-> options index value-to-modify)))) #f)))
                    )
                   (((game-option-type language-subtitles))
-                   (let ((stupidity (the int (-> (the-as (pointer pc-subtitle-lang) (-> options index value-to-modify))))))
                    (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
-                                                            (lookup-text! *common-text* (-> *carousell-subtitle-language* stupidity) #f)))
-                                                            )
+                                                            (lookup-text! *common-text* (get-language-name (-> *pc-settings* subtitle-language)) #f)))
+                   )
+                  (((game-option-type language-text))
+                   (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
+                                                            (lookup-text! *common-text* (get-language-name (-> *pc-settings* text-language)) #f)))
                    )
                   )
                 )
@@ -1955,7 +1996,7 @@
 (set! (-> progress-normal post) 
   (lambda :behavior progress ()
     (when (progress-scrolling?)
-      (seek! (-> *progress-scroll* transition) 1.0 (* 1.75 (1/ 512) (-> self transition-speed) (-> *display* time-adjust-ratio)))
+      (seek! (-> *progress-scroll* transition) 1.0 (* (/ 1.75 512) (-> self transition-speed) (-> *display* time-adjust-ratio)))
       )
     (when (!= (-> self display-state) (-> *progress-scroll* last-screen))
       (progress-scroll-reset)
@@ -1983,9 +2024,8 @@
         (((progress-screen graphic-settings)
           (progress-screen settings-title)
           (progress-screen title)
-          (progress-screen game-settings)
+          (progress-screen sound-settings)
           (progress-screen settings)
-          (progress-screen misc-options)
           (progress-screen accessibility-options)
           (progress-screen game-ps2-options)
           (progress-screen resolution)
@@ -1994,6 +2034,10 @@
           )
          (hide-progress-icons)
          (draw-options self 115 25 0.82)
+         )
+        (((progress-screen misc-options))
+         (hide-progress-icons)
+         (draw-options self 115 25 0.79)
          )
         (((progress-screen music-player))
          (hide-progress-icons)
@@ -2012,7 +2056,7 @@
          (hide-progress-icons)
          (draw-options self 115 25 0.72)
          )
-        (((progress-screen sound-settings))
+        (((progress-screen game-settings))
          (hide-progress-icons)
          (draw-options self 115 25 0.76)
          )

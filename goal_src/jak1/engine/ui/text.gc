@@ -144,10 +144,12 @@
    (heap-free int)
    )
   (set! heap-sym-heap (the-as game-text-info (-> curr-text value)))
-  (set! lang (-> *setting-control* current language))
+              ;; split languages in PC port
+  (set! lang (#if PC_PORT (the language-enum (-> *pc-settings* text-language))
+                          (-> *setting-control* current language)))
   (set! load-status 0)
   (set! heap-free (&- (-> heap top) (the-as uint (-> heap base))))
-  ;; english -> UK english in PAL (I think?)
+  ;; english -> UK english in PAL
   (if (and (= (scf-get-territory) GAME_TERRITORY_SCEE) (= lang (language-enum english)))
       (set! lang (language-enum uk-english))
       )
@@ -249,108 +251,66 @@
   (let ((s5-0 (new 'static 'vector4w))
         (gp-0 (new 'static 'matrix))
         )
-   (let ((s4-0 (new 'static 'vector)))
-    (set-vector! s4-0 (-> arg0 origin x) (-> arg0 origin y) 0.0 1.0)
-    (set!
-     (-> s4-0 x)
-     (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical))
-     )
-    (vector-matrix*! s4-0 s4-0 (-> arg0 mat))
-    (set-vector!
-     (-> gp-0 vector 0)
-     (the-as float (the int (-> s4-0 x)))
-     (the-as float (the int (-> s4-0 y)))
-     (the-as float (the int (-> s4-0 z)))
-     (the-as float 1)
-     )
-    (set-vector!
-     s4-0
-     (+ (-> arg0 origin x) (-> arg0 width))
-     (-> arg0 origin y)
-     0.0
-     1.0
-     )
-    (set!
-     (-> s4-0 x)
-     (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical))
-     )
-    (vector-matrix*! s4-0 s4-0 (-> arg0 mat))
-    (set-vector!
-     (-> gp-0 vector 1)
-     (the-as float (the int (-> s4-0 x)))
-     (the-as float (the int (-> s4-0 y)))
-     (the-as float (the int (-> s4-0 z)))
-     (the-as float 1)
-     )
-    (set-vector!
-     s4-0
-     (+ (-> arg0 origin x) (-> arg0 width))
-     (+ (-> arg0 origin y) (-> arg0 height))
-     0.0
-     1.0
-     )
-    (set!
-     (-> s4-0 x)
-     (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical))
-     )
-    (vector-matrix*! s4-0 s4-0 (-> arg0 mat))
-    (set-vector!
-     (-> gp-0 vector 2)
-     (the-as float (the int (-> s4-0 x)))
-     (the-as float (the int (-> s4-0 y)))
-     (the-as float (the int (-> s4-0 z)))
-     (the-as float 1)
-     )
-    (set-vector!
-     s4-0
-     (-> arg0 origin x)
-     (+ (-> arg0 origin y) (-> arg0 height))
-     0.0
-     1.0
-     )
-    (set!
-     (-> s4-0 x)
-     (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical))
-     )
-    (vector-matrix*! s4-0 s4-0 (-> arg0 mat))
-    (set-vector!
-     (-> gp-0 vector 3)
-     (the-as float (the int (-> s4-0 x)))
-     (the-as float (the int (-> s4-0 y)))
-     (the-as float (the int (-> s4-0 z)))
-     (the-as float 1)
-     )
+    (let ((s4-0 (new 'static 'vector)))
+      (set-vector! s4-0 (-> arg0 origin x) (-> arg0 origin y) 0.0 1.0)
+      (set! (-> s4-0 x) (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical)))
+      (vector-matrix*! s4-0 s4-0 (-> arg0 mat))
+      (set-vector!
+        (-> gp-0 vector 0)
+        (the-as float (the int (-> s4-0 x)))
+        (the-as float (the int (-> s4-0 y)))
+        (the-as float (the int (-> s4-0 z)))
+        (the-as float 1)
+        )
+      (set-vector! s4-0 (+ (-> arg0 origin x) (-> arg0 width)) (-> arg0 origin y) 0.0 1.0)
+      (set! (-> s4-0 x) (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical)))
+      (vector-matrix*! s4-0 s4-0 (-> arg0 mat))
+      (set-vector!
+        (-> gp-0 vector 1)
+        (the-as float (the int (-> s4-0 x)))
+        (the-as float (the int (-> s4-0 y)))
+        (the-as float (the int (-> s4-0 z)))
+        (the-as float 1)
+        )
+      (set-vector! s4-0 (+ (-> arg0 origin x) (-> arg0 width)) (+ (-> arg0 origin y) (-> arg0 height)) 0.0 1.0)
+      (set! (-> s4-0 x) (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical)))
+      (vector-matrix*! s4-0 s4-0 (-> arg0 mat))
+      (set-vector!
+        (-> gp-0 vector 2)
+        (the-as float (the int (-> s4-0 x)))
+        (the-as float (the int (-> s4-0 y)))
+        (the-as float (the int (-> s4-0 z)))
+        (the-as float 1)
+        )
+      (set-vector! s4-0 (-> arg0 origin x) (+ (-> arg0 origin y) (-> arg0 height)) 0.0 1.0)
+      (set! (-> s4-0 x) (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical)))
+      (vector-matrix*! s4-0 s4-0 (-> arg0 mat))
+      (set-vector!
+        (-> gp-0 vector 3)
+        (the-as float (the int (-> s4-0 x)))
+        (the-as float (the int (-> s4-0 y)))
+        (the-as float (the int (-> s4-0 z)))
+        (the-as float 1)
+        )
+      )
+    (set-vector! s5-0 128 128 128 128)
+    (add-debug-line2d
+      #t
+      (bucket-id debug-no-zbuf)
+      (the-as vector (-> gp-0 vector))
+      (-> gp-0 vector 1)
+      (the-as vector s5-0)
+      )
+    (add-debug-line2d #t (bucket-id debug-no-zbuf) (-> gp-0 vector 1) (-> gp-0 vector 2) (the-as vector s5-0))
+    (add-debug-line2d #t (bucket-id debug-no-zbuf) (-> gp-0 vector 2) (-> gp-0 vector 3) (the-as vector s5-0))
+    (add-debug-line2d
+      #t
+      (bucket-id debug-no-zbuf)
+      (-> gp-0 vector 3)
+      (the-as vector (-> gp-0 vector))
+      (the-as vector s5-0)
+      )
     )
-   (set-vector! s5-0 128 128 128 128)
-   (add-debug-line2d
-    #t
-    (bucket-id debug-no-zbuf)
-    (the-as vector (-> gp-0 vector))
-    (-> gp-0 vector 1)
-    (the-as vector s5-0)
-    )
-   (add-debug-line2d
-    #t
-    (bucket-id debug-no-zbuf)
-    (-> gp-0 vector 1)
-    (-> gp-0 vector 2)
-    (the-as vector s5-0)
-    )
-   (add-debug-line2d
-    #t
-    (bucket-id debug-no-zbuf)
-    (-> gp-0 vector 2)
-    (-> gp-0 vector 3)
-    (the-as vector s5-0)
-    )
-   (add-debug-line2d
-    #t
-    (bucket-id debug-no-zbuf)
-    (-> gp-0 vector 3)
-    (the-as vector (-> gp-0 vector))
-    (the-as vector s5-0)
-    )
-   )
   0
   (none)
   )
