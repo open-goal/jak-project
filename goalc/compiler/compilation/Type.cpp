@@ -162,7 +162,8 @@ void Compiler::generate_field_description(const goos::Object& form,
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(form, env));
   } else if (m_ts.tc(m_ts.make_typespec("basic"), f.type()) ||
              m_ts.tc(m_ts.make_typespec("binteger"), f.type()) ||
-             m_ts.tc(m_ts.make_typespec("pair"), f.type())) {
+             m_ts.tc(m_ts.make_typespec("pair"), f.type()) ||
+             m_ts.tc(m_ts.make_typespec("symbol"), f.type())) {
     // basic, binteger, pair
     str_template += fmt::format("{}{}: ~A~%", tabs, f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(form, env));

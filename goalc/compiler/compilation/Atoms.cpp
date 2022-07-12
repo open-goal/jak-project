@@ -380,7 +380,7 @@ Val* Compiler::compile_get_symbol_value(const goos::Object& form,
   }
 
   auto ts = existing_symbol->second;
-  auto sext = m_ts.lookup_type(ts)->get_load_signed();
+  auto sext = m_ts.lookup_type_allow_partial_def(ts)->get_load_signed();
   auto fe = env->function_env();
   auto sym = fe->alloc_val<SymbolVal>(name, m_ts.make_typespec("symbol"));
   auto re = fe->alloc_val<SymbolValueVal>(sym, ts, sext);

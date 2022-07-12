@@ -1,12 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: gstring.gc
-;; name in dgo: gstring
-;; dgos: KERNEL
-
+;; definition for method 4 of type string
 (defmethod length string ((obj string))
-  "Get the length of a string. Like strlen"
   (let ((v1-0 (-> obj data)))
     (while (nonzero? (-> v1-0 0))
       (nop!)
@@ -18,13 +14,13 @@
     )
   )
 
+;; definition for method 5 of type string
 (defmethod asize-of string ((obj string))
-  "get the size in bytes of a string."
   (+ (-> obj allocated-length) 1 (-> string size))
   )
 
+;; definition for function copy-string<-string
 (defun copy-string<-string ((arg0 string) (arg1 string))
-  "Copy data from one string to another, like strcpy"
   (let ((v1-0 (-> arg0 data)))
     (let ((a1-1 (-> arg1 data)))
       (while (nonzero? (-> a1-1 0))
@@ -38,8 +34,8 @@
   arg0
   )
 
+;; definition for method 0 of type string
 (defmethod new string ((allocation symbol) (type-to-make type) (arg0 int) (arg1 string))
-  "Create a new string of the given size. If other is not #f, copy data from it."
   (cond
     (arg1
       (let* ((s2-1 (max (length arg1) arg0))
@@ -58,9 +54,8 @@
     )
   )
 
+;; definition for function string=
 (defun string= ((arg0 string) (arg1 string))
-  "Does str-a hold the same data as str-b?.
-   If either string is null, returns #f."
   (let ((a2-0 (-> arg0 data))
         (v1-0 (-> arg1 data))
         )
@@ -78,8 +73,8 @@
     )
   )
 
+;; definition for function string-prefix=
 (defun string-prefix= ((arg0 string) (arg1 string))
-  "Is the first string a prefix of the second? (string-prefix= 'foo' 'foobar') = #t"
   (let ((v1-0 (-> arg0 data)))
     (let ((a2-0 (-> arg1 data)))
       (if (or (zero? arg0) (zero? arg1))
@@ -97,8 +92,8 @@
     )
   )
 
+;; definition for function charp-prefix=
 (defun charp-prefix= ((arg0 (pointer uint8)) (arg1 (pointer uint8)))
-  "Is the first cstring a prefix of the second?"
   (while (and (nonzero? (-> arg0 0)) (nonzero? (-> arg1 0)))
     (if (!= (-> arg0 0) (-> arg1 0))
         (return #f)
@@ -109,8 +104,8 @@
   (zero? (-> arg0 0))
   )
 
+;; definition for function string-suffix=
 (defun string-suffix= ((arg0 string) (arg1 string))
-  "Is the _second_ string a suffix of the first?"
   (let ((s5-0 (-> arg0 data))
         (gp-0 (-> arg1 data))
         )
@@ -137,8 +132,8 @@
     )
   )
 
+;; definition for function string-position
 (defun string-position ((arg0 string) (arg1 string))
-  "Find the position of the first string in the second."
   (let ((s5-0 0)
         (s4-0 (-> arg1 data))
         )
@@ -153,8 +148,8 @@
   -1
   )
 
+;; definition for function string-charp=
 (defun string-charp= ((arg0 string) (arg1 (pointer uint8)))
-  "Is the data in str equal to the C string charp?"
   (let ((v1-0 (-> arg0 data)))
     (while (and (nonzero? (-> v1-0 0)) (nonzero? (-> arg1 0)))
       (if (!= (-> v1-0 0) (-> arg1 0))
@@ -169,29 +164,9 @@
 
 ;; definition for function name=
 ;; ERROR: function was not converted to expressions. Cannot decompile.
-(defun name= ((arg0 object) (arg1 object))
-  "Do arg0 and arg1 have the same name?
-   This can use either strings or symbols"
-  (cond
-    ((= arg0 arg1)
-     ;; Either same symbols, or same string objects, fast check pass!
-     #t)
-    ((and (= (rtype-of arg0) string) (= (rtype-of arg1) string))
-     (string= (the-as string arg0) (the-as string arg1))
-     )
-    ((and (= (rtype-of arg0) string) (= (rtype-of arg1) symbol))
-     (string= (the-as string arg0) (symbol->string arg1))
-     )
-    ((and (= (rtype-of arg1) string) (= (rtype-of arg0) symbol))
-     (string= (the-as string arg1) (symbol->string arg0))
-     )
-    ;; no need to check symbol - symbol, that would have passed the first check.
-    )
-  )
 
-
+;; definition for function copyn-string<-charp
 (defun copyn-string<-charp ((arg0 string) (arg1 (pointer uint8)) (arg2 int))
-  "Copy data from a charp to a GOAL string. Copies len chars, plus a null."
   (let ((v1-0 (-> arg0 data)))
     (dotimes (a3-0 arg2)
       (set! (-> v1-0 0) (-> arg1 0))
@@ -203,9 +178,8 @@
   arg0
   )
 
+;; definition for function string<-charp
 (defun string<-charp ((arg0 string) (arg1 (pointer uint8)))
-  "Copy all chars from a char* to a GOAL string.
-   Does NO length checking."
   (let ((v1-0 (-> arg0 data)))
     (while (nonzero? (-> arg1 0))
       (set! (-> v1-0 0) (-> arg1 0))
@@ -217,8 +191,8 @@
   arg0
   )
 
+;; definition for function charp<-string
 (defun charp<-string ((arg0 (pointer uint8)) (arg1 string))
-  "Copy a GOAL string into a character array."
   (let ((v1-0 (-> arg1 data)))
     (while (nonzero? (-> v1-0 0))
       (set! (-> arg0 0) (-> v1-0 0))
@@ -230,8 +204,9 @@
   0
   )
 
+;; definition for function copyn-charp<-string
+;; INFO: Return type mismatch int vs none.
 (defun copyn-charp<-string ((arg0 (pointer uint8)) (arg1 string) (arg2 int))
-  "Copy n chars from string to character array."
   (let ((v1-0 (-> arg1 data)))
     (while (and (nonzero? (-> v1-0 0)) (< 1 arg2))
       (set! (-> arg0 0) (-> v1-0 0))
@@ -249,8 +224,8 @@
   (none)
   )
 
+;; definition for function copy-charp<-charp
 (defun copy-charp<-charp ((arg0 (pointer uint8)) (arg1 (pointer uint8)))
-  "C string copy."
   (while (nonzero? (-> arg1 0))
     (set! (-> arg0 0) (-> arg1 0))
     (set! arg0 (&-> arg0 1))
@@ -260,8 +235,8 @@
   arg0
   )
 
+;; definition for function cat-string<-string
 (defun cat-string<-string ((arg0 string) (arg1 string))
-  "Append b to a. No length checks"
   (let ((v1-0 (-> arg0 data)))
     (let ((a1-1 (-> arg1 data)))
       (while (nonzero? (-> v1-0 0))
@@ -281,8 +256,8 @@
   arg0
   )
 
+;; definition for function catn-string<-charp
 (defun catn-string<-charp ((arg0 string) (arg1 (pointer uint8)) (arg2 int))
-  "Append b to a, exactly len chars"
   (let ((v1-0 (-> arg0 data)))
     (while (nonzero? (-> v1-0 0))
       (nop!)
@@ -300,9 +275,8 @@
   arg0
   )
 
+;; definition for function cat-string<-string_to_charp
 (defun cat-string<-string_to_charp ((arg0 string) (arg1 string) (arg2 (pointer uint8)))
-  "Append b to a, using chars of b up to (and including) the one pointed to by end-ptr,
-   or, until the end of b, whichever comes first."
   (let ((v1-0 (-> arg1 data))
         (v0-0 (-> arg0 data))
         )
@@ -322,8 +296,8 @@
     )
   )
 
+;; definition for function append-character-to-string
 (defun append-character-to-string ((arg0 string) (arg1 uint8))
-  "Append char to the end of the given string."
   (let ((v1-0 (-> arg0 data)))
     (while (nonzero? (-> v1-0 0))
       (nop!)
@@ -338,8 +312,8 @@
   0
   )
 
+;; definition for function charp-basename
 (defun charp-basename ((arg0 (pointer uint8)))
-  "Like basename in C"
   (let ((v1-0 arg0))
     (while (nonzero? (-> v1-0 0))
       (set! v1-0 (&-> v1-0 1))
@@ -354,19 +328,14 @@
   arg0
   )
 
+;; definition for function clear
 (defun clear ((arg0 string))
-  "Make string empty"
   (set! (-> arg0 data 0) (the-as uint 0))
   arg0
   )
 
-;; NOTE: these string comparisons are a little broken.
-;; ex: (string<? "asd" "asdf") = #f
-;;     (string<? "asdf" "asd") = #f
-;; these comparisons do not properly order strings.
-
+;; definition for function string<?
 (defun string<? ((arg0 string) (arg1 string))
-  "In dictionary order, is a < b?"
   (let ((s4-1 (min (length arg0) (length arg1))))
     (dotimes (v1-4 s4-1)
       (cond
@@ -382,8 +351,8 @@
   #f
   )
 
+;; definition for function string>?
 (defun string>? ((arg0 string) (arg1 string))
-  "In dictionary order, is a > b?"
   (let ((s4-1 (min (length arg0) (length arg1))))
     (dotimes (v1-4 s4-1)
       (cond
@@ -399,6 +368,7 @@
   #f
   )
 
+;; definition for function string<=?
 (defun string<=? ((arg0 string) (arg1 string))
   (let ((s4-1 (min (length arg0) (length arg1))))
     (dotimes (v1-4 s4-1)
@@ -415,6 +385,7 @@
   #t
   )
 
+;; definition for function string>=?
 (defun string>=? ((arg0 string) (arg1 string))
   (let ((s4-1 (min (length arg0) (length arg1))))
     (dotimes (v1-4 s4-1)
@@ -431,19 +402,19 @@
   #t
   )
 
-;; temporary string for argument functions
+;; definition for symbol *string-tmp-str*, type string
 (define *string-tmp-str* (new 'global 'string 128 (the-as string #f)))
 
+;; definition for function string-skip-to-char
 (defun string-skip-to-char ((arg0 (pointer uint8)) (arg1 uint))
-  "Return pointer to first instance of char in C string, or to the null terminator if none"
   (while (and (nonzero? (-> arg0 0)) (!= (-> arg0 0) arg1))
     (set! arg0 (&-> arg0 1))
     )
   arg0
   )
 
+;; definition for function string-cat-to-last-char
 (defun string-cat-to-last-char ((arg0 string) (arg1 string) (arg2 uint))
-  "Append append-str to the end of base-str, up to the last occurance of char in append-str"
   (let ((s4-0 (&-> (the-as (pointer uint8) arg1) 3)))
     (let ((v1-0 (string-skip-to-char (-> arg1 data) arg2)))
       (when (= (-> v1-0 0) arg2)
@@ -457,21 +428,16 @@
     )
   )
 
+;; definition for function string-skip-whitespace
 (defun string-skip-whitespace ((arg0 (pointer uint8)))
-  "Skip over spaces, tabs, r's and n's"
-  ;; 32 = space
-  ;; 9 = \t
-  ;; 13 = \r
-  ;; 10 = \n
   (while (and (nonzero? (-> arg0 0)) (or (= (-> arg0 0) 32) (= (-> arg0 0) 9) (= (-> arg0 0) 13) (= (-> arg0 0) 10)))
     (set! arg0 (&-> arg0 1))
     )
   arg0
   )
 
+;; definition for function string-suck-up!
 (defun string-suck-up! ((arg0 string) (arg1 (pointer uint8)))
-  "Remove character between the start of string and location.
-   The char pointed to by location is now the first."
   (when (!= arg1 (-> arg0 data))
     (let ((v1-2 (-> arg0 data)))
       (while (nonzero? (-> arg1 0))
@@ -486,16 +452,16 @@
   #f
   )
 
+;; definition for function string-strip-leading-whitespace!
 (defun string-strip-leading-whitespace! ((arg0 string))
-  "Remove whitespace at the front of a string"
   (let ((a1-0 (string-skip-whitespace (-> arg0 data))))
     (string-suck-up! arg0 a1-0)
     )
   #f
   )
 
+;; definition for function string-strip-trailing-whitespace!
 (defun string-strip-trailing-whitespace! ((arg0 string))
-  "Remove whitespace at the end of a string"
   (when (nonzero? (length arg0))
     (let ((v1-6 (&+ (-> arg0 data) (+ (length arg0) -1))))
       (while (and (>= (the-as int v1-6) (the-as int (-> arg0 data)))
@@ -510,15 +476,16 @@
   #f
   )
 
+;; definition for function string-strip-whitespace!
 (defun string-strip-whitespace! ((arg0 string))
-  "Remove whitespace at the beginning and end of a string"
   (string-strip-trailing-whitespace! arg0)
   (string-strip-leading-whitespace! arg0)
   #f
   )
 
+;; definition for function string-upcase
+;; INFO: Return type mismatch int vs none.
 (defun string-upcase ((arg0 string) (arg1 string))
-  "Uppercase the given string."
   (let* ((a0-1 (-> arg0 data))
          (a3-0 (-> a0-1 0))
          (a2-0 1)
@@ -539,12 +506,8 @@
   (none)
   )
 
+;; definition for function string-get-arg!!
 (defun string-get-arg!! ((arg0 string) (arg1 string))
-  "Get the first argument from a whitespace separated list of arguments.
-   The arguments can be in quotes or not.
-   Removes argument from arg string, sucks up white space before the next one
-   Outputs argument to a-str."
-
   (let ((s4-0 (string-skip-whitespace (-> arg1 data))))
     (cond
       ((= (-> s4-0 0) 34)
@@ -581,9 +544,8 @@
   #f
   )
 
+;; definition for function string->int
 (defun string->int ((arg0 string))
-  "String to int. Supports binary, hex, and decimal. Negative is implemented for decimal and hex
-   But I think it's broken?"
   (let ((a0-1 (-> arg0 data))
         (v0-0 0)
         (v1-0 #f)
@@ -651,8 +613,8 @@
     )
   )
 
+;; definition for function string->float
 (defun string->float ((arg0 string))
-  "They implemented it!"
   (let ((a0-1 (-> arg0 data))
         (f0-0 0.0)
         (v1-0 #f)
@@ -726,8 +688,8 @@
     )
   )
 
+;; definition for function string-get-int32!!
 (defun string-get-int32!! ((arg0 (pointer int32)) (arg1 string))
-  "Get an int32 from a list of arguments"
   (cond
     ((string-get-arg!! *string-tmp-str* arg1)
      (set! (-> arg0 0) (string->int *string-tmp-str*))
@@ -739,8 +701,8 @@
     )
   )
 
+;; definition for function string-get-float!!
 (defun string-get-float!! ((arg0 (pointer float)) (arg1 string))
-  "Get a float from a list of arguments."
   (cond
     ((string-get-arg!! *string-tmp-str* arg1)
      (set! (-> arg0 0) (string->float *string-tmp-str*))
@@ -752,8 +714,8 @@
     )
   )
 
+;; definition for function string-get-flag!!
 (defun string-get-flag!! ((arg0 (pointer symbol)) (arg1 string) (arg2 string) (arg3 string))
-  "Get a flag argument (either arg2 or arg3) from a list of arugments."
   (cond
     ((string-get-arg!! *string-tmp-str* arg1)
      (cond
@@ -772,16 +734,25 @@
     )
   )
 
+;; failed to figure out what this is:
 (kmemopen global "gstring-globals")
 
+;; definition for symbol *debug-draw-pauseable*, type symbol
 (define *debug-draw-pauseable* #f)
+
+;; definition for symbol *stdcon0*, type string
 (define *stdcon0* (new 'global 'string #x4000 (the-as string #f)))
+
+;; definition for symbol *stdcon1*, type string
 (define *stdcon1* (new 'global 'string #x4000 (the-as string #f)))
+
+;; definition for symbol *stdcon*, type string
 (define *stdcon* *stdcon0*)
 
-;; up from 256 bytes in jak 1
+;; definition for symbol *temp-string*, type string
 (define *temp-string* (new 'global 'string 2048 (the-as string #f)))
 
+;; failed to figure out what this is:
 (kmemclose)
 
 
