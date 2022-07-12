@@ -29,6 +29,7 @@
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_impl_glfw.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
+#define STBI_WINDOWS_UTF8
 #include "third-party/stb_image/stb_image.h"
 
 namespace {
@@ -182,43 +183,14 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
       (file_util::get_jak_project_dir() / "game" / "assets" / "appicon.png").string();
 
   GLFWimage images[1];
-  images[0].pixels =
-      stbi_load(image_path.c_str(), &images[0].width, &images[0].height, 0, 4);  // rgba channels
-  glfwSetWindowIcon(window, 1, images);
-  stbi_image_free(images[0].pixels);
-
-  // init framerate settings
-  /*
-  if (GLFWmonitor* primary_monitor = glfwGetPrimaryMonitor()) {
-    auto primary_monitor_video_mode = glfwGetVideoMode(primary_monitor);
-
-    if (primary_monitor_video_mode && primary_monitor_video_mode->refreshRate > 60) {
-      // Use the framelimiter by default and disable vsync
-      Gfx::g_global_settings.framelimiter = true;
-      Gfx::g_global_settings.vsync = false;
-      glfwSwapInterval(0);
-      if (primary_monitor_video_mode->refreshRate > 100) {
-        BootVideoMode = VideoMode::FPS150;
-        Gfx::g_global_settings.target_fps = 150;
-      } else if (primary_monitor_video_mode->refreshRate > 60) {
-        BootVideoMode = VideoMode::FPS100;
-        Gfx::g_global_settings.target_fps = 100;
-      }
-    } else {
-      // enable vsync
-      Gfx::g_global_settings.framelimiter = false;
-      Gfx::g_global_settings.vsync = true;
-      // glfwSwapInterval(1);
-      glfwSwapInterval(settings.vsync);
-    }
+  auto load_result = stbi_load(image_path.c_str(), &images[0].width, &images[0].height, 0, 4);
+  if (load_result) {
+    images[0].pixels = load_result;  // rgba channels
+    glfwSetWindowIcon(window, 1, images);
+    stbi_image_free(images[0].pixels);
   } else {
-    // enable vsync
-    Gfx::g_global_settings.framelimiter = false;
-    Gfx::g_global_settings.vsync = true;
-    // glfwSwapInterval(1);
-    glfwSwapInterval(settings.vsync);
+    lg::error("Could not load icon for OpenGL window");
   }
-  */
 
   SetDisplayCallbacks(window);
   Pad::initialize();

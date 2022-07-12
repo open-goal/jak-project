@@ -4,6 +4,7 @@
 ;; name: rolling-lightning-mole.gc
 ;; name in dgo: rolling-lightning-mole
 ;; dgos: L1, ROL
+;; note: changed for high fps
 
 ;; DECOMP BEGINS
 
@@ -174,6 +175,11 @@
 
 (defbehavior fleeing-nav-enemy-adjust-nav-info fleeing-nav-enemy ()
   (let ((f30-0 (vector-vector-distance (-> *camera* tpos-curr-adj) (-> *camera* tpos-old-adj))))
+    ;; High FPS fix: stop-chase and notice distances are calculated between a min/max range where 
+    ;; the further the camera moved since last frame decides how close the chosen value is to the 
+    ;; max distance. Since this is called more often above 60 FPS, the distance is skewed to the
+    ;; lower end. This scales the distance back up based on the FPS ratio.
+    (set! f30-0 (/ f30-0 DISPLAY_FPS_RATIO))
     (set! (-> self nav-info notice-distance) (lerp-clamp
                                                (-> self flee-info min-notice-dist)
                                                (-> self flee-info max-notice-dist)

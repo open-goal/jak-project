@@ -178,7 +178,11 @@ void LinkedObjectFile::symbol_link_word(int source_segment,
   if (word.kind() != LinkedWord::PLAIN_DATA) {
     printf("bad symbol link word\n");
   }
-  word.set_to_symbol(kind, name);
+  if (kind == LinkedWord::EMPTY_PTR) {
+    word.set_to_empty_ptr();
+  } else {
+    word.set_to_symbol(kind, name);
+  }
 }
 
 /*!

@@ -50,6 +50,18 @@ constexpr int SPRITE_RENDERER_MAX_DISTORT_SPRITES =
 
 Sprite3::Sprite3(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id), m_direct(name, my_id, 1024) {
+  opengl_setup();
+}
+
+void Sprite3::opengl_setup() {
+  // Set up OpenGL for 'normal' sprites
+  opengl_setup_normal();
+
+  // Set up OpenGL for distort sprites
+  opengl_setup_distort();
+}
+
+void Sprite3::opengl_setup_normal() {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
   glBindVertexArray(m_ogl.vao);
@@ -127,8 +139,11 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id)
   m_default_mode.set_ab(true);
 
   m_current_mode = m_default_mode;
+}
 
-  // distort
+void Sprite3::opengl_setup_distort() {
+  // Create framebuffer to snapshot current render to a texture that can be bound for the distort
+  // shader This will represent tex0 from the original GS data
   glGenFramebuffers(1, &m_distort_ogl.fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, m_distort_ogl.fbo);
 
@@ -140,6 +155,7 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id)
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  // Texture clamping here matches the GS init data for distort
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
@@ -151,6 +167,8 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id)
   glBindTexture(GL_TEXTURE_2D, 0);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+  // Non-instancing
+  // ----------------------
   glGenBuffers(1, &m_distort_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_distort_ogl.vao);
   glBindVertexArray(m_distort_ogl.vao);
@@ -165,7 +183,7 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id)
   glVertexAttribPointer(0,                                         // location 0 in the shader
                         3,                                         // 3 floats per vert
                         GL_FLOAT,                                  // floats
-                        GL_TRUE,                                   // normalized, ignored,
+                        GL_FALSE,                                  // don't normalize, ignored
                         sizeof(SpriteDistortVertex),               //
                         (void*)offsetof(SpriteDistortVertex, xyz)  // offset in array
   );
@@ -173,7 +191,7 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id)
   glVertexAttribPointer(1,                                        // location 1 in the shader
                         2,                                        // 2 floats per vert
                         GL_FLOAT,                                 // floats
-                        GL_TRUE,                                  // normalized, ignored,
+                        GL_FALSE,                                 // don't normalize, ignored
                         sizeof(SpriteDistortVertex),              //
                         (void*)offsetof(SpriteDistortVertex, st)  // offset in array
   );
@@ -193,6 +211,81 @@ Sprite3::Sprite3(const std::string& name, BucketId my_id)
   m_sprite_distorter_vertices.resize(distort_vert_buffer_len);
   m_sprite_distorter_indices.resize(distort_idx_buffer_len);
   m_sprite_distorter_frame_data.resize(SPRITE_RENDERER_MAX_DISTORT_SPRITES);
+
+  // Instancing
+  // ----------------------
+  glGenVertexArrays(1, &m_distort_instanced_ogl.vao);
+  glBindVertexArray(m_distort_instanced_ogl.vao);
+
+  int distort_max_sprite_slices = 0;
+  for (int i = 3; i < 12; i++) {
+    // For each 'resolution', there can be that many slices
+    distort_max_sprite_slices += i;
+  }
+
+  glGenBuffers(1, &m_distort_instanced_ogl.vertex_buffer);
+  glBindBuffer(GL_ARRAY_BUFFER, m_distort_instanced_ogl.vertex_buffer);
+
+  int distort_instanced_vert_buffer_len = distort_max_sprite_slices * 5;  // 5 vertices per slice
+  glBufferData(GL_ARRAY_BUFFER, distort_instanced_vert_buffer_len * sizeof(SpriteDistortVertex),
+               nullptr, GL_STREAM_DRAW);
+
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0,                                         // location 0 in the shader
+                        3,                                         // 3 floats per vert
+                        GL_FLOAT,                                  // floats
+                        GL_FALSE,                                  // don't normalize, ignored
+                        sizeof(SpriteDistortVertex),               //
+                        (void*)offsetof(SpriteDistortVertex, xyz)  // offset in array
+  );
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(1,                                        // location 1 in the shader
+                        2,                                        // 2 floats per vert
+                        GL_FLOAT,                                 // floats
+                        GL_FALSE,                                 // don't normalize, ignored
+                        sizeof(SpriteDistortVertex),              //
+                        (void*)offsetof(SpriteDistortVertex, st)  // offset in array
+  );
+
+  glGenBuffers(1, &m_distort_instanced_ogl.instance_buffer);
+  glBindBuffer(GL_ARRAY_BUFFER, m_distort_instanced_ogl.instance_buffer);
+
+  int distort_instance_buffer_len = SPRITE_RENDERER_MAX_DISTORT_SPRITES;
+  glBufferData(GL_ARRAY_BUFFER, distort_instance_buffer_len * sizeof(SpriteDistortInstanceData),
+               nullptr, GL_DYNAMIC_DRAW);
+
+  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(2,                                  // location 2 in the shader
+                        4,                                  // 4 floats per vert
+                        GL_FLOAT,                           // floats
+                        GL_FALSE,                           // normalized, ignored,
+                        sizeof(SpriteDistortInstanceData),  //
+                        (void*)offsetof(SpriteDistortInstanceData, x_y_z_s)  // offset in array
+  );
+  glEnableVertexAttribArray(3);
+  glVertexAttribPointer(3,                                  // location 3 in the shader
+                        4,                                  // 4 floats per vert
+                        GL_FLOAT,                           // floats
+                        GL_FALSE,                           // normalized, ignored,
+                        sizeof(SpriteDistortInstanceData),  //
+                        (void*)offsetof(SpriteDistortInstanceData, sx_sy_sz_t)  // offset in array
+  );
+
+  glVertexAttribDivisor(2, 1);
+  glVertexAttribDivisor(3, 1);
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+
+  m_sprite_distorter_vertices_instanced.resize(distort_instanced_vert_buffer_len);
+
+  for (int i = 3; i < 12; i++) {
+    auto vec = std::vector<SpriteDistortInstanceData>();
+    vec.resize(distort_instance_buffer_len);
+
+    m_sprite_distorter_instances_by_res[i] = vec;
+  }
 }
 
 /*!
@@ -224,13 +317,21 @@ void Sprite3::render_distorter(DmaFollower& dma,
   // Setup vertex data
   {
     auto prof_node = prof.make_scoped_child("setup");
-    distort_setup(prof_node);
+    if (m_enable_distort_instancing) {
+      distort_setup_instanced(render_state, prof_node);
+    } else {
+      distort_setup(prof_node);
+    }
   }
 
   // Draw
   {
     auto prof_node = prof.make_scoped_child("drawing");
-    distort_draw(render_state, prof_node);
+    if (m_enable_distort_instancing) {
+      distort_draw_instanced(render_state, prof_node);
+    } else {
+      distort_draw(render_state, prof_node);
+    }
   }
 }
 
@@ -358,7 +459,7 @@ void Sprite3::distort_setup(ScopedProfilerNode& /*prof*/) {
     math::Vector2f vf03 = frame_data.st;
     math::Vector3f vf14 = frame_data.xyz;
 
-    // Each slice shares a center vertex, we can use this fact and cut out duplicate vertexes
+    // Each slice shares a center vertex, we can use this fact and cut out duplicate vertices
     u32 center_vert_idx = m_sprite_distorter_vertices.size();
     m_sprite_distorter_vertices.push_back({vf14, vf03});
 
@@ -408,58 +509,92 @@ void Sprite3::distort_setup(ScopedProfilerNode& /*prof*/) {
 }
 
 /*!
+ * Sets up OpenGL data for rendering distort sprites using instanced rendering.
+ *
+ * A mesh is built once for each possible sprite resolution and is only re-built
+ * when the dimensions of the window are changed. These meshes are built just like
+ * the triangle strips in the VU program, but with the sprite-specific data removed.
+ *
+ * Required sprite-specific frame data is kept as is and is grouped by resolution.
+ */
+void Sprite3::distort_setup_instanced(SharedRenderState* render_state,
+                                      ScopedProfilerNode& /*prof*/) {
+  if (m_distort_instanced_ogl.last_window_width != render_state->window_width_px ||
+      m_distort_instanced_ogl.last_window_height != render_state->window_height_px) {
+    m_distort_instanced_ogl.last_window_width = render_state->window_width_px;
+    m_distort_instanced_ogl.last_window_height = render_state->window_height_px;
+
+    // Window dimensions changed, which means the aspect ratio may have changed, which means we have
+    // a new sine table
+    m_sprite_distorter_vertices_instanced.clear();
+
+    // Build a mesh for every possible distort sprite resolution
+    auto vf03 = math::Vector2f(0, 0);
+    auto vf14 = math::Vector3f(0, 0, 0);
+
+    for (int res = 3; res < 12; res++) {
+      int entry_index = m_sprite_distorter_sine_tables.ientry[res - 3].x() - 352;
+
+      for (int i = 0; i < res; i++) {
+        math::Vector3f vf06 = m_sprite_distorter_sine_tables.entry[entry_index++].xyz();
+        math::Vector2f vf07 = m_sprite_distorter_sine_tables.entry[entry_index++].xy();
+        math::Vector3f vf08 = m_sprite_distorter_sine_tables.entry[entry_index + 0].xyz();
+        math::Vector2f vf09 = m_sprite_distorter_sine_tables.entry[entry_index + 1].xy();
+
+        // Normally, there would be a bunch of transformations here against the sprite data.
+        // Instead, we'll let the shader do it and just store the sine table specific parts here.
+
+        m_sprite_distorter_vertices_instanced.push_back({vf06, vf07});
+        m_sprite_distorter_vertices_instanced.push_back({vf08, vf09});
+        m_sprite_distorter_vertices_instanced.push_back({vf06, vf07});
+        m_sprite_distorter_vertices_instanced.push_back({vf08, vf09});
+        m_sprite_distorter_vertices_instanced.push_back({vf14, vf03});
+      }
+    }
+
+    m_distort_instanced_ogl.vertex_data_changed = true;
+  }
+
+  // Set up instance data for each sprite
+  m_distort_stats.total_tris = 0;
+
+  for (auto& [res, vec] : m_sprite_distorter_instances_by_res) {
+    vec.clear();
+  }
+
+  for (int i = 0; i < m_distort_stats.total_sprites; i++) {
+    SpriteDistortFrameData frame_data = m_sprite_distorter_frame_data.at(i);
+
+    // Shader just needs the position, tex coords, and scale
+    auto x_y_z_s = math::Vector4f(frame_data.xyz.x(), frame_data.xyz.y(), frame_data.xyz.z(),
+                                  frame_data.st.x());
+    auto sx_sy_sz_t = math::Vector4f(frame_data.rgba.x(), frame_data.rgba.y(), frame_data.rgba.z(),
+                                     frame_data.st.y());
+
+    int res = frame_data.flag;
+
+    m_sprite_distorter_instances_by_res[res].push_back({x_y_z_s, sx_sy_sz_t});
+
+    m_distort_stats.total_tris += res * 2;
+  }
+}
+
+/*!
  * Draws each distort sprite.
  */
 void Sprite3::distort_draw(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // First, make sure the distort framebuffer is the correct size
-  if (m_distort_ogl.fbo_width != render_state->window_width_px ||
-      m_distort_ogl.fbo_height != render_state->window_height_px) {
-    m_distort_ogl.fbo_width = render_state->window_width_px;
-    m_distort_ogl.fbo_height = render_state->window_height_px;
-
-    glBindTexture(GL_TEXTURE_2D, m_distort_ogl.fbo_texture);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_distort_ogl.fbo_width, m_distort_ogl.fbo_height, 0,
-                 GL_RGB, GL_UNSIGNED_BYTE, NULL);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-  }
+  distort_setup_framebuffer_dims(render_state);
 
   if (m_distort_stats.total_tris == 0) {
     // No distort sprites to draw, we can end early
     return;
   }
 
-  // The distort effect needs to read the current framebuffer, so copy what's been rendered so far
-  // to a texture that we can then pass to the shader
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_distort_ogl.fbo);
+  // Do common distort drawing logic
+  distort_draw_common(render_state, prof);
 
-  glBlitFramebuffer(render_state->window_offset_x_px,                                   // srcX0
-                    render_state->window_offset_y_px,                                   // srcY0
-                    render_state->window_width_px + render_state->window_offset_x_px,   // srcX1
-                    render_state->window_height_px + render_state->window_offset_y_px,  // srcY1
-                    0,                                                                  // dstX0
-                    0,                                                                  // dstY0
-                    m_distort_ogl.fbo_width,                                            // dstX1
-                    m_distort_ogl.fbo_height,                                           // dstY1
-                    GL_COLOR_BUFFER_BIT,                                                // mask
-                    GL_NEAREST                                                          // filter
-  );
-
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-  // Set up OpenGL state
-  m_current_mode.set_depth_write_enable(!m_sprite_distorter_setup.zbuf.zmsk());  // zbuf
-  glBindTexture(GL_TEXTURE_2D, m_distort_ogl.fbo_texture);                       // tex0
-  m_current_mode.set_filt_enable(m_sprite_distorter_setup.tex1.mmag());          // tex1
-  update_mode_from_alpha1(m_sprite_distorter_setup.alpha.data, m_current_mode);  // alpha1
-  // note: clamp and miptbp are skipped since that is set up ahead of time with the distort
-  // framebuffer texture
-
-  setup_opengl_from_draw_mode(m_current_mode, GL_TEXTURE0, false);
-
-  // Setup shader
+  // Set up shader
   auto shader = &render_state->shaders[ShaderId::SPRITE_DISTORT];
   shader->activate();
 
@@ -496,6 +631,119 @@ void Sprite3::distort_draw(SharedRenderState* render_state, ScopedProfilerNode& 
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
+}
+
+/*!
+ * Draws each distort sprite using instanced rendering.
+ */
+void Sprite3::distort_draw_instanced(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  // First, make sure the distort framebuffer is the correct size
+  distort_setup_framebuffer_dims(render_state);
+
+  if (m_distort_stats.total_tris == 0) {
+    // No distort sprites to draw, we can end early
+    return;
+  }
+
+  // Do common distort drawing logic
+  distort_draw_common(render_state, prof);
+
+  // Set up shader
+  auto shader = &render_state->shaders[ShaderId::SPRITE_DISTORT_INSTANCED];
+  shader->activate();
+
+  Vector4f colorf = Vector4f(m_sprite_distorter_sine_tables.color.x() / 255.0f,
+                             m_sprite_distorter_sine_tables.color.y() / 255.0f,
+                             m_sprite_distorter_sine_tables.color.z() / 255.0f,
+                             m_sprite_distorter_sine_tables.color.w() / 255.0f);
+  glUniform4fv(glGetUniformLocation(shader->id(), "u_color"), 1, colorf.data());
+
+  // Bind vertex array
+  glBindVertexArray(m_distort_instanced_ogl.vao);
+
+  // Upload vertex data (if it changed)
+  if (m_distort_instanced_ogl.vertex_data_changed) {
+    m_distort_instanced_ogl.vertex_data_changed = false;
+
+    glBindBuffer(GL_ARRAY_BUFFER, m_distort_instanced_ogl.vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER,
+                 m_sprite_distorter_vertices_instanced.size() * sizeof(SpriteDistortVertex),
+                 m_sprite_distorter_vertices_instanced.data(), GL_STREAM_DRAW);
+  }
+
+  // Draw each resolution group
+  glBindBuffer(GL_ARRAY_BUFFER, m_distort_instanced_ogl.instance_buffer);
+  prof.add_tri(m_distort_stats.total_tris);
+
+  int vert_offset = 0;
+  for (int res = 3; res < 12; res++) {
+    auto& instances = m_sprite_distorter_instances_by_res[res];
+    int num_verts = res * 5;
+
+    if (instances.size() > 0) {
+      // Upload instance data
+      glBufferData(GL_ARRAY_BUFFER, instances.size() * sizeof(SpriteDistortInstanceData),
+                   instances.data(), GL_DYNAMIC_DRAW);
+
+      // Draw
+      prof.add_draw_call();
+
+      glDrawArraysInstanced(GL_TRIANGLE_STRIP, vert_offset, num_verts, instances.size());
+    }
+
+    vert_offset += num_verts;
+  }
+
+  // Done
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+}
+
+void Sprite3::distort_draw_common(SharedRenderState* render_state, ScopedProfilerNode& /*prof*/) {
+  // The distort effect needs to read the current framebuffer, so copy what's been rendered so far
+  // to a texture that we can then pass to the shader
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_distort_ogl.fbo);
+
+  glBlitFramebuffer(render_state->window_offset_x_px,                                   // srcX0
+                    render_state->window_offset_y_px,                                   // srcY0
+                    render_state->window_width_px + render_state->window_offset_x_px,   // srcX1
+                    render_state->window_height_px + render_state->window_offset_y_px,  // srcY1
+                    0,                                                                  // dstX0
+                    0,                                                                  // dstY0
+                    m_distort_ogl.fbo_width,                                            // dstX1
+                    m_distort_ogl.fbo_height,                                           // dstY1
+                    GL_COLOR_BUFFER_BIT,                                                // mask
+                    GL_NEAREST                                                          // filter
+  );
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  // Set up OpenGL state
+  m_current_mode.set_depth_write_enable(!m_sprite_distorter_setup.zbuf.zmsk());  // zbuf
+  glBindTexture(GL_TEXTURE_2D, m_distort_ogl.fbo_texture);                       // tex0
+  m_current_mode.set_filt_enable(m_sprite_distorter_setup.tex1.mmag());          // tex1
+  update_mode_from_alpha1(m_sprite_distorter_setup.alpha.data, m_current_mode);  // alpha1
+  // note: clamp and miptbp are skipped since that is set up ahead of time with the distort
+  // framebuffer texture
+
+  setup_opengl_from_draw_mode(m_current_mode, GL_TEXTURE0, false);
+}
+
+void Sprite3::distort_setup_framebuffer_dims(SharedRenderState* render_state) {
+  // Distort framebuffer must be the same dimensions as the default window framebuffer
+  if (m_distort_ogl.fbo_width != render_state->window_width_px ||
+      m_distort_ogl.fbo_height != render_state->window_height_px) {
+    m_distort_ogl.fbo_width = render_state->window_width_px;
+    m_distort_ogl.fbo_height = render_state->window_height_px;
+
+    glBindTexture(GL_TEXTURE_2D, m_distort_ogl.fbo_texture);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_distort_ogl.fbo_width, m_distort_ogl.fbo_height, 0,
+                 GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+  }
 }
 
 /*!
@@ -770,6 +1018,7 @@ void Sprite3::draw_debug_window() {
   ImGui::SameLine();
   ImGui::Checkbox("3d", &m_3d_enable);
   ImGui::Checkbox("Distort", &m_distort_enable);
+  ImGui::Checkbox("Distort instancing", &m_enable_distort_instancing);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

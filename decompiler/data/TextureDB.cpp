@@ -3,6 +3,7 @@
 #include "common/util/Assert.h"
 
 #include "third-party/fmt/core.h"
+#define STBI_WINDOWS_UTF8
 #include "third-party/stb_image/stb_image.h"
 
 namespace decompiler {

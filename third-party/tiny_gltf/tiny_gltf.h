@@ -1554,6 +1554,7 @@ class TinyGLTF {
 
 #ifndef TINYGLTF_NO_STB_IMAGE
 #ifndef TINYGLTF_NO_INCLUDE_STB_IMAGE
+#define STBI_WINDOWS_UTF8
 #include "stb_image.h"
 #endif
 #endif

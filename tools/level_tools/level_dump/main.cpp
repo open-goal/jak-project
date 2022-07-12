@@ -56,14 +56,10 @@ bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
 }
 
 int main(int argc, char** argv) {
-#ifdef _WIN32
-  auto args = get_widechar_cli_args();
-  std::vector<char*> string_ptrs;
-  for (auto& str : args) {
-    string_ptrs.push_back(str.data());
+  fs::u8arguments u8guard(argc, argv);
+  if (!u8guard.valid()) {
+    exit(EXIT_FAILURE);
   }
-  argv = string_ptrs.data();
-#endif
 
   try {
     fmt::print("Level Dump Tool\n");
