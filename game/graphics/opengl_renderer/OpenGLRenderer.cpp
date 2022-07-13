@@ -530,9 +530,6 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   m_render_state.window_offset_y_px = settings.lbox_height_px;
 }
 
-void OpenGLRenderer::end_frame() {
-}
-
 /*!
  * This function finds buckets and dispatches them to the appropriate part.
  */
