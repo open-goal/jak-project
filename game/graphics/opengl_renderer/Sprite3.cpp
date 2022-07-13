@@ -44,9 +44,9 @@ bool looks_like_distort_frame_data(const DmaFollower& dma) {
 }
 }  // namespace
 
-constexpr int SPRITE_RENDERER_MAX_SPRITES = 8000;
+constexpr int SPRITE_RENDERER_MAX_SPRITES = 1920 * 10;
 constexpr int SPRITE_RENDERER_MAX_DISTORT_SPRITES =
-    256 * 8;  // size of sprite-aux-list in GOAL code * SPRITE_MAX_AMOUNT_MULT
+    256 * 10;  // size of sprite-aux-list in GOAL code * SPRITE_MAX_AMOUNT_MULT
 
 Sprite3::Sprite3(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id), m_direct(name, my_id, 1024) {
@@ -702,7 +702,7 @@ void Sprite3::distort_draw_instanced(SharedRenderState* render_state, ScopedProf
 void Sprite3::distort_draw_common(SharedRenderState* render_state, ScopedProfilerNode& /*prof*/) {
   // The distort effect needs to read the current framebuffer, so copy what's been rendered so far
   // to a texture that we can then pass to the shader
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, render_state->fbo_state.fbo);
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_distort_ogl.fbo);
 
   glBlitFramebuffer(render_state->window_offset_x_px,                                   // srcX0
@@ -717,7 +717,7 @@ void Sprite3::distort_draw_common(SharedRenderState* render_state, ScopedProfile
                     GL_NEAREST                                                          // filter
   );
 
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glBindFramebuffer(GL_FRAMEBUFFER, render_state->fbo_state.fbo);
 
   // Set up OpenGL state
   m_current_mode.set_depth_write_enable(!m_sprite_distorter_setup.zbuf.zmsk());  // zbuf

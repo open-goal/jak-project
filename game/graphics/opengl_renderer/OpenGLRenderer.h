@@ -45,6 +45,7 @@ class OpenGLRenderer {
 
  private:
   void setup_frame(int window_width_px, int window_height_px, int offset_x, int offset_y);
+  void end_frame();
   void dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof);
   void do_pcrtc_effects(float alp, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void init_bucket_renderers();

@@ -16,6 +16,16 @@ struct LevelVis {
   u8 data[2048];
 };
 
+struct FboState {
+  GLuint fbo = -1;
+  GLuint tex = -1;
+  GLuint zbuf = -1;
+  GLenum render_targets[1] = {GL_COLOR_ATTACHMENT0};
+  int width = 0;
+  int height = 0;
+  int msaa = 4;
+};
+
 class EyeRenderer;
 /*!
  * The main renderer will contain a single SharedRenderState that's passed to all bucket renderers.
@@ -61,6 +71,8 @@ struct SharedRenderState {
   int window_height_px;
   int window_offset_x_px;
   int window_offset_y_px;
+
+  FboState fbo_state;
 };
 
 /*!

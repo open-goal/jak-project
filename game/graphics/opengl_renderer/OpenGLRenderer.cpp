@@ -274,8 +274,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<DirectRenderer>("debug", BucketCategory::OTHER, BucketId::DEBUG, 0x20000);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf", BucketCategory::OTHER,
                                        BucketId::DEBUG_NO_ZBUF, 0x8000);
-  init_bucket_renderer<DirectRenderer>("subtitle", BucketCategory::OTHER, BucketId::SUBTITLE,
-                                       0x2000);
+  init_bucket_renderer<DirectRenderer>("subtitle", BucketCategory::OTHER, BucketId::SUBTITLE, 2000);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
@@ -408,6 +407,41 @@ void OpenGLRenderer::setup_frame(int window_width_px,
                                  int window_height_px,
                                  int offset_x,
                                  int offset_y) {
+  if (m_render_state.fbo_state.fbo == -1) {
+    // make framebuffer object
+    glGenFramebuffers(1, &m_render_state.fbo_state.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_render_state.fbo_state.fbo);
+
+    // make texture that will hold the colors of the framebuffer
+    if (m_render_state.fbo_state.tex == -1) {
+      glGenTextures(1, &m_render_state.fbo_state.tex);
+    }
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_render_state.fbo_state.tex);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA8, 640, 480, GL_TRUE);
+    // glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    // glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    // make depth and stencil buffers that will hold the... depth and stencil buffers
+    if (m_render_state.fbo_state.zbuf == -1) {
+      glGenRenderbuffers(1, &m_render_state.fbo_state.zbuf);
+    }
+    glBindRenderbuffer(GL_RENDERBUFFER, m_render_state.fbo_state.zbuf);
+    glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH24_STENCIL8, 640, 480);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
+                              m_render_state.fbo_state.zbuf);
+
+    // attach texture to framebuffer as target for colors
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE,
+                           m_render_state.fbo_state.tex, 0);
+
+    glDrawBuffers(1, m_render_state.fbo_state.render_targets);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+      lg::error("bad framebuffer setup");
+    }
+  } else {
+    glBindFramebuffer(GL_FRAMEBUFFER, m_render_state.fbo_state.fbo);
+  }
   glViewport(offset_x, offset_y, window_width_px, window_height_px);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClearDepth(0.0);
@@ -419,6 +453,9 @@ void OpenGLRenderer::setup_frame(int window_width_px,
   m_render_state.window_height_px = window_height_px;
   m_render_state.window_offset_x_px = offset_x;
   m_render_state.window_offset_y_px = offset_y;
+}
+
+void OpenGLRenderer::end_frame() {
 }
 
 /*!
@@ -510,14 +547,16 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
 void OpenGLRenderer::do_pcrtc_effects(float alp,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
-  if (alp < 1) {
-    glDisable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
-    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
-    glBlendEquation(GL_FUNC_ADD);
+  // Render to the screen directly now
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(0, 0, 640, 480);
 
-    m_blackout_renderer.draw(Vector4f(0, 0, 0, 1.f - alp), render_state, prof);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+  glBlendEquation(GL_FUNC_ADD);
 
-    glEnable(GL_DEPTH_TEST);
-  }
+  m_blackout_renderer.draw(Vector4f(0, 0, 0, alp), render_state, prof);
+
+  glEnable(GL_DEPTH_TEST);
 }
