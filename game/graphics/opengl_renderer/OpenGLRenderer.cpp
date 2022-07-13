@@ -460,6 +460,11 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     if (settings.game_res_w != fbo_state.width || settings.game_res_h != fbo_state.height ||
         settings.msaa_samples != fbo_state.msaa) {
       // re-set texture and renderbuffer sizes
+      fbo_state.width = settings.game_res_w;
+      fbo_state.height = settings.game_res_h;
+      fbo_state.msaa = settings.msaa_samples;
+
+      // texture here
       glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.tex);
       glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.msaa, GL_RGBA8, fbo_state.width,
                               fbo_state.height, GL_TRUE);

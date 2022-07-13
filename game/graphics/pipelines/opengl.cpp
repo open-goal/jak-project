@@ -500,6 +500,12 @@ void GLDisplay::render() {
   }
 #endif
 
+  GLint msaa_max;
+  glGetIntegerv(GL_MAX_SAMPLES, &msaa_max);
+  if (Gfx::g_global_settings.msaa_samples > msaa_max) {
+    Gfx::g_global_settings.msaa_samples = msaa_max;
+  }
+
   // render game!
   if (g_gfx_data->debug_gui.should_advance_frame()) {
     auto p = scoped_prof("game-render");
