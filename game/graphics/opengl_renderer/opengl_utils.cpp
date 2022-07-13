@@ -145,6 +145,7 @@ void FullScreenDraw::draw(const math::Vector4f& color,
   glUniform4f(glGetUniformLocation(shader.id(), "fragment_color"), color[0], color[1], color[2],
               color[3]);
   glUniform1i(glGetUniformLocation(shader.id(), "msaa_samples"), render_state->fbo_state.msaa);
+  glUniform1f(glGetUniformLocation(shader.id(), "msaa_inv"), 1.0f / render_state->fbo_state.msaa);
   glUniform2f(glGetUniformLocation(shader.id(), "game_res"), render_state->fbo_state.width,
               render_state->fbo_state.height);
   prof.add_tri(2);
