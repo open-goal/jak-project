@@ -8,10 +8,10 @@ uniform vec4 fragment_color;
 uniform sampler2DMS screen_tex;
 
 void main() {
-color = vec4(texelFetch(screen_tex, ivec2(screen_pos.x * 640, screen_pos.y * 480), 0).rgb, fragment_color.a);
+  vec3 smp_color = texelFetch(screen_tex, ivec2(screen_pos.x * 640, screen_pos.y * 480), 0).rgb;
   for (int i = 1; i < 4; ++i) {
-    color += vec4(texelFetch(screen_tex, ivec2(screen_pos.x * 640, screen_pos.y * 480), i).rgb, fragment_color.a);
+    smp_color += texelFetch(screen_tex, ivec2(screen_pos.x * 640, screen_pos.y * 480), i).rgb;
   }
-  color /= 4;
-  color *= fragment_color.a;
+  smp_color /= 4;
+  color = vec4(smp_color * fragment_color.a, 1.0);
 }
