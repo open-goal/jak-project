@@ -362,8 +362,8 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   }
 
   if (settings.save_screenshot) {
-    finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
-                      settings.lbox_width_px, settings.lbox_height_px);
+    finish_screenshot(settings.screenshot_path, m_render_state.fbo_state.width,
+                      m_render_state.fbo_state.height, 0, 0, m_render_state.fbo_state.fbo2);
   }
 }
 
@@ -597,10 +597,14 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
                                        int width,
                                        int height,
                                        int x,
-                                       int y) {
+                                       int y,
+                                       GLuint fbo) {
   std::vector<u32> buffer(width * height);
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
-  glReadBuffer(GL_BACK);
+  GLint oldbuf;
+  glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &oldbuf);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+  glReadBuffer(GL_COLOR_ATTACHMENT0);
   glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
   // flip upside down in place
   for (int h = 0; h < height / 2; h++) {
@@ -614,6 +618,7 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
     px |= 0xff000000;
   }
   file_util::write_rgba_png(output_name, buffer.data(), width, height);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, oldbuf);
 }
 
 void OpenGLRenderer::do_pcrtc_effects(float alp,
