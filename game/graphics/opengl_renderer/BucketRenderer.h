@@ -19,6 +19,8 @@ struct LevelVis {
 struct FboState {
   GLuint fbo = -1;
   GLuint tex = -1;
+  GLuint fbo2 = -1;
+  GLuint tex2 = -1;
   GLuint zbuf = -1;
   GLenum render_targets[1] = {GL_COLOR_ATTACHMENT0};
   int width = 0;

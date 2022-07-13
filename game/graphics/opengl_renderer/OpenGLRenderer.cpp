@@ -404,13 +404,16 @@ void OpenGLRenderer::draw_renderer_selection_window() {
  */
 void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   auto& fbo_state = m_render_state.fbo_state;
-  if (fbo_state.fbo == -1) {
+  if (fbo_state.fbo == -1 || fbo_state.fbo2 == -1 || fbo_state.tex == -1 || fbo_state.tex2 == -1 ||
+      fbo_state.zbuf == -1) {
     fbo_state.width = settings.game_res_w;
     fbo_state.height = settings.game_res_h;
     fbo_state.msaa = settings.msaa_samples;
 
     // make framebuffer object
-    glGenFramebuffers(1, &fbo_state.fbo);
+    if (fbo_state.fbo == -1) {
+      glGenFramebuffers(1, &fbo_state.fbo);
+    }
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo);
 
     // make texture that will hold the colors of the framebuffer
@@ -437,6 +440,30 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
 
     glDrawBuffers(1, fbo_state.render_targets);
 
+    // make framebuffer object
+    if (fbo_state.fbo2 == -1) {
+      glGenFramebuffers(1, &fbo_state.fbo2);
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo2);
+
+    // make texture that will hold the msaa resolved color buffer
+    if (fbo_state.tex2 == -1) {
+      glGenTextures(1, &fbo_state.tex2);
+    }
+    glActiveTexture(GL_TEXTURE30);
+    glBindTexture(GL_TEXTURE_2D, fbo_state.tex2);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, fbo_state.width, fbo_state.height, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // attach texture to framebuffer as target for colors
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_state.tex2, 0);
+
+    glDrawBuffers(1, fbo_state.render_targets);
+
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
       lg::error("bad framebuffer setup. fbo: {}, tex: {}, zbuf: {}", fbo_state.fbo, fbo_state.tex,
                 fbo_state.zbuf);
@@ -447,6 +474,14 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
       if (fbo_state.tex != -1) {
         glDeleteTextures(1, &fbo_state.tex);
         fbo_state.tex = -1;
+      }
+      if (fbo_state.fbo2 != -1) {
+        glDeleteFramebuffers(1, &fbo_state.fbo2);
+        fbo_state.fbo2 = -1;
+      }
+      if (fbo_state.tex2 != -1) {
+        glDeleteTextures(1, &fbo_state.tex2);
+        fbo_state.tex2 = -1;
       }
       if (fbo_state.zbuf != -1) {
         glDeleteRenderbuffers(1, &fbo_state.zbuf);
@@ -472,6 +507,11 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
       glBindRenderbuffer(GL_RENDERBUFFER, fbo_state.zbuf);
       glRenderbufferStorageMultisample(GL_RENDERBUFFER, fbo_state.msaa, GL_DEPTH24_STENCIL8,
                                        fbo_state.width, fbo_state.height);
+
+      // texture here
+      glBindTexture(GL_TEXTURE_2D, fbo_state.tex2);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, fbo_state.width, fbo_state.height, 0, GL_RGBA,
+                   GL_UNSIGNED_BYTE, nullptr);
     }
   }
   glViewport(0, 0, settings.game_res_w, settings.game_res_h);
@@ -579,6 +619,22 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
 void OpenGLRenderer::do_pcrtc_effects(float alp,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
+  int w = render_state->fbo_state.width;
+  int h = render_state->fbo_state.height;
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, render_state->fbo_state.fbo);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, render_state->fbo_state.fbo2);
+  glBlitFramebuffer(0,                    // srcX0
+                    0,                    // srcY0
+                    w,                    // srcX1
+                    h,                    // srcY1
+                    0,                    // dstX0
+                    0,                    // dstY0
+                    w,                    // dstX1
+                    h,                    // dstY1
+                    GL_COLOR_BUFFER_BIT,  // mask
+                    GL_LINEAR             // filter
+  );
+
   // Render to the screen directly now
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glViewport(render_state->window_offset_x_px, render_state->window_offset_y_px,
