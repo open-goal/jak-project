@@ -586,6 +586,14 @@ void set_fullscreen(u32 symptr, s64 screen) {
   }
 }
 
+void set_game_resolution(s64 w, s64 h) {
+  Gfx::set_game_resolution(w, h);
+}
+
+void set_msaa(s64 samples) {
+  Gfx::set_msaa(samples);
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
 
@@ -619,6 +627,8 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
   make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
   make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
+  make_function_symbol_from_c("pc-set-game-resolution", (void*)set_game_resolution);
+  make_function_symbol_from_c("pc-set-msaa", (void*)set_msaa);
 
   // graphics things
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);

@@ -267,7 +267,8 @@ void render_game_frame(int game_width,
                        int window_width,
                        int window_height,
                        int lbox_width,
-                       int lbox_height) {
+                       int lbox_height,
+                       int msaa_samples) {
   // wait for a copied chain.
   bool got_chain = false;
   {
@@ -288,6 +289,7 @@ void render_game_frame(int game_width,
     options.window_width_px = window_width;
     options.lbox_height_px = lbox_height;
     options.lbox_width_px = lbox_width;
+    options.msaa_samples = msaa_samples;
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.draw_subtitle_editor_window = g_gfx_data->debug_gui.should_draw_subtitle_editor();
@@ -502,7 +504,7 @@ void GLDisplay::render() {
   if (g_gfx_data->debug_gui.should_advance_frame()) {
     auto p = scoped_prof("game-render");
     render_game_frame(Gfx::g_global_settings.game_res_w, Gfx::g_global_settings.game_res_h, win_w,
-                      win_h, lbox_w, lbox_h);
+                      win_h, lbox_w, lbox_h, Gfx::g_global_settings.msaa_samples);
   }
 
   if (g_gfx_data->debug_gui.should_gl_finish()) {

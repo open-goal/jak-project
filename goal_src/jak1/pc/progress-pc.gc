@@ -127,7 +127,7 @@
     (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vsync) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
-    ;(new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
     (new 'static 'game-option :option-type (game-option-type frame-rate) :name (game-text-id frame-rate) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id ps2-options) :scale #t :param3 (game-option-menu gfx-ps2-options))
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
@@ -139,7 +139,7 @@
     (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vsync) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
-    ;(new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id ps2-options) :scale #t :param3 (game-option-menu gfx-ps2-options))
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
@@ -393,19 +393,24 @@
   
   (set! (-> *temp-options* length) 0)
   
-  (let ((done? #f) (mult (find-highest-resolution)) (sx 0) (sy 0) (flip? #f) (aspect 0.0)
+  (let* ((done? #f) (mult (find-highest-resolution)) (sx 0) (sy 0)
+        (display-mode (pc-get-fullscreen))
         ;; hack - do not use screen resolution in windowed mode, taskbar etc. messes it up and makes it useless!
-        (skip? (= 'windowed (pc-get-fullscreen)))
+        (skip? (= 'windowed display-mode))
         ;; shortcut
         (max-options (1- (-> *temp-options* allocated-length))))
     
     ;; get screen size (for capping)
     (pc-get-screen-size -1 (the (pointer int32) (& sx)) (the (pointer int32) (& sy)))
-    ;; portrait mode. unused
-    (set! flip? (> sy sx))
     
-    (case (pc-get-fullscreen)
-      (('fullscreen)
+    ;; supersampling in fullscreen and stuff. this results in way too many resolution options lol.
+    (when (!= display-mode 'windowed)
+        (*! sx 4)
+        (*! sy 4)
+        )
+    
+    (case display-mode
+      #|(('fullscreen)
         ;; insert psyched out trollface here
         (set! sx 0)
         (set! sy 0)
@@ -420,7 +425,7 @@
             (set! sy thisy)
             )
           )
-        )
+        )|#
         
       (else
         ;; extra button when fullscreen
@@ -429,7 +434,7 @@
             (set! (-> *temp-options* (1- (length *temp-options*)) name) (game-text-id fit-to-screen))
             )
         ;; game aspect ratio
-        (set! aspect (-> *pc-settings* aspect-ratio))
+        (let ((aspect (-> *pc-settings* aspect-ratio)))
         
         (until (or done? (= (length *temp-options*) max-options))
           (countdown (i (-> *resolutions* length))
@@ -450,7 +455,7 @@
           (if (> mult GAME_MIN_RES_MULT)
               (*! mult 0.5)
               (true! done?))
-          )
+          ))
        )
       )
     (add-back-option)
@@ -677,11 +682,11 @@
   (set! (-> *game-options-pc* 7 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
-  ;(set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *graphic-options-pc* 5 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-no-frame-rate-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-no-frame-rate-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
-  ;(set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *misc-options* 0 value-to-modify) (&-> *pc-settings* discord-rpc?))
   (set! (-> *misc-options* 1 value-to-modify) (&-> *pc-settings* money-starburst?))
   (set! (-> *camera-options* 0 value-to-modify) (&-> *pc-settings* first-camera-h-inverted?))
