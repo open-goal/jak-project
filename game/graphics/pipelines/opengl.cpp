@@ -293,9 +293,28 @@ void render_game_frame(int game_width,
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.draw_subtitle_editor_window = g_gfx_data->debug_gui.should_draw_subtitle_editor();
-    options.save_screenshot = g_gfx_data->debug_gui.get_screenshot_flag();
+    options.save_screenshot = false;
+    if (g_gfx_data->debug_gui.screenshot_timer) {
+      options.save_screenshot = true;
+      g_gfx_data->debug_gui.screenshot_timer--;
+      options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
+      options.game_res_h = g_gfx_data->debug_gui.screenshot_height;
+      options.msaa_samples = g_gfx_data->debug_gui.screenshot_samples;
+    } else if (g_gfx_data->debug_gui.get_screenshot_flag()) {
+      g_gfx_data->debug_gui.screenshot_timer = 2;
+      options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
+      options.game_res_h = g_gfx_data->debug_gui.screenshot_height;
+      options.msaa_samples = g_gfx_data->debug_gui.screenshot_samples;
+    }
     options.draw_small_profiler_window = g_gfx_data->debug_gui.small_profiler;
     options.pmode_alp_register = g_gfx_data->pmode_alp;
+
+    GLint msaa_max;
+    glGetIntegerv(GL_MAX_SAMPLES, &msaa_max);
+    if (options.msaa_samples > msaa_max) {
+      options.msaa_samples = msaa_max;
+    }
+
     if (options.save_screenshot) {
       // ensure the screenshot has an extension
       std::string temp_path = g_gfx_data->debug_gui.screenshot_name();
@@ -499,12 +518,6 @@ void GLDisplay::render() {
     lbox_h++;
   }
 #endif
-
-  GLint msaa_max;
-  glGetIntegerv(GL_MAX_SAMPLES, &msaa_max);
-  if (Gfx::g_global_settings.msaa_samples > msaa_max) {
-    Gfx::g_global_settings.msaa_samples = msaa_max;
-  }
 
   // render game!
   if (g_gfx_data->debug_gui.should_advance_frame()) {
