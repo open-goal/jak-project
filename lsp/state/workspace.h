@@ -25,6 +25,8 @@ class WorkspaceIRFile {
   std::vector<LSPSpec::DocumentSymbol> m_symbols;
   std::vector<LSPSpec::Diagnostic> m_diagnostics;
 
+  std::optional<std::string> get_word_at_position(const LSPSpec::Position position);
+
  private:
   void find_function_symbol(const uint32_t line_num_zero_based, const std::string& line);
   /// @brief Make any relevant diagnostics on the IR line.

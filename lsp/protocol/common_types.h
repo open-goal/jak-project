@@ -57,4 +57,14 @@ struct Location {
 };
 void to_json(json& j, const Location& obj);
 void from_json(const json& j, Location& obj);
+
+struct TextDocumentPositionParams {
+  /// @brief The text document.
+  TextDocumentIdentifier m_textDocument;
+  /// @brief The position inside the text document.
+  Position m_position;
+};
+
+void to_json(json& j, const TextDocumentPositionParams& obj);
+void from_json(const json& j, TextDocumentPositionParams& obj);
 }  // namespace LSPSpec

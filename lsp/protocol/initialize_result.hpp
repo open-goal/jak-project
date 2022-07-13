@@ -35,9 +35,8 @@ class InitializeResult {
 
   json result{{"capabilities",
                {
-                   {"textDocumentSync",
-                    text_document_sync},  // TODO - diagnostics to display errors/warnings
-                   {"hoverProvider", false},
+                   {"textDocumentSync", text_document_sync},
+                   {"hoverProvider", true},
                    {"completionProvider", completion_provider},
                    {"signatureHelpProvider", signature_help_provider},
                    {"definitionProvider", false},  // TODO - i want this

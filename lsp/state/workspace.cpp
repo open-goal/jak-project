@@ -46,7 +46,8 @@ WorkspaceIRFile::WorkspaceIRFile(const std::string& content) {
   find_function_symbol(m_lines.size() - 1, line);
   identify_diagnostics(m_lines.size() - 1, line);
 
-  lg::info("Added new file. {} lines with {} symbols and {} diagnostics", m_lines.size(), m_symbols.size(), m_diagnostics.size());
+  lg::info("Added new file. {} lines with {} symbols and {} diagnostics", m_lines.size(),
+           m_symbols.size(), m_diagnostics.size());
 }
 
 void WorkspaceIRFile::find_function_symbol(const uint32_t line_num_zero_based,
@@ -127,4 +128,25 @@ void WorkspaceIRFile::identify_diagnostics(const uint32_t line_num_zero_based,
       return;
     }
   }
+}
+
+std::optional<std::string> WorkspaceIRFile::get_word_at_position(const LSPSpec::Position position) {
+  // Split the line on typical word boundaries
+  std::string line = m_lines.at(position.m_line);
+  std::smatch matches;
+  std::regex regex("[\\w\\.]+");
+
+  if (std::regex_search(line, matches, regex)) {
+    // TODO - hard-coded to only care about the first match, only hovering for asm instructions
+    // currently
+    auto match = matches[0];
+    lg::info("hover first match - {}", match.str());
+    auto match_start = matches.position(0);
+    auto match_end = match_start + match.length();
+    if (position.m_character >= match_start && position.m_character <= match_end) {
+      return match;
+    }
+  }
+
+  return {};
 }

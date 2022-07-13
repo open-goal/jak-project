@@ -49,3 +49,12 @@ void LSPSpec::from_json(const json& j, Location& obj) {
   j.at("uri").get_to(obj.m_uri);
   j.at("range").get_to(obj.m_range);
 }
+
+void LSPSpec::to_json(json& j, const TextDocumentPositionParams& obj) {
+  j = json{{"textDocument", obj.m_textDocument}, {"position", obj.m_position}};
+}
+
+void LSPSpec::from_json(const json& j, TextDocumentPositionParams& obj) {
+  j.at("textDocument").get_to(obj.m_textDocument);
+  j.at("position").get_to(obj.m_position);
+}

@@ -11,7 +11,9 @@ add_executable(lsp
   protocol/common_types.cpp
   protocol/document_symbols.cpp
   protocol/document_synchronization.cpp
-  protocol/document_diagnostics.cpp)
+  protocol/document_diagnostics.cpp
+  protocol/hover.cpp
+  state/data/mips_instruction.cpp)
 
 target_link_libraries(lsp common decomp)
 
