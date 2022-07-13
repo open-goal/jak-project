@@ -420,6 +420,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     if (fbo_state.tex == -1) {
       glGenTextures(1, &fbo_state.tex);
     }
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.tex);
     glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.msaa, GL_RGBA8, fbo_state.width,
                             fbo_state.height, GL_TRUE);
@@ -500,6 +501,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
       fbo_state.msaa = settings.msaa_samples;
 
       // texture here
+      glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.tex);
       glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.msaa, GL_RGBA8, fbo_state.width,
                               fbo_state.height, GL_TRUE);
@@ -509,6 +511,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
                                        fbo_state.width, fbo_state.height);
 
       // texture here
+      glActiveTexture(GL_TEXTURE30);
       glBindTexture(GL_TEXTURE_2D, fbo_state.tex2);
       glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, fbo_state.width, fbo_state.height, 0, GL_RGBA,
                    GL_UNSIGNED_BYTE, nullptr);
