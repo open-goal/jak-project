@@ -404,6 +404,13 @@ void OpenGLRenderer::draw_renderer_selection_window() {
  */
 void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   auto& fbo_state = m_render_state.fbo_state;
+
+  // restart the buffers if settings changed.
+  if (settings.game_res_w != fbo_state.width || settings.game_res_h != fbo_state.height ||
+      settings.msaa_samples != fbo_state.msaa) {
+    fbo_state.delete_objects();
+  }
+
   if (fbo_state.fbo == -1 || fbo_state.fbo2 == -1 || fbo_state.tex == -1 || fbo_state.tex2 == -1 ||
       fbo_state.zbuf == -1) {
     fbo_state.width = settings.game_res_w;
@@ -468,54 +475,11 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
       lg::error("bad framebuffer setup. fbo: {}, tex: {}, zbuf: {}", fbo_state.fbo, fbo_state.tex,
                 fbo_state.zbuf);
-      if (fbo_state.fbo != -1) {
-        glDeleteFramebuffers(1, &fbo_state.fbo);
-        fbo_state.fbo = -1;
-      }
-      if (fbo_state.tex != -1) {
-        glDeleteTextures(1, &fbo_state.tex);
-        fbo_state.tex = -1;
-      }
-      if (fbo_state.fbo2 != -1) {
-        glDeleteFramebuffers(1, &fbo_state.fbo2);
-        fbo_state.fbo2 = -1;
-      }
-      if (fbo_state.tex2 != -1) {
-        glDeleteTextures(1, &fbo_state.tex2);
-        fbo_state.tex2 = -1;
-      }
-      if (fbo_state.zbuf != -1) {
-        glDeleteRenderbuffers(1, &fbo_state.zbuf);
-        fbo_state.zbuf = -1;
-      }
+      fbo_state.delete_objects();
     }
   } else {
-    // we have the objects. bind framebuffer and see if it needs updating.
+    // we have the objects. bind framebuffer.
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo);
-
-    if (settings.game_res_w != fbo_state.width || settings.game_res_h != fbo_state.height ||
-        settings.msaa_samples != fbo_state.msaa) {
-      // re-set texture and renderbuffer sizes
-      fbo_state.width = settings.game_res_w;
-      fbo_state.height = settings.game_res_h;
-      fbo_state.msaa = settings.msaa_samples;
-
-      // texture here
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.tex);
-      glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.msaa, GL_RGBA8, fbo_state.width,
-                              fbo_state.height, GL_TRUE);
-      // renderbuffer here
-      glBindRenderbuffer(GL_RENDERBUFFER, fbo_state.zbuf);
-      glRenderbufferStorageMultisample(GL_RENDERBUFFER, fbo_state.msaa, GL_DEPTH24_STENCIL8,
-                                       fbo_state.width, fbo_state.height);
-
-      // texture here
-      glActiveTexture(GL_TEXTURE30);
-      glBindTexture(GL_TEXTURE_2D, fbo_state.tex2);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, fbo_state.width, fbo_state.height, 0, GL_RGBA,
-                   GL_UNSIGNED_BYTE, nullptr);
-    }
   }
   glViewport(0, 0, settings.game_res_w, settings.game_res_h);
   glClearColor(0.0, 0.0, 0.0, 0.0);
