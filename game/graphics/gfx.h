@@ -76,6 +76,10 @@ struct GfxGlobalSettings {
   int lbox_w;
   int lbox_h;
 
+  // actual game resolution
+  int game_res_w = 640;
+  int game_res_h = 480;
+
   // current renderer
   const GfxRendererModule* renderer;
 

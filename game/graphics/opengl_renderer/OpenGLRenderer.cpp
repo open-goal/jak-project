@@ -302,8 +302,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");
-    setup_frame(settings.window_width_px, settings.window_height_px, settings.lbox_width_px,
-                settings.lbox_height_px);
+    setup_frame(settings);
   }
 
   {
@@ -403,56 +402,84 @@ void OpenGLRenderer::draw_renderer_selection_window() {
 /*!
  * Pre-render frame setup.
  */
-void OpenGLRenderer::setup_frame(int window_width_px,
-                                 int window_height_px,
-                                 int offset_x,
-                                 int offset_y) {
-  if (m_render_state.fbo_state.fbo == -1) {
+void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
+  auto& fbo_state = m_render_state.fbo_state;
+  if (fbo_state.fbo == -1) {
+    fbo_state.width = settings.game_res_w;
+    fbo_state.height = settings.game_res_h;
+    fbo_state.msaa = settings.msaa_samples;
+
     // make framebuffer object
-    glGenFramebuffers(1, &m_render_state.fbo_state.fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, m_render_state.fbo_state.fbo);
+    glGenFramebuffers(1, &fbo_state.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo);
 
     // make texture that will hold the colors of the framebuffer
-    if (m_render_state.fbo_state.tex == -1) {
-      glGenTextures(1, &m_render_state.fbo_state.tex);
+    if (fbo_state.tex == -1) {
+      glGenTextures(1, &fbo_state.tex);
     }
-    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_render_state.fbo_state.tex);
-    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA8, 640, 480, GL_TRUE);
-    // glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    // glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.tex);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.msaa, GL_RGBA8, fbo_state.width,
+                            fbo_state.height, GL_TRUE);
 
     // make depth and stencil buffers that will hold the... depth and stencil buffers
-    if (m_render_state.fbo_state.zbuf == -1) {
-      glGenRenderbuffers(1, &m_render_state.fbo_state.zbuf);
+    if (fbo_state.zbuf == -1) {
+      glGenRenderbuffers(1, &fbo_state.zbuf);
     }
-    glBindRenderbuffer(GL_RENDERBUFFER, m_render_state.fbo_state.zbuf);
-    glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH24_STENCIL8, 640, 480);
+    glBindRenderbuffer(GL_RENDERBUFFER, fbo_state.zbuf);
+    glRenderbufferStorageMultisample(GL_RENDERBUFFER, fbo_state.msaa, GL_DEPTH24_STENCIL8,
+                                     fbo_state.width, fbo_state.height);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
-                              m_render_state.fbo_state.zbuf);
+                              fbo_state.zbuf);
 
     // attach texture to framebuffer as target for colors
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE,
-                           m_render_state.fbo_state.tex, 0);
+                           fbo_state.tex, 0);
 
-    glDrawBuffers(1, m_render_state.fbo_state.render_targets);
+    glDrawBuffers(1, fbo_state.render_targets);
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-      lg::error("bad framebuffer setup");
+      lg::error("bad framebuffer setup. fbo: {}, tex: {}, zbuf: {}", fbo_state.fbo, fbo_state.tex,
+                fbo_state.zbuf);
+      if (fbo_state.fbo != -1) {
+        glDeleteFramebuffers(1, &fbo_state.fbo);
+        fbo_state.fbo = -1;
+      }
+      if (fbo_state.tex != -1) {
+        glDeleteTextures(1, &fbo_state.tex);
+        fbo_state.tex = -1;
+      }
+      if (fbo_state.zbuf != -1) {
+        glDeleteRenderbuffers(1, &fbo_state.zbuf);
+        fbo_state.zbuf = -1;
+      }
     }
   } else {
-    glBindFramebuffer(GL_FRAMEBUFFER, m_render_state.fbo_state.fbo);
+    // we have the objects. bind framebuffer and see if it needs updating.
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo);
+
+    if (settings.game_res_w != fbo_state.width || settings.game_res_h != fbo_state.height ||
+        settings.msaa_samples != fbo_state.msaa) {
+      // re-set texture and renderbuffer sizes
+      glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.tex);
+      glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.msaa, GL_RGBA8, fbo_state.width,
+                              fbo_state.height, GL_TRUE);
+      // renderbuffer here
+      glBindRenderbuffer(GL_RENDERBUFFER, fbo_state.zbuf);
+      glRenderbufferStorageMultisample(GL_RENDERBUFFER, fbo_state.msaa, GL_DEPTH24_STENCIL8,
+                                       fbo_state.width, fbo_state.height);
+    }
   }
-  glViewport(offset_x, offset_y, window_width_px, window_height_px);
+  glViewport(0, 0, settings.game_res_w, settings.game_res_h);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClearDepth(0.0);
   glDepthMask(GL_TRUE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   glDisable(GL_BLEND);
 
-  m_render_state.window_width_px = window_width_px;
-  m_render_state.window_height_px = window_height_px;
-  m_render_state.window_offset_x_px = offset_x;
-  m_render_state.window_offset_y_px = offset_y;
+  m_render_state.window_width_px = settings.window_width_px;
+  m_render_state.window_height_px = settings.window_height_px;
+  m_render_state.window_offset_x_px = settings.lbox_width_px;
+  m_render_state.window_offset_y_px = settings.lbox_height_px;
 }
 
 void OpenGLRenderer::end_frame() {
@@ -549,8 +576,14 @@ void OpenGLRenderer::do_pcrtc_effects(float alp,
                                       ScopedProfilerNode& prof) {
   // Render to the screen directly now
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glViewport(0, 0, 640, 480);
+  glViewport(render_state->window_offset_x_px, render_state->window_offset_y_px,
+             render_state->window_width_px, render_state->window_height_px);
 
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClearDepth(0.0);
+  glDepthMask(GL_TRUE);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+  glDisable(GL_BLEND);
   glDisable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
   glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);

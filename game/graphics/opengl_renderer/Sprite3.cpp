@@ -519,10 +519,10 @@ void Sprite3::distort_setup(ScopedProfilerNode& /*prof*/) {
  */
 void Sprite3::distort_setup_instanced(SharedRenderState* render_state,
                                       ScopedProfilerNode& /*prof*/) {
-  if (m_distort_instanced_ogl.last_window_width != render_state->window_width_px ||
-      m_distort_instanced_ogl.last_window_height != render_state->window_height_px) {
-    m_distort_instanced_ogl.last_window_width = render_state->window_width_px;
-    m_distort_instanced_ogl.last_window_height = render_state->window_height_px;
+  if (m_distort_instanced_ogl.last_width != render_state->fbo_state.width ||
+      m_distort_instanced_ogl.last_height != render_state->fbo_state.height) {
+    m_distort_instanced_ogl.last_width = render_state->fbo_state.width;
+    m_distort_instanced_ogl.last_height = render_state->fbo_state.height;
 
     // Window dimensions changed, which means the aspect ratio may have changed, which means we have
     // a new sine table
