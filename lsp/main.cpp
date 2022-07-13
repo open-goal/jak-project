@@ -62,15 +62,6 @@ int main(int argc, char** argv) {
   }
   lsp_router.init_routes();
 
-  // Decompiling
-  // Read in all-types files
-  // TODO - hard-coded for now, but need to enumerate the directory eventually i think?
-  /*m_dts.parse_type_defs(
-      {"C:\\Users\\xtvas\\Repositories\\opengoal\\jak-project\\decompiler\\config\\all-types.gc"});
-
-  auto info = m_dts.symbol_definition_info["vector"];
-  lg::info("Loaded DTS");*/
-
   lg::info("OpenGOAL LSP Initialized, ready for requests");
 
 #ifdef _WIN32

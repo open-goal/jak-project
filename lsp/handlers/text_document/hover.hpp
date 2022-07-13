@@ -13,7 +13,7 @@ std::optional<json> hover_handler(Workspace& workspace, int id, json params) {
     return {};
   }
 
-  auto token_at_pos = tracked_file->get_word_at_position(converted_params.m_position);
+  auto token_at_pos = tracked_file->get_mips_instruction_at_position(converted_params.m_position);
 
   LSPSpec::MarkupContent markup;
   markup.m_kind = "markdown";

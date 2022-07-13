@@ -8,6 +8,7 @@
 #include "text_document/document_symbol.hpp"
 #include "text_document/document_synchronization.hpp"
 #include "text_document/hover.hpp"
+#include "text_document/go_to.hpp"
 
 #include "third-party/fmt/core.h"
 
@@ -41,6 +42,7 @@ void LSPRouter::init_routes() {
   m_routes["textDocument/documentSymbol"] = LSPRoute(document_symbols_handler);
   m_routes["textDocument/didOpen"] = LSPRoute(did_open_handler, did_open_push_diagnostics);
   m_routes["textDocument/hover"] = LSPRoute(hover_handler);
+  m_routes["textDocument/definition"] = LSPRoute(go_to_definition_handler);
 }
 
 json error_resp(ErrorCodes error_code, std::string error_message) {

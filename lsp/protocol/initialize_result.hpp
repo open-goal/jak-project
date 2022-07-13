@@ -39,7 +39,7 @@ class InitializeResult {
                    {"hoverProvider", true},
                    {"completionProvider", completion_provider},
                    {"signatureHelpProvider", signature_help_provider},
-                   {"definitionProvider", false},  // TODO - i want this
+                   {"definitionProvider", true},
                    {"referencesProvider", false},
                    {"documentHighlightProvider", false},
                    {"documentSymbolProvider",
