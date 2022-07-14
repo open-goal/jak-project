@@ -114,7 +114,7 @@ void ProcessListenerMessage(Ptr<char> msg) {
 int sql_query_sync(Ptr<String> string_in) {
   if (!MasterDebug) {
     // not debugging, no sql results.
-    return s7.offset + FIX_SYM_EMPTY_PAIR - 1;
+    return s7.offset + S7_OFF_FIX_SYM_EMPTY_PAIR;
   } else {
     // clear old result
     SqlResult->value() = s7.offset;

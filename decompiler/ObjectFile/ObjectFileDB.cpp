@@ -117,7 +117,8 @@ ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
                            const fs::path& obj_file_name_map_file,
                            const std::vector<fs::path>& object_files,
                            const std::vector<fs::path>& str_files,
-                           const Config& config) {
+                           const Config& config)
+    : dts(config.game_version) {
   Timer timer;
 
   lg::info("-Loading types...");

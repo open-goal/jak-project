@@ -1707,6 +1707,31 @@ do_literals:
 	}
 
 #ifndef FPNG_NO_STDIO
+#ifdef _WIN32
+        bool utf8_string_to_wide_string(std::wstring& dest, const std::string& str) {
+          int wlen = MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.length()),
+                                         nullptr, 0);
+          if (wlen < 0)
+            return false;
+
+          dest.resize(wlen);
+          if (wlen > 0 &&
+              MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.length()),
+                                  dest.data(), wlen) < 0)
+            return false;
+
+          return true;
+        }
+
+        std::wstring utf8_string_to_wide_string(const std::string& str) {
+          std::wstring ret;
+          if (!utf8_string_to_wide_string(ret, str))
+            return {};
+
+          return ret;
+        }
+#endif
+
 	bool fpng_encode_image_to_file(const char* pFilename, const void* pImage, uint32_t w, uint32_t h, uint32_t num_chans, uint32_t flags)
 	{
 		std::vector<uint8_t> out_buf;
@@ -1715,7 +1740,14 @@ do_literals:
 
 		FILE* pFile = nullptr;
 #ifdef _MSC_VER
-		fopen_s(&pFile, pFilename, "wb");
+        // NOTE - Manual fix by us to support unicode....
+        std::wstring converted_path = utf8_string_to_wide_string(pFilename);
+        if (converted_path.empty()) {
+          printf("bad path - %s", converted_path.data());
+          return false;
+        }
+
+        pFile = _wfopen(converted_path.data(), L"wb");
 #else
 		pFile = fopen(pFilename, "wb");
 #endif

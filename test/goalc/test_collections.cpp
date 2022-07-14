@@ -24,7 +24,7 @@ class CollectionTests : public testing::TestWithParam<CollectionParam> {
  public:
   static void SetUpTestSuite() {
     runtime_thread = std::make_unique<std::thread>(std::thread((GoalTest::runtime_no_kernel)));
-    compiler = std::make_unique<Compiler>();
+    compiler = std::make_unique<Compiler>(GameVersion::Jak1);
     runner = std::make_unique<GoalTest::CompilerTestRunner>();
     runner->c = compiler.get();
   }

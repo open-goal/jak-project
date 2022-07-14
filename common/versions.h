@@ -5,6 +5,8 @@
  * Version numbers for GOAL Language, Kernel, etc...
  */
 
+#include <string>
+
 #include "common/common_types.h"
 
 namespace versions {
@@ -49,3 +51,5 @@ struct PerGameVersion {
 };
 
 constexpr PerGameVersion<const char*> game_version_names = {"jak1", "jak2"};
+
+GameVersion game_name_to_version(const std::string& name);

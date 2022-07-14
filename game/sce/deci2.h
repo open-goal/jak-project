@@ -20,5 +20,6 @@ s32 sceDeci2Close(s32 s);
 s32 sceDeci2ReqSend(s32 s, char dest);
 s32 sceDeci2ExRecv(s32 s, void* buf, u16 len);
 s32 sceDeci2ExSend(s32 s, void* buf, u16 len);
+void sceDeci2Disable();
 
 }  // namespace ee

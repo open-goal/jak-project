@@ -5,10 +5,10 @@
 #include "gtest/gtest.h"
 #include "test/goalc/framework/test_runner.h"
 
-class KernelTest : public testing::Test {
+class Jak1KernelTest : public testing::Test {
  public:
   static void SetUpTestSuite() {
-    shared_compiler = std::make_unique<SharedCompiler>();
+    shared_compiler = std::make_unique<SharedCompiler>(GameVersion::Jak1);
     printf("Building kernel...\n");
     try {
       // a macro in goal-lib.gc
@@ -37,6 +37,7 @@ class KernelTest : public testing::Test {
   void TearDown() {}
 
   struct SharedCompiler {
+    SharedCompiler(GameVersion v) : compiler(v) {}
     std::thread runtime_thread;
     Compiler compiler;
     GoalTest::CompilerTestRunner runner;
@@ -45,7 +46,7 @@ class KernelTest : public testing::Test {
   static std::unique_ptr<SharedCompiler> shared_compiler;
 };
 
-std::unique_ptr<KernelTest::SharedCompiler> KernelTest::shared_compiler;
+std::unique_ptr<Jak1KernelTest::SharedCompiler> Jak1KernelTest::shared_compiler;
 
 namespace {
 std::string send_code_and_get_multiple_responses(const std::string& code,
@@ -70,7 +71,7 @@ std::string send_code_and_get_multiple_responses(const std::string& code,
 }
 }  // namespace
 
-TEST_F(KernelTest, Basic) {
+TEST_F(Jak1KernelTest, Basic) {
   shared_compiler->runner.c->run_test_from_string(
       "(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
   std::string result =
@@ -102,7 +103,7 @@ TEST_F(KernelTest, Basic) {
   EXPECT_EQ(expected, result);
 }
 
-TEST_F(KernelTest, RunFunctionInProcess) {
+TEST_F(Jak1KernelTest, RunFunctionInProcess) {
   shared_compiler->runner.c->run_test_from_string(
       "(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
   std::string result =
@@ -121,7 +122,7 @@ TEST_F(KernelTest, RunFunctionInProcess) {
   EXPECT_EQ(expected, result);
 }
 
-TEST_F(KernelTest, StateAndXmm) {
+TEST_F(Jak1KernelTest, StateAndXmm) {
   shared_compiler->runner.c->run_test_from_string(
       "(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
   std::string result =
@@ -135,7 +136,7 @@ TEST_F(KernelTest, StateAndXmm) {
   EXPECT_EQ(expected, result);
 }
 
-TEST_F(KernelTest, ThrowXmm) {
+TEST_F(Jak1KernelTest, ThrowXmm) {
   shared_compiler->runner.c->run_test_from_string(
       "(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
   std::string result =

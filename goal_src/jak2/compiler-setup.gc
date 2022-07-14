@@ -1,0 +1,37 @@
+;;
+;; Compiler Setup for Jak 2
+;;
+
+;; load kernel type definitions.
+;; these types/functions are provided by Jak 2's runtime.
+(asm-file "goal_src/jak2/kernel-defs.gc")
+
+;; load jak 2 project
+(load-project "goal_src/jak2/game.gp")
+
+(defmacro basic? (obj)
+  ;; todo, make this more efficient
+  `(= 4 (logand (the integer ,obj) #b111))
+  )
+
+(defmacro pair? (obj)
+  ;; todo, make this more efficient
+  ;`(= 2 (logand (the integer ,obj) #b111))
+  `(< (shl (the-as int ,obj) 62) 0)
+  )
+
+(defmacro not-pair? (obj)
+  `(>= (shl (the-as int ,obj) 62) 0)
+  )
+
+(defmacro binteger? (obj)
+  `(zero? (logand (the integer ,obj) #b111))
+  )
+
+(defmacro rtype-of (obj)
+  `(cond ((binteger? ,obj) binteger)
+         ((pair? ,obj) pair)
+         ((basic? ,obj) (-> (the basic ,obj) type))
+         (else symbol)
+         )
+  )

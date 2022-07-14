@@ -92,6 +92,14 @@
         "16X9 (PS2)")
 (#x103e "~DX~D"
         "~DX~D")
+(#x103f "PRESS <PAD_SQUARE> TO TOGGLE SUBTITLES"
+        "PRESS <PAD_SQUARE> TO TOGGLE SUBTITLES")
+(#x1040 "SUBTITLES ENABLED"
+        "SUBTITLES ENABLED")
+(#x1041 "SUBTITLES DISABLED"
+        "SUBTITLES DISABLED")
+(#x1042 "TEXT LANGUAGE"
+        "TEXT LANGUAGE")
 
 (#x1050 "MSAA"
         "MSAA")
@@ -304,6 +312,21 @@
         "FLAVOUR 1")
 (#x1107 "FLAVOR 2"
         "FLAVOUR 2")
+
+(#x1110 "ENGLISH (UK)"
+        "ENGLISH (UK)")
+(#x1111 "PORTUGUÊS"
+        "PORTUGUÊS")
+(#x1112 "PORTUGUÊS (BRASIL)"
+        "PORTUGUÊS (BRASIL)")
+(#x1113 "SUOMI"
+        "SUOMI")
+(#x1114 "SVENSKA"
+        "SVENSKA")
+(#x1115 "DANSK"
+        "DANSK")
+(#x1116 "NORSK"
+        "NORSK")
 
 
 ;; -----------------

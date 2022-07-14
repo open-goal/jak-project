@@ -10,6 +10,7 @@
 #include "ParseHelpers.h"
 
 #include "common/util/FileUtil.h"
+#include "common/util/unicode_util.h"
 
 #include "third-party/fmt/core.h"
 
@@ -1682,8 +1683,8 @@ Object Interpreter::eval_get_env(const Object& form,
                                  const std::shared_ptr<EnvironmentObject>&) {
   vararg_check(form, args, {ObjectType::STRING}, {{"default", {false, ObjectType::STRING}}});
   const std::string var_name = args.unnamed.at(0).as_string()->data;
-  const char* env_p = std::getenv(var_name.c_str());
-  if (env_p == NULL) {
+  auto env_p = get_env(var_name);
+  if (env_p.empty()) {
     if (args.has_named("default")) {
       return args.get_named("default");
     } else {

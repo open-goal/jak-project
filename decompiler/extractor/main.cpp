@@ -42,7 +42,6 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
     return {std::nullopt, ExtractorErrorCode::VALIDATION_BAD_EXTRACTION};
   }
 
-  std::optional<ExtractorErrorCode> error_code;
   const auto [serial, elf_hash] = findElfFile(extracted_iso_path);
 
   if (!serial || !elf_hash) {
@@ -193,7 +192,7 @@ ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& dat
   // Determine which config to use from the database
   const auto version_info = get_version_info_or_default(iso_data_path);
 
-  Compiler compiler;
+  Compiler compiler(game_name_to_version(version_info.game_name));
   compiler.make_system().set_constant("*iso-data*", absolute(iso_data_path).string());
   compiler.make_system().set_constant("*use-iso-data-path*", true);
 
@@ -235,14 +234,11 @@ int main(int argc, char** argv) {
   bool flag_folder = false;
   std::string game_name = "jak1";
 
-#ifdef _WIN32
-  auto args = get_widechar_cli_args();
-  std::vector<char*> string_ptrs;
-  for (auto& str : args) {
-    string_ptrs.push_back(str.data());
+  fs::u8arguments u8guard(argc, argv);
+  if (!u8guard.valid()) {
+    lg::error("Bad encoding, needs UTF-8");
+    exit(EXIT_FAILURE);
   }
-  argv = string_ptrs.data();
-#endif
 
   lg::initialize();
 
@@ -268,7 +264,7 @@ int main(int argc, char** argv) {
 
   // If no flag is set, we default to running everything
   if (!flag_extract && !flag_decompile && !flag_compile && !flag_play) {
-    fmt::print("Running all steps, no flags provided!\n");
+    lg::info("Running all steps, no flags provided!");
     flag_runall = true;
   }
   if (flag_runall) {
@@ -285,10 +281,21 @@ int main(int argc, char** argv) {
       lg::error("Error: project path override '{}' does not exist", project_path_override.string());
       return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT);
     }
-    file_util::setup_project_path(project_path_override);
+    auto ok = file_util::setup_project_path(project_path_override);
+    if (!ok) {
+      lg::error("Could not setup project path!");
+      return 1;
+    }
   } else {
-    file_util::setup_project_path({});
+    auto ok = file_util::setup_project_path({});
+    if (!ok) {
+      lg::error("Could not setup project path!");
+      return 1;
+    }
   }
+
+  auto log_path = file_util::get_jak_project_dir() / "extractor.log";
+  lg::set_file(log_path.string());
 
   fs::path iso_data_path;
 

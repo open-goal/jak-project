@@ -103,9 +103,7 @@ void ObjectFileDB::analyze_functions_ir2(
     if (!output_dir.string().empty()) {
       ir2_write_results(output_dir, config, imports, data);
     } else {
-      if (!skip_functions.empty()) {
-        data.output_with_skips = ir2_final_out(data, imports, skip_functions);
-      }
+      data.output_with_skips = ir2_final_out(data, imports, skip_functions);
       data.full_output = ir2_final_out(data, imports, {});
     }
 
@@ -311,7 +309,7 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
 
   std::vector<PerObject> per_object;
 
-  DecompilerTypeSystem previous_game_ts;
+  DecompilerTypeSystem previous_game_ts(GameVersion::Jak1);  // version here doesn't matter.
   if (previous_game_types) {
     previous_game_ts.parse_type_defs({*previous_game_types});
   }

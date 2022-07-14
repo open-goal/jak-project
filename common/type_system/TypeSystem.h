@@ -206,7 +206,7 @@ class TypeSystem {
                         bool skip_in_static_decomp = false,
                         double score = 0.0);
 
-  void add_builtin_types();
+  void add_builtin_types(GameVersion version);
 
   std::string print_all_type_information() const;
   bool typecheck_and_throw(const TypeSpec& expected,
