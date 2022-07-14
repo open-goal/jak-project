@@ -314,11 +314,11 @@ void Sprite3::render_distorter(DmaFollower& dma,
     return;
   }
 
-  // Setup vertex data
+  // Set up vertex data
   {
     auto prof_node = prof.make_scoped_child("setup");
     if (m_enable_distort_instancing) {
-      distort_setup_instanced(render_state, prof_node);
+      distort_setup_instanced(prof_node);
     } else {
       distort_setup(prof_node);
     }
@@ -373,9 +373,15 @@ void Sprite3::distort_dma(DmaFollower& dma, ScopedProfilerNode& /*prof*/) {
   ASSERT(alpha.d_mode() == GsAlpha::BlendMode::DEST);
 
   // Next thing should be the sine tables
+  // 
+  // NOTE: The DMA'd table data here used to be 0x8b quadwords but was modified for the PC port
+  // to include an extra quadword containing the aspect ratio x/y so this renderer knows when
+  // the sine table was actually changed. The table is DMA'd as a reference every frame but it
+  // only changes when the aspect ratio of the game changes. Notably, there may be a delay between
+  // when the aspect ratio changes and when the table is changed, so we need the game to tell us.
   auto sprite_distorter_tables = dma.read_and_advance();
   unpack_to_stcycl(&m_sprite_distorter_sine_tables, sprite_distorter_tables,
-                   VifCode::Kind::UNPACK_V4_32, 4, 4, 0x8b * 16, 0x160, false, false);
+                   VifCode::Kind::UNPACK_V4_32, 4, 4, 0x8c * 16, 0x160, false, false);
 
   ASSERT(GsPrim(m_sprite_distorter_sine_tables.gs_gif_tag.prim()).kind() ==
          GsPrim::Kind::TRI_STRIP);
@@ -517,15 +523,12 @@ void Sprite3::distort_setup(ScopedProfilerNode& /*prof*/) {
  *
  * Required sprite-specific frame data is kept as is and is grouped by resolution.
  */
-void Sprite3::distort_setup_instanced(SharedRenderState* render_state,
-                                      ScopedProfilerNode& /*prof*/) {
-  if (m_distort_instanced_ogl.last_window_width != render_state->window_width_px ||
-      m_distort_instanced_ogl.last_window_height != render_state->window_height_px) {
-    m_distort_instanced_ogl.last_window_width = render_state->window_width_px;
-    m_distort_instanced_ogl.last_window_height = render_state->window_height_px;
-
-    // Window dimensions changed, which means the aspect ratio may have changed, which means we have
-    // a new sine table
+void Sprite3::distort_setup_instanced(ScopedProfilerNode& /*prof*/) {
+  if (m_distort_instanced_ogl.last_aspect_x != m_sprite_distorter_sine_tables.aspect.y() ||
+      m_distort_instanced_ogl.last_aspect_y != m_sprite_distorter_sine_tables.aspect.z()) {
+    m_distort_instanced_ogl.last_aspect_x = m_sprite_distorter_sine_tables.aspect.y();
+    m_distort_instanced_ogl.last_aspect_y = m_sprite_distorter_sine_tables.aspect.z();
+    // Aspect ratio changed, which means we have a new sine table
     m_sprite_distorter_vertices_instanced.clear();
 
     // Build a mesh for every possible distort sprite resolution

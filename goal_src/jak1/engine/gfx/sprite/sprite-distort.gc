@@ -144,10 +144,20 @@
     (alpha-1 (new 'static 'gs-alpha :b 1 :d 1))
     )
   ;; send distorter sine tables
-  (dma-buffer-add-ref-vif2 dma-buff #x8b
-    (-> *sprite-distorter-sine-tables* entry)
-    (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl))
-    (new 'static 'vif-tag :imm #x160 :num #x8b :cmd (vif-cmd unpack-v4-32))
+  (#if PC_PORT
+    ;; send the whole table for the PC port so that the renderer can check if the aspect ratio changed.
+    ;; the game may not update the sine tables on the same frame that the aspect ratio changed,
+    ;; so it's better if the GOAL code notifies the renderer when.
+    (dma-buffer-add-ref-vif2 dma-buff #x8c
+      (&- (the pointer *sprite-distorter-sine-tables*) 4)
+      (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl))
+      (new 'static 'vif-tag :imm #x160 :num #x8c :cmd (vif-cmd unpack-v4-32))
+      )
+    (dma-buffer-add-ref-vif2 dma-buff #x8b
+      (-> *sprite-distorter-sine-tables* entry)
+      (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl))
+      (new 'static 'vif-tag :imm #x160 :num #x8b :cmd (vif-cmd unpack-v4-32))
+      )
     )
   ;; load VU1 code
   (dma-buffer-add-vu-function dma-buff sprite-distort-vu1-block 1)

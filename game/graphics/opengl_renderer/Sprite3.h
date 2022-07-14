@@ -28,7 +28,7 @@ class Sprite3 : public BucketRenderer {
                         ScopedProfilerNode& prof);
   void distort_dma(DmaFollower& dma, ScopedProfilerNode& prof);
   void distort_setup(ScopedProfilerNode& prof);
-  void distort_setup_instanced(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void distort_setup_instanced(ScopedProfilerNode& prof);
   void distort_draw(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void distort_draw_instanced(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void distort_draw_common(SharedRenderState* render_state, ScopedProfilerNode& prof);
@@ -76,12 +76,15 @@ class Sprite3 : public BucketRenderer {
   static_assert(sizeof(SpriteDistorterSetup) == (7 * 16));
 
   struct SpriteDistorterSineTables {
+    // Added for PC port
+    Vector4f aspect; // y,z contain x,y aspect
+    // Original start of struct
     Vector4f entry[128];
     math::Vector<u32, 4> ientry[9];
     GifTag gs_gif_tag;
     math::Vector<u32, 4> color;
   };
-  static_assert(sizeof(SpriteDistorterSineTables) == (0x8b * 16));
+  static_assert(sizeof(SpriteDistorterSineTables) == ((0x8b + 1) * 16));
 
   struct SpriteDistortFrameData {
     math::Vector3f xyz;  // position
@@ -117,8 +120,8 @@ class Sprite3 : public BucketRenderer {
     GLuint vao;
     GLuint vertex_buffer;    // contains vertex data for each possible sprite resolution (3-11)
     GLuint instance_buffer;  // contains all instance specific data for each sprite per frame
-    int last_window_width = -1;
-    int last_window_height = -1;
+    float last_aspect_x = -1.0;
+    float last_aspect_y = -1.0;
     bool vertex_data_changed = false;
   } m_distort_instanced_ogl;
 
