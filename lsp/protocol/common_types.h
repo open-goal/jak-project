@@ -51,6 +51,17 @@ struct TextDocumentIdentifier {
 void to_json(json& j, const TextDocumentIdentifier& obj);
 void from_json(const json& j, TextDocumentIdentifier& obj);
 
+struct VersionedTextDocumentIdentifier {
+  DocumentUri m_uri;
+  /// @brief The version number of this document.
+  /// The version number of a document will increase after each change, including undo/redo. The
+  /// number doesn't need to be consecutive.
+  int32_t m_version;
+};
+
+void to_json(json& j, const VersionedTextDocumentIdentifier& obj);
+void from_json(const json& j, VersionedTextDocumentIdentifier& obj);
+
 struct Location {
   DocumentUri m_uri;
   Range m_range;

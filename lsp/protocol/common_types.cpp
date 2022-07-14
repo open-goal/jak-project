@@ -41,6 +41,15 @@ void LSPSpec::from_json(const json& j, TextDocumentIdentifier& obj) {
   j.at("uri").get_to(obj.m_uri);
 }
 
+void LSPSpec::to_json(json& j, const VersionedTextDocumentIdentifier& obj) {
+  j = json{{"uri", obj.m_uri}, {"version", obj.m_version}};
+}
+
+void LSPSpec::from_json(const json& j, VersionedTextDocumentIdentifier& obj) {
+  j.at("uri").get_to(obj.m_uri);
+  j.at("version").get_to(obj.m_version);
+}
+
 void LSPSpec::to_json(json& j, const Location& obj) {
   j = json{{"uri", obj.m_uri}, {"range", obj.m_range}};
 }

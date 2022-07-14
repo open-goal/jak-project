@@ -8,11 +8,25 @@
 
 using json = nlohmann::json;
 
-std::optional<json> did_open_handler(Workspace& workspace, json params) {
+void did_open_handler(Workspace& workspace, json params) {
+  // TODO - check the file type, all-types vs IR2
   auto converted_params = params.get<LSPSpec::DidOpenTextDocumentParams>();
   workspace.update_ir_file(converted_params.m_textDocument.m_uri,
                            converted_params.m_textDocument.m_text);
-  return {};
+}
+
+void did_change_handler(Workspace& workspace, json params) {
+  auto converted_params = params.get<LSPSpec::DidChangeTextDocumentParams>();
+  // Assumes we get the full text!
+  for (const auto& change : converted_params.m_contentChanges) {
+    workspace.update_ir_file(converted_params.m_textDocument.m_uri, change.m_text);
+  }
+}
+
+void did_close_handler(Workspace& workspace, json params) {
+  auto converted_params = params.get<LSPSpec::DidOpenTextDocumentParams>();
+  workspace.update_ir_file(converted_params.m_textDocument.m_uri,
+                           converted_params.m_textDocument.m_text);
 }
 
 std::optional<json> did_open_push_diagnostics(Workspace& workspace, json params) {
