@@ -7,31 +7,24 @@
 #include "protocol/error_codes.h"
 #include "text_document/document_symbol.hpp"
 #include "text_document/document_synchronization.hpp"
-#include "text_document/hover.hpp"
 #include "text_document/go_to.hpp"
+#include "text_document/hover.hpp"
 
 #include "third-party/fmt/core.h"
 
-LSPRoute::LSPRoute() {
-  m_route_type = LSPRouteType::NOOP;
-}
+LSPRoute::LSPRoute() : m_route_type(LSPRouteType::NOOP) {}
 
-LSPRoute::LSPRoute(std::function<void(Workspace&, json)> notification_handler) {
-  m_route_type = LSPRouteType::NOTIFICATION;
-  m_notification_handler = notification_handler;
-}
+LSPRoute::LSPRoute(std::function<void(Workspace&, json)> notification_handler)
+    : m_route_type(LSPRouteType::NOTIFICATION), m_notification_handler(notification_handler) {}
 
 LSPRoute::LSPRoute(std::function<void(Workspace&, json)> notification_handler,
-                   std::function<std::optional<json>(Workspace&, json)> post_notification_publish) {
-  m_route_type = LSPRouteType::NOTIFICATION;
-  m_notification_handler = notification_handler;
-  m_post_notification_publish = post_notification_publish;
-}
+                   std::function<std::optional<json>(Workspace&, json)> post_notification_publish)
+    : m_route_type(LSPRouteType::NOTIFICATION),
+      m_notification_handler(notification_handler),
+      m_post_notification_publish(post_notification_publish) {}
 
-LSPRoute::LSPRoute(std::function<std::optional<json>(Workspace&, int, json)> request_handler) {
-  m_route_type = LSPRouteType::REQUEST_RESPONSE;
-  m_request_handler = request_handler;
-}
+LSPRoute::LSPRoute(std::function<std::optional<json>(Workspace&, int, json)> request_handler)
+    : m_route_type(LSPRouteType::REQUEST_RESPONSE), m_request_handler(request_handler) {}
 
 void LSPRouter::init_routes() {
   m_routes["initialize"] = LSPRoute(initialize_handler);

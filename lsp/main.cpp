@@ -1,24 +1,27 @@
-#include <chrono>
+// clang-format off
+
+#ifdef _WIN32
 #include <fcntl.h>
 #include <io.h>
-#include <iostream>
-#include <optional>
-#include <stdio.h>
-#include <thread>
-#include <vector>
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
-#include <regex>
 #include <windows.h>
+#endif
 
-#include <common/log/log.h>
+#include <optional>
+#include <vector>
+#include <regex>
+
+#include "common/log/log.h"
 
 #include "handlers/lsp_router.h"
 #include "state/workspace.h"
 #include "transport/stdio.h"
-#include <state/app.h>
+#include "state/app.h"
 
 #include "third-party/CLI11.hpp"
+
+// clang-format on
 
 // NOTE - if we ever add HTTP support to the LSP
 /*
@@ -55,8 +58,8 @@ int main(int argc, char** argv) {
   bool use_stdin = true;
   bool verbose = false;
   std::string logfile;
-  auto stdin_option = app.add_flag("--stdio", use_stdin,
-                                   "Don't launch an HTTP server and instead accept input on stdin");
+  app.add_flag("--stdio", use_stdin,
+               "Don't launch an HTTP server and instead accept input on stdin");
   app.add_flag("-v,--verbose", verbose, "Enable verbose logging");
   app.add_option("-l,--log", logfile, "Log file path");
   app.validate_positionals();
