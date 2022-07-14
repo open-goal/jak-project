@@ -63,7 +63,6 @@ class OpenGlDebugGui {
   bool dump_events = false;
   bool want_reboot_in_debug = false;
 
-  int screenshot_timer = 0;
   int screenshot_width = 1920;
   int screenshot_height = 1080;
   int screenshot_samples = 16;

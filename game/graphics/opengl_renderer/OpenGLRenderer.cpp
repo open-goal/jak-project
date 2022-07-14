@@ -417,6 +417,8 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     fbo_state.height = settings.game_res_h;
     fbo_state.msaa = settings.msaa_samples;
 
+    bool bad = false;
+
     // make framebuffer object
     if (fbo_state.fbo == -1) {
       glGenFramebuffers(1, &fbo_state.fbo);
@@ -448,6 +450,8 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
 
     glDrawBuffers(1, fbo_state.render_targets);
 
+    bad |= glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE;
+
     // make framebuffer object
     if (fbo_state.fbo2 == -1) {
       glGenFramebuffers(1, &fbo_state.fbo2);
@@ -472,9 +476,13 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
 
     glDrawBuffers(1, fbo_state.render_targets);
 
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-      lg::error("bad framebuffer setup. fbo: {}, tex: {}, zbuf: {}", fbo_state.fbo, fbo_state.tex,
-                fbo_state.zbuf);
+    bad |= glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE;
+
+    if (!bad) {
+      glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo);
+    } else {
+      lg::error("bad framebuffer setup. fbo: {}, tex: {}, zbuf: {}, fbo2: {}, tex2: {}",
+                fbo_state.fbo, fbo_state.tex, fbo_state.zbuf, fbo_state.fbo2, fbo_state.tex2);
       fbo_state.delete_objects();
     }
   } else {

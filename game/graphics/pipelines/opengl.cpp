@@ -294,14 +294,8 @@ void render_game_frame(int game_width,
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.draw_subtitle_editor_window = g_gfx_data->debug_gui.should_draw_subtitle_editor();
     options.save_screenshot = false;
-    if (g_gfx_data->debug_gui.screenshot_timer) {
+    if (g_gfx_data->debug_gui.get_screenshot_flag()) {
       options.save_screenshot = true;
-      g_gfx_data->debug_gui.screenshot_timer--;
-      options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
-      options.game_res_h = g_gfx_data->debug_gui.screenshot_height;
-      options.msaa_samples = g_gfx_data->debug_gui.screenshot_samples;
-    } else if (g_gfx_data->debug_gui.get_screenshot_flag()) {
-      g_gfx_data->debug_gui.screenshot_timer = 2;
       options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
       options.game_res_h = g_gfx_data->debug_gui.screenshot_height;
       options.msaa_samples = g_gfx_data->debug_gui.screenshot_samples;
