@@ -154,9 +154,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS} ")
 add_subdirectory(third-party/cubeb)
 
 # build LSP
-# TODO - can i put these includes in the lsp cmake file?
-include_directories(third-party/json-rpc-cxx/vendor)
-include_directories(third-party/json-rpc-cxx/include)
 add_subdirectory(lsp)
 
 # build glfw library
