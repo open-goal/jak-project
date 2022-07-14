@@ -76,15 +76,12 @@ class Sprite3 : public BucketRenderer {
   static_assert(sizeof(SpriteDistorterSetup) == (7 * 16));
 
   struct SpriteDistorterSineTables {
-    // Added for PC port
-    Vector4f aspect; // y,z contain x,y aspect
-    // Original start of struct
     Vector4f entry[128];
     math::Vector<u32, 4> ientry[9];
     GifTag gs_gif_tag;
     math::Vector<u32, 4> color;
   };
-  static_assert(sizeof(SpriteDistorterSineTables) == ((0x8b + 1) * 16));
+  static_assert(sizeof(SpriteDistorterSineTables) == (0x8b * 16));
 
   struct SpriteDistortFrameData {
     math::Vector3f xyz;  // position
@@ -133,6 +130,7 @@ class Sprite3 : public BucketRenderer {
   std::vector<SpriteDistortVertex> m_sprite_distorter_vertices;
   std::vector<u32> m_sprite_distorter_indices;
   SpriteDistorterSetup m_sprite_distorter_setup;  // direct data
+  math::Vector4f m_sprite_distorter_sine_tables_aspect;
   SpriteDistorterSineTables m_sprite_distorter_sine_tables;
   std::vector<SpriteDistortFrameData> m_sprite_distorter_frame_data;
   std::vector<SpriteDistortVertex> m_sprite_distorter_vertices_instanced;

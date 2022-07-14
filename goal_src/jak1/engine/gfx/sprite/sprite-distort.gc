@@ -143,21 +143,29 @@
     ;; blend source and framebuffer RGB
     (alpha-1 (new 'static 'gs-alpha :b 1 :d 1))
     )
+  ;; send current aspect used by the sine tables (PC only)
+  (#when PC_PORT
+    (let ((packet (the-as dma-packet (-> dma-buff base))))
+      (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 1))
+      (set! (-> packet vif0) (new 'static 'vif-tag))
+      (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+      (&+! (-> dma-buff base) 16)
+      )
+    (let ((aspect-vec (the-as vector (-> dma-buff base))))
+      (set-vector! aspect-vec 
+                   (-> *sprite-distorter-sine-tables* aspx) 
+                   (-> *sprite-distorter-sine-tables* aspy)
+                   0.0
+                   0.0
+                   )
+      (&+! (-> dma-buff base) 16)
+      )
+    )
   ;; send distorter sine tables
-  (#if PC_PORT
-    ;; send the whole table for the PC port so that the renderer can check if the aspect ratio changed.
-    ;; the game may not update the sine tables on the same frame that the aspect ratio changed,
-    ;; so it's better if the GOAL code notifies the renderer when.
-    (dma-buffer-add-ref-vif2 dma-buff #x8c
-      (&- (the pointer *sprite-distorter-sine-tables*) 4)
-      (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl))
-      (new 'static 'vif-tag :imm #x160 :num #x8c :cmd (vif-cmd unpack-v4-32))
-      )
-    (dma-buffer-add-ref-vif2 dma-buff #x8b
-      (-> *sprite-distorter-sine-tables* entry)
-      (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl))
-      (new 'static 'vif-tag :imm #x160 :num #x8b :cmd (vif-cmd unpack-v4-32))
-      )
+  (dma-buffer-add-ref-vif2 dma-buff #x8b
+    (-> *sprite-distorter-sine-tables* entry)
+    (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl))
+    (new 'static 'vif-tag :imm #x160 :num #x8b :cmd (vif-cmd unpack-v4-32))
     )
   ;; load VU1 code
   (dma-buffer-add-vu-function dma-buff sprite-distort-vu1-block 1)

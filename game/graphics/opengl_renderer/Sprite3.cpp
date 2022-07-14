@@ -372,16 +372,22 @@ void Sprite3::distort_dma(DmaFollower& dma, ScopedProfilerNode& /*prof*/) {
   ASSERT(alpha.c_mode() == GsAlpha::BlendMode::SOURCE);
   ASSERT(alpha.d_mode() == GsAlpha::BlendMode::DEST);
 
+  // Next is the aspect used by the sine tables (PC only)
+  //
+  // This was added to let the renderer reliably detect when the sine tables changed,
+  // which is whenever the aspect ratio changed. However, the tables aren't always
+  // updated on the same frame that the aspect changed, so this just lets the game
+  // easily notify the renderer when it finally does get updated.
+  auto sprite_distort_tables_aspect = dma.read_and_advance();
+  ASSERT(sprite_distort_tables_aspect.size_bytes == 16);
+  ASSERT(sprite_distort_tables_aspect.vifcode1().kind == VifCode::Kind::PC_PORT);
+  memcpy(&m_sprite_distorter_sine_tables_aspect, sprite_distort_tables_aspect.data,
+         sizeof(math::Vector4f));
+
   // Next thing should be the sine tables
-  // 
-  // NOTE: The DMA'd table data here used to be 0x8b quadwords but was modified for the PC port
-  // to include an extra quadword containing the aspect ratio x/y so this renderer knows when
-  // the sine table was actually changed. The table is DMA'd as a reference every frame but it
-  // only changes when the aspect ratio of the game changes. Notably, there may be a delay between
-  // when the aspect ratio changes and when the table is changed, so we need the game to tell us.
   auto sprite_distorter_tables = dma.read_and_advance();
   unpack_to_stcycl(&m_sprite_distorter_sine_tables, sprite_distorter_tables,
-                   VifCode::Kind::UNPACK_V4_32, 4, 4, 0x8c * 16, 0x160, false, false);
+                   VifCode::Kind::UNPACK_V4_32, 4, 4, 0x8b * 16, 0x160, false, false);
 
   ASSERT(GsPrim(m_sprite_distorter_sine_tables.gs_gif_tag.prim()).kind() ==
          GsPrim::Kind::TRI_STRIP);
@@ -524,10 +530,10 @@ void Sprite3::distort_setup(ScopedProfilerNode& /*prof*/) {
  * Required sprite-specific frame data is kept as is and is grouped by resolution.
  */
 void Sprite3::distort_setup_instanced(ScopedProfilerNode& /*prof*/) {
-  if (m_distort_instanced_ogl.last_aspect_x != m_sprite_distorter_sine_tables.aspect.y() ||
-      m_distort_instanced_ogl.last_aspect_y != m_sprite_distorter_sine_tables.aspect.z()) {
-    m_distort_instanced_ogl.last_aspect_x = m_sprite_distorter_sine_tables.aspect.y();
-    m_distort_instanced_ogl.last_aspect_y = m_sprite_distorter_sine_tables.aspect.z();
+  if (m_distort_instanced_ogl.last_aspect_x != m_sprite_distorter_sine_tables_aspect.x() ||
+      m_distort_instanced_ogl.last_aspect_y != m_sprite_distorter_sine_tables_aspect.y()) {
+    m_distort_instanced_ogl.last_aspect_x = m_sprite_distorter_sine_tables_aspect.x();
+    m_distort_instanced_ogl.last_aspect_y = m_sprite_distorter_sine_tables_aspect.y();
     // Aspect ratio changed, which means we have a new sine table
     m_sprite_distorter_vertices_instanced.clear();
 
