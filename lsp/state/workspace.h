@@ -1,8 +1,8 @@
 #pragma once
 
-#include <unordered_map>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
 #include "common/util/FileUtil.h"
 
@@ -10,10 +10,6 @@
 #include "protocol/document_diagnostics.h"
 #include "protocol/document_symbols.h"
 #include <decompiler/util/DecompilerTypeSystem.h>
-
-// TODO - will need ideas to support multiple languages in one LSP
-// - perhaps a separate workspace per language?  or some sort of directory
-// - when you get the file contents, it comes with language identifier so this isn;t _that_ hard to
 
 class WorkspaceIRFile {
  public:
@@ -24,7 +20,9 @@ class WorkspaceIRFile {
   std::vector<std::string> m_lines;
   std::vector<LSPSpec::DocumentSymbol> m_symbols;
   std::vector<LSPSpec::Diagnostic> m_diagnostics;
-  fs::path m_all_types_file;
+  GameVersion m_game_version;
+  LSPSpec::DocumentUri m_all_types_uri = "";
+  fs::path m_all_types_file_path;
 
   std::optional<std::string> get_mips_instruction_at_position(const LSPSpec::Position position);
   std::optional<std::string> get_symbol_at_position(const LSPSpec::Position position);
@@ -40,6 +38,23 @@ class WorkspaceIRFile {
   void identify_diagnostics(const uint32_t line_num_zero_based, const std::string& line);
 };
 
+class WorkspaceAllTypesFile {
+ public:
+  WorkspaceAllTypesFile() : m_dts(GameVersion::Jak1){};
+  WorkspaceAllTypesFile(const LSPSpec::DocumentUri& uri,
+                        const GameVersion version,
+                        const fs::path file_path)
+      : m_uri(uri), m_game_version(version), m_dts(m_game_version), m_file_path(file_path){};
+
+  GameVersion m_game_version;
+  LSPSpec::DocumentUri m_uri;
+  decompiler::DecompilerTypeSystem m_dts;
+  fs::path m_file_path;
+
+  void parse_type_system();
+  void update_type_system();
+};
+
 class Workspace {
  public:
   Workspace();
@@ -48,7 +63,11 @@ class Workspace {
   bool is_initialized();
   void set_initialized(bool new_value);
 
-  void update_ir_file(const LSPSpec::URI& file_uri, const std::string& content);
+  void start_tracking_file(const LSPSpec::DocumentUri& file_uri,
+                           const std::string& language_id,
+                           const std::string& content);
+  void update_tracked_file(const LSPSpec::DocumentUri& file_uri, const std::string& content);
+  void stop_tracking_file(const LSPSpec::DocumentUri& file_uri);
   std::optional<WorkspaceIRFile> get_tracked_ir_file(const LSPSpec::URI& file_uri);
   std::optional<goos::TextDb::ShortInfo> get_symbol_info_from_all_types(
       const std::string& symbol_name,
@@ -56,6 +75,6 @@ class Workspace {
 
  private:
   bool m_initialized = false;
-  std::unordered_map<LSPSpec::URI, WorkspaceIRFile> m_tracked_ir_files = {};
-  std::unordered_map<std::string, decompiler::DecompilerTypeSystem> m_all_types_files = {};
+  std::unordered_map<LSPSpec::DocumentUri, WorkspaceIRFile> m_tracked_ir_files = {};
+  std::unordered_map<LSPSpec::DocumentUri, WorkspaceAllTypesFile> m_tracked_all_types_files = {};
 };

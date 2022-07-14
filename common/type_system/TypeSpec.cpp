@@ -133,8 +133,8 @@ void TypeSpec::add_or_modify_tag(const std::string& tag_name, const std::string&
 }
 
 void TypeSpec::update_definition_meta(const std::string& defining_file,
-  int line_number,
-  int line_offset) {
+                                      int line_number,
+                                      int line_offset) {
   m_defining_file = defining_file;
   m_line_number = line_number;
   m_line_offset = line_offset;

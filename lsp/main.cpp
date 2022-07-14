@@ -20,8 +20,6 @@
 
 #include "third-party/CLI11.hpp"
 
-// TODO - look into replacing our xsocket with cpphttplib eventually
-
 // NOTE - if we ever add HTTP support to the LSP
 /*
   What needs to be understood is that for connection timing issues the server is actually a client
@@ -31,17 +29,27 @@
   socket port number is passed as --socket=${port} to the server process started.
 */
 
-void setup_logging(std::string log_file) {
+void setup_logging(bool verbose, std::string log_file) {
   lg::set_file(log_file);
-  lg::set_file_level(lg::level::debug);
+  if (verbose) {
+    lg::set_file_level(lg::level::debug);
+    lg::set_flush_level(lg::level::debug);
+  } else {
+    lg::set_file_level(lg::level::info);
+    lg::set_flush_level(lg::level::info);
+  }
+
   // We use stdout to communicate with the client, so don't use it at all!
   lg::set_stdout_level(lg::level::off);
-  lg::set_flush_level(lg::level::debug);
   lg::initialize();
 }
 
 int main(int argc, char** argv) {
-  // TODO - do the utf-8 thing!
+  fs::u8arguments u8guard(argc, argv);
+  if (!u8guard.valid()) {
+    exit(EXIT_FAILURE);
+  }
+
   CLI::App app{"OpenGOAL Language Server"};
 
   bool use_stdin = true;
@@ -58,7 +66,7 @@ int main(int argc, char** argv) {
   LSPRouter lsp_router;
   appstate.verbose = verbose;
   if (!logfile.empty()) {
-    setup_logging(logfile);
+    setup_logging(appstate.verbose, logfile);
   }
   lsp_router.init_routes();
 
@@ -76,25 +84,16 @@ int main(int argc, char** argv) {
 
     if (message_buffer.message_completed()) {
       json body = message_buffer.body();
-      lg::info(">>> Received message of type '{}'", body["method"].get<std::string>());
-      if (appstate.verbose) {
-        lg::debug("Headers:\n");
-        for (auto elem : message_buffer.headers()) {
-          auto pretty_header = fmt::format("{}: {}\n", elem.first, elem.second);
-          lg::debug("{}", pretty_header);
-        }
-        lg::debug("Body: \n{}\n", body.dump(2));
-        lg::debug("Raw: \n{}\n", message_buffer.raw());
-      }
-
-      auto messages = lsp_router.route_message(message_buffer, appstate);
-      if (messages.has_value()) {
-        for (const auto& message : messages.value()) {
-          std::cout << message.c_str() << std::flush;
+      auto method_name = body["method"].get<std::string>();
+      lg::info(">>> Received message of method '{}'", method_name);
+      auto responses = lsp_router.route_message(message_buffer, appstate);
+      if (responses) {
+        for (const auto& response : responses.value()) {
+          std::cout << response.c_str() << std::flush;
           if (appstate.verbose) {
-            lg::debug("<<< Sending message: \n{}", message);
+            lg::debug("<<< Sending message: {}", response);
           } else {
-            lg::info("<<< Sending message");
+            lg::info("<<< Sending message of method '{}'", method_name);
           }
         }
       }

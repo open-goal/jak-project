@@ -6,6 +6,15 @@
 
 #include "protocol/common_types.h"
 
+LSPSpec::DocumentUri uri_from_path(fs::path path) {
+  // Replace slash type on windows
+  std::string path_str = path.string();
+#ifdef _WIN32
+  std::replace(path_str.begin(), path_str.end(), '\\', '/');
+#endif
+  return fmt::format("file:///{}", path_str);
+}
+
 Workspace::Workspace(){};
 Workspace::~Workspace(){};
 
@@ -26,28 +35,72 @@ std::optional<WorkspaceIRFile> Workspace::get_tracked_ir_file(const LSPSpec::URI
 
 std::optional<goos::TextDb::ShortInfo> Workspace::get_symbol_info_from_all_types(
     const std::string& symbol_name,
-    const std::string& all_types_uri) {
-  if (m_all_types_files.count(all_types_uri) == 0) {
+    const LSPSpec::DocumentUri& all_types_uri) {
+  if (m_tracked_all_types_files.count(all_types_uri) == 0) {
     return {};
   }
-  const auto& dts = m_all_types_files[all_types_uri];
+  const auto& dts = m_tracked_all_types_files[all_types_uri].m_dts;
   if (dts.symbol_definition_info.count(symbol_name) == 0) {
     return {};
   }
   return dts.symbol_definition_info.at(symbol_name);
 }
 
-void Workspace::update_ir_file(const LSPSpec::URI& file_uri, const std::string& content) {
-  WorkspaceIRFile file(content);
-  m_tracked_ir_files[file_uri] = file;
-  if (m_all_types_files.count(file.m_all_types_file.string()) == 0) {
-    m_all_types_files[file.m_all_types_file.string()] = decompiler::DecompilerTypeSystem();
-    lg::info("DTS Loading - '{}'", file.m_all_types_file.string());
-    m_all_types_files[file.m_all_types_file.string()].parse_type_defs(
-        {file.m_all_types_file.string()});
-    lg::info("DTS Loaded At - '{}'", file.m_all_types_file.string());
+void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
+                                    const std::string& language_id,
+                                    const std::string& content) {
+  if (language_id == "opengoal-ir") {
+    lg::debug("new ir file");
+    WorkspaceIRFile file(content);
+    lg::debug("parsed!");
+    m_tracked_ir_files[file_uri] = file;
+    if (!file.m_all_types_uri.empty()) {
+      if (m_tracked_all_types_files.count(file.m_all_types_uri) == 0) {
+        lg::debug("new all-types file");
+        m_tracked_all_types_files[file.m_all_types_uri] = WorkspaceAllTypesFile(
+            file.m_all_types_uri, file.m_game_version, file.m_all_types_file_path);
+        m_tracked_all_types_files[file.m_all_types_uri].parse_type_system();
+      }
+      
+    }
+  }
+  // TODO - only supporting IR files currently!
+}
+
+void Workspace::update_tracked_file(const LSPSpec::DocumentUri& file_uri,
+                                    const std::string& content) {
+  // Check if the file is already tracked or not, this is done because change events don't give
+  // language details it's assumed you are keeping track of that!
+  if (m_tracked_ir_files.count(file_uri) != 0) {
+    WorkspaceIRFile file(content);
+    m_tracked_ir_files[file_uri] = file;
+    // There is the potential for the all-types to have changed, albeit this is probably never going
+    // to happen
+    if (!file.m_all_types_uri.empty() &&
+        m_tracked_all_types_files.count(file.m_all_types_uri) == 0) {
+      auto& all_types_file = m_tracked_all_types_files[file.m_all_types_uri];
+      all_types_file.m_file_path = file.m_all_types_file_path;
+      all_types_file.m_uri = file.m_all_types_uri;
+      all_types_file.m_game_version = file.m_game_version;
+      all_types_file.update_type_system();
+    }
+  }
+
+  if (m_tracked_all_types_files.count(file_uri) != 0) {
+    // If the all-types file has changed, re-parse it
+    // NOTE - this assumes its still for the same game version!
+    m_tracked_all_types_files[file_uri].update_type_system();
   }
 };
+
+void Workspace::stop_tracking_file(const LSPSpec::DocumentUri& file_uri) {
+  if (m_tracked_ir_files.count(file_uri) != 0) {
+    m_tracked_ir_files.erase(file_uri);
+  }
+  if (m_tracked_all_types_files.count(file_uri) != 0) {
+    m_tracked_all_types_files.erase(file_uri);
+  }
+}
 
 WorkspaceIRFile::WorkspaceIRFile(const std::string& content) {
   // Get all lines of file
@@ -76,15 +129,26 @@ WorkspaceIRFile::WorkspaceIRFile(const std::string& content) {
 // This is kind of a hack, but to ensure consistency.  The file will reference the all-types.gc
 // file it was generated with, this lets us accurately jump to the definition properly!
 void WorkspaceIRFile::find_all_types_path(const std::string& line) {
-  std::regex regex("; ALL_TYPES_USED=(.*)");
+  std::regex regex("; ALL_TYPES=(.*)=(.*)");
   std::smatch matches;
 
   if (std::regex_search(line, matches, regex)) {
-    // NOTE - assumes we can only find 1 function per line
-    if (matches.size() == 2) {
-      auto match = matches[1];
-      lg::debug("Found DTS Path - {}", match.str());
-      m_all_types_file = fs::path(match.str());
+    if (matches.size() == 3) {
+      auto game_version = matches[1];
+      auto all_types_path = matches[2];
+      lg::debug("Found DTS Path - {} : {}", game_version.str(), all_types_path.str());
+      auto all_types_uri = uri_from_path(fs::path(all_types_path.str()));
+      lg::debug("DTS URI - {}", all_types_uri);
+
+      if (valid_game_version(game_version.str())) {
+        lg::debug("a");
+        m_game_version = game_name_to_version(game_version.str());
+        lg::debug("b");
+        m_all_types_uri = all_types_uri;
+        m_all_types_file_path = fs::path(all_types_path.str());
+      } else {
+        lg::error("Invalid game version, ignoring - {}", game_version.str());
+      }
     }
   }
 }
@@ -195,7 +259,7 @@ std::optional<std::string> WorkspaceIRFile::get_symbol_at_position(
   std::string line = m_lines.at(position.m_line);
   lg::debug("symbol checking - '{}'", line);
   std::smatch matches;
-  std::regex regex("[\\w\\.\\-_!<>]+");
+  std::regex regex("[\\w\\.\\-_!<>*]+");
   std::regex_token_iterator<std::string::iterator> rend;
 
   std::regex_token_iterator<std::string::iterator> match(line.begin(), line.end(), regex);
@@ -211,4 +275,16 @@ std::optional<std::string> WorkspaceIRFile::get_symbol_at_position(
   }
 
   return {};
+}
+
+void WorkspaceAllTypesFile::parse_type_system() {
+  lg::debug("DTS Loading - '{}'", m_file_path.string());
+  m_dts.parse_type_defs({m_file_path.string()});
+  lg::debug("DTS Loaded At - '{}'", m_file_path.string());
+}
+
+void WorkspaceAllTypesFile::update_type_system() {
+  // TODO - do i actually need to re-create it, or is there a way to "clear" it?
+  m_dts = decompiler::DecompilerTypeSystem(m_game_version);
+  parse_type_system();
 }

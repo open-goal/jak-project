@@ -161,7 +161,10 @@ bool DecompilerTypeSystem::lookup_flags(const std::string& type, u64* dest) cons
   return false;
 }
 
-void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& type_spec, const std::optional<goos::TextDb::ShortInfo> definition_info) {
+void DecompilerTypeSystem::add_symbol(
+    const std::string& name,
+    const TypeSpec& type_spec,
+    const std::optional<goos::TextDb::ShortInfo> definition_info) {
   add_symbol(name);
   auto skv = symbol_types.find(name);
   if (skv == symbol_types.end() || skv->second == type_spec) {

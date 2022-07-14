@@ -35,7 +35,7 @@ void to_json(json& j, const Range& obj);
 void from_json(const json& j, Range& obj);
 
 struct TextDocumentItem {
-  URI m_uri;
+  DocumentUri m_uri;
   std::string m_languageId;  // ie. opengoal-ir
   int32_t m_version;
   std::string m_text;

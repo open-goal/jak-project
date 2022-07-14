@@ -41,7 +41,7 @@ void LSPRouter::init_routes() {
   m_routes["initialized"] = LSPRoute();
   m_routes["textDocument/documentSymbol"] = LSPRoute(document_symbols_handler);
   m_routes["textDocument/didOpen"] = LSPRoute(did_open_handler, did_open_push_diagnostics);
-  m_routes["textDocument/didChange"] = LSPRoute(did_change_handler, did_open_push_diagnostics);
+  m_routes["textDocument/didChange"] = LSPRoute(did_change_handler, did_change_push_diagnostics);
   m_routes["textDocument/didClose"] = LSPRoute(did_close_handler);
   m_routes["textDocument/hover"] = LSPRoute(hover_handler);
   m_routes["textDocument/definition"] = LSPRoute(go_to_definition_handler);
