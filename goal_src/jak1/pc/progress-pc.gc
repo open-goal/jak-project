@@ -62,7 +62,7 @@
    (subtitle-backup pc-subtitle-lang)
    (aspect-native-choice symbol)
    (current-carousell (array game-text-id))
-   
+
    (selection int)
    (direction symbol)
    (transition symbol)
@@ -127,7 +127,7 @@
     (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vsync) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
-    ;(new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
     (new 'static 'game-option :option-type (game-option-type frame-rate) :name (game-text-id frame-rate) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id ps2-options) :scale #t :param3 (game-option-menu gfx-ps2-options))
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
@@ -139,7 +139,7 @@
     (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vsync) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
-    ;(new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id ps2-options) :scale #t :param3 (game-option-menu gfx-ps2-options))
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
@@ -321,14 +321,14 @@
 
 
 (defun find-highest-resolution ()
-  
+
   (let ((sx 0) (sy 0) (found #f) (mult GAME_MIN_RES_MULT) (lastr 0) (hir 0) (lor 0))
     (pc-get-screen-size -1 (the (pointer int32) (& sx)) (the (pointer int32) (& sy)))
     (if (> sy sx)
         (set! sy sx))
-      
+
     (until found
-      
+
       (dotimes (i (-> *resolutions* length))
         (let ((thisr (the int (* mult (the float (-> *resolutions* i))))))
         (cond
@@ -342,15 +342,15 @@
            (set! lastr thisr))
           )
         ))
-      
+
       (if (not found)
           (*! mult 2))
-      
+
       )
     (set! hir lastr)
     mult
     )
-  
+
   )
 
 (defmacro add-resolution-option (x y)
@@ -361,7 +361,7 @@
       (set! (-> option param1) (the float ,x))
       (set! (-> option param2) (the float ,y))
       (set! (-> option scale) #t)
-      
+
       (1+! (-> *temp-options* length))
       )
   )
@@ -373,7 +373,7 @@
       (set! (-> option name) ,text-id)
       (set! (-> option param1) (the float ,flava))
       (set! (-> option scale) #t)
-      
+
       (1+! (-> *temp-options* length))
       )
   )
@@ -384,35 +384,34 @@
       (set! (-> option option-type) (game-option-type button))
       (set! (-> option name) (game-text-id back))
       (set! (-> option scale) #t)
-      
+
       (1+! (-> *temp-options* length))
       )
   )
 
 (defun build-resolution-options ((skip int) (amount int))
-  
+
   (set! (-> *temp-options* length) 0)
-  
-  (let ((done? #f) (mult (find-highest-resolution)) (sx 0) (sy 0) (flip? #f) (aspect 0.0)
+
+  (let* ((done? #f) (mult (find-highest-resolution)) (sx 0) (sy 0)
+        (display-mode (pc-get-fullscreen))
         ;; hack - do not use screen resolution in windowed mode, taskbar etc. messes it up and makes it useless!
-        (skip? (= 'windowed (pc-get-fullscreen)))
+        (skip? (= 'windowed display-mode))
         ;; shortcut
         (max-options (1- (-> *temp-options* allocated-length))))
-    
+
     ;; get screen size (for capping)
     (pc-get-screen-size -1 (the (pointer int32) (& sx)) (the (pointer int32) (& sy)))
-    ;; portrait mode. unused
-    (set! flip? (> sy sx))
-    
-    (case (pc-get-fullscreen)
-      (('fullscreen)
+
+    (case display-mode
+      #|(('fullscreen)
         ;; insert psyched out trollface here
         (set! sx 0)
         (set! sy 0)
         (countdown (i (pc-get-screen-vmode-count))
           (let ((thisx 0) (thisy 0))
             (pc-get-screen-size i (the (pointer int32) (& thisx)) (the (pointer int32) (& thisy)))
-            
+
             (when (not (and (= thisx sx) (= thisy sy)))
                   (add-resolution-option thisx thisy)
                   )
@@ -420,24 +419,32 @@
             (set! sy thisy)
             )
           )
-        )
-        
+        )|#
+
       (else
         ;; extra button when fullscreen
         (when (not skip?)
             (add-resolution-option sx sy)
             (set! (-> *temp-options* (1- (length *temp-options*)) name) (game-text-id fit-to-screen))
             )
+
+        ;; supersampling in fullscreen and stuff. this results in way too many resolution options lol.
+        (when (!= display-mode 'windowed)
+            (*! sx 4)
+            (*! sy 4)
+            (*! mult 4)
+            )
+
         ;; game aspect ratio
-        (set! aspect (-> *pc-settings* aspect-ratio))
-        
+        (let ((aspect (-> *pc-settings* aspect-ratio)))
+
         (until (or done? (= (length *temp-options*) max-options))
           (countdown (i (-> *resolutions* length))
             (let* ((thisr (the int (* mult (the float (-> *resolutions* i)))))
                   (thisx (the int (* aspect (the float thisr))))
                   (thisy thisr)
                   )
-              
+
               (when (and (not skip?) (< (length *temp-options*) max-options)
                          (<= thisy sy) (<= thisx sx)
                          (= aspect (/ (the float thisx) (the float thisy)))
@@ -446,31 +453,38 @@
                 ))
             (false! skip?)
             )
-          
+
           (if (> mult GAME_MIN_RES_MULT)
-              (*! mult 0.5)
+              (/! mult 2)
               (true! done?))
-          )
+          ))
        )
       )
+    ;; extra funny options
+    (when (and (!= display-mode 'windowed)
+               (< (length *temp-options*) (- (-> *temp-options* allocated-length) 3)))
+        (add-resolution-option 512 224)
+        (add-resolution-option 512 448)
+        )
+    
     (add-back-option)
     )
-  
-  
+
+
   *temp-options*
   )
 
 (defun build-flava-player-options ((mus-idx int))
-  
+
   (set! (-> *temp-options* length) 0)
-  
+
   (dotimes (i (-> *music-flava-name-list* mus-idx length))
       (if (nonzero? (-> *music-flava-name-list* mus-idx i))
           (add-flava-player-option (-> *music-flava-name-list* mus-idx i) i)
           )
       )
   (add-back-option)
-  
+
   *temp-options*
   )
 
@@ -511,7 +525,7 @@
 
 (defun progress-draw-carousell-from-string-list ((options (array game-text-id)) (font font-context) (y-off int) (new-val int))
   "yep."
-  
+
   (let ((old-lang (-> *progress-carousell* selection))
         (new-lang new-val)
         (max-lang (length options))
@@ -647,12 +661,12 @@
   (set! (-> *options-remap* (progress-screen flava-player))               *temp-options*)
   (set! (-> *options-remap* (progress-screen memcard-disable-auto-save))  *yes-no-options*)
   (set! (-> *options-remap* (progress-screen memcard-auto-save-disabled)) *ok-options*)
-  
+
   ;; set default params
   (set! (-> *progress-state* aspect-ratio-choice) (get-aspect-ratio))
   (set! (-> *progress-state* video-mode-choice) (get-video-mode))
   (set! (-> *progress-state* yes-no-choice) #f)
-  
+
   ;; set variable pointers
   (set! (-> *game-options* 0 value-to-modify) (&-> *setting-control* default vibration))
   (set! (-> *game-options* 1 value-to-modify) (&-> *setting-control* default play-hints))
@@ -677,11 +691,11 @@
   (set! (-> *game-options-pc* 7 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
-  ;(set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *graphic-options-pc* 5 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-no-frame-rate-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-no-frame-rate-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
-  ;(set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *misc-options* 0 value-to-modify) (&-> *pc-settings* discord-rpc?))
   (set! (-> *misc-options* 1 value-to-modify) (&-> *pc-settings* money-starburst?))
   (set! (-> *camera-options* 0 value-to-modify) (&-> *pc-settings* first-camera-h-inverted?))
@@ -697,7 +711,7 @@
   (set! (-> *sound-options-pc* 2 value-to-modify) (&-> *setting-control* default dialog-volume))
   ;(set! (-> *sound-options-pc* 3 value-to-modify) (&-> *pc-settings* music-fadein?))
   (set! (-> *progress-carousell* aspect-native-choice) (-> *pc-settings* use-vis?))
-  
+
   ;; scroll stuff!
   (progress-scroll-reset)
   (none)
@@ -1339,7 +1353,7 @@
 
 (defmethod respond-memcard progress ((obj progress))
   "logic for handling input in memcard screens."
-  
+
   (let ((s5-0 (-> obj card-info)))
     (when (and s5-0 (not (-> obj in-transition)))
       (when (or (cpad-pressed? 0 x) (cpad-pressed? 0 circle))
@@ -1993,7 +2007,7 @@
 
 
 ;; override the post handler for progress-normal
-(set! (-> progress-normal post) 
+(set! (-> progress-normal post)
   (lambda :behavior progress ()
     (when (progress-scrolling?)
       (seek! (-> *progress-scroll* transition) 1.0 (* (/ 1.75 512) (-> self transition-speed) (-> *display* time-adjust-ratio)))
@@ -2156,7 +2170,7 @@
     ))
 
 ;; override the enter handler for progress-going-out
-(set! (-> progress-going-out enter) 
+(set! (-> progress-going-out enter)
   (lambda :behavior progress ()
     (sound-play "menu-close")
     (hide-progress-icons)
