@@ -140,7 +140,6 @@ static int gl_init(GfxSettings& settings) {
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
   }
   glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
   return 0;
 }

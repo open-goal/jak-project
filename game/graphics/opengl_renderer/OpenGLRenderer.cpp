@@ -483,6 +483,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     } else {
       lg::error("bad framebuffer setup. fbo: {}, tex: {}, zbuf: {}, fbo2: {}, tex2: {}",
                 fbo_state.fbo, fbo_state.tex, fbo_state.zbuf, fbo_state.fbo2, fbo_state.tex2);
+      lg::error("size was: {} x {}\n", fbo_state.width, fbo_state.height);
       fbo_state.delete_objects();
     }
   } else {

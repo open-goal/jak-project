@@ -64,6 +64,7 @@
     ((= 'windowed (-> obj display-mode))
       (set! (-> obj win-width) width)
       (set! (-> obj win-height) height)
+      (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height)))
       )
     (else
       (set! (-> obj width) width)
@@ -197,15 +198,10 @@
         (if (< (pc-get-screen-rate -1) (-> obj target-fps))
             (pc-set-vsync #f))
         (pc-set-frame-rate (-> obj target-fps)))
-
-    (if (and (= 'windowed (-> obj display-mode))
-             (or (!= (-> obj win-width) (-> obj real-width))
-                 (!= (-> obj win-height) (-> obj real-height))))
-        (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
     )
   ;; do game resolution
   (if (= (-> obj display-mode) 'windowed)
-      (pc-set-game-resolution (-> obj win-width) (-> obj win-height))
+      (pc-set-game-resolution (-> obj real-width) (-> obj real-height))
       (pc-set-game-resolution (-> obj width) (-> obj height)))
 
   ;; set msaa sample rate. if invalid, just reset to 4.
@@ -1017,7 +1013,6 @@
 
 
 (define *pc-settings* (new 'global 'pc-settings))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; entity debugging
