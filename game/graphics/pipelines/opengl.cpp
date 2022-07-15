@@ -517,8 +517,9 @@ void GLDisplay::render() {
   // render game!
   if (g_gfx_data->debug_gui.should_advance_frame()) {
     auto p = scoped_prof("game-render");
-    render_game_frame(Gfx::g_global_settings.game_res_w, Gfx::g_global_settings.game_res_h, win_w,
-                      win_h, lbox_w, lbox_h, Gfx::g_global_settings.msaa_samples);
+    render_game_frame(windowed() ? win_w : Gfx::g_global_settings.game_res_w,
+                      windowed() ? win_h : Gfx::g_global_settings.game_res_h, win_w, win_h, lbox_w,
+                      lbox_h, Gfx::g_global_settings.msaa_samples);
   }
 
   if (g_gfx_data->debug_gui.should_gl_finish()) {
