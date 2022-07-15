@@ -28,7 +28,7 @@ class Sprite3 : public BucketRenderer {
                         ScopedProfilerNode& prof);
   void distort_dma(DmaFollower& dma, ScopedProfilerNode& prof);
   void distort_setup(ScopedProfilerNode& prof);
-  void distort_setup_instanced(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void distort_setup_instanced(ScopedProfilerNode& prof);
   void distort_draw(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void distort_draw_instanced(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void distort_draw_common(SharedRenderState* render_state, ScopedProfilerNode& prof);
@@ -117,8 +117,8 @@ class Sprite3 : public BucketRenderer {
     GLuint vao;
     GLuint vertex_buffer;    // contains vertex data for each possible sprite resolution (3-11)
     GLuint instance_buffer;  // contains all instance specific data for each sprite per frame
-    int last_width = -1;
-    int last_height = -1;
+    float last_aspect_x = -1.0;
+    float last_aspect_y = -1.0;
     bool vertex_data_changed = false;
   } m_distort_instanced_ogl;
 
@@ -130,6 +130,7 @@ class Sprite3 : public BucketRenderer {
   std::vector<SpriteDistortVertex> m_sprite_distorter_vertices;
   std::vector<u32> m_sprite_distorter_indices;
   SpriteDistorterSetup m_sprite_distorter_setup;  // direct data
+  math::Vector4f m_sprite_distorter_sine_tables_aspect;
   SpriteDistorterSineTables m_sprite_distorter_sine_tables;
   std::vector<SpriteDistortFrameData> m_sprite_distorter_frame_data;
   std::vector<SpriteDistortVertex> m_sprite_distorter_vertices_instanced;

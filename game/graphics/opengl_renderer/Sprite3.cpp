@@ -314,11 +314,11 @@ void Sprite3::render_distorter(DmaFollower& dma,
     return;
   }
 
-  // Setup vertex data
+  // Set up vertex data
   {
     auto prof_node = prof.make_scoped_child("setup");
     if (m_enable_distort_instancing) {
-      distort_setup_instanced(render_state, prof_node);
+      distort_setup_instanced(prof_node);
     } else {
       distort_setup(prof_node);
     }
@@ -371,6 +371,18 @@ void Sprite3::distort_dma(DmaFollower& dma, ScopedProfilerNode& /*prof*/) {
   ASSERT(alpha.b_mode() == GsAlpha::BlendMode::DEST);
   ASSERT(alpha.c_mode() == GsAlpha::BlendMode::SOURCE);
   ASSERT(alpha.d_mode() == GsAlpha::BlendMode::DEST);
+
+  // Next is the aspect used by the sine tables (PC only)
+  //
+  // This was added to let the renderer reliably detect when the sine tables changed,
+  // which is whenever the aspect ratio changed. However, the tables aren't always
+  // updated on the same frame that the aspect changed, so this just lets the game
+  // easily notify the renderer when it finally does get updated.
+  auto sprite_distort_tables_aspect = dma.read_and_advance();
+  ASSERT(sprite_distort_tables_aspect.size_bytes == 16);
+  ASSERT(sprite_distort_tables_aspect.vifcode1().kind == VifCode::Kind::PC_PORT);
+  memcpy(&m_sprite_distorter_sine_tables_aspect, sprite_distort_tables_aspect.data,
+         sizeof(math::Vector4f));
 
   // Next thing should be the sine tables
   auto sprite_distorter_tables = dma.read_and_advance();
@@ -517,15 +529,12 @@ void Sprite3::distort_setup(ScopedProfilerNode& /*prof*/) {
  *
  * Required sprite-specific frame data is kept as is and is grouped by resolution.
  */
-void Sprite3::distort_setup_instanced(SharedRenderState* render_state,
-                                      ScopedProfilerNode& /*prof*/) {
-  if (m_distort_instanced_ogl.last_width != render_state->fbo_state.width ||
-      m_distort_instanced_ogl.last_height != render_state->fbo_state.height) {
-    m_distort_instanced_ogl.last_width = render_state->fbo_state.width;
-    m_distort_instanced_ogl.last_height = render_state->fbo_state.height;
-
-    // Window dimensions changed, which means the aspect ratio may have changed, which means we have
-    // a new sine table
+void Sprite3::distort_setup_instanced(ScopedProfilerNode& /*prof*/) {
+  if (m_distort_instanced_ogl.last_aspect_x != m_sprite_distorter_sine_tables_aspect.x() ||
+      m_distort_instanced_ogl.last_aspect_y != m_sprite_distorter_sine_tables_aspect.y()) {
+    m_distort_instanced_ogl.last_aspect_x = m_sprite_distorter_sine_tables_aspect.x();
+    m_distort_instanced_ogl.last_aspect_y = m_sprite_distorter_sine_tables_aspect.y();
+    // Aspect ratio changed, which means we have a new sine table
     m_sprite_distorter_vertices_instanced.clear();
 
     // Build a mesh for every possible distort sprite resolution
