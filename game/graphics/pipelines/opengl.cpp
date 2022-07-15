@@ -373,10 +373,10 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int /*screen*/) {
         backup_params();
       }
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
-      glfwSetWindowAttrib(m_window, GLFW_DECORATED, GLFW_TRUE);
+      glfwSetWindowAttrib(m_window, GLFW_DECORATED, GLFW_FALSE);
       glfwSetWindowFocusCallback(m_window, NULL);
       glfwSetWindowAttrib(m_window, GLFW_FLOATING, GLFW_FALSE);
-      glfwSetWindowMonitor(m_window, monitor, 0, 0, vmode->width, vmode->height, 60);
+      glfwSetWindowMonitor(m_window, monitor, 0, 0, vmode->width, vmode->height, GLFW_DONT_CARE);
       set_imgui_visible(false);
     } break;
     case GfxDisplayMode::Borderless: {
@@ -403,9 +403,10 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int /*screen*/) {
 GfxDisplayMode GLDisplay::get_fullscreen() {
   GLFWmonitor* monitor = glfwGetPrimaryMonitor();  // todo
   const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
-  if (width() >= vmode->width && height() >= vmode->height) {
-    return glfwGetWindowAttrib(m_window, GLFW_DECORATED) == GLFW_TRUE ? GfxDisplayMode::Fullscreen
-                                                                      : GfxDisplayMode::Borderless;
+  if (glfwGetWindowMonitor(m_window) != NULL) {
+    return GfxDisplayMode::Fullscreen;
+  } else if (width() >= vmode->width && height() >= vmode->height) {
+    return GfxDisplayMode::Borderless;
   } else {
     return GfxDisplayMode::Windowed;
   }
