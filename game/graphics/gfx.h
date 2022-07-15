@@ -76,6 +76,13 @@ struct GfxGlobalSettings {
   int lbox_w;
   int lbox_h;
 
+  // actual game resolution
+  int game_res_w = 640;
+  int game_res_h = 480;
+
+  // multi-sampled anti-aliasing sample count. 1 = disabled.
+  int msaa_samples = 4;
+
   // current renderer
   const GfxRendererModule* renderer;
 
@@ -137,6 +144,8 @@ void set_vsync(bool vsync);
 void set_letterbox(int w, int h);
 void set_fullscreen(GfxDisplayMode mode, int screen);
 void set_window_lock(bool lock);
+void set_game_resolution(int w, int h);
+void set_msaa(int samples);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);

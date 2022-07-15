@@ -274,8 +274,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<DirectRenderer>("debug", BucketCategory::OTHER, BucketId::DEBUG, 0x20000);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf", BucketCategory::OTHER,
                                        BucketId::DEBUG_NO_ZBUF, 0x8000);
-  init_bucket_renderer<DirectRenderer>("subtitle", BucketCategory::OTHER, BucketId::SUBTITLE,
-                                       0x2000);
+  init_bucket_renderer<DirectRenderer>("subtitle", BucketCategory::OTHER, BucketId::SUBTITLE, 2000);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
@@ -303,8 +302,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");
-    setup_frame(settings.window_width_px, settings.window_height_px, settings.lbox_width_px,
-                settings.lbox_height_px);
+    setup_frame(settings);
   }
 
   {
@@ -364,8 +362,8 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   }
 
   if (settings.save_screenshot) {
-    finish_screenshot(settings.screenshot_path, settings.window_width_px, settings.window_height_px,
-                      settings.lbox_width_px, settings.lbox_height_px);
+    finish_screenshot(settings.screenshot_path, m_render_state.fbo_state.width,
+                      m_render_state.fbo_state.height, 0, 0, m_render_state.fbo_state.fbo2);
   }
 }
 
@@ -404,21 +402,104 @@ void OpenGLRenderer::draw_renderer_selection_window() {
 /*!
  * Pre-render frame setup.
  */
-void OpenGLRenderer::setup_frame(int window_width_px,
-                                 int window_height_px,
-                                 int offset_x,
-                                 int offset_y) {
-  glViewport(offset_x, offset_y, window_width_px, window_height_px);
+void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
+  auto& fbo_state = m_render_state.fbo_state;
+
+  // restart the buffers if settings changed.
+  if (settings.game_res_w != fbo_state.width || settings.game_res_h != fbo_state.height ||
+      settings.msaa_samples != fbo_state.msaa) {
+    fbo_state.delete_objects();
+  }
+
+  if (fbo_state.fbo == -1 || fbo_state.fbo2 == -1 || fbo_state.tex == -1 || fbo_state.tex2 == -1 ||
+      fbo_state.zbuf == -1) {
+    fbo_state.width = settings.game_res_w;
+    fbo_state.height = settings.game_res_h;
+    fbo_state.msaa = settings.msaa_samples;
+
+    bool bad = false;
+
+    // make framebuffer object
+    if (fbo_state.fbo == -1) {
+      glGenFramebuffers(1, &fbo_state.fbo);
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo);
+
+    // make texture that will hold the colors of the framebuffer
+    if (fbo_state.tex == -1) {
+      glGenTextures(1, &fbo_state.tex);
+    }
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.tex);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.msaa, GL_RGBA8, fbo_state.width,
+                            fbo_state.height, GL_TRUE);
+
+    // make depth and stencil buffers that will hold the... depth and stencil buffers
+    if (fbo_state.zbuf == -1) {
+      glGenRenderbuffers(1, &fbo_state.zbuf);
+    }
+    glBindRenderbuffer(GL_RENDERBUFFER, fbo_state.zbuf);
+    glRenderbufferStorageMultisample(GL_RENDERBUFFER, fbo_state.msaa, GL_DEPTH24_STENCIL8,
+                                     fbo_state.width, fbo_state.height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
+                              fbo_state.zbuf);
+
+    // attach texture to framebuffer as target for colors
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE,
+                           fbo_state.tex, 0);
+
+    glDrawBuffers(1, fbo_state.render_targets);
+
+    bad |= glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE;
+
+    // make framebuffer object
+    if (fbo_state.fbo2 == -1) {
+      glGenFramebuffers(1, &fbo_state.fbo2);
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo2);
+
+    // make texture that will hold the msaa resolved color buffer
+    if (fbo_state.tex2 == -1) {
+      glGenTextures(1, &fbo_state.tex2);
+    }
+    glActiveTexture(GL_TEXTURE30);
+    glBindTexture(GL_TEXTURE_2D, fbo_state.tex2);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, fbo_state.width, fbo_state.height, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // attach texture to framebuffer as target for colors
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_state.tex2, 0);
+
+    glDrawBuffers(1, fbo_state.render_targets);
+
+    bad |= glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE;
+
+    if (!bad) {
+      glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo);
+    } else {
+      lg::error("bad framebuffer setup. fbo: {}, tex: {}, zbuf: {}, fbo2: {}, tex2: {}",
+                fbo_state.fbo, fbo_state.tex, fbo_state.zbuf, fbo_state.fbo2, fbo_state.tex2);
+      fbo_state.delete_objects();
+    }
+  } else {
+    // we have the objects. bind framebuffer.
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo);
+  }
+  glViewport(0, 0, settings.game_res_w, settings.game_res_h);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClearDepth(0.0);
   glDepthMask(GL_TRUE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   glDisable(GL_BLEND);
 
-  m_render_state.window_width_px = window_width_px;
-  m_render_state.window_height_px = window_height_px;
-  m_render_state.window_offset_x_px = offset_x;
-  m_render_state.window_offset_y_px = offset_y;
+  m_render_state.window_width_px = settings.window_width_px;
+  m_render_state.window_height_px = settings.window_height_px;
+  m_render_state.window_offset_x_px = settings.lbox_width_px;
+  m_render_state.window_offset_y_px = settings.lbox_height_px;
 }
 
 /*!
@@ -488,10 +569,14 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
                                        int width,
                                        int height,
                                        int x,
-                                       int y) {
+                                       int y,
+                                       GLuint fbo) {
   std::vector<u32> buffer(width * height);
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
-  glReadBuffer(GL_BACK);
+  GLint oldbuf;
+  glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &oldbuf);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+  glReadBuffer(GL_COLOR_ATTACHMENT0);
   glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
   // flip upside down in place
   for (int h = 0; h < height / 2; h++) {
@@ -505,19 +590,44 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
     px |= 0xff000000;
   }
   file_util::write_rgba_png(output_name, buffer.data(), width, height);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, oldbuf);
 }
 
 void OpenGLRenderer::do_pcrtc_effects(float alp,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
-  if (alp < 1) {
-    glDisable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
-    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
-    glBlendEquation(GL_FUNC_ADD);
+  int w = render_state->fbo_state.width;
+  int h = render_state->fbo_state.height;
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, render_state->fbo_state.fbo);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, render_state->fbo_state.fbo2);
+  glBlitFramebuffer(0,                    // srcX0
+                    0,                    // srcY0
+                    w,                    // srcX1
+                    h,                    // srcY1
+                    0,                    // dstX0
+                    0,                    // dstY0
+                    w,                    // dstX1
+                    h,                    // dstY1
+                    GL_COLOR_BUFFER_BIT,  // mask
+                    GL_LINEAR             // filter
+  );
 
-    m_blackout_renderer.draw(Vector4f(0, 0, 0, 1.f - alp), render_state, prof);
+  // Render to the screen directly now
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(render_state->window_offset_x_px, render_state->window_offset_y_px,
+             render_state->window_width_px, render_state->window_height_px);
 
-    glEnable(GL_DEPTH_TEST);
-  }
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClearDepth(0.0);
+  glDepthMask(GL_TRUE);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+  glDisable(GL_BLEND);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+  glBlendEquation(GL_FUNC_ADD);
+
+  m_blackout_renderer.draw(Vector4f(0, 0, 0, alp), render_state, prof);
+
+  glEnable(GL_DEPTH_TEST);
 }

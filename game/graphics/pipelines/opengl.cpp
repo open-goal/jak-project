@@ -140,7 +140,6 @@ static int gl_init(GfxSettings& settings) {
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
   }
   glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
-  glfwWindowHint(GLFW_SAMPLES, 1);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
   return 0;
@@ -263,7 +262,13 @@ static bool endsWith(std::string_view str, std::string_view suffix) {
          0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
 }
 
-void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
+void render_game_frame(int game_width,
+                       int game_height,
+                       int window_width,
+                       int window_height,
+                       int lbox_width,
+                       int lbox_height,
+                       int msaa_samples) {
   // wait for a copied chain.
   bool got_chain = false;
   {
@@ -278,16 +283,32 @@ void render_game_frame(int width, int height, int lbox_width, int lbox_height) {
   if (got_chain) {
     g_gfx_data->frame_idx_of_input_data = g_gfx_data->frame_idx;
     RenderOptions options;
-    options.window_height_px = height;
-    options.window_width_px = width;
+    options.game_res_w = game_width;
+    options.game_res_h = game_height;
+    options.window_height_px = window_height;
+    options.window_width_px = window_width;
     options.lbox_height_px = lbox_height;
     options.lbox_width_px = lbox_width;
+    options.msaa_samples = msaa_samples;
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.draw_subtitle_editor_window = g_gfx_data->debug_gui.should_draw_subtitle_editor();
-    options.save_screenshot = g_gfx_data->debug_gui.get_screenshot_flag();
+    options.save_screenshot = false;
+    if (g_gfx_data->debug_gui.get_screenshot_flag()) {
+      options.save_screenshot = true;
+      options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
+      options.game_res_h = g_gfx_data->debug_gui.screenshot_height;
+      options.msaa_samples = g_gfx_data->debug_gui.screenshot_samples;
+    }
     options.draw_small_profiler_window = g_gfx_data->debug_gui.small_profiler;
     options.pmode_alp_register = g_gfx_data->pmode_alp;
+
+    GLint msaa_max;
+    glGetIntegerv(GL_MAX_SAMPLES, &msaa_max);
+    if (options.msaa_samples > msaa_max) {
+      options.msaa_samples = msaa_max;
+    }
+
     if (options.save_screenshot) {
       // ensure the screenshot has an extension
       std::string temp_path = g_gfx_data->debug_gui.screenshot_name();
@@ -471,8 +492,8 @@ void GLDisplay::render() {
   }
 
   // window size
-  int width = Gfx::g_global_settings.lbox_w;
-  int height = Gfx::g_global_settings.lbox_h;
+  int win_w = Gfx::g_global_settings.lbox_w;
+  int win_h = Gfx::g_global_settings.lbox_h;
   int fbuf_w, fbuf_h;
   glfwGetFramebufferSize(m_window, &fbuf_w, &fbuf_h);
 #ifdef _WIN32
@@ -482,9 +503,9 @@ void GLDisplay::render() {
   }
 #endif
   // horizontal letterbox size
-  int lbox_w = (fbuf_w - width) / 2;
+  int lbox_w = (fbuf_w - win_w) / 2;
   // vertical letterbox size
-  int lbox_h = (fbuf_h - height) / 2;
+  int lbox_h = (fbuf_h - win_h) / 2;
 #ifdef _WIN32
   if (last_fullscreen_mode() == GfxDisplayMode::Borderless) {
     // add one pixel of vertical letterbox on borderless to make up for extra line
@@ -495,7 +516,8 @@ void GLDisplay::render() {
   // render game!
   if (g_gfx_data->debug_gui.should_advance_frame()) {
     auto p = scoped_prof("game-render");
-    render_game_frame(width, height, lbox_w, lbox_h);
+    render_game_frame(Gfx::g_global_settings.game_res_w, Gfx::g_global_settings.game_res_h, win_w,
+                      win_h, lbox_w, lbox_h, Gfx::g_global_settings.msaa_samples);
   }
 
   if (g_gfx_data->debug_gui.should_gl_finish()) {
