@@ -191,7 +191,22 @@
 
 (define-perm *collide-work* collide-work (new 'global 'collide-work))
 
+(defglobalconstant BIG_COLLIDE_CACHE_SIZE 5000)
 (define-perm *collide-cache* collide-cache (new 'global 'collide-cache))
+
+(#when PC_PORT
+  ;; disgusting hack to let us overflow the collide cache up to 5k triangles
+  (malloc 'global (* (size-of collide-cache-tri) BIG_COLLIDE_CACHE_SIZE))
+  ;; but start it at the default.
+  (define *collide-cache-max-tris* 460)
+(defmacro activate-big-collide-cache! ()
+  `(set! *collide-cache-max-tris* BIG_COLLIDE_CACHE_SIZE)
+  )
+
+  )
+
+
+
 
 (define-perm *collide-list* collide-list (new 'global 'collide-list))
 
