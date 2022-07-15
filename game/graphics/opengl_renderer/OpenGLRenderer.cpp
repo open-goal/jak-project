@@ -462,7 +462,6 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     if (fbo_state.tex2 == -1) {
       glGenTextures(1, &fbo_state.tex2);
     }
-    glActiveTexture(GL_TEXTURE30);
     glBindTexture(GL_TEXTURE_2D, fbo_state.tex2);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, fbo_state.width, fbo_state.height, 0, GL_RGBA,
                  GL_UNSIGNED_BYTE, nullptr);

@@ -6,7 +6,7 @@ out vec4 color;
 
 uniform vec4 fragment_color;
 
-layout (binding = 30) uniform sampler2D screen_tex;
+layout (binding = 0) uniform sampler2D screen_tex;
 
 void main() {
   color = vec4(texture(screen_tex, screen_pos).rgb * fragment_color.a, 1.0);
