@@ -16,41 +16,6 @@ struct LevelVis {
   u8 data[2048];
 };
 
-struct FboState {
-  GLuint fbo = -1;
-  GLuint tex = -1;
-  GLuint fbo2 = -1;
-  GLuint tex2 = -1;
-  GLuint zbuf = -1;
-  GLenum render_targets[1] = {GL_COLOR_ATTACHMENT0};
-  int width = 640;
-  int height = 480;
-  int msaa = 4;
-
-  void delete_objects() {
-    if (fbo != -1) {
-      glDeleteFramebuffers(1, &fbo);
-      fbo = -1;
-    }
-    if (tex != -1) {
-      glDeleteTextures(1, &tex);
-      tex = -1;
-    }
-    if (fbo2 != -1) {
-      glDeleteFramebuffers(1, &fbo2);
-      fbo2 = -1;
-    }
-    if (tex2 != -1) {
-      glDeleteTextures(1, &tex2);
-      tex2 = -1;
-    }
-    if (zbuf != -1) {
-      glDeleteRenderbuffers(1, &zbuf);
-      zbuf = -1;
-    }
-  }
-};
-
 class EyeRenderer;
 /*!
  * The main renderer will contain a single SharedRenderState that's passed to all bucket renderers.
@@ -92,12 +57,21 @@ struct SharedRenderState {
 
   std::string load_status_debug;
 
-  int window_width_px;
-  int window_height_px;
-  int window_offset_x_px;
-  int window_offset_y_px;
+  // Information for renderers that need to read framebuffers:
+  // Most renderers can just use the framebuffer/glViewport set up by OpenGLRenderer, but special
+  // effects like sprite distort that read the framebuffer will need to know the details of the
+  // framebuffer setup.
 
-  FboState fbo_state;
+  // the framebuffer that bucket renderers should render to.
+  int render_fb_w = 0;
+  int render_fb_h = 0;
+  GLuint render_fb = -1;
+
+  // the region within that framebuffer to draw to.
+  int draw_region_w = 0;
+  int draw_region_h = 0;
+  int draw_offset_x = 0;
+  int draw_offset_y = 0;
 };
 
 /*!

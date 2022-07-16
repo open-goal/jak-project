@@ -140,7 +140,7 @@ void FullScreenDraw::draw(const math::Vector4f& color,
                           ScopedProfilerNode& prof) {
   glBindVertexArray(m_vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
-  auto& shader = render_state->shaders[ShaderId::POST_PROCESSING];
+  auto& shader = render_state->shaders[ShaderId::SOLID_COLOR];
   shader.activate();
   glUniform4f(glGetUniformLocation(shader.id(), "fragment_color"), color[0], color[1], color[2],
               color[3]);
