@@ -567,7 +567,9 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   }
 
   glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
-
+  ASSERT_MSG(settings.game_res_w > 0 && settings.game_res_h > 0,
+             fmt::format("Bad viewport size from game_res: {}x{}\n", settings.game_res_w,
+                         settings.game_res_h));
   glViewport(0, 0, settings.game_res_w, settings.game_res_h);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClearDepth(0.0);
@@ -610,6 +612,11 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
 
   m_render_state.render_fb = m_fbo_state.render_fbo->fbo_id;
 
+  ASSERT_MSG(m_render_state.draw_region_w > 0 && m_render_state.draw_region_h > 0,
+             fmt::format("Bad draw region: {}x{}: squash {} fb: {}x{} draw: {}x{}\n",
+                         m_render_state.draw_region_w, m_render_state.draw_region_h, squash,
+                         settings.window_framebuffer_width, settings.window_framebuffer_height,
+                         settings.draw_region_width, settings.draw_region_height));
   glViewport(m_render_state.draw_offset_x, m_render_state.draw_offset_y,
              m_render_state.draw_region_w, m_render_state.draw_region_h);
 }
@@ -759,6 +766,7 @@ void OpenGLRenderer::do_pcrtc_effects(float alp,
     glEnable(GL_BLEND);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
     glBlendEquation(GL_FUNC_ADD);
+    glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
 
     m_blackout_renderer.draw(Vector4f(0, 0, 0, 1.f - alp), render_state, prof);
 
