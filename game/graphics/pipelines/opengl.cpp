@@ -287,17 +287,19 @@ void render_game_frame(int game_width,
     options.game_res_h = game_height;
     options.window_framebuffer_width = window_fb_width;
     options.window_framebuffer_height = window_fb_height;
-
+    // options.draw_region_height = draw_region_height;
+    // options.draw_region_width = draw_region_width;
     // rescale the draw region to match the resolution used for the game resolution.
     float draw_aspect = (float)draw_region_width / (float)draw_region_height;
     float render_aspect = (float)game_width / (float)game_height;
     if (draw_aspect < render_aspect) {
       options.draw_region_height = options.game_res_h;
-      options.draw_region_width = 0.1f + (options.game_res_h * render_aspect);
+      options.draw_region_width = 0.1f + (options.game_res_h * draw_aspect);
     } else {
       options.draw_region_width = options.game_res_w;
-      options.draw_region_height = 0.1f + (options.game_res_w / render_aspect);
+      options.draw_region_height = 0.1f + (options.game_res_w / draw_aspect);
     }
+
     options.msaa_samples = msaa_samples;
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();

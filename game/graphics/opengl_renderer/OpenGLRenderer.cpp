@@ -581,8 +581,18 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   m_render_state.render_fb_h = settings.game_res_h;
   m_render_state.draw_region_w = settings.draw_region_width;
   m_render_state.draw_region_h = settings.draw_region_height;
-  m_render_state.draw_offset_x = (settings.game_res_w - settings.draw_region_width) / 2;
-  m_render_state.draw_offset_y = (settings.game_res_h - settings.draw_region_height) / 2;
+
+  float fb_aspect = (float)settings.window_framebuffer_width / (float)settings.window_framebuffer_height;
+  float draw_aspect = (float)settings.draw_region_width / (float)settings.draw_region_height;
+  float squash = fb_aspect / draw_aspect;
+  if (squash > 1) {
+    m_render_state.draw_region_w /= squash;
+  } else {
+    m_render_state.draw_region_h *= squash;
+  }
+
+  m_render_state.draw_offset_x = (settings.game_res_w - m_render_state.draw_region_w) / 2;
+  m_render_state.draw_offset_y = (settings.game_res_h - m_render_state.draw_region_h) / 2;
 
   if (settings.borderless_windows_hacks) {
     // pretend the framebuffer is 1 pixel shorter on borderless. fullscreen issues!
@@ -593,8 +603,8 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
 
   m_render_state.render_fb = m_fbo_state.render_fbo->fbo_id;
 
-  glViewport(m_render_state.draw_offset_x, m_render_state.draw_offset_y, settings.draw_region_width,
-             settings.draw_region_height);
+  glViewport(m_render_state.draw_offset_x, m_render_state.draw_offset_y, m_render_state.draw_region_w,
+             m_render_state.draw_region_h);
 }
 
 /*!
