@@ -513,6 +513,8 @@ Fbo make_fbo(int w, int h, int msaa, bool make_zbuf_and_stencil) {
 void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   // glfw controls the window framebuffer, so we just update the size:
   auto& window_fb = m_fbo_state.resources.window;
+  bool window_resized = window_fb.width != settings.window_framebuffer_width ||
+                        window_fb.height != settings.window_framebuffer_height;
   window_fb.valid = true;
   window_fb.is_window = true;
   window_fb.fbo_id = 0;
@@ -522,7 +524,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   window_fb.multisampled = false;
 
   // see if the render FBO is still applicable
-  if (!m_fbo_state.render_fbo ||
+  if (!m_fbo_state.render_fbo || window_resized ||
       !m_fbo_state.render_fbo->matches(settings.game_res_w, settings.game_res_h,
                                        settings.msaa_samples)) {
     // doesn't match, set up a new one for these settings
@@ -551,11 +553,15 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
       bool msaa_matches = window_fb.multisample_count == settings.msaa_samples;
 
       if (!resolution_matches && !msaa_matches) {
-        lg::info("FBO Setup: using second temporary buffer");
+        lg::info("FBO Setup: using second temporary buffer: res: {}x{} {}x{}", window_fb.width,
+                 window_fb.height, settings.game_res_w, settings.game_res_h);
+
         // we'll need a temporary fbo to do the msaa resolve step
         // non-multisampled, and doesn't need z/stencil
         m_fbo_state.resources.resolve_buffer =
             make_fbo(settings.game_res_w, settings.game_res_h, 1, false);
+      } else {
+        lg::info("FBO Setup: not using second temporary buffer");
       }
     }
   }
