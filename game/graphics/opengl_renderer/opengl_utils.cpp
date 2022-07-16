@@ -142,7 +142,6 @@ void FullScreenDraw::draw(const math::Vector4f& color,
   glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
   auto& shader = render_state->shaders[ShaderId::POST_PROCESSING];
   shader.activate();
-  glUniform1i(glGetUniformLocation(shader.id(), "screen_tex"), 0);
   glUniform4f(glGetUniformLocation(shader.id(), "fragment_color"), color[0], color[1], color[2],
               color[3]);
 
