@@ -3,13 +3,14 @@
 set -e
 
 DEST=${1}
-SOURCE=${2}
+BIN_SOURCE=${2}
+SOURCE=${3}
 
 mkdir -p $DEST
 
-cp $SOURCE/build/bin/gk.exe $DEST
-cp $SOURCE/build/bin/goalc.exe $DEST
-cp $SOURCE/build/bin/extractor.exe $DEST
+cp $BIN_SOURCE/gk.exe $DEST
+cp $BIN_SOURCE/goalc.exe $DEST
+cp $BIN_SOURCE/extractor.exe $DEST
 
 mkdir -p $DEST/data
 mkdir -p $DEST/data/launcher/
