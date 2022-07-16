@@ -579,18 +579,25 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
 
   m_render_state.render_fb_w = settings.game_res_w;
   m_render_state.render_fb_h = settings.game_res_h;
-  m_render_state.draw_region_w = settings.draw_region_width;
-  m_render_state.draw_region_h = settings.draw_region_height;
 
-  float fb_aspect = (float)settings.window_framebuffer_width / (float)settings.window_framebuffer_height;
+  // compare the aspect ratio of the frame buffer to the requested draw area.
+  float fb_aspect =
+      (float)settings.window_framebuffer_width / (float)settings.window_framebuffer_height;
   float draw_aspect = (float)settings.draw_region_width / (float)settings.draw_region_height;
   float squash = fb_aspect / draw_aspect;
+
+  // start with the full area
+  m_render_state.draw_region_w = m_render_state.render_fb_w;
+  m_render_state.draw_region_h = m_render_state.render_fb_h;
+
+  // and letterbox as needed
   if (squash > 1) {
     m_render_state.draw_region_w /= squash;
   } else {
     m_render_state.draw_region_h *= squash;
   }
 
+  // center the letterbox
   m_render_state.draw_offset_x = (settings.game_res_w - m_render_state.draw_region_w) / 2;
   m_render_state.draw_offset_y = (settings.game_res_h - m_render_state.draw_region_h) / 2;
 
@@ -603,8 +610,8 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
 
   m_render_state.render_fb = m_fbo_state.render_fbo->fbo_id;
 
-  glViewport(m_render_state.draw_offset_x, m_render_state.draw_offset_y, m_render_state.draw_region_w,
-             m_render_state.draw_region_h);
+  glViewport(m_render_state.draw_offset_x, m_render_state.draw_offset_y,
+             m_render_state.draw_region_w, m_render_state.draw_region_h);
 }
 
 /*!
