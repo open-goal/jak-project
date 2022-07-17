@@ -112,10 +112,6 @@ bool HasError() {
   }
 }
 
-void FocusCallback(GLFWwindow* window, int focused) {
-  glfwSetWindowAttrib(window, GLFW_FLOATING, focused);
-}
-
 }  // namespace
 
 static bool gl_inited = false;

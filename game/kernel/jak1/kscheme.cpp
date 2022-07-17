@@ -1038,14 +1038,14 @@ u64 call_method_of_type(u64 arg, Ptr<Type> type, u32 method_id) {
   if (((type.offset < SymbolTable2.offset || 0x7ffffff < type.offset) &&  // not in normal memory
        (type.offset < 0x84000 || 0x100000 <= type.offset))                // not in kernel memory
       || ((type.offset & OFFSET_MASK) != BASIC_OFFSET)) {                 // invalid type
-    cprintf("#<#%x has invalid type ptr #x%x>\n", arg, type.offset);
+    cprintf("#<#%x has invalid type ptr #x%x>\n", (u32)arg, type.offset);
   } else {
     auto type_tag = Ptr<Ptr<Type>>(type.offset - 4);
     if ((*type_tag).offset == *(s7 + FIX_SYM_TYPE_TYPE)) {
       auto f = type->get_method(method_id);
       return call_goal(f, arg, 0, 0, s7.offset, g_ee_main_mem);
     } else {
-      cprintf("#<#x%x has invalid type ptr #x%x, bad type #x%x>\n", arg, type.offset,
+      cprintf("#<#x%x has invalid type ptr #x%x, bad type #x%x>\n", (u32)arg, type.offset,
               (*type_tag).offset);
     }
   }
