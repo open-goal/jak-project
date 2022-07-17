@@ -506,10 +506,6 @@ void GLDisplay::render() {
   }
 #endif
 
-  if (fbuf_w == 0 || fbuf_h == 0) {
-    lg::error("Got zero sized framebuffer from glfwGetFramebufferSize.");
-  }
-
   // render game!
   if (g_gfx_data->debug_gui.should_advance_frame()) {
     auto p = scoped_prof("game-render");
