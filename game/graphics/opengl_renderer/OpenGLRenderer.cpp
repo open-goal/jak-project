@@ -594,9 +594,9 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
 
   // and letterbox as needed
   if (squash > 1) {
-    m_render_state.draw_region_w /= squash;
+    m_render_state.draw_region_w = ((float)m_render_state.draw_region_w / squash) + 0.1;
   } else {
-    m_render_state.draw_region_h *= squash;
+    m_render_state.draw_region_h = ((float)m_render_state.draw_region_h * squash) + 0.1;
   }
 
   // center the letterbox
@@ -612,11 +612,11 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
 
   m_render_state.render_fb = m_fbo_state.render_fbo->fbo_id;
 
-  ASSERT_MSG(m_render_state.draw_region_w > 0 && m_render_state.draw_region_h > 0,
-             fmt::format("Bad draw region: {}x{}: squash {} fb: {}x{} draw: {}x{}\n",
-                         m_render_state.draw_region_w, m_render_state.draw_region_h, squash,
-                         settings.window_framebuffer_width, settings.window_framebuffer_height,
-                         settings.draw_region_width, settings.draw_region_height));
+  if (m_render_state.draw_region_w <= 0 || m_render_state.draw_region_h <= 0) {
+    // trying to draw to 0 size region... opengl doesn't like this.
+    m_render_state.draw_region_w = 640;
+    m_render_state.draw_region_h = 480;
+  }
   glViewport(m_render_state.draw_offset_x, m_render_state.draw_offset_y,
              m_render_state.draw_region_w, m_render_state.draw_region_h);
 }
