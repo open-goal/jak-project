@@ -392,9 +392,8 @@ void DirectRenderer::update_gl_blend() {
       glBlendEquation(GL_FUNC_ADD);
     } else if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::SOURCE &&
                state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::SOURCE) {
-      // this is very weird...
-      glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
-      glBlendEquation(GL_FUNC_ADD);
+      // trick to disable alpha blending.
+      glDisable(GL_BLEND);
     } else if (state.a == GsAlpha::BlendMode::SOURCE &&
                state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
                state.c == GsAlpha::BlendMode::DEST && state.d == GsAlpha::BlendMode::DEST) {

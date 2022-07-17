@@ -303,6 +303,9 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");
     setup_frame(settings);
+    if (settings.gpu_sync) {
+      glFinish();
+    }
   }
 
   {
@@ -319,13 +322,16 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   // render the buckets!
   {
     auto prof = m_profiler.root()->make_scoped_child("buckets");
-    dispatch_buckets(dma, prof);
+    dispatch_buckets(dma, prof, settings.gpu_sync);
   }
 
   // apply effects done with PCRTC registers
   {
     auto prof = m_profiler.root()->make_scoped_child("pcrtc");
     do_pcrtc_effects(settings.pmode_alp_register, &m_render_state, prof);
+    if (settings.gpu_sync) {
+      glFinish();
+    }
   }
 
   if (settings.draw_render_debug_window) {
@@ -333,6 +339,9 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     draw_renderer_selection_window();
     // add a profile bar for the imgui stuff
     vif_interrupt_callback();
+    if (settings.gpu_sync) {
+      glFinish();
+    }
   }
 
   m_last_pmode_alp = settings.pmode_alp_register;
@@ -362,8 +371,19 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   }
 
   if (settings.save_screenshot) {
-    finish_screenshot(settings.screenshot_path, m_render_state.fbo_state.width,
-                      m_render_state.fbo_state.height, 0, 0, m_render_state.fbo_state.fbo2);
+    Fbo* screenshot_src;
+
+    // can't screenshot from a multisampled buffer directly -
+    if (m_fbo_state.resources.resolve_buffer.valid) {
+      screenshot_src = &m_fbo_state.resources.resolve_buffer;
+    } else {
+      screenshot_src = m_fbo_state.render_fbo;
+    }
+    finish_screenshot(settings.screenshot_path, screenshot_src->width, screenshot_src->height, 0, 0,
+                      screenshot_src->fbo_id);
+  }
+  if (settings.gpu_sync) {
+    glFinish();
   }
 }
 
@@ -399,113 +419,214 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::End();
 }
 
+namespace {
+Fbo make_fbo(int w, int h, int msaa, bool make_zbuf_and_stencil) {
+  Fbo result;
+  bool use_multisample = msaa > 1;
+
+  // make framebuffer object
+  glGenFramebuffers(1, &result.fbo_id);
+  glBindFramebuffer(GL_FRAMEBUFFER, result.fbo_id);
+  result.valid = true;
+
+  // make texture that will hold the colors of the framebuffer
+  GLuint tex;
+  glGenTextures(1, &tex);
+  result.tex_id = tex;
+  glActiveTexture(GL_TEXTURE0);
+  if (use_multisample) {
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, tex);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, msaa, GL_RGBA8, w, h, GL_TRUE);
+  } else {
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+  }
+  // make depth and stencil buffers that will hold the... depth and stencil buffers
+  if (make_zbuf_and_stencil) {
+    GLuint zbuf;
+    glGenRenderbuffers(1, &zbuf);
+    result.zbuf_stencil_id = zbuf;
+    glBindRenderbuffer(GL_RENDERBUFFER, zbuf);
+    if (use_multisample) {
+      glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaa, GL_DEPTH24_STENCIL8, w, h);
+    } else {
+      glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
+    }
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, zbuf);
+  }
+  // attach texture to framebuffer as target for colors
+
+  if (use_multisample) {
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex, 0);
+  } else {
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+  }
+
+  GLenum render_targets[1] = {GL_COLOR_ATTACHMENT0};
+  glDrawBuffers(1, render_targets);
+  auto status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+  if (status != GL_FRAMEBUFFER_COMPLETE) {
+    lg::error("Failed to setup framebuffer: {} {} {} {}\n", w, h, msaa, make_zbuf_and_stencil);
+    switch (status) {
+      case GL_FRAMEBUFFER_UNDEFINED:
+        printf("GL_FRAMEBUFFER_UNDEFINED\n");
+        break;
+      case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+        printf("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n");
+        break;
+      case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+        printf("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n");
+        break;
+      case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+        printf("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n");
+        break;
+      case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+        printf("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER\n");
+        break;
+      case GL_FRAMEBUFFER_UNSUPPORTED:
+        printf("GL_FRAMEBUFFER_UNSUPPORTED\n");
+        break;
+      case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+        printf("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n");
+        break;
+      case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+        printf("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS\n");
+        break;
+    }
+    ASSERT(false);
+  }
+
+  result.multisample_count = msaa;
+  result.multisampled = use_multisample;
+  result.is_window = false;
+  result.width = w;
+  result.height = h;
+
+  return result;
+}
+}  // namespace
+
 /*!
  * Pre-render frame setup.
  */
 void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
-  auto& fbo_state = m_render_state.fbo_state;
+  // glfw controls the window framebuffer, so we just update the size:
+  auto& window_fb = m_fbo_state.resources.window;
+  bool window_resized = window_fb.width != settings.window_framebuffer_width ||
+                        window_fb.height != settings.window_framebuffer_height;
+  window_fb.valid = true;
+  window_fb.is_window = true;
+  window_fb.fbo_id = 0;
+  window_fb.width = settings.window_framebuffer_width;
+  window_fb.height = settings.window_framebuffer_height;
+  window_fb.multisample_count = 1;
+  window_fb.multisampled = false;
 
-  // restart the buffers if settings changed.
-  if (settings.game_res_w != fbo_state.width || settings.game_res_h != fbo_state.height ||
-      settings.msaa_samples != fbo_state.msaa) {
-    fbo_state.delete_objects();
-  }
+  // see if the render FBO is still applicable
+  if (!m_fbo_state.render_fbo || window_resized ||
+      !m_fbo_state.render_fbo->matches(settings.game_res_w, settings.game_res_h,
+                                       settings.msaa_samples)) {
+    // doesn't match, set up a new one for these settings
+    lg::info("FBO Setup: requested {}x{}, msaa {}", settings.game_res_w, settings.game_res_h,
+             settings.msaa_samples);
 
-  if (fbo_state.fbo == -1 || fbo_state.fbo2 == -1 || fbo_state.tex == -1 || fbo_state.tex2 == -1 ||
-      fbo_state.zbuf == -1) {
-    fbo_state.width = settings.game_res_w;
-    fbo_state.height = settings.game_res_h;
-    fbo_state.msaa = settings.msaa_samples;
+    // clear old framebuffers
+    m_fbo_state.resources.render_buffer.clear();
+    m_fbo_state.resources.resolve_buffer.clear();
 
-    bool bad = false;
-
-    // make framebuffer object
-    if (fbo_state.fbo == -1) {
-      glGenFramebuffers(1, &fbo_state.fbo);
-    }
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo);
-
-    // make texture that will hold the colors of the framebuffer
-    if (fbo_state.tex == -1) {
-      glGenTextures(1, &fbo_state.tex);
-    }
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.tex);
-    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, fbo_state.msaa, GL_RGBA8, fbo_state.width,
-                            fbo_state.height, GL_TRUE);
-
-    // make depth and stencil buffers that will hold the... depth and stencil buffers
-    if (fbo_state.zbuf == -1) {
-      glGenRenderbuffers(1, &fbo_state.zbuf);
-    }
-    glBindRenderbuffer(GL_RENDERBUFFER, fbo_state.zbuf);
-    glRenderbufferStorageMultisample(GL_RENDERBUFFER, fbo_state.msaa, GL_DEPTH24_STENCIL8,
-                                     fbo_state.width, fbo_state.height);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
-                              fbo_state.zbuf);
-
-    // attach texture to framebuffer as target for colors
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE,
-                           fbo_state.tex, 0);
-
-    glDrawBuffers(1, fbo_state.render_targets);
-
-    bad |= glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE;
-
-    // make framebuffer object
-    if (fbo_state.fbo2 == -1) {
-      glGenFramebuffers(1, &fbo_state.fbo2);
-    }
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo2);
-
-    // make texture that will hold the msaa resolved color buffer
-    if (fbo_state.tex2 == -1) {
-      glGenTextures(1, &fbo_state.tex2);
-    }
-    glBindTexture(GL_TEXTURE_2D, fbo_state.tex2);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, fbo_state.width, fbo_state.height, 0, GL_RGBA,
-                 GL_UNSIGNED_BYTE, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    // attach texture to framebuffer as target for colors
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_state.tex2, 0);
-
-    glDrawBuffers(1, fbo_state.render_targets);
-
-    bad |= glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE;
-
-    if (!bad) {
-      glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo);
+    // first, see if we can just render straight to the display framebuffer.
+    if (window_fb.matches(settings.game_res_w, settings.game_res_h, settings.msaa_samples)) {
+      // it matches - no need for extra framebuffers.
+      lg::info("FBO Setup: rendering directly to window framebuffer");
+      m_fbo_state.render_fbo = &m_fbo_state.resources.window;
     } else {
-      lg::error("bad framebuffer setup. fbo: {}, tex: {}, zbuf: {}, fbo2: {}, tex2: {}",
-                fbo_state.fbo, fbo_state.tex, fbo_state.zbuf, fbo_state.fbo2, fbo_state.tex2);
-      lg::error("size was: {} x {}\n", fbo_state.width, fbo_state.height);
-      fbo_state.delete_objects();
+      lg::info("FBO Setup: window didn't match: {} {}", window_fb.width, window_fb.height);
+
+      // create a fbo to render to, with the desired settings
+      m_fbo_state.resources.render_buffer =
+          make_fbo(settings.game_res_w, settings.game_res_h, settings.msaa_samples, true);
+      m_fbo_state.render_fbo = &m_fbo_state.resources.render_buffer;
+
+      bool resolution_matches =
+          window_fb.width == settings.game_res_w && window_fb.height == settings.game_res_h;
+      bool msaa_matches = window_fb.multisample_count == settings.msaa_samples;
+
+      if (!resolution_matches && !msaa_matches) {
+        lg::info("FBO Setup: using second temporary buffer: res: {}x{} {}x{}", window_fb.width,
+                 window_fb.height, settings.game_res_w, settings.game_res_h);
+
+        // we'll need a temporary fbo to do the msaa resolve step
+        // non-multisampled, and doesn't need z/stencil
+        m_fbo_state.resources.resolve_buffer =
+            make_fbo(settings.game_res_w, settings.game_res_h, 1, false);
+      } else {
+        lg::info("FBO Setup: not using second temporary buffer");
+      }
     }
-  } else {
-    // we have the objects. bind framebuffer.
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo_state.fbo);
   }
+
+  glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
+  ASSERT_MSG(settings.game_res_w > 0 && settings.game_res_h > 0,
+             fmt::format("Bad viewport size from game_res: {}x{}\n", settings.game_res_w,
+                         settings.game_res_h));
   glViewport(0, 0, settings.game_res_w, settings.game_res_h);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClearDepth(0.0);
   glDepthMask(GL_TRUE);
+  // Note: could rely on sky renderer to clear depth and color, but this causes problems with
+  // letterboxing
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   glDisable(GL_BLEND);
 
-  m_render_state.window_width_px = settings.window_width_px;
-  m_render_state.window_height_px = settings.window_height_px;
-  m_render_state.window_offset_x_px = settings.lbox_width_px;
-  m_render_state.window_offset_y_px = settings.lbox_height_px;
+  m_render_state.render_fb_w = settings.game_res_w;
+  m_render_state.render_fb_h = settings.game_res_h;
+
+  // compare the aspect ratio of the frame buffer to the requested draw area.
+  float fb_aspect =
+      (float)settings.window_framebuffer_width / (float)settings.window_framebuffer_height;
+  float draw_aspect = (float)settings.draw_region_width / (float)settings.draw_region_height;
+  float squash = fb_aspect / draw_aspect;
+
+  // start with the full area
+  m_render_state.draw_region_w = m_render_state.render_fb_w;
+  m_render_state.draw_region_h = m_render_state.render_fb_h;
+
+  // and letterbox as needed
+  if (squash > 1) {
+    m_render_state.draw_region_w = ((float)m_render_state.draw_region_w / squash) + 0.1;
+  } else {
+    m_render_state.draw_region_h = ((float)m_render_state.draw_region_h * squash) + 0.1;
+  }
+
+  // center the letterbox
+  m_render_state.draw_offset_x = (settings.game_res_w - m_render_state.draw_region_w) / 2;
+  m_render_state.draw_offset_y = (settings.game_res_h - m_render_state.draw_region_h) / 2;
+
+  if (settings.borderless_windows_hacks) {
+    // pretend the framebuffer is 1 pixel shorter on borderless. fullscreen issues!
+    // add one pixel of vertical letterbox on borderless to make up for extra line
+    m_render_state.draw_region_h--;
+    m_render_state.draw_offset_y++;
+  }
+
+  m_render_state.render_fb = m_fbo_state.render_fbo->fbo_id;
+
+  if (m_render_state.draw_region_w <= 0 || m_render_state.draw_region_h <= 0) {
+    // trying to draw to 0 size region... opengl doesn't like this.
+    m_render_state.draw_region_w = 640;
+    m_render_state.draw_region_h = 480;
+  }
+  glViewport(m_render_state.draw_offset_x, m_render_state.draw_offset_y,
+             m_render_state.draw_region_w, m_render_state.draw_region_h);
 }
 
 /*!
  * This function finds buckets and dispatches them to the appropriate part.
  */
-void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof) {
+void OpenGLRenderer::dispatch_buckets(DmaFollower dma,
+                                      ScopedProfilerNode& prof,
+                                      bool sync_after_buckets) {
   // The first thing the DMA chain should be a call to a common default-registers chain.
   // this chain resets the state of the GS. After this is buckets
   m_category_times.fill(0);
@@ -543,6 +664,11 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof)
     g_current_render = renderer->name_and_id();
     // lg::info("Render: {} start", g_current_render);
     renderer->render(dma, &m_render_state, bucket_prof);
+    if (sync_after_buckets) {
+      auto pp = scoped_prof("finish");
+      glFinish();
+    }
+
     // lg::info("Render: {} end", g_current_render);
     //  should have ended at the start of the next chain
     ASSERT(dma.current_tag_offset() == m_render_state.next_bucket);
@@ -596,45 +722,54 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
 void OpenGLRenderer::do_pcrtc_effects(float alp,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
-  int w = render_state->fbo_state.width;
-  int h = render_state->fbo_state.height;
+  if (m_fbo_state.render_fbo->is_window) {
+    // nothing to do!
+  } else {
+    Fbo* window_blit_src = nullptr;
+    const Fbo& window_fbo = m_fbo_state.resources.window;
+    if (m_fbo_state.resources.resolve_buffer.valid) {
+      glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
+      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo_state.resources.resolve_buffer.fbo_id);
+      glBlitFramebuffer(0,                                            // srcX0
+                        0,                                            // srcY0
+                        m_fbo_state.render_fbo->width,                // srcX1
+                        m_fbo_state.render_fbo->height,               // srcY1
+                        0,                                            // dstX0
+                        0,                                            // dstY0
+                        m_fbo_state.resources.resolve_buffer.width,   // dstX1
+                        m_fbo_state.resources.resolve_buffer.height,  // dstY1
+                        GL_COLOR_BUFFER_BIT,                          // mask
+                        GL_LINEAR                                     // filter
+      );
+      window_blit_src = &m_fbo_state.resources.resolve_buffer;
+    } else {
+      window_blit_src = &m_fbo_state.resources.render_buffer;
+    }
 
-  // msaa "resolve" - this blit goes from a multisampled framebuffer (fbo/tex) to a normal one
-  // (fbo2/tex2)
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, render_state->fbo_state.fbo);
-  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, render_state->fbo_state.fbo2);
-  glBlitFramebuffer(0,                    // srcX0
-                    0,                    // srcY0
-                    w,                    // srcX1
-                    h,                    // srcY1
-                    0,                    // dstX0
-                    0,                    // dstY0
-                    w,                    // dstX1
-                    h,                    // dstY1
-                    GL_COLOR_BUFFER_BIT,  // mask
-                    GL_LINEAR             // filter
-  );
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, window_blit_src->fbo_id);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBlitFramebuffer(0,                        // srcX0
+                      0,                        // srcY0
+                      window_blit_src->width,   // srcX1
+                      window_blit_src->height,  // srcY1
+                      0,                        // dstX0
+                      0,                        // dstY0
+                      window_fbo.width,         // dstX1
+                      window_fbo.height,        // dstY1
+                      GL_COLOR_BUFFER_BIT,      // mask
+                      GL_LINEAR                 // filter
+    );
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  }
+  if (alp < 1) {
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+    glBlendEquation(GL_FUNC_ADD);
+    glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
 
-  // Render the resolved texture to the screen directly now
-  // TODO: if fbo and the screen have the same resolution, it might be possible to
-  // glBlitFrameBuffer to the screen directly and skip fbo2/tex2.
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glViewport(render_state->window_offset_x_px, render_state->window_offset_y_px,
-             render_state->window_width_px, render_state->window_height_px);
+    m_blackout_renderer.draw(Vector4f(0, 0, 0, 1.f - alp), render_state, prof);
 
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClearDepth(0.0);
-  glDepthMask(GL_TRUE);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-  glDisable(GL_BLEND);
-  glDisable(GL_DEPTH_TEST);
-  glEnable(GL_BLEND);
-  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
-  glBlendEquation(GL_FUNC_ADD);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, render_state->fbo_state.tex2);
-
-  m_blackout_renderer.draw(Vector4f(0, 0, 0, alp), render_state, prof);
-
-  glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
+  }
 }

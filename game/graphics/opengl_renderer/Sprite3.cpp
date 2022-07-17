@@ -711,22 +711,22 @@ void Sprite3::distort_draw_instanced(SharedRenderState* render_state, ScopedProf
 void Sprite3::distort_draw_common(SharedRenderState* render_state, ScopedProfilerNode& /*prof*/) {
   // The distort effect needs to read the current framebuffer, so copy what's been rendered so far
   // to a texture that we can then pass to the shader
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, render_state->fbo_state.fbo);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, render_state->render_fb);
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_distort_ogl.fbo);
 
-  glBlitFramebuffer(0,                               // srcX0
-                    0,                               // srcY0
-                    render_state->fbo_state.width,   // srcX1
-                    render_state->fbo_state.height,  // srcY1
-                    0,                               // dstX0
-                    0,                               // dstY0
-                    m_distort_ogl.fbo_width,         // dstX1
-                    m_distort_ogl.fbo_height,        // dstY1
-                    GL_COLOR_BUFFER_BIT,             // mask
-                    GL_NEAREST                       // filter
+  glBlitFramebuffer(render_state->draw_offset_x,                                // srcX0
+                    render_state->draw_offset_y,                                // srcY0
+                    render_state->draw_offset_x + render_state->draw_region_w,  // srcX1
+                    render_state->draw_offset_y + render_state->draw_region_h,  // srcY1
+                    0,                                                          // dstX0
+                    0,                                                          // dstY0
+                    m_distort_ogl.fbo_width,                                    // dstX1
+                    m_distort_ogl.fbo_height,                                   // dstY1
+                    GL_COLOR_BUFFER_BIT,                                        // mask
+                    GL_NEAREST                                                  // filter
   );
 
-  glBindFramebuffer(GL_FRAMEBUFFER, render_state->fbo_state.fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, render_state->render_fb);
 
   // Set up OpenGL state
   m_current_mode.set_depth_write_enable(!m_sprite_distorter_setup.zbuf.zmsk());  // zbuf
@@ -741,10 +741,10 @@ void Sprite3::distort_draw_common(SharedRenderState* render_state, ScopedProfile
 
 void Sprite3::distort_setup_framebuffer_dims(SharedRenderState* render_state) {
   // Distort framebuffer must be the same dimensions as the default window framebuffer
-  if (m_distort_ogl.fbo_width != render_state->fbo_state.width ||
-      m_distort_ogl.fbo_height != render_state->fbo_state.height) {
-    m_distort_ogl.fbo_width = render_state->fbo_state.width;
-    m_distort_ogl.fbo_height = render_state->fbo_state.height;
+  if (m_distort_ogl.fbo_width != render_state->draw_region_w ||
+      m_distort_ogl.fbo_height != render_state->draw_region_h) {
+    m_distort_ogl.fbo_width = render_state->draw_region_w;
+    m_distort_ogl.fbo_height = render_state->draw_region_h;
 
     glBindTexture(GL_TEXTURE_2D, m_distort_ogl.fbo_texture);
 

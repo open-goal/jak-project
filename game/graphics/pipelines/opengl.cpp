@@ -259,11 +259,12 @@ static bool endsWith(std::string_view str, std::string_view suffix) {
 
 void render_game_frame(int game_width,
                        int game_height,
-                       int window_width,
-                       int window_height,
-                       int lbox_width,
-                       int lbox_height,
-                       int msaa_samples) {
+                       int window_fb_width,
+                       int window_fb_height,
+                       int draw_region_width,
+                       int draw_region_height,
+                       int msaa_samples,
+                       bool windows_borderless_hack) {
   // wait for a copied chain.
   bool got_chain = false;
   {
@@ -280,19 +281,23 @@ void render_game_frame(int game_width,
     RenderOptions options;
     options.game_res_w = game_width;
     options.game_res_h = game_height;
-    options.window_height_px = window_height;
-    options.window_width_px = window_width;
-    options.lbox_height_px = lbox_height;
-    options.lbox_width_px = lbox_width;
+    options.window_framebuffer_width = window_fb_width;
+    options.window_framebuffer_height = window_fb_height;
+    options.draw_region_height = draw_region_height;
+    options.draw_region_width = draw_region_width;
     options.msaa_samples = msaa_samples;
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.draw_subtitle_editor_window = g_gfx_data->debug_gui.should_draw_subtitle_editor();
     options.save_screenshot = false;
+    options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();
+    options.borderless_windows_hacks = windows_borderless_hack;
     if (g_gfx_data->debug_gui.get_screenshot_flag()) {
       options.save_screenshot = true;
       options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
       options.game_res_h = g_gfx_data->debug_gui.screenshot_height;
+      options.draw_region_width = options.game_res_w;
+      options.draw_region_height = options.game_res_h;
       options.msaa_samples = g_gfx_data->debug_gui.screenshot_samples;
     }
     options.draw_small_profiler_window = g_gfx_data->debug_gui.small_profiler;
@@ -487,38 +492,30 @@ void GLDisplay::render() {
     ImGui::NewFrame();
   }
 
-  // window size
-  int win_w = Gfx::g_global_settings.lbox_w;
-  int win_h = Gfx::g_global_settings.lbox_h;
+  // framebuffer size
   int fbuf_w, fbuf_h;
   glfwGetFramebufferSize(m_window, &fbuf_w, &fbuf_h);
+  bool windows_borderless_hacks = false;
 #ifdef _WIN32
   if (last_fullscreen_mode() == GfxDisplayMode::Borderless) {
-    // pretend the framebuffer is 1 pixel shorter on borderless. fullscreen issues!
-    fbuf_h--;
-  }
-#endif
-  // horizontal letterbox size
-  int lbox_w = (fbuf_w - win_w) / 2;
-  // vertical letterbox size
-  int lbox_h = (fbuf_h - win_h) / 2;
-#ifdef _WIN32
-  if (last_fullscreen_mode() == GfxDisplayMode::Borderless) {
-    // add one pixel of vertical letterbox on borderless to make up for extra line
-    lbox_h++;
+    windows_borderless_hacks = true;
   }
 #endif
 
   // render game!
   if (g_gfx_data->debug_gui.should_advance_frame()) {
     auto p = scoped_prof("game-render");
-    render_game_frame(Gfx::g_global_settings.game_res_w, Gfx::g_global_settings.game_res_h, win_w,
-                      win_h, lbox_w, lbox_h, Gfx::g_global_settings.msaa_samples);
-  }
-
-  if (g_gfx_data->debug_gui.should_gl_finish()) {
-    auto p = scoped_prof("gl-finish");
-    glFinish();
+    int game_res_w = Gfx::g_global_settings.game_res_w;
+    int game_res_h = Gfx::g_global_settings.game_res_h;
+    if (game_res_w <= 0 || game_res_h <= 0) {
+      // if the window size reports 0, the game will ask for a 0 sized window, and nothing likes
+      // that.
+      game_res_w = 640;
+      game_res_h = 480;
+    }
+    render_game_frame(game_res_w, game_res_h, fbuf_w, fbuf_h, Gfx::g_global_settings.lbox_w,
+                      Gfx::g_global_settings.lbox_h, Gfx::g_global_settings.msaa_samples,
+                      windows_borderless_hacks);
   }
 
   // render debug
@@ -550,20 +547,35 @@ void GLDisplay::render() {
         Gfx::g_global_settings.target_fps, Gfx::g_global_settings.experimental_accurate_lag,
         Gfx::g_global_settings.sleep_in_frame_limiter, g_gfx_data->last_engine_time);
   }
+  // actually wait for vsync
+  if (g_gfx_data->debug_gui.should_gl_finish()) {
+    glFinish();
+  }
+
+  // Start timing for the next frame.
   g_gfx_data->debug_gui.start_frame();
   prof().instant_event("ROOT");
   update_global_profiler();
 
-  if (!minimized() && fullscreen_pending()) {
-    fullscreen_flush();
-  }
-  update_last_fullscreen_mode();
-
   // toggle even odd and wake up engine waiting on vsync.
+  // TODO: we could play with moving this earlier, right after the final bucket renderer.
+  //       it breaks the VIF-interrupt profiling though.
   {
+    prof().instant_event("engine-notify");
     std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
     g_gfx_data->frame_idx++;
     g_gfx_data->sync_cv.notify_all();
+  }
+
+  {
+    auto p = scoped_prof("fullscreen-update");
+    // slow, takes ~0.15 ms on linux
+    auto current_fullscreen_mode = get_fullscreen();
+    // checking minimized also takes ~0.1 ms, only check if we need to update fullscreen modes
+    if (current_fullscreen_mode != m_fullscreen_target_mode && !minimized()) {
+      fullscreen_flush();
+    }
+    m_last_fullscreen_mode = current_fullscreen_mode;
   }
 
   // reboot whole game, if requested
@@ -572,11 +584,14 @@ void GLDisplay::render() {
     MasterExit = RuntimeExitStatus::RESTART_IN_DEBUG;
   }
 
-  // exit if display window was closed
-  if (glfwWindowShouldClose(m_window)) {
-    std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
-    MasterExit = RuntimeExitStatus::EXIT;
-    g_gfx_data->sync_cv.notify_all();
+  {
+    auto p = scoped_prof("check-close-window");
+    // exit if display window was closed
+    if (glfwWindowShouldClose(m_window)) {
+      std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
+      MasterExit = RuntimeExitStatus::EXIT;
+      g_gfx_data->sync_cv.notify_all();
+    }
   }
 }
 
