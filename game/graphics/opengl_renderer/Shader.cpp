@@ -89,6 +89,7 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::MERC2) = {"merc2"};
   at(ShaderId::SPRITE_DISTORT) = {"sprite_distort"};
   at(ShaderId::SPRITE_DISTORT_INSTANCED) = {"sprite_distort_instanced"};
+  at(ShaderId::POST_PROCESSING) = {"post_processing"};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "Shader compiled");

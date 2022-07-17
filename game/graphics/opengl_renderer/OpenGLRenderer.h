@@ -22,6 +22,10 @@ struct RenderOptions {
   bool draw_small_profiler_window = false;
   bool draw_subtitle_editor_window = false;
 
+  int msaa_samples = 4;
+  int game_res_w = 640;
+  int game_res_h = 480;
+
   bool save_screenshot = false;
   std::string screenshot_path;
 
@@ -44,12 +48,12 @@ class OpenGLRenderer {
   void render(DmaFollower dma, const RenderOptions& settings);
 
  private:
-  void setup_frame(int window_width_px, int window_height_px, int offset_x, int offset_y);
+  void setup_frame(const RenderOptions& settings);
   void dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof);
   void do_pcrtc_effects(float alp, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void init_bucket_renderers();
   void draw_renderer_selection_window();
-  void finish_screenshot(const std::string& output_name, int px, int py, int x, int y);
+  void finish_screenshot(const std::string& output_name, int px, int py, int x, int y, GLuint fbo);
   template <typename T, class... Args>
   T* init_bucket_renderer(const std::string& name,
                           BucketCategory cat,

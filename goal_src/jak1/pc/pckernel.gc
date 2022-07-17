@@ -64,10 +64,11 @@
     ((= 'windowed (-> obj display-mode))
       (set! (-> obj win-width) width)
       (set! (-> obj win-height) height)
+      (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height)))
       )
     (else
-      (format 0  "Nope! No changing fullscreen resolution for now!~%")
-      (format #t "Nope! No changing fullscreen resolution for now!~%")
+      (set! (-> obj width) width)
+      (set! (-> obj height) height)
       )
     )
   (none))
@@ -97,8 +98,8 @@
   (set! (-> obj window-lock?) lock))
 
 (defmethod set-frame-rate! pc-settings ((obj pc-settings) (rate int))
-  "set the aspect ratio used for rendering."
-  
+  "set the target framerate."
+
   (pc-set-frame-rate rate)
   (if (and (!= 'fullscreen (-> obj display-mode))
            (!= (pc-get-screen-rate -1) rate))
@@ -120,7 +121,7 @@
       (set-video-mode '150fps)
       )
     )
-  
+
   rate)
 
 (defmethod commit-to-file pc-settings ((obj pc-settings))
@@ -187,7 +188,9 @@
      )
     )
 
+  ;; set fullscreen to what we want
   (pc-set-fullscreen (-> obj display-mode) 0)
+  ;; set window size and fps automatically if the window lock is enabled.
   (when (-> obj window-lock?)
     (pc-set-vsync (-> obj vsync?))
 
@@ -195,12 +198,22 @@
         (if (< (pc-get-screen-rate -1) (-> obj target-fps))
             (pc-set-vsync #f))
         (pc-set-frame-rate (-> obj target-fps)))
-
-    (if (and (= 'windowed (-> obj display-mode))
-             (or (!= (-> obj win-width) (-> obj real-width))
-                 (!= (-> obj win-height) (-> obj real-height))))
-        (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
     )
+  ;; do game resolution
+  (if (= (-> obj display-mode) 'windowed)
+      (pc-set-game-resolution (-> obj real-width) (-> obj real-height))
+      (pc-set-game-resolution (-> obj width) (-> obj height)))
+
+  ;; set msaa sample rate. if invalid, just reset to 4.
+  (let ((valid? #f))
+      (dotimes (i 31)
+        (if (= (-> obj gfx-msaa) (ash 1 i))
+            (true! valid?))
+        )
+
+      (if (not valid?) (set! (-> obj gfx-msaa) 4))
+      (pc-set-msaa (-> obj gfx-msaa))
+      )
 
   (pc-discord-rpc-set (if (-> obj discord-rpc?) 1 0))
 
@@ -753,6 +766,7 @@
                   (set! (-> obj width) (file-stream-read-int file))
                   (set! (-> obj height) (file-stream-read-int file))
                   )
+                (("msaa") (set! (-> obj gfx-msaa) (file-stream-read-int file)))
                 (("aspect") (set-aspect! obj (file-stream-read-int file) (file-stream-read-int file)))
                 (("aspect-test")
                   (set! (-> obj aspect-custom-x) (file-stream-read-int file))
@@ -872,6 +886,7 @@
 
     (format file "  (fps ~D)~%" (-> obj target-fps))
     (format file "  (game-size ~D ~D)~%" (-> obj width) (-> obj height))
+    (format file "  (msaa ~D)~%" (-> obj gfx-msaa))
     (format file "  (window-size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
     (format file "  (aspect ~D ~D)~%" (-> obj width) (-> obj height))
     (format file "  (aspect-test ~D ~D)~%" (-> obj aspect-custom-x) (-> obj aspect-custom-y))
@@ -998,7 +1013,6 @@
 
 
 (define *pc-settings* (new 'global 'pc-settings))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; entity debugging

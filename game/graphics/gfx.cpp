@@ -274,6 +274,15 @@ void set_window_lock(bool lock) {
   }
 }
 
+void set_game_resolution(int w, int h) {
+  g_global_settings.game_res_w = w;
+  g_global_settings.game_res_h = h;
+}
+
+void set_msaa(int samples) {
+  g_global_settings.msaa_samples = samples;
+}
+
 void input_mode_set(u32 enable) {
   if (enable == s7.offset + jak1_symbols::FIX_SYM_TRUE) {  // #t
     Pad::g_input_mode_mapping = g_settings.pad_mapping_info;
