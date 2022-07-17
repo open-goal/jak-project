@@ -317,3 +317,67 @@
   `(+ -1.0 (the-as float (logior #x3f800000 (/ (rand-uint31-gen ,gen) 256))))
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; mimicking Java's util.Random
+;;;; https://docs.oracle.com/javase/8/docs/api/java/util/Random.html
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define *java-rand-seed* (the uint64 42069))
+
+(defun java-rand-init ((seed uint))
+  (set! *java-rand-seed* seed)
+)
+
+(defun java-rand-advance-seed ()
+  ;; seed =  (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1)
+  (set! *java-rand-seed* (the uint64 (logand (+ (* *java-rand-seed* 25214903917) 11) (- (shl 1 48) 1))))
+)
+
+(defun java-rand-next ((bits int))
+  ;; TODO: figure out why we need to offset bits like this, probably getting converted to uint32 somewhere or something
+  (+! bits 16) 
+
+  (java-rand-advance-seed)
+
+  ;; return (int)(seed >>> (48 - bits))
+  (shr *java-rand-seed* (- 48 bits))
+)
+
+(defun java-rand-nextInt () 
+  (java-rand-advance-seed)
+  *java-rand-seed*
+)
+
+;; returns a pseudorandom int in the range [min, max)
+(defun java-rand-nextIntRange ((min int) (max int))
+  (define bound (- max min))
+
+  ;; if ((bound & -bound) == bound)  // i.e., bound is a power of 2
+  (if (= (logand bound (* -1 bound)) bound)
+    ;; return (int)((bound * (long)next(31)) >> 31);
+    (return (sar (* bound (java-rand-next 31)) 31))
+  )
+
+  ;; int bits, val;
+  (define bits (the uint64 0))
+  (define val (the uint64 0))
+
+  ;;  do {
+  ;;      bits = next(31);
+  ;;      val = bits % bound;
+  ;;  } while (bits - val + (bound-1) < 0);
+  ;;  return val;
+  (while #t
+    (set! bits (java-rand-next 31))
+    (set! val (mod bits bound))
+
+    (if (>= (+ bits (* -1 val) bound -1) 0)
+      (return (+ min val))
+    )
+  )
+  -1
+)
+
+;; returns a pseudorandom float in the range [0, 1)
+(defun java-rand-nextFloat ()
+  (/ (the float (java-rand-next 24)) (shl 1 24))
+) 
