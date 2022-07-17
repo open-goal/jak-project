@@ -51,6 +51,14 @@ void CompilerTestRunner::run_static_test(inja::Environment& env,
   run_test(testCategory, test_file, expected, truncate);
 }
 
+void CompilerTestRunner::run_static_test(std::string& testCategory,
+                                         const std::string& test_file,
+                                         const std::vector<std::string>& expected,
+                                         std::optional<int> truncate) {
+  auto env = getInjaEnvironment(testCategory);
+  run_static_test(env, testCategory, test_file, expected, truncate);
+}
+
 void CompilerTestRunner::run_test(const std::string& test_category,
                                   const std::string& test_file,
                                   const std::vector<std::string>& expected,
@@ -98,7 +106,7 @@ void CompilerTestRunner::run_always_pass(const std::string& test_category,
   tests.push_back({{}, {}, test_file, true});
 }
 
-void runtime_no_kernel() {
+void runtime_no_kernel_jak1() {
   constexpr int argc = 6;
   const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel", "-nodisplay", "-nosound"};
   exec_runtime(argc, const_cast<char**>(argv));
@@ -111,9 +119,15 @@ void runtime_no_kernel_jak2() {
   exec_runtime(argc, const_cast<char**>(argv));
 }
 
-void runtime_with_kernel() {
+void runtime_with_kernel_jak1() {
   constexpr int argc = 5;
   const char* argv[argc] = {"", "-fakeiso", "-debug", "-nodisplay", "-nosound"};
+  exec_runtime(argc, const_cast<char**>(argv));
+}
+
+void runtime_with_kernel_jak2() {
+  constexpr int argc = 6;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nodisplay", "-nosound", "-jak2"};
   exec_runtime(argc, const_cast<char**>(argv));
 }
 
@@ -137,4 +151,9 @@ std::string getGeneratedDir(const std::string& category) {
 std::string getFailedDir(const std::string& category) {
   return file_util::get_file_path({"test/goalc/source_generated/failed", category + "/"});
 }
+
+inja::Environment getInjaEnvironment(const std::string& category) {
+  return inja::Environment(getTemplateDir(category), getGeneratedDir(category));
+}
+
 }  // namespace GoalTest

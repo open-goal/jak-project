@@ -1,6 +1,0 @@
-#include "test_arithmetic.cpp"
-#include "test_collections.cpp"
-#include "test_compiler.cpp"
-#include "test_control_statements.cpp"
-#include "test_variables.cpp"
-#include "test_with_game.cpp"
