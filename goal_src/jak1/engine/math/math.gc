@@ -318,12 +318,26 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; mimicking Java's util.Random
-;;;; https://docs.oracle.com/javase/8/docs/api/java/util/Random.html
+;;;; some utils to use systime for default seed 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-#|
+(deftype scf-time (structure)
+  ((stat   uint8  :offset-assert 0)
+   (second uint8  :offset-assert 1)
+   (minute uint8  :offset-assert 2)
+   (hour   uint8  :offset-assert 3)
+   (week   uint8  :offset-assert 4)
+   (day    uint8  :offset-assert 5)
+   (month  uint8  :offset-assert 6)
+   (year   uint8  :offset-assert 7)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+(define-extern scf-get-time (function scf-time none))
+
 (defun scf-time-to-uint64 () 
-  (let ((date (new 'stack 'scf-time)))  ;; leads to "Type Error: Type scf-time is not fully defined." :(
+  (let ((date (new 'stack 'scf-time)))
     (let ((temp (the uint64 0)))
       (scf-get-time date)
       
@@ -339,8 +353,11 @@
     )
   )
 )
-|#
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; mimicking Java's util.Random
+;;;; https://docs.oracle.com/javase/8/docs/api/java/util/Random.html
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (deftype java-rand-state (structure)
   ((seed uint64))
 )
@@ -350,7 +367,7 @@
 (defun java-rand-init ((newSeed uint))
   (set! (-> *java-rand-state* seed) newSeed)
 )
-(java-rand-init (the uint 42069))
+(java-rand-init (scf-time-to-uint64))
 
 (defun java-rand-advance-seed ()
   ;; seed =  (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1)
