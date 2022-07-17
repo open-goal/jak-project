@@ -509,9 +509,17 @@ void GLDisplay::render() {
   // render game!
   if (g_gfx_data->debug_gui.should_advance_frame()) {
     auto p = scoped_prof("game-render");
-    render_game_frame(Gfx::g_global_settings.game_res_w, Gfx::g_global_settings.game_res_h, fbuf_w,
-                      fbuf_h, Gfx::g_global_settings.lbox_w, Gfx::g_global_settings.lbox_h,
-                      Gfx::g_global_settings.msaa_samples, windows_borderless_hacks);
+    int game_res_w = Gfx::g_global_settings.game_res_w;
+    int game_res_h = Gfx::g_global_settings.game_res_h;
+    if (game_res_w <= 0 || game_res_h <= 0) {
+      // if the window size reports 0, the game will ask for a 0 sized window, and nothing likes
+      // that.
+      game_res_w = 640;
+      game_res_h = 480;
+    }
+    render_game_frame(game_res_w, game_res_h, fbuf_w, fbuf_h, Gfx::g_global_settings.lbox_w,
+                      Gfx::g_global_settings.lbox_h, Gfx::g_global_settings.msaa_samples,
+                      windows_borderless_hacks);
   }
 
   // render debug
