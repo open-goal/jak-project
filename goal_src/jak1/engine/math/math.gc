@@ -321,57 +321,79 @@
 ;;;; mimicking Java's util.Random
 ;;;; https://docs.oracle.com/javase/8/docs/api/java/util/Random.html
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define *java-rand-seed* (the uint64 42069))
-
-(defun java-rand-init ((seed uint))
-  (set! *java-rand-seed* seed)
+#|
+(defun scf-time-to-uint64 () 
+  (let ((date (new 'stack 'scf-time)))  ;; leads to "Type Error: Type scf-time is not fully defined." :(
+    (let ((temp (the uint64 0)))
+      (scf-get-time date)
+      
+      (logior! temp (-> date stat))
+      (logior! temp (shl (-> date second) 8))
+      (logior! temp (shl (-> date minute) 16))
+      (logior! temp (shl (-> date hour) 24))
+      (logior! temp (shl (-> date week) 32))
+      (logior! temp (shl (-> date day) 40))
+      (logior! temp (shl (-> date month) 48))
+      (logior! temp (shl (-> date year) 56))
+      temp
+    )
+  )
 )
+|#
+
+(deftype java-rand-state (structure)
+  ((seed uint64))
+)
+
+(define *java-rand-state* (new 'global 'java-rand-state))
+
+(defun java-rand-init ((newSeed uint))
+  (set! (-> *java-rand-state* seed) newSeed)
+)
+(java-rand-init (the uint 42069))
 
 (defun java-rand-advance-seed ()
   ;; seed =  (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1)
-  (set! *java-rand-seed* (the uint64 (logand (+ (* *java-rand-seed* 25214903917) 11) (- (shl 1 48) 1))))
+  (set! (-> *java-rand-state* seed) (the uint64 (logand (+ (imul64 (-> *java-rand-state* seed) 25214903917) 11) (- (shl 1 48) 1))))
 )
 
 (defun java-rand-next ((bits int))
-  ;; TODO: figure out why we need to offset bits like this, probably getting converted to uint32 somewhere or something
-  (+! bits 16) 
-
   (java-rand-advance-seed)
 
   ;; return (int)(seed >>> (48 - bits))
-  (shr *java-rand-seed* (- 48 bits))
+  (shr (-> *java-rand-state* seed) (- 48 bits))
 )
 
 (defun java-rand-nextInt () 
   (java-rand-advance-seed)
-  *java-rand-seed*
+  (-> *java-rand-state* seed)
 )
 
 ;; returns a pseudorandom int in the range [min, max)
 (defun java-rand-nextIntRange ((min int) (max int))
-  (define bound (- max min))
+  (let* ((bound (- max min))
+    ;; int bits, val;
+         (bits (the uint64 0))
+         (val (the uint64 0)))
 
-  ;; if ((bound & -bound) == bound)  // i.e., bound is a power of 2
-  (if (= (logand bound (* -1 bound)) bound)
-    ;; return (int)((bound * (long)next(31)) >> 31);
-    (return (sar (* bound (java-rand-next 31)) 31))
-  )
+    ;; if ((bound & -bound) == bound)  // i.e., bound is a power of 2
+    (if (= (logand bound (* -1 bound)) bound)
+      ;; return (int)((bound * (long)next(31)) >> 31);
+      (return (sar (* bound (java-rand-next 31)) 31))
+    )
 
-  ;; int bits, val;
-  (define bits (the uint64 0))
-  (define val (the uint64 0))
+    ;;  do {
+    ;;      bits = next(31);
+    ;;      val = bits % bound;
+    ;;  } while (bits - val + (bound-1) < 0);
+    ;;  return val;
+    (while #t
+      (set! bits (java-rand-next 31))
+      (set! val (mod bits bound))
 
-  ;;  do {
-  ;;      bits = next(31);
-  ;;      val = bits % bound;
-  ;;  } while (bits - val + (bound-1) < 0);
-  ;;  return val;
-  (while #t
-    (set! bits (java-rand-next 31))
-    (set! val (mod bits bound))
-
-    (if (>= (+ bits (* -1 val) bound -1) 0)
-      (return (+ min val))
+      (if (>= (+ bits (* -1 val) bound -1) 0)
+        (return (+ min val))
+      )
     )
   )
   -1
