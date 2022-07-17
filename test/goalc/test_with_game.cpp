@@ -1,13 +1,7 @@
-#include <chrono>
 #include <cstdio>
-#include <iostream>
 #include <random>
-#include <regex>
-#include <sstream>
 #include <string>
 #include <thread>
-
-#include "inja.hpp"
 
 #include "common/util/FileUtil.h"
 
@@ -19,7 +13,6 @@
 #include "test/goalc/framework/test_runner.h"
 
 #include "third-party/fmt/core.h"
-#include "third-party/json.hpp"
 
 class WithGameTests : public ::testing::Test {
  public:
@@ -34,7 +27,7 @@ class WithGameTests : public ::testing::Test {
       fprintf(stderr, "caught exception %s\n", e.what());
       EXPECT_TRUE(false);
     }
-    shared_compiler->runtime_thread = std::thread((GoalTest::runtime_with_kernel));
+    shared_compiler->runtime_thread = std::thread(GoalTest::runtime_with_kernel_jak1);
     shared_compiler->runner.c = &shared_compiler->compiler;
 
     shared_compiler->compiler.run_test_from_file(
@@ -65,65 +58,9 @@ class WithGameTests : public ::testing::Test {
   static std::unique_ptr<SharedCompiler> shared_compiler;
 
   std::string testCategory = "with_game";
-  inja::Environment env{GoalTest::getTemplateDir(testCategory),
-                        GoalTest::getGeneratedDir(testCategory)};
 };
 
 std::unique_ptr<WithGameTests::SharedCompiler> WithGameTests::shared_compiler;
-
-class WithMinimalGameTests : public ::testing::Test {
- public:
-  static void SetUpTestSuite() {
-    shared_compiler = std::make_unique<SharedCompiler>(GameVersion::Jak1);
-    try {
-      shared_compiler->compiler.run_front_end_on_string("(build-kernel)");
-    } catch (std::exception& e) {
-      fprintf(stderr, "caught exception %s\n", e.what());
-      EXPECT_TRUE(false);
-    }
-    shared_compiler->runtime_thread = std::thread((GoalTest::runtime_with_kernel));
-    shared_compiler->runner.c = &shared_compiler->compiler;
-
-    shared_compiler->compiler.run_test_from_string(
-        "(dgo-load \"kernel\" global (link-flag output-load-msg output-load-true-msg execute-login "
-        "print-login) #x200000)");
-
-    const auto minimal_files = {"goal_src/jak1/engine/math/vector-h.gc"};
-    for (auto& file : minimal_files) {
-      shared_compiler->compiler.run_test_from_string(fmt::format("(ml \"{}\")", file));
-    }
-
-    shared_compiler->compiler.run_test_from_string("(set! *use-old-listener-print* #t)");
-  }
-
-  static void TearDownTestSuite() {
-    shared_compiler->compiler.shutdown_target();
-    shared_compiler->runtime_thread.join();
-    shared_compiler.reset();
-  }
-
-  void SetUp() {
-    GoalTest::createDirIfAbsent(GoalTest::getTemplateDir(testCategory));
-    GoalTest::createDirIfAbsent(GoalTest::getGeneratedDir(testCategory));
-  }
-
-  void TearDown() {}
-
-  struct SharedCompiler {
-    SharedCompiler(GameVersion v) : compiler(v) {}
-    std::thread runtime_thread;
-    Compiler compiler;
-    GoalTest::CompilerTestRunner runner;
-  };
-
-  static std::unique_ptr<SharedCompiler> shared_compiler;
-
-  std::string testCategory = "with_game";
-  inja::Environment env{GoalTest::getTemplateDir(testCategory),
-                        GoalTest::getGeneratedDir(testCategory)};
-};
-
-std::unique_ptr<WithMinimalGameTests::SharedCompiler> WithMinimalGameTests::shared_compiler;
 
 namespace {
 std::vector<std::string> get_test_pass_string(const std::string& name, int count) {
@@ -136,212 +73,207 @@ TEST_F(WithGameTests, MakeSystem) {
 }
 
 TEST_F(WithGameTests, ReturnConstant) {
-  shared_compiler->runner.run_static_test(env, testCategory, "defun-return-constant.static.gc",
+  shared_compiler->runner.run_static_test(testCategory, "defun-return-constant.static.gc",
                                           {"12\n"});
 }
 
 TEST_F(WithGameTests, ReturnSymbol) {
-  shared_compiler->runner.run_static_test(env, testCategory, "defun-return-symbol.static.gc",
-                                          {"42\n"});
+  shared_compiler->runner.run_static_test(testCategory, "defun-return-symbol.static.gc", {"42\n"});
 }
 
 TEST_F(WithGameTests, MinMax) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-min-max.gc", {"10\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-min-max.gc", {"10\n"});
 }
 
 TEST_F(WithGameTests, BoxedFloat) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-bfloat.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-bfloat.gc",
                                           {"data 1.2330 print 1.2330 type bfloat\n0\n"});
 }
 
 TEST_F(WithGameTests, BasicTypeCheck) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-basic-type-check.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-basic-type-check.gc",
                                           {"#f#t#t#f#t#f#t#t\n0\n"});
 }
 
 TEST_F(WithGameTests, ConditionBoolean) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-condition-boolean.gc", {"4\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-condition-boolean.gc", {"4\n"});
 }
 
 TEST_F(WithGameTests, TypeType) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-type-type.gc", {"#t#f\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-type-type.gc", {"#t#f\n0\n"});
 }
 
 TEST_F(WithGameTests, AccessInlineArray) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-access-inline-array.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-access-inline-array.gc",
                                           {"1.2345\n0\n"});
 }
 
 TEST_F(WithGameTests, FindParentMethod) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-find-parent-method.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-find-parent-method.gc",
                                           {"\"test pass!\"\n0\n"});
 }
 
 TEST_F(WithGameTests, Ref) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-ref.gc", {"83\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-ref.gc", {"83\n"});
 }
 
 TEST_F(WithGameTests, PairASzie) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-pair-asize.gc", {"8\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-pair-asize.gc", {"8\n"});
 }
 
 TEST_F(WithGameTests, Last) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-last.gc", {"d\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-last.gc", {"d\n0\n"});
 }
 
 TEST_F(WithGameTests, Sort) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-sort.gc",
+      testCategory, "test-sort.gc",
       {"(24 16 32 56 72 1234 -34 25 654)\n(1234 654 72 56 32 25 24 16 -34)\n0\n"});
 }
 
 TEST_F(WithGameTests, Sort2) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-sort-2.gc",
+      testCategory, "test-sort-2.gc",
       {"(24 16 32 56 72 1234 -34 25 654)\n(-34 16 24 25 32 56 72 654 1234)\n0\n"});
 }
 
 TEST_F(WithGameTests, Sort3) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-sort-3.gc",
+      testCategory, "test-sort-3.gc",
       {"(24 16 32 56 72 1234 -34 25 654)\n(-34 16 24 25 32 56 72 654 1234)\n0\n"});
 }
 
 TEST_F(WithGameTests, PairLength) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-pair-length.gc", {"6\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-pair-length.gc", {"6\n"});
 }
 
 TEST_F(WithGameTests, Member1) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-member-1.gc", {"(c d)\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-member-1.gc", {"(c d)\n0\n"});
 }
 
 TEST_F(WithGameTests, Member2) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-member-2.gc", {"#f\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-member-2.gc", {"#f\n0\n"});
 }
 
 TEST_F(WithGameTests, Assoc1) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-assoc-1.gc", {"w\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-assoc-1.gc", {"w\n0\n"});
 }
 
 TEST_F(WithGameTests, Assoc2) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-assoc-2.gc", {"#f\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-assoc-2.gc", {"#f\n0\n"});
 }
 
 TEST_F(WithGameTests, Assoce1) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-assoce-1.gc", {"x\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-assoce-1.gc", {"x\n0\n"});
 }
 
 TEST_F(WithGameTests, Assoce2) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-assoce-2.gc", {"x\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-assoce-2.gc", {"x\n0\n"});
 }
 
 TEST_F(WithGameTests, Append) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-append.gc",
-                                          {"(a b c d e)\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-append.gc", {"(a b c d e)\n0\n"});
 }
 
 TEST_F(WithGameTests, DeleteList) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-delete-list.gc",
-                                          {"(a b d e)\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-delete-list.gc", {"(a b d e)\n0\n"});
 }
 
 TEST_F(WithGameTests, DeleteCar) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-delete-car.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-delete-car.gc",
                                           {"((a . b) (e . f))\n#f\n0\n"});
 }
 
 TEST_F(WithGameTests, InsertCar) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-insert-cons.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-insert-cons.gc",
                                           {"((c . w) (a . b) (e . f))\n0\n"});
 }
 
 TEST_F(WithGameTests, InlineArrayClass) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-new-inline-array-class.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-new-inline-array-class.gc",
                                           {"2824\n"});
 }
 
 TEST_F(WithGameTests, Memcpy) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-memcpy.gc", {"13\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-memcpy.gc", {"13\n"});
 }
 
 TEST_F(WithGameTests, Memset) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-memset.gc", {"11\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-memset.gc", {"11\n"});
 }
 
 TEST_F(WithGameTests, BintegerPrint) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-binteger-print.gc",
-                                          {"-17\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-binteger-print.gc", {"-17\n0\n"});
 }
 
 TEST_F(WithGameTests, TestTests) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-tests.gc",
+      testCategory, "test-tests.gc",
       {"Test Failed On Test 0: \"unknown\"\nTest Failed On Test 0: "
        "\"test\"\nTest \"test-of-test\": 1 Passes\n0\n"});
 }
 
 TEST_F(WithGameTests, TypeArrays) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-type-arrays.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-type-arrays.gc",
                                           {"Test \"test-type-arrays\": 3 Passes\n0\n"});
 }
 
 TEST_F(WithGameTests, NumberComparison) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-number-comparison.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-number-comparison.gc",
                                           {"Test \"number-comparison\": 14 Passes\n0\n"});
 }
 
 TEST_F(WithGameTests, ApproxPi) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-approx-pi.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-approx-pi.gc",
                                           get_test_pass_string("approx-pi", 4));
 }
 
 TEST_F(WithGameTests, ApproxPiStack) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-approx-pi-stack.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-approx-pi-stack.gc",
                                           get_test_pass_string("approx-pi-stack", 4));
 }
 
 TEST_F(WithGameTests, DynamicType) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-dynamic-type.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-dynamic-type.gc",
                                           get_test_pass_string("dynamic-type", 4));
 }
 
 TEST_F(WithGameTests, StringType) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-string-type.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-string-type.gc",
                                           get_test_pass_string("string-type", 4));
 }
 
 TEST_F(WithGameTests, NewString) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-new-string.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-new-string.gc",
                                           get_test_pass_string("new-string", 5));
 }
 
 TEST_F(WithGameTests, AddrOf) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-addr-of.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-addr-of.gc",
                                           get_test_pass_string("addr-of", 2));
 }
 
 TEST_F(WithGameTests, SetSelf) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-set-self.gc", {"#t\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-set-self.gc", {"#t\n0\n"});
 }
 
 TEST_F(WithGameTests, NewArray) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-new-array.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-new-array.gc",
                                           get_test_pass_string("new-array", 8));
 }
 
 TEST_F(WithGameTests, NewStaticStructureIntegers) {
-  shared_compiler->runner.run_static_test(env, testCategory,
-                                          "test-new-static-structure-integers.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-new-static-structure-integers.gc",
                                           get_test_pass_string("new-static-structure-integers", 7));
 }
 
 TEST_F(WithGameTests, NewStaticBasic) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-new-static-basic.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-new-static-basic.gc",
                                           get_test_pass_string("new-static-basic", 12));
 }
 
 TEST_F(WithGameTests, VectorDot) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-vector-dot.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-vector-dot.gc",
                                           get_test_pass_string("vector-dot", 1));
 }
 
@@ -366,7 +298,7 @@ TEST_F(WithGameTests, DebuggerDisassemble) {
 }
 
 TEST_F(WithGameTests, GameText) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-game-text.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-game-text.gc",
                                           get_test_pass_string("game-text", 5));
 }
 
@@ -378,7 +310,7 @@ TEST_F(WithGameTests, GameCount) {
   shared_compiler->compiler.run_test_from_string(
       "(dgo-load \"engine\" global (link-flag output-load-msg output-load-true-msg execute-login "
       "print-login) #x200000)");
-  shared_compiler->runner.run_static_test(env, testCategory, "test-game-count.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-game-count.gc",
                                           get_test_pass_string("game-count", 4));
   // don't leave behind a weird version of the game-count file.
   fs::remove(file_util::get_file_path({"out", "jak1", "iso", "ENGINE.CGO"}));
@@ -386,27 +318,26 @@ TEST_F(WithGameTests, GameCount) {
 }
 
 TEST_F(WithGameTests, BitFieldAccess) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-bitfield-access.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-bitfield-access.gc",
                                           {"#tfffffffffffff344f213ffffffffffffffff\n0\n"});
 }
 
 TEST_F(WithGameTests, SimpleBitField) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-set-bitfield.gc",
-                                          {"#t50.3432\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-set-bitfield.gc", {"#t50.3432\n0\n"});
 }
 
 TEST_F(WithGameTests, StaticBitField) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-static-bitfield.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-static-bitfield.gc",
                                           {"#t50.3432\n0\n"});
 }
 
 TEST_F(WithGameTests, TrickyBitField) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-bitfield-tricky-access.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-bitfield-tricky-access.gc",
                                           get_test_pass_string("bitfield-tricky-access", 14));
 }
 
 TEST_F(WithGameTests, Bitfield128) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-access-bitfield128.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-access-bitfield128.gc",
                                           {"-abcdbeef 77777777 66666666 12347890\n"
                                            "-abcdbeef 77777777 66666666 00000001\n"
                                            "-abcdbeef 77777777 00000002 00000001\n"
@@ -419,46 +350,46 @@ TEST_F(WithGameTests, Bitfield128) {
 }
 
 TEST_F(WithGameTests, Math) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-math.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-math.gc",
                                           get_test_pass_string("math", 31));
 }
 
 TEST_F(WithGameTests, Sqrtf) {
-  shared_compiler->runner.run_static_test(env, testCategory, "sqrtf.gc", {"2.2360\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "sqrtf.gc", {"2.2360\n0\n"});
 }
 
 TEST_F(WithGameTests, StaticPairs) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-static-pair-1.gc",
+      testCategory, "test-static-pair-1.gc",
       {"(1 (w . a) beans 2 (-1 -2) twelve (a . \"test\"))\n0\n"});
 }
 
 TEST_F(WithGameTests, FancyStatic) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-fancy-static-fields.gc",
+      testCategory, "test-fancy-static-fields.gc",
       {"\"name\" 12 12.3400 (a b c) 5 33 4 kernel-context asdf\n0\n"});
 }
 
 TEST_F(WithGameTests, IntegerBoxedArray) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-integer-boxed-array.gc",
+      testCategory, "test-integer-boxed-array.gc",
       {"0 0  1 2  2 4  3 6  4 8  5 10  6 12  7 14  8 16  9 18  10 20  11 22  12 40 6 array\n0\n"});
 }
 
 TEST_F(WithGameTests, StaticBoxedArray) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-static-boxed-array.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-static-boxed-array.gc",
                                           {"4 asdf \"test\" (a b) 0 object 12 12\n0\n"});
 }
 
 TEST_F(WithGameTests, SizeOf) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-size-of.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-size-of.gc",
                                           {"size of dma-bucket is 16\n"
                                            "size of ints: 2 4 16\n"
                                            "size of stack array is 16\n0\n"});
 }
 
 TEST_F(WithGameTests, EnumAndBitfieldTypes) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-bitfield-and-enum-types.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-bitfield-and-enum-types.gc",
                                           {"content type: uint16\n"  // runtime type is u16
                                            "content type: uint16\n"
                                            "bitfield spacing: 2\n"        // u16 spacing
@@ -472,7 +403,7 @@ TEST_F(WithGameTests, EnumAndBitfieldTypes) {
 
 TEST_F(WithGameTests, Trig) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-trig.gc",
+      testCategory, "test-trig.gc",
       {"2.0000\n"    // 2 deg
        "-45.0000\n"  // -45 deg
        "1.2000\n"
@@ -547,7 +478,7 @@ TEST_F(WithGameTests, Trig) {
 
 TEST_F(WithGameTests, Vector) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-vector.gc",
+      testCategory, "test-vector.gc",
       {"[     -4.0000] [      8.0000] [     -4.0000] [      0.0000]\n"
        "[      3.0000] [      4.0000] [      5.0000] [      1.0000]\n"
        "[      5.0000] [     12.0000] [     21.0000] [      1.0000]\n"
@@ -580,7 +511,7 @@ TEST_F(WithGameTests, Vector) {
 }
 
 TEST_F(WithGameTests, InlinedPackedBasics) {
-  shared_compiler->runner.run_static_test(env, testCategory, "inlined-packed-basics.gc",
+  shared_compiler->runner.run_static_test(testCategory, "inlined-packed-basics.gc",
                                           {"rec stride: 48\n"
                                            "offset of float: 40\n"
                                            "offset: 16\n"
@@ -591,7 +522,7 @@ TEST_F(WithGameTests, InlinedPackedBasics) {
 }
 
 TEST_F(WithGameTests, PartialDefineTypeField) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-partial-define-type-field.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-partial-define-type-field.gc",
                                           {"#f\n"
                                            "0\n"});
 }
@@ -601,47 +532,45 @@ TEST_F(WithGameTests, PartialDefineTypeField) {
 // ---- One off Tests
 
 TEST_F(WithGameTests, VFOuterProduct) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-vector-outer-product.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-vector-outer-product.gc",
                                           {"(-4.0000, 8.0000, -4.0000, 999.0000)\n0\n"});
 }
 
 TEST_F(WithGameTests, VFLoadAndStore) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-vf-load-and-store.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-vf-load-and-store.gc",
                                           {"2.0000\n0\n"});
 }
 
 TEST_F(WithGameTests, VFSimpleMath) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-basic-vector-math.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-basic-vector-math.gc",
                                           {"55.0000\n0\n"});
 }
 
 TEST_F(WithGameTests, VFLoadStatic) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-load-static-vector.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-load-static-vector.gc",
                                           {"5.3000\n0\n"});
 }
 
 TEST_F(WithGameTests, XMMSpill) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-xmm-spill.gc",
-                                          {"253.0000\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-xmm-spill.gc", {"253.0000\n0\n"});
 }
 
 TEST_F(WithGameTests, BoxedArrayIndex) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-boxed-array-index.gc",
-                                          {"18\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-boxed-array-index.gc", {"18\n0\n"});
 }
 
 TEST_F(WithGameTests, LocalVars) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-local-vars.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-local-vars.gc",
                                           {"y is \"test\", x is 12, z is 3.2000\n0\n"});
 }
 
 TEST_F(WithGameTests, ShortCircuit) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-short-circuit.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-short-circuit.gc",
                                           get_test_pass_string("short-circuit", 13));
 }
 
 TEST_F(WithGameTests, VectorFloatToInt) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-vector-int-float-conversions.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-vector-int-float-conversions.gc",
                                           {"1.0000 -2.0000 3.0000 4.0000\n"
                                            "1 -2 3 4\n"
                                            "1.0000 -2.0000 3.0000 4.0000\n"
@@ -650,7 +579,7 @@ TEST_F(WithGameTests, VectorFloatToInt) {
 
 TEST_F(WithGameTests, PWShifts) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-pw-shifts.gc",
+      testCategory, "test-pw-shifts.gc",
       {"ffffffffaafffff0 ffffffffbbfffff0 ffffffffccfffff0 ffffffffddfffff0\n"
        "ffffffffeabffffc ffffffffeefffffc fffffffff33ffffc fffffffff77ffffc\n"
        "ffffffffafffff00 ffffffffbfffff00 ffffffffcfffff00 ffffffffdfffff00\n"
@@ -659,39 +588,39 @@ TEST_F(WithGameTests, PWShifts) {
 }
 
 TEST_F(WithGameTests, StaticArray) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-static-array.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-static-array.gc",
                                           {"1 2 -10\n"
                                            "0\n"});
 }
 
 TEST_F(WithGameTests, StaticInlineArray) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-static-inline-array.gc",
+      testCategory, "test-static-inline-array.gc",
       {"test-basic-for-static-inline test-basic-for-static-inline #x4 #x4 \"hello\"\n"
        "#x0 #x0 \"hello\"\n"
        "0\n"});
 }
 
 TEST_F(WithGameTests, StaticArrayField) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-static-array-field.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-static-array-field.gc",
                                           {"\"ghjkl\"\n"
                                            "0\n"});
 }
 
 TEST_F(WithGameTests, ArrayRefStatic) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-array-ref-static.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-array-ref-static.gc",
                                           {"test-not-inline-inline-array-type 12 asdf 13 bean 14\n"
                                            "0\n"});
 }
 
 TEST_F(WithGameTests, TypeReference) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-type-ref.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-type-ref.gc",
                                           {"string #t basic some-unknown-type 20 0\n"
                                            "0\n"});
 }
 
 TEST_F(WithGameTests, StaticFieldInlineArray) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-static-field-inline-arrays.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-static-field-inline-arrays.gc",
                                           {"\"second\" \"first\"\n"
                                            "basic-elt #x4 #x4\n"
                                            "two\n"
@@ -702,7 +631,7 @@ TEST_F(WithGameTests, StaticFieldInlineArray) {
 }
 
 TEST_F(WithGameTests, I128Simple) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-i128-simple.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-i128-simple.gc",
                                           {"[0] #x707172737475767778797a7b7c7d7e7f\n"
                                            "[1] #x606162636465666768696a6b6c6d6e6f\n"
                                            "[2] #x505152535455565758595a5b5c5d5e5f\n"
@@ -717,7 +646,7 @@ TEST_F(WithGameTests, I128Simple) {
 // TODO - add tests
 
 TEST_F(WithGameTests, Pextlw) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-pextlw.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-pextlw.gc",
                                           {"#x07060504171615140302010013121110\n"
                                            "#x0f0e0d0c1f1e1d1c0b0a09081b1a1918\n"
                                            "#x07060504030201001716151413121110\n"
@@ -730,7 +659,7 @@ TEST_F(WithGameTests, Pextlw) {
 
 TEST_F(WithGameTests, Matrix) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-matrix.gc",
+      testCategory, "test-matrix.gc",
       {"mat-mult\n"
        "\t[     80.0000] [     70.0000] [     60.0000] [     50.0000]\n"
        "\t[    240.0000] [    214.0000] [    188.0000] [    162.0000]\n"
@@ -800,7 +729,7 @@ TEST_F(WithGameTests, Matrix) {
 }
 
 TEST_F(WithGameTests, WeirdMultiply) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-weird-multiplies.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-weird-multiplies.gc",
                                           {"2 100000002\n"
                                            "100000000 100000000\n"
                                            "55555552 -3 7ffffffffffffffb -5\n"
@@ -809,7 +738,7 @@ TEST_F(WithGameTests, WeirdMultiply) {
 
 TEST_F(WithGameTests, Function128) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-function128.gc",
+      testCategory, "test-function128.gc",
       {"#<vector       1.0000       2.0000       3.0000       4.0000 @ #x400000003f800000>\n"
        "#<vector       1.0000      20.0000       3.0000       4.0000 @ #x41a000003f800000>\n"
        "#<vector      10.0000       2.0000       3.0000       4.0000 @ #x4000000041200000>\n"
@@ -819,36 +748,36 @@ TEST_F(WithGameTests, Function128) {
 }
 
 TEST_F(WithGameTests, AddrOfVar) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-addr-of-var.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-addr-of-var.gc",
                                           {"x: 25 y: 35 z: 35\n"
                                            "x: 13 y: 35 z: 15\n"
                                            "0\n"});
 }
 
 TEST_F(WithGameTests, SoundName) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-sound-name.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-sound-name.gc",
                                           {"#t #f #f\n"
                                            "0\n"});
 }
 
 TEST_F(WithGameTests, StaticLambda) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-static-lambda.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-static-lambda.gc",
                                           {"Add: 30 sub: -10\n0\n"});
 }
 
 TEST_F(WithGameTests, MethodReplace) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-method-replace.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-method-replace.gc",
                                           {"relocate! foo: 123 heap: 1 name: 2\n0\n"});
 }
 
 TEST_F(WithGameTests, Behaviors) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-behaviors.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-behaviors.gc",
                                           {"function self: 123\n"
                                            "method obj: 456 self: 123\n0\n"});
 }
 
 TEST_F(WithGameTests, RaySphere) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-ray-sphere.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-ray-sphere.gc",
                                           {"Got 0.2346\n"
                                            "Got -100000000.0000\n"
                                            "Got -100000000.0000\n"
@@ -857,7 +786,7 @@ TEST_F(WithGameTests, RaySphere) {
 }
 
 TEST_F(WithGameTests, PandPorPnor) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-pand-por-pnor.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-pand-por-pnor.gc",
                                           {"#x1f1f1d0f0f0f0d0b0f0f0d0707070503\n"
                                            "#xe0e0e2f0f0f0f2f4f0f0f2f8f8f8fafc\n"
                                            "#x0200000c0a0808080200000402000000\n"
@@ -868,50 +797,50 @@ TEST_F(WithGameTests, PandPorPnor) {
 }
 
 TEST_F(WithGameTests, StackInlineArray) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-stack-inline-array.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-stack-inline-array.gc",
                                           {"#x8\n"
                                            "#x30\n0\n"});
 }
 
 TEST_F(WithGameTests, GetEnumVals) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-get-enum-vals.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-get-enum-vals.gc",
                                           {"((thing1 . 1) (thing3 . 3) "
                                            "(thing5 . 5))\n0\n"});
 }
 
 TEST_F(WithGameTests, SetU64FromFloat) {
   shared_compiler->runner.run_static_test(
-      env, testCategory, "test-set-u64-from-float.gc",
+      testCategory, "test-set-u64-from-float.gc",
       {"-12.0000 #xffffffffc1400000 #xc1400000 #xffffffff\n0\n"});
 }
 
 TEST_F(WithGameTests, TrickyFloatBehavior) {
-  shared_compiler->runner.run_static_test(env, testCategory, "tricky-floats.gc",
+  shared_compiler->runner.run_static_test(testCategory, "tricky-floats.gc",
                                           {"#xffffffff80000000 1.0000 #xffffffffbf800000\n0\n"});
 }
 
 TEST_F(WithGameTests, ProcessAllocation) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-kernel-alloc.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-kernel-alloc.gc",
                                           {"diff is 16\n0\n"});
 }
 
 TEST_F(WithGameTests, MethodCallForwardDeclared) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-forward-declared-method.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-forward-declared-method.gc",
                                           {"4 12\n0\n"});
 }
 
 TEST_F(WithGameTests, PointerInStatic) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-false-in-static-pointer.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-false-in-static-pointer.gc",
                                           {"#f\n0\n"});
 }
 
 TEST_F(WithGameTests, StackSingleton) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-stack-singleton.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-stack-singleton.gc",
                                           {"#f #f #f #f #t\n0\n"});
 }
 
 TEST_F(WithGameTests, StackSingletonType) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-stack-singleton-type.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-stack-singleton-type.gc",
                                           {"#t\n0\n"});
 }
 
@@ -927,561 +856,12 @@ extern void link();
 
 TEST_F(WithGameTests, Mips2CBasic) {
   Mips2C::gLinkedFunctionTable.reg("test-func", Mips2C::test_func::execute, 0);
-  shared_compiler->runner.run_static_test(env, testCategory, "test-mips2c-call.gc", {"36\n0\n"});
+  shared_compiler->runner.run_static_test(testCategory, "test-mips2c-call.gc", {"36\n0\n"});
 }
 
 TEST_F(WithGameTests, Mips2C_CallGoal) {
   Mips2C::gLinkedFunctionTable.reg("test-func2", Mips2C::goal_call_test::execute, 128);
   Mips2C::goal_call_test::link();
-  shared_compiler->runner.run_static_test(env, testCategory, "test-mips2c-goal.gc",
+  shared_compiler->runner.run_static_test(testCategory, "test-mips2c-goal.gc",
                                           {"1 2 3 4 5 6 7 8\n12\n"});
 }
-
-void add_expected_type_mismatches(Compiler& c) {
-  c.add_ignored_define_extern_symbol("draw-drawable-tree-tfrag");
-  c.add_ignored_define_extern_symbol("draw-drawable-tree-trans-tfrag");
-  c.add_ignored_define_extern_symbol("draw-drawable-tree-dirt-tfrag");
-  c.add_ignored_define_extern_symbol("draw-drawable-tree-ice-tfrag");
-  c.add_ignored_define_extern_symbol("tfrag-init-buffer");
-}
-
-TEST(Jak1TypeConsistency, MANUAL_TEST_TypeConsistencyWithBuildFirst) {
-  Compiler compiler(GameVersion::Jak1);
-  compiler.enable_throw_on_redefines();
-  add_expected_type_mismatches(compiler);
-  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-all-code.gc");
-  compiler.run_test_no_load("decompiler/config/all-types.gc");
-}
-
-TEST(Jak1TypeConsistency, TypeConsistency) {
-  Compiler compiler(GameVersion::Jak1);
-  compiler.enable_throw_on_redefines();
-  add_expected_type_mismatches(compiler);
-  compiler.run_test_no_load("decompiler/config/all-types.gc");
-  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-all-code.gc");
-}
-
-TEST(Jak2TypeConsistency, TypeConsistency) {
-  Compiler compiler(GameVersion::Jak2);
-  compiler.enable_throw_on_redefines();
-  add_expected_type_mismatches(compiler);
-  compiler.run_test_no_load("decompiler/config/jak2/all-types.gc");
-  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-all-code.gc");
-}
-
-struct VectorFloatRegister {
-  float x = 0;
-  float y = 0;
-  float z = 0;
-  float w = 0;
-
-  void setJson(nlohmann::json& data, std::string vectorKey) {
-    data[fmt::format("{}x", vectorKey)] = x;
-    data[fmt::format("{}y", vectorKey)] = y;
-    data[fmt::format("{}z", vectorKey)] = z;
-    data[fmt::format("{}w", vectorKey)] = w;
-  }
-
-  float getBroadcastElement(emitter::Register::VF_ELEMENT bc, float defValue) {
-    switch (bc) {
-      case emitter::Register::VF_ELEMENT::X:
-        return x;
-      case emitter::Register::VF_ELEMENT::Y:
-        return y;
-      case emitter::Register::VF_ELEMENT::Z:
-        return z;
-      case emitter::Register::VF_ELEMENT::W:
-        return w;
-      default:
-        return defValue;
-    }
-  }
-
-  std::string toGOALFormat() {
-    std::string answer = fmt::format("({:.4f}, {:.4f}, {:.4f}, {:.4f})", x, y, z, w);
-    // {fmt} formats negative 0 as "-0.000", just going to flip any negative zeros to positives as I
-    // don't think is an OpenGOAL issue
-    // Additionally, GOAL doesn't have -/+ Inf it seems, so replace with NaN. -nan is also just NaN
-    return std::regex_replace(std::regex_replace(answer, std::regex("-0.0000"), "0.0000"),
-                              std::regex("nan|inf|-nan|-inf"), "NaN");
-  }
-
-  std::string toGOALFormat(float) {
-    std::string answer = fmt::format("{:.4f}", x);
-    // {fmt} formats negative 0 as "-0.000", just going to flip any negative zeros to positives as I
-    // don't think is an OpenGOAL issue
-    // Additionally, GOAL doesn't have -/+ Inf it seems, so replace with NaN
-    return std::regex_replace(std::regex_replace(answer, std::regex("-0.0000"), "0.0000"),
-                              std::regex("nan|inf|-nan|-inf"), "NaN");
-  }
-};
-
-struct VectorFloatTestCase {
-  VectorFloatRegister dest = {11, 22, 33, 44};
-  int destinationMask = -1;
-  emitter::Register::VF_ELEMENT bc = emitter::Register::VF_ELEMENT::NONE;
-
-  std::string getOperationBroadcast() {
-    switch (bc) {
-      case emitter::Register::VF_ELEMENT::X:
-        return ".x";
-      case emitter::Register::VF_ELEMENT::Y:
-        return ".y";
-      case emitter::Register::VF_ELEMENT::Z:
-        return ".z";
-      case emitter::Register::VF_ELEMENT::W:
-        return ".w";
-      default:
-        return "";
-    }
-  }
-
-  virtual VectorFloatRegister getExpectedResult() = 0;
-  virtual void setJson(nlohmann::json& data, std::string func) = 0;
-
-  virtual ~VectorFloatTestCase() = default;
-};
-
-struct VectorFloatTestCase_TwoOperand : VectorFloatTestCase {
-  VectorFloatRegister input1 = {1.5, -1.5, 0.0, 100.5};
-  VectorFloatRegister input2 = {-5.5, -0.0, 10.0, 7.5};
-
-  std::function<float(float, float)> operation;
-
-  VectorFloatRegister getExpectedResult() {
-    VectorFloatRegister expectedResult;
-    expectedResult.x = destinationMask & 0b0001
-                           ? operation(input1.x, input2.getBroadcastElement(bc, input2.x))
-                           : dest.x;
-    expectedResult.y = destinationMask & 0b0010
-                           ? operation(input1.y, input2.getBroadcastElement(bc, input2.y))
-                           : dest.y;
-    expectedResult.z = destinationMask & 0b0100
-                           ? operation(input1.z, input2.getBroadcastElement(bc, input2.z))
-                           : dest.z;
-    expectedResult.w = destinationMask & 0b1000
-                           ? operation(input1.w, input2.getBroadcastElement(bc, input2.w))
-                           : dest.w;
-    return expectedResult;
-  }
-
-  void setJson(nlohmann::json& data, std::string func) {
-    input1.setJson(data, "v1");
-    input2.setJson(data, "v2");
-    dest.setJson(data, "dest");
-    data["operation"] = fmt::format(func);
-    if (destinationMask == -1) {
-      data["destinationMask"] = false;
-    } else {
-      data["destinationMask"] = fmt::format("{:b}", destinationMask);
-    }
-  }
-};
-
-std::vector<VectorFloatTestCase_TwoOperand> vectorMathCaseGen_TwoOperand() {
-  std::vector<VectorFloatTestCase_TwoOperand> cases = {};
-  for (int i = 0; i <= 15; i++) {
-    VectorFloatTestCase_TwoOperand testCase = VectorFloatTestCase_TwoOperand();
-    testCase.destinationMask = i;
-    cases.push_back(testCase);
-    // Re-add each case with each broadcast variant
-    for (int j = 0; j < 4; j++) {
-      VectorFloatTestCase_TwoOperand testCaseBC = VectorFloatTestCase_TwoOperand();
-      testCaseBC.destinationMask = i;
-      testCaseBC.bc = static_cast<emitter::Register::VF_ELEMENT>(j);
-      cases.push_back(testCaseBC);
-    }
-  }
-  return cases;
-}
-
-class VectorFloatParameterizedTestFixtureWithRunner_TwoOperand
-    : public WithMinimalGameTests,
-      public ::testing::WithParamInterface<VectorFloatTestCase_TwoOperand> {
- protected:
-  std::string templateFile = "test-vector-math-2-operand.template.gc";
-};
-
-// NOTE - an excellent article -
-// https://www.sandordargo.com/blog/2019/04/24/parameterized-testing-with-gtest
-
-// --- 2 Operand VF Operations
-
-TEST_P(VectorFloatParameterizedTestFixtureWithRunner_TwoOperand, VF_ADD_XYZW_DEST) {
-  VectorFloatTestCase_TwoOperand testCase = GetParam();
-  testCase.operation = [](float x, float y) { return x + y; };
-
-  nlohmann::json data;
-  testCase.setJson(data, fmt::format(".add{}.vf", testCase.getOperationBroadcast()));
-
-  std::string outFile = shared_compiler->runner.test_file_name(
-      fmt::format("vector-math-add{}-{{}}.generated.gc", testCase.getOperationBroadcast()));
-  env.write(templateFile, data, outFile);
-  shared_compiler->runner.run_test(
-      testCategory, outFile, {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
-}
-
-TEST_P(VectorFloatParameterizedTestFixtureWithRunner_TwoOperand, VF_SUB_XYZW_DEST) {
-  VectorFloatTestCase_TwoOperand testCase = GetParam();
-  testCase.operation = [](float x, float y) { return x - y; };
-
-  nlohmann::json data;
-  testCase.setJson(data, fmt::format(".sub{}.vf", testCase.getOperationBroadcast()));
-
-  std::string outFile = shared_compiler->runner.test_file_name(
-      fmt::format("vector-math-sub{}-{{}}.generated.gc", testCase.getOperationBroadcast()));
-  env.write(templateFile, data, outFile);
-  shared_compiler->runner.run_test(
-      testCategory, outFile, {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
-}
-
-TEST_P(VectorFloatParameterizedTestFixtureWithRunner_TwoOperand, VF_MUL_XYZW_DEST) {
-  VectorFloatTestCase_TwoOperand testCase = GetParam();
-  testCase.operation = [](float x, float y) { return x * y; };
-
-  nlohmann::json data;
-  testCase.setJson(data, fmt::format(".mul{}.vf", testCase.getOperationBroadcast()));
-
-  std::string outFile = shared_compiler->runner.test_file_name(
-      fmt::format("vector-math-mul{}-{{}}.generated.gc", testCase.getOperationBroadcast()));
-  env.write(templateFile, data, outFile);
-  shared_compiler->runner.run_test(
-      testCategory, outFile, {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
-}
-
-TEST_P(VectorFloatParameterizedTestFixtureWithRunner_TwoOperand, VF_MIN_XYZW_DEST) {
-  VectorFloatTestCase_TwoOperand testCase = GetParam();
-  testCase.operation = [](float x, float y) { return fmin(x, y); };
-
-  nlohmann::json data;
-  testCase.setJson(data, fmt::format(".min{}.vf", testCase.getOperationBroadcast()));
-
-  std::string outFile = shared_compiler->runner.test_file_name(
-      fmt::format("vector-math-min{}-{{}}.generated.gc", testCase.getOperationBroadcast()));
-  env.write(templateFile, data, outFile);
-  shared_compiler->runner.run_test(
-      testCategory, outFile, {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
-}
-
-TEST_P(VectorFloatParameterizedTestFixtureWithRunner_TwoOperand, VF_MAX_XYZW_DEST) {
-  VectorFloatTestCase_TwoOperand testCase = GetParam();
-  testCase.operation = [](float x, float y) { return fmax(x, y); };
-
-  nlohmann::json data;
-  testCase.setJson(data, fmt::format(".max{}.vf", testCase.getOperationBroadcast()));
-
-  std::string outFile = shared_compiler->runner.test_file_name(
-      fmt::format("vector-math-max{}-{{}}.generated.gc", testCase.getOperationBroadcast()));
-  env.write(templateFile, data, outFile);
-  shared_compiler->runner.run_test(
-      testCategory, outFile, {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
-}
-
-INSTANTIATE_TEST_SUITE_P(WithGameTests_VectorFloatTests,
-                         VectorFloatParameterizedTestFixtureWithRunner_TwoOperand,
-                         ::testing::ValuesIn(vectorMathCaseGen_TwoOperand()));
-
-// --- 1 Operand VF Operations
-
-struct VectorFloatTestCase_SingleOperand : VectorFloatTestCase {
-  VectorFloatRegister input1 = {1.5, -1.5, 0.0, 100.5};
-
-  std::function<float(float)> operation;
-
-  VectorFloatRegister getExpectedResult() {
-    VectorFloatRegister expectedResult;
-    expectedResult.x =
-        destinationMask & 0b0001 ? operation(input1.getBroadcastElement(bc, input1.x)) : dest.x;
-    expectedResult.y =
-        destinationMask & 0b0010 ? operation(input1.getBroadcastElement(bc, input1.y)) : dest.y;
-    expectedResult.z =
-        destinationMask & 0b0100 ? operation(input1.getBroadcastElement(bc, input1.z)) : dest.z;
-    expectedResult.w =
-        destinationMask & 0b1000 ? operation(input1.getBroadcastElement(bc, input1.w)) : dest.w;
-    return expectedResult;
-  }
-
-  void setJson(nlohmann::json& data, std::string func) {
-    input1.setJson(data, "v1");
-    dest.setJson(data, "dest");
-    data["operation"] = fmt::format(func);
-    if (destinationMask == -1) {
-      data["destinationMask"] = false;
-    } else {
-      data["destinationMask"] = fmt::format("{:b}", destinationMask);
-    }
-  }
-};
-
-std::vector<VectorFloatTestCase_SingleOperand> vectorMathCaseGen_SingleOperand_NoBroadcast() {
-  std::vector<VectorFloatTestCase_SingleOperand> cases = {};
-  for (int i = 0; i <= 15; i++) {
-    VectorFloatTestCase_SingleOperand testCase = VectorFloatTestCase_SingleOperand();
-    testCase.destinationMask = i;
-    cases.push_back(testCase);
-  }
-  return cases;
-}
-
-class VectorFloatParameterizedTestFixtureWithRunner_SingleOperand
-    : public WithMinimalGameTests,
-      public ::testing::WithParamInterface<VectorFloatTestCase_SingleOperand> {
- protected:
-  std::string templateFile = "test-vector-math-1-operand.template.gc";
-};
-
-TEST_P(VectorFloatParameterizedTestFixtureWithRunner_SingleOperand, VF_ABS_DEST) {
-  VectorFloatTestCase_SingleOperand testCase = GetParam();
-  testCase.operation = [](float x) { return fabs(x); };
-
-  nlohmann::json data;
-  testCase.setJson(data, ".abs.vf");
-
-  std::string outFile = shared_compiler->runner.test_file_name("vector-math-abs-{}.generated.gc");
-  env.write(templateFile, data, outFile);
-  shared_compiler->runner.run_test(
-      testCategory, outFile, {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
-}
-
-INSTANTIATE_TEST_SUITE_P(WithGameTests_VectorFloatTests,
-                         VectorFloatParameterizedTestFixtureWithRunner_SingleOperand,
-                         ::testing::ValuesIn(vectorMathCaseGen_SingleOperand_NoBroadcast()));
-
-// --- 2 Operand With ACC VF Operations
-// TODO - these pollute tests, it would be nicer long-term to move these into the framework
-// namespace
-
-struct VectorFloatTestCase_TwoOperandACC : VectorFloatTestCase {
-  VectorFloatRegister input1 = {1.5, -1.5, 0.0, 100.5};
-  VectorFloatRegister input2 = {-5.5, -0.0, 10.0, 7.5};
-  VectorFloatRegister acc = {-15.5, -0.0, 20.0, 70.5};
-
-  std::function<float(float, float, float)> operation;
-
-  VectorFloatRegister getExpectedResult() {
-    VectorFloatRegister expectedResult;
-    expectedResult.x = destinationMask & 0b0001
-                           ? operation(input1.x, input2.getBroadcastElement(bc, input2.x), acc.x)
-                           : dest.x;
-    expectedResult.y = destinationMask & 0b0010
-                           ? operation(input1.y, input2.getBroadcastElement(bc, input2.y), acc.y)
-                           : dest.y;
-    expectedResult.z = destinationMask & 0b0100
-                           ? operation(input1.z, input2.getBroadcastElement(bc, input2.z), acc.z)
-                           : dest.z;
-    expectedResult.w = destinationMask & 0b1000
-                           ? operation(input1.w, input2.getBroadcastElement(bc, input2.w), acc.w)
-                           : dest.w;
-    return expectedResult;
-  }
-
-  void setJson(nlohmann::json& data, std::string func) {
-    input1.setJson(data, "v1");
-    input2.setJson(data, "v2");
-    acc.setJson(data, "acc");
-    dest.setJson(data, "dest");
-    data["operation"] = fmt::format(func);
-    if (destinationMask == -1) {
-      data["destinationMask"] = false;
-    } else {
-      data["destinationMask"] = fmt::format("{:b}", destinationMask);
-    }
-  }
-};
-
-// TODO - unnecessary duplication for these generation methods, use some templates (only the type
-// changes)
-std::vector<VectorFloatTestCase_TwoOperandACC> vectorMathCaseGen_TwoOperandACC() {
-  std::vector<VectorFloatTestCase_TwoOperandACC> cases = {};
-  for (int i = 0; i <= 15; i++) {
-    VectorFloatTestCase_TwoOperandACC testCase = VectorFloatTestCase_TwoOperandACC();
-    testCase.destinationMask = i;
-    cases.push_back(testCase);
-    // Re-add each case with each broadcast variant
-    for (int j = 0; j < 4; j++) {
-      VectorFloatTestCase_TwoOperandACC testCaseBC = VectorFloatTestCase_TwoOperandACC();
-      testCaseBC.destinationMask = i;
-      testCaseBC.bc = static_cast<emitter::Register::VF_ELEMENT>(j);
-      cases.push_back(testCaseBC);
-    }
-  }
-  return cases;
-}
-
-class VectorFloatParameterizedTestFixtureWithRunner_TwoOperandACC
-    : public WithMinimalGameTests,
-      public ::testing::WithParamInterface<VectorFloatTestCase_TwoOperandACC> {
- protected:
-  std::string templateFile = "test-vector-math-2-operand-acc.template.gc";
-};
-
-TEST_P(VectorFloatParameterizedTestFixtureWithRunner_TwoOperandACC, VF_MUL_ADD_XYZW_DEST) {
-  VectorFloatTestCase_TwoOperandACC testCase = GetParam();
-  testCase.operation = [](float x, float y, float acc) { return (x * y) + acc; };
-
-  nlohmann::json data;
-  testCase.setJson(data, fmt::format(".add.mul{}.vf", testCase.getOperationBroadcast()));
-
-  std::string outFile = shared_compiler->runner.test_file_name(
-      fmt::format("vector-math-add-mul{}-{{}}.generated.gc", testCase.getOperationBroadcast()));
-  env.write(templateFile, data, outFile);
-  shared_compiler->runner.run_test(
-      testCategory, outFile, {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
-}
-
-TEST_P(VectorFloatParameterizedTestFixtureWithRunner_TwoOperandACC, VF_MUL_SUB_XYZW_DEST) {
-  VectorFloatTestCase_TwoOperandACC testCase = GetParam();
-  testCase.operation = [](float x, float y, float acc) { return acc - (x * y); };
-
-  nlohmann::json data;
-  testCase.setJson(data, fmt::format(".sub.mul{}.vf", testCase.getOperationBroadcast()));
-
-  std::string outFile = shared_compiler->runner.test_file_name(
-      fmt::format("vector-math-sub-mul{}-{{}}.generated.gc", testCase.getOperationBroadcast()));
-  env.write(templateFile, data, outFile);
-  shared_compiler->runner.run_test(
-      testCategory, outFile, {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
-}
-
-INSTANTIATE_TEST_SUITE_P(WithGameTests_VectorFloatTests,
-                         VectorFloatParameterizedTestFixtureWithRunner_TwoOperandACC,
-                         ::testing::ValuesIn(vectorMathCaseGen_TwoOperandACC()));
-
-// ---- Two Operand Quotient Register Operations
-
-struct VectorFloatTestCase_TwoOperandQuotient : VectorFloatTestCase {
-  VectorFloatRegister input1 = {1.5, -1.5, 0.0, 100.5};
-  VectorFloatRegister input2 = {-5.5, -0.0, 10.0, 10.0};
-
-  int fsf = 0;
-  int ftf = 0;
-
-  std::function<float(float, float)> operation;
-
-  VectorFloatRegister getExpectedResult() {
-    float operand1 =
-        input1.getBroadcastElement(static_cast<emitter::Register::VF_ELEMENT>(fsf), input1.x);
-    float operand2 =
-        input2.getBroadcastElement(static_cast<emitter::Register::VF_ELEMENT>(ftf), input2.x);
-    float result = operation(operand1, operand2);
-    VectorFloatRegister expectedResult;
-    expectedResult.x = result;
-    expectedResult.y = result;
-    expectedResult.z = result;
-    expectedResult.w = result;
-    return expectedResult;
-  }
-
-  void setJson(nlohmann::json& data, std::string func) {
-    input1.setJson(data, "v1");
-    input2.setJson(data, "v2");
-    dest.setJson(data, "dest");
-    data["operation"] = fmt::format(func);
-    data["ftf"] = fmt::format("{:b}", ftf);
-    data["fsf"] = fmt::format("{:b}", fsf);
-  }
-};
-
-std::vector<VectorFloatTestCase_TwoOperandQuotient> vectorMathCaseGen_TwoOperandQuotient() {
-  std::vector<VectorFloatTestCase_TwoOperandQuotient> cases = {};
-  for (int i = 0; i <= 3; i++) {
-    VectorFloatTestCase_TwoOperandQuotient testCase = VectorFloatTestCase_TwoOperandQuotient();
-    testCase.fsf = i;
-    for (int j = 0; j <= 3; j++) {
-      testCase.ftf = j;
-      cases.push_back(testCase);
-    }
-  }
-  return cases;
-}
-
-class VectorFloatParameterizedTestFixtureWithRunner_TwoOperandQuotient
-    : public WithMinimalGameTests,
-      public ::testing::WithParamInterface<VectorFloatTestCase_TwoOperandQuotient> {
- protected:
-  std::string templateFile = "test-vector-math-division.template.gc";
-};
-
-TEST_P(VectorFloatParameterizedTestFixtureWithRunner_TwoOperandQuotient, VF_DIV_FTF_FSF) {
-  VectorFloatTestCase_TwoOperandQuotient testCase = GetParam();
-  testCase.operation = [](float x, float y) { return x / y; };
-
-  nlohmann::json data;
-  testCase.setJson(data, ".div.vf");
-
-  std::string outFile = shared_compiler->runner.test_file_name("vector-math-div-{}.generated.gc");
-  env.write(templateFile, data, outFile);
-  shared_compiler->runner.run_test(
-      testCategory, outFile,
-      {fmt::format("{}\n0\n",
-                   testCase.getExpectedResult().toGOALFormat(testCase.getExpectedResult().x))});
-}
-
-INSTANTIATE_TEST_SUITE_P(WithGameTests_VectorFloatTests,
-                         VectorFloatParameterizedTestFixtureWithRunner_TwoOperandQuotient,
-                         ::testing::ValuesIn(vectorMathCaseGen_TwoOperandQuotient()));
-
-// ---- Single Operand Quotient Register Operations
-
-struct VectorFloatTestCase_OneOperandQuotient : VectorFloatTestCase {
-  VectorFloatRegister input1 = {2, -2, 0.0, 100};
-
-  int ftf = 0;
-
-  std::function<float(float)> operation;
-
-  VectorFloatRegister getExpectedResult() {
-    float operand1 =
-        input1.getBroadcastElement(static_cast<emitter::Register::VF_ELEMENT>(ftf), input1.x);
-    float result = operation(operand1);
-    VectorFloatRegister expectedResult;
-    expectedResult.x = result;
-    expectedResult.y = result;
-    expectedResult.z = result;
-    expectedResult.w = result;
-    return expectedResult;
-  }
-
-  void setJson(nlohmann::json& data, std::string func) {
-    input1.setJson(data, "v1");
-    dest.setJson(data, "dest");
-    data["operation"] = fmt::format(func);
-    data["ftf"] = fmt::format("{:b}", ftf);
-  }
-};
-
-std::vector<VectorFloatTestCase_OneOperandQuotient> vectorMathCaseGen_OneOperandQuotient() {
-  std::vector<VectorFloatTestCase_OneOperandQuotient> cases = {};
-  for (int i = 0; i <= 3; i++) {
-    VectorFloatTestCase_OneOperandQuotient testCase = VectorFloatTestCase_OneOperandQuotient();
-    testCase.ftf = i;
-    cases.push_back(testCase);
-  }
-  return cases;
-}
-
-class VectorFloatParameterizedTestFixtureWithRunner_OneOperandQuotient
-    : public WithMinimalGameTests,
-      public ::testing::WithParamInterface<VectorFloatTestCase_OneOperandQuotient> {
- protected:
-  std::string templateFile = "test-vector-math-sqrt.template.gc";
-};
-
-TEST_P(VectorFloatParameterizedTestFixtureWithRunner_OneOperandQuotient, VF_SQRT_FTF) {
-  VectorFloatTestCase_OneOperandQuotient testCase = GetParam();
-  testCase.operation = [](float x) { return sqrt(x); };
-
-  nlohmann::json data;
-  testCase.setJson(data, ".sqrt.vf");
-
-  std::string outFile = shared_compiler->runner.test_file_name("vector-math-sqrt-{}.generated.gc");
-  env.write(templateFile, data, outFile);
-  shared_compiler->runner.run_test(
-      testCategory, outFile,
-      {fmt::format("{}\n0\n",
-                   testCase.getExpectedResult().toGOALFormat(testCase.getExpectedResult().x))});
-}
-
-INSTANTIATE_TEST_SUITE_P(WithGameTests_VectorFloatTests,
-                         VectorFloatParameterizedTestFixtureWithRunner_OneOperandQuotient,
-                         ::testing::ValuesIn(vectorMathCaseGen_OneOperandQuotient()));
