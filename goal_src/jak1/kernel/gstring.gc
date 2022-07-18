@@ -47,6 +47,42 @@
   dst
   )
 
+(defun copyn-string<-string ((dst string) (src string) (len int))
+  "Copy len bytes of data from one string to another, like strncpy"
+  (let ((dst-ptr (-> dst data))
+        (src-ptr (-> src data))
+        )
+    (if (<= len (length src))
+      (dotimes (i len)
+        (set! (-> dst-ptr) (-> src-ptr))
+        (&+! dst-ptr 1)
+        (&+! src-ptr 1)
+        )
+      )
+    (set! (-> dst-ptr 0) 0)
+    )
+  dst
+  )
+
+(defun substring! ((dst string) (src string) (start int) (end int))
+  "Copy the specified substring to dst. Returns an empty string if invalid indices are given."
+  (let ((strlen (length src)))
+    (if (and (< start strlen) (<= end strlen))
+      (let ((start-ptr (-> src data))
+            (dst-ptr (-> dst data))
+            )
+            (dotimes (i (- end start))
+              (set! (-> dst-ptr) (-> start-ptr (+ start i)))
+              (&+! dst-ptr 1)
+              )
+            (set! (-> dst-ptr 0) 0)
+            dst
+        )
+        ""
+      )
+    )
+  )
+
 (defmethod new string ((allocation symbol) (type-to-make type) (size int) (other string))
   "Create a new string of the given size. If other is not #f, copy data from it."
   (cond
