@@ -400,12 +400,15 @@
   )
 
 ;; a "catch" frame is a frame that can be "thrown" to.
-;; the "throw" is a nonlocal control flow back to the state befor the "catch" block.
+;; the "throw" is a nonlocal control flow back to the state before the "catch" block.
 (deftype catch-frame (stack-frame)
   ((sp   int32     :offset-assert  12)
    (ra   int32     :offset-assert  16)
-   (freg float   6 :offset-assert  20)
-   (rreg uint128 8 :offset-assert  48)
+   ; (freg float   6 :offset-assert  20)
+   ; (rreg uint128 8 :offset-assert  48)
+   ;; In OpenGOAL, we swap a rreg for 4 more fregs.
+   (freg float 10 :offset-assert 20) ;; only use 8
+   (rreg uint128 7)                  ;; only use 5
    )
   :method-count-assert 9
   :size-assert         #xb0
@@ -687,5 +690,12 @@
          ;; call the suspend hook (put nothing as the argument)
          ((-> (the cpu-thread pp) suspend-hook) (the cpu-thread 0))
          ;; the kernel will set pp (possibly to a new value, if we've been relocated) on resume.
+         )
+  )
+
+(defmacro process-deactivate ()
+  "deactivate (kill) the current process"
+  `(rlet ((pp :reg r13 :reset-here #t :type process))
+         (deactivate pp)
          )
   )

@@ -1,3 +1,4 @@
+
 #include <memory>
 #include <thread>
 
@@ -5,10 +6,10 @@
 #include "gtest/gtest.h"
 #include "test/goalc/framework/test_runner.h"
 
-class Jak1KernelTest : public testing::Test {
+class Jak2KernelTest : public testing::Test {
  public:
   static void SetUpTestSuite() {
-    shared_compiler = std::make_unique<SharedCompiler>(GameVersion::Jak1);
+    shared_compiler = std::make_unique<SharedCompiler>(GameVersion::Jak2);
     printf("Building kernel...\n");
     try {
       // a macro in goal-lib.gc
@@ -19,7 +20,7 @@ class Jak1KernelTest : public testing::Test {
     }
 
     printf("Starting GOAL Kernel...\n");
-    shared_compiler->runtime_thread = std::thread(GoalTest::runtime_with_kernel_jak1);
+    shared_compiler->runtime_thread = std::thread(GoalTest::runtime_with_kernel_jak2);
     shared_compiler->runner.c = &shared_compiler->compiler;
     shared_compiler->compiler.run_test_from_string("(set! *use-old-listener-print* #t)");
   }
@@ -46,7 +47,7 @@ class Jak1KernelTest : public testing::Test {
   static std::unique_ptr<SharedCompiler> shared_compiler;
 };
 
-std::unique_ptr<Jak1KernelTest::SharedCompiler> Jak1KernelTest::shared_compiler;
+std::unique_ptr<Jak2KernelTest::SharedCompiler> Jak2KernelTest::shared_compiler;
 
 namespace {
 std::string send_code_and_get_multiple_responses(const std::string& code,
@@ -71,9 +72,9 @@ std::string send_code_and_get_multiple_responses(const std::string& code,
 }
 }  // namespace
 
-TEST_F(Jak1KernelTest, Basic) {
+TEST_F(Jak2KernelTest, Basic) {
   shared_compiler->runner.c->run_test_from_string(
-      "(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
+      "(ml \"test/goalc/source_templates/jak2/kernel-test.gc\")");
   std::string result =
       send_code_and_get_multiple_responses("(kernel-test)", 10, &shared_compiler->runner);
 
@@ -103,9 +104,9 @@ TEST_F(Jak1KernelTest, Basic) {
   EXPECT_EQ(expected, result);
 }
 
-TEST_F(Jak1KernelTest, RunFunctionInProcess) {
+TEST_F(Jak2KernelTest, RunFunctionInProcess) {
   shared_compiler->runner.c->run_test_from_string(
-      "(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
+      "(ml \"test/goalc/source_templates/jak2/kernel-test.gc\")");
   std::string result =
       send_code_and_get_multiple_responses("(kernel-test-2)", 1, &shared_compiler->runner);
 
@@ -122,9 +123,9 @@ TEST_F(Jak1KernelTest, RunFunctionInProcess) {
   EXPECT_EQ(expected, result);
 }
 
-TEST_F(Jak1KernelTest, StateAndXmm) {
+TEST_F(Jak2KernelTest, StateAndXmm) {
   shared_compiler->runner.c->run_test_from_string(
-      "(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
+      "(ml \"test/goalc/source_templates/jak2/kernel-test.gc\")");
   std::string result =
       send_code_and_get_multiple_responses("(state-test)", 5, &shared_compiler->runner);
 
@@ -136,9 +137,9 @@ TEST_F(Jak1KernelTest, StateAndXmm) {
   EXPECT_EQ(expected, result);
 }
 
-TEST_F(Jak1KernelTest, ThrowXmm) {
+TEST_F(Jak2KernelTest, ThrowXmm) {
   shared_compiler->runner.c->run_test_from_string(
-      "(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
+      "(ml \"test/goalc/source_templates/jak2/kernel-test.gc\")");
   std::string result =
       send_code_and_get_multiple_responses("(throw-backup-test)", 1, &shared_compiler->runner);
 

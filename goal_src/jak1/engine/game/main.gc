@@ -192,11 +192,9 @@
            (else
             (cond
               ;; debug mode pause allowed with select or R2.
-              ((and (or (cpad-hold? 0 select)
-                        (cpad-hold? 0 r2)
-                        )
-                    *debug-segment*
-                    )
+              ;; pc port note : allow select outside debug mode
+              ((or (cpad-hold? 0 select)
+                   (and *debug-segment* (cpad-hold? 0 r2)))
                ;; pushing select or R2, and debug. allow pause.
                'pause
                )
@@ -204,7 +202,7 @@
                (cond
                  ;; ignore anything below here, unless we are pressing start, or debug.
                  ((and (not *debug-segment*)
-                       (zero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start)))
+                       (not (cpad-hold? 0 start))
                        )
                   *master-mode*
                   )
@@ -290,7 +288,8 @@
             'game
             )
            ;; pause -> game
-           ((cpad-hold? 0 start)
+           ;; pc port note : changed to allow select pause in retail
+           ((cpad-hold? 0 start select)
             'game
             )
            (else
@@ -473,8 +472,8 @@
 
     ;; push R3 to print global heap status. not very useful.
     (if (cpad-pressed? 1 r3)
-     (inspect global)
-     )
+      (inspect global)
+      )
 
     ;; push R3 to display IOP memory stats
     (when (cpad-hold? 1 r3)

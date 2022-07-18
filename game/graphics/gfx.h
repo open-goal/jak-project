@@ -73,8 +73,8 @@ static constexpr int PAT_MAT_COUNT = 23;
 struct GfxGlobalSettings {
   // note: this is actually the size of the display that ISN'T letterboxed
   // the excess space is what will be letterboxed away.
-  int lbox_w;
-  int lbox_h;
+  int lbox_w = 640;
+  int lbox_h = 480;
 
   // actual game resolution
   int game_res_w = 640;

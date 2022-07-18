@@ -26,14 +26,14 @@ class GfxDisplay {
   int m_xpos;
   int m_ypos;
 
-  GfxDisplayMode m_fullscreen_target_mode = GfxDisplayMode::Windowed;
-  GfxDisplayMode m_last_fullscreen_mode;
   int m_fullscreen_screen;
   int m_fullscreen_target_screen;
   bool m_imgui_visible;
 
  protected:
   bool m_main;
+  GfxDisplayMode m_fullscreen_target_mode = GfxDisplayMode::Windowed;
+  GfxDisplayMode m_last_fullscreen_mode;
 
  public:
   virtual ~GfxDisplay() {}

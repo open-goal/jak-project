@@ -38,49 +38,6 @@ struct BBox {
   }
 };
 
-/*!
- * Make the bounding box hold this node and all its children.
- */
-void add_to_bbox_recursive(const CNode& node, BBox& bbox) {
-  if (node.faces.empty()) {
-    for (auto& child : node.child_nodes) {
-      add_to_bbox_recursive(child, bbox);
-    }
-  } else {
-    for (auto& face : node.faces) {
-      for (auto& vert : face.v) {
-        bbox.mins.min_in_place(vert);
-        bbox.maxs.max_in_place(vert);
-      }
-    }
-  }
-}
-
-BBox bbox_of_node(const CNode& node) {
-  BBox bbox;
-  bbox.mins.fill(std::numeric_limits<float>::max());
-  bbox.maxs.fill(-std::numeric_limits<float>::max());
-  add_to_bbox_recursive(node, bbox);
-  return bbox;
-}
-
-/*!
- * Make the bsphere hold this node and all its children.
- */
-void update_bsphere_recursive(const CNode& node, const math::Vector3f& origin, float& r_squared) {
-  if (node.faces.empty()) {
-    for (auto& child : node.child_nodes) {
-      update_bsphere_recursive(child, origin, r_squared);
-    }
-  } else {
-    for (auto& face : node.faces) {
-      for (auto& vert : face.v) {
-        r_squared = std::max(r_squared, (vert - origin).squared_length());
-      }
-    }
-  }
-}
-
 void collect_vertices(const CNode& node, std::vector<math::Vector3f>& verts) {
   for (auto& child : node.child_nodes) {
     collect_vertices(child, verts);
@@ -123,22 +80,6 @@ void compute_my_bsphere_ritters(CNode& node) {
     max_squared = std::max(max_squared, (pt - origin).squared_length());
   }
   node.bsphere.w() = std::sqrt(max_squared);
-}
-
-/*!
- * Compute the bsphere of a single node.
- */
-BBox compute_my_bsphere_bad(CNode& node) {
-  // first compute bbox.
-  BBox bbox = bbox_of_node(node);
-  float r = 0;
-  math::Vector3f origin = (bbox.maxs + bbox.mins) * 0.5;
-  update_bsphere_recursive(node, origin, r);
-  node.bsphere.x() = origin.x();
-  node.bsphere.y() = origin.y();
-  node.bsphere.z() = origin.z();
-  node.bsphere.w() = std::sqrt(r);
-  return bbox;
 }
 
 /*!

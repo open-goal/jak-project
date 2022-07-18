@@ -426,20 +426,24 @@
   :flag-assert #x90000000c
   )
 
+;; a "catch" frame is a frame that can be "thrown" to.
+;; the "throw" is a nonlocal control flow back to the state before the "catch" block.
 (deftype catch-frame (stack-frame)
-  ((sp   int32         :offset-assert 12)
-   (ra   int32         :offset-assert 16)
-   (freg float       6 :offset-assert 20) ;; guessed by decompiler
-   (rreg uint128     8 :offset-assert 48) ;; guessed by decompiler
+  ((sp   int32     :offset-assert  12)
+   (ra   int32     :offset-assert  16)
+   ; (freg float   6 :offset-assert  20)
+   ; (rreg uint128 8 :offset-assert  48)
+   ;; In OpenGOAL, we swap a rreg for 4 more fregs.
+   (freg float 10 :offset-assert 20) ;; only use 8
+   (rreg uint128 7)                  ;; only use 5
    )
-  (:methods
-    (new (symbol type symbol function (pointer uint64)) object 0)
-    )
   :method-count-assert 9
   :size-assert         #xb0
   :flag-assert         #x9000000b0
+  (:methods
+    (new (symbol type symbol function (pointer uint64)) object 0)
+    )
   )
-
 
 (deftype protect-frame (stack-frame)
   ((exit (function none)  :offset-assert 12) ;; guessed by decompiler

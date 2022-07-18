@@ -1,11 +1,3 @@
-#if defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-#elif defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-but-set-variable"
-#endif
-
 //--------------------------MIPS2C---------------------
 #include "common/dma/gs.h"
 
@@ -3284,9 +3276,3 @@ void link() {
 
 } // namespace method_9_collide_puss_work
 } // namespace Mips2C
-
-#if defined(__GNUC__)
-#pragma GCC diagnostic pop
-#elif defined(__clang__)
-#pragma clang diagnostic pop
-#endif
