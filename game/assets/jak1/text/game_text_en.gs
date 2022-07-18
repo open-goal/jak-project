@@ -167,8 +167,8 @@
         "FINAL BOSS")
 (#x1085 "CREDITS"
         "CREDITS")
-(#x1086 "LOCKED"
-        "LOCKED")
+(#x1086 "?????"
+        "?????")
 (#x1087 "KLAWW"
         "KLAWW")
 (#x1088 "FISHING MINI-GAME"
