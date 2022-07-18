@@ -665,6 +665,55 @@ std::optional<std::vector<CollideFace>> subdivide_face_if_needed(CollideFace fac
   }
 }
 
+struct PatResult {
+  bool set = false;
+  bool ignore = false;
+  PatSurface pat;
+};
+
+PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& debug_name) {
+  PatResult result;
+  if (!val.IsObject() || !val.Has("set_collision") || !val.Get("set_collision").Get<int>()) {
+    // unset.
+    result.set = false;
+    return result;
+  }
+
+  result.set = true;
+
+  if (val.Get("ignore").Get<int>()) {
+    result.ignore = true;
+    return result;
+  }
+  result.ignore = false;
+
+  int mat = val.Get("collide_material").Get<int>();
+  ASSERT(mat < (int)PatSurface::Material::MAX_MATERIAL);
+  result.pat.set_material(PatSurface::Material(mat));
+
+  int evt = val.Get("collide_event").Get<int>();
+  ASSERT(evt < (int)PatSurface::Event::MAX_EVENT);
+  result.pat.set_event(PatSurface::Event(evt));
+
+  if (val.Get("nolineofsight").Get<int>()) {
+    result.pat.set_nolineofsight(true);
+  }
+
+  if (val.Get("noedge").Get<int>()) {
+    result.pat.set_noedge(true);
+  }
+
+  if (val.Get("nocamera").Get<int>()) {
+    result.pat.set_nocamera(true);
+  }
+
+  if (val.Get("noentity").Get<int>()) {
+    result.pat.set_noentity(true);
+  }
+
+  return result;
+}
+
 void extract(const Input& in,
              CollideOutput& out,
              const tinygltf::Model& model,
@@ -675,14 +724,25 @@ void extract(const Input& in,
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
+    PatResult mesh_default_collide = custom_props_to_pat(node.extras, node.name);
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
-      if (!mesh.extras.Has("collide")) {
-        // fmt::print("skip collide: {}\n", mesh.name);
-        // continue;
-      }
       mesh_count++;
       for (const auto& prim : mesh.primitives) {
+        // get material
+        const auto& mat_idx = prim.material;
+        PatResult pat = mesh_default_collide;
+        if (mat_idx != -1) {
+          const auto& mat = model.materials[mat_idx];
+          auto mat_pat = custom_props_to_pat(mat.extras, mat.name);
+          if (mat_pat.set) {
+            pat = mat_pat;
+          }
+        }
+
+        if (pat.set && pat.ignore) {
+          continue;  // skip, no collide here
+        }
         prim_count++;
         // extract index buffer
         std::vector<u32> prim_indices = gltf_index_buffer(model, prim.indices, 0);
@@ -728,7 +788,7 @@ void extract(const Input& in,
               fmt::print("bsphere: {}\n", face.bsphere.to_string_aligned());
             }
           }
-
+          face.pat = pat.pat;
           out.faces.push_back(face);
         }
       }

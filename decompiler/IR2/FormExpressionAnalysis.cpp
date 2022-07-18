@@ -97,6 +97,19 @@ Form* try_cast_simplify(Form* in,
     return in;
   }
 
+  if (env.version == GameVersion::Jak2) {
+    if (new_type == TypeSpec("float")) {
+      auto ic = get_goal_integer_constant(in, env);
+      if (ic) {
+        // ASSERT(*ic <= UINT32_MAX);
+        ASSERT((s64)*ic == (s64)(s32)*ic);
+        float f;
+        memcpy(&f, &ic.value(), sizeof(float));
+        return pool.form<ConstantFloatElement>(f);
+      }
+    }
+  }
+
   if (new_type == TypeSpec("meters")) {
     auto fc = get_goal_float_constant(in);
 
@@ -682,6 +695,15 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
   }
 }
 
+bool u64_valid_for_float_constant(u64 in) {
+  u32 top = in >> 32;
+  if (top == 0 || top == UINT32_MAX) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
                                                            FormPool& pool,
                                                            FormStack& stack,
@@ -712,12 +734,10 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
       auto frm = pool.alloc_sequence_form(nullptr, src_fes);
       if (src_fes.size() == 1) {
         auto int_constant = get_goal_integer_constant(frm, env);
-
-        if (int_constant && (*int_constant <= UINT32_MAX)) {
+        if (int_constant && u64_valid_for_float_constant(*int_constant)) {
           float flt;
 
           memcpy(&flt, &int_constant.value(), sizeof(float));
-
           result->push_back(pool.alloc_element<ConstantFloatElement>(flt));
           return;
         }
@@ -964,7 +984,18 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
 
     // try to find symbol to string stuff
     auto arg0_int = get_goal_integer_constant(args.at(0), env);
-    if (arg0_int && (*arg0_int == DECOMP_SYM_INFO_OFFSET + 4) &&
+    u64 symbol_to_string_offset = -1;
+    switch (env.version) {
+      case GameVersion::Jak1:
+        symbol_to_string_offset = DECOMP_SYM_INFO_OFFSET + 4;
+        break;
+      case GameVersion::Jak2:
+        symbol_to_string_offset = jak2::SYM_TO_STRING_OFFSET;
+        break;
+      default:
+        ASSERT(false);
+    }
+    if (arg0_int && (*arg0_int == symbol_to_string_offset) &&
         arg1_type.typespec() == TypeSpec("symbol")) {
       result->push_back(pool.alloc_element<GetSymbolStringPointer>(args.at(1)));
       return;
@@ -2636,23 +2667,53 @@ bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack
 
     // zeroing the rows:
     std::vector<RegisterAccess> write_vars;
-    for (int i = 0; i < 4; i++) {
-      auto elt = matrix_entries->at(i + 1).elt;
+    if (env.version == GameVersion::Jak1) {
+      for (int i = 0; i < 4; i++) {
+        auto elt = matrix_entries->at(i + 1).elt;
 
-      auto matcher = Matcher::set(
-          Matcher::deref(Matcher::any_reg(0), false,
-                         {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
-                          DerefTokenMatcher::string("quad")}),
-          Matcher::cast("uint128", Matcher::integer(0)));
+        auto matcher = Matcher::set(
+            Matcher::deref(Matcher::any_reg(0), false,
+                           {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
+                            DerefTokenMatcher::string("quad")}),
+            Matcher::cast("uint128", Matcher::integer(0)));
 
-      auto mr = match(matcher, elt);
-      if (mr.matched) {
-        if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+        auto mr = match(matcher, elt);
+        if (mr.matched) {
+          if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+            return false;
+          }
+          write_vars.push_back(*mr.maps.regs.at(0));
+        } else {
           return false;
         }
-        write_vars.push_back(*mr.maps.regs.at(0));
-      } else {
-        return false;
+      }
+    } else {
+      for (int i = 0; i < 4; i++) {
+        auto elt = matrix_entries->at(i + 1).elt;
+
+        Matcher matcher;
+        if (i == 3) {
+          matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
+                                                {DerefTokenMatcher::string("trans"),
+                                                 DerefTokenMatcher::string("quad")}),
+                                 Matcher::cast("uint128", Matcher::integer(0)));
+
+        } else {
+          matcher = Matcher::set(
+              Matcher::deref(Matcher::any_reg(0), false,
+                             {DerefTokenMatcher::string("quad"), DerefTokenMatcher::integer(i)}),
+              Matcher::cast("uint128", Matcher::integer(0)));
+        }
+
+        auto mr = match(matcher, elt);
+        if (mr.matched) {
+          if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+            return false;
+          }
+          write_vars.push_back(*mr.maps.regs.at(0));
+        } else {
+          return false;
+        }
       }
     }
 

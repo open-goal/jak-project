@@ -57,10 +57,21 @@ struct SharedRenderState {
 
   std::string load_status_debug;
 
-  int window_width_px;
-  int window_height_px;
-  int window_offset_x_px;
-  int window_offset_y_px;
+  // Information for renderers that need to read framebuffers:
+  // Most renderers can just use the framebuffer/glViewport set up by OpenGLRenderer, but special
+  // effects like sprite distort that read the framebuffer will need to know the details of the
+  // framebuffer setup.
+
+  // the framebuffer that bucket renderers should render to.
+  int render_fb_w = 0;
+  int render_fb_h = 0;
+  GLuint render_fb = -1;
+
+  // the region within that framebuffer to draw to.
+  int draw_region_w = 0;
+  int draw_region_h = 0;
+  int draw_offset_x = 0;
+  int draw_offset_y = 0;
 };
 
 /*!

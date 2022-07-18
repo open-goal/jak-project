@@ -19,7 +19,7 @@ class Jak1KernelTest : public testing::Test {
     }
 
     printf("Starting GOAL Kernel...\n");
-    shared_compiler->runtime_thread = std::thread(GoalTest::runtime_with_kernel);
+    shared_compiler->runtime_thread = std::thread(GoalTest::runtime_with_kernel_jak1);
     shared_compiler->runner.c = &shared_compiler->compiler;
     shared_compiler->compiler.run_test_from_string("(set! *use-old-listener-print* #t)");
   }

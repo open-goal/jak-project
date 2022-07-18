@@ -46,6 +46,7 @@ endif()
 #gtest_discover_tests(goalc-test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(UNIX AND CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
+  set(BUILD_ARGS "-w" "dupbuild=warn")
   include(CodeCoverage)
   append_coverage_compiler_flags()
   setup_target_for_coverage_lcov(NAME goalc-test_coverage

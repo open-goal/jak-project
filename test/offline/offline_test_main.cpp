@@ -96,7 +96,7 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   }
 
   if (db_files.size() != files.size() + art_files.size()) {
-    lg::error("DB file error.");
+    lg::error("DB file error: {} {} {}", db_files.size(), files.size(), art_files.size());
     for (auto& f : files) {
       if (!db_files.count(f.unique_name)) {
         lg::error("didn't find {}\n", f.unique_name);
@@ -431,7 +431,11 @@ int main(int argc, char* argv[]) {
   if (max_files > 0 && max_files < files.size()) {
     files.erase(files.begin() + max_files, files.end());
   }
-  auto art_files = find_art_files(game_name, config->dgos);
+
+  std::vector<DecompilerArtFile> art_files;
+  if (game_name == "jak1") {
+    art_files = find_art_files(game_name, config->dgos);
+  }
 
   lg::info("Setting up decompiler and loading files...");
   auto decompiler =

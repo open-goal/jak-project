@@ -73,8 +73,15 @@ static constexpr int PAT_MAT_COUNT = 23;
 struct GfxGlobalSettings {
   // note: this is actually the size of the display that ISN'T letterboxed
   // the excess space is what will be letterboxed away.
-  int lbox_w;
-  int lbox_h;
+  int lbox_w = 640;
+  int lbox_h = 480;
+
+  // actual game resolution
+  int game_res_w = 640;
+  int game_res_h = 480;
+
+  // multi-sampled anti-aliasing sample count. 1 = disabled.
+  int msaa_samples = 4;
 
   // current renderer
   const GfxRendererModule* renderer;
@@ -137,6 +144,8 @@ void set_vsync(bool vsync);
 void set_letterbox(int w, int h);
 void set_fullscreen(GfxDisplayMode mode, int screen);
 void set_window_lock(bool lock);
+void set_game_resolution(int w, int h);
+void set_msaa(int samples);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);

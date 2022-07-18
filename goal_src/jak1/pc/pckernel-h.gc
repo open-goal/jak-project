@@ -29,9 +29,9 @@
 
 
 (defglobalconstant PC_KERNEL_VERSION_BUILD #x0001)
-(defglobalconstant PC_KERNEL_VERSION_REVISION #x0006)
+(defglobalconstant PC_KERNEL_VERSION_REVISION #x0001)
 
-(defglobalconstant PC_KERNEL_VERSION_MINOR #x0006)
+(defglobalconstant PC_KERNEL_VERSION_MINOR #x0007)
 (defglobalconstant PC_KERNEL_VERSION_MAJOR #x0001)
 (defglobalconstant PC_KERNEL_VERSION (logior
                                         (ash PC_KERNEL_VERSION_MAJOR 48)
@@ -96,10 +96,12 @@
   (swedish 9)
   (danish 10)
   (norwegian 11)
+  (dutch 12)
+  (br-portuguese 13)
 
   ;; jak 1 has no glyphs for korean or cyrillic.
-  (korean 12) ;; future-proofing here
-  (russian 13) ;; same thing
+  (korean 98) ;; future-proofing here
+  (russian 97) ;; same thing
 
   (custom 500) ;; temp
   )
@@ -254,7 +256,7 @@
    (gfx-renderer pc-gfx-renderer) ;; the renderer to use
    (gfx-resolution float) ;; for supersampling
    (gfx-anisotropy float) ;; for anisotropy
-   (gfx-msaa int) ;; for MSAA
+   (gfx-msaa int32) ;; for MSAA
 
    ;; ps2 settings
    (ps2-read-speed? symbol) ;; emulate DVD loads
@@ -279,6 +281,7 @@
    (skip-movies? symbol) ;; if on, enable cutscene skipping
    (subtitles? symbol) ;; if on, cutscene subtitles will show up
    (hinttitles? symbol) ;; if on, non-cutscene subtitles will show up
+   (text-language pc-subtitle-lang) ;; language for game text
    (subtitle-language pc-subtitle-lang) ;; language for subtitles
    (subtitle-speaker? symbol) ;; #f (force off), #t (force on), auto (on for offscreen)
    (first-camera-h-inverted? symbol) ;; first-person horizontal camera inverted
@@ -414,16 +417,15 @@
   "Set the default graphics settings"
 
   (set! (-> obj target-fps) 60)
-  (set! (-> obj width) PC_BASE_WIDTH)
-  (set! (-> obj height) PC_BASE_HEIGHT)
+  (pc-get-screen-size -1 (&-> obj width) (&-> obj height))
+  (set-aspect! obj 4 3)
   (set! (-> obj use-vis?) #f)
-  (set! (-> obj aspect-ratio-auto?) #f)
+  (set! (-> obj aspect-ratio-auto?) #t)
   (set! (-> obj vsync?) #t)
   (set! (-> obj letterbox?) #t)
 
-  (set-display-mode! obj 'windowed)
+  (set-display-mode! obj 'fullscreen)
   (set-size! obj PC_BASE_WIDTH PC_BASE_HEIGHT)
-  (set-aspect! obj 4 3)
   
   (set! (-> obj gfx-msaa) 4) ;; 4x msaa
 

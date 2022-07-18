@@ -110,6 +110,9 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     if (ImGui::BeginMenu("Screenshot")) {
       ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
       ImGui::InputText("File", m_screenshot_save_name, 50);
+      ImGui::InputInt("Width", &screenshot_width);
+      ImGui::InputInt("Height", &screenshot_height);
+      ImGui::InputInt("MSAA", &screenshot_samples);
       ImGui::EndMenu();
     }
 
