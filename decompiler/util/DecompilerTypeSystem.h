@@ -2,6 +2,7 @@
 
 #include "common/goos/Reader.h"
 #include "common/type_system/TypeSystem.h"
+#include <common/goos/TextDB.h>
 
 #include "decompiler/Disasm/Register.h"
 
@@ -15,6 +16,7 @@ class DecompilerTypeSystem {
   TypeSystem ts;
   std::unordered_map<std::string, TypeSpec> symbol_types;
   std::unordered_set<std::string> symbols;
+  std::unordered_map<std::string, goos::TextDb::ShortInfo> symbol_definition_info;
   std::vector<std::string> symbol_add_order;
   std::unordered_map<std::string, u64> type_flags;
   std::unordered_map<std::string, std::string> type_parents;
@@ -30,11 +32,15 @@ class DecompilerTypeSystem {
     }
   }
 
-  void add_symbol(const std::string& name, const std::string& base_type) {
-    add_symbol(name, TypeSpec(base_type));
+  void add_symbol(const std::string& name,
+                  const std::string& base_type,
+                  const std::optional<goos::TextDb::ShortInfo>& definition_info) {
+    add_symbol(name, TypeSpec(base_type), definition_info);
   }
 
-  void add_symbol(const std::string& name, const TypeSpec& type_spec);
+  void add_symbol(const std::string& name,
+                  const TypeSpec& type_spec,
+                  const std::optional<goos::TextDb::ShortInfo>& definition_info);
   void parse_type_defs(const std::vector<std::string>& file_path);
   TypeSpec parse_type_spec(const std::string& str) const;
   void add_type_flags(const std::string& name, u64 flags);
