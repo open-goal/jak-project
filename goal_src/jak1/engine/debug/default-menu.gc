@@ -4504,14 +4504,12 @@
                  )
             (dotimes (j (-> flava-list length))
                 (let ((flava-name (new 'debug 'string 30 (game-text-id->string (-> flava-list j)))))
-                  (when (and (string= (substring! *temp-string* level-name (- (length level-name) 11) (length level-name)) "-level-name") (string= (substring! *temp-string* flava-name (- (length flava-name) 11) (length flava-name)) "-level-name"))
+                  (when (and (string= (substring! *temp-string* level-name (- (length level-name) 11) (length level-name)) "-level-name")
+                             (string= (substring! *temp-string* flava-name (- (length flava-name) 11) (length flava-name)) "-level-name"))
                       (copy-string<-string flava-name (symbol->string (ref *music-list* i)))
                     )
-                  (case-str flava-name (("lavatube-level-name") (copy-string<-string flava-name "lavatube")))
                   (unless (string= flava-name "zero")
-                    (let ((lst (dcons (ref *music-list* i) j)))
-                      (debug-menu-append-item lvl-menu (new 'debug 'debug-menu-item-function flava-name lst (the-as (function object object) dm-music-player-func)))
-                      )
+                    (debug-menu-append-item lvl-menu (new-dm-func flava-name (dcons (ref *music-list* i) j) dm-music-player-func))
                     )
                 )
               )
@@ -4660,7 +4658,8 @@
             ;(flag "PS2 Hints" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-hints?)))
             )
          (menu "Level of detail"
-               (flag "PS2 LOD      " #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-lod-dist?)))
+               (flag "PS2 LOD     " #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-lod-dist?)))
+               (flag "Force Envmap" #f ,(dm-lambda-boolean-flag (-> *pc-settings* force-envmap?)))
             (int-var "LOD Tfrag" 0 dm-lod-int 0 1 #t 0 2)
             (int-var "LOD Tie" 1 dm-lod-int 0 1 #t 0 3)
             ;(int-var "LOD Ocean" 2 dm-lod-int 0 1 #t 0 3)
@@ -4777,10 +4776,6 @@
 
   )
 
-)
-
-)
-
 (defun bg-custom ((level-name symbol))
   "Modified version of bg for the PC Port custom levels."
 
@@ -4847,3 +4842,7 @@
       )
     )
   )
+
+)
+
+)

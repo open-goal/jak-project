@@ -970,7 +970,7 @@
   "Main draw function for all bone-related renderers. Will set up merc, generic and shadow.
    and also add the bones to the calculation list."
   (local-vars  (a0-16 int) (a0-17 int) (a0-62 int) (a2-10 int) (a2-12 int)
-    (used-merc int) (used-mercneric int) (effect-idx int) (sv-144 ripple-control))
+    (used-merc int) (used-mercneric int) (sv-144 ripple-control))
   (rlet ((vf1 :class vf) (vf2 :class vf) (vf3 :class vf) (vf4 :class vf) (vf5 :class vf) (vf6 :class vf)
          (vf7 :class vf) (vf8 :class vf) (vf9 :class vf) (acc :class vf))
 
@@ -1180,8 +1180,7 @@
                   (pc-force-mercneric #f)
                   )
               ;; loop over effects, and set them up/pick renderers.
-              (set! effect-idx 0)
-              (while (< effect-idx (the-as int (-> geom header effect-count)))
+              (dotimes (effect-idx (the-as int (-> geom header effect-count)))
 
                 ;; check if this "effect" uses texture scrolling
                 (when (logtest? (-> geom effect effect-idx effect-bits) 1)
@@ -1299,6 +1298,9 @@
                        (if (< f0-9 0.0)
                            (set! f0-9 0.0)
                            )
+                       (with-pc
+                            (if (-> *pc-settings* force-envmap?)
+                                (set! f0-9 1.0)))
 
                        (cond
                          ;; do envmap stuff if we are using generic anyway, or our strength is > 0.
@@ -1359,8 +1361,6 @@
                   (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 1))
                   (set! used-mercneric 1)
                   )
-
-                (set! effect-idx (+ effect-idx 1))
                 ) ;; end effect loop
 
               ;; draw generic!

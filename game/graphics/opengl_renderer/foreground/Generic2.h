@@ -8,7 +8,7 @@ class Generic2 : public BucketRenderer {
            BucketId my_id,
            u32 num_verts = 200000,
            u32 num_frags = 2000,
-           u32 num_adgif = 3000,
+           u32 num_adgif = 6000,
            u32 num_buckets = 800);
   ~Generic2();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
