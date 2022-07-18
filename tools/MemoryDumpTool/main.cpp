@@ -4,6 +4,7 @@
 #include <string>
 
 #include "common/goal_constants.h"
+#include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/type_system/TypeSystem.h"
 #include "common/util/Assert.h"
@@ -12,12 +13,9 @@
 
 #include "decompiler/util/DecompilerTypeSystem.h"
 
+#include "third-party/CLI11.hpp"
 #include "third-party/fmt/core.h"
 #include "third-party/json.hpp"
-
-namespace fs = fs;
-
-constexpr GameVersion kGameVersion = GameVersion::Jak1;
 
 struct Ram {
   const u8* data = nullptr;
@@ -87,14 +85,14 @@ u32 scan_for_symbol_table(const Ram& ram, u32 start_addr, u32 end_addr) {
   for (u32 addr = (start_addr & 0xfffffff0); addr < end_addr; addr += 8) {
     if (ram.word(addr + 4) == addr + 4) {
       candidates.push_back(addr);
+      lg::info("candidate 0x{:x}", addr);
     }
   }
 
   fmt::print("got {} candidates for #f:\n", candidates.size());
 
   for (auto addr : candidates) {
-    // todo: this is wrong
-    auto str = addr + BASIC_OFFSET + jak1::SYM_INFO_OFFSET;
+    auto str = addr + BASIC_OFFSET + jak1::SYM_TO_STRING_OFFSET;
     fmt::print(" trying 0x{:x}:\n", addr);
     if (ram.word_in_memory(str)) {
       auto mem = ram.word(str + 4);         // offset of str in SymInfo
@@ -118,24 +116,26 @@ struct SymbolMap {
   std::unordered_map<u32, std::string> addr_to_name;
 };
 
-SymbolMap build_symbol_map(const Ram& ram, u32 s7) {
-  // TODO jak 1 specific
-  fmt::print("finding symbols...\n");
+SymbolMap build_symbol_map(const GameVersion game_version, const Ram& ram, u32 s7) {
+  lg::info("building symbol map...");
   SymbolMap map;
   /*
-   s7 = symbol_table + (GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET;
-  // pointer to the first symbol (SymbolTable2 is the "lower" symbol table)
-  SymbolTable2 = symbol_table + BASIC_OFFSET;
-  // the last symbol we will ever access.
-  LastSymbol = symbol_table + 0xff00;
+    s7 = symbol_table + (GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET;
+
+    // pointer to the first symbol (symbol_table_2 is the "lower" symbol table)
+    symbol_table_2 = symbol_table + BASIC_OFFSET;
+
+    // the last symbol we will ever access.
+    last_symbol = symbol_table + 0xff00;
    */
 
-  // todo wrong
-  auto symbol_table = s7 - ((jak1::GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET);
-  auto SymbolTable2 = symbol_table + BASIC_OFFSET;
-  auto LastSymbol = symbol_table + 0xff00;
+  // TODO - jak2
 
-  for (u32 sym = SymbolTable2; sym < LastSymbol; sym += 8) {
+  auto symbol_table = s7 - ((jak1::GOAL_ORIGINAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET);
+  auto symbol_table_2 = symbol_table + BASIC_OFFSET;
+  auto last_symbol = symbol_table + 0xff00;
+
+  for (u32 sym = symbol_table_2; sym < last_symbol; sym += 8) {
     auto info = sym + jak1::SYM_INFO_OFFSET;  // already has basic offset
     auto str = ram.word(info + 4);
     if (str) {
@@ -150,7 +150,7 @@ SymbolMap build_symbol_map(const Ram& ram, u32 s7) {
   }
 
   ASSERT(map.name_to_addr.size() == map.addr_to_name.size());
-  fmt::print("found {} symbols.\n", map.name_to_addr.size());
+  lg::info("found {} symbols", map.name_to_addr.size());
   return map;
 }
 
@@ -159,7 +159,7 @@ std::unordered_map<u32, std::string> build_type_map(const Ram& ram,
                                                     u32 s7) {
   // TODO jak 1 specific
   std::unordered_map<u32, std::string> result;
-  fmt::print("finding types...\n");
+  lg::info("finding types...");
   u32 type_of_type = ram.word(s7 + jak1_symbols::FIX_SYM_TYPE_TYPE);
   ASSERT(type_of_type == ram.word(symbols.name_to_addr.at("type")));
 
@@ -172,14 +172,17 @@ std::unordered_map<u32, std::string> build_type_map(const Ram& ram,
     }
   }
 
-  fmt::print("found {} types\n", result.size());
+  lg::info("found {} types", result.size());
   return result;
 }
+
+const std::vector<std::string> ignored_types = {"symbol", "string", "function", "object",
+                                                "integer"};
 
 std::unordered_map<std::string, std::vector<u32>> find_basics(
     const Ram& ram,
     const std::unordered_map<u32, std::string>& type_map) {
-  fmt::print("Scanning memory for objects. This may take a while...\n");
+  lg::info("Scanning memory for objects. This may take a while...");
 
   std::unordered_map<std::string, std::vector<u32>> result;
   int total_objects = 0;
@@ -188,14 +191,14 @@ std::unordered_map<std::string, std::vector<u32>> find_basics(
     u32 tag = ram.word(addr);
     auto iter = type_map.find(tag);
     // ignore the stupid types.
-    if (iter != type_map.end() && iter->second != "symbol" && iter->second != "string" &&
-        iter->second != "function" && iter->second != "object" && iter->second != "integer") {
+    if (iter != type_map.end() && std::find(ignored_types.begin(), ignored_types.end(),
+                                            iter->second) == ignored_types.end()) {
       result[iter->second].push_back(addr);
       total_objects++;
     }
   }
 
-  fmt::print("Got {} objects of {} unique types\n", total_objects, result.size());
+  lg::info("Got {} objects of {} unique types\n", total_objects, result.size());
   return result;
 }
 
@@ -563,65 +566,91 @@ int main(int argc, char** argv) {
     exit(EXIT_FAILURE);
   }
 
-  fmt::print("MemoryDumpTool\n");
+  fs::path dump_path;
+  fs::path output_path;
+  std::string game_name = "jak1";
 
-  if (argc != 2 && argc != 3) {
-    fmt::print("usage: memory_dump_tool <ee_ram.bin|savestate.p2s> [output folder]\n");
+  lg::initialize();
+
+  CLI::App app{"OpenGOAL Memory Dump Analyzer"};
+  app.add_option("dump-path", dump_path, "The path to the dump file to analyze")->required();
+  app.add_option("--output-path", output_path,
+                 "Where the output files should be sent, defaults to current directory otherwise");
+  app.add_option("-g,--game", game_name, "Specify the game name, defaults to 'jak1'");
+  app.validate_positionals();
+  CLI11_PARSE(app, argc, argv);
+
+  auto ok = file_util::setup_project_path({});
+  if (!ok) {
+    lg::error("couldn't setup project path, exiting");
+    return 1;
+  }
+  lg::info("Loading type definitions from all-types.gc...");
+
+  auto game_version = game_name_to_version(game_name);
+
+  decompiler::DecompilerTypeSystem dts(game_version);
+
+  // TODO - this could be better
+  if (game_version == GameVersion::Jak1) {
+    dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
+  } else if (game_version == GameVersion::Jak2) {
+    dts.parse_type_defs({"decompiler", "config", "jak2", "all-types.gc"});
+  } else {
+    lg::error("unsupported game version");
     return 1;
   }
 
-  fmt::print("Loading type definitions from all-types.gc...\n");
-  decompiler::DecompilerTypeSystem dts(kGameVersion);
-  dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
-
-  std::string file_name = argv[1];
   fs::path output_folder;
 
-  if (!fs::exists(output_folder) || argc < 3) {
-    fmt::print("Output folder not found, defaulting to current directory");
-    output_folder = ".";
-  } else {
-    output_folder = argv[2];
+  if (output_folder.empty() || !fs::exists(output_folder)) {
+    lg::warn("Output folder not found or not provided, defaulting to current directory");
+    output_folder = "./";
   }
 
-  if (ends_with(file_name, "p2s")) {
-    fmt::print("PS2 savestates are not directly supported. Please extract contents beforehand.\n");
+  if (dump_path.extension() == "p2s") {
+    lg::error("PCSX2 savestates are not directly supported. Please extract contents beforehand");
     return 1;
   }
 
-  fmt::print("Loading memory from '{}'\n", file_name);
-  auto data = file_util::read_binary_file(file_name);
+  lg::info("Loading memory from '{}'", dump_path.string());
+  auto data = file_util::read_binary_file(dump_path);
 
   u32 one_mb = (1 << 20);
 
   if (data.size() == 32 * one_mb) {
-    fmt::print("Got 32MB file\n");
+    lg::info("Got 32MB file");
   } else if (data.size() == 128 * one_mb) {
-    fmt::print("Got 128MB file\n");
+    lg::info("Got 128MB file");
   } else if (data.size() == 127 * one_mb) {
-    fmt::print("Got a 127MB file. Assuming this is a dump with the first 1 MB missing.\n");
+    lg::warn("Got a 127MB file. Assuming this is a dump with the first 1 MB missing.\n");
     data.insert(data.begin(), one_mb, 0);
-    ASSERT(data.size() == 128 * one_mb);
+    if (data.size() != 128 * one_mb) {
+      lg::error("it was not!");
+      return 1;
+    }
   } else {
-    fmt::print("Invalid size: {} bytes\n", data.size());
+    lg::error("Invalid size: {} bytes", data.size());
+    return 1;
   }
 
   Ram ram(data.data(), data.size());
 
   u32 s7 = scan_for_symbol_table(ram, one_mb, 2 * one_mb);
   if (!s7) {
-    fmt::print("Failed to find symbol table\n");
+    lg::error("Failed to find symbol table");
     return 1;
   }
 
   nlohmann::json results;
-  if (fs::exists(output_folder / "ee-results.json")) {
-    fmt::print("Found existing result file, appending results to it!\n");
-    std::ifstream i(output_folder / "ee-results.json");
+  auto json_path = fmt::format("ee-results-{}.json", game_name);
+  if (fs::exists(output_folder / json_path)) {
+    lg::info("Found existing result file, appending results to it!");
+    std::ifstream i(output_folder / json_path);
     i >> results;
   }
 
-  auto symbol_map = build_symbol_map(ram, s7);
+  auto symbol_map = build_symbol_map(game_version, ram, s7);
   auto types = build_type_map(ram, symbol_map, s7);
   auto basics = find_basics(ram, types);
 
@@ -631,10 +660,10 @@ int main(int argc, char** argv) {
   inspect_symbols(ram, types, symbol_map);
   inspect_process_self(ram, basics, types, dts.ts);
 
-  if (fs::exists(output_folder / "ee-results.json")) {
-    fs::remove(output_folder / "ee-results.json");
+  if (fs::exists(output_folder / json_path)) {
+    fs::remove(output_folder / json_path);
   }
-  std::ofstream o(output_folder / "ee-results.json");
+  std::ofstream o(output_folder / json_path);
   o << std::setw(2) << results << std::endl;
 
   return 0;
