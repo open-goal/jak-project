@@ -1,7 +1,8 @@
-#include <lsp/protocol/initialize_result.hpp>
+#include "common/log/log.h"
+
+#include "lsp/protocol/initialize_result.h"
 
 #include "third-party/json.hpp"
-#include "common/log/log.h"
 
 using json = nlohmann::json;
 

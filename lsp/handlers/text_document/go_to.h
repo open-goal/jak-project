@@ -1,9 +1,9 @@
 #include <optional>
 
-#include "protocol/common_types.h"
-#include "protocol/hover.h"
-#include "state/data/mips_instructions.h"
-#include "state/workspace.h"
+#include "lsp/protocol/common_types.h"
+#include "lsp/protocol/hover.h"
+#include "lsp/state/data/mips_instructions.h"
+#include "lsp/state/workspace.h"
 
 std::optional<json> go_to_definition_handler(Workspace& workspace, int id, json params) {
   auto converted_params = params.get<LSPSpec::TextDocumentPositionParams>();

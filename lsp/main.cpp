@@ -14,10 +14,10 @@
 
 #include "common/log/log.h"
 
-#include "handlers/lsp_router.h"
-#include "state/workspace.h"
-#include "transport/stdio.h"
-#include "state/app.h"
+#include "lsp/handlers/lsp_router.h"
+#include "lsp/state/workspace.h"
+#include "lsp/transport/stdio.h"
+#include "lsp/state/app.h"
 
 #include "third-party/CLI11.hpp"
 

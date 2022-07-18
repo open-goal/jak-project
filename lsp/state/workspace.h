@@ -6,10 +6,10 @@
 
 #include "common/util/FileUtil.h"
 
-#include "protocol/common_types.h"
-#include "protocol/document_diagnostics.h"
-#include "protocol/document_symbols.h"
-#include <decompiler/util/DecompilerTypeSystem.h>
+#include "decompiler/util/DecompilerTypeSystem.h"
+#include "lsp/protocol/common_types.h"
+#include "lsp/protocol/document_diagnostics.h"
+#include "lsp/protocol/document_symbols.h"
 
 class WorkspaceIRFile {
  public:

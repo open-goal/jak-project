@@ -54,4 +54,3 @@ constexpr PerGameVersion<const char*> game_version_names = {"jak1", "jak2"};
 
 GameVersion game_name_to_version(const std::string& name);
 bool valid_game_version(const std::string& name);
-std::string game_version_to_name(const GameVersion version);

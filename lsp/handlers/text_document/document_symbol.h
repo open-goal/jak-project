@@ -1,7 +1,7 @@
 #include <optional>
 
-#include "protocol/common_types.h"
-#include "state/workspace.h"
+#include "lsp/protocol/common_types.h"
+#include "lsp/state/workspace.h"
 
 #include "third-party/json.hpp"
 

@@ -3,9 +3,9 @@
 #include <optional>
 #include <string>
 
-#include "state/app.h"
-#include "state/workspace.h"
-#include "transport/stdio.h"
+#include "lsp/state/app.h"
+#include "lsp/state/workspace.h"
+#include "lsp/transport/stdio.h"
 
 #include "third-party/json.hpp"
 

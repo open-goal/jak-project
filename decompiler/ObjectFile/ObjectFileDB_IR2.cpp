@@ -707,7 +707,7 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config
   std::string result;
 
   auto all_types_path = file_util::get_file_path({config.all_types_file});
-  auto game_version = game_version_to_name(config.game_version);
+  auto game_version = game_version_names[config.game_version];
 
   result += fmt::format("; ALL_TYPES={}={}\n\n", game_version, all_types_path);
 

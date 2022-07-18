@@ -1,14 +1,14 @@
 #include "lsp_router.h"
 
-#include "initialize.hpp"
+#include "lsp/handlers/initialize.h"
 
 #include "common/log/log.h"
 
-#include "protocol/error_codes.h"
-#include "text_document/document_symbol.hpp"
-#include "text_document/document_synchronization.hpp"
-#include "text_document/go_to.hpp"
-#include "text_document/hover.hpp"
+#include "lsp/protocol/error_codes.h"
+#include "text_document/document_symbol.h"
+#include "text_document/document_synchronization.h"
+#include "text_document/go_to.h"
+#include "text_document/hover.h"
 
 #include "third-party/fmt/core.h"
 
@@ -40,7 +40,7 @@ void LSPRouter::init_routes() {
   m_routes["textDocument/definition"] = LSPRoute(go_to_definition_handler);
 }
 
-json error_resp(ErrorCodes error_code, std::string error_message) {
+json error_resp(ErrorCodes error_code, const std::string& error_message) {
   json error{
       {"code", static_cast<int>(error_code)},
       {"message", error_message},
@@ -62,7 +62,7 @@ std::string LSPRouter::make_response(const json& result) {
 std::optional<std::vector<std::string>> LSPRouter::route_message(
     const MessageBuffer& message_buffer,
     AppState& appstate) {
-  json body = message_buffer.body();
+  const json& body = message_buffer.body();
   auto method = body["method"];
   lg::info(method);
 

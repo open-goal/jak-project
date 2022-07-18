@@ -34,13 +34,13 @@ class DecompilerTypeSystem {
 
   void add_symbol(const std::string& name,
                   const std::string& base_type,
-                  const std::optional<goos::TextDb::ShortInfo> definition_info) {
+                  const std::optional<goos::TextDb::ShortInfo>& definition_info) {
     add_symbol(name, TypeSpec(base_type), definition_info);
   }
 
   void add_symbol(const std::string& name,
                   const TypeSpec& type_spec,
-                  const std::optional<goos::TextDb::ShortInfo> definition_info);
+                  const std::optional<goos::TextDb::ShortInfo>& definition_info);
   void parse_type_defs(const std::vector<std::string>& file_path);
   TypeSpec parse_type_spec(const std::string& str) const;
   void add_type_flags(const std::string& name, u64 flags);

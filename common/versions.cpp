@@ -15,16 +15,5 @@ GameVersion game_name_to_version(const std::string& name) {
 }
 
 bool valid_game_version(const std::string& name) {
-  return name != "jak1" || name != "jak2";
-}
-
-std::string game_version_to_name(const GameVersion version) {
-  switch (version) {
-    case GameVersion::Jak1:
-      return "jak1";
-    case GameVersion::Jak2:
-      return "jak2";
-    default:
-      return "unknown";
-  }
+  return name == "jak1" || name == "jak2";
 }

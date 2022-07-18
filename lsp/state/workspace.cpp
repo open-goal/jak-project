@@ -4,7 +4,7 @@
 
 #include "common/log/log.h"
 
-#include "protocol/common_types.h"
+#include "lsp/protocol/common_types.h"
 
 LSPSpec::DocumentUri uri_from_path(fs::path path) {
   // Replace slash type on windows
@@ -284,7 +284,6 @@ void WorkspaceAllTypesFile::parse_type_system() {
 }
 
 void WorkspaceAllTypesFile::update_type_system() {
-  // TODO - do i actually need to re-create it, or is there a way to "clear" it?
   m_dts = decompiler::DecompilerTypeSystem(m_game_version);
   parse_type_system();
 }

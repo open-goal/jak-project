@@ -1,8 +1,8 @@
 #include <optional>
 
-#include "protocol/document_diagnostics.h"
-#include "protocol/document_synchronization.h"
-#include "state/workspace.h"
+#include "lsp/protocol/document_diagnostics.h"
+#include "lsp/protocol/document_synchronization.h"
+#include "lsp/state/workspace.h"
 
 #include "third-party/json.hpp"
 
