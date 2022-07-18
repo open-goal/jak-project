@@ -128,9 +128,7 @@
         )
 
 (defmacro launch-particles (&key (system *sp-particle-system-2d*) particle origin &key (launch-state (the-as sparticle-launch-state #f)) &key (launch-control (the-as sparticle-launch-control #f))
-                            &key (rate (if (= (-> *setting-control* current video-mode) '150fps)
-                                           (if (= (-> *setting-control* current video-mode) '100fps) 0.6 0.4)
-                                           1.0)))
+                            &key (rate DISPLAY_FPS_RATIO))
   `(sp-launch-particles-var ,system ,particle ,origin ,launch-state ,launch-control ,rate)
   )
 
@@ -727,7 +725,9 @@
      )
    
    ;; process the particles
-   (clear-sprite-aux-list)
+   ;; pc port note : made this not run when paused, since aux sprites wont get added.
+   (unless (paused?)
+      (clear-sprite-aux-list))
    (sp-process-particle-system *sp-particle-system-2d* 0 *sprite-array-2d*)
    (sp-process-particle-system *sp-particle-system-2d* 1 *sprite-array-2d*)
    (sp-process-particle-system *sp-particle-system-3d* 0 (the-as sprite-array-2d *sprite-array-3d*))
