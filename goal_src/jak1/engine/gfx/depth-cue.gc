@@ -14,14 +14,42 @@
         :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
         :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
         )
-      :gif (new 'static 'array uint64 2 #x50ab400000008001 #x43431)
+      :gif0 (new 'static 'gif-tag64 
+              :nloop 1 
+              :eop 1 
+              :pre 1
+              :prim (gs-prim-type sprite) ;; actually #b001101010110
+              :flg (gif-flag packed)
+              :nreg 5
+              )
+      :gif1 (new 'static 'gif-tag-regs
+              :regs0 (gif-reg-id rgbaq)
+              :regs1 (gif-reg-id uv)
+              :regs2 (gif-reg-id xyzf2)
+              :regs3 (gif-reg-id uv)
+              :regs4 (gif-reg-id xyzf2)
+              )
       )
     :temp-strip-tmpl (new 'static 'dma-gif-packet
       :dma-vif (new 'static 'dma-packet
         :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
         :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
         )
-      :gif (new 'static 'array uint64 2 #x508b400000008001 #x43431)
+      :gif0 (new 'static 'gif-tag64 
+              :nloop 1 
+              :eop 1 
+              :pre 1
+              :prim (gs-prim-type sprite) ;; actually #b00100010110
+              :flg (gif-flag packed)
+              :nreg 5
+              )
+      :gif1 (new 'static 'gif-tag-regs
+              :regs0 (gif-reg-id rgbaq)
+              :regs1 (gif-reg-id uv)
+              :regs2 (gif-reg-id xyzf2)
+              :regs3 (gif-reg-id uv)
+              :regs4 (gif-reg-id xyzf2)
+              )
       )
     :stencil-tmpl (new 'static 'dma-gif-packet
       :dma-vif (new 'static 'dma-packet
@@ -255,16 +283,19 @@
   #f
   )
 
-(defun depth-cue-draw-front ((arg0 dma-buffer) (arg1 int) (arg2 float) (arg3 float) (arg4 uint) (arg5 int))
-  (set! (-> *depth-cue-work* draw-color w) (the int (* 128.0 arg3)))
-  (let ((v1-1 (the int (* 512.0 arg2)))
-        (a2-1 (the int (* (the float (* (-> *video-parms* screen-sy) 16)) arg2)))
-        (a3-4 0)
+(defun depth-cue-draw-front ((dma-buff dma-buffer) (arg1 int) (sharpness float) (alpha float) (on-screen-fbp uint) (arg5 int))
+  ;; update draw-color alpha
+  (set! (-> *depth-cue-work* draw-color w) (the int (* 128.0 alpha)))
+  (let ((v1-1 (the int (* 512.0 sharpness)))
+        (a2-1 (the int (* (the float (* (-> *video-parms* screen-sy) 16)) sharpness)))
+        (a3-4 0) ;; incremented by t2-0 (512) each loop
         (t2-0 512)
         (t3-0 *depth-cue-base-page*)
         )
+    ;; repeat 16 times
     (dotimes (t4-0 16)
-      (let* ((t5-0 arg0)
+      ;; update GS registers
+      (let* ((t5-0 dma-buff)
              (t6-0 (the-as object (-> t5-0 base)))
              )
         (set! (-> (the-as dma-packet t6-0) dma) (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt)))
@@ -272,7 +303,7 @@
         (set! (-> (the-as dma-packet t6-0) vif1) (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
         (set! (-> t5-0 base) (the-as pointer (the-as gs-gif-tag (&+ (the-as pointer t6-0) 16))))
         )
-      (let* ((t5-1 arg0)
+      (let* ((t5-1 dma-buff)
              (t6-2 (the-as object (-> t5-1 base)))
              )
         (set! (-> (the-as gs-gif-tag t6-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x5))
@@ -298,34 +329,48 @@
               )
         (set! (-> t5-1 base) (&+ (the-as pointer t6-2) 16))
         )
-      (let* ((t5-2 arg0)
+      (let* ((t5-2 dma-buff)
              (t6-4 (-> t5-2 base))
              )
+        ;; set vertex position offset
         (set! (-> (the-as (pointer gs-xy-offset) t6-4) 0) (new 'static 'gs-xy-offset :ofy (- 8 arg5)))
         (set! (-> (the-as (pointer gs-reg64) t6-4) 1) (gs-reg64 xyoffset-1))
+        ;; draw to depth-cue-base-page (64px wide)
         (set! (-> (the-as (pointer gs-frame) t6-4) 2) (new 'static 'gs-frame :fbw #x1 :fbp t3-0))
         (set! (-> (the-as (pointer gs-reg64) t6-4) 3) (gs-reg64 frame-1))
+        ;; use on-screen framebuffer as texture 0
+        ;; buffer width = 512 pixels
+        ;; USIZE = 1024 texels
+        ;; VSIZE = 256 texels
+        ;; RGBA
         (set! (-> (the-as (pointer gs-tex0) t6-4) 4)
-              (new 'static 'gs-tex0 :tbw #x8 :tw #xa :th #x8 :tcc #x1 :tbp0 (* arg4 32))
+              (new 'static 'gs-tex0 :tbw #x8 :tw #xa :th #x8 :tcc #x1 :tbp0 (* on-screen-fbp 32))
               )
         (set! (-> (the-as (pointer gs-reg64) t6-4) 5) (gs-reg64 tex0-1))
+        ;; enable depth test, all pixels pass
         (set! (-> (the-as (pointer gs-test) t6-4) 6) (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
         (set! (-> (the-as (pointer gs-reg64) t6-4) 7) (gs-reg64 test-1))
+        ;; keep source rgb, no blending
         (set! (-> (the-as (pointer gs-alpha) t6-4) 8) (new 'static 'gs-alpha))
         (set! (-> (the-as (pointer gs-reg64) t6-4) 9) (gs-reg64 alpha-1))
         (set! (-> t5-2 base) (&+ t6-4 80))
         )
-      (let ((t5-3 (the-as (inline-array vector4w) (-> arg0 base))))
-        (set! (-> t5-3 0 quad) (-> *depth-cue-work* temp-strip-tmpl dma-vif quad))
-        (set! (-> t5-3 1 quad) (-> *depth-cue-work* temp-strip-tmpl quad 1))
-        (set! (-> t5-3 2 quad) (-> *depth-cue-work* set-color quad))
-        (set-vector! (-> t5-3 3) a3-4 0 0 0)
-        (set-vector! (-> t5-3 4) 0 0 0 0)
-        (set-vector! (-> t5-3 5) (+ a3-4 t2-0) (* (-> *video-parms* screen-sy) 16) 0 0)
-        (set-vector! (-> t5-3 6) v1-1 a2-1 0 #x10000)
+      ;; draw sprite
+      (let ((t5-3 (the-as (inline-array vector4w) (-> dma-buff base))))
+        (set! (-> t5-3 0 quad) (-> *depth-cue-work* temp-strip-tmpl dma-vif quad))  ;; cnt direct
+        (set! (-> t5-3 1 quad) (-> *depth-cue-work* temp-strip-tmpl quad 1))        ;; draw sprite, 5 regs
+        (set! (-> t5-3 2 quad) (-> *depth-cue-work* set-color quad))                    ;; rgbaq
+        (set-vector! (-> t5-3 3) a3-4 0 0 0)                                            ;; uv
+        (set-vector! (-> t5-3 4) 0 0 0 0)                                               ;; xyzf2
+        (set-vector! (-> t5-3 5) (+ a3-4 t2-0) (* (-> *video-parms* screen-sy) 16) 0 0) ;; uv
+        (set-vector! (-> t5-3 6) v1-1 a2-1 0 #x10000)                                   ;; xyzf2
         )
-      (set! (-> arg0 base) (the-as pointer (-> (the-as depth-cue-work (-> arg0 base)) set-color)))
-      (let* ((t5-7 arg0)
+      ;; NOTE: this got decompiled weirdly
+      ;; TODO: swap to cleaned up line
+       (set! (-> dma-buff base) (the-as pointer (-> (the-as depth-cue-work (-> dma-buff base)) set-color)))
+      ;;(&+! (-> dma-buff base) 112)
+      ;; update GS registers
+      (let* ((t5-7 dma-buff)
              (t6-16 (the-as object (-> t5-7 base)))
              )
         (set! (-> (the-as dma-packet t6-16) dma) (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt)))
@@ -333,7 +378,7 @@
         (set! (-> (the-as dma-packet t6-16) vif1) (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
         (set! (-> t5-7 base) (the-as pointer (the-as gs-gif-tag (&+ (the-as pointer t6-16) 16))))
         )
-      (let* ((t5-8 arg0)
+      (let* ((t5-8 dma-buff)
              (t6-18 (the-as object (-> t5-8 base)))
              )
         (set! (-> (the-as gs-gif-tag t6-18) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x5))
@@ -358,41 +403,56 @@
               )
         (set! (-> t5-8 base) (&+ (the-as pointer t6-18) 16))
         )
-      (let* ((t5-9 arg0)
+      (let* ((t5-9 dma-buff)
              (t6-20 (-> t5-9 base))
              )
+        ;; set vertex position offset
         (set! (-> (the-as (pointer gs-xy-offset) t6-20) 0) (new 'static 'gs-xy-offset :ofy (+ arg5 4)))
         (set! (-> (the-as (pointer gs-reg64) t6-20) 1) (gs-reg64 xyoffset-1))
-        (set! (-> (the-as (pointer gs-frame) t6-20) 2) (new 'static 'gs-frame :fbw #x8 :fbmsk #xff000000 :fbp arg4))
+        ;; draw to on-screen-fbp but only the alpha channel
+        (set! (-> (the-as (pointer gs-frame) t6-20) 2) (new 'static 'gs-frame :fbw #x8 :fbmsk #xff000000 :fbp on-screen-fbp))
         (set! (-> (the-as (pointer gs-reg64) t6-20) 3) (gs-reg64 frame-1))
+        ;; use an alpha value of 128
         (set! (-> (the-as (pointer gs-texa) t6-20) 4) (new 'static 'gs-texa :ta0 #x80 :ta1 #x80))
         (set! (-> (the-as (pointer gs-reg64) t6-20) 5) (gs-reg64 texa))
+        ;; use depth-cue-base-page as texture 0
+        ;; buffer width = 64 pixels
+        ;; format = PSMCT24
+        ;; USIZE = 32 texels
+        ;; VSIZE = 256 texels
+        ;; RGB
         (set! (-> (the-as (pointer gs-tex0) t6-20) 6)
               (new 'static 'gs-tex0 :tbw #x1 :psm #x1 :tw #x5 :th #x8 :tbp0 (* t3-0 32))
               )
         (set! (-> (the-as (pointer gs-reg64) t6-20) 7) (gs-reg64 tex0-1))
+        ;; blend source and framebuffer RGB
         (set! (-> (the-as (pointer gs-alpha) t6-20) 8) (new 'static 'gs-alpha :b #x1 :d #x1))
         (set! (-> (the-as (pointer gs-reg64) t6-20) 9) (gs-reg64 alpha-1))
         (set! (-> t5-9 base) (&+ t6-20 80))
         )
-      (let ((t5-10 (the-as object (-> arg0 base))))
+      ;; draw sprite
+      (let ((t5-10 (the-as object (-> dma-buff base))))
         (set! (-> (the-as (inline-array vector4w) t5-10) 0 quad)
               (-> *depth-cue-work* texture-strip-tmpl dma-vif quad)
               )
         (set! (-> (the-as (inline-array vector4w) t5-10) 1 quad) (-> *depth-cue-work* texture-strip-tmpl quad 1))
-        (set! (-> (the-as (inline-array vector4w) t5-10) 2 quad) (-> *depth-cue-work* draw-color quad))
-        (set-vector! (-> (the-as (inline-array vector4w) t5-10) 3) 0 0 0 0)
-        (set-vector! (-> (the-as (inline-array vector4w) t5-10) 4) a3-4 0 0 0)
-        (set-vector! (-> (the-as (inline-array vector4w) t5-10) 5) v1-1 a2-1 0 0)
+        (set! (-> (the-as (inline-array vector4w) t5-10) 2 quad) (-> *depth-cue-work* draw-color quad)) ;; rgbaq
+        (set-vector! (-> (the-as (inline-array vector4w) t5-10) 3) 0 0 0 0)                             ;; uv
+        (set-vector! (-> (the-as (inline-array vector4w) t5-10) 4) a3-4 0 0 0)                          ;; xyzf2
+        (set-vector! (-> (the-as (inline-array vector4w) t5-10) 5) v1-1 a2-1 0 0)                       ;; uv
         (set-vector!
           (the-as vector4w (&+ (the-as pointer t5-10) 96))
           (+ a3-4 t2-0)
           (* (-> *video-parms* screen-sy) 16)
           arg1
           #x10000
-          )
+          )                                                                                             ;; xyzf2
         )
-      (set! (-> arg0 base) (the-as pointer (-> (the-as depth-cue-work (-> arg0 base)) set-color)))
+      ;; NOTE: this got decompiled weirdly
+      ;; TODO: swap to cleaned up line
+       (set! (-> dma-buff base) (the-as pointer (-> (the-as depth-cue-work (-> dma-buff base)) set-color)))
+      ;;(&+! (-> dma-buff base) 112)
+      ;; increment
       (+! a3-4 t2-0)
       )
     )
@@ -408,12 +468,14 @@
   )
 
 (defun depth-cue ((arg0 display))
+  ;; is depth-cue enabled?
   (when (logtest? (vu1-renderer-mask depth-cue) *vu1-enable-user*)
     (let* ((gp-0 (-> *display* frames (-> *display* on-screen) frame global-buf base))
            (s4-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
            (s5-0 (-> s4-0 base))
            )
       (let ((v1-9 (-> arg0 on-screen)))
+        ;; update GS registers
         (let* ((a1-7 s4-0)
                (a2-0 (the-as object (-> a1-7 base)))
                )
@@ -450,14 +512,22 @@
         (let* ((a1-9 s4-0)
                (a2-4 (-> a1-9 base))
                )
+          ;; NOTE: it looks like this part got decompiled incorrectly
+          ;; depth test on, all pixels pass
           (set! (-> (the-as (pointer gs-test) a2-4) 0) (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
           (set! (-> (the-as (pointer gs-reg64) a2-4) 1) (gs-reg64 test-1))
+          ;; don't write to depth buffer
           (set! (-> (the-as (pointer gs-zbuf) a2-4) 2) (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1))
           (set! (-> (the-as (pointer gs-reg64) a2-4) 3) (gs-reg64 zbuf-1))
-          (set! (-> (the-as (pointer gs-reg64) a2-4) 4) (gs-reg64 signal))
+          ;; bilinear texture sampling (not signal)
+          ;; (set! (-> (the-as (pointer gs-reg64) a2-4) 4) (gs-reg64 signal))
+          (set! (-> (the-as (pointer gs-tex1) a2-4) 4) (new 'static 'gs-tex1 :mmag 1 :mmin 1))
           (set! (-> (the-as (pointer gs-reg64) a2-4) 5) (gs-reg64 tex1-1))
-          (set! (-> (the-as (pointer gs-tex1) a2-4) 6) (new 'static 'gs-tex1))
+          ;; no mip
+          ;; (set! (-> (the-as (pointer gs-tex1) a2-4) 6) (new 'static 'gs-tex1))
+          (set! (-> (the-as (pointer gs-miptbp) a2-4) 6) (new 'static 'gs-miptbp))
           (set! (-> (the-as (pointer gs-reg64) a2-4) 7) (gs-reg64 miptbp1-1))
+          ;; set texture wrap mode to clamp
           (set! (-> (the-as (pointer gs-clamp) a2-4) 8) (new 'static 'gs-clamp
                                                           :wms (gs-tex-wrap-mode clamp)
                                                           :wmt (gs-tex-wrap-mode clamp)
@@ -466,21 +536,25 @@
                                                           )
                 )
           (set! (-> (the-as (pointer gs-reg64) a2-4) 9) (gs-reg64 clamp-1))
-          (set! (-> (the-as (pointer gs-reg64) a2-4) 10) (gs-reg64 dimx))
+          ;; blend source and dest (not dimx)
+          ;; (set! (-> (the-as (pointer gs-reg64) a2-4) 10) (gs-reg64 dimx))
+          (set! (-> (the-as (pointer gs-alpha) a2-4) 10) (new 'static 'gs-alpha :b 1 :d 1))
           (set! (-> (the-as (pointer gs-reg64) a2-4) 11) (gs-reg64 alpha-1))
           (set! (-> a1-9 base) (&+ a2-4 96))
           )
         (let ((s3-0 (* *oddeven* 8))
               (s2-0 (-> arg0 frames v1-9 draw frame1 fbp))
               )
+          ;; draw
           (depth-cue-draw-front
-            s4-0
+            s4-0 ;; dma-buff
             #xffffff
-            (-> *depth-cue-work* front data x)
-            (-> *depth-cue-work* front data y)
-            s2-0
-            s3-0
+            (-> *depth-cue-work* front data x) ;; sharpness
+            (-> *depth-cue-work* front data y) ;; alpha
+            s2-0 ;; on-screen frame pointer
+            s3-0 ;; oddeven
             )
+          ;; update GS registers
           (let* ((v1-19 s4-0)
                  (a0-2 (the-as object (-> v1-19 base)))
                  )
@@ -517,10 +591,12 @@
           (let* ((v1-21 s4-0)
                  (a0-6 (-> v1-21 base))
                  )
+            ;; apply offset to all vertices
             (set! (-> (the-as (pointer gs-xy-offset) a0-6) 0)
                   (new 'static 'gs-xy-offset :ofx #x7000 :ofy (+ (* (-> *video-parms* screen-miny) 16) s3-0))
                   )
             (set! (-> (the-as (pointer gs-reg64) a0-6) 1) (gs-reg64 xyoffset-1))
+            ;; restore drawing destination to on-screen framebuffer
             (set! (-> (the-as (pointer gs-frame) a0-6) 2) (new 'static 'gs-frame :fbw #x8 :fbp s2-0))
             (set! (-> (the-as (pointer gs-reg64) a0-6) 3) (gs-reg64 frame-1))
             (set! (-> v1-21 base) (&+ a0-6 32))
@@ -528,6 +604,7 @@
           )
         )
       (let ((a3-18 (-> s4-0 base)))
+        ;; add DMA chain
         (let ((v1-22 (the-as object (-> s4-0 base))))
           (set! (-> (the-as dma-packet v1-22) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
           (set! (-> (the-as dma-packet v1-22) vif0) (new 'static 'vif-tag))
@@ -542,6 +619,7 @@
                       )
                     )
               )
+          ;; record memory usage
           (let ((v1-27 *dma-mem-usage*))
             (when (nonzero? v1-27)
               (set! (-> v1-27 length) (max 84 (-> v1-27 length)))
