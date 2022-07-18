@@ -139,8 +139,8 @@ class DepthCue : public BucketRenderer {
     int framebuffer_sample_width = 0;
     int framebuffer_sample_height = 0;
 
-    int last_window_width = -1;
-    int last_window_height = -1;
+    int last_draw_region_w = -1;
+    int last_draw_region_h = -1;
   } m_ogl;
 
   void opengl_setup();

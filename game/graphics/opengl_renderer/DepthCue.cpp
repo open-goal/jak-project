@@ -1,6 +1,5 @@
 #include "DepthCue.h"
 
-#include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 
 #include "third-party/fmt/core.h"
@@ -10,6 +9,7 @@
 // TODO: alpha blending
 // TODO: disable by default and make an AA option
 // TODO: profile draws/tris
+// TODO: respect xyoffset register
 
 namespace {
 // Converts fixed point (with 4 bits for decimal) to floating point.
@@ -298,14 +298,14 @@ void DepthCue::read_dma(DmaFollower& dma,
 }
 
 void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof*/) {
-  if (m_cache_setup && (m_ogl.last_window_width == render_state->fbo_state.width &&
-                        m_ogl.last_window_height == render_state->fbo_state.height)) {
-    // Window dimensions didn't change, everything is already set up
+  if (m_cache_setup && (m_ogl.last_draw_region_w == render_state->draw_region_w &&
+                        m_ogl.last_draw_region_h == render_state->draw_region_h)) {
+    // Draw region didn't change, everything is already set up
     return;
   }
 
-  m_ogl.last_window_width = render_state->fbo_state.width;
-  m_ogl.last_window_height = render_state->fbo_state.height;
+  m_ogl.last_draw_region_w = render_state->draw_region_w;
+  m_ogl.last_draw_region_h = render_state->draw_region_h;
 
   // ASSUMPTIONS
   // --------------------------
@@ -363,8 +363,8 @@ void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof
   //
   // The original game code would have created this as a view into the framebuffer whose width is 2x
   // as large, however this isn't necessary for the effect to work.
-  int pc_fb_sample_width = render_state->fbo_state.width;
-  int pc_fb_sample_height = render_state->fbo_state.height;
+  int pc_fb_sample_width = render_state->draw_region_w;
+  int pc_fb_sample_height = render_state->draw_region_h;
 
   m_ogl.framebuffer_sample_width = pc_fb_sample_width;
   m_ogl.framebuffer_sample_height = pc_fb_sample_height;
@@ -382,8 +382,8 @@ void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof
   // GOAL code), which kicks in the bilinear filtering effect. Normally, a 32x224 texture will
   // be reused for each slice but for the sake of efficient rendering, we'll create a framebuffer
   // that can store all 16 slices side-by-side and draw all slices to it all at once.
-  int pc_depth_cue_fb_width = render_state->fbo_state.width;
-  int pc_depth_cue_fb_height = render_state->fbo_state.height;
+  int pc_depth_cue_fb_width = render_state->draw_region_w;
+  int pc_depth_cue_fb_height = render_state->draw_region_h;
 
   m_ogl.fbo_width = pc_depth_cue_fb_width;
   m_ogl.fbo_height = pc_depth_cue_fb_height;
@@ -493,22 +493,22 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& /*prof*
   glUniform1i(glGetUniformLocation(shader->id(), "tex"), 0);
 
   // First, we need to copy the framebuffer into the framebuffer sample texture
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, render_state->fbo_state.fbo);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, render_state->render_fb);
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_ogl.framebuffer_sample_fbo);
 
-  glBlitFramebuffer(0,                                // srcX0
-                    0,                                // srcY0
-                    render_state->fbo_state.width,    // srcX1
-                    render_state->fbo_state.height,   // srcY1
-                    0,                                // dstX0
-                    0,                                // dstY0
-                    m_ogl.framebuffer_sample_width,   // dstX1
-                    m_ogl.framebuffer_sample_height,  // dstY1
-                    GL_COLOR_BUFFER_BIT,              // mask
-                    GL_NEAREST                        // filter
+  glBlitFramebuffer(render_state->draw_offset_x,                                // srcX0
+                    render_state->draw_offset_y,                                // srcY0
+                    render_state->draw_offset_x + render_state->draw_region_w,  // srcX1
+                    render_state->draw_offset_y + render_state->draw_region_h,  // srcY1
+                    0,                                                          // dstX0
+                    0,                                                          // dstY0
+                    m_ogl.framebuffer_sample_width,                             // dstX1
+                    m_ogl.framebuffer_sample_height,                            // dstY1
+                    GL_COLOR_BUFFER_BIT,                                        // mask
+                    GL_NEAREST                                                  // filter
   );
 
-  glBindFramebuffer(GL_FRAMEBUFFER, render_state->fbo_state.fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, render_state->render_fb);
 
   // Next, we need to draw from the framebuffer sample texture to the depth-cue-base-page
   // framebuffer
@@ -529,6 +529,8 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& /*prof*
     glBlendEquation(GL_FUNC_ADD);
     glBlendFunc(GL_ONE, GL_ZERO);
 
+    glViewport(0, 0, render_state->draw_region_w, render_state->draw_region_h);
+
     glDrawArrays(GL_TRIANGLES, 0, 6 * TOTAL_DRAW_SLICES);  // 6 verts per slice
   }
 
@@ -543,13 +545,16 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& /*prof*
 
     glBindVertexArray(m_ogl.on_screen_vao);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, render_state->fbo_state.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, render_state->render_fb);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_ogl.fbo_texture);
 
     glBlendEquation(GL_FUNC_ADD);
     glBlendFunc(GL_SRC_ALPHA, GL_ZERO);
+
+    glViewport(render_state->draw_offset_x, render_state->draw_offset_y,
+               render_state->draw_region_w, render_state->draw_region_h);
 
     glDrawArrays(GL_TRIANGLES, 0, 6 * TOTAL_DRAW_SLICES);  // 6 verts per slice
   }
