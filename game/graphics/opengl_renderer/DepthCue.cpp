@@ -1,5 +1,6 @@
 #include "DepthCue.h"
 
+#include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 
 #include "third-party/fmt/core.h"
@@ -8,11 +9,12 @@
 // TODO: drive more opengl state from DMA data
 // TODO: alpha blending
 // TODO: disable by default and make an AA option
+// TODO: profile draws/tris
 
 namespace {
 // Converts fixed point (with 4 bits for decimal) to floating point.
 float fixed_to_floating_point(int fixed) {
-  return fixed / 16.0;
+  return fixed / 16.0f;
 }
 
 math::Vector2f fixed_to_floating_point(const math::Vector<s32, 2>& fixed_vec) {
@@ -325,8 +327,8 @@ void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof
 
   // 2. Assume that the framebuffer is sampled as a 1024x256 texel view and that the game thinks the
   // framebuffer is 512 pixels wide.
-  int fb_sample_width = pow(2, first_slice.depth_cue_page_setup.tex01.tw());
-  int fb_sample_height = pow(2, first_slice.depth_cue_page_setup.tex01.th());
+  int fb_sample_width = (int)pow(2, first_slice.depth_cue_page_setup.tex01.tw());
+  int fb_sample_height = (int)pow(2, first_slice.depth_cue_page_setup.tex01.th());
   int fb_width = first_slice.depth_cue_page_setup.tex01.tbw() * 64;
 
   ASSERT(fb_sample_width == 1024);
@@ -344,8 +346,8 @@ void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof
     ASSERT(slice_height == _slice_height);
     ASSERT(slice.on_screen_draw.xyzf2_1.y() == 0);
 
-    int _fb_sample_width = pow(2, slice.depth_cue_page_setup.tex01.tw());
-    int _fb_sample_height = pow(2, slice.depth_cue_page_setup.tex01.th());
+    int _fb_sample_width = (int)pow(2, slice.depth_cue_page_setup.tex01.tw());
+    int _fb_sample_height = (int)pow(2, slice.depth_cue_page_setup.tex01.th());
     int _fb_width = slice.depth_cue_page_setup.tex01.tbw() * 64;
 
     ASSERT(fb_sample_width == _fb_sample_width);
