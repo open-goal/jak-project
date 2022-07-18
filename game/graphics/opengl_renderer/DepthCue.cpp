@@ -6,7 +6,6 @@
 #include "third-party/imgui/imgui.h"
 
 // TODO: drive more opengl state from DMA data
-// TODO: alpha blending
 // TODO: disable by default and make an AA option
 // TODO: profile draws/tris
 // TODO: respect xyoffset register
@@ -551,7 +550,7 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& /*prof*
     glBindTexture(GL_TEXTURE_2D, m_ogl.fbo_texture);
 
     glBlendEquation(GL_FUNC_ADD);
-    glBlendFunc(GL_SRC_ALPHA, GL_ZERO);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
 
     glViewport(render_state->draw_offset_x, render_state->draw_offset_y,
                render_state->draw_region_w, render_state->draw_region_h);

@@ -9,5 +9,5 @@ out vec4 out_color;
 
 void main() {
     // sample texture
-    out_color = texture(tex, tex_coord);
+    out_color = fragment_color * texture(tex, tex_coord);
 }
