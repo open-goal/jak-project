@@ -529,12 +529,6 @@ void GLDisplay::render() {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   }
 
-  // switch vsync modes, if requested
-  if (Gfx::g_global_settings.vsync != Gfx::g_global_settings.old_vsync) {
-    Gfx::g_global_settings.old_vsync = Gfx::g_global_settings.vsync;
-    glfwSwapInterval(Gfx::g_global_settings.vsync);
-  }
-
   // actual vsync
   g_gfx_data->debug_gui.finish_frame();
   {
@@ -550,6 +544,13 @@ void GLDisplay::render() {
   // actually wait for vsync
   if (g_gfx_data->debug_gui.should_gl_finish()) {
     glFinish();
+  }
+
+  // switch vsync modes, if requested
+  if (Gfx::g_global_settings.vsync != Gfx::g_global_settings.old_vsync) {
+    lg::error("changed vsync");
+    Gfx::g_global_settings.old_vsync = Gfx::g_global_settings.vsync;
+    glfwSwapInterval(Gfx::g_global_settings.vsync);
   }
 
   // Start timing for the next frame.
