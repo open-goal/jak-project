@@ -95,7 +95,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(define *main-options-auto-save* (new 'static 'boxed-array :type game-option
+(define *main-options-pc* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id game-options) :scale #t :param3 (game-option-menu game-settings))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id graphic-options) :scale #t :param3 (game-option-menu graphic-settings))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id sound-options) :scale #t :param3 (game-option-menu sound-settings))
@@ -605,7 +605,7 @@
     )
 
   ;; set up options for each screen
-  (set! (-> *options-remap* (progress-screen settings)) *main-options*)
+  (set! (-> *options-remap* (progress-screen settings)) *main-options-pc*)
   (set! (-> *options-remap* (progress-screen game-settings)) *game-options-pc*)
   (let ((max-refresh-rate (pc-get-screen-rate -1)))
     (cond
@@ -734,11 +734,6 @@
       )
     (((progress-screen flava-player))
       (build-flava-player-options *progress-music*)
-      )
-    (((progress-screen settings))
-      (if (-> *setting-control* default auto-save)
-          (set! (-> *options-remap* (progress-screen settings)) *main-options-auto-save*)
-          (set! (-> *options-remap* (progress-screen settings)) *main-options*))
       )
     )
   ;; run nav code
@@ -1055,14 +1050,22 @@
                ;; go to a menu
                (cpad-clear! 0 x)
                (cpad-clear! 0 circle)
-               (push! obj)
-               (sound-play "select-option")
-               (set! (-> obj next-display-state) (the-as progress-screen (-> options (-> obj option-index) param3)))
-               (case (-> obj next-display-state)
-                 (((progress-screen load-game) (progress-screen save-game) (progress-screen save-game-title))
-                  (set! (-> obj next-display-state) (set-memcard-screen obj (-> obj next-display-state)))
-                  )
+               (cond
+                ((and (not (-> *setting-control* default auto-save))
+                           (= (game-text-id disable-auto-save) (-> options (-> obj option-index) name)))
+                 (sound-play "cursor-options")
                  )
+                (else
+                 (push! obj)
+                 (sound-play "select-option")
+                 (set! (-> obj next-display-state) (the-as progress-screen (-> options (-> obj option-index) param3)))
+                 (case (-> obj next-display-state)
+                   (((progress-screen load-game) (progress-screen save-game) (progress-screen save-game-title))
+                    (set! (-> obj next-display-state) (set-memcard-screen obj (-> obj next-display-state)))
+                    )
+                   )
+                 )
+                )
                )
               ((= (-> options (-> obj option-index) option-type) (game-option-type button-music))
                ;; go to the music+flava player
@@ -1641,6 +1644,9 @@
                  (set! option-str (lookup-text! *common-text* (-> options index name) #f))
                  (set! option-str (the-as string #f))
                  )
+             (if (and (not (-> *setting-control* default auto-save))
+                      (= (game-text-id disable-auto-save) (-> options index name)))
+                 (set! option-str (lookup-text! *common-text* (game-text-id auto-save-disabled) #f)))
              )
             (((game-option-type button-music))
              ;; a button for the music player. has the text "locked" sometimes!
@@ -1866,6 +1872,10 @@
                                  ((and (!= index (-> obj option-index))
                                        (string= (lookup-text! *common-text* (game-text-id locked) #f) option-str)) ;; hacky..
                                   ;; for "locked" options!
+                                  (font-color flat-dark-purple))
+                                 ((and (!= index (-> obj option-index))
+                                       (not (-> *setting-control* default auto-save))
+                                       (= (game-text-id disable-auto-save) (-> options index name)))
                                   (font-color flat-dark-purple))
                                  ((and (= index (-> obj option-index))
                                        (not (or (progress-scrolling?) (-> obj in-transition))))
