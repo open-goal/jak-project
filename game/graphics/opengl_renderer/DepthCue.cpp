@@ -297,14 +297,18 @@ void DepthCue::read_dma(DmaFollower& dma,
 }
 
 void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof*/) {
-  if (m_cache_setup && (m_ogl.last_draw_region_w == render_state->draw_region_w &&
-                        m_ogl.last_draw_region_h == render_state->draw_region_h)) {
+  if (m_debug.m_cache_setup && (m_ogl.last_draw_region_w == render_state->draw_region_w &&
+                                m_ogl.last_draw_region_h == render_state->draw_region_h &&
+                                m_ogl.last_force_original_res == m_debug.m_force_original_res &&
+                                m_ogl.last_res_scale == m_debug.m_res_scale)) {
     // Draw region didn't change, everything is already set up
     return;
   }
 
   m_ogl.last_draw_region_w = render_state->draw_region_w;
   m_ogl.last_draw_region_h = render_state->draw_region_h;
+  m_ogl.last_force_original_res = m_debug.m_force_original_res;
+  m_ogl.last_res_scale = m_debug.m_res_scale;
 
   // ASSUMPTIONS
   // --------------------------
@@ -383,6 +387,12 @@ void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof
   // that can store all 16 slices side-by-side and draw all slices to it all at once.
   int pc_depth_cue_fb_width = render_state->draw_region_w;
   int pc_depth_cue_fb_height = render_state->draw_region_h;
+
+  if (m_debug.m_force_original_res) {
+    pc_depth_cue_fb_width = 512;
+  }
+
+  pc_depth_cue_fb_width *= m_debug.m_res_scale;
 
   m_ogl.fbo_width = pc_depth_cue_fb_width;
   m_ogl.fbo_height = pc_depth_cue_fb_height;
@@ -481,8 +491,9 @@ void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& /*prof*/) {
+void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // Disable depth writing
+  glEnable(GL_DEPTH_TEST);
   glDepthMask(GL_FALSE);
 
   // Activate shader
@@ -518,6 +529,8 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& /*prof*
         depth_cue_page_draw.rgbaq.z() / 255.0f, depth_cue_page_draw.rgbaq.w() / 255.0f);
     glUniform4fv(glGetUniformLocation(shader->id(), "u_color"), 1, colorf.data());
 
+    glUniform1f(glGetUniformLocation(shader->id(), "u_depth"), 1.0f);
+
     glBindVertexArray(m_ogl.depth_cue_page_vao);
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_ogl.fbo);
@@ -528,7 +541,10 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& /*prof*
     glBlendEquation(GL_FUNC_ADD);
     glBlendFunc(GL_ONE, GL_ZERO);
 
-    glViewport(0, 0, render_state->draw_region_w, render_state->draw_region_h);
+    glViewport(0, 0, m_ogl.fbo_width, m_ogl.fbo_height);
+
+    prof.add_draw_call();
+    prof.add_tri(2 * TOTAL_DRAW_SLICES);
 
     glDrawArrays(GL_TRIANGLES, 0, 6 * TOTAL_DRAW_SLICES);  // 6 verts per slice
   }
@@ -540,7 +556,17 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& /*prof*
     math::Vector4f colorf =
         math::Vector4f(on_screen_draw.rgbaq.x() / 255.0f, on_screen_draw.rgbaq.y() / 255.0f,
                        on_screen_draw.rgbaq.z() / 255.0f, on_screen_draw.rgbaq.w() / 255.0f);
+    if (m_debug.m_override_alpha) {
+      colorf.w() = m_debug.m_draw_alpha;
+    }
     glUniform4fv(glGetUniformLocation(shader->id(), "u_color"), 1, colorf.data());
+
+    if (m_debug.m_depth == 1.0f) {
+      glUniform1f(glGetUniformLocation(shader->id(), "u_depth"), m_debug.m_depth);
+    } else {
+      // Scale debug depth expontentially to make the slider easier to use
+      glUniform1f(glGetUniformLocation(shader->id(), "u_depth"), pow(m_debug.m_depth, 8));
+    }
 
     glBindVertexArray(m_ogl.on_screen_vao);
 
@@ -554,6 +580,9 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& /*prof*
 
     glViewport(render_state->draw_offset_x, render_state->draw_offset_y,
                render_state->draw_region_w, render_state->draw_region_h);
+
+    prof.add_draw_call();
+    prof.add_tri(2 * TOTAL_DRAW_SLICES);
 
     glDrawArrays(GL_TRIANGLES, 0, 6 * TOTAL_DRAW_SLICES);  // 6 verts per slice
   }
@@ -597,5 +626,20 @@ void DepthCue::build_sprite(std::vector<SpriteVertex>& vertices,
 }
 
 void DepthCue::draw_debug_window() {
-  ImGui::Checkbox("Cache setup", &m_cache_setup);
+  ImGui::Checkbox("Cache setup", &m_debug.m_cache_setup);
+  ImGui::Checkbox("Force original resolution", &m_debug.m_force_original_res);
+
+  ImGui::Checkbox("Override alpha", &m_debug.m_override_alpha);
+  if (m_debug.m_override_alpha) {
+    ImGui::SliderFloat("Alpha", &m_debug.m_draw_alpha, 0.0f, 1.0f);
+  }
+
+  ImGui::SliderFloat("Depth", &m_debug.m_depth, 0.0f, 1.0f);
+  ImGui::SliderFloat("Resolution scale", &m_debug.m_res_scale, 0.01f, 2.0f);
+
+  if (ImGui::Button("Reset")) {
+    m_debug.m_draw_alpha = 0.4f;
+    m_debug.m_depth = 1.0f;
+    m_debug.m_res_scale = 1.0f;
+  }
 }

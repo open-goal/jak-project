@@ -112,8 +112,6 @@ class DepthCue : public BucketRenderer {
     SpriteVertex(float x, float y, float s, float t) : xy(x, y), st(s, t) {}
   };
 
-  bool m_cache_setup = true;
-
   DepthCueGsSetup m_gs_setup;
   DepthCueGsRestore m_gs_restore;
   std::vector<DrawSlice> m_draw_slices;
@@ -141,7 +139,26 @@ class DepthCue : public BucketRenderer {
 
     int last_draw_region_w = -1;
     int last_draw_region_h = -1;
+    bool last_force_original_res = false;
+    float last_res_scale = 1.0f;
   } m_ogl;
+
+  struct {
+    // false = recompute setup each frame
+    // true = only recompute setup when draw dimensions change
+    bool m_cache_setup = true;
+    // true = render depth-cue at original 512px wide resolution
+    bool m_force_original_res = false;
+    // true = render with m_draw_alpha alpha
+    bool m_override_alpha = false;
+    // 0.4 = default in GOAL
+    float m_draw_alpha = 0.4;
+    // lower to have effect only apply to further away pixels
+    // 1.0 = default (apply to all)
+    float m_depth = 1.0;
+    // depth-cue resolution multiplier
+    float m_res_scale = 1.0;
+  } m_debug;
 
   void opengl_setup();
   void read_dma(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);

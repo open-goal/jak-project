@@ -6,6 +6,7 @@ layout (location = 1) in vec2 st;
 uniform vec4 u_color;
 uniform vec2 u_vert_offset;
 uniform vec2 u_uv_offset;
+uniform float u_depth;
 
 out flat vec4 fragment_color;
 out vec2 tex_coord;
@@ -21,9 +22,9 @@ void main() {
     tex_coord = st + u_uv_offset;
 
     // Calculate vertex position
-    vec4 position = vec4(xy.x, xy.y, 1.0, 1.0);
+    vec4 position = vec4(xy.x, xy.y, u_depth, 1.0);
     position.xy += u_vert_offset;
-    position.xy = (position.xy * 2) - 1.0; // convert from [0,1] to clip-space
+    position.xyz = (position.xyz * 2) - 1.0; // convert from [0,1] to clip-space
 
     gl_Position = position;
 }
