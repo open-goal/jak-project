@@ -548,7 +548,6 @@ void GLDisplay::render() {
 
   // switch vsync modes, if requested
   if (Gfx::g_global_settings.vsync != Gfx::g_global_settings.old_vsync) {
-    lg::error("changed vsync");
     Gfx::g_global_settings.old_vsync = Gfx::g_global_settings.vsync;
     glfwSwapInterval(Gfx::g_global_settings.vsync);
   }

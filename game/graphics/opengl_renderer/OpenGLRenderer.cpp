@@ -588,9 +588,6 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   glDisable(GL_BLEND);
 
-  m_render_state.render_fb_w = settings.game_res_w;
-  m_render_state.render_fb_h = settings.game_res_h;
-
   // setup the draw region to letterbox later
   m_render_state.draw_region_w = settings.draw_region_width;
   m_render_state.draw_region_h = settings.draw_region_height;
@@ -616,9 +613,17 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   }
 
   if (m_fbo_state.render_fbo->is_window) {
+    m_render_state.render_fb_x = m_render_state.draw_offset_x;
+    m_render_state.render_fb_y = m_render_state.draw_offset_y;
+    m_render_state.render_fb_w = m_render_state.draw_region_w;
+    m_render_state.render_fb_h = m_render_state.draw_region_h;
     glViewport(m_render_state.draw_offset_x, m_render_state.draw_offset_y,
                m_render_state.draw_region_w, m_render_state.draw_region_h);
   } else {
+    m_render_state.render_fb_x = 0;
+    m_render_state.render_fb_y = 0;
+    m_render_state.render_fb_w = settings.game_res_w;
+    m_render_state.render_fb_h = settings.game_res_h;
     glViewport(0, 0, settings.game_res_w, settings.game_res_h);
   }
 }
