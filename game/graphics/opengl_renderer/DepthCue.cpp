@@ -657,6 +657,8 @@ void DepthCue::build_sprite(std::vector<SpriteVertex>& vertices,
 }
 
 void DepthCue::draw_debug_window() {
+  ImGui::Text("NOTE: depth-cue may be disabled by '*vu1-enable-user-menu*'!");
+
   ImGui::Checkbox("Cache setup", &m_debug.cache_setup);
   ImGui::Checkbox("Force original resolution", &m_debug.force_original_res);
 
