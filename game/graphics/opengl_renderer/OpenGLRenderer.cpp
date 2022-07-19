@@ -3,6 +3,7 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 
+#include "game/graphics/opengl_renderer/DepthCue.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
 #include "game/graphics/opengl_renderer/ShadowRenderer.h"
@@ -256,7 +257,11 @@ void OpenGLRenderer::init_bucket_renderers() {
                                  BucketId::GENERIC_WATER_LEVEL1);  // 62
 
   init_bucket_renderer<OceanNear>("ocean-near", BucketCategory::OCEAN, BucketId::OCEAN_NEAR);  // 63
-  // 64?
+
+  //-----------------------
+  // DEPTH CUE
+  //-----------------------
+  init_bucket_renderer<DepthCue>("depth-cue", BucketCategory::OTHER, BucketId::DEPTH_CUE);  // 64
 
   //-----------------------
   // COMMON texture
