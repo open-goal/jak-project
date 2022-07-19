@@ -13,3 +13,7 @@ GameVersion game_name_to_version(const std::string& name) {
     ASSERT_MSG(false, fmt::format("invalid game name: {}", name));
   }
 }
+
+bool valid_game_version(const std::string& name) {
+  return name == "jak1" || name == "jak2";
+}
