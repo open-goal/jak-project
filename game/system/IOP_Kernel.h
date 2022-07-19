@@ -26,7 +26,6 @@ struct sceSifQueueData;
 struct SifRpcCommand {
   bool started = true;
   bool finished = true;
-  bool shutdown_now = false;
 
   void* buff;
   int fno;
@@ -69,7 +68,6 @@ struct IopThread {
   cothread_t thread;
   State state = State::Dormant;
   Wait waitType = Wait::None;
-  bool wantExit = false;
   s32 thID = -1;
 };
 
@@ -159,15 +157,12 @@ class IOP_Kernel {
                void* recvBuff,
                s32 recvSize);
 
-  bool GetWantExit(s32 thid) const { return threads.at(thid).wantExit; }
-  bool OnlyThreadAlive(s32 thid) { return false; }
-
  private:
   void runThread(s32 id);
   void exitThread();
   cothread_t kernel_thread;
   s32 _nextThID = 0;
-  std::atomic<s32> _currentThread = {-1};
+  s32 _currentThread = {-1};
   std::vector<IopThread> threads;
   std::vector<std::queue<void*>> mbxs;
   std::vector<SifRecord> sif_records;

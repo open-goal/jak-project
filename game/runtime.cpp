@@ -257,12 +257,6 @@ void iop_runner(SystemThreadInterface& iface) {
     iop.wait_run_iop();
     iop.kernel.dispatchAll();
   }
-
-  // stop all threads in the iop kernel.
-  // if the threads are not stopped nicely, we will deadlock on trying to destroy the kernel's
-  // condition variables.
-  printf("kernel shutdown\n");
-  iop.kernel.shutdown();
 }
 }  // namespace
 

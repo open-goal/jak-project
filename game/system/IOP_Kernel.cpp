@@ -38,6 +38,9 @@ void IOP_Kernel::runThread(s32 id) {
   _currentThread = -1;
 }
 
+/*!
+ * Return to kernel from a thread
+ */
 void IOP_Kernel::exitThread() {
   s32 oldThread = getCurrentThread();
   co_switch(kernel_thread);
@@ -176,10 +179,6 @@ void IOP_Kernel::rpc_loop(iop::sceSifQueueData* qd) {
 
     // handle command
     if (got_cmd) {
-      if (cmd.shutdown_now) {
-        return;
-      }
-
       if (!cmd.started) {
         // cf
         ASSERT(func);
@@ -213,26 +212,6 @@ void IOP_Kernel::read_disc_sectors(u32 sector, u32 sectors, void* buffer) {
   }
   auto rv = fread(buffer, sectors * 0x800, 1, iso_disc_file);
   ASSERT(rv == 1);
-}
-
-void IOP_Kernel::shutdown() {
-  // shutdown most threads
-  printf("Shutdown???\n");
-  for (auto& r : sif_records) {
-    r.cmd.shutdown_now = true;
-  }
-
-  for (auto& t : threads) {
-    t.wantExit = true;
-  }
-
-  for (auto& t : threads) {
-    if (t.thID == 0)
-      continue;
-    // while (!t.done) {
-    //   dispatchAll();
-    // }
-  }
 }
 
 IOP_Kernel::~IOP_Kernel() {
