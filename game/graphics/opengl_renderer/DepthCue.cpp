@@ -5,9 +5,6 @@
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 
-// TODO: drive more opengl state from DMA data
-// TODO: disable by default and make an AA option
-
 namespace {
 // Converts fixed point (with 4 bits for decimal) to floating point.
 float fixed_to_floating_point(int fixed) {
@@ -494,7 +491,7 @@ void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof
       uv2.y() = 224.0f * m_debug.sharpness;
     }
 
-     // Apply xyoffset GS register
+    // Apply xyoffset GS register
     xy1.x() += xyoffset.x() / 4096.0f;
     xy1.y() += xyoffset.y() / 4096.0f;
     xy2.x() += xyoffset.x() / 4096.0f;
@@ -526,7 +523,7 @@ void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof
 }
 
 void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  // Disable depth writing
+  // Disable depth writing but keep test
   glEnable(GL_DEPTH_TEST);
   glDepthMask(GL_FALSE);
 
@@ -558,14 +555,13 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // framebuffer
   {
     const auto& depth_cue_page_draw = m_draw_slices[0].depth_cue_page_draw;
+
     math::Vector4f colorf = math::Vector4f(
         depth_cue_page_draw.rgbaq.x() / 255.0f, depth_cue_page_draw.rgbaq.y() / 255.0f,
         depth_cue_page_draw.rgbaq.z() / 255.0f, depth_cue_page_draw.rgbaq.w() / 255.0f);
     glUniform4fv(glGetUniformLocation(shader->id(), "u_color"), 1, colorf.data());
 
     glUniform1f(glGetUniformLocation(shader->id(), "u_depth"), 1.0f);
-
-    glBindVertexArray(m_ogl.depth_cue_page_vao);
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_ogl.fbo);
 
@@ -580,6 +576,7 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& prof) {
     prof.add_draw_call();
     prof.add_tri(2 * TOTAL_DRAW_SLICES);
 
+    glBindVertexArray(m_ogl.depth_cue_page_vao);
     glDrawArrays(GL_TRIANGLES, 0, 6 * TOTAL_DRAW_SLICES);  // 6 verts per slice
   }
 
@@ -587,6 +584,7 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // framebuffer
   {
     const auto& on_screen_draw = m_draw_slices[0].on_screen_draw;
+
     math::Vector4f colorf =
         math::Vector4f(on_screen_draw.rgbaq.x() / 255.0f, on_screen_draw.rgbaq.y() / 255.0f,
                        on_screen_draw.rgbaq.z() / 255.0f, on_screen_draw.rgbaq.w() / 255.0f);
@@ -602,8 +600,6 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& prof) {
       glUniform1f(glGetUniformLocation(shader->id(), "u_depth"), pow(m_debug.depth, 8));
     }
 
-    glBindVertexArray(m_ogl.on_screen_vao);
-
     glBindFramebuffer(GL_FRAMEBUFFER, render_state->render_fb);
 
     glActiveTexture(GL_TEXTURE0);
@@ -618,6 +614,7 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& prof) {
     prof.add_draw_call();
     prof.add_tri(2 * TOTAL_DRAW_SLICES);
 
+    glBindVertexArray(m_ogl.on_screen_vao);
     glDrawArrays(GL_TRIANGLES, 0, 6 * TOTAL_DRAW_SLICES);  // 6 verts per slice
   }
 
