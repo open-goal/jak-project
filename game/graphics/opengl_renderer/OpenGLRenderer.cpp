@@ -548,11 +548,9 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
           make_fbo(settings.game_res_w, settings.game_res_h, settings.msaa_samples, true);
       m_fbo_state.render_fbo = &m_fbo_state.resources.render_buffer;
 
-      bool resolution_matches =
-          window_fb.width == settings.game_res_w && window_fb.height == settings.game_res_h;
       bool msaa_matches = window_fb.multisample_count == settings.msaa_samples;
 
-      if (!resolution_matches || !msaa_matches) {
+      if (!msaa_matches) {
         lg::info("FBO Setup: using second temporary buffer: res: {}x{} {}x{}", window_fb.width,
                  window_fb.height, settings.game_res_w, settings.game_res_h);
 
