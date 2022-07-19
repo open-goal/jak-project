@@ -21,7 +21,7 @@ s32 IOP_Kernel::CreateThread(std::string name, void (*func)()) {
 }
 
 /*!
- * Start a thread.  Runs it once, then marks it to run on each dispatch of the IOP kernel.
+ * Start a thread. Marking it to run on each dispatch of the IOP kernel.
  */
 void IOP_Kernel::StartThread(s32 id) {
   threads.at(id).state = IopThread::State::Ready;
@@ -39,7 +39,7 @@ void IOP_Kernel::runThread(s32 id) {
 }
 
 /*!
- * Return to kernel from a thread
+ * Return to kernel from a thread, not to be called from the kernel thread.
  */
 void IOP_Kernel::exitThread() {
   s32 oldThread = getCurrentThread();
@@ -51,8 +51,8 @@ void IOP_Kernel::exitThread() {
 
 /*!
  * Suspend a thread (call from user thread).  Will simply allow other threads to run.
- * Unless we are sleeping, in which case this will return when we are woken up
  * Like yield
+ * This does not match the behaviour of any real IOP function.
  */
 void IOP_Kernel::SuspendThread() {
   ASSERT(getCurrentThread() >= 0);
@@ -81,6 +81,8 @@ void IOP_Kernel::WakeupThread(s32 id) {
 
 /*!
  * Dispatch all IOP threads.
+ * Currently does no scheduling, on the real IOP the highest priority therad that is Ready
+ * will always be scheduled.
  */
 void IOP_Kernel::dispatchAll() {
   for (s64 i = 0; i < threads.size(); i++) {
