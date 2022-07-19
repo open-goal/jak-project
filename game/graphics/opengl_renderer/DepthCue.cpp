@@ -7,8 +7,6 @@
 
 // TODO: drive more opengl state from DMA data
 // TODO: disable by default and make an AA option
-// TODO: profile draws/tris
-// TODO: respect xyoffset register
 
 namespace {
 // Converts fixed point (with 4 bits for decimal) to floating point.
@@ -297,18 +295,23 @@ void DepthCue::read_dma(DmaFollower& dma,
 }
 
 void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof*/) {
-  if (m_debug.m_cache_setup && (m_ogl.last_draw_region_w == render_state->draw_region_w &&
-                                m_ogl.last_draw_region_h == render_state->draw_region_h &&
-                                m_ogl.last_force_original_res == m_debug.m_force_original_res &&
-                                m_ogl.last_res_scale == m_debug.m_res_scale)) {
+  if (m_debug.cache_setup && (m_ogl.last_draw_region_w == render_state->draw_region_w &&
+                              m_ogl.last_draw_region_h == render_state->draw_region_h &&
+                              // Also recompute when certain debug settings change
+                              m_ogl.last_override_sharpness == m_debug.override_sharpness &&
+                              m_ogl.last_custom_sharpness == m_debug.sharpness &&
+                              m_ogl.last_force_original_res == m_debug.force_original_res &&
+                              m_ogl.last_res_scale == m_debug.res_scale)) {
     // Draw region didn't change, everything is already set up
     return;
   }
 
   m_ogl.last_draw_region_w = render_state->draw_region_w;
   m_ogl.last_draw_region_h = render_state->draw_region_h;
-  m_ogl.last_force_original_res = m_debug.m_force_original_res;
-  m_ogl.last_res_scale = m_debug.m_res_scale;
+  m_ogl.last_override_sharpness = m_debug.override_sharpness;
+  m_ogl.last_custom_sharpness = m_debug.sharpness;
+  m_ogl.last_force_original_res = m_debug.force_original_res;
+  m_ogl.last_res_scale = m_debug.res_scale;
 
   // ASSUMPTIONS
   // --------------------------
@@ -388,11 +391,11 @@ void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof
   int pc_depth_cue_fb_width = render_state->draw_region_w;
   int pc_depth_cue_fb_height = render_state->draw_region_h;
 
-  if (m_debug.m_force_original_res) {
+  if (m_debug.force_original_res) {
     pc_depth_cue_fb_width = 512;
   }
 
-  pc_depth_cue_fb_width *= m_debug.m_res_scale;
+  pc_depth_cue_fb_width *= m_debug.res_scale;
 
   m_ogl.fbo_width = pc_depth_cue_fb_width;
   m_ogl.fbo_height = pc_depth_cue_fb_height;
@@ -415,20 +418,36 @@ void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof
   ASSERT(max_u == 512.0f);
 
   for (const auto& slice : m_draw_slices) {
+    math::Vector2f xyoffset = fixed_to_floating_point(
+        math::Vector2<s32>((s32)slice.depth_cue_page_setup.xyoffset1.ofx(),
+                           (s32)slice.depth_cue_page_setup.xyoffset1.ofy()));
+
     math::Vector2f xy1 = fixed_to_floating_point(slice.depth_cue_page_draw.xyzf2_1.xy());
     math::Vector2f xy2 = fixed_to_floating_point(slice.depth_cue_page_draw.xyzf2_2.xy());
     math::Vector2f uv1 = fixed_to_floating_point(slice.depth_cue_page_draw.uv_1.xy());
     math::Vector2f uv2 = fixed_to_floating_point(slice.depth_cue_page_draw.uv_2.xy());
 
-    // U-coord will range from [0,512], which is half of the original framebuffer sample width
-    // Let's also use it to determine the X offset into the depth-cue framebuffer since the
-    // original draw assumes each slice is at 0,0.
-    float x_offset = uv1.x() / 512.0f;
-
     ASSERT(xy1.x() == 0);
     ASSERT(xy1.y() == 0);
     ASSERT(xy2.x() <= 32.0f);
     ASSERT(xy2.y() <= slice_height);
+
+    if (m_debug.override_sharpness) {
+      // Undo sharpness from GOAL code and apply custom
+      xy2.x() = 32.0f * m_debug.sharpness;
+      xy2.y() = 224.0f * m_debug.sharpness;
+    }
+
+    // Apply xyoffset GS register
+    xy1.x() += xyoffset.x() / 4096.0f;
+    xy1.y() += xyoffset.y() / 4096.0f;
+    xy2.x() += xyoffset.x() / 4096.0f;
+    xy2.y() += xyoffset.y() / 4096.0f;
+
+    // U-coord will range from [0,512], which is half of the original framebuffer sample width
+    // Let's also use it to determine the X offset into the depth-cue framebuffer since the
+    // original draw assumes each slice is at 0,0.
+    float x_offset = (uv1.x() / 512.0f) * (xy2.x() / 32.0f);
 
     build_sprite(depth_cue_page_vertices,
                  // Top-left
@@ -456,20 +475,35 @@ void DepthCue::setup(SharedRenderState* render_state, ScopedProfilerNode& /*prof
   std::vector<SpriteVertex> on_screen_vertices;
 
   for (const auto& slice : m_draw_slices) {
+    math::Vector2f xyoffset = fixed_to_floating_point(math::Vector2<s32>(
+        (s32)slice.on_screen_setup.xyoffset1.ofx(), (s32)slice.on_screen_setup.xyoffset1.ofy()));
+
     math::Vector2f xy1 = fixed_to_floating_point(slice.on_screen_draw.xyzf2_1.xy());
     math::Vector2f xy2 = fixed_to_floating_point(slice.on_screen_draw.xyzf2_2.xy());
     math::Vector2f uv1 = fixed_to_floating_point(slice.on_screen_draw.uv_1.xy());
     math::Vector2f uv2 = fixed_to_floating_point(slice.on_screen_draw.uv_2.xy());
 
-    // X-coord will range from [0,512], which is half of the original framebuffer sample width
-    // Let's also use it to determine the U offset into the on-screen framebuffer since the
-    // original draw assumes each slice is at 0,0.
-    float u_offset = xy1.x() / 512.0f;
-
     ASSERT(uv1.x() == 0);
     ASSERT(uv1.y() == 0);
     ASSERT(uv2.x() <= 32.0f);
     ASSERT(uv2.y() <= slice_height);
+
+    if (m_debug.override_sharpness) {
+      // Undo sharpness from GOAL code and apply custom
+      uv2.x() = 32.0f * m_debug.sharpness;
+      uv2.y() = 224.0f * m_debug.sharpness;
+    }
+
+     // Apply xyoffset GS register
+    xy1.x() += xyoffset.x() / 4096.0f;
+    xy1.y() += xyoffset.y() / 4096.0f;
+    xy2.x() += xyoffset.x() / 4096.0f;
+    xy2.y() += xyoffset.y() / 4096.0f;
+
+    // X-coord will range from [0,512], which is half of the original framebuffer sample width
+    // Let's also use it to determine the U offset into the on-screen framebuffer since the
+    // original draw assumes each slice is at 0,0.
+    float u_offset = (xy1.x() / 512.0f) * (uv2.x() / 32.0f);
 
     build_sprite(on_screen_vertices,
                  // Top-left
@@ -556,16 +590,16 @@ void DepthCue::draw(SharedRenderState* render_state, ScopedProfilerNode& prof) {
     math::Vector4f colorf =
         math::Vector4f(on_screen_draw.rgbaq.x() / 255.0f, on_screen_draw.rgbaq.y() / 255.0f,
                        on_screen_draw.rgbaq.z() / 255.0f, on_screen_draw.rgbaq.w() / 255.0f);
-    if (m_debug.m_override_alpha) {
-      colorf.w() = m_debug.m_draw_alpha;
+    if (m_debug.override_alpha) {
+      colorf.w() = m_debug.draw_alpha / 2.0f;
     }
     glUniform4fv(glGetUniformLocation(shader->id(), "u_color"), 1, colorf.data());
 
-    if (m_debug.m_depth == 1.0f) {
-      glUniform1f(glGetUniformLocation(shader->id(), "u_depth"), m_debug.m_depth);
+    if (m_debug.depth == 1.0f) {
+      glUniform1f(glGetUniformLocation(shader->id(), "u_depth"), m_debug.depth);
     } else {
       // Scale debug depth expontentially to make the slider easier to use
-      glUniform1f(glGetUniformLocation(shader->id(), "u_depth"), pow(m_debug.m_depth, 8));
+      glUniform1f(glGetUniformLocation(shader->id(), "u_depth"), pow(m_debug.depth, 8));
     }
 
     glBindVertexArray(m_ogl.on_screen_vao);
@@ -626,20 +660,26 @@ void DepthCue::build_sprite(std::vector<SpriteVertex>& vertices,
 }
 
 void DepthCue::draw_debug_window() {
-  ImGui::Checkbox("Cache setup", &m_debug.m_cache_setup);
-  ImGui::Checkbox("Force original resolution", &m_debug.m_force_original_res);
+  ImGui::Checkbox("Cache setup", &m_debug.cache_setup);
+  ImGui::Checkbox("Force original resolution", &m_debug.force_original_res);
 
-  ImGui::Checkbox("Override alpha", &m_debug.m_override_alpha);
-  if (m_debug.m_override_alpha) {
-    ImGui::SliderFloat("Alpha", &m_debug.m_draw_alpha, 0.0f, 1.0f);
+  ImGui::Checkbox("Override alpha", &m_debug.override_alpha);
+  if (m_debug.override_alpha) {
+    ImGui::SliderFloat("Alpha", &m_debug.draw_alpha, 0.0f, 1.0f);
   }
 
-  ImGui::SliderFloat("Depth", &m_debug.m_depth, 0.0f, 1.0f);
-  ImGui::SliderFloat("Resolution scale", &m_debug.m_res_scale, 0.01f, 2.0f);
+  ImGui::Checkbox("Override sharpness", &m_debug.override_sharpness);
+  if (m_debug.override_sharpness) {
+    ImGui::SliderFloat("Sharpness", &m_debug.sharpness, 0.001f, 1.0f);
+  }
+
+  ImGui::SliderFloat("Depth", &m_debug.depth, 0.0f, 1.0f);
+  ImGui::SliderFloat("Resolution scale", &m_debug.res_scale, 0.001f, 2.0f);
 
   if (ImGui::Button("Reset")) {
-    m_debug.m_draw_alpha = 0.4f;
-    m_debug.m_depth = 1.0f;
-    m_debug.m_res_scale = 1.0f;
+    m_debug.draw_alpha = 0.4f;
+    m_debug.sharpness = 0.999f;
+    m_debug.depth = 1.0f;
+    m_debug.res_scale = 1.0f;
   }
 }

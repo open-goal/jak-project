@@ -363,6 +363,10 @@ std::string GsFrame::print() const {
   return fmt::format("fbp: {} fbw: {} psm: {} fbmsk: {:x}\n", fbp(), fbw(), psm(), fbmsk());
 }
 
+std::string GsXYOffset::print() const {
+  return fmt::format("ofx: {} ofy: {}\n", ofx(), ofy());
+}
+
 std::string DrawMode::to_string() const {
   std::string result;
   result += fmt::format(" depth-write: {}\n", get_depth_write_enable());

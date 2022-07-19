@@ -43,7 +43,7 @@ class DepthCue : public BucketRenderer {
   // GS setup for drawing to the depth-cue-base-page framebuffer
   struct DepthCuePageGsSetup {
     GifTag gif_tag;
-    u64 xyoffset1;
+    GsXYOffset xyoffset1;
     u64 xyoffset1_addr;
     GsFrame frame1;
     u64 frame1_addr;
@@ -59,7 +59,7 @@ class DepthCue : public BucketRenderer {
   // GS setup for drawing to the on-screen framebuffer
   struct OnScreenGsSetup {
     GifTag gif_tag;
-    u64 xyoffset1;
+    GsXYOffset xyoffset1;
     u64 xyoffset1_addr;
     GsFrame frame1;
     u64 frame1_addr;
@@ -139,6 +139,8 @@ class DepthCue : public BucketRenderer {
 
     int last_draw_region_w = -1;
     int last_draw_region_h = -1;
+    bool last_override_sharpness = false;
+    float last_custom_sharpness = 0.999f;
     bool last_force_original_res = false;
     float last_res_scale = 1.0f;
   } m_ogl;
@@ -146,18 +148,23 @@ class DepthCue : public BucketRenderer {
   struct {
     // false = recompute setup each frame
     // true = only recompute setup when draw dimensions change
-    bool m_cache_setup = true;
+    bool cache_setup = true;
     // true = render depth-cue at original 512px wide resolution
-    bool m_force_original_res = false;
+    bool force_original_res = false;
     // true = render with m_draw_alpha alpha
-    bool m_override_alpha = false;
+    bool override_alpha = false;
     // 0.4 = default in GOAL
-    float m_draw_alpha = 0.4;
+    float draw_alpha = 0.4f;
+    // true = render with m_sharpness sharpness
+    bool override_sharpness = false;
+    // 1.0 = pixel perfect, depth-cue has no effect
+    // 0.999 = default in GOAL
+    float sharpness = 0.999f;
     // lower to have effect only apply to further away pixels
     // 1.0 = default (apply to all)
-    float m_depth = 1.0;
+    float depth = 1.0f;
     // depth-cue resolution multiplier
-    float m_res_scale = 1.0;
+    float res_scale = 1.0f;
   } m_debug;
 
   void opengl_setup();

@@ -375,6 +375,18 @@ struct GsFrame {
   u64 data = 0;
 };
 
+struct GsXYOffset {
+  GsXYOffset() = default;
+  GsXYOffset(u64 val) : data(val) {}
+
+  u32 ofx() const { return data & 0xFFFF; }
+  u32 ofy() const { return (data >> 32) & 0xFFFF; }
+
+  std::string print() const;
+
+  u64 data = 0;
+};
+
 // not including the giftag
 struct AdGifData {
   u64 tex0_data;
