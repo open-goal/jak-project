@@ -573,6 +573,7 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   glViewport(0, 0, settings.game_res_w, settings.game_res_h);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClearDepth(0.0);
+  glClearStencil(0);
   glDepthMask(GL_TRUE);
   // Note: could rely on sky renderer to clear depth and color, but this causes problems with
   // letterboxing
