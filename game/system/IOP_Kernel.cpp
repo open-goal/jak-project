@@ -143,7 +143,7 @@ void IOP_Kernel::dispatchAll() {
 /*!
  * Start running kernel.
  */
-void IopThreadRecord::returnToKernel() {
+void IopThread::returnToKernel() {
   runThreadReady = false;
   // should be called from the correct thread
   ASSERT(kernel->getCurrentThread() == thID);
@@ -158,7 +158,7 @@ void IopThreadRecord::returnToKernel() {
 /*!
  * Start running thread.
  */
-void IopThreadRecord::dispatch() {
+void IopThread::dispatch() {
   syscallReady = false;
   ASSERT(kernel->getCurrentThread() == thID);
 
@@ -172,7 +172,7 @@ void IopThreadRecord::dispatch() {
 /*!
  * Kernel waits for thread to return
  */
-void IopThreadRecord::waitForReturnToKernel() {
+void IopThread::waitForReturnToKernel() {
   std::unique_lock<std::mutex> lck(*threadToKernelMutex);
   threadToKernelCV->wait(lck, [this] { return syscallReady; });
 }
@@ -180,7 +180,7 @@ void IopThreadRecord::waitForReturnToKernel() {
 /*!
  * Thread waits for kernel to dispatch it.
  */
-void IopThreadRecord::waitForDispatch() {
+void IopThread::waitForDispatch() {
   std::unique_lock<std::mutex> lck(*kernelToThreadMutex);
   kernelToThreadCV->wait(lck, [this] { return runThreadReady; });
 }

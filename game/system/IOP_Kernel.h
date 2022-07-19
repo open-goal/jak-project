@@ -40,8 +40,8 @@ struct SifRecord {
   u32 thread_to_wake;
 };
 
-struct IopThreadRecord {
-  IopThreadRecord(std::string n, u32 (*f)(), s32 ID, IOP_Kernel* k)
+struct IopThread {
+  IopThread(std::string n, u32 (*f)(), s32 ID, IOP_Kernel* k)
       : name(n), function(f), thID(ID), kernel(k) {
     kernelToThreadCV = new std::condition_variable;
     threadToKernelCV = new std::condition_variable;
@@ -49,7 +49,7 @@ struct IopThreadRecord {
     threadToKernelMutex = new std::mutex;
   }
 
-  ~IopThreadRecord() {
+  ~IopThread() {
     delete kernelToThreadCV;
     delete threadToKernelCV;
     delete kernelToThreadMutex;
@@ -60,6 +60,8 @@ struct IopThreadRecord {
   std::string name;
   u32 (*function)();
   std::thread* thread = nullptr;
+  State state;
+  Wait waitType;
   bool wantExit = false;
   bool started = false;
   bool done = false;
@@ -170,7 +172,7 @@ class IOP_Kernel {
   void runThread(s32 id);
   s32 _nextThID = 0;
   std::atomic<s32> _currentThread = {-1};
-  std::vector<IopThreadRecord> threads;
+  std::vector<IopThread> threads;
   std::vector<std::queue<void*>> mbxs;
   std::vector<SifRecord> sif_records;
   bool mainThreadSleep = false;
