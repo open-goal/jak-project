@@ -730,7 +730,6 @@ void OpenGLRenderer::do_pcrtc_effects(float alp,
     // nothing to do!
   } else {
     Fbo* window_blit_src = nullptr;
-    const Fbo& window_fbo = m_fbo_state.resources.window;
     if (m_fbo_state.resources.resolve_buffer.valid) {
       glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
       glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo_state.resources.resolve_buffer.fbo_id);
