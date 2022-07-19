@@ -11,8 +11,6 @@
  * Create a new thread.  Will not run the thread.
  */
 s32 IOP_Kernel::CreateThread(std::string name, void (*func)()) {
-  ASSERT(_currentThread == -1);  // can only create thread from kernel thread.
-
   u32 ID = (u32)_nextThID++;
   ASSERT(ID == threads.size());
 
@@ -27,7 +25,6 @@ s32 IOP_Kernel::CreateThread(std::string name, void (*func)()) {
  */
 void IOP_Kernel::StartThread(s32 id) {
   threads.at(id).state = IopThread::State::Ready;
-  runThread(id);                  // run now
 }
 
 /*!
@@ -55,10 +52,7 @@ void IOP_Kernel::exitThread() {
  * Like yield
  */
 void IOP_Kernel::SuspendThread() {
-  if  (getCurrentThread() == -1) {
-    printf("Cannot wait in kernel thread!!!!");
-    return;
-  }
+  ASSERT(getCurrentThread() >= 0);
 
   threads.at(getCurrentThread()).state = IopThread::State::Ready;
   exitThread();
@@ -68,12 +62,8 @@ void IOP_Kernel::SuspendThread() {
  * Sleep a thread.  Must be explicitly woken up.
  */
 void IOP_Kernel::SleepThread() {
-  if  (getCurrentThread() == -1) {
-    printf("Cannot wait in kernel thread!!!!");
-    return;
-  }
+  ASSERT(getCurrentThread() >= 0);
 
-  ASSERT(getCurrentThread() > 0);
   threads.at(getCurrentThread()).state = IopThread::State::Suspend;
   exitThread();
 }

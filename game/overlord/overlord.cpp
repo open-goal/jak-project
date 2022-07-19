@@ -14,6 +14,10 @@
 
 using namespace iop;
 
+static s32 gargc;
+static const char* const* gargv;
+static bool* init_complete;
+
 int start_overlord(int argc, const char* const* argv) {
   (void)argc;
   FlushDcache();
@@ -76,6 +80,35 @@ int start_overlord(int argc, const char* const* argv) {
 
   StartThread(thread_player, 0);
   StartThread(thread_loader, 0);
+  return 0;
+}
+
+static void call_start() {
+  start_overlord(gargc, gargv);
+  *init_complete = true;
+
+  while (true) {
+    SleepThread();
+  }
+}
+
+int start_overlord_wrapper(int argc, const char* const* argv, bool* signal) {
+  ThreadParam param = {};
+
+  gargc = argc;
+  gargv = argv;
+  init_complete = signal;
+
+  param.attr = TH_C;
+  param.initPriority = 0;
+  param.stackSize = 0x800;
+  param.option = 0;
+  strcpy(param.name, "start");  // added for debug
+  param.entry = (void*)call_start;
+
+  auto start_thread = CreateThread(&param);
+  StartThread(start_thread, 0);
+
   return 0;
 }
 
