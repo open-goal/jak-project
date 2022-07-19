@@ -566,11 +566,21 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     }
   }
 
-  glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
   ASSERT_MSG(settings.game_res_w > 0 && settings.game_res_h > 0,
              fmt::format("Bad viewport size from game_res: {}x{}\n", settings.game_res_w,
                          settings.game_res_h));
-  glViewport(0, 0, settings.game_res_w, settings.game_res_h);
+
+  if (!m_fbo_state.render_fbo->is_window) {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClearDepth(0.0);
+    glDepthMask(GL_TRUE);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    glDisable(GL_BLEND);
+  }
+
+  glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClearDepth(0.0);
   glClearStencil(0);
@@ -583,31 +593,19 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
   m_render_state.render_fb_w = settings.game_res_w;
   m_render_state.render_fb_h = settings.game_res_h;
 
-  // compare the aspect ratio of the frame buffer to the requested draw area.
-  float fb_aspect =
-      (float)settings.window_framebuffer_width / (float)settings.window_framebuffer_height;
-  float draw_aspect = (float)settings.draw_region_width / (float)settings.draw_region_height;
-  float squash = fb_aspect / draw_aspect;
-
-  // start with the full area
-  m_render_state.draw_region_w = m_render_state.render_fb_w;
-  m_render_state.draw_region_h = m_render_state.render_fb_h;
-
-  // and letterbox as needed
-  if (squash > 1) {
-    m_render_state.draw_region_w = ((float)m_render_state.draw_region_w / squash) + 0.1;
-  } else {
-    m_render_state.draw_region_h = ((float)m_render_state.draw_region_h * squash) + 0.1;
-  }
+  // setup the draw region to letterbox later
+  m_render_state.draw_region_w = settings.draw_region_width;
+  m_render_state.draw_region_h = settings.draw_region_height;
 
   // center the letterbox
-  m_render_state.draw_offset_x = (settings.game_res_w - m_render_state.draw_region_w) / 2;
-  m_render_state.draw_offset_y = (settings.game_res_h - m_render_state.draw_region_h) / 2;
+  m_render_state.draw_offset_x =
+      (settings.window_framebuffer_width - m_render_state.draw_region_w) / 2;
+  m_render_state.draw_offset_y =
+      (settings.window_framebuffer_height - m_render_state.draw_region_h) / 2;
 
   if (settings.borderless_windows_hacks) {
     // pretend the framebuffer is 1 pixel shorter on borderless. fullscreen issues!
     // add one pixel of vertical letterbox on borderless to make up for extra line
-    m_render_state.draw_region_h--;
     m_render_state.draw_offset_y++;
   }
 
@@ -618,8 +616,13 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     m_render_state.draw_region_w = 640;
     m_render_state.draw_region_h = 480;
   }
-  glViewport(m_render_state.draw_offset_x, m_render_state.draw_offset_y,
-             m_render_state.draw_region_w, m_render_state.draw_region_h);
+
+  if (m_fbo_state.render_fbo->is_window) {
+    glViewport(m_render_state.draw_offset_x, m_render_state.draw_offset_y,
+               m_render_state.draw_region_w, m_render_state.draw_region_h);
+  } else {
+    glViewport(0, 0, settings.game_res_w, settings.game_res_h);
+  }
 }
 
 /*!
@@ -749,16 +752,16 @@ void OpenGLRenderer::do_pcrtc_effects(float alp,
 
     glBindFramebuffer(GL_READ_FRAMEBUFFER, window_blit_src->fbo_id);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    glBlitFramebuffer(0,                        // srcX0
-                      0,                        // srcY0
-                      window_blit_src->width,   // srcX1
-                      window_blit_src->height,  // srcY1
-                      0,                        // dstX0
-                      0,                        // dstY0
-                      window_fbo.width,         // dstX1
-                      window_fbo.height,        // dstY1
-                      GL_COLOR_BUFFER_BIT,      // mask
-                      GL_LINEAR                 // filter
+    glBlitFramebuffer(0,                                                          // srcX0
+                      0,                                                          // srcY0
+                      window_blit_src->width,                                     // srcX1
+                      window_blit_src->height,                                    // srcY1
+                      render_state->draw_offset_x,                                // dstX0
+                      render_state->draw_offset_y,                                // dstY0
+                      render_state->draw_offset_x + render_state->draw_region_w,  // dstX1
+                      render_state->draw_offset_y + render_state->draw_region_h,  // dstY1
+                      GL_COLOR_BUFFER_BIT,                                        // mask
+                      GL_LINEAR                                                   // filter
     );
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
