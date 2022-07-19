@@ -63,6 +63,8 @@ struct SharedRenderState {
   // framebuffer setup.
 
   // the framebuffer that bucket renderers should render to.
+  int render_fb_x = 0;
+  int render_fb_y = 0;
   int render_fb_w = 0;
   int render_fb_h = 0;
   GLuint render_fb = -1;
