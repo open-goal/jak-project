@@ -10,27 +10,14 @@
 /*!
  * Create a new thread.  Will not run the thread.
  */
-s32 IOP_Kernel::CreateThread(std::string name, u32 (*func)()) {
+s32 IOP_Kernel::CreateThread(std::string name, void (*func)()) {
   ASSERT(_currentThread == -1);  // can only create thread from kernel thread.
 
   u32 ID = (u32)_nextThID++;
   ASSERT(ID == threads.size());
 
   // add entry
-  threads.emplace_back(name, func, ID, this);
-  // setup the thread!
-  // printf("[IOP Kernel] SetupThread %s...\n", name.c_str());
-
-  // allow creating a "null thread" which doesn't/can't run but occupies slot 0.
-  if (func) {
-    _currentThread = ID;
-    // create OS thread, will run the setupThread function
-    threads.back().thread = new std::thread(&IOP_Kernel::setupThread, this, ID);
-    // wait for thread to finish setup.
-    threads.back().waitForReturnToKernel();
-    // ensure we are back in the kernel.
-    _currentThread = -1;
-  }
+  threads.emplace_back(name, func, ID);
 
   return ID;
 }
@@ -39,23 +26,8 @@ s32 IOP_Kernel::CreateThread(std::string name, u32 (*func)()) {
  * Start a thread.  Runs it once, then marks it to run on each dispatch of the IOP kernel.
  */
 void IOP_Kernel::StartThread(s32 id) {
-  threads.at(id).started = true;  // mark for run
+  threads.at(id).state = IopThread::State::Ready;
   runThread(id);                  // run now
-}
-
-/*!
- * Wrapper around entry for a thread.
- */
-void IOP_Kernel::setupThread(s32 id) {
-  // printf("\tthread %s has started!\n", threads.at(id).name.c_str());
-  returnToKernel();
-  threads.at(id).waitForDispatch();
-  // printf("[IOP Kernel] Thread %s first dispatch!\n", threads.at(id).name.c_str());
-  ASSERT(_currentThread == id);  // should run in the thread.
-  (threads.at(id).function)();
-  //  printf("Thread %s has returned!\n", threads.at(id).name.c_str());
-  threads.at(id).done = true;
-  returnToKernel();
 }
 
 /*!
@@ -64,9 +36,17 @@ void IOP_Kernel::setupThread(s32 id) {
 void IOP_Kernel::runThread(s32 id) {
   ASSERT(_currentThread == -1);  // should run in the kernel thread
   _currentThread = id;
-  threads.at(id).dispatch();
-  threads.at(id).waitForReturnToKernel();
+  threads.at(id).state = IopThread::State::Run;
+  co_switch(threads.at(id).thread);
   _currentThread = -1;
+}
+
+void IOP_Kernel::exitThread() {
+  s32 oldThread = getCurrentThread();
+  co_switch(kernel_thread);
+
+  // check kernel resumed us correctly
+  ASSERT(_currentThread == oldThread);
 }
 
 /*!
@@ -75,114 +55,48 @@ void IOP_Kernel::runThread(s32 id) {
  * Like yield
  */
 void IOP_Kernel::SuspendThread() {
-  s32 oldThread = getCurrentThread();
-  threads.at(oldThread).returnToKernel();
-  threads.at(oldThread).waitForDispatch();
-  // check kernel resumed us correctly
-  ASSERT(_currentThread == oldThread);
+  if  (getCurrentThread() == -1) {
+    printf("Cannot wait in kernel thread!!!!");
+    return;
+  }
+
+  threads.at(getCurrentThread()).state = IopThread::State::Ready;
+  exitThread();
 }
 
 /*!
  * Sleep a thread.  Must be explicitly woken up.
  */
 void IOP_Kernel::SleepThread() {
-  if (getCurrentThread() == -1) {
-    mainThreadSleep = true;
-    while (mainThreadSleep) {
-      dispatchAll();
-    }
-  } else {
-    threads.at(getCurrentThread()).started = false;
-    SuspendThread();
+  if  (getCurrentThread() == -1) {
+    printf("Cannot wait in kernel thread!!!!");
+    return;
   }
+
+  ASSERT(getCurrentThread() > 0);
+  threads.at(getCurrentThread()).state = IopThread::State::Suspend;
+  exitThread();
 }
 
 /*!
  * Wake up a thread. Doesn't run it immediately though.
  */
 void IOP_Kernel::WakeupThread(s32 id) {
-  if (id == -1) {
-    mainThreadSleep = false;
-  } else {
-    threads.at(id).started = true;
-  }
-  // todo, should we ever switch directly to that thread?
-}
-
-bool IOP_Kernel::OnlyThreadAlive(s32 thid) {
-  bool yes = false;
-  for (u64 i = 0; i < threads.size(); i++) {
-    if (threads[i].started && !threads[i].done) {
-      if ((s32)i != thid) {
-        return false;
-      }
-      if ((s32)i == thid) {
-        yes = true;
-      }
-    }
-  }
-  return yes;
+  ASSERT(id > 0);
+  threads.at(id).state = IopThread::State::Ready;
 }
 
 /*!
  * Dispatch all IOP threads.
  */
 void IOP_Kernel::dispatchAll() {
-  for (u64 i = 0; i < threads.size(); i++) {
-    if (threads[i].started && !threads[i].done) {
-      //      printf("[IOP Kernel] Dispatch %s (%ld)\n", threads[i].name.c_str(), i);
-      _currentThread = i;
-      threads[i].dispatch();
-      threads[i].waitForReturnToKernel();
-      _currentThread = -1;
+  for (s64 i = 0; i < threads.size(); i++) {
+    if (threads[i].state == IopThread::State::Ready) {
+      // printf("[IOP Kernel] Dispatch %s (%ld)\n", threads[i].name.c_str(), i);
+      runThread(i);
       // printf("[IOP Kernel] back to kernel!\n");
     }
   }
-}
-
-/*!
- * Start running kernel.
- */
-void IopThread::returnToKernel() {
-  runThreadReady = false;
-  // should be called from the correct thread
-  ASSERT(kernel->getCurrentThread() == thID);
-
-  {
-    std::lock_guard<std::mutex> lck(*threadToKernelMutex);
-    syscallReady = true;
-  }
-  threadToKernelCV->notify_one();
-}
-
-/*!
- * Start running thread.
- */
-void IopThread::dispatch() {
-  syscallReady = false;
-  ASSERT(kernel->getCurrentThread() == thID);
-
-  {
-    std::lock_guard<std::mutex> lck(*kernelToThreadMutex);
-    runThreadReady = true;
-  }
-  kernelToThreadCV->notify_one();
-}
-
-/*!
- * Kernel waits for thread to return
- */
-void IopThread::waitForReturnToKernel() {
-  std::unique_lock<std::mutex> lck(*threadToKernelMutex);
-  threadToKernelCV->wait(lck, [this] { return syscallReady; });
-}
-
-/*!
- * Thread waits for kernel to dispatch it.
- */
-void IopThread::waitForDispatch() {
-  std::unique_lock<std::mutex> lck(*kernelToThreadMutex);
-  kernelToThreadCV->wait(lck, [this] { return runThreadReady; });
 }
 
 void IOP_Kernel::set_rpc_queue(iop::sceSifQueueData* qd, u32 thread) {
@@ -313,6 +227,7 @@ void IOP_Kernel::read_disc_sectors(u32 sector, u32 sectors, void* buffer) {
 
 void IOP_Kernel::shutdown() {
   // shutdown most threads
+  printf("Shutdown???\n");
   for (auto& r : sif_records) {
     r.cmd.shutdown_now = true;
   }
@@ -324,10 +239,9 @@ void IOP_Kernel::shutdown() {
   for (auto& t : threads) {
     if (t.thID == 0)
       continue;
-    while (!t.done) {
-      dispatchAll();
-    }
-    t.thread->join();
+    // while (!t.done) {
+    //   dispatchAll();
+    // }
   }
 }
 

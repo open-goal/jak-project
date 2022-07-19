@@ -257,6 +257,7 @@ void iop_runner(SystemThreadInterface& iface) {
   // stop all threads in the iop kernel.
   // if the threads are not stopped nicely, we will deadlock on trying to destroy the kernel's
   // condition variables.
+  printf("kernel shutdown\n");
   iop.kernel.shutdown();
 }
 }  // namespace

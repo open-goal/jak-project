@@ -156,6 +156,9 @@ add_subdirectory(third-party/cubeb)
 # build LSP
 add_subdirectory(lsp)
 
+# build libco
+add_subdirectory(third-party/libco)
+
 # build glfw library
 add_subdirectory(third-party/glfw)
 add_subdirectory(third-party/zstd)

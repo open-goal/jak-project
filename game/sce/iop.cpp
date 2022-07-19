@@ -86,7 +86,7 @@ void* AllocSysMemory(int type, unsigned long size, void* addr) {
  * Create a new thread
  */
 s32 CreateThread(ThreadParam* param) {
-  return iop->kernel.CreateThread(param->name, (u32(*)())param->entry);
+  return iop->kernel.CreateThread(param->name, (void (*)())param->entry);
 }
 
 /*!
