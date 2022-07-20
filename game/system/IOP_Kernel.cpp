@@ -7,6 +7,8 @@
 
 #include "game/sce/iop.h"
 
+using namespace std::chrono;
+
 /*!
  * Create a new thread.  Will not run the thread.
  */
@@ -42,8 +44,7 @@ void IOP_Kernel::DelayThread(u32 usec) {
   _currentThread->state = IopThread::State::Wait;
   _currentThread->waitType = IopThread::Wait::Delay;
   _currentThread->resumeTime =
-      std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()) +
-      std::chrono::microseconds(usec);
+      time_point_cast<microseconds>(steady_clock::now()) + microseconds(usec);
   exitThread();
 }
 
@@ -99,12 +100,27 @@ void IOP_Kernel::runThread(IopThread* thread) {
 void IOP_Kernel::updateDelay() {
   for (auto& t : threads) {
     if (t.waitType == IopThread::Wait::Delay) {
-      if (std::chrono::steady_clock::now() > t.resumeTime) {
+      if (steady_clock::now() > t.resumeTime) {
         t.waitType = IopThread::Wait::None;
         t.state = IopThread::State::Ready;
       }
     }
   }
+}
+
+micros IOP_Kernel::lowestWait() {
+  micros lowest = microseconds(1000);
+
+  for (auto& t : threads) {
+    if (t.waitType == IopThread::Wait::Delay) {
+      if ((t.resumeTime - time_point_cast<microseconds>(steady_clock::now())) < lowest) {
+        lowest = duration_cast<microseconds>(t.resumeTime -
+                                             time_point_cast<microseconds>(steady_clock::now()));
+      }
+    }
+  }
+
+  return lowest;
 }
 
 /*!
@@ -133,19 +149,19 @@ IopThread* IOP_Kernel::schedNext() {
 /*!
  * Run the next IOP thread.
  */
-void IOP_Kernel::dispatch() {
+micros IOP_Kernel::dispatch() {
   updateDelay();
 
   IopThread* next = schedNext();
   if (next == nullptr) {
-    //printf("[IOP Kernel] No runnable threads\n");
-    usleep(0);
-    return;
+    // printf("[IOP Kernel] No runnable threads %d\n");
+    return lowestWait();
   }
 
-  //printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
+  // printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
   runThread(next);
-  //printf("[IOP Kernel] back to kernel!\n");
+  // printf("[IOP Kernel] back to kernel!\n");
+  return std::chrono::microseconds(0);
 }
 
 void IOP_Kernel::set_rpc_queue(iop::sceSifQueueData* qd, u32 thread) {

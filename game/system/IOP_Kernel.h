@@ -9,6 +9,7 @@
 #include <queue>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "common/common_types.h"
@@ -24,6 +25,7 @@ struct sceSifQueueData;
 }
 
 using time_stamp = std::chrono::time_point<std::chrono::steady_clock, std::chrono::microseconds>;
+using micros = std::chrono::duration<int, std::micro>;
 
 struct SifRpcCommand {
   bool started = true;
@@ -60,7 +62,7 @@ struct IopThread {
   };
 
   IopThread(std::string n, void (*f)(), s32 ID, u32 priority)
-      : name(n), function(f), thID(ID), priority(priority) {
+      : name(std::move(n)), function(f), priority(priority), thID(ID) {
     thread = co_create(0x300000, f);
   }
 
@@ -101,7 +103,7 @@ class IOP_Kernel {
   void DelayThread(u32 usec);
   void SleepThread();
   void WakeupThread(s32 id);
-  void dispatch();
+  micros dispatch();
   void set_rpc_queue(iop::sceSifQueueData* qd, u32 thread);
   void rpc_loop(iop::sceSifQueueData* qd);
   void shutdown();
@@ -171,6 +173,8 @@ class IOP_Kernel {
   void updateDelay();
 
   IopThread* schedNext();
+  micros lowestWait();
+
   cothread_t kernel_thread;
   s32 _nextThID = 0;
   IopThread* _currentThread = nullptr;
