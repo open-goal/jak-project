@@ -165,6 +165,7 @@ micros IOP_Kernel::dispatch() {
 }
 
 void IOP_Kernel::set_rpc_queue(iop::sceSifQueueData* qd, u32 thread) {
+  sif_mtx.lock();
   for (const auto& r : sif_records) {
     ASSERT(!(r.qd == qd || r.thread_to_wake == thread));
   }
@@ -172,6 +173,7 @@ void IOP_Kernel::set_rpc_queue(iop::sceSifQueueData* qd, u32 thread) {
   rec.thread_to_wake = thread;
   rec.qd = qd;
   sif_records.push_back(rec);
+  sif_mtx.unlock();
 }
 
 typedef void* (*sif_rpc_handler)(unsigned int, void*, int);
