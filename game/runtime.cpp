@@ -244,7 +244,7 @@ void iop_runner(SystemThreadInterface& iface) {
   bool complete = false;
   start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);  // todo!
   while (complete == false) {
-    iop.kernel.dispatchAll();
+    iop.kernel.dispatch();
   }
 
   // unblock the EE, the overlord is set up!
@@ -255,7 +255,7 @@ void iop_runner(SystemThreadInterface& iface) {
     // the IOP kernel just runs at full blast, so we only run the IOP when the EE is waiting on the
     // IOP. Each time the EE is waiting on the IOP, it will run an iteration of the IOP kernel.
     iop.wait_run_iop();
-    iop.kernel.dispatchAll();
+    iop.kernel.dispatch();
   }
 }
 }  // namespace

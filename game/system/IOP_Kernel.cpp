@@ -10,15 +10,21 @@
 /*!
  * Create a new thread.  Will not run the thread.
  */
-s32 IOP_Kernel::CreateThread(std::string name, void (*func)()) {
+s32 IOP_Kernel::CreateThread(std::string name, void (*func)(), u32 priority) {
   u32 ID = (u32)_nextThID++;
   ASSERT(ID == threads.size());
 
   // add entry
-  threads.emplace_back(name, func, ID);
+  threads.emplace_back(name, func, ID, priority);
 
   return ID;
 }
+
+/*
+** -----------------------------------------------------------------------------
+** Functions callable by threads
+** -----------------------------------------------------------------------------
+*/
 
 /*!
  * Start a thread. Marking it to run on each dispatch of the IOP kernel.
@@ -28,36 +34,16 @@ void IOP_Kernel::StartThread(s32 id) {
 }
 
 /*!
- * Run a thread (call from kernel)
+ * Put a thread in Wait state for desired amount of usecs.
  */
-void IOP_Kernel::runThread(s32 id) {
-  ASSERT(_currentThread == nullptr);  // should run in the kernel thread
-  _currentThread = &threads.at(id);
-  threads.at(id).state = IopThread::State::Run;
-  co_switch(threads.at(id).thread);
-  _currentThread = nullptr;
-}
-
-/*!
- * Return to kernel from a thread, not to be called from the kernel thread.
- */
-void IOP_Kernel::exitThread() {
-  IopThread* oldThread = _currentThread;
-  co_switch(kernel_thread);
-
-  // check kernel resumed us correctly
-  ASSERT(_currentThread == oldThread);
-}
-
-/*!
- * Suspend a thread (call from user thread).  Will simply allow other threads to run.
- * Like yield
- * This does not match the behaviour of any real IOP function.
- */
-void IOP_Kernel::SuspendThread() {
+void IOP_Kernel::DelayThread(u32 usec) {
   ASSERT(_currentThread);
 
-  _currentThread->state = IopThread::State::Ready;
+  _currentThread->state = IopThread::State::Wait;
+  _currentThread->waitType = IopThread::Wait::Delay;
+  _currentThread->resumeTime =
+      std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()) +
+      std::chrono::microseconds(usec);
   exitThread();
 }
 
@@ -80,18 +66,85 @@ void IOP_Kernel::WakeupThread(s32 id) {
 }
 
 /*!
- * Dispatch all IOP threads.
- * Currently does no scheduling, on the real IOP the highest priority therad that is Ready
- * will always be scheduled.
+ * Return to kernel from a thread, not to be called from the kernel thread.
  */
-void IOP_Kernel::dispatchAll() {
-  for (s64 i = 0; i < threads.size(); i++) {
-    if (threads[i].state == IopThread::State::Ready) {
-      // printf("[IOP Kernel] Dispatch %s (%ld)\n", threads[i].name.c_str(), i);
-      runThread(i);
-      // printf("[IOP Kernel] back to kernel!\n");
+void IOP_Kernel::exitThread() {
+  IopThread* oldThread = _currentThread;
+  co_switch(kernel_thread);
+
+  // check kernel resumed us correctly
+  ASSERT(_currentThread == oldThread);
+}
+
+/*
+** -----------------------------------------------------------------------------
+** Kernel functions.
+** -----------------------------------------------------------------------------
+*/
+
+/*!
+ * Run a thread (call from kernel)
+ */
+void IOP_Kernel::runThread(IopThread* thread) {
+  ASSERT(_currentThread == nullptr);  // should run in the kernel thread
+  _currentThread = thread;
+  thread->state = IopThread::State::Run;
+  co_switch(thread->thread);
+  _currentThread = nullptr;
+}
+
+/*!
+** Update wait states for delayed threads
+*/
+void IOP_Kernel::updateDelay() {
+  for (auto& t : threads) {
+    if (t.waitType == IopThread::Wait::Delay) {
+      if (std::chrono::steady_clock::now() > t.resumeTime) {
+        t.waitType = IopThread::Wait::None;
+        t.state = IopThread::State::Ready;
+      }
     }
   }
+}
+
+/*!
+** Get next thread to run.
+** i.e. Highest prio in ready state.
+*/
+IopThread* IOP_Kernel::schedNext() {
+  IopThread* highest_prio = nullptr;
+
+  for (auto& t : threads) {
+    if (t.state == IopThread::State::Ready) {
+      if (highest_prio == nullptr) {
+        highest_prio = &t;
+      }
+
+      // Lower number = higher priority
+      if (t.priority < highest_prio->priority) {
+        highest_prio = &t;
+      }
+    }
+  }
+
+  return highest_prio;
+};
+
+/*!
+ * Run the next IOP thread.
+ */
+void IOP_Kernel::dispatch() {
+  updateDelay();
+
+  IopThread* next = schedNext();
+  if (next == nullptr) {
+    printf("[IOP Kernel] No runnable threads\n");
+    return;
+  }
+
+  printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
+  runThread(next);
+  printf("[IOP Kernel] back to kernel!\n");
 }
 
 void IOP_Kernel::set_rpc_queue(iop::sceSifQueueData* qd, u32 thread) {
@@ -201,6 +254,7 @@ void IOP_Kernel::rpc_loop(iop::sceSifQueueData* qd) {
         sif_mtx.unlock();
       }
     }
+
     SleepThread();
   }
 }

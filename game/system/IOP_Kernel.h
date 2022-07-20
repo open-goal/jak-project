@@ -23,6 +23,8 @@ namespace iop {
 struct sceSifQueueData;
 }
 
+using time_stamp = std::chrono::time_point<std::chrono::steady_clock, std::chrono::microseconds>;
+
 struct SifRpcCommand {
   bool started = true;
   bool finished = true;
@@ -57,7 +59,8 @@ struct IopThread {
     Delay,
   };
 
-  IopThread(std::string n, void (*f)(), s32 ID) : name(n), function(f), thID(ID) {
+  IopThread(std::string n, void (*f)(), s32 ID, u32 priority)
+      : name(n), function(f), thID(ID), priority(priority) {
     thread = co_create(0x300000, f);
   }
 
@@ -68,6 +71,8 @@ struct IopThread {
   cothread_t thread;
   State state = State::Dormant;
   Wait waitType = Wait::None;
+  time_stamp resumeTime = {};
+  u32 priority = 0;
   s32 thID = -1;
 };
 
@@ -84,19 +89,19 @@ class IOP_Kernel {
   IOP_Kernel() {
     // this ugly hack
     threads.reserve(16);
-    CreateThread("null-thread", nullptr);
+    CreateThread("null-thread", nullptr, 0);
     CreateMbx();
     kernel_thread = co_active();
   }
 
   ~IOP_Kernel();
 
-  s32 CreateThread(std::string n, void (*f)());
+  s32 CreateThread(std::string n, void (*f)(), u32 priority);
   void StartThread(s32 id);
-  void SuspendThread();
+  void DelayThread(u32 usec);
   void SleepThread();
   void WakeupThread(s32 id);
-  void dispatchAll();
+  void dispatch();
   void set_rpc_queue(iop::sceSifQueueData* qd, u32 thread);
   void rpc_loop(iop::sceSifQueueData* qd);
   void shutdown();
@@ -161,8 +166,11 @@ class IOP_Kernel {
                s32 recvSize);
 
  private:
-  void runThread(s32 id);
+  void runThread(IopThread* thread);
   void exitThread();
+  void updateDelay();
+
+  IopThread* schedNext();
   cothread_t kernel_thread;
   s32 _nextThID = 0;
   IopThread* _currentThread = nullptr;

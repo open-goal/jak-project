@@ -86,7 +86,7 @@ void* AllocSysMemory(int type, unsigned long size, void* addr) {
  * Create a new thread
  */
 s32 CreateThread(ThreadParam* param) {
-  return iop->kernel.CreateThread(param->name, (void (*)())param->entry);
+  return iop->kernel.CreateThread(param->name, (void (*)())param->entry, param->initPriority);
 }
 
 /*!
@@ -158,8 +158,7 @@ int sceCdMmode(int media) {
 }
 
 void DelayThread(u32 usec) {
-  iop->kernel.SuspendThread();
-  (void)usec;
+  iop->kernel.DelayThread(usec);
 }
 
 int sceCdBreak() {
