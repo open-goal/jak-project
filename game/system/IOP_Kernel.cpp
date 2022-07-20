@@ -158,6 +158,8 @@ void IOP_Kernel::sif_rpc(s32 rpcChannel,
   rec->cmd.started = false;
   rec->cmd.finished = false;
 
+  WakeupThread(rec->thread_to_wake);  // TODO threadsafe?
+
   sif_mtx.unlock();
 }
 
@@ -199,7 +201,7 @@ void IOP_Kernel::rpc_loop(iop::sceSifQueueData* qd) {
         sif_mtx.unlock();
       }
     }
-    SuspendThread();
+    SleepThread();
   }
 }
 
