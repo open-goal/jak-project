@@ -31,18 +31,18 @@ void IOP_Kernel::StartThread(s32 id) {
  * Run a thread (call from kernel)
  */
 void IOP_Kernel::runThread(s32 id) {
-  ASSERT(_currentThread == -1);  // should run in the kernel thread
-  _currentThread = id;
+  ASSERT(_currentThread == nullptr);  // should run in the kernel thread
+  _currentThread = &threads.at(id);
   threads.at(id).state = IopThread::State::Run;
   co_switch(threads.at(id).thread);
-  _currentThread = -1;
+  _currentThread = nullptr;
 }
 
 /*!
  * Return to kernel from a thread, not to be called from the kernel thread.
  */
 void IOP_Kernel::exitThread() {
-  s32 oldThread = getCurrentThread();
+  IopThread* oldThread = _currentThread;
   co_switch(kernel_thread);
 
   // check kernel resumed us correctly
@@ -55,9 +55,9 @@ void IOP_Kernel::exitThread() {
  * This does not match the behaviour of any real IOP function.
  */
 void IOP_Kernel::SuspendThread() {
-  ASSERT(getCurrentThread() >= 0);
+  ASSERT(_currentThread);
 
-  threads.at(getCurrentThread()).state = IopThread::State::Ready;
+  _currentThread->state = IopThread::State::Ready;
   exitThread();
 }
 
@@ -65,9 +65,9 @@ void IOP_Kernel::SuspendThread() {
  * Sleep a thread.  Must be explicitly woken up.
  */
 void IOP_Kernel::SleepThread() {
-  ASSERT(getCurrentThread() >= 0);
+  ASSERT(_currentThread);
 
-  threads.at(getCurrentThread()).state = IopThread::State::Suspend;
+  _currentThread->state = IopThread::State::Suspend;
   exitThread();
 }
 

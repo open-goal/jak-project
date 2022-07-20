@@ -104,7 +104,10 @@ class IOP_Kernel {
   /*!
    * Get current thread ID.
    */
-  s32 getCurrentThread() { return _currentThread; }
+  s32 getCurrentThread() {
+    ASSERT(_currentThread);
+    return _currentThread->thID;
+  }
 
   /*!
    * Create a message box
@@ -162,7 +165,7 @@ class IOP_Kernel {
   void exitThread();
   cothread_t kernel_thread;
   s32 _nextThID = 0;
-  s32 _currentThread = {-1};
+  IopThread* _currentThread = nullptr;
   std::vector<IopThread> threads;
   std::vector<std::queue<void*>> mbxs;
   std::vector<SifRecord> sif_records;
