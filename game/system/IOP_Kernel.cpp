@@ -138,13 +138,14 @@ void IOP_Kernel::dispatch() {
 
   IopThread* next = schedNext();
   if (next == nullptr) {
-    printf("[IOP Kernel] No runnable threads\n");
+    //printf("[IOP Kernel] No runnable threads\n");
+    usleep(0);
     return;
   }
 
-  printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
+  //printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
   runThread(next);
-  printf("[IOP Kernel] back to kernel!\n");
+  //printf("[IOP Kernel] back to kernel!\n");
 }
 
 void IOP_Kernel::set_rpc_queue(iop::sceSifQueueData* qd, u32 thread) {

@@ -254,7 +254,7 @@ void iop_runner(SystemThreadInterface& iface) {
   while (!iface.get_want_exit() && !iop.want_exit) {
     // the IOP kernel just runs at full blast, so we only run the IOP when the EE is waiting on the
     // IOP. Each time the EE is waiting on the IOP, it will run an iteration of the IOP kernel.
-    iop.wait_run_iop();
+    //iop.wait_run_iop();
     iop.kernel.dispatch();
   }
 }
