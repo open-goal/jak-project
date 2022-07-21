@@ -67,7 +67,7 @@ enum class BucketId {
   MERC_WATER_LEVEL1 = 61,
   GENERIC_WATER_LEVEL1 = 62,
   OCEAN_NEAR = 63,
-  // 64
+  DEPTH_CUE = 64,
   PRE_SPRITE_TEX = 65,  // maybe it's just common textures?
   SPRITE = 66,
   DEBUG = 67,
