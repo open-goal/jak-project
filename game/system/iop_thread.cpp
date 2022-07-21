@@ -55,9 +55,10 @@ void* IOP::iop_alloc(int size) {
   return mem;
 }
 
-void IOP::wait_run_iop(std::chrono::duration<int, std::micro> duration) {
+void IOP::wait_run_iop(
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::microseconds> wakeup) {
   std::unique_lock<std::mutex> lk(run_cv_mutex);
-  iop_run_cv.wait_until(lk, std::chrono::steady_clock::now() + duration);
+  iop_run_cv.wait_until(lk, wakeup);
 }
 
 void IOP::kill_from_ee() {

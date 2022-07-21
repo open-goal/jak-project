@@ -25,7 +25,6 @@ struct sceSifQueueData;
 }
 
 using time_stamp = std::chrono::time_point<std::chrono::steady_clock, std::chrono::microseconds>;
-using micros = std::chrono::duration<int, std::micro>;
 
 struct SifRpcCommand {
   bool started = true;
@@ -103,7 +102,7 @@ class IOP_Kernel {
   void DelayThread(u32 usec);
   void SleepThread();
   void WakeupThread(s32 id);
-  micros dispatch();
+  time_stamp dispatch();
   void set_rpc_queue(iop::sceSifQueueData* qd, u32 thread);
   void rpc_loop(iop::sceSifQueueData* qd);
   void shutdown();
@@ -173,7 +172,7 @@ class IOP_Kernel {
   void updateDelay();
 
   IopThread* schedNext();
-  micros lowestWait();
+  time_stamp nextWakeup();
 
   cothread_t kernel_thread;
   s32 _nextThID = 0;

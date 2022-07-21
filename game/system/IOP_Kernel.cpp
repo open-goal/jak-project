@@ -108,14 +108,13 @@ void IOP_Kernel::updateDelay() {
   }
 }
 
-micros IOP_Kernel::lowestWait() {
-  micros lowest = microseconds(1000);
+time_stamp IOP_Kernel::nextWakeup() {
+  time_stamp lowest = time_point_cast<microseconds>(steady_clock::now()) + microseconds(1000);
 
   for (auto& t : threads) {
     if (t.waitType == IopThread::Wait::Delay) {
-      if ((t.resumeTime - time_point_cast<microseconds>(steady_clock::now())) < lowest) {
-        lowest = duration_cast<microseconds>(t.resumeTime -
-                                             time_point_cast<microseconds>(steady_clock::now()));
+      if (t.resumeTime < lowest) {
+        lowest = t.resumeTime;
       }
     }
   }
@@ -149,7 +148,7 @@ IopThread* IOP_Kernel::schedNext() {
 /*!
  * Run the next IOP thread.
  */
-micros IOP_Kernel::dispatch() {
+time_stamp IOP_Kernel::dispatch() {
   updateDelay();
 
   IopThread* next = schedNext();
@@ -162,7 +161,7 @@ micros IOP_Kernel::dispatch() {
   }
 
   // printf("[IOP Kernel] No runnable threads\n");
-  return lowestWait();
+  return nextWakeup();
 }
 
 void IOP_Kernel::set_rpc_queue(iop::sceSifQueueData* qd, u32 thread) {

@@ -20,7 +20,9 @@ class IOP {
   void wait_for_overlord_init_finish();
   void signal_overlord_init_finish();
   void signal_run_iop();
-  void wait_run_iop(std::chrono::duration<int, std::micro> duration);
+
+  void wait_run_iop(
+      std::chrono::time_point<std::chrono::steady_clock, std::chrono::microseconds> duration);
   void kill_from_ee();
 
   void set_ee_main_mem(u8* mem) { ee_main_mem = mem; }
