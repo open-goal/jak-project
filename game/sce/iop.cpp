@@ -90,6 +90,13 @@ s32 CreateThread(ThreadParam* param) {
 }
 
 /*!
+ * Exit current thread
+ */
+s32 ExitThread() {
+  return iop->kernel.ExitThread();
+}
+
+/*!
  * Create a new message box.
  */
 s32 CreateMbx(MbxParam* param) {

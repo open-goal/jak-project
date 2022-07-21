@@ -9,6 +9,29 @@
 
 using namespace std::chrono;
 
+/*
+** wrap thread entry points to ensure they don't return into libco
+*/
+static void (*thread_entry)() = nullptr;
+static cothread_t wrap_return;
+void IopThread::functionWrapper() {
+  void (*f)() = thread_entry;
+  co_switch(wrap_return);
+  if (f != nullptr) {
+    f();
+  }
+  // libco threads must not return
+  while (true) {
+    iop::ExitThread();
+  }
+}
+
+/*
+** -----------------------------------------------------------------------------
+** Functions callable by threads
+** -----------------------------------------------------------------------------
+*/
+
 /*!
  * Create a new thread.  Will not run the thread.
  */
@@ -19,20 +42,27 @@ s32 IOP_Kernel::CreateThread(std::string name, void (*func)(), u32 priority) {
   // add entry
   threads.emplace_back(name, func, ID, priority);
 
+  // enter the function wrapper so it can put the actual thread enry on its stack
+  // to call it when the thread is eventually started
+  thread_entry = func;
+  wrap_return = co_active();
+  co_switch(threads.at(ID).thread);
+
   return ID;
 }
-
-/*
-** -----------------------------------------------------------------------------
-** Functions callable by threads
-** -----------------------------------------------------------------------------
-*/
 
 /*!
  * Start a thread. Marking it to run on each dispatch of the IOP kernel.
  */
 void IOP_Kernel::StartThread(s32 id) {
   threads.at(id).state = IopThread::State::Ready;
+}
+
+s32 IOP_Kernel::ExitThread() {
+  ASSERT(_currentThread);
+  _currentThread->state = IopThread::State::Dormant;
+
+  return 0;
 }
 
 /*!

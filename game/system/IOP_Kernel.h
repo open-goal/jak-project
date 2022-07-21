@@ -62,11 +62,12 @@ struct IopThread {
 
   IopThread(std::string n, void (*f)(), s32 ID, u32 priority)
       : name(std::move(n)), function(f), priority(priority), thID(ID) {
-    thread = co_create(0x300000, f);
+    thread = co_create(0x300000, functionWrapper);
   }
 
   ~IopThread() { co_delete(thread); }
 
+  static void functionWrapper();
   std::string name;
   void (*function)();
   cothread_t thread;
@@ -98,6 +99,7 @@ class IOP_Kernel {
   ~IOP_Kernel();
 
   s32 CreateThread(std::string n, void (*f)(), u32 priority);
+  s32 ExitThread();
   void StartThread(s32 id);
   void DelayThread(u32 usec);
   void SleepThread();
