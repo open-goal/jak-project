@@ -151,19 +151,19 @@ add_subdirectory(common)
 add_subdirectory(decompiler)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS} ")
-add_subdirectory(third-party/cubeb)
+add_subdirectory(third-party/cubeb EXCLUDE_FROM_ALL)
 
 # build LSP
 add_subdirectory(lsp)
 
 # build glfw library
-add_subdirectory(third-party/glfw)
-add_subdirectory(third-party/zstd)
+add_subdirectory(third-party/glfw EXCLUDE_FROM_ALL)
+add_subdirectory(third-party/zstd EXCLUDE_FROM_ALL)
 
 # build imgui
 include_directories(third-party/glad/include)
 include_directories(third-party/glfw/include)
-add_subdirectory(third-party/imgui)
+add_subdirectory(third-party/imgui EXCLUDE_FROM_ALL)
 string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # build the game code in C++
