@@ -92,7 +92,7 @@ u32 scan_for_symbol_table(const Ram& ram, u32 start_addr, u32 end_addr) {
   fmt::print("got {} candidates for #f:\n", candidates.size());
 
   for (auto addr : candidates) {
-    auto str = addr + BASIC_OFFSET + jak1::SYM_TO_STRING_OFFSET;
+    auto str = addr + jak1::ORIGINAL_SYM_TO_STRING_OFFSET;
     fmt::print(" trying 0x{:x}:\n", addr);
     if (ram.word_in_memory(str)) {
       auto mem = ram.word(str + 4);         // offset of str in SymInfo
@@ -130,14 +130,12 @@ SymbolMap build_symbol_map(const GameVersion game_version, const Ram& ram, u32 s
    */
 
   // TODO - jak2
+  auto addr_start_of_sym_table = s7 - ((jak1::ORIGINAL_MAX_GOAL_SYMBOLS / 2) * 8);
+  auto addr_last_symbol = addr_start_of_sym_table + 0xff00;
 
-  auto symbol_table = s7 - ((jak1::GOAL_ORIGINAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET);
-  auto symbol_table_2 = symbol_table + BASIC_OFFSET;
-  auto last_symbol = symbol_table + 0xff00;
-
-  for (u32 sym = symbol_table_2; sym < last_symbol; sym += 8) {
-    auto info = sym + jak1::SYM_INFO_OFFSET;  // already has basic offset
-    auto str = ram.word(info + 4);
+  for (u32 sym = addr_start_of_sym_table; sym < addr_last_symbol; sym += 8) {
+    auto info = sym + jak1::ORIGINAL_SYM_TO_STRING_OFFSET;  // already has basic offset
+    auto str = ram.word(info);
     if (str) {
       auto name = ram.string(str + 4);
       if (name != "asize-of-basic-func") {
