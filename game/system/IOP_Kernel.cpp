@@ -153,15 +153,16 @@ micros IOP_Kernel::dispatch() {
   updateDelay();
 
   IopThread* next = schedNext();
-  if (next == nullptr) {
-    // printf("[IOP Kernel] No runnable threads %d\n");
-    return lowestWait();
+  while (next != nullptr) {
+    // printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
+    runThread(next);
+    updateDelay();
+    next = schedNext();
+    // printf("[IOP Kernel] back to kernel!\n");
   }
 
-  // printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
-  runThread(next);
-  // printf("[IOP Kernel] back to kernel!\n");
-  return std::chrono::microseconds(0);
+  // printf("[IOP Kernel] No runnable threads\n");
+  return lowestWait();
 }
 
 void IOP_Kernel::set_rpc_queue(iop::sceSifQueueData* qd, u32 thread) {
