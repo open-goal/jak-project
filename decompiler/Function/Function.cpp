@@ -476,7 +476,8 @@ void Function::find_global_function_defs(LinkedObjectFile& file, DecompilerTypeS
           auto& func = file.get_function_at_label(label_id);
           ASSERT(func.guessed_name.empty());
           func.guessed_name.set_as_global(name);
-          dts.add_symbol(name, "function");
+          // TODO - get definition info?
+          dts.add_symbol(name, "function", {});
           ;
           // todo - inform function.
         }

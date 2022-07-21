@@ -1,20 +1,10 @@
-#include <chrono>
-#include <cstdio>
-#include <iostream>
-#include <random>
-#include <sstream>
 #include <string>
 #include <thread>
 
-#include "inja.hpp"
-
 #include "game/runtime.h"
 #include "goalc/compiler/Compiler.h"
-#include "goalc/listener/Listener.h"
 #include "gtest/gtest.h"
 #include "test/goalc/framework/test_runner.h"
-
-#include "third-party/json.hpp"
 
 struct CollectionParam {
   // TODO - Not Needed Yet
@@ -23,7 +13,7 @@ struct CollectionParam {
 class CollectionTests : public testing::TestWithParam<CollectionParam> {
  public:
   static void SetUpTestSuite() {
-    runtime_thread = std::make_unique<std::thread>(std::thread((GoalTest::runtime_no_kernel)));
+    runtime_thread = std::make_unique<std::thread>(std::thread(GoalTest::runtime_no_kernel_jak1));
     compiler = std::make_unique<Compiler>(GameVersion::Jak1);
     runner = std::make_unique<GoalTest::CompilerTestRunner>();
     runner->c = compiler.get();
@@ -50,8 +40,6 @@ class CollectionTests : public testing::TestWithParam<CollectionParam> {
   static std::unique_ptr<GoalTest::CompilerTestRunner> runner;
 
   std::string testCategory = "collections";
-  inja::Environment env{GoalTest::getTemplateDir(testCategory),
-                        GoalTest::getGeneratedDir(testCategory)};
 };
 
 std::unique_ptr<std::thread> CollectionTests::runtime_thread;
@@ -59,22 +47,22 @@ std::unique_ptr<Compiler> CollectionTests::compiler;
 std::unique_ptr<GoalTest::CompilerTestRunner> CollectionTests::runner;
 
 TEST_F(CollectionTests, Pairs) {
-  runner->run_static_test(env, testCategory, "empty-pair.static.gc", {"()\n0\n"});
-  runner->run_static_test(env, testCategory, "pair-check.static.gc", {"#t#f\n0\n"});
+  runner->run_static_test(testCategory, "empty-pair.static.gc", {"()\n0\n"});
+  runner->run_static_test(testCategory, "pair-check.static.gc", {"#t#f\n0\n"});
 }
 
 TEST_F(CollectionTests, Lists) {
-  runner->run_static_test(env, testCategory, "list.static.gc", {"(a b c d)\n0\n"});
+  runner->run_static_test(testCategory, "list.static.gc", {"(a b c d)\n0\n"});
 }
 
 TEST_F(CollectionTests, InlineArray) {
-  runner->run_static_test(env, testCategory, "inline-array-field.static.gc", {"16\n"});
+  runner->run_static_test(testCategory, "inline-array-field.static.gc", {"16\n"});
 }
 
 TEST_F(CollectionTests, Operations) {
-  runner->run_static_test(env, testCategory, "cons.static.gc", {"(a . b)\n0\n"});
-  runner->run_static_test(env, testCategory, "car-cdr-get.static.gc", {"ab\n0\n"});
-  runner->run_static_test(env, testCategory, "car-cdr-set.static.gc", {"(c . d)\n0\n"});
-  runner->run_static_test(env, testCategory, "nested-car-cdr-set.static.gc",
+  runner->run_static_test(testCategory, "cons.static.gc", {"(a . b)\n0\n"});
+  runner->run_static_test(testCategory, "car-cdr-get.static.gc", {"ab\n0\n"});
+  runner->run_static_test(testCategory, "car-cdr-set.static.gc", {"(c . d)\n0\n"});
+  runner->run_static_test(testCategory, "nested-car-cdr-set.static.gc",
                           {"efgh\n((e . g) f . h)\n0\n"});
 }

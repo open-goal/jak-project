@@ -693,8 +693,6 @@ void ObjectFileDB::ir2_write_results(const fs::path& output_dir,
                                      const std::vector<std::string>& imports,
                                      ObjectFileData& obj) {
   if (obj.linked_data.has_any_functions()) {
-    // todo
-
     auto file_text = ir2_to_file(obj, config);
     auto file_name = output_dir / (obj.to_unique_name() + "_ir2.asm");
     file_util::write_text_file(file_name, file_text);
@@ -707,6 +705,11 @@ void ObjectFileDB::ir2_write_results(const fs::path& output_dir,
 
 std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config) {
   std::string result;
+
+  auto all_types_path = file_util::get_file_path({config.all_types_file});
+  auto game_version = game_version_names[config.game_version];
+
+  result += fmt::format("; ALL_TYPES={}={}\n\n", game_version, all_types_path);
 
   const char* segment_names[] = {"main segment", "debug segment", "top-level segment"};
   ASSERT(data.linked_data.segments <= 3);

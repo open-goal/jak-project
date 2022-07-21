@@ -46,20 +46,24 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -Rl ./ci-artifacts/
 
-      - name: Prepare Linux Release Asset
+      - name: Prepare Linux Release Assets
         run: |
           mkdir -p ./ci-artifacts/linux
           ./.github/scripts/releases/extract_build_linux.sh ./ci-artifacts/linux ./ci-artifacts/opengoal-linux-static ./
-          cd ci-artifacts/linux
+          pushd ci-artifacts/linux
           TAG_VAL=$(echo ${{ github.REF }} | awk -F'refs/tags/' '{print $2}')
           tar czf ../final/opengoal-linux-${TAG_VAL}.tar.gz .
+          popd
+          strip ./ci-artifacts/opengoal-linux-static/lsp/lsp
+          cp ./ci-artifacts/opengoal-linux-static/lsp/lsp ./ci-artifacts/final/opengoal-lsp-linux-${TAG_VAL}.bin
 
-      - name: Prepare Windows Build Asset
+      - name: Prepare Windows Build Assets
         run: |
           mkdir -p ./ci-artifacts/windows
           ./.github/scripts/releases/extract_build_windows.sh ./ci-artifacts/windows ./ci-artifacts/opengoal-windows-static ./
           TAG_VAL=$(echo ${{ github.REF }} | awk -F'refs/tags/' '{print $2}')
           7z a -tzip ./ci-artifacts/final/opengoal-windows-${TAG_VAL}.zip ./ci-artifacts/windows/*
+          cp ./ci-artifacts/opengoal-windows-static/lsp.exe ./ci-artifacts/final/opengoal-lsp-windows-${TAG_VAL}.exe
 
       - name: Upload Assets
         env:

@@ -153,6 +153,9 @@ add_subdirectory(decompiler)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS} ")
 add_subdirectory(third-party/cubeb)
 
+# build LSP
+add_subdirectory(lsp)
+
 # build glfw library
 add_subdirectory(third-party/glfw)
 add_subdirectory(third-party/zstd)

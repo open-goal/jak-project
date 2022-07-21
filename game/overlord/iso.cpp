@@ -398,11 +398,14 @@ u32 ISOThread() {
 
         } break;
         case LOAD_SOUND_BANK: {
+          // NOTE: this check has been removed. there doesn't seem to be any issues with this, and
+          // it fixes some other issues. there doesn't appear to be any extra safety from it either
+
           // if there's an in progress vag command, try again.
-          if (in_progress_vag_command && !in_progress_vag_command->paused) {
-            SendMbx(iso_mbx, msg_from_mbx);
-            break;
-          }
+          // if (in_progress_vag_command && !in_progress_vag_command->paused) {
+          //   SendMbx(iso_mbx, msg_from_mbx);
+          //   break;
+          // }
 
           auto buff = TryAllocateBuffer(BUFFER_PAGE_SIZE);
           if (!buff) {

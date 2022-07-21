@@ -125,7 +125,7 @@ static uint32_t c_symlink2(LinkedObjectFile& f,
           word_kind = LinkedWord::EMPTY_PTR;
           break;
         case SymbolLinkKind::TYPE:
-          dts.add_symbol(name, "type");
+          dts.add_symbol(name, "type", {});
           word_kind = LinkedWord::TYPE_PTR;
           break;
         default:
@@ -183,7 +183,7 @@ static uint32_t c_symlink3(LinkedObjectFile& f,
           word_kind = LinkedWord::EMPTY_PTR;
           break;
         case SymbolLinkKind::TYPE:
-          dts.add_symbol(name, "type");
+          dts.add_symbol(name, "type", {});
           word_kind = LinkedWord::TYPE_PTR;
           break;
         default:

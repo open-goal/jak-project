@@ -341,6 +341,52 @@ struct GsTexa {
   u64 data = 0;
 };
 
+struct GsFrame {
+  enum class PSM {
+    PSMCT32 = 0,
+    PSMCT24 = 1,
+    PSMCT16 = 2,
+    PSMCT16S = 0b1010,
+    PSMT8 = 0b10011,
+    PSMT4 = 0b10100,
+    PSMT8H = 0b011011,
+    PSMT4HL = 0b100100,
+    PSMT4HH = 0b101100,
+    PSMZ32 = 0b110000,
+    PSMZ24 = 0b110001,
+    PSMZ16 = 0b110010,
+    PSMZ16S = 0b111010
+  };
+
+  GsFrame() = default;
+  GsFrame(u64 val) : data(val) {}
+
+  // Frame buffer base pointer (word address / 2048)
+  u32 fbp() const { return (data & 0b1'1111'1111); }
+  // Frame buffer width (pixels / 64)
+  u32 fbw() const { return ((data >> 16) & 0b11'1111); }
+  // Frame buffer pixel storage format
+  PSM psm() const { return (PSM)((data >> 24) & 0b11'1111); }
+  // Frame buffer drawing mask
+  u32 fbmsk() const { return ((data >> 32) & 0xFFFF'FFFF); }
+
+  std::string print() const;
+
+  u64 data = 0;
+};
+
+struct GsXYOffset {
+  GsXYOffset() = default;
+  GsXYOffset(u64 val) : data(val) {}
+
+  u32 ofx() const { return data & 0xFFFF; }
+  u32 ofy() const { return (data >> 32) & 0xFFFF; }
+
+  std::string print() const;
+
+  u64 data = 0;
+};
+
 // not including the giftag
 struct AdGifData {
   u64 tex0_data;

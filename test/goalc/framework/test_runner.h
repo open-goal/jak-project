@@ -4,9 +4,11 @@
 #include <string>
 #include <vector>
 
-#include "inja.hpp"
-
 #include "goalc/compiler/Compiler.h"
+
+namespace inja {
+class Environment;
+}
 
 namespace GoalTest {
 
@@ -32,24 +34,30 @@ struct CompilerTestRunner {
                        const std::vector<std::string>& expected,
                        std::optional<int> truncate = {});
 
+  void run_static_test(std::string& testCategory,
+                       const std::string& test_file,
+                       const std::vector<std::string>& expected,
+                       std::optional<int> truncate = {});
+
   void run_test(const std::string& test_category,
                 const std::string& test_file,
                 const std::vector<std::string>& expected,
                 std::optional<int> truncate = {});
 
   void run_always_pass(const std::string& test_category, const std::string& test_file);
-
-  void print_summary();
 };
 
-void runtime_no_kernel();
+void runtime_no_kernel_jak1();
 void runtime_no_kernel_jak2();
-void runtime_with_kernel();
+void runtime_with_kernel_jak1();
+void runtime_with_kernel_jak2();
 void runtime_with_kernel_no_debug_segment();
 
 void createDirIfAbsent(const std::string& path);
 std::string getTemplateDir(const std::string& category);
 std::string getGeneratedDir(const std::string& category);
 std::string getFailedDir(const std::string& category);
+
+inja::Environment getInjaEnvironment(const std::string& category);
 
 }  // namespace GoalTest

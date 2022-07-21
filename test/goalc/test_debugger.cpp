@@ -1,5 +1,4 @@
 #include "common/log/log.h"
-#include "common/util/Timer.h"
 
 #include "goalc/compiler/Compiler.h"
 #include "gtest/gtest.h"
@@ -38,7 +37,7 @@ TEST(Jak1Debugger, DebuggerBasicConnect) {
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -55,7 +54,7 @@ TEST(Jak1Debugger, DebuggerBreakAndContinue) {
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -77,7 +76,7 @@ TEST(Jak1Debugger, DebuggerReadMemory) {
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -101,7 +100,7 @@ TEST(Jak1Debugger, DebuggerWriteMemory) {
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -132,7 +131,7 @@ TEST(Jak1Debugger, Symbol) {
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -162,7 +161,7 @@ TEST(Jak1Debugger, SimpleBreakpoint) {
   Compiler compiler(GameVersion::Jak1);
 
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, false);
