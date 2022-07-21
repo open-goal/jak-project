@@ -77,32 +77,62 @@ struct Ram {
   bool word_in_memory(u32 addr) const { return in_memory<u32>(addr); }
 };
 
-u32 scan_for_symbol_table(const Ram& ram, u32 start_addr, u32 end_addr) {
+u32 scan_for_symbol_table(const Ram& ram,
+                          const GameVersion& game_version,
+                          u32 start_addr,
+                          u32 end_addr) {
   fmt::print("scanning for symbol table in 0x{:x} - 0x{:x}\n", start_addr, end_addr);
   std::vector<u32> candidates;
 
   // look for the false symbol.
-  for (u32 addr = (start_addr & 0xfffffff0); addr < end_addr; addr += 8) {
-    if (ram.word(addr + 4) == addr + 4) {
-      candidates.push_back(addr);
-      lg::info("candidate 0x{:x}", addr);
+  if (game_version == GameVersion::Jak1) {
+    for (u32 addr = (start_addr & 0xfffffff0); addr < end_addr; addr += 8) {
+      if (ram.word(addr + 4) == addr + 4) {
+        candidates.push_back(addr);
+        lg::info("candidate 0x{:x}", addr);
+      }
+    }
+  } else {
+    for (u32 addr = (start_addr & 0xfffffff0); addr < end_addr; addr += 4) {
+      if (ram.word(addr) == addr + 1) {
+        candidates.push_back(addr + 1);
+        lg::info("candidate 0x{:x}", addr + 1);
+      }
     }
   }
 
   fmt::print("got {} candidates for #f:\n", candidates.size());
 
-  for (auto addr : candidates) {
-    auto str = addr + jak1::ORIGINAL_SYM_TO_STRING_OFFSET;
-    fmt::print(" trying 0x{:x}:\n", addr);
-    if (ram.word_in_memory(str)) {
-      auto mem = ram.word(str + 4);         // offset of str in SymInfo
-      auto name = ram.try_string(mem + 4);  // offset of data in GOAL string
-      if (name) {
-        fmt::print("   name: {}\n", *name);
+  if (game_version == GameVersion::Jak1) {
+    for (auto addr : candidates) {
+      auto str = addr + jak1::ORIGINAL_SYM_TO_STRING_OFFSET;
+      fmt::print(" trying 0x{:x}:\n", addr);
+      if (ram.word_in_memory(str)) {
+        auto mem = ram.word(str + 4);         // offset of str in SymInfo
+        auto name = ram.try_string(mem + 4);  // offset of data in GOAL string
+        if (name) {
+          fmt::print("   name: {}\n", *name);
+        }
+        if (name == "#f") {
+          fmt::print("Got #f = 0x{:x}!\n", addr + 4);
+          return addr + 4;
+        }
       }
-      if (name == "#f") {
-        fmt::print("Got #f = 0x{:x}!\n", addr + 4);
-        return addr + 4;
+    }
+  } else {
+    for (auto addr : candidates) {
+      auto str = addr + jak2::SYM_TO_STRING_OFFSET;
+      fmt::print(" trying 0x{:x}:\n", addr);
+      if (ram.word_in_memory(str)) {
+        auto mem = ram.word(str);             // offset of str in SymInfo
+        auto name = ram.try_string(mem + 4);  // offset of data in GOAL string
+        if (name) {
+          fmt::print("   name: {}\n", *name);
+        }
+        if (name == "#f") {
+          fmt::print("Got #f = 0x{:x}!\n", addr + 4);
+          return addr;
+        }
       }
     }
   }
@@ -116,33 +146,42 @@ struct SymbolMap {
   std::unordered_map<u32, std::string> addr_to_name;
 };
 
-SymbolMap build_symbol_map(const GameVersion game_version, const Ram& ram, u32 s7) {
+SymbolMap build_symbol_map(const GameVersion& game_version, const Ram& ram, u32 s7) {
   lg::info("building symbol map...");
   SymbolMap map;
-  /*
-    s7 = symbol_table + (GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET;
 
-    // pointer to the first symbol (symbol_table_2 is the "lower" symbol table)
-    symbol_table_2 = symbol_table + BASIC_OFFSET;
+  if (game_version == GameVersion::Jak1) {
+    auto addr_start_of_sym_table = s7 - ((jak1::ORIGINAL_MAX_GOAL_SYMBOLS / 2) * 8);
+    auto addr_last_symbol = addr_start_of_sym_table + 0xff00;
 
-    // the last symbol we will ever access.
-    last_symbol = symbol_table + 0xff00;
-   */
+    for (u32 sym = addr_start_of_sym_table; sym < addr_last_symbol; sym += 8) {
+      auto info = sym + jak1::ORIGINAL_SYM_TO_STRING_OFFSET;  // already has basic offset
+      auto str = ram.word(info);
+      if (str) {
+        auto name = ram.string(str + 4);
+        if (name != "asize-of-basic-func") {
+          ASSERT(map.name_to_addr.find(name) == map.name_to_addr.end());
+          map.name_to_addr[name] = sym;
+          map.addr_to_name[sym] = name;
+          map.name_to_value[name] = ram.word(sym);
+        }
+      }
+    }
+  } else {
+    auto addr_start_of_sym_table = s7 - ((jak2::GOAL_MAX_SYMBOLS / 2) * 4) + BASIC_OFFSET;
+    auto addr_last_symbol = addr_start_of_sym_table + 0xff00;  // ? the same ?
 
-  // TODO - jak2
-  auto addr_start_of_sym_table = s7 - ((jak1::ORIGINAL_MAX_GOAL_SYMBOLS / 2) * 8);
-  auto addr_last_symbol = addr_start_of_sym_table + 0xff00;
-
-  for (u32 sym = addr_start_of_sym_table; sym < addr_last_symbol; sym += 8) {
-    auto info = sym + jak1::ORIGINAL_SYM_TO_STRING_OFFSET;  // already has basic offset
-    auto str = ram.word(info);
-    if (str) {
-      auto name = ram.string(str + 4);
-      if (name != "asize-of-basic-func") {
-        ASSERT(map.name_to_addr.find(name) == map.name_to_addr.end());
-        map.name_to_addr[name] = sym;
-        map.addr_to_name[sym] = name;
-        map.name_to_value[name] = ram.word(sym);
+    for (u32 sym = addr_start_of_sym_table; sym < addr_last_symbol; sym += 4) {
+      auto info = sym + jak2::SYM_TO_STRING_OFFSET;
+      auto str = ram.word(info);
+      if (str) {
+        auto name = ram.string(str + 4);
+        if (name != "asize-of-basic-func") {
+          ASSERT(map.name_to_addr.find(name) == map.name_to_addr.end());
+          map.name_to_addr[name] = sym;
+          map.addr_to_name[sym] = name;
+          map.name_to_value[name] = ram.word(sym);
+        }
       }
     }
   }
@@ -154,18 +193,32 @@ SymbolMap build_symbol_map(const GameVersion game_version, const Ram& ram, u32 s
 
 std::unordered_map<u32, std::string> build_type_map(const Ram& ram,
                                                     const SymbolMap& symbols,
+                                                    const GameVersion& game_version,
                                                     u32 s7) {
-  // TODO jak 1 specific
   std::unordered_map<u32, std::string> result;
   lg::info("finding types...");
-  u32 type_of_type = ram.word(s7 + jak1_symbols::FIX_SYM_TYPE_TYPE);
-  ASSERT(type_of_type == ram.word(symbols.name_to_addr.at("type")));
+  if (game_version == GameVersion::Jak1) {
+    u32 type_of_type = ram.word(s7 + jak1_symbols::FIX_SYM_TYPE_TYPE);
+    ASSERT(type_of_type == ram.word(symbols.name_to_addr.at("type")));
 
-  for (const auto& [name, addr] : symbols.name_to_addr) {
-    u32 value = ram.word(addr);
-    if (ram.word_in_memory(value - 4) && ((value & 0x7) == BASIC_OFFSET)) {
-      if (ram.word(value - 4) == type_of_type) {
-        result[value] = name;
+    for (const auto& [name, addr] : symbols.name_to_addr) {
+      u32 value = ram.word(addr);
+      if (ram.word_in_memory(value - 4) && ((value & 0x7) == BASIC_OFFSET)) {
+        if (ram.word(value - 4) == type_of_type) {
+          result[value] = name;
+        }
+      }
+    }
+  } else {
+    u32 type_of_type = ram.word(s7 + jak2_symbols::FIX_SYM_TYPE_TYPE - 1);
+    ASSERT(type_of_type == ram.word(symbols.name_to_addr.at("type") - 1));
+
+    for (const auto& [name, addr] : symbols.name_to_addr) {
+      u32 value = ram.word(addr - 1);
+      if (ram.word_in_memory(value - 4) && ((value & 0x7) == BASIC_OFFSET)) {
+        if (ram.word(value - 4) == type_of_type) {
+          result[value] = name;
+        }
       }
     }
   }
@@ -634,7 +687,7 @@ int main(int argc, char** argv) {
 
   Ram ram(data.data(), data.size());
 
-  u32 s7 = scan_for_symbol_table(ram, one_mb, 2 * one_mb);
+  u32 s7 = scan_for_symbol_table(ram, game_version, one_mb, 2 * one_mb);
   if (!s7) {
     lg::error("Failed to find symbol table");
     return 1;
@@ -649,7 +702,7 @@ int main(int argc, char** argv) {
   }
 
   auto symbol_map = build_symbol_map(game_version, ram, s7);
-  auto types = build_type_map(ram, symbol_map, s7);
+  auto types = build_type_map(ram, symbol_map, game_version, s7);
   auto basics = find_basics(ram, types);
 
   follow_references_to_find_pointers(ram, dts.ts, basics, s7 + 0x100);
