@@ -389,11 +389,7 @@ std::optional<OfflineTestConfig> parse_config(const std::string_view& game_name)
 }
 
 int main(int argc, char* argv[]) {
-  fs::u8arguments u8guard(argc, argv);
-  if (!u8guard.valid()) {
-    std::cerr << "Bad encoding, needs UTF-8." << std::endl;
-    exit(EXIT_FAILURE);
-  }
+  ArgumentGuard u8_guard(argc, argv);
 
   lg::initialize();
 

@@ -56,10 +56,7 @@ bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
 }
 
 int main(int argc, char** argv) {
-  fs::u8arguments u8guard(argc, argv);
-  if (!u8guard.valid()) {
-    exit(EXIT_FAILURE);
-  }
+  ArgumentGuard u8_guard(argc, argv);
 
   try {
     fmt::print("Level Dump Tool\n");
