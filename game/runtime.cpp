@@ -241,7 +241,11 @@ void iop_runner(SystemThreadInterface& iface) {
 
   // init
 
-  start_overlord(iop.overlord_argc, iop.overlord_argv);  // todo!
+  bool complete = false;
+  start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);  // todo!
+  while (complete == false) {
+    iop.kernel.dispatchAll();
+  }
 
   // unblock the EE, the overlord is set up!
   iop.signal_overlord_init_finish();
@@ -253,11 +257,6 @@ void iop_runner(SystemThreadInterface& iface) {
     iop.wait_run_iop();
     iop.kernel.dispatchAll();
   }
-
-  // stop all threads in the iop kernel.
-  // if the threads are not stopped nicely, we will deadlock on trying to destroy the kernel's
-  // condition variables.
-  iop.kernel.shutdown();
 }
 }  // namespace
 

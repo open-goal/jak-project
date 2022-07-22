@@ -86,7 +86,7 @@ void* AllocSysMemory(int type, unsigned long size, void* addr) {
  * Create a new thread
  */
 s32 CreateThread(ThreadParam* param) {
-  return iop->kernel.CreateThread(param->name, (u32(*)())param->entry);
+  return iop->kernel.CreateThread(param->name, (void (*)())param->entry);
 }
 
 /*!
@@ -219,13 +219,5 @@ s32 SignalSema(s32 sema) {
 s32 WakeupThread(s32 thid) {
   iop->kernel.WakeupThread(thid);
   return 0;
-}
-
-bool ThreadWantsExit(s32 thid) {
-  return iop->kernel.GetWantExit(thid);
-}
-
-bool OnlyThreadAlive(s32 thid) {
-  return iop->kernel.OnlyThreadAlive(thid);
 }
 }  // namespace iop
