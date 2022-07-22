@@ -4,6 +4,7 @@
 ;; name: swamp-obs.gc
 ;; name in dgo: swamp-obs
 ;; dgos: L1, SWA
+;; note: changed for high fps
 
 (declare-type swampgate swamp-spike)
 
@@ -430,39 +431,47 @@
   :trans (the-as (function none :behavior balance-plat) rider-trans)
   :code (behavior ()
     (loop
+      ;; NOTE: modified for high fps
       (let ((f30-0 (* -0.025 (+ (-> self y-offset) (-> self y-travel))))
             (f28-0 (* -0.025 (- (-> self y-offset) (-> self y-travel))))
             )
         (cond
           ((and (-> self root-override riders) (nonzero? (-> self root-override riders num-riders)))
+           ;; has rider, accelerate downwards
            (send-event *target* 'no-look-around (seconds 0.25))
-           (set! (-> self y-accel) (fmin 4.096 (fmax -4.096 (+ -0.2048 (-> self y-accel)))))
-           (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (-> self y-accel)))))
+           (set! (-> self y-accel) (fmin 4.096 (fmax -4.096 (+ (* DISPLAY_FPS_RATIO -0.2048) (-> self y-accel)))))
+           (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
+           ;; tell linked platforms to go up
            (send-to-all-after (-> self link) 'grow)
            (send-to-all-before (-> self link) 'grow)
            )
           ((-> self got-grow)
+           ;; got 'grow' signal, accelerate upwards
            (set! (-> self got-grow) #f)
-           (set! (-> self y-accel) (fmin 4.096 (fmax -4.096 (+ 0.2048 (-> self y-accel)))))
-           (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (-> self y-accel)))))
+           (set! (-> self y-accel) (fmin 4.096 (fmax -4.096 (+ (* DISPLAY_FPS_RATIO 0.2048) (-> self y-accel)))))
+           (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
            )
           ((< (-> self y-offset) 0.0)
+           ;; accelerate towards neutral position (from below)
            (set! (-> self y-accel)
-                 (fmin (fmin 4.096 (fmax -4.096 (+ 0.1024 (-> self y-accel)))) (* -0.0001 (-> self y-offset)))
+                 (fmin (fmin 4.096 (fmax -4.096 (+ (* DISPLAY_FPS_RATIO 0.1024) (-> self y-accel)))) (* -0.0001 (-> self y-offset)))
                  )
-           (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (-> self y-accel)))))
-           (set! (-> self y-vel) (* 0.99 (-> self y-vel)))
+           (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
+           ;; slow down
+           (set! (-> self y-vel) (* (- 1.0 (* DISPLAY_FPS_RATIO (- 1.0 0.99))) (-> self y-vel)))
            )
           (else
+            ;; accelerate towards neutral position (from above)
             (set! (-> self y-accel)
-                  (fmin 4.096 (fmax (fmax -4.096 (+ -0.1024 (-> self y-accel))) (* -0.0001 (-> self y-offset))))
+                  (fmin 4.096 (fmax (fmax -4.096 (+ (* DISPLAY_FPS_RATIO -0.1024) (-> self y-accel))) (* -0.0001 (-> self y-offset))))
                   )
-            (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (-> self y-accel)))))
-            (set! (-> self y-vel) (* 0.99 (-> self y-vel)))
+            (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
+            ;; slow down
+            (set! (-> self y-vel) (* (- 1.0 (* DISPLAY_FPS_RATIO (- 1.0 0.99))) (-> self y-vel)))
             )
           )
         )
-      (+! (-> self y-offset) (-> self y-vel))
+      (+! (-> self y-offset) (* DISPLAY_FPS_RATIO (-> self y-vel)))
       (set! (-> self root-override trans y) (+ (-> self y-init) (-> self y-offset)))
       (suspend)
       )
