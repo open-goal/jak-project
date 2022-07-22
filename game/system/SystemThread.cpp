@@ -1,6 +1,19 @@
 #include "SystemThread.h"
 
 #include "common/log/log.h"
+#include "common/util/unicode_util.h"
+
+#ifdef __linux
+#include <pthread.h>
+#else
+// Include order matters...
+// clang-format off
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <Processthreadsapi.h>
+// clang-format on
+#endif
 
 //////////////////////
 // Thread Manager   //
@@ -82,6 +95,13 @@ bool SystemThreadManager::all_threads_exiting() {
 void* bootstrap_thread_func(void* x) {
   SystemThread* thd = (SystemThread*)x;
   SystemThreadInterface iface(thd);
+
+#ifdef __linux__
+  pthread_setname_np(pthread_self(), thd->name.c_str());
+#else
+  SetThreadDescription(GetCurrentThread(), (LPCWSTR)utf8_string_to_wide_string(thd->name).c_str());
+#endif
+
   thd->function(iface);
   lg::debug("[SYSTEM] Thread {} is returning", thd->name.c_str());
   return nullptr;
