@@ -1617,7 +1617,7 @@
 ;; it should point to the .jsonc file that specifies the level.
 (build-custom-level "test-zone")
 ;; the DGO file
-(custom-level-cgo "TESTZONE.DGO" "test-zone/testzone.gd")
+(custom-level-cgo "TSZ.DGO" "test-zone/testzone.gd")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Game Engine Code
