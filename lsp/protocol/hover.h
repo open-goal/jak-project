@@ -30,7 +30,7 @@ namespace LSPSpec {
  * decide to remove HTML from the markdown to avoid script execution.
  */
 struct MarkupContent {
-  std::string m_kind; // Actually a MarkupKind which is either 'plaintext' or 'markdown'
+  std::string m_kind;  // Actually a MarkupKind which is either 'plaintext' or 'markdown'
   std::string m_value;
 };
 

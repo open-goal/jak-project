@@ -61,7 +61,6 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
             file.m_all_types_uri, file.m_game_version, file.m_all_types_file_path);
         m_tracked_all_types_files[file.m_all_types_uri].parse_type_system();
       }
-      
     }
   }
   // TODO - only supporting IR files currently!
