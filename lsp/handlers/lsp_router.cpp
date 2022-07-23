@@ -1,9 +1,8 @@
 #include "lsp_router.h"
 
-#include "lsp/handlers/initialize.h"
-
 #include "common/log/log.h"
 
+#include "lsp/handlers/initialize.h"
 #include "lsp/protocol/error_codes.h"
 #include "text_document/document_symbol.h"
 #include "text_document/document_synchronization.h"

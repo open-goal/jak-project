@@ -1,14 +1,14 @@
-#include "third-party/fmt/core.h"
+#include "common/util/Assert.h"
+#include "common/util/DgoReader.h"
 #include "common/util/FileUtil.h"
+#include <common/util/unicode_util.h>
+
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/ObjectFile/LinkedObjectFileCreation.h"
-#include "common/util/DgoReader.h"
-
-#include "decompiler/util/goal_data_reader.h"
 #include "decompiler/level_extractor/BspHeader.h"
+#include "decompiler/util/goal_data_reader.h"
 
-#include "common/util/Assert.h"
-#include <common/util/unicode_util.h>
+#include "third-party/fmt/core.h"
 
 constexpr GameVersion kGameVersion = GameVersion::Jak1;
 
@@ -56,10 +56,7 @@ bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
 }
 
 int main(int argc, char** argv) {
-  fs::u8arguments u8guard(argc, argv);
-  if (!u8guard.valid()) {
-    exit(EXIT_FAILURE);
-  }
+  ArgumentGuard u8_guard(argc, argv);
 
   try {
     fmt::print("Level Dump Tool\n");

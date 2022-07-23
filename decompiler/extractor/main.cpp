@@ -223,6 +223,8 @@ void launch_game() {
 }
 
 int main(int argc, char** argv) {
+  ArgumentGuard u8_guard(argc, argv);
+
   fs::path input_file_path;
   fs::path project_path_override;
   bool flag_runall = false;
@@ -233,12 +235,6 @@ int main(int argc, char** argv) {
   bool flag_play = false;
   bool flag_folder = false;
   std::string game_name = "jak1";
-
-  fs::u8arguments u8guard(argc, argv);
-  if (!u8guard.valid()) {
-    lg::error("Bad encoding, needs UTF-8");
-    exit(EXIT_FAILURE);
-  }
 
   lg::initialize();
 

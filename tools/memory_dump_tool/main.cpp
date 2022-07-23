@@ -612,10 +612,7 @@ void inspect_symbols(const Ram& ram,
 }
 
 int main(int argc, char** argv) {
-  fs::u8arguments u8guard(argc, argv);
-  if (!u8guard.valid()) {
-    exit(EXIT_FAILURE);
-  }
+  ArgumentGuard u8_guard(argc, argv);
 
   fs::path dump_path;
   fs::path output_path;
