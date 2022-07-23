@@ -6,11 +6,11 @@
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
 
-void compile_dir_tpages(const std::string& filename) {
+void compile_dir_tpages(const std::string& input_file, const std::string& output_prefix) {
   std::vector<int> lengths;
 
   goos::Reader reader;
-  auto code = reader.read_from_file({filename});
+  auto code = reader.read_from_file({input_file});
   std::string err;
 
   goos::for_each_in_list(code.as_pair()->cdr, [&](const goos::Object& obj) {
@@ -30,7 +30,7 @@ void compile_dir_tpages(const std::string& filename) {
   }
 
   auto data = gen.generate_v4();
-  file_util::create_dir_if_needed(file_util::get_file_path({"out", "obj"}));
-  file_util::write_binary_file(file_util::get_file_path({"out", "obj", "dir-tpages.go"}),
-                               data.data(), data.size());
+  file_util::write_binary_file(
+      file_util::get_jak_project_dir() / "out" / output_prefix / "obj" / "dir-tpages.go",
+      data.data(), data.size());
 }

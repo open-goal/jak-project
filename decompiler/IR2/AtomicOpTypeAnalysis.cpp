@@ -188,6 +188,11 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
         // GOAL is smart enough to use binary 0b0 as floating point 0.
         return TP_Type::make_from_ts("float");
       }
+      // new for jak 2:
+      if (env.version == GameVersion::Jak2 && in_type.is_integer_constant() &&
+          (s64)((s32)in_type.get_integer_constant()) == (s64)in_type.get_integer_constant()) {
+        return TP_Type::make_from_ts("float");
+      }
       return in_type;
     }
     case Kind::FPR_TO_GPR:
@@ -398,6 +403,9 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       }
 
       if (m_kind == Kind::RIGHT_SHIFT_ARITH) {
+        if (env.version == GameVersion::Jak2 && arg0_type.typespec().base_type() == "float") {
+          return TP_Type::make_from_ts(TypeSpec("float"));
+        }
         return TP_Type::make_from_ts(TypeSpec("int"));
       }
     } break;
@@ -638,6 +646,17 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     // also allow it, if 16-byte aligned stride.
     if ((u64)align16(type_info->get_size_in_memory()) == arg1_type.get_integer_constant()) {
       return TP_Type::make_from_ts(arg0_type.typespec());
+    }
+  }
+
+  if (env.version == GameVersion::Jak2 && tc(dts, TypeSpec("symbol"), arg1_type) &&
+      !m_args[0].is_int() && is_int_or_uint(dts, arg0_type)) {
+    if (arg0_type.is_integer_constant(jak2::SYM_TO_STRING_OFFSET)) {
+      // symbol -> GOAL String
+      // NOTE - the offset doesn't fit in a s16, so it's loaded into a register first.
+      // so we expect the arg to be a variable, and the type propagation will figure out the
+      // integer constant.
+      return TP_Type::make_from_ts(dts.ts.make_pointer_typespec("string"));
     }
   }
 

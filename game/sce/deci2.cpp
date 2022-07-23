@@ -137,4 +137,8 @@ s32 sceDeci2ExSend(s32 s, void* buf, u16 len) {
   server->send_data(buf, len);
   return len;
 }
+
+void sceDeci2Disable() {
+  server->send_shutdown();
+}
 }  // namespace ee

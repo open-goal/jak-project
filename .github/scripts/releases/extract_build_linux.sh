@@ -3,13 +3,14 @@
 set -e
 
 DEST=${1}
-SOURCE=${2}
+BIN_SOURCE=${2}
+SOURCE=${3}
 
 mkdir -p $DEST
 
-cp $SOURCE/build/game/gk $DEST
-cp $SOURCE/build/goalc/goalc $DEST
-cp $SOURCE/build/decompiler/extractor $DEST
+cp $BIN_SOURCE/game/gk $DEST
+cp $BIN_SOURCE/goalc/goalc $DEST
+cp $BIN_SOURCE/decompiler/extractor $DEST
 
 strip $DEST/gk
 strip $DEST/goalc

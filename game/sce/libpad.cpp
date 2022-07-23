@@ -3,7 +3,7 @@
 #include "common/util/Assert.h"
 
 #include "game/graphics/gfx.h"
-#include "game/kernel/kmachine.h"
+#include "game/kernel/common/kernel_types.h"
 
 /*!
  * @file libpad.cpp
@@ -91,10 +91,13 @@ int scePadRead(int port, int /*slot*/, u8* rdata) {
   return 32;
 }
 
-// buzzer control. We don't care right now, return success.
-int scePadSetActDirect(int /*port*/, int /*slot*/, const u8* /*data*/) {
-  return 1;
+int scePadSetActDirect(int port, int /*slot*/, const u8* data) {
+  // offsets are set by scePadSetActAlign, but we already know the game uses 0 for big motor and 1
+  // for small motor
+  // also, the "slow" motor corresponds to the "large" motor on the PS2
+  return Pad::rumble(port, ((float)data[1]) / 255, ((float)data[0]));
 }
+
 int scePadSetActAlign(int /*port*/, int /*slot*/, const u8* /*data*/) {
   return 1;
 }

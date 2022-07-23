@@ -16,6 +16,8 @@
 
 #include "game/sce/iop.h"
 
+#include "third-party/libco/libco.h"
+
 class IOP_Kernel;
 namespace iop {
 struct sceSifQueueData;
@@ -24,7 +26,6 @@ struct sceSifQueueData;
 struct SifRpcCommand {
   bool started = true;
   bool finished = true;
-  bool shutdown_now = false;
 
   void* buff;
   int fno;
@@ -40,41 +41,42 @@ struct SifRecord {
   u32 thread_to_wake;
 };
 
-struct IopThreadRecord {
-  IopThreadRecord(std::string n, u32 (*f)(), s32 ID, IOP_Kernel* k)
-      : name(n), function(f), thID(ID), kernel(k) {
-    kernelToThreadCV = new std::condition_variable;
-    threadToKernelCV = new std::condition_variable;
-    kernelToThreadMutex = new std::mutex;
-    threadToKernelMutex = new std::mutex;
+struct IopThread {
+  enum class State {
+    Run,
+    Ready,
+    Wait,
+    WaitSuspend,
+    Suspend,
+    Dormant,
+  };
+
+  enum class Wait {
+    None,
+    Semaphore,
+    Delay,
+  };
+
+  IopThread(std::string n, void (*f)(), s32 ID) : name(n), function(f), thID(ID) {
+    thread = co_create(0x300000, f);
   }
 
-  ~IopThreadRecord() {
-    delete kernelToThreadCV;
-    delete threadToKernelCV;
-    delete kernelToThreadMutex;
-    delete threadToKernelMutex;
-    delete thread;
-  }
+  ~IopThread() { co_delete(thread); }
 
   std::string name;
-  u32 (*function)();
-  std::thread* thread = nullptr;
-  bool wantExit = false;
-  bool started = false;
-  bool done = false;
+  void (*function)();
+  cothread_t thread;
+  State state = State::Dormant;
+  Wait waitType = Wait::None;
   s32 thID = -1;
-  IOP_Kernel* kernel;
+};
 
-  bool runThreadReady = false;
-  bool syscallReady = false;
-  std::mutex *kernelToThreadMutex, *threadToKernelMutex;
-  std::condition_variable *kernelToThreadCV, *threadToKernelCV;
-
-  void returnToKernel();
-  void waitForReturnToKernel();
-  void waitForDispatch();
-  void dispatch();
+struct Semaphore {
+  u32 option;
+  u32 attr;
+  s32 count;
+  s32 maxCount;
+  s32 initCount;
 };
 
 class IOP_Kernel {
@@ -84,11 +86,12 @@ class IOP_Kernel {
     threads.reserve(16);
     CreateThread("null-thread", nullptr);
     CreateMbx();
+    kernel_thread = co_active();
   }
 
   ~IOP_Kernel();
 
-  s32 CreateThread(std::string n, u32 (*f)());
+  s32 CreateThread(std::string n, void (*f)());
   void StartThread(s32 id);
   void SuspendThread();
   void SleepThread();
@@ -97,14 +100,6 @@ class IOP_Kernel {
   void set_rpc_queue(iop::sceSifQueueData* qd, u32 thread);
   void rpc_loop(iop::sceSifQueueData* qd);
   void shutdown();
-
-  /*!
-   * Resume the kernel.
-   */
-  void returnToKernel() {
-    ASSERT(_currentThread >= 0);  // must be in a thread
-    threads[_currentThread].returnToKernel();
-  }
 
   /*!
    * Get current thread ID.
@@ -162,17 +157,16 @@ class IOP_Kernel {
                void* recvBuff,
                s32 recvSize);
 
-  bool GetWantExit(s32 thid) const { return threads.at(thid).wantExit; }
-  bool OnlyThreadAlive(s32 thid);
-
  private:
-  void setupThread(s32 id);
   void runThread(s32 id);
+  void exitThread();
+  cothread_t kernel_thread;
   s32 _nextThID = 0;
-  std::atomic<s32> _currentThread = {-1};
-  std::vector<IopThreadRecord> threads;
+  s32 _currentThread = {-1};
+  std::vector<IopThread> threads;
   std::vector<std::queue<void*>> mbxs;
   std::vector<SifRecord> sif_records;
+  std::vector<Semaphore> semas;
   bool mainThreadSleep = false;
   FILE* iso_disc_file = nullptr;
   std::mutex sif_mtx;

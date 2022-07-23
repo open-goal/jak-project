@@ -1,0 +1,939 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: swamp-obs.gc
+;; name in dgo: swamp-obs
+;; dgos: L1, SWA
+;; note: changed for high fps
+
+(declare-type swampgate swamp-spike)
+
+(define-extern swamp-spike-gate-down (state swampgate))
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/swamp-rock-ag.gc")
+(import "goal_src/jak1/import/swamp-spike-ag.gc")
+(import "goal_src/jak1/import/swampcam-ag.gc")
+(import "goal_src/jak1/import/tar-plat-ag.gc")
+(import "goal_src/jak1/import/balance-plat-ag.gc")
+
+(defpartgroup group-swamp-spike-up
+  :id 289
+  :duration 5
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1325 :fade-after (meters 120) :falloff-to (meters 120))
+    (sp-item 1326 :fade-after (meters 120) :falloff-to (meters 120))
+    (sp-item 1327 :fade-after (meters 60) :falloff-to (meters 60))
+    )
+  )
+
+(defpart 1325
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-int-flt spt-x (meters -2) 2 8192.0)
+    (sp-flt spt-y (meters 0.75))
+    (sp-rnd-flt spt-scale-x (meters 1.5) (meters 1) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 64.0 32.0 1.0)
+    (sp-rnd-flt spt-g 48.0 24.0 1.0)
+    (sp-rnd-flt spt-b 48.0 8.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.006666667) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.01))
+    (sp-rnd-flt spt-accel-y -0.13653333 -0.27306667 1.0)
+    (sp-flt spt-friction 0.96)
+    (sp-int spt-timer 450)
+    (sp-cpuinfo-flags bit2)
+    (sp-int-plain-rnd spt-next-time 30 299 1)
+    (sp-launcher-by-id spt-next-launcher 1328)
+    (sp-rnd-flt spt-conerot-x (degrees 70.0) (degrees 20.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-rotate-y (degrees -179.3918))
+    )
+  )
+
+(defpart 1328
+  :init-specs ((sp-flt spt-fade-a -0.32))
+  )
+
+(defpart 1326
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-int-flt spt-x (meters -2) 2 8192.0)
+    (sp-flt spt-y (meters -0.75))
+    (sp-rnd-flt spt-scale-x (meters 1.5) (meters 1) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 32.0 16.0 1.0)
+    (sp-rnd-flt spt-g 36.0 18.0 1.0)
+    (sp-rnd-flt spt-b 24.0 4.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.006666667) (meters 0.01) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.01))
+    (sp-rnd-flt spt-accel-y 0.13653333 0.27306667 1.0)
+    (sp-flt spt-friction 0.96)
+    (sp-int spt-timer 450)
+    (sp-cpuinfo-flags bit2)
+    (sp-int-plain-rnd spt-next-time 30 299 1)
+    (sp-launcher-by-id spt-next-launcher 1328)
+    (sp-rnd-flt spt-conerot-x (degrees 90.0) (degrees 20.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-rotate-y (degrees -179.3918))
+    )
+  )
+
+(defpart 1327
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+    (sp-flt spt-num 8.0)
+    (sp-rnd-int-flt spt-x (meters -2) 2 8192.0)
+    (sp-flt spt-y (meters 0.25))
+    (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.2) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 64.0 16.0 1.0)
+    (sp-rnd-flt spt-g 48.0 16.0 1.0)
+    (sp-rnd-flt spt-b 48.0 16.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.026666667) 1.0)
+    (sp-flt spt-accel-y -13.653334)
+    (sp-flt spt-friction 0.96)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2)
+    (sp-flt spt-userdata 0.0)
+    (sp-func spt-func 'check-water-level-drop)
+    (sp-int spt-next-time 390)
+    (sp-launcher-by-id spt-next-launcher 1329)
+    (sp-rnd-flt spt-conerot-x (degrees 30.0) (degrees 20.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-rotate-y (degrees -179.3918))
+    )
+  )
+
+(defpartgroup group-swamp-spike-down
+  :id 290
+  :duration 5
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1325 :fade-after (meters 120) :falloff-to (meters 120))
+    (sp-item 1326 :fade-after (meters 120) :falloff-to (meters 120))
+    )
+  )
+
+(deftype swamp-spike (process-drawable)
+  ((root-override collide-shape         :offset        112)
+   (sync          sync-info     :inline :offset-assert 176)
+   (open-gate     symbol                :offset-assert 184)
+   (dangerous     symbol                :offset-assert 188)
+   )
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc0
+  :flag-assert         #x15005000c0
+  (:methods
+    (init! (_type_) symbol 20)
+    )
+  (:states
+    swamp-spike-idle
+    )
+  )
+
+
+(defskelgroup *swamp-spike-sg* swamp-spike swamp-spike-lod0-jg swamp-spike-up-ja
+              ((swamp-spike-lod0-mg (meters 20)) (swamp-spike-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 5 0 6)
+              :longest-edge (meters 2.5)
+              )
+
+(defbehavior swamp-spike-default-event-handler swamp-spike ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('touch)
+     (when (-> self dangerous)
+       (if ((method-of-type touching-shapes-entry prims-touching?)
+            (the-as touching-shapes-entry (-> arg3 param 0))
+            (the-as collide-shape-moving (-> self root-override))
+            (the-as uint 1)
+            )
+           (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+           )
+       )
+     )
+    )
+  )
+
+(defun swamp-spike-set-particle-rotation-callback ((arg0 part-tracker))
+  (let* ((v1-0 (the-as object (-> arg0 userdata)))
+         (f0-1 (+ -65314.562 (quaternion-y-angle (-> (the-as (pointer swamp-spike) v1-0) 0 root-override quat))))
+         )
+    (set! (-> *part-id-table* 1325 init-specs 20 initial-valuef) f0-1)
+    (set! (-> *part-id-table* 1326 init-specs 20 initial-valuef) f0-1)
+    (set! (-> *part-id-table* 1327 init-specs 21 initial-valuef) f0-1)
+    )
+  0
+  (none)
+  )
+
+(defbehavior swamp-spike-post swamp-spike ()
+  (transform-post)
+  (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-0 to) (the-as process 1))
+    (set! (-> a1-0 from) (the-as process *touching-list*))
+    (if (find-overlapping-shapes (-> self root-override) (the-as overlaps-others-params a1-0))
+        (do-push-aways! (-> self root-override))
+        )
+    )
+  (none)
+  )
+
+(defstate swamp-spike-idle (swamp-spike)
+  :event swamp-spike-default-event-handler
+  :code (behavior ()
+    (set! (-> self dangerous) #f)
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (new 'stack-no-clear 'vector)
+      (vector-z-quaternion! gp-0 (-> self root-override quat))
+      (set! (-> gp-0 w) (- (vector-dot gp-0 (-> self root-override trans))))
+      (loop
+        (set! (-> self state-time) (-> *display* base-frame-counter))
+        (ja :group! (-> self draw art-group data 3))
+        (until (>= (get-current-phase (-> self sync)) 0.5)
+          (ja :num-func num-func-identity :frame-num 0.0)
+          (suspend)
+          )
+        (let ((s5-0 (or (not *target*)
+                        (< 204800.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                        )
+                    )
+              )
+          (if (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+                   *camera*
+                   )
+              (set! s5-0 (< (* (vector4-dot gp-0 (target-pos 0)) (vector4-dot gp-0 (camera-pos))) 0.0))
+              )
+          (cond
+            (s5-0
+              (until (< (get-current-phase (-> self sync)) 0.5)
+                (suspend)
+                )
+              )
+            (else
+              (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
+              (until (ja-done? 0)
+                (suspend)
+                (ja :num! (seek!))
+                )
+              (if (logtest? (-> self draw status) (draw-status was-drawn))
+                  (process-spawn
+                    part-tracker
+                    :init part-tracker-init
+                    (-> *part-group-id-table* 289)
+                    -1
+                    swamp-spike-set-particle-rotation-callback
+                    (-> self ppointer)
+                    #f
+                    (-> self root-override trans)
+                    :to self
+                    )
+                  )
+              (set! (-> self dangerous) #t)
+              (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
+              (until (ja-done? 0)
+                (suspend)
+                (ja :num! (seek!))
+                )
+              (set! (-> self dangerous) #f)
+              (set! (-> self state-time) (-> *display* base-frame-counter))
+              (ja :num-func num-func-identity :frame-num max)
+              (until (< (get-current-phase (-> self sync)) 0.5)
+                (suspend)
+                )
+              (if (logtest? (-> self draw status) (draw-status was-drawn))
+                  (process-spawn
+                    part-tracker
+                    :init part-tracker-init
+                    (-> *part-group-id-table* 290)
+                    -1
+                    swamp-spike-set-particle-rotation-callback
+                    (-> self ppointer)
+                    #f
+                    (-> self root-override trans)
+                    :to self
+                    )
+                  )
+              (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
+              (until (ja-done? 0)
+                (suspend)
+                (ja :num! (seek!))
+                )
+              )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :post swamp-spike-post
+  )
+
+(defstate swamp-spike-gate-up (swampgate)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (let ((v1-0 arg2))
+      (the-as object (when (= v1-0 'trigger)
+                       (let ((v0-0 #t))
+                         (set! (-> self open-gate) v0-0)
+                         v0-0
+                         )
+                       )
+              )
+      )
+    )
+  :code (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (ja :group! (-> self draw art-group data 4))
+    (until (-> self open-gate)
+      (ja :num-func num-func-identity :frame-num 0.0)
+      (suspend)
+      )
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 290)
+      -1
+      swamp-spike-set-particle-rotation-callback
+      (-> self ppointer)
+      #f
+      (-> self root-override trans)
+      :to self
+      )
+    (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go swamp-spike-gate-down)
+    (none)
+    )
+  :post (the-as (function none :behavior swampgate) swamp-spike-post)
+  )
+
+(defstate swamp-spike-gate-down (swampgate)
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status complete) #t)
+    (cleanup-for-death self)
+    (none)
+    )
+  :post (the-as (function none :behavior swampgate) swamp-spike-post)
+  )
+
+(defmethod init! swamp-spike ((obj swamp-spike))
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 20480.0 0.0 24576.0)
+      (set-root-prim! s5-0 s4-0)
+      (let ((s3-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 1))))
+        (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
+        (set! (-> s3-0 collide-with) (collide-kind target))
+        (set! (-> s3-0 prim-core action) (collide-action solid))
+        (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+        (set! (-> s3-0 transform-index) 3)
+        (set-vector! (-> s3-0 local-sphere) 0.0 20480.0 0.0 24576.0)
+        (append-prim s4-0 s3-0)
+        )
+      (let ((s3-1 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+        (set! (-> s3-1 prim-core collide-as) (collide-kind wall-object))
+        (set! (-> s3-1 collide-with) (collide-kind target))
+        (set! (-> s3-1 prim-core action) (collide-action solid))
+        (set! (-> s3-1 prim-core offense) (collide-offense indestructible))
+        (set! (-> s3-1 transform-index) 3)
+        (set-vector! (-> s3-1 local-sphere) 0.0 20480.0 0.0 24576.0)
+        (append-prim s4-0 s3-1)
+        )
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-override) s5-0)
+    )
+  (process-drawable-from-entity! obj (-> obj entity))
+  (initialize-skeleton obj *swamp-spike-sg* '())
+  (set! (-> obj draw origin-joint-index) (the-as uint 3))
+  (load-params! (-> obj sync) obj (the-as uint 1500) 0.0 0.15 0.15)
+  (set! (-> obj open-gate) #f)
+  (set! (-> obj dangerous) #f)
+  #f
+  )
+
+(defmethod init-from-entity! swamp-spike ((obj swamp-spike) (arg0 entity-actor))
+  (init! obj)
+  (go swamp-spike-idle)
+  (none)
+  )
+
+(deftype swampgate (swamp-spike)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc0
+  :flag-assert         #x15005000c0
+  (:states
+    swamp-spike-gate-down
+    swamp-spike-gate-up
+    )
+  )
+
+
+(defmethod init-from-entity! swampgate ((obj swampgate) (arg0 entity-actor))
+  (init! obj)
+  (if (logtest? (-> arg0 extra perm status) (entity-perm-status complete))
+      (go swamp-spike-gate-down)
+      (go swamp-spike-gate-up)
+      )
+  (none)
+  )
+
+(deftype balance-plat (process-drawable)
+  ((root-override collide-shape-moving  :offset        112)
+   (y-travel      float                 :offset-assert 176)
+   (y-init        float                 :offset-assert 180)
+   (y-offset      float                 :offset-assert 184)
+   (y-vel         float                 :offset-assert 188)
+   (y-accel       float                 :offset-assert 192)
+   (got-grow      symbol                :offset-assert 196)
+   )
+  :heap-base #x60
+  :method-count-assert 20
+  :size-assert         #xc8
+  :flag-assert         #x14006000c8
+  (:states
+    balance-plat-idle
+    )
+  )
+
+
+(defskelgroup *balance-plat-sg* balance-plat balance-plat-lod0-jg balance-plat-idle-ja
+              ((balance-plat-lod0-mg (meters 20)) (balance-plat-lod1-mg (meters 40)) (balance-plat-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              )
+
+(defstate balance-plat-idle (balance-plat)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (let ((v1-0 arg2))
+      (the-as object (when (= v1-0 'grow)
+                       (let ((v0-0 #t))
+                         (set! (-> self got-grow) v0-0)
+                         v0-0
+                         )
+                       )
+              )
+      )
+    )
+  :trans (the-as (function none :behavior balance-plat) rider-trans)
+  :code (behavior ()
+    (loop
+      ;; NOTE: modified for high fps
+      (let ((f30-0 (* -0.025 (+ (-> self y-offset) (-> self y-travel))))
+            (f28-0 (* -0.025 (- (-> self y-offset) (-> self y-travel))))
+            )
+        (cond
+          ((and (-> self root-override riders) (nonzero? (-> self root-override riders num-riders)))
+           ;; has rider, accelerate downwards
+           (send-event *target* 'no-look-around (seconds 0.25))
+           (set! (-> self y-accel) (fmin 4.096 (fmax -4.096 (+ (* DISPLAY_FPS_RATIO -0.2048) (-> self y-accel)))))
+           (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
+           ;; tell linked platforms to go up
+           (send-to-all-after (-> self link) 'grow)
+           (send-to-all-before (-> self link) 'grow)
+           )
+          ((-> self got-grow)
+           ;; got 'grow' signal, accelerate upwards
+           (set! (-> self got-grow) #f)
+           (set! (-> self y-accel) (fmin 4.096 (fmax -4.096 (+ (* DISPLAY_FPS_RATIO 0.2048) (-> self y-accel)))))
+           (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
+           )
+          ((< (-> self y-offset) 0.0)
+           ;; accelerate towards neutral position (from below)
+           (set! (-> self y-accel)
+                 (fmin (fmin 4.096 (fmax -4.096 (+ (* DISPLAY_FPS_RATIO 0.1024) (-> self y-accel)))) (* -0.0001 (-> self y-offset)))
+                 )
+           (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
+           ;; slow down
+           (set! (-> self y-vel) (* (- 1.0 (* DISPLAY_FPS_RATIO (- 1.0 0.99))) (-> self y-vel)))
+           )
+          (else
+            ;; accelerate towards neutral position (from above)
+            (set! (-> self y-accel)
+                  (fmin 4.096 (fmax (fmax -4.096 (+ (* DISPLAY_FPS_RATIO -0.1024) (-> self y-accel))) (* -0.0001 (-> self y-offset))))
+                  )
+            (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
+            ;; slow down
+            (set! (-> self y-vel) (* (- 1.0 (* DISPLAY_FPS_RATIO (- 1.0 0.99))) (-> self y-vel)))
+            )
+          )
+        )
+      (+! (-> self y-offset) (* DISPLAY_FPS_RATIO (-> self y-vel)))
+      (set! (-> self root-override trans y) (+ (-> self y-init) (-> self y-offset)))
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior balance-plat) rider-post)
+  )
+
+(defmethod init-from-entity! balance-plat ((obj balance-plat) (arg0 entity-actor))
+  ;; PAL patch here. usually-hit-by-player -> hit-by-others
+  (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (alloc-riders s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 40960.0)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *balance-plat-sg* '())
+  (set! (-> obj link) (new 'process 'actor-link-info obj))
+  (set! (-> obj y-accel) 0.0)
+  (set! (-> obj y-vel) 0.0)
+  (set! (-> obj y-offset) 0.0)
+  (set! (-> obj y-init) (-> obj root-override trans y))
+  (set! (-> obj got-grow) #f)
+  (set! (-> obj y-travel) (res-lump-float arg0 'distance :default 20480.0))
+  (go balance-plat-idle)
+  (none)
+  )
+
+(deftype swamp-rock (process-drawable)
+  ((root-override basic  :offset 112)
+   )
+  :heap-base #x40
+  :method-count-assert 20
+  :size-assert         #xb0
+  :flag-assert         #x14004000b0
+  (:states
+    swamp-rock-break
+    swamp-rock-idle
+    )
+  )
+
+
+(defpartgroup group-swamp-rock-explosion
+  :id 291
+  :duration 300
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1330 :period 1500 :length 5)
+    (sp-item 1331 :period 1500 :length 5)
+    (sp-item 1332 :period 1500 :length 15)
+    )
+  )
+
+(defpart 1331
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 15))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 130.0)
+    (sp-flt spt-g 64.0)
+    (sp-flt spt-b 54.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -2.1333334)
+    (sp-int spt-timer 60)
+    (sp-cpuinfo-flags bit2 bit3)
+    )
+  )
+
+(defpart 1330
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+    (sp-rnd-flt spt-num 16.0 16.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.3) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 70.0 16.0 1.0)
+    (sp-rnd-flt spt-g 70.0 16.0 1.0)
+    (sp-flt spt-b 70.0)
+    (sp-flt spt-a 128.0)
+    (sp-rnd-flt spt-vel-y (meters 0.04) (meters 0.04) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
+    (sp-flt spt-accel-y -10.922667)
+    (sp-flt spt-friction 0.99)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2)
+    (sp-flt spt-userdata 0.0)
+    (sp-func spt-func 'check-water-level-drop)
+    (sp-rnd-flt spt-conerot-x (degrees 20.0) (degrees 50.000004) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 1332
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-flt spt-y (meters 0.5) (meters 1) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 2.5) (meters 1.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 96.0 64.0 1.0)
+    (sp-rnd-flt spt-g 64.0 48.0 1.0)
+    (sp-rnd-flt spt-b 64.0 16.0 1.0)
+    (sp-rnd-flt spt-a 16.0 32.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.016666668) (meters 0.016666668) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.013333334))
+    (sp-flt spt-scalevel-y (meters 0.0033333334))
+    (sp-flt spt-accel-y -1.0922667)
+    (sp-flt spt-friction 0.95)
+    (sp-int spt-timer 600)
+    (sp-cpuinfo-flags bit2)
+    (sp-int-plain-rnd spt-next-time 30 299 1)
+    (sp-launcher-by-id spt-next-launcher 1333)
+    (sp-rnd-flt spt-conerot-x (degrees 70.0) (degrees 20.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(defpart 1333
+  :init-specs ((sp-flt spt-fade-a -0.2))
+  )
+
+(defskelgroup *swamp-rock-sg* swamp-rock swamp-rock-lod0-jg swamp-rock-idle-ja
+              ((swamp-rock-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
+
+(defstate swamp-rock-break (swamp-rock)
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status complete) #t)
+    (sound-play "rock-break")
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 291)
+      -1
+      #f
+      #f
+      #f
+      (-> self root trans)
+      :to *entity-pool*
+      )
+    (cleanup-for-death self)
+    (deactivate self)
+    (none)
+    )
+  :post (the-as (function none :behavior swamp-rock) ja-post)
+  )
+
+(defstate swamp-rock-idle (swamp-rock)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('attack)
+       (if (and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
+           (go swamp-rock-break)
+           )
+       )
+      )
+    )
+  :code (behavior ()
+    (transform-post)
+    (loop
+      (logior! (-> self mask) (process-mask sleep))
+      (suspend)
+      )
+    (none)
+    )
+  )
+
+(defmethod init-from-entity! swamp-rock ((obj swamp-rock) (arg0 entity-actor))
+  (set! (-> obj mask) (logior (process-mask attackable) (-> obj mask)))
+  (let ((f30-0 (res-lump-float arg0 'scale-factor :default 1.0)))
+    (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+      (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
+        (set! (-> s3-0 collide-with) (collide-kind target))
+        (set! (-> s3-0 prim-core action) (collide-action solid))
+        (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+        (set! (-> s3-0 transform-index) 3)
+        (set-vector! (-> s3-0 local-sphere) 0.0 (* 4096.0 f30-0) 0.0 (* 4096.0 (* 3.0 f30-0)))
+        (set-root-prim! s4-0 s3-0)
+        )
+      (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+      (backup-collide-with-as s4-0)
+      (set! (-> obj root) s4-0)
+      )
+    (process-drawable-from-entity! obj arg0)
+    (vector-float*! (-> obj root scale) *identity-vector* f30-0)
+    )
+  (initialize-skeleton obj *swamp-rock-sg* '())
+  (nav-mesh-connect obj (-> obj root) (the-as nav-control #f))
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 291) obj))
+  (go swamp-rock-idle)
+  (none)
+  )
+
+(defbehavior swamp-rock-init-by-other swamp-rock ((arg0 vector))
+  (set! (-> self mask) (logior (process-mask attackable) (-> self mask)))
+  (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) default-collision-reaction)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (alloc-riders s5-0 1)
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
+      (set-root-prim! s5-0 s4-0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> self root) s5-0)
+    )
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (initialize-skeleton self *swamp-rock-sg* '())
+  (nav-mesh-connect self (-> self root) (the-as nav-control #f))
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 291) self))
+  (go swamp-rock-idle)
+  (none)
+  )
+
+(defskelgroup *tar-plat-sg* tar-plat tar-plat-lod0-jg tar-plat-idle-ja
+              ((tar-plat-lod0-mg (meters 20)) (tar-plat-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
+
+(define *tar-plat-constants* (new 'static 'rigid-body-platform-constants
+                               :drag-factor 2.0
+                               :buoyancy-factor 1.5
+                               :max-buoyancy-depth (meters 2)
+                               :gravity-factor 1.0
+                               :gravity (meters 80)
+                               :player-weight (meters 60)
+                               :player-bonk-factor 0.5
+                               :player-dive-factor 1.0
+                               :player-force-distance (meters 2)
+                               :player-force-clamp (meters 1000000)
+                               :player-force-timeout (seconds 0.1)
+                               :explosion-force (meters 1000)
+                               :linear-damping 0.9
+                               :angular-damping 0.9
+                               :control-point-count 4
+                               :mass 1.0
+                               :inertial-tensor-x (meters 6)
+                               :inertial-tensor-y (meters 2)
+                               :inertial-tensor-z (meters 6)
+                               :cm-joint-y (meters -2)
+                               :idle-distance (meters 50)
+                               :platform #t
+                               :sound-name "tar-plat"
+                               )
+        )
+
+(deftype tar-plat (rigid-body-platform)
+  ((anchor-point vector :inline :offset-assert 736)
+   (float-height float          :offset-assert 752)
+   )
+  :heap-base #x290
+  :method-count-assert 35
+  :size-assert         #x2f4
+  :flag-assert         #x23029002f4
+  )
+
+
+(defmethod TODO-RENAME-22 tar-plat ((obj tar-plat) (arg0 vector) (arg1 float))
+  (+ (-> obj float-height)
+     (-> obj float-height-offset)
+     (* 512.0 (cos (* 109.22667 (+ (* 60.0 arg1) (* 0.03 (-> arg0 x)) (* 0.03 (-> arg0 z))))))
+     )
+  )
+
+(defmethod TODO-RENAME-23 tar-plat ((obj tar-plat) (arg0 float))
+  ((the-as (function rigid-body-platform basic none) (find-parent-method tar-plat 23)) obj (the-as basic arg0))
+  (TODO-RENAME-27 obj (-> obj anchor-point))
+  0
+  (none)
+  )
+
+(defstate rigid-body-platform-idle (tar-plat)
+  :virtual #t
+  :enter (behavior ()
+    (ja-channel-set! 0)
+    (none)
+    )
+  :code (behavior ()
+    (loop
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior tar-plat) ja-post)
+  )
+
+(defstate rigid-body-platform-float (tar-plat)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior tar-plat)
+    rigid-body-platform-event-handler
+    )
+  :trans (behavior ()
+    (cond
+      ((or (not *target*) (< (-> self info idle-distance)
+                             (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
+                             )
+           )
+       (let ((f30-1 -2048.0))
+         (seek! (-> self float-height-offset) f30-1 (* 2048.0 (-> *display* seconds-per-frame)))
+         (if (= (-> self float-height-offset) f30-1)
+             (go-virtual rigid-body-platform-idle)
+             )
+         )
+       )
+      (else
+        (seek! (-> self float-height-offset) 4096.0 (* 2048.0 (-> *display* seconds-per-frame)))
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja :group! (-> self draw art-group data 3))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (loop
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior tar-plat) rigid-body-platform-post)
+  )
+
+(defmethod TODO-RENAME-30 tar-plat ((obj tar-plat))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) default-collision-reaction)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (alloc-riders s5-0 1)
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid ca-1 ca-4))
+      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 20480.0)
+      (set-root-prim! s5-0 s4-0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-overlay) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-31 tar-plat ((obj tar-plat))
+  (initialize-skeleton obj *tar-plat-sg* '())
+  (TODO-RENAME-29 obj *tar-plat-constants*)
+  (set! (-> obj float-height) (-> obj entity extra trans y))
+  (set! (-> obj float-height-offset) -2048.0)
+  (let ((s5-0 (-> obj info control-point-count)))
+    (dotimes (s4-0 s5-0)
+      (let ((s3-0 (-> obj control-point-array data s4-0)))
+        (let ((f26-0 (+ 8192.0 (* 65536.0 (/ (the float s4-0) (the float s5-0)))))
+              (f28-0 20480.0)
+              (f30-0 12288.0)
+              )
+          (set! (-> s3-0 local-pos x) (fmax (fmin (* f28-0 (sin f26-0)) f30-0) (- f30-0)))
+          (set! (-> s3-0 local-pos y) 0.0)
+          (set! (-> s3-0 local-pos z) (fmax (fmin (* f28-0 (cos f26-0)) f30-0) (- f30-0)))
+          )
+        (set! (-> s3-0 local-pos w) 1.0)
+        )
+      )
+    )
+  (nav-mesh-connect obj (-> obj root-overlay) (the-as nav-control #f))
+  (set! (-> obj anchor-point quad) (-> obj root-overlay trans quad))
+  0
+  (none)
+  )
+
+(deftype swamp-barrel (barrel)
+  ()
+  :heap-base #x90
+  :method-count-assert 30
+  :size-assert         #x100
+  :flag-assert         #x1e00900100
+  )
+
+
+(deftype swampcam (process-hidden)
+  ()
+  :method-count-assert 15
+  :size-assert         #x70
+  :flag-assert         #xf00000070
+  )
+
+
+(defskelgroup *swampcam-sg* swampcam swampcam-lod0-jg swampcam-anim-ja
+              ((swampcam-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 15)
+              )
+
+(deftype swamp-battlecontroller (battlecontroller)
+  ()
+  :heap-base #x210
+  :method-count-assert 29
+  :size-assert         #x27c
+  :flag-assert         #x1d0210027c
+  )
+
+
+(defstate battlecontroller-play-intro-camera (swamp-battlecontroller)
+  :virtual #t
+  :code (behavior ()
+    (suspend)
+    (process-drawable-delay-player (seconds 1))
+    (let ((gp-1 (ppointer->handle
+                  (process-spawn pov-camera (-> self root trans) *swampcam-sg* "swamp-ambush" 0 #f '() :to self)
+                  )
+                )
+          )
+      (while (handle->process (the-as handle gp-1))
+        (suspend)
+        )
+      )
+    (go-virtual battlecontroller-active)
+    (none)
+    )
+  )
+
+(defstate battlecontroller-die (swamp-battlecontroller)
+  :virtual #t
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status complete) #t)
+    ((the-as
+       (function none :behavior battlecontroller)
+       (-> (method-of-type battlecontroller battlecontroller-die) code)
+       )
+     )
+    (none)
+    )
+  )
+
+
+
+

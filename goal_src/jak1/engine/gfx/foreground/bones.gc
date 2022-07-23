@@ -1,0 +1,1596 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: bones.gc
+;; name in dgo: bones
+;; dgos: GAME, ENGINE
+;; note: changed for high fps
+
+;; Bones.
+;; There are 4 main functions used by the outside world:
+;;  - bones-init. Call this before doing process-drawable DMA building.
+;;  - draw-bones. Call this once for each process-drawable during DMA building.
+;;  - bones-wrapup. Call this after all calls to draw-bones.
+;; the above 3 functions are done separate for different levels.
+;;  - bones-mtx-calc-execute. Call this after all that.
+
+;; It's more than just bones in here - submitting to merc is done from here.
+
+(defglobalconstant BACKWARD_COMPAT_MERC_CLIP #f)
+
+;;;;;;;;;;;;;;;;;;
+;; calc list
+;;;;;;;;;;;;;;;;;;
+
+(defenum bone-calc-flags
+  :type uint16
+  :bitfield #t
+  (bncfl00 0)
+  (bncfl01 1)  ;; use identity matrix in bone matrix calc instead of cam rot (effectively screen-space bones?)
+  (bncfl02 2)
+  (bncfl03 3)
+  (bncfl04 4)
+  (bncfl05 5)
+  (bncfl06 6)
+  (bncfl07 7)
+  (bncfl08 8)
+  (bncfl09 9)
+  (bncfl10 10)
+  (bncfl11 11)
+  (bncfl12 12)
+  (bncfl13 13)
+  (bncfl14 14)
+  (bncfl15 15)
+  )
+
+;; this type represents a "calculation" that will be performed at later time.
+(deftype bone-calculation (structure)
+  ((flags               bone-calc-flags        :offset-assert   0)
+   (num-bones           uint16                 :offset-assert   2)
+   (matrix-area         (inline-array matrix)  :offset-assert   4)
+   (joints              (inline-array joint)   :offset-assert   8)
+   (bones               (inline-array bone)    :offset-assert  12)
+   (ripple-scale        float                  :offset-assert  16)
+   (ripple-y-scale      float                  :offset-assert  20)
+   (ripple-normal-scale float                  :offset-assert  24)
+   (ripple-area         (inline-array vector)  :offset-assert  28)
+   (next                bone-calculation       :offset-assert  32)
+   (dummy-1             uint32                 :offset-assert  36)
+   (dummy-2             uint32                 :offset-assert  40)
+   (dummy-3             uint32                 :offset-assert  44)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; linked list of bone-calculations.
+;; you have to bring your own bone-calculations
+(deftype bone-calculation-list (structure)
+  ((first bone-calculation  :offset-assert   0)
+   (next  bone-calculation  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; the global calculation list.
+(define *bone-calculation-list* (new 'global 'bone-calculation-list))
+
+(defun bone-list-init ()
+  "Reset the bone list to have nothing."
+  (let ((v1-0 *bone-calculation-list*))
+    (set! (-> v1-0 first) (the-as bone-calculation 0))
+    (set! (-> v1-0 next) (the-as bone-calculation 0))
+    )
+  (none)
+  )
+
+(bone-list-init)
+
+;;;;;;;;;;;;;;;;;;
+;; texscroll
+;;;;;;;;;;;;;;;;;;
+
+;; the "texture scroll" moves the texture. This is done by modifying the merc data.
+
+;; list of all texture scroll effects.
+(deftype texscroll-globals (structure)
+  ((requests int32          :offset-assert   0)
+   (effects  merc-effect 32 :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x84
+  :flag-assert         #x900000084
+  )
+
+(define *texscroll-globals* (new 'global 'texscroll-globals))
+
+(defun texscroll-make-request ((arg0 merc-effect))
+  "Request that the given merc-effect have its texture scroll updated.
+   Note: only call this if you actually have a texture scroll effect!"
+  (let* ((v1-1 (-> *texscroll-globals* requests))
+         (a1-0 (-> arg0 extra-info))
+         (a1-1 (the-as mei-texture-scroll (+ (the-as uint a1-0) (* (-> a1-0 texture-scroll-offset) 16))))
+         )
+    (when (< v1-1 32)
+      (let* ((a3-1 (the int (* (/ (-> *display* time-factor) 5) (-> *display* integral-frame-counter)))) ;; changed for high fps
+             (a2-3 (-> a1-1 time-factor))
+             (t0-2 (+ (ash 1 a2-3) -1))
+             )
+        (if (zero? (-> a1-1 scroll-dir))
+            (set! a3-1 (- a3-1))
+            )
+        (let ((a2-5 (ash (ash (logand a3-1 t0-2) (- 12 (the-as int (-> a1-1 st-int-scale)))) (- (the-as int a2-3)))))
+          (when (!= a2-5 (-> a1-1 cached-time))
+            (set! (-> a1-1 time-delta) (the-as uint (- a2-5 (the-as int (-> a1-1 cached-time)))))
+            (set! (-> a1-1 cached-time) (the-as uint a2-5))
+            (set! (-> *texscroll-globals* effects v1-1) arg0)
+            (+! (-> *texscroll-globals* requests) 1)
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defun texscroll-execute ()
+  "Do all requested texture scroll updates."
+  (dotimes (v1-0 (-> *texscroll-globals* requests))
+    (let* ((a2-0 (-> *texscroll-globals* effects v1-0))
+           (a0-2 (-> a2-0 frag-count))
+           (a1-1 (-> a2-0 extra-info))
+           (a1-2 (the-as mei-texture-scroll (+ (the-as uint a1-1) (* (-> a1-1 texture-scroll-offset) 16))))
+           (t1-0 (-> a2-0 frag-geo))
+           (a2-1 (-> a2-0 frag-ctrl))
+           )
+      (dotimes (a3-2 (the-as int a0-2))
+        (let ((t0-4 (&+ (the-as pointer t1-0) (logand (* (+ (-> a2-1 unsigned-four-count) 3) 4) #xfff0))))
+          (let ((t2-2 (+ (-> t1-0 header mat1-cnt) (-> t1-0 header mat2-cnt) (-> t1-0 header mat3-cnt))))
+            (the-as (pointer int8) (-> a1-2 time-delta))
+            (let* ((t1-3 (the-as (pointer int8) (&+ t0-4 9)))
+                   (t2-4 (&+ t1-3 (* (the-as uint 12) t2-2)))
+                   (t3-3 (-> a1-2 time-delta))
+                   )
+              (nop!)
+              (label cfg-3)
+              (let ((t4-0 (-> t1-3 0)))
+                (nop!)
+                (nop!)
+                (nop!)
+                (let ((t4-1 (+ t4-0 t3-3)))
+                  (set! t1-3 (&-> t1-3 12))
+                  (b! (!= t1-3 t2-4) cfg-3 :delay (set! (-> t1-3 -12) t4-1))
+                  )
+                )
+              )
+            )
+          (set! t1-0 (the-as
+                       merc-fragment
+                       (&+ (&+ t0-4 (logand (* (+ (-> a2-1 lump-four-count) 3) 4) #xfff0)) (* (-> a2-1 fp-qwc) 16))
+                       )
+                )
+          )
+        (set! a2-1 (the-as merc-fragment-control (+ (the-as uint a2-1) (* (-> a2-1 mat-xfer-count) 2) 4)))
+        )
+      )
+    )
+  (set! (-> *texscroll-globals* requests) 0)
+  0
+  (none)
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;
+;; Merc Submission
+;;;;;;;;;;;;;;;;;;;;
+
+;; when submitting to merc, we must provide some information to pick the appropriate rendering settings.
+;; this information can't be precomputed and is done in bones.
+
+;; per-effect information
+(deftype merc-effect-bucket-info (structure)
+  ((color-fade    rgba   :offset-assert   0)
+   (use-mercneric uint8  :offset-assert   4)
+   (ignore-alpha  uint8  :offset-assert   5)
+   (pad0          uint8  :offset-assert   6)
+   (pad1          uint8  :offset-assert   7)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; information for everything being submitted.
+(deftype merc-bucket-info (structure)
+  ((light                       vu-lights               :inline    :offset-assert   0)
+   (needs-clip                  int32                              :offset-assert 112)
+   (need-mercprime-if-merc      int32                              :offset-assert 116)
+   (must-use-mercneric-for-clip int32                              :offset-assert 120)
+   (effect                      merc-effect-bucket-info 16 :inline :offset-assert 124)
+   )
+  :method-count-assert 9
+  :size-assert         #xfc
+  :flag-assert         #x9000000fc
+  )
+
+(define *merc-bucket-info* (new 'global 'merc-bucket-info))
+
+;; UNUSED.
+(define *use-generic* #f)
+
+;;;;;;;;;;;;;;;;
+;; VU / DMA
+;;;;;;;;;;;;;;;;
+
+(define bones-vu0-block (new 'static 'vu-function #|:length 63 :qlength 32|#))
+
+;; these changes only matter if transferring in _interleave_ mode.
+
+(defun bones-set-sqwc ()
+  ;; transfer 4, skip 1.
+  (#unless PC_PORT
+           (set! (-> (the-as dma-bank-control #x1000e000) sqwc) (new 'static 'dma-sqwc :sqwc #x1 :tqwc #x4))
+           )
+  (none)
+  )
+
+(defun bones-reset-sqwc ()
+  ;; transfer 1, skip 1
+  ;; note: not sure what uses this mode??
+  (#unless PC_PORT
+           (set! (-> (the-as dma-bank-control #x1000e000) sqwc) (new 'static 'dma-sqwc :sqwc #x1 :tqwc #x1))
+           )
+  (none)
+  )
+
+;; ?? used by generic merc
+(define *merc-global-array* (new 'global 'merc-global-array))
+
+(defun vu-lights<-light-group! ((arg0 vu-lights) (arg1 light-group))
+  "Convert a light-group to the VU format lights used by merc."
+  (local-vars (v1-0 uint128) (v1-1 uint128) (a2-1 uint128) (t0-1 uint128) (t1-1 uint128))
+  (rlet ((vf0 :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         )
+    (init-vf0-vector)
+    (nop!)
+    (let ((a3-0 (the-as uint128 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))))
+      (nop!)
+      (let ((a2-0 (-> arg1 dir0 direction quad)))
+        (nop!)
+        (let ((t1-0 (-> arg1 dir1 direction quad)))
+          (nop!)
+          (.lvf vf4 (&-> arg1 dir0 color quad))
+          (.pextlw v1-0 t1-0 a2-0)
+          (let ((t0-0 (-> arg1 dir2 direction quad)))
+            (.pextuw a2-1 t1-0 a2-0)
+            (.lvf vf8 (&-> arg1 dir0 levels quad))
+            (.pextlw t1-1 a3-0 t0-0)
+            (.lvf vf5 (&-> arg1 dir1 color quad))
+            (.pextuw t0-1 a3-0 t0-0)
+            )
+          )
+        )
+      )
+    (.lvf vf9 (&-> arg1 dir1 levels quad))
+    (let ((a3-1 (make-u128 t1-1 v1-0)))
+      (.lvf vf6 (&-> arg1 dir2 color quad))
+      (.pcpyud v1-1 v1-0 t1-1)
+      (.lvf vf10 (&-> arg1 dir2 levels quad))
+      (let ((a2-2 (make-u128 (the-as int t0-1) a2-1)))
+        (.lvf vf7 (&-> arg1 ambi color quad))
+        (.mul.x.vf vf4 vf4 vf8)
+        (.lvf vf11 (&-> arg1 ambi levels quad))
+        (.mul.x.vf vf5 vf5 vf9)
+        (set! (-> arg0 direction 0 quad) (the-as uint128 a3-1))
+        (.mul.x.vf vf6 vf6 vf10)
+        (set! (-> arg0 direction 1 quad) v1-1)
+        (.mul.x.vf vf7 vf7 vf11)
+        (set! (-> arg0 direction 2 quad) (the-as uint128 a2-2))
+        )
+      )
+    (.min.x.vf vf4 vf0 vf0 :mask #b1000)
+    (nop!)
+    (.min.x.vf vf5 vf0 vf0 :mask #b1000)
+    (nop!)
+    (.min.x.vf vf6 vf0 vf0 :mask #b1000)
+    (nop!)
+    (.max.w.vf vf7 vf0 vf0 :mask #b1000)
+    (nop!)
+    (nop!)
+    (.svf (&-> arg0 color 0 quad) vf4)
+    (nop!)
+    (.svf (&-> arg0 color 1 quad) vf5)
+    (nop!)
+    (.svf (&-> arg0 color 2 quad) vf6)
+    (nop!)
+    (.svf (&-> arg0 ambient quad) vf7)
+    0
+    (none)
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;
+;; BONE
+;;;;;;;;;;;;;;;;;;;;
+
+(defun bones-init ((arg0 dma-buffer) (arg1 dma-foreground-sink-group))
+  "Initialize the scratchpad and VU0 for bone work."
+  (scratchpad-object int)
+  (let ((a2-1 (the-as bone-memory (+ 16 (scratchpad-object int))))
+        (v1-2 (the-as bone-memory (+ 16 (scratchpad-object int))))
+        )
+
+    ;; layout joints, bones, and outputs
+    (set! (-> a2-1 work layout joint 0) (the-as joint (+ 256 (scratchpad-object int))))
+    (set! (-> a2-1 work layout joint 1) (the-as joint (+ 4864 (scratchpad-object int))))
+    (set! (-> a2-1 work layout bone 0) (the-as bone (+ 1280 (scratchpad-object int))))
+    (set! (-> a2-1 work layout bone 1) (the-as bone (+ 5888 (scratchpad-object int))))
+    (set! (-> a2-1 work layout output 0) (the-as uint (+ 2816 (scratchpad-object int))))
+    (set! (-> a2-1 work layout output 1) (the-as uint (+ 7424 (scratchpad-object int))))
+
+    ;; set up work
+    (set! (-> v1-2 work next-tag dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+    (set! (-> v1-2 work next-tag vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> v1-2 work next-tag vif1) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> v1-2 work dma-buf) arg0)
+    (set! (-> v1-2 work sink-group) arg1)
+    (set! (-> v1-2 work next-merc) (the-as dma-packet 0))
+    )
+
+  ;; reset globals
+  (let ((v1-3 *merc-globals*))
+    (set! (-> v1-3 first) (the-as uint 0))
+    (set! (-> v1-3 next) (the-as (pointer uint32) 0))
+    )
+
+  ;; upload bones program.
+  (#unless PC_PORT
+           (let ((gp-0 *vu0-dma-list*))
+             (let ((v1-4 gp-0))
+               (set! (-> v1-4 base) (-> v1-4 data))
+               (set! (-> v1-4 end) (&-> v1-4 data-buffer (-> v1-4 allocated-length)))
+               )
+             (dma-buffer-add-vu-function gp-0 bones-vu0-block 0)
+             (let* ((v1-5 gp-0)
+                    (a0-6 (-> v1-5 base))
+                    )
+               (set! (-> (the-as (pointer int64) a0-6)) #x70000000)
+               (set! (-> (the-as (pointer int64) a0-6) 1) 0)
+               (set! (-> v1-5 base) (&+ a0-6 16))
+               )
+             (.sync.l)
+             (dma-buffer-send-chain (the-as dma-bank-source #x10008000) gp-0)
+             )
+           )
+
+  ;; we will use "run" in the shadow queue. Reset that (but don't increment yet, just in case we don't draw shadows)
+  (let ((gp-1 *shadow-queue*))
+    (if (>= (-> gp-1 cur-run) (the-as uint 15))
+        (format #t "Too many shadow-queues!!~%")
+        )
+    (let ((v1-13 (-> gp-1 run (-> gp-1 cur-run))))
+      (set! (-> v1-13 first) (the-as dma-packet 0))
+      (set! (-> v1-13 next) (the-as (pointer dma-packet) 0))
+      )
+    )
+  0
+  (none)
+  )
+
+(defun draw-bones-mtx-calc ((arg0 bone-calculation) (arg1 int) (arg2 bone-calc-flags))
+  "Add the current work to the bone calculation list."
+  (let ((t2-0 (the-as bone-memory (+ 16 (scratchpad-object int))))
+        (v1-1 *bone-calculation-list*)
+        (a3-1 arg0)
+        )
+    ;; grab active buffers
+    (let ((t0-0 (-> t2-0 work regs joint-ptr))
+          (t1-0 (-> t2-0 work regs bone-ptr))
+          (t2-1 (-> t2-0 work regs num-bones))
+          (t3-0 a3-1)
+          )
+      (set! (-> t3-0 flags) arg2)
+      (set! (-> t3-0 num-bones) t2-1)
+      (set! (-> t3-0 matrix-area) (the-as (inline-array matrix) arg1))
+      (set! (-> t3-0 joints) t0-0)
+      (set! (-> t3-0 bones) t1-0)
+      (set! (-> t3-0 next) (the-as bone-calculation 0))
+      )
+    ;; splice into list
+    (if (nonzero? (-> v1-1 next))
+        (set! (-> v1-1 next next) a3-1)
+        )
+    (if (zero? (-> v1-1 first))
+        (set! (-> v1-1 first) a3-1)
+        )
+    (set! (-> v1-1 next) a3-1)
+    )
+  (the-as object (&+ arg0 48))
+  )
+
+(def-mips2c bones-mtx-calc (function int pointer pointer int object none))
+
+(defun bones-mtx-calc-execute ()
+  "Do all pending bone calculations"
+  (local-vars (v1-14 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf3 :class vf)
+         (vf30 :class vf)
+         (vf31 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         )
+    (if *debug-segment*
+        (add-frame
+          (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+          'draw
+          (new 'static 'rgba :r #x40 :b #x40 :a #x80)
+          )
+        )
+    (let ((v1-8 (the-as bone-memory (+ 16 (scratchpad-object int)))))
+      (+ 16 #x70000000)
+      (set! (-> v1-8 work layout joint 0) (the-as joint (+ 256 (scratchpad-object int))))
+      (set! (-> v1-8 work layout joint 1) (the-as joint (+ 4864 (scratchpad-object int))))
+      (set! (-> v1-8 work layout bone 0) (the-as bone (+ 1280 (scratchpad-object int))))
+      (set! (-> v1-8 work layout bone 1) (the-as bone (+ 5888 (scratchpad-object int))))
+      (set! (-> v1-8 work layout output 0) (the-as uint (+ 2816 (scratchpad-object int))))
+      (set! (-> v1-8 work layout output 1) (the-as uint (+ 7424 (scratchpad-object int))))
+      )
+    (#unless PC_PORT (set! (-> (the-as dma-bank-control #x1000e000) sqwc) (new 'static 'dma-sqwc :sqwc #x1 :tqwc #x4)))
+    (let* ((v1-10 *bone-calculation-list*)
+           (gp-0 *identity-matrix*)
+           (s5-0 (-> *math-camera* camera-rot))
+           (s4-0 (-> v1-10 first))
+           )
+      (while (nonzero? s4-0)
+        (let ((v1-13 (if (logtest? (-> s4-0 flags) (bone-calc-flags bncfl01))
+                         gp-0
+                         s5-0
+                         )
+                     )
+              )
+          (.lvf vf28 (&-> v1-13 vector 0 quad))
+          (.lvf vf29 (&-> v1-13 vector 1 quad))
+          (.lvf vf30 (&-> v1-13 vector 2 quad))
+          (.lvf vf31 (&-> v1-13 vector 3 quad))
+          (.lvf vf25 (&-> v1-13 vector 0 quad))
+          (.lvf vf26 (&-> v1-13 vector 1 quad))
+          (.lvf vf27 (&-> v1-13 vector 2 quad))
+
+        (.mov v1-14 vf27)
+        ;; hack??
+
+
+        (bones-mtx-calc
+          (the-as int (-> s4-0 matrix-area))
+          (the-as pointer (-> s4-0 joints))
+          (the-as pointer (-> s4-0 bones))
+          (the-as int (-> s4-0 num-bones))
+          v1-13 ;; hack, added
+          )
+        )
+        (when (logtest? (-> s4-0 flags) (bone-calc-flags bncfl00))
+          (let ((v1-18 (-> s4-0 matrix-area))
+                (a0-22 (-> s4-0 num-bones))
+                (f1-0 (-> s4-0 ripple-scale))
+                (f2-0 (-> s4-0 ripple-y-scale))
+                (f0-0 (-> s4-0 ripple-normal-scale))
+                (a1-9 (-> s4-0 ripple-area))
+                )
+            (let ((a2-2 f2-0))
+              (.mov vf1 a2-2)
+              )
+            (let ((a2-3 f1-0))
+              (.mov vf2 a2-3)
+              )
+            (let ((a2-4 f0-0))
+              (.mov vf3 a2-4)
+              )
+            (label cfg-8)
+            (.lvf vf5 (&-> v1-18 0 vector 1 quad))
+            (.lvf vf6 (&-> v1-18 0 vector 3 quad))
+            (.lvf vf7 (&-> v1-18 1 vector 0 quad))
+            (.lvf vf8 (&-> v1-18 1 vector 2 quad))
+            (.mul.x.vf vf4 vf5 vf2)
+            (.mul.x.vf vf5 vf5 vf1)
+            (let ((a3-1 (-> v1-18 0 vector 0 quad)))
+              (.mul.x.vf vf7 vf7 vf3)
+              (let ((a2-6 (-> v1-18 0 vector 2 quad)))
+                (.mul.x.vf vf8 vf8 vf3)
+                (set! (-> a1-9 0 quad) a3-1)
+                (let ((a3-2 (-> v1-18 1 vector 1 quad)))
+                  (.sub.vf vf6 vf6 vf4)
+                  (set! (-> a1-9 2 quad) a2-6)
+                  (.svf (&-> a1-9 1 quad) vf5)
+                  (set! (-> a1-9 5 quad) a3-2)
+                  )
+                )
+              )
+            (+! a0-22 -1)
+            (.svf (&-> a1-9 4 quad) vf7)
+            ;(.addiu v1-18 (the-as object v1-18) 128)
+            (&+! v1-18 128)
+            (.svf (&-> a1-9 3 quad) vf6)
+            ;;(.addiu (the-as (inline-array vector) a1-9) a1-9 128)
+            (&+! a1-9 128)
+            (b! (nonzero? a0-22) cfg-8 :delay (.svf (&-> a1-9 -2 quad) vf8))
+            )
+          0
+          )
+        (set! s4-0 (-> s4-0 next))
+        )
+      )
+    (#unless PC_PORT (set! (-> (the-as dma-bank-control #x1000e000) sqwc) (new 'static 'dma-sqwc :sqwc #x1 :tqwc #x1)))
+    (bone-list-init)
+    (if *debug-segment*
+        (add-frame
+          (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+          'draw
+          (new 'static 'rgba :r #x7b :g #x7b :b #x7b :a #x80)
+          )
+        )
+    0
+    (none)
+    )
+  )
+
+(defun bones-wrapup ()
+  (let ((v1-1 (the-as bone-memory (+ 16 (scratchpad-object int)))))
+    (when (nonzero? (-> v1-1 work next-merc))
+      ;; only add if we actually drew with merc.
+      (let* ((a0-2 (-> v1-1 work dma-buf))
+             (a3-0 (-> a0-2 base))
+             )
+        (let ((a1-0 (the-as object (-> a0-2 base))))
+          (set! (-> (the-as dma-packet a1-0) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+          (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag))
+          (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag))
+          (set! (-> a0-2 base) (&+ (the-as pointer a1-0) 16))
+          )
+        (dma-bucket-insert-tag
+          (-> *display* frames (-> *display* on-screen) frame bucket-group)
+          (-> v1-1 work sink-group merc-sink bucket)
+          (the-as pointer (-> v1-1 work next-merc))
+          (the-as (pointer dma-tag) a3-0)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;;;;;;;;;;;;;;;
+;; bone debug
+;;;;;;;;;;;;;;;
+
+(define *bones-first* #f)
+
+(defun-debug dump-qword ((arg0 qword))
+  (let ((v1-0 arg0))
+    (format
+      0
+      "~8,'0X: ~8,'0X ~8,'0X ~8,'0X ~8,'0X~%"
+      v1-0
+      (-> v1-0 data 0)
+      (-> v1-0 data 1)
+      (-> v1-0 data 2)
+      (-> v1-0 data 3)
+      )
+    )
+  0
+  (none)
+  )
+
+(defun-debug dump-mem ((arg0 pointer) (arg1 int))
+  (dotimes (s4-0 arg1)
+    (format
+      0
+      "~8,'0X: ~8,'0X ~8,'0X ~8,'0X ~8,'0X"
+      (&+ arg0 (* (* s4-0 4) 4))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (* s4-0 4) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 1) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 2) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 3) 4))))
+      )
+    (format
+      0
+      "      ~F ~F ~F ~F ~%"
+      (-> (the-as (pointer uint32) (&+ arg0 (* (* s4-0 4) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 1) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 2) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 3) 4))))
+      )
+    )
+  0
+  (none)
+  )
+
+(defun-debug bones-debug ()
+  0
+  (none)
+  )
+
+(defun-debug dump-bone-mem ()
+  (format 0 "==  joints 0 ===========~%")
+  (dump-mem (the-as pointer (+ 256 #x70000000)) 64)
+  (format 0 "==  bones 0 ============~%")
+  (dump-mem (the-as pointer (+ 1280 #x70000000)) 96)
+  (format 0 "==  output 0 ===========~%")
+  (dump-mem (the-as pointer (+ 2816 #x70000000)) 128)
+  (format 0 "~%~%~%")
+  (format 0 "==  joints 1 ===========~%")
+  (dump-mem (the-as pointer (+ 4864 #x70000000)) 64)
+  (format 0 "==  bones 1 ============~%")
+  (dump-mem (the-as pointer (+ 5888 #x70000000)) 96)
+  (format 0 "==  output 1 ===========~%")
+  (dump-mem (the-as pointer (+ 7424 #x70000000)) 128)
+  (format 0 "==  dma-list ===========~%")
+  (dump-mem (the-as pointer (+ 256 #x70000000)) 90)
+  (format 0 "========================~%~%")
+  0
+  (none)
+  )
+
+(define *default-shadow-settings* (new 'static 'shadow-settings
+                                    :shadow-dir
+                                    (new 'static 'vector :x -0.4226 :y -0.9063 :w 409600.0)
+                                    :bot-plane (new 'static 'plane :y 1.0 :w 37683.2)
+                                    :top-plane (new 'static 'plane :y 1.0 :w 4096.0)
+                                    :fade-dist 409600.0
+                                    )
+        )
+
+(defun draw-bones-shadow ((arg0 draw-control) (arg1 pointer) (arg2 pointer))
+  ;; (local-vars (ra-0 int))
+
+  ;;      the dma packet we'll use for shadow in the end.
+  (let* ((v1-0 (the-as dma-packet (&+ arg2 0)))
+         ;; the shadow to draw
+         (t1-0 (-> arg0 shadow))
+         ;; the shadow run to add to
+         (a3-4 (-> *shadow-queue* run (-> *shadow-queue* cur-run)))
+         ;; the dma data to add to
+         (a2-1 (&+ arg2 16))
+         ;; the distance of the thing we're drawing
+         (t4-0 (-> (scratchpad-object terrain-context) work foreground bone-mem work distance w))
+         ;; the shadow packet we'll build here
+         (t0-2 (the-as shadow-dma-packet a2-1))
+         (t2-0 (-> t1-0 header num-joints))
+         (t3-0 (-> a3-4 next))
+         (t5-2 (if (-> arg0 shadow-ctrl)
+                   (-> arg0 shadow-ctrl settings)
+                   *default-shadow-settings*
+                   )
+               )
+         (t6-0 (-> t5-2 flags))
+         )
+    (-> arg0 cur-lod)
+    (when (zero? (logand t6-0 (shadow-flags disable-fade)))
+      (if (< (-> t5-2 fade-dist) t4-0)
+          (set! t6-0 (logior t6-0 (shadow-flags disable-draw)))
+          )
+      )
+    (cond
+      ((zero? (logand t6-0 (shadow-flags disable-draw)))
+       (let ((t2-1 (* t2-0 8))
+             (t4-4 (-> t1-0 total-size))
+             )
+         0
+         (set! (-> t0-2 tag dma) (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt)))
+         (set! (-> t0-2 tag vif0) (new 'static 'vif-tag))
+         (set! (-> t0-2 tag vif1) (new 'static 'vif-tag))
+         (if (nonzero? t3-0)
+             (set! (-> t3-0 0) (the-as dma-packet t0-2))
+             )
+         (if (zero? (-> a3-4 first))
+             (set! (-> a3-4 first) (the-as dma-packet t0-2))
+             )
+         (let ((t3-5 (&-> t0-2 tag vif1)))
+           (let ((t6-4 (the-as (inline-array vector) (-> t0-2 settings)))
+                 (t7-3 (-> t5-2 center quad))
+                 (t8-0 (-> t5-2 shadow-dir quad))
+                 (t9-0 (-> t5-2 bot-plane quad))
+                 (ra-0 (-> t5-2 top-plane quad))
+                 )
+             ;; (.lq ra-0 48 t5-2)
+             (let ((t5-3 (-> t5-2 fade-vec quad)))
+               (set! (-> t6-4 0 quad) t7-3)
+               (set! (-> t6-4 1 quad) t8-0)
+               (set! (-> t6-4 2 quad) t9-0)
+               (set! (-> t6-4 3 quad) ra-0)
+               (set! (-> t6-4 4 quad) t5-3)
+               )
+             )
+           (let ((a0-3
+                   (the-as
+                     vector
+                     (+ (the-as uint (-> arg0 skeleton bones 0 transform vector 3))
+                        (* (the-as uint 96) (-> arg0 shadow-joint-index))
+                        )
+                     )
+                   )
+                 )
+             (set! (-> t0-2 settings center x) (-> a0-3 x))
+             (set! (-> t0-2 settings center y) (-> a0-3 y))
+             (set! (-> t0-2 settings center z) (-> a0-3 z))
+             )
+           (set! (-> t0-2 geo-ref dma)
+                 (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int (&-> t1-0 total-size)) :qwc t4-4)
+                 )
+           (set! (-> t0-2 geo-ref vif0) (new 'static 'vif-tag))
+           (set! (-> t0-2 geo-ref vif1) (new 'static 'vif-tag))
+           (set! (-> t0-2 mtx-ref dma)
+                 (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int (&+ arg1 256)) :qwc t2-1)
+                 )
+           (set! (-> t0-2 mtx-ref vif0) (new 'static 'vif-tag))
+           (set! (-> t0-2 mtx-ref vif1) (new 'static 'vif-tag))
+           (set! (-> t0-2 end-tag dma) (new 'static 'dma-tag :id (dma-tag-id end)))
+           (set! (-> t0-2 end-tag vif0) (new 'static 'vif-tag))
+           (set! (-> t0-2 end-tag vif1) (new 'static 'vif-tag))
+           (let ((v0-0 (&+ a2-1 144)))
+             (set! (-> a3-4 next) (the-as (pointer dma-packet) t3-5))
+             (set! (-> v1-0 dma) (new 'static 'dma-tag :id (dma-tag-id next) :addr (the-as int v0-0)))
+             (set! (-> v1-0 vif0) (new 'static 'vif-tag))
+             (set! (-> v1-0 vif1) (new 'static 'vif-tag))
+             v0-0
+             )
+           )
+         )
+       )
+      (else
+        (the-as pointer v1-0)
+        )
+      )
+    )
+  )
+
+;(def-mips2c draw-bones-generic-merc (function draw-control pointer pointer int pointer))
+(defun draw-bones-generic-merc ((arg0 draw-control) (arg1 pointer) (arg2 pointer) (arg3 int))
+  "Add data for generic merc drawing to the dma buffer. Note that this data is not yet converted to the generic format,
+   so it is not linked into the chain. This data is linked to itself and can be found again by following the chain
+   in *merc-globals*, which, despite the name, only contains generic merc data."
+  (local-vars
+    (sv-16 generic-merc-ctrl)
+    (sv-32 merc-effect)
+    (sv-48 int)
+    (sv-64 merc-fragment)
+    (sv-80 merc-fragment-control)
+    (sv-96 uint)
+    (sv-112 int)
+    (sv-128 int)
+    (sv-144 generic-merc-ctrl)
+    )
+  (let ((gp-0 (the-as object (&+ arg2 0))))
+    (let ((s2-0 (-> arg0 lod-set lod (-> arg0 cur-lod) geo))
+          (s0-0 (-> *merc-globals* next))
+          )
+      (set! sv-144 (the-as generic-merc-ctrl (&+ arg2 16)))
+      (dotimes (s1-0 (the-as int (-> s2-0 header effect-count)))
+        (when (nonzero? (-> *merc-bucket-info* effect s1-0 use-mercneric))
+          (set! sv-16 sv-144)
+          (set! sv-32 (-> s2-0 effect s1-0))
+          (+! (-> *merc-global-stats* mercneric fragments) (-> sv-32 frag-count))
+          (+! (-> *merc-global-stats* mercneric tris) (-> sv-32 tri-count))
+          (+! (-> *merc-global-stats* mercneric dverts) (-> sv-32 dvert-count))
+          (when (nonzero? s0-0)
+            (set! (-> s0-0 0) (the-as uint sv-16))
+            sv-16
+            )
+          (when (zero? (-> *merc-globals* first))
+            (set! (-> *merc-globals* first) (the-as uint sv-16))
+            sv-16
+            )
+          (set! s0-0 (&-> sv-16 tag vif1))
+          (quad-copy! (the-as pointer (-> sv-16 lights)) (the-as pointer (-> *merc-bucket-info* light)) 7)
+          (quad-copy! (the-as pointer (-> sv-16 header)) (the-as pointer (-> s2-0 header)) 5)
+          (set! (-> sv-16 header envmap-tint) (the-as uint (-> *merc-bucket-info* effect s1-0 color-fade)))
+          (set! (-> sv-16 header needs-clip) (the-as uint (-> *merc-bucket-info* needs-clip)))
+          (set! (-> sv-16 header use-isometric) (the-as uint arg3))
+          (when (nonzero? arg3)
+            (set! (-> sv-16 header needs-clip) (the-as uint 0))
+            0
+            )
+          (set! (-> sv-16 header use-attached-shader) (the-as uint 0))
+          (set! (-> sv-16 header display-triangles) (the-as uint 1))
+          (set! (-> sv-16 header two-mat-count) (the-as uint 0))
+          (set! (-> sv-16 header shader-upload-count) (the-as uint (if (logtest? (-> sv-32 effect-bits) 2)
+                                                                       1
+                                                                       0
+                                                                       )
+                                                              )
+                )
+          (when (nonzero? (-> arg0 death-timer))
+            (when (>= (the-as int (- (-> arg0 death-timer-org) (-> arg0 death-timer)))
+                      (the-as int (-> arg0 death-draw-overlap))
+                      )
+              (set! (-> sv-16 header display-triangles) (the-as uint 0))
+              0
+              )
+            (when (not (paused?))
+              (set! (-> sv-16 header two-mat-count) (-> arg0 death-vertex-skip))
+              (set! (-> sv-16 header death-effect) (-> arg0 death-effect))
+              (set! (-> sv-16 header two-mat-reuse-count)
+                    (/ (* (-> arg0 death-vertex-skip) (- (-> arg0 death-timer-org) (-> arg0 death-timer)))
+                       (-> arg0 death-timer-org)
+                       )
+                    )
+              )
+            )
+          (set! (-> sv-16 header query) (the-as basic 0))
+          (when (logtest? (-> sv-32 effect-bits) 4)
+            (when (-> arg0 ripple)
+              (if (-> arg0 ripple send-query)
+                  (set! (-> sv-16 header query) (-> arg0 ripple query))
+                  )
+              )
+            )
+          (quad-copy! (the-as pointer (-> sv-16 effect)) (the-as pointer sv-32) 2)
+          (set! sv-48 15)
+          (when (nonzero? (-> sv-32 extra-info))
+            (when (nonzero? (-> sv-32 extra-info shader-offset))
+              (set! (-> sv-16 header use-attached-shader) (the-as uint 1))
+              (quad-copy!
+                (the-as pointer (&+ sv-16 240))
+                (the-as pointer (+ (the-as uint (-> sv-32 extra-info)) (* (-> sv-32 extra-info shader-offset) 16)))
+                5
+                )
+              (set! sv-48 (+ sv-48 5))
+              sv-48
+              )
+            )
+          (set! (-> sv-16 tag dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc (+ sv-48 -1)))
+          (set! (-> sv-16 tag vif0) (the-as vif-tag sv-48))
+          (set! (-> sv-16 tag vif1) (new 'static 'vif-tag))
+          (set! sv-144 (the-as generic-merc-ctrl (+ (the-as uint sv-144) (* sv-48 16))))
+          sv-144
+          (set! sv-64 (-> sv-32 frag-geo))
+          (set! sv-80 (-> sv-32 frag-ctrl))
+          (set! sv-96 (-> sv-32 frag-count))
+          (set! sv-112 0)
+          (while (< sv-112 (the-as int sv-96))
+            (set! sv-128 (asize-of sv-80))
+            (let ((v1-104 (asize-of sv-64)))
+              ;; (format 0 "~D TAG at #x~X merc size ~D bytes ~D qw~%" sv-112 sv-144 v1-104 (shr v1-104 4))
+              (set! (-> sv-144 tag dma)
+                    (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int sv-64) :qwc (shr v1-104 4))
+                    )
+              (set! (-> sv-144 tag vif0) (new 'static 'vif-tag))
+              (set! (-> sv-144 tag vif1) (new 'static 'vif-tag))
+              (when (nonzero? sv-112)
+                (set! (-> (the-as (pointer vif-tag) s0-0) 0) (the-as vif-tag sv-144))
+                (set! s0-0 (&-> sv-144 tag vif1))
+                )
+              (let ((a0-55 (the-as structure (-> sv-144 lights))))
+                (dotimes (a1-17 (the-as int (-> sv-80 mat-xfer-count)))
+                  (let ((a3-2 (&+ arg1 (* (-> sv-80 mat-dest-data a1-17 matrix-number) 128))))
+                    (set! (-> (the-as dma-packet a0-55) dma)
+                          (new 'static 'dma-tag :qwc #x7 :id (dma-tag-id ref) :addr (the-as int a3-2))
+                          )
+                    ; (let ((vec (the vector (+ (the-as int a3-2) 16))))
+                    ;   (format 0 "#x~X #x~X mat ~D: ~f ~f ~f~%" a0-55 a3-2 a1-17 (-> vec x) (-> vec y) (-> vec z))
+                    ;   )
+
+                    )
+                  (set! (-> (the-as dma-packet a0-55) vif0) (new 'static 'vif-tag))
+                  (set! (-> (the-as dma-packet a0-55) vif1) (new 'static 'vif-tag))
+                  (set! a0-55 (&+ (the-as dma-packet a0-55) 16))
+                  )
+                (set! (-> (the-as dma-packet a0-55) dma) (new 'static 'dma-tag :id (dma-tag-id end)))
+                (set! (-> (the-as dma-packet a0-55) vif0) (new 'static 'vif-tag))
+                (set! (-> (the-as dma-packet a0-55) vif1) (new 'static 'vif-tag))
+                (set! sv-144 (the-as generic-merc-ctrl (&+ (the-as dma-packet a0-55) 16)))
+                )
+              (set! sv-80 (the-as merc-fragment-control (&+ (the-as pointer sv-80) sv-128)))
+              (set! sv-64 (the-as merc-fragment (&+ (the-as pointer sv-64) v1-104)))
+              )
+            sv-64
+            (set! sv-112 (+ sv-112 1))
+            )
+          )
+        )
+      (set! (-> *merc-globals* next) s0-0)
+      )
+    (set! (-> (the-as dma-packet gp-0) dma)
+          (new 'static 'dma-tag :id (dma-tag-id next) :addr (the-as int sv-144))
+          )
+    (set! (-> (the-as dma-packet gp-0) vif0) (new 'static 'vif-tag))
+    (set! (-> (the-as dma-packet gp-0) vif1) (new 'static 'vif-tag))
+    )
+  0
+  (the-as pointer sv-144)
+  )
+;; draw-boes-merc
+;; draw-bones-check-longest-edge
+;; draw-bones-check-longest-edgei-asm
+;; draw-bones
+;; draw-bones-hud
+
+(def-mips2c draw-bones-merc (function draw-control object object int int pointer))
+(def-mips2c draw-bones-check-longest-edge-asm (function draw-control float symbol))
+
+(defmacro store-qw (addr val)
+  `(set! (-> (the-as (pointer uint128) ,addr)) (the-as uint128 ,val))
+  )
+
+(defmacro store-u32 (addr val)
+  `(set! (-> (the-as (pointer uint32) ,addr)) ,val)
+  )
+
+(defun pc-draw-bones ((dc draw-control) (dma-buf pointer))
+  "Add a dma packet to tell the PC renderer which model we are renderering."
+  (let ((packet (the-as dma-packet dma-buf)))
+    ;; merc draw asm will check this.
+    (when (zero? (-> (scratchpad-object terrain-context) work foreground bone-mem work next-merc))
+      (set! (-> (scratchpad-object terrain-context) work foreground bone-mem work next-merc) packet)
+      )
+    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 10))
+    (set! (-> packet vif0) (new 'static 'vif-tag))
+    (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+    (set! dma-buf (the pointer (&+ packet 16)))
+    )
+
+  (let ((data-ptr (the-as (pointer uint128) dma-buf)))
+    (charp<-string (the (pointer uint8) (&-> data-ptr 0)) (-> dc mgeo name))
+    )
+  (&+! dma-buf (* 16 10))
+
+  ;; merc linking needs this.
+  (let ((packet (the-as dma-packet dma-buf)))
+    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 0))
+    (set! (-> packet vif0) (new 'static 'vif-tag))
+    (set! (-> packet vif1) (new 'static 'vif-tag))
+    (set! dma-buf (the pointer (&+ packet 16)))
+    )
+
+  dma-buf
+  )
+
+(defun draw-bones ((arg0 draw-control) (dma-buf dma-buffer) (arg2 float))
+  "Main draw function for all bone-related renderers. Will set up merc, generic and shadow.
+   and also add the bones to the calculation list."
+  (local-vars  (a0-16 int) (a0-17 int) (a0-62 int) (a2-10 int) (a2-12 int)
+    (used-merc int) (used-mercneric int) (sv-144 ripple-control))
+  (rlet ((vf1 :class vf) (vf2 :class vf) (vf3 :class vf) (vf4 :class vf) (vf5 :class vf) (vf6 :class vf)
+         (vf7 :class vf) (vf8 :class vf) (vf9 :class vf) (acc :class vf))
+
+    ;; compute the number of bones. I believe this num-joints doesn't count align/prejoint/main, so each needs a bone
+    (let* ((num-bones (+ (-> arg0 mgeo num-joints) 3))
+           ;; we'll use 128-bytes/bone.
+           (bone-data-size (* num-bones 128))
+           ;; temp work
+           (spr-work (scratchpad-object terrain-context))
+           )
+
+      ;;;;;;;;;;;;;;;;;;;;;;;;;
+      ;; BONE CALC SETUP
+      ;;;;;;;;;;;;;;;;;;;;;;;;;
+
+      ;; next, grab some DMA data.
+      ;; we'll also use this for storing bone calculation entries.
+      (let* ((dma-data-start (-> dma-buf base))
+             ;; first qw is the tag, stash the bone-calc-entry right after that.
+             (bone-calc-entry (the-as bone-calculation (&+ dma-data-start 16)))
+             ;; after that we'll use the space for storing bone matrices.
+             ;; we won't calculate them now, but instead we'll tell the *bone-calculation-list* to put them here later.
+             (matrix-data (the-as object (&+ dma-data-start 64)))
+             )
+
+        ;; align the matrix data to 64 bytes (we know it is at least 16 byte aligned)
+        (let ((a2-1 (logand (the-as int matrix-data) 48)))
+          (b! (zero? a2-1) cfg-2 :delay (nop!))
+          (set! matrix-data (&- (&+ (the-as pointer matrix-data) 64) (the-as uint a2-1)))
+          )
+        (label cfg-2)
+
+        ;; start recording perf stats.
+        ;; this just counts the stats for adding the calculation to the linked list.
+        ;; which is really fast and not worth profiling.
+        ;; I suspect the bone calculation originally was here,
+        ;; but they moved it and forgot to move the performance counters too.
+        (reset! (-> *perf-stats* data (perf-stat-bucket bones)))
+
+        ;; figure out where everything will be
+        (let ((a2-6 (the-as bone-regs (+ 240 (scratchpad-object int)))))
+          ;; the joints are stored in the static art data
+          (set! (-> a2-6 joint-ptr) (the-as (inline-array joint) (-> arg0 jgeo data 0)))
+          ;; the final bones output used by the rest of the engine is stored in
+          ;; the process-drawable's skeleton
+          (set! (-> a2-6 bone-ptr) (-> arg0 skeleton bones))
+          (set! (-> a2-6 num-bones) (the-as uint num-bones))
+          )
+
+        ;; Add the bone calculation to the list, to be done later.
+        ;; this will write to both the "matrix data" and the bones array.
+        (let ((t0-2 matrix-data)
+              (t1-0 0)
+              (t4-0 (the-as bone-memory (+ 16 (scratchpad-object int))))
+              (a2-8 *bone-calculation-list*)
+              (a3-8 bone-calc-entry)
+              )
+          (let ((t2-0 (-> t4-0 work regs joint-ptr))
+                (t3-0 (-> t4-0 work regs bone-ptr))
+                (t4-1 (-> t4-0 work regs num-bones))
+                (t5-0 a3-8)
+                )
+            (set! (-> t5-0 flags) (the-as bone-calc-flags t1-0))
+            (set! (-> t5-0 num-bones) t4-1)
+            (set! (-> t5-0 matrix-area) (the-as (inline-array matrix) t0-2))
+            (set! (-> t5-0 joints) t2-0)
+            (set! (-> t5-0 bones) t3-0)
+            (set! (-> t5-0 next) (the-as bone-calculation 0))
+            )
+          (if (nonzero? (-> a2-8 next))
+              (set! (-> a2-8 next next) a3-8)
+              )
+          (if (zero? (-> a2-8 first))
+              (set! (-> a2-8 first) a3-8)
+              )
+          (set! (-> a2-8 next) a3-8)
+          )
+        (&+ bone-calc-entry 48)
+        ;; end stat collection
+        (read! (-> *perf-stats* data (perf-stat-bucket bones)))
+
+        ;; set up the dma buffer
+        (let ((s2-0 (the-as object (+ (the-as uint matrix-data) bone-data-size))))
+          (let ((a0-2 (shl (the-as int s2-0) 32)))
+            (set! (-> (the-as (pointer uint128) dma-data-start))
+                  (logior (-> spr-work work foreground bone-mem work next-tag quad) a0-2)
+                  )
+            ;; NOTE: does this work correctly for the upper 64 bits??
+            )
+
+          ;; only data-format 1 is supported.
+          (when (= (-> arg0 data-format) 1)
+
+            ;; we'll be filling out the *merc-bucket-info*, then calling the draw asm functions
+            ;; the asm functions read *merc-bucket-info* and generate DMA data as needed.
+
+            ;;;;;;;;;;;;;;;;;;;;;;;;;
+            ;; LIGHT SETUP
+            ;;;;;;;;;;;;;;;;;;;;;;;;;
+
+            ;; lights should be converted to a single vu-lights already, by the drawing code.
+            ;; it stashes lights on the scratchpad. We'll load these here and transform them.
+            ;; the result goes in the merc-bucket-info.
+            (let ((v1-6 (the-as vu-lights (+ 64 (scratchpad-object int))))
+                  (a0-7 (-> *merc-bucket-info* light))
+                  )
+              ;; merc does drawing in a camera rotated frame, so multiply by inv-rot to have the right directions
+              ;; relative to the camera.
+              (let ((a1-8 (-> *math-camera* inv-camera-rot)))
+                (.lvf vf4 (&-> a1-8 vector 0 quad))
+                (.lvf vf5 (&-> a1-8 vector 1 quad))
+                (.lvf vf6 (&-> a1-8 vector 2 quad))
+                )
+              (.lvf vf1 (&-> v1-6 direction 0 quad))
+              (.lvf vf2 (&-> v1-6 direction 1 quad))
+              (.lvf vf3 (&-> v1-6 direction 2 quad))
+              ;;(.vcallms 54) ;; manually ported to goal here.
+
+              ;mulax.xyzw ACC, vf01, vf04
+              (.mul.x.vf acc vf1 vf4)
+              ;madday.xyzw ACC, vf02, vf04
+              (.add.mul.y.vf acc vf2 vf4 acc)
+              ;maddz.xyzw vf07, vf03, vf04
+              (.add.mul.z.vf vf7 vf3 vf4 acc)
+
+              ;mulax.xyzw ACC, vf01, vf05
+              (.mul.x.vf acc vf1 vf5)
+              ;madday.xyzw ACC, vf02, vf05
+              (.add.mul.y.vf acc vf2 vf5 acc)
+              ;maddz.xyzw vf08, vf03, vf05
+              (.add.mul.z.vf vf8 vf3 vf5 acc)
+
+              ;mulax.xyzw ACC, vf01, vf06
+              (.mul.x.vf acc vf1 vf6)
+              ;madday.xyzw ACC, vf02, vf06 :e
+              (.add.mul.y.vf acc vf2 vf6 acc)
+              ;maddz.xyzw vf09, vf03, vf06
+              (.add.mul.z.vf vf9 vf3 vf6 acc)
+
+              (let ((a1-9 (-> v1-6 color 0 quad)))
+                (let ((a2-14 (-> v1-6 color 1 quad)))
+                  (let ((a3-11 (-> v1-6 color 2 quad)))
+                    (let ((v1-7 (-> v1-6 ambient quad)))
+                      (set! (-> a0-7 color 0 quad) a1-9)
+                      (set! (-> a0-7 color 1 quad) a2-14)
+                      (set! (-> a0-7 color 2 quad) a3-11)
+                      (set! (-> a0-7 ambient quad) v1-7)
+                      )
+                    )
+                  )
+                )
+              (.svf (&-> a0-7 direction 0 quad) vf7)
+              (.svf (&-> a0-7 direction 1 quad) vf8)
+              (.svf (&-> a0-7 direction 2 quad) vf9)
+              (set! (-> a0-7 direction 1 w) (the-as float 0))
+              )
+
+            ;; the drawable system's culling already knows if we need clipping or not,
+            ;; we just trust it. Anything needing clip will have this set. It might set it for
+            ;; meshes that actually don't need clipping.
+            (set! (-> *merc-bucket-info* needs-clip)
+                  (if (logtest? (-> arg0 status) (draw-status needs-clip))
+                      1
+                      0
+                      )
+                  )
+
+            ;; Now, we need to decide on merc settings. Default to nothing.
+            (set! used-merc 0)
+            (set! used-mercneric 0)
+            ;; clipping is really slow because merc vertex interpolation is slow
+            ;; so we have an option to just let the GS scissor, called mercprime.
+            ;; it requires a special codepath in merc called mercprime.
+            (set! (-> *merc-bucket-info* need-mercprime-if-merc) 0)
+            ;; if we're really out of bounds, mercprime will fail, and we need to fall back to mercneric
+            ;; in order to do clipping.
+            (set! (-> *merc-bucket-info* must-use-mercneric-for-clip) 0)
+
+            ;;;;;;;;;;;;;;;;;;;
+            ;; CLIPPING TEST
+            ;; in the PC port merc2 renderer, we handle clipping perfectly without any special flags, and it's the fastest.
+            ;; so we only need to worry about mercneric/mercprime if we want to maintain backward compatibility with original merc
+            (#when BACKWARD_COMPAT_MERC_CLIP
+                     (when (logtest? (-> arg0 status) (draw-status needs-clip))
+                       ;; we can either clip with "mercprime" (part of merc), or fall back to generic.
+                       ;; the generic approach always works, but is slower, so we try to use mercprime.
+                       ;; the user must provide a longest edge length, and we must pass an edge check (fails if close to camera)
+                       (cond
+                         ((nonzero? (-> arg0 longest-edge))
+                          ;; check to see if the edge will be too long:
+                          (if (draw-bones-check-longest-edge-asm arg0 arg2)
+                              (set! (-> *merc-bucket-info* need-mercprime-if-merc) 1)      ;; use mercprime!
+                              (set! (-> *merc-bucket-info* must-use-mercneric-for-clip) 1) ;; failed, use generic and actually scissor
+                              )
+                          )
+                         (else
+                           ;; in cases where no longest edge is set, fall back to mercneric for clipping always
+                           (set! (-> *merc-bucket-info* must-use-mercneric-for-clip) 1)
+                           )
+                         )
+                       )
+                     )
+
+            ;; grab the geometry at the appropriate level of detail.
+            (let ((geom (-> arg0 lod-set lod (-> arg0 cur-lod) geo))
+                  ;; merc2 can't handle all cases of the original merc, so we add this fallback on PC.
+                  (pc-force-mercneric #f)
+                  )
+              ;; loop over effects, and set them up/pick renderers.
+              (dotimes (effect-idx (the-as int (-> geom header effect-count)))
+
+                ;; check if this "effect" uses texture scrolling
+                (when (logtest? (-> geom effect effect-idx effect-bits) 1)
+                  ;; grab the extra info for it:
+                  (let* ((v1-35 (-> geom effect effect-idx extra-info))
+                         (v1-36 (the-as mei-texture-scroll (+ (the-as uint v1-35) (* (-> v1-35 texture-scroll-offset) 16))))
+                         )
+                    (when (< arg2 (-> v1-36 max-dist)) ;; in range to draw?
+                        ;; do scrolling. in PC, always use generic here because merc2 can't update texture coordinates
+                        (#when PC_PORT
+                          (set! pc-force-mercneric #t)
+                          )
+                        (texscroll-make-request (-> geom effect effect-idx))
+                        )
+                    )
+                  )
+
+                ;; check if this effect uses "ripple"
+                (when (logtest? (-> geom effect effect-idx effect-bits) 4)
+                  (when (-> arg0 ripple)
+                    ;; merc2 can't handle ripple, even if it's off.
+                    (#when PC_PORT
+                      (set! pc-force-mercneric #t)
+                      )
+                    (set! sv-144 (-> arg0 ripple))
+                    (let* ((f1-4 (/ (- (-> sv-144 far-fade-dist) arg2) (- (-> sv-144 far-fade-dist) (-> sv-144 close-fade-dist))))
+                           (f1-6 (fmax 0.0 (fmin 1.0 f1-4)))
+                           (f0-4 f1-6)
+                           (f30-0 (* f1-6 (-> sv-144 global-scale)))
+                           )
+                      (set! (-> sv-144 faded-scale) f30-0)
+                      (let ((f1-9 (/ f30-0 (* 128.0 (-> geom header xyz-scale)))))
+                        0
+                        (set! a0-16 (* num-bones 128))
+                        (let ((v1-56 #x20000000))
+                          (set! a0-17 (+ a0-16 (the-as int s2-0)));(.addu a0-17 a0-16 s2-0)
+                          (logand! a0-17 #xffffffff)
+                          ;(s.q! s2-0 v1-56)
+                          (store-qw s2-0 v1-56)
+                          )
+                        (let ((v1-57 (+ a0-17 16)))
+                          ;(s.w! (+ s2-0 4) v1-57)
+                          (store-u32 (&+ (the pointer s2-0) 4) v1-57)
+                          )
+                        (set! matrix-data (&+ (the pointer s2-0) 16))
+                        (let ((v1-59 (-> *bone-calculation-list* next)))
+                          (logior! (-> v1-59 flags) (bone-calc-flags bncfl00))
+                          (set! (-> v1-59 ripple-scale) f30-0)
+                          (set! (-> v1-59 ripple-y-scale) f1-9)
+                          (set! (-> v1-59 ripple-normal-scale) (* f0-4 (-> sv-144 individual-normal-scale)))
+                          (set! (-> v1-59 ripple-area) (the-as (inline-array vector) matrix-data))
+                          )
+                        )
+                      (set! (-> dma-buf base) (the-as pointer (-> (the-as (pointer uint32) s2-0) 1)))
+                      (set! s2-0 (-> dma-buf base))
+                      (if (not (and (= f30-0 0.0) (= (-> sv-144 last-frame-scale) 0.0)))
+                          (ripple-make-request (the-as ripple-wave (-> sv-144 waveform)) (-> geom effect effect-idx))
+                          )
+                      (set! (-> sv-144 last-frame-scale) f30-0)
+                      )
+                    )
+                  )
+
+                ;; additional check on PC to force mercneric for blend shapes
+                (#when PC_PORT
+                  (let* ((pd (the process-drawable (-> arg0 process)))
+                         (jc (-> pd skel)))
+                    (when (nonzero? jc)
+                      (when (logtest? (-> jc status) (janim-status blerc))
+                        (set! pc-force-mercneric #t)
+                        )
+                      )
+                    )
+                  )
+
+
+                ;; final mercneric checks
+                (cond
+                  ((nonzero? (-> arg0 death-timer)) ;; death effect?
+                   ;; use mercneric always!
+                   (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 1))
+                   (set! used-mercneric 1)
+                   used-mercneric
+                   )
+                  ((nonzero? (-> geom effect effect-idx envmap-usage))
+                   ;; if we need envmap, set it up.
+
+                   ;; hack:
+                   ;; the game switches from mercneric to merc after the envmap is faded out.
+                   ;; this would normally be fine in the PC port too, but we want the eyes to remain
+                   ;; using mercneric (dynamic texture updates) in PC.
+                   ;; so we force mercneric on models with envmap and very few tris.
+                   ;; it seems to work so far... (flutflut has 134 triangles in the eye effect)
+                   (#when PC_PORT
+                     (when (and
+                             (< (-> geom effect effect-idx tri-count) 200)
+                             (-> geom header eye-ctrl)
+                             (nonzero? (-> geom header eye-ctrl))
+                             )
+                       (set! pc-force-mercneric #t)
+                       )
+                     )
+                   (let* ((v1-83 (-> geom effect effect-idx extra-info))
+                          ;; pointer to envmap tint data
+                          (v1-84 (the-as structure (+ (the-as uint v1-83) (* (-> v1-83 envmap-tint-offset) 16))))
+                          ;; the envmap effect fades away at a certain distance
+                          (f1-12 (-> (the-as mei-envmap-tint v1-84) fade0))
+                          (f0-8 (-> (the-as mei-envmap-tint v1-84) fade1))
+                          )
+                     ;; compute and saturate the envmap effect strength
+                     (let ((f0-9 (+ (* f1-12 arg2) f0-8)))
+                       (if (< 1.0 f0-9)
+                           (set! f0-9 1.0)
+                           )
+                       (if (< f0-9 0.0)
+                           (set! f0-9 0.0)
+                           )
+                       (with-pc
+                            (if (-> *pc-settings* force-envmap?)
+                                (set! f0-9 1.0)))
+
+                       (cond
+                         ;; do envmap stuff if we are using generic anyway, or our strength is > 0.
+                         ((or (nonzero? (-> *merc-bucket-info* must-use-mercneric-for-clip)) (< 0.0 f0-9) pc-force-mercneric)
+
+                          ;; multiply colors by sun tint.
+                          (let ((v1-85 (&-> (the-as merc-extra-info v1-84) dummy 4))
+                                (a0-36 (the-as object (-> *merc-bucket-info* effect effect-idx)))
+                                )
+                            (let ((a1-16 (-> *time-of-day-context* current-sun env-color))
+                                  (f0-10 (* 0.0078125 f0-9))
+                                  )
+                              (dotimes (a2-15 3)
+                                (set! (-> (the-as (pointer int8) a0-36) a2-15)
+                                      (the int (* f0-10 (-> a1-16 data a2-15) (the float (-> v1-85 a2-15))))
+                                      )
+                                )
+                              )
+                            (set! (-> (the-as (pointer uint8) a0-36) 3) (the-as uint 0))
+                            )
+                          ;; env mapping, so use mercneric.
+                          (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 1))
+                          (set! used-mercneric 1)
+                          used-mercneric
+                          )
+                         (else
+                           ;; no env map, don't use mercneric.
+                           (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
+                           (set! (-> *merc-bucket-info* effect effect-idx ignore-alpha) (the-as uint 1))
+                           (set! used-merc 1)
+                           ;; note sure what this is exactly...
+                           (when (logtest? (-> geom effect effect-idx effect-bits) 2)
+                             (let ((v1-102 (-> *merc-bucket-info* light)))
+                               (set! (-> v1-102 direction 1 w) 0.000000000000000000000000000000000000011755039)
+                               )
+                             )
+                           )
+                         )
+                       )
+                     )
+                   )
+                  ;; final two cases are for all other effects that don't matter generic/normal
+                  ((or (nonzero? (-> *merc-bucket-info* must-use-mercneric-for-clip)) pc-force-mercneric)
+                   (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 1))
+                   (set! used-mercneric 1)
+                   used-mercneric
+                   )
+                  (else
+                    (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
+                    (set! (-> *merc-bucket-info* effect effect-idx ignore-alpha) (the-as uint 0))
+                    (set! used-merc 1)
+                    used-merc
+                    )
+                  )
+
+                ;; final force to mercneric for ps
+                (when pc-force-mercneric
+                  (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 1))
+                  (set! used-mercneric 1)
+                  )
+                ) ;; end effect loop
+
+              ;; draw generic!
+              ;; note: this doesn't do the fully draw, there's some other stuff in process-drawable.gc to actually execute.
+              (when (nonzero? used-mercneric)
+                (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
+                  (set! (-> dma-buf base) (draw-bones-generic-merc arg0 (the pointer matrix-data) (the pointer s2-0) 0))
+                  (set! s2-0 (-> dma-buf base))
+                  )
+                )
+
+              ;; draw shadow!
+              (when (-> arg0 shadow)
+                (when #t
+                  (set! s2-0 (draw-bones-shadow arg0 (the pointer matrix-data) (the pointer s2-0)))
+                  (set! (-> dma-buf base) (the-as pointer s2-0))
+                  )
+                )
+
+              ;; draw merc!
+              (when (nonzero? used-merc)
+                (when (logtest? *vu1-enable-user* (vu1-renderer-mask merc))
+                  (when (= (-> arg0 cur-lod) (-> arg0 lod-set max-lod))
+                    (let ((f0-13 (- (-> arg0 lod-set lod (-> arg0 cur-lod) dist) arg2)))
+                      (when (< f0-13 81920.0)
+                        (when (zero? (logand (-> geom effect 0 effect-bits) 2))
+                          (let* ((a1-25 (the int (* 0.0015625 f0-13)))
+                                 (v1-147 (min 128 (max 0 a1-25)))
+                                 (a0-56 (-> *merc-bucket-info* light))
+                                 )
+                            (set! (-> a0-56 direction 1 w) 0.000000000000000000000000000000000000011755084)
+                            (set! (-> a0-56 direction 2 w) (the-as float v1-147))
+                            )
+                          0
+                          )
+                        )
+                      )
+                    )
+                  (set! s2-0 (pc-draw-bones arg0 (the pointer s2-0)))
+                  (if (nonzero? (-> *merc-bucket-info* need-mercprime-if-merc))
+                      (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 32 17))
+                      (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 35 20))
+                      )
+                  (set! s2-0 (-> dma-buf base))
+                  )
+                )
+              ) ;; end geom processing
+
+            ;; advance death timer.
+            (when (nonzero? (-> arg0 death-timer))
+              (when (not (paused?))
+                (+! (-> arg0 death-timer) -1)
+                (if (>= (the-as uint 1) (-> arg0 death-timer))
+                    (send-event (-> arg0 process) 'death-end arg0)
+                    )
+                )
+              )
+            )
+          (let ((v1-164 (logand (the-as int s2-0) 48)))
+            0
+            (b! (zero? v1-164) cfg-83 :delay (set! a0-62 #x20000000))
+            ;;(s.q! s2-0 a0-62)
+            (set! (-> (the (pointer uint128) s2-0) 0) (the uint128 a0-62))
+            (let ((a0-63 s2-0))
+              (set! s2-0 (+ (- (the-as int s2-0) v1-164) 64))
+              ;;(s.w! (+ a0-63 4) (the-as int s2-0))
+              (set! (-> (the (pointer int32) (+ (the-as uint a0-63) 4))) (the-as int s2-0))
+              )
+            )
+          (label cfg-83)
+          (set! (-> dma-buf base) (the-as pointer (logand (the-as uint s2-0) (the-as uint #xfffffff))))
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; TODO
+(defun draw-bones-hud ((arg0 draw-control) (arg1 dma-buffer))
+  (local-vars
+    (at-0 object)
+    (at-2 int)
+    (t2-10 vu-lights)
+    (t3-3 uint128)
+    (t3-4 uint128)
+    (t3-5 uint128)
+    (t3-6 uint128)
+    )
+  (let ((v1-0 arg0)
+        (gp-0 arg1)
+        )
+    ;; (.lui at-0 28672)
+    (set! at-0 (scratchpad-object object))
+    (let* ((a3-0 (-> gp-0 base))
+           (a0-3 (+ (-> v1-0 mgeo num-joints) 3))
+           (a2-0 (the-as object (&+ a3-0 16)))
+           (a1-1 (&+ a3-0 64))
+           )
+      (let ((t0-1 (scratchpad-object bone-regs :offset 240)))
+        (set! (-> t0-1 joint-ptr) (the-as (inline-array joint) (-> v1-0 jgeo data 0)))
+        (set! (-> t0-1 bone-ptr) (-> v1-0 skeleton bones))
+        (set! (-> t0-1 num-bones) (the-as uint a0-3))
+        )
+      (let ((t2-0 a1-1)
+            (t3-0 2)
+            (t6-0 (scratchpad-object bone-memory :offset 16))
+            (t0-3 *bone-calculation-list*)
+            (t1-6 (the-as bone-calculation a2-0))
+            )
+        (let ((t4-0 (-> t6-0 work regs joint-ptr))
+              (t5-0 (-> t6-0 work regs bone-ptr))
+              (t6-1 (-> t6-0 work regs num-bones))
+              (t7-0 t1-6)
+              )
+          (set! (-> t7-0 flags) (the-as bone-calc-flags t3-0))
+          (set! (-> t7-0 num-bones) t6-1)
+          (set! (-> t7-0 matrix-area) (the-as (inline-array matrix) t2-0))
+          (set! (-> t7-0 joints) t4-0)
+          (set! (-> t7-0 bones) t5-0)
+          (set! (-> t7-0 next) (the-as bone-calculation 0))
+          )
+        (if (nonzero? (-> t0-3 next))
+            (set! (-> t0-3 next next) t1-6)
+            )
+        (if (zero? (-> t0-3 first))
+            (set! (-> t0-3 first) t1-6)
+            )
+        (set! (-> t0-3 next) t1-6)
+        )
+      (let ((a2-2 (the-as object (&+ (&+ (the-as pointer a2-0) 48) (* a0-3 128)))))
+        (set! (-> (the-as (pointer uint128) a3-0))
+              (logior (-> (the-as terrain-context at-0) work foreground generic-work saves envmap verts 4)
+                      (shl (the-as int a2-2) 32)
+                      )
+              )
+        (when (= (-> v1-0 data-format) 1)
+          (let ((a0-9 (-> v1-0 lod-set lod 0 geo)))
+            (dotimes (a3-2 (the-as int (-> a0-9 header effect-count)))
+              (cond
+                ((nonzero? (-> a0-9 effect a3-2 envmap-usage))
+                 (let* ((t1-7 (-> *merc-bucket-info* light))
+                        (t2-9 (+ 64 (scratchpad-object int)))
+                        (t0-10 7)
+                        (t1-8 (the-as object t1-7))
+                        )
+                   (b! (< (+ t0-10 -4) 0) cfg-9 :delay (set! t2-10 (the-as vu-lights t2-9)))
+                   (nop!)
+                   (label cfg-8)
+                   (let ((t6-2 (-> t2-10 direction 0 quad)))
+                     (nop!)
+                     (let ((t3-2 (-> t2-10 direction 1 quad)))
+                       (+! t0-10 -4)
+                       (let ((t4-1 (-> t2-10 direction 2 quad)))
+                         (set! t1-8 (&+ (the-as pointer t1-8) 64))
+                         (let ((t5-1 (-> t2-10 color 0 quad)))
+                           (set! t2-10 (the-as vu-lights (-> t2-10 color 1)))
+                           (store-qw (&+ (the-as pointer t1-8) -64) t6-2)
+                           (let ((t6-3 (+ t0-10 -4)))
+                             (store-qw (&+ (the-as pointer t1-8) -48) t3-2)
+                             (nop!)
+                             (store-qw (&+ (the-as pointer t1-8) -32) t4-1)
+                             (b! (>= t6-3 0) cfg-8 :delay (store-qw (&+ (the-as pointer t1-8) -16) t5-1))
+                             )
+                           )
+                         )
+                       )
+                     )
+                   (label cfg-9)
+                   (b! (zero? t0-10) cfg-14 :delay (set! t3-3 (-> t2-10 direction 0 quad)))
+                   (let ((t2-11 (-> t2-10 direction 1))
+                         (t1-9 (-> (the-as vu-lights t1-8) direction 1))
+                         (t0-11 (+ t0-10 -1))
+                         )
+                     (store-qw (&+ t1-9 -16) t3-3)
+                     (b! (zero? t0-11) cfg-14 :delay (set! t3-4 (-> t2-11 quad)))
+                     (let ((t2-12 (&+ t2-11 16))
+                           (t1-10 (&+ t1-9 16))
+                           (t0-12 (+ t0-11 -1))
+                           )
+                       (store-qw (&+ t1-10 -16) t3-4)
+                       (b! (zero? t0-12) cfg-14 :delay (set! t3-5 (-> t2-12 quad)))
+                       (let ((t2-13 (&+ t2-12 16))
+                             (t1-11 (&+ t1-10 16))
+                             (t0-13 (+ t0-12 -1))
+                             )
+                         (store-qw (&+ t1-11 -16) t3-5)
+                         (b! (zero? t0-13) cfg-14 :delay (set! t3-6 (-> t2-13 quad)))
+                         (&+ t2-13 16)
+                         (let ((t1-12 (&+ t1-11 16)))
+                           (+ t0-13 -1)
+                           (store-qw (&+ t1-12 -16) t3-6)
+                           )
+                         )
+                       )
+                     )
+                   )
+                 (label cfg-14)
+                 0
+                 (set! (-> *merc-bucket-info* effect a3-2 color-fade) (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+                 (set! (-> *merc-bucket-info* effect a3-2 use-mercneric) (the-as uint 1))
+                 )
+                (else
+                  (set! (-> *merc-bucket-info* effect a3-2 use-mercneric) (the-as uint 1))
+                  )
+                )
+              )
+            )
+          (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
+            (set! (-> gp-0 base) (draw-bones-generic-merc v1-0 a1-1 (the-as pointer a2-2) 1))
+            (set! a2-2 (-> gp-0 base))
+            )
+          )
+        (let ((a0-17 (logand (the-as int a2-2) 48)))
+          0
+          (b! (zero? a0-17) cfg-22 :delay (set! at-2 #x20000000))
+          (set! (-> (the-as (pointer int128) a2-2)) (the-as int128 at-2))
+          (let ((v1-2 (the-as pointer a2-2)))
+            (set! a2-2 (+ (&- (the-as pointer a2-2) (the-as uint a0-17)) 64))
+            (store-u32 (&+ v1-2 4) (the-as int a2-2))
+            )
+          )
+        (label cfg-22)
+        (set! (-> gp-0 base) (the-as pointer a2-2))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(define-extern draw-bones-hud (function draw-control dma-buffer none))

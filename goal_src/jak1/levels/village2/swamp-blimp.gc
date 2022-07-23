@@ -1,0 +1,1698 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: swamp-blimp.gc
+;; name in dgo: swamp-blimp
+;; dgos: L1, VI2
+
+(declare-type swamp-blimp process-drawable)
+
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/swamp-tetherrock-ag.gc")
+(import "goal_src/jak1/import/swamp-rope-ag.gc")
+(import "goal_src/jak1/import/swamp-tetherrock-explode-ag.gc")
+(import "goal_src/jak1/import/precursor-arm-ag.gc")
+(import "goal_src/jak1/import/swamp-blimp-ag.gc")
+
+(defskelgroup *swamp-tetherrock-sg* swamp-tetherrock swamp-tetherrock-lod0-jg swamp-tetherrock-idle-ja
+              ((swamp-tetherrock-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 4 0 6)
+              )
+
+(defskelgroup *swamp-tetherrock-explode-sg* swamp-tetherrock-explode swamp-tetherrock-explode-lod0-jg swamp-tetherrock-explode-idle-ja
+              ((swamp-tetherrock-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 4 0 16)
+              )
+
+(defskelgroup *precursor-arm-sg* precursor-arm precursor-arm-lod0-jg precursor-arm-idle-ja
+              ((precursor-arm-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 15 0 15)
+              )
+
+(defskelgroup *swamp-rope-sg* swamp-rope swamp-rope-lod0-jg swamp-rope-idle-ja
+              ((swamp-rope-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 300)
+              :longest-edge (meters 66)
+              )
+
+(defskelgroup *swamp-blimp-sg* swamp-blimp swamp-blimp-lod0-jg swamp-blimp-idle-ja
+              ((swamp-blimp-lod0-mg (meters 20)) (swamp-blimp-lod1-mg (meters 999999)))
+              :bounds (static-spherem 10 60 0 95)
+              :longest-edge (meters 40)
+              )
+
+(defpartgroup group-tetherrock-explode
+  :id 285
+  :duration 150
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 16)
+  :parts ((sp-item 2065 :period 600 :length 5)
+    (sp-item 2066 :period 600 :length 40)
+    (sp-item 2067 :period 600 :length 20)
+    (sp-item 2068 :period 600 :length 20)
+    )
+  )
+
+(defpart 2066
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 6.0)
+    (sp-rnd-flt spt-y (meters 1) (meters 3) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.33) (meters 0.66) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 192.0 64.0 1.0)
+    (sp-rnd-flt spt-g 192.0 64.0 1.0)
+    (sp-flt spt-b 0.0)
+    (sp-rnd-flt spt-a 32.0 96.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.21333334) 1.0)
+    (sp-flt spt-scalevel-x (meters -0.0033333334))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-rnd-flt spt-accel-y -0.68266666 -0.68266666 1.0)
+    (sp-flt spt-friction 0.9)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit14)
+    (sp-int-plain-rnd spt-next-time 30 29 1)
+    (sp-launcher-by-id spt-next-launcher 2069)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 120.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 2) (meters 4) 1.0)
+    )
+  )
+
+(defpart 2069
+  :init-specs ((sp-flt spt-fade-r 0.0) (sp-flt spt-fade-g 0.0) (sp-flt spt-fade-b 0.0) (sp-flt spt-fade-a -1.4222223))
+  )
+
+(defpart 2068
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 3.0)
+    (sp-rnd-flt spt-y (meters 1) (meters 3) 1.0)
+    (sp-flt spt-scale-x (meters 0.4))
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 180.0) 1.0)
+    (sp-flt spt-scale-y (meters 16))
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 196.0)
+    (sp-flt spt-b 0.0)
+    (sp-rnd-flt spt-a 32.0 64.0 1.0)
+    (sp-flt spt-scalevel-y (meters 1.04))
+    (sp-flt spt-fade-a -1.6)
+    (sp-int spt-timer 60)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    )
+  )
+
+(defpart 2065
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-y (meters 2))
+    (sp-flt spt-scale-x (meters 32))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 192.0 32.0 1.0)
+    (sp-flt spt-b 0.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -2.3272727)
+    (sp-int spt-timer 54)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    )
+  )
+
+(defpart 2067
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-rnd-flt spt-y (meters 1) (meters 3) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 4) (meters 2) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-g 192.0 64.0 1.0)
+    (sp-flt spt-b 128.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.10666667) (meters 0.053333335) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.026666667))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.6) (degrees 1.2) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y 0.68266666 0.68266666 1.0)
+    (sp-flt spt-friction 0.8)
+    (sp-int spt-timer 510)
+    (sp-cpuinfo-flags bit2 bit14)
+    (sp-int spt-next-time 42)
+    (sp-launcher-by-id spt-next-launcher 2070)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 120.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 0) (meters 4) 1.0)
+    )
+  )
+
+(defpart 2070
+  :init-specs ((sp-flt spt-fade-r -0.53333336) (sp-flt spt-fade-g -0.53333336) (sp-flt spt-fade-b -1.0583333))
+  )
+
+(defpart 2017
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1e :page #x2))
+    (sp-flt spt-num 0.2)
+    (sp-flt spt-y (meters 0.1))
+    (sp-flt spt-scale-x (meters 3))
+    (sp-rnd-flt spt-rot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 64.0)
+    (sp-flt spt-g 64.0)
+    (sp-flt spt-b 64.0)
+    (sp-flt spt-a 64.0)
+    (sp-rnd-flt spt-scalevel-x (meters 0.016666668) (meters 0.01) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-timer 600)
+    (sp-cpuinfo-flags bit2 bit4 bit14)
+    (sp-int spt-next-time 150)
+    (sp-launcher-by-id spt-next-launcher 109)
+    )
+  )
+
+(defpartgroup group-swamp-tether-rock-hit
+  :id 287
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1321 :period 15 :length 5))
+  )
+
+(defpart 1321
+  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x1d :page #x2))
+    (sp-rnd-flt spt-num 1.0 1.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.3) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 70.0 16.0 1.0)
+    (sp-rnd-flt spt-g 70.0 16.0 1.0)
+    (sp-flt spt-b 70.0)
+    (sp-flt spt-a 128.0)
+    (sp-rnd-flt spt-vel-y (meters 0.04) (meters 0.04) 1.0)
+    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
+    (sp-flt spt-accel-y -10.922667)
+    (sp-flt spt-friction 0.99)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2)
+    (sp-flt spt-userdata 0.0)
+    (sp-rnd-flt spt-conerot-x (degrees 20.0) (degrees 50.000004) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    )
+  )
+
+(deftype swamp-blimp-bank (basic)
+  ((arm-index                 int32  :offset-assert   4)
+   (pause-before-dropping-arm int32  :offset-assert   8)
+   (rise-per-break            float  :offset-assert  12)
+   (arm-sink-wait             float  :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+
+(define *SWAMP_BLIMP-bank*
+  (new 'static 'swamp-blimp-bank :pause-before-dropping-arm #x4b0 :rise-per-break 16384.0 :arm-sink-wait 1500.0)
+  )
+
+(deftype tetherrock-info (structure)
+  ((rock-camera       string  :offset-assert   0)
+   (arm-camera        string  :offset-assert   4)
+   (blimp-rp          int32   :offset-assert   8)
+   (other-rp          int32   :offset-assert  12)
+   (connected-to-rock basic   :offset-assert  16)
+   (damping           float   :offset-assert  20)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+
+(defun tetherrock-get-info ((arg0 entity))
+  (case (-> arg0 extra perm task)
+    (((game-task swamp-tether-1))
+     (new 'static 'tetherrock-info
+       :rock-camera "camera-182"
+       :arm-camera "camera-187"
+       :blimp-rp 10
+       :other-rp 4
+       :connected-to-rock #t
+       :damping 0.99
+       )
+     )
+    (((game-task swamp-tether-2))
+     (new 'static 'tetherrock-info
+       :rock-camera "camera-183"
+       :arm-camera "camera-186"
+       :blimp-rp 6
+       :other-rp 4
+       :connected-to-rock #t
+       :damping 0.99
+       )
+     )
+    (((game-task swamp-tether-3))
+     (new 'static 'tetherrock-info
+       :rock-camera "camera-180"
+       :arm-camera "camera-184"
+       :blimp-rp 7
+       :other-rp 4
+       :connected-to-rock #t
+       :damping 0.99
+       )
+     )
+    (((game-task swamp-tether-4))
+     (new 'static 'tetherrock-info
+       :rock-camera "camera-181"
+       :arm-camera "camera-185"
+       :blimp-rp 9
+       :other-rp 4
+       :connected-to-rock #t
+       :damping 0.99
+       )
+     )
+    (else
+      (new 'static 'tetherrock-info
+        :rock-camera ""
+        :arm-camera ""
+        :blimp-rp 8
+        :other-rp 4
+        :connected-to-rock #f
+        :damping 0.7
+        )
+      )
+    )
+  )
+
+(deftype swamp-rope-rand-float (structure)
+  ((min-time int32  :offset-assert   0)
+   (max-time int32  :offset-assert   4)
+   (max-val  float  :offset-assert   8)
+   (timer    int32  :offset-assert  12)
+   (value    float  :offset-assert  16)
+   )
+  :pack-me
+  :method-count-assert 11
+  :size-assert         #x14
+  :flag-assert         #xb00000014
+  (:methods
+    (init! (_type_ int int float) none 9)
+    (update-timer! (_type_) none 10)
+    )
+  )
+
+
+(defmethod init! swamp-rope-rand-float ((obj swamp-rope-rand-float) (arg0 int) (arg1 int) (arg2 float))
+  (set! (-> obj min-time) arg0)
+  (set! (-> obj max-time) arg1)
+  (set! (-> obj max-val) (* 0.5 arg2))
+  (set! (-> obj timer) 0)
+  (set! (-> obj value) 0.0)
+  0
+  (none)
+  )
+
+(defmethod update-timer! swamp-rope-rand-float ((obj swamp-rope-rand-float))
+  (set! (-> obj timer) (- (the-as time-frame (-> obj timer))
+                          (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))
+                          )
+        )
+  (when (<= (-> obj timer) 0)
+    (set! (-> obj timer) (rand-vu-int-range (-> obj min-time) (-> obj max-time)))
+    (set! (-> obj value) (rand-vu-float-range (- (-> obj max-val)) (-> obj max-val)))
+    )
+  0
+  (none)
+  )
+
+(deftype swamp-rope-oscillator (structure)
+  ((target         float          :offset-assert   0)
+   (value          float          :offset-assert   4)
+   (vel            float          :offset-assert   8)
+   (accel          float          :offset-assert  12)
+   (vector-overlay vector :inline :offset          0)
+   (max-vel        float          :offset-assert  16)
+   (damping        float          :offset-assert  20)
+   )
+  :method-count-assert 11
+  :size-assert         #x18
+  :flag-assert         #xb00000018
+  (:methods
+    (init! (_type_ float float float float) none 9)
+    (TODO-RENAME-10 (_type_ float) none 10)
+    )
+  )
+
+
+(defmethod init! swamp-rope-oscillator ((obj swamp-rope-oscillator) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
+  (set! (-> obj target) arg0)
+  (set! (-> obj value) arg0)
+  (set! (-> obj vel) 0.0)
+  (set! (-> obj accel) arg1)
+  (set! (-> obj max-vel) arg2)
+  (set! (-> obj damping) arg3)
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-10 swamp-rope-oscillator ((obj swamp-rope-oscillator) (arg0 float))
+  (let ((f0-3 (* (- (+ (-> obj target) arg0) (-> obj value)) (* (-> obj accel) (-> *display* time-adjust-ratio)))))
+    (+! (-> obj vel) f0-3)
+    )
+  (set! (-> obj vel) (fmin (-> obj max-vel) (fmax (- (-> obj max-vel)) (-> obj vel))))
+  (set! (-> obj vel) (* (-> obj vel) (-> obj damping)))
+  (+! (-> obj value) (* (-> obj vel) (-> *display* time-adjust-ratio)))
+  0
+  (none)
+  )
+
+(deftype swamp-blimp-rand-vector (structure)
+  ((min-time int32          :offset-assert   0)
+   (max-time int32          :offset-assert   4)
+   (xz-max   float          :offset-assert   8)
+   (y-max    float          :offset-assert  12)
+   (timer    int32          :offset-assert  16)
+   (value    vector :inline :offset-assert  32)
+   )
+  :method-count-assert 11
+  :size-assert         #x30
+  :flag-assert         #xb00000030
+  (:methods
+    (init! (_type_ int int float float) none 9)
+    (update-timer! (_type_) none 10)
+    )
+  )
+
+
+(defmethod init! swamp-blimp-rand-vector ((obj swamp-blimp-rand-vector) (arg0 int) (arg1 int) (arg2 float) (arg3 float))
+  (set! (-> obj min-time) arg0)
+  (set! (-> obj max-time) arg1)
+  (set! (-> obj xz-max) (* 0.5 arg2))
+  (set! (-> obj y-max) (* 0.5 arg3))
+  (set! (-> obj timer) 0)
+  (vector-reset! (-> obj value))
+  0
+  (none)
+  )
+
+(defmethod update-timer! swamp-blimp-rand-vector ((obj swamp-blimp-rand-vector))
+  (set! (-> obj timer) (- (the-as time-frame (-> obj timer))
+                          (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))
+                          )
+        )
+  (when (<= (-> obj timer) 0)
+    (set! (-> obj timer) (rand-vu-int-range (-> obj min-time) (-> obj max-time)))
+    (set! (-> obj value x) (rand-vu-float-range (- (-> obj xz-max)) (-> obj xz-max)))
+    (set! (-> obj value y) (rand-vu-float-range (- (-> obj y-max)) (-> obj y-max)))
+    (set! (-> obj value z) (rand-vu-float-range (- (-> obj xz-max)) (-> obj xz-max)))
+    )
+  0
+  (none)
+  )
+
+(deftype swamp-blimp-oscillator (structure)
+  ((target  vector :inline :offset-assert   0)
+   (value   vector :inline :offset-assert  16)
+   (vel     vector :inline :offset-assert  32)
+   (accel   float          :offset-assert  48)
+   (max-vel float          :offset-assert  52)
+   (damping float          :offset-assert  56)
+   )
+  :pack-me
+  :method-count-assert 11
+  :size-assert         #x3c
+  :flag-assert         #xb0000003c
+  (:methods
+    (init! (_type_ vector float float float) none 9)
+    (TODO-RENAME-10 (_type_ vector) none 10)
+    )
+  )
+
+
+(defmethod init! swamp-blimp-oscillator ((obj swamp-blimp-oscillator) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
+  (cond
+    (arg0
+      (set! (-> obj target quad) (-> arg0 quad))
+      (set! (-> obj value quad) (-> arg0 quad))
+      )
+    (else
+      (vector-reset! (-> obj target))
+      (vector-reset! (-> obj value))
+      )
+    )
+  (vector-reset! (-> obj vel))
+  (set! (-> obj accel) arg1)
+  (set! (-> obj max-vel) arg2)
+  (set! (-> obj damping) arg3)
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-10 swamp-blimp-oscillator ((obj swamp-blimp-oscillator) (arg0 vector))
+  (let ((gp-0 (new 'stack-no-clear 'vector)))
+    (cond
+      (arg0
+        (vector+! gp-0 (-> obj target) arg0)
+        (vector-! gp-0 gp-0 (-> obj value))
+        )
+      (else
+        (vector-! gp-0 (-> obj target) (-> obj value))
+        )
+      )
+    (vector-float*! gp-0 gp-0 (* (-> obj accel) (-> *display* time-adjust-ratio)))
+    (vector+! (-> obj vel) (-> obj vel) gp-0)
+    (let ((f0-2 (vector-length (-> obj vel))))
+      (if (< (-> obj max-vel) f0-2)
+          (vector-float*! (-> obj vel) (-> obj vel) (/ (-> obj max-vel) f0-2))
+          )
+      )
+    (vector-float*! (-> obj vel) (-> obj vel) (-> obj damping))
+    (vector-float*! gp-0 (-> obj vel) (-> *display* time-adjust-ratio))
+    (vector+! (-> obj value) (-> obj value) gp-0)
+    )
+  0
+  (none)
+  )
+
+(deftype swamp-tetherrock (process-drawable)
+  ((root-override collide-shape-moving         :offset        112)
+   (tension       float                        :offset-assert 176)
+   (tension-pt    vector               :inline :offset-assert 192)
+   (blimp         entity-actor                 :offset-assert 208)
+   (rot-at-init   quaternion           :inline :offset-assert 224)
+   (hits          int32                        :offset-assert 240)
+   )
+  :heap-base #x90
+  :method-count-assert 20
+  :size-assert         #xf4
+  :flag-assert         #x14009000f4
+  (:states
+    swamp-tetherrock-break
+    swamp-tetherrock-die
+    swamp-tetherrock-hide
+    swamp-tetherrock-idle
+    )
+  )
+
+
+(deftype precursor-arm (process-drawable)
+  ((root-override collide-shape         :offset        112)
+   (y-init        float                 :offset-assert 176)
+   (y-offset      float                 :offset-assert 180)
+   (rot-speed     float                 :offset-assert 184)
+   (rot-dist      float                 :offset-assert 188)
+   (rot-base      float                 :offset-assert 192)
+   (rot-t         float                 :offset-assert 196)
+   (init-mat      matrix        :inline :offset-assert 208)
+   (tension       float                 :offset-assert 272)
+   )
+  :heap-base #xb0
+  :method-count-assert 20
+  :size-assert         #x114
+  :flag-assert         #x1400b00114
+  (:states
+    precursor-arm-die
+    precursor-arm-idle
+    precursor-arm-sink
+    )
+  )
+
+
+(deftype swamp-rope (process-drawable)
+  ((parent-override (pointer swamp-blimp)         :offset         12)
+   (parent-rp       int32                         :offset-assert 176)
+   (other-entity    entity-actor                  :offset-assert 180)
+   (other-rp        int32                         :offset-assert 184)
+   (old-scale       float                         :offset-assert 188)
+   (frame           swamp-rope-oscillator :inline :offset-assert 192)
+   (other-pos       vector                :inline :offset-assert 224)
+   (scale-base      float                         :offset-assert 240)
+   (base-vec        vector                :inline :offset-assert 256)
+   (scale-t         float                         :offset-assert 272)
+   (x-t             float                         :offset-assert 276)
+   (z-t             float                         :offset-assert 280)
+   (rot-speed       float                         :offset-assert 284)
+   )
+  :heap-base #xb0
+  :method-count-assert 21
+  :size-assert         #x120
+  :flag-assert         #x1500b00120
+  (:methods
+    (dummy-20 (_type_) basic 20)
+    )
+  (:states
+    swamp-rope-break
+    swamp-rope-idle-arm
+    swamp-rope-idle-rock
+    )
+  )
+
+
+(defmethod dummy-20 swamp-rope ((obj swamp-rope))
+  (and (-> obj other-entity)
+       (not (task-closed? (-> obj other-entity extra perm task) (task-status need-reminder)))
+       )
+  )
+
+(deftype swamp-blimp (process-drawable)
+  ((root-override           collide-shape-moving            :offset        112)
+   (the-ropes               handle                  5       :offset-assert 176)
+   (arm-timer               int32                           :offset-assert 216)
+   (trans-at-init           vector                  :inline :offset-assert 224)
+   (rot-at-init             quaternion              :inline :offset-assert 240)
+   (y-vel                   float                           :offset-assert 256)
+   (y-offset                float                           :offset-assert 260)
+   (y-offset-target         float                           :offset-assert 264)
+   (main-tilt-rand          swamp-blimp-rand-vector :inline :offset-assert 272)
+   (main-tilt-oscillator    swamp-blimp-oscillator  :inline :offset-assert 320)
+   (gondola-tilt-oscillator swamp-blimp-oscillator  :inline :offset-assert 384)
+   (pos-rand                swamp-blimp-rand-vector :inline :offset-assert 448)
+   (pos-oscillator          swamp-blimp-oscillator  :inline :offset-assert 496)
+   (scale-rand              swamp-rope-rand-float   :inline :offset-assert 556)
+   (scale-oscillator        swamp-rope-oscillator   :inline :offset-assert 576)
+   (gondola                 joint-mod                       :offset-assert 600)
+   (bag                     joint-mod                       :offset-assert 604)
+   )
+  :heap-base #x1f0
+  :method-count-assert 20
+  :size-assert         #x260
+  :flag-assert         #x1401f00260
+  (:states
+    swamp-blimp-bye-bye
+    swamp-blimp-idle
+    )
+  )
+
+
+(defmethod relocate swamp-blimp ((obj swamp-blimp) (arg0 int))
+  (if (nonzero? (-> obj gondola))
+      (&+! (-> obj gondola) arg0)
+      )
+  (if (nonzero? (-> obj bag))
+      (&+! (-> obj bag) arg0)
+      )
+  (the-as
+    swamp-blimp
+    ((the-as (function process-drawable int process-drawable) (find-parent-method swamp-blimp 7)) obj arg0)
+    )
+  )
+
+(defstate swamp-tetherrock-die (swamp-tetherrock)
+  :code (behavior ()
+    (cleanup-for-death self)
+    (deactivate self)
+    (suspend)
+    0
+    (none)
+    )
+  )
+
+(defstate swamp-tetherrock-hide (swamp-tetherrock)
+  :code (behavior ()
+    (clear-collide-with-as (-> self root-override))
+    (logior! (-> self draw status) (draw-status hidden))
+    (loop
+      (when (= (get-task-status (-> self entity extra perm task)) (task-status invalid))
+        (if (not (-> self child))
+            (go swamp-tetherrock-die)
+            )
+        )
+      (suspend)
+      )
+    (none)
+    )
+  )
+
+(defstate swamp-tetherrock-break (swamp-tetherrock)
+  :exit (behavior ()
+    (remove-setting! 'movie)
+    (remove-setting! 'process-mask)
+    (apply-settings *setting-control*)
+    (none)
+    )
+  :code (behavior ()
+    (let ((gp-0 (tetherrock-get-info (-> self entity))))
+      (hide-hud-quick)
+      (process-grab? *target*)
+      (set-setting! 'movie (process->ppointer self) 0.0 0)
+      (set-setting! 'process-mask 'set 0.0 (process-mask movie platform))
+      (apply-settings *setting-control*)
+      (let* ((s4-0 (get-task-control (game-task swamp-tether-1)))
+             (s5-0 (+ (get-reminder s4-0 0) 1))
+             )
+        (save-reminder s4-0 s5-0 0)
+        (cond
+          ((= s5-0 1)
+           (ambient-hint-spawn "gamcam03" (the-as vector #f) *entity-pool* 'camera)
+           )
+          ((= s5-0 2)
+           (ambient-hint-spawn "gamcam03" (the-as vector #f) *entity-pool* 'camera)
+           )
+          ((= s5-0 3)
+           (ambient-hint-spawn "gamcam03" (the-as vector #f) *entity-pool* 'camera)
+           )
+          ((= s5-0 4)
+           (ambient-hint-spawn "gamcam06" (the-as vector #f) *entity-pool* 'camera)
+           )
+          )
+        )
+      (let ((s5-1 (entity-by-name (-> gp-0 rock-camera))))
+        (cam-slave-get-vector-with-offset (the-as entity-actor s5-1) *camera-other-trans* 'trans)
+        (cam-slave-get-rot (the-as entity-actor s5-1) *camera-other-matrix*)
+        (set! (-> *camera-other-fov* data) (cam-slave-get-fov s5-1))
+        )
+      (set! (-> *camera-other-root* quad) (-> self root-override trans quad))
+      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.6))
+        (set! *camera-look-through-other* 2)
+        (suspend)
+        )
+      (set! (-> self tension) 0.0)
+      (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
+      (birth-pickup-at-point
+        (-> self root-override trans)
+        (pickup-type fuel-cell)
+        (the float (-> self entity extra perm task))
+        #f
+        self
+        (the-as fact-info #f)
+        )
+      (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-12 from) self)
+        (set! (-> a1-12 num-params) 1)
+        (set! (-> a1-12 message) 'tetherrock-break-evt)
+        (set! (-> a1-12 param 0) (the-as uint (-> self entity)))
+        (let* ((t9-19 send-event-function)
+               (v1-41 (-> self blimp))
+               (s5-2 (t9-19
+                       (if v1-41
+                           (-> v1-41 extra process)
+                           )
+                       a1-12
+                       )
+                     )
+               )
+          (process-spawn
+            part-tracker
+            :init part-tracker-init
+            (-> *part-group-id-table* 285)
+            -1
+            #f
+            #f
+            #f
+            (-> self root-override trans)
+            :to *entity-pool*
+            )
+          (logior! (-> self draw status) (draw-status skip-bones))
+          (let ((s4-3 (ppointer->handle (manipy-spawn
+                                          (-> self root-override trans)
+                                          (-> self entity)
+                                          *swamp-tetherrock-explode-sg*
+                                          #f
+                                          :to *entity-pool*
+                                          )
+                                        )
+                      )
+                )
+            (send-event (handle->process (the-as handle s4-3)) 'anim-mode 'play1)
+            (send-event (handle->process (the-as handle s4-3)) 'art-joint-anim "swamp-tetherrock-explode-explode" 0)
+            (send-event (handle->process (the-as handle s4-3)) 'draw #t)
+            (while (handle->process (the-as handle s4-3))
+              (set! *camera-look-through-other* 2)
+              (suspend)
+              )
+            )
+          (set! (-> self state-time) (-> *display* base-frame-counter))
+          (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
+            (set! *camera-look-through-other* 2)
+            (suspend)
+            )
+          (when (zero? s5-2)
+            (let ((gp-1 (entity-by-name (-> gp-0 arm-camera))))
+              (cam-slave-get-vector-with-offset (the-as entity-actor gp-1) *camera-other-trans* 'trans)
+              (cam-slave-get-rot (the-as entity-actor gp-1) *camera-other-matrix*)
+              (set! (-> *camera-other-fov* data) (cam-slave-get-fov gp-1))
+              )
+            (set! (-> *camera-other-root* quad) (-> self root-override trans quad))
+            (set! (-> self state-time) (-> *display* base-frame-counter))
+            (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 5))
+              (set! *camera-look-through-other* 2)
+              (suspend)
+              )
+            (set! (-> self state-time) (-> *display* base-frame-counter))
+            (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 5))
+              (set! *camera-look-through-other* 2)
+              (let ((gp-2 (new 'stack-no-clear 'vector))
+                    (a0-58 (-> self blimp extra process))
+                    )
+                (when a0-58
+                  (vector-! gp-2 (-> (the-as swamp-blimp a0-58) root-override trans) *camera-other-trans*)
+                  (vector-normalize! gp-2 1.0)
+                  (forward-down->inv-matrix *camera-other-matrix* gp-2 (-> *camera* local-down))
+                  )
+                )
+              (suspend)
+              )
+            )
+          (process-release? *target*)
+          (process-spawn-function
+            process
+            (lambda ((arg0 int))
+              (while (or (-> *setting-control* current ambient)
+                         (-> *setting-control* current hint)
+                         (-> *setting-control* current movie)
+                         )
+                (suspend)
+                )
+              (cond
+                ((= arg0 3)
+                 (level-hint-spawn
+                   (game-text-id swamp-tetherrocks-3-left)
+                   "sksp0157"
+                   (the-as entity #f)
+                   *entity-pool*
+                   (game-task none)
+                   )
+                 )
+                ((= arg0 2)
+                 (level-hint-spawn
+                   (game-text-id swamp-tetherrocks-2-left)
+                   "sksp0158"
+                   (the-as entity #f)
+                   *entity-pool*
+                   (game-task none)
+                   )
+                 )
+                ((= arg0 1)
+                 (level-hint-spawn
+                   (game-text-id swamp-tetherrocks-1-left)
+                   "sksp0159"
+                   (the-as entity #f)
+                   *entity-pool*
+                   (game-task none)
+                   )
+                 )
+                ((zero? arg0)
+                 (level-hint-spawn
+                   (game-text-id swamp-arm-resolution)
+                   "sagevb04"
+                   (the-as entity #f)
+                   *entity-pool*
+                   (game-task none)
+                   )
+                 )
+                )
+              (none)
+              )
+            s5-2
+            :to self
+            )
+          )
+        )
+      )
+    (go swamp-tetherrock-hide)
+    (none)
+    )
+  :post (the-as (function none :behavior swamp-tetherrock) ja-post)
+  )
+
+(defstate swamp-tetherrock-idle (swamp-tetherrock)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('attack)
+       (when (and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
+         (+! (-> self hits) 1)
+         (cond
+           ((>= (-> self hits) 1)
+            (go swamp-tetherrock-break)
+            )
+           (else
+             (let* ((s5-0 arg0)
+                    (gp-0 (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) process-drawable))
+                              s5-0
+                              )
+                          )
+                    )
+               (process-spawn
+                 part-tracker
+                 :init part-tracker-init
+                 (-> *part-group-id-table* 287)
+                 150
+                 #f
+                 #f
+                 #f
+                 (if gp-0
+                     (-> (the-as process-drawable gp-0) root trans)
+                     (-> self root-override trans)
+                     )
+                 :to *entity-pool*
+                 )
+               )
+             )
+           )
+         )
+       )
+      )
+    )
+  :code (behavior ()
+    (loop
+      (let ((s4-0 (new 'static 'vector :y 1.0 :w 1.0))
+            (s3-0 (new 'stack-no-clear 'vector))
+            (s5-0 (new 'stack-no-clear 'vector))
+            (gp-0 (new 'stack-no-clear 'quaternion))
+            )
+        0.0
+        (vector-! s3-0 (-> self tension-pt) (-> self root-override trans))
+        (vector-normalize! s3-0 1.0)
+        (vector-cross! s5-0 s4-0 s3-0)
+        (let ((f30-0 (asin (vector-normalize-ret-len! s5-0 1.0))))
+          (vector-normalize! s5-0 1.0)
+          (quaternion-vector-angle! gp-0 s5-0 (* (fmin 1820.4445 f30-0) (- 1.0 (-> self tension))))
+          )
+        (quaternion*! (-> self root-override quat) gp-0 (-> self rot-at-init))
+        )
+      (if (and *target* (>= 49152.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+          (level-hint-spawn
+            (game-text-id swamp-tetherrock-eco-yellow-hint)
+            "sksp0138"
+            (the-as entity #f)
+            *entity-pool*
+            (game-task none)
+            )
+          )
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior swamp-tetherrock) transform-post)
+  )
+
+(defmethod init-from-entity! swamp-tetherrock ((obj swamp-tetherrock) (arg0 entity-actor))
+  (set! (-> obj mask) (logior (process-mask attackable) (-> obj mask)))
+  (process-entity-status! obj (entity-perm-status bit-7) #t)
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (alloc-riders s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 12288.0 0.0 24576.0)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *swamp-tetherrock-sg* '())
+  (set! (-> obj fact)
+        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
+        )
+  (set! (-> obj blimp) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> obj tension) 0.0)
+  (vector-reset! (-> obj tension-pt))
+  (quaternion-copy! (-> obj rot-at-init) (-> obj root-override quat))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (case (get-task-status (-> obj entity extra perm task))
+    (((task-status invalid))
+     (go swamp-tetherrock-die)
+     )
+    (((task-status need-resolution))
+     (birth-pickup-at-point
+       (-> obj root-override trans)
+       (pickup-type fuel-cell)
+       (the float (-> obj entity extra perm task))
+       #f
+       obj
+       (the-as fact-info #f)
+       )
+     (go swamp-tetherrock-hide)
+     )
+    (else
+      (go swamp-tetherrock-idle)
+      )
+    )
+  (none)
+  )
+
+(defstate precursor-arm-die (precursor-arm)
+  :code (behavior ()
+    (cleanup-for-death self)
+    (deactivate self)
+    (loop
+      (suspend)
+      )
+    (none)
+    )
+  )
+
+(defstate precursor-arm-sink (precursor-arm)
+  :code (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time))
+               (the int (-> *SWAMP_BLIMP-bank* arm-sink-wait))
+               )
+      (suspend)
+      )
+    (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
+    (close-specific-task! (-> self entity extra perm task) (task-status need-resolution))
+    (loop
+      (cond
+        ((< -40960.0 (-> self y-offset))
+         (set! (-> self y-offset) (- (-> self y-offset) (* 409.6 (-> *display* time-adjust-ratio))))
+         )
+        (else
+          (set! (-> self y-offset) -40960.0)
+          (cleanup-for-death self)
+          (deactivate self)
+          )
+        )
+      (set! (-> self root-override trans y) (+ (-> self y-offset) (-> self y-init)))
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior precursor-arm) transform-post)
+  )
+
+(defun precursor-arm-slip ((arg0 float))
+  (cond
+    ((>= arg0 1.0)
+     1.0
+     )
+    ((>= 0.0 arg0)
+     0.0
+     )
+    (else
+      (let ((f0-2 1.0)
+            (f1-3 (- 1.0 arg0))
+            )
+        (- f0-2 (* f1-3 f1-3))
+        )
+      )
+    )
+  )
+
+(defstate precursor-arm-idle (precursor-arm)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (case arg2
+      (('arm-sink-evt)
+       (go precursor-arm-sink)
+       )
+      )
+    )
+  :trans (behavior ()
+    (when (>= (-> self rot-t) 1.0)
+      (+! (-> self rot-base) (-> self rot-dist))
+      (set! (-> self rot-dist) (rand-vu-float-range -16384.0 16384.0))
+      (set! (-> self rot-speed)
+            (/ 1.0 (* 300.0 (+ (* 0.001373291 (fabs (-> self rot-dist))) (rand-vu-float-range 2.0 5.0))))
+            )
+      (set! (-> self rot-t) 0.0)
+      )
+    (+! (-> self rot-t) (* (-> self rot-speed) (-> *display* time-adjust-ratio)))
+    (let ((gp-0 (new 'stack-no-clear 'matrix)))
+      (matrix-rotate-y!
+        gp-0
+        (+ (-> self rot-base) (* (parameter-ease-sin-clamp (-> self rot-t)) (-> self rot-dist)))
+        )
+      (matrix*! gp-0 (-> self init-mat) gp-0)
+      (matrix->quaternion (-> self root-override quat) gp-0)
+      )
+    (when (< (vector-vector-distance (-> self root-override trans) (camera-pos)) 204800.0)
+      (let ((a2-1 (new 'static 'vector)))
+        (set! (-> a2-1 quad) (-> self root-override trans quad))
+        (set! (-> a2-1 y) 0.0)
+        (launch-particles :rate 1.0 (-> *part-id-table* 2017) a2-1)
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (loop
+      (set! (-> self tension) 1.5)
+      (let* ((f26-0 (+ 225.0 (* 150.0 (sin (rand-vu-float-range 0.0 16384.0)))))
+             (f0-5 (+ 4096.0 (* 8192.0 (sin (rand-vu-float-range 0.0 16384.0)))))
+             (f30-2 (-> self y-offset))
+             (f0-6 (+ f0-5 f30-2))
+             (f28-2 (fmin f0-6 (- 57344.0 f0-6)))
+             )
+        (when (< 0.0 f28-2)
+          (let ((f26-1 (+ f26-0 (* 0.14648438 f28-2))))
+            (set! (-> self state-time) (-> *display* base-frame-counter))
+            (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (the int f26-1))
+              (if (< (- f26-1 (the float (- (-> *display* base-frame-counter) (-> self state-time)))) 150.0)
+                  (set! (-> self tension) 0.5)
+                  )
+              (set! (-> self y-offset)
+                    (+ f30-2
+                       (* f28-2
+                          (precursor-arm-slip (/ (the float (- (-> *display* base-frame-counter) (-> self state-time))) f26-1))
+                          )
+                       )
+                    )
+              (set! (-> self root-override trans y) (+ (-> self y-offset) (-> self y-init)))
+              (suspend)
+              )
+            )
+          )
+        )
+      (suspend)
+      (let* ((f26-2 (+ 600.0 (* 300.0 (sin (rand-vu-float-range 0.0 16384.0)))))
+             (f0-26 (* 49152.0 (sin (rand-vu-float-range 0.0 16384.0))))
+             (f30-5 (-> self y-offset))
+             (f28-4 (- f0-26 f30-5))
+             )
+        (when (< f28-4 0.0)
+          (let ((f26-3 (- f26-2 (* 0.036621094 f28-4))))
+            (set! (-> self state-time) (-> *display* base-frame-counter))
+            (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (the int f26-3))
+              (if (< (- f26-3 (the float (- (-> *display* base-frame-counter) (-> self state-time)))) 150.0)
+                  (set! (-> self tension) 1.5)
+                  )
+              (set! (-> self y-offset)
+                    (+ f30-5
+                       (* f28-4
+                          (parameter-ease-sin-clamp (/ (the float (- (-> *display* base-frame-counter) (-> self state-time))) f26-3))
+                          )
+                       )
+                    )
+              (set! (-> self root-override trans y) (+ (-> self y-offset) (-> self y-init)))
+              (suspend)
+              )
+            )
+          )
+        )
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior precursor-arm) transform-post)
+  )
+
+(defmethod init-from-entity! precursor-arm ((obj precursor-arm) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (alloc-riders s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+      (set-vector! (-> s3-0 local-sphere) 0.0 61440.0 0.0 61440.0)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *precursor-arm-sg* '())
+  (set! (-> obj rot-speed) 0.0)
+  (set! (-> obj rot-dist) 0.0)
+  (set! (-> obj rot-base) 0.0)
+  (set! (-> obj rot-t) 1.0)
+  (quaternion->matrix (-> obj init-mat) (-> obj root-override quat))
+  (set! (-> obj y-offset) 0.0)
+  (set! (-> obj y-init) (-> obj root-override trans y))
+  (set! (-> obj tension) 0.0)
+  (process-entity-status! obj (entity-perm-status bit-7) #t)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj event-hook) (-> precursor-arm-idle event))
+  (if (= (get-task-status (-> obj entity extra perm task)) (task-status invalid))
+      (go precursor-arm-die)
+      (go precursor-arm-idle)
+      )
+  (none)
+  )
+
+(defbehavior swamp-rope-update-bounding-spheres swamp-rope ()
+  (let ((a0-0 (new 'stack-no-clear 'vector)))
+    (vector-! a0-0 (-> self other-pos) (-> self root trans))
+    (vector-float*! a0-0 a0-0 0.5)
+    (set! (-> self draw bounds quad) (-> a0-0 quad))
+    (set! (-> self draw bounds w) (vector-length a0-0))
+    )
+  0
+  (none)
+  )
+
+(defbehavior swamp-rope-post swamp-rope ()
+  (swamp-rope-update-bounding-spheres)
+  (ja-post)
+  0
+  (none)
+  )
+
+(defbehavior swamp-rope-break-code swamp-rope ()
+  (when (or (< 0.001 (fabs (-> self base-vec x))) (< 0.001 (fabs (-> self base-vec z))))
+    (set! (-> self base-vec x)
+          (- (-> self base-vec x) (* 0.02 (-> *display* time-adjust-ratio) (-> self base-vec x)))
+          )
+    (set! (-> self base-vec z)
+          (- (-> self base-vec z) (* 0.02 (-> *display* time-adjust-ratio) (-> self base-vec z)))
+          )
+    (vector-normalize! (-> self base-vec) 1.0)
+    )
+  (when (< 0.4 (-> self scale-base))
+    (let ((f1-13 (fmax 0.002 (* 0.05 (+ -0.4 (-> self scale-base))))))
+      (set! (-> self scale-base) (- (-> self scale-base) (* f1-13 (-> *display* time-adjust-ratio))))
+      )
+    )
+  (+! (-> self scale-t) (* 0.005 (-> *display* time-adjust-ratio)))
+  (+! (-> self x-t) (* 0.004 (-> *display* time-adjust-ratio)))
+  (+! (-> self z-t) (* 0.003 (-> *display* time-adjust-ratio)))
+  (let ((f0-19
+          (* (sin (+ 32768.0 (* 65536.0 (-> self scale-t)))) (fmax 0.003 (fmin 0.1 (* 0.1 (- 3.0 (-> self scale-t))))))
+          )
+        )
+    (set! (-> self root scale y) (+ (-> self scale-base) f0-19))
+    )
+  (let ((gp-0 (new 'stack-no-clear 'matrix)))
+    (let ((s5-0 (new 'stack-no-clear 'vector)))
+      (vector-reset! (-> gp-0 vector 3))
+      (vector-reset! s5-0)
+      (set! (-> s5-0 x) (* (sin (* 65536.0 (-> self x-t))) (fmax 0.01 (fmin 0.1 (* 0.1 (- 10.0 (-> self x-t)))))))
+      (set! (-> s5-0 z) (* (sin (* 65536.0 (-> self z-t))) (fmax 0.01 (fmin 0.1 (* 0.1 (- 10.0 (-> self z-t)))))))
+      (vector+! s5-0 s5-0 (-> self base-vec))
+      (set! (-> gp-0 vector 1 quad) (-> s5-0 quad))
+      (vector-normalize! (-> gp-0 vector 1) 1.0)
+      (set-vector!
+        s5-0
+        (sin (* (-> self rot-speed) (the float (- (-> *display* base-frame-counter) (-> self state-time)))))
+        0.0
+        (cos (* (-> self rot-speed) (the float (- (-> *display* base-frame-counter) (-> self state-time)))))
+        1.0
+        )
+      (vector-cross! (the-as vector (-> gp-0 vector)) (-> gp-0 vector 1) s5-0)
+      )
+    (vector-normalize! (the-as vector (-> gp-0 vector)) 1.0)
+    (vector-cross! (-> gp-0 vector 2) (the-as vector (-> gp-0 vector)) (-> gp-0 vector 1))
+    (matrix->quaternion (-> self root quat) gp-0)
+    )
+  )
+
+(defstate swamp-rope-break (swamp-rope)
+  :enter (behavior ()
+    (set! (-> self scale-base) (-> self root scale y))
+    (none)
+    )
+  :trans (behavior ()
+    (vector<-cspace! (-> self root trans) (-> self parent-override 0 node-list data (-> self parent-rp)))
+    (none)
+    )
+  :code (behavior ()
+    (let ((f30-0 18.204445)
+          (f28-0 9.102222)
+          )
+      (set! (-> self rot-speed) (+ f30-0 (* f28-0 (rand-float-gen))))
+      )
+    (let* ((f30-1 3000000.0)
+           (v1-5 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-6 (the-as number (logior #x3f800000 v1-5)))
+           )
+      (set! (-> self state-time) (the-as time-frame (the int (* f30-1 (+ -1.0 (the-as float v1-6))))))
+      )
+    (ja-channel-push! 1 (seconds 0.5))
+    (loop
+      (let* ((f30-2 0.3)
+             (f28-1 0.25)
+             (v1-10 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (v1-11 (the-as number (logior #x3f800000 v1-10)))
+             (f30-3 (+ f30-2 (* f28-1 (+ -1.0 (the-as float v1-11)))))
+             )
+        (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max f30-3) :frame-num 0.0)
+        (until (ja-done? 0)
+          (swamp-rope-break-code)
+          (suspend)
+          (ja :num! (seek! max f30-3))
+          )
+        )
+      )
+    (none)
+    )
+  :post (behavior ()
+    (set! (-> self other-pos quad) (-> self root trans quad))
+    (set! (-> self other-pos y) (+ -245760.0 (-> self other-pos y)))
+    (swamp-rope-post)
+    (none)
+    )
+  )
+
+(defbehavior swamp-rope-trans swamp-rope ()
+  (vector<-cspace! (-> self root trans) (-> self parent-override 0 node-list data (-> self parent-rp)))
+  (cond
+    ((not (dummy-20 self))
+     (let ((gp-0 (new 'stack-no-clear 'matrix)))
+       (quaternion->matrix gp-0 (-> self root quat))
+       (set! (-> self base-vec quad) (-> gp-0 vector 1 quad))
+       )
+     (go swamp-rope-break)
+     )
+    (else
+      (let* ((a0-5 (-> self other-entity))
+             (v1-10 (if a0-5
+                        (-> a0-5 extra process)
+                        )
+                    )
+             )
+        (if (and v1-10 (nonzero? (-> (the-as swamp-rope v1-10) root)))
+            (vector<-cspace! (-> self other-pos) (-> (the-as swamp-rope v1-10) node-list data (-> self other-rp)))
+            )
+        )
+      (let ((gp-1 (new 'stack-no-clear 'matrix)))
+        (let ((s5-0 (new 'stack-no-clear 'vector)))
+          (vector-reset! (-> gp-1 vector 3))
+          (vector-! (-> gp-1 vector 1) (-> self root trans) (-> self other-pos))
+          (set! (-> self old-scale) (-> self root scale y))
+          (set! (-> self root scale y) (* 0.0000020345053 (vector-normalize-ret-len! (-> gp-1 vector 1) 1.0)))
+          (set-vector! s5-0 0.0 -1.0 0.0 1.0)
+          (vector-cross! (the-as vector (-> gp-1 vector)) (-> gp-1 vector 1) s5-0)
+          )
+        (vector-normalize! (the-as vector (-> gp-1 vector)) 1.0)
+        (vector-cross! (-> gp-1 vector 2) (the-as vector (-> gp-1 vector)) (-> gp-1 vector 1))
+        (matrix->quaternion (-> self root quat) gp-1)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defstate swamp-rope-idle-rock (swamp-rope)
+  :trans swamp-rope-trans
+  :code (behavior ()
+    (ja :group! swamp-blimp-idle-ja)
+    (loop
+      (let* ((f0-1 (* 2000.0 (- (-> self old-scale) (-> self root scale y))))
+             (f1-3 (+ 0.5 f0-1))
+             )
+        (set! (-> self frame target) (fmin 1.0 (fmax 0.0 f1-3)))
+        )
+      (TODO-RENAME-10 (-> self frame) 0.0)
+      (let* ((v1-6 (-> self other-entity))
+             (a0-4 (if v1-6
+                       (-> v1-6 extra process)
+                       )
+                   )
+             )
+        (when a0-4
+          (set! (-> (the-as swamp-rope a0-4) parent-rp) (the-as int (-> self frame value)))
+          (set! (-> (the-as swamp-rope a0-4) frame vector-overlay quad) (-> self root trans quad))
+          )
+        )
+      (ja :num-func num-func-identity :frame-num (* (-> self frame value) (the float (ja-num-frames 0))))
+      (suspend)
+      )
+    (none)
+    )
+  :post swamp-rope-post
+  )
+
+(defstate swamp-rope-idle-arm (swamp-rope)
+  :trans swamp-rope-trans
+  :code (behavior ()
+    (ja :group! swamp-blimp-idle-ja)
+    (loop
+      (let* ((a0-3 (-> self other-entity))
+             (v1-3 (if a0-3
+                       (-> a0-3 extra process)
+                       )
+                   )
+             )
+        (if v1-3
+            (set! (-> self frame target) (- 1.0 (-> (the-as swamp-rope v1-3) scale-t)))
+            )
+        )
+      (TODO-RENAME-10 (-> self frame) 0.0)
+      (ja :num-func num-func-identity :frame-num (* (-> self frame value) (the float (ja-num-frames 0))))
+      (suspend)
+      )
+    (none)
+    )
+  :post swamp-rope-post
+  )
+
+(defbehavior swamp-rope-init-by-other swamp-rope ((arg0 vector) (arg1 entity-actor))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (initialize-skeleton self *swamp-rope-sg* '())
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (set! (-> self other-entity) arg1)
+  (when (-> self other-entity)
+    (set! (-> self other-pos quad) (-> self other-entity extra trans quad))
+    (let ((gp-1 (tetherrock-get-info (-> self other-entity))))
+      (init! (-> self frame) 0.0 0.002 0.02 (-> gp-1 damping))
+      (set! (-> self parent-rp) (-> gp-1 blimp-rp))
+      (set! (-> self other-rp) (-> gp-1 other-rp))
+      (if (-> gp-1 connected-to-rock)
+          (go swamp-rope-idle-rock)
+          (go swamp-rope-idle-arm)
+          )
+      )
+    )
+  (go swamp-rope-break)
+  (none)
+  )
+
+(defbehavior blimp-trans swamp-blimp ()
+  (when (< (-> self y-offset) (-> self y-offset-target))
+    (+! (-> self y-vel) (* 0.4096 (-> *display* time-adjust-ratio)))
+    (set! (-> self y-vel)
+          (fmax 4.096 (fmin (fmin 819.2 (* 0.01 (- (-> self y-offset-target) (-> self y-offset)))) (-> self y-vel)))
+          )
+    (+! (-> self y-offset) (* (-> self y-vel) (-> *display* time-adjust-ratio)))
+    (when (>= (-> self y-offset) (-> self y-offset-target))
+      (set! (-> self y-offset) (-> self y-offset-target))
+      (set! (-> self y-vel) 0.0)
+      )
+    )
+  (update-timer! (-> self scale-rand))
+  (set! (-> self scale-oscillator target) (* 0.9 (-> self scale-oscillator target)))
+  (TODO-RENAME-10 (-> self scale-oscillator) (-> self scale-rand value))
+  (let ((a3-0 (new 'stack-no-clear 'vector)))
+    (set! (-> a3-0 y) (+ 1.0 (-> self scale-oscillator value)))
+    (set! (-> a3-0 x) (sqrtf (/ 1.0 (-> a3-0 y))))
+    (set! (-> a3-0 z) (-> a3-0 x))
+    (set! (-> a3-0 w) 1.0)
+    (set-trs! (-> self bag) (the-as vector #f) (the-as quaternion #f) a3-0)
+    )
+  (update-timer! (-> self main-tilt-rand))
+  (update-timer! (-> self pos-rand))
+  (TODO-RENAME-10 (-> self main-tilt-oscillator) (-> self main-tilt-rand value))
+  (TODO-RENAME-10 (-> self gondola-tilt-oscillator) (the-as vector #f))
+  (TODO-RENAME-10 (-> self pos-oscillator) (-> self pos-rand value))
+  (new 'stack-no-clear 'vector)
+  (let ((gp-0 (new 'stack-no-clear 'quaternion)))
+    (let ((s5-0 (new 'stack-no-clear 'vector)))
+      0.0
+      (vector-normalize! (-> self gondola-tilt-oscillator value) 1.0)
+      (let ((f30-0 (acos (-> self gondola-tilt-oscillator value y))))
+        (set-vector!
+          s5-0
+          (-> self gondola-tilt-oscillator value z)
+          0.0
+          (- (-> self gondola-tilt-oscillator value x))
+          1.0
+          )
+        (vector-normalize! s5-0 1.0)
+        (quaternion-vector-angle! gp-0 s5-0 f30-0)
+        )
+      (set-trs! (-> self gondola) (the-as vector #f) gp-0 (the-as vector #f))
+      (vector-normalize! (-> self main-tilt-oscillator value) 1.0)
+      (let ((f30-1 (acos (-> self main-tilt-oscillator value y))))
+        (set-vector! s5-0 (-> self main-tilt-oscillator value z) 0.0 (- (-> self main-tilt-oscillator value x)) 1.0)
+        (vector-normalize! s5-0 1.0)
+        (quaternion-vector-angle! gp-0 s5-0 f30-1)
+        )
+      )
+    (quaternion*! (-> self root-override quat) gp-0 (-> self rot-at-init))
+    )
+  (quaternion-normalize! (-> self root-override quat))
+  (vector+! (-> self root-override trans) (-> self trans-at-init) (-> self pos-oscillator value))
+  (let ((f0-34 (+ (-> self root-override trans y) (-> self y-offset))))
+    (set! (-> self root-override trans y) f0-34)
+    f0-34
+    )
+  )
+
+(defstate swamp-blimp-bye-bye (swamp-blimp)
+  :enter (behavior ()
+    (let ((gp-0 (entity-actor-lookup (-> self entity) 'alt-actor (-> *SWAMP_BLIMP-bank* arm-index))))
+      (when gp-0
+        (entity-birth-no-kill gp-0)
+        (let ((a0-2 (-> gp-0 extra process)))
+          (if a0-2
+              (send-event a0-2 'arm-sink-evt)
+              )
+          )
+        )
+      )
+    (set! (-> self draw force-lod) 0)
+    0
+    (none)
+    )
+  :trans (the-as (function none :behavior swamp-blimp) blimp-trans)
+  :code (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (let ((gp-0 (new 'stack-no-clear 'quaternion)))
+      (quaternion-copy! gp-0 (-> self rot-at-init))
+      (loop
+        (quaternion-vector-angle!
+          (-> self rot-at-init)
+          (new 'static 'vector :y 1.0 :w 1.0)
+          (* 18.204445 (the float (- (-> *display* base-frame-counter) (-> self state-time))))
+          )
+        (quaternion*! (-> self rot-at-init) (-> self rot-at-init) gp-0)
+        (if (< (-> self pos-oscillator target x) 409600.0)
+            (set! (-> self pos-oscillator target x) (+ 40.96 (-> self pos-oscillator target x)))
+            )
+        (if (< (-> self pos-oscillator target y) 4096000.0)
+            (set! (-> self pos-oscillator target y) (+ 819.2 (-> self pos-oscillator target y)))
+            )
+        (if (< (-> self pos-oscillator target z) 4096000.0)
+            (set! (-> self pos-oscillator target z) (+ 1228.8 (-> self pos-oscillator target z)))
+            )
+        (suspend)
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior swamp-blimp) transform-post)
+  )
+
+(defbehavior swamp-blimp-setup swamp-blimp ()
+  (rlet ((vf0 :class vf))
+    (init-vf0-vector)
+    (let ((gp-0 0))
+      (.svf (&-> (-> self gondola-tilt-oscillator) target quad) vf0)
+      (.svf (&-> (-> self pos-oscillator) target quad) vf0)
+      (dotimes (s5-0 5)
+        (let ((s4-0 (handle->process (-> self the-ropes s5-0))))
+          (when s4-0
+            (cond
+              ((= s5-0 (-> *SWAMP_BLIMP-bank* arm-index))
+               (vector+!
+                 (the-as vector (-> self pos-oscillator))
+                 (the-as vector (-> self pos-oscillator))
+                 (-> (the-as swamp-rope s4-0) other-pos)
+                 )
+               (vector-!
+                 (the-as vector (-> self pos-oscillator))
+                 (the-as vector (-> self pos-oscillator))
+                 (-> self root-override trans)
+                 )
+               )
+              ((dummy-20 (the-as swamp-rope s4-0))
+               (vector+!
+                 (the-as vector (-> self pos-oscillator))
+                 (the-as vector (-> self pos-oscillator))
+                 (-> (the-as swamp-rope s4-0) other-pos)
+                 )
+               (vector-!
+                 (the-as vector (-> self pos-oscillator))
+                 (the-as vector (-> self pos-oscillator))
+                 (-> self trans-at-init)
+                 )
+               (+! gp-0 1)
+               )
+              (else
+                (vector-!
+                  (the-as vector (-> self gondola-tilt-oscillator))
+                  (the-as vector (-> self gondola-tilt-oscillator))
+                  (vector<-cspace!
+                    (new 'stack-no-clear 'vector)
+                    (-> self node-list data (-> (the-as swamp-rope s4-0) parent-rp))
+                    )
+                  )
+                (vector+!
+                  (the-as vector (-> self gondola-tilt-oscillator))
+                  (the-as vector (-> self gondola-tilt-oscillator))
+                  (-> self root-override trans)
+                  )
+                )
+              )
+            )
+          )
+        )
+      (vector-float*!
+        (the-as vector (-> self pos-oscillator))
+        (the-as vector (-> self pos-oscillator))
+        (/ 1.0 (the float (+ gp-0 1)))
+        )
+      (set! (-> self pos-oscillator target y) 0.0)
+      (set! (-> self scale-oscillator target) -0.2)
+      (+! (-> self y-offset-target) (-> *SWAMP_BLIMP-bank* rise-per-break))
+      (cond
+        ((zero? gp-0)
+         (let ((v1-29 (-> self gondola-tilt-oscillator)))
+           (set! (-> v1-29 target x) 0.0)
+           (set! (-> v1-29 target y) 1.0)
+           (set! (-> v1-29 target z) 0.0)
+           (set! (-> v1-29 target w) 1.0)
+           )
+         (set! (-> self arm-timer) (-> *SWAMP_BLIMP-bank* pause-before-dropping-arm))
+         )
+        (else
+          (set! (-> self gondola-tilt-oscillator target y) 0.0)
+          (vector-normalize! (the-as vector (-> self gondola-tilt-oscillator)) 1.0)
+          (set! (-> self gondola-tilt-oscillator target y) (the float (+ gp-0 1)))
+          (vector-normalize! (the-as vector (-> self gondola-tilt-oscillator)) 1.0)
+          )
+        )
+      gp-0
+      )
+    )
+  )
+
+(defstate swamp-blimp-idle (swamp-blimp)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (let ((v1-0 arg2))
+      (the-as object (when (= v1-0 'tetherrock-break-evt)
+                       (increment-success-for-hint (game-text-id swamp-tetherrock-eco-yellow-hint))
+                       (swamp-blimp-setup)
+                       )
+              )
+      )
+    )
+  :trans (the-as (function none :behavior swamp-blimp) blimp-trans)
+  :code (behavior ()
+    (ja :group! swamp-blimp-idle-ja)
+    (loop
+      (when (< 300 (-> self arm-timer))
+        (set! (-> self arm-timer) (- (the-as time-frame (-> self arm-timer))
+                                     (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))
+                                     )
+              )
+        (if (>= 300 (-> self arm-timer))
+            (+! (-> self pos-oscillator target y) (* 16384.0 (-> *display* time-adjust-ratio)))
+            )
+        )
+      (when (< 240 (-> self arm-timer))
+        (set! (-> self arm-timer) (- (the-as time-frame (-> self arm-timer))
+                                     (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))
+                                     )
+              )
+        (if (>= 150 (-> self arm-timer))
+            (set! (-> self scale-oscillator target) 0.2)
+            )
+        )
+      (when (> (-> self arm-timer) 0)
+        (set! (-> self arm-timer) (- (the-as time-frame (-> self arm-timer))
+                                     (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))
+                                     )
+              )
+        (when (<= (-> self arm-timer) 0)
+          (set! (-> self scale-oscillator target) -0.2)
+          (go swamp-blimp-bye-bye)
+          )
+        )
+      (ja :num-func num-func-identity :frame-num 0.0)
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior swamp-blimp) transform-post)
+  )
+
+(defmethod init-from-entity! swamp-blimp ((obj swamp-blimp) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (alloc-riders s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 409600.0)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj *swamp-blimp-sg* '())
+  (quaternion-copy! (-> obj rot-at-init) (-> obj root-override quat))
+  (set! (-> obj arm-timer) 0)
+  (set! (-> obj trans-at-init quad) (-> obj root-override trans quad))
+  (set! (-> obj y-vel) 0.0)
+  (set! (-> obj y-offset) 0.0)
+  (set! (-> obj y-offset-target) 0.0)
+  (init! (-> obj main-tilt-rand) 300 900 0.05 0.0)
+  (let ((s5-1 (new 'stack-no-clear 'vector)))
+    (set-vector! s5-1 0.0 1.0 0.0 1.0)
+    (init! (-> obj main-tilt-oscillator) s5-1 0.001 0.01 0.99)
+    (init! (-> obj gondola-tilt-oscillator) s5-1 0.001 0.01 0.99)
+    )
+  (init! (-> obj pos-rand) 1500 2400 20480.0 4096.0)
+  (init! (-> obj pos-oscillator) (the-as vector #f) 0.00032768 1638.4 0.995)
+  (init! (-> obj scale-rand) 1500 2400 0.02)
+  (init! (-> obj scale-oscillator) 0.0 0.002 0.015 0.99)
+  (dotimes (v1-38 5)
+    (set! (-> obj the-ropes v1-38) (the-as handle #f))
+    )
+  (let ((s5-2 (entity-actor-count (-> obj entity) 'alt-actor)))
+    (dotimes (s4-1 s5-2)
+      (let ((s3-1 (entity-actor-lookup (-> obj entity) 'alt-actor s4-1)))
+        (if s3-1
+            (set! (-> obj the-ropes s4-1)
+                  (ppointer->handle (process-spawn swamp-rope (-> obj trans-at-init) s3-1 :to obj))
+                  )
+            )
+        )
+      )
+    )
+  (set! (-> obj gondola) (new 'process 'joint-mod (joint-mod-handler-mode joint-set*) obj 5))
+  (set! (-> obj bag) (new 'process 'joint-mod (joint-mod-handler-mode joint-set*) obj 3))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (process-entity-status! obj (entity-perm-status bit-7) #t)
+  (swamp-blimp-setup)
+  (go swamp-blimp-idle)
+  (none)
+  )
+
+(defun-debug bustarock ((arg0 int))
+  (with-pp
+    (format (clear *temp-string*) "swamp-tetherrock-~D" arg0)
+    (let ((gp-1 (entity-by-name *temp-string*)))
+      (when gp-1
+        (dotimes (s5-1 5)
+          (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-1 from) pp)
+            (set! (-> a1-1 num-params) 2)
+            (set! (-> a1-1 message) 'attack)
+            (set! (-> a1-1 param 0) (the-as uint 'eco-yellow))
+            (set! (-> a1-1 param 1) (the-as uint 'eco-yellow))
+            (let ((t9-3 send-event-function)
+                  (v1-4 gp-1)
+                  )
+              (t9-3
+                (if v1-4
+                    (-> v1-4 extra process)
+                    )
+                a1-1
+                )
+              )
+            )
+          )
+        (format #t "found the rock~%")
+        )
+      )
+    )
+  )
+
+
+
+

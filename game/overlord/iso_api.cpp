@@ -157,7 +157,7 @@ void PlayVAGStream(FileRecord* file,
 
 void SetVAGStreamVolume(s32 volume) {
   auto cmd = GetVAGCommand();
-  cmd->cmd_id = 1029;
+  cmd->cmd_id = SET_VAG_VOLUME;
   cmd->messagebox_to_reply = 0;
   cmd->thread_id = 0;
   cmd->volume = volume;
@@ -166,7 +166,7 @@ void SetVAGStreamVolume(s32 volume) {
 
 void SetDialogVolume(s32 volume) {
   auto cmd = GetVAGCommand();
-  cmd->cmd_id = 1030;
+  cmd->cmd_id = SET_DIALOG_VOLUME;
   cmd->messagebox_to_reply = 0;
   cmd->thread_id = 0;
   cmd->volume = volume;
@@ -186,7 +186,7 @@ void StopVAGStream(VagDirEntry* vag, u32 priority) {
 
 void PauseVAGStream() {
   auto cmd = GetVAGCommand();
-  cmd->cmd_id = 1027;
+  cmd->cmd_id = PAUSE_VAG_STREAM;
   cmd->messagebox_to_reply = 0;
   cmd->thread_id = 0;
   SendMbx(iso_mbx, cmd);
@@ -194,7 +194,7 @@ void PauseVAGStream() {
 
 void UnpauseVAGStream() {
   auto cmd = GetVAGCommand();
-  cmd->cmd_id = 1028;
+  cmd->cmd_id = CONTINUE_VAG_STREAM;
   cmd->messagebox_to_reply = 0;
   cmd->thread_id = 0;
   SendMbx(iso_mbx, cmd);

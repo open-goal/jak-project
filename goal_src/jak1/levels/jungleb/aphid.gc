@@ -1,0 +1,315 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: aphid.gc
+;; name in dgo: aphid
+;; dgos: JUB, L1
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/aphid-lurker-ag.gc")
+
+(deftype aphid (nav-enemy)
+  ((try int32  :offset-assert 400)
+   )
+  :heap-base #x130
+  :method-count-assert 76
+  :size-assert         #x194
+  :flag-assert         #x4c01300194
+  )
+
+
+(defskelgroup *aphid-sg* aphid-lurker aphid-lurker-lod0-jg -1
+              ((aphid-lurker-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 2)
+              :shadow aphid-lurker-shadow-mg
+              )
+
+(defbehavior aphid-invulnerable aphid ()
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf5))
+  (set-collide-offense (-> self collide-info) 2 (collide-offense indestructible))
+  (none)
+  )
+
+(defbehavior aphid-vulnerable aphid ()
+  (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf5))
+  (set-collide-offense (-> self collide-info) 2 (collide-offense touch))
+  (none)
+  )
+
+(defmethod dummy-43 aphid ((obj aphid) (arg0 process) (arg1 event-message-block))
+  (cond
+    ((or (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf5))
+         (= arg0 (ppointer->process (-> obj parent)))
+         )
+     (send-event arg0 'get-attack-count 1)
+     (logclear! (-> obj mask) (process-mask actor-pause attackable))
+     (go (method-of-object obj nav-enemy-die))
+     )
+    (else
+      (dummy-44 obj arg0 arg1)
+      )
+    )
+  )
+
+(defstate nav-enemy-chase (aphid)
+  :virtual #t
+  :exit aphid-vulnerable
+  :code (behavior ()
+    (let ((gp-0 (cond
+                  ((>= (-> self try) 15)
+                   450
+                   )
+                  ((>= (-> self try) 10)
+                   300
+                   )
+                  ((>= (-> self try) 5)
+                   150
+                   )
+                  (else
+                    0
+                    )
+                  )
+                )
+          )
+      (loop
+        (ja-channel-push! 1 (seconds 0.05))
+        (sound-play "aphid-spike-out")
+        (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        (aphid-invulnerable)
+        (ja-channel-push! 1 (seconds 0.1))
+        (ja :group! (-> self draw art-group data 5))
+        (ja :num-func num-func-identity :frame-num 0.0)
+        (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1))
+              (s5-1 (-> *display* base-frame-counter))
+              (s4-1 (- (the int (nav-enemy-rnd-float-range 900.0 1440.0)) gp-0))
+              )
+          (until (>= (- (-> *display* base-frame-counter) s5-1) s4-1)
+            (suspend)
+            (ja :num! (loop! f30-0))
+            )
+          )
+        (aphid-vulnerable)
+        (ja-channel-push! 1 (seconds 0.05))
+        (sound-play "aphid-spike-in")
+        (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek! 0.0) :frame-num max)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! 0.0))
+          )
+        (ja-channel-push! 1 (seconds 0.1))
+        (ja :group! (-> self draw art-group data (-> self nav-info run-anim)))
+        (ja :num-func num-func-identity :frame-num 0.0)
+        (let ((f30-1 (nav-enemy-rnd-float-range 0.9 1.1))
+              (s5-3 (-> *display* base-frame-counter))
+              (s4-3 (+ (the int (nav-enemy-rnd-float-range 660.0 900.0)) gp-0))
+              )
+          (until (>= (- (-> *display* base-frame-counter) s5-3) s4-3)
+            (suspend)
+            (ja :num! (loop! f30-1))
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(defstate nav-enemy-stare (aphid)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self turn-time) (seconds 0.2))
+    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
+      (when (or (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
+                (and (nav-enemy-player-vulnerable?) (nav-enemy-rnd-percent? 0.5))
+                )
+        (ja-channel-push! 1 (seconds 0.1))
+        (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek! max f30-0) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        )
+      (loop
+        (when (not (nav-enemy-facing-player? 2730.6667))
+          (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+          (ja-no-eval :num! (loop!))
+          (ja-channel-push! 1 (seconds 0.2))
+          (ja :group! (-> self draw art-group data 4))
+          (ja :num-func num-func-identity :frame-num 0.0)
+          (until (nav-enemy-facing-player? 1820.4445)
+            (ja-blend-eval)
+            (suspend)
+            (ja :num! (loop! 0.75))
+            )
+          (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+          )
+        (when (nav-enemy-rnd-percent? 0.3)
+          (if (not (ja-group? (-> self draw art-group data 10)))
+              (ja-channel-push! 1 (seconds 0.1))
+              )
+          (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek! max f30-0) :frame-num 0.0)
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek! max f30-0))
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(defstate nav-enemy-give-up (aphid)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self rotate-speed) 218453.33)
+    (set! (-> self turn-time) (seconds 0.5))
+    (ja-channel-push! 1 (seconds 0.15))
+    (let ((s4-0 (-> self collide-info))
+          (s5-0 (target-pos 0))
+          )
+      (when (< (fabs
+                 (deg-diff (y-angle s4-0) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s5-0 (-> s4-0 trans))))
+                 )
+               12743.111
+               )
+        (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
+    (nav-enemy-get-new-patrol-point)
+    (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (seek-to-point-toward-point!
+        (-> self collide-info)
+        (-> self nav destination-pos)
+        (-> self rotate-speed)
+        (-> self turn-time)
+        )
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual nav-enemy-patrol)
+    (none)
+    )
+  )
+
+(define *aphid-nav-enemy-info* (new 'static 'nav-enemy-info
+                                 :idle-anim 3
+                                 :walk-anim 4
+                                 :turn-anim 9
+                                 :notice-anim 3
+                                 :run-anim 4
+                                 :jump-anim -1
+                                 :jump-land-anim -1
+                                 :victory-anim 10
+                                 :taunt-anim 10
+                                 :die-anim 11
+                                 :neck-joint 10
+                                 :player-look-at-joint 5
+                                 :run-travel-speed (meters 5)
+                                 :run-rotate-speed (degrees 2880.0)
+                                 :run-acceleration (meters 1)
+                                 :run-turn-time (seconds 0.1)
+                                 :walk-travel-speed (meters 3)
+                                 :walk-rotate-speed (degrees 720.0)
+                                 :walk-acceleration (meters 1)
+                                 :walk-turn-time (seconds 0.5)
+                                 :attack-shove-back (meters 3)
+                                 :attack-shove-up (meters 2)
+                                 :shadow-size (meters 2)
+                                 :notice-nav-radius (meters 2)
+                                 :nav-nearest-y-threshold (meters 10)
+                                 :notice-distance (meters 30)
+                                 :stop-chase-distance (meters 40)
+                                 :frustration-distance (meters 8)
+                                 :frustration-time (seconds 4)
+                                 :die-anim-hold-frame 24.0
+                                 :jump-anim-start-frame 10.0
+                                 :jump-land-anim-end-frame 10000000000.0
+                                 :jump-height-min (meters 1)
+                                 :jump-height-factor 0.5
+                                 :jump-start-anim-speed 1.0
+                                 :shadow-max-y (meters 0.25)
+                                 :shadow-min-y (meters -0.25)
+                                 :shadow-locus-dist (meters 150)
+                                 :use-align #f
+                                 :draw-shadow #t
+                                 :move-to-ground #t
+                                 :hover-if-no-ground #f
+                                 :use-momentum #f
+                                 :use-flee #t
+                                 :use-proximity-notice #f
+                                 :use-jump-blocked #f
+                                 :use-jump-patrol #f
+                                 :gnd-collide-with (collide-kind background)
+                                 :debug-draw-neck #f
+                                 :debug-draw-jump #f
+                                 )
+        )
+
+(defmethod initialize-collision aphid ((obj aphid))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) default-collision-reaction)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set! (-> s4-0 prim-core offense) (collide-offense touch))
+      (set-vector! (-> s4-0 local-sphere) 0.0 4096.0 0.0 4096.0)
+      (set-root-prim! s5-0 s4-0)
+      )
+    (set! (-> s5-0 nav-radius) 6144.0)
+    (backup-collide-with-as s5-0)
+    (set! (-> s5-0 max-iteration-count) (the-as uint 2))
+    (set! (-> obj collide-info) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-48 aphid ((obj aphid))
+  (initialize-skeleton obj *aphid-sg* '())
+  (TODO-RENAME-45 obj *aphid-nav-enemy-info*)
+  (set! (-> obj neck up) (the-as uint 0))
+  (set! (-> obj neck nose) (the-as uint 1))
+  (set! (-> obj neck ear) (the-as uint 2))
+  0
+  (none)
+  )
+
+(defbehavior aphid-init-by-other aphid ((arg0 nav-enemy) (arg1 vector) (arg2 vector))
+  (initialize-collision self)
+  (logior! (-> self mask) (process-mask actor-pause))
+  (set! (-> self collide-info trans quad) (-> arg1 quad))
+  (set! (-> self event-param-point quad) (-> arg2 quad))
+  (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) arg2 arg1)))
+    (set! (-> s3-1 y) 0.0)
+    (vector-normalize! s3-1 1.0)
+    (forward-up->quaternion (-> self collide-info quat) s3-1 *up-vector*)
+    )
+  (vector-identity! (-> self collide-info scale))
+  (set! (-> self entity) (-> arg0 entity))
+  (TODO-RENAME-48 self)
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf12))
+  (set! (-> self try) (the-as int (send-event (ppointer->process (-> self parent)) 'try)))
+  (go-virtual nav-enemy-chase)
+  (none)
+  )
+
+
+
+

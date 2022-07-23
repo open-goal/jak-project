@@ -3,6 +3,7 @@
 
 #include <algorithm>
 
+#include "game/graphics/gfx.h"
 #include "game/kernel/svnrev.h"
 
 #include "third-party/imgui/imgui.h"
@@ -109,20 +110,23 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     if (ImGui::BeginMenu("Screenshot")) {
       ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
       ImGui::InputText("File", m_screenshot_save_name, 50);
+      ImGui::InputInt("Width", &screenshot_width);
+      ImGui::InputInt("Height", &screenshot_height);
+      ImGui::InputInt("MSAA", &screenshot_samples);
       ImGui::EndMenu();
     }
 
     if (ImGui::BeginMenu("Frame Rate")) {
-      ImGui::Checkbox("Enable V-Sync", &m_vsync);
+      ImGui::Checkbox("Enable V-Sync", &Gfx::g_global_settings.vsync);
       ImGui::Separator();
-      ImGui::Checkbox("Framelimiter", &framelimiter);
+      ImGui::Checkbox("Framelimiter", &Gfx::g_global_settings.framelimiter);
       ImGui::InputFloat("Target FPS", &target_fps_input);
       if (ImGui::MenuItem("Apply")) {
-        target_fps = target_fps_input;
+        Gfx::g_global_settings.target_fps = target_fps_input;
       }
       ImGui::Separator();
-      ImGui::Checkbox("Accurate Lag Mode", &experimental_accurate_lag);
-      ImGui::Checkbox("Sleep in Frame Limiter", &sleep_in_frame_limiter);
+      ImGui::Checkbox("Accurate Lag Mode", &Gfx::g_global_settings.experimental_accurate_lag);
+      ImGui::Checkbox("Sleep in Frame Limiter", &Gfx::g_global_settings.sleep_in_frame_limiter);
       ImGui::EndMenu();
     }
 

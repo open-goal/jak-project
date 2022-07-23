@@ -3,6 +3,7 @@
 #include "common/versions.h"
 #include "common/util/FileUtil.h"
 #include "common/util/DgoReader.h"
+#include <common/util/unicode_util.h>
 
 namespace {
 int run(int argc, char** argv) {
@@ -48,6 +49,11 @@ int run(int argc, char** argv) {
 }  // namespace
 
 int main(int argc, char** argv) {
+  fs::u8arguments u8guard(argc, argv);
+  if (!u8guard.valid()) {
+    exit(EXIT_FAILURE);
+  }
+
   try {
     return run(argc, argv);
   } catch (const std::exception& e) {

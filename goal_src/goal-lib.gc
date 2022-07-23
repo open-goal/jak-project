@@ -1,13 +1,5 @@
 ;;-*-Lisp-*-
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; OTHER STUFF
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; tell compiler about stuff defined/implemented in the runtime.
-(asm-file "goal_src/kernel-defs.gc")
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; BUILD SYSTEM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -37,10 +29,6 @@
 (desfun run-frontend-command (file)
   `(asm-file ,file :no-code)
   )
-
-
-(defmacro load-art-import (name)
-  `(asm-file ,(string-append "goal_src/import/" (symbol->string name) "-ag.gc") :no-code :no-throw))
 
 (defmacro load-imports ()
   `(begin
@@ -507,6 +495,16 @@
   `(case ,switch ,@cases :comp string=)
   )
 
+(defmacro dolist (bindings &rest body)
+  `(let ((,(car bindings) ,(cadr bindings)))
+      (while (not (null? ,(car bindings)))
+        ,@body
+        
+        (set! ,(car bindings) (cdr ,(car bindings)))
+        )
+      )
+  )
+
 ;;;;;;;;;;;;;;;;;;;
 ;; Math Macros
 ;;;;;;;;;;;;;;;;;;;
@@ -704,36 +702,6 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; TYPE STUFF
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmacro basic? (obj)
-  ;; todo, make this more efficient
-  `(= 4 (logand (the integer ,obj) #b111))
-  )
-
-(defmacro pair? (obj)
-  ;; todo, make this more efficient
-  ;`(= 2 (logand (the integer ,obj) #b111))
-  `(< (shl (the-as int ,obj) 62) 0)
-  )
-
-(defmacro not-pair? (obj)
-  `(>= (shl (the-as int ,obj) 62) 0)
-  )
-
-(defmacro binteger? (obj)
-  `(zero? (logand (the integer ,obj) #b111))
-  )
-
-(defmacro rtype-of (obj)
-  `(cond ((binteger? ,obj) binteger)
-         ((pair? ,obj) pair)
-         (else (-> (the basic ,obj) type))
-         )
-  )
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PAIR STUFF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -878,7 +846,7 @@
 (defmacro makeo (object-name &rest flags)
   "Make the given object. Can use a string, or not."
   `(make ,(string-append
-           "out/obj/"
+           "$OUT/"
            (if (string? object-name) object-name (symbol->string object-name))
            ".o"
            )
@@ -886,11 +854,11 @@
   )
 
 (defmacro make-cgo (file)
-  `(make ,(string-append "out/iso/" file ".CGO"))
+  `(make ,(string-append "$OUT/iso/" file ".CGO"))
   )
 
 (defmacro make-dgo (file)
-  `(make ,(string-append "out/iso/" file ".DGO"))
+  `(make ,(string-append "$OUT/iso/" file ".DGO"))
   )
 
 (defmacro make-group (name &key (verbose #f) &key (force #f))
@@ -1044,14 +1012,17 @@
   `(defconstant ,name (-> self draw art-group data ,idx))
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Load Project
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; build system stuff
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; hack to get a goos variable in goal
-(defmacro __get_jak1_full_game () *jak1-full-game*)
-(defconstant *jak1-full-game* (__get_jak1_full_game))
-
-;; load the default project
-(load-project "goal_src/game.gp")
+(#cond
+  ((eq? GAME_VERSION 'jak1)
+   (asm-file "goal_src/jak1/compiler-setup.gc")
+   (seval (fmt #t "Jak 1 Mode\n"))
+   )
+  ((eq? GAME_VERSION 'jak2)
+   (asm-file "goal_src/jak2/compiler-setup.gc")
+   (seval (fmt #t "Jak 2 Mode\n"))
+   )
+  )

@@ -1,5 +1,4 @@
 #include "common/log/log.h"
-#include "common/util/Timer.h"
 
 #include "goalc/compiler/Compiler.h"
 #include "gtest/gtest.h"
@@ -33,12 +32,12 @@ void connect_compiler_and_debugger(Compiler& compiler, bool do_break) {
   }
 }
 }  // namespace
-TEST(Debugger, DebuggerBasicConnect) {
-  Compiler compiler;
+TEST(Jak1Debugger, DebuggerBasicConnect) {
+  Compiler compiler(GameVersion::Jak1);
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -50,12 +49,12 @@ TEST(Debugger, DebuggerBasicConnect) {
   }
 }
 
-TEST(Debugger, DebuggerBreakAndContinue) {
-  Compiler compiler;
+TEST(Jak1Debugger, DebuggerBreakAndContinue) {
+  Compiler compiler(GameVersion::Jak1);
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -72,12 +71,12 @@ TEST(Debugger, DebuggerBreakAndContinue) {
   }
 }
 
-TEST(Debugger, DebuggerReadMemory) {
-  Compiler compiler;
+TEST(Jak1Debugger, DebuggerReadMemory) {
+  Compiler compiler(GameVersion::Jak1);
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -96,12 +95,12 @@ TEST(Debugger, DebuggerReadMemory) {
   }
 }
 
-TEST(Debugger, DebuggerWriteMemory) {
-  Compiler compiler;
+TEST(Jak1Debugger, DebuggerWriteMemory) {
+  Compiler compiler(GameVersion::Jak1);
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -127,12 +126,12 @@ TEST(Debugger, DebuggerWriteMemory) {
   }
 }
 
-TEST(Debugger, Symbol) {
-  Compiler compiler;
+TEST(Jak1Debugger, Symbol) {
+  Compiler compiler(GameVersion::Jak1);
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
   // separate process.
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, true);
@@ -158,11 +157,11 @@ TEST(Debugger, Symbol) {
   }
 }
 
-TEST(Debugger, SimpleBreakpoint) {
-  Compiler compiler;
+TEST(Jak1Debugger, SimpleBreakpoint) {
+  Compiler compiler(GameVersion::Jak1);
 
   if (!fork()) {
-    GoalTest::runtime_no_kernel();
+    GoalTest::runtime_no_kernel_jak1();
     exit(0);
   } else {
     connect_compiler_and_debugger(compiler, false);

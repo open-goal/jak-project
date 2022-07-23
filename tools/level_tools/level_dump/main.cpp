@@ -8,6 +8,7 @@
 #include "decompiler/level_extractor/BspHeader.h"
 
 #include "common/util/Assert.h"
+#include <common/util/unicode_util.h>
 
 constexpr GameVersion kGameVersion = GameVersion::Jak1;
 
@@ -55,6 +56,11 @@ bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
 }
 
 int main(int argc, char** argv) {
+  fs::u8arguments u8guard(argc, argv);
+  if (!u8guard.valid()) {
+    exit(EXIT_FAILURE);
+  }
+
   try {
     fmt::print("Level Dump Tool\n");
 
@@ -64,7 +70,7 @@ int main(int argc, char** argv) {
     }
 
     fmt::print("Setting up types...\n");
-    decompiler::DecompilerTypeSystem dts;
+    decompiler::DecompilerTypeSystem dts(kGameVersion);
     dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
 
     std::string file_name = argv[1];

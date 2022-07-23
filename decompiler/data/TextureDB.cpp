@@ -1,11 +1,10 @@
 #include "TextureDB.h"
 
-#include <filesystem>
-
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 
 #include "third-party/fmt/core.h"
+#define STBI_WINDOWS_UTF8
 #include "third-party/stb_image/stb_image.h"
 
 namespace decompiler {
@@ -46,12 +45,11 @@ void TextureDB::add_texture(u32 tpage,
   }
 }
 
-void TextureDB::replace_textures(const std::string& path) {
-  std::filesystem::path base_path(path);
+void TextureDB::replace_textures(const fs::path& path) {
+  fs::path base_path(path);
   for (auto& tex : textures) {
-    std::filesystem::path full_path =
-        base_path / tpage_names.at(tex.second.page) / (tex.second.name + ".png");
-    if (std::filesystem::exists(full_path)) {
+    fs::path full_path = base_path / tpage_names.at(tex.second.page) / (tex.second.name + ".png");
+    if (fs::exists(full_path)) {
       lg::info("Replacing {}", full_path.string().c_str());
       int w, h;
       auto data = stbi_load(full_path.string().c_str(), &w, &h, 0, 4);  // rgba channels

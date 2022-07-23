@@ -1,0 +1,1237 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: puffer.gc
+;; name in dgo: puffer
+;; dgos: L1, SUN, SUNKEN
+
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/puffer-ag.gc")
+
+(deftype puffer (process-drawable)
+  ((root-override        collide-shape-moving         :offset        112)
+   (fact-info-override   fact-info-enemy              :offset        144)
+   (path-index           int32                        :offset-assert 176)
+   (facing-ry            float                        :offset-assert 180)
+   (travel-ry            float                        :offset-assert 184)
+   (travel-speed         float                        :offset-assert 188)
+   (attack-bottom-y      float                        :offset-assert 192)
+   (patrol-bottom-y      float                        :offset-assert 196)
+   (top-y                float                        :offset-assert 200)
+   (targ-trans-y         float                        :offset-assert 204)
+   (acc-y                float                        :offset-assert 208)
+   (travel-turn-speed    float                        :offset-assert 212)
+   (notice-dist          float                        :offset-assert 216)
+   (give-up-dist         float                        :offset-assert 220)
+   (attacking?           symbol                       :offset-assert 224)
+   (hit-player?          symbol                       :offset-assert 228)
+   (look-mean?           symbol                       :offset-assert 232)
+   (cprims-type          uint64                       :offset-assert 240)
+   (neck                 joint-mod                    :offset-assert 248)
+   (hit-player-time      time-frame                   :offset-assert 256)
+   (reaction-delay       time-frame                   :offset-assert 264)
+   (picked-point-time    time-frame                   :offset-assert 272)
+   (pick-new-point-delay time-frame                   :offset-assert 280)
+   (last-on-screen-time  time-frame                   :offset-assert 288)
+   (buddy                process-drawable             :offset-assert 296)
+   (nice-look            lod-set              :inline :offset-assert 300)
+   (mean-look            lod-set              :inline :offset-assert 336)
+   (dest-pos             vector               :inline :offset-assert 384)
+   (sync                 sync-info            :inline :offset-assert 400)
+   )
+  :heap-base #x130
+  :method-count-assert 32
+  :size-assert         #x198
+  :flag-assert         #x2001300198
+  (:methods
+    (dummy-20 (_type_ vector) none 20)
+    (dummy-21 (_type_) none 21)
+    (dummy-22 (_type_) symbol 22)
+    (dummy-23 (_type_ symbol) symbol 23)
+    (dummy-24 (_type_ vector) symbol 24)
+    (dummy-25 (_type_ float) symbol 25)
+    (dummy-26 (_type_) none 26)
+    (dummy-27 (_type_) none 27)
+    (dummy-28 (_type_) none 28)
+    (flip-look! (_type_ symbol) none 29)
+    (dummy-30 (_type_) vector 30)
+    (dummy-31 (_type_) vector 31)
+    )
+  (:states
+    puffer-attack
+    puffer-die
+    puffer-idle
+    puffer-patrol
+    )
+  )
+
+
+(defskelgroup *puffer-sg* puffer puffer-main-lod0-jg -1
+              ((puffer-main-lod0-mg (meters 20)) (puffer-main-lod1-mg (meters 40)) (puffer-main-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 5.25)
+              :longest-edge (meters 1.2)
+              :shadow puffer-main-shadow-mg
+              )
+
+(defskelgroup *puffer-mean-sg* puffer puffer-mean-lod0-jg -1
+              ((puffer-mean-lod0-mg (meters 20)) (puffer-mean-lod1-mg (meters 40)) (puffer-mean-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 5.25)
+              :longest-edge (meters 1.2)
+              :shadow puffer-main-shadow-mg
+              )
+
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 56]
+(defbehavior puffer-default-event-handler puffer ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (let ((v1-0 arg2))
+    (the-as
+      object
+      (when (or (= v1-0 'touch) (= v1-0 'attack))
+        (when (and (= arg2 'attack) (!= (-> self cprims-type) 2))
+          (let* ((gp-0 arg0)
+                 (v1-7 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
+                           gp-0
+                           )
+                       )
+                 )
+            (when v1-7
+              (let ((f0-4 (atan
+                            (- (-> (the-as process-drawable v1-7) root trans x) (-> self root-override trans x))
+                            (- (-> (the-as process-drawable v1-7) root trans z) (-> self root-override trans z))
+                            )
+                          )
+                    )
+                (quaternion-axis-angle! (-> self root-override quat) 0.0 1.0 0.0 f0-4)
+                )
+              )
+            )
+          (go puffer-die)
+          (return (the-as object #t))
+          )
+        (when (= (-> arg0 type) target)
+          (when (send-event
+                  arg0
+                  'attack
+                  (-> arg3 param 0)
+                  (static-attack-info ((shove-up (meters 1.5)) (shove-back (meters 2.5))))
+                  )
+            (set! (-> self hit-player?) #t)
+            (set! (-> self hit-player-time) (-> *display* base-frame-counter))
+            (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
+            )
+          )
+        )
+      )
+    )
+  )
+
+(defbehavior puffer-post puffer ()
+  (when (and (-> self hit-player?)
+             (or (not *target*)
+                 (and (zero? (logand (-> *target* state-flags)
+                                     (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                                     )
+                             )
+                      (>= (- (-> *display* base-frame-counter) (-> self hit-player-time)) (seconds 0.05))
+                      )
+                 )
+             )
+    (set-collide-offense (-> self root-override) 2 (collide-offense normal-attack))
+    (set! (-> self hit-player?) #f)
+    )
+  (transform-post)
+  (none)
+  )
+
+(defmethod dummy-28 puffer ((obj puffer))
+  (cond
+    ((and (-> obj draw shadow)
+          (zero? (-> obj draw cur-lod))
+          (logtest? (-> obj draw status) (draw-status was-drawn))
+          )
+     (let ((s5-0 (new 'stack-no-clear 'collide-tri-result))
+           (a1-0 (new 'stack-no-clear 'vector))
+           (a2-0 (new 'stack-no-clear 'vector))
+           )
+       (set! (-> a1-0 quad) (-> obj root-override trans quad))
+       (set-vector! a2-0 0.0 -40960.0 0.0 1.0)
+       (cond
+         ((>= (fill-and-probe-using-line-sphere
+                *collide-cache*
+                a1-0
+                a2-0
+                8192.0
+                (collide-kind background cak-3 ground-object)
+                obj
+                s5-0
+                (new 'static 'pat-surface :noentity #x1)
+                )
+              0.0
+              )
+          (let ((v1-11 (-> obj draw shadow-ctrl)))
+            (logclear! (-> v1-11 settings flags) (shadow-flags disable-draw))
+            )
+          0
+          (let ((v1-14 (-> obj draw shadow-ctrl)))
+            (set! (-> v1-14 settings bot-plane w) (- (+ -12288.0 (-> s5-0 intersect y))))
+            )
+          0
+          (let ((v1-17 (-> obj draw shadow-ctrl)))
+            (set! (-> v1-17 settings top-plane w) (- (+ 4096.0 (-> s5-0 intersect y))))
+            )
+          0
+          )
+         (else
+           (let ((v1-19 (-> obj draw shadow-ctrl)))
+             (logior! (-> v1-19 settings flags) (shadow-flags disable-draw))
+             )
+           0
+           )
+         )
+       )
+     )
+    (else
+      (let ((v1-21 (-> obj draw shadow-ctrl)))
+        (logior! (-> v1-21 settings flags) (shadow-flags disable-draw))
+        )
+      0
+      )
+    )
+  (none)
+  )
+
+(defmethod dummy-24 puffer ((obj puffer) (arg0 vector))
+  (and (is-in-mesh? (-> obj nav) arg0 11468.8)
+       (< (-> arg0 y) (+ (-> obj root-override trans y) (-> obj fact-info-override notice-top)))
+       )
+  )
+
+(defmethod dummy-22 puffer ((obj puffer))
+  (let* ((a1-0 (-> obj buddy))
+         (v1-0 (if a1-0
+                   (-> a1-0 ppointer 3)
+                   )
+               )
+         )
+    (if (and v1-0
+             (>= 25395.2
+                 (vector-vector-xz-distance (-> obj root-override trans) (-> (the-as process-drawable v1-0) root trans))
+                 )
+             )
+        (return #t)
+        )
+    )
+  #f
+  )
+
+(defmethod dummy-25 puffer ((obj puffer) (arg0 float))
+  (when *target*
+    (let ((gp-0 (target-pos 0)))
+      (when (and (zero? (logand (-> *target* state-flags)
+                                (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                                )
+                        )
+                 (dummy-24 obj gp-0)
+                 (>= (-> gp-0 y) (+ -14336.0 (-> obj attack-bottom-y)))
+                 (>= (+ 2048.0 (-> obj top-y)) (-> gp-0 y))
+                 )
+        (let ((f30-0 (vector-vector-xz-distance gp-0 (-> obj root-override trans))))
+          (when (>= arg0 f30-0)
+            (let* ((a0-4 (-> obj buddy))
+                   (v1-12 (if a0-4
+                              (-> a0-4 ppointer 3)
+                              )
+                          )
+                   )
+              (cond
+                (v1-12
+                  (if (not (-> (the-as puffer v1-12) attacking?))
+                      (return #t)
+                      )
+                  (if (< f30-0 (vector-vector-xz-distance gp-0 (-> (the-as puffer v1-12) root-override trans)))
+                      (return #t)
+                      )
+                  )
+                (else
+                  (return #t)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+(deftype pick-patrol-point-away-from-buddy-work (structure)
+  ((best-path-index int32          :offset-assert   0)
+   (best-rating     float          :offset-assert   4)
+   (best-dest       vector :inline :offset-assert  16)
+   (pt-dir          vector :inline :offset-assert  32)
+   (buddy-dir       vector :inline :offset-assert  48)
+   (dest            vector :inline :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+
+(defmethod dummy-23 puffer ((obj puffer) (arg0 symbol))
+  (local-vars (v1-0 process))
+  (set! v1-0 (when arg0
+               (let ((a0-1 (-> obj buddy)))
+                 (set! v1-0 (if a0-1
+                                (-> a0-1 ppointer 3)
+                                )
+                       )
+                 )
+               (if (not v1-0)
+                   (set! arg0 #f)
+                   )
+               v1-0
+               )
+        )
+  (cond
+    (arg0
+      (let ((s4-0 (-> obj path curve num-cverts))
+            (s5-0 (new 'stack-no-clear 'inline-array 'vector 5))
+            )
+        (set! (-> s5-0 0 x) (the-as float -1))
+        (vector-! (-> s5-0 3) (-> obj root-override trans) (-> (the-as process-drawable v1-0) root trans))
+        (set! (-> s5-0 3 y) 0.0)
+        (vector-normalize! (-> s5-0 3) 1.0)
+        (dotimes (s3-0 s4-0)
+          (eval-path-curve-div! (-> obj path) (-> s5-0 4) (the float s3-0) 'interp)
+          (vector-! (-> s5-0 2) (-> s5-0 4) (-> obj root-override trans))
+          (when (>= (vector-xz-length (-> s5-0 2)) 10240.0)
+            (set! (-> s5-0 2 y) 0.0)
+            (vector-normalize! (-> s5-0 2) 1.0)
+            (let ((f0-6 (vector-dot (-> s5-0 3) (-> s5-0 2))))
+              (when (>= f0-6 0.0)
+                (when (or (< (the-as int (-> s5-0 0 x)) 0) (< (-> s5-0 0 y) f0-6))
+                  (set! (-> s5-0 0 x) (the-as float s3-0))
+                  (set! (-> s5-0 0 y) f0-6)
+                  (set! (-> s5-0 1 quad) (-> s5-0 4 quad))
+                  )
+                )
+              )
+            )
+          )
+        (when (>= (the-as int (-> s5-0 0 x)) 0)
+          (set! (-> obj dest-pos quad) (-> s5-0 1 quad))
+          (set! (-> obj dest-pos y) (-> obj root-override trans y))
+          (return #t)
+          )
+        )
+      )
+    (else
+      (let* ((s3-1 (-> obj path curve num-cverts))
+             (s4-1 (new 'stack-no-clear 'vector))
+             (s5-1 (rand-vu-int-count s3-1))
+             )
+        (while (nonzero? s3-1)
+          (+! s3-1 -1)
+          (eval-path-curve-div! (-> obj path) s4-1 (the float s5-1) 'interp)
+          (when (>= (vector-vector-xz-distance s4-1 (-> obj root-override trans)) 10240.0)
+            (set! (-> obj dest-pos quad) (-> s4-1 quad))
+            (set! (-> obj dest-pos y) (-> obj root-override trans y))
+            (set! (-> obj path-index) s5-1)
+            (return #t)
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+(defmethod dummy-20 puffer ((obj puffer) (arg0 vector))
+  (if (-> obj attacking?)
+      (set! (-> obj travel-speed)
+            (seek-with-smooth (-> obj travel-speed) 30720.0 (* 8192.0 (-> *display* seconds-per-frame)) 0.125 40.96)
+            )
+      (set! (-> obj travel-speed)
+            (seek-with-smooth (-> obj travel-speed) 18432.0 (* 2048.0 (-> *display* seconds-per-frame)) 0.125 40.96)
+            )
+      )
+  (TODO-RENAME-27 (-> obj nav))
+  (TODO-RENAME-28
+    (-> obj nav)
+    (collide-kind
+      background
+      cak-1
+      cak-2
+      cak-3
+      target
+      water
+      powerup
+      crate
+      enemy
+      wall-object
+      projectile
+      ground-object
+      target-attack
+      mother-spider
+      cak-14
+      blue-eco-suck
+      unknown-16
+      unknown-17
+      unknown-18
+      unknown-19
+      unknown-20
+      unknown-21
+      unknown-22
+      unknown-23
+      unknown-24
+      unknown-25
+      unknown-26
+      unknown-27
+      unknown-28
+      unknown-29
+      unknown-30
+      unknown-31
+      unknown-32
+      unknown-33
+      unknown-34
+      unknown-35
+      unknown-36
+      unknown-37
+      unknown-38
+      unknown-39
+      unknown-40
+      unknown-41
+      unknown-42
+      unknown-43
+      unknown-44
+      unknown-45
+      unknown-46
+      unknown-47
+      unknown-48
+      unknown-49
+      unknown-50
+      unknown-51
+      unknown-52
+      unknown-53
+      unknown-54
+      unknown-55
+      unknown-56
+      unknown-57
+      unknown-58
+      unknown-59
+      unknown-60
+      unknown-61
+      unknown-62
+      unknown-63
+      )
+    )
+  (dummy-13 (-> obj nav) arg0 (-> obj root-override transv))
+  (let ((f30-0 (* (vector-xz-length (-> obj nav travel)) (-> *display* frames-per-second))))
+    (let ((f0-11 (atan (-> obj nav travel x) (-> obj nav travel z)))
+          (s5-1 (new 'stack-no-clear 'vector))
+          )
+      (if (< (-> obj travel-speed) f30-0)
+          (set! f30-0 (-> obj travel-speed))
+          )
+      (set! (-> s5-1 quad) (-> obj nav travel quad))
+      (set! (-> obj travel-ry)
+            (deg-seek-smooth
+              (-> obj travel-ry)
+              f0-11
+              (* (-> obj travel-turn-speed) (-> *display* seconds-per-frame))
+              0.125
+              )
+            )
+      (let* ((f0-16 (* f30-0 (-> *display* seconds-per-frame)))
+             (f28-0 (* 150.0 f0-16))
+             (f26-0 -1.0)
+             )
+        (let ((s4-0 (new 'stack-no-clear 'vector)))
+          (set-vector! s4-0 (* (sin (-> obj travel-ry)) f28-0) 0.0 (* (cos (-> obj travel-ry)) f28-0) 1.0)
+          (let ((s3-1 (new 'stack 'clip-travel-vector-to-mesh-return-info)))
+            (set! (-> obj nav travel quad) (-> s4-0 quad))
+            (dummy-24 (-> obj nav) f28-0 s3-1)
+            (if (-> s3-1 found-boundary)
+                (set! f26-0 (vector-vector-xz-distance (-> s3-1 intersection) (-> obj root-override trans)))
+                )
+            )
+          (let ((s3-2 (new 'stack-no-clear 'matrix)))
+            (when (>= (dummy-23 (-> obj nav) s4-0 (the-as check-vector-collision-with-nav-spheres-info s3-2)) 0.0)
+              (let ((f0-26 (vector-vector-xz-distance (-> s3-2 vector 1) (-> obj root-override trans))))
+                (if (or (< f26-0 0.0) (< f0-26 f26-0))
+                    (set! f26-0 f0-26)
+                    )
+                )
+              )
+            )
+          )
+        (when (>= f26-0 0.0)
+          (let ((f26-1 (- 1.0 (/ f26-0 f28-0))))
+            (+! (-> obj travel-ry) (* f26-1 (deg- (atan (-> s5-1 x) (-> s5-1 z)) (-> obj travel-ry))))
+            )
+          )
+        )
+      )
+    (set-vector!
+      (-> obj root-override transv)
+      (* (sin (-> obj travel-ry)) f30-0)
+      (-> obj root-override transv y)
+      (* (cos (-> obj travel-ry)) f30-0)
+      1.0
+      )
+    )
+  (set! (-> obj facing-ry)
+        (deg-seek-smooth (-> obj facing-ry) (-> obj travel-ry) (* 32768.0 (-> *display* seconds-per-frame)) 0.125)
+        )
+  (dummy-27 obj)
+  (none)
+  )
+
+(defmethod dummy-27 puffer ((obj puffer))
+  (let ((f30-0 (-> obj patrol-bottom-y)))
+    (cond
+      ((-> obj attacking?)
+       (let ((f30-1 (-> obj attack-bottom-y)))
+         (set! (-> obj targ-trans-y) (fmax (fmin (+ 4096.0 (-> (target-pos 0) y)) (-> obj top-y)) f30-1))
+         )
+       (set! (-> obj root-override transv y)
+             (* 0.125 (-> *display* frames-per-second) (- (-> obj targ-trans-y) (-> obj root-override trans y)))
+             )
+       (when (< 6144.0 (fabs (-> obj root-override transv y)))
+         (if (>= (-> obj root-override transv y) 0.0)
+             (set! (-> obj root-override transv y) 6144.0)
+             (set! (-> obj root-override transv y) -6144.0)
+             )
+         )
+       )
+      ((< (-> obj root-override trans y) f30-0)
+       (set! (-> obj targ-trans-y) (* 0.5 (+ (-> obj top-y) (-> obj patrol-bottom-y))))
+       (set! (-> obj root-override transv y)
+             (* 0.125 (-> *display* frames-per-second) (- (-> obj targ-trans-y) (-> obj root-override trans y)))
+             )
+       (when (< 2048.0 (fabs (-> obj root-override transv y)))
+         (if (>= (-> obj root-override transv y) 0.0)
+             (set! (-> obj root-override transv y) 2048.0)
+             (set! (-> obj root-override transv y) -2048.0)
+             )
+         )
+       )
+      (else
+        (let ((f0-22 (- (-> obj targ-trans-y) (-> obj root-override trans y))))
+          (when (or (and (>= f0-22 0.0) (< (-> obj acc-y) 0.0)) (and (< f0-22 0.0) (>= (-> obj acc-y) 0.0)))
+            (when (not (-> obj attacking?))
+              (cond
+                ((>= (-> obj acc-y) 0.0)
+                 (if (< f30-0 (-> obj targ-trans-y))
+                     (set! (-> obj targ-trans-y) (rand-vu-float-range f30-0 (-> obj targ-trans-y)))
+                     )
+                 )
+                (else
+                  (if (< (-> obj targ-trans-y) (-> obj top-y))
+                      (set! (-> obj targ-trans-y) (rand-vu-float-range (-> obj targ-trans-y) (-> obj top-y)))
+                      )
+                  )
+                )
+              )
+            (set! (-> obj acc-y) (- (-> obj acc-y)))
+            )
+          )
+        (+! (-> obj root-override transv y) (* (-> obj acc-y) (-> *display* seconds-per-frame)))
+        (let ((f0-37 (* (-> obj root-override transv y) (-> *display* seconds-per-frame))))
+          (cond
+            ((>= f0-37 0.0)
+             (let ((f1-27 (* 0.0625 (- (-> obj top-y) (-> obj root-override trans y)))))
+               (if (< f1-27 f0-37)
+                   (set! (-> obj root-override transv y) (* f1-27 (-> *display* frames-per-second)))
+                   )
+               )
+             )
+            (else
+              (let ((f1-29 (* 0.0625 (- f30-0 (-> obj root-override trans y)))))
+                (if (< f0-37 f1-29)
+                    (set! (-> obj root-override transv y) (* f1-29 (-> *display* frames-per-second)))
+                    )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defstate puffer-idle (puffer)
+  :event puffer-default-event-handler
+  :enter (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self attacking?) #f)
+    (shut-down! (-> self neck))
+    (let ((v1-5 (-> self draw shadow-ctrl)))
+      (logior! (-> v1-5 settings flags) (shadow-flags disable-draw))
+      )
+    0
+    (none)
+    )
+  :code (behavior ()
+    (loop
+      (if (and (and *target* (>= (-> self fact-info-override idle-distance)
+                                 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                                 )
+                    )
+               (logtest? (-> self draw status) (draw-status was-drawn))
+               (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
+               )
+          (go puffer-patrol)
+          )
+      (dummy-26 self)
+      (suspend)
+      )
+    (none)
+    )
+  :post puffer-post
+  )
+
+(defstate puffer-patrol (puffer)
+  :event puffer-default-event-handler
+  :enter (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self attacking?) #f)
+    (set! (-> self reaction-delay) (rand-vu-int-range (seconds 0.1) (seconds 0.35)))
+    (if (not (dummy-23 self #f))
+        (go puffer-idle)
+        )
+    (set! (-> self picked-point-time) (-> *display* base-frame-counter))
+    (set! (-> self pick-new-point-delay) (rand-vu-int-range (seconds 3) (seconds 10)))
+    (set! (-> self last-on-screen-time) (-> *display* base-frame-counter))
+    (none)
+    )
+  :trans (behavior ()
+    (if (and (not (and *target* (>= (-> self fact-info-override idle-distance)
+                                    (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+                                    )
+                       )
+                  )
+             (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
+             )
+        (go puffer-idle)
+        )
+    (cond
+      ((logtest? (-> self draw status) (draw-status was-drawn))
+       (set! (-> self last-on-screen-time) (-> *display* base-frame-counter))
+       )
+      (else
+        (if (>= (- (-> *display* base-frame-counter) (-> self last-on-screen-time)) (seconds 8))
+            (go puffer-idle)
+            )
+        )
+      )
+    (when (dummy-22 self)
+      (when (dummy-23 self #t)
+        (set! (-> self picked-point-time) (-> *display* base-frame-counter))
+        (set! (-> self pick-new-point-delay) (rand-vu-int-range (seconds 3) (seconds 10)))
+        )
+      )
+    (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self reaction-delay))
+             (dummy-25 self (-> self notice-dist))
+             )
+        (go puffer-attack)
+        )
+    (when (or (< (vector-vector-xz-distance (-> self root-override trans) (-> self dest-pos)) 8192.0)
+              (>= (- (-> *display* base-frame-counter) (-> self picked-point-time)) (-> self pick-new-point-delay))
+              )
+      (when (dummy-23 self #f)
+        (set! (-> self picked-point-time) (-> *display* base-frame-counter))
+        (set! (-> self pick-new-point-delay) (rand-vu-int-range (seconds 3) (seconds 10)))
+        )
+      )
+    (dummy-20 self (-> self dest-pos))
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set-vector! gp-0 (sin (-> self facing-ry)) 0.0 (cos (-> self facing-ry)) 1.0)
+      (set-heading-vec-clear-roll-pitch! (-> self root-override) gp-0)
+      )
+    (vector-v+! (-> self root-override trans) (-> self root-override trans) (-> self root-override transv))
+    (dummy-28 self)
+    (none)
+    )
+  :code (behavior ()
+    (loop
+      (dummy-26 self)
+      (suspend)
+      )
+    (none)
+    )
+  :post puffer-post
+  )
+
+(defstate puffer-attack (puffer)
+  :event puffer-default-event-handler
+  :enter (behavior ()
+    (set! (-> self attacking?) #t)
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self travel-turn-speed) 21845.334)
+    (none)
+    )
+  :exit (behavior ()
+    (shut-down! (-> self neck))
+    (set! (-> self attacking?) #f)
+    (set! (-> self travel-turn-speed) 16384.0)
+    (none)
+    )
+  :trans (behavior ()
+    (if (not (dummy-25 self (-> self give-up-dist)))
+        (go puffer-patrol)
+        )
+    (when *target*
+      (if *target*
+          (look-at-enemy!
+            (-> *target* neck)
+            (the-as vector (-> (the-as collide-shape-prim-group (-> self root-override root-prim)) prims 0 prim-core))
+            'attacking
+            self
+            )
+          )
+      (set-target! (-> self neck) (target-pos 5))
+      )
+    (dummy-20 self (target-pos 0))
+    (let ((gp-2 (new 'stack-no-clear 'vector)))
+      (set-vector! gp-2 (sin (-> self facing-ry)) 0.0 (cos (-> self facing-ry)) 1.0)
+      (set-heading-vec-clear-roll-pitch! (-> self root-override) gp-2)
+      )
+    (vector-v+! (-> self root-override trans) (-> self root-override trans) (-> self root-override transv))
+    (dummy-28 self)
+    (none)
+    )
+  :code (behavior ()
+    (loop
+      (dummy-26 self)
+      (suspend)
+      )
+    (none)
+    )
+  :post puffer-post
+  )
+
+(defstate puffer-die (puffer)
+  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (let ((v1-0 arg2))
+      (the-as
+        uint
+        (cond
+          ((= v1-0 'death-start)
+           (the-as uint (drop-pickup (-> self fact-info-override) #t *entity-pool* (-> self fact-info-override) 0))
+           )
+          ((= v1-0 'death-end)
+           (let ((v0-0 (the-as uint (logior (-> self draw status) (draw-status hidden)))))
+             (set! (-> self draw status) (the-as draw-status v0-0))
+             v0-0
+             )
+           )
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (cleanup-for-death self)
+    (shut-down! (-> self neck))
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (ja-channel-push! 1 (seconds 0.075))
+    (clear-collide-with-as (-> self root-override))
+    (ja-no-eval :group! puffer-die-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior puffer) ja-post)
+  )
+
+(defmethod dummy-21 puffer ((obj puffer))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) default-collision-reaction)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
+      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
+      (set! (-> s4-0 collide-with) (collide-kind target))
+      (set-vector! (-> s4-0 local-sphere) 0.0 6144.0 0.0 18432.0)
+      (set-root-prim! s5-0 s4-0)
+      (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+        (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
+        (set! (-> s3-0 collide-with) (collide-kind target))
+        (set! (-> s3-0 prim-core offense) (collide-offense touch))
+        (set! (-> s3-0 transform-index) 5)
+        (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 4096.0)
+        (append-prim s4-0 s3-0)
+        )
+      (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+        (set! (-> s3-1 prim-core collide-as) (collide-kind enemy))
+        (set! (-> s3-1 collide-with) (collide-kind target))
+        (set! (-> s3-1 prim-core offense) (collide-offense touch))
+        (set! (-> s3-1 transform-index) 3)
+        (set-vector! (-> s3-1 local-sphere) 0.0 0.0 0.0 4096.0)
+        (append-prim s4-0 s3-1)
+        )
+      (let ((s3-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+        (set! (-> s3-2 prim-core collide-as) (collide-kind enemy))
+        (set! (-> s3-2 collide-with) (collide-kind target))
+        (set! (-> s3-2 prim-core offense) (collide-offense touch))
+        (set! (-> s3-2 transform-index) 9)
+        (set-vector! (-> s3-2 local-sphere) 0.0 0.0 0.0 3072.0)
+        (append-prim s4-0 s3-2)
+        )
+      )
+    (set! (-> s5-0 nav-radius) 12288.0)
+    (backup-collide-with-as s5-0)
+    (set! (-> obj root-override) s5-0)
+    )
+  (dummy-30 obj)
+  0
+  (none)
+  )
+
+(defmethod flip-look! puffer ((obj puffer) (arg0 symbol))
+  (when (!= arg0 (-> obj look-mean?))
+    (set! (-> obj look-mean?) arg0)
+    (if arg0
+        (lods-assign! (-> obj draw) (-> obj mean-look))
+        (lods-assign! (-> obj draw) (-> obj nice-look))
+        )
+    )
+  (none)
+  )
+
+(defmethod dummy-30 puffer ((obj puffer))
+  (when (!= (-> obj cprims-type) 1)
+    (set! (-> obj cprims-type) (the-as uint 1))
+    (let ((v1-3 (the-as basic (-> obj root-override root-prim))))
+      (set-vector! (-> (the-as collide-shape-prim v1-3) local-sphere) 0.0 6144.0 0.0 18432.0)
+      (let ((v0-0 (-> (the-as (array collide-shape-prim) v1-3) 17 local-sphere)))
+        (set! (-> v0-0 x) 0.0)
+        (set! (-> v0-0 y) 0.0)
+        (set! (-> v0-0 z) 0.0)
+        (set! (-> v0-0 w) 4096.0)
+        v0-0
+        )
+      )
+    )
+  )
+
+(defmethod dummy-31 puffer ((obj puffer))
+  (when (!= (-> obj cprims-type) 2)
+    (set! (-> obj cprims-type) (the-as uint 2))
+    (let ((v1-3 (the-as basic (-> obj root-override root-prim))))
+      (set-vector! (-> (the-as collide-shape-prim v1-3) local-sphere) 0.0 6144.0 0.0 18432.0)
+      (let ((v0-0 (-> (the-as (array collide-shape-prim) v1-3) 17 local-sphere)))
+        (set! (-> v0-0 x) 0.0)
+        (set! (-> v0-0 y) 0.0)
+        (set! (-> v0-0 z) 0.0)
+        (set! (-> v0-0 w) 7372.8)
+        v0-0
+        )
+      )
+    )
+  )
+
+(defmethod dummy-26 puffer ((obj puffer))
+  (let ((f30-0 (get-current-phase (-> obj sync))))
+    (if (and (< 0.025 f30-0) (< f30-0 0.525))
+        (flip-look! obj #f)
+        (flip-look! obj #t)
+        )
+    (cond
+      ((< f30-0 0.5)
+       (cond
+         ((= (if (> (-> obj skel active-channels) 0)
+                 (-> obj skel root-channel 0 frame-group)
+                 )
+             (-> obj draw art-group data 9)
+             )
+          (cond
+            ((-> obj attacking?)
+             (ja-channel-push! 1 (seconds 0.2))
+             (let ((s5-0 (-> obj skel root-channel 0)))
+               (joint-control-channel-group-eval!
+                 s5-0
+                 (the-as art-joint-anim (-> obj draw art-group data 11))
+                 num-func-identity
+                 )
+               (set! (-> s5-0 frame-num) 0.0)
+               )
+             (let ((a0-10 (-> obj skel root-channel 0)))
+               (set! (-> a0-10 param 0) (the float (+ (-> a0-10 frame-group data 0 length) -1)))
+               (set! (-> a0-10 param 1) 1.0)
+               (joint-control-channel-group! a0-10 (the-as art-joint-anim #f) num-func-seek!)
+               )
+             )
+            ((ja-done? 0)
+             (let ((v1-28 (-> obj skel root-channel 0)))
+               (set! (-> v1-28 num-func) num-func-identity)
+               (set! (-> v1-28 frame-num) 0.0)
+               )
+             (let ((a0-13 (-> obj skel root-channel 0)))
+               (set! (-> a0-13 param 0) (the float (+ (-> a0-13 frame-group data 0 length) -1)))
+               (set! (-> a0-13 param 1) 1.0)
+               (joint-control-channel-group! a0-13 (the-as art-joint-anim #f) num-func-seek!)
+               )
+             )
+            (else
+              (let ((a0-14 (-> obj skel root-channel 0)))
+                (set! (-> a0-14 param 0) (the float (+ (-> a0-14 frame-group data 0 length) -1)))
+                (set! (-> a0-14 param 1) 1.0)
+                (joint-control-channel-group-eval! a0-14 (the-as art-joint-anim #f) num-func-seek!)
+                )
+              )
+            )
+          )
+         ((= (if (> (-> obj skel active-channels) 0)
+                 (-> obj skel root-channel 0 frame-group)
+                 )
+             (-> obj draw art-group data 11)
+             )
+          (cond
+            ((not (-> obj attacking?))
+             (ja-channel-push! 1 (seconds 0.2))
+             (let ((s5-1 (-> obj skel root-channel 0)))
+               (joint-control-channel-group-eval!
+                 s5-1
+                 (the-as art-joint-anim (-> obj draw art-group data 9))
+                 num-func-identity
+                 )
+               (set! (-> s5-1 frame-num) 0.0)
+               )
+             (let ((a0-21 (-> obj skel root-channel 0)))
+               (set! (-> a0-21 param 0) (the float (+ (-> a0-21 frame-group data 0 length) -1)))
+               (set! (-> a0-21 param 1) 1.0)
+               (joint-control-channel-group! a0-21 (the-as art-joint-anim #f) num-func-seek!)
+               )
+             )
+            ((ja-done? 0)
+             (let ((v1-64 (-> obj skel root-channel 0)))
+               (set! (-> v1-64 num-func) num-func-identity)
+               (set! (-> v1-64 frame-num) 0.0)
+               )
+             (let ((a0-24 (-> obj skel root-channel 0)))
+               (set! (-> a0-24 param 0) (the float (+ (-> a0-24 frame-group data 0 length) -1)))
+               (set! (-> a0-24 param 1) 1.0)
+               (joint-control-channel-group! a0-24 (the-as art-joint-anim #f) num-func-seek!)
+               )
+             )
+            (else
+              (let ((a0-25 (-> obj skel root-channel 0)))
+                (set! (-> a0-25 param 0) (the float (+ (-> a0-25 frame-group data 0 length) -1)))
+                (set! (-> a0-25 param 1) 1.0)
+                (joint-control-channel-group-eval! a0-25 (the-as art-joint-anim #f) num-func-seek!)
+                )
+              )
+            )
+          )
+         ((= (if (> (-> obj skel active-channels) 0)
+                 (-> obj skel root-channel 0 frame-group)
+                 )
+             (-> obj draw art-group data 14)
+             )
+          (cond
+            ((ja-done? 0)
+             (ja-channel-push! 1 (seconds 0.2))
+             (cond
+               ((-> obj attacking?)
+                (let ((s5-2 (-> obj skel root-channel 0)))
+                  (joint-control-channel-group-eval!
+                    s5-2
+                    (the-as art-joint-anim (-> obj draw art-group data 11))
+                    num-func-identity
+                    )
+                  (set! (-> s5-2 frame-num) 0.0)
+                  )
+                )
+               (else
+                 (let ((s5-3 (-> obj skel root-channel 0)))
+                   (joint-control-channel-group-eval!
+                     s5-3
+                     (the-as art-joint-anim (-> obj draw art-group data 9))
+                     num-func-identity
+                     )
+                   (set! (-> s5-3 frame-num) 0.0)
+                   )
+                 )
+               )
+             (let ((a0-34 (-> obj skel root-channel 0)))
+               (set! (-> a0-34 param 0) (the float (+ (-> a0-34 frame-group data 0 length) -1)))
+               (set! (-> a0-34 param 1) 1.0)
+               (joint-control-channel-group! a0-34 (the-as art-joint-anim #f) num-func-seek!)
+               )
+             )
+            (else
+              (let ((a0-35 (-> obj skel root-channel 0)))
+                (set! (-> a0-35 param 0) (the float (+ (-> a0-35 frame-group data 0 length) -1)))
+                (set! (-> a0-35 param 1) 1.0)
+                (joint-control-channel-group-eval! a0-35 (the-as art-joint-anim #f) num-func-seek!)
+                )
+              )
+            )
+          )
+         (else
+           (ja-channel-push! 1 (seconds 0.2))
+           (let ((s5-4 (-> obj skel root-channel 0)))
+             (joint-control-channel-group-eval!
+               s5-4
+               (the-as art-joint-anim (-> obj draw art-group data 14))
+               num-func-identity
+               )
+             (set! (-> s5-4 frame-num) 0.0)
+             )
+           (let ((a0-38 (-> obj skel root-channel 0)))
+             (set! (-> a0-38 param 0) (the float (+ (-> a0-38 frame-group data 0 length) -1)))
+             (set! (-> a0-38 param 1) 1.0)
+             (joint-control-channel-group! a0-38 (the-as art-joint-anim #f) num-func-seek!)
+             )
+           )
+         )
+       )
+      ((= (if (> (-> obj skel active-channels) 0)
+              (-> obj skel root-channel 0 frame-group)
+              )
+          (-> obj draw art-group data 10)
+          )
+       (cond
+         ((-> obj attacking?)
+          (ja-channel-push! 1 (seconds 0.2))
+          (let ((s5-5 (-> obj skel root-channel 0)))
+            (joint-control-channel-group-eval!
+              s5-5
+              (the-as art-joint-anim (-> obj draw art-group data 12))
+              num-func-identity
+              )
+            (set! (-> s5-5 frame-num) 0.0)
+            )
+          (let ((a0-45 (-> obj skel root-channel 0)))
+            (set! (-> a0-45 param 0) (the float (+ (-> a0-45 frame-group data 0 length) -1)))
+            (set! (-> a0-45 param 1) 1.0)
+            (joint-control-channel-group! a0-45 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          )
+         ((ja-done? 0)
+          (let ((v1-142 (-> obj skel root-channel 0)))
+            (set! (-> v1-142 num-func) num-func-identity)
+            (set! (-> v1-142 frame-num) 0.0)
+            )
+          (let ((a0-48 (-> obj skel root-channel 0)))
+            (set! (-> a0-48 param 0) (the float (+ (-> a0-48 frame-group data 0 length) -1)))
+            (set! (-> a0-48 param 1) 1.0)
+            (joint-control-channel-group! a0-48 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          )
+         (else
+           (let ((a0-49 (-> obj skel root-channel 0)))
+             (set! (-> a0-49 param 0) (the float (+ (-> a0-49 frame-group data 0 length) -1)))
+             (set! (-> a0-49 param 1) 1.0)
+             (joint-control-channel-group-eval! a0-49 (the-as art-joint-anim #f) num-func-seek!)
+             )
+           )
+         )
+       )
+      ((= (if (> (-> obj skel active-channels) 0)
+              (-> obj skel root-channel 0 frame-group)
+              )
+          (-> obj draw art-group data 12)
+          )
+       (cond
+         ((not (-> obj attacking?))
+          (ja-channel-push! 1 (seconds 0.2))
+          (let ((s5-6 (-> obj skel root-channel 0)))
+            (joint-control-channel-group-eval!
+              s5-6
+              (the-as art-joint-anim (-> obj draw art-group data 10))
+              num-func-identity
+              )
+            (set! (-> s5-6 frame-num) 0.0)
+            )
+          (let ((a0-56 (-> obj skel root-channel 0)))
+            (set! (-> a0-56 param 0) (the float (+ (-> a0-56 frame-group data 0 length) -1)))
+            (set! (-> a0-56 param 1) 1.0)
+            (joint-control-channel-group! a0-56 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          )
+         ((ja-done? 0)
+          (let ((v1-178 (-> obj skel root-channel 0)))
+            (set! (-> v1-178 num-func) num-func-identity)
+            (set! (-> v1-178 frame-num) 0.0)
+            )
+          (let ((a0-59 (-> obj skel root-channel 0)))
+            (set! (-> a0-59 param 0) (the float (+ (-> a0-59 frame-group data 0 length) -1)))
+            (set! (-> a0-59 param 1) 1.0)
+            (joint-control-channel-group! a0-59 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          )
+         (else
+           (let ((a0-60 (-> obj skel root-channel 0)))
+             (set! (-> a0-60 param 0) (the float (+ (-> a0-60 frame-group data 0 length) -1)))
+             (set! (-> a0-60 param 1) 1.0)
+             (joint-control-channel-group-eval! a0-60 (the-as art-joint-anim #f) num-func-seek!)
+             )
+           )
+         )
+       )
+      ((= (if (> (-> obj skel active-channels) 0)
+              (-> obj skel root-channel 0 frame-group)
+              )
+          (-> obj draw art-group data 13)
+          )
+       (cond
+         ((ja-done? 0)
+          (ja-channel-push! 1 (seconds 0.2))
+          (let ((s5-7 (-> obj skel root-channel 0)))
+            (joint-control-channel-group-eval!
+              s5-7
+              (the-as art-joint-anim (-> obj draw art-group data 10))
+              num-func-identity
+              )
+            (set! (-> s5-7 frame-num) 0.0)
+            )
+          (let ((a0-68 (-> obj skel root-channel 0)))
+            (set! (-> a0-68 param 0) (the float (+ (-> a0-68 frame-group data 0 length) -1)))
+            (set! (-> a0-68 param 1) 1.0)
+            (joint-control-channel-group! a0-68 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          )
+         (else
+           (let ((a0-69 (-> obj skel root-channel 0)))
+             (set! (-> a0-69 param 0) (the float (+ (-> a0-69 frame-group data 0 length) -1)))
+             (set! (-> a0-69 param 1) 1.0)
+             (joint-control-channel-group-eval! a0-69 (the-as art-joint-anim #f) num-func-seek!)
+             )
+           )
+         )
+       )
+      (else
+        (ja-channel-push! 1 (seconds 0.2))
+        (let ((s5-8 (-> obj skel root-channel 0)))
+          (joint-control-channel-group-eval!
+            s5-8
+            (the-as art-joint-anim (-> obj draw art-group data 13))
+            num-func-identity
+            )
+          (set! (-> s5-8 frame-num) 0.0)
+          )
+        (let ((a0-72 (-> obj skel root-channel 0)))
+          (set! (-> a0-72 param 0) (the float (+ (-> a0-72 frame-group data 0 length) -1)))
+          (set! (-> a0-72 param 1) 1.0)
+          (joint-control-channel-group! a0-72 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        )
+      )
+    )
+  (case (if (> (-> obj skel active-channels) 0)
+            (-> obj skel root-channel 0 frame-group)
+            )
+    (((-> obj draw art-group data 10) (-> obj draw art-group data 12))
+     (dummy-31 obj)
+     )
+    (else
+      (dummy-30 obj)
+      )
+    )
+  (none)
+  )
+
+(defmethod relocate puffer ((obj puffer) (arg0 int))
+  (if (nonzero? (-> obj neck))
+      (&+! (-> obj neck) arg0)
+      )
+  (the-as
+    puffer
+    ((the-as (function process-drawable int process-drawable) (find-parent-method puffer 7)) obj arg0)
+    )
+  )
+
+(defmethod init-from-entity! puffer ((obj puffer) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  (set! (-> obj cprims-type) (the-as uint 0))
+  (set! (-> obj attacking?) #f)
+  (set! (-> obj buddy) #f)
+  (set! (-> obj hit-player?) #f)
+  (set! (-> obj look-mean?) #f)
+  (set! (-> obj travel-turn-speed) 16384.0)
+  (dummy-21 obj)
+  (process-drawable-from-entity! obj (-> obj entity))
+  (initialize-skeleton obj *puffer-sg* '())
+  (set! (-> obj draw origin-joint-index) (the-as uint 3))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
+  (setup-lods! (-> obj nice-look) *puffer-sg* (-> obj draw art-group) (-> obj entity))
+  (setup-lods! (-> obj mean-look) *puffer-mean-sg* (-> obj draw art-group) (-> obj entity))
+  (load-params! (-> obj sync) obj (the-as uint 2400) 0.0 0.15 0.15)
+  (set! (-> obj notice-dist) (res-lump-float arg0 'notice-dist :default 57344.0))
+  (set! (-> obj give-up-dist) (+ 20480.0 (-> obj notice-dist)))
+  (set! (-> obj nav) (new 'process 'nav-control (-> obj root-override) 16 40960.0))
+  (logior! (-> obj nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
+  (TODO-RENAME-26 (-> obj nav))
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> obj fact-info-override)
+        (new 'process 'fact-info-enemy obj (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
+        )
+  (set! (-> obj draw shadow-ctrl) (new 'process 'shadow-control 0.0 0.0 614400.0 (the-as float 60) 245760.0))
+  (if (<= (-> obj path curve num-cverts) 0)
+      (go process-drawable-art-error "no path")
+      )
+  (set! (-> obj buddy) (the-as process-drawable (entity-actor-lookup arg0 'alt-actor 0)))
+  (ja-channel-set! 1)
+  (let ((a0-21 (-> obj skel root-channel 0)))
+    (set! (-> a0-21 param 0) (the float (+ (-> a0-21 frame-group data 0 length) -1)))
+    (set! (-> a0-21 param 1) 1.0)
+    (joint-control-channel-group! a0-21 (the-as art-joint-anim #f) num-func-seek!)
+    )
+  (let ((s4-0 (-> obj skel root-channel 0)))
+    (joint-control-channel-group-eval!
+      s4-0
+      (the-as art-joint-anim (-> obj draw art-group data 9))
+      num-func-identity
+      )
+    (set! (-> s4-0 frame-num) 0.0)
+    )
+  (set! (-> obj facing-ry) (quaternion-y-angle (-> obj root-override quat)))
+  (set! (-> obj travel-ry) (-> obj facing-ry))
+  (set! (-> obj travel-speed) 18432.0)
+  (vector-reset! (-> obj root-override transv))
+  (set! (-> obj patrol-bottom-y) (-> obj root-override trans y))
+  (let ((f28-0 8192.0)
+        (f30-0 -8192.0)
+        )
+    (set! sv-16 (new 'static 'res-tag))
+    (let ((v1-54 (res-lump-data arg0 'distance (pointer float) :tag-ptr (& sv-16))))
+      (when v1-54
+        (set! f28-0 (-> v1-54 0))
+        (set! f30-0 (-> v1-54 1))
+        )
+      )
+    (set! (-> obj top-y) (+ (-> obj patrol-bottom-y) f28-0))
+    (set! (-> obj attack-bottom-y) (+ (-> obj patrol-bottom-y) f30-0))
+    )
+  (set! (-> obj root-override trans y) (rand-vu-float-range (-> obj patrol-bottom-y) (-> obj top-y)))
+  (set! (-> obj targ-trans-y) (-> obj root-override trans y))
+  (set! (-> obj acc-y) 2048.0)
+  (let ((v1-59 (new 'process 'joint-mod (joint-mod-handler-mode reset) obj 5)))
+    (set! (-> obj neck) v1-59)
+    (set-vector! (-> obj neck twist-max) 8192.0 8192.0 0.0 1.0)
+    (set! (-> v1-59 up) (the-as uint 1))
+    (set! (-> v1-59 nose) (the-as uint 2))
+    (set! (-> v1-59 ear) (the-as uint 0))
+    (set! (-> v1-59 max-dist) 102400.0)
+    (set! (-> v1-59 ignore-angle) 16384.0)
+    )
+  (update-transforms! (-> obj root-override))
+  (go puffer-idle)
+  (none)
+  )
+
+
+
+

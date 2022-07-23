@@ -82,13 +82,18 @@ std::shared_ptr<GfxDisplay> GetMainDisplay() {
   return g_displays.front()->is_active() ? g_displays.front() : NULL;
 }
 
-int InitMainDisplay(int width, int height, const char* title, GfxSettings& settings) {
+int InitMainDisplay(int width,
+                    int height,
+                    const char* title,
+                    GfxSettings& settings,
+                    GameVersion version) {
   if (GetMainDisplay() != NULL) {
     lg::warn("InitMainDisplay called when main display already exists.");
     return 1;
   }
 
-  auto display = Gfx::GetCurrentRenderer()->make_display(width, height, title, settings, true);
+  auto display =
+      Gfx::GetCurrentRenderer()->make_display(width, height, title, settings, version, true);
   if (display == NULL) {
     lg::error("Failed to make main display.");
     return 1;

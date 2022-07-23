@@ -10,8 +10,8 @@
 #include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
-DecompilerTypeSystem::DecompilerTypeSystem() {
-  ts.add_builtin_types();
+DecompilerTypeSystem::DecompilerTypeSystem(GameVersion version) {
+  ts.add_builtin_types(version);
 }
 
 namespace {
@@ -61,16 +61,19 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         if (!cdr(*rest).is_empty_list()) {
           throw std::runtime_error("malformed define-extern");
         }
-        add_symbol(sym_name.as_symbol()->name, parse_typespec(&ts, sym_type));
+        auto info = m_reader.db.get_short_info_for(o);
+        add_symbol(sym_name.as_symbol()->name, parse_typespec(&ts, sym_type), info);
 
       } else if (car(o).as_symbol()->name == "deftype") {
         auto dtr = parse_deftype(cdr(o), &ts);
+        auto info = m_reader.db.get_short_info_for(o);
         if (dtr.create_runtime_type) {
-          add_symbol(dtr.type.base_type(), "type");
+          add_symbol(dtr.type.base_type(), "type", info);
         }
         // declare the type's states globally
         for (auto& state : dtr.type_info->get_states_declared_for_type()) {
-          add_symbol(state.first, state.second);
+          // TODO - get definition info for the state definitions specifically
+          add_symbol(state.first, state.second, info);
         }
 
       } else if (car(o).as_symbol()->name == "declare-type") {
@@ -158,11 +161,17 @@ bool DecompilerTypeSystem::lookup_flags(const std::string& type, u64* dest) cons
   return false;
 }
 
-void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& type_spec) {
+void DecompilerTypeSystem::add_symbol(
+    const std::string& name,
+    const TypeSpec& type_spec,
+    const std::optional<goos::TextDb::ShortInfo>& definition_info) {
   add_symbol(name);
   auto skv = symbol_types.find(name);
   if (skv == symbol_types.end() || skv->second == type_spec) {
     symbol_types[name] = type_spec;
+    if (definition_info) {
+      symbol_definition_info[name] = definition_info.value();
+    }
   } else {
     if (ts.tc(type_spec, skv->second)) {
     } else {
@@ -403,8 +412,8 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
   }
 
   static const std::vector<char> single_char_ignore_list = {'%', 'T'};
-  static const std::vector<std::string> multi_char_ignore_list = {"0L", "1L", "3L", "1K",
-                                                                  "2j", "0k", "30L"};
+  static const std::vector<std::string> multi_char_ignore_list = {"0L", "1L", "3L",  "1K",
+                                                                  "2j", "0k", "30L", "1T"};
 
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {

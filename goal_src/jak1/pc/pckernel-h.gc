@@ -1,0 +1,609 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  This file contains code that we need for the PC port of the game specifically.
+  It should be included as part of the game engine package (engine.cgo).
+
+  This file contains various types and functions to store PC-specific information
+  and also to communicate between the game (GOAL) and the operating system.
+  This way we can poll, change and display information about the system the game
+  is running on, such as:
+  - display devices and their settings, such as fullscreen, DPI, refresh rate, etc.
+  - audio devices and their settings, such as audio latency, channel number, etc.
+  - graphics devices and their settings, such as resolution, FPS, anisotropy, shaders, etc.
+  - input devices and their settings, such as controllers, keyboards, mice, etc.
+  - information about the game window (position, size)
+  - PC-specific goodies, enhancements, fixes and settings.
+  - whatever else.
+
+  If you do not want to include these PC things, you should exclude it from the build system.
+
+ |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defglobalconstant PC_KERNEL_VERSION_BUILD #x0001)
+(defglobalconstant PC_KERNEL_VERSION_REVISION #x0001)
+
+(defglobalconstant PC_KERNEL_VERSION_MINOR #x000a)
+(defglobalconstant PC_KERNEL_VERSION_MAJOR #x0001)
+(defglobalconstant PC_KERNEL_VERSION (logior
+                                        (ash PC_KERNEL_VERSION_MAJOR 48)
+                                        (ash PC_KERNEL_VERSION_MINOR 32)
+                                        (ash PC_KERNEL_VERSION_REVISION 16)
+                                        (ash PC_KERNEL_VERSION_BUILD 0)
+                                        ))
+
+(defconstant PS2_VOICE_AMOUNT 48)
+(defconstant PC_VOICE_AMOUNT 256)
+
+(defconstant ASPECT_4X3 (/ 4.0 3.0))
+(defconstant ASPECT_16X9 (/ 16.0 9.0))
+(defconstant ASPECT_16X9_SCALE (/ ASPECT_16X9 ASPECT_4X3))
+(defconstant PC_BASE_WIDTH 640)
+(defconstant PC_BASE_HEIGHT 480)
+(defconstant PC_MIN_WIDTH 320)
+(defconstant PC_MIN_HEIGHT 240)
+
+
+;; how many entries the music log has. the game only has 21 tracks but let's have more space for no reason.
+(defconstant PC_MUSIC_LOG_LENGTH 30)
+;; how many entries the spool anim log has. only 164 are used in-game.
+(defconstant PC_SPOOL_LOG_LENGTH 170)
+
+
+(defconstant PC_SETTINGS_FILE_NAME "game_config/pc-settings.txt")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; types and enums
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+;; graphics renderers
+(defenum pc-gfx-renderer
+  :type uint8
+  (software)
+  (opengl)
+  (vulkan)
+  (direct3d)
+  )
+
+
+;; subtitle languages.
+(defenum pc-subtitle-lang
+  :type uint16
+  (english 0)
+  (french 1)
+  (german 2)
+  (spanish 3)
+  (italian 4)
+  (japanese 5)
+  (uk-english 6)
+
+  ;; additional languages.
+  ;; these don't neccessarily have to work but I'm future-proofing a bit here, just in case.
+
+  ;; languages that use the existing glyphs
+  (portuguese 7)
+  (finnish 8)
+  (swedish 9)
+  (danish 10)
+  (norwegian 11)
+  (dutch 12)
+  (br-portuguese 13)
+
+  ;; jak 1 has no glyphs for korean or cyrillic.
+  (korean 98) ;; future-proofing here
+  (russian 97) ;; same thing
+
+  (custom 500) ;; temp
+  )
+
+
+;; concept arts
+(defenum pc-jak1-concept-art
+  :bitfield #t
+  :type uint64
+  (test)
+  )
+
+;; cheats
+(defenum pc-cheats
+  :bitfield #t
+  :type uint64
+  (eco-green)
+  (eco-red)
+  (eco-blue)
+  (eco-yellow)
+  (invinc)
+  (sidekick-blue)
+  (tunes)
+  (sky)
+  )
+
+(defmacro pc-cheats? (obj &rest cheats)
+  `(logtest? (-> ,obj cheats) (pc-cheats ,@cheats)))
+
+;; music log info
+(deftype pc-music-log-entry (structure)
+  ((name  symbol)
+   (flava-mask  int32)
+   )
+  :pack-me
+  )
+
+;; secrets and goodies
+(deftype pc-game-secrets (structure)
+  ((art pc-jak1-concept-art) ;; concept art unlocked
+   (music pc-music-log-entry PC_MUSIC_LOG_LENGTH :inline)
+   (hard-fish-hiscore int32)
+   (hard-rats? symbol) ;; enable this crap
+   (hard-rats-hiscore int32)
+   (hard-rats-hiwave int32)
+   (hero-mode? symbol) ;; unsure how this should work
+   (hud-map? symbol) ;; enable map in HUD/progress?
+   (hud-counters? symbol) ;; enable level orb counter/global buzzer counter?
+   (hud-watch? symbol) ;; a watch that tells the time of day!
+   (watch-12hr? symbol) ;; 12-hour clock toggle
+   )
+  :pack-me
+  )
+
+;; bingo integration. placeholder for now.
+(deftype pc-bingo-info (structure)
+  ()
+  :pack-me
+  )
+
+
+;; a 64-byte C-string. not sure if we need this.
+(deftype pc-cstring-64 (structure)
+  ((chars uint8 64)
+   (last uint8 :offset 63)
+   )
+  )
+
+
+;; generic device information: name and some ID
+(deftype pc-device-info (structure)
+  ((id int)
+   (name pc-cstring-64 :inline)
+   )
+  )
+
+
+;; input device information. comes with button mappings!
+(deftype pc-pad-info (structure)
+  ((device-info pc-device-info :inline)
+   (buffered? symbol)
+   (valid? symbol)
+   (mapping int 16)
+   )
+  )
+
+
+;; All of the configuration for the PC port in GOAL. Access things from here!
+;; Includes some methods to change parameters.
+(deftype pc-settings (basic)
+  ((version uint64) ;; version of this settings
+
+   ;; "generic" graphics settings
+   (target-fps int16) ;; the target framerate of the game
+   ;; game resolution?
+   (width int32)
+   (height int32)
+   ;; window size. resolution = window size in windowed mode.
+   (win-width int32)
+   (win-height int32)
+   ;; real window size from OS
+   (real-width int32)
+   (real-height int32)
+   ;; letterboxed window size
+   (lbox-width int32)
+   (lbox-height int32)
+   (dpi-x float) ;; DPI width scale
+   (dpi-y float) ;; DPI height scale
+   (aspect-ratio-auto? symbol) ;; if on, aspect ratio is calculated automatically based on game display size.
+   (aspect-ratio float) ;; the desired aspect ratio. set auto to off and then this to 4/3 to force 4x3 aspect.
+   (aspect-ratio-scale float) ;; aspect ratio compared to 4x3
+   (aspect-ratio-reciprocal float) ;; reciprocal of that
+   (display-mode symbol) ;; display mode. can be windowed, fullscreen or borderless
+   (letterbox? symbol) ;; letterbox. #f = stretched
+   (vsync? symbol) ;; vsync.
+   (font-scale float) ;; font scaling.
+   (window-lock? symbol) ;; whether the window can be resized by the user or not.
+
+   ;; debug settings
+   (os symbol) ;; windows, linux, macos
+   (user symbol) ;; username. not system username, just debug thing.
+   (debug? symbol) ;; more debug stuff just in case.
+   (new-lb? symbol) ;; different load boundary graphics.
+   (display-actor-bank symbol) ;; debug stuff.
+   (aspect-custom-x int)
+   (aspect-custom-y int)
+   (debug-pad-display symbol)
+   (display-bug-report symbol)
+   (display-heap-status symbol)
+   (display-actor-counts symbol)
+   (display-text-box symbol)
+   (display-sha symbol)
+   (mood-override? symbol)
+   (mood-overrides float 8)
+   (movie? symbol)
+
+   ;; device settings
+   ;(device-audio pc-device-info :inline) ;; used audio device
+   ;(device-screen pc-device-info :inline) ;; used display device
+   ;(device-gpu pc-device-info :inline) ;; used graphics device
+   ;(device-pad pc-pad-info 4 :inline) ;; used input devices, like controllers.
+   ;(device-keyboard pc-pad-info :inline) ;; keyboard input information. if nothing else, this must be usable.
+   (stick-deadzone float) ;; analog stick deadzone. 0-1
+
+   ;; audio settings
+   (audio-latency-ms int16) ;; audio latency in milliseconds
+   (audio-pan-override float) ;; audio pan modifier
+   (audio-volume-override float) ;; audio volume modifier
+   (audio-channel-nb int16) ;; audio channel amount. will be 48 on PS2 mode.
+
+   ;; graphics settings
+   (gfx-renderer pc-gfx-renderer) ;; the renderer to use
+   (gfx-resolution float) ;; for supersampling
+   (gfx-anisotropy float) ;; for anisotropy
+   (gfx-msaa int32) ;; for MSAA
+
+   ;; ps2 settings
+   (ps2-read-speed? symbol) ;; emulate DVD loads
+   (ps2-parts? symbol) ;; if off, increase particle cap
+   (ps2-music? symbol) ;; if off, use .wav files stored somewhere
+   (ps2-se? symbol) ;; if off, use adjusted sound effects
+   (ps2-hints? symbol) ;; if off, enables extra game hints
+
+   ;; lod settings
+   (ps2-lod-dist? symbol) ;; use original lod distances
+   (force-envmap? symbol) ;; dont use envmap fading (force max).
+   (shrub-dist-mod float) ;; shrub render distance modifier
+   (lod-dist-mod float) ;; non-shrub lod distance modifier
+   (lod-force-tfrag int8) ;; tfrag lod tier override. 0 = highest detail
+   (lod-force-tie int8) ;; tie lod tier override
+   (lod-force-ocean int8) ;; ocean lod tier override
+   (lod-force-actor int8) ;; merc lod tier override
+
+   ;; misc settings
+   (force-actors? symbol) ;; skips vis check for actor entity
+   (music-fade? symbol) ;; if off, music has no fade in
+   (use-vis? symbol) ;; if off, don't use vis trees. this MUST be off for custom (non-cropping) aspect ratios.
+   (skip-movies? symbol) ;; if on, enable cutscene skipping
+   (subtitles? symbol) ;; if on, cutscene subtitles will show up
+   (hinttitles? symbol) ;; if on, non-cutscene subtitles will show up
+   (text-language pc-subtitle-lang) ;; language for game text
+   (subtitle-language pc-subtitle-lang) ;; language for subtitles
+   (subtitle-speaker? symbol) ;; #f (force off), #t (force on), auto (on for offscreen)
+   (first-camera-h-inverted? symbol) ;; first-person horizontal camera inverted
+   (first-camera-v-inverted? symbol) ;; first-person vertical camera inverted
+   (third-camera-h-inverted? symbol) ;; third-person horizontal camera inverted
+   (third-camera-v-inverted? symbol) ;; third-person vertical camera inverted
+   (money-starburst? symbol) ;; add a starburst to the money
+   (extra-hud? symbol) ;; extra hud elements.
+   (music-fadeout? symbol) ;; music fadeout toggle.
+   (music-fadein? symbol) ;; music fadein toggle.
+
+   (bingo pc-bingo-info :inline) ;; bingo integration. does nothing for now.
+
+   (secrets pc-game-secrets :inline) ;; hidden goodies and additional secrets!
+
+   (scenes-seen uint8 PC_SPOOL_LOG_LENGTH) ;; cutscenes that have been seen, by spool-anim (maybe use 8-char name or bits instead?)
+
+   (discord-rpc? symbol) ;; enable discord rich presence integration
+
+   (cheats pc-cheats)
+   (cheats-known pc-cheats)
+
+   (flava-hack int64)
+
+   ;; TODO - save/restore original settings (language/sound/etc)
+   )
+
+  (:methods
+    (new (symbol type) _type_)
+    (update (_type_) none)
+    (update-from-os (_type_) none)
+    (update-to-os (_type_) none)
+    (reset (_type_) none)
+    (reset-audio (_type_) none)
+    (reset-input (_type_) none)
+    (reset-gfx (_type_) none)
+    (reset-ps2 (_type_) none)
+    (reset-misc (_type_) none)
+    (reset-original-camera (_type_) none)
+    (reset-extra (_type_) none)
+    (draw (_type_ dma-buffer) none)
+    (set-display-mode! (_type_ symbol) int)
+    (set-size! (_type_ int int) none)
+    (set-aspect! (_type_ int int) none)
+    (set-aspect-ratio! (_type_ float) none)
+    (set-window-lock! (_type_ symbol) symbol)
+    (set-frame-rate! (_type_ int) int)
+    (read-from-file (_type_ string) symbol)
+    (write-to-file (_type_ string) symbol)
+    (update-cheats (_type_) int)
+    (update-music-log (_type_) int)
+    (add-to-music-log (_type_ symbol int) int)
+    (commit-to-file (_type_) none)
+    (load-settings (_type_) int)
+    )
+  )
+
+;; information about a cutscene. placeholder. TODO look at jak 2
+(deftype pc-scene-info (structure)
+  ((name string)
+   (commands pair)
+   (level0 symbol)
+   (level1 symbol)
+   (level0-disp symbol)
+   (level1-disp symbol)
+   )
+  )
+
+(deftype discord-info (structure)
+  ((fuel (pointer float))
+   (money-total (pointer float))
+   (buzzer-total (pointer float))
+   (deaths (pointer int32))
+   (status string)
+   (level string)
+   (cutscene? symbol)
+   (ogreboss? symbol)
+   (plant-boss? symbol)
+   (racer? symbol)
+   (flutflut? symbol)
+   (time-of-day (pointer float))
+    )
+  )
+
+(defconstant PC_TEMP_STRING_LEN 512)
+(define *pc-temp-string* (new 'global 'string PC_TEMP_STRING_LEN (the-as string #f)))
+(define *pc-settings* (the-as pc-settings #f))
+(format 0 "PC kernel version: ~D.~D~%" PC_KERNEL_VERSION_MAJOR PC_KERNEL_VERSION_MINOR)
+
+(define *pc-temp-string-1* (new 'global 'string 2048 (the-as string #f)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; resets
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod reset pc-settings ((obj pc-settings))
+  "Set the default settings"
+
+  ;(format #t "pc settings reset~%")
+
+  (set! (-> obj version) PC_KERNEL_VERSION)
+
+  (set! (-> obj user) #f)
+  (set! (-> obj debug?) #f)
+  (set! (-> obj new-lb?) #f)
+  (set! (-> obj display-actor-bank) #f)
+  (set! (-> obj debug-pad-display) #f)
+  (set! (-> obj display-bug-report) #f)
+  (set! (-> obj display-heap-status) #f)
+  (set! (-> obj display-actor-counts) #f)
+  (set! (-> obj display-text-box) #f)
+  (set! (-> obj display-sha) *debug-segment*)
+  (set! (-> obj mood-override?) #f)
+  (set! (-> obj movie?) #f)
+  (set! (-> obj font-scale) 1.0)
+  (set! (-> obj aspect-custom-x) 4)
+  (set! (-> obj aspect-custom-y) 3)
+  (set! (-> obj discord-rpc?) #t)
+  (set! (-> obj window-lock?) #t)
+
+  (reset-gfx obj)
+  (reset-audio obj)
+  (reset-input obj)
+  (reset-ps2 obj)
+  (reset-misc obj)
+  (reset-extra obj)
+
+  (none))
+
+
+(defmethod reset-gfx pc-settings ((obj pc-settings))
+  "Set the default graphics settings"
+
+  (set-frame-rate! obj 60)
+  (set-aspect! obj 4 3)
+  (set-display-mode! obj 'windowed)
+  (set-size! obj PC_BASE_WIDTH PC_BASE_HEIGHT)
+
+  (set! (-> obj use-vis?) #f)
+  (set! (-> obj aspect-ratio-auto?) #t)
+  (set! (-> obj vsync?) #t)
+  (set! (-> obj letterbox?) #t)
+
+  (pc-get-screen-size -1 (&-> obj width) (&-> obj height))
+  (set-display-mode! obj 'fullscreen)
+  (set! (-> obj gfx-msaa) 4) ;; 4x msaa
+
+  (none))
+
+(defmethod reset-audio pc-settings ((obj pc-settings))
+  "Set the default audio settings"
+
+  (set! (-> obj audio-latency-ms) 80)
+  (set! (-> obj audio-pan-override) 0.0)
+  (set! (-> obj audio-volume-override) 1.0)
+  (set! (-> obj audio-channel-nb) PS2_VOICE_AMOUNT)
+
+  (set! (-> obj music-fadeout?) #t)
+  (set! (-> obj music-fadein?) #t)
+
+  (none))
+
+(defmethod reset-input pc-settings ((obj pc-settings))
+  "Set the default input settings"
+
+  (set! (-> obj stick-deadzone) 0.3)
+  (none))
+
+(defmethod reset-ps2 pc-settings ((obj pc-settings))
+  "Set the default ps2 settings"
+
+  (set! (-> obj ps2-read-speed?) #f)
+  (set! (-> obj ps2-parts?) #f)
+  (set! (-> obj ps2-music?) #t)
+  (set! (-> obj ps2-se?) #t)
+  (set! (-> obj ps2-hints?) #t)
+
+  (set! (-> obj ps2-lod-dist?) #f)
+  (set! (-> obj force-envmap?) #f)
+  (set! (-> obj shrub-dist-mod) 1.0)
+  (set! (-> obj lod-dist-mod) 1.0)
+  (set! (-> obj lod-force-tfrag) 0)
+  (set! (-> obj lod-force-tie) 0)
+  (set! (-> obj lod-force-ocean) 0)
+  (set! (-> obj lod-force-actor) 0)
+  (none))
+
+(defmethod reset-misc pc-settings ((obj pc-settings))
+  "Set the default misc settings"
+
+  (set! (-> obj force-actors?) #f)
+  (set! (-> obj music-fade?) #f)
+  (set! (-> obj skip-movies?) #t)
+  (set! (-> obj subtitles?) *debug-segment*)
+  (set! (-> obj hinttitles?) #t)
+  (set! (-> obj subtitle-speaker?) 'auto)
+  (set! (-> obj subtitle-language) (pc-subtitle-lang english))
+  (reset-original-camera obj)
+  (set! (-> obj money-starburst?) #f)
+  (set! (-> obj extra-hud?) #f)
+  (none))
+
+(defmethod reset-original-camera pc-settings ((obj pc-settings))
+  "Set the original game's camera controls"
+
+  (set! (-> obj first-camera-h-inverted?) #f) ;; first-person horizontal is NOT inverted in original game
+  (set! (-> obj first-camera-v-inverted?) #t) ;; first-person vertical IS inverted in original game
+  (set! (-> obj third-camera-h-inverted?) #t) ;; third person horizontal IS inverted in original game
+  (set! (-> obj third-camera-v-inverted?) #t) ;; third-person vertical IS inverted in original game
+  (none))
+
+(defmethod reset-extra pc-settings ((obj pc-settings))
+  "Set the default goodies settings"
+
+  (dotimes (i PC_SPOOL_LOG_LENGTH)
+    (set! (-> obj scenes-seen i) 0)
+    )
+  (dotimes (i PC_MUSIC_LOG_LENGTH)
+    (set! (-> obj secrets music i name) #f)
+    (set! (-> obj secrets music i flava-mask) 0)
+    )
+
+  (set! (-> obj secrets art) (pc-jak1-concept-art))
+  (set! (-> obj secrets hard-fish-hiscore) 0)
+  (set! (-> obj secrets hard-rats-hiscore) 0)
+  (set! (-> obj secrets hard-rats-hiwave) 0)
+  (set! (-> obj secrets hard-rats?) #f)
+  (set! (-> obj secrets hero-mode?) #f)
+  (set! (-> obj secrets hud-map?) #t)
+  (set! (-> obj secrets hud-counters?) #t)
+  (set! (-> obj secrets hud-watch?) #f)
+  (set! (-> obj secrets watch-12hr?) #f)
+
+  (set! (-> obj cheats) (pc-cheats))
+  (set! (-> obj cheats-known) (pc-cheats))
+  (none))
+
+(defmacro with-pc (&rest body)
+  "encapsulates the code around PC-specific checks"
+  `(#when PC_PORT (when (and *pc-settings*)
+      ,@body
+      ))
+  )
+
+(seval (define *pc-cheat-map*
+          '((a (triangle triangle))
+            (b (square square))
+            (c (circle circle))
+            (d (x x))
+            (e (right right))
+            (f (right up))
+            (g (right down))
+            (h (left right))
+            (i (up right))
+            (j (down left))
+            (k (square right))
+            (l (left down))
+            (m (up circle))
+            (n (up up))
+            (o (circle square))
+            (p (down circle))
+            (q (dowm square))
+            (r (circle x))
+            (s (down x))
+            (t (triangle square))
+            (u (square x))
+            (v (x triangle))
+            (w (left left))
+            (x (up down))
+            (y (up x))
+            (z (up circle))
+            ))
+        )
+
+(desfun pc-cheat-encode (letters extra)
+  "turn a cheat word into input names."
+  (let ((out '()))
+
+  (dolist (in letters)
+
+    (let ((buttons (cadr (assoc (car in) *pc-cheat-map*))))
+      (dolist (button buttons)
+
+        (set! out (cons (car button) out))
+        )
+      )
+    )
+
+  (dolist (ex extra)
+
+    (set! out (cons (car ex) out))
+    )
+  (reverse out)
+    )
+  )
+
+(defmacro pc-check-cheat-code (cheat-var pad-idx input &key (extra ()) &rest body)
+  "execute body when a cheat code made up of sequential inputs has been inputted"
+
+  (let ((buttons (pc-cheat-encode input extra)))
+  `(when (nonzero? (cpad-pressed ,pad-idx)) ;; only check when some button has been pressed
+    (case ,cheat-var
+      ,@(apply-i
+          (lambda (x i)
+            `((,i)
+              (if (cpad-pressed? ,pad-idx ,x)
+                ,(if (< i (- (length buttons) 1))
+                    `(1+! ,cheat-var)
+
+                    `(begin ,@body (set! ,cheat-var 0))
+                    )
+
+                (set! ,cheat-var 0)
+                )
+              )
+            )
+        buttons)
+      )
+    )
+  ))
+
+
+

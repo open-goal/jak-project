@@ -1,5 +1,6 @@
 (group-name "common")
 (language-id 5)
+(text-version jak1-v2)
 
 ;; -----------------
 ;; fixes

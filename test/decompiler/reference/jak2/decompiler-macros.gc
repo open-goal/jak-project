@@ -1,0 +1,557 @@
+;; This file should contain an implementation for all macros that the decompiler uses in its output.
+
+(defun ash ((value int) (shift-amount int))
+  "Arithmetic shift value by shift-amount.
+  A positive shift-amount will shift to the left and a negative will shift to the right.
+  "
+  ;; OpenGOAL does not support ash in the compiler, so we implement it here as an inline function.
+  (declare (inline))
+  (if (> shift-amount 0)
+      (shl value shift-amount)
+      (sar value (- shift-amount))
+      )
+  )
+
+(defmacro suspend ()
+  '(none)
+  )
+
+(defmacro empty-form ()
+  '(none)
+  )
+
+(defmacro .sync.l ()
+  `(none))
+
+(defmacro make-u128 (upper lower)
+  `(rlet ((result :class i128)
+          (upper-xmm :class i128)
+          (lower-xmm :class i128))
+     (.mov upper-xmm ,upper)
+     (.mov lower-xmm ,lower)
+     (.pcpyld result upper-xmm lower-xmm)
+     (the uint result)
+     )
+  )
+
+(defmacro init-vf0-vector ()
+  "Initializes the VF0 vector which is a constant vector in the VU set to <0,0,0,1>"
+  `(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+  )
+
+(defconstant SYM_TO_STRING_OFFSET #xff38)
+(defmacro symbol->string (sym)
+  "Convert a symbol to a goal string."
+  `(-> (the-as (pointer string) (+ SYM_TO_STRING_OFFSET (the-as int ,sym))))
+  )
+
+(defmacro new-stack-matrix0 ()
+  "Get a new matrix on the stack that's set to zero."
+  `(let ((mat (new 'stack-no-clear 'matrix)))
+     (set! (-> mat quad 0) (the-as uint128 0))
+     (set! (-> mat quad 1) (the-as uint128 0))
+     (set! (-> mat quad 2) (the-as uint128 0))
+     (set! (-> mat quad 3) (the-as uint128 0))
+     mat
+     )
+  )
+
+(defmacro new-stack-vector0 ()
+  "Get a stack vector that's set to 0.
+   This is more efficient than (new 'stack 'vector) because
+   this doesn't call the constructor."
+  `(let ((vec (new 'stack-no-clear 'vector)))
+     (set! (-> vec quad) (the-as uint128 0))
+     vec
+     )
+  )
+
+(defmacro new-stack-quaternion0 ()
+  "Get a stack quaternion that's set to 0.
+   This is more efficient than (new 'stack 'quaternion) because
+   this doesn't call the constructor."
+  `(let ((q (new 'stack-no-clear 'quaternion)))
+     (set! (-> q quad) (the-as uint128 0))
+     q
+     )
+  )
+
+
+(defmacro with-pp (&rest body)
+  `(rlet ((pp :reg r13 :reset-here #t :type process))
+         ,@body)
+  )
+
+(defmacro fabs (x)
+  `(if (< (the float ,x) 0)
+       (- (the float ,x))
+       (the float ,x))
+  )
+
+(defconstant PI (the-as float #x40490fda))
+(defconstant MINUS_PI (the-as float #xc0490fda))
+
+(defmacro handle->process (handle)
+  ;; the actual implementation is more clever than this.
+  ;; Checks PID.
+  `(let ((the-handle (the-as handle ,handle)))
+     (if (-> the-handle process)
+         (let ((proc (-> (-> the-handle process))))
+           (if (= (-> the-handle pid) (-> proc pid))
+               proc
+               )
+           )
+         )
+     )
+  )
+
+(defmacro ppointer->process (ppointer)
+  ;; convert a (pointer process) to a process.
+  ;; this uses the self field, which seems to always just get set to the object.
+  ;; perhaps when deleting a process you could have it set self to #f?
+  ;; I don't see this happen anywhere though, so it's not clear.
+  `(let ((the-pp ,ppointer))
+     (the process-tree (if the-pp (-> the-pp 0 self)))
+     )
+  )
+
+(defmacro process->ppointer (proc)
+  ;"safely get a (pointer process) from a process, returning #f if invalid."
+  `(let ((the-proc ,proc))
+     (if the-proc (-> the-proc ppointer))
+     )
+  )
+
+(defmacro ppointer->handle (pproc)
+  `(let ((the-process (the-as (pointer process) ,pproc)))
+      (new 'static 'handle :process the-process :pid (-> the-process 0 pid))
+      )
+  )
+
+(defmacro process->handle (proc)
+  `(ppointer->handle (process->ppointer ,proc))
+  )
+
+
+(defmacro defbehavior (name process-type bindings &rest body)
+  (if (and
+       (> (length body) 1)     ;; more than one thing in function
+       (string? (first body))  ;; first thing is a string
+       )
+      ;; then it's a docstring and we ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@(cdr body)))
+      ;; otherwise don't ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@body))
+      )
+  )
+
+(defmacro b! (pred destination &key (delay '()) &key (likely-delay '()))
+  "Branch!"
+  ;; evaluate the predicate
+  `(let ((should-branch ,pred))
+     ;; normal delay slot:
+     ,delay
+     (when should-branch
+       ,likely-delay
+       (goto ,destination)
+       )
+     )
+  )
+
+
+;; meters are stored as (usually) a float, scaled by 4096.
+;; this gives you reasonable accuracy as an integer.
+(defglobalconstant METER_LENGTH 4096.0)
+
+(defmacro meters (x)
+  "Convert number to meters.
+   If the input is a constant float or integer, the result will be a
+   compile time constant float. Otherwise, it will not be constant.
+   Returns float."
+
+  ;; we don't have enough constant propagation for the compiler to figure this out.
+  (cond
+    ((float? x)
+     (* METER_LENGTH x)
+     )
+    ((integer? x)
+     (* METER_LENGTH x)
+     )
+    (#t
+     `(* METER_LENGTH ,x)
+     )
+    )
+  )
+
+;; rotations are stored in 65,536ths of a full rotation.
+;; like with meters, you get a reasonable accuracy as an integer.
+;; additionally, it is a power-of-two, so wrapping rotations can be done
+;; quickly by converting to an int, masking, and back to float
+(defglobalconstant DEGREES_PER_ROT 65536.0)
+
+;; this was deg in GOAL
+(defmacro degrees (x)
+  "Convert number to degrees unit.
+   Will keep a constant float/int constant."
+  (cond
+    ((or (float? x) (integer? x))
+     (* DEGREES_PER_ROT (/ (+ 0.0 x) 360.0))
+     )
+    (#t
+     `(* (/ (the float ,x) 360.0)
+         DEGREES_PER_ROT
+         )
+     )
+    )
+  )
+
+;; times are stored in 300ths of a second.
+;; this divides evenly into frames at both 50 and 60 fps.
+;; typically these are stored as integers as more precision is not useful.
+;; an unsigned 32-bit integer can store about 150 days
+(defglobalconstant TICKS_PER_SECOND 300) ;; 5 t/frame @ 60fps, 6 t/frame @ 50fps
+
+;; this was usec in GOAL
+(defmacro seconds (x)
+  "Convert number to seconds unit.
+   Returns uint."
+  (cond
+    ((integer? x)
+     (* TICKS_PER_SECOND x)
+     )
+    ((float? x)
+     (* 1 (* 1.0 x TICKS_PER_SECOND))
+     )
+    (#t
+     `(the uint (* TICKS_PER_SECOND ,x))
+     )
+    )
+  )
+
+(defmacro fsec (x)
+  "Convert number to seconds unit.
+   Returns float."
+  (cond
+    ((or (integer? x) (float? x))
+     (* 1.0 TICKS_PER_SECOND x)
+     )
+    (#t
+     `(* 1.0 TICKS_PER_SECOND ,x)
+     )
+    )
+  )
+
+(fake-asm .sync.l)
+(fake-asm .sync.p)
+(fake-asm .mfc0 dest src)
+(fake-asm .mtc0 dest src)
+(fake-asm .mtpc dest src)
+(fake-asm .mfpc dest src)
+(fake-asm .mtdab src)
+(fake-asm .mtdabm src)
+
+;; maybe rename to "velocity"?
+(defmacro vel-tick (vel)
+  "turn a velocity value into a per-tick value"
+  `(* (/ 1.0 ,TICKS_PER_SECOND) ,vel)
+  )
+
+(defmacro copy-and-set-field (original field-name field-value)
+  `(let ((temp-copy ,original))
+     (set! (-> temp-copy ,field-name) ,field-value)
+     temp-copy
+     )
+  )
+
+(defmacro set-vector! (v xv yv zv wv)
+  "Set all fields in a vector"
+  (with-gensyms (vec)
+     `(let ((,vec ,v))
+       (set! (-> ,vec x) ,xv)
+       (set! (-> ,vec y) ,yv)
+       (set! (-> ,vec z) ,zv)
+       (set! (-> ,vec w) ,wv)
+       ,vec
+       ))
+     )
+
+;; cause the current process to change state
+(defmacro go (next-state &rest args)
+  `(with-pp
+     (go-hook pp ,next-state ,@args)
+     )
+  )
+
+(defmacro go-virtual (state-name &key (proc self) &rest args)
+  "Change the current process to the virtual state of the given process."
+  `(go (method-of-object ,proc ,state-name) ,@args)
+  )
+
+(defmacro static-sound-name (str)
+  "Convert a string constant to a static sound-name."
+
+  ;; all this is done at compile-time so we can come up with 2
+  ;; 64-bit constants to use
+  (when (> (string-length str) 16)
+    (error "static-sound-name got a string that is too long")
+    )
+  (let ((lo-val 0)
+        (hi-val 0)
+        )
+    (dotimes (i (string-length str))
+      (if (>= i 8)
+          (+! hi-val (ash (string-ref str i) (* 8 (- i 8))))
+          (+! lo-val (ash (string-ref str i) (* 8 i)))
+          )
+      )
+    `(new 'static 'sound-name :lo ,lo-val :hi ,hi-val)
+    )
+  )
+
+(defmacro vftoi4.xyzw (dst src)
+  "convert to 28.4 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 16.0)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro vftoi12.xyzw (dst src)
+  "convert to 20.12 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 4096.0)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro vftoi15.xyzw (dst src)
+  "convert to 17.15 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 32768.0)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro vitof4.xyzw (dst src)
+  "convert from a 28.4 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 0.0625)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro vitof12.xyzw (dst src)
+  "convert from a 20.12 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 0.000244140625)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro vitof15.xyzw (dst src)
+  "convert from a 17.15 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 0.000030517578125)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+;; use a compile-time list to keep track of the type of an anonymous behavior.
+(seval (define *defstate-type-stack* '()))
+(desfun def-state-check-behavior (beh-form beh-type)
+  "check if code block is an anonymous behavior. needed for anonymous behaviors on defstate."
+
+  (when (and (pair? beh-form) (eq? (first beh-form) 'behavior))
+    (push! *defstate-type-stack* beh-type)
+    )
+  )
+(defmacro clear-def-state-stack ()
+  (set! *defstate-type-stack* '())
+  `(none)
+  )
+;; *no-state* is just used for the compiler to know whether a handler was actually set or not
+(defmacro defstate (state-name parents
+                               &key (virtual #f)
+                               &key (event *no-state*)
+                               &key (enter *no-state*)
+                               &key (trans *no-state*)
+                               &key (exit *no-state*)
+                               &key (code *no-state*)
+                               &key (post *no-state*)
+                               )
+  "Define a new state!"
+
+  (with-gensyms (new-state)
+    (let ((defstate-type (first parents)))
+      (when (not (null? *defstate-type-stack*))
+        (fmt #t "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}"
+                 *defstate-type-stack*)
+        )
+      (set! *defstate-type-stack* '())
+      ;; check for default handlers
+      (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
+          (when (not (null? default-handlers))
+              ;;(fmt #t "found default-handlers for {}: {}\n" defstate-type default-handlers)
+              ;; event
+              (set! default-handlers (cadr default-handlers))
+              (when (and (eq? event '*no-state*) (car default-handlers))
+                  (set! event (car default-handlers)))
+              ;; enter
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? enter '*no-state*) (car default-handlers))
+                  (set! enter (car default-handlers)))
+              ;; trans
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? trans '*no-state*) (car default-handlers))
+                  (set! trans (car default-handlers)))
+              ;; exit
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? exit '*no-state*) (car default-handlers))
+                  (set! exit (car default-handlers)))
+              ;; code
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? code '*no-state*) (car default-handlers))
+                  (set! code (car default-handlers)))
+              ;; post
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? post '*no-state*) (car default-handlers))
+                  (set! post (car default-handlers)))
+
+              (set! default-handlers (cdr default-handlers))
+              )
+          )
+      (def-state-check-behavior event defstate-type)
+      (def-state-check-behavior enter defstate-type)
+      (def-state-check-behavior trans defstate-type)
+      (def-state-check-behavior exit defstate-type)
+      (def-state-check-behavior code defstate-type)
+      (def-state-check-behavior post defstate-type)
+      `(let ((,new-state (new 'static 'state
+                              :name (quote ,state-name)
+                              :next #f
+                              :exit #f
+                              :code #f
+                              :trans #f
+                              :post #f
+                              :enter #f
+                              :event #f
+                              )
+                         ))
+         ;; the compiler will set the fields of the given state and define the symbol.
+         ;; This way it can check the individual function types, make sure they make sense, and create
+         ;; a state with the appropriate type.
+         ,(if virtual
+              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
+
+         )
+      )
+    )
+  )
+
+(defmacro behavior (bindings &rest body)
+  "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
+
+  (let ((behavior-type (first *defstate-type-stack*)))
+    (pop! *defstate-type-stack*)
+    `(lambda :behavior ,behavior-type ,bindings ,@body)
+    )
+  )
+
+;; set the default handler functions for a process's state handlers
+(seval (define *default-state-handlers* '()))
+(defmacro defstatehandler (proc
+                           &key (event #f)
+                           &key (enter #f)
+                           &key (trans #f)
+                           &key (exit #f)
+                           &key (code #f)
+                           &key (post #f))
+  (let ((old (assoc proc *default-state-handlers*))
+        (new (list proc (list event enter trans exit code post))))
+      (if (null? old)
+          (append!! *default-state-handlers* new) ;; add new set of default handlers
+          (dolist (hnd *default-state-handlers*)  ;; replace old handlers with new ones
+            (if (eq? (car hnd) old)
+              (set-car! hnd new)
+              )
+            )
+          )
+      )
+  `(none)
+  )
+
+(defmacro sext32 (in)
+  `(sar (shl ,in 32) 32)
+  )
+
+(defmacro .sra (result in sa)
+  `(set! ,result (sext32 (sar (logand #xffffffff (the-as int ,in)) ,sa)))
+  )
+
+(defmacro .movn (result value check original)
+  `(if (!= ,check 0)
+       (set! ,result (the-as int ,value))
+       (set! ,result (the-as int ,original))
+       )
+  )
+
+(defmacro .movz (result value check original)
+  `(if (= ,check 0)
+       (set! ,result (the-as int ,value))
+       (set! ,result (the-as int ,original))
+       )
+  )
+
+(defmacro .mfc0 (&rest stuff)
+  `(empty)
+  )

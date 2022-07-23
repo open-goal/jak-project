@@ -10,8 +10,9 @@
 #include <memory>
 
 #include "common/common_types.h"
+#include "common/versions.h"
 
-#include "game/kernel/kboot.h"
+#include "game/kernel/common/kboot.h"
 #include "game/system/newpad.h"
 
 // forward declarations
@@ -25,8 +26,12 @@ enum GfxDisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
 // module for the different rendering pipelines
 struct GfxRendererModule {
   std::function<int(GfxSettings&)> init;
-  std::function<std::shared_ptr<
-      GfxDisplay>(int width, int height, const char* title, GfxSettings& settings, bool is_main)>
+  std::function<std::shared_ptr<GfxDisplay>(int width,
+                                            int height,
+                                            const char* title,
+                                            GfxSettings& settings,
+                                            GameVersion version,
+                                            bool is_main)>
       make_display;
   std::function<void()> exit;
   std::function<u32()> vsync;
@@ -68,8 +73,15 @@ static constexpr int PAT_MAT_COUNT = 23;
 struct GfxGlobalSettings {
   // note: this is actually the size of the display that ISN'T letterboxed
   // the excess space is what will be letterboxed away.
-  int lbox_w;
-  int lbox_h;
+  int lbox_w = 640;
+  int lbox_h = 480;
+
+  // actual game resolution
+  int game_res_w = 640;
+  int game_res_h = 480;
+
+  // multi-sampled anti-aliasing sample count. 1 = disabled.
+  int msaa_samples = 4;
 
   // current renderer
   const GfxRendererModule* renderer;
@@ -81,6 +93,17 @@ struct GfxGlobalSettings {
   // collision renderer settings
   bool collision_enable = false;
   bool collision_wireframe = true;
+
+  // vsync enable
+  bool vsync = true;
+  bool old_vsync = false;
+  // target frame rate
+  float target_fps = 60;
+  // use custom frame limiter
+  bool framelimiter = true;
+
+  bool experimental_accurate_lag = false;
+  bool sleep_in_frame_limiter = true;
 
   // matching enum in kernel-defs.gc !!
   enum CollisionRendererMode { None, Mode, Event, Material, Skip } collision_mode = Mode;
@@ -97,7 +120,7 @@ extern GfxSettings g_settings;
 
 const GfxRendererModule* GetCurrentRenderer();
 
-u32 Init();
+u32 Init(GameVersion version);
 void Loop(std::function<bool()> f);
 u32 Exit();
 
@@ -113,10 +136,16 @@ u64 get_window_height();
 void set_window_size(u64 w, u64 h);
 void get_window_scale(float* x, float* y);
 GfxDisplayMode get_fullscreen();
-void get_screen_size(s64 vmode_idx, s32* w, s32* h, s32* c);
+int get_screen_vmode_count();
+int get_screen_rate(s64 vmode_idx);
+void get_screen_size(s64 vmode_idx, s32* w, s32* h);
+void set_frame_rate(int rate);
+void set_vsync(bool vsync);
 void set_letterbox(int w, int h);
 void set_fullscreen(GfxDisplayMode mode, int screen);
 void set_window_lock(bool lock);
+void set_game_resolution(int w, int h);
+void set_msaa(int samples);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);

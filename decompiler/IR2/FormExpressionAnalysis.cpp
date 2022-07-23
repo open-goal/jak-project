@@ -98,6 +98,19 @@ Form* try_cast_simplify(Form* in,
     return in;
   }
 
+  if (env.version == GameVersion::Jak2) {
+    if (new_type == TypeSpec("float")) {
+      auto ic = get_goal_integer_constant(in, env);
+      if (ic) {
+        // ASSERT(*ic <= UINT32_MAX);
+        ASSERT((s64)*ic == (s64)(s32)*ic);
+        float f;
+        memcpy(&f, &ic.value(), sizeof(float));
+        return pool.form<ConstantFloatElement>(f);
+      }
+    }
+  }
+
   if (new_type == TypeSpec("meters")) {
     auto fc = get_goal_float_constant(in);
 
@@ -184,7 +197,7 @@ Form* try_cast_simplify(Form* in,
     }
   }
 
-  auto type_info = env.dts->ts.lookup_type(new_type);
+  auto type_info = env.dts->ts.lookup_type_allow_partial_def(new_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
   if (bitfield_info) {
     // todo remove this.
@@ -683,6 +696,15 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
   }
 }
 
+bool u64_valid_for_float_constant(u64 in) {
+  u32 top = in >> 32;
+  if (top == 0 || top == UINT32_MAX) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
                                                            FormPool& pool,
                                                            FormStack& stack,
@@ -709,10 +731,26 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
       result->push_back(x);
     }
   } else {
-    // converting something else to an FPR, put an expression around it.
-    result->push_back(pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::GPR_TO_FPR),
-        pool.alloc_sequence_form(nullptr, src_fes)));
+    if (env.version != GameVersion::Jak1) {
+      auto frm = pool.alloc_sequence_form(nullptr, src_fes);
+      if (src_fes.size() == 1) {
+        auto int_constant = get_goal_integer_constant(frm, env);
+        if (int_constant && u64_valid_for_float_constant(*int_constant)) {
+          float flt;
+
+          memcpy(&flt, &int_constant.value(), sizeof(float));
+          result->push_back(pool.alloc_element<ConstantFloatElement>(flt));
+          return;
+        }
+      }
+      // converting something else to an FPR, put an expression around it.
+      result->push_back(pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::GPR_TO_FPR), frm));
+    } else {
+      result->push_back(pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::GPR_TO_FPR),
+          pool.alloc_sequence_form(nullptr, src_fes)));
+    }
   }
 }
 
@@ -947,7 +985,18 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
 
     // try to find symbol to string stuff
     auto arg0_int = get_goal_integer_constant(args.at(0), env);
-    if (arg0_int && (*arg0_int == DECOMP_SYM_INFO_OFFSET + 4) &&
+    u64 symbol_to_string_offset = -1;
+    switch (env.version) {
+      case GameVersion::Jak1:
+        symbol_to_string_offset = DECOMP_SYM_INFO_OFFSET + 4;
+        break;
+      case GameVersion::Jak2:
+        symbol_to_string_offset = jak2::SYM_TO_STRING_OFFSET;
+        break;
+      default:
+        ASSERT(false);
+    }
+    if (arg0_int && (*arg0_int == symbol_to_string_offset) &&
         arg1_type.typespec() == TypeSpec("symbol")) {
       result->push_back(pool.alloc_element<GetSymbolStringPointer>(args.at(1)));
       return;
@@ -2619,23 +2668,53 @@ bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack
 
     // zeroing the rows:
     std::vector<RegisterAccess> write_vars;
-    for (int i = 0; i < 4; i++) {
-      auto elt = matrix_entries->at(i + 1).elt;
+    if (env.version == GameVersion::Jak1) {
+      for (int i = 0; i < 4; i++) {
+        auto elt = matrix_entries->at(i + 1).elt;
 
-      auto matcher = Matcher::set(
-          Matcher::deref(Matcher::any_reg(0), false,
-                         {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
-                          DerefTokenMatcher::string("quad")}),
-          Matcher::cast("uint128", Matcher::integer(0)));
+        auto matcher = Matcher::set(
+            Matcher::deref(Matcher::any_reg(0), false,
+                           {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
+                            DerefTokenMatcher::string("quad")}),
+            Matcher::cast("uint128", Matcher::integer(0)));
 
-      auto mr = match(matcher, elt);
-      if (mr.matched) {
-        if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+        auto mr = match(matcher, elt);
+        if (mr.matched) {
+          if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+            return false;
+          }
+          write_vars.push_back(*mr.maps.regs.at(0));
+        } else {
           return false;
         }
-        write_vars.push_back(*mr.maps.regs.at(0));
-      } else {
-        return false;
+      }
+    } else {
+      for (int i = 0; i < 4; i++) {
+        auto elt = matrix_entries->at(i + 1).elt;
+
+        Matcher matcher;
+        if (i == 3) {
+          matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
+                                                {DerefTokenMatcher::string("trans"),
+                                                 DerefTokenMatcher::string("quad")}),
+                                 Matcher::cast("uint128", Matcher::integer(0)));
+
+        } else {
+          matcher = Matcher::set(
+              Matcher::deref(Matcher::any_reg(0), false,
+                             {DerefTokenMatcher::string("quad"), DerefTokenMatcher::integer(i)}),
+              Matcher::cast("uint128", Matcher::integer(0)));
+        }
+
+        auto mr = match(matcher, elt);
+        if (mr.matched) {
+          if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+            return false;
+          }
+          write_vars.push_back(*mr.maps.regs.at(0));
+        } else {
+          return false;
+        }
       }
     }
 
@@ -3539,6 +3618,22 @@ void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
   }
 
   stack.push_form_element(this, true);
+  if (false_destination) {
+    env.func->warnings.general_warning("new jak 2 until loop case, check carefully");
+    stack.push_value_to_reg(*false_destination,
+                            pool.form<SimpleAtomElement>(SimpleAtom::make_sym_val("#f")), true,
+                            TypeSpec("symbol"));
+    RegAccessSet accessed_regs;
+    body->collect_vars(accessed_regs, true);
+    condition->collect_vars(accessed_regs, true);
+    auto check_name = env.get_variable_name(*false_destination);
+    for (auto& reg : accessed_regs) {
+      if (env.get_variable_name(reg) == check_name) {
+        ASSERT_MSG(false, fmt::format("Jak 2 loop uses delay slot variable improperly: {} {}\n",
+                                      env.func->name(), check_name));
+      }
+    }
+  }
 }
 
 void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {

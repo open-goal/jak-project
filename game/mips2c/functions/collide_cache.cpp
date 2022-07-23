@@ -1,9 +1,11 @@
 //--------------------------MIPS2C---------------------
 #include "common/dma/gs.h"
 
-#include "game/kernel/kscheme.h"
+#include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
+using namespace jak1;
 
+const uint32_t* max_tri_count = nullptr;
 namespace {
 u32 vu0_buffer[1024];  // todo, maybe can be 512.
 u32 vi1 = 0;
@@ -499,6 +501,7 @@ u64 execute(void* ctxt) {
 void link() {
   cache.fake_scratchpad_data = intern_from_c("*fake-scratchpad-data*").c();
   gLinkedFunctionTable.reg("(method 32 collide-cache)", execute, 128);
+  max_tri_count = intern_from_c("*collide-cache-max-tris*").cast<u32>().c();
 }
 
 } // namespace method_32_collide_cache
@@ -534,7 +537,7 @@ u64 execute(void* ctxt) {
   c->sq(s5, 80, sp);                                // sq s5, 80(sp)
   c->sq(gp, 96, sp);                                // sq gp, 96(sp)
   // nop                                            // sll r0, r0, 0
-  c->addiu(v1, r0, 460);                            // addiu v1, r0, 460
+  c->addiu(v1, r0, *max_tri_count);                 // addiu v1, r0, 460
   c->lwu(a2, 0, a0);                                // lwu a2, 0(a0)
   c->dsubu(t0, v1, a2);                             // dsubu t0, v1, a2
   c->addiu(a3, r0, 64);                             // addiu a3, r0, 64
@@ -790,7 +793,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_28_collide_cache {
 struct Cache {
@@ -817,7 +820,7 @@ u64 execute(void* ctxt) {
   c->sq(s5, 80, sp);                                // sq s5, 80(sp)
   c->sq(gp, 96, sp);                                // sq gp, 96(sp)
   // nop                                            // sll r0, r0, 0
-  c->addiu(v1, r0, 460);                            // addiu v1, r0, 460
+  c->addiu(v1, r0, *max_tri_count);                 // addiu v1, r0, 460
   c->lwu(a2, 0, a0);                                // lwu a2, 0(a0)
   c->dsubu(t0, v1, a2);                             // dsubu t0, v1, a2
   c->addiu(a3, r0, 64);                             // addiu a3, r0, 64
@@ -1073,7 +1076,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_27_collide_cache {
 struct Cache {
@@ -1112,7 +1115,7 @@ u64 execute(void* ctxt) {
   c->mov64(v1, v0);                                 // or v1, v0, r0
   // nop                                            // sll r0, r0, 0
   c->load_symbol(t0, cache.collide_work);           // lw t0, *collide-work*(s7)
-  c->addiu(v1, r0, 460);                            // addiu v1, r0, 460
+  c->addiu(v1, r0, *max_tri_count);                 // addiu v1, r0, 460
   c->lwu(a0, 0, gp);                                // lwu a0, 0(gp)
   c->dsubu(a2, v1, a0);                             // dsubu a2, v1, a0
   c->dsll(a1, a0, 6);                               // dsll a1, a0, 6
@@ -1369,7 +1372,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_29_collide_cache {
 struct Cache {
@@ -1558,7 +1561,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_12_collide_shape_prim_mesh {
 struct Cache {
@@ -1621,7 +1624,7 @@ u64 execute(void* ctxt) {
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   c->lwu(a0, 4, gp);                                // lwu a0, 4(gp)
-  c->addiu(a1, r0, 460);                            // addiu a1, r0, 460
+  c->addiu(a1, r0, *max_tri_count);                 // addiu a1, r0, 460
   c->lwu(v1, 0, gp);                                // lwu v1, 0(gp)
   c->dsll32(a0, a0, 0);                             // dsll32 a0, a0, 0
   // nop                                            // sll r0, r0, 0
@@ -1804,7 +1807,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_14_collide_shape_prim_mesh {
 struct Cache {
@@ -1867,7 +1870,7 @@ u64 execute(void* ctxt) {
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   c->lwu(a0, 4, gp);                                // lwu a0, 4(gp)
-  c->addiu(a1, r0, 460);                            // addiu a1, r0, 460
+  c->addiu(a1, r0, *max_tri_count);                 // addiu a1, r0, 460
   c->lwu(v1, 0, gp);                                // lwu v1, 0(gp)
   c->dsll32(a0, a0, 0);                             // dsll32 a0, a0, 0
   // nop                                            // sll r0, r0, 0
@@ -2049,7 +2052,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_13_collide_shape_prim_mesh {
 struct Cache {
@@ -2115,7 +2118,7 @@ u64 execute(void* ctxt) {
   c->load_symbol(t2, cache.collide_work);           // lw t2, *collide-work*(s7)
   // nop                                            // sll r0, r0, 0
   c->lwu(a0, 4, gp);                                // lwu a0, 4(gp)
-  c->addiu(a1, r0, 460);                            // addiu a1, r0, 460
+  c->addiu(a1, r0, *max_tri_count);                 // addiu a1, r0, 460
   c->lwu(v1, 0, gp);                                // lwu v1, 0(gp)
   c->dsll32(a0, a0, 0);                             // dsll32 a0, a0, 0
   // nop                                            // sll r0, r0, 0
@@ -2300,7 +2303,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_30_collide_cache {
 u64 execute(void* ctxt) {
@@ -2502,7 +2505,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_9_collide_cache_prim {
 struct Cache {
@@ -2690,7 +2693,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_10_collide_cache_prim {
 struct Cache {
@@ -2902,7 +2905,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_10_collide_puss_work {
 u64 execute(void* ctxt) {
@@ -3071,7 +3074,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace method_9_collide_puss_work {
 struct Cache {
@@ -3273,5 +3276,3 @@ void link() {
 
 } // namespace method_9_collide_puss_work
 } // namespace Mips2C
-
-

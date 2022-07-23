@@ -29,11 +29,14 @@ class GLDisplay : public GfxDisplay {
   void get_position(int* x, int* y);
   void get_size(int* w, int* h);
   void get_scale(float* x, float* y);
-  void get_screen_size(int vmode_idx, s32* w, s32* h, s32* c);
+  void get_screen_size(int vmode_idx, s32* w, s32* h);
+  int get_screen_rate(int vmode_idx);
+  int get_screen_vmode_count();
   GfxDisplayMode get_fullscreen();
   void set_size(int w, int h);
   void update_fullscreen(GfxDisplayMode mode, int screen);
   void render();
+  bool minimized();
   void set_lock(bool lock);
 };
 

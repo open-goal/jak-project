@@ -203,7 +203,8 @@ std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB
 void extract_common(const ObjectFileDB& db,
                     const TextureDB& tex_db,
                     const std::string& dgo_name,
-                    bool dump_levels) {
+                    bool dump_levels,
+                    const fs::path& output_folder) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
     lg::warn("Skipping common extract for {} because the DGO was not part of the input", dgo_name);
     return;
@@ -224,13 +225,13 @@ void extract_common(const ObjectFileDB& db,
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
 
-  fmt::print("stats for {}\n", dgo_name);
+  lg::info("stats for {}", dgo_name);
   print_memory_usage(tfrag_level, ser.get_save_result().second);
   lg::info("compressed: {} -> {} ({:.2f}%)", ser.get_save_result().second, compressed.size(),
-           100.f * compressed.size() / ser.get_save_result().second);
-  file_util::write_binary_file(file_util::get_file_path({fmt::format(
-                                   "assets/{}.fr3", dgo_name.substr(0, dgo_name.length() - 4))}),
-                               compressed.data(), compressed.size());
+             100.f * compressed.size() / ser.get_save_result().second);
+  file_util::write_binary_file(
+      output_folder / fmt::format("{}.fr3", dgo_name.substr(0, dgo_name.length() - 4)),
+      compressed.data(), compressed.size());
 }
 
 void extract_from_level(const ObjectFileDB& db,
@@ -238,7 +239,8 @@ void extract_from_level(const ObjectFileDB& db,
                         const std::string& dgo_name,
                         const DecompileHacks& hacks,
                         bool dump_level,
-                        bool extract_collision) {
+                        bool extract_collision,
+                        const fs::path& output_folder) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
     lg::warn("Skipping extract for {} because the DGO was not part of the input", dgo_name);
     return;
@@ -255,13 +257,13 @@ void extract_from_level(const ObjectFileDB& db,
   level_data.serialize(ser);
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
-  fmt::print("stats for {}\n", dgo_name);
+  lg::info("stats for {}", dgo_name);
   print_memory_usage(level_data, ser.get_save_result().second);
   lg::info("compressed: {} -> {} ({:.2f}%)", ser.get_save_result().second, compressed.size(),
-           100.f * compressed.size() / ser.get_save_result().second);
-  file_util::write_binary_file(file_util::get_file_path({fmt::format(
-                                   "assets/{}.fr3", dgo_name.substr(0, dgo_name.length() - 4))}),
-                               compressed.data(), compressed.size());
+             100.f * compressed.size() / ser.get_save_result().second);
+  file_util::write_binary_file(
+      output_folder / fmt::format("{}.fr3", dgo_name.substr(0, dgo_name.length() - 4)),
+      compressed.data(), compressed.size());
 }
 
 void extract_all_levels(const ObjectFileDB& db,
@@ -270,12 +272,14 @@ void extract_all_levels(const ObjectFileDB& db,
                         const std::string& common_name,
                         const DecompileHacks& hacks,
                         bool debug_dump_level,
-                        bool extract_collision) {
-  extract_common(db, tex_db, common_name, debug_dump_level);
+                        bool extract_collision,
+                        const fs::path& output_path) {
+  extract_common(db, tex_db, common_name, debug_dump_level, output_path);
   SimpleThreadGroup threads;
   threads.run(
       [&](int idx) {
-        extract_from_level(db, tex_db, dgo_names[idx], hacks, debug_dump_level, extract_collision);
+        extract_from_level(db, tex_db, dgo_names[idx], hacks, debug_dump_level, extract_collision,
+                           output_path);
       },
       dgo_names.size());
   threads.join();

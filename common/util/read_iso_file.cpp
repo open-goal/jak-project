@@ -80,11 +80,11 @@ void add_from_dir(FILE* fp, u32 sector, u32 size, IsoFile::Entry* parent) {
 void unpack_entry(FILE* fp,
                   IsoFile& iso,
                   const IsoFile::Entry& entry,
-                  const std::filesystem::path& dest,
+                  const fs::path& dest,
                   bool print_progress) {
-  std::filesystem::path path_to_entry = dest / entry.name;
+  fs::path path_to_entry = dest / entry.name;
   if (entry.is_dir) {
-    std::filesystem::create_directory(path_to_entry);
+    fs::create_directory(path_to_entry);
     for (const auto& child : entry.children) {
       unpack_entry(fp, iso, child, path_to_entry, print_progress);
     }
@@ -118,15 +118,12 @@ IsoFile find_files_in_iso(FILE* fp) {
   return result;
 }
 
-void unpack_iso_files(FILE* fp,
-                      IsoFile& layout,
-                      const std::filesystem::path& dest,
-                      bool print_progress) {
+void unpack_iso_files(FILE* fp, IsoFile& layout, const fs::path& dest, bool print_progress) {
   unpack_entry(fp, layout, layout.root, dest, print_progress);
 }
 
 IsoFile unpack_iso_files(FILE* fp,
-                         const std::filesystem::path& dest,
+                         const fs::path& dest,
                          bool print_progress,
                          const bool hashFiles) {
   auto file = find_files_in_iso(fp);

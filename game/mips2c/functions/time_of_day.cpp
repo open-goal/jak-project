@@ -1,7 +1,9 @@
 
 //--------------------------MIPS2C---------------------
-#include "game/kernel/kscheme.h"
+
+#include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
+using namespace jak1;
 
 // clang-format off
 namespace Mips2C {

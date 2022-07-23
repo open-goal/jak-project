@@ -8,7 +8,7 @@
 
 #include "common/common_types.h"
 
-#include "game/kernel/Ptr.h"
+#include "game/kernel/common/Ptr.h"
 
 namespace VM {
 

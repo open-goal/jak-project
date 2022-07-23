@@ -3,8 +3,14 @@
 #include "common/util/FileUtil.h"
 #include "common/util/BinaryWriter.h"
 #include "third-party/json.hpp"
+#include <common/util/unicode_util.h>
 
 int main(int argc, char** argv) {
+  fs::u8arguments u8guard(argc, argv);
+  if (!u8guard.valid()) {
+    exit(EXIT_FAILURE);
+  }
+
   printf("OpenGOAL version %d.%d\n", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
   printf("DGO Packing Tool\n");
 

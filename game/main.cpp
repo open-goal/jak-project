@@ -3,6 +3,8 @@
  * Main for the game. Launches the runtime.
  */
 
+#define STBI_WINDOWS_UTF8
+
 #include <string>
 
 #include "runtime.h"
@@ -11,6 +13,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/os.h"
 #include "common/versions.h"
+#include <common/util/unicode_util.h>
 
 #include "game/discord.h"
 
@@ -39,6 +42,14 @@ void setup_logging(bool verbose) {
  * Entry point for the game.
  */
 int main(int argc, char** argv) {
+  fs::u8arguments u8guard(argc, argv);
+  if (!u8guard.valid()) {
+    exit(EXIT_FAILURE);
+  }
+
+  // TODO - replace with CLI11 and just propagate args through
+  // - https://github.com/CLIUtils/CLI11/issues/744
+
   // Figure out if the CPU has AVX2 to enable higher performance AVX2 versions of functions.
   setup_cpu_info();
   // If the CPU doesn't have AVX, GOAL code won't work and we exit.
@@ -50,7 +61,7 @@ int main(int argc, char** argv) {
   // parse arguments
   bool verbose = false;
   bool disable_avx2 = false;
-  std::optional<std::filesystem::path> project_path_override = std::nullopt;
+  std::optional<fs::path> project_path_override = std::nullopt;
   for (int i = 1; i < argc; i++) {
     if (std::string("-v") == argv[i]) {
       verbose = true;
@@ -62,7 +73,7 @@ int main(int argc, char** argv) {
     }
 
     if (std::string("-proj-path") == argv[i] && i + 1 < argc) {
-      project_path_override = std::make_optional(std::filesystem::path(argv[i + 1]));
+      project_path_override = std::make_optional(fs::path(argv[i + 1]));
     }
   }
 
@@ -115,17 +126,21 @@ int main(int argc, char** argv) {
 
     // run the runtime in a loop so we can reset the game and have it restart cleanly
     lg::info("OpenGOAL Runtime {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
-    auto exit_status = exec_runtime(ptrs.size(), ptrs.data());
-
-    switch (exit_status) {
-      case RuntimeExitStatus::EXIT:
-        return 0;
-      case RuntimeExitStatus::RESTART_RUNTIME:
-      case RuntimeExitStatus::RUNNING:
-        break;
-      case RuntimeExitStatus::RESTART_IN_DEBUG:
-        force_debug_next_time = true;
-        break;
+    try {
+      auto exit_status = exec_runtime(ptrs.size(), ptrs.data());
+      switch (exit_status) {
+        case RuntimeExitStatus::EXIT:
+          return 0;
+        case RuntimeExitStatus::RESTART_RUNTIME:
+        case RuntimeExitStatus::RUNNING:
+          break;
+        case RuntimeExitStatus::RESTART_IN_DEBUG:
+          force_debug_next_time = true;
+          break;
+      }
+    } catch (std::exception& ex) {
+      lg::error("Unexpected exception occurred - {}", ex.what());
+      throw ex;
     }
   }
   return 0;

@@ -924,7 +924,7 @@ goos::Object decompile_structure(const TypeSpec& type,
     }
 
     // first, let's see if it's a value or reference
-    auto field_type_info = ts.lookup_type(field.type());
+    auto field_type_info = ts.lookup_type_allow_partial_def(field.type());
     if (!field_type_info->is_reference()) {
       // value type. need to get bytes.
       ASSERT(!field.is_inline());

@@ -1,0 +1,473 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: depth-cue.gc
+;; name in dgo: depth-cue
+;; dgos: GAME, ENGINE
+
+;; DECOMP BEGINS
+
+(define *depth-cue-work*
+  (new 'static 'depth-cue-work
+    :texture-strip-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64 
+              :nloop 1 
+              :eop 1 
+              :pre 1
+              :prim (gs-prim-type sprite) ;; actually #b001101010110
+              :flg (gif-flag packed)
+              :nreg 5
+              )
+      :gif1 (new 'static 'gif-tag-regs
+              :regs0 (gif-reg-id rgbaq)
+              :regs1 (gif-reg-id uv)
+              :regs2 (gif-reg-id xyzf2)
+              :regs3 (gif-reg-id uv)
+              :regs4 (gif-reg-id xyzf2)
+              )
+      )
+    :temp-strip-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64 
+              :nloop 1 
+              :eop 1 
+              :pre 1
+              :prim (gs-prim-type sprite) ;; actually #b00100010110
+              :flg (gif-flag packed)
+              :nreg 5
+              )
+      :gif1 (new 'static 'gif-tag-regs
+              :regs0 (gif-reg-id rgbaq)
+              :regs1 (gif-reg-id uv)
+              :regs2 (gif-reg-id xyzf2)
+              :regs3 (gif-reg-id uv)
+              :regs4 (gif-reg-id xyzf2)
+              )
+      )
+    :stencil-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x17 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x17 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif (new 'static 'array uint64 2 #xb003400000008002 #x44444444441)
+      )
+    :set-color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+    :draw-color (new 'static 'vector4w :x #x84 :y #x84 :z #x84 :w #x80)
+    :depth (new 'static 'depth-cue-data :data (new 'static 'vector :x 1.0 :z 163840.0))
+    :front (new 'static 'depth-cue-data :data (new 'static 'vector :x 0.999 :y 0.4 :z 4096.0 :w 1.0))
+    )
+  )
+
+(defun depth-cue-set-stencil ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 dma-gif-packet))
+  (let* ((v1-0 arg0)
+         (t1-0 (the-as object (-> v1-0 base)))
+         )
+    (set! (-> (the-as dma-packet t1-0) dma) (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet t1-0) vif0) (new 'static 'vif-tag))
+    (set! (-> (the-as dma-packet t1-0) vif1) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1))
+    (set! (-> v1-0 base) (&+ (the-as pointer t1-0) 16))
+    )
+  (let* ((v1-1 arg0)
+         (t1-2 (the-as object (-> v1-1 base)))
+         )
+    (set! (-> (the-as gs-gif-tag t1-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x3))
+    (set! (-> (the-as gs-gif-tag t1-2) regs) (new 'static 'gif-tag-regs
+                                               :regs0 (gif-reg-id a+d)
+                                               :regs1 (gif-reg-id a+d)
+                                               :regs2 (gif-reg-id a+d)
+                                               :regs3 (gif-reg-id a+d)
+                                               :regs4 (gif-reg-id a+d)
+                                               :regs5 (gif-reg-id a+d)
+                                               :regs6 (gif-reg-id a+d)
+                                               :regs7 (gif-reg-id a+d)
+                                               :regs8 (gif-reg-id a+d)
+                                               :regs9 (gif-reg-id a+d)
+                                               :regs10 (gif-reg-id a+d)
+                                               :regs11 (gif-reg-id a+d)
+                                               :regs12 (gif-reg-id a+d)
+                                               :regs13 (gif-reg-id a+d)
+                                               :regs14 (gif-reg-id a+d)
+                                               :regs15 (gif-reg-id a+d)
+                                               )
+          )
+    (set! (-> v1-1 base) (&+ (the-as pointer t1-2) 16))
+    )
+  (let* ((v1-2 arg0)
+         (t1-4 (-> v1-2 base))
+         )
+    (set! (-> (the-as (pointer gs-xy-offset) t1-4) 0)
+          (new 'static 'gs-xy-offset :ofx #x7000 :ofy (+ (* (-> *video-parms* screen-miny) 16) arg3))
+          )
+    (set! (-> (the-as (pointer gs-reg64) t1-4) 1) (gs-reg64 xyoffset-1))
+    (set! (-> (the-as (pointer gs-frame) t1-4) 2) (new 'static 'gs-frame :fbw #x8 :fbmsk #xffffff :fbp arg1))
+    (set! (-> (the-as (pointer gs-reg64) t1-4) 3) (gs-reg64 frame-1))
+    (set! (-> (the-as (pointer gs-test) t1-4) 4) (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal)))
+    (set! (-> (the-as (pointer gs-reg64) t1-4) 5) (gs-reg64 test-1))
+    (set! (-> v1-2 base) (&+ t1-4 48))
+    )
+  (let ((a3-7 (the-as (inline-array vector4w) (-> arg0 base)))
+        (v1-3 #x7000)
+        (a1-8 1024)
+        )
+    (set! (-> a3-7 0 quad) (-> *depth-cue-work* stencil-tmpl dma-vif quad))
+    (set! (-> a3-7 1 quad) (-> *depth-cue-work* stencil-tmpl quad 1))
+    (let ((v0-0 (the-as object (-> a3-7 2))))
+      (dotimes (a3-8 2)
+        (set! (-> (the-as (inline-array vector4w) v0-0) 0 quad) (-> arg4 dma-vif quad))
+        (set! v0-0 (-> (the-as (inline-array vector4w) v0-0) 1))
+        (dotimes (t1-10 5)
+          (set-vector! (-> (the-as (inline-array vector4w) v0-0) 0) v1-3 (* (-> *video-parms* screen-miny) 16) arg2 0)
+          (set-vector!
+            (-> (the-as (inline-array vector4w) v0-0) 1)
+            (+ v1-3 a1-8)
+            (* (-> *video-parms* screen-maxy) 16)
+            arg2
+            #x10000
+            )
+          (+! v1-3 a1-8)
+          (set! v0-0 (-> (the-as (inline-array vector4w) v0-0) 2))
+          )
+        )
+      (set! (-> arg0 base) (the-as pointer v0-0))
+      (the-as vector4w v0-0)
+      )
+    )
+  )
+
+(defun depth-cue-draw-depth ((arg0 dma-buffer) (arg1 int) (arg2 float) (arg3 float) (arg4 int) (arg5 int))
+  (set! (-> *depth-cue-work* draw-color w) (the int (* 128.0 arg3)))
+  (let ((v1-1 (the int (* 512.0 arg2)))
+        (a2-1 (the int (* (the float (* (-> *video-parms* screen-sy) 16)) arg2)))
+        (a3-4 0)
+        (t2-0 512)
+        (t3-0 *depth-cue-base-page*)
+        )
+    (dotimes (t4-0 16)
+      (let* ((t5-0 arg0)
+             (t6-0 (the-as object (-> t5-0 base)))
+             )
+        (set! (-> (the-as dma-packet t6-0) dma) (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt)))
+        (set! (-> (the-as dma-packet t6-0) vif0) (new 'static 'vif-tag))
+        (set! (-> (the-as dma-packet t6-0) vif1) (new 'static 'vif-tag :imm #x5 :cmd (vif-cmd direct) :msk #x1))
+        (set! (-> t5-0 base) (the-as pointer (the-as gs-gif-tag (&+ (the-as pointer t6-0) 16))))
+        )
+      (let* ((t5-1 arg0)
+             (t6-2 (the-as object (-> t5-1 base)))
+             )
+        (set! (-> (the-as gs-gif-tag t6-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x4))
+        (set! (-> (the-as gs-gif-tag t6-2) regs)
+              (new 'static 'gif-tag-regs
+                :regs0 (gif-reg-id a+d)
+                :regs1 (gif-reg-id a+d)
+                :regs2 (gif-reg-id a+d)
+                :regs3 (gif-reg-id a+d)
+                :regs4 (gif-reg-id a+d)
+                :regs5 (gif-reg-id a+d)
+                :regs6 (gif-reg-id a+d)
+                :regs7 (gif-reg-id a+d)
+                :regs8 (gif-reg-id a+d)
+                :regs9 (gif-reg-id a+d)
+                :regs10 (gif-reg-id a+d)
+                :regs11 (gif-reg-id a+d)
+                :regs12 (gif-reg-id a+d)
+                :regs13 (gif-reg-id a+d)
+                :regs14 (gif-reg-id a+d)
+                :regs15 (gif-reg-id a+d)
+                )
+              )
+        (set! (-> t5-1 base) (&+ (the-as pointer t6-2) 16))
+        )
+      (let* ((t5-2 arg0)
+             (t6-4 (-> t5-2 base))
+             )
+        (set! (-> (the-as (pointer gs-xy-offset) t6-4) 0) (new 'static 'gs-xy-offset :ofy (- 8 arg5)))
+        (set! (-> (the-as (pointer gs-reg64) t6-4) 1) (gs-reg64 xyoffset-1))
+        (set! (-> (the-as (pointer gs-frame) t6-4) 2) (new 'static 'gs-frame :fbw #x1 :fbp t3-0))
+        (set! (-> (the-as (pointer gs-reg64) t6-4) 3) (gs-reg64 frame-1))
+        (set! (-> (the-as (pointer gs-tex0) t6-4) 4)
+              (new 'static 'gs-tex0 :tbw #x8 :tw #xa :th #x8 :tcc #x1 :tbp0 (* arg4 32))
+              )
+        (set! (-> (the-as (pointer gs-reg64) t6-4) 5) (gs-reg64 tex0-1))
+        (set! (-> (the-as (pointer gs-test) t6-4) 6) (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
+        (set! (-> (the-as (pointer gs-reg64) t6-4) 7) (gs-reg64 test-1))
+        (set! (-> t5-2 base) (&+ t6-4 64))
+        )
+      (let ((t5-3 (the-as (inline-array vector4w) (-> arg0 base))))
+        (set! (-> t5-3 0 quad) (-> *depth-cue-work* temp-strip-tmpl dma-vif quad))
+        (set! (-> t5-3 1 quad) (-> *depth-cue-work* temp-strip-tmpl quad 1))
+        (set! (-> t5-3 2 quad) (-> *depth-cue-work* set-color quad))
+        (set-vector! (-> t5-3 3) a3-4 0 0 0)
+        (set-vector! (-> t5-3 4) 0 0 0 0)
+        (set-vector! (-> t5-3 5) (+ a3-4 t2-0) (* (-> *video-parms* screen-sy) 16) 0 0)
+        (set-vector! (-> t5-3 6) v1-1 a2-1 0 #x10000)
+        )
+      (set! (-> arg0 base) (the-as pointer (-> (the-as depth-cue-work (-> arg0 base)) set-color)))
+      (let* ((t5-7 arg0)
+             (t6-16 (the-as object (-> t5-7 base)))
+             )
+        (set! (-> (the-as dma-packet t6-16) dma) (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt)))
+        (set! (-> (the-as dma-packet t6-16) vif0) (new 'static 'vif-tag))
+        (set! (-> (the-as dma-packet t6-16) vif1) (new 'static 'vif-tag :imm #x5 :cmd (vif-cmd direct) :msk #x1))
+        (set! (-> t5-7 base) (&+ (the-as pointer t6-16) 16))
+        )
+      (let* ((t5-8 arg0)
+             (t6-18 (the-as object (-> t5-8 base)))
+             )
+        (set! (-> (the-as gs-gif-tag t6-18) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x4))
+        (set! (-> (the-as gs-gif-tag t6-18) regs) (new 'static 'gif-tag-regs
+                                                    :regs0 (gif-reg-id a+d)
+                                                    :regs1 (gif-reg-id a+d)
+                                                    :regs2 (gif-reg-id a+d)
+                                                    :regs3 (gif-reg-id a+d)
+                                                    :regs4 (gif-reg-id a+d)
+                                                    :regs5 (gif-reg-id a+d)
+                                                    :regs6 (gif-reg-id a+d)
+                                                    :regs7 (gif-reg-id a+d)
+                                                    :regs8 (gif-reg-id a+d)
+                                                    :regs9 (gif-reg-id a+d)
+                                                    :regs10 (gif-reg-id a+d)
+                                                    :regs11 (gif-reg-id a+d)
+                                                    :regs12 (gif-reg-id a+d)
+                                                    :regs13 (gif-reg-id a+d)
+                                                    :regs14 (gif-reg-id a+d)
+                                                    :regs15 (gif-reg-id a+d)
+                                                    )
+              )
+        (set! (-> t5-8 base) (&+ (the-as pointer t6-18) 16))
+        )
+      (let* ((t5-9 arg0)
+             (t6-20 (-> t5-9 base))
+             )
+        (set! (-> (the-as (pointer gs-xy-offset) t6-20) 0) (new 'static 'gs-xy-offset :ofy (+ arg5 4)))
+        (set! (-> (the-as (pointer gs-reg64) t6-20) 1) (gs-reg64 xyoffset-1))
+        (set! (-> (the-as (pointer gs-frame) t6-20) 2) (new 'static 'gs-frame :fbw #x8 :fbmsk #xff000000 :fbp arg4))
+        (set! (-> (the-as (pointer gs-reg64) t6-20) 3) (gs-reg64 frame-1))
+        (set! (-> (the-as (pointer gs-tex0) t6-20) 4)
+              (new 'static 'gs-tex0 :tbw #x1 :tw #x5 :th #x8 :tcc #x1 :tbp0 (* t3-0 32))
+              )
+        (set! (-> (the-as (pointer gs-reg64) t6-20) 5) (gs-reg64 tex0-1))
+        (set! (-> (the-as (pointer gs-test) t6-20) 6)
+              (new 'static 'gs-test :date #x1 :datm #x1 :zte #x1 :ztst (gs-ztest always))
+              )
+        (set! (-> (the-as (pointer gs-reg64) t6-20) 7) (gs-reg64 test-1))
+        (set! (-> t5-9 base) (&+ t6-20 64))
+        )
+      (let ((t5-10 (the-as object (-> arg0 base))))
+        (set! (-> (the-as (inline-array vector4w) t5-10) 0 quad)
+              (-> *depth-cue-work* texture-strip-tmpl dma-vif quad)
+              )
+        (set! (-> (the-as (inline-array vector4w) t5-10) 1 quad) (-> *depth-cue-work* texture-strip-tmpl quad 1))
+        (set! (-> (the-as (inline-array vector4w) t5-10) 2 quad) (-> *depth-cue-work* draw-color quad))
+        (set-vector! (-> (the-as (inline-array vector4w) t5-10) 3) 0 0 0 0)
+        (set-vector! (-> (the-as (inline-array vector4w) t5-10) 4) a3-4 0 0 0)
+        (set-vector! (-> (the-as (inline-array vector4w) t5-10) 5) v1-1 a2-1 0 0)
+        (set-vector!
+          (the-as vector4w (&+ (the-as pointer t5-10) 96))
+          (+ a3-4 t2-0)
+          (* (-> *video-parms* screen-sy) 16)
+          arg1
+          #x10000
+          )
+        )
+      (set! (-> arg0 base) (the-as pointer (-> (the-as depth-cue-work (-> arg0 base)) set-color)))
+      (+! a3-4 t2-0)
+      )
+    )
+  #f
+  )
+
+(defun depth-cue-draw-front ((dma-buff dma-buffer) (depth int) (sharpness float) (alpha float) (on-screen-fbp uint) (oddeven int))
+  ;; set draw-color alpha
+  (set! (-> *depth-cue-work* draw-color w) (the int (* 128.0 alpha)))
+
+  ;; sample the framebuffer in 16 vertical strips shrinking each a little,
+  ;; then overlay them back onto the framebuffer
+  (let ((strip-w (the int (* 512.0 sharpness)))
+        (strip-h (the int (* (the float (* (-> *video-parms* screen-sy) 16)) sharpness)))
+        (x-offset 0) ;; incremented by 512 each loop
+        (strip-max-w 512)
+        )
+    ;; repeat for each strip
+    (dotimes (i 16)
+      ;; sample strip from framebuffer to depth-cue-base-page
+      ;; ------------------------------------------------------
+      ;; update GS registers
+      (dma-buffer-add-gs-set dma-buff
+        ;; set vertex position offset
+        (xyoffset-1 (new 'static 'gs-xy-offset :ofy (- 8 oddeven)))
+        ;; draw to depth-cue-base-page (64px wide)
+        (frame-1 (new 'static 'gs-frame :fbw #x1 :fbp *depth-cue-base-page*))
+        ;; use on-screen framebuffer as texture 0
+        ;; buffer width = 512 pixels
+        ;; USIZE = 1024 texels
+        ;; VSIZE = 256 texels
+        ;; RGBA
+        (tex0-1 (new 'static 'gs-tex0 :tbw #x8 :tw #xa :th #x8 :tcc #x1 :tbp0 (* on-screen-fbp 32)))
+        ;; enable depth test, all pixels pass
+        (test-1 (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
+        ;; keep source rgb, no blending
+        (alpha-1 (new 'static 'gs-alpha))
+        )
+      ;; draw sprite
+      (let ((t5-3 (the-as (inline-array vector4w) (-> dma-buff base))))
+        (set! (-> t5-3 0 quad) (-> *depth-cue-work* temp-strip-tmpl dma-vif quad))  ;; cnt direct
+        (set! (-> t5-3 1 quad) (-> *depth-cue-work* temp-strip-tmpl quad 1))        ;; draw sprite, 5 regs
+        (set! (-> t5-3 2 quad) (-> *depth-cue-work* set-color quad))                                ;; rgbaq
+        (set-vector! (-> t5-3 3) x-offset 0 0 0)                                                    ;; uv
+        (set-vector! (-> t5-3 4) 0 0 0 0)                                                           ;; xyzf2
+        (set-vector! (-> t5-3 5) (+ x-offset strip-max-w) (* (-> *video-parms* screen-sy) 16) 0 0)  ;; uv
+        (set-vector! (-> t5-3 6) strip-w strip-h 0 #x10000)                                         ;; xyzf2
+        )
+      (&+! (-> dma-buff base) 112)
+
+      ;; overlay strip back onto the on-screen framebuffer
+      ;; ------------------------------------------------------
+      ;; update GS registers
+      (dma-buffer-add-gs-set dma-buff
+        ;; set vertex position offset
+        (xyoffset-1 (new 'static 'gs-xy-offset :ofy (+ oddeven 4)))
+        ;; draw to on-screen-fbp but only the alpha channel
+        (frame-1 (new 'static 'gs-frame :fbw #x8 :fbmsk #xff000000 :fbp on-screen-fbp))
+        ;; use an alpha value of 128
+        (texa (new 'static 'gs-texa :ta0 #x80 :ta1 #x80))
+        ;; use depth-cue-base-page as texture 0
+        ;; buffer width = 64 pixels
+        ;; format = PSMCT24
+        ;; USIZE = 32 texels
+        ;; VSIZE = 256 texels
+        ;; RGB
+        (tex0-1 (new 'static 'gs-tex0 :tbw #x1 :psm #x1 :tw #x5 :th #x8 :tbp0 (* *depth-cue-base-page* 32)))
+        ;; blend source and framebuffer RGB
+        (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+        )
+      ;; draw sprite
+      (let ((t5-10 (the-as object (-> dma-buff base))))
+        (set! (-> (the-as (inline-array vector4w) t5-10) 0 quad)
+              (-> *depth-cue-work* texture-strip-tmpl dma-vif quad)
+              )
+        (set! (-> (the-as (inline-array vector4w) t5-10) 1 quad) (-> *depth-cue-work* texture-strip-tmpl quad 1))
+        (set! (-> (the-as (inline-array vector4w) t5-10) 2 quad) (-> *depth-cue-work* draw-color quad)) ;; rgbaq
+        (set-vector! (-> (the-as (inline-array vector4w) t5-10) 3) 0 0 0 0)                             ;; uv
+        (set-vector! (-> (the-as (inline-array vector4w) t5-10) 4) x-offset 0 0 0)                      ;; xyzf2
+        (set-vector! (-> (the-as (inline-array vector4w) t5-10) 5) strip-w strip-h 0 0)                 ;; uv
+        (set-vector!                                                                                    ;; xyzf2
+          (the-as vector4w (&+ (the-as pointer t5-10) 96))
+          (+ x-offset strip-max-w)
+          (* (-> *video-parms* screen-sy) 16)
+          depth
+          #x10000
+          )
+        )
+      (&+! (-> dma-buff base) 112)
+
+      ;; next strip
+      ;; ------------------------------------------------------
+      (+! x-offset strip-max-w)
+      )
+    )
+  #f
+  )
+
+(defun depth-cue-calc-z ((arg0 float))
+  (+ (* (+ (* arg0 (-> *math-camera* perspective vector 2 z)) (-> *math-camera* perspective vector 3 z))
+        (/ (-> *math-camera* d) arg0)
+        )
+     (-> *math-camera* hvdf-off z)
+     )
+  )
+
+(defun depth-cue ((disp display))
+  ;; is depth-cue enabled?
+  (when (logtest? (vu1-renderer-mask depth-cue) *vu1-enable-user*)
+    (let* ((dma-start (-> *display* frames (-> *display* on-screen) frame global-buf base))
+           (dma-buff (-> *display* frames (-> *display* on-screen) frame global-buf))
+           (s5-0 (-> dma-buff base))
+           )
+      (let ((v1-9 (-> disp on-screen)))
+        ;; initial GS register setup
+        (dma-buffer-add-gs-set dma-buff
+          ;; depth test on, all pixels pass
+          (test-1 (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
+          ;; don't write to depth buffer
+          (zbuf-1 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1))
+          ;; bilinear texture sampling
+          (tex1-1 (new 'static 'gs-tex1 :mmag 1 :mmin 1))
+          ;; no mip
+          (miptbp1-1 (new 'static 'gs-miptbp))
+          ;; set texture wrap mode to clamp
+          (clamp-1 (new 'static 'gs-clamp
+                      :wms (gs-tex-wrap-mode clamp)
+                      :wmt (gs-tex-wrap-mode clamp)
+                      :maxu #x1ff
+                      :maxv (-> *video-parms* screen-masky)
+                      ))
+          ;; blend source and dest
+          (alpha-1 (new 'static 'gs-alpha :b 1 :d 1))
+          )
+
+        (let ((s3-0 (* *oddeven* 8))
+              (on-screen-fbp (-> disp frames v1-9 draw frame1 fbp))
+              )
+          ;; draw
+          (depth-cue-draw-front
+            dma-buff                            ;; dma-buff
+            #xffffff                            ;; depth
+            (-> *depth-cue-work* front data x)  ;; sharpness
+            (-> *depth-cue-work* front data y)  ;; alpha
+            on-screen-fbp                       ;; on-screen frame pointer
+            s3-0                                ;; oddeven * 8
+            )
+          ;; restore GS registers
+          (dma-buffer-add-gs-set dma-buff
+            ;; restore xyoffset register
+            (xyoffset-1 (new 'static 'gs-xy-offset :ofx #x7000 :ofy (+ (* (-> *video-parms* screen-miny) 16) s3-0)))
+            ;; restore drawing destination to on-screen framebuffer
+            (frame-1 (new 'static 'gs-frame :fbw #x8 :fbp on-screen-fbp))
+            )
+          )
+        )
+      (let ((a3-18 (-> dma-buff base)))
+        ;; add DMA chain
+        (let ((v1-22 (the-as object (-> dma-buff base))))
+          (set! (-> (the-as dma-packet v1-22) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+          (set! (-> (the-as dma-packet v1-22) vif0) (new 'static 'vif-tag))
+          (set! (-> (the-as dma-packet v1-22) vif1) (new 'static 'vif-tag))
+          (set! (-> dma-buff base) (&+ (the-as pointer v1-22) 16))
+          )
+        (let ((v0-0 (dma-bucket-insert-tag
+                      (-> *display* frames (-> *display* on-screen) frame bucket-group)
+                      (bucket-id depth-cue)
+                      s5-0
+                      (the-as (pointer dma-tag) a3-18)
+                      )
+                    )
+              )
+          ;; record memory usage
+          (let ((v1-27 *dma-mem-usage*))
+            (when (nonzero? v1-27)
+              (set! (-> v1-27 length) (max 84 (-> v1-27 length)))
+              (set! (-> v1-27 data 83 name) "depth-cue")
+              (+! (-> v1-27 data 83 count) 1)
+              (+! (-> v1-27 data 83 used)
+                  (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint dma-start))
+                  )
+              (set! (-> v1-27 data 83 total) (-> v1-27 data 83 used))
+              )
+            )
+          v0-0
+          )
+        )
+      )
+    )
+  )
+
+
+
+

@@ -98,9 +98,6 @@ void DelayThread(u32 usec);
 s32 CreateThread(ThreadParam* param);
 s32 StartThread(s32 thid, u32 arg);
 s32 WakeupThread(s32 thid);
-// kind of a hack
-bool ThreadWantsExit(s32 thid);
-bool OnlyThreadAlive(s32 thid);
 
 void sceSifInitRpc(int mode);
 void sceSifInitRpc(unsigned int mode);

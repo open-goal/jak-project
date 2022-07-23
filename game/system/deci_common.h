@@ -1,7 +1,5 @@
 #pragma once
 
-#ifndef JAK_DECIM_COMMON_H
-#define JAK_DECIM_COMMON_H
 #include "common/common_types.h"
 
 struct Deci2Driver {
@@ -22,5 +20,3 @@ struct Deci2Driver {
 #define DECI2_WRITE 3
 #define DECI2_WRITEDONE 4
 #define DECI2_CHSTATUS 5
-
-#endif  // JAK_DECIM_COMMON_H

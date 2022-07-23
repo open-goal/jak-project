@@ -1,4 +1,4 @@
-name: Draft Release
+name: 🏭 Draft Release
 
 on:
   workflow_dispatch:
@@ -17,8 +17,6 @@ jobs:
   cut-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
       # Docs - https://github.com/mathieudutour/github-tag-action
       # Workflows cannot trigger other workflows implicitly
       # - https://github.community/t/github-actions-workflow-not-triggering-with-tag-push/17053/7
@@ -31,24 +29,7 @@ jobs:
           tag_prefix: v
           default_bump: ${{ github.event.inputs.bump }}
 
-      # Generate the Release Notes
-      # TODO
-      # - name: Generate Release Notes
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #     COMMIT_SHA: ${{ github.SHA }}
-      #   run: |
-      #     cd ./.github/workflows/scripts/releases/generate-release-notes
-      #     npm ci
-      #     node index.js
-      #     mv ./release-notes.md ${GITHUB_WORKSPACE}/release-notes.md
-      #     ls
-
-      # Docs - https://github.com/softprops/action-gh-release
-      - name: Create a GitHub Release
-        uses: softprops/action-gh-release@v1
-        if: github.repository == 'open-goal/jak-project' && steps.tag_version.outputs.new_tag
-        with:
-          draft: true
-          prerelease: false
-          tag_name: ${{ steps.tag_version.outputs.new_tag }}
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_PAT }}
+        run: gh release create ${{ steps.tag_version.outputs.new_tag }} --generate-notes --draft --repo open-goal/jak-project

@@ -1,7 +1,8 @@
 //--------------------------MIPS2C---------------------
 // clang-format off
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+#include "game/kernel/jak1/kscheme.h"
+using namespace jak1;
 namespace Mips2C {
 namespace sp_init_fields {
 struct Cache {
@@ -341,7 +342,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace particle_adgif {
 struct Cache {
@@ -366,7 +367,13 @@ u64 execute(void* ctxt) {
   c->lw(t4, 8, t1);                                 // lw t4, 8(t1)
   bc = c->sgpr64(v1) == c->sgpr64(a3);              // beq v1, a3, L151
   c->daddiu(t3, t1, 12);                            // daddiu t3, t1, 12
-  if (bc) {goto block_6;}                           // branch non-likely
+  if (bc) {
+    if (c->sgpr64(t4) != 0) {
+      goto block_6;
+    } else {
+      printf("HACK: ignoring cached adgif to avoid crash on particle with unset texture.\n");
+     }
+  }                           // branch non-likely
 
   bc = c->sgpr64(t2) == 0;                          // beq t2, r0, L150
   c->daddiu(t4, t1, 172);                           // daddiu t4, t1, 172
@@ -471,7 +478,7 @@ void link() {
 
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
-#include "game/kernel/kscheme.h"
+
 namespace Mips2C {
 namespace sp_launch_particles_var {
 struct Cache {

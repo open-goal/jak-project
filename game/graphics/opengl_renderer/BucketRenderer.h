@@ -56,6 +56,24 @@ struct SharedRenderState {
   EyeRenderer* eye_renderer = nullptr;
 
   std::string load_status_debug;
+
+  // Information for renderers that need to read framebuffers:
+  // Most renderers can just use the framebuffer/glViewport set up by OpenGLRenderer, but special
+  // effects like sprite distort that read the framebuffer will need to know the details of the
+  // framebuffer setup.
+
+  // the framebuffer that bucket renderers should render to.
+  int render_fb_x = 0;
+  int render_fb_y = 0;
+  int render_fb_w = 0;
+  int render_fb_h = 0;
+  GLuint render_fb = -1;
+
+  // the region within that framebuffer to draw to.
+  int draw_region_w = 0;
+  int draw_region_h = 0;
+  int draw_offset_x = 0;
+  int draw_offset_y = 0;
 };
 
 /*!

@@ -1,0 +1,135 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: floating-launcher.gc
+;; name in dgo: floating-launcher
+;; dgos: L1, SUN, SUNKEN
+
+;; DECOMP BEGINS
+
+(import "goal_src/jak1/import/floating-launcher-ag.gc")
+
+(deftype floating-launcher (baseplat)
+  ((trigger-height float               :offset-assert 228)
+   (launcher       (pointer launcher)  :offset-assert 232)
+   )
+  :heap-base #x80
+  :method-count-assert 27
+  :size-assert         #xec
+  :flag-assert         #x1b008000ec
+  (:states
+    floating-launcher-idle
+    floating-launcher-lowering
+    floating-launcher-ready
+    )
+  )
+
+
+(defskelgroup *floating-launcher-sg* floating-launcher floating-launcher-lod0-jg floating-launcher-idle-ja
+              ((floating-launcher-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(defstate floating-launcher-idle (floating-launcher)
+  :event (the-as (function process int symbol event-message-block object :behavior floating-launcher) plat-event)
+  :trans (behavior ()
+    (plat-trans)
+    (when (< (vector-xz-length (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root-override trans)))
+             81920.0
+             )
+      (if (and (>= (-> (target-pos 0) y) (-> self trigger-height))
+               (logtest? (-> *target* control status) (cshape-moving-flags onground))
+               )
+          (go floating-launcher-lowering)
+          )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (transform-post)
+    (suspend)
+    (transform-post)
+    (suspend)
+    (loop
+      (suspend)
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior floating-launcher) plat-post)
+  )
+
+(defstate floating-launcher-lowering (floating-launcher)
+  :event (the-as (function process int symbol event-message-block object :behavior floating-launcher) plat-event)
+  :trans (the-as (function none :behavior floating-launcher) plat-trans)
+  :code (behavior ()
+    (let ((a0-1 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
+      (if a0-1
+          (entity-birth-no-kill a0-1)
+          )
+      )
+    (let ((f30-0 1.0))
+      (while (!= f30-0 0.0)
+        (set! f30-0 (seek f30-0 0.0 (-> *display* seconds-per-frame)))
+        (eval-path-curve-div! (-> self path) (-> self basetrans) f30-0 'interp)
+        (set! (-> self launcher 0 root-override trans quad) (-> self basetrans quad))
+        (update-transforms! (-> self launcher 0 root-override))
+        (suspend)
+        )
+      )
+    (eval-path-curve-div! (-> self path) (-> self basetrans) 0.0 'interp)
+    (set! (-> self launcher 0 root-override trans quad) (-> self basetrans quad))
+    (update-transforms! (-> self launcher 0 root-override))
+    (go floating-launcher-ready)
+    (none)
+    )
+  :post (the-as (function none :behavior floating-launcher) plat-post)
+  )
+
+(defstate floating-launcher-ready (floating-launcher)
+  :event (the-as (function process int symbol event-message-block object :behavior floating-launcher) plat-event)
+  :trans (the-as (function none :behavior floating-launcher) plat-trans)
+  :code (the-as (function none :behavior floating-launcher) plat-code)
+  :post (the-as (function none :behavior floating-launcher) plat-post)
+  )
+
+(defmethod init-from-entity! floating-launcher ((obj floating-launcher) (arg0 entity-actor))
+  (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) default-collision-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
+          )
+    (alloc-riders s4-0 1)
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
+      (set! (-> s3-0 collide-with) (collide-kind target))
+      (set! (-> s3-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 11468.8)
+      (set-root-prim! s4-0 s3-0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (backup-collide-with-as s4-0)
+    (set! (-> obj root-override) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (eval-path-curve-div! (-> obj path) (-> obj root-override trans) 1.0 'interp)
+  (let ((f30-0 (res-lump-float arg0 'spring-height :default 163840.0)))
+    (set! (-> obj launcher) (process-spawn launcher (-> obj root-override trans) f30-0 0 81920.0 :to obj))
+    )
+  (initialize-skeleton obj *floating-launcher-sg* '())
+  (logior! (-> obj skel status) (janim-status inited))
+  (update-transforms! (-> obj root-override))
+  (dummy-21 obj)
+  (set! (-> obj trigger-height) (res-lump-float arg0 'trigger-height))
+  (go floating-launcher-idle)
+  (none)
+  )
+
+
+
+

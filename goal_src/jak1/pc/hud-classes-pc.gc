@@ -1,0 +1,625 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  Code for extra HUD elements in the PC port.
+
+ |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defconstant HUD_ICON_COUNT 6)
+(defconstant HUD_PART_PC_AMOUNT 1)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; hud processes and parts
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; a pc hud element
+(deftype hud-pc (hud)
+  ()
+  )
+
+;; hud element for battles
+(deftype hud-battle-enemy (hud)
+  ((want-skel   symbol)
+   (want-skel2  symbol)
+
+   (last-battle    handle)
+   (battle-entity  entity-actor)
+   (battle-max   int32)
+   (battle-alive int32)
+   (battle-mode  symbol)
+   (last-task     entity-actor)
+   (task-entity   entity-actor)
+   (task-track    int32)
+   (task2-entity  entity-actor)
+   (task2-time    time-frame)
+   (task2-track   int32)
+
+   (last-level  symbol)
+   (ready?  symbol)
+   (kicked  symbol)
+   (display-mode?  symbol)
+   )
+  (:methods
+    (make-enemy-icon (_type_ int symbol entity) int)
+    (kill-icon (_type_ int) int)
+    (kill-all-icons (_type_) int)
+    (update-display-status (_type_ symbol entity int symbol) int)
+    )
+  )
+
+
+;; all pc hud elements
+(deftype hud-parts-pc (structure)
+  ((battle-enemy  (pointer hud-battle-enemy))
+
+   (parts  (pointer hud-pc)  HUD_PART_PC_AMOUNT  :offset 0)
+   )
+  )
+
+
+
+;;;----------------------------------------------
+;;  globals
+;;;----------------------------------------------
+
+
+;; all of the pc hud elements
+(define *hud-parts-pc* (new 'static 'hud-parts-pc
+                            :battle-enemy #f
+                            ))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  hud macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmacro hud-pc-make-icon (obj max &key skel
+                                    &key x
+                                    &key y
+                                    &key z
+                                    &key scale-x
+                                    &key scale-y
+                                    &key (entity #f)
+                                    )
+  `(when (< (-> ,obj nb-of-icons) ,max)
+    (let ((icon-idx (-> ,obj nb-of-icons)))
+      (set! (-> ,obj icons icon-idx) (new 'static 'hud-icon))
+      (let ((new-manipy (manipy-spawn (new 'static 'vector :w 1.0) ,entity ,skel #f :to ,obj)))
+        (when new-manipy
+          (set! (-> (-> new-manipy) draw dma-add-func) dma-add-process-drawable-hud-with-hud-lights)
+          (set-vector! (-> (-> new-manipy) root trans) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> (-> new-manipy) root scale) ,scale-x ,scale-y ,scale-x 1.0)
+          (when #f
+            (send-event (ppointer->process new-manipy) 'trans-hook #f)
+            )
+          )
+        (set! (-> ,obj icons icon-idx icon) new-manipy)
+        (when new-manipy
+          (logior! (-> new-manipy 0 mask) (process-mask pause))
+          (logclear! (-> new-manipy 0 mask) (process-mask menu progress))
+          (set! (-> (-> new-manipy) root trans z) ,z)
+          (set! (-> ,obj icons icon-idx icon-x) ,x)
+          (set! (-> ,obj icons icon-idx icon-y) ,y)
+          (set! (-> ,obj icons icon-idx icon-z) 0)
+          (set! (-> ,obj icons icon-idx scale-x) ,scale-x)
+          (set! (-> ,obj icons icon-idx scale-y) ,scale-y)
+          )
+        )
+      )
+    (+! (-> ,obj nb-of-icons) 1)
+    )
+  )
+
+(defmacro hud-pc-replace-icon (obj idx &key skel
+                                       &key z
+                                       &key (entity #f)
+                                       )
+  `(let ((new-manipy (manipy-spawn (new 'static 'vector :w 1.0) ,entity ,skel #f :to ,obj)))
+      (when new-manipy
+        (set! (-> (-> new-manipy) draw dma-add-func) dma-add-process-drawable-hud-with-hud-lights)
+        (set-vector! (-> (-> new-manipy) root trans) 0.0 0.0 0.0 1.0)
+        (set-vector! (-> (-> new-manipy) root scale) (-> ,obj icons ,idx scale-x) (-> ,obj icons ,idx scale-y) (-> ,obj icons ,idx scale-x) 1.0)
+        (when #f
+          (send-event (ppointer->process new-manipy) 'trans-hook #f)
+          )
+        )
+      (set! (-> ,obj icons ,idx icon) new-manipy)
+      (when new-manipy
+        (logior! (-> new-manipy 0 mask) (process-mask pause))
+        (logclear! (-> new-manipy 0 mask) (process-mask menu progress))
+        (set! (-> (-> new-manipy) root trans z) ,z)
+        )
+      )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  hud rendering with level lights
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(define *hud-pc-lights* (new 'global 'vu-lights))
+(set-vector! (-> *hud-pc-lights* direction 0) 1.0 0.0 0.0 1.0)
+(set-vector! (-> *hud-pc-lights* direction 1) 0.0 1.0 0.0 1.0)
+(set-vector! (-> *hud-pc-lights* direction 2) 0.0 0.0 1.0 1.0)
+(set-vector! (-> *hud-pc-lights* color 0) 0.75 0.75 1.0 1.0)
+(set-vector! (-> *hud-pc-lights* color 1) 0.75 0.75 1.0 1.0)
+(set-vector! (-> *hud-pc-lights* color 2) 0.75 0.75 1.0 1.0)
+(set-vector! (-> *hud-pc-lights* ambient) 0.2 0.2 0.2 1.0)
+
+(defun dma-add-process-drawable-hud-with-lights ((proc process-drawable) (draw draw-control) (arg2 symbol) (buf dma-buffer))
+  (logclear! (-> draw status) (draw-status was-drawn))
+  (when (zero? (logand (-> draw status) (draw-status hidden no-anim no-skeleton-update)))
+    (let ((vu-lgt (the-as vu-lights (+ 64 (scratchpad-object int))))
+          (lgt (if (= (-> draw level-index) 2)
+                   (-> *time-of-day-context* light-group (-> draw light-index))
+                   (-> *time-of-day-context* moods (-> draw level-index) light-group (-> draw light-index))
+                   ))
+          )
+      (vu-lights<-light-group! vu-lgt lgt)
+      )
+    (lod-set! draw 0)
+    (logior! (-> draw status) (draw-status was-drawn))
+    (draw-bones-hud draw buf)
+    )
+  0
+  (none)
+  )
+
+(defun dma-add-process-drawable-hud-with-hud-lights ((proc process-drawable) (draw draw-control) (arg2 symbol) (buf dma-buffer))
+  (logclear! (-> draw status) (draw-status was-drawn))
+  (when (zero? (logand (-> draw status) (draw-status hidden no-anim no-skeleton-update)))
+    (let ((vu-lgt (the-as vu-lights (+ 64 (scratchpad-object int))))
+          (lgt *hud-pc-lights*)
+          )
+      (set! (-> vu-lgt direction 0 quad) (-> lgt direction 0 quad))
+      (set! (-> vu-lgt direction 1 quad) (-> lgt direction 1 quad))
+      (set! (-> vu-lgt direction 2 quad) (-> lgt direction 2 quad))
+      (set! (-> vu-lgt color 0 quad) (-> lgt color 0 quad))
+      (set! (-> vu-lgt color 1 quad) (-> lgt color 1 quad))
+      (set! (-> vu-lgt color 2 quad) (-> lgt color 2 quad))
+      (set! (-> vu-lgt ambient quad) (-> lgt ambient quad))
+      )
+    (lod-set! draw 0)
+    (logior! (-> draw status) (draw-status was-drawn))
+    (draw-bones-hud draw buf)
+    )
+  0
+  (none)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  hud methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defmethod deactivate hud-pc ((obj hud-pc))
+  (dotimes (i HUD_PART_PC_AMOUNT)
+    (if (and (-> *hud-parts-pc* parts i) (= (ppointer->process (-> *hud-parts-pc* parts i)) obj))
+        (set! (-> *hud-parts-pc* parts i) (the (pointer hud-pc) #f))
+        )
+    )
+  ((method-of-type hud deactivate) obj)
+  (none)
+  )
+
+
+(defmethod kill-icon hud-battle-enemy ((obj hud-battle-enemy) (idx int))
+  "kill a hud icon"
+
+  (when (and (nonzero? (-> obj icons idx)) (nonzero? (-> obj icons idx icon)) (-> obj icons idx icon))
+      (deactivate (ppointer->process (-> obj icons idx icon)))
+      (set! (-> obj icons idx icon) #f)
+      )
+  0)
+
+(defmethod kill-all-icons hud-battle-enemy ((obj hud-battle-enemy))
+  "kill all hud icons"
+
+  (dotimes (i (-> obj nb-of-icons))
+    (kill-icon obj i)
+    )
+  0)
+
+(defmethod make-enemy-icon hud-battle-enemy ((obj hud-battle-enemy) (idx int) (skel-sym symbol) (enemy-ent entity))
+  "make a new icon for the hud"
+
+  ;; make new manipy
+  (kill-icon obj 0)
+  (hud-pc-replace-icon obj 0 :skel (-> skel-sym value) :entity enemy-ent :z (meters 0.5))
+
+  0)
+
+(defmethod update-display-status hud-battle-enemy ((obj hud-battle-enemy) (skel symbol) (ent entity) (icon-idx int) (trigger-force symbol))
+  "logic for displaying or hiding the hud, and drawing the icons."
+
+
+  ;; do stuff depending on our current state
+  (cond
+    ((hidden? obj)
+     ;; we're hidden, so let's make our new icons and see if we are allowed to show
+
+     ;; if we have icons made then show!
+     (when (-> obj ready?)
+       (set! (-> obj kicked) #f)
+       (send-event obj 'show)
+       )
+
+     ;; no icons, make new ones but keep them hidden for now
+     (when (and (not (-> obj ready?)) skel (not *progress-process*))
+       (case skel
+         (('*swamp-rat-sg* '*citb-bunny-sg*)
+          (set! (-> obj icons icon-idx icon-x) (the int (* 0.84 512)))
+          (set! (-> obj icons icon-idx icon-y) (the int (* 0.51 448)))
+          (set! (-> obj icons icon-idx scale-x) 0.006)
+          )
+         (('*gnawer-sg*)
+          (set! (-> obj icons icon-idx icon-x) (the int (* 0.78 512)))
+          (set! (-> obj icons icon-idx icon-y) (the int (* 0.54 448)))
+          (set! (-> obj icons icon-idx scale-x) 0.003)
+          )
+         (('*flying-lurker-sg*)
+          (set! (-> obj icons icon-idx icon-x) (the int (* 0.80 512)))
+          (set! (-> obj icons icon-idx icon-y) (the int (* 0.40 448)))
+          (set! (-> obj icons icon-idx scale-x) 0.003)
+          )
+         (else
+          (set! (-> obj icons icon-idx icon-x) (the int (* 0.84 512)))
+          (set! (-> obj icons icon-idx icon-y) (the int (* 0.51 448)))
+          (set! (-> obj icons icon-idx scale-x) 0.004)
+          )
+         )
+       (set! (-> obj icons icon-idx scale-y) (* (-> obj icons icon-idx scale-x) (/ -512.0 448.0)))
+       (make-enemy-icon obj icon-idx skel ent)
+       (let ((icon0 (the manipy (ppointer->process (-> obj icons icon-idx icon)))))
+         (case skel
+           (('*babak-sg*)
+            (send-event icon0 'art-joint-anim "babak-idle" 0)
+            (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
+            )
+           (('*citb-bunny-sg*)
+            (send-event icon0 'art-joint-anim "citb-bunny-idle" 0)
+            (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
+            )
+           (('*bonelurker-sg*)
+            (send-event icon0 'art-joint-anim "bonelurker-idle" 0)
+            (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
+            )
+           (('*swamp-rat-sg*)
+            (send-event icon0 'art-joint-anim "swamp-rat-celebrate" 0)
+            (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
+            )
+           (('*gnawer-sg*)
+            (send-event icon0 'art-joint-anim "gnawer-idle" 0)
+            (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
+            )
+           (('*flying-lurker-sg*)
+            (send-event icon0 'art-joint-anim "flying-lurker-fly" 0)
+            (send-event icon0 'rot-quat (quaternion-axis-angle! (new-stack-quaternion0) 0.0 1.0 0.15 (degrees 210)))
+            )
+           )
+         (send-event icon0 'draw #f)
+         )
+       (true! (-> obj ready?))
+       )
+     )
+    (else
+     ;; we want to be shown!
+     (false! (-> obj ready?))
+
+     ;; progress is open, let's leave.
+     (when (and (not (-> obj kicked)) (= *master-mode* 'progress))
+         (true! (-> obj kicked))
+         (send-event obj 'hide-quick)
+         )
+
+     ;; set the trigger time so we don't automatically go away
+     (if (and trigger-force (!= (-> obj next-state name) 'hud-leaving))
+         (set! (-> obj trigger-time) (current-time)))
+     )
+    )
+  0)
+
+
+(defmacro actor-by-name (name)
+  "get an entity by name and cast it to an actor. not super safe!"
+  `(the entity-actor (entity-by-name ,name)))
+
+(defmacro actor-by-name-safe (name)
+  "safe, slower version of actor-by-name"
+  `(aif (entity-by-name ,name)
+      (if (type-type? it entity-actor)
+          (the entity-actor it))
+      )
+  )
+
+(defmethod hud-update hud-battle-enemy ((obj hud-battle-enemy))
+  "hud logic."
+
+  (when (not (-> *pc-settings* extra-hud?))
+      (kill-all-icons obj)
+      (return #f))
+
+  (when (and (not (-> obj ready?)) (hidden? obj))
+      (kill-all-icons obj)
+      )
+
+  (let ((battle (the process #f))
+        (cur-lev (aif (level-get-target-inside *level*) (-> it name)))
+        (actor-list-task? #f)
+        )
+      ;; default params
+      (set! (-> obj task-entity) #f)
+      (set! (-> obj battle-entity) #f)
+      (set! (-> obj battle-mode) 'remain)
+
+      ;; find an entity for a battlecontroller, check current level
+      (case cur-lev
+        (('swamp)
+          (set! (-> obj battle-entity) (actor-by-name "swamp-battlecontroller-1"))
+          (set! (-> obj want-skel) '*swamp-rat-sg*)
+          )
+        (('misty)
+          (set! (-> obj battle-entity) (actor-by-name "misty-battlecontroller-1"))
+          (set! (-> obj want-skel) '*bonelurker-sg*)
+          )
+        (('citadel)
+          (set! (-> obj battle-entity) (actor-by-name "citb-battlecontroller-1"))
+          (set! (-> obj want-skel) '*citb-bunny-sg*)
+          (set! (-> obj battle-mode) 'alive)
+          )
+        (('maincave)
+          (set! (-> obj task-entity) (the entity-actor (or (actor-by-name "gnawer-11")
+                                                           (actor-by-name "gnawer-12")
+                                                           (actor-by-name "gnawer-13")
+                                                           (actor-by-name "gnawer-14")
+                                                           (actor-by-name "gnawer-15")
+                                                           (actor-by-name "gnawer-16")
+                                                           (actor-by-name "gnawer-17")
+                                                           (actor-by-name "gnawer-18")
+                                                           (actor-by-name "gnawer-19")
+                                                           )))
+          (true! actor-list-task?)
+          (set! (-> obj want-skel) '*gnawer-sg*)
+          )
+        (('ogre)
+          (when (= 'debug *cheat-mode*)
+            (set! (-> obj battle-entity) (actor-by-name "flying-lurker-1"))
+            (set! (-> obj want-skel) '*flying-lurker-sg*)
+            (set! (-> obj battle-mode) 'alive)
+            )
+          )
+        )
+
+      ;; have an entity, grab its process
+      (if (-> obj battle-entity)
+          (set! battle (-> obj battle-entity extra process)))
+
+      (cond
+        ;; check level statuses FIRST
+        ((not (aif (level-get *level* (-> obj last-level)) (-> it display?)))
+          ;; the old level died. kill everything.
+          (unless (hidden? obj)
+            (set! (-> obj last-battle) INVALID_HANDLE)
+            (set! (-> obj last-task) #f)
+            (false! (-> obj ready?))
+            (kill-all-icons obj)
+            (go hud-hidden)
+            )
+          )
+        ;; check if we have anything
+        ((-> obj task-entity)
+          ;; we have a task to track.
+
+          ;; see if we've changed tracking now
+          (when (or (!= (-> obj display-mode?) 'task)
+                    (!= (-> obj task-entity) (-> obj last-task)))
+              (set! (-> obj last-task) (-> obj task-entity))
+              (set! (-> obj display-mode?) 'task)
+              (false! (-> obj ready?))
+              (send-event obj 'hide)
+              )
+
+          ;; logic for each kind of task
+          (cond
+            (actor-list-task?
+              ;; simple: check a list of actors and count how many have completed their task.
+              (set! (-> obj battle-max) 0)
+              (set! (-> obj value) 0)
+              (let ((actor (-> obj task-entity)))
+
+                  ;; get the first actor
+                  (while (prev-actor actor)
+                      (set! actor (prev-actor actor)))
+
+                  ;; now count forwards.
+                  (while actor
+
+                    ;; stuff.
+                    (1+! (-> obj battle-max))
+                    (when (logtest? (-> actor extra perm status) (entity-perm-status complete))
+                      (1+! (-> obj value))
+                      )
+
+                    (set! actor (next-actor actor))
+                    )
+                  )
+
+              (when (and (!= (-> obj value) (-> obj battle-max))
+                         (or (> (-> obj value) 0) (task-closed? (-> obj task-entity task) (task-status need-hint)))
+                         )
+                  (update-display-status obj (-> obj want-skel) (-> obj task-entity) 0 #t)
+                  )
+              )
+            )
+          )
+        (battle
+          ;; if its a different process, panic and restart the whole sequence. it's OK
+          (when (or (!= (-> obj display-mode?) 'battle)
+                    (!= (handle->process (-> obj last-battle)) battle))
+              (set! (-> obj last-battle) (process->handle battle))
+              (set! (-> obj display-mode?) 'battle)
+              (false! (-> obj ready?))
+              (send-event obj 'hide)
+              )
+
+          ;; logic for each kind of process.
+          (cond
+            ((type-type? (-> battle type) battlecontroller)
+             (let ((battle (the battlecontroller battle))
+                      )
+              ;; wait until battle is active
+              (when (= 'battlecontroller-active (-> battle next-state name))
+                ;; get battle stats
+                (let ((alive-count 0))
+                  (with-children (child battle)
+                      (1+! alive-count))
+                  (set! (-> obj value) (- (-> battle spawn-count) alive-count))
+                  (set! (-> obj battle-max) (-> battle max-spawn-count))
+                  (set! (-> obj battle-alive) alive-count)
+                  )
+
+                (update-display-status obj (-> obj want-skel) (-> obj battle-entity) 0 #t)
+                )
+              ))
+            ((and (= 'debug *cheat-mode*) (= (-> obj battle-entity) (actor-by-name "flying-lurker-1")))
+              (let ((battle (the process-drawable battle)))
+                
+                (if *target*
+                    (set! (-> obj battle-alive) (the int (/ (vector-vector-distance (-> battle root trans) (target-pos 0)) METER_LENGTH))))
+                
+                (update-display-status obj (-> obj want-skel) (-> obj battle-entity) 0 #t)
+              ))
+            )
+          )
+        (else
+          ;; we have nothing. kill everything.
+          (unless (and (= (-> obj last-battle) INVALID_HANDLE) (hidden? obj))
+            (set! (-> obj last-battle) INVALID_HANDLE)
+            (set! (-> obj last-task) #f)
+            (false! (-> obj ready?))
+            (cond
+              ((and (!= (-> obj next-state name) 'hud-leaving)
+                    (aif (level-get *level* (-> obj last-level)) (-> it display?))
+                    )
+                (send-event obj 'hide)
+                )
+              (else
+                (kill-all-icons obj)
+                (go hud-hidden)
+                )
+              )
+            )
+          )
+        )
+
+      ;; save the current level
+      (set! (-> obj last-level) cur-lev)
+      )
+  0
+  (none)
+  )
+
+
+(defmethod draw-hud hud-battle-enemy ((obj hud-battle-enemy))
+  (let ((t9-0 (method-of-type hud draw-hud)))
+    (t9-0 obj)
+    )
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                               (bucket-id debug))
+    (let ((str-x (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset))))
+          (str-y (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+                       (the int (-> *video-parms* relative-y-scale)))
+                    2))
+          )
+
+        (case (-> obj battle-mode)
+          (('dead)
+           (draw-string-xy (string-format "~D/~D" (-> obj value) (-> obj battle-max))
+                           buf str-x str-y (font-color white) (font-flags shadow kerning large middle))
+           )
+          (('alive)
+           (draw-string-xy (string-format "~D" (-> obj battle-alive))
+                           buf str-x str-y (font-color white) (font-flags shadow kerning large middle))
+           )
+          (('remain)
+           (draw-string-xy (string-format "~D" (- (-> obj battle-max) (-> obj value)))
+                           buf str-x str-y (font-color white) (font-flags shadow kerning large middle))
+           )
+          )
+        )
+      )
+  0
+  (none)
+  )
+
+
+(defmethod init-particles! hud-battle-enemy ((obj hud-battle-enemy) (arg0 int))
+  (hud-pc-make-icon obj HUD_ICON_COUNT :skel *fuelcell-naked-sg*
+                                       :x (the int (* 0.84 512)) :y (the int (* 0.51 448)) :z (meters 0.5)
+                                       :scale-x 0.004 :scale-y (* -0.004 (/ 512.0 448.0)))
+  (set! (-> obj text-x) (the int (* 0.84 512)))
+  (set! (-> obj text-y) (the int (* 0.5 448)))
+  (set! (-> obj x-sgn) 1)
+  (set! (-> obj y-sgn) 0)
+  (set! (-> obj increment-on-event) #t)
+  (set-pos-and-scale obj (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
+
+  (set! (-> obj last-battle) INVALID_HANDLE)
+  (set! (-> obj last-task) #f)
+  (set! (-> obj want-skel) #f)
+  (set! (-> obj battle-max) 0)
+
+  (set! (-> obj last-level) #f)
+  (set! (-> obj kicked) #f)
+  (set! (-> obj ready?) #f)
+  0
+  (none)
+  )
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  hud helper funcs
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun deactivate-hud-pc ()
+  "kill the pc hud"
+
+  (dotimes (i HUD_PART_PC_AMOUNT)
+    (if (-> *hud-parts-pc* parts i)
+        (deactivate (ppointer->process (-> *hud-parts-pc* parts i))))
+    )
+  0)
+
+(defun activate-hud-pc ((tree process-tree))
+  "make the pc hud"
+
+  (deactivate-hud-pc)
+
+  (set! (-> *hud-parts-pc* battle-enemy) (process-spawn hud-battle-enemy :init hud-init-by-other 0
+                                                        :from *pc-dead-pool* :to tree))
+  0)
+
+
+(activate-hud-pc *display-pool*)
+
+
+
+
+

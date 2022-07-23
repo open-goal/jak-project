@@ -8,6 +8,7 @@
 
 #include "common/goos/PrettyPrinter.h"
 #include "common/link_types.h"
+#include "common/util/FileUtil.h"
 
 #include "goalc/make/Tools.h"
 #include "goalc/regalloc/Allocator.h"
@@ -17,25 +18,32 @@
 
 using namespace goos;
 
-Compiler::Compiler(const std::string& user_profile, std::unique_ptr<ReplWrapper> repl)
-    : m_goos(user_profile),
+Compiler::Compiler(GameVersion version,
+                   const std::string& user_profile,
+                   std::unique_ptr<ReplWrapper> repl)
+    : m_version(version),
+      m_goos(user_profile),
       m_debugger(&m_listener, &m_goos.reader),
       m_repl(std::move(repl)),
       m_make(user_profile) {
   m_listener.add_debugger(&m_debugger);
-  m_ts.add_builtin_types();
+  m_ts.add_builtin_types(m_version);
   m_global_env = std::make_unique<GlobalEnv>();
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));
 
   // let the build system run us
   m_make.add_tool(std::make_shared<CompilerTool>(this));
 
+  // define game version before loading goal-lib.gc
+  m_goos.set_global_variable_by_name("GAME_VERSION", m_goos.intern(game_version_names[m_version]));
+
   // load GOAL library
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
 
   // user profile stuff
-  if (user_profile != "#f") {
+  if (user_profile != "#f" && fs::exists(file_util::get_jak_project_dir() / "goal_src" / "user" /
+                                         user_profile / "user.gc")) {
     try {
       Object user_code =
           m_goos.reader.read_from_file({"goal_src", "user", user_profile, "user.gc"});
@@ -75,37 +83,6 @@ Compiler::~Compiler() {
   if (m_listener.is_connected()) {
     m_listener.send_reset(false);  // reset the target
     m_listener.disconnect();
-  }
-}
-
-void Compiler::save_repl_history() {
-  m_repl->save_history();
-}
-
-void Compiler::print_to_repl(const std::string_view& str) {
-  m_repl->print_to_repl(str);
-}
-
-std::string Compiler::get_prompt() {
-  std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
-  if (m_listener.is_connected()) {
-    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
-  }
-  if (m_debugger.is_halted()) {
-    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
-  } else if (m_debugger.is_attached()) {
-    prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
-  }
-  return "\033[0m" + prompt;
-}
-
-std::string Compiler::get_repl_input() {
-  auto str = m_repl->readline(get_prompt());
-  if (str) {
-    m_repl->add_to_history(str);
-    return str;
-  } else {
-    return "";
   }
 }
 
@@ -299,7 +276,7 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
   try {
     auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
     debug_info->clear();
-    CodeGenerator gen(env, debug_info);
+    CodeGenerator gen(env, debug_info, m_version);
     bool ok = true;
     auto result = gen.run(&m_ts);
     for (auto& f : env->functions()) {
@@ -322,79 +299,11 @@ bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
                                                    std::string* asm_out) {
   auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
   debug_info->clear();
-  CodeGenerator gen(env, debug_info);
+  CodeGenerator gen(env, debug_info, m_version);
   *data_out = gen.run(&m_ts);
   bool ok = true;
   *asm_out = debug_info->disassemble_all_functions(&ok, &m_goos.reader);
   return ok;
-}
-
-void Compiler::compile_and_send_from_string(const std::string& source_code) {
-  if (!connect_to_target()) {
-    throw std::runtime_error(
-        "Compiler failed to connect to target for compile_and_send_from_string.");
-  }
-
-  auto code = m_goos.reader.read_from_string(source_code);
-  auto compiled = compile_object_file("test-code", code, true);
-  ASSERT(!compiled->is_empty());
-  color_object_file(compiled);
-  auto data = codegen_object_file(compiled);
-  m_listener.send_code(data);
-  if (!m_listener.most_recent_send_was_acked()) {
-    print_compiler_warning("Runtime is not responding after sending test code. Did it crash?\n");
-  }
-}
-
-std::vector<std::string> Compiler::run_test_from_file(const std::string& source_code) {
-  try {
-    if (!connect_to_target()) {
-      throw std::runtime_error("Compiler::run_test_from_file couldn't connect!");
-    }
-
-    auto code = m_goos.reader.read_from_file({source_code});
-    auto compiled = compile_object_file("test-code", code, true);
-    if (compiled->is_empty()) {
-      return {};
-    }
-    color_object_file(compiled);
-    auto data = codegen_object_file(compiled);
-    m_listener.record_messages(ListenerMessageKind::MSG_PRINT);
-    m_listener.send_code(data);
-    if (!m_listener.most_recent_send_was_acked()) {
-      print_compiler_warning("Runtime is not responding after sending test code. Did it crash?\n");
-    }
-    return m_listener.stop_recording_messages();
-  } catch (std::exception& e) {
-    fmt::print("[Compiler] Failed to compile test program {}: {}\n", source_code, e.what());
-    throw e;
-  }
-}
-
-std::vector<std::string> Compiler::run_test_from_string(const std::string& src,
-                                                        const std::string& obj_name) {
-  try {
-    if (!connect_to_target()) {
-      throw std::runtime_error("Compiler::run_test_from_file couldn't connect!");
-    }
-
-    auto code = m_goos.reader.read_from_string({src});
-    auto compiled = compile_object_file(obj_name, code, true);
-    if (compiled->is_empty()) {
-      return {};
-    }
-    color_object_file(compiled);
-    auto data = codegen_object_file(compiled);
-    m_listener.record_messages(ListenerMessageKind::MSG_PRINT);
-    m_listener.send_code(data);
-    if (!m_listener.most_recent_send_was_acked()) {
-      print_compiler_warning("Runtime is not responding after sending test code. Did it crash?\n");
-    }
-    return m_listener.stop_recording_messages();
-  } catch (std::exception& e) {
-    fmt::print("[Compiler] Failed to compile test program from string {}: {}\n", src, e.what());
-    throw e;
-  }
 }
 
 bool Compiler::connect_to_target() {
@@ -411,52 +320,6 @@ bool Compiler::connect_to_target() {
     }
   }
   return true;
-}
-
-/*!
- * Just run the front end on a string. Will not do register allocation or code generation.
- * Useful for typechecking, defining types,  or running strings that invoke the compiler again.
- */
-void Compiler::run_front_end_on_string(const std::string& src) {
-  auto code = m_goos.reader.read_from_string({src});
-  compile_object_file("run-on-string", code, true);
-}
-
-/*!
- * Just run the front end on a file. Will not do register allocation or code generation.
- * Useful for typechecking, defining types,  or running strings that invoke the compiler again.
- */
-void Compiler::run_front_end_on_file(const std::vector<std::string>& path) {
-  auto code = m_goos.reader.read_from_file(path);
-  compile_object_file("run-on-file", code, true);
-}
-
-/*!
- * Run the entire compilation process on the input source code. Will generate an object file, but
- * won't save it anywhere.
- */
-void Compiler::run_full_compiler_on_string_no_save(const std::string& src,
-                                                   const std::optional<std::string>& string_name) {
-  auto code = m_goos.reader.read_from_string(src, true, string_name);
-  auto compiled = compile_object_file("run-on-string", code, true);
-  color_object_file(compiled);
-  codegen_object_file(compiled);
-}
-
-std::vector<std::string> Compiler::run_test_no_load(const std::string& source_code) {
-  auto code = m_goos.reader.read_from_file({source_code});
-  compile_object_file("test-code", code, true);
-  return {};
-}
-
-void Compiler::shutdown_target() {
-  if (m_debugger.is_attached()) {
-    m_debugger.detach();
-  }
-
-  if (m_listener.is_connected()) {
-    m_listener.send_reset(true);
-  }
 }
 
 void Compiler::typecheck(const goos::Object& form,
@@ -485,10 +348,6 @@ void Compiler::typecheck_reg_type_allow_false(const goos::Object& form,
     }
   }
   typecheck(form, expected, coerce_to_reg_type(actual->type()), error_message);
-}
-
-bool Compiler::knows_object_file(const std::string& name) {
-  return m_debugger.knows_object(name);
 }
 
 void Compiler::setup_goos_forms() {
@@ -521,4 +380,70 @@ void Compiler::setup_goos_forms() {
 
     return goos::build_list(enum_vals);
   });
+}
+
+void Compiler::asm_file(const CompilationOptions& options) {
+  auto code = m_goos.reader.read_from_file({options.filename});
+
+  std::string obj_file_name = options.filename;
+
+  // Extract object name from file name.
+  for (int idx = int(options.filename.size()) - 1; idx-- > 0;) {
+    if (options.filename.at(idx) == '\\' || options.filename.at(idx) == '/') {
+      obj_file_name = options.filename.substr(idx + 1);
+      break;
+    }
+  }
+  obj_file_name = obj_file_name.substr(0, obj_file_name.find_last_of('.'));
+
+  // COMPILE
+  auto obj_file = compile_object_file(obj_file_name, code, !options.no_code);
+
+  if (options.color) {
+    // register allocation
+    color_object_file(obj_file);
+
+    // code/object file generation
+    std::vector<u8> data;
+    std::string disasm;
+    if (options.disassemble) {
+      codegen_and_disassemble_object_file(obj_file, &data, &disasm);
+      if (options.disassembly_output_file.empty()) {
+        printf("%s\n", disasm.c_str());
+      } else {
+        file_util::write_text_file(options.disassembly_output_file, disasm);
+      }
+    } else {
+      data = codegen_object_file(obj_file);
+    }
+
+    // send to target
+    if (options.load) {
+      if (m_listener.is_connected()) {
+        m_listener.send_code(data, obj_file_name);
+      } else {
+        printf("WARNING - couldn't load because listener isn't connected\n");  // todo log warn
+      }
+    }
+
+    // save file
+    if (options.write) {
+      auto path = file_util::get_jak_project_dir() / "out" / m_make.compiler_output_prefix() /
+                  "obj" / (obj_file_name + ".o");
+      file_util::create_dir_if_needed_for_file(path);
+      file_util::write_binary_file(path, (void*)data.data(), data.size());
+    }
+  } else {
+    if (options.load) {
+      printf("WARNING - couldn't load because coloring is not enabled\n");
+    }
+
+    if (options.write) {
+      printf("WARNING - couldn't write because coloring is not enabled\n");
+    }
+
+    if (options.disassemble) {
+      printf("WARNING - couldn't disassemble because coloring is not enabled\n");
+    }
+  }
 }

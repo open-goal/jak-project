@@ -21,6 +21,7 @@
 
 #include "game/common/dgo_rpc_types.h"
 #include "game/overlord/srpc.h"
+#include "game/runtime.h"
 #include "game/sce/iop.h"
 #include "game/sound/sdshim.h"
 #include "game/sound/sndshim.h"
@@ -397,11 +398,14 @@ u32 ISOThread() {
 
         } break;
         case LOAD_SOUND_BANK: {
+          // NOTE: this check has been removed. there doesn't seem to be any issues with this, and
+          // it fixes some other issues. there doesn't appear to be any extra safety from it either
+
           // if there's an in progress vag command, try again.
-          if (in_progress_vag_command && !in_progress_vag_command->paused) {
-            SendMbx(iso_mbx, msg_from_mbx);
-            break;
-          }
+          // if (in_progress_vag_command && !in_progress_vag_command->paused) {
+          //   SendMbx(iso_mbx, msg_from_mbx);
+          //   break;
+          // }
 
           auto buff = TryAllocateBuffer(BUFFER_PAGE_SIZE);
           if (!buff) {
@@ -600,6 +604,12 @@ u32 ISOThread() {
       StopVAG(in_progress_vag_command);
       ReleaseMessage(in_progress_vag_command);
       in_progress_vag_command = nullptr;
+      // added. this variable seems to determine whether a vag stream is actually playing, and it is
+      // possible to get into a scenario where (for example) you want to unpause a vag stream but a
+      // different sound command hasn't run yet to correct this value, which makes the game either
+      // play the wrong sound or crash right away if no actual sound is to be played with the vag
+      // stream
+      unk = 0;
     }
 
     ////////////////////////////
@@ -648,11 +658,6 @@ u32 ISOThread() {
     ProcessMessageData();
 
     if (!read_buffer) {
-      // HACK!! sometimes when we want to exit, some other threads will wait for stuff to be loaded
-      // in such cases, we continue running until we're the last thread alive when it's safe to die
-      if (ThreadWantsExit(GetThreadId()) && OnlyThreadAlive(GetThreadId())) {
-        return 0;
-      }
       // didn't actually start a read, just delay for a bit I guess.
       DelayThread(100);
     } else {
@@ -1271,7 +1276,7 @@ u32 DGOThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, DGO_RPC_ID, RPC_DGO, sRPCBuff, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, DGO_RPC_ID[g_game_version], RPC_DGO, sRPCBuff, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;

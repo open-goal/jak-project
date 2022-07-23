@@ -1552,8 +1552,7 @@ void AshElement::get_modified_regs(RegSet&) const {}
 // TypeOfElement
 /////////////////////////////
 
-TypeOfElement::TypeOfElement(Form* _value, std::optional<RegisterAccess> _clobber)
-    : value(_value), clobber(_clobber) {
+TypeOfElement::TypeOfElement(Form* _value) : value(_value) {
   value->parent_element = this;
 }
 
