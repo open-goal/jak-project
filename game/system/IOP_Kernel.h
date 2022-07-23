@@ -172,6 +172,7 @@ class IOP_Kernel {
   void runThread(IopThread* thread);
   void exitThread();
   void updateDelay();
+  void processWakeups();
 
   IopThread* schedNext();
   time_stamp nextWakeup();
@@ -183,9 +184,10 @@ class IOP_Kernel {
   std::vector<std::queue<void*>> mbxs;
   std::vector<SifRecord> sif_records;
   std::vector<Semaphore> semas;
+  std::queue<int> wakeup_queue;
   bool mainThreadSleep = false;
   FILE* iso_disc_file = nullptr;
-  std::mutex sif_mtx;
+  std::mutex sif_mtx, wakeup_mtx;
 };
 
 #endif  // JAK_IOP_KERNEL_H

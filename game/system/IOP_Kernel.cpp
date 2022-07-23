@@ -175,11 +175,20 @@ IopThread* IOP_Kernel::schedNext() {
   return highest_prio;
 };
 
+void IOP_Kernel::processWakeups() {
+  std::scoped_lock lock(wakeup_mtx);
+  while (!wakeup_queue.empty()) {
+    WakeupThread(wakeup_queue.front());
+    wakeup_queue.pop();
+  }
+}
+
 /*!
  * Run the next IOP thread.
  */
 time_stamp IOP_Kernel::dispatch() {
   updateDelay();
+  processWakeups();
 
   IopThread* next = schedNext();
   while (next != nullptr) {
@@ -260,7 +269,10 @@ void IOP_Kernel::sif_rpc(s32 rpcChannel,
   rec->cmd.started = false;
   rec->cmd.finished = false;
 
-  WakeupThread(rec->thread_to_wake);  // TODO threadsafe?
+  {
+    std::scoped_lock lock(wakeup_mtx);
+    wakeup_queue.push(rec->thread_to_wake);
+  }
 
   sif_mtx.unlock();
 }
