@@ -22,11 +22,21 @@ struct LogTime {
 #endif
 
 // Logging API
-enum class level { trace = 0, debug = 1, info = 2, warn = 3, error = 4, die = 5, off = 6 };
+enum class level {
+  print = -1,
+  trace = 0,
+  debug = 1,
+  info = 2,
+  warn = 3,
+  error = 4,
+  die = 5,
+  off = 6
+};
 
 namespace internal {
 // log implementation stuff, not to be called by the user
 void log_message(level log_level, LogTime& now, const char* message);
+void log_print(const char* message);
 }  // namespace internal
 
 void set_file(const std::string& filename);
@@ -47,6 +57,12 @@ void log(level log_level, const std::string& format, Args&&... args) {
 #endif
   std::string formatted_message = fmt::format(format, std::forward<Args>(args)...);
   internal::log_message(log_level, now, formatted_message.c_str());
+}
+
+template <typename... Args>
+void print(const std::string& format, Args&&... args) {
+  std::string formatted_message = fmt::format(format, std::forward<Args>(args)...);
+  internal::log_print(formatted_message.c_str());
 }
 
 template <typename... Args>

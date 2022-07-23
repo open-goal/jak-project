@@ -83,6 +83,28 @@ void log_message(level log_level, LogTime& now, const char* message) {
     exit(-1);
   }
 }
+
+void log_print(const char* message) {
+  {
+    std::lock_guard<std::mutex> lock(gLogger.mutex);
+    if (gLogger.fp) {
+      // Log to File
+      std::string msg(message);
+      fwrite(msg.c_str(), msg.length(), 1, gLogger.fp);
+      if (gLogger.flush_level <= lg::level::info) {
+        fflush(gLogger.fp);
+      }
+    }
+
+    if (gLogger.stdout_log_level <= lg::level::info) {
+      fmt::print(message);
+      if (gLogger.flush_level <= lg::level::info) {
+        fflush(stdout);
+        fflush(stderr);
+      }
+    }
+  }
+}
 }  // namespace internal
 
 void set_file(const std::string& filename) {

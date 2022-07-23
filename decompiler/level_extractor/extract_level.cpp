@@ -228,7 +228,7 @@ void extract_common(const ObjectFileDB& db,
   lg::info("stats for {}", dgo_name);
   print_memory_usage(tfrag_level, ser.get_save_result().second);
   lg::info("compressed: {} -> {} ({:.2f}%)", ser.get_save_result().second, compressed.size(),
-             100.f * compressed.size() / ser.get_save_result().second);
+           100.f * compressed.size() / ser.get_save_result().second);
   file_util::write_binary_file(
       output_folder / fmt::format("{}.fr3", dgo_name.substr(0, dgo_name.length() - 4)),
       compressed.data(), compressed.size());
@@ -260,7 +260,7 @@ void extract_from_level(const ObjectFileDB& db,
   lg::info("stats for {}", dgo_name);
   print_memory_usage(level_data, ser.get_save_result().second);
   lg::info("compressed: {} -> {} ({:.2f}%)", ser.get_save_result().second, compressed.size(),
-             100.f * compressed.size() / ser.get_save_result().second);
+           100.f * compressed.size() / ser.get_save_result().second);
   file_util::write_binary_file(
       output_folder / fmt::format("{}.fr3", dgo_name.substr(0, dgo_name.length() - 4)),
       compressed.data(), compressed.size());
