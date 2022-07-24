@@ -1,0 +1,1050 @@
+#include "decompiler/IR2/AtomicOp.h"
+#include "decompiler/IR2/bitfields.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/types2/Type.h"
+
+/*!
+ * This file contains implementations of forward type propagation.
+ */
+
+namespace decompiler {
+
+bool tc(const DecompilerTypeSystem& dts, const TypeSpec& expected, const TP_Type& actual) {
+  return dts.ts.tc(expected, actual.typespec());
+}
+
+bool is_int_or_uint(const DecompilerTypeSystem& dts, const TP_Type& type) {
+  return tc(dts, TypeSpec("integer"), type) || tc(dts, TypeSpec("uint"), type);
+}
+bool is_signed(const DecompilerTypeSystem& dts, const TP_Type& type) {
+  return tc(dts, TypeSpec("int"), type) && !tc(dts, TypeSpec("uint"), type);
+}
+
+// Note that there are "get_type" and "types2" functions that look somewhat similar.
+// the difference is that "get_type" just tries to figure out a TP_Type, and the "types2" function
+// will set up/resolve tags, and they are intended to be used to update the type state with their
+// result.
+
+/*!
+ * Try to figure the type of a label.
+ * Note: for array labels, we just return a "label_addr" type. The purpose of this is to allow
+ * far label loads and array accesses to pass through. This might cause the backprop to work
+ * slightly worse on array labels, but I think we can add some extra info if that comes up.
+ */
+std::optional<TP_Type> try_get_type_of_label(int label_idx, const Env& env) {
+  const auto& label_db_lookup = env.file->label_db->lookup(label_idx);
+  if (label_db_lookup.known) {
+    if (label_db_lookup.result_type.base_type() == "string") {
+      // strings have a special case to count format arguments, so calls to format can figure
+      // out their argument count.
+      return TP_Type::make_from_string(env.file->get_goal_string_by_label(label_idx));
+    }
+
+    if (label_db_lookup.is_value) {
+      // not sure why we did it this way, but accessing a static array is handled later, and we
+      // just make this a placeholder.
+      return TP_Type::make_label_addr(label_idx);
+    } else {
+      return TP_Type::make_from_ts(label_db_lookup.result_type);
+    }
+  }
+
+  return {};
+}
+
+/*!
+ * Try to figure out the type of the value in a symbol with the given name.
+ */
+std::optional<TP_Type> try_get_type_symbol_val(const std::string& name,
+                                               const DecompilerTypeSystem& dts,
+                                               const Env& env) {
+  if (name == "#f") {
+    // if we ever read the false symbol, it should contain the false symbol as its value.
+    return TP_Type::make_false();
+  } else if (name == "__START-OF-TABLE__") {
+    // another annoying special case. We have a fake symbol called __START-OF-TABLE__
+    // which actually means that you get the first address in the symbol table.
+    // it's not really a linked symbol, but the basic op builder represents it as one.
+    return TP_Type::make_from_ts(TypeSpec("pointer"));
+  } else if (name == "enter-state") {
+    return TP_Type::make_enter_state();
+  } else if (name == "run-function-in-process") {
+    return TP_Type::make_run_function_in_process_function();
+  } else if (name == "set-to-run" && env.func->name() != "enter-state") {
+    return TP_Type::make_set_to_run_function();
+  }
+
+  // look up the type of the symbol
+  auto type = dts.symbol_types.find(name);
+  if (type == dts.symbol_types.end()) {
+    // we don't know it, failed.
+    return {};
+  }
+
+  if (type->second == TypeSpec("type")) {
+    // if we get a type by symbol, we should remember which type we got it from.
+    return TP_Type::make_type_no_virtual_object(TypeSpec(name));
+  }
+
+  if (type->second == TypeSpec("function")) {
+    // warn if we're accessing a function, but we don't know a more specific type.
+    // 99% of the time, we're about to call the function, and this will give the user
+    // a more specific error message that contains the symbol the name.
+    lg::warn("Function {} has unknown type", name);
+  }
+
+  // otherwise, just return a normal typespec
+  return TP_Type::make_from_ts(type->second);
+}
+
+/*!
+ * Get the type of a symbol, throw if we don't know it.
+ */
+TP_Type get_type_symbol_val(const std::string& name,
+                            const DecompilerTypeSystem& dts,
+                            const Env& env) {
+  auto result = try_get_type_symbol_val(name, dts, env);
+  if (!result) {
+    throw std::runtime_error(fmt::format("Unknown symbol: {}", name));
+  } else {
+    return *result;
+  }
+}
+
+/*!
+ * Get the type of a symbol pointer. Always succeeds
+ */
+TP_Type get_type_symbol_ptr(const std::string& name) {
+  // usually just symbol, but we have a special case for #f
+  if (name == "#f") {
+    return TP_Type::make_false();
+  } else {
+    return TP_Type::make_from_ts("symbol");
+  }
+}
+
+/*!
+ * Try to figure out the type of an atom.
+ */
+std::optional<TP_Type> try_get_type_of_atom(const types2::TypeState& type_state,
+                                            const SimpleAtom& atom,
+                                            const Env& env,
+                                            const DecompilerTypeSystem& dts) {
+  switch (atom.get_kind()) {
+    case SimpleAtom::Kind::VARIABLE: {
+      return type_state[atom.var().reg()]->type;
+    }
+    case SimpleAtom::Kind::SYMBOL_VAL:
+      return try_get_type_symbol_val(atom.get_str(), dts, env);
+    default:
+      ASSERT_MSG(false,
+                 fmt::format("unknown kind in try_get_type_of_atom: {}", atom.to_string(env)));
+  }
+}
+
+/*!
+ * Try to figure out the type of an expression. Can return 0, 1, or multiple.
+ * If there are multiple, the first one will be the "best".
+ */
+std::vector<TP_Type> try_get_type_of_expr(const types2::TypeState& type_state,
+                                          const SimpleExpression& expr,
+                                          const Env& env,
+                                          const DecompilerTypeSystem& dts) {
+  switch (expr.kind()) {
+    case SimpleExpression::Kind::IDENTITY: {
+      auto atom_type = try_get_type_of_atom(type_state, expr.get_arg(0), env, dts);
+      if (atom_type) {
+        return {*atom_type};
+      } else {
+        return {};
+      }
+    }
+    default:
+      ASSERT_MSG(false, fmt::format("unknown kind in try_get_type_of_expr: {} {}",
+                                    expr.to_string(env), (int)expr.kind()));
+  }
+}
+
+namespace types2 {
+bool backprop_tagged_type(const TP_Type& expected_type, types2::Type& actual_type) {
+  switch (actual_type.tag.kind) {
+    case types2::Tag::NONE:
+      return false;
+    default:
+      ASSERT(false);
+  }
+}
+}  // namespace types2
+
+/*!
+ * Update a type state so the given type_out has the type for the specified label.
+ * If the label is unknown, this will set up a tag. But that's not implemented yet...
+ */
+void types2_for_label(types2::Type& type_out,
+                      types2::Instruction& output_instr,
+                      types2::TypeState& input_types,
+                      int label_idx,
+                      const Env& env) {
+  // first, see if the label type is known (either through obvious auto-detect, or a cast)
+
+  auto known_type = try_get_type_of_label(label_idx, env);
+  if (known_type) {
+    type_out.type = known_type;
+    return;
+  } else {
+    ASSERT(false);  // todo, implement this case...
+  }
+}
+
+/*!
+ * Update a type state so the given type_out has the type for the result of a right shift.
+ */
+void types2_for_right_shift(types2::Type& type_out,
+                            const SimpleExpression& expr,
+                            bool is_unsigned,
+                            const Env& env,
+                            types2::TypeState& input_types,
+                            const DecompilerTypeSystem& dts) {
+  auto arg0_type = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
+  if (!arg0_type) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  // bitfield access, with a single shift
+
+  if (expr.get_arg(1).is_int()) {
+    auto bf = dynamic_cast<BitFieldType*>(dts.ts.lookup_type(arg0_type->typespec()));
+    // skip time-frame: we're probably doing math and we know it has no fields in it.
+    // note: we could be a bit more robust with this detection...
+    if (bf && arg0_type->typespec() != TypeSpec("time-frame")) {
+      int shift_size = 64;
+      int size = shift_size - expr.get_arg(1).get_int();
+      int start_bit = shift_size - size;
+      auto field = find_field(dts.ts, bf, start_bit, size, is_unsigned);
+      type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
+      return;
+    }
+  }
+
+  if (arg0_type->kind == TP_Type::Kind::LEFT_SHIFTED_BITFIELD && expr.get_arg(1).is_int()) {
+    // second op in left/right shift combo
+    int end_bit = 64 - arg0_type->get_left_shift();
+    if (arg0_type->pcpyud()) {
+      end_bit += 64;
+    }
+
+    int size = 64 - expr.get_arg(1).get_int();
+    int start_bit = end_bit - size;
+    if (start_bit < 0) {
+      throw std::runtime_error("Bad bitfield start bit");
+    }
+
+    auto type = dts.ts.lookup_type(arg0_type->get_bitfield_type());
+    auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+    ASSERT(as_bitfield);
+    auto field = find_field(dts.ts, as_bitfield, start_bit, size, is_unsigned);
+    type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
+    return;
+  }
+
+  if (is_unsigned) {
+    type_out.type = TP_Type::make_from_ts("uint");
+  } else {
+    type_out.type = TP_Type::make_from_ts("int");
+  }
+}
+
+void types2_for_left_shift(types2::Type& type_out,
+                           const SimpleExpression& expr,
+                           const Env& env,
+                           types2::TypeState& input_types,
+                           const DecompilerTypeSystem& dts) {
+  auto arg0_type = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
+  if (!arg0_type) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  // multiplication by constant power of two, optimized to a shift.
+  if (expr.get_arg(1).is_int() && is_int_or_uint(dts, *arg0_type)) {
+    ASSERT(expr.get_arg(1).get_int() >= 0);
+    ASSERT(expr.get_arg(1).get_int() < 64);
+    // this could be a bitfield access or a multiply.
+    // we pick bitfield access if the parent is a bitfield.
+    if (dynamic_cast<BitFieldType*>(dts.ts.lookup_type(arg0_type->typespec()))) {
+      type_out.type = TP_Type::make_from_left_shift_bitfield(arg0_type->typespec(),
+                                                             expr.get_arg(1).get_int(), false);
+      return;
+    } else if (arg0_type->kind == TP_Type::Kind::PCPYUD_BITFIELD) {
+      type_out.type = TP_Type::make_from_left_shift_bitfield(arg0_type->get_bitfield_type(),
+                                                             expr.get_arg(1).get_int(), true);
+      return;
+    } else {
+      type_out.type =
+          TP_Type::make_from_product(1ull << expr.get_arg(1).get_int(), is_signed(dts, *arg0_type));
+      return;
+    }
+  }
+
+  if (expr.get_arg(1).is_int() && dts.ts.tc(TypeSpec("pointer"), arg0_type->typespec())) {
+    // allow shifting a pointer to put it in a bitfield.
+    type_out.type = TP_Type::make_from_ts(TypeSpec("uint"));
+    return;
+  }
+  ASSERT(false);
+}
+
+void types2_for_atom(types2::Type& type_out,
+                     types2::Instruction& output_instr,
+                     types2::TypeState& input_types,
+                     const SimpleAtom& atom,
+                     const Env& env,
+                     const DecompilerTypeSystem& dts) {
+  switch (atom.get_kind()) {
+    case SimpleAtom::Kind::STATIC_ADDRESS:
+      types2_for_label(type_out, output_instr, input_types, atom.label(), env);
+      return;
+    case SimpleAtom::Kind::SYMBOL_VAL: {
+      auto type = get_type_symbol_val(atom.get_str(), dts, env);
+      type_out.type = type;
+    } break;
+    case SimpleAtom::Kind::SYMBOL_PTR: {
+      auto type = get_type_symbol_ptr(atom.get_str());
+      type_out.type = type;
+    } break;
+    case SimpleAtom::Kind::INTEGER_CONSTANT: {
+      auto type = TP_Type::make_from_integer(atom.get_int());
+      type_out.type = type;
+    } break;
+    case SimpleAtom::Kind::EMPTY_LIST: {
+      auto type = TP_Type::make_from_ts("pair");
+      type_out.type = type;
+    } break;
+    case SimpleAtom::Kind::VARIABLE: {
+      auto& in = input_types[atom.var().reg()];
+      type_out.type = in->type;
+      // not 100% sure how this should work...
+      type_out.tag = in->tag;
+    } break;
+    default:
+      ASSERT_MSG(false, fmt::format("Unhandled types2_for_atom: {}\n", atom.to_string(env)));
+  }
+}
+
+void types2_for_fpr_to_gpr(types2::Type& type_out,
+                           types2::Instruction& output_instr,
+                           const SimpleExpression& expr,
+                           const Env& env,
+                           types2::TypeState& input_types,
+                           const DecompilerTypeSystem& dts) {
+  // for now, we'll just copy the type.
+  types2_for_atom(type_out, output_instr, input_types, expr.get_arg(0), env, dts);
+}
+
+void types2_for_expr(types2::Type& type_out,
+                     types2::Instruction& output_instr,
+                     types2::TypeState& input_types,
+                     const SimpleExpression& expr,
+                     const Env& env,
+                     const DecompilerTypeSystem& dts) {
+  switch (expr.kind()) {
+    case SimpleExpression::Kind::IDENTITY:
+      types2_for_atom(type_out, output_instr, input_types, expr.get_arg(0), env, dts);
+      break;
+    case SimpleExpression::Kind::RIGHT_SHIFT_ARITH:
+      types2_for_right_shift(type_out, expr, false, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::LEFT_SHIFT:
+      types2_for_left_shift(type_out, expr, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::FPR_TO_GPR:
+      types2_for_fpr_to_gpr(type_out, output_instr, expr, env, input_types, dts);
+      break;
+    default:
+      ASSERT_MSG(false, fmt::format("Unhandled types2_for_expr: {}\n", expr.to_string(env)));
+  }
+}
+
+void SetVarOp::propagate_types2(types2::Instruction& instr,
+                                const Env& env,
+                                types2::TypeState& input_types,
+                                DecompilerTypeSystem& dts,
+                                types2::TypePropExtras& extras) {
+  // propagate types on the expression. Will also handle backprop of constraints, etc.
+  auto* type_out = instr.types[m_dst.reg()];
+  types2_for_expr(*type_out, instr, input_types, m_src, env, dts);
+
+  // remember this. It's used later, to insert better looking casts.
+  if (type_out->type) {
+    m_source_type = type_out->type->typespec();
+  }
+
+  // update clobbers.
+  for (auto& clobber : m_clobber_regs) {
+    instr.types[clobber]->type = TP_Type::make_uninitialized();
+  }
+}
+
+void AsmOp::propagate_types2(types2::Instruction& instr,
+                             const Env& env,
+                             types2::TypeState& input_types,
+                             DecompilerTypeSystem& dts,
+                             types2::TypePropExtras& extras) {
+  // update clobbers.
+  for (auto& clobber : m_clobber_regs) {
+    instr.types[clobber]->type = TP_Type::make_uninitialized();
+  }
+
+  auto& out = instr.types;
+
+  if (m_instr.kind == InstructionKind::QMFC2) {
+    ASSERT(m_dst);
+    out[m_dst->reg()]->type = TP_Type::make_from_ts("float");
+    ASSERT(false);  // hack... not sure float is right here... lets do more testing first.
+    return;
+  }
+
+  // can be used for asm or bitfield. earlier passes mark it asm, we catch it in types,
+  // and set the tp_types.
+  if (m_instr.kind == InstructionKind::PCPYUD) {
+    if (m_src[1] && m_src[1]->reg() == Register(Reg::GPR, Reg::R0)) {
+      ASSERT(m_src[0]);
+      auto& in_type = input_types[m_src[0]->reg()];
+      if (in_type->type) {
+        auto bf = dynamic_cast<BitFieldType*>(dts.ts.lookup_type(in_type->type->typespec()));
+        if (bf) {
+          ASSERT(m_dst);
+          // just mark as pcpyud, it's part of a longer chain...
+          out[m_dst->reg()]->type = TP_Type::make_from_pcpyud_bitfield(in_type->type->typespec());
+          return;
+        }
+      }
+    }
+  }
+
+  // pextuw t0, r0, gp
+  if (m_instr.kind == InstructionKind::PEXTUW) {
+    ASSERT(false);
+    //    if (m_src[0] && m_src[0]->reg() == Register(Reg::GPR, Reg::R0)) {
+    //      ASSERT(m_src[1]);
+    //      auto type = dts.ts.lookup_type(result.get(m_src[1]->reg()).typespec());
+    //      auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+    //      if (as_bitfield) {
+    //        auto field = find_field(dts.ts, as_bitfield, 64, 32, true);
+    //        ASSERT(m_dst);
+    //        result.get(m_dst->reg()) = TP_Type::make_from_ts(field.type());
+    //        return result;
+    //      }
+    //    }
+  }
+
+  // sllv out, in, r0
+  // this is recognized as asm (because it usually is) but it can be used in bitfields to extract
+  // the low 32-bits
+  if (m_instr.kind == InstructionKind::SLLV &&
+      instruction().src[1].is_reg(Register(Reg::GPR, Reg::R0))) {
+    // check input:
+    auto& src_type = input_types[m_src[0]->reg()];
+    if (src_type->type) {
+      auto type = dts.ts.lookup_type(src_type->type->typespec());
+      // see if it's a bitfield type
+      auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+      if (as_bitfield) {
+        // see if we can find a field (throws if we can't)
+        auto field = find_field(dts.ts, as_bitfield, 0, 32, {});
+        // this is a complete extraction, can set the type as the result.
+        out[m_dst->reg()]->type = TP_Type::make_from_ts(field.type());
+        return;
+      }
+    }
+  }
+
+  // srl out, bitfield, int
+  if (m_instr.kind == InstructionKind::SRL) {
+    ASSERT(false);
+    //    auto type = dts.ts.lookup_type(result.get(m_src[0]->reg()).typespec());
+    //    auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+    //    if (as_bitfield) {
+    //      int sa = m_instr.src[1].get_imm();
+    //      int offset = sa;
+    //      int size = 32 - offset;
+    //      auto field = find_field(dts.ts, as_bitfield, offset, size, {});
+    //      result.get(m_dst->reg()) = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
+    //      return result;
+    //    }
+  }
+
+  // general case fallback: if we write a register we should at least set something...
+  if (m_dst.has_value()) {
+    auto kind = m_dst->reg().get_kind();
+    if (kind == Reg::FPR) {
+      // if we set a fpr, just assume float
+      out[m_dst->reg()]->type = TP_Type::make_from_ts("float");
+    } else if (kind == Reg::GPR) {
+      // if we're a gpr, and any
+      for (auto& x : m_src) {
+        if (x && x->reg().get_kind() == Reg::GPR) {
+          // if any sources are known to be 128-bit integers, use uint128 as the output
+          auto src_type = input_types[x->reg()];
+          if (!src_type->type) {
+            continue;
+          }
+          auto src_ts = src_type->type->typespec();
+          if (dts.ts.tc(TypeSpec("int128"), src_ts) || dts.ts.tc(TypeSpec("uint128"), src_ts)) {
+            out[m_dst->reg()]->type = TP_Type::make_from_ts("uint128");
+            return;
+          }
+        }
+        // otherwise just use int...
+        out[m_dst->reg()]->type = TP_Type::make_from_ts("int");
+      }
+    }
+  }
+}
+
+void SetVarConditionOp::propagate_types2(types2::Instruction& instr,
+                                         const Env& env,
+                                         types2::TypeState& input_types,
+                                         DecompilerTypeSystem& dts,
+                                         types2::TypePropExtras& extras) {
+  throw std::runtime_error(
+      fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
+}
+
+/*!
+ * Run type propagation on a store to memory (does not include stack spill stores)
+ * Normally, we don't have to do anything here, but there are 3 special cases:
+ * - if we're storing something in the current process next-state as part of a go, the type pass
+ *   needs to track this, to determine the number of arguments for the updating go.
+ * - we can backprop type information on the value being stored
+ * - we can backprop type information on the location we're storing to.
+ */
+void StoreOp::propagate_types2(types2::Instruction& instr,
+                               const Env& env,
+                               types2::TypeState& input_types,
+                               DecompilerTypeSystem& dts,
+                               types2::TypePropExtras& extras) {
+  // backprop on the value being stored.
+  {
+    if (m_value.is_var()) {  // only applicable if we're storing a var
+      const auto& value_type = input_types[m_value.var().reg()];
+      if (value_type->tag.has_tag()) {  // don't bother if we don't have a tag to resolve
+        auto location_type = try_get_type_of_expr(input_types, m_addr, env, dts);
+        if (!location_type.empty()) {  // need to know where we're storing
+
+          // temp warning if we have multiple store types
+          if (location_type.size() > 1) {
+            fmt::print("StoreOp::propagate_types2: multiple possible store types: ");
+            for (auto& t : location_type) {
+              fmt::print("{} ", t.print());
+            }
+            fmt::print("\n");
+          }
+
+          if (backprop_tagged_type(location_type.at(0), *value_type)) {
+            extras.needs_rerun = true;
+          }
+        }
+      }
+    }
+  }
+
+  // backprop on the store type
+  {
+    // TODO implement this.
+    // it's a little tricky if there's an offset, let's implement this as we find examples.
+  }
+
+  // handle the next-state thing
+  // look for setting the next state of the current process
+  int offset_for_next_state = 0;
+  switch (env.version) {
+    case GameVersion::Jak1:
+      offset_for_next_state = 72;
+      break;
+    case GameVersion::Jak2:
+      offset_for_next_state = 64;
+      break;
+    default:
+      ASSERT(false);
+  }
+  IR2_RegOffset ro;
+  if (get_as_reg_offset(m_addr, &ro)) {
+    if (ro.reg == Register(Reg::GPR, Reg::S6) && ro.offset == offset_for_next_state) {
+      ASSERT(false);  // todo, implement..
+    }
+  }
+
+  // update clobbers.
+  for (auto& clobber : m_clobber_regs) {
+    instr.types[clobber]->type = TP_Type::make_uninitialized();
+  }
+}
+
+RegClass get_reg_kind(const Register& r) {
+  switch (r.get_kind()) {
+    case Reg::GPR:
+      return RegClass::GPR_64;
+    case Reg::FPR:
+      return RegClass::FLOAT;
+    default:
+      ASSERT(false);
+      return RegClass::INVALID;
+  }
+}
+
+bool load_var_op_determine_type(types2::Type& type_out,
+                                types2::Instruction& output_instr,
+                                types2::TypeState& input_types,
+                                const LoadVarOp& op,
+                                const Env& env,
+                                const DecompilerTypeSystem& dts) {
+  if (op.src().is_identity()) {
+    auto& src = op.src().get_arg(0);
+    if (src.is_static_addr()) {
+      if (op.kind() == LoadVarOp::Kind::FLOAT) {
+        // assume anything loaded directly to floating point register is a float, and skip the
+        // rest.
+        type_out.type = TP_Type::make_from_ts("float");
+        return true;
+      }
+
+      auto label_name = env.file->labels.at(src.label()).name;
+      const auto& hint = env.file->label_db->lookup(label_name);
+      if (!hint.known) {
+        ASSERT(false);  // todo
+        throw std::runtime_error(
+            fmt::format("Label {} was unknown in AtomicOpTypeAnalysis (type).", hint.name));
+      }
+
+      if (!hint.is_value) {
+        // this one seems fatal
+        throw std::runtime_error(
+            fmt::format("Label {} was used as a value, but wasn't marked as one", hint.name));
+      }
+
+      type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(hint.result_type));
+      return true;
+    }
+  }
+
+  IR2_RegOffset ro;
+  if (get_as_reg_offset(op.src(), &ro)) {
+    auto& input_type_info = input_types[ro.reg];
+    if (!input_type_info->type) {
+      // todo: could try some basic stuff to resolve float loads here...
+      ASSERT(false);
+    }
+    auto& input_type = input_type_info->type.value();
+    fmt::print("input_type is {}\n", input_type.print());
+
+    // check loading a method of a known type.
+    // the TP_Type system will track individual types, both as a "most specific known at decompile
+    // time" (TYPE_OF_TYPE_OR_CHILD) or "exact" version (TYPE_OF_TYPE_NO_VIRTUAL)
+    if ((input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD ||
+         input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL)  // is known type
+        && ro.offset >= 16       // is in the method table (16 is the offset of the first method)
+        && (ro.offset & 3) == 0  // is aligned
+        && op.size() == 4        // loading a pointer
+        && op.kind() == LoadVarOp::Kind::UNSIGNED  // GOAL convention to load pointers as unsigned
+    ) {
+      // method get of fixed type
+      // here, we look up the actual type signature of the method, which depends on the type.
+      auto type_name = input_type.get_type_objects_typespec().base_type();
+      auto method_id = (ro.offset - 16) / 4;
+      auto method_info = dts.ts.lookup_method(type_name, method_id);
+      auto method_type = method_info.type.substitute_for_method_call(type_name);
+
+      // special case: the new method of "object" is the general heap allocation function,
+      // and is used in (new 'heap 'foo ... ) expressions.
+      // we'll use a special type for these.
+      if (type_name == "object" && method_id == GOAL_NEW_METHOD) {
+        type_out.type = TP_Type::make_object_new(method_type);
+        return true;
+      }
+
+      // another special case: calling the new method is never done virtually. so just handle it
+      // without paying attention to virtual/non-virtual
+      if (method_id == GOAL_NEW_METHOD) {
+        type_out.type = TP_Type::make_from_ts(method_type);
+        return true;
+      } else if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+        // normal non-virtual method access
+        type_out.type =
+            TP_Type::make_non_virtual_method(method_type, TypeSpec(type_name), method_id);
+        return true;
+      } else {
+        // normal virtual method access.
+        type_out.type = TP_Type::make_virtual_method(method_type, TypeSpec(type_name), method_id);
+        return true;
+      }
+    }
+
+    // finally, we have a backup to allow some method access if we have no idea of the exact type.
+    // we can only do this safely for a few "built in" methods that always take the same arguments
+    // on all types.
+    if (input_type.kind == TP_Type::Kind::TYPESPEC    // if we've fallen back to plain type
+        && input_type.typespec() == TypeSpec("type")  // and we think it's a type
+                                                      // and the usual load check
+        && ro.offset >= 16 && (ro.offset & 3) == 0 && op.size() == 4 &&
+        op.kind() == LoadVarOp::Kind::UNSIGNED) {
+      // method get of an unknown type. We assume the most general "object" type because that
+      // will have the correct arguments for built-in methods
+      auto method_id = (ro.offset - 16) / 4;
+      // only allow up to MEMUSAGE, the last built-in method.
+      if (method_id <= (int)GOAL_MEMUSAGE_METHOD) {
+        auto method_info = dts.ts.lookup_method("object", method_id);
+        // also block new: you can override the arguments, and relocate: it has two uses: login and
+        // actual relocated, and it takes different arguments for these cases.
+        if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
+          // this can get us the wrong thing for `new` methods.  And maybe relocate?
+          type_out.type = TP_Type::make_non_virtual_method(
+              method_info.type.substitute_for_method_call("object"), TypeSpec("object"), method_id);
+          return true;
+        }
+      }
+    }
+
+    if (input_type.kind == TP_Type::Kind::TYPESPEC && ro.offset == -4 &&
+        op.kind() == LoadVarOp::Kind::UNSIGNED && op.size() == 4 && ro.reg.get_kind() == Reg::GPR) {
+      // get type of basic likely, but misrecognized as an object.
+
+      type_out.type = TP_Type::make_type_allow_virtual_object(input_type.typespec().base_type());
+      return true;
+    }
+
+    // Assume we're accessing a field of an object.
+    // if we are a pair with sloppy typing, don't use this and instead use the case down below.
+    if (input_type.typespec() != TypeSpec("pair") || !env.allow_sloppy_pair_typing()) {
+      FieldReverseLookupInput rd_in;
+      DerefKind dk;
+      dk.is_store = false;
+      dk.reg_kind = get_reg_kind(ro.reg);
+      dk.sign_extend = op.kind() == LoadVarOp::Kind::SIGNED;
+      dk.size = op.size();
+      rd_in.deref = dk;
+      rd_in.base_type = input_type.typespec();
+      rd_in.stride = 0;
+      rd_in.offset = ro.offset;
+      auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
+
+      if (rd.success) {
+        if (rd.results.size() == 1) {
+          if (rd_in.base_type.base_type() == "state" && rd.results.front().tokens.size() == 1 &&
+              rd.results.front().tokens.front().kind ==
+                  FieldReverseLookupOutput::Token::Kind::FIELD &&
+              rd.results.front().tokens.front().name == "enter" &&
+              rd_in.base_type.arg_count() > 0) {
+            // special case for accessing the enter field of state
+            type_out.type =
+                TP_Type::make_from_ts(state_to_go_function(rd_in.base_type, TypeSpec("none")));
+            return true;
+          } else {
+            type_out.type =
+                TP_Type::make_from_ts(coerce_to_reg_type(rd.results.front().result_type));
+            return true;
+          }
+        } else {
+          ASSERT(false);  // ambiguous deref case...
+        }
+      }
+    }
+
+    ASSERT(false);  // nyi
+
+  } else {
+    ASSERT(false);  // nyi
+  }
+}
+
+void LoadVarOp::propagate_types2(types2::Instruction& instr,
+                                 const Env& env,
+                                 types2::TypeState& input_types,
+                                 DecompilerTypeSystem& dts,
+                                 types2::TypePropExtras& extras) {
+  // update clobbers.
+  for (auto& clobber : m_clobber_regs) {
+    instr.types[clobber]->type = TP_Type::make_uninitialized();
+  }
+
+  if (m_dst.reg().get_kind() == Reg::VF) {
+    // ignore vf registers in type pass.
+    return;
+  }
+
+  auto& type_out = instr.types[m_dst.reg()];
+  load_var_op_determine_type(*type_out, instr, input_types, *this, env, dts);
+  m_type = type_out->type ? type_out->type->typespec() : std::optional<TypeSpec>();
+}
+
+void BranchOp::propagate_types2(types2::Instruction& instr,
+                                const Env& env,
+                                types2::TypeState& input_types,
+                                DecompilerTypeSystem& dts,
+                                types2::TypePropExtras& extras) {
+  // update clobbers.
+  for (auto& clobber : m_clobber_regs) {
+    instr.types[clobber]->type = TP_Type::make_uninitialized();
+  }
+  switch (m_branch_delay.kind()) {
+    case IR2_BranchDelay::Kind::NOP:
+    case IR2_BranchDelay::Kind::NO_DELAY:
+      break;
+    default:
+      ASSERT_MSG(false,
+                 fmt::format("propagate_types2 BranchOp unknown branch delay: {}", to_string(env)));
+  }
+}
+
+void AsmBranchOp::propagate_types2(types2::Instruction& instr,
+                                   const Env& env,
+                                   types2::TypeState& input_types,
+                                   DecompilerTypeSystem& dts,
+                                   types2::TypePropExtras& extras) {
+  throw std::runtime_error(
+      fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
+}
+
+void SpecialOp::propagate_types2(types2::Instruction& instr,
+                                 const Env& env,
+                                 types2::TypeState& input_types,
+                                 DecompilerTypeSystem& dts,
+                                 types2::TypePropExtras& extras) {
+  throw std::runtime_error(
+      fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
+}
+
+void CallOp::propagate_types2(types2::Instruction& instr,
+                              const Env& env,
+                              types2::TypeState& input_types,
+                              DecompilerTypeSystem& dts,
+                              types2::TypePropExtras& extras) {
+  for (auto& clobber : m_clobber_regs) {
+    instr.types[clobber]->type = TP_Type::make_uninitialized();
+  }
+
+  const Reg::Gpr arg_regs[8] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3,
+                                Reg::T0, Reg::T1, Reg::T2, Reg::T3};
+  auto& out_types = instr.types;
+
+  // see what's in the function register
+  auto in_tp_info = input_types[Register(Reg::GPR, Reg::T9)];
+  if (!in_tp_info->type) {
+    // no idea what's there, can't do anything...
+    out_types[Register(Reg::GPR, Reg::V0)]->type = {};
+    return;
+  }
+  auto& in_tp = in_tp_info->type.value();
+
+  // special case: call object new method inside of a new method.
+  if (in_tp.kind == TP_Type::Kind::OBJECT_NEW_METHOD &&
+      !dts.type_prop_settings.current_method_type.empty()) {
+    // calling object new method. Set the result to a new object of our type
+    out_types[Register(Reg::GPR, Reg::V0)]->type =
+        TP_Type::make_from_ts(dts.type_prop_settings.current_method_type);
+    // update the call type
+    m_call_type = in_tp.get_method_new_object_typespec();
+    m_call_type.get_arg(m_call_type.arg_count() - 1) =
+        TypeSpec(dts.type_prop_settings.current_method_type);
+    m_call_type_set = true;
+
+    // update function call info info
+    m_read_regs.clear();
+    m_arg_vars.clear();
+    m_read_regs.emplace_back(Reg::GPR, Reg::T9);
+    for (int i = 0; i < int(m_call_type.arg_count()) - 1; i++) {
+      m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
+      m_arg_vars.push_back(RegisterAccess(AccessMode::READ, m_read_regs.back(), m_my_idx));
+    }
+    return;
+  }
+
+  auto in_type = in_tp.typespec();
+
+  if (in_type.base_type() != "function") {
+    throw std::runtime_error("Called something that was not a function: " + in_type.print());
+  }
+
+  // special case: go
+  // If we call enter-state, update our type.
+  if (in_tp.kind == TP_Type::Kind::ENTER_STATE_FUNCTION) {
+    ASSERT(false);
+    // this is a GO!
+    /*
+    auto state_type = input.next_state_type.typespec();
+    if (state_type.base_type() != "state") {
+      throw std::runtime_error(
+          fmt::format("At op {}, called enter-state, but the current next-state has type {}, which "
+                      "is not a valid state.",
+                      m_my_idx, input.next_state_type.print()));
+    }
+
+    if (state_type.arg_count() == 0) {
+      throw std::runtime_error(fmt::format(
+          "At op {}, tried to enter-state, but the type of (-> s6 next-state) is just a plain "
+          "state.  The decompiler must know the specific state type.",
+          m_my_idx));
+    }
+    in_type = state_to_go_function(state_type, TypeSpec("object"));
+     */
+  }
+
+  // special case: process initialization
+  if (in_tp.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION ||
+      in_tp.kind == TP_Type::Kind::SET_TO_RUN_FUNCTION) {
+    auto func_to_run_type = input_types[Register(Reg::GPR, arg_regs[1])];
+    auto func_to_run_ts =
+        func_to_run_type->type ? func_to_run_type->type->typespec() : TypeSpec("object");
+    if (func_to_run_ts.base_type() != "function" || func_to_run_ts.arg_count() == 0 ||
+        func_to_run_ts.arg_count() > 7) {
+      throw std::runtime_error(
+          fmt::format("Call to run-function-in-process or set-to-run at op {} with an invalid "
+                      "function type: {}",
+                      m_my_idx, func_to_run_ts.print()));
+    }
+
+    std::vector<TypeSpec> new_arg_types;
+    if (in_tp.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION) {
+      new_arg_types.push_back(TypeSpec("process"));
+    } else {
+      new_arg_types.push_back(TypeSpec("thread"));
+    }
+    new_arg_types.push_back(TypeSpec("function"));
+
+    for (size_t i = 0; i < func_to_run_ts.arg_count() - 1; i++) {
+      new_arg_types.push_back(func_to_run_ts.get_arg(i));
+    }
+    new_arg_types.push_back(TypeSpec("none"));
+    in_type = TypeSpec("function", new_arg_types);
+  }
+
+  if (in_type.arg_count() < 1) {
+    throw std::runtime_error("Called a function, but we do not know its type");
+  }
+
+  // special case: variable argument count
+  if (in_type.arg_count() == 2 && in_type.get_arg(0) == TypeSpec("_varargs_")) {
+    // we're calling a varags function, which is format. We can determine the argument count
+    // by looking at the format string, if we can get it.
+    TP_Type arg_type = TP_Type::make_uninitialized();
+    if (input_types[Register(Reg::GPR, Reg::A1)]->type) {
+      arg_type = *input_types[Register(Reg::GPR, Reg::A1)]->type;
+    }
+
+    auto can_determine_argc = arg_type.can_be_format_string();
+    auto dynamic_string = false;
+    if (!can_determine_argc && arg_type.typespec() == TypeSpec("string")) {
+      // dynamic string. use manual lookup table.
+      dynamic_string = true;
+    }
+    if (can_determine_argc || dynamic_string) {
+      int arg_count = -1;
+
+      if (dynamic_string) {
+        arg_count = dts.get_dynamic_format_arg_count(env.func->name(), m_my_idx);
+      } else if (arg_type.is_constant_string()) {
+        auto& str = arg_type.get_string();
+        arg_count = dts.get_format_arg_count(str);
+      } else {
+        // is format string.
+        arg_count = arg_type.get_format_string_arg_count();
+      }
+
+      if (arg_count + 2 > 8) {
+        throw std::runtime_error(
+            "Call to `format` pushed the arg-count beyond the acceptable arg limit (8), do you "
+            "need to add "
+            "a code to the ignore lists?");
+      }
+
+      TypeSpec format_call_type("function");
+      format_call_type.add_arg(TypeSpec("object"));  // destination
+      format_call_type.add_arg(TypeSpec("string"));  // format string
+      for (int i = 0; i < arg_count; i++) {
+        format_call_type.add_arg(TypeSpec("object"));
+      }
+      format_call_type.add_arg(TypeSpec("object"));
+      arg_count += 2;  // for destination and format string.
+
+      m_call_type = format_call_type;
+      m_call_type_set = true;
+
+      out_types[Register(Reg::GPR, Reg::V0)]->type = TP_Type::make_from_ts(in_type.last_arg());
+
+      // we can also update register usage here.
+      m_read_regs.clear();
+      m_arg_vars.clear();
+      m_read_regs.emplace_back(Reg::GPR, Reg::T9);
+      for (int i = 0; i < arg_count; i++) {
+        m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
+        m_arg_vars.push_back(RegisterAccess(AccessMode::READ, m_read_regs.back(), m_my_idx));
+      }
+
+      return;
+    } else {
+      throw std::runtime_error("Failed to get appropriate string for _varags_ call, got " +
+                               arg_type.print());
+    }
+  }
+  // set the call type!
+  m_call_type = in_type;
+  m_call_type_set = true;
+
+  out_types[Register(Reg::GPR, Reg::V0)]->type = TP_Type::make_from_ts(in_type.last_arg());
+
+  // we can also update register usage here.
+  m_read_regs.clear();
+  m_arg_vars.clear();
+  m_read_regs.emplace_back(Reg::GPR, Reg::T9);
+
+  for (uint32_t i = 0; i < in_type.arg_count() - 1; i++) {
+    m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
+    m_arg_vars.push_back(RegisterAccess(AccessMode::READ, m_read_regs.back(), m_my_idx));
+  }
+
+  // _always_ write the v0 register, even if the function returns none.
+  // GOAL seems to insert coloring moves even on functions returning none.
+  m_write_regs.clear();
+  m_write_regs.emplace_back(Reg::GPR, Reg::V0);
+}
+
+void FunctionEndOp::propagate_types2(types2::Instruction& instr,
+                                     const Env& env,
+                                     types2::TypeState& input_types,
+                                     DecompilerTypeSystem& dts,
+                                     types2::TypePropExtras& extras) {
+  for (auto& clobber : m_clobber_regs) {
+    instr.types[clobber]->type = TP_Type::make_uninitialized();
+  }
+}
+
+void StackSpillStoreOp::propagate_types2(types2::Instruction& instr,
+                                         const Env& env,
+                                         types2::TypeState& input_types,
+                                         DecompilerTypeSystem& dts,
+                                         types2::TypePropExtras& extras) {
+  throw std::runtime_error(
+      fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
+}
+
+void StackSpillLoadOp::propagate_types2(types2::Instruction& instr,
+                                        const Env& env,
+                                        types2::TypeState& input_types,
+                                        DecompilerTypeSystem& dts,
+                                        types2::TypePropExtras& extras) {
+  throw std::runtime_error(
+      fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
+}
+
+void ConditionalMoveFalseOp::propagate_types2(types2::Instruction& instr,
+                                              const Env& env,
+                                              types2::TypeState& input_types,
+                                              DecompilerTypeSystem& dts,
+                                              types2::TypePropExtras& extras) {
+  throw std::runtime_error(
+      fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
+}
+}  // namespace decompiler
