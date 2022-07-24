@@ -78,6 +78,39 @@ struct GraphicsData {
 
 std::unique_ptr<GraphicsData> g_gfx_data;
 
+struct {
+  bool callbacks_registered = false;
+  GLFWmonitor** monitors;
+  int monitor_count;
+} g_glfw_state;
+
+void SetGlobalGLFWCallbacks() {
+  if (g_glfw_state.callbacks_registered) {
+    lg::warn("Global GLFW callbacks were already registered!");
+  }
+
+  // Get initial state
+  g_glfw_state.monitors = glfwGetMonitors(&g_glfw_state.monitor_count);
+
+  // Listen for events
+  glfwSetMonitorCallback([](GLFWmonitor* /*monitor*/, int /*event*/) {
+    // Reload monitor list
+    g_glfw_state.monitors = glfwGetMonitors(&g_glfw_state.monitor_count);
+  });
+
+  g_glfw_state.callbacks_registered = true;
+}
+
+void ClearGlobalGLFWCallbacks() {
+  if (!g_glfw_state.callbacks_registered) {
+    return;
+  }
+
+  glfwSetMonitorCallback(NULL);
+
+  g_glfw_state.callbacks_registered = false;
+}
+
 void ErrorCallback(int err, const char* msg) {
   lg::error("GLFW ERR {}: {}", err, std::string(msg));
 }
@@ -121,6 +154,7 @@ static int gl_init(GfxSettings& settings) {
 }
 
 static void gl_exit() {
+  ClearGlobalGLFWCallbacks();
   g_gfx_data.reset();
   glfwTerminate();
   glfwSetErrorCallback(NULL);
@@ -166,6 +200,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
     lg::error("Could not load icon for OpenGL window");
   }
 
+  SetGlobalGLFWCallbacks();
   Pad::initialize();
 
   if (HasError()) {
@@ -208,9 +243,11 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
 GLDisplay::GLDisplay(GLFWwindow* window, bool is_main) : m_window(window) {
   m_main = is_main;
 
+  // Get initial state
   get_position(&m_last_windowed_xpos, &m_last_windowed_ypos);
   get_size(&m_last_windowed_width, &m_last_windowed_height);
 
+  // Listen for window-specific GLFW events
   glfwSetWindowUserPointer(window, reinterpret_cast<void*>(this));
 
   glfwSetKeyCallback(window, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -511,22 +548,16 @@ int GLDisplay::get_screen_rate(int vmode_idx) {
 }
 
 GLFWmonitor* GLDisplay::get_monitor(int index) {
-  int monitorCount;
-  GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
-
-  if (index < 0 || index >= monitorCount) {
+  if (index < 0 || index >= g_glfw_state.monitor_count) {
     // out of bounds, default to primary monitor
     index = 0;
   }
 
-  return monitors[index];
+  return g_glfw_state.monitors[index];
 }
 
 int GLDisplay::get_monitor_count() {
-  int count;
-  glfwGetMonitors(&count);
-
-  return count;
+  return g_glfw_state.monitor_count;
 }
 
 bool GLDisplay::minimized() {

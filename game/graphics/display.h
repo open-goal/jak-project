@@ -19,8 +19,8 @@
 class GfxDisplay {
   const char* m_title;
 
-  int m_fullscreen_screen;
-  int m_fullscreen_target_screen;
+  int m_fullscreen_screen = -1;
+  int m_fullscreen_target_screen = -1;
   bool m_imgui_visible;
 
  protected:

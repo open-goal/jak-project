@@ -19,8 +19,6 @@ enum GlfwKeyAction {
 };
 
 class GLDisplay : public GfxDisplay {
-  GLFWwindow* m_window;
-
  public:
   GLDisplay(GLFWwindow* window, bool is_main);
   virtual ~GLDisplay();
@@ -44,6 +42,8 @@ class GLDisplay : public GfxDisplay {
   void on_window_size(GLFWwindow* window, int width, int height);
 
  private:
+  GLFWwindow* m_window;
+
   GLFWmonitor* get_monitor(int index);
 };
 
