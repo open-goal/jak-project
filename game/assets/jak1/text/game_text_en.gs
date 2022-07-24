@@ -334,6 +334,10 @@
 (#x1116 "NORSK"
         "NORSK")
 
+(#x1600 "DISPLAY"
+        "DISPLAY")
+(#x1601 "DISPLAY ~D"
+        "DISPLAY ~D")
 
 ;; -----------------
 ;; test

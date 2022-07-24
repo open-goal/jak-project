@@ -78,26 +78,6 @@ struct GraphicsData {
 
 std::unique_ptr<GraphicsData> g_gfx_data;
 
-void SetDisplayCallbacks(GLFWwindow* d) {
-  glfwSetKeyCallback(
-      d, [](GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
-        if (action == GlfwKeyAction::Press) {
-          // lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
-          Pad::OnKeyPress(key);
-        } else if (action == GlfwKeyAction::Release) {
-          // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
-          Pad::OnKeyRelease(key);
-          GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
-          if (display != NULL) {  // toggle ImGui when pressing Alt
-            if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
-                glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
-              display->set_imgui_visible(!display->is_imgui_visible());
-            }
-          }
-        }
-      });
-}
-
 void ErrorCallback(int err, const char* msg) {
   lg::error("GLFW ERR {}: {}", err, std::string(msg));
 }
@@ -186,7 +166,6 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
     lg::error("Could not load icon for OpenGL window");
   }
 
-  SetDisplayCallbacks(window);
   Pad::initialize();
 
   if (HasError()) {
@@ -228,13 +207,35 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
 
 GLDisplay::GLDisplay(GLFWwindow* window, bool is_main) : m_window(window) {
   m_main = is_main;
+
+  get_position(&m_last_windowed_xpos, &m_last_windowed_ypos);
+  get_size(&m_last_windowed_width, &m_last_windowed_height);
+
   glfwSetWindowUserPointer(window, reinterpret_cast<void*>(this));
+
+  glfwSetKeyCallback(window, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+    GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
+    display->on_key(window, key, scancode, action, mods);
+  });
+
+  glfwSetWindowPosCallback(window, [](GLFWwindow* window, int xpos, int ypos) {
+    GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
+    display->on_window_pos(window, xpos, ypos);
+  });
+
+  glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height) {
+    GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
+    display->on_window_size(window, width, height);
+  });
 }
 
 GLDisplay::~GLDisplay() {
   ImGuiIO& io = ImGui::GetIO();
   io.IniFilename = nullptr;
   io.LogFilename = nullptr;
+  glfwSetKeyCallback(m_window, NULL);
+  glfwSetWindowPosCallback(m_window, NULL);
+  glfwSetWindowSizeCallback(m_window, NULL);
   glfwSetWindowUserPointer(m_window, nullptr);
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
@@ -242,6 +243,34 @@ GLDisplay::~GLDisplay() {
   glfwDestroyWindow(m_window);
   if (m_main) {
     gl_exit();
+  }
+}
+
+void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
+  if (action == GlfwKeyAction::Press) {
+    // lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
+    Pad::OnKeyPress(key);
+  } else if (action == GlfwKeyAction::Release) {
+    // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
+    Pad::OnKeyRelease(key);
+    if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
+        glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+      set_imgui_visible(!is_imgui_visible());
+    }
+  }
+}
+
+void GLDisplay::on_window_pos(GLFWwindow* /*window*/, int xpos, int ypos) {
+  if (m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
+    m_last_windowed_xpos = xpos;
+    m_last_windowed_ypos = ypos;
+  }
+}
+
+void GLDisplay::on_window_size(GLFWwindow* /*window*/, int width, int height) {
+  if (m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
+    m_last_windowed_width = width;
+    m_last_windowed_height = height;
   }
 }
 
@@ -353,25 +382,52 @@ void GLDisplay::get_scale(float* xs, float* ys) {
 
 void GLDisplay::set_size(int width, int height) {
   glfwSetWindowSize(m_window, width, height);
+
+  if (windowed()) {
+    m_last_windowed_width = width;
+    m_last_windowed_height = height;
+  }
 }
 
-void GLDisplay::update_fullscreen(GfxDisplayMode mode, int /*screen*/) {
-  GLFWmonitor* monitor = glfwGetPrimaryMonitor();  // todo
+void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
+  GLFWmonitor* monitor = get_monitor(screen);
+
   switch (mode) {
     case GfxDisplayMode::Windowed: {
       // windowed
+      int x, y, width, height;
+
+      if (m_last_fullscreen_mode == GfxDisplayMode::Windowed) {
+        // windowed -> windowed, keep position and size
+        width = m_last_windowed_width;
+        height = m_last_windowed_height;
+        x = m_last_windowed_xpos;
+        y = m_last_windowed_ypos;
+      } else {
+        // fullscreen -> windowed, use last windowed size but on the monitor previously fullscreened
+        int monitorX, monitorY, monitorWidth, monitorHeight;
+        glfwGetMonitorWorkarea(monitor, &monitorX, &monitorY, &monitorWidth, &monitorHeight);
+
+        width = m_last_windowed_width;
+        height = m_last_windowed_height;
+        x = monitorX + (monitorWidth / 2) - (width / 2);
+        y = monitorY + (monitorHeight / 2) - (height / 2);
+      }
+
       glfwSetWindowAttrib(m_window, GLFW_DECORATED, GLFW_TRUE);
       glfwSetWindowFocusCallback(m_window, NULL);
       glfwSetWindowAttrib(m_window, GLFW_FLOATING, GLFW_FALSE);
-      glfwSetWindowMonitor(m_window, NULL, xpos_backup(), ypos_backup(), width_backup(),
-                           height_backup(), GLFW_DONT_CARE);
+      glfwSetWindowMonitor(m_window, NULL, x, y, width, height, GLFW_DONT_CARE);
       set_imgui_visible(true);
+
+      // these might have changed
+      m_last_windowed_width = width;
+      m_last_windowed_height = height;
+      m_last_windowed_xpos = x;
+      m_last_windowed_ypos = y;
     } break;
     case GfxDisplayMode::Fullscreen: {
       // fullscreen
-      if (windowed()) {
-        backup_params();
-      }
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
       glfwSetWindowAttrib(m_window, GLFW_DECORATED, GLFW_FALSE);
       glfwSetWindowFocusCallback(m_window, NULL);
@@ -381,9 +437,6 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int /*screen*/) {
     } break;
     case GfxDisplayMode::Borderless: {
       // borderless fullscreen
-      if (windowed()) {
-        backup_params();
-      }
       int x, y;
       glfwGetMonitorPos(monitor, &x, &y);
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
@@ -401,7 +454,7 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int /*screen*/) {
 }
 
 GfxDisplayMode GLDisplay::get_fullscreen() {
-  GLFWmonitor* monitor = glfwGetPrimaryMonitor();  // todo
+  GLFWmonitor* monitor = get_monitor(fullscreen_screen());
   const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
   if (glfwGetWindowMonitor(m_window) != NULL) {
     return GfxDisplayMode::Fullscreen;
@@ -414,14 +467,15 @@ GfxDisplayMode GLDisplay::get_fullscreen() {
 
 int GLDisplay::get_screen_vmode_count() {
   int count = 0;
-  glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
+  glfwGetVideoModes(get_monitor(fullscreen_screen()), &count);
   return count;
 }
 
 void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out) {
-  auto vmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+  GLFWmonitor* monitor = get_monitor(fullscreen_screen());
+  auto vmode = glfwGetVideoMode(monitor);
   int count = 0;
-  auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
+  auto vmodes = glfwGetVideoModes(monitor, &count);
   if (vmode_idx >= 0) {
     vmode = &vmodes[vmode_idx];
   } else if (get_fullscreen() == GfxDisplayMode::Fullscreen) {
@@ -440,9 +494,10 @@ void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out) {
 }
 
 int GLDisplay::get_screen_rate(int vmode_idx) {
-  auto vmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+  GLFWmonitor* monitor = get_monitor(fullscreen_screen());
+  auto vmode = glfwGetVideoMode(monitor);
   int count = 0;
-  auto vmodes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
+  auto vmodes = glfwGetVideoModes(monitor, &count);
   if (vmode_idx >= 0) {
     vmode = &vmodes[vmode_idx];
   } else if (get_fullscreen() == GfxDisplayMode::Fullscreen) {
@@ -453,6 +508,25 @@ int GLDisplay::get_screen_rate(int vmode_idx) {
     }
   }
   return vmode->refreshRate;
+}
+
+GLFWmonitor* GLDisplay::get_monitor(int index) {
+  int monitorCount;
+  GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
+
+  if (index < 0 || index >= monitorCount) {
+    // out of bounds, default to primary monitor
+    index = 0;
+  }
+
+  return monitors[index];
+}
+
+int GLDisplay::get_monitor_count() {
+  int count;
+  glfwGetMonitors(&count);
+
+  return count;
 }
 
 bool GLDisplay::minimized() {
@@ -572,7 +646,7 @@ void GLDisplay::render() {
     // slow, takes ~0.15 ms on linux
     auto current_fullscreen_mode = get_fullscreen();
     // checking minimized also takes ~0.1 ms, only check if we need to update fullscreen modes
-    if (current_fullscreen_mode != m_fullscreen_target_mode && !minimized()) {
+    if (fullscreen_pending() && !minimized()) {
       fullscreen_flush();
     }
     m_last_fullscreen_mode = current_fullscreen_mode;

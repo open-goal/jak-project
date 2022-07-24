@@ -243,6 +243,13 @@ int get_screen_rate(s64 vmode_idx) {
   return 0;
 }
 
+int get_monitor_count() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_monitor_count();
+  }
+  return 0;
+}
+
 void get_screen_size(s64 vmode_idx, s32* w, s32* h) {
   if (Display::GetMainDisplay()) {
     Display::GetMainDisplay()->get_screen_size(vmode_idx, w, h);

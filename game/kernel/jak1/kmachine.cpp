@@ -622,6 +622,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
   make_function_symbol_from_c("pc-get-screen-rate", (void*)get_screen_rate);
   make_function_symbol_from_c("pc-get-screen-vmode-count", (void*)get_screen_vmode_count);
+  make_function_symbol_from_c("pc-get-monitor-count", (void*)get_monitor_count);
   make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
   make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
   make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);

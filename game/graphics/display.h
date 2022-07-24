@@ -19,13 +19,6 @@
 class GfxDisplay {
   const char* m_title;
 
-  // NOT actual size! just backups
-  int m_width;
-  int m_height;
-  // same here
-  int m_xpos;
-  int m_ypos;
-
   int m_fullscreen_screen;
   int m_fullscreen_target_screen;
   bool m_imgui_visible;
@@ -34,6 +27,11 @@ class GfxDisplay {
   bool m_main;
   GfxDisplayMode m_fullscreen_target_mode = GfxDisplayMode::Windowed;
   GfxDisplayMode m_last_fullscreen_mode;
+
+  int m_last_windowed_xpos = 0;
+  int m_last_windowed_ypos = 0;
+  int m_last_windowed_width = 640;
+  int m_last_windowed_height = 480;
 
  public:
   virtual ~GfxDisplay() {}
@@ -45,6 +43,7 @@ class GfxDisplay {
   virtual int get_screen_vmode_count() = 0;
   virtual void get_screen_size(int vmode_idx, s32* w, s32* h) = 0;
   virtual int get_screen_rate(int vmode_idx) = 0;
+  virtual int get_monitor_count() = 0;
   virtual void get_position(int* x, int* y) = 0;
   virtual void get_size(int* w, int* h) = 0;
   virtual GfxDisplayMode get_fullscreen() = 0;
@@ -55,10 +54,12 @@ class GfxDisplay {
   void set_title(const char* title);
   const char* title() const { return m_title; }
 
-  bool fullscreen_pending() { return get_fullscreen() != m_fullscreen_target_mode; }
+  bool fullscreen_pending() {
+    return get_fullscreen() != m_fullscreen_target_mode ||
+           m_fullscreen_screen != m_fullscreen_target_screen;
+  }
   void fullscreen_flush() {
     update_fullscreen(m_fullscreen_target_mode, m_fullscreen_target_screen);
-    // TODO no
     m_fullscreen_screen = m_fullscreen_target_screen;
   }
   void set_fullscreen(GfxDisplayMode mode, int screen) {
@@ -71,11 +72,6 @@ class GfxDisplay {
   void set_imgui_visible(bool visible) { m_imgui_visible = visible; }
   bool is_imgui_visible() const { return m_imgui_visible; }
   bool windowed() { return get_fullscreen() == GfxDisplayMode::Windowed; }
-  void backup_params();
-  int width_backup() const { return m_width; }
-  int height_backup() const { return m_height; }
-  int xpos_backup() const { return m_xpos; }
-  int ypos_backup() const { return m_ypos; }
 
   int width();
   int height();
