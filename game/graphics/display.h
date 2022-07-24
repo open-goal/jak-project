@@ -26,7 +26,7 @@ class GfxDisplay {
  protected:
   bool m_main;
   GfxDisplayMode m_fullscreen_target_mode = GfxDisplayMode::Windowed;
-  GfxDisplayMode m_last_fullscreen_mode;
+  GfxDisplayMode m_last_fullscreen_mode = GfxDisplayMode::Windowed;
 
   int m_last_windowed_xpos = 0;
   int m_last_windowed_ypos = 0;
