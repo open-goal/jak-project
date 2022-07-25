@@ -1,3 +1,5 @@
+#include "common/util/BitUtils.h"
+
 #include "decompiler/IR2/AtomicOp.h"
 #include "decompiler/IR2/bitfields.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -19,7 +21,6 @@ bool is_int_or_uint(const DecompilerTypeSystem& dts, const TP_Type& type) {
 bool is_signed(const DecompilerTypeSystem& dts, const TP_Type& type) {
   return tc(dts, TypeSpec("int"), type) && !tc(dts, TypeSpec("uint"), type);
 }
-
 // Note that there are "get_type" and "types2" functions that look somewhat similar.
 // the difference is that "get_type" just tries to figure out a TP_Type, and the "types2" function
 // will set up/resolve tags, and they are intended to be used to update the type state with their
@@ -136,6 +137,9 @@ std::optional<TP_Type> try_get_type_of_atom(const types2::TypeState& type_state,
     }
     case SimpleAtom::Kind::SYMBOL_VAL:
       return try_get_type_symbol_val(atom.get_str(), dts, env);
+    case SimpleAtom::Kind::INTEGER_CONSTANT: {
+      return TP_Type::make_from_integer(atom.get_int());
+    } break;
     default:
       ASSERT_MSG(false,
                  fmt::format("unknown kind in try_get_type_of_atom: {}", atom.to_string(env)));
@@ -294,7 +298,37 @@ void types2_for_left_shift(types2::Type& type_out,
     type_out.type = TP_Type::make_from_ts(TypeSpec("uint"));
     return;
   }
-  ASSERT(false);
+
+  auto arg1_type_info = try_get_type_of_atom(input_types, expr.get_arg(1), env, dts);
+  if (!arg1_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto& arg1_type = *arg1_type_info;
+
+  if (arg0_type == arg1_type && is_int_or_uint(dts, *arg0_type)) {
+    // both are the same type and both are int/uint, so we assume that we're doing integer math.
+    // we strip off any weird things like multiplication or integer constant.
+    type_out.type = TP_Type::make_from_ts(arg0_type->typespec());
+    return;
+  }
+
+  if (is_int_or_uint(dts, *arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    // usually we would want to use arg0's type as the "winning" type.
+    // but we use arg1's if arg0 is an integer constant
+    // in either case, strip off weird stuff.
+    if (arg0_type->is_integer_constant() && !arg1_type.is_integer_constant()) {
+      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
+      return;
+    }
+    type_out.type = TP_Type::make_from_ts(arg0_type->typespec());
+    return;
+  }
+
+  // last fallback
+  type_out.type = TP_Type::make_from_ts("int");
 }
 
 void types2_for_atom(types2::Type& type_out,
@@ -344,6 +378,660 @@ void types2_for_fpr_to_gpr(types2::Type& type_out,
   types2_for_atom(type_out, output_instr, input_types, expr.get_arg(0), env, dts);
 }
 
+void types2_for_gpr_to_fpr(types2::Type& type_out,
+                           types2::Instruction& output_instr,
+                           const SimpleExpression& expr,
+                           const Env& env,
+                           types2::TypeState& input_types,
+                           const DecompilerTypeSystem& dts) {
+  // for now, we'll just copy the type.
+  types2_for_atom(type_out, output_instr, input_types, expr.get_arg(0), env, dts);
+}
+
+void types2_for_integer_mul(types2::Type& type_out,
+                            types2::Instruction& output_instr,
+                            const SimpleExpression& expr,
+                            const Env& env,
+                            types2::TypeState& input_types,
+                            const DecompilerTypeSystem& dts,
+                            bool is_unsigned) {
+  auto arg0_type_info = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
+  if (!arg0_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto arg1_type_info = try_get_type_of_atom(input_types, expr.get_arg(1), env, dts);
+  if (!arg1_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto& arg0_type = *arg0_type_info;
+  auto& arg1_type = *arg1_type_info;
+
+  if (arg0_type.is_integer_constant() && is_int_or_uint(dts, arg1_type)) {
+    type_out.type =
+        TP_Type::make_from_product(arg0_type.get_integer_constant(), is_signed(dts, arg0_type));
+    return;
+  } else if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    // signed multiply will always return a signed number.
+    type_out.type = TP_Type::make_from_ts(is_unsigned ? "uint" : "int");
+    return;
+  }
+
+  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
+    // both are the same type and both are int/uint, so we assume that we're doing integer math.
+    // we strip off any weird things like multiplication or integer constant.
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+
+  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    // usually we would want to use arg0's type as the "winning" type.
+    // but we use arg1's if arg0 is an integer constant
+    // in either case, strip off weird stuff.
+    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
+      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
+      return;
+    }
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+  ASSERT(false);
+}
+
+void types2_for_logior(types2::Type& type_out,
+                       types2::Instruction& output_instr,
+                       const SimpleExpression& expr,
+                       const Env& env,
+                       types2::TypeState& input_types,
+                       const DecompilerTypeSystem& dts) {
+  auto arg0_type_info = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
+  if (!arg0_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto arg1_type_info = try_get_type_of_atom(input_types, expr.get_arg(1), env, dts);
+  if (!arg1_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto& arg0_type = *arg0_type_info;
+  auto& arg1_type = *arg1_type_info;
+
+  if (arg0_type.kind == TP_Type::Kind::PCPYUD_BITFIELD) {
+    // anding a bitfield should return the bitfield type.
+    type_out.type = TP_Type::make_from_pcpyud_bitfield(arg0_type.get_bitfield_type());
+    return;
+  }
+
+  if (arg0_type.typespec() == TypeSpec("float") && arg1_type.typespec() == TypeSpec("float")) {
+    env.func->warnings.general_warning("Using logior on floats");
+    // returning int instead of uint because they like to use the float sign bit as an integer sign
+    // bit.
+    type_out.type = TP_Type::make_from_ts(TypeSpec("float"));
+    return;
+  }
+
+  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
+    // both are the same type and both are int/uint, so we assume that we're doing integer math.
+    // we strip off any weird things like multiplication or integer constant.
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+
+  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    // usually we would want to use arg0's type as the "winning" type.
+    // but we use arg1's if arg0 is an integer constant
+    // in either case, strip off weird stuff.
+    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
+      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
+      return;
+    }
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+  ASSERT(false);
+}
+
+void types2_for_logand(types2::Type& type_out,
+                       types2::Instruction& output_instr,
+                       const SimpleExpression& expr,
+                       const Env& env,
+                       types2::TypeState& input_types,
+                       const DecompilerTypeSystem& dts) {
+  auto arg0_type_info = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
+  if (!arg0_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto arg1_type_info = try_get_type_of_atom(input_types, expr.get_arg(1), env, dts);
+  if (!arg1_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto& arg0_type = *arg0_type_info;
+  auto& arg1_type = *arg1_type_info;
+
+  if (arg0_type.kind == TP_Type::Kind::PCPYUD_BITFIELD) {
+    // anding a bitfield should return the bitfield type.
+    type_out.type = TP_Type::make_from_pcpyud_bitfield(arg0_type.get_bitfield_type());
+    return;
+  }
+
+  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
+    // both are the same type and both are int/uint, so we assume that we're doing integer math.
+    // we strip off any weird things like multiplication or integer constant.
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+
+  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    // usually we would want to use arg0's type as the "winning" type.
+    // but we use arg1's if arg0 is an integer constant
+    // in either case, strip off weird stuff.
+    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
+      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
+      return;
+    }
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+
+  if (arg0_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg1_type)) {
+    // pointer logand integer = pointer
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  } else if (arg1_type.typespec().base_type() == "pointer" &&
+             tc(dts, TypeSpec("integer"), arg0_type)) {
+    // integer logand pointer = pointer
+    type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
+    return;
+  }
+  // base case for and. Just get an integer.
+  type_out.type = TP_Type::make_from_ts(TypeSpec("int"));
+}
+
+void types2_for_normal_int2(types2::Type& type_out,
+                            types2::Instruction& output_instr,
+                            const SimpleExpression& expr,
+                            const Env& env,
+                            types2::TypeState& input_types,
+                            const DecompilerTypeSystem& dts) {
+  auto arg0_type_info = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
+  if (!arg0_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto arg1_type_info = try_get_type_of_atom(input_types, expr.get_arg(1), env, dts);
+  if (!arg1_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto& arg0_type = *arg0_type_info;
+  auto& arg1_type = *arg1_type_info;
+
+  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
+    // both are the same type and both are int/uint, so we assume that we're doing integer math.
+    // we strip off any weird things like multiplication or integer constant.
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+
+  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    // usually we would want to use arg0's type as the "winning" type.
+    // but we use arg1's if arg0 is an integer constant
+    // in either case, strip off weird stuff.
+    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
+      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
+      return;
+    }
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+}
+
+void types2_for_div_mod_signed(types2::Type& type_out,
+                               types2::Instruction& output_instr,
+                               const SimpleExpression& expr,
+                               const Env& env,
+                               types2::TypeState& input_types,
+                               const DecompilerTypeSystem& dts) {
+  auto arg0_type_info = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
+  if (!arg0_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto arg1_type_info = try_get_type_of_atom(input_types, expr.get_arg(1), env, dts);
+  if (!arg1_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto& arg0_type = *arg0_type_info;
+  auto& arg1_type = *arg1_type_info;
+
+  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    // signed division will always return a signed number.
+    type_out.type = TP_Type::make_from_ts("int");
+    return;
+  }
+
+  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
+    // both are the same type and both are int/uint, so we assume that we're doing integer math.
+    // we strip off any weird things like multiplication or integer constant.
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+
+  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    // usually we would want to use arg0's type as the "winning" type.
+    // but we use arg1's if arg0 is an integer constant
+    // in either case, strip off weird stuff.
+    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
+      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
+      return;
+    }
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+  ASSERT(false);
+}
+
+void types2_for_sub(types2::Type& type_out,
+                    types2::Instruction& output_instr,
+                    const SimpleExpression& expr,
+                    const Env& env,
+                    types2::TypeState& input_types,
+                    const DecompilerTypeSystem& dts) {
+  auto arg0_type_info = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
+  if (!arg0_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto arg1_type_info = try_get_type_of_atom(input_types, expr.get_arg(1), env, dts);
+  if (!arg1_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto& arg0_type = *arg0_type_info;
+  auto& arg1_type = *arg1_type_info;
+
+  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
+    // both are the same type and both are int/uint, so we assume that we're doing integer math.
+    // we strip off any weird things like multiplication or integer constant.
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+
+  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    // usually we would want to use arg0's type as the "winning" type.
+    // but we use arg1's if arg0 is an integer constant
+    // in either case, strip off weird stuff.
+    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
+      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
+      return;
+    }
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+
+  if (arg0_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg1_type)) {
+    // plain pointer plus integer = plain pointer
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+
+  if (arg1_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg0_type)) {
+    // plain pointer plus integer = plain pointer
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+
+  if (tc(dts, TypeSpec("structure"), arg0_type) && arg1_type.is_integer_constant()) {
+    auto type_info = dts.ts.lookup_type(arg0_type.typespec());
+
+    // get next in memory, allow this as &+/&-
+    if ((s64)type_info->get_size_in_memory() == std::abs((s64)arg1_type.get_integer_constant())) {
+      type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+      return;
+    }
+
+    // also allow it, if 16-byte aligned stride.
+    if ((u64)align16(type_info->get_size_in_memory()) == arg1_type.get_integer_constant()) {
+      type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+      return;
+    }
+  }
+
+  if (tc(dts, TypeSpec("pointer"), arg0_type) && tc(dts, TypeSpec("pointer"), arg1_type)) {
+    type_out.type = TP_Type::make_from_ts(TypeSpec("int"));
+    return;
+  }
+  ASSERT(false);
+}
+
+void types2_for_add(types2::Type& type_out,
+                    types2::Instruction& output_instr,
+                    const SimpleExpression& expr,
+                    const Env& env,
+                    types2::TypeState& input_types,
+                    const DecompilerTypeSystem& dts) {
+  auto arg0_type_info = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
+  if (!arg0_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto arg1_type_info = try_get_type_of_atom(input_types, expr.get_arg(1), env, dts);
+  if (!arg1_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto& arg0_type = *arg0_type_info;
+  auto& arg1_type = *arg1_type_info;
+  auto& arg0 = expr.get_arg(0);
+  auto& arg1 = expr.get_arg(1);
+
+  // the approach here is just to try a bunch of things.
+  // this is a bit of a mess, but I don't know another way. Add is a very useful instruction.
+
+  // access the stack - either a stack variable or structure.
+  if (arg0.is_var() && arg0.var().reg() == Register(Reg::GPR, Reg::SP) && arg1.is_int()) {
+    // todo: will needs tags!
+    ASSERT(false);
+    // return get_stack_type_at_constant_offset(arg1.get_int(), env, dts, input);
+  }
+
+  // if things go wrong, and we add a pointer to another address, just return int
+  // honestly not sure why I have this one... let's have it abort for now.
+  if (arg0_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT &&
+      arg1_type.typespec().base_type() == "pointer") {
+    ASSERT(false);
+    // return TP_Type::make_from_ts(TypeSpec("int"));
+  }
+
+  // special case: dynamic access to the method table, to look up a method by ID.
+  if (arg0_type.is_product_with(4) && tc(dts, TypeSpec("type"), arg1_type) &&
+      env.func->name() != "overrides-parent-method?"  // hack!
+  ) {
+    // dynamic access into the method array with shift, add, offset-load
+    // no need to track the type because we don't know the method index anyway.
+    type_out.type = TP_Type::make_partial_dyanmic_vtable_access();
+    return;
+  }
+
+  // propagate integer math: a * C1 + C2
+  if (arg1_type.is_integer_constant() && arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT) {
+    type_out.type = TP_Type::make_from_integer_constant_plus_product(
+        arg1_type.get_integer_constant(), arg0_type.typespec(), arg0_type.get_multiplier());
+    return;
+  }
+
+  // propagate integer math: a + C1
+  if (arg1_type.is_integer_constant() && is_int_or_uint(dts, arg0_type)) {
+    type_out.type = TP_Type::make_from_integer_constant_plus_var(arg1_type.get_integer_constant(),
+                                                                 arg0_type.typespec());
+    return;
+  }
+
+  // get addr of field using obj + C1 + a * C2
+  if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT) {
+    FieldReverseLookupInput rd_in;
+    rd_in.offset = arg0_type.get_add_int_constant();
+    rd_in.stride = arg0_type.get_mult_int_constant();
+    rd_in.base_type = arg1_type.typespec();
+    auto out = env.dts->ts.reverse_field_multi_lookup(rd_in);
+    if (out.success) {
+      if (out.results.size() == 1) {
+        type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
+        return;
+      } else {
+        ASSERT(false);
+      }
+    }
+    // flipped version of the above
+  } else if (arg1_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT) {
+    FieldReverseLookupInput rd_in;
+    rd_in.offset = arg1_type.get_add_int_constant();
+    rd_in.stride = arg1_type.get_mult_int_constant();
+    rd_in.base_type = arg0_type.typespec();
+    auto out = env.dts->ts.reverse_field_multi_lookup(rd_in);
+    if (out.success) {
+      if (out.results.size() == 1) {
+        type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
+        return;
+      } else {
+        ASSERT(false);
+      }
+    }
+  }
+
+  // get addr of field using obj + C1 + a (effectively a stride of 1)
+  if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR) {
+    FieldReverseLookupInput rd_in;
+    rd_in.offset = arg0_type.get_integer_constant();
+    rd_in.stride = 1;
+    rd_in.base_type = arg1_type.typespec();
+    auto out = env.dts->ts.reverse_field_multi_lookup(rd_in);
+    if (out.success) {
+      if (out.results.size() == 1) {
+        type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
+        return;
+      } else {
+        ASSERT(false);
+      }
+    }
+  }
+
+  // get addr of field with a constant: obj + C1
+  if (arg1.is_int() && arg0_type.kind == TP_Type::Kind::TYPESPEC) {
+    // access a field.
+    FieldReverseLookupInput rd_in;
+    rd_in.deref = std::nullopt;
+    rd_in.stride = 0;
+    rd_in.offset = arg1.get_int();
+    rd_in.base_type = arg0_type.typespec();
+    auto out = env.dts->ts.reverse_field_multi_lookup(rd_in);
+    if (out.success) {
+      if (out.results.size() == 1) {
+        type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
+        return;
+      } else {
+        ASSERT(false);
+      }
+    }
+  }
+
+  // access with just product and no offset.
+  if (arg0_type.kind == TP_Type::Kind::TYPESPEC &&
+      arg0_type.typespec().base_type() == "inline-array" &&
+      arg1_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT) {
+    FieldReverseLookupInput rd_in;
+    rd_in.deref = std::nullopt;
+    rd_in.stride = arg1_type.get_multiplier();
+    rd_in.offset = 0;
+    rd_in.base_type = arg0_type.typespec();
+    auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
+
+    std::vector<FieldReverseLookupOutput> filtered_results;
+    for (auto& result : rd.results) {
+      if (result.has_variable_token()) {
+        filtered_results.push_back(result);
+      }
+    }
+
+    if (filtered_results.size() == 1) {
+      type_out.type =
+          TP_Type::make_from_ts(coerce_to_reg_type(filtered_results.front().result_type));
+      return;
+    } else {
+      ASSERT(false);
+    }
+  }
+
+  // flipped of above
+  if (arg1_type.kind == TP_Type::Kind::TYPESPEC &&
+      arg1_type.typespec().base_type() == "inline-array" &&
+      arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT) {
+    FieldReverseLookupInput rd_in;
+    rd_in.deref = std::nullopt;
+    rd_in.stride = arg0_type.get_multiplier();
+    rd_in.offset = 0;
+    rd_in.base_type = arg1_type.typespec();
+    auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
+    std::vector<FieldReverseLookupOutput> filtered_results;
+    for (auto& result : rd.results) {
+      if (result.has_variable_token()) {
+        filtered_results.push_back(result);
+      }
+    }
+
+    if (filtered_results.size() == 1) {
+      type_out.type =
+          TP_Type::make_from_ts(coerce_to_reg_type(filtered_results.front().result_type));
+      return;
+    } else {
+      ASSERT(false);
+    }
+  }
+
+  if (arg0_type.is_product() && arg1_type.kind == TP_Type::Kind::TYPESPEC) {
+    type_out.type =
+        TP_Type::make_object_plus_product(arg1_type.typespec(), arg0_type.get_multiplier(), true);
+    return;
+  }
+
+  if (arg1_type.is_product() && arg0_type.kind == TP_Type::Kind::TYPESPEC) {
+    type_out.type =
+        TP_Type::make_object_plus_product(arg0_type.typespec(), arg1_type.get_multiplier(), false);
+    return;
+  }
+
+  if (arg0_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg1_type)) {
+    if (!arg1.is_int()) {
+      type_out.type = TP_Type::make_object_plus_product(arg0_type.typespec(), 1, false);
+      return;
+    }
+    // plain pointer plus integer = plain pointer
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+
+  if (arg1_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg0_type)) {
+    // plain pointer plus integer = plain pointer
+    type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
+    return;
+  }
+
+  if (tc(dts, TypeSpec("structure"), arg0_type) && arg1_type.is_integer_constant()) {
+    auto type_info = dts.ts.lookup_type(arg0_type.typespec());
+
+    // get next in memory, allow this as &+/&-
+    if ((s64)type_info->get_size_in_memory() == std::abs((s64)arg1_type.get_integer_constant())) {
+      type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+      return;
+    }
+
+    // also allow it, if 16-byte aligned stride.
+    if ((u64)align16(type_info->get_size_in_memory()) == arg1_type.get_integer_constant()) {
+      type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+      return;
+    }
+  }
+
+  if (tc(dts, TypeSpec("pointer"), arg0_type) && tc(dts, TypeSpec("pointer"), arg1_type)) {
+    type_out.type = TP_Type::make_from_ts(TypeSpec("int"));
+    return;
+  }
+
+  auto& name = env.func->guessed_name;
+  if (name.kind == FunctionName::FunctionKind::METHOD && name.method_id == 7 &&
+      env.func->type.arg_count() == 3) {
+    if (arg1_type.typespec() == TypeSpec("int")) {
+      type_out.type = arg0_type;
+      return;
+    }
+  }
+
+  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
+    // both are the same type and both are int/uint, so we assume that we're doing integer math.
+    // we strip off any weird things like multiplication or integer constant.
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+
+  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    // usually we would want to use arg0's type as the "winning" type.
+    // but we use arg1's if arg0 is an integer constant
+    // in either case, strip off weird stuff.
+    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
+      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
+      return;
+    }
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return;
+  }
+
+  ASSERT(false);
+}
+
+void types2_for_normal_2op_float(types2::Type& type_out,
+                                 types2::Instruction& output_instr,
+                                 const SimpleExpression& expr,
+                                 const Env& env,
+                                 types2::TypeState& input_types,
+                                 const DecompilerTypeSystem& dts) {
+  // backprop to make inputs floats
+  for (int i = 0; i < 2; i++) {
+    auto& arg = expr.get_arg(i);
+    auto& arg_type = input_types[arg.var().reg()];
+    if (arg_type->tag.has_tag()) {
+      types2::backprop_tagged_type(TP_Type::make_from_ts("float"), *arg_type);
+    }
+  }
+
+  type_out.type = TP_Type::make_from_ts(TypeSpec("float"));
+}
+
+void types2_for_normal_int1(types2::Type& type_out,
+                            types2::Instruction& output_instr,
+                            const SimpleExpression& expr,
+                            const Env& env,
+                            types2::TypeState& input_types,
+                            const DecompilerTypeSystem& dts) {
+  type_out.type = {};
+  auto& input_type = input_types[expr.get_arg(0).var().reg()];
+  if (input_type->type) {
+    type_out.type = input_type->type;
+  }
+}
+
 void types2_for_expr(types2::Type& type_out,
                      types2::Instruction& output_instr,
                      types2::TypeState& input_types,
@@ -363,8 +1051,50 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::FPR_TO_GPR:
       types2_for_fpr_to_gpr(type_out, output_instr, expr, env, input_types, dts);
       break;
+    case SimpleExpression::Kind::ADD:
+      types2_for_add(type_out, output_instr, expr, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::GPR_TO_FPR:
+      types2_for_gpr_to_fpr(type_out, output_instr, expr, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::DIV_S:
+    case SimpleExpression::Kind::MIN_S:
+      types2_for_normal_2op_float(type_out, output_instr, expr, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::SUB:
+      types2_for_sub(type_out, output_instr, expr, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::MUL_SIGNED:
+      types2_for_integer_mul(type_out, output_instr, expr, env, input_types, dts, false);
+      break;
+    case SimpleExpression::Kind::MUL_UNSIGNED:
+      types2_for_integer_mul(type_out, output_instr, expr, env, input_types, dts, true);
+      break;
+    case SimpleExpression::Kind::DIV_SIGNED:
+    case SimpleExpression::Kind::MOD_SIGNED:
+      types2_for_div_mod_signed(type_out, output_instr, expr, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::NEG:
+    case SimpleExpression::Kind::MIN_SIGNED:
+    case SimpleExpression::Kind::MAX_SIGNED:
+      type_out.type = TP_Type::make_from_ts("int");  // ?
+      break;
+    case SimpleExpression::Kind::OR:
+      types2_for_logior(type_out, output_instr, expr, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::AND:
+      types2_for_logand(type_out, output_instr, expr, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::NOR:
+    case SimpleExpression::Kind::XOR:
+      types2_for_normal_int2(type_out, output_instr, expr, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::LOGNOT:
+      types2_for_normal_int1(type_out, output_instr, expr, env, input_types, dts);
+      break;
     default:
-      ASSERT_MSG(false, fmt::format("Unhandled types2_for_expr: {}\n", expr.to_string(env)));
+      ASSERT_MSG(false, fmt::format("Unhandled types2_for_expr: {} {}\n", expr.to_string(env),
+                                    (int)expr.kind()));
   }
 }
 
@@ -510,8 +1240,11 @@ void SetVarConditionOp::propagate_types2(types2::Instruction& instr,
                                          types2::TypeState& input_types,
                                          DecompilerTypeSystem& dts,
                                          types2::TypePropExtras& extras) {
-  throw std::runtime_error(
-      fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
+  // update clobbers.
+  for (auto& clobber : m_clobber_regs) {
+    instr.types[clobber]->type = TP_Type::make_uninitialized();
+  }
+  instr.types[m_dst.reg()]->type = TP_Type::make_from_ts("symbol");
 }
 
 /*!
@@ -663,6 +1396,7 @@ bool load_var_op_determine_type(types2::Type& type_out,
       // we'll use a special type for these.
       if (type_name == "object" && method_id == GOAL_NEW_METHOD) {
         type_out.type = TP_Type::make_object_new(method_type);
+        fmt::print("took case!\n");
         return true;
       }
 
@@ -708,11 +1442,21 @@ bool load_var_op_determine_type(types2::Type& type_out,
       }
     }
 
+    // TODO pointer
+    // TODO object plus product with cont
+
     if (input_type.kind == TP_Type::Kind::TYPESPEC && ro.offset == -4 &&
         op.kind() == LoadVarOp::Kind::UNSIGNED && op.size() == 4 && ro.reg.get_kind() == Reg::GPR) {
       // get type of basic likely, but misrecognized as an object.
 
       type_out.type = TP_Type::make_type_allow_virtual_object(input_type.typespec().base_type());
+      return true;
+    }
+
+    if (input_type.kind == TP_Type::Kind::DYNAMIC_METHOD_ACCESS && ro.offset == 16) {
+      // access method vtable. The input is type + (4 * method), and the 16 is the offset
+      // of method 0.
+      type_out.type = TP_Type::make_from_ts(TypeSpec("function"));
       return true;
     }
 
@@ -749,6 +1493,29 @@ bool load_var_op_determine_type(types2::Type& type_out,
           }
         } else {
           ASSERT(false);  // ambiguous deref case...
+        }
+      }
+    }
+
+    // todo more pointer
+
+    // rd failed, try as pair.
+    if (env.allow_sloppy_pair_typing()) {
+      // we are strict here - only permit pair-type loads from object or pair.
+      // object is permitted for stuff like association lists where the car is also a pair.
+      if (op.kind() == LoadVarOp::Kind::SIGNED && op.size() == 4 &&
+          (input_type.typespec() == TypeSpec("object") ||
+           input_type.typespec() == TypeSpec("pair"))) {
+        // these rules are of course not always correct or the most specific, but it's the best
+        // we can do.
+        if (ro.offset == 2) {
+          // cdr = another pair.
+          type_out.type = TP_Type::make_from_ts(TypeSpec("pair"));
+          return true;
+        } else if (ro.offset == -2) {
+          // car = some object.
+          type_out.type = TP_Type::make_from_ts(TypeSpec("object"));
+          return true;
         }
       }
     }
@@ -793,6 +1560,9 @@ void BranchOp::propagate_types2(types2::Instruction& instr,
     case IR2_BranchDelay::Kind::NOP:
     case IR2_BranchDelay::Kind::NO_DELAY:
       break;
+    case IR2_BranchDelay::Kind::SET_REG_FALSE:
+      instr.types[m_branch_delay.var(0).reg()]->type = TP_Type::make_false();
+      break;
     default:
       ASSERT_MSG(false,
                  fmt::format("propagate_types2 BranchOp unknown branch delay: {}", to_string(env)));
@@ -813,8 +1583,19 @@ void SpecialOp::propagate_types2(types2::Instruction& instr,
                                  types2::TypeState& input_types,
                                  DecompilerTypeSystem& dts,
                                  types2::TypePropExtras& extras) {
-  throw std::runtime_error(
-      fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
+  // update clobbers.
+  for (auto& clobber : m_clobber_regs) {
+    instr.types[clobber]->type = TP_Type::make_uninitialized();
+  }
+  switch (m_kind) {
+    case Kind::NOP:
+    case Kind::BREAK:
+    case Kind::CRASH:
+    case Kind::SUSPEND:
+      return;
+    default:
+      ASSERT(false);
+  }
 }
 
 void CallOp::propagate_types2(types2::Instruction& instr,

@@ -123,6 +123,15 @@ struct TypeState {
     return nullptr;
   }
 
+  const Type* try_find_stack_spill_slot(int slot) const {
+    for (auto ss : stack_slot_types) {
+      if (ss->slot == slot) {
+        return &ss->type;
+      }
+    }
+    return nullptr;
+  }
+
   std::vector<StackSlotType*> stack_slot_types;
 };
 

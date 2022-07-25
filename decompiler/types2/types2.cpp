@@ -108,6 +108,7 @@ void build_function(FunctionCache& function_cache,
   // to save time, we store types at the entry of each block, then in the instructions inside
   // each block, store types sparsely. This saves very slow copying around of types.
   for (int block_idx : function_cache.block_visit_order) {
+    fmt::print("init block: {}\n", block_idx);
     auto& block = function_cache.blocks.at(block_idx);
 
     // add placeholders for all stack slots.
@@ -120,6 +121,7 @@ void build_function(FunctionCache& function_cache,
     // it gets initialized to the types on block entry (we store a copy of these)
     TypeState state = make_typestate_from_block_types(block.start_types);
     block.start_type_state = state;  // stash this here, just makes it easier for later.
+    ASSERT(block.start_type_state.fpr_types[0]);
 
     // loop through instructions, allocating new types for written registers.
     for (auto instr : block.instructions) {
@@ -455,6 +457,7 @@ bool convert_to_old_format(::decompiler::TypeState& out,
                            const types2::TypeState& in,
                            std::string& error_string) {
   for (int i = 0; i < 32; i++) {
+    ASSERT(in.fpr_types[i]);
     if (!convert_to_old_format(out.fpr_types[i], in.fpr_types[i])) {
       error_string += fmt::format("Failed to convert FPR: {} ", i);
       return false;
@@ -477,22 +480,24 @@ bool convert_to_old_format(::decompiler::TypeState& out,
 
 bool convert_to_old_format(Output& out, FunctionCache& in, std::string& error_string) {
   // for (auto& block : in.blocks) {
-  for (size_t block_idx = 0; block_idx < in.blocks.size(); block_idx++) {
+  out.op_end_types.resize(in.instructions.size());
+  out.block_init_types.resize(in.blocks.size());
+  for (int block_idx : in.block_visit_order) {
     auto& block = in.blocks[block_idx];
-    auto& state = out.block_init_types.emplace_back();
-    if (!convert_to_old_format(state, block.start_type_state, error_string)) {
+    if (!convert_to_old_format(out.block_init_types.at(block_idx), block.start_type_state,
+                               error_string)) {
       error_string += fmt::format(" at the start of block {}\n", block_idx);
       return false;
     }
-  }
 
-  for (auto& instr : in.instructions) {
-    auto& state = out.op_end_types.emplace_back();
-    if (!convert_to_old_format(state, instr.types, error_string)) {
-      error_string += fmt::format(" at op {}\n", instr.aop_idx);
-      return false;
+    for (auto& instr : block.instructions) {
+      if (!convert_to_old_format(out.op_end_types.at(instr->aop_idx), instr->types, error_string)) {
+        error_string += fmt::format(" at op {}\n", instr->aop_idx);
+        return false;
+      }
     }
   }
+
   return true;
 }
 
@@ -505,6 +510,11 @@ void run(Output& out, const Input& input) {
   FunctionCache function_cache;
   auto stack_slots = find_stack_spill_slots(*input.func);
   build_function(function_cache, *input.func, stack_slots);
+
+  // annoying hack
+  if (input.func->guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+    input.dts->type_prop_settings.current_method_type = input.func->guessed_name.type_name;
+  }
 
   // mark the entry block
   function_cache.blocks.at(0).needs_run = true;
