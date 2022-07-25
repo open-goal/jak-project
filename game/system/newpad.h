@@ -60,12 +60,13 @@ enum class Button {
   O = Circle
 };
 
-enum class AnalogMappingMode {DigitalInput = 0, AnalogInput = 1};
+enum class AnalogMappingMode { DigitalInput = 0, AnalogInput = 1 };
 
-//AnalogMappingInfo allows either button or axes to control analog input(s).
-// * In Digital Input Mode, uses both positive_key and negative_key as button indices.
-// * In Analog Input mode, only the positive_key is used.
-//   - The positive_key in Analog Input mode represents an analog axis (i.e GLFW_GAMEPAD_AXIS_RIGHT_Y)
+// AnalogMappingInfo allows either button or axes to control analog input(s).
+//  * In Digital Input Mode, uses both positive_key and negative_key as button indices.
+//  * In Analog Input mode, only the positive_key is used.
+//    - The positive_key in Analog Input mode represents an analog axis (i.e
+//    GLFW_GAMEPAD_AXIS_RIGHT_Y)
 struct AnalogMappingInfo {
   AnalogMappingMode mode = AnalogMappingMode::DigitalInput;
   int positive_key = -1;
@@ -79,7 +80,8 @@ struct MappingInfo {
   int controller_button_mapping[CONTROLLER_COUNT][(int)Pad::Button::Max];
   AnalogMappingInfo controller_analog_mapping[CONTROLLER_COUNT][(int)Pad::Analog::Max];
 
-  int keyboard_button_mapping[CONTROLLER_COUNT][(int)Pad::Button::Max]; //Back up in case controller gets disconnected
+  int keyboard_button_mapping[CONTROLLER_COUNT][(
+      int)Pad::Button::Max];  // Back up in case controller gets disconnected
   AnalogMappingInfo keyboard_analog_mapping[CONTROLLER_COUNT][(int)Pad::Analog::Max];
   // TODO complex button mapping & key macros (e.g. shift+x for l2+r2 press etc.)
 };
@@ -114,6 +116,5 @@ void initialize();
 void update_gamepads();
 int rumble(int pad, float slow_motor, float fast_motor);
 int GetGamepadState(int pad);
-
 
 }  // namespace Pad

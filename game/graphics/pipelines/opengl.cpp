@@ -106,9 +106,12 @@ void SetDisplayCallbacks(GLFWwindow* d) {
       });
 
   glfwSetMouseButtonCallback(d, [](GLFWwindow* window, int button, int action, int mode) {
-    int key = button + GLFW_KEY_LAST;  // Mouse button index are appended after initial GLFW keys in newpad
+    int key = button +
+              GLFW_KEY_LAST;  // Mouse button index are appended after initial GLFW keys in newpad
 
-    if (button == GLFW_MOUSE_BUTTON_LEFT && g_cursor_input_mode == GLFW_CURSOR_NORMAL) { //Are there any other mouse buttons we don't want to use?
+    if (button == GLFW_MOUSE_BUTTON_LEFT &&
+        g_cursor_input_mode ==
+            GLFW_CURSOR_NORMAL) {  // Are there any other mouse buttons we don't want to use?
       Pad::ClearKey(key);
       return;
     }
@@ -136,7 +139,7 @@ void SetDisplayCallbacks(GLFWwindow* d) {
       return;
     }
 
-    if (is_cursor_position_valid == false) { 
+    if (is_cursor_position_valid == false) {
       last_cursor_x_position = xposition;
       last_cursor_y_position = yposition;
       is_cursor_position_valid = true;
@@ -152,7 +155,7 @@ void SetDisplayCallbacks(GLFWwindow* d) {
     last_cursor_x_position = xposition;
     last_cursor_y_position = yposition;
   });
-}    
+}
 
 void ErrorCallback(int err, const char* msg) {
   lg::error("GLFW ERR {}: {}", err, std::string(msg));

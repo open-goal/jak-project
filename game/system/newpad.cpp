@@ -4,15 +4,15 @@
  * Actual input detection is done through window events and is gfx pipeline-dependent.
  */
 
-#include <atomic>
 #include "newpad.h"
+
+#include <atomic>
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 #include <common/util/FileUtil.h>
 
 #include "game/graphics/pipelines/opengl.h"  // for GLFW macros
-
 
 namespace Pad {
 
@@ -49,7 +49,7 @@ u64 input_mode_mod = 0;
 u64 input_mode_index = 0;
 MappingInfo g_input_mode_mapping;
 
-MappingInfo g_mapping; //Local copy of Gfx mapping info
+MappingInfo g_mapping;  // Local copy of Gfx mapping info
 
 void ClearKey(int key) {
   if (key < 0 || key > NUM_KEYS) {
@@ -136,7 +136,7 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
     return 0;
   }
 
-  if(g_gamepad_buttons[pad][(int)button]){
+  if (g_gamepad_buttons[pad][(int)button]) {
     return 1;
   }
 
@@ -150,7 +150,7 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
 
 void SetAnalogAxisValue(int axis, double value) {
   if (axis == GlfwKeyCustomAxis::CURSOR_X_AXIS || axis == GlfwKeyCustomAxis::CURSOR_Y_AXIS) {
-    value /= 23.0f; //Arbituary value. Cursor delta generally a lot larger than scroll wheel delta
+    value /= 23.0f;  // Arbituary value. Cursor delta generally a lot larger than scroll wheel delta
   }
 
   for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
@@ -172,7 +172,7 @@ void UpdateAxisValue() {
   for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
     for (int analog = 0; analog < (int)Analog::Max; ++analog) {
       if (g_mapping.keyboard_analog_mapping[pad][analog].mode == AnalogMappingMode::AnalogInput) {
-        continue; //Assumed Set Axis set value already
+        continue;  // Assumed Set Axis set value already
       }
 
       double input = 0.0f;
@@ -201,7 +201,7 @@ int AnalogValue(MappingInfo& mapping, Analog analog, int pad = 0) {
     return 127;
   }
 
-  if(g_gamepads.gamepad_idx[pad] == -1){
+  if (g_gamepads.gamepad_idx[pad] == -1) {
     input = g_key_analogs[pad][(int)analog];
   } else {  // Gamepad present
     input = g_gamepad_analogs[pad][(int)analog];
@@ -226,7 +226,7 @@ void MapButton(MappingInfo& mapping, Button button, int pad, int key) {
   }
 
   if (g_gamepads.gamepad_idx[pad] == -1) {
-    //TODO: Check if other pad is keyboard and if key is already bound
+    // TODO: Check if other pad is keyboard and if key is already bound
     mapping.keyboard_button_mapping[pad][(int)button] = key;
   } else {
     mapping.controller_button_mapping[pad][(int)button] = key;
@@ -293,7 +293,7 @@ void DefaultMapping(MappingInfo& mapping) {
   //
   // Need someway to toggle off -- where do we have access to the game's settings?
 
-  //TODO - What should the second pc default controls be?
+  // TODO - What should the second pc default controls be?
 
   // R1 / L1
   MapButton(mapping, Button::L1, 0, GLFW_KEY_Q);
@@ -328,8 +328,9 @@ void DefaultMapping(MappingInfo& mapping) {
   analog_mapping.negative_key = GLFW_KEY_A;
   MapAnalog(mapping, Analog::Left_X, 0, analog_mapping);
 
-  //Invert logic used here. Left Y axis movement is based on towrds the camera.
-  //In game forward is treated as going away from the camera and backwards is headed towards the camera.
+  // Invert logic used here. Left Y axis movement is based on towrds the camera.
+  // In game forward is treated as going away from the camera and backwards is headed towards the
+  // camera.
   analog_mapping.negative_key = GLFW_KEY_W;
   analog_mapping.positive_key = GLFW_KEY_S;
   MapAnalog(mapping, Analog::Left_Y, 0, analog_mapping);

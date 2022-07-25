@@ -52,7 +52,7 @@ GfxGlobalSettings g_global_settings;
 GfxSettings g_settings;
 // const std::vector<const GfxRendererModule*> renderers = {&moduleOpenGL};
 
-//Not crazy about this declaration
+// Not crazy about this declaration
 const std::pair<std::string, Pad::Button> gamepad_map[] = {{"Select", Pad::Button::Select},
                                                            {"L3", Pad::Button::L3},
                                                            {"R3", Pad::Button::R3},
@@ -86,18 +86,21 @@ void DumpToJson(const std::string& filename) {
     auto& controller_json = peripheral_json["Controller"];
     auto& controller_buttons_json = controller_json["Buttons"];
     for (const auto& [name, value] : gamepad_map) {
-      controller_buttons_json[name] = g_settings.pad_mapping_info.controller_button_mapping[i][(int)value];
+      controller_buttons_json[name] =
+          g_settings.pad_mapping_info.controller_button_mapping[i][(int)value];
     }
 
     auto& keyboard_json = peripheral_json["Keyboard+Mouse"];
     auto& keyboard_buttons_json = keyboard_json["Buttons"];
     for (const auto& [name, value] : gamepad_map) {
-      keyboard_buttons_json[name] = g_settings.pad_mapping_info.keyboard_button_mapping[i][(int)value];
+      keyboard_buttons_json[name] =
+          g_settings.pad_mapping_info.keyboard_button_mapping[i][(int)value];
     }
 
     auto& keyboard_analogs_json = keyboard_json["Analog"];
     for (const auto& [name, value] : analog_map) {
-      if (g_settings.pad_mapping_info.keyboard_analog_mapping[i][(int)value].mode == Pad::AnalogMappingMode::AnalogInput) {
+      if (g_settings.pad_mapping_info.keyboard_analog_mapping[i][(int)value].mode ==
+          Pad::AnalogMappingMode::AnalogInput) {
         keyboard_analogs_json[name]["Axis Id"] =
             g_settings.pad_mapping_info.keyboard_analog_mapping[i][(int)value].positive_key;
       } else {
@@ -139,16 +142,18 @@ void LoadPeripheralSettings(std::string& filepath) {
         g_settings.pad_mapping_info.controller_button_mapping[controller_index][(int)button] =
             controller_buttons_json[name].get<int>();
       } else {
-        lg::warn("Controller button override not found for {}. Using controller default value: {}", name, 
-                 g_settings.pad_mapping_info.controller_button_mapping[controller_index][(int)button]);
+        lg::warn(
+            "Controller button override not found for {}. Using controller default value: {}", name,
+            g_settings.pad_mapping_info.controller_button_mapping[controller_index][(int)button]);
       }
 
       if (keyboard_buttons_json.find(name) != keyboard_buttons_json.end()) {
         g_settings.pad_mapping_info.keyboard_button_mapping[controller_index][(int)button] =
             keyboard_buttons_json[name].get<int>();
       } else {
-        lg::warn("Keyboard button override not found for {}. Using keyboard default value: {}", name,
-                 g_settings.pad_mapping_info.keyboard_button_mapping[controller_index][(int)button]);
+        lg::warn(
+            "Keyboard button override not found for {}. Using keyboard default value: {}", name,
+            g_settings.pad_mapping_info.keyboard_button_mapping[controller_index][(int)button]);
       }
     }
 
@@ -158,7 +163,8 @@ void LoadPeripheralSettings(std::string& filepath) {
       if (keyboard_analogs_json[name].contains("Axis Id") == true) {
         analog_mapping.mode = Pad::AnalogMappingMode::AnalogInput;
         analog_mapping.positive_key = keyboard_analogs_json[name]["Axis Id"].get<int>();
-        g_settings.pad_mapping_info.keyboard_analog_mapping[controller_index][(int)value] = analog_mapping;
+        g_settings.pad_mapping_info.keyboard_analog_mapping[controller_index][(int)value] =
+            analog_mapping;
         continue;
       }
 
@@ -179,7 +185,8 @@ void LoadPeripheralSettings(std::string& filepath) {
                  g_settings.pad_mapping_info.keyboard_analog_mapping[controller_index][(int)value]
                      .negative_key);
       }
-      g_settings.pad_mapping_info.keyboard_analog_mapping[controller_index][(int)value] = analog_mapping;
+      g_settings.pad_mapping_info.keyboard_analog_mapping[controller_index][(int)value] =
+          analog_mapping;
     }
     controller_index++;
   }
