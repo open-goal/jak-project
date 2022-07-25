@@ -78,6 +78,11 @@ struct GraphicsData {
 
 std::unique_ptr<GraphicsData> g_gfx_data;
 
+std::atomic<int> g_cursor_input_mode = GLFW_CURSOR_NORMAL;
+bool is_cursor_position_valid = false;
+double last_cursor_x_position = 0;
+double last_cursor_y_position = 0;
+
 void SetDisplayCallbacks(GLFWwindow* d) {
   glfwSetKeyCallback(
       d, [](GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
@@ -92,11 +97,62 @@ void SetDisplayCallbacks(GLFWwindow* d) {
             if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
                 glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
               display->set_imgui_visible(!display->is_imgui_visible());
+              g_cursor_input_mode =
+                  (display->is_imgui_visible()) ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
+              glfwSetInputMode(window, GLFW_CURSOR, g_cursor_input_mode);
             }
           }
         }
       });
-}
+
+  glfwSetMouseButtonCallback(d, [](GLFWwindow* window, int button, int action, int mode) {
+    int key = button + GLFW_KEY_LAST;  // Mouse button index are appended after initial GLFW keys in newpad
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT && g_cursor_input_mode == GLFW_CURSOR_NORMAL) { //Are there any other mouse buttons we don't want to use?
+      Pad::ClearKey(key);
+      return;
+    }
+
+    if (action == GlfwKeyAction::Press) {
+      Pad::OnKeyPress(key);
+    } else if (action == GlfwKeyAction::Release) {
+      Pad::OnKeyRelease(key);
+    }
+  });
+
+  glfwSetScrollCallback(d, [](GLFWwindow* window, double xoffset, double yoffset) {
+    Pad::SetAnalogAxisValue(GlfwKeyCustomAxis::SCROLL_WHEEL_X_AXIS, xoffset);
+    Pad::SetAnalogAxisValue(GlfwKeyCustomAxis::SCROLL_WHEEL_Y_AXIS, yoffset);
+    printf("Scroll Callback: xoffset: %lf, yoffset: %lf\n", xoffset, yoffset);
+  });
+
+  glfwSetCursorPosCallback(d, [](GLFWwindow* window, double xposition, double yposition) {
+    if (g_cursor_input_mode == GLFW_CURSOR_NORMAL) {
+      if (is_cursor_position_valid == true) {
+        Pad::ClearAnalogAxisValue(GlfwKeyCustomAxis::CURSOR_X_AXIS);
+        Pad::ClearAnalogAxisValue(GlfwKeyCustomAxis::CURSOR_Y_AXIS);
+        is_cursor_position_valid = false;
+      }
+      return;
+    }
+
+    if (is_cursor_position_valid == false) { 
+      last_cursor_x_position = xposition;
+      last_cursor_y_position = yposition;
+      is_cursor_position_valid = true;
+      return;
+    }
+
+    double xoffset = xposition - last_cursor_x_position;
+    double yoffset = yposition - last_cursor_y_position;
+
+    Pad::SetAnalogAxisValue(GlfwKeyCustomAxis::CURSOR_X_AXIS, xoffset);
+    Pad::SetAnalogAxisValue(GlfwKeyCustomAxis::CURSOR_Y_AXIS, yoffset);
+
+    last_cursor_x_position = xposition;
+    last_cursor_y_position = yposition;
+  });
+}    
 
 void ErrorCallback(int err, const char* msg) {
   lg::error("GLFW ERR {}: {}", err, std::string(msg));
@@ -186,6 +242,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
     lg::error("Could not load icon for OpenGL window");
   }
 
+  glfwSetInputMode(window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);
   SetDisplayCallbacks(window);
   Pad::initialize();
 
@@ -283,8 +340,8 @@ void render_game_frame(int game_width,
     options.game_res_h = game_height;
     options.window_framebuffer_width = window_fb_width;
     options.window_framebuffer_height = window_fb_height;
-    options.draw_region_width = draw_region_width;
     options.draw_region_height = draw_region_height;
+    options.draw_region_width = draw_region_width;
     options.msaa_samples = msaa_samples;
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
@@ -529,6 +586,12 @@ void GLDisplay::render() {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   }
 
+  // switch vsync modes, if requested
+  if (Gfx::g_global_settings.vsync != Gfx::g_global_settings.old_vsync) {
+    Gfx::g_global_settings.old_vsync = Gfx::g_global_settings.vsync;
+    glfwSwapInterval(Gfx::g_global_settings.vsync);
+  }
+
   // actual vsync
   g_gfx_data->debug_gui.finish_frame();
   {
@@ -544,12 +607,6 @@ void GLDisplay::render() {
   // actually wait for vsync
   if (g_gfx_data->debug_gui.should_gl_finish()) {
     glFinish();
-  }
-
-  // switch vsync modes, if requested
-  if (Gfx::g_global_settings.vsync != Gfx::g_global_settings.old_vsync) {
-    Gfx::g_global_settings.old_vsync = Gfx::g_global_settings.vsync;
-    glfwSwapInterval(Gfx::g_global_settings.vsync);
   }
 
   // Start timing for the next frame.

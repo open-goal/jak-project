@@ -18,6 +18,15 @@ enum GlfwKeyAction {
   Repeat = GLFW_REPEAT     // repeated input on hold e.g. when typing something
 };
 
+enum GlfwKeyCustomAxis {
+  SCROLL_WHEEL_X_AXIS = GLFW_GAMEPAD_AXIS_LAST + 1,
+  SCROLL_WHEEL_Y_AXIS = GLFW_GAMEPAD_AXIS_LAST + 2,
+  SCROLL_WHELL_LAST_AXIS = SCROLL_WHEEL_Y_AXIS,
+
+  CURSOR_X_AXIS = SCROLL_WHELL_LAST_AXIS + 1,
+  CURSOR_Y_AXIS = SCROLL_WHELL_LAST_AXIS + 2
+};
+
 class GLDisplay : public GfxDisplay {
   GLFWwindow* m_window;
 
