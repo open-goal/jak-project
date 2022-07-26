@@ -4,6 +4,7 @@
 #include "decompiler/IR2/bitfields.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/types2/Type.h"
+#include "decompiler/util/goal_constants.h"
 
 /*!
  * This file contains implementations of forward type propagation.
@@ -21,6 +22,51 @@ bool is_int_or_uint(const DecompilerTypeSystem& dts, const TP_Type& type) {
 bool is_signed(const DecompilerTypeSystem& dts, const TP_Type& type) {
   return tc(dts, TypeSpec("int"), type) && !tc(dts, TypeSpec("uint"), type);
 }
+
+void types2_from_ambiguous_deref(types2::Instruction& instr,
+                                 types2::Type& type,
+                                 FieldReverseMultiLookupOutput& out) {
+  ASSERT(out.success && !out.results.empty());
+  if (instr.field_access_tag) {
+    auto& tag = instr.field_access_tag;
+    // already have a tag here...
+    if (tag->selected_possibility >= 0) {
+      // and the tag is resolved! let's use that.
+      auto& desired_type = tag->possibilities.at(tag->selected_possibility).type;
+      for (auto& sel : out.results) {
+        if (sel.result_type == desired_type) {
+          // take it!
+          type.type = TP_Type::make_from_ts(desired_type);
+          return;
+        }
+      }
+      // uh oh, something went wrong...
+      fmt::print("type2_from_ambiguous_deref: wanted type {}, but couldn't find it.\n",
+                 desired_type.print());
+      // just pick the first one? and hope that things work out...
+      type.type = TP_Type::make_from_ts(out.results.front().result_type);
+      return;
+    } else {
+      // we've got a tag, but no info, just pick the first.
+      type.type = TP_Type::make_from_ts(out.results.front().result_type);
+      return;
+    }
+  } else {
+    // no tag, let's create one!
+    instr.field_access_tag = std::make_unique<types2::AmbiguousFieldAccess>();
+    auto& tag = instr.field_access_tag;
+    for (auto& poss : out.results) {
+      auto& slot = tag->possibilities.emplace_back();
+      slot.type = poss.result_type;
+    }
+
+    type.type = TP_Type::make_from_ts(out.results.front().result_type);
+    type.tag.kind = types2::Tag::FIELD_ACCESS;
+    type.tag.field_access = tag.get();
+    return;
+  }
+}
+
 // Note that there are "get_type" and "types2" functions that look somewhat similar.
 // the difference is that "get_type" just tries to figure out a TP_Type, and the "types2" function
 // will set up/resolve tags, and they are intended to be used to update the type state with their
@@ -174,8 +220,29 @@ bool backprop_tagged_type(const TP_Type& expected_type, types2::Type& actual_typ
   switch (actual_type.tag.kind) {
     case types2::Tag::NONE:
       return false;
+    case types2::Tag::INT_OR_FLOAT: {
+      auto type = expected_type.typespec();
+      if (type.base_type() == "float" &&
+          (!actual_type.tag.int_or_float->is_float ||
+           actual_type.tag.int_or_float->is_float.value() == false)) {
+        // kick to float
+        actual_type.tag.int_or_float->is_float = true;
+        actual_type.type = TP_Type::make_from_ts("float");
+        return true;
+      }
+      return false;
+    }
+
+    case types2::Tag::BLOCK_ENTRY:
+      if (actual_type.tag.block_entry->selected_type &&
+          actual_type.tag.block_entry->selected_type == expected_type) {
+        return false;
+      }
+      actual_type.tag.block_entry->updated = true;
+      actual_type.tag.block_entry->selected_type = expected_type;
+      return false;
     default:
-      ASSERT(false);
+      ASSERT_MSG(false, fmt::format("unhandled tag: {}\n", (int)actual_type.tag.kind));
   }
 }
 }  // namespace types2
@@ -331,10 +398,42 @@ void types2_for_left_shift(types2::Type& type_out,
   type_out.type = TP_Type::make_from_ts("int");
 }
 
+void types2_for_int_constant(types2::Type& type_out,
+                             types2::Instruction& output_instr,
+                             SimpleAtom& atom) {
+  if (output_instr.int_or_float) {
+    auto& tag = output_instr.int_or_float;
+    if (tag->is_float.has_value()) {
+      bool is_float = tag->is_float.value();
+      if (is_float) {
+        atom.mark_as_float();
+        type_out.type = TP_Type::make_from_ts("float");
+        return;
+      } else {
+        type_out.type = TP_Type::make_from_integer(atom.get_int());
+        return;
+      }
+    } else {
+      // don't know, just guess int
+      type_out.type = TP_Type::make_from_integer(atom.get_int());
+      return;
+    }
+  } else {
+    // no tag, add one and guess int.
+    output_instr.int_or_float = std::make_unique<types2::AmbiguousIntOrFloatConstant>();
+    auto& tag = output_instr.int_or_float;
+
+    type_out.type = TP_Type::make_from_integer(atom.get_int());
+    type_out.tag.kind = types2::Tag::INT_OR_FLOAT;
+    type_out.tag.int_or_float = tag.get();
+    return;
+  }
+}
+
 void types2_for_atom(types2::Type& type_out,
                      types2::Instruction& output_instr,
                      types2::TypeState& input_types,
-                     const SimpleAtom& atom,
+                     SimpleAtom& atom,
                      const Env& env,
                      const DecompilerTypeSystem& dts) {
   switch (atom.get_kind()) {
@@ -350,8 +449,9 @@ void types2_for_atom(types2::Type& type_out,
       type_out.type = type;
     } break;
     case SimpleAtom::Kind::INTEGER_CONSTANT: {
-      auto type = TP_Type::make_from_integer(atom.get_int());
-      type_out.type = type;
+      // auto type = TP_Type::make_from_integer(atom.get_int());
+      // type_out.type = type;
+      types2_for_int_constant(type_out, output_instr, atom);
     } break;
     case SimpleAtom::Kind::EMPTY_LIST: {
       auto type = TP_Type::make_from_ts("pair");
@@ -370,7 +470,7 @@ void types2_for_atom(types2::Type& type_out,
 
 void types2_for_fpr_to_gpr(types2::Type& type_out,
                            types2::Instruction& output_instr,
-                           const SimpleExpression& expr,
+                           SimpleExpression& expr,
                            const Env& env,
                            types2::TypeState& input_types,
                            const DecompilerTypeSystem& dts) {
@@ -380,7 +480,7 @@ void types2_for_fpr_to_gpr(types2::Type& type_out,
 
 void types2_for_gpr_to_fpr(types2::Type& type_out,
                            types2::Instruction& output_instr,
-                           const SimpleExpression& expr,
+                           SimpleExpression& expr,
                            const Env& env,
                            types2::TypeState& input_types,
                            const DecompilerTypeSystem& dts) {
@@ -863,7 +963,8 @@ void types2_for_add(types2::Type& type_out,
         type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
         return;
       } else {
-        ASSERT(false);
+        types2_from_ambiguous_deref(output_instr, type_out, out);
+        return;
       }
     }
   }
@@ -998,24 +1099,78 @@ void types2_for_add(types2::Type& type_out,
     return;
   }
 
-  ASSERT(false);
+  if (tc(dts, TypeSpec("structure"), arg1_type) && !expr.get_arg(0).is_int() &&
+      is_int_or_uint(dts, arg0_type)) {
+    if (arg1_type.typespec() == TypeSpec("symbol") &&
+        arg0_type.is_integer_constant(DECOMP_SYM_INFO_OFFSET + POINTER_SIZE)) {
+      // symbol -> GOAL String
+      // NOTE - the offset doesn't fit in a s16, so it's loaded into a register first.
+      // so we expect the arg to be a variable, and the type propagation will figure out the
+      // integer constant.
+      type_out.type = TP_Type::make_from_ts(dts.ts.make_pointer_typespec("string"));
+      return;
+    } else {
+      // byte access of offset array field trick.
+      // arg1 holds a structure.
+      // arg0 is an integer in a register.
+      type_out.type = TP_Type::make_object_plus_product(arg1_type.typespec(), 1, true);
+      return;
+    }
+  }
+
+  fmt::print("checks: {} {} {}\n", tc(dts, TypeSpec("structure"), arg1_type),
+             !expr.get_arg(0).is_int(), is_int_or_uint(dts, arg0_type));
+
+  ASSERT_MSG(false, fmt::format("add failed: {} {}\n", arg0_type.print(), arg1_type.print()));
 }
 
-void types2_for_normal_2op_float(types2::Type& type_out,
+void types2_for_normal_all_float(types2::Type& type_out,
                                  types2::Instruction& output_instr,
                                  const SimpleExpression& expr,
                                  const Env& env,
                                  types2::TypeState& input_types,
-                                 const DecompilerTypeSystem& dts) {
+                                 const DecompilerTypeSystem& dts,
+                                 types2::TypePropExtras& extras) {
   // backprop to make inputs floats
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < expr.args(); i++) {
     auto& arg = expr.get_arg(i);
     auto& arg_type = input_types[arg.var().reg()];
     if (arg_type->tag.has_tag()) {
-      types2::backprop_tagged_type(TP_Type::make_from_ts("float"), *arg_type);
+      if (types2::backprop_tagged_type(TP_Type::make_from_ts("float"), *arg_type)) {
+        extras.needs_rerun = true;
+      }
     }
   }
 
+  type_out.type = TP_Type::make_from_ts(TypeSpec("float"));
+}
+
+void types2_for_float_to_int(types2::Type& type_out,
+                             const SimpleExpression& expr,
+                             types2::TypeState& input_types,
+                             types2::TypePropExtras& extras) {
+  auto& arg = expr.get_arg(0);
+  auto& arg_type = input_types[arg.var().reg()];
+  if (arg_type->tag.has_tag()) {
+    if (types2::backprop_tagged_type(TP_Type::make_from_ts("float"), *arg_type)) {
+      extras.needs_rerun = true;
+    }
+  }
+  type_out.type = TP_Type::make_from_ts(TypeSpec("int"));
+}
+
+void types2_for_int_to_float(types2::Type& type_out,
+                             const SimpleExpression& expr,
+                             types2::TypeState& input_types,
+                             types2::TypePropExtras& extras) {
+  // backprop here might be bad...
+  auto& arg = expr.get_arg(0);
+  auto& arg_type = input_types[arg.var().reg()];
+  if (arg_type->tag.has_tag()) {
+    if (types2::backprop_tagged_type(TP_Type::make_from_ts("int"), *arg_type)) {
+      extras.needs_rerun = true;
+    }
+  }
   type_out.type = TP_Type::make_from_ts(TypeSpec("float"));
 }
 
@@ -1035,15 +1190,19 @@ void types2_for_normal_int1(types2::Type& type_out,
 void types2_for_expr(types2::Type& type_out,
                      types2::Instruction& output_instr,
                      types2::TypeState& input_types,
-                     const SimpleExpression& expr,
+                     SimpleExpression& expr,
                      const Env& env,
-                     const DecompilerTypeSystem& dts) {
+                     const DecompilerTypeSystem& dts,
+                     types2::TypePropExtras& extras) {
   switch (expr.kind()) {
     case SimpleExpression::Kind::IDENTITY:
       types2_for_atom(type_out, output_instr, input_types, expr.get_arg(0), env, dts);
       break;
     case SimpleExpression::Kind::RIGHT_SHIFT_ARITH:
       types2_for_right_shift(type_out, expr, false, env, input_types, dts);
+      break;
+    case SimpleExpression::Kind::RIGHT_SHIFT_LOGIC:
+      types2_for_right_shift(type_out, expr, true, env, input_types, dts);
       break;
     case SimpleExpression::Kind::LEFT_SHIFT:
       types2_for_left_shift(type_out, expr, env, input_types, dts);
@@ -1059,7 +1218,12 @@ void types2_for_expr(types2::Type& type_out,
       break;
     case SimpleExpression::Kind::DIV_S:
     case SimpleExpression::Kind::MIN_S:
-      types2_for_normal_2op_float(type_out, output_instr, expr, env, input_types, dts);
+    case SimpleExpression::Kind::SUB_S:
+    case SimpleExpression::Kind::MAX_S:
+    case SimpleExpression::Kind::MUL_S:
+    case SimpleExpression::Kind::ADD_S:
+    case SimpleExpression::Kind::ABS_S:
+      types2_for_normal_all_float(type_out, output_instr, expr, env, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::SUB:
       types2_for_sub(type_out, output_instr, expr, env, input_types, dts);
@@ -1077,6 +1241,7 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::NEG:
     case SimpleExpression::Kind::MIN_SIGNED:
     case SimpleExpression::Kind::MAX_SIGNED:
+    case SimpleExpression::Kind::SUBU_L32_S7:
       type_out.type = TP_Type::make_from_ts("int");  // ?
       break;
     case SimpleExpression::Kind::OR:
@@ -1092,6 +1257,12 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::LOGNOT:
       types2_for_normal_int1(type_out, output_instr, expr, env, input_types, dts);
       break;
+    case SimpleExpression::Kind::FLOAT_TO_INT:
+      types2_for_float_to_int(type_out, expr, input_types, extras);
+      break;
+    case SimpleExpression::Kind::INT_TO_FLOAT:
+      types2_for_int_to_float(type_out, expr, input_types, extras);
+      break;
     default:
       ASSERT_MSG(false, fmt::format("Unhandled types2_for_expr: {} {}\n", expr.to_string(env),
                                     (int)expr.kind()));
@@ -1105,7 +1276,7 @@ void SetVarOp::propagate_types2(types2::Instruction& instr,
                                 types2::TypePropExtras& extras) {
   // propagate types on the expression. Will also handle backprop of constraints, etc.
   auto* type_out = instr.types[m_dst.reg()];
-  types2_for_expr(*type_out, instr, input_types, m_src, env, dts);
+  types2_for_expr(*type_out, instr, input_types, m_src, env, dts, extras);
 
   // remember this. It's used later, to insert better looking casts.
   if (type_out->type) {
@@ -1133,7 +1304,7 @@ void AsmOp::propagate_types2(types2::Instruction& instr,
   if (m_instr.kind == InstructionKind::QMFC2) {
     ASSERT(m_dst);
     out[m_dst->reg()]->type = TP_Type::make_from_ts("float");
-    ASSERT(false);  // hack... not sure float is right here... lets do more testing first.
+    // ASSERT(false);  // hack... not sure float is right here... lets do more testing first.
     return;
   }
 
@@ -1372,7 +1543,6 @@ bool load_var_op_determine_type(types2::Type& type_out,
       ASSERT(false);
     }
     auto& input_type = input_type_info->type.value();
-    fmt::print("input_type is {}\n", input_type.print());
 
     // check loading a method of a known type.
     // the TP_Type system will track individual types, both as a "most specific known at decompile
@@ -1442,8 +1612,27 @@ bool load_var_op_determine_type(types2::Type& type_out,
       }
     }
 
-    // TODO pointer
-    // TODO object plus product with cont
+    if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
+      FieldReverseLookupInput rd_in;
+      DerefKind dk;
+      dk.is_store = false;
+      dk.reg_kind = get_reg_kind(ro.reg);
+      dk.sign_extend = op.kind() == LoadVarOp::Kind::SIGNED;
+      dk.size = op.size();
+      rd_in.deref = dk;
+      rd_in.base_type = input_type.get_obj_plus_const_mult_typespec();
+      rd_in.stride = input_type.get_multiplier();
+      rd_in.offset = ro.offset;
+      auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
+      if (rd.success) {
+        if (rd.results.size() == 1) {
+          type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(rd.results.front().result_type));
+          return true;
+        } else {
+          ASSERT(false);  // ambiguous deref case...
+        }
+      }
+    }
 
     if (input_type.kind == TP_Type::Kind::TYPESPEC && ro.offset == -4 &&
         op.kind() == LoadVarOp::Kind::UNSIGNED && op.size() == 4 && ro.reg.get_kind() == Reg::GPR) {
@@ -1492,12 +1681,64 @@ bool load_var_op_determine_type(types2::Type& type_out,
             return true;
           }
         } else {
-          ASSERT(false);  // ambiguous deref case...
+          fmt::print("ambiguous deref. Choices are:\n");
+          for (auto& result : rd.results) {
+            fmt::print(" {} : ", result.result_type.print());
+            for (auto& tok : result.tokens) {
+              fmt::print("{} ", tok.print());
+            }
+            fmt::print("\n");
+          }
+
+          types2_from_ambiguous_deref(output_instr, type_out, rd);
+          return true;
         }
       }
     }
 
-    // todo more pointer
+    if (input_type.typespec() == TypeSpec("pointer")) {
+      // we got a plain pointer. let's just assume we're loading an integer.
+      // perhaps we should disable this feature by default on 4-byte loads if we're getting
+      // lots of false positives for loading pointers from plain pointers.
+
+      switch (op.kind()) {
+        case LoadVarOp::Kind::UNSIGNED:
+          switch (op.size()) {
+            case 1:
+            case 2:
+            case 4:
+            case 8:
+              type_out.type = TP_Type::make_from_ts(TypeSpec("uint"));
+              return true;
+            case 16:
+              type_out.type = TP_Type::make_from_ts(TypeSpec("uint128"));
+              return true;
+            default:
+              break;
+          }
+          break;
+        case LoadVarOp::Kind::SIGNED:
+          switch (op.size()) {
+            case 1:
+            case 2:
+            case 4:
+            case 8:
+              type_out.type = TP_Type::make_from_ts(TypeSpec("int"));
+              return true;
+            case 16:
+              type_out.type = TP_Type::make_from_ts(TypeSpec("int128"));
+              return true;
+            default:
+              break;
+          }
+          break;
+        case LoadVarOp::Kind::FLOAT:
+          type_out.type = TP_Type::make_from_ts(TypeSpec("float"));
+          return true;
+        default:
+          ASSERT(false);
+      }
+    }
 
     // rd failed, try as pair.
     if (env.allow_sloppy_pair_typing()) {
@@ -1556,12 +1797,38 @@ void BranchOp::propagate_types2(types2::Instruction& instr,
   for (auto& clobber : m_clobber_regs) {
     instr.types[clobber]->type = TP_Type::make_uninitialized();
   }
+
+  switch(m_condition.kind()) {
+    case IR2_Condition::Kind::FLOAT_EQUAL:
+    case IR2_Condition::Kind::FLOAT_GEQ:
+    case IR2_Condition::Kind::FLOAT_GREATER_THAN:
+    case IR2_Condition::Kind::FLOAT_LEQ:
+    case IR2_Condition::Kind::FLOAT_LESS_THAN:
+    case IR2_Condition::Kind::FLOAT_NOT_EQUAL:
+      for (int i = 0; i < 2; i++) {
+        auto& arg = m_condition.src(i);
+        auto& arg_type = input_types[arg.var().reg()];
+        if (arg_type->tag.has_tag()) {
+          if (types2::backprop_tagged_type(TP_Type::make_from_ts("float"), *arg_type)) {
+            extras.needs_rerun = true;
+          }
+        }
+      }
+      break;
+    default:
+      break;
+  }
+
+
   switch (m_branch_delay.kind()) {
     case IR2_BranchDelay::Kind::NOP:
     case IR2_BranchDelay::Kind::NO_DELAY:
       break;
     case IR2_BranchDelay::Kind::SET_REG_FALSE:
       instr.types[m_branch_delay.var(0).reg()]->type = TP_Type::make_false();
+      break;
+    case IR2_BranchDelay::Kind::SET_REG_TRUE:
+      instr.types[m_branch_delay.var(0).reg()]->type = TP_Type::make_from_ts("symbol");
       break;
     default:
       ASSERT_MSG(false,

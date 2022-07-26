@@ -21,7 +21,7 @@ namespace decompiler::types2 {
  */
 struct AmbiguousFieldAccess {
   struct Possibility {
-    TP_Type type;
+    TypeSpec type;
     // TODO: probably stash more info here.
   };
   std::vector<Possibility> possibilities;
@@ -53,6 +53,11 @@ struct BlockEntryType {
   int stack_slot = -1;
   std::optional<TP_Type> selected_type;
   bool updated = false;
+  std::optional<TP_Type>* type_to_clear = nullptr;
+};
+
+struct AmbiguousIntOrFloatConstant {
+  std::optional<bool> is_float;
 };
 
 /*!
@@ -60,13 +65,21 @@ struct BlockEntryType {
  */
 struct Tag {
   bool has_tag() { return kind != NONE; }
-  enum Kind { FIELD_ACCESS, UNKNOWN_LABEL, UNKNOWN_STACK_STRUCTURE, BLOCK_ENTRY, NONE } kind = NONE;
+  enum Kind {
+    FIELD_ACCESS,
+    UNKNOWN_LABEL,
+    UNKNOWN_STACK_STRUCTURE,
+    BLOCK_ENTRY,
+    INT_OR_FLOAT,
+    NONE
+  } kind = NONE;
 
   union {
     AmbiguousFieldAccess* field_access;
     BlockEntryType* block_entry;
     UnknownLabel* unknown_label;
     UnknownStackStructure* unknown_stack_structure;
+    AmbiguousIntOrFloatConstant* int_or_float;
   };
 };
 
@@ -132,6 +145,19 @@ struct TypeState {
     return nullptr;
   }
 
+  template <typename T>
+  void for_each_type(T&& f) {
+    for (auto gpr_type : gpr_types) {
+      f(*gpr_type);
+    }
+    for (auto fpr_type : fpr_types) {
+      f(*fpr_type);
+    }
+    for (auto spill : stack_slot_types) {
+      f(spill->type);
+    }
+  }
+
   std::vector<StackSlotType*> stack_slot_types;
 };
 
@@ -143,6 +169,7 @@ struct Instruction {
   std::unique_ptr<AmbiguousFieldAccess> field_access_tag;
   std::unique_ptr<UnknownLabel> unknown_label_tag;
   std::unique_ptr<UnknownStackStructure> unknown_stack_structure_tag;
+  std::unique_ptr<AmbiguousIntOrFloatConstant> int_or_float;
 };
 
 struct BlockStartTypes {

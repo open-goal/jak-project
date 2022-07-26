@@ -187,12 +187,14 @@ class SimpleAtom {
     ASSERT(is_sym_ptr() || is_sym_val());
     return m_string;
   }
+  void mark_as_float();
 
  private:
   Kind m_kind = Kind::INVALID;
   std::string m_string;  // for symbol ptr and symbol val
   s64 m_int = -1;        // for integer constant and static address label id
   RegisterAccess m_variable;
+  bool m_display_int_as_float = false;
 };
 
 /*!
@@ -258,6 +260,11 @@ class SimpleExpression {
   // how many arguments?
   int args() const { return n_args; }
   const SimpleAtom& get_arg(int idx) const {
+    ASSERT(idx < args());
+    return m_args[idx];
+  }
+
+  SimpleAtom& get_arg(int idx) {
     ASSERT(idx < args());
     return m_args[idx];
   }

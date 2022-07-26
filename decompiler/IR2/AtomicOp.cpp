@@ -142,16 +142,34 @@ SimpleAtom SimpleAtom::make_static_address(int static_label_id) {
   return result;
 }
 
+void SimpleAtom::mark_as_float() {
+  ASSERT(is_int());
+  m_display_int_as_float = true;
+}
+
 goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   switch (m_kind) {
     case Kind::VARIABLE:
       return m_variable.to_form(env);
     case Kind::INTEGER_CONSTANT: {
-      if (std::abs(m_int) > INT32_MAX) {
-        u64 v = m_int;
-        return pretty_print::to_symbol(fmt::format("#x{:x}", v));
+      if (m_display_int_as_float) {
+        float f;
+        s32 as_s32 = m_int;
+        ASSERT(((s64)as_s32) == m_int); // make sure we don't discard upper 32 bits
+        memcpy(&f, &as_s32, 4);
+        if (f == f) {
+          return goos::Object::make_float(f);
+        } else {
+          // nan or weird
+          return pretty_print::to_symbol(fmt::format("(the-as float #x{:x}", m_int));
+        }
       } else {
-        return goos::Object::make_integer(m_int);
+        if (std::abs(m_int) > INT32_MAX) {
+          u64 v = m_int;
+          return pretty_print::to_symbol(fmt::format("#x{:x}", v));
+        } else {
+          return goos::Object::make_integer(m_int);
+        }
       }
     }
 

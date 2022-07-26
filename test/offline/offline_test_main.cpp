@@ -407,8 +407,8 @@ int main(int argc, char* argv[]) {
   app.add_flag("-d,--dump_current_output", dump_current_output,
                "Output the current output to a folder, use in conjunction with the reference test "
                "files update script");
-  app.add_flag("-m,--max_files", max_files,
-               "Limit the amount of files ran in a single test, picks the first N");
+  app.add_option("-m,--max_files", max_files,
+                 "Limit the amount of files ran in a single test, picks the first N");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 

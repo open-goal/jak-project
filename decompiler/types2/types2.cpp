@@ -108,7 +108,6 @@ void build_function(FunctionCache& function_cache,
   // to save time, we store types at the entry of each block, then in the instructions inside
   // each block, store types sparsely. This saves very slow copying around of types.
   for (int block_idx : function_cache.block_visit_order) {
-    fmt::print("init block: {}\n", block_idx);
     auto& block = function_cache.blocks.at(block_idx);
 
     // add placeholders for all stack slots.
@@ -141,7 +140,11 @@ void build_function(FunctionCache& function_cache,
 
       // now link the register types
       for (auto& written_reg_type : instr->written_reg_types) {
-        state[written_reg_type.reg] = &written_reg_type.type;
+        auto reg_kind = written_reg_type.reg.get_kind();
+        // ignore weird registers
+        if (reg_kind == Reg::GPR || reg_kind == Reg::FPR) {
+          state[written_reg_type.reg] = &written_reg_type.type;
+        }
       }
 
       // do the same for stack spill types
@@ -294,6 +297,7 @@ void backprop_from_preds(FunctionCache& cache,
               // set up for the register
               tag->is_reg = true;
               tag->reg = reg;
+              tag->type_to_clear = &cache.blocks.at(succ_idx).start_type_state[reg]->type;
               // add the tag to the type.
               auto& st = succ_cblock.start_types[reg];
               ASSERT(!st.tag.has_tag());
@@ -321,6 +325,7 @@ void backprop_from_preds(FunctionCache& cache,
     if (my_tag->updated) {
       tags_updated = true;
       my_tag->updated = false;
+      *my_tag->type_to_clear = TP_Type::make_uninitialized();  // meh..
     }
   }
 
@@ -400,6 +405,7 @@ void propagate_block(FunctionCache& cache,
                      int block_idx,
                      Function& func,
                      DecompilerTypeSystem& dts) {
+  bool debug = func.name() == "smooth-step";
   auto& cblock = cache.blocks.at(block_idx);
   auto& block = func.basic_blocks.at(block_idx);
   // for now, assume we'll be done. something might change this later, we'll see
@@ -412,7 +418,7 @@ void propagate_block(FunctionCache& cache,
       TypeStateCasted casted(previous_typestate, func.ir2.env, instr->aop_idx, *func.ir2.env.dts);
       auto& aop = func.ir2.atomic_ops->ops.at(instr->aop_idx);
       TypePropExtras extras;
-      fmt::print("run: {}\n", aop->to_string(func.ir2.env));
+      // fmt::print("run: {}\n", aop->to_string(func.ir2.env));
       aop->propagate_types2(*instr, func.ir2.env, *previous_typestate, *func.ir2.env.dts, extras);
       if (extras.needs_rerun) {
         cblock.needs_run = true;
@@ -422,6 +428,16 @@ void propagate_block(FunctionCache& cache,
       // handle constraints
     }
     previous_typestate = &instr->types;
+  }
+
+  if (debug) {
+    fmt::print("ended block {} with type {} and {}\n", block_idx,
+               cblock.start_type_state[Register(Reg::GPR, Reg::V0)]
+                   ->type.value_or(TP_Type::make_uninitialized())
+                   .print(),
+               previous_typestate->operator[](Register(Reg::GPR, Reg::V0))
+                   ->type.value_or(TP_Type::make_uninitialized())
+                   .print());
   }
 
   // now that we've reached the end, handle backprop across blocks
@@ -455,7 +471,11 @@ bool convert_to_old_format(TP_Type& out, const types2::Type* in) {
 
 bool convert_to_old_format(::decompiler::TypeState& out,
                            const types2::TypeState& in,
-                           std::string& error_string) {
+                           std::string& error_string,
+                           int my_idx,
+                           const std::unordered_map<int, std::vector<RegisterTypeCast>>& casts,
+                           const std::unordered_map<int, StackTypeCast>& stack_casts,
+                           const DecompilerTypeSystem& dts) {
   for (int i = 0; i < 32; i++) {
     ASSERT(in.fpr_types[i]);
     if (!convert_to_old_format(out.fpr_types[i], in.fpr_types[i])) {
@@ -467,6 +487,14 @@ bool convert_to_old_format(::decompiler::TypeState& out,
       return false;
     }
   }
+
+  const auto& reg_casts = casts.find(my_idx);
+  if (reg_casts != casts.end()) {
+    for (auto& cast : reg_casts->second) {
+      out.get(cast.reg) = TP_Type::make_from_ts(dts.parse_type_spec(cast.type_name));
+    }
+  }
+
   for (auto& x : in.stack_slot_types) {
     TP_Type temp;
     if (!convert_to_old_format(temp, &x->type)) {
@@ -475,23 +503,34 @@ bool convert_to_old_format(::decompiler::TypeState& out,
     }
     out.spill_slots[x->slot] = temp;
   }
+
+  for (auto& [offset, type] : stack_casts) {
+    out.spill_slots[offset] = TP_Type::make_from_ts(dts.parse_type_spec(type.type_name));
+  }
   return true;
 }
 
-bool convert_to_old_format(Output& out, FunctionCache& in, std::string& error_string) {
+bool convert_to_old_format(Output& out,
+                           FunctionCache& in,
+                           std::string& error_string,
+                           const std::unordered_map<int, std::vector<RegisterTypeCast>>& casts,
+                           const std::unordered_map<int, StackTypeCast>& stack_casts,
+                           const DecompilerTypeSystem& dts) {
   // for (auto& block : in.blocks) {
   out.op_end_types.resize(in.instructions.size());
   out.block_init_types.resize(in.blocks.size());
   for (int block_idx : in.block_visit_order) {
     auto& block = in.blocks[block_idx];
     if (!convert_to_old_format(out.block_init_types.at(block_idx), block.start_type_state,
-                               error_string)) {
+                               error_string, block.instructions.at(0)->aop_idx, casts, stack_casts,
+                               dts)) {
       error_string += fmt::format(" at the start of block {}\n", block_idx);
       return false;
     }
 
     for (auto& instr : block.instructions) {
-      if (!convert_to_old_format(out.op_end_types.at(instr->aop_idx), instr->types, error_string)) {
+      if (!convert_to_old_format(out.op_end_types.at(instr->aop_idx), instr->types, error_string,
+                                 instr->aop_idx + 1, casts, stack_casts, dts)) {
         error_string += fmt::format(" at op {}\n", instr->aop_idx);
         return false;
       }
@@ -536,11 +575,26 @@ void run(Output& out, const Input& input) {
         propagate_block(function_cache, block_idx, *input.func, *input.func->ir2.env.dts);
       }
     }
+
+    auto& return_type = input.function_type.last_arg();
+    if (return_type != TypeSpec("none")) {
+      auto& last_instr = function_cache.instructions.back().types[Register(Reg::GPR, Reg::V0)];
+      if (last_instr->tag.has_tag()) {
+        if (!last_instr->type || !input.dts->ts.tc(return_type, last_instr->type->typespec())) {
+          if (backprop_tagged_type(TP_Type::make_from_ts(return_type), *last_instr)) {
+            needs_rerun = true;
+          }
+        }
+      }
+    }
   }
 
   std::string error;
-  if (!convert_to_old_format(out, function_cache, error)) {
+  if (!convert_to_old_format(out, function_cache, error, input.func->ir2.env.casts(),
+                             input.func->ir2.env.stack_casts(), *input.dts)) {
     fmt::print("Failed convert_to_old_format: {}\n", error);
+  } else {
+    input.func->ir2.env.types_succeeded = true;
   }
 
   // final casts
