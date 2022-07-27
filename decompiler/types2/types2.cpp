@@ -298,6 +298,7 @@ void backprop_from_preds(FunctionCache& cache,
               tag->is_reg = true;
               tag->reg = reg;
               tag->type_to_clear = &cache.blocks.at(succ_idx).start_type_state[reg]->type;
+              // fmt::print("mark to clear {}\n", succ_idx);
               // add the tag to the type.
               auto& st = succ_cblock.start_types[reg];
               ASSERT(!st.tag.has_tag());
@@ -325,6 +326,8 @@ void backprop_from_preds(FunctionCache& cache,
     if (my_tag->updated) {
       tags_updated = true;
       my_tag->updated = false;
+      // fmt::print("clearing {}\n", block_idx);
+      cblock.needs_run = true;                                 // maybe?
       *my_tag->type_to_clear = TP_Type::make_uninitialized();  // meh..
     }
   }
@@ -404,8 +407,9 @@ bool tp_lca(types2::TypeState* combined, const types2::TypeState& add, Decompile
 void propagate_block(FunctionCache& cache,
                      int block_idx,
                      Function& func,
-                     DecompilerTypeSystem& dts) {
-  bool debug = func.name() == "smooth-step";
+                     DecompilerTypeSystem& dts,
+                     bool tag_lock) {
+  bool debug = false;  // func.name() == "string->float";
   auto& cblock = cache.blocks.at(block_idx);
   auto& block = func.basic_blocks.at(block_idx);
   // for now, assume we'll be done. something might change this later, we'll see
@@ -418,6 +422,7 @@ void propagate_block(FunctionCache& cache,
       TypeStateCasted casted(previous_typestate, func.ir2.env, instr->aop_idx, *func.ir2.env.dts);
       auto& aop = func.ir2.atomic_ops->ops.at(instr->aop_idx);
       TypePropExtras extras;
+      extras.tags_locked = tag_lock;
       // fmt::print("run: {}\n", aop->to_string(func.ir2.env));
       aop->propagate_types2(*instr, func.ir2.env, *previous_typestate, *func.ir2.env.dts, extras);
       if (extras.needs_rerun) {
@@ -441,7 +446,9 @@ void propagate_block(FunctionCache& cache,
   }
 
   // now that we've reached the end, handle backprop across blocks
-  backprop_from_preds(cache, block_idx, func, previous_typestate, *func.ir2.env.dts);
+  if (!tag_lock) {
+    backprop_from_preds(cache, block_idx, func, previous_typestate, *func.ir2.env.dts);
+  }
 
   // deal with end crap
 
@@ -555,6 +562,12 @@ void run(Output& out, const Input& input) {
     input.dts->type_prop_settings.current_method_type = input.func->guessed_name.type_name;
   }
 
+  if (input.function_type.last_arg() == TypeSpec("none")) {
+    auto as_end = dynamic_cast<FunctionEndOp*>(input.func->ir2.atomic_ops->ops.back().get());
+    ASSERT(as_end);
+    as_end->mark_function_as_no_return_value();
+  }
+
   // mark the entry block
   function_cache.blocks.at(0).needs_run = true;
   function_cache.blocks.at(0).start_types =
@@ -565,6 +578,7 @@ void run(Output& out, const Input& input) {
   int outer_iterations = 0;
   bool needs_rerun = true;
   while (needs_rerun) {
+    fmt::print("outer\n");
     outer_iterations++;
     needs_rerun = false;
 
@@ -572,7 +586,7 @@ void run(Output& out, const Input& input) {
       if (function_cache.blocks.at(block_idx).needs_run) {
         blocks_run++;
         needs_rerun = true;
-        propagate_block(function_cache, block_idx, *input.func, *input.func->ir2.env.dts);
+        propagate_block(function_cache, block_idx, *input.func, *input.func->ir2.env.dts, false);
       }
     }
 
@@ -589,12 +603,49 @@ void run(Output& out, const Input& input) {
     }
   }
 
+  for (auto block_idx : function_cache.block_visit_order) {
+    if (block_idx != 0) {
+      auto& cblock = function_cache.blocks.at(block_idx).start_types;
+      for (auto& x : cblock.gpr_types) {
+        x.type = TP_Type::make_uninitialized();
+      }
+      for (auto& x : cblock.fpr_types) {
+        x.type = TP_Type::make_uninitialized();
+      }
+
+      for (auto x : stack_slots) {
+        auto& slot = cblock.stack_slot_types.emplace_back();
+        slot.slot = x;
+        slot.type.type = TP_Type::make_uninitialized();
+      }
+    }
+  }
+
+  needs_rerun = true;
+  function_cache.blocks.at(0).needs_run = true;
+  while (needs_rerun) {
+    outer_iterations++;
+    needs_rerun = false;
+    for (auto block_idx : function_cache.block_visit_order) {
+      if (function_cache.blocks.at(block_idx).needs_run) {
+        blocks_run++;
+        needs_rerun = true;
+        propagate_block(function_cache, block_idx, *input.func, *input.func->ir2.env.dts, true);
+      }
+    }
+  }
+
   std::string error;
   if (!convert_to_old_format(out, function_cache, error, input.func->ir2.env.casts(),
                              input.func->ir2.env.stack_casts(), *input.dts)) {
     fmt::print("Failed convert_to_old_format: {}\n", error);
   } else {
     input.func->ir2.env.types_succeeded = true;
+    auto last_type = out.op_end_types.back().get(Register(Reg::GPR, Reg::V0)).typespec();
+    if (last_type != input.function_type.last_arg()) {
+      input.func->warnings.info("Return type mismatch {} vs {}.", last_type.print(),
+                                input.function_type.last_arg().print());
+    }
   }
 
   // final casts

@@ -25,7 +25,8 @@ bool is_signed(const DecompilerTypeSystem& dts, const TP_Type& type) {
 
 void types2_from_ambiguous_deref(types2::Instruction& instr,
                                  types2::Type& type,
-                                 FieldReverseMultiLookupOutput& out) {
+                                 FieldReverseMultiLookupOutput& out,
+                                 bool tag_lock) {
   ASSERT(out.success && !out.results.empty());
   if (instr.field_access_tag) {
     auto& tag = instr.field_access_tag;
@@ -53,16 +54,21 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
     }
   } else {
     // no tag, let's create one!
-    instr.field_access_tag = std::make_unique<types2::AmbiguousFieldAccess>();
-    auto& tag = instr.field_access_tag;
-    for (auto& poss : out.results) {
-      auto& slot = tag->possibilities.emplace_back();
-      slot.type = poss.result_type;
+    if (!tag_lock) {
+      instr.field_access_tag = std::make_unique<types2::AmbiguousFieldAccess>();
+      auto& tag = instr.field_access_tag;
+      for (auto& poss : out.results) {
+        auto& slot = tag->possibilities.emplace_back();
+        slot.type = poss.result_type;
+      }
+      type.tag.kind = types2::Tag::FIELD_ACCESS;
+      type.tag.field_access = tag.get();
+    } else {
+      lg::warn("Tag lock prevented the creation of a tag in types2_from_ambiguous_deref");
     }
 
     type.type = TP_Type::make_from_ts(out.results.front().result_type);
-    type.tag.kind = types2::Tag::FIELD_ACCESS;
-    type.tag.field_access = tag.get();
+
     return;
   }
 }
@@ -209,6 +215,9 @@ std::vector<TP_Type> try_get_type_of_expr(const types2::TypeState& type_state,
         return {};
       }
     }
+    case SimpleExpression::Kind::ADD:
+      return {};  // temp, todo something better here.
+
     default:
       ASSERT_MSG(false, fmt::format("unknown kind in try_get_type_of_expr: {} {}",
                                     expr.to_string(env), (int)expr.kind()));
@@ -226,6 +235,7 @@ bool backprop_tagged_type(const TP_Type& expected_type, types2::Type& actual_typ
           (!actual_type.tag.int_or_float->is_float ||
            actual_type.tag.int_or_float->is_float.value() == false)) {
         // kick to float
+        fmt::print("Kick to Float!\n");
         actual_type.tag.int_or_float->is_float = true;
         actual_type.type = TP_Type::make_from_ts("float");
         return true;
@@ -238,9 +248,13 @@ bool backprop_tagged_type(const TP_Type& expected_type, types2::Type& actual_typ
           actual_type.tag.block_entry->selected_type == expected_type) {
         return false;
       }
-      actual_type.tag.block_entry->updated = true;
-      actual_type.tag.block_entry->selected_type = expected_type;
-      return false;
+      {
+        auto& tag = actual_type.tag.block_entry;
+        fmt::print("Kick block entry {} to {}\n", tag->reg.to_string(), expected_type.print());
+        actual_type.tag.block_entry->updated = true;
+        actual_type.tag.block_entry->selected_type = expected_type;
+        return true;
+      }
     default:
       ASSERT_MSG(false, fmt::format("unhandled tag: {}\n", (int)actual_type.tag.kind));
   }
@@ -400,7 +414,8 @@ void types2_for_left_shift(types2::Type& type_out,
 
 void types2_for_int_constant(types2::Type& type_out,
                              types2::Instruction& output_instr,
-                             SimpleAtom& atom) {
+                             SimpleAtom& atom,
+                             bool tag_lock) {
   if (output_instr.int_or_float) {
     auto& tag = output_instr.int_or_float;
     if (tag->is_float.has_value()) {
@@ -420,12 +435,19 @@ void types2_for_int_constant(types2::Type& type_out,
     }
   } else {
     // no tag, add one and guess int.
-    output_instr.int_or_float = std::make_unique<types2::AmbiguousIntOrFloatConstant>();
-    auto& tag = output_instr.int_or_float;
+    if (!tag_lock) {
+      output_instr.int_or_float = std::make_unique<types2::AmbiguousIntOrFloatConstant>();
+      auto& tag = output_instr.int_or_float;
+
+      type_out.tag.kind = types2::Tag::INT_OR_FLOAT;
+      type_out.tag.int_or_float = tag.get();
+    } else {
+      // this one really shouldn't be possible...
+      lg::warn("Tag lock prevented tag creation in types2_for_int_constant");
+    }
 
     type_out.type = TP_Type::make_from_integer(atom.get_int());
-    type_out.tag.kind = types2::Tag::INT_OR_FLOAT;
-    type_out.tag.int_or_float = tag.get();
+
     return;
   }
 }
@@ -435,7 +457,8 @@ void types2_for_atom(types2::Type& type_out,
                      types2::TypeState& input_types,
                      SimpleAtom& atom,
                      const Env& env,
-                     const DecompilerTypeSystem& dts) {
+                     const DecompilerTypeSystem& dts,
+                     types2::TypePropExtras& extras) {
   switch (atom.get_kind()) {
     case SimpleAtom::Kind::STATIC_ADDRESS:
       types2_for_label(type_out, output_instr, input_types, atom.label(), env);
@@ -451,7 +474,7 @@ void types2_for_atom(types2::Type& type_out,
     case SimpleAtom::Kind::INTEGER_CONSTANT: {
       // auto type = TP_Type::make_from_integer(atom.get_int());
       // type_out.type = type;
-      types2_for_int_constant(type_out, output_instr, atom);
+      types2_for_int_constant(type_out, output_instr, atom, extras.tags_locked);
     } break;
     case SimpleAtom::Kind::EMPTY_LIST: {
       auto type = TP_Type::make_from_ts("pair");
@@ -473,9 +496,10 @@ void types2_for_fpr_to_gpr(types2::Type& type_out,
                            SimpleExpression& expr,
                            const Env& env,
                            types2::TypeState& input_types,
-                           const DecompilerTypeSystem& dts) {
+                           const DecompilerTypeSystem& dts,
+                           types2::TypePropExtras& extras) {
   // for now, we'll just copy the type.
-  types2_for_atom(type_out, output_instr, input_types, expr.get_arg(0), env, dts);
+  types2_for_atom(type_out, output_instr, input_types, expr.get_arg(0), env, dts, extras);
 }
 
 void types2_for_gpr_to_fpr(types2::Type& type_out,
@@ -483,9 +507,36 @@ void types2_for_gpr_to_fpr(types2::Type& type_out,
                            SimpleExpression& expr,
                            const Env& env,
                            types2::TypeState& input_types,
-                           const DecompilerTypeSystem& dts) {
+                           const DecompilerTypeSystem& dts,
+                           types2::TypePropExtras& extras) {
   // for now, we'll just copy the type.
-  types2_for_atom(type_out, output_instr, input_types, expr.get_arg(0), env, dts);
+  types2_for_atom(type_out, output_instr, input_types, expr.get_arg(0), env, dts, extras);
+}
+
+bool common_int2_case(types2::Type& type_out,
+                      const DecompilerTypeSystem& dts,
+                      TP_Type& arg0_type,
+                      TP_Type& arg1_type) {
+  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
+    // both are the same type and both are int/uint, so we assume that we're doing integer math.
+    // we strip off any weird things like multiplication or integer constant.
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return true;
+  }
+
+  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    // usually we would want to use arg0's type as the "winning" type.
+    // but we use arg1's if arg0 is an integer constant
+    // in either case, strip off weird stuff.
+    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
+      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
+      return true;
+    }
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return true;
+  }
+
+  return false;
 }
 
 void types2_for_integer_mul(types2::Type& type_out,
@@ -522,22 +573,7 @@ void types2_for_integer_mul(types2::Type& type_out,
     return;
   }
 
-  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
-    // both are the same type and both are int/uint, so we assume that we're doing integer math.
-    // we strip off any weird things like multiplication or integer constant.
-    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
-    return;
-  }
-
-  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
-    // usually we would want to use arg0's type as the "winning" type.
-    // but we use arg1's if arg0 is an integer constant
-    // in either case, strip off weird stuff.
-    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
-      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
-      return;
-    }
-    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+  if (common_int2_case(type_out, dts, arg0_type, arg1_type)) {
     return;
   }
   ASSERT(false);
@@ -580,22 +616,7 @@ void types2_for_logior(types2::Type& type_out,
     return;
   }
 
-  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
-    // both are the same type and both are int/uint, so we assume that we're doing integer math.
-    // we strip off any weird things like multiplication or integer constant.
-    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
-    return;
-  }
-
-  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
-    // usually we would want to use arg0's type as the "winning" type.
-    // but we use arg1's if arg0 is an integer constant
-    // in either case, strip off weird stuff.
-    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
-      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
-      return;
-    }
-    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+  if (common_int2_case(type_out, dts, arg0_type, arg1_type)) {
     return;
   }
   ASSERT(false);
@@ -686,22 +707,7 @@ void types2_for_normal_int2(types2::Type& type_out,
   auto& arg0_type = *arg0_type_info;
   auto& arg1_type = *arg1_type_info;
 
-  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
-    // both are the same type and both are int/uint, so we assume that we're doing integer math.
-    // we strip off any weird things like multiplication or integer constant.
-    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
-    return;
-  }
-
-  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
-    // usually we would want to use arg0's type as the "winning" type.
-    // but we use arg1's if arg0 is an integer constant
-    // in either case, strip off weird stuff.
-    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
-      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
-      return;
-    }
-    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+  if (common_int2_case(type_out, dts, arg0_type, arg1_type)) {
     return;
   }
 }
@@ -735,24 +741,10 @@ void types2_for_div_mod_signed(types2::Type& type_out,
     return;
   }
 
-  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
-    // both are the same type and both are int/uint, so we assume that we're doing integer math.
-    // we strip off any weird things like multiplication or integer constant.
-    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+  if (common_int2_case(type_out, dts, arg0_type, arg1_type)) {
     return;
   }
 
-  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
-    // usually we would want to use arg0's type as the "winning" type.
-    // but we use arg1's if arg0 is an integer constant
-    // in either case, strip off weird stuff.
-    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
-      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
-      return;
-    }
-    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
-    return;
-  }
   ASSERT(false);
 }
 
@@ -830,7 +822,21 @@ void types2_for_sub(types2::Type& type_out,
     type_out.type = TP_Type::make_from_ts(TypeSpec("int"));
     return;
   }
-  ASSERT(false);
+
+  if (tc(dts, TypeSpec("structure"), arg1_type) && !expr.get_arg(0).is_int() &&
+      is_int_or_uint(dts, arg0_type)) {
+    // byte access of offset array field trick.
+    // arg1 holds a structure.
+    // arg0 is an integer in a register.
+    type_out.type = TP_Type::make_object_plus_product(arg1_type.typespec(), 1, true);
+    return;
+  }
+
+  if (common_int2_case(type_out, dts, arg0_type, arg1_type)) {
+    return;
+  }
+  ASSERT_MSG(false,
+             fmt::format("unhandled for sub: {} and {}\n", arg0_type.print(), arg1_type.print()));
 }
 
 void types2_for_add(types2::Type& type_out,
@@ -838,7 +844,8 @@ void types2_for_add(types2::Type& type_out,
                     const SimpleExpression& expr,
                     const Env& env,
                     types2::TypeState& input_types,
-                    const DecompilerTypeSystem& dts) {
+                    const DecompilerTypeSystem& dts,
+                    types2::TypePropExtras& extras) {
   auto arg0_type_info = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
   if (!arg0_type_info) {
     // fail!
@@ -912,7 +919,8 @@ void types2_for_add(types2::Type& type_out,
         type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
         return;
       } else {
-        ASSERT(false);
+        types2_from_ambiguous_deref(output_instr, type_out, out, extras.tags_locked);
+        return;
       }
     }
     // flipped version of the above
@@ -927,7 +935,8 @@ void types2_for_add(types2::Type& type_out,
         type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
         return;
       } else {
-        ASSERT(false);
+        types2_from_ambiguous_deref(output_instr, type_out, out, extras.tags_locked);
+        return;
       }
     }
   }
@@ -944,9 +953,14 @@ void types2_for_add(types2::Type& type_out,
         type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
         return;
       } else {
-        ASSERT(false);
+        types2_from_ambiguous_deref(output_instr, type_out, out, extras.tags_locked);
+        return;
       }
     }
+  }
+
+  if (common_int2_case(type_out, dts, arg0_type, arg1_type)) {
+    return;
   }
 
   // get addr of field with a constant: obj + C1
@@ -963,7 +977,7 @@ void types2_for_add(types2::Type& type_out,
         type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
         return;
       } else {
-        types2_from_ambiguous_deref(output_instr, type_out, out);
+        types2_from_ambiguous_deref(output_instr, type_out, out, extras.tags_locked);
         return;
       }
     }
@@ -1080,25 +1094,6 @@ void types2_for_add(types2::Type& type_out,
     }
   }
 
-  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
-    // both are the same type and both are int/uint, so we assume that we're doing integer math.
-    // we strip off any weird things like multiplication or integer constant.
-    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
-    return;
-  }
-
-  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
-    // usually we would want to use arg0's type as the "winning" type.
-    // but we use arg1's if arg0 is an integer constant
-    // in either case, strip off weird stuff.
-    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
-      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
-      return;
-    }
-    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
-    return;
-  }
-
   if (tc(dts, TypeSpec("structure"), arg1_type) && !expr.get_arg(0).is_int() &&
       is_int_or_uint(dts, arg0_type)) {
     if (arg1_type.typespec() == TypeSpec("symbol") &&
@@ -1196,7 +1191,7 @@ void types2_for_expr(types2::Type& type_out,
                      types2::TypePropExtras& extras) {
   switch (expr.kind()) {
     case SimpleExpression::Kind::IDENTITY:
-      types2_for_atom(type_out, output_instr, input_types, expr.get_arg(0), env, dts);
+      types2_for_atom(type_out, output_instr, input_types, expr.get_arg(0), env, dts, extras);
       break;
     case SimpleExpression::Kind::RIGHT_SHIFT_ARITH:
       types2_for_right_shift(type_out, expr, false, env, input_types, dts);
@@ -1208,13 +1203,13 @@ void types2_for_expr(types2::Type& type_out,
       types2_for_left_shift(type_out, expr, env, input_types, dts);
       break;
     case SimpleExpression::Kind::FPR_TO_GPR:
-      types2_for_fpr_to_gpr(type_out, output_instr, expr, env, input_types, dts);
+      types2_for_fpr_to_gpr(type_out, output_instr, expr, env, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::ADD:
-      types2_for_add(type_out, output_instr, expr, env, input_types, dts);
+      types2_for_add(type_out, output_instr, expr, env, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::GPR_TO_FPR:
-      types2_for_gpr_to_fpr(type_out, output_instr, expr, env, input_types, dts);
+      types2_for_gpr_to_fpr(type_out, output_instr, expr, env, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::DIV_S:
     case SimpleExpression::Kind::MIN_S:
@@ -1223,6 +1218,7 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::MUL_S:
     case SimpleExpression::Kind::ADD_S:
     case SimpleExpression::Kind::ABS_S:
+    case SimpleExpression::Kind::NEG_S:
       types2_for_normal_all_float(type_out, output_instr, expr, env, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::SUB:
@@ -1505,7 +1501,8 @@ bool load_var_op_determine_type(types2::Type& type_out,
                                 types2::TypeState& input_types,
                                 const LoadVarOp& op,
                                 const Env& env,
-                                const DecompilerTypeSystem& dts) {
+                                const DecompilerTypeSystem& dts,
+                                types2::TypePropExtras& extras) {
   if (op.src().is_identity()) {
     auto& src = op.src().get_arg(0);
     if (src.is_static_addr()) {
@@ -1566,7 +1563,6 @@ bool load_var_op_determine_type(types2::Type& type_out,
       // we'll use a special type for these.
       if (type_name == "object" && method_id == GOAL_NEW_METHOD) {
         type_out.type = TP_Type::make_object_new(method_type);
-        fmt::print("took case!\n");
         return true;
       }
 
@@ -1690,7 +1686,7 @@ bool load_var_op_determine_type(types2::Type& type_out,
             fmt::print("\n");
           }
 
-          types2_from_ambiguous_deref(output_instr, type_out, rd);
+          types2_from_ambiguous_deref(output_instr, type_out, rd, extras.tags_locked);
           return true;
         }
       }
@@ -1784,7 +1780,7 @@ void LoadVarOp::propagate_types2(types2::Instruction& instr,
   }
 
   auto& type_out = instr.types[m_dst.reg()];
-  load_var_op_determine_type(*type_out, instr, input_types, *this, env, dts);
+  load_var_op_determine_type(*type_out, instr, input_types, *this, env, dts, extras);
   m_type = type_out->type ? type_out->type->typespec() : std::optional<TypeSpec>();
 }
 
@@ -1798,7 +1794,7 @@ void BranchOp::propagate_types2(types2::Instruction& instr,
     instr.types[clobber]->type = TP_Type::make_uninitialized();
   }
 
-  switch(m_condition.kind()) {
+  switch (m_condition.kind()) {
     case IR2_Condition::Kind::FLOAT_EQUAL:
     case IR2_Condition::Kind::FLOAT_GEQ:
     case IR2_Condition::Kind::FLOAT_GREATER_THAN:
@@ -1818,7 +1814,6 @@ void BranchOp::propagate_types2(types2::Instruction& instr,
     default:
       break;
   }
-
 
   switch (m_branch_delay.kind()) {
     case IR2_BranchDelay::Kind::NOP:
@@ -2092,7 +2087,14 @@ void ConditionalMoveFalseOp::propagate_types2(types2::Instruction& instr,
                                               types2::TypeState& input_types,
                                               DecompilerTypeSystem& dts,
                                               types2::TypePropExtras& extras) {
-  throw std::runtime_error(
-      fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
+  auto& typ = instr.types[m_dst.reg()]->type;
+  if (typ) {
+    if (typ->typespec() != TypeSpec("symbol")) {
+      lg::warn("Conditional Moved #f into something of type {}", typ->typespec().print());
+      // result.get(m_dst.reg()) = TP_Type::make_from_ts("symbol");
+    }
+  }
+  typ = TP_Type::make_from_ts("symbol");
 }
+
 }  // namespace decompiler

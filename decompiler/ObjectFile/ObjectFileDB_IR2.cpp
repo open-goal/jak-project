@@ -524,21 +524,22 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
           func.ir2.env.set_art_group(obj_name + "-ag");
         }
 
-        /*
-        if (run_type_analysis_ir2(ts, dts, func)) {
-          func.ir2.env.types_succeeded = true;
+        constexpr bool kForceNewTypes = false;
+        if (config.game_version == GameVersion::Jak2 || kForceNewTypes) {
+          types2::Input in;
+          types2::Output out;
+          in.func = &func;
+          in.function_type = ts;
+          in.dts = &dts;
+          types2::run(out, in);
+          func.ir2.env.set_types(out.block_init_types, out.op_end_types, *func.ir2.atomic_ops, ts);
         } else {
-          func.warnings.type_prop_warning("Type analysis failed");
+          if (run_type_analysis_ir2(ts, dts, func)) {
+            func.ir2.env.types_succeeded = true;
+          } else {
+            func.warnings.type_prop_warning("Type analysis failed");
+          }
         }
-         */
-
-        types2::Input in;
-        types2::Output out;
-        in.func = &func;
-        in.function_type = ts;
-        in.dts = &dts;
-        types2::run(out, in);
-        func.ir2.env.set_types(out.block_init_types, out.op_end_types, *func.ir2.atomic_ops, ts);
 
       } else {
         lg::warn("Function {} didn't know its type", func.name());

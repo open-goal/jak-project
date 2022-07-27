@@ -219,6 +219,7 @@ struct Input {
 
 struct TypePropExtras {
   bool needs_rerun = false;
+  bool tags_locked = false;
 };
 
 void run(Output& out, const Input& input);
