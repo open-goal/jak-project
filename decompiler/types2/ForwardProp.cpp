@@ -23,28 +23,36 @@ bool is_signed(const DecompilerTypeSystem& dts, const TP_Type& type) {
   return tc(dts, TypeSpec("int"), type) && !tc(dts, TypeSpec("uint"), type);
 }
 
+/*!
+ * Set up an instruction which sets its result to an ambiguous deref.
+ * The possibilities are specified in FieldReverseMultiLookupOutput.
+ */
 void types2_from_ambiguous_deref(types2::Instruction& instr,
                                  types2::Type& type,
                                  FieldReverseMultiLookupOutput& out,
                                  bool tag_lock) {
   ASSERT(out.success && !out.results.empty());
+
+  // see if we've tagged this instruction in a previous iteration..
   if (instr.field_access_tag) {
+    // we did. we should see if the tag tells us which option to pick
     auto& tag = instr.field_access_tag;
-    // already have a tag here...
     if (tag->selected_possibility >= 0) {
-      // and the tag is resolved! let's use that.
+      // it does!
+      // there's a chance that we are a different deref than last time, so do our best to
+      // find a matching type.
       auto& desired_type = tag->possibilities.at(tag->selected_possibility).type;
       for (auto& sel : out.results) {
         if (sel.result_type == desired_type) {
-          // take it!
+          // found one, take it.
           type.type = TP_Type::make_from_ts(desired_type);
           return;
         }
       }
-      // uh oh, something went wrong...
+      // the previously selected type is gone... not sure what we can do here, but complain and
+      // use the first one (highest scored).
       fmt::print("type2_from_ambiguous_deref: wanted type {}, but couldn't find it.\n",
                  desired_type.print());
-      // just pick the first one? and hope that things work out...
       type.type = TP_Type::make_from_ts(out.results.front().result_type);
       return;
     } else {
@@ -54,7 +62,7 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
     }
   } else {
     // no tag, let's create one!
-    if (!tag_lock) {
+    if (!tag_lock) {  // but only if we're in the first pass.
       instr.field_access_tag = std::make_unique<types2::AmbiguousFieldAccess>();
       auto& tag = instr.field_access_tag;
       for (auto& poss : out.results) {
@@ -64,11 +72,10 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
       type.tag.kind = types2::Tag::FIELD_ACCESS;
       type.tag.field_access = tag.get();
     } else {
+      // don't think this should be possible
       lg::warn("Tag lock prevented the creation of a tag in types2_from_ambiguous_deref");
     }
-
     type.type = TP_Type::make_from_ts(out.results.front().result_type);
-
     return;
   }
 }
@@ -94,8 +101,8 @@ std::optional<TP_Type> try_get_type_of_label(int label_idx, const Env& env) {
     }
 
     if (label_db_lookup.is_value) {
-      // not sure why we did it this way, but accessing a static array is handled later, and we
-      // just make this a placeholder.
+      // accessing a static array is handled later, and we just make this a placeholder.
+      // this is to help with far labels.
       return TP_Type::make_label_addr(label_idx);
     } else {
       return TP_Type::make_from_ts(label_db_lookup.result_type);
@@ -225,17 +232,19 @@ std::vector<TP_Type> try_get_type_of_expr(const types2::TypeState& type_state,
 }
 
 namespace types2 {
+/*!
+ * Given a tagged type, and an expectation for what it should be, backprop constraints.
+ */
 bool backprop_tagged_type(const TP_Type& expected_type, types2::Type& actual_type) {
   switch (actual_type.tag.kind) {
     case types2::Tag::NONE:
       return false;
     case types2::Tag::INT_OR_FLOAT: {
       auto type = expected_type.typespec();
+      // only update if we're actually changing something.
       if (type.base_type() == "float" &&
           (!actual_type.tag.int_or_float->is_float ||
            actual_type.tag.int_or_float->is_float.value() == false)) {
-        // kick to float
-        fmt::print("Kick to Float!\n");
         actual_type.tag.int_or_float->is_float = true;
         actual_type.type = TP_Type::make_from_ts("float");
         return true;
@@ -244,13 +253,13 @@ bool backprop_tagged_type(const TP_Type& expected_type, types2::Type& actual_typ
     }
 
     case types2::Tag::BLOCK_ENTRY:
+      // don't update if we're updating to exactly the same thing.
       if (actual_type.tag.block_entry->selected_type &&
           actual_type.tag.block_entry->selected_type == expected_type) {
         return false;
       }
       {
         auto& tag = actual_type.tag.block_entry;
-        fmt::print("Kick block entry {} to {}\n", tag->reg.to_string(), expected_type.print());
         actual_type.tag.block_entry->updated = true;
         actual_type.tag.block_entry->selected_type = expected_type;
         return true;
@@ -277,7 +286,7 @@ void types2_for_label(types2::Type& type_out,
     type_out.type = known_type;
     return;
   } else {
-    ASSERT(false);  // todo, implement this case...
+    ASSERT(false);  // todo, implement this case... this is where we'd set up label type guessing
   }
 }
 

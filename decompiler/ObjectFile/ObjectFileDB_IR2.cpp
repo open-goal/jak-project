@@ -526,6 +526,7 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
 
         constexpr bool kForceNewTypes = false;
         if (config.game_version == GameVersion::Jak2 || kForceNewTypes) {
+          // use new types for jak 2 always
           types2::Input in;
           types2::Output out;
           in.func = &func;
@@ -534,6 +535,7 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
           types2::run(out, in);
           func.ir2.env.set_types(out.block_init_types, out.op_end_types, *func.ir2.atomic_ops, ts);
         } else {
+          // old type pass
           if (run_type_analysis_ir2(ts, dts, func)) {
             func.ir2.env.types_succeeded = true;
           } else {
