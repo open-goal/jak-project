@@ -9,6 +9,7 @@
 #include <queue>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "common/common_types.h"
@@ -22,6 +23,8 @@ class IOP_Kernel;
 namespace iop {
 struct sceSifQueueData;
 }
+
+using time_stamp = std::chrono::time_point<std::chrono::steady_clock, std::chrono::microseconds>;
 
 struct SifRpcCommand {
   bool started = true;
@@ -57,17 +60,21 @@ struct IopThread {
     Delay,
   };
 
-  IopThread(std::string n, void (*f)(), s32 ID) : name(n), function(f), thID(ID) {
-    thread = co_create(0x300000, f);
+  IopThread(std::string n, void (*f)(), s32 ID, u32 priority)
+      : name(std::move(n)), function(f), priority(priority), thID(ID) {
+    thread = co_create(0x300000, functionWrapper);
   }
 
   ~IopThread() { co_delete(thread); }
 
+  static void functionWrapper();
   std::string name;
   void (*function)();
   cothread_t thread;
   State state = State::Dormant;
   Wait waitType = Wait::None;
+  time_stamp resumeTime = {};
+  u32 priority = 0;
   s32 thID = -1;
 };
 
@@ -84,19 +91,20 @@ class IOP_Kernel {
   IOP_Kernel() {
     // this ugly hack
     threads.reserve(16);
-    CreateThread("null-thread", nullptr);
+    CreateThread("null-thread", nullptr, 0);
     CreateMbx();
     kernel_thread = co_active();
   }
 
   ~IOP_Kernel();
 
-  s32 CreateThread(std::string n, void (*f)());
+  s32 CreateThread(std::string n, void (*f)(), u32 priority);
+  s32 ExitThread();
   void StartThread(s32 id);
-  void SuspendThread();
+  void DelayThread(u32 usec);
   void SleepThread();
   void WakeupThread(s32 id);
-  void dispatchAll();
+  time_stamp dispatch();
   void set_rpc_queue(iop::sceSifQueueData* qd, u32 thread);
   void rpc_loop(iop::sceSifQueueData* qd);
   void shutdown();
@@ -104,7 +112,10 @@ class IOP_Kernel {
   /*!
    * Get current thread ID.
    */
-  s32 getCurrentThread() { return _currentThread; }
+  s32 getCurrentThread() {
+    ASSERT(_currentThread);
+    return _currentThread->thID;
+  }
 
   /*!
    * Create a message box
@@ -158,18 +169,25 @@ class IOP_Kernel {
                s32 recvSize);
 
  private:
-  void runThread(s32 id);
+  void runThread(IopThread* thread);
   void exitThread();
+  void updateDelay();
+  void processWakeups();
+
+  IopThread* schedNext();
+  time_stamp nextWakeup();
+
   cothread_t kernel_thread;
   s32 _nextThID = 0;
-  s32 _currentThread = {-1};
+  IopThread* _currentThread = nullptr;
   std::vector<IopThread> threads;
   std::vector<std::queue<void*>> mbxs;
   std::vector<SifRecord> sif_records;
   std::vector<Semaphore> semas;
+  std::queue<int> wakeup_queue;
   bool mainThreadSleep = false;
   FILE* iso_disc_file = nullptr;
-  std::mutex sif_mtx;
+  std::mutex sif_mtx, wakeup_mtx;
 };
 
 #endif  // JAK_IOP_KERNEL_H

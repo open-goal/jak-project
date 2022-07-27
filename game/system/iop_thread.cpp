@@ -55,31 +55,20 @@ void* IOP::iop_alloc(int size) {
   return mem;
 }
 
-void IOP::wait_run_iop() {
-  std::unique_lock<std::mutex> lk(iters_mutex);
-  if (iop_iters_des > iop_iters_act) {
-    iop_iters_act++;
-    return;
-  }
-
-  iop_run_cv.wait(lk, [&] { return iop_iters_des > iop_iters_act; });
-  iop_iters_act++;
+void IOP::wait_run_iop(
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::microseconds> wakeup) {
+  std::unique_lock<std::mutex> lk(run_cv_mutex);
+  iop_run_cv.wait_until(lk, wakeup);
 }
 
 void IOP::kill_from_ee() {
   want_exit = true;
-  signal_run_iop(true);
+  signal_run_iop();
 }
 
-void IOP::signal_run_iop(bool force) {
-  std::unique_lock<std::mutex> lk(iters_mutex);
-  if (iop_iters_act == iop_iters_des || force) {
-    iop_iters_des++;  // todo, tune this
-    if (iop_iters_des - iop_iters_act > 500) {
-      iop_iters_des = iop_iters_act + 500;
-    }
-    iop_run_cv.notify_all();
-  }
+void IOP::signal_run_iop() {
+  std::unique_lock<std::mutex> lk(run_cv_mutex);
+  iop_run_cv.notify_all();
 }
 
 IOP::~IOP() {
