@@ -42,11 +42,19 @@ decomp_config_map = {
   }
 }
 
+default_config_map = {
+  "jak1": "jak1_ntsc_black_label.jsonc",
+  "jak2": "jak2_ntsc_v1.jsonc"
+}
+
 if args.game:
   if args.game not in valid_games:
     print("Unsupported game '{}'".format(args.game))
     sys.exit(1)
+  curr = file["GAME"]
   file["GAME"] = args.game
+  if (curr != file["GAME"]) or file["DECOMP_CONFIG"] not in decomp_config_map[file["GAME"]]:
+    file["DECOMP_CONFIG"] = default_config_map[file["GAME"]]
 if args.decomp_config:
   if args.decomp_config not in decomp_config_map[file["GAME"]]:
     print("Unsupported decomp config '{}' for game '{}'".format(args.decomp_config, file["GAME"]))

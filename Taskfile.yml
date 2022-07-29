@@ -32,7 +32,7 @@ tasks:
       - sh: test -f {{.DECOMP_BIN_RELEASE_DIR}}/decompiler{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate decompiler executable in '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler'"
     cmds:
-      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out" "decompile_code=false"'
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" ./iso_data ./decompiler_out --config-override "{\\\"decompile_code\\\": false}"'
   boot-game:
     desc: "Boots the game, it will fail if it's not already booted!"
     preconditions:
@@ -77,19 +77,6 @@ tasks:
       - rm ./decompiler_out/**/*.asm
       - rm ./decompiler_out/**/*disasm.gc
   # TODO - the below are broken, need to be updated or replaced
-  # decomp-file:
-  #   cmds:
-  #     - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
-  #     - task: decomp
-  # decomp-list:
-  #   cmds:
-  #     - python ./scripts/next-decomp-file.py --list "{{.LIST}}"
-  #   vars:
-  #     LIST: '{{default "0" .LIST}}'
-  # # python -m pip install -U watchdog[watchmedo]
-  # decomp-watch:
-  #   cmds:
-  #     - watchmedo shell-command --drop --patterns="*.gc;*.jsonc" --recursive --command='task decomp-file FILES="{{.FILES}}"' ./decompiler/config/
   # update-gsrc:
   #   cmds:
   #     - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
@@ -124,7 +111,7 @@ tasks:
   #     - task: offline-tests
   update-ref-tests:
     cmds:
-      - cmd: python ./scripts/default-file-or-folder.py --path failures
+      - cmd: python ./scripts/tasks/default-file-or-folder.py --path failures
       - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --dump_current_output'
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/
