@@ -102,7 +102,7 @@ void DumpToJson(const std::string& filename) {
       if (g_settings.pad_mapping_info.keyboard_analog_mapping[i][(int)value].mode ==
           Pad::AnalogMappingMode::AnalogInput) {
         keyboard_analogs_json[name]["Axis Id"] =
-            g_settings.pad_mapping_info.keyboard_analog_mapping[i][(int)value].positive_key;
+            g_settings.pad_mapping_info.keyboard_analog_mapping[i][(int)value].axis_id;
       } else {
         keyboard_analogs_json[name]["Positive Key"] =
             g_settings.pad_mapping_info.keyboard_analog_mapping[i][(int)value].positive_key;
@@ -162,7 +162,7 @@ void LoadPeripheralSettings(std::string& filepath) {
       Pad::AnalogMappingInfo analog_mapping;
       if (keyboard_analogs_json[name].contains("Axis Id") == true) {
         analog_mapping.mode = Pad::AnalogMappingMode::AnalogInput;
-        analog_mapping.positive_key = keyboard_analogs_json[name]["Axis Id"].get<int>();
+        analog_mapping.axis_id = keyboard_analogs_json[name]["Axis Id"].get<int>();
         g_settings.pad_mapping_info.keyboard_analog_mapping[controller_index][(int)value] =
             analog_mapping;
         continue;

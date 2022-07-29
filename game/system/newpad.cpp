@@ -64,7 +64,7 @@ void ClearKey(int key) {
 void ClearAnalogAxisValue(int axis) {
   for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
     for (int analog = 0; analog < (int)Analog::Max; ++analog) {
-      if (g_mapping.keyboard_analog_mapping[pad][analog].positive_key == axis &&
+      if (g_mapping.keyboard_analog_mapping[pad][analog].axis_id == axis &&
           g_mapping.keyboard_analog_mapping[pad][analog].mode == AnalogMappingMode::AnalogInput) {
         g_key_analogs[pad][analog] = 0.0f;
       }
@@ -150,12 +150,12 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
 
 void SetAnalogAxisValue(int axis, double value) {
   if (axis == GlfwKeyCustomAxis::CURSOR_X_AXIS || axis == GlfwKeyCustomAxis::CURSOR_Y_AXIS) {
-    value /= 23.0f;  // Arbituary value. Cursor delta generally a lot larger than scroll wheel delta
+    value /= 18.0f;  // Arbituary value. Cursor delta generally a lot larger than scroll wheel delta
   }
 
   for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
     for (int analog = 0; analog < (int)Analog::Max; ++analog) {
-      if (g_mapping.keyboard_analog_mapping[pad][analog].positive_key == axis) {
+      if (g_mapping.keyboard_analog_mapping[pad][analog].axis_id == axis) {
         if (value > 1.0) {
           g_key_analogs[pad][analog] = 1.0;
         } else if (value < -1.0) {
@@ -175,16 +175,35 @@ void UpdateAxisValue() {
         continue;  // Assumed Set Axis set value already
       }
 
+      // Invert logic used here. Left Y axis movement is based on towrds the camera.
+      // In game forward is treated as going away from the camera and backwards is headed towards
+      // the camera.
       double input = 0.0f;
       if (g_mapping.keyboard_analog_mapping[pad][analog].positive_key > -1 &&
           g_mapping.keyboard_analog_mapping[pad][analog].positive_key < NUM_KEYS) {
-        input = input +
-                g_buffered_key_status[g_mapping.keyboard_analog_mapping[pad][analog].positive_key];
+        if (analog == static_cast<int>(GlfwKeyCustomAxis::CURSOR_Y_AXIS) ||
+            analog == static_cast<int>(GlfwKeyCustomAxis::SCROLL_WHEEL_Y_AXIS)) {
+          input =
+              input -
+              g_buffered_key_status[g_mapping.keyboard_analog_mapping[pad][analog].positive_key];
+        } else {
+          input =
+              input +
+              g_buffered_key_status[g_mapping.keyboard_analog_mapping[pad][analog].positive_key];
+        }
       }
       if (g_mapping.keyboard_analog_mapping[pad][analog].negative_key > -1 &&
           g_mapping.keyboard_analog_mapping[pad][analog].negative_key < NUM_KEYS) {
-        input = input -
-                g_buffered_key_status[g_mapping.keyboard_analog_mapping[pad][analog].negative_key];
+        if (analog == static_cast<int>(GlfwKeyCustomAxis::CURSOR_Y_AXIS) ||
+            analog == static_cast<int>(GlfwKeyCustomAxis::SCROLL_WHEEL_Y_AXIS)) {
+          input =
+              input +
+              g_buffered_key_status[g_mapping.keyboard_analog_mapping[pad][analog].negative_key];
+        } else {
+          input =
+              input -
+              g_buffered_key_status[g_mapping.keyboard_analog_mapping[pad][analog].negative_key];
+        }
       }
       g_key_analogs[pad][analog] = input;
     }
@@ -203,6 +222,10 @@ int AnalogValue(MappingInfo& mapping, Analog analog, int pad = 0) {
 
   if (g_gamepads.gamepad_idx[pad] == -1) {
     input = g_key_analogs[pad][(int)analog];
+    // Hack. Clearing the buffer immediately can lead to inconsistencies on analog input.
+    // If a mouse is disconnected or can't calculate a new delta it would stay stuck at 1.
+    // Decreasing the values gradually seems like a good comprise.
+    g_key_analogs[pad][(int)analog] *= 0.95;
   } else {  // Gamepad present
     input = g_gamepad_analogs[pad][(int)analog];
   }
@@ -328,18 +351,15 @@ void DefaultMapping(MappingInfo& mapping) {
   analog_mapping.negative_key = GLFW_KEY_A;
   MapAnalog(mapping, Analog::Left_X, 0, analog_mapping);
 
-  // Invert logic used here. Left Y axis movement is based on towrds the camera.
-  // In game forward is treated as going away from the camera and backwards is headed towards the
-  // camera.
-  analog_mapping.negative_key = GLFW_KEY_W;
-  analog_mapping.positive_key = GLFW_KEY_S;
+  analog_mapping.positive_key = GLFW_KEY_W;
+  analog_mapping.negative_key = GLFW_KEY_S;
   MapAnalog(mapping, Analog::Left_Y, 0, analog_mapping);
 
   analog_mapping.mode = AnalogMappingMode::AnalogInput;
-  analog_mapping.positive_key = GlfwKeyCustomAxis::CURSOR_X_AXIS;
+  analog_mapping.axis_id = GlfwKeyCustomAxis::CURSOR_X_AXIS;
   MapAnalog(mapping, Analog::Right_X, 0, analog_mapping);
 
-  analog_mapping.positive_key = GlfwKeyCustomAxis::CURSOR_Y_AXIS;
+  analog_mapping.axis_id = GlfwKeyCustomAxis::CURSOR_Y_AXIS;
   MapAnalog(mapping, Analog::Right_Y, 0, analog_mapping);
 
   SetMapping(mapping);

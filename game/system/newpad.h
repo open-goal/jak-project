@@ -69,6 +69,7 @@ enum class AnalogMappingMode { DigitalInput = 0, AnalogInput = 1 };
 //    GLFW_GAMEPAD_AXIS_RIGHT_Y)
 struct AnalogMappingInfo {
   AnalogMappingMode mode = AnalogMappingMode::DigitalInput;
+  int axis_id = -1;
   int positive_key = -1;
   int negative_key = -1;
 };

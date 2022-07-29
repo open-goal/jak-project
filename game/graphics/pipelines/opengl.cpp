@@ -245,7 +245,9 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
     lg::error("Could not load icon for OpenGL window");
   }
 
+  glfwSetInputMode(window, GLFW_CURSOR, g_cursor_input_mode);
   glfwSetInputMode(window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);
+
   SetDisplayCallbacks(window);
   Pad::initialize();
 
