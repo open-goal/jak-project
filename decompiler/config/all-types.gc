@@ -2109,7 +2109,7 @@
 ;; - Types
 
 (deftype time-frame (int64)
-  ()
+  ((value int64 :offset 0))
   :flag-assert #x900000008
   )
 
@@ -11318,7 +11318,7 @@
     (set-zero! (_type_) _type_ 9)
     (update! (_type_) float 10)
     (get-no-update (_type_) float 11)
-    (activate! (_type_ float int int float float) _type_ 12)
+    (activate! (_type_ float time-frame time-frame float float) _type_ 12)
     (nonzero-amplitude? (_type_) symbol 13)
     (die-on-next-update! (_type_) _type_ 14)
     )
@@ -11851,9 +11851,9 @@
    (transform-index int8                      :offset-assert 12)
    (prim-core       collide-prim-core :inline :offset-assert 16)
    (local-sphere    vector            :inline :offset-assert 48)
-   (collide-with    collide-kind         :offset-assert 64)
+   (collide-with    collide-kind              :offset-assert 64)
    (world-sphere    vector            :inline :offset 16)
-   (collide-as      collide-kind           :offset 32)
+   (collide-as      collide-kind              :offset 32)
    (action          collide-action            :offset 40)
    (offense         collide-offense           :offset 44)
    (prim-type       int8                      :offset 45)
@@ -12150,66 +12150,65 @@
 ;; NOTE : type has been PAL patched
 (deftype control-info (collide-shape-moving)
   (
-   (unknown-vector00 vector :inline :offset 448) ;; from - logic-target::build-conversions
-   (unknown-vector01 vector :inline :offset 464) ;; from - logic-target::turn-to-vector
-   (unknown-vector02 vector :inline :offset 480) ;; from - logic-target::do-rotations2
-   (unknown-quaternion00 quaternion :inline :offset 496) ;; from - target-util::(method 27 control-info)
-   (unknown-quaternion01 quaternion :inline :offset 512) ;; from - logic-target::do-rotations2
-   (unknown-float00  float  :offset 528) ;; from - logic-target::do-rotations2
-   (unknown-float01  float  :offset 532)
-   (unknown-float02  float  :offset 536) ;; from - logic-target::add-thrust
-   (unknown-vector10  vector :inline  :offset 544) ;; from - logic-target::flat-setup
-   (unknown-vector11  vector :inline  :offset 560) ;; from - logic-target::target-no-move-post
-   (unknown-vector12  vector :inline  :offset 576)
-   (unknown-vector13  vector :inline  :offset 592) ;; from - collide-shape::method-37 | target::mod-var-jump
+   (ltransv vector :inline :offset 448) ;; from - logic-target::build-conversions
+   (trans-targ vector :inline :offset 464) ;; from - logic-target::turn-to-vector
+   (normal-targ vector :inline :offset 480) ;; from - logic-target::do-rotations2
+   (quat-targ quaternion :inline :offset 496) ;; from - target-util::(method 27 control-info)
+   (quat-base quaternion :inline :offset 512) ;; from - logic-target::do-rotations2
+   (quat-mod  float  :offset 528) ;; from - logic-target::do-rotations2
+   (speed-mod  float  :offset 532)
+   (thrust-length  float  :offset 536) ;; from - logic-target::add-thrust
+   (last-transv  vector :inline  :offset 544) ;; from - logic-target::flat-setup
+   (racer-cushion-targ  vector :inline  :offset 560) ;; from - logic-target::target-no-move-post
+   (racer-cushion  vector :inline  :offset 576)
+   (collide-offset  vector :inline  :offset 592) ;; from - collide-shape::method-37 | target::mod-var-jump
    (unknown-vector14  vector :inline  :offset 608) ;; from - logic-target::target-no-move-post
    (unknown-vector15  vector :inline  :offset 624) ;; from - collide-shape::method-37 | target-handler::target-exit
    (unknown-vector16  vector :inline  :offset 640) ;; from - collide-shape::method-37
-   (unknown-dynamics00  dynamics  :offset 656) ;; from - logic-target::bend-gravity
-   (unknown-surface00  surface  :offset 660)
-   (unknown-surface01  surface  :offset 664) ;; not a symbol - target-util::target-align-vel-z-adjust
-   (unknown-cpad-info00  cpad-info  :offset 668) ;; not a symbol - target-util::move-legs?
-   (unknown-float10  float  :offset 672) ;; from - logic-target::turn-to-vector
-   (unknown-float11  float  :offset 676) ;; from - logic-target::turn-to-vector
-   (unknown-float12  float  :offset 680) ;; from - logic-target::turn-to-vector
-   (unknown-float13  float  :offset 684) ;; from - logic-target::turn-to-vector
+   (cur-dynam  dynamics  :offset 656) ;; from - logic-target::bend-gravity
+   (cur-surf  surface  :offset 660)
+   (new-surf  surface  :offset 664) ;; not a symbol - target-util::target-align-vel-z-adjust
+   (cpad  cpad-info  :offset 668) ;; not a symbol - target-util::move-legs?
+   (turn-vec-deg  float  :offset 672) ;; from - logic-target::turn-to-vector
+   (last-turn-vec-deg  float  :offset 676) ;; from - logic-target::turn-to-vector
+   (turn-vec-len  float  :offset 680) ;; from - logic-target::turn-to-vector
+   (last-turn-vec-len  float  :offset 684) ;; from - logic-target::turn-to-vector
    (unknown-vector20  vector :inline :offset 688) ;; from - logic-target::turn-to-vector
    (unknown-vector21  vector :inline :offset 704) ;; from - logic-target::turn-to-vector
    (unknown-vector22  vector :inline :offset 720) ;; from - logic-target::turn-to-vector
    (unknown-vector23  vector :inline :offset 736) ;; from - logic-target::turn-to-vector
-   ;  (unknown-dword-temp-01  uint64  :offset 776) ;; from - logic-target::read-pad
    (unknown-vector-array00  vector 7 :inline :offset 752) ;; from - logic-target::turn-to-vector
-   (unknown-vector30  vector :inline :offset 880) ;; from - logic-target::read-pad
-   (unknown-vector31  vector :inline  :offset 896) ;; from - logic-target::read-pad
-   (unknown-float20 float  :offset 912) ;; from - logic-target::read-pad
-   (unknown-float21 float  :offset 916) ;; from - logic-target::read-pad
-   (unknown-dword00 uint64  :offset 920) ;; from - logic-target::read-pad
+   (stick-vec  vector :inline :offset 880) ;; from - logic-target::read-pad
+   (last-stick-vec  vector :inline  :offset 896) ;; from - logic-target::read-pad
+   (pad-stick-speed float  :offset 912) ;; from - logic-target::read-pad
+   (last-pad-stick-speed float  :offset 916) ;; from - logic-target::read-pad
+   (pad-read-time time-frame  :offset 920) ;; from - logic-target::read-pad
    (unknown-matrix00 matrix :inline :offset 928) ;; from - target-util::(method 16 target)
    (unknown-matrix01 matrix :inline :offset 992) ;; from - target-util::(method 16 target)
    (unknown-matrix02 matrix :inline :offset 1056) ;; from - logic-target::joint-points
    (unknown-qword00  uint128  :offset 1136)
-   (unknown-float30  float  :offset 1140) ;; from - logic-target::target-calc-camera-pos
-   (unknown-vector40  vector :inline  :offset 1152) ;; from - logic-target::target-real-post
-   (unknown-float40  float :offset 1172) ;; from - target-death::lambda-1
-   (unknown-float41  float :offset 1176) ;; from - logic-target::do-rotations2
-   (unknown-int00  int32 :offset 1180) ;; from - logic-target::joint-points
-   (unknown-float50  float :offset 1168) ;; from - logic-target::target-real-post
-   (unknown-vector50  vector :inline :offset 1184) ;; from - logic-target::build-conversions
-   (unknown-vector51  vector :inline :offset 1200) ;; from - logic-target::build-conversions
-   (unknown-vector52  vector :inline :offset 1216)
-   (unknown-vector53  vector :inline :offset 1232)
+   (swim-y-offset  float  :offset 1140) ;; from - logic-target::target-calc-camera-pos
+   (force-push-transv  vector :inline  :offset 1152) ;; from - logic-target::target-real-post
+   (force-push-speed  float :offset 1172) ;; from - target-death::lambda-1
+   (force-push-speed-mod  float :offset 1176) ;; from - logic-target::do-rotations2
+   (tongues-pulling  int32 :offset 1180) ;; from - logic-target::joint-points
+   (tongue-pull-force  float :offset 1168) ;; from - logic-target::target-real-post
+   (gravity-normal  vector :inline :offset 1184) ;; from - logic-target::build-conversions
+   (last-gravity-normal  vector :inline :offset 1200) ;; from - logic-target::build-conversions
+   (last-air-trans  vector :inline :offset 1216)
+   (ground-normal  vector :inline :offset 1232)
    (last-known-safe-ground  vector :inline :offset 1248)
-   (unknown-vector55  vector :inline :offset 1264)
-   (unknown-dword10 time-frame :offset 1280) ;; from - collide-reaction-target::target-collision-reaction
-   (unknown-dword11 time-frame :offset 1288) ;; from - target-util::can-jump?
-   (unknown-float60 float :offset 1300) ;; from - target-util::can-duck?
-   (unknown-float61 float :offset 1304) ;; from - target-util::target-align-vel-z-adjust
-   (unknown-float62 float :offset 1308) ;; from - target-util::target-print-stats
-   (unknown-float63 float :offset 1312) ;; from - logic-target::target-compute-slopes
-   (unknown-float64 float :offset 1316) ;; from - logic-target::target-compute-slopes
-   (unknown-dword20 time-frame :offset 1320) ;; from target-util::turn-around? - TODO
-   (unknown-dword21 time-frame :offset 1328) ;; from target-util::turn-around? - TODO
-   (unknown-dword-coverage int64 :offset 1336)
+   (ground-prim-sphere  vector :inline :offset 1264)
+   (ground-time time-frame :offset 1280) ;; from - collide-reaction-target::target-collision-reaction
+   (last-ground-time time-frame :offset 1288) ;; from - target-util::can-jump?
+   (ground-slope float :offset 1300) ;; from - target-util::can-duck?
+   (tween-input float :offset 1304) ;; from - target-util::target-align-vel-z-adjust
+   (tween-output float :offset 1308) ;; from - target-util::target-print-stats
+   (surface-slope-x float :offset 1312) ;; from - logic-target::target-compute-slopes
+   (surface-slope-z float :offset 1316) ;; from - logic-target::target-compute-slopes
+   (moving-surf-touch-time time-frame :offset 1320) ;; from target-util::turn-around? - TODO
+   (low-coverage-touch-time time-frame :offset 1328) ;; from target-util::turn-around? - TODO
+   (low-coverage-time time-frame :offset 1336)
    (unknown-float-coverage-0 float :offset 1344)
    (unknown-float-coverage-1 float :offset 1348)
    (unknown-float-coverage-2 float :offset 1352)
@@ -12219,29 +12218,29 @@
    (unknown-vector-coverage-2 vector :inline :offset 1440)
    (unknown-vector-coverage-3 vector :inline :offset 1472)
    (unknown-vector60 vector :inline :offset 1456) ;; from - logic-target::add-thrust
-   (unknown-vector61 vector :inline :offset 1504) ;; from - logic-target::add-thrust
+   (btransv vector :inline :offset 1504) ;; from - logic-target::add-thrust
    (unknown-float70 float :offset 1520) ;; from - logic-target::add-thrust
    (unknown-float71 float :offset 1524) ;; from - collide-shape::method-37
-   (unknown-vector70 vector :inline :offset 1536) ;; from - logic-target::add-thrust
-   (unknown-vector71 vector :inline :offset 1552) ;; from - target-tube::tube-thrust
-   (unknown-vector72 vector :inline :offset 1568) ;; from - collide-reaction-racer::racer-collision-reaction
-   (unknown-vector73 vector :inline :offset 1584) ;; from - collide-reaction-racer::racer-collision-reaction
-   (unknown-handle00 handle :offset 1600) ;; from logic-target::reset-target-state
-   (unknown-sphere-array00 collide-shape-prim-sphere 3 :offset 1608) ;; from target-util::target-collide-set! and from target-util::target-danger-set!
+   (wall-intersect vector :inline :offset 1536) ;; from - logic-target::add-thrust
+   (wall-normal vector :inline :offset 1552) ;; from - target-tube::tube-thrust
+   (best-cshape-intersect vector :inline :offset 1568) ;; from - collide-reaction-racer::racer-collision-reaction
+   (best-cshape-normal vector :inline :offset 1584) ;; from - collide-reaction-racer::racer-collision-reaction
+   (best-cshape-handle handle :offset 1600) ;; from logic-target::reset-target-state
+   (body-spheres collide-shape-prim-sphere 3 :offset 1608) ;; from target-util::target-collide-set! and from target-util::target-danger-set!
    (unknown-sphere00 collide-shape-prim-sphere :offset 1632) ;; from target-util::target-danger-set!
    (unknown-sphere01 collide-shape-prim-sphere :offset 1636) ;; from target-util::target-danger-set!
    (unknown-sphere02 collide-shape-prim-sphere :offset 1640) ;; from target-util::target-danger-set!
-   (unknown-int50 int32 :offset 1656) ;; from target::(enter target-wheel)
-   (unknown-dword30 time-frame :offset 1664) ;; from target::(trans target-walk)
-   (unknown-dword31 time-frame :offset 1672) ;; from target-util::can-hands?
-   (unknown-dword32 time-frame :offset 1680) ;; from target-util::can-hands?
-   (unknown-dword33 time-frame :offset 1688) ;; from target-util::can-feet?
-   (unknown-dword34 time-frame :offset 1696) ;; from target-util::can-feet?
-   (unknown-dword35 time-frame :offset 1704) ;; from target::(exit target-slide-down)
-   (unknown-dword36 time-frame :offset 1712) ;; from target::(trans target-jump)
-   (unknown-float80 float :offset 1724) ;; from logic-target::bend-gravity
-   (unknown-float81 float :offset 1728) ;; from logic-target::bend-gravity
-   (unknown-float82 float :offset 1732) ;; from logic-target::bend-gravity
+   (wheel-amount int32 :offset 1656) ;; from target::(enter target-wheel)
+   (wheel-exit-time time-frame :offset 1664) ;; from target::(trans target-walk)
+   (hands-used-time time-frame :offset 1672) ;; from target-util::can-hands?
+   (hands-fail-time time-frame :offset 1680) ;; from target-util::can-hands?
+   (feet-used-time time-frame :offset 1688) ;; from target-util::can-feet?
+   (feet-fail-time time-frame :offset 1696) ;; from target-util::can-feet?
+   (slide-time time-frame :offset 1704) ;; from target::(exit target-slide-down)
+   (stuck-time time-frame :offset 1712) ;; from target::(trans target-jump)
+   (bend float :offset 1724) ;; from logic-target::bend-gravity
+   (bend-target float :offset 1728) ;; from logic-target::bend-gravity
+   (bend-speed float :offset 1732) ;; from logic-target::bend-gravity
    (unknown-vector80 vector :inline :offset 1744) ;; from logic-target::joint-points
    (unknown-cspace00 cspace :inline :offset 1760) ;; from logic-target::joint-points
    (unknown-vector90 vector :score 100 :inline :offset 1776) ;; from logic-target::target-compute-edge
@@ -12257,62 +12256,54 @@
    (unknown-float110  float :offset 2120) ;; from logic-target::target-compute-edge
    (unknown-vector100  vector :inline :offset 2128) ;; from logic-target::target-compute-edge
    (unknown-vector101  vector :inline :offset 2144) ;; from logic-target::target-compute-edge
-   (unknown-dword40  time-frame :offset 2160) ;; from logic-target::target-compute-edge
-   (unknown-dword41  time-frame :offset 2168) ;; from logic-target::target-compute-edge
-   (unknown-handle10  handle :offset 2176) ;; from logic-target::target-compute-pole - probably a swingpole
-   (unknown-uint20     uint32          :offset 2184) ;; from target::(trans target-running-attack)
-   (unknown-spoolanim00     spool-anim          :offset 2184) ;; from target2::(trans target-stance-ambient)
-   (unknown-int20     int32          :offset 2184) ;; from (anon-function 1 basebutton)
-   (unknown-symbol20   symbol          :offset 2184) ;; from (anon-function 1 basebutton)
-   (unknown-float120 float :offset 2184) ;; from target::mod-var-jump
-   (unknown-int21 int32 :offset 2188) ;; from logic-target::target-compute-pole
-   (unknown-uint30 uint32 :offset 2188) ;; from target::(code target-running-attack)
-   (unknown-float121 float :offset 2188) ;; from target::mod-var-jump
-   (unknown-uint31 uint32 :offset 2192) ;; from target::(trans target-running-attack)
-   (unknown-int37 int32 :offset 2192)
-   (unknown-float122 float :offset 2196) ;; from target::(trans target-jump)
+   (edge-time  time-frame :offset 2160) ;; from logic-target::target-compute-edge
+   (edge-grab-time  time-frame :offset 2168) ;; from logic-target::target-compute-edge
+   (pole  handle :offset 2176) ;; from logic-target::target-compute-pole - probably a swingpole
+   (temp-flop-end-checks     uint32   :offset 2184)
+   (temp-spool     spool-anim   :offset 2184) ;; from target::(trans target-running-attack)
+   (temp-jump-height-min   float  :offset 2184) ;; from target2::(trans target-stance-ambient)
+   (temp-death-gravity     float  :offset 2184)
+   (temp-mode   symbol          :offset 2184) ;; from (anon-function 1 basebutton)
+   (temp-yellow-time uint32 :offset 2188)
+   (temp-jump-height-max float :offset 2188)
+   (temp-target-speed float :offset 2188)
+   (temp-pole-close-enough symbol :offset 2188)
+   (temp-touched-enemy uint32 :offset 2192) ;; from target::(trans target-running-attack)
+   (temp-high-jump-mode symbol :offset 2192)
+   (jump-frame-interp float :offset 2196) ;; from target::(trans target-jump)
    (unknown-float123 float :offset 2200) ;; from target::mod-var-jump
    (unknown-float124 float :offset 2204) ;; from target::init-var-jump
-   (unknown-vector102  vector :inline :offset 2224) ;; from (anon-function 3 basebutton)
-   (unknown-vector103  vector :inline :offset 2240) ;; from (anon-function 3 basebutton)
-   (unknown-quaternion02  quaternion :inline :offset 2256) ;; from racer-states::(code target-racing-get-on)
-   (unknown-quaternion03  quaternion :inline :offset 2272) ;; from racer-states::(code target-racing-get-on)
-   (unknown-smush00  smush-control :inline :offset 2288) ;; from (event target-fishing)
-   (unknown-vector110  vector :inline :offset 2320) ;; from logic-target::flag-setup
-   (unknown-vector111  vector :inline :offset 2336) ;; from logic-target::flag-setup
-   (unknown-symbol30  symbol :offset 2384) ;; from target-util::target-danger-set!
-   (unknown-int31  uint32 :offset 2384) ;; from target:: (event target-running-attack)
-   (unknown-dword50 int64 :offset 2392) ;; from target-util::target-start-attack
-   (unknown-dword51 int64 :offset 2400) ;; from target-util::target-start-attack
-   (unknown-pointer00 pointer :offset 2416) ;; from target-handler::target-standard-event-handler
-   (unknown-symbol40 symbol :offset 2428) ;; from logic-target::post-flag-setup
-   (unknown-dword60 int64 :offset 2432) ;; from target::(enter target-jump)
-   (unknown-dword61 int64 :offset 2440) ;; from target::(enter target-jump)
-   (unknown-dword62 int64 :offset 2448) ;; from target::(enter target-jump) - probably some sort of object64 that's used as a vector?
-   (unknown-dword63 int64 :offset 2456) ;; from target::(enter target-jump)
-   (unknown-halfword00 int16 :offset 2488) ;; from logic-target::target-move-dist
+   (jump-trans  vector :inline :offset 2224) ;; from (anon-function 3 basebutton)
+   (jump-trans-targ  vector :inline :offset 2240) ;; from (anon-function 3 basebutton)
+   (racer-get-on-base  quaternion :inline :offset 2256) ;; from racer-states::(code target-racing-get-on)
+   (racer-get-on-targ  quaternion :inline :offset 2272) ;; from racer-states::(code target-racing-get-on)
+   (smush  smush-control :inline :offset 2288) ;; from (event target-fishing)
+   (last-ground-trans  vector :inline :offset 2320) ;; from logic-target::flag-setup
+   (cur-air-trans  vector :inline :offset 2336) ;; from logic-target::flag-setup
+   (danger-mode  symbol :offset 2384) ;; from target-util::target-danger-set!
+   (current-attack-id int64 :offset 2392) ;; from target-util::target-start-attack
+   (eco-pill-bonus int64 :offset 2400) ;; from target-util::target-start-attack
+   (launch-event-block event-message-block :inline :offset 2416) ;; from target-handler::target-standard-event-handler
+   (collide-history-index int16 :offset 2488) ;; from logic-target::target-move-dist
    ;; these were determined from racer-collision-reaction.
-   (history-length int16 :offset 2490)
-   (history-data collide-history 128 :inline :offset-assert 2496)
+   (collide-history-length int16 :offset 2490)
+   (collide-history collide-history 128 :inline :offset-assert 2496)
    (unknown-float140 float :offset 18944)
-   (unknown-dword70 time-frame :offset 18952) ;; from logic-target::add-thrust
+   (wall-fric-time time-frame :offset 18952) ;; from logic-target::add-thrust
    (unknown-int40 int32 :offset 18880) ;; from logic-target::flag-setup
-   (unknown-dword80 time-frame :offset 18888) ;; from logic-target::post-flag-setup
-   (unknown-dword81 time-frame :offset 18896) ;; from logic-target::post-flag-setup
-   (unknown-float130 float :offset 18904) ;; from target2::target-swim-tilt
-   (unknown-float131 float :offset 18908) ;; from target2::target-swim-tilt
-   (unknown-dword82 time-frame :offset 18912) ;; from logic-target::reset-target-state
+   (invulnerable-time time-frame :offset 18888) ;; from logic-target::post-flag-setup
+   (invulnerable-duration time-frame :offset 18896) ;; from logic-target::post-flag-setup
+   (swim-angle float :offset 18904) ;; from target2::target-swim-tilt
+   (swim-bob-targ float :offset 18908) ;; from target2::target-swim-tilt
+   (yellow-blast-time time-frame :offset 18912) ;; from logic-target::reset-target-state
    (unknown-vector120 vector :inline :offset 18928) ;; from target::(code target-running-attack)
-   (unknown-float150 float :offset 18944) ;; from target::(code target-wheel-flip)
    (unknown-vector121 vector :inline :offset 18960) ;; from target collide response
    (wall-pat pat-surface :offset 18976) ;; pat information for wall-check collision
-   (unknown-soundid00 sound-id :offset 18980) ;; from powerups::target-powerup-process
+   (sound-ice sound-id :offset 18980) ;; from powerups::target-powerup-process
    (unknown-float141 float :offset 18984) ;; from powerups::target-powerup-process
    ;; PAL patch here
-   (unknown-soundid01 sound-id :offset 18988)
-   (unknown-int34 int32 :offset 18992)
-   (unknown-int35 int32 :offset 18996)
-   (unknown-int36 int32 :offset 19000)
+   (sounds sound-id 4 :offset 18988)
+   (sound-launch sound-id :offset 18988)
    )
   :size-assert #x4a3c ;; #x4a2c
   :method-count-assert 65
@@ -19561,7 +19552,7 @@
     (new (symbol type process int float float float) _type_ 0)
     (dummy-9 (_type_) none 9)
     (dummy-10 (_type_) none 10)
-    (start-bobbing! (_type_ float int int) none 11)
+    (start-bobbing! (_type_ float time-frame time-frame) none 11)
     (distance-from-surface (_type_) float 12)
     (dummy-13 (_type_ float vector int vector) none 13)
     (display-water-marks? (_type_) symbol 14)
@@ -20841,7 +20832,7 @@
 (define-extern do-target-shadow (function none :behavior target))
 (define-extern target-powerup-process (function none :behavior target))
 (define-extern flag-setup (function none :behavior target))
-(define-extern build-conversions (function vector vector :behavior target))
+(define-extern build-conversions (function vector none :behavior target))
 (define-extern do-rotations1 (function quaternion :behavior target))
 (define-extern read-pad (function vector vector :behavior target))
 (define-extern turn-to-vector (function vector float symbol :behavior target))
@@ -20859,7 +20850,7 @@
 (define-extern warp-vector-into-surface! (function vector vector vector vector))
 (define-extern vector<-pad-in-surface! (function vector symbol vector :behavior target))
 (define-extern draw-history (function control-info symbol))
-(define-extern vector-turn-to (function vector vector :behavior target))
+(define-extern vector-turn-to (function vector none :behavior target))
 (define-extern print-history (function control-info none))
 (define-extern local-pad-angle (function float :behavior target))
 (define-extern turn-around? (function symbol :behavior target))
@@ -20950,10 +20941,10 @@
 
 (define-extern target-bonk-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-standard-event-handler (function process int symbol event-message-block object :behavior target))
-(define-extern target-send-attack (function process uint uint int int symbol :behavior target)) ;; i suspect the uints are actually structures/basics
+(define-extern target-send-attack (function process symbol touching-shapes-entry int int symbol :behavior target))
 (define-extern target-attacked (function symbol attack-info process process (state symbol attack-info target) object :behavior target))
 (define-extern target-apply-tongue (function vector symbol :behavior target))
-(define-extern get-intersect-point (function vector touching-prims-entry control-info process vector))
+(define-extern get-intersect-point (function vector touching-prims-entry control-info touching-shapes-entry vector))
 (define-extern target-powerup-effect (function symbol none :behavior target))
 (define-extern target-shoved (function meters meters process (state object object target) object :behavior target))
 (define-extern target-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
@@ -20976,7 +20967,7 @@
 
 (define-extern target-land-effect (function none :behavior target))
 (define-extern target-hit-ground-anim (function symbol symbol :behavior target))
-(define-extern mod-var-jump (function symbol symbol symbol vector vector :behavior target))
+(define-extern mod-var-jump (function symbol symbol symbol vector none :behavior target))
 (define-extern init-var-jump (function float float vector vector vector vector :behavior target)) ;; 1st and 2nd vectors may be symbols instead?
 (define-extern target-falling-anim (function time-frame time-frame symbol :behavior target))
 (define-extern target-falling-trans (function basic time-frame none :behavior target))
@@ -21018,7 +21009,7 @@
 
 ;; - Functions
 
-(define-extern target-swim-tilt (function float float float float float :behavior target))
+(define-extern target-swim-tilt (function float float float float none :behavior target))
 (define-extern projectile-init-by-other (function entity-actor vector vector uint handle none :behavior projectile)) ;; 4th arg is `options`, 5th is `last-target`
 (define-extern first-person-hud-init-by-other (function none :behavior first-person-hud))
 (define-extern disable-hud (function int none))

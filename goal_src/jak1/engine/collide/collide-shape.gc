@@ -1270,7 +1270,7 @@
   )
 
 (defmethod integrate-and-collide! control-info ((obj control-info) (arg0 vector))
-  "Specialization of integrate and collide for the target"
+  "Specialization of integrate and collide for a control-info"
   ;; time it
   (stopwatch-start (-> *collide-stats* total-target))
 
@@ -1336,37 +1336,39 @@
         (vector-normalize! s2-1 1.0)
         (let ((f30-1 (vector-dot s1-0 s2-1)))
           (cond
-            ((and (!= (vector-length (-> obj unknown-vector01)) 0.0) (if (logtest? (-> obj status) 8)
-                                                                         (< f30-1 0.9999)
-                                                                         (< f30-1 0.95)
-                                                                         )
+            ((and (!= (vector-length (-> obj unknown-vector01)) 0.0)
+                  (if (logtest? (-> obj status) (cshape-moving-flags twall))
+                      (< f30-1 0.9999)
+                      (< f30-1 0.95)
+                      )
                   )
-             (set! (-> obj unknown-float70) (seek (-> obj unknown-float70) 1.0 (* 4.0 (-> *display* seconds-per-frame))))
-             (set! (-> obj unknown-float71) (seek
-                                              (-> obj unknown-float71)
-                                              (if (= (-> obj unknown-surface00 mode) 'air)
-                                                  1.0
-                                                  0.0
-                                                  )
-                                              (* 4.0 (-> *display* seconds-per-frame))
-                                              )
+             (seek! (-> obj unknown-float70) 1.0 (* 4.0 (-> *display* seconds-per-frame)))
+             (seek!
+               (-> obj unknown-float71)
+               (if (= (-> obj unknown-surface00 mode) 'air)
+                   1.0
+                   0.0
                    )
-             (logior! (-> obj status) 512)
+               (* 4.0 (-> *display* seconds-per-frame))
+               )
+             (logior! (-> obj status) (cshape-moving-flags csmf09))
              )
             (else
-              (set! (-> obj unknown-float70) (seek (-> obj unknown-float70) 0.0 (* 2.0 (-> *display* seconds-per-frame))))
-              (set! (-> obj unknown-float71) (seek (-> obj unknown-float71) 0.0 (* 2.0 (-> *display* seconds-per-frame))))
+              (seek! (-> obj unknown-float70) 0.0 (* 2.0 (-> *display* seconds-per-frame)))
+              (seek! (-> obj unknown-float71) 0.0 (* 2.0 (-> *display* seconds-per-frame)))
               )
             )
           )
         )
       )
-    (if (logtest? (-> obj status) 1)
+    (if (logtest? (-> obj status) (cshape-moving-flags onsurf))
         (set! (-> arg0 quad) (-> s3-1 quad))
         (vector--float*! arg0 s3-1 (-> obj unknown-vector16) 60.0)
         )
-    (if (and (logtest? (-> obj status) 1)
-             (and (zero? (logand (-> obj status) 520)) (< (vector-length (-> obj unknown-vector61)) (vector-length s4-1)))
+    (if (and (logtest? (-> obj status) (cshape-moving-flags onsurf))
+             (and (zero? (logand (-> obj status) (cshape-moving-flags twall csmf09)))
+                  (< (vector-length (-> obj unknown-vector61)) (vector-length s4-1))
+                  )
              )
         (set! (-> obj unknown-vector61 quad) (-> s4-1 quad))
         )
