@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "common/common_types.h"
+#include "common/util/FileUtil.h"
 #include "common/versions.h"
 
 #include "decompiler/Disasm/Register.h"
@@ -165,7 +166,6 @@ struct Config {
   std::unordered_map<std::string, std::vector<std::string>> import_deps_by_file;
 };
 
-Config read_config_file(const std::string& path_to_config_file,
-                        const std::map<std::string, bool>& overrides);
+Config read_config_file(const fs::path& path_to_config_file, const std::string& override_json);
 
 }  // namespace decompiler
