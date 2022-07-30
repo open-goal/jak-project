@@ -118,6 +118,8 @@ namespace Gfx {
 extern GfxGlobalSettings g_global_settings;
 extern GfxSettings g_settings;
 
+static bool g_is_debug_menu_visible_on_startup = false;
+
 const GfxRendererModule* GetCurrentRenderer();
 
 u32 Init(GameVersion version);

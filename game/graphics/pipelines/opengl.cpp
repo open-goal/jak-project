@@ -83,6 +83,11 @@ bool is_cursor_position_valid = false;
 double last_cursor_x_position = 0;
 double last_cursor_y_position = 0;
 
+void UpdateCursorVisibility(GLFWwindow* window, bool is_visible) {
+  g_cursor_input_mode = (is_visible) ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
+  glfwSetInputMode(window, GLFW_CURSOR, g_cursor_input_mode);
+}
+
 void SetDisplayCallbacks(GLFWwindow* d) {
   glfwSetKeyCallback(
       d, [](GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
@@ -97,9 +102,7 @@ void SetDisplayCallbacks(GLFWwindow* d) {
             if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
                 glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
               display->set_imgui_visible(!display->is_imgui_visible());
-              g_cursor_input_mode =
-                  (display->is_imgui_visible()) ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
-              glfwSetInputMode(window, GLFW_CURSOR, g_cursor_input_mode);
+              UpdateCursorVisibility(window, display->is_imgui_visible());
             }
           }
         }
@@ -249,9 +252,9 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
 
   auto display = std::make_shared<GLDisplay>(window, is_main);
 
-  g_cursor_input_mode = (display->is_imgui_visible()) ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
-  glfwSetInputMode(window, GLFW_CURSOR, g_cursor_input_mode);
-  glfwSetInputMode(window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);
+  display->set_imgui_visible(Gfx::g_is_debug_menu_visible_on_startup);
+  UpdateCursorVisibility(window, display->is_imgui_visible());
+  glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
 
   // lg::debug("init display #x{:x}", (uintptr_t)display);
 
@@ -423,7 +426,6 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int /*screen*/) {
       glfwSetWindowAttrib(m_window, GLFW_FLOATING, GLFW_FALSE);
       glfwSetWindowMonitor(m_window, NULL, xpos_backup(), ypos_backup(), width_backup(),
                            height_backup(), GLFW_DONT_CARE);
-      set_imgui_visible(true);
     } break;
     case GfxDisplayMode::Fullscreen: {
       // fullscreen
@@ -435,7 +437,6 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int /*screen*/) {
       glfwSetWindowFocusCallback(m_window, NULL);
       glfwSetWindowAttrib(m_window, GLFW_FLOATING, GLFW_FALSE);
       glfwSetWindowMonitor(m_window, monitor, 0, 0, vmode->width, vmode->height, GLFW_DONT_CARE);
-      set_imgui_visible(false);
     } break;
     case GfxDisplayMode::Borderless: {
       // borderless fullscreen
@@ -453,7 +454,6 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int /*screen*/) {
 #else
       glfwSetWindowMonitor(m_window, NULL, x, y, vmode->width, vmode->height, GLFW_DONT_CARE);
 #endif
-      set_imgui_visible(false);
     } break;
   }
 }

@@ -50,6 +50,7 @@ namespace Gfx {
 
 GfxGlobalSettings g_global_settings;
 GfxSettings g_settings;
+
 // const std::vector<const GfxRendererModule*> renderers = {&moduleOpenGL};
 
 // Not crazy about this declaration
@@ -77,6 +78,7 @@ const std::pair<std::string, Pad::Analog> analog_map[] = {
 
 void DumpToJson(ghc::filesystem::path& filename) {
   nlohmann::json json;
+  json["Debug Menu Visibility"] = false;  // Assume start up debug display is disabled
   auto& peripherals_json = json["Peripherals"];
 
   for (uint32_t i = 0; i < Pad::CONTROLLER_COUNT; ++i) {
@@ -135,6 +137,10 @@ void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
 
   auto file_txt = file_util::read_text_file(filepath);
   auto configuration = parse_commented_json(file_txt, filepath.string());
+
+  if (configuration.find("Debug Menu Visibility") != configuration.end()) {
+    g_is_debug_menu_visible_on_startup = configuration["Debug Menu Visibility"].get<bool>();
+  }
 
   int controller_index = 0;
   for (const auto& peripheral : configuration["Peripherals"]) {
