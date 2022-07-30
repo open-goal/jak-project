@@ -1696,6 +1696,7 @@
  "engine/connect.gc"
  "ui/text-h.gc"
  "game/settings-h.gc"
+ "math/knuth-rand.gc" ;; added
  "util/capture.gc"
  "debug/memory-usage-h.gc"
  "gfx/texture/texture.gc"
