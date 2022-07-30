@@ -45,8 +45,6 @@ void setup_logging(bool verbose) {
   lg::initialize();
 }
 
-
-
 /*!
  * Entry point for the game.
  */
