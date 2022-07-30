@@ -594,6 +594,10 @@ void set_msaa(s64 samples) {
   Gfx::set_msaa(samples);
 }
 
+u64 input_name_get(int pad) {
+  return make_string_from_c(Pad::input_name_get(pad));
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
 
@@ -613,6 +617,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
   make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
   make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);
+  make_function_symbol_from_c("pc-pad-input-name-get", (void*)input_name_get);
 
   // os stuff
   make_function_symbol_from_c("pc-get-os", (void*)get_os);

@@ -88,7 +88,9 @@
 (def-progress-carousell *carousell-frame-rate-100fps* (60fps 100fps))
 (define *carousell-frame-rate* *carousell-frame-rate-150fps*)
 
-
+;; timeout for pad remapping
+(define *progress-pad-timeout* (the-as time-frame 0))
+(define *progress-pad-name* (new 'global 'string 72 (the-as string #f)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  MENU OPTIONS
@@ -130,6 +132,7 @@
     (new 'static 'game-option :option-type (game-option-type language-text) :name (game-text-id text-language) :scale #t)
     (new 'static 'game-option :option-type (game-option-type speaker) :name (game-text-id subtitles-speaker) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id camera-options) :scale #t :param3 (game-option-menu camera-options))
+    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id pad-remap) :scale #t :param3 (game-option-menu pad-remap))
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id misc-options) :scale #t :param3 (game-option-menu misc-options))
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
@@ -275,6 +278,28 @@
     )
   )
 
+(define *pad-remap-options* (new 'static 'boxed-array :type game-option
+    (new 'static 'game-option :option-type (game-option-type pad-selection) :name (game-text-id pad-remap-input) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-x) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-square) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-o) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-triangle) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-l1) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-r1) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-l2) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-r2) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-l3) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-r3) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-start) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-select) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-dpad-up) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-dpad-down) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-dpad-left) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type pad-remap) :name (game-text-id pad-remap-dpad-right) :scale #t)
+    ;(new 'static 'game-option :option-type (game-option-type button) :name (game-text-id restore-defaults) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
+    )
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -681,6 +706,7 @@
   (set! (-> *options-remap* (progress-screen flava-player))               *temp-options*)
   (set! (-> *options-remap* (progress-screen memcard-disable-auto-save))  *yes-no-options*)
   (set! (-> *options-remap* (progress-screen memcard-auto-save-disabled)) *ok-options*)
+  (set! (-> *options-remap* (progress-screen pad-remap))                  *pad-remap-options*)
 
   ;; set default params
   (set! (-> *progress-state* aspect-ratio-choice) (get-aspect-ratio))
@@ -740,6 +766,23 @@
   (set! (-> *cheats* 6 value-to-modify) (&-> *progress-carousell* symbol-backup))
   (set! (-> *cheats* 7 value-to-modify) (&-> *progress-carousell* symbol-backup))
   ;(set! (-> *sound-options-pc* 3 value-to-modify) (&-> *pc-settings* music-fadein?))
+  (set! (-> *pad-remap-options* 0 value-to-modify) (&-> *pc-settings* pad?))
+  (set! (-> *pad-remap-options* 1 value-to-modify) (&-> *pc-settings* pad-map-x))
+  (set! (-> *pad-remap-options* 2 value-to-modify) (&-> *pc-settings* pad-map-square))
+  (set! (-> *pad-remap-options* 3 value-to-modify) (&-> *pc-settings* pad-map-o))
+  (set! (-> *pad-remap-options* 4 value-to-modify) (&-> *pc-settings* pad-map-triangle))
+  (set! (-> *pad-remap-options* 5 value-to-modify) (&-> *pc-settings* pad-map-l1))
+  (set! (-> *pad-remap-options* 6 value-to-modify) (&-> *pc-settings* pad-map-r1))
+  (set! (-> *pad-remap-options* 7 value-to-modify) (&-> *pc-settings* pad-map-l2))
+  (set! (-> *pad-remap-options* 8 value-to-modify) (&-> *pc-settings* pad-map-r2))
+  (set! (-> *pad-remap-options* 9 value-to-modify) (&-> *pc-settings* pad-map-l3))
+  (set! (-> *pad-remap-options* 10 value-to-modify) (&-> *pc-settings* pad-map-r3))
+  (set! (-> *pad-remap-options* 11 value-to-modify) (&-> *pc-settings* pad-map-start))
+  (set! (-> *pad-remap-options* 12 value-to-modify) (&-> *pc-settings* pad-map-select))
+  (set! (-> *pad-remap-options* 13 value-to-modify) (&-> *pc-settings* pad-map-dpad-up))
+  (set! (-> *pad-remap-options* 14 value-to-modify) (&-> *pc-settings* pad-map-dpad-down))
+  (set! (-> *pad-remap-options* 15 value-to-modify) (&-> *pc-settings* pad-map-dpad-left))
+  (set! (-> *pad-remap-options* 16 value-to-modify) (&-> *pc-settings* pad-map-dpad-right))
 
   (set! (-> *progress-carousell* aspect-native-choice) (-> *pc-settings* use-vis?))
 
@@ -838,7 +881,8 @@
                     (game-option-type yes-no)
                     (game-option-type normal-inverted)
                     (game-option-type aspect-native)
-                    (game-option-type cheat-toggle))
+                    (game-option-type cheat-toggle)
+                    (game-option-type pad-selection))
                    ;; pressed left on an on/off yes/no option
                    (when (not (-> (the-as (pointer uint32) (-> options (-> obj option-index) value-to-modify))))
                      ;; it was on 'off' or 'no'
@@ -947,6 +991,7 @@
                   (((game-option-type on-off)
                     (game-option-type yes-no)
                     (game-option-type normal-inverted)
+                    (game-option-type pad-selection)
                     (game-option-type aspect-native)
                     (game-option-type cheat-toggle))
                    ;; play sound if it was on 'yes' because we're going to 'no' now
@@ -1049,7 +1094,7 @@
                (set! (-> (the-as (pointer language-enum) (-> options (-> obj option-index) value-to-modify)))
                      (-> *progress-state* language-backup))
                )
-              (((game-option-type on-off) (game-option-type normal-inverted))
+              (((game-option-type on-off) (game-option-type normal-inverted) (game-option-type pad-selection))
                (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify)))
                      (-> *progress-state* on-off-backup))
                )
@@ -1057,6 +1102,9 @@
                (if (-> *progress-state* on-off-backup)
                    (logior!   (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1))))
                    (logclear! (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1)))))
+               )
+              (((game-option-type pad-remap))
+               (none) ;; don't do anything
                )
               )
             ;; ding
@@ -1130,7 +1178,7 @@
                   (load-level-text-files (-> *level-task-data* (-> obj display-level-index) text-group-index))
                   (set! (-> obj next-display-state) (progress-screen invalid))
                   )
-                 (((game-text-id restore-defaults))
+                 (((game-text-id restore-defaults)) ;; HANDLE INPUT MAPPING RESET
                   ;; restore default camera controls
                   (reset-original-camera *pc-settings*)
                   (sound-play "cursor-options")
@@ -1225,7 +1273,7 @@
                   (set! (-> *progress-state* language-backup)
                         (-> (the-as (pointer language-enum) (-> options (-> obj option-index) value-to-modify))))
                   )
-                 (((game-option-type on-off) (game-option-type normal-inverted))
+                 (((game-option-type on-off) (game-option-type normal-inverted) (game-option-type pad-selection))
                   (set! (-> *progress-state* on-off-backup)
                         (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify))))
                   )
@@ -1290,6 +1338,10 @@
                         (if (= (-> *text-languages* i) cur-lang)
                             (set! (-> *progress-carousell* int-backup) i))
                         ))
+                  )
+                 ;; set timeout for pad remapping
+                 (((game-option-type pad-remap))
+                  (set! *progress-pad-timeout* (-> *display* real-frame-counter))
                   )
                  )
                (sound-play "select-option")
@@ -1682,6 +1734,15 @@
             (set-scale! font (* 0.6 (-> obj transition-percentage-invert)))
             (print-game-text (lookup-text! *common-text* (game-text-id select-flava) #f) font #f (the int (* 128.0 (-> obj transition-percentage-invert))) 22)
             )
+          (((progress-screen pad-remap))
+           (set-color! font (font-color default))
+           (set-origin! font (- 17 (-> obj left-x-offset)) 14)
+           (set-scale! font (* 0.6 (-> obj transition-percentage-invert)))
+           (if (string= (string-upcase (pc-pad-input-name-get 0) *progress-pad-name*) "NO PAD CONNECTED")
+             (print-game-text-scaled "NO PAD CONNECTED" (* 1.0 (-> obj transition-percentage-invert)) font (the int (* 128.0 (-> obj transition-percentage-invert))))
+             (print-game-text-scaled (string-format "PAD ~D: ~S" 0 (string-upcase (pc-pad-input-name-get 0) *progress-pad-name*)) (* 0.7 (-> obj transition-percentage-invert)) font (the int (* 128.0 (-> obj transition-percentage-invert))))
+             )
+           )
           )
         (dotimes (index (length options))
         (let ((option-str (the string #f)) ;; the option text
@@ -1725,6 +1786,19 @@
              (set! option-str (string-format (lookup-text! *common-text* (-> options index name) #f)
                                       (the int (-> options index param1)) (the int (-> options index param2))))
              )
+            (((game-option-type pad-remap))
+             ;; input remap button. we want to display the keycode this button is currently mapped to.
+             (set! option-str (string-format "~S: BUTTON ~D" (lookup-text! *common-text* (-> options index name) #f) (-> (the-as (pointer int) (-> options index value-to-modify)))))
+             )
+            (((game-option-type pad-selection))
+             ;; input type
+             (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
+                 (begin
+                   (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f) (string-upcase (pc-pad-input-name-get 0) *progress-pad-name*)))
+                  )
+                 (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f) (lookup-text! *common-text* (game-text-id pad-kb) #f)))
+              )
+             )
             (else
              (cond
               ((and (-> obj selected-option) (= (-> obj option-index) index))
@@ -1751,7 +1825,8 @@
                   )
                  (((game-option-type on-off)
                    (game-option-type normal-inverted)
-                   (game-option-type aspect-native))
+                   (game-option-type aspect-native)
+                   (game-option-type pad-selection))
                   ;; on-off option or some other toggle. same logic as yes-no. changed to cut down code duping.
                   (let (
                         (on-str (case (-> options index option-type)
@@ -1759,12 +1834,16 @@
                                     (lookup-text! *common-text* (game-text-id on) #f))
                                   (((game-option-type normal-inverted))
                                     (lookup-text! *common-text* (game-text-id inverted) #f))
+                                  (((game-option-type pad-selection))
+                                    (string-upcase (pc-pad-input-name-get 0) *progress-pad-name*))
                                   ))
                        (off-str (case (-> options index option-type)
                                   (((game-option-type on-off) (game-option-type aspect-native))
                                     (lookup-text! *common-text* (game-text-id off) #f))
                                   (((game-option-type normal-inverted))
                                     (lookup-text! *common-text* (game-text-id normal) #f))
+                                  (((game-option-type pad-selection))
+                                    (lookup-text! *common-text* (game-text-id pad-kb) #f))
                                   ))
                         )
                     (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
@@ -1772,6 +1851,12 @@
                         (set! option-str (string-format "~0L~S ~30L~S" on-str off-str))
                         )
                     )
+                  )
+                 (((game-option-type pad-remap))
+                  (set! option-str (string-format (lookup-text! *common-text* (game-text-id pad-remap-assign) #f) (lookup-text! *common-text* (-> options index name) #f)))
+                  (when (< (seconds 3) (- (-> *display* real-frame-counter) *progress-pad-timeout*))
+                    (set! (-> obj selected-option) #f)
+                   )
                   )
                  (((game-option-type cheat-toggle))
                   (cond
@@ -1923,6 +2008,12 @@
                   (((game-option-type language-text))
                    (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
                                                             (lookup-text! *common-text* (get-language-name (-> *pc-settings* text-language)) #f)))
+                   )
+                  (((game-option-type pad-selection))
+                   (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
+                       (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f) (string-upcase (pc-pad-input-name-get 0) *progress-pad-name*)))
+                       (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f) (lookup-text! *common-text* (game-text-id pad-kb) #f)))
+                    )
                    )
                   )
                 )
@@ -2159,7 +2250,9 @@
          (hide-progress-icons)
          (draw-options self 128 21 0.82)
          )
-        (((progress-screen camera-options))
+        (((progress-screen camera-options)
+          (progress-screen pad-remap)
+          )
          ;; camera options lines are a bit too big
          (hide-progress-icons)
          (draw-options self 115 25 0.65)

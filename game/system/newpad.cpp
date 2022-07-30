@@ -227,6 +227,9 @@ void DefaultMapping(MappingInfo& mapping) {
   // start for progress
   MapButton(mapping, Button::Start, 0, GLFW_KEY_ENTER);
 
+  // select
+  MapButton(mapping, Button::Select, 0, GLFW_KEY_BACKSPACE);
+
   // l3/r3 for menu
   MapButton(mapping, Button::L3, 0, GLFW_KEY_COMMA);
   MapButton(mapping, Button::R3, 0, GLFW_KEY_PERIOD);
@@ -252,6 +255,13 @@ u64 input_mode_get_key() {
 
 u64 input_mode_get_index() {
   return input_mode_index;
+}
+
+const char* input_name_get(int pad) {
+  if (g_gamepads.gamepad_idx[pad] != -1) {
+    return glfwGetJoystickName(g_gamepads.gamepad_idx[pad]);
+  }
+  return "No pad connected";
 }
 
 void input_mode_pad_set(s64 idx) {

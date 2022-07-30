@@ -87,6 +87,7 @@ void ExitInputMode(bool);
 u64 input_mode_get();
 u64 input_mode_get_key();
 u64 input_mode_get_index();
+const char* input_name_get(int pad);
 void input_mode_pad_set(s64);
 
 void initialize();

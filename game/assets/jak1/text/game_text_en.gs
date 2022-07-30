@@ -197,6 +197,47 @@
 (#x1097 "REAL TIME OF DAY"
         "REAL TIME OF DAY")
 
+(#x10a0 "INPUT OPTIONS"
+        "INPUT OPTIONS")
+(#x10a1 "INPUT"
+        "INPUT")
+(#x10a2 "KEYBOARD"
+        "KEYBOARD")
+(#x10a3 "<PAD_X>"
+        "<PAD_X>")
+(#x10a4 "<PAD_SQUARE>"
+        "<PAD_SQUARE>")
+(#x10a5 "<PAD_CIRCLE>"
+        "<PAD_CIRCLE>")
+(#x10a6 "<PAD_TRIANGLE>"
+        "<PAD_TRIANGLE>")
+(#x10a7 "L1"
+        "L1")
+(#x10a8 "R1"
+        "R1")
+(#x10a9 "L2"
+        "L2")
+(#x10aa "R2"
+        "R2")
+(#x10ab "L3"
+        "L3")
+(#x10ac "R3"
+        "R3")
+(#x10ad "START"
+        "START")
+(#x10ae "SELECT"
+        "SELECT")
+(#x10af "D-PAD UP"
+        "D-PAD UP")
+(#x10b0 "D-PAD DOWN"
+        "D-PAD DOWN")
+(#x10b1 "D-PAD LEFT"
+        "D-PAD LEFT")
+(#x10b2 "D-PAD RIGHT"
+        "D-PAD RIGHT")
+(#x10b3 "PRESS BUTTON TO ASSIGN TO ~S..."
+        "PRESS BUTTON TO ASSIGN TO ~S...")
+
 (#x10c0 "MUSIC PLAYER"
         "MUSIC PLAYER")
 (#x10c1 "SCENE PLAYER"
