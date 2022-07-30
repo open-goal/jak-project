@@ -31,18 +31,22 @@ class GLDisplay : public GfxDisplay {
   int get_screen_rate(int vmode_idx);
   int get_screen_vmode_count();
   int get_monitor_count();
-  GfxDisplayMode get_fullscreen();
   void set_size(int w, int h);
   void update_fullscreen(GfxDisplayMode mode, int screen);
   void render();
   bool minimized();
+  bool fullscreen_pending() override;
+  void fullscreen_flush() override;
   void set_lock(bool lock);
   void on_key(GLFWwindow* window, int key, int scancode, int action, int mods);
   void on_window_pos(GLFWwindow* window, int xpos, int ypos);
   void on_window_size(GLFWwindow* window, int width, int height);
+  void on_iconify(GLFWwindow* window, int iconified);
 
  private:
   GLFWwindow* m_window;
+  bool m_minimized = false;
+  GLFWvidmode m_last_video_mode = {0, 0, 0, 0, 0, 0};
 
   GLFWmonitor* get_monitor(int index);
 };

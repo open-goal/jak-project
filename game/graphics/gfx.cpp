@@ -223,7 +223,7 @@ void get_window_scale(float* x, float* y) {
 
 GfxDisplayMode get_fullscreen() {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_fullscreen();
+    return Display::GetMainDisplay()->fullscreen_mode();
   } else {
     return GfxDisplayMode::Windowed;
   }

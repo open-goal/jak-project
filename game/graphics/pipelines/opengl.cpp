@@ -264,6 +264,11 @@ GLDisplay::GLDisplay(GLFWwindow* window, bool is_main) : m_window(window) {
     GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
     display->on_window_size(window, width, height);
   });
+
+  glfwSetWindowIconifyCallback(window, [](GLFWwindow* window, int iconified) {
+    GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
+    display->on_iconify(window, iconified);
+  });
 }
 
 GLDisplay::~GLDisplay() {
@@ -273,6 +278,7 @@ GLDisplay::~GLDisplay() {
   glfwSetKeyCallback(m_window, NULL);
   glfwSetWindowPosCallback(m_window, NULL);
   glfwSetWindowSizeCallback(m_window, NULL);
+  glfwSetWindowIconifyCallback(m_window, NULL);
   glfwSetWindowUserPointer(m_window, nullptr);
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
@@ -309,6 +315,10 @@ void GLDisplay::on_window_size(GLFWwindow* /*window*/, int width, int height) {
     m_last_windowed_width = width;
     m_last_windowed_height = height;
   }
+}
+
+void GLDisplay::on_iconify(GLFWwindow* window, int iconified) {
+  m_minimized = iconified == GLFW_TRUE;
 }
 
 namespace {
@@ -490,18 +500,6 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
   }
 }
 
-GfxDisplayMode GLDisplay::get_fullscreen() {
-  GLFWmonitor* monitor = get_monitor(fullscreen_screen());
-  const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
-  if (glfwGetWindowMonitor(m_window) != NULL) {
-    return GfxDisplayMode::Fullscreen;
-  } else if (width() >= vmode->width && height() >= vmode->height) {
-    return GfxDisplayMode::Borderless;
-  } else {
-    return GfxDisplayMode::Windowed;
-  }
-}
-
 int GLDisplay::get_screen_vmode_count() {
   int count = 0;
   glfwGetVideoModes(get_monitor(fullscreen_screen()), &count);
@@ -515,7 +513,7 @@ void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out) {
   auto vmodes = glfwGetVideoModes(monitor, &count);
   if (vmode_idx >= 0) {
     vmode = &vmodes[vmode_idx];
-  } else if (get_fullscreen() == GfxDisplayMode::Fullscreen) {
+  } else if (fullscreen_mode() == GfxDisplayMode::Fullscreen) {
     for (int i = 0; i < count; ++i) {
       if (!vmode || vmode->height < vmodes[i].height) {
         vmode = &vmodes[i];
@@ -537,7 +535,7 @@ int GLDisplay::get_screen_rate(int vmode_idx) {
   auto vmodes = glfwGetVideoModes(monitor, &count);
   if (vmode_idx >= 0) {
     vmode = &vmodes[vmode_idx];
-  } else if (get_fullscreen() == GfxDisplayMode::Fullscreen) {
+  } else if (fullscreen_mode() == GfxDisplayMode::Fullscreen) {
     for (int i = 0; i < count; ++i) {
       if (!vmode || vmode->refreshRate < vmodes[i].refreshRate) {
         vmode = &vmodes[i];
@@ -561,11 +559,29 @@ int GLDisplay::get_monitor_count() {
 }
 
 bool GLDisplay::minimized() {
-  return glfwGetWindowAttrib(m_window, GLFW_ICONIFIED);
+  return m_minimized;
 }
 
 void GLDisplay::set_lock(bool lock) {
   glfwSetWindowAttrib(m_window, GLFW_RESIZABLE, lock ? GLFW_TRUE : GLFW_FALSE);
+}
+
+bool GLDisplay::fullscreen_pending() {
+  GLFWmonitor* monitor = get_monitor(fullscreen_screen());
+  auto vmode = glfwGetVideoMode(monitor);
+
+  return GfxDisplay::fullscreen_pending() ||
+         (vmode->width != m_last_video_mode.width || vmode->height != m_last_video_mode.height ||
+          vmode->refreshRate != m_last_video_mode.refreshRate);
+}
+
+void GLDisplay::fullscreen_flush() {
+  GfxDisplay::fullscreen_flush();
+
+  GLFWmonitor* monitor = get_monitor(fullscreen_screen());
+  auto vmode = glfwGetVideoMode(monitor);
+
+  m_last_video_mode = *vmode;
 }
 
 void update_global_profiler() {
@@ -672,15 +688,14 @@ void GLDisplay::render() {
     g_gfx_data->sync_cv.notify_all();
   }
 
+  // update fullscreen mode, if requested
   {
     auto p = scoped_prof("fullscreen-update");
-    // slow, takes ~0.15 ms on linux
-    auto current_fullscreen_mode = get_fullscreen();
-    // checking minimized also takes ~0.1 ms, only check if we need to update fullscreen modes
+    update_last_fullscreen_mode();
+
     if (fullscreen_pending() && !minimized()) {
       fullscreen_flush();
     }
-    m_last_fullscreen_mode = current_fullscreen_mode;
   }
 
   // reboot whole game, if requested
