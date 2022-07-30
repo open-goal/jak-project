@@ -84,6 +84,8 @@ struct MappingInfo {
   int keyboard_button_mapping[CONTROLLER_COUNT][(
       int)Pad::Button::Max];  // Back up in case controller gets disconnected
   AnalogMappingInfo keyboard_analog_mapping[CONTROLLER_COUNT][(int)Pad::Analog::Max];
+  double mouse_x_axis_sensitivities[CONTROLLER_COUNT];
+  double mouse_y_axis_sensitivities[CONTROLLER_COUNT];
   // TODO complex button mapping & key macros (e.g. shift+x for l2+r2 press etc.)
 };
 

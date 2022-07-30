@@ -149,19 +149,31 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
 }
 
 void SetAnalogAxisValue(int axis, double value) {
-  if (axis == GlfwKeyCustomAxis::CURSOR_X_AXIS || axis == GlfwKeyCustomAxis::CURSOR_Y_AXIS) {
-    value /= 18.0f;  // Arbituary value. Cursor delta generally a lot larger than scroll wheel delta
-  }
-
   for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
     for (int analog = 0; analog < (int)Analog::Max; ++analog) {
       if (g_mapping.keyboard_analog_mapping[pad][analog].axis_id == axis) {
-        if (value > 1.0) {
+        double newValue = value;
+        if (axis == GlfwKeyCustomAxis::CURSOR_X_AXIS) {
+          newValue /= g_mapping.mouse_x_axis_sensitivities[pad];
+        } else if (axis == GlfwKeyCustomAxis::CURSOR_Y_AXIS) {
+          newValue /= g_mapping.mouse_y_axis_sensitivities[pad];
+        }
+
+        if (newValue > 1.0) {
           g_key_analogs[pad][analog] = 1.0;
-        } else if (value < -1.0) {
+        } else if (newValue < -1.0) {
           g_key_analogs[pad][analog] = -1.0;
+        } else if (isnan(newValue)) {
+          g_key_analogs[pad][analog] = 0.0;
         } else {
-          g_key_analogs[pad][analog] = value;
+          g_key_analogs[pad][analog] = newValue;
+        }
+
+        // Invert logic used here. Left Y axis movement is based on towrds the camera.
+        // In game forward is treated as going away from the camera and backwards is headed towards
+        // the camera.
+        if (axis == GlfwKeyCustomAxis::CURSOR_Y_AXIS) {
+          g_key_analogs[pad][analog] *= -1;
         }
       }
     }
@@ -181,8 +193,8 @@ void UpdateAxisValue() {
       double input = 0.0f;
       if (g_mapping.keyboard_analog_mapping[pad][analog].positive_key > -1 &&
           g_mapping.keyboard_analog_mapping[pad][analog].positive_key < NUM_KEYS) {
-        if (analog == static_cast<int>(GlfwKeyCustomAxis::CURSOR_Y_AXIS) ||
-            analog == static_cast<int>(GlfwKeyCustomAxis::SCROLL_WHEEL_Y_AXIS)) {
+        if (analog == static_cast<int>(Analog::Left_Y) ||
+            analog == static_cast<int>(Analog::Right_Y)) {
           input =
               input -
               g_buffered_key_status[g_mapping.keyboard_analog_mapping[pad][analog].positive_key];
@@ -194,8 +206,8 @@ void UpdateAxisValue() {
       }
       if (g_mapping.keyboard_analog_mapping[pad][analog].negative_key > -1 &&
           g_mapping.keyboard_analog_mapping[pad][analog].negative_key < NUM_KEYS) {
-        if (analog == static_cast<int>(GlfwKeyCustomAxis::CURSOR_Y_AXIS) ||
-            analog == static_cast<int>(GlfwKeyCustomAxis::SCROLL_WHEEL_Y_AXIS)) {
+        if (analog == static_cast<int>(Analog::Left_Y) ||
+            analog == static_cast<int>(Analog::Right_Y)) {
           input =
               input +
               g_buffered_key_status[g_mapping.keyboard_analog_mapping[pad][analog].negative_key];
@@ -361,6 +373,14 @@ void DefaultMapping(MappingInfo& mapping) {
 
   analog_mapping.axis_id = GlfwKeyCustomAxis::CURSOR_Y_AXIS;
   MapAnalog(mapping, Analog::Right_Y, 0, analog_mapping);
+
+  const double defaultMouseXSensitivity = 18.0f;
+  const double defaultMouseYSensitivity = 50.0f;
+
+  for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
+    mapping.mouse_x_axis_sensitivities[pad] = defaultMouseXSensitivity;
+    mapping.mouse_y_axis_sensitivities[pad] = defaultMouseYSensitivity;
+  }
 
   SetMapping(mapping);
 }

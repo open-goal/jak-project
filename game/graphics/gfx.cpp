@@ -75,7 +75,7 @@ const std::pair<std::string, Pad::Analog> analog_map[] = {
     {"Right Y Axis", Pad::Analog::Right_Y},
 };
 
-void DumpToJson(const std::string& filename) {
+void DumpToJson(ghc::filesystem::path& filename) {
   nlohmann::json json;
   auto& peripherals_json = json["Peripherals"];
 
@@ -110,6 +110,10 @@ void DumpToJson(const std::string& filename) {
             g_settings.pad_mapping_info.keyboard_analog_mapping[i][(int)value].negative_key;
       }
     }
+    peripheral_json["X-Axis Mouse Sensitivity"] =
+        g_settings.pad_mapping_info.mouse_x_axis_sensitivities[i];
+    peripheral_json["Y-Axis Mouse Sensitivity"] =
+        g_settings.pad_mapping_info.mouse_y_axis_sensitivities[i];
     peripherals_json.emplace_back(peripheral_json);
   }
 
@@ -117,8 +121,8 @@ void DumpToJson(const std::string& filename) {
 }
 
 void SavePeripheralSettings() {
-  std::string filename =
-      (file_util::get_jak_project_dir() / "game" / "config" / "controller-settings.json").string();
+  auto filename =
+      (file_util::get_jak_project_dir() / "game" / "config" / "controller-settings.json");
   file_util::create_dir_if_needed_for_file(filename);
 
   DumpToJson(filename);
@@ -126,11 +130,11 @@ void SavePeripheralSettings() {
   lg::info("Saved graphics configuration file.");
 }
 
-void LoadPeripheralSettings(std::string& filepath) {
+void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
   Pad::DefaultMapping(g_settings.pad_mapping_info);
 
   auto file_txt = file_util::read_text_file(filepath);
-  auto configuration = parse_commented_json(file_txt, filepath);
+  auto configuration = parse_commented_json(file_txt, filepath.string());
 
   int controller_index = 0;
   for (const auto& peripheral : configuration["Peripherals"]) {
@@ -188,13 +192,17 @@ void LoadPeripheralSettings(std::string& filepath) {
       g_settings.pad_mapping_info.keyboard_analog_mapping[controller_index][(int)value] =
           analog_mapping;
     }
+    g_settings.pad_mapping_info.mouse_x_axis_sensitivities[controller_index] =
+        peripheral["X-Axis Mouse Sensitivity"].get<double>();
+    g_settings.pad_mapping_info.mouse_y_axis_sensitivities[controller_index] =
+        peripheral["Y-Axis Mouse Sensitivity"].get<double>();
     controller_index++;
   }
 }
 
 void LoadSettings() {
-  std::string filename =
-      (file_util::get_jak_project_dir() / "game" / "config" / "controller-settings.json").string();
+  auto filename =
+      (file_util::get_jak_project_dir() / "game" / "config" / "controller-settings.json");
   if (fs::exists(filename)) {
     LoadPeripheralSettings(filename);
     Pad::SetMapping(g_settings.pad_mapping_info);
@@ -205,7 +213,7 @@ void LoadSettings() {
   file_util::create_dir_if_needed_for_file(filename);
   Pad::DefaultMapping(g_settings.pad_mapping_info);
   SavePeripheralSettings();
-  lg::info("Created graphics configuration file {}", filename);
+  lg::info("Created graphics configuration file {}", filename.string());
 }
 
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {

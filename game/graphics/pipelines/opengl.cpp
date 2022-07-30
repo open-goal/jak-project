@@ -78,7 +78,7 @@ struct GraphicsData {
 
 std::unique_ptr<GraphicsData> g_gfx_data;
 
-std::atomic<int> g_cursor_input_mode = GLFW_CURSOR_NORMAL;
+std::atomic<int> g_cursor_input_mode = GLFW_CURSOR_DISABLED;
 bool is_cursor_position_valid = false;
 double last_cursor_x_position = 0;
 double last_cursor_y_position = 0;
@@ -121,12 +121,6 @@ void SetDisplayCallbacks(GLFWwindow* d) {
     } else if (action == GlfwKeyAction::Release) {
       Pad::OnKeyRelease(key);
     }
-  });
-
-  glfwSetScrollCallback(d, [](GLFWwindow* window, double xoffset, double yoffset) {
-    Pad::SetAnalogAxisValue(GlfwKeyCustomAxis::SCROLL_WHEEL_X_AXIS, xoffset);
-    Pad::SetAnalogAxisValue(GlfwKeyCustomAxis::SCROLL_WHEEL_Y_AXIS, yoffset);
-    printf("Scroll Callback: xoffset: %lf, yoffset: %lf\n", xoffset, yoffset);
   });
 
   glfwSetCursorPosCallback(d, [](GLFWwindow* window, double xposition, double yposition) {
@@ -245,9 +239,6 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
     lg::error("Could not load icon for OpenGL window");
   }
 
-  glfwSetInputMode(window, GLFW_CURSOR, g_cursor_input_mode);
-  glfwSetInputMode(window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);
-
   SetDisplayCallbacks(window);
   Pad::initialize();
 
@@ -257,6 +248,11 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   }
 
   auto display = std::make_shared<GLDisplay>(window, is_main);
+
+  g_cursor_input_mode = (display->is_imgui_visible()) ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
+  glfwSetInputMode(window, GLFW_CURSOR, g_cursor_input_mode);
+  glfwSetInputMode(window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);
+
   // lg::debug("init display #x{:x}", (uintptr_t)display);
 
   // setup imgui
@@ -591,12 +587,6 @@ void GLDisplay::render() {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   }
 
-  // switch vsync modes, if requested
-  if (Gfx::g_global_settings.vsync != Gfx::g_global_settings.old_vsync) {
-    Gfx::g_global_settings.old_vsync = Gfx::g_global_settings.vsync;
-    glfwSwapInterval(Gfx::g_global_settings.vsync);
-  }
-
   // actual vsync
   g_gfx_data->debug_gui.finish_frame();
   {
@@ -612,6 +602,12 @@ void GLDisplay::render() {
   // actually wait for vsync
   if (g_gfx_data->debug_gui.should_gl_finish()) {
     glFinish();
+  }
+
+  // switch vsync modes, if requested
+  if (Gfx::g_global_settings.vsync != Gfx::g_global_settings.old_vsync) {
+    Gfx::g_global_settings.old_vsync = Gfx::g_global_settings.vsync;
+    glfwSwapInterval(Gfx::g_global_settings.vsync);
   }
 
   // Start timing for the next frame.
