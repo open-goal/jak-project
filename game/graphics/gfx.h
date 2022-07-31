@@ -153,7 +153,7 @@ void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);
 
 int PadIsPressed(Pad::Button button, int port);
-int PadAnalogValue(Pad::Analog analog, int port);
+int PadGetAnalogValue(Pad::Analog analog, int port);
 
 // matching enum in kernel-defs.gc !!
 enum class RendererTreeType { NONE = 0, TFRAG3 = 1, TIE3 = 2, INVALID };

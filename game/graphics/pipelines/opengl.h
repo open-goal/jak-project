@@ -19,12 +19,8 @@ enum GlfwKeyAction {
 };
 
 enum GlfwKeyCustomAxis {
-  SCROLL_WHEEL_X_AXIS = GLFW_GAMEPAD_AXIS_LAST + 1,
-  SCROLL_WHEEL_Y_AXIS = GLFW_GAMEPAD_AXIS_LAST + 2,
-  SCROLL_WHELL_LAST_AXIS = SCROLL_WHEEL_Y_AXIS,
-
-  CURSOR_X_AXIS = SCROLL_WHELL_LAST_AXIS + 1,
-  CURSOR_Y_AXIS = SCROLL_WHELL_LAST_AXIS + 2
+  CURSOR_X_AXIS = GLFW_GAMEPAD_AXIS_LAST + 1,
+  CURSOR_Y_AXIS = GLFW_GAMEPAD_AXIS_LAST + 2
 };
 
 class GLDisplay : public GfxDisplay {
@@ -50,3 +46,6 @@ class GLDisplay : public GfxDisplay {
 };
 
 extern const GfxRendererModule gRendererOpenGL;
+namespace glfw {
+static const int NUM_KEYS = GLFW_KEY_LAST + GLFW_MOUSE_BUTTON_LAST + 1;
+}

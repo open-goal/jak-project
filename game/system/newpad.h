@@ -97,7 +97,7 @@ void ClearKeys();
 
 void DefaultMapping(MappingInfo& mapping);
 int IsPressed(MappingInfo& mapping, Button button, int pad);
-int AnalogValue(MappingInfo& mapping, Analog analog, int pad);
+int GetAnalogValue(MappingInfo& mapping, Analog analog, int pad);
 void MapButton(MappingInfo& mapping, Button button, int pad, int key);
 void MapAnalog(MappingInfo& mapping, Button button, int pad, AnalogMappingInfo& analogMapping);
 void SetMapping(MappingInfo& mapping);
@@ -119,5 +119,15 @@ void initialize();
 void update_gamepads();
 int rumble(int pad, float slow_motor, float fast_motor);
 int GetGamepadState(int pad);
+void ForceClearAnalogValue();
+void clear_pad(int pad);
+
+void UpdateAxisValue();
+void SetGamepadState(int pad, int pad_index);
+bool* GetKeyboardInputBuffer();
+bool* GetKeyboardBufferedInputBuffer();
+float* GetKeyboardInputAnalogBuffer(int pad);
+bool* GetControllerInputBuffer(int pad);
+float* GetControllerAnalogInputBuffer(int pad);
 
 }  // namespace Pad
