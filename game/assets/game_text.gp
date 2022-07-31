@@ -10,6 +10,7 @@
   (file "game/assets/jak1/text/text_patch_ja.gs")
   ;; add custom files down here
   (file "game/assets/jak1/text/game_text_en.gs")
+  (file "game/assets/jak1/text/game_text_de.gs")
   (file "game/assets/jak1/text/game_text_ja.gs")
   )
 

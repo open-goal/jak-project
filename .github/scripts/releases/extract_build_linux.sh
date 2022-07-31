@@ -16,6 +16,10 @@ strip $DEST/gk
 strip $DEST/goalc
 strip $DEST/extractor
 
+chmod +x $DEST/gk
+chmod +x $DEST/goalc
+chmod +x $DEST/extractor
+
 mkdir -p $DEST/data
 mkdir -p $DEST/data/launcher/
 mkdir -p $DEST/data/decompiler/
