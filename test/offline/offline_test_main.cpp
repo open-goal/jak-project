@@ -58,6 +58,7 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
                             const fs::path& iso_data_path,
                             const OfflineTestConfig& offline_config,
                             const std::string& game_name) {
+  fmt::print("hello world - changes checked out!");
   // TODO - pull out extractor logic to determine release into common and use here
   Decompiler dc;
   decompiler::init_opcode_info();
