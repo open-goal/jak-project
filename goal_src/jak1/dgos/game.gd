@@ -47,6 +47,7 @@
   ("connect.o" "connect")
   ("text-h.o" "text-h")
   ("settings-h.o" "settings-h")
+  ("knuth-rand.o" "knuth-rand") ;; added
   ("capture.o" "capture")
   ("memory-usage-h.o" "memory-usage-h")
   ("texture.o" "texture")
