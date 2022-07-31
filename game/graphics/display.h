@@ -19,21 +19,23 @@
 class GfxDisplay {
   const char* m_title;
 
-  // NOT actual size! just backups
-  int m_width;
-  int m_height;
-  // same here
-  int m_xpos;
-  int m_ypos;
-
-  int m_fullscreen_screen;
-  int m_fullscreen_target_screen;
+  int m_fullscreen_screen = -1;
+  int m_fullscreen_target_screen = -1;
   bool m_imgui_visible;
 
  protected:
   bool m_main;
+  // next mode
   GfxDisplayMode m_fullscreen_target_mode = GfxDisplayMode::Windowed;
-  GfxDisplayMode m_last_fullscreen_mode;
+  // current mode (start as -1 to force an initial fullscreen update)
+  GfxDisplayMode m_fullscreen_mode = (GfxDisplayMode)-1;
+  // previous mode (last frame)
+  GfxDisplayMode m_last_fullscreen_mode = GfxDisplayMode::Windowed;
+
+  int m_last_windowed_xpos = 0;
+  int m_last_windowed_ypos = 0;
+  int m_last_windowed_width = 640;
+  int m_last_windowed_height = 480;
 
  public:
   virtual ~GfxDisplay() {}
@@ -45,37 +47,37 @@ class GfxDisplay {
   virtual int get_screen_vmode_count() = 0;
   virtual void get_screen_size(int vmode_idx, s32* w, s32* h) = 0;
   virtual int get_screen_rate(int vmode_idx) = 0;
+  virtual int get_monitor_count() = 0;
   virtual void get_position(int* x, int* y) = 0;
   virtual void get_size(int* w, int* h) = 0;
-  virtual GfxDisplayMode get_fullscreen() = 0;
   virtual void render() = 0;
   virtual void set_lock(bool lock) = 0;
   virtual bool minimized() = 0;
+  virtual bool fullscreen_pending() {
+    return fullscreen_mode() != m_fullscreen_target_mode ||
+           m_fullscreen_screen != m_fullscreen_target_screen;
+  }
+  virtual void fullscreen_flush() {
+    update_fullscreen(m_fullscreen_target_mode, m_fullscreen_target_screen);
+
+    m_fullscreen_mode = m_fullscreen_target_mode;
+    m_fullscreen_screen = m_fullscreen_target_screen;
+  }
+
   bool is_active() const { return get_window() != nullptr; }
   void set_title(const char* title);
   const char* title() const { return m_title; }
-
-  bool fullscreen_pending() { return get_fullscreen() != m_fullscreen_target_mode; }
-  void fullscreen_flush() {
-    update_fullscreen(m_fullscreen_target_mode, m_fullscreen_target_screen);
-    // TODO no
-    m_fullscreen_screen = m_fullscreen_target_screen;
-  }
   void set_fullscreen(GfxDisplayMode mode, int screen) {
     m_fullscreen_target_mode = mode;
     m_fullscreen_target_screen = screen;
   }
-  void update_last_fullscreen_mode() { m_last_fullscreen_mode = get_fullscreen(); }
+  void update_last_fullscreen_mode() { m_last_fullscreen_mode = fullscreen_mode(); }
   GfxDisplayMode last_fullscreen_mode() const { return m_last_fullscreen_mode; }
+  GfxDisplayMode fullscreen_mode() { return m_fullscreen_mode; }
   int fullscreen_screen() const { return m_fullscreen_screen; }
   void set_imgui_visible(bool visible) { m_imgui_visible = visible; }
   bool is_imgui_visible() const { return m_imgui_visible; }
-  bool windowed() { return get_fullscreen() == GfxDisplayMode::Windowed; }
-  void backup_params();
-  int width_backup() const { return m_width; }
-  int height_backup() const { return m_height; }
-  int xpos_backup() const { return m_xpos; }
-  int ypos_backup() const { return m_ypos; }
+  bool windowed() { return fullscreen_mode() == GfxDisplayMode::Windowed; }
 
   int width();
   int height();
