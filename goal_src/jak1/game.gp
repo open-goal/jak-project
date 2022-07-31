@@ -1692,7 +1692,17 @@
  "gfx/math-camera.gc"
  "gfx/font-h.gc"
  "load/decomp-h.gc"
- "gfx/hw/display.gc"
+ )
+
+(goal-src "engine/gfx/hw/display.gc" "pckernel-h")
+
+(goal-src-sequence
+ ;; prefix
+ "engine/"
+
+ :deps
+ ("$OUT/hw/display.o")
+ 
  "engine/connect.gc"
  "ui/text-h.gc"
  "game/settings-h.gc"
@@ -2004,7 +2014,7 @@
  )
 
 ;; Custom or Modified Code
-(goal-src "pc/pckernel-h.gc" "dma-disasm")
+(goal-src "pc/pckernel-h.gc")
 (goal-src "pc/pckernel.gc" "settings" "video")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
