@@ -1694,7 +1694,7 @@
  "load/decomp-h.gc"
  )
 
-(goal-src "engine/gfx/hw/display.gc" "pckernel-h")
+(goal-src "engine/gfx/hw/display.gc" "decomp-h" "pckernel-h")
 
 (goal-src-sequence
  ;; prefix
