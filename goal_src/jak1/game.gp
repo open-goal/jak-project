@@ -1680,7 +1680,8 @@
  "engine/"
 
  :deps
- ("$OUT/obj/pad.o")
+ ("$OUT/obj/pad.o"
+  "$OUT/obj/dma-disasm.o")
  "gfx/hw/gs.gc"
  "gfx/hw/display-h.gc"
  "math/vector.gc"
@@ -1701,7 +1702,8 @@
  "engine/"
 
  :deps
- ("$OUT/obj/display.o")
+ ("$OUT/obj/display.o"
+  "$OUT/obj/decomp-h.o")
  
  "engine/connect.gc"
  "ui/text-h.gc"
@@ -1918,7 +1920,8 @@
  "engine/"
 
  :deps
- ("$OUT/obj/main.o")
+ ("$OUT/obj/main.o"
+  "$OUT/obj/video.o")
 
  "collide/collide-cache.gc"
  "entity/relocate.gc"
