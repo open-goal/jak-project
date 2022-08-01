@@ -404,6 +404,13 @@ s64 get_screen_vmode_count() {
   return Gfx::get_screen_vmode_count();
 }
 
+/*!
+ * Returns the number of available monitors.
+ */
+int get_monitor_count() {
+  return Gfx::get_monitor_count();
+}
+
 void mkdir_path(u32 filepath) {
   auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
   file_util::create_dir_if_needed_for_file(filepath_str);

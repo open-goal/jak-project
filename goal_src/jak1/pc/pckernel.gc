@@ -122,6 +122,11 @@
 
   rate)
 
+(defmethod set-monitor! pc-settings ((obj pc-settings) (monitor int))
+  "set the monitor to use when in fullscreen/borderless"
+  (set! (-> obj monitor) monitor)
+  (none))
+
 (defmethod commit-to-file pc-settings ((obj pc-settings))
   "commits the current settings to the file"
   ;; auto load settings if available
@@ -187,8 +192,16 @@
      )
     )
 
+  ;; if monitor selection is out of bounds (e.g. if a monitor got disconnected),
+  ;; then default to the primary monitor
+  (when (>= (-> obj monitor) (pc-get-monitor-count))
+    (format 0 "Monitor selection out of bounds, defaulting to primary monitor.~%")
+    (set! (-> obj monitor) 0)
+    )
+
   ;; set fullscreen to what we want
-  (pc-set-fullscreen (-> obj display-mode) 0)
+  (pc-set-fullscreen (-> obj display-mode) (-> obj monitor))
+
   ;; set window size and fps automatically if the window lock is enabled.
   (when (-> obj window-lock?)
     (pc-set-vsync (-> obj vsync?))
@@ -786,6 +799,7 @@
                       )
                   )
                 (("display-mode") (set-display-mode! obj (file-stream-read-symbol file)))
+                (("monitor") (set-monitor! obj (file-stream-read-int file)))
                 (("letterbox") (set! (-> obj letterbox?) (file-stream-read-symbol file)))
                 (("vsync") (set! (-> obj vsync?) (file-stream-read-symbol file)))
                 (("font-scale") (set! (-> obj font-scale) (file-stream-read-float file)))
@@ -903,6 +917,7 @@
                                                   (-> obj aspect-custom-x) (-> obj aspect-custom-y)
                                                   (-> obj aspect-ratio-auto?))
     (format file "  (display-mode ~A)~%" (-> obj display-mode))
+    (format file "  (monitor ~D)~%" (-> obj monitor))
     (format file "  (letterbox ~A)~%" (-> obj letterbox?))
     (format file "  (vsync ~A)~%" (-> obj vsync?))
     (format file "  (font-scale ~f)~%" (-> obj font-scale))
