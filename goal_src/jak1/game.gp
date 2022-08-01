@@ -1680,7 +1680,7 @@
  "engine/"
 
  :deps
- ("$OUT/ps2/pad.o")
+ ("$OUT/obj/pad.o")
  "gfx/hw/gs.gc"
  "gfx/hw/display-h.gc"
  "math/vector.gc"
@@ -1701,7 +1701,7 @@
  "engine/"
 
  :deps
- ("$OUT/gfx/hw/display.o")
+ ("$OUT/obj/display.o")
  
  "engine/connect.gc"
  "ui/text-h.gc"
@@ -1918,7 +1918,7 @@
  "engine/"
 
  :deps
- ("$OUT/main.o")
+ ("$OUT/obj/main.o")
 
  "collide/collide-cache.gc"
  "entity/relocate.gc"
