@@ -1701,7 +1701,7 @@
  "engine/"
 
  :deps
- ("$OUT/hw/display.o")
+ ("$OUT/gfx/hw/display.o")
  
  "engine/connect.gc"
  "ui/text-h.gc"
