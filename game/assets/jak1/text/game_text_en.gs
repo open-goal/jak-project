@@ -199,8 +199,8 @@
 
 (#x10a0 "INPUT OPTIONS"
         "INPUT OPTIONS")
-(#x10a1 "INPUT"
-        "INPUT")
+(#x10a1 "DEVICE"
+        "DEVICE")
 (#x10a2 "KEYBOARD"
         "KEYBOARD")
 (#x10a3 "<PAD_X>"
@@ -235,8 +235,8 @@
         "D-PAD LEFT")
 (#x10b2 "D-PAD RIGHT"
         "D-PAD RIGHT")
-(#x10b3 "PRESS BUTTON TO ASSIGN TO ~S..."
-        "PRESS BUTTON TO ASSIGN TO ~S...")
+(#x10b3 "PRESS BUTTON TO ASSIGN TO ~S (~D)..."
+        "PRESS BUTTON TO ASSIGN TO ~S (~D)...")
 
 (#x10c0 "MUSIC PLAYER"
         "MUSIC PLAYER")

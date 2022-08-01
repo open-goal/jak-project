@@ -1103,13 +1103,13 @@
                    (logior!   (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1))))
                    (logclear! (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1)))))
                )
-              (((game-option-type pad-remap))
-               (none) ;; don't do anything
-               )
               )
-            ;; ding
-            (sound-play "cursor-options")
-            (set! (-> obj selected-option) #f)
+            ;; don't unselect if this is a pad remap button.
+            (when (not (= (-> options (-> obj option-index) option-type) (game-option-type pad-remap)))
+              ;; ding
+              (sound-play "cursor-options")
+              (set! (-> obj selected-option) #f)
+             )
             )
            ((or (can-go-back? obj)
                 (= (-> obj display-state) (progress-screen load-game))
@@ -1786,30 +1786,29 @@
              (set! option-str (string-format (lookup-text! *common-text* (-> options index name) #f)
                                       (the int (-> options index param1)) (the int (-> options index param2))))
              )
-            (((game-option-type pad-remap))
-             ;; input remap button. we want to display the keycode this button is currently mapped to.
-             (set! option-str (string-format "~S: BUTTON ~D" (lookup-text! *common-text* (-> options index name) #f) (-> (the-as (pointer int) (-> options index value-to-modify)))))
-             )
-            (((game-option-type pad-selection))
-             ;; input type
-             (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
-                 (begin
-                   (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f) (string-upcase (pc-pad-input-name-get 0) *progress-pad-name*)))
-                  )
-                 (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f) (lookup-text! *common-text* (game-text-id pad-kb) #f)))
-              )
-             )
             (else
              (cond
               ((and (-> obj selected-option) (= (-> obj option-index) index))
                ;; this option is SELECTED!
                (set-color! font (font-color default))
-               (set! (-> font origin x) (the float (- option-x (-> obj left-x-offset))))
-               (set! (-> font origin y) (the float (+ y-off -8)))
-               (set-scale! font 0.6)
-               (print-game-text (lookup-text! *common-text* (-> options index name) #f) font #f 128 22)
-               (set! option-y (+ y-off 7))
+               ;; don't modify the text for remap buttons
+               (when (not (= (-> options index option-type) (game-option-type pad-remap)))
+                 (set! (-> font origin x) (the float (- option-x (-> obj left-x-offset))))
+                 (set! (-> font origin y) (the float (+ y-off -8)))
+                 (set-scale! font 0.6)
+                 (print-game-text (lookup-text! *common-text* (-> options index name) #f) font #f 128 22)
+                 (set! option-y (+ y-off 7))
+                )
                (case (-> options index option-type)
+                 (((game-option-type pad-remap))
+                  (set! option-str (string-format (lookup-text! *common-text* (game-text-id pad-remap-assign) #f) (lookup-text! *common-text* (-> options index name) #f)
+                  ;; display timeout in seconds
+                  (the int (+ 4.0 (* (/ 1.0 TICKS_PER_SECOND) (* -1.0 (- (-> *display* real-frame-counter) *progress-pad-timeout*)))))))
+                  (when (< (seconds 4) (- (-> *display* real-frame-counter) *progress-pad-timeout*))
+                    (sound-play "cursor-options")
+                    (set! (-> obj selected-option) #f)
+                   )
+                  )
                  (((game-option-type slider))
                   ;; draw a slider and its text.
                   ;; this ugliness is just decompiler stuff. all it does is fade the alpha according to value.
@@ -1851,12 +1850,6 @@
                         (set! option-str (string-format "~0L~S ~30L~S" on-str off-str))
                         )
                     )
-                  )
-                 (((game-option-type pad-remap))
-                  (set! option-str (string-format (lookup-text! *common-text* (game-text-id pad-remap-assign) #f) (lookup-text! *common-text* (-> options index name) #f)))
-                  (when (< (seconds 3) (- (-> *display* real-frame-counter) *progress-pad-timeout*))
-                    (set! (-> obj selected-option) #f)
-                   )
                   )
                  (((game-option-type cheat-toggle))
                   (cond
@@ -2010,10 +2003,15 @@
                                                             (lookup-text! *common-text* (get-language-name (-> *pc-settings* text-language)) #f)))
                    )
                   (((game-option-type pad-selection))
+                   ;; input type
                    (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
                        (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f) (string-upcase (pc-pad-input-name-get 0) *progress-pad-name*)))
                        (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f) (lookup-text! *common-text* (game-text-id pad-kb) #f)))
                     )
+                   )
+                  (((game-option-type pad-remap))
+                   ;; input remap button. we want to display the keycode this button is currently mapped to.
+                   (set! option-str (string-format "~S: BUTTON ~D" (lookup-text! *common-text* (-> options index name) #f) (-> (the-as (pointer int) (-> options index value-to-modify)))))
                    )
                   )
                 )
