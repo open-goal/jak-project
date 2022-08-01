@@ -138,6 +138,7 @@
 (define *graphic-options-pc* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id game-resolution) :scale #t :param3 (game-option-menu resolution))
     (new 'static 'game-option :option-type (game-option-type display-mode) :name (game-text-id display-mode) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id display) :scale #t :param3 (game-option-menu monitor))
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id vsync) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (game-text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
     (new 'static 'game-option :option-type (game-option-type msaa) :name (game-text-id msaa) :scale #t)
@@ -502,6 +503,22 @@
   *temp-options*
   )
 
+(defun build-monitor-options ()
+  (set! (-> *temp-options* length) 0)
+
+  (dotimes (i (pc-get-monitor-count))
+    (let ((option (-> *temp-options* (length *temp-options*))))
+      (set! (-> option option-type) (game-option-type monitor))
+      (set! (-> option name) (game-text-id display-fmt))
+      (set! (-> option param1) (the float i))
+      (set! (-> option scale) #t)
+
+      (1+! (-> *temp-options* length))
+      )
+    )
+  
+  (add-back-option)
+  )
 
 
 
@@ -681,6 +698,7 @@
   (set! (-> *options-remap* (progress-screen flava-player))               *temp-options*)
   (set! (-> *options-remap* (progress-screen memcard-disable-auto-save))  *yes-no-options*)
   (set! (-> *options-remap* (progress-screen memcard-auto-save-disabled)) *ok-options*)
+  (set! (-> *options-remap* (progress-screen monitor))                    *temp-options*)
 
   ;; set default params
   (set! (-> *progress-state* aspect-ratio-choice) (get-aspect-ratio))
@@ -710,9 +728,10 @@
   (set! (-> *game-options-pc* 6 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *game-options-pc* 7 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
-  (set! (-> *graphic-options-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
-  (set! (-> *graphic-options-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *graphic-options-pc* 2 value-to-modify) (&-> *pc-settings* monitor))
+  (set! (-> *graphic-options-pc* 3 value-to-modify) (&-> *pc-settings* vsync?))
   (set! (-> *graphic-options-pc* 5 value-to-modify) (&-> *progress-carousell* int-backup))
+  (set! (-> *graphic-options-pc* 6 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-no-frame-rate-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-no-frame-rate-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
   (set! (-> *graphic-options-no-frame-rate-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
@@ -771,6 +790,9 @@
       (if (= (-> obj display-state-stack 0) (progress-screen title))
           (set! (-> *options-remap* (-> obj display-state)) *secrets-title*)
           (set! (-> *options-remap* (-> obj display-state)) *secrets*))
+      )
+    (((progress-screen monitor))
+      (build-monitor-options)
       )
     )
   ;; run nav code
@@ -1170,6 +1192,17 @@
                (cpad-clear! 0 circle)
                (cpad-clear! 0 square)
                (cpad-clear! 0 triangle)
+               (sound-play "cursor-options")
+               (set! (-> obj next-display-state) (progress-screen invalid))
+               (commit-to-file *pc-settings*)
+               )
+              ((= (-> options (-> obj option-index) option-type) (game-option-type monitor))
+               ;; monitor button
+               (let ((monitor (the int (-> options (-> obj option-index) param1))))
+                 (set-monitor! *pc-settings* monitor)
+                 )
+               (cpad-clear! 0 x)
+               (cpad-clear! 0 circle)
                (sound-play "cursor-options")
                (set! (-> obj next-display-state) (progress-screen invalid))
                (commit-to-file *pc-settings*)
@@ -1725,6 +1758,14 @@
              (set! option-str (string-format (lookup-text! *common-text* (-> options index name) #f)
                                       (the int (-> options index param1)) (the int (-> options index param2))))
              )
+            (((game-option-type monitor))
+              ;; monitor list
+             (set! option-str 
+                   (string-format (lookup-text! *common-text* (-> options index name) #f)
+                                  (+ 1 (the int (-> options index param1)))
+                                  )
+                   )
+             )
             (else
              (cond
               ((and (-> obj selected-option) (= (-> obj option-index) index))
@@ -2143,6 +2184,7 @@
           (progress-screen aspect-ratio)
           (progress-screen secrets)
           (progress-screen cheats)
+          (progress-screen monitor)
           )
          (hide-progress-icons)
          (draw-options self 115 25 0.82)

@@ -153,14 +153,21 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
 
 void SetAnalogAxisValue(int axis, double value) {
   const double sensitivity_numerator = 100.0f;
+  const double minimum_sensitivity = 1e-4;
 
   for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
     for (int analog = 0; analog < (int)Analog::Max; ++analog) {
       if (g_mapping.keyboard_analog_mapping[pad][analog].axis_id == axis) {
         double newValue = value;
         if (axis == GlfwKeyCustomAxis::CURSOR_X_AXIS) {
+          if (g_mapping.mouse_x_axis_sensitivities[pad] < minimum_sensitivity) {
+            g_mapping.mouse_x_axis_sensitivities[pad] = minimum_sensitivity;
+          }
           newValue /= (sensitivity_numerator / g_mapping.mouse_x_axis_sensitivities[pad]);
         } else if (axis == GlfwKeyCustomAxis::CURSOR_Y_AXIS) {
+          if (g_mapping.mouse_y_axis_sensitivities[pad] < minimum_sensitivity) {
+            g_mapping.mouse_y_axis_sensitivities[pad] = minimum_sensitivity;
+          }
           newValue /= (sensitivity_numerator / g_mapping.mouse_y_axis_sensitivities[pad]);
         }
 
@@ -546,6 +553,10 @@ bool* GetControllerInputBuffer(int pad) {
 
 float* GetControllerAnalogInputBuffer(int pad) {
   return g_gamepad_analogs[pad];
+}
+
+MappingInfo GetMapping() {
+  return g_mapping;
 }
 
 };  // namespace Pad

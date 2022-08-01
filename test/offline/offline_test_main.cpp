@@ -63,8 +63,7 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   decompiler::init_opcode_info();
   dc.config = std::make_unique<decompiler::Config>(decompiler::read_config_file(
       (file_util::get_jak_project_dir() / "decompiler" / "config" / game_name_to_config[game_name])
-          .string(),
-      {}));
+          .string()));
 
   // modify the config
   std::unordered_set<std::string> object_files;

@@ -129,5 +129,6 @@ bool* GetKeyboardBufferedInputBuffer();
 float* GetKeyboardInputAnalogBuffer(int pad);
 bool* GetControllerInputBuffer(int pad);
 float* GetControllerAnalogInputBuffer(int pad);
+MappingInfo GetMapping();
 
 }  // namespace Pad

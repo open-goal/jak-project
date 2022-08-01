@@ -61,12 +61,6 @@ int GfxDisplay::height() {
   return h;
 }
 
-void GfxDisplay::backup_params() {
-  get_size(&m_width, &m_height);
-  get_position(&m_xpos, &m_ypos);
-  fmt::print("backed up window: {},{} {}x{}\n", m_xpos, m_ypos, m_width, m_height);
-}
-
 /*
 ********************************
 * DISPLAY
