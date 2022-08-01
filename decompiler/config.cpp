@@ -69,7 +69,7 @@ Config read_config_file(const fs::path& path_to_config_file, const std::string& 
   config.print_cfgs = cfg.at("print_cfgs").get<bool>();
   config.generate_symbol_definition_map = cfg.at("generate_symbol_definition_map").get<bool>();
   config.is_pal = cfg.at("is_pal").get<bool>();
-  config.rip_levels = cfg.at("levels_convert_to_obj").get<bool>();
+  config.rip_levels = cfg.at("rip_levels").get<bool>();
   config.extract_collision = cfg.at("extract_collision").get<bool>();
   config.generate_all_types = cfg.at("generate_all_types").get<bool>();
   if (cfg.contains("old_all_types_file")) {

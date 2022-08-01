@@ -671,7 +671,7 @@ struct PatResult {
   PatSurface pat;
 };
 
-PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& debug_name) {
+PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*debug_name*/) {
   PatResult result;
   if (!val.IsObject() || !val.Has("set_collision") || !val.Get("set_collision").Get<int>()) {
     // unset.

@@ -512,7 +512,7 @@ std::vector<u8> decompress_dgo(const std::vector<u8>& data_in) {
   return decompressed_data;
 }
 
-FILE* open_file(const fs::path& path, std::string mode) {
+FILE* open_file(const fs::path& path, const std::string& mode) {
 #ifdef _WIN32
   return _wfopen(path.wstring().c_str(), std::wstring(mode.begin(), mode.end()).c_str());
 #else
@@ -520,7 +520,7 @@ FILE* open_file(const fs::path& path, std::string mode) {
 #endif
 }
 
-std::vector<fs::path> find_files_recursively(const fs::path base_dir, const std::regex& pattern) {
+std::vector<fs::path> find_files_recursively(const fs::path& base_dir, const std::regex& pattern) {
   std::vector<fs::path> files = {};
   for (auto& p : fs::recursive_directory_iterator(base_dir)) {
     if (p.is_regular_file()) {

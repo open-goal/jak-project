@@ -36,8 +36,10 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -std=c++17 \
         -mavx \
         -Wall \
+        -Wextra \
         -Wno-c++11-narrowing \
         -Wno-c++98-compat \
+        -g -ggdb \
         -O3")
 
     # Increase stack size for windows, who's default is too low

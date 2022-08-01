@@ -13,6 +13,7 @@
 #include "decompiler/level_extractor/extract_shrub.h"
 #include "decompiler/level_extractor/extract_tfrag.h"
 #include "decompiler/level_extractor/extract_tie.h"
+#include "decompiler/level_extractor/fr3_to_gltf.h"
 
 namespace decompiler {
 
@@ -263,6 +264,12 @@ void extract_from_level(const ObjectFileDB& db,
   file_util::write_binary_file(
       output_folder / fmt::format("{}.fr3", dgo_name.substr(0, dgo_name.length() - 4)),
       compressed.data(), compressed.size());
+
+  if (dump_level) {
+    save_level_background_as_gltf(level_data,
+                                  file_util::get_jak_project_dir() / "debug_out" /
+                                      fmt::format("{}_background.glb", level_data.level_name));
+  }
 }
 
 void extract_all_levels(const ObjectFileDB& db,
