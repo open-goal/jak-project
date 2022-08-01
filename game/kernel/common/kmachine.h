@@ -63,6 +63,7 @@ void get_window_scale(u32 x_ptr, u32 y_ptr);
 void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr);
 s64 get_screen_rate(s64 vmode_idx);
 s64 get_screen_vmode_count();
+int get_monitor_count();
 void mkdir_path(u32 filepath);
 u64 filepath_exists(u32 filepath);
 void prof_event(u32 name, u32 kind);

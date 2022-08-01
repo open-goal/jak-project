@@ -197,8 +197,12 @@ void ImGui_ImplGlfw_CharCallback(GLFWwindow* window, unsigned int c)
     io.AddInputCharacter(c);
 }
 
-void ImGui_ImplGlfw_MonitorCallback(GLFWmonitor*, int)
+void ImGui_ImplGlfw_MonitorCallback(GLFWmonitor* monitor, int event)
 {
+  ImGui_ImplGlfw_Data* bd = ImGui_ImplGlfw_GetBackendData();
+  if (bd->PrevUserCallbackMonitor != NULL)
+    bd->PrevUserCallbackMonitor(monitor, event);
+
 	// Unused in 'master' branch but 'docking' branch will use this, so we declare it ahead of it so if you have to install callbacks you can install this one too.
 }
 
