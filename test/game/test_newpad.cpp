@@ -54,18 +54,7 @@ TEST_F(PeripheralTest, UpdatePad_ControllerPad_UpdateControllerInputBuffers) {
   // Assert
   EXPECT_EQ(expected_analog_status, actual_analog_status);
 }
-TEST_F(PeripheralTest, InitializePad_UpdateControllerSDLDatabase) {
-  // Arrange
-  int pad_index = 0;
-  int controller_index = 0;
-  Pad::SetGamepadState(pad_index, controller_index);
 
-  // Act
-  int actual_rumble_status = Pad::rumble(0, 1.0, 1.0f);
-
-  // Assert
-  // TODO: Add gmock call to see if glfwUpdateGamepadMappings(const char*); was called
-}
 TEST_F(PeripheralTest, ClearKey_ValidKey_UpdateKeyboardBuffer) {
   // Arrange
   int input_key = 127;
