@@ -24,30 +24,6 @@ class PeripheralTest : public ::testing::Test {
   Pad::MappingInfo mapping_info_;
 };
 
-TEST_F(PeripheralTest, Rumble_KeyboardInput_ReturnErrorCode) {
-  // Arrange
-  int expected_rumble_status = 0;
-
-  // Act
-  int actual_rumble_status = Pad::rumble(0, 1.0f, 1.0f);
-
-  // Assert
-  EXPECT_EQ(expected_rumble_status, actual_rumble_status);
-}
-TEST_F(PeripheralTest, Rumble_ControllerInput_ReturnSuccess) {  // Arrange
-  // int expected_rumble_status = 1;
-
-  int pad_index = 0;
-  int controller_index = 0;
-  Pad::SetGamepadState(pad_index, controller_index);
-
-  // Act
-  int actual_rumble_status = Pad::rumble(0, 1.0, 1.0f);
-
-  // Assert
-  // TODO: Add gmock call to see if glfwSetJoystickRumble(int, float, float)) was called
-  // EXPECT_EQ(expected_rumble_status, actual_rumble_status);
-}
 TEST_F(PeripheralTest, UpdatePad_KeyboardPad_ClearsControllerInputBuffers) {
   // Arrange
   bool expected_controller_status = false;
