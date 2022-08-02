@@ -105,17 +105,17 @@
            (!= (pc-get-screen-rate -1) rate))
       (set! (-> obj vsync?) #f))
   (case rate
+    ((50)
+      (set! (-> obj target-fps) rate)
+      (set! (-> *setting-control* default video-mode) 'pal)
+      )
     ((60)
       (set! (-> obj target-fps) rate)
       (set! (-> *setting-control* default video-mode) 'ntsc)
       )
-    ((100)
+    (else
       (set! (-> obj target-fps) rate)
-      (set! (-> *setting-control* default video-mode) '100fps)
-      )
-    ((150)
-      (set! (-> obj target-fps) rate)
-      (set! (-> *setting-control* default video-mode) '150fps)
+      (set! (-> *setting-control* default video-mode) 'custom)
       )
     )
   (set! (-> *setting-control* current video-mode) #f)
@@ -411,7 +411,7 @@
 
       (cond
         ;; green eco!
-        ((pc-cheats? obj eco-green)
+        ((pc-cheats? (-> obj cheats) eco-green)
          (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-green))
                    (<= (-> *target* fact-info-target eco-level) 0.0))
             (define-extern vent type)
@@ -422,14 +422,14 @@
             )
          )
         ;; red eco!
-        ((pc-cheats? obj eco-red)
+        ((pc-cheats? (-> obj cheats) eco-red)
          (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-red))
                    (<= (-> *target* fact-info-target eco-level) 0.0))
             (send-event *target* 'get-pickup (pickup-type eco-red) (-> *FACT-bank* eco-full-inc))
             )
          )
         ;; blue eco!
-        ((pc-cheats? obj eco-blue)
+        ((pc-cheats? (-> obj cheats) eco-blue)
          (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-blue))
                    (<= (-> *target* fact-info-target eco-level) 0.0))
             (protect ((-> *target* event-hook))
@@ -440,7 +440,7 @@
             )
          )
         ;; yellow eco!
-        ((pc-cheats? obj eco-yellow)
+        ((pc-cheats? (-> obj cheats) eco-yellow)
          (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-yellow))
                    (<= (-> *target* fact-info-target eco-level) 0.0))
             (send-event *target* 'get-pickup (pickup-type eco-yellow) (-> *FACT-bank* eco-full-inc))
@@ -449,18 +449,18 @@
         )
       ))
 
-      (when (pc-cheats? obj invinc)
+      (when (pc-cheats? (-> obj cheats) invinc)
         (logior! (-> *target* state-flags) (state-flags invulnerable))
         )
 
       )
 
-  (if (pc-cheats? obj tunes)
+  (if (pc-cheats? (-> obj cheats) tunes)
       (set! (-> obj flava-hack) -1)
       (set! (-> obj flava-hack) 0)
       )
 
-  (if (pc-cheats? obj sky)
+  (if (pc-cheats? (-> obj cheats) sky)
       (let ((date (new 'stack 'scf-time)))
           (scf-get-time date)
           (when (zero? (-> date stat))
