@@ -2,6 +2,7 @@
 
 #include <set>
 #include <unordered_map>
+#include <algorithm>
 
 #include "common/math/Vector.h"
 #include "common/util/Assert.h"
