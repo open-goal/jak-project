@@ -1708,7 +1708,17 @@
  "engine/connect.gc"
  "ui/text-h.gc"
  "game/settings-h.gc"
- "math/knuth-rand.gc" ;; added
+ )
+
+(goal-src "pc/util/knuth-rand.gc" "settings-h")
+
+(goal-src-sequence
+ ;; prefix
+ "engine/"
+
+ :deps
+ ("$OUT/obj/settings-h.o")
+
  "util/capture.gc"
  "debug/memory-usage-h.gc"
  "gfx/texture/texture.gc"
@@ -2021,7 +2031,7 @@
 (goal-src "pc/pckernel.gc" "settings" "video")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
-(goal-src "pc/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
+(goal-src "pc/util/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
 (goal-src "pc/hud-classes-pc.gc" "pckernel" "hud" "battlecontroller" "generic-obs")
 
 ;; the debug menu is modified to include PC specific options:
