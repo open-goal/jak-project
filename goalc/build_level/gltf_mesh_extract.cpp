@@ -806,6 +806,16 @@ void extract(const Input& in,
       fixed_faces.push_back(face);
     }
   }
+
+  if (in.double_sided_collide) {
+    size_t os = fixed_faces.size();
+    for (size_t i = 0; i < os; i++) {
+      auto f0 = fixed_faces.at(i);
+      std::swap(f0.v[0], f0.v[1]);
+      fixed_faces.push_back(f0);
+    }
+  }
+
   out.faces = std::move(fixed_faces);
 
   if (in.auto_wall_enable) {

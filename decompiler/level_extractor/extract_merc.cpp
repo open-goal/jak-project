@@ -827,11 +827,11 @@ u8 convert_mat(int in) {
   }
 }
 
-tfrag3::MercVertex convert_vertex(const MercUnpackedVtx& vtx) {
+tfrag3::MercVertex convert_vertex(const MercUnpackedVtx& vtx, float xyz_scale) {
   tfrag3::MercVertex out;
-  out.pos[0] = vtx.pos[0];
-  out.pos[1] = vtx.pos[1];
-  out.pos[2] = vtx.pos[2];
+  out.pos[0] = vtx.pos[0] * xyz_scale;
+  out.pos[1] = vtx.pos[1] * xyz_scale;
+  out.pos[2] = vtx.pos[2] * xyz_scale;
   out.pad0 = 0;
   out.normal[0] = vtx.nrm[0];
   out.normal[1] = vtx.nrm[1];
@@ -896,7 +896,6 @@ void extract_merc(const ObjectFileData& ag_data,
     auto& ctrl = ctrls[ci];
 
     pc_ctrl.name = ctrl.name;
-    pc_ctrl.scale_xyz = ctrl.header.xyz_scale;
     pc_ctrl.max_draws = 0;
     pc_ctrl.max_bones = 0;
 
@@ -906,7 +905,7 @@ void extract_merc(const ObjectFileData& ag_data,
       auto& effect = all_effects[ci][ei];
       u32 first_vertex = out.merc_data.vertices.size();
       for (auto& vtx : effect.vertices) {
-        auto cvtx = convert_vertex(vtx);
+        auto cvtx = convert_vertex(vtx, ctrl.header.xyz_scale);
         out.merc_data.vertices.push_back(cvtx);
         for (int i = 0; i < 3; i++) {
           pc_ctrl.max_bones = std::max(pc_ctrl.max_bones, (u32)cvtx.mats[i]);

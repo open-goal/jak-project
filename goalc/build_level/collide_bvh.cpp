@@ -16,7 +16,7 @@
 namespace collide {
 
 namespace {
-constexpr int MAX_FACES_IN_FRAG = 100;
+constexpr int MAX_FACES_IN_FRAG = 95;  // maybe actually 96, but lets be safe here...
 
 /*!
  * The Collide node.

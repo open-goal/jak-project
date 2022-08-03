@@ -54,7 +54,7 @@ class Merc2 : public BucketRenderer {
   void handle_matrix_dma(const DmaTransfer& dma);
   void flush_pending_model(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
-  u32 alloc_bones(int count, float scale);
+  u32 alloc_bones(int count);
 
   std::optional<MercRef> m_current_model = std::nullopt;
   u16 m_current_effect_enable_bits = 0;

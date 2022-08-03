@@ -228,12 +228,14 @@ CollideFragMeshDataArray pack_collide_frags(const std::vector<collide::CollideFr
     // gonna guess here:
     frag_out.poly_count = indexed.faces.size();
     frag_out.total_qwc = frag_out.packed_data.size() / 16;
+    ASSERT(frag_out.total_qwc <= 128);
     frag_out.base_trans_xyz_s32 = indexed.vertices_u16.base;
     frag_out.bsphere = frag_in.bsphere;
     total_pack_bytes += frag_out.packed_data.size();
   }
 
   result.pats = pat_map.pats;
+  lg::info("Collide pack used {} unique pats", result.pats.size());
   lg::info("Total packed data size: {} kB, took {:.2f} ms", total_pack_bytes / 1024,
            pack_timer.getMs());
   return result;

@@ -62,6 +62,7 @@ add_library(
         level_extractor/extract_shrub.cpp
         level_extractor/fr3_to_gltf.cpp
         level_extractor/MercData.cpp
+        level_extractor/tfrag_tie_fixup.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp
