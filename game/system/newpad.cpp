@@ -127,44 +127,60 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
 
   if (pad == 0 && g_gamepads.gamepad_idx[0] == -1) {  // Gamepad not present - use keyboard
     // Movement controls mapped to WASD keys
-    if (g_buffered_key_status[GLFW_KEY_W] && analog == Analog::Left_Y)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_S] && analog == Analog::Left_Y)
-      input += 1.0f;
-    if (g_buffered_key_status[GLFW_KEY_A] && analog == Analog::Left_X)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_D] && analog == Analog::Left_X)
-      input += 1.0f;
+    if (analog == Analog::Left_Y) {
+      if (g_buffered_key_status[GLFW_KEY_W])
+        input += -1.0f;
+      if (g_buffered_key_status[GLFW_KEY_S])
+        input += 1.0f;
+    }
+    if (analog == Analog::Left_X) {
+      if (g_buffered_key_status[GLFW_KEY_A])
+        input += -1.0f;
+      if (g_buffered_key_status[GLFW_KEY_D])
+        input += 1.0f;
+    }
 
     // Camera controls mapped to IJKL keys
-    if (g_buffered_key_status[GLFW_KEY_I] && analog == Analog::Right_Y)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_K] && analog == Analog::Right_Y)
-      input += 1.0f;
-    if (g_buffered_key_status[GLFW_KEY_J] && analog == Analog::Right_X)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_L] && analog == Analog::Right_X)
-      input += 1.0f;
+    if (analog == Analog::Right_Y) {
+      if (g_buffered_key_status[GLFW_KEY_I])
+        input += -1.0f;
+      if (g_buffered_key_status[GLFW_KEY_K])
+        input += 1.0f;
+    }
+    if (analog == Analog::Right_X) {
+      if (g_buffered_key_status[GLFW_KEY_J])
+        input += -1.0f;
+      if (g_buffered_key_status[GLFW_KEY_L])
+        input += 1.0f;
+    }
   } else if (pad == 1 && g_gamepads.gamepad_idx[1] == -1) {
-    // these bindings are not sane
-    if (g_buffered_key_status[GLFW_KEY_KP_5] && analog == Analog::Left_Y)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_KP_2] && analog == Analog::Left_Y)
-      input += 1.0f;
-    if (g_buffered_key_status[GLFW_KEY_KP_1] && analog == Analog::Left_X)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_KP_3] && analog == Analog::Left_X)
-      input += 1.0f;
+    // these bindings are not sane; movement controls mapped to 5213 keypad keys
+    if (analog == Analog::Left_Y) {
+      if (g_buffered_key_status[GLFW_KEY_KP_5])
+        input += -1.0f;
+      if (g_buffered_key_status[GLFW_KEY_KP_2])
+        input += 1.0f;
+    }
+    if (analog == Analog::Left_X) {
+      if (g_buffered_key_status[GLFW_KEY_KP_1])
+        input += -1.0f;
+      if (g_buffered_key_status[GLFW_KEY_KP_3])
+        input += 1.0f;
+    }
 
-    // these bindings are not sane
-    if (g_buffered_key_status[GLFW_KEY_KP_DIVIDE] && analog == Analog::Right_Y)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_KP_8] && analog == Analog::Right_Y)
-      input += 1.0f;
-    if (g_buffered_key_status[GLFW_KEY_KP_7] && analog == Analog::Right_X)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_KP_9] && analog == Analog::Right_X)
-      input += 1.0f;
+    // these bindings are not sane; camera controls mapped to /879 keypad keys
+    if (analog == Analog::Right_Y) {
+      if (g_buffered_key_status[GLFW_KEY_KP_DIVIDE])
+        input += -1.0f;
+      if (g_buffered_key_status[GLFW_KEY_KP_8])
+        input += 1.0f;
+    }
+    if (analog == Analog::Right_X) {
+      if (g_buffered_key_status[GLFW_KEY_KP_7])
+        input += -1.0f;
+      if (g_buffered_key_status[GLFW_KEY_KP_9])
+        input += 1.0f;
+    }
   } else {  // Gamepad present
     input = g_gamepad_analogs[pad][(int)analog];
   }
