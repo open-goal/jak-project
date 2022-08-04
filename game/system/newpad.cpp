@@ -8,9 +8,11 @@
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"
-#include <common/util/FileUtil.h>
+#include "common/util/FileUtil.h"
 
 #include "game/graphics/pipelines/opengl.h"  // for GLFW macros
+
+#include "third-party/imgui/imgui.h"
 
 namespace Pad {
 
@@ -57,6 +59,10 @@ void ClearKeys() {
 }
 
 void OnKeyPress(int key) {
+  if (ImGui::IsAnyItemActive()) {
+    return;
+  }
+
   if (input_mode == InputModeStatus::Enabled) {
     if (key == GLFW_KEY_ESCAPE) {
       ExitInputMode(true);
