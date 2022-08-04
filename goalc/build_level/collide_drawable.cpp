@@ -319,7 +319,6 @@ size_t DrawableTreeCollideFragment::add_to_object_file(DataObjectGenerator& gen)
         gen.link_word_to_byte(gen.add_word(0), children_refs.at(node.frag_children.at(0)));
       }
 
-      fmt::print("bsphere of root: {}\n", node.bsphere.to_string_aligned());
       gen.add_word(0);                       // 4
       gen.add_word_float(node.bsphere.x());  // 5
       gen.add_word_float(node.bsphere.y());  // 6

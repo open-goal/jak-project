@@ -215,9 +215,6 @@ bool needs_split(const CNode& node) {
 }
 
 void split_recursive(CNode& to_split) {
-  if (!needs_split(to_split)) {
-    return;
-  }
 
   ASSERT(to_split.child_nodes.empty());
   ASSERT(!to_split.faces.empty());
