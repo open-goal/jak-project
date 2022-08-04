@@ -4,7 +4,7 @@
 
 using namespace decompiler;
 
-TEST_F(FormRegressionTest, ExprTruncate) {
+TEST_F(FormRegressionTestJak1, ExprTruncate) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    mtc1 f0, a0\n"
@@ -15,10 +15,10 @@ TEST_F(FormRegressionTest, ExprTruncate) {
       "    daddu sp, sp, r0";
   std::string type = "(function float float)";
   std::string expected = "(the float (the int arg0))";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprIntegralP) {
+TEST_F(FormRegressionTestJak1, ExprIntegralP) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    mtc1 f0, a0\n"
@@ -37,10 +37,10 @@ TEST_F(FormRegressionTest, ExprIntegralP) {
       "    daddu sp, sp, r0";
   std::string type = "(function float float)";
   std::string expected = "(the-as float (= (the float (the int arg0)) arg0))";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprFractionalPart) {
+TEST_F(FormRegressionTestJak1, ExprFractionalPart) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    mtc1 f0, a0\n"
@@ -55,10 +55,10 @@ TEST_F(FormRegressionTest, ExprFractionalPart) {
       "    daddu sp, sp, r0";
   std::string type = "(function float float)";
   std::string expected = "(- arg0 (the float (the int arg0)))";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprSeek) {
+TEST_F(FormRegressionTestJak1, ExprSeek) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L24:\n"
@@ -103,5 +103,5 @@ TEST_F(FormRegressionTest, ExprSeek) {
       "   (else (- arg0 arg2))\n"
       "   )\n"
       "  )";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }

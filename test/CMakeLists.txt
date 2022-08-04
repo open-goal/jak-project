@@ -29,7 +29,7 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuildLong.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_InstructionDecode.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_InstructionParser.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_gkernel_decomp.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_gkernel_jak1_decomp.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_math_decomp.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_DataParser.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_DisasmVifDecompile.cpp

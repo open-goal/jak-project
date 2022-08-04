@@ -19,10 +19,16 @@
 
 using namespace decompiler;
 
-void FormRegressionTest::SetUpTestCase() {
+void FormRegressionTestJak1::SetUpTestCase() {
   parser = std::make_unique<InstructionParser>();
-  dts = std::make_unique<DecompilerTypeSystem>(GameVersion::Jak1);
+  dts = std::make_unique<DecompilerTypeSystem>(game_version);
   dts->parse_type_defs({"decompiler", "config", "all-types.gc"});
+}
+
+void FormRegressionTestJak2::SetUpTestCase() {
+  parser = std::make_unique<InstructionParser>();
+  dts = std::make_unique<DecompilerTypeSystem>(game_version);
+  dts->parse_type_defs({"decompiler", "config", "jak2", "all-types.gc"});
 }
 
 void FormRegressionTest::TearDownTestCase() {
@@ -280,7 +286,7 @@ void FormRegressionTest::test(const std::string& code,
   EXPECT_TRUE(expected_form == actual_form);
 }
 
-void FormRegressionTest::test_final_function_jak1(
+void FormRegressionTest::test_final_function(
     const std::string& code,
     const std::string& type,
     const std::string& expected,
@@ -311,12 +317,12 @@ void FormRegressionTest::test_final_function_jak1(
   EXPECT_TRUE(expected_form == actual_form);
 }
 
-void FormRegressionTest::test_with_stack_structures_jak1(const std::string& code,
-                                                         const std::string& type,
-                                                         const std::string& expected,
-                                                         const std::string& stack_map_json,
-                                                         const std::string& cast_json,
-                                                         const std::string& var_map_json) {
+void FormRegressionTest::test_with_stack_structures(const std::string& code,
+                                                    const std::string& type,
+                                                    const std::string& expected,
+                                                    const std::string& stack_map_json,
+                                                    const std::string& cast_json,
+                                                    const std::string& var_map_json) {
   TestSettings settings;
   settings.do_expressions = true;
   settings.stack_structure_json = stack_map_json;
