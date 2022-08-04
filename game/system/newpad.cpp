@@ -118,14 +118,13 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
 // returns the value of the analog axis (in the future, likely pressure sensitive if we support it?)
 // if invalid or otherwise -- returns 127 (analog stick neutral position)
 int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
-  float input = 0.0f;
-
   if (CheckPadIdx(pad) == -1) {
     // Pad out of range, return a stable value
     return 127;
   }
 
-  if (pad == 0 && g_gamepads.gamepad_idx[0] == -1) {  // Gamepad not present - use keyboard
+  float input = 0.0f;
+  if (pad == 0) {
     // Movement controls mapped to WASD keys
     if (g_buffered_key_status[GLFW_KEY_W] && analog == Analog::Left_Y)
       input += -1.0f;
@@ -145,7 +144,7 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
       input += -1.0f;
     if (g_buffered_key_status[GLFW_KEY_L] && analog == Analog::Right_X)
       input += 1.0f;
-  } else if (pad == 1 && g_gamepads.gamepad_idx[1] == -1) {
+  } else if (pad == 1) {
     // these bindings are not sane
     if (g_buffered_key_status[GLFW_KEY_KP_5] && analog == Analog::Left_Y)
       input += -1.0f;
@@ -165,7 +164,9 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
       input += -1.0f;
     if (g_buffered_key_status[GLFW_KEY_KP_9] && analog == Analog::Right_X)
       input += 1.0f;
-  } else {  // Gamepad present
+  }
+
+  if (input == 0) {
     input = g_gamepad_analogs[pad][(int)analog];
   }
 
