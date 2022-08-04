@@ -200,6 +200,12 @@ CollideFragMeshDataArray pack_collide_frags(const std::vector<collide::CollideFr
     auto indexed = dedup_frag_mesh(frag_in, &pat_map);
     // first part of packed_data is the u16 vertex data:
     frag_out.vertex_count = indexed.vertices_u16.vertex.size();
+    if (frag_out.vertex_count > 128) {
+      fmt::print("frag with too many vertices: {} had {} tris\n", frag_out.vertex_count,
+                 frag_in.faces.size());
+      lg::error("SHOULD CRASH\n");
+    }
+    // the
     frag_out.packed_data.resize(sizeof(u16) * frag_out.vertex_count * 3);
     memcpy(frag_out.packed_data.data(), indexed.vertices_u16.vertex.data(),
            frag_out.packed_data.size());

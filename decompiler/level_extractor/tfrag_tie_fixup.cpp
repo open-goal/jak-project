@@ -1,8 +1,8 @@
 #include "tfrag_tie_fixup.h"
 
+#include <algorithm>
 #include <set>
 #include <unordered_map>
-#include <algorithm>
 
 #include "common/math/Vector.h"
 #include "common/util/Assert.h"
