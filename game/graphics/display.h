@@ -15,7 +15,7 @@
 // a GfxDisplay class is equivalent to a window that displays stuff. This holds an actual internal
 // window pointer used by whichever renderer. It also contains functions for setting and
 // retrieving certain window parameters.
-// Maybe this is better implemented as an abstract class and renderers would have overrides?
+// specific renderers should override this class, the methods are abstract.
 class GfxDisplay {
   const char* m_title;
 
@@ -62,6 +62,9 @@ class GfxDisplay {
 
     m_fullscreen_mode = m_fullscreen_target_mode;
     m_fullscreen_screen = m_fullscreen_target_screen;
+
+    // hack, force a vsync update.
+    Gfx::g_global_settings.old_vsync = !Gfx::g_global_settings.vsync;
   }
 
   bool is_active() const { return get_window() != nullptr; }
