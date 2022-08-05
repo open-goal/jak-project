@@ -1720,6 +1720,7 @@
         (let ((option-str (the string #f)) ;; the option text
               (option-x 17)
               (option-y y-off)
+              (locked? #f)
               )
           (case (-> options index option-type)
             (((game-option-type yes-no))
@@ -1733,11 +1734,12 @@
              ;; menu option or simple button. just draw its text!
              (if (nonzero? (-> options index name))
                  (set! option-str (lookup-text! *common-text* (-> options index name) #f))
-                 (set! option-str (the-as string #f))
+                 (set! option-str #f)
                  )
-             (if (and (not (-> *setting-control* default auto-save))
+             (when (and (not (-> *setting-control* default auto-save))
                       (= (game-text-id disable-auto-save) (-> options index name)))
-                 (set! option-str (lookup-text! *common-text* (game-text-id auto-save-disabled) #f)))
+                 (set! option-str (lookup-text! *common-text* (game-text-id auto-save-disabled) #f))
+                 (true! locked?))
              )
             (((game-option-type button-music))
              ;; a button for the music player. has the text "locked" sometimes!
@@ -1998,12 +2000,9 @@
                 )
               (set-color! font (cond
                                  ((and (!= index (-> obj option-index))
-                                       (string= (lookup-text! *common-text* (game-text-id locked) #f) option-str)) ;; hacky..
+                                       (or (string= (lookup-text! *common-text* (game-text-id locked) #f) option-str) ;; hacky..
+                                           locked?))
                                   ;; for "locked" options!
-                                  (font-color flat-dark-purple))
-                                 ((and (!= index (-> obj option-index))
-                                       (not (-> *setting-control* default auto-save))
-                                       (= (game-text-id disable-auto-save) (-> options index name)))
                                   (font-color flat-dark-purple))
                                  ((and (= index (-> obj option-index))
                                        (not (or (progress-scrolling?) (-> obj in-transition))))
