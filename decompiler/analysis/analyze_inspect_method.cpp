@@ -526,8 +526,7 @@ int get_start_idx(Function& function,
   if (!type_name_str) {
     fmt::print("[iim] op7 bad in {}: {} (bad string)\n", aos.ops.at(op_idx)->to_string(env),
                function.name());
-  }
-  if (type_name_str != "[~8x] ~A~%") {
+  } else if (type_name_str != "[~8x] ~A~%") {
     fmt::print("[iim] op7 bad in {}: {} (bad string: {})\n", aos.ops.at(op_idx)->to_string(env),
                function.name(), *type_name_str);
   }
@@ -907,8 +906,9 @@ std::string inspect_inspect_method(Function& inspect_method,
                                    const std::string& type_name,
                                    DecompilerTypeSystem& dts,
                                    LinkedObjectFile& file,
-                                   TypeSystem& previous_game_ts,
-                                   TypeInspectorCache& ti_cache) {
+                                   DecompilerTypeSystem& previous_game_ts,
+                                   TypeInspectorCache& ti_cache,
+                                   ObjectFileDB::PerObjectAllTypeInfo& object_file_meta) {
   fmt::print(" iim: {}\n", inspect_method.name());
   TypeInspectorResult result;
   ASSERT(type_name == inspect_method.guessed_name.type_name);
@@ -920,7 +920,17 @@ std::string inspect_inspect_method(Function& inspect_method,
   result.flags = flags.flag;
   result.type_size = flags.size;
   result.type_method_count = flags.methods;
-  result.type_heap_base = flags.heap_base;
+
+  // Only set heap-base if it's different from the automatic one
+  // A child (or child of a child) of process ALWAYS has heap-base set.
+  if (flags.heap_base > 0) {
+    auto process_type = dts.ts.get_type_of_type<BasicType>("process");
+    auto auto_hb = (flags.size - process_type->size() + 0xf) & ~0xf;
+
+    if (auto_hb != flags.heap_base) {
+      result.type_heap_base = std::make_optional(flags.heap_base);
+    }
+  }
 
   {
     TypeFlags parent_flags;
@@ -942,25 +952,27 @@ std::string inspect_inspect_method(Function& inspect_method,
     idx = get_start_idx_process(inspect_method, result.parent_type_name, inspect_method.ir2.env);
   }
   StructureType* old_game_type = nullptr;
-  if (previous_game_ts.fully_defined_type_exists(type_name)) {
-    old_game_type = dynamic_cast<StructureType*>(previous_game_ts.lookup_type(type_name));
+  if (previous_game_ts.ts.fully_defined_type_exists(type_name)) {
+    old_game_type = dynamic_cast<StructureType*>(previous_game_ts.ts.lookup_type(type_name));
   }
   if (idx <= 0) {
     // can't get any field...
-    result.warnings += "Failed to read fields. ";
+    result.warnings += "Failed to read fields.";
     idx = -2;
     ti_cache.previous_results[type_name] = result;
-    return result.print_as_deftype(old_game_type, ti_cache.previous_results);
+    return result.print_as_deftype(old_game_type, ti_cache.previous_results, previous_game_ts,
+                                   object_file_meta);
   }
   while (idx < int(inspect_method.ir2.atomic_ops->ops.size()) - 2 && idx != -1) {
     idx = detect(idx, inspect_method, file, &result);
   }
 
   if (idx == -1) {
-    result.warnings += "Failed to read some fields. ";
+    result.warnings += "Failed to read some fields.";
   }
   ti_cache.previous_results[type_name] = result;
-  return result.print_as_deftype(old_game_type, ti_cache.previous_results);
+  return result.print_as_deftype(old_game_type, ti_cache.previous_results, previous_game_ts,
+                                 object_file_meta);
 }
 
 std::string old_method_string(const MethodInfo& info) {
@@ -1013,7 +1025,9 @@ bool allow_guess(const Field& field) {
  */
 std::string TypeInspectorResult::print_as_deftype(
     StructureType* old_game_type,
-    std::unordered_map<std::string, TypeInspectorResult>& previous_results) {
+    std::unordered_map<std::string, TypeInspectorResult>& previous_results,
+    DecompilerTypeSystem& previous_game_ts,
+    ObjectFileDB::PerObjectAllTypeInfo& object_file_meta) {
   std::string result;
 
   result += "#|\n";
@@ -1148,11 +1162,19 @@ std::string TypeInspectorResult::print_as_deftype(
 
   result.append(fmt::format("  :method-count-assert {}\n", type_method_count));
   result.append(fmt::format("  :size-assert         #x{:x}\n", type_size));
+  if (type_heap_base.has_value()) {
+    result.append(fmt::format("  :heap-base           #x{:x}\n", type_heap_base.value()));
+  }
   result.append(fmt::format("  :flag-assert         #x{:x}\n  ", flags));
   if (!warnings.empty()) {
     result.append(";; ");
     result.append(warnings);
     result.append("\n  ");
+  }
+
+  std::unordered_map<int, std::string> method_states = {};
+  if (object_file_meta.state_methods.count(type_name) != 0) {
+    method_states = object_file_meta.state_methods.at(type_name);
   }
 
   if (type_method_count > 9) {
@@ -1163,7 +1185,12 @@ std::string TypeInspectorResult::print_as_deftype(
       result.append("\n    ");
     }
     for (int i = parent_method_count; i < type_method_count; i++) {
-      result.append(fmt::format("(dummy-{} () none {})", i, i));
+      // If the method is actually a state, skip it!
+      if (method_states.count(i) != 0) {
+        result.append(fmt::format("({} () _type_ :state {})", method_states.at(i), i));
+      } else {
+        result.append(fmt::format("({}-method-{} () none {})", type_name, i, i));
+      }
       if (old_game_type) {
         MethodInfo info;
         if (old_game_type->get_my_method(i, &info)) {
@@ -1174,17 +1201,165 @@ std::string TypeInspectorResult::print_as_deftype(
     }
     result.append(")\n  ");
   }
+
+  // Print out states if we have em
+  // - Could probably assume the process name comes first and associate it with the right type
+  // but that may or may not be risky so, edit the types yourself...
+  // if (method_states.size() > 0) {
+  //  result.append("(:states\n    ");
+  //  for (const auto& [id, name] : method_states) {
+  //    result.append(name);
+  //    // Append old symbol def if we have it
+  //    auto it = previous_game_ts.symbol_types.find(name);
+  //    if (it != previous_game_ts.symbol_types.end()) {
+  //      result.append(fmt::format(" ;; {}", it->second.print()));
+  //    }
+  //    // Add symbol name to `already_seen_symbols`
+  //    object_file_meta.already_seen_symbols.insert(name);
+  //    result.append("\n    ");
+  //  }
+  //  result.append(")\n  ");
+  //}
+
   result.append(")\n");
   result += "|#\n";
 
   return result;
 }
 
-std::string inspect_top_level_symbol_defines(std::unordered_set<std::string>& already_seen,
-                                             Function& top_level,
+std::string get_regex_match(std::string form, std::regex regex) {
+  std::smatch matches;
+  if (std::regex_search(form, matches, regex)) {
+    if (matches.size() == 2) {
+      return matches[1];
+    }
+  }
+  return "";
+}
+
+std::string get_state_symbol_name(LinkedObjectFile& file, std::string label_name) {
+  try {
+    auto& label = file.get_label_by_name(label_name);
+    auto& label_words = file.words_by_seg.at(label.target_segment);
+    int start_word_idx = (label.offset / 4) - 1;
+
+    auto& first_word = label_words.at(start_word_idx);
+    if (first_word.kind() != LinkedWord::TYPE_PTR || first_word.symbol_name() != "state") {
+      return "";
+    }
+
+    auto& name_word = label_words.at(start_word_idx + 1);
+    if (name_word.kind() != LinkedWord::SYM_PTR) {
+      return "";
+    }
+
+    return name_word.symbol_name();
+  } catch (std::exception& e) {
+    return "";
+  }
+}
+
+std::string get_label_type_name(LinkedObjectFile& file, std::string label_name) {
+  try {
+    auto& label = file.get_label_by_name(label_name);
+    auto& label_words = file.words_by_seg.at(label.target_segment);
+    int start_word_idx = (label.offset / 4) - 1;
+
+    auto& first_word = label_words.at(start_word_idx);
+    if (first_word.kind() != LinkedWord::TYPE_PTR) {
+      return "";
+    }
+    return first_word.symbol_name();
+  } catch (std::exception& e) {
+    return "";
+  }
+}
+
+std::string inspect_top_level_for_metadata(Function& top_level,
+                                           LinkedObjectFile& file,
+                                           DecompilerTypeSystem& dts,
+                                           DecompilerTypeSystem& previous_game_ts,
+                                           ObjectFileDB::PerObjectAllTypeInfo& objectFile) {
+  // State as a method:
+  /*
+  lui v1, L267              ;; [ 77] (set! gp-0 L267) [] -> [gp: <uninitialized> ]
+  ori gp, v1, L267
+  lw t9, method-set!(s7)    ;; [ 78] (set! t9-12 method-set!) [] -> [t9: <uninitialized> ]
+  lw a0, com-airlock(s7)    ;; [ 79] (set! a0-12 com-airlock) [] -> [a0: <uninitialized> ]
+  addiu a1, r0, 21          ;; [ 80] (set! a1-10 21) [] -> [a1: <uninitialized> ]
+  or a2, gp, r0             ;; [ 81] (set! a2-10 gp-0) [gp: <uninitialized> ] -> [a2:
+  <uninitialized> ]
+  */
+  // State as symbol:
+  /*
+  lui v1, L753              ;; [354] (set! v1-38 L753) [] -> [v1: <uninitialized> ]
+  ori v1, v1, L753
+  sw v1, target-roll(s7)    ;; [355] (s.w! target-roll v1-38) [v1: <uninitialized> ] -> []
+  */
+  if (!top_level.ir2.atomic_ops) {
+    return "";
+  }
+  std::string result;
+  std::string last_seen_label = "";
+  // TODO - safely increment op number
+  for (int i = 0; i < top_level.ir2.atomic_ops->ops.size(); i++) {
+    const auto& aop = top_level.ir2.atomic_ops->ops.at(i);
+    const std::string as_str = aop.get()->to_string(top_level.ir2.env);
+
+    // Keep track of the last seen label so we can easily reference it if a later operation uses it
+    auto label_match = get_regex_match(as_str, std::regex("\\(set!\\s[^\\s]*\\s(L.*)\\)"));
+    if (!label_match.empty()) {
+      last_seen_label = label_match;
+
+      // Check if the next operation is storing the label
+      std::string curr_op =
+          top_level.ir2.atomic_ops->ops.at(i + 1).get()->to_string(top_level.ir2.env);
+      auto symbol_name = get_regex_match(curr_op, std::regex("\\(s\\.w!\\s([^\\(\\)\\s]*)\\s"));
+      if (symbol_name.empty()) {
+        continue;
+      }
+
+      // Check that the label is a state
+      auto label_type_name = get_label_type_name(file, last_seen_label);
+      if (label_type_name.empty()) {
+        continue;
+      }
+      objectFile.symbol_types[symbol_name] = label_type_name;
+    }
+
+    if (as_str.find("method-set!") != std::string::npos) {
+      // The next operation should have the type name
+      i++;
+      std::string curr_op = top_level.ir2.atomic_ops->ops.at(i).get()->to_string(top_level.ir2.env);
+      auto type_match = get_regex_match(curr_op, std::regex("\\(set!\\s[^\\s]*\\s(.*)\\)"));
+      if (type_match.empty()) {
+        continue;
+      }
+      i++;
+      // The next operation should have the method id
+      curr_op = top_level.ir2.atomic_ops->ops.at(i).get()->to_string(top_level.ir2.env);
+      auto method_id_match = get_regex_match(curr_op, std::regex("\\(set!\\s[^\\s]*\\s(\\d*)\\)"));
+      if (method_id_match.empty()) {
+        continue;
+      }
+      int method_id = std::stoi(method_id_match);
+
+      // Now check the last seen label to see if it's a state
+      auto state_name = get_state_symbol_name(file, last_seen_label);
+      if (state_name.empty()) {
+        continue;
+      }
+      objectFile.state_methods[type_match][method_id] = state_name;
+    }
+  }
+  return "";
+}
+
+std::string inspect_top_level_symbol_defines(Function& top_level,
                                              LinkedObjectFile& /*file*/,
                                              DecompilerTypeSystem& dts,
-                                             DecompilerTypeSystem& previous_game_ts) {
+                                             DecompilerTypeSystem& previous_game_ts,
+                                             ObjectFileDB::PerObjectAllTypeInfo& object_file_meta) {
   if (!top_level.ir2.atomic_ops) {
     return {};
   }
@@ -1194,12 +1369,18 @@ std::string inspect_top_level_symbol_defines(std::unordered_set<std::string>& al
     if (as_store && as_store->addr().kind() == SimpleExpression::Kind::IDENTITY &&
         as_store->addr().get_arg(0).is_sym_val()) {
       auto& sym_name = as_store->addr().get_arg(0).get_str();
-      if (already_seen.find(sym_name) == already_seen.end()) {
-        already_seen.insert(sym_name);
+      if (object_file_meta.already_seen_symbols.find(sym_name) ==
+          object_file_meta.already_seen_symbols.end()) {
+        object_file_meta.already_seen_symbols.insert(sym_name);
         if (dts.ts.partially_defined_type_exists(sym_name)) {
           continue;
         }
-        result += fmt::format(";; (define-extern {} object)", sym_name);
+        std::string type_name = "object";
+        // Look to see if we know the type name
+        if (object_file_meta.symbol_types.count(sym_name) != 0) {
+          type_name = object_file_meta.symbol_types.at(sym_name);
+        }
+        result += fmt::format(";; (define-extern {} {})", sym_name, type_name);
         auto it = previous_game_ts.symbol_types.find(sym_name);
         if (it != previous_game_ts.symbol_types.end()) {
           result += fmt::format(" ;; {}", it->second.print());

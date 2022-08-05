@@ -301,39 +301,46 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
 void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
                                          const std::optional<std::string>& previous_game_types,
                                          const std::unordered_set<std::string>& bad_types) {
-  struct PerObject {
-    std::string object_name;
-    std::vector<std::string> type_defs;
-    std::string symbol_defs;
-  };
-
-  std::vector<PerObject> per_object;
+  std::vector<PerObjectAllTypeInfo> per_object;
 
   DecompilerTypeSystem previous_game_ts(GameVersion::Jak1);  // version here doesn't matter.
   if (previous_game_types) {
     previous_game_ts.parse_type_defs({*previous_game_types});
   }
 
-  std::unordered_set<std::string> already_seen;
   TypeInspectorCache ti_cache;
 
   for_each_obj([&](ObjectFileData& data) {
     if (data.obj_version != 3) {
       return;
     }
+
     auto& object_result = per_object.emplace_back();
     object_result.object_name = data.to_unique_name();
 
+    // Go through the top-level segment first to identify the type names associated with each symbol
+    // def
+    for_each_function_in_seg_in_obj(TOP_LEVEL_SEGMENT, data, [&](Function& f) {
+      inspect_top_level_for_metadata(f, data.linked_data, dts, previous_game_ts, object_result);
+    });
+
+    // Handle the top level last, which is fine as all symbol_defs are always written after typedefs
     for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
-      if (seg == TOP_LEVEL_SEGMENT) {
-        object_result.symbol_defs += inspect_top_level_symbol_defines(
-            already_seen, f, data.linked_data, dts, previous_game_ts);
-      } else {
+      if (seg != TOP_LEVEL_SEGMENT) {
         if (f.is_inspect_method && bad_types.find(f.guessed_name.type_name) == bad_types.end()) {
-          object_result.type_defs.push_back(inspect_inspect_method(
-              f, f.guessed_name.type_name, dts, data.linked_data, previous_game_ts.ts, ti_cache));
+          object_result.type_defs.push_back(
+              inspect_inspect_method(f, f.guessed_name.type_name, dts, data.linked_data,
+                                     previous_game_ts, ti_cache, object_result));
+        } else {
+          // no inspect methods
+          // - can we solve custom print methods in a generic way?  ie `entity-links`
         }
       }
+    });
+
+    for_each_function_in_seg_in_obj(TOP_LEVEL_SEGMENT, data, [&](Function& f) {
+      object_result.symbol_defs += inspect_top_level_symbol_defines(
+          f, data.linked_data, dts, previous_game_ts, object_result);
     });
   });
 
