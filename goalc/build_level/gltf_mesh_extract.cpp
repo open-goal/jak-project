@@ -529,7 +529,7 @@ void extract(const Input& in,
       const auto& mesh = model.meshes[node.mesh];
       mesh_count++;
       for (const auto& prim : mesh.primitives) {
-        if (model.materials[prim.material].extras.Has("set_invisible") &&
+        if (prim.material >= 0 && model.materials[prim.material].extras.Has("set_invisible") &&
             model.materials[prim.material].extras.Get("set_invisible").Get<int>()) {
           continue;
         }
