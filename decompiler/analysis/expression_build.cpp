@@ -158,7 +158,7 @@ bool convert_to_expressions(
             "Function {} has a return type of none, but the expression builder found a return "
             "statement.",
             f.name());
-        f.warnings.expression_build_warning(warn);
+        f.warnings.general_warning(warn);
         lg::warn(warn);
       }
     }
