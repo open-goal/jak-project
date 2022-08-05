@@ -192,6 +192,18 @@ class ObjectFileDB {
   void ir2_do_segment_analysis_phase2(int seg, const Config& config, ObjectFileData& data);
   void ir2_setup_labels(const Config& config, ObjectFileData& data);
   void ir2_run_mips2c(const Config& config, ObjectFileData& data);
+  struct PerObjectAllTypeInfo {
+    std::string object_name;
+    std::unordered_set<std::string> already_seen_symbols;
+
+    // type-name : { method id : state name }
+    std::unordered_map<std::string, std::unordered_map<int, std::string>> state_methods;
+    // symbol-name : type-name
+    std::unordered_map<std::string, std::string> symbol_types;
+
+    std::vector<std::string> type_defs;
+    std::string symbol_defs;
+  };
   void ir2_analyze_all_types(const fs::path& output_file,
                              const std::optional<std::string>& previous_game_types,
                              const std::unordered_set<std::string>& bad_types);

@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 
+#include <decompiler/ObjectFile/ObjectFileDB.h>
 #include "decompiler/Function/Function.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 
@@ -13,7 +14,7 @@ struct TypeInspectorResult {
   int type_size = -1;
   int type_method_count = -1;
   int parent_method_count = 9;
-  int type_heap_base = -1;
+  std::optional<int> type_heap_base = {};
 
   std::string warnings;
   std::vector<Field> fields_of_type;
@@ -22,11 +23,13 @@ struct TypeInspectorResult {
 
   std::string type_name;
   std::string parent_type_name;
-  u64 flags = 0;
+  u64 flags;
 
   std::string print_as_deftype(
       StructureType* old_game_type,
-      std::unordered_map<std::string, TypeInspectorResult>& previous_results);
+      std::unordered_map<std::string, TypeInspectorResult>& previous_results,
+      DecompilerTypeSystem& previous_game_ts,
+      ObjectFileDB::PerObjectAllTypeInfo& object_file_meta);
 };
 
 struct TypeInspectorCache {
@@ -37,13 +40,20 @@ std::string inspect_inspect_method(Function& inspect_method,
                                    const std::string& type_name,
                                    DecompilerTypeSystem& dts,
                                    LinkedObjectFile& file,
-                                   TypeSystem& previous_game_ts,
-                                   TypeInspectorCache& ti_cache);
+                                   DecompilerTypeSystem& previous_game_ts,
+                                   TypeInspectorCache& ti_cache,
+                                   ObjectFileDB::PerObjectAllTypeInfo& object_file_meta);
 
-std::string inspect_top_level_symbol_defines(std::unordered_set<std::string>& already_seen,
-                                             Function& top_level,
+std::string inspect_top_level_for_metadata(Function& top_level,
+                                           LinkedObjectFile& file,
+                                           DecompilerTypeSystem& dts,
+                                           DecompilerTypeSystem& previous_game_ts,
+                                           ObjectFileDB::PerObjectAllTypeInfo& object_file_meta);
+
+std::string inspect_top_level_symbol_defines(Function& top_level,
                                              LinkedObjectFile& file,
                                              DecompilerTypeSystem& dts,
-                                             DecompilerTypeSystem& previous_game_ts);
+                                             DecompilerTypeSystem& previous_game_ts,
+                                             ObjectFileDB::PerObjectAllTypeInfo& object_file_meta);
 
 }  // namespace decompiler
