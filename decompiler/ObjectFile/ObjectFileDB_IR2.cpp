@@ -301,7 +301,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
 void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
                                          const std::optional<std::string>& previous_game_types,
                                          const std::unordered_set<std::string>& bad_types) {
-  std::vector<PerObjectAnalysis> per_object;
+  std::vector<PerObjectAllTypeInfo> per_object;
 
   DecompilerTypeSystem previous_game_ts(GameVersion::Jak1);  // version here doesn't matter.
   if (previous_game_types) {
@@ -320,10 +320,8 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
 
     // Go through the top-level segment first to identify the type names associated with each symbol
     // def
-    for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
-      if (seg == TOP_LEVEL_SEGMENT) {
-        inspect_top_level_for_metadata(f, data.linked_data, dts, previous_game_ts, object_result);
-      }
+    for_each_function_in_seg_in_obj(TOP_LEVEL_SEGMENT, data, [&](Function& f) {
+      inspect_top_level_for_metadata(f, data.linked_data, dts, previous_game_ts, object_result);
     });
 
     // Handle the top level last, which is fine as all symbol_defs are always written after typedefs
@@ -340,11 +338,9 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
       }
     });
 
-    for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
-      if (seg == TOP_LEVEL_SEGMENT) {
-        object_result.symbol_defs += inspect_top_level_symbol_defines(
-            f, data.linked_data, dts, previous_game_ts, object_result);
-      }
+    for_each_function_in_seg_in_obj(TOP_LEVEL_SEGMENT, data, [&](Function& f) {
+      object_result.symbol_defs += inspect_top_level_symbol_defines(
+          f, data.linked_data, dts, previous_game_ts, object_result);
     });
   });
 

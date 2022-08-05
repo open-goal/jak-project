@@ -908,7 +908,7 @@ std::string inspect_inspect_method(Function& inspect_method,
                                    LinkedObjectFile& file,
                                    DecompilerTypeSystem& previous_game_ts,
                                    TypeInspectorCache& ti_cache,
-                                   ObjectFileDB::PerObjectAnalysis& object_file_meta) {
+                                   ObjectFileDB::PerObjectAllTypeInfo& object_file_meta) {
   fmt::print(" iim: {}\n", inspect_method.name());
   TypeInspectorResult result;
   ASSERT(type_name == inspect_method.guessed_name.type_name);
@@ -924,9 +924,8 @@ std::string inspect_inspect_method(Function& inspect_method,
   // Only set heap-base if it's different from the automatic one
   // A child (or child of a child) of process ALWAYS has heap-base set.
   if (flags.heap_base > 0) {
-    // TODO - how can i get this value in a non-hardcoded way
-    // - this is the size of a jak 2 "process"
-    auto auto_hb = (flags.size - 0x80 + 0xf) & ~0xf;
+    auto process_type = dts.ts.get_type_of_type<BasicType>("process");
+    auto auto_hb = (flags.size - process_type->size() + 0xf) & ~0xf;
 
     if (auto_hb != flags.heap_base) {
       result.type_heap_base = std::make_optional(flags.heap_base);
@@ -1028,7 +1027,7 @@ std::string TypeInspectorResult::print_as_deftype(
     StructureType* old_game_type,
     std::unordered_map<std::string, TypeInspectorResult>& previous_results,
     DecompilerTypeSystem& previous_game_ts,
-    ObjectFileDB::PerObjectAnalysis& object_file_meta) {
+    ObjectFileDB::PerObjectAllTypeInfo& object_file_meta) {
   std::string result;
 
   result += "#|\n";
@@ -1215,8 +1214,8 @@ std::string TypeInspectorResult::print_as_deftype(
   //    if (it != previous_game_ts.symbol_types.end()) {
   //      result.append(fmt::format(" ;; {}", it->second.print()));
   //    }
-  //    // Add symbol name to `already_seen`
-  //    object_file_meta.already_seen.insert(name);
+  //    // Add symbol name to `already_seen_symbols`
+  //    object_file_meta.already_seen_symbols.insert(name);
   //    result.append("\n    ");
   //  }
   //  result.append(")\n  ");
@@ -1280,7 +1279,7 @@ std::string inspect_top_level_for_metadata(Function& top_level,
                                            LinkedObjectFile& file,
                                            DecompilerTypeSystem& dts,
                                            DecompilerTypeSystem& previous_game_ts,
-                                           ObjectFileDB::PerObjectAnalysis& objectFile) {
+                                           ObjectFileDB::PerObjectAllTypeInfo& objectFile) {
   // State as a method:
   /*
   lui v1, L267              ;; [ 77] (set! gp-0 L267) [] -> [gp: <uninitialized> ]
@@ -1360,7 +1359,7 @@ std::string inspect_top_level_symbol_defines(Function& top_level,
                                              LinkedObjectFile& /*file*/,
                                              DecompilerTypeSystem& dts,
                                              DecompilerTypeSystem& previous_game_ts,
-                                             ObjectFileDB::PerObjectAnalysis& object_file_meta) {
+                                             ObjectFileDB::PerObjectAllTypeInfo& object_file_meta) {
   if (!top_level.ir2.atomic_ops) {
     return {};
   }
@@ -1370,8 +1369,9 @@ std::string inspect_top_level_symbol_defines(Function& top_level,
     if (as_store && as_store->addr().kind() == SimpleExpression::Kind::IDENTITY &&
         as_store->addr().get_arg(0).is_sym_val()) {
       auto& sym_name = as_store->addr().get_arg(0).get_str();
-      if (object_file_meta.already_seen.find(sym_name) == object_file_meta.already_seen.end()) {
-        object_file_meta.already_seen.insert(sym_name);
+      if (object_file_meta.already_seen_symbols.find(sym_name) ==
+          object_file_meta.already_seen_symbols.end()) {
+        object_file_meta.already_seen_symbols.insert(sym_name);
         if (dts.ts.partially_defined_type_exists(sym_name)) {
           continue;
         }
