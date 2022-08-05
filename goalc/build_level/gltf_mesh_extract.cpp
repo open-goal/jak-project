@@ -58,7 +58,7 @@ std::vector<math::Vector2f> extract_vec2f(const u8* data, u32 count, u32 stride)
 }
 
 /*!
- * Convert a GLTF color buffer to u8 colors.
+ * Convert a GLTF color buffer (u16 format) to u8 colors.
  */
 std::vector<math::Vector<u8, 4>> extract_color_from_vec4_u16(const u8* data,
                                                              u32 count,
@@ -111,6 +111,9 @@ struct ExtractedVertices {
   std::vector<math::Vector3f> normals;
 };
 
+/*!
+ * Extract positions, colors, and normals from a mesh.
+ */
 ExtractedVertices gltf_vertices(const tinygltf::Model& model,
                                 const std::map<std::string, int>& attributes,
                                 const math::Matrix4f& w_T_local,
@@ -298,6 +301,8 @@ int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex) {
   if (existing != pool->textures_by_name.end()) {
     lg::info("Reusing image: {}", tex.name);
     return existing->second;
+  } else {
+    lg::info("adding new texture: {}, size {} kB", tex.name, tex.width * tex.height * 4 / 1024);
   }
 
   ASSERT(tex.bits == 8);
@@ -313,9 +318,9 @@ int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex) {
   tt.debug_tpage_name = "custom-level";
   tt.load_to_pool = false;
   tt.combo_id = 0;  // doesn't matter, not a pool tex
-  tt.data.resize(tt.w * tt.h * 4);
+  tt.data.resize(tt.w * tt.h);
   ASSERT(tex.image.size() >= tt.data.size());
-  memcpy(tt.data.data(), tex.image.data(), tt.data.size());
+  memcpy(tt.data.data(), tex.image.data(), tt.data.size() * 4);
   return idx;
 }
 }  // namespace
