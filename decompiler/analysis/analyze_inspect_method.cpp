@@ -1188,9 +1188,10 @@ std::string TypeInspectorResult::print_as_deftype(
     for (int i = parent_method_count; i < type_method_count; i++) {
       // If the method is actually a state, skip it!
       if (method_states.count(i) != 0) {
-        continue;
+        result.append(fmt::format("({} () _type_ :state {})", method_states.at(i), i));
+      } else {
+        result.append(fmt::format("({}-method-{} () none {})", type_name, i, i));
       }
-      result.append(fmt::format("({}-method-{} () none {})", type_name, i, i));
       if (old_game_type) {
         MethodInfo info;
         if (old_game_type->get_my_method(i, &info)) {
@@ -1203,21 +1204,23 @@ std::string TypeInspectorResult::print_as_deftype(
   }
 
   // Print out states if we have em
-  if (method_states.size() > 0) {
-    result.append("(:states\n    ");
-    for (const auto& [id, name] : method_states) {
-      result.append(fmt::format("{}", name));
-      // Append old symbol def if we have it
-      auto it = previous_game_ts.symbol_types.find(name);
-      if (it != previous_game_ts.symbol_types.end()) {
-        result.append(fmt::format(" ;; {}", it->second.print()));
-      }
-      // Add symbol name to `already_seen`
-      object_file_meta.already_seen.insert(name);
-      result.append("\n    ");
-    }
-    result.append(")\n  ");
-  }
+  // - Could probably assume the process name comes first and associate it with the right type
+  // but that may or may not be risky so, edit the types yourself...
+  // if (method_states.size() > 0) {
+  //  result.append("(:states\n    ");
+  //  for (const auto& [id, name] : method_states) {
+  //    result.append(name);
+  //    // Append old symbol def if we have it
+  //    auto it = previous_game_ts.symbol_types.find(name);
+  //    if (it != previous_game_ts.symbol_types.end()) {
+  //      result.append(fmt::format(" ;; {}", it->second.print()));
+  //    }
+  //    // Add symbol name to `already_seen`
+  //    object_file_meta.already_seen.insert(name);
+  //    result.append("\n    ");
+  //  }
+  //  result.append(")\n  ");
+  //}
 
   result.append(")\n");
   result += "|#\n";
