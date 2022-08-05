@@ -1739,22 +1739,22 @@ int InitHeapAndSymbol() {
   return 0;
 }
 
-u64 load(u32 file_name_in, u32 heap_in) {
+u64 load(u32 /*file_name_in*/, u32 /*heap_in*/) {
   ASSERT(false);
   return 0;
 }
 
-u64 loadb(u32 file_name_in, u32 heap_in, u32 param3) {
+u64 loadb(u32 /*file_name_in*/, u32 /*heap_in*/, u32 /*param3*/) {
   ASSERT(false);
   return 0;
 }
 
-u64 loadc(const char* file_name, kheapinfo* heap, u32 flags) {
+u64 loadc(const char* /*file_name*/, kheapinfo* /*heap*/, u32 /*flags*/) {
   ASSERT(false);
   return 0;
 }
 
-u64 loado(u32 file_name_in, u32 heap_in) {
+u64 loado(u32 /*file_name_in*/, u32 /*heap_in*/) {
   ASSERT(false);
   return 0;
 }
@@ -1767,7 +1767,10 @@ u64 unload(u32 name) {
   return 0;
 }
 
-s64 load_and_link(const char* filename, char* decode_name, kheapinfo* heap, u32 flags) {
+s64 load_and_link(const char* /*filename*/,
+                  char* /*decode_name*/,
+                  kheapinfo* /*heap*/,
+                  u32 /*flags*/) {
   ASSERT(false);
   return 0;
 }

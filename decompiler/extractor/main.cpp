@@ -106,8 +106,7 @@ void decompile(const fs::path& iso_data_path, const std::string& data_subfolder)
 
   Config config = read_config_file((file_util::get_jak_project_dir() / "decompiler" / "config" /
                                     fmt::format("{}.jsonc", version_info.decomp_config))
-                                       .string(),
-                                   {});
+                                       .string());
 
   std::vector<fs::path> dgos, objs;
 

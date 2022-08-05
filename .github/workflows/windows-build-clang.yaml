@@ -48,7 +48,17 @@ jobs:
 
       - name: Run Tests
         timeout-minutes: 10
-        run: ./build/bin/goalc-test.exe --gtest_color=yes --gtest_filter="-*MANUAL_TEST*"
+        env:
+          GTEST_OUTPUT: "xml:opengoal-test-report.xml"
+        run: ./build/bin/goalc-test.exe --gtest_color=yes --gtest_brief=1 --gtest_filter="-*MANUAL_TEST*"
+
+      - name: Generate Test Report
+        uses: dorny/test-reporter@v1
+        if: success() || failure() # run this step even if previous step failed
+        with:
+          name: Windows Clang - Test Report
+          path: ./opengoal-test-report.xml
+          reporter: jest-junit
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3

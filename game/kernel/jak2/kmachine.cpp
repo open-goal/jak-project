@@ -532,7 +532,7 @@ void PutDisplayEnv(u32 /*ptr*/) {
   ASSERT(false);
 }
 
-u32 sceGsSyncV(u32 mode) {
+u32 sceGsSyncV(u32 /*mode*/) {
   // stub, jak2 probably works differently here
   ASSERT(false);
   return 0;

@@ -104,6 +104,10 @@
         "SUBTITLES DISABLED")
 (#x1042 "TEXT LANGUAGE"
         "TEXT LANGUAGE")
+(#x1043 "DISPLAY"
+        "DISPLAY")
+(#x1044 "DISPLAY ~D"
+        "DISPLAY ~D")
 
 (#x1050 "MSAA"
         "MSAA")
@@ -333,7 +337,6 @@
         "DANSK")
 (#x1116 "NORSK"
         "NORSK")
-
 
 ;; -----------------
 ;; test

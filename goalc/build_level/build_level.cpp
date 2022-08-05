@@ -49,6 +49,7 @@ bool run_build_level(const std::string& input_file,
   mesh_extract_in.filename =
       file_util::get_file_path({level_json.at("gltf_file").get<std::string>()});
   mesh_extract_in.auto_wall_enable = level_json.value("automatic_wall_detection", true);
+  mesh_extract_in.double_sided_collide = level_json.at("double_sided_collide").get<bool>();
   mesh_extract_in.auto_wall_angle = level_json.value("automatic_wall_angle", 30.0);
   mesh_extract_in.tex_pool = &tex_pool;
   gltf_mesh_extract::Output mesh_extract_out;

@@ -138,6 +138,7 @@ void get_window_scale(float* x, float* y);
 GfxDisplayMode get_fullscreen();
 int get_screen_vmode_count();
 int get_screen_rate(s64 vmode_idx);
+int get_monitor_count();
 void get_screen_size(s64 vmode_idx, s32* w, s32* h);
 void set_frame_rate(int rate);
 void set_vsync(bool vsync);

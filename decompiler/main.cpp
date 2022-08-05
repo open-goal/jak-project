@@ -17,13 +17,11 @@
 #include "decompiler/data/streamed_audio.h"
 #include "decompiler/level_extractor/extract_level.h"
 
+#include "third-party/CLI11.hpp"
+
 int main(int argc, char** argv) {
   ArgumentGuard u8_guard(argc, argv);
 
-  Timer decomp_timer;
-
-  fmt::print("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
-  using namespace decompiler;
   if (!file_util::setup_project_path(std::nullopt)) {
     return 1;
   }
@@ -33,71 +31,51 @@ int main(int argc, char** argv) {
   lg::set_flush_level(lg::level::info);
   lg::initialize();
 
-  init_opcode_info();
+  fs::path config_path;
+  fs::path in_folder;
+  fs::path out_folder;
 
-  if (argc < 4) {
-    printf(
-        "Usage: decompiler <config_file> <in_folder> <out_folder> "
-        "[bool_flag_name=true/false...]\n");
-    return 1;
-  }
-  fmt::print("[Mem] After init: {} MB\n", get_peak_rss() / (1024 * 1024));
+  std::string config_override = "{}";
 
-  // collect all files to process
+  CLI::App app{"OpenGOAL Decompiler"};
+  app.add_option("config-path", config_path,
+                 "Path to the decompiler config .jsonc file. ie. "
+                 "./decompiler/config/jak1_ntsc_black_label.jsonc")
+      ->required();
+  app.add_option("in-folder", in_folder,
+                 "The path containing the iso_data folders. ie. ./iso_data/. Assumes the "
+                 "'gameName' from the config as a sub-directory")
+      ->required();
+  app.add_option("out-folder", out_folder,
+                 "The path for where the decompiler should place it's outputs. Assumes the "
+                 "'gameName' from the config as a sub-directory")
+      ->required();
+  app.add_option("--config-override", config_override,
+                 "JSON provided will be merged with the specified config, use to override options");
+  app.validate_positionals();
+  CLI11_PARSE(app, argc, argv);
+
+  // Validate arguments
+  using namespace decompiler;
+
   Config config;
   try {
-    // Allow overriding config boolean flags via CLI
-    // There are very minimum guard-rails here
-    //
-    // "<key>=<override>"
-    //
-    // This allows us to run scripts that deviate from the defaults
-    std::map<std::string, bool> overrides;
-    if (argc > 4) {
-      for (int i = 4; i < argc; i++) {
-        std::string val = argv[i];
-        if (val.find('=') == std::string::npos) {
-          printf("Aborting - invalid flag override syntax\n");
-          printf(
-              "Usage: decompiler <config_file> <in_folder> <out_folder> "
-              "[bool_flag_name=true/false...]\n");
-          return 1;
-        }
-        auto pair = split_string(argv[i], '=');
-        if (pair.size() > 2) {
-          printf("Aborting - invalid flag override syntax, provide pairs!\n");
-          printf(
-              "Usage: decompiler <config_file> <in_folder> <out_folder> "
-              "[bool_flag_name=true/false...]\n");
-          return 1;
-        }
-        if (pair.at(1) != "true" && pair.at(1) != "false") {
-          printf("Aborting - invalid flag override syntax, true|false only!\n");
-          printf(
-              "Usage: decompiler <config_file> <in_folder> <out_folder> "
-              "[bool_flag_name=true/false...]\n");
-          return 1;
-        }
-        overrides.insert({pair.at(0), pair.at(0) == "true"});
-      }
-    }
-
-    config = read_config_file(argv[1], overrides);
-
+    config = read_config_file(config_path, config_override);
   } catch (const std::exception& e) {
     lg::error("Failed to parse config: {}", e.what());
     return 1;
   }
 
-  // std::string in_folder = file_util::combine_path(argv[2], config.game_name);
-  fs::path in_folder = fs::path(argv[2]) / config.game_name;
-  fs::path out_folder = fs::path(argv[3]) / config.game_name;
-
+  in_folder = in_folder / config.game_name;
   // Verify the in_folder is correct
   if (!exists(in_folder)) {
     fmt::print("Aborting - 'in_folder' does not exist '{}'\n", in_folder.string());
     return 1;
   }
+
+  out_folder = out_folder / config.game_name;
+  file_util::create_dir_if_needed(out_folder);
+  file_util::create_dir_if_needed(out_folder / "assets");
 
   // Warning message if expected ELF isn't found, user could be using bad assets / didn't extract
   // the ISO properly
@@ -107,6 +85,16 @@ int main(int argc, char** argv) {
         "properly or is there a version mismatch?\n",
         in_folder.string(), config.expected_elf_name);
   }
+
+  // -- Begin the Decompilation!
+
+  Timer decomp_timer;
+
+  fmt::print("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
+
+  init_opcode_info();
+
+  fmt::print("[Mem] After init: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   std::vector<fs::path> dgos, objs, strs;
   for (const auto& dgo_name : config.dgo_names) {
@@ -120,9 +108,6 @@ int main(int argc, char** argv) {
   for (const auto& str_name : config.str_file_names) {
     strs.push_back(in_folder / str_name);
   }
-
-  file_util::create_dir_if_needed(out_folder);
-  file_util::create_dir_if_needed(out_folder / "assets");
 
   if (config.rip_levels) {
     file_util::create_dir_if_needed(file_util::get_jak_project_dir() / "debug_out");

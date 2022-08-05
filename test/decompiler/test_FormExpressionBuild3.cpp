@@ -5,7 +5,7 @@
 using namespace decompiler;
 
 // vector-rad<-vector-deg/2!
-TEST_F(FormRegressionTest, VectorDegToVectorRad) {
+TEST_F(FormRegressionTestJak1, VectorDegToVectorRad) {
   std::string func =
       "sll r0, r0, 0\n"
       "    lui v1, 14537\n"
@@ -53,11 +53,11 @@ TEST_F(FormRegressionTest, VectorDegToVectorRad) {
       "   (none)\n"
       "   )\n"
       "  )";
-  test_final_function_jak1(func, type, expected);
+  test_final_function(func, type, expected);
 }
 
 // weird short circuit thing
-TEST_F(FormRegressionTest, WeirdShortCircuit) {
+TEST_F(FormRegressionTestJak1, WeirdShortCircuit) {
   std::string func =
       "sll r0, r0, 0\n"
       "   daddiu sp, sp, -144\n"
@@ -141,10 +141,10 @@ TEST_F(FormRegressionTest, WeirdShortCircuit) {
       "   )\n"
       "  s5-0\n"
       "  )";
-  test_with_stack_structures_jak1(func, type, expected, "[[16, \"event-message-block\"]]");
+  test_with_stack_structures(func, type, expected, "[[16, \"event-message-block\"]]");
 }
 
-TEST_F(FormRegressionTest, WeirdShortCircuit2) {
+TEST_F(FormRegressionTestJak1, WeirdShortCircuit2) {
   std::string func =
       "sll r0, r0, 0\n"
       "L62:\n"
@@ -162,5 +162,5 @@ TEST_F(FormRegressionTest, WeirdShortCircuit2) {
       "    daddu sp, sp, r0";
   std::string type = "(function actor-link-info object)";
   std::string expected = "(the-as object (and (-> arg0 prev) (-> arg0 prev extra process)))";
-  test_with_stack_structures_jak1(func, type, expected, "[[16, \"event-message-block\"]]");
+  test_with_stack_structures(func, type, expected, "[[16, \"event-message-block\"]]");
 }

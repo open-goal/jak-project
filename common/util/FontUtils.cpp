@@ -164,7 +164,7 @@ std::string GameTextFontBank::convert_utf8_to_game(std::string str) const {
 std::string GameTextFontBank::convert_utf8_to_game_with_escape(const std::string& str) const {
   std::string newstr;
 
-  for (int i = 0; i < str.size(); ++i) {
+  for (size_t i = 0; i < str.size(); ++i) {
     auto c = str.at(i);
     if (c == '"') {
       newstr.push_back('"');
