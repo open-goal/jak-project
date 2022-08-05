@@ -238,12 +238,7 @@ FieldPrint get_field_print(const std::string& str) {
   return field_print;
 }
 
-int get_start_idx_process(Function& function,
-                          LinkedObjectFile& file,
-                          TypeInspectorResult* result,
-                          const std::string& parent_type,
-                          const std::string& type_name,
-                          Env& env) {
+int get_start_idx_process(Function& function, const std::string& parent_type, Env& env) {
   if (function.basic_blocks.size() != 5) {
     fmt::print("[iim] inspect {} had {} basic blocks, expected 5\n", function.name(),
                function.basic_blocks.size());
@@ -944,8 +939,7 @@ std::string inspect_inspect_method(Function& inspect_method,
                           inspect_method.ir2.env);
 
   if (idx < 0) {
-    idx = get_start_idx_process(inspect_method, file, &result, result.parent_type_name, type_name,
-                                inspect_method.ir2.env);
+    idx = get_start_idx_process(inspect_method, result.parent_type_name, inspect_method.ir2.env);
   }
   StructureType* old_game_type = nullptr;
   if (previous_game_ts.fully_defined_type_exists(type_name)) {

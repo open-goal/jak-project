@@ -582,11 +582,6 @@ void inspect_basics(const Ram& ram,
   }
 }
 
-static bool ends_with(const std::string& str, const std::string& suffix) {
-  return str.size() >= suffix.size() &&
-         0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
-}
-
 void inspect_symbols(const Ram& ram,
                      const std::unordered_map<u32, std::string>& types,
                      const SymbolMap& symbols) {

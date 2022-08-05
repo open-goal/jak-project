@@ -60,7 +60,9 @@ add_library(
         level_extractor/extract_tfrag.cpp
         level_extractor/extract_tie.cpp
         level_extractor/extract_shrub.cpp
+        level_extractor/fr3_to_gltf.cpp
         level_extractor/MercData.cpp
+        level_extractor/tfrag_tie_fixup.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp
@@ -86,6 +88,7 @@ target_link_libraries(decomp
         fmt
         stb_image
         xdelta3
+        tiny_gltf
         )
 
 add_executable(decompiler
@@ -96,7 +99,8 @@ target_link_libraries(decompiler
         common
         lzokay
         fmt
-        stb_image)
+        stb_image
+        tiny_gltf)
 
 
 add_executable(extractor
@@ -108,4 +112,5 @@ target_link_libraries(extractor
         lzokay
         fmt
         compiler
-        stb_image)
+        stb_image
+        tiny_gltf)
