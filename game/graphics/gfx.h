@@ -118,7 +118,6 @@ namespace Gfx {
 extern GfxGlobalSettings g_global_settings;
 extern GfxSettings g_settings;
 
-static bool g_is_debug_menu_visible_on_startup = false;
 
 const GfxRendererModule* GetCurrentRenderer();
 
@@ -152,6 +151,7 @@ void set_msaa(int samples);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);
+bool get_debug_menu_visible_on_startup() ;
 
 int PadIsPressed(Pad::Button button, int port);
 int PadGetAnalogValue(Pad::Analog analog, int port);

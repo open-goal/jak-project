@@ -76,6 +76,12 @@ const std::pair<std::string, Pad::Analog> analog_map[] = {
     {"Right Y Axis", Pad::Analog::Right_Y},
 };
 
+bool g_is_debug_menu_visible_on_startup = false;
+
+bool get_debug_menu_visible_on_startup(){
+   return g_is_debug_menu_visible_on_startup;
+}
+
 void DumpToJson(ghc::filesystem::path& filename) {
   nlohmann::json json;
   json["Debug Menu Visibility"] = false;  // Assume start up debug display is disabled

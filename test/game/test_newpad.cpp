@@ -1,5 +1,6 @@
 
 #include <algorithm>
+#include <math.h>
 
 #include "game/graphics/pipelines/opengl.h"
 #include "game/system/newpad.h"

@@ -13,6 +13,7 @@
 #include <common/util/FileUtil.h>
 
 #include "game/graphics/pipelines/opengl.h"  // for GLFW macros
+#include <math.h>
 
 namespace Pad {
 
