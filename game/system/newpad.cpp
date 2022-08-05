@@ -10,10 +10,12 @@
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"
-#include <common/util/FileUtil.h>
+#include "common/util/FileUtil.h"
 
 #include "game/graphics/pipelines/opengl.h"  // for GLFW macros
 #include <math.h>
+
+#include "third-party/imgui/imgui.h"
 
 namespace Pad {
 
@@ -92,6 +94,10 @@ void ClearKeys() {
 }
 
 void OnKeyPress(int key) {
+  if (ImGui::IsAnyItemActive()) {
+    return;
+  }
+
   if (input_mode == InputModeStatus::Enabled) {
     if (key == GLFW_KEY_ESCAPE) {
       ExitInputMode(true);
@@ -237,9 +243,8 @@ void UpdateAxisValue() {
 
 // returns the value of the analog axis (in the future, likely pressure sensitive if we support it?)
 // if invalid or otherwise -- returns 127 (analog stick neutral position)
-int GetAnalogValue(MappingInfo& mapping, Analog analog, int pad = 0) {
+int GetAnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
   float input = 0.0f;
-
   if (CheckPadIdx(pad) == -1) {
     // Pad out of range, return a stable value
     return 127;
