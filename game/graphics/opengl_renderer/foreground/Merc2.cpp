@@ -384,7 +384,7 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
  * Queue up some bones to be included in the bone buffer.
  * Returns the index of the first bone vector.
  */
-u32 Merc2::alloc_bones(int count, float scale) {
+u32 Merc2::alloc_bones(int count) {
   u32 first_bone_vector = m_next_free_bone_vector;
   ASSERT(count * 8 + first_bone_vector <= MAX_SHADER_BONE_VECTORS);
 
@@ -397,12 +397,10 @@ u32 Merc2::alloc_bones(int count, float scale) {
     auto* shader_mat = &m_shader_bone_vector_buffer[m_next_free_bone_vector];
     int bv = 0;
 
-    // scale the transformation matrix (todo: can we move this to the extraction)
     // and copy to the large bone buffer.
-    for (int j = 0; j < 3; j++) {
-      shader_mat[bv++] = skel_mat.tmat[j] * scale;
+    for (int j = 0; j < 4; j++) {
+      shader_mat[bv++] = skel_mat.tmat[j];
     }
-    shader_mat[bv++] = skel_mat.tmat[3];
 
     for (int j = 0; j < 3; j++) {
       shader_mat[bv++] = skel_mat.nmat[j];
@@ -487,7 +485,7 @@ void Merc2::flush_pending_model(SharedRenderState* render_state, ScopedProfilerN
     return;
   }
 
-  u32 first_bone = alloc_bones(bone_count, model->scale_xyz);
+  u32 first_bone = alloc_bones(bone_count);
 
   // allocate lights
   u32 lights = alloc_lights(m_current_lights);
