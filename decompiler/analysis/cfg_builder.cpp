@@ -2046,7 +2046,7 @@ void build_initial_forms(Function& function) {
 
     function.ir2.top_form = result;
   } catch (std::runtime_error& e) {
-    function.warnings.general_warning(e.what());
+    function.warnings.general_error(e.what());
     lg::warn("Failed to build initial forms in {}: {}", function.name(), e.what());
   }
 }

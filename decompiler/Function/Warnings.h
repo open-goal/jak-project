@@ -14,13 +14,18 @@ class DecompWarnings {
 
   template <typename... Args>
   void general_warning(const std::string& str, Args&&... args) {
-    warning(Warning::Kind::GENERAL, str, std::forward<Args>(args)...);
+    warning(Warning::Kind::GENERAL_WARN, str, std::forward<Args>(args)...);
+  }
+
+  template <typename... Args>
+  void general_error(const std::string& str, Args&&... args) {
+    warning(Warning::Kind::GENERAL_FAIL, str, std::forward<Args>(args)...);
   }
 
   template <typename... Args>
   void warn_and_throw(const std::string& str, Args&&... args) {
     auto text = fmt::format(str, std::forward<Args>(args)...);
-    warning(Warning::Kind::GENERAL, text);
+    warning(Warning::Kind::GENERAL_FAIL, text);
     throw std::runtime_error(text);
   }
 
@@ -69,7 +74,8 @@ class DecompWarnings {
  private:
   struct Warning {
     enum class Kind {
-      GENERAL,
+      GENERAL_WARN,
+      GENERAL_FAIL,
       EXPR_BUILD_FAILED,
       CFG_FAILED,
       TYPE_PROP_FAILED,
@@ -80,14 +86,16 @@ class DecompWarnings {
 
     std::string print() const {
       switch (warning_kind) {
-        case Kind::GENERAL:
+        case Kind::GENERAL_WARN:
           return fmt::format("WARN: {}\n", message);
+        case Kind::GENERAL_FAIL:
+          return fmt::format("ERROR: {}\n", message);
         case Kind::EXPR_BUILD_FAILED:
-          return fmt::format("WARN: Expression building failed: {}\n", message);
+          return fmt::format("ERROR: Expression building failed: {}\n", message);
         case Kind::CFG_FAILED:
-          return fmt::format("WARN: CFG building failed: {}\n", message);
+          return fmt::format("ERROR: CFG building failed: {}\n", message);
         case Kind::TYPE_PROP_FAILED:
-          return fmt::format("WARN: Type Propagation failed: {}\n", message);
+          return fmt::format("ERROR: Type Propagation failed: {}\n", message);
         case Kind::BAD_VF_DEPENDENCY:
           return fmt::format("WARN: Bad vector register dependency: {}\n", message);
         case Kind::INFO:

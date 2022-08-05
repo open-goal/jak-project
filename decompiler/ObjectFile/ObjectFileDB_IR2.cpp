@@ -421,7 +421,7 @@ void ObjectFileDB::ir2_stack_spill_slot_pass(int seg, ObjectFileData& data) {
       auto spill_map = build_spill_map(func.instructions, {func.prologue_end, func.epilogue_start});
       func.ir2.env.set_stack_spills(spill_map);
     } catch (std::exception& e) {
-      func.warnings.general_warning("stack spill failed: {}", e.what());
+      func.warnings.general_error("stack spill failed: {}", e.what());
     }
   });
 }
@@ -458,7 +458,7 @@ void ObjectFileDB::ir2_atomic_op_pass(int seg, const Config& config, ObjectFileD
       } catch (std::exception& e) {
         lg::warn("Function {} from {} could not be converted to atomic ops: {}", func.name(),
                  data.to_unique_name(), e.what());
-        func.warnings.general_warning("Failed to convert to atomic ops: {}", e.what());
+        func.warnings.general_error("Failed to convert to atomic ops: {}", e.what());
       }
     }
   });
@@ -574,8 +574,8 @@ void ObjectFileDB::ir2_register_usage_pass(int seg, ObjectFileData& data) {
           }
 
           lg::error("Bad register dependency on {} in {}", x.to_charp(), func.name());
-          func.warnings.general_warning("Function may read a register that is not set: {}",
-                                        x.to_string());
+          func.warnings.general_error("Function may read a register that is not set: {}",
+                                      x.to_string());
         }
       }
     }
@@ -612,7 +612,7 @@ void ObjectFileDB::ir2_cfg_build_pass(int seg, ObjectFileData& data) {
       try {
         build_initial_forms(func);
       } catch (std::exception& e) {
-        func.warnings.general_warning("Failed to structure: {}", e.what());
+        func.warnings.general_error("Failed to structure: {}", e.what());
         func.ir2.top_form = nullptr;
       }
     }
@@ -657,7 +657,7 @@ void ObjectFileDB::ir2_insert_lets(int seg, ObjectFileData& data) {
             "none if something is actually returned.",
             e.what());
         lg::warn(err);
-        func.warnings.general_warning(err);
+        func.warnings.general_error(err);
       }
     }
   });
@@ -681,7 +681,7 @@ void ObjectFileDB::ir2_insert_anonymous_functions(int seg, ObjectFileData& data)
       try {
         insert_static_refs(func.ir2.top_form, *func.ir2.form_pool, func, dts);
       } catch (std::exception& e) {
-        func.warnings.general_warning("Failed static ref finding: {}\n", e.what());
+        func.warnings.general_error("Failed static ref finding: {}\n", e.what());
         lg::error("Function {} failed static ref: {}\n", func.name(), e.what());
       }
     }
