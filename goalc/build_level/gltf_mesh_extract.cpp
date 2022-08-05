@@ -522,14 +522,17 @@ void extract(const Input& in,
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
+    if (node.extras.Has("set_invisible") && node.extras.Get("set_invisible").Get<int>()) {
+      continue;
+    }
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
-      if (!mesh.extras.Has("tfrag")) {
-        // fmt::print("skip tfrag: {}\n", mesh.name);
-        // continue;
-      }
       mesh_count++;
       for (const auto& prim : mesh.primitives) {
+        if (model.materials[prim.material].extras.Has("set_invisible") &&
+            model.materials[prim.material].extras.Get("set_invisible").Get<int>()) {
+          continue;
+        }
         prim_count++;
         // extract index buffer
         std::vector<u32> prim_indices = gltf_index_buffer(model, prim.indices, out.vertices.size());
