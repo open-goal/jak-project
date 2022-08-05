@@ -326,16 +326,16 @@
 
 
 
-(defmacro def-language-remap-info (langs)
-  `(quote ,(apply (lambda (x) `((the binteger (game-text-id ,x)) (the binteger (pc-subtitle-lang ,x)))) langs))
+(defmacro def-language-remap-info (name langs)
+  `(define ,name (quote ,(apply (lambda (x) `((the binteger (game-text-id ,x)) (the binteger (pc-subtitle-lang ,x)))) langs)))
   )
 
-(define *language-remap-info-pc* (def-language-remap-info
-        (english uk-english french german spanish italian japanese portuguese br-portuguese swedish finnish danish norwegian)))
+(def-language-remap-info *language-remap-info-pc*
+        (english uk-english french german spanish italian japanese portuguese br-portuguese swedish finnish danish norwegian))
 (define *text-languages* (static-text-list-array
-                                  english uk-english french german spanish italian japanese))
+        english uk-english french german spanish italian japanese))
 (define *subtitle-languages* (static-text-list-array
-                                  english german spanish))
+        english german spanish))
 
 
 
@@ -403,11 +403,23 @@
   )
 
 (defmacro add-flava-player-option (text-id flava)
-  "add a resolution button to *temp-options* with specified size"
+  "add a music player w/ flava button to *temp-options* with specified size"
   `(let ((option (-> *temp-options* (length *temp-options*))))
       (set! (-> option option-type) (game-option-type button-flava))
       (set! (-> option name) ,text-id)
       (set! (-> option param1) (the float ,flava))
+      (set! (-> option scale) #t)
+
+      (1+! (-> *temp-options* length))
+      )
+  )
+
+(defmacro add-monitor-option (text-id monitor)
+  "add a display button to *temp-options* with specified size"
+  `(let ((option (-> *temp-options* (length *temp-options*))))
+      (set! (-> option option-type) (game-option-type monitor))
+      (set! (-> option name) ,text-id)
+      (set! (-> option param1) (the float ,monitor))
       (set! (-> option scale) #t)
 
       (1+! (-> *temp-options* length))
@@ -434,7 +446,8 @@
         ;; hack - do not use screen resolution in windowed mode, taskbar etc. messes it up and makes it useless!
         (skip? (= 'windowed display-mode))
         ;; shortcut
-        (max-options (1- (-> *temp-options* allocated-length))))
+        ;; we reserve 3 options.
+        (max-options (+ -3 (-> *temp-options* allocated-length))))
 
     ;; get screen size (for capping)
     (pc-get-screen-size -1 (the (pointer int32) (& sx)) (the (pointer int32) (& sy)))
@@ -476,15 +489,12 @@
           (true! done?))
       ))
     ;; extra funny options
-    (when (and (!= display-mode 'windowed)
-               (< (length *temp-options*) (- (-> *temp-options* allocated-length) 3)))
+    (when (!= display-mode 'windowed)
         (add-resolution-option 512 224)
-        (add-resolution-option 512 448)
-        )
+        (add-resolution-option 512 448))
 
     (add-back-option)
     )
-
 
   *temp-options*
   )
@@ -507,18 +517,11 @@
   (set! (-> *temp-options* length) 0)
 
   (dotimes (i (pc-get-monitor-count))
-    (let ((option (-> *temp-options* (length *temp-options*))))
-      (set! (-> option option-type) (game-option-type monitor))
-      (set! (-> option name) (game-text-id display-fmt))
-      (set! (-> option param1) (the float i))
-      (set! (-> option scale) #t)
-
-      (1+! (-> *temp-options* length))
-      )
+    (add-monitor-option (game-text-id display-fmt) i)
     )
   
   (add-back-option)
-  )
+  *temp-options*)
 
 
 
