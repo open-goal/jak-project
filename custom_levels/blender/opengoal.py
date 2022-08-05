@@ -1,7 +1,7 @@
 bl_info = {
     "name": "OpenGOAL Mesh",
     "author": "water111",
-    "version": (0, 0, 2),
+    "version": (0, 0, 3),
     "blender": (2, 83, 0),
     "location": "3D View",
     "description": "OpenGOAL Mesh tools",
@@ -65,6 +65,12 @@ pat_events = [
   ("melt", "melt", "", 6),
 ]
 
+pat_modes = [
+  ("ground", "ground", "", 0),
+  ("wall", "wall", "", 1),
+  ("obstacle", "obstacle", "", 2),
+]
+
 def draw_func(self, context):
     layout = self.layout
     ob = context.object
@@ -72,6 +78,7 @@ def draw_func(self, context):
     layout.prop(ob.active_material, "set_collision")
     if (ob.active_material.set_collision):
         layout.prop(ob.active_material, "ignore")
+        layout.prop(ob.active_material, "collide_mode")
         layout.prop(ob.active_material, "collide_material")
         layout.prop(ob.active_material, "collide_event")
         layout.prop(ob.active_material, "noedge")
@@ -86,6 +93,7 @@ def draw_func_ob(self, context):
     layout.prop(ob, "set_collision")
     if (ob.set_collision):
         layout.prop(ob, "ignore")
+        layout.prop(ob, "collide_mode")
         layout.prop(ob, "collide_material")
         layout.prop(ob, "collide_event")
         layout.prop(ob, "noedge")
@@ -103,6 +111,7 @@ def register():
     bpy.types.Material.nocamera = bpy.props.BoolProperty(name="No-Camera")
     bpy.types.Material.collide_material = bpy.props.EnumProperty(items = pat_surfaces, name = "Material")
     bpy.types.Material.collide_event = bpy.props.EnumProperty(items = pat_events, name = "Event")
+    bpy.types.Material.collide_mode = bpy.props.EnumProperty(items = pat_modes, name = "Mode")
     bpy.types.MATERIAL_PT_custom_props.prepend(draw_func)
 
     bpy.types.Object.set_invisible = bpy.props.BoolProperty(name="Invisible")
@@ -114,6 +123,7 @@ def register():
     bpy.types.Object.nocamera = bpy.props.BoolProperty(name="No-Camera")
     bpy.types.Object.collide_material = bpy.props.EnumProperty(items = pat_surfaces, name = "Material")
     bpy.types.Object.collide_event = bpy.props.EnumProperty(items = pat_events, name = "Event")
+    bpy.types.Object.collide_mode = bpy.props.EnumProperty(items = pat_modes, name = "Mode")
     bpy.types.OBJECT_PT_custom_props.prepend(draw_func_ob)
 
 def unregister():

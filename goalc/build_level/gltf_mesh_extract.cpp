@@ -711,6 +711,12 @@ PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*d
     result.pat.set_noedge(true);
   }
 
+  if (val.Has("collide_mode")) {
+    int mode = val.Get("collide_mode").Get<int>();
+    ASSERT(mode < (int)PatSurface::Mode::MAX_MODE);
+    result.pat.set_mode(PatSurface::Mode(mode));
+  }
+
   if (val.Get("nocamera").Get<int>()) {
     result.pat.set_nocamera(true);
   }
