@@ -328,9 +328,16 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
     for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
       if (seg != TOP_LEVEL_SEGMENT) {
         if (f.is_inspect_method && bad_types.find(f.guessed_name.type_name) == bad_types.end()) {
-          object_result.type_defs.push_back(
+          auto deftype_from_inspect =
               inspect_inspect_method(f, f.guessed_name.type_name, dts, data.linked_data,
-                                     previous_game_ts, ti_cache, object_result));
+                                     previous_game_ts, ti_cache, object_result);
+          bool already_seen = object_result.type_info.count(f.guessed_name.type_name) > 0;
+          if (!already_seen) {
+            object_result.type_names_in_order.push_back(f.guessed_name.type_name);
+          }
+          auto& info = object_result.type_info[f.guessed_name.type_name];
+          info.from_inspect_method = true;
+          info.type_definition = deftype_from_inspect;
         } else {
           // no inspect methods
           // - can we solve custom print methods in a generic way?  ie `entity-links`
@@ -351,8 +358,9 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
     result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
     result += fmt::format(";; {:30s} ;;\n", obj.object_name);
     result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n\n");
-    for (auto& t : obj.type_defs) {
-      result += t;
+    for (const auto& type_name : obj.type_names_in_order) {
+      auto& info = obj.type_info.at(type_name);
+      result += info.type_definition;
       result += "\n";
     }
     result += obj.symbol_defs;
