@@ -547,20 +547,25 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
           in.func = &func;
           in.function_type = ts;
           in.dts = &dts;
-          types2::run(out, in);
-          func.ir2.env.set_types(out.block_init_types, out.op_end_types, *func.ir2.atomic_ops, ts);
+          try {
+            types2::run(out, in);
+            func.ir2.env.set_types(out.block_init_types, out.op_end_types, *func.ir2.atomic_ops,
+                                   ts);
+          } catch (const std::exception& e) {
+            func.warnings.warning("Type analysis failed: {}", e.what());
+          }
+          func.ir2.env.types_succeeded = out.succeeded;
         } else {
           // old type pass
           if (run_type_analysis_ir2(ts, dts, func)) {
             func.ir2.env.types_succeeded = true;
           } else {
-            func.warnings.type_prop_warning("Type analysis failed");
+            func.warnings.warning("Type analysis failed");
           }
         }
-
       } else {
         lg::warn("Function {} didn't know its type", func.name());
-        func.warnings.type_prop_warning("Function {} has unknown type", func.name());
+        func.warnings.warning("Function {} has unknown type", func.name());
       }
     }
   });

@@ -290,6 +290,32 @@ void types2_for_label(types2::Type& type_out,
   }
 }
 
+bool common_int2_case(types2::Type& type_out,
+                      const DecompilerTypeSystem& dts,
+                      TP_Type& arg0_type,
+                      TP_Type& arg1_type) {
+  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
+    // both are the same type and both are int/uint, so we assume that we're doing integer math.
+    // we strip off any weird things like multiplication or integer constant.
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return true;
+  }
+
+  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    // usually we would want to use arg0's type as the "winning" type.
+    // but we use arg1's if arg0 is an integer constant
+    // in either case, strip off weird stuff.
+    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
+      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
+      return true;
+    }
+    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
+    return true;
+  }
+
+  return false;
+}
+
 /*!
  * Update a type state so the given type_out has the type for the result of a right shift.
  */
@@ -299,20 +325,29 @@ void types2_for_right_shift(types2::Type& type_out,
                             const Env& env,
                             types2::TypeState& input_types,
                             const DecompilerTypeSystem& dts) {
-  auto arg0_type = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
-  if (!arg0_type) {
+  auto arg0_type_info = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
+  if (!arg0_type_info) {
     // fail!
     type_out.type = {};
     return;
   }
 
+  auto arg1_type_info = try_get_type_of_atom(input_types, expr.get_arg(1), env, dts);
+  if (!arg1_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto& arg0_type = *arg0_type_info;
+  auto& arg1_type = *arg1_type_info;
   // bitfield access, with a single shift
 
   if (expr.get_arg(1).is_int()) {
-    auto bf = dynamic_cast<BitFieldType*>(dts.ts.lookup_type(arg0_type->typespec()));
+    auto bf = dynamic_cast<BitFieldType*>(dts.ts.lookup_type(arg0_type.typespec()));
     // skip time-frame: we're probably doing math and we know it has no fields in it.
     // note: we could be a bit more robust with this detection...
-    if (bf && arg0_type->typespec() != TypeSpec("time-frame")) {
+    if (bf && arg0_type.typespec() != TypeSpec("time-frame")) {
       int shift_size = 64;
       int size = shift_size - expr.get_arg(1).get_int();
       int start_bit = shift_size - size;
@@ -322,10 +357,10 @@ void types2_for_right_shift(types2::Type& type_out,
     }
   }
 
-  if (arg0_type->kind == TP_Type::Kind::LEFT_SHIFTED_BITFIELD && expr.get_arg(1).is_int()) {
+  if (arg0_type.kind == TP_Type::Kind::LEFT_SHIFTED_BITFIELD && expr.get_arg(1).is_int()) {
     // second op in left/right shift combo
-    int end_bit = 64 - arg0_type->get_left_shift();
-    if (arg0_type->pcpyud()) {
+    int end_bit = 64 - arg0_type.get_left_shift();
+    if (arg0_type.pcpyud()) {
       end_bit += 64;
     }
 
@@ -335,7 +370,7 @@ void types2_for_right_shift(types2::Type& type_out,
       throw std::runtime_error("Bad bitfield start bit");
     }
 
-    auto type = dts.ts.lookup_type(arg0_type->get_bitfield_type());
+    auto type = dts.ts.lookup_type(arg0_type.get_bitfield_type());
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     ASSERT(as_bitfield);
     auto field = find_field(dts.ts, as_bitfield, start_bit, size, is_unsigned);
@@ -343,11 +378,13 @@ void types2_for_right_shift(types2::Type& type_out,
     return;
   }
 
-  if (is_unsigned) {
-    type_out.type = TP_Type::make_from_ts("uint");
-  } else {
+  if (is_signed(dts, arg0_type)) {
     type_out.type = TP_Type::make_from_ts("int");
+  } else {
+    type_out.type = TP_Type::make_from_ts("uint");
   }
+
+  // common_int2_case(type_out, dts, arg0_type, arg1_type);
 }
 
 void types2_for_left_shift(types2::Type& type_out,
@@ -522,32 +559,6 @@ void types2_for_gpr_to_fpr(types2::Type& type_out,
   types2_for_atom(type_out, output_instr, input_types, expr.get_arg(0), env, dts, extras);
 }
 
-bool common_int2_case(types2::Type& type_out,
-                      const DecompilerTypeSystem& dts,
-                      TP_Type& arg0_type,
-                      TP_Type& arg1_type) {
-  if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
-    // both are the same type and both are int/uint, so we assume that we're doing integer math.
-    // we strip off any weird things like multiplication or integer constant.
-    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
-    return true;
-  }
-
-  if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
-    // usually we would want to use arg0's type as the "winning" type.
-    // but we use arg1's if arg0 is an integer constant
-    // in either case, strip off weird stuff.
-    if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
-      type_out.type = TP_Type::make_from_ts(arg1_type.typespec());
-      return true;
-    }
-    type_out.type = TP_Type::make_from_ts(arg0_type.typespec());
-    return true;
-  }
-
-  return false;
-}
-
 void types2_for_integer_mul(types2::Type& type_out,
                             types2::Instruction& output_instr,
                             const SimpleExpression& expr,
@@ -618,7 +629,7 @@ void types2_for_logior(types2::Type& type_out,
   }
 
   if (arg0_type.typespec() == TypeSpec("float") && arg1_type.typespec() == TypeSpec("float")) {
-    env.func->warnings.general_warning("Using logior on floats");
+    env.func->warnings.warning("Using logior on floats");
     // returning int instead of uint because they like to use the float sign bit as an integer sign
     // bit.
     type_out.type = TP_Type::make_from_ts(TypeSpec("float"));
@@ -1125,7 +1136,9 @@ void types2_for_add(types2::Type& type_out,
   fmt::print("checks: {} {} {}\n", tc(dts, TypeSpec("structure"), arg1_type),
              !expr.get_arg(0).is_int(), is_int_or_uint(dts, arg0_type));
 
-  ASSERT_MSG(false, fmt::format("add failed: {} {}\n", arg0_type.print(), arg1_type.print()));
+  throw std::runtime_error(
+      fmt::format("add failed: {} {}\n", arg0_type.print(), arg1_type.print()));
+  // ASSERT_MSG(false, fmt::format("add failed: {} {}\n", arg0_type.print(), arg1_type.print()));
 }
 
 void types2_for_normal_all_float(types2::Type& type_out,

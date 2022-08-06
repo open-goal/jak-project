@@ -209,6 +209,7 @@ struct Output {
   std::vector<::decompiler::TypeState> block_init_types;
   std::vector<::decompiler::TypeState> op_end_types;
   std::vector<StackStructureHint> stack_structure_hints;
+  bool succeeded = false;
 };
 
 struct Input {

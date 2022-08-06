@@ -2,6 +2,7 @@
 
 #include <set>
 
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/types2/Type.h"
 
 namespace decompiler::types2 {
@@ -404,7 +405,7 @@ bool tp_lca(types2::TypeState* combined, const types2::TypeState& add, Decompile
 /*!
  * Propagate types from the beginning of this block.
  */
-void propagate_block(FunctionCache& cache,
+bool propagate_block(FunctionCache& cache,
                      int block_idx,
                      Function& func,
                      DecompilerTypeSystem& dts,
@@ -424,7 +425,15 @@ void propagate_block(FunctionCache& cache,
       TypePropExtras extras;
       extras.tags_locked = tag_lock;
       // fmt::print("run: {}\n", aop->to_string(func.ir2.env));
-      aop->propagate_types2(*instr, func.ir2.env, *previous_typestate, *func.ir2.env.dts, extras);
+
+      try {
+        aop->propagate_types2(*instr, func.ir2.env, *previous_typestate, *func.ir2.env.dts, extras);
+      } catch (const std::exception& e) {
+        auto error = fmt::format("failed type prop at {}: {}", instr->aop_idx, e.what());
+        func.warnings.error(error);
+        lg::error("Function {} {}", func.name(), error);
+        return false;
+      }
       if (extras.needs_rerun) {
         cblock.needs_run = true;
       }
@@ -465,11 +474,17 @@ void propagate_block(FunctionCache& cache,
       }
     }
   }
+  return true;
 }
 
-bool convert_to_old_format(TP_Type& out, const types2::Type* in) {
+bool convert_to_old_format(TP_Type& out, const types2::Type* in, bool recovery_mode) {
   if (!in->type) {
-    return false;
+    if (recovery_mode) {
+      out = TP_Type::make_uninitialized();
+      return true;
+    } else {
+      return false;
+    }
   } else {
     out = *in->type;
     return true;
@@ -482,14 +497,15 @@ bool convert_to_old_format(::decompiler::TypeState& out,
                            int my_idx,
                            const std::unordered_map<int, std::vector<RegisterTypeCast>>& casts,
                            const std::unordered_map<int, StackTypeCast>& stack_casts,
-                           const DecompilerTypeSystem& dts) {
+                           const DecompilerTypeSystem& dts,
+                           bool recovery_mode) {
   for (int i = 0; i < 32; i++) {
     ASSERT(in.fpr_types[i]);
-    if (!convert_to_old_format(out.fpr_types[i], in.fpr_types[i])) {
+    if (!convert_to_old_format(out.fpr_types[i], in.fpr_types[i], recovery_mode)) {
       error_string += fmt::format("Failed to convert FPR: {} ", i);
       return false;
     }
-    if (!convert_to_old_format(out.gpr_types[i], in.gpr_types[i])) {
+    if (!convert_to_old_format(out.gpr_types[i], in.gpr_types[i], recovery_mode)) {
       error_string += fmt::format("Failed to convert GPR: {} ", Register(Reg::GPR, i).to_string());
       return false;
     }
@@ -504,7 +520,7 @@ bool convert_to_old_format(::decompiler::TypeState& out,
 
   for (auto& x : in.stack_slot_types) {
     TP_Type temp;
-    if (!convert_to_old_format(temp, &x->type)) {
+    if (!convert_to_old_format(temp, &x->type, recovery_mode)) {
       error_string += fmt::format("Failed to convert stack slot: {} ", x->slot);
       return false;
     }
@@ -522,7 +538,8 @@ bool convert_to_old_format(Output& out,
                            std::string& error_string,
                            const std::unordered_map<int, std::vector<RegisterTypeCast>>& casts,
                            const std::unordered_map<int, StackTypeCast>& stack_casts,
-                           const DecompilerTypeSystem& dts) {
+                           const DecompilerTypeSystem& dts,
+                           bool recovery_mode) {
   // for (auto& block : in.blocks) {
   out.op_end_types.resize(in.instructions.size());
   out.block_init_types.resize(in.blocks.size());
@@ -530,14 +547,14 @@ bool convert_to_old_format(Output& out,
     auto& block = in.blocks[block_idx];
     if (!convert_to_old_format(out.block_init_types.at(block_idx), block.start_type_state,
                                error_string, block.instructions.at(0)->aop_idx, casts, stack_casts,
-                               dts)) {
+                               dts, recovery_mode)) {
       error_string += fmt::format(" at the start of block {}\n", block_idx);
       return false;
     }
 
     for (auto& instr : block.instructions) {
       if (!convert_to_old_format(out.op_end_types.at(instr->aop_idx), instr->types, error_string,
-                                 instr->aop_idx + 1, casts, stack_casts, dts)) {
+                                 instr->aop_idx + 1, casts, stack_casts, dts, recovery_mode)) {
         error_string += fmt::format(" at op {}\n", instr->aop_idx);
         return false;
       }
@@ -577,8 +594,8 @@ void run(Output& out, const Input& input) {
   int blocks_run = 0;
   int outer_iterations = 0;
   bool needs_rerun = true;
+  bool hit_error = false;
   while (needs_rerun) {
-    fmt::print("outer\n");
     outer_iterations++;
     needs_rerun = false;
 
@@ -586,7 +603,11 @@ void run(Output& out, const Input& input) {
       if (function_cache.blocks.at(block_idx).needs_run) {
         blocks_run++;
         needs_rerun = true;
-        propagate_block(function_cache, block_idx, *input.func, *input.func->ir2.env.dts, false);
+        if (!propagate_block(function_cache, block_idx, *input.func, *input.func->ir2.env.dts,
+                             false)) {
+          hit_error = true;
+          goto end_type_pass;
+        }
       }
     }
 
@@ -630,14 +651,19 @@ void run(Output& out, const Input& input) {
       if (function_cache.blocks.at(block_idx).needs_run) {
         blocks_run++;
         needs_rerun = true;
-        propagate_block(function_cache, block_idx, *input.func, *input.func->ir2.env.dts, true);
+        if (!propagate_block(function_cache, block_idx, *input.func, *input.func->ir2.env.dts,
+                             true)) {
+          hit_error = true;
+          goto end_type_pass;
+        }
       }
     }
   }
 
+  end_type_pass:
   std::string error;
   if (!convert_to_old_format(out, function_cache, error, input.func->ir2.env.casts(),
-                             input.func->ir2.env.stack_casts(), *input.dts)) {
+                             input.func->ir2.env.stack_casts(), *input.dts, hit_error)) {
     fmt::print("Failed convert_to_old_format: {}\n", error);
   } else {
     input.func->ir2.env.types_succeeded = true;
@@ -648,11 +674,42 @@ void run(Output& out, const Input& input) {
     }
   }
 
+  // figure out the types of stack spill variables:
+  auto& env = input.func->ir2.env;
+  bool changed;
+  for (auto& type_info : out.op_end_types) {
+    for (auto& spill : type_info.spill_slots) {
+      auto& slot_info = env.stack_slot_entries[spill.first];
+      slot_info.tp_type =
+          input.dts->tp_lca(env.stack_slot_entries[spill.first].tp_type, spill.second, &changed);
+      slot_info.offset = spill.first;
+    }
+  }
+
+  for (auto& type_info : out.block_init_types) {
+    for (auto& spill : type_info.spill_slots) {
+      auto& slot_info = env.stack_slot_entries[spill.first];
+      slot_info.tp_type =
+          input.dts->tp_lca(env.stack_slot_entries[spill.first].tp_type, spill.second, &changed);
+      slot_info.offset = spill.first;
+    }
+  }
+
+  // convert to typespec
+  for (auto& info : env.stack_slot_entries) {
+    info.second.typespec = info.second.tp_type.typespec();
+    //     debug
+    // fmt::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
+    //         info.second.tp_type.print());
+  }
+
   // final casts
 
   // stack spill var things
 
   // warn on return type
+
+  out.succeeded = !hit_error;
 }
 
 }  // namespace decompiler::types2
