@@ -41,8 +41,8 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
           // If its an invalid or unsupported exception, skip it
           /*lg::warn("[ASM Re-Write] - Unsupported inline assembly instruction kind - [{}]",
                    asmOp.instr.kind);*/
-          f.warnings.general_warning("Unsupported inline assembly instruction kind - [{}]",
-                                     asmOp.m_instr.to_string(f.ir2.env.file->labels));
+          f.warnings.error("Unsupported inline assembly instruction kind - [{}]",
+                           asmOp.m_instr.to_string(f.ir2.env.file->labels));
           new_entries.push_back(entry);
           continue;
         } else if (asmOp.skip) {
@@ -51,8 +51,8 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
           // If its an invalid or unsupported exception, skip it
           /*lg::warn("[ASM Re-Write] - Inline assembly instruction marked with TODO - [{}]",
                    asmOp.full_function_name());*/
-          f.warnings.general_warning("Inline assembly instruction marked with TODO - [{}]",
-                                     asmOp.full_function_name());
+          f.warnings.error("Inline assembly instruction marked with TODO - [{}]",
+                           asmOp.full_function_name());
         }
 
         // If we've made it this far, it's an AsmOperation that is also a supported vector
@@ -87,7 +87,7 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
     std::string warning =
         fmt::format("ASM instruction re-writing failed in {}: {}", f.name(), e.what());
     lg::warn(warning);
-    f.warnings.general_warning(";; {}", warning);
+    f.warnings.error(";; {}", warning);
     return false;
   }
 

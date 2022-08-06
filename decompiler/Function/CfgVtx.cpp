@@ -2855,14 +2855,14 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
       changed = changed || cfg->find_infinite_continue();
       if (changed && !complained_about_weird_gotos) {
         complained_about_weird_gotos = true;
-        func.warnings.general_warning(
+        func.warnings.warning(
             "Found some very strange gotos. Check result carefully, this is not well tested.");
       }
     }
   }
 
   if (!cfg->is_fully_resolved()) {
-    func.warnings.cfg_build_warning("Could not fully resolve CFG");
+    func.warnings.error("CFG building failed: Could not fully resolve CFG");
   }
 
   return cfg;
