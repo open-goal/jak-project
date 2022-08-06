@@ -5,12 +5,14 @@
 #include <unordered_map>
 
 #include "common/log/log.h"
+#include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
-#include <common/util/json_util.h>
-#include <common/util/read_iso_file.h>
+#include "common/util/json_util.h"
+#include "common/util/read_iso_file.h"
 
-#include <third-party/json.hpp>
+#include "game/kernel/common/kboot.h"
 
+#include "third-party/json.hpp"
 #include "third-party/xxhash.hpp"
 
 enum class ExtractorErrorCode {
@@ -34,12 +36,23 @@ enum GameIsoFlags { FLAG_JAK1_BLACK_LABEL = (1 << 0) };
 static const std::unordered_map<std::string, GameIsoFlags> sGameIsoFlagNames = {
     {"jak1-black-label", FLAG_JAK1_BLACK_LABEL}};
 
+static const std::unordered_map<int, std::string> sGameIsoTerritoryMap = {
+    {GAME_TERRITORY_SCEA, "NTSC-U"},
+    {GAME_TERRITORY_SCEE, "PAL"},
+    {GAME_TERRITORY_SCEI, "NTSC-J"}};
+
+std::string get_territory_name(int territory) {
+  ASSERT_MSG(sGameIsoTerritoryMap.count(territory),
+             fmt::format("territory {} not found in territory name map"));
+  return sGameIsoTerritoryMap.at(territory);
+}
+
 // used for - decompiler_out/<jak1> and iso_data/<jak1>
 std::unordered_map<std::string, std::string> data_subfolders = {{"jak1", "jak1"}};
 
 struct ISOMetadata {
   std::string canonical_name;
-  std::string region;
+  int region;  // territory code
   int num_files;
   xxh::hash64_t contents_hash;
   std::string decomp_config;
@@ -80,7 +93,7 @@ std::optional<BuildInfo> get_buildinfo_from_path(fs::path iso_data_path) {
 
 static const ISOMetadata jak1_ntsc_black_label_info = {
     "Jak & Daxter™: The Precursor Legacy (Black Label)",
-    "NTSC-U",
+    GAME_TERRITORY_SCEA,
     337,
     11363853835861842434U,
     "jak1_ntsc_black_label",
@@ -93,7 +106,7 @@ static const std::unordered_map<std::string, std::unordered_map<xxh::hash64_t, I
                  {{7280758013604870207U, jak1_ntsc_black_label_info},
                   {744661860962747854,
                    {"Jak & Daxter™: The Precursor Legacy",
-                    "NTSC-U",
+                    GAME_TERRITORY_SCEA,
                     338,
                     8538304367812415885U,
                     "jak1_jp",
@@ -102,7 +115,7 @@ static const std::unordered_map<std::string, std::unordered_map<xxh::hash64_t, I
                 {"SCES-50361",
                  {{12150718117852276522U,
                    {"Jak & Daxter™: The Precursor Legacy",
-                    "PAL",
+                    GAME_TERRITORY_SCEE,
                     338,
                     16850370297611763875U,
                     "jak1_pal",
@@ -111,7 +124,7 @@ static const std::unordered_map<std::string, std::unordered_map<xxh::hash64_t, I
                 {"SCPS-15021",
                  {{16909372048085114219U,
                    {"ジャックＸダクスター　～　旧世界の遺産",
-                    "NTSC-J",
+                    GAME_TERRITORY_SCEI,
                     338,
                     1262350561338887717,
                     "jak1_jp",
@@ -140,13 +153,13 @@ ISOMetadata get_version_info_or_default(const fs::path& iso_data_path) {
   const auto build_info = get_buildinfo_from_path(iso_data_path);
   if (!build_info) {
     lg::warn(
-        "unable locate buildinfo.json file in iso data path, defaulting to Jak 1 - NTSC "
-        "Black Label");
+        "unable locate buildinfo.json file in iso data path, defaulting to Jak 1 - NTSC-U Black "
+        "Label");
   } else {
     auto maybe_version_info = get_version_info_from_build_info(build_info.value());
     if (!maybe_version_info) {
       lg::warn(
-          "unable to determine game version from buildinfo.json file, defaulting to Jak 1 - NTSC "
+          "unable to determine game version from buildinfo.json file, defaulting to Jak 1 - NTSC-U "
           "Black Label");
     } else {
       version_info = maybe_version_info.value();
