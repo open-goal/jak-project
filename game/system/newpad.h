@@ -100,9 +100,8 @@ int IsPressed(MappingInfo& mapping, Button button, int pad);
 int GetAnalogValue(MappingInfo& mapping, Analog analog, int pad);
 void MapButton(MappingInfo& mapping, Button button, int pad, int key);
 void MapAnalog(MappingInfo& mapping, Button button, int pad, AnalogMappingInfo& analogMapping);
-void SetMapping(MappingInfo& mapping);
-void SetAnalogAxisValue(int axis, double value);
-void ClearAnalogAxisValue(int axis);
+void SetAnalogAxisValue(MappingInfo& mapping, int axis, double value);
+void ClearAnalogAxisValue(MappingInfo& mapping, int axis);
 
 // this enum is also in pc-pad-utils.gc
 enum class InputModeStatus { Disabled, Enabled, Canceled };
@@ -116,19 +115,18 @@ u64 input_mode_get_index();
 void input_mode_pad_set(s64);
 
 void initialize();
-void update_gamepads();
+void update_gamepads(MappingInfo& mapping_info);
 int rumble(int pad, float slow_motor, float fast_motor);
 int GetGamepadState(int pad);
 void ForceClearAnalogValue();
 void clear_pad(int pad);
 
-void UpdateAxisValue();
+void UpdateAxisValue(MappingInfo& mapping_info);
 void SetGamepadState(int pad, int pad_index);
 bool* GetKeyboardInputBuffer();
 bool* GetKeyboardBufferedInputBuffer();
 float* GetKeyboardInputAnalogBuffer(int pad);
 bool* GetControllerInputBuffer(int pad);
 float* GetControllerAnalogInputBuffer(int pad);
-MappingInfo GetMapping();
 
 }  // namespace Pad

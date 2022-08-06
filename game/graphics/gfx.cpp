@@ -42,6 +42,8 @@ void InitSettings(GfxSettings& settings) {
   settings.pad_mapping_info.buffer_mode = true;
   // debug input settings
   settings.pad_mapping_info.debug = true;
+
+  Pad::DefaultMapping(Gfx::g_settings.pad_mapping_info);
 }
 
 }  // namespace
@@ -50,6 +52,10 @@ namespace Gfx {
 
 GfxGlobalSettings g_global_settings;
 GfxSettings g_settings;
+
+Pad::MappingInfo& get_button_mapping() {
+  return g_settings.pad_mapping_info;
+}
 
 // const std::vector<const GfxRendererModule*> renderers = {&moduleOpenGL};
 
@@ -78,8 +84,8 @@ const std::pair<std::string, Pad::Analog> analog_map[] = {
 
 bool g_is_debug_menu_visible_on_startup = false;
 
-bool get_debug_menu_visible_on_startup(){
-   return g_is_debug_menu_visible_on_startup;
+bool get_debug_menu_visible_on_startup() {
+  return g_is_debug_menu_visible_on_startup;
 }
 
 void DumpToJson(ghc::filesystem::path& filename) {
@@ -129,12 +135,10 @@ void DumpToJson(ghc::filesystem::path& filename) {
 }
 
 void SavePeripheralSettings() {
-  auto filename =
-      (file_util::get_jak_project_dir() / "game" / "config" / "controller-settings.json");
+  auto filename = (file_util::get_user_settings_dir() / "controller-settings.json");
   file_util::create_dir_if_needed_for_file(filename);
 
   DumpToJson(filename);
-  Pad::SetMapping(g_settings.pad_mapping_info);
   lg::info("Saved graphics configuration file.");
 }
 
@@ -213,17 +217,14 @@ void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
 }
 
 void LoadSettings() {
-  auto filename =
-      (file_util::get_jak_project_dir() / "game" / "config" / "controller-settings.json");
+  auto filename = (file_util::get_user_settings_dir() / "controller-settings.json");
   if (fs::exists(filename)) {
     LoadPeripheralSettings(filename);
-    Pad::SetMapping(g_settings.pad_mapping_info);
     lg::info("Loaded graphics configuration file.");
     return;
   }
 
   file_util::create_dir_if_needed_for_file(filename);
-  Pad::DefaultMapping(g_settings.pad_mapping_info);
   SavePeripheralSettings();
   lg::info("Created graphics configuration file {}", filename.string());
 }

@@ -1,6 +1,6 @@
 
 #include <algorithm>
-#include <math.h>
+#include <cmath>
 
 #include "game/graphics/pipelines/opengl.h"
 #include "game/system/newpad.h"
@@ -34,28 +34,13 @@ TEST_F(PeripheralTest, UpdatePad_KeyboardPad_ClearsControllerInputBuffers) {
            sizeof(controller_input_buffer[0]) * (int)Pad::Button::Max);
 
   // Act
-  Pad::update_gamepads();
+  Pad::update_gamepads(mapping_info_);
 
   // Assert
   for (int i = 0; i < (int)Pad::Button::Max; ++i) {
     EXPECT_EQ(expected_controller_status, controller_input_buffer[i]);
   }
 }
-TEST_F(PeripheralTest, UpdatePad_ControllerPad_UpdateControllerInputBuffers) {
-  // Arrange
-  int expected_analog_status = 127;
-
-  int pad_index = 0;
-  int controller_index = 0;
-  Pad::SetGamepadState(pad_index, controller_index);
-
-  // Act
-  int actual_analog_status = Pad::GetAnalogValue(mapping_info_, Pad::Analog::Left_X, 0);
-
-  // Assert
-  EXPECT_EQ(expected_analog_status, actual_analog_status);
-}
-
 TEST_F(PeripheralTest, ClearKey_ValidKey_UpdateKeyboardBuffer) {
   // Arrange
   int input_key = 127;
@@ -94,7 +79,7 @@ TEST_F(PeripheralTest, SetAnalogAxisValue_NominalAnalogAxisX_SetConvertedValue) 
             mapping_info_.controller_analog_mapping[0][(int)Pad::Analog::Right_X]);
 
   // Act
-  Pad::SetAnalogAxisValue(static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS), 100.0);
+  Pad::SetAnalogAxisValue(mapping_info_, static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS), 100.0);
 
   // Assert
   float* keyboard_analog_buffer = Pad::GetKeyboardInputAnalogBuffer(0);
@@ -106,7 +91,7 @@ TEST_F(PeripheralTest, SetAnalogAxisValue_NominalAnalogAxisY_SetConvertedValue) 
             mapping_info_.controller_analog_mapping[0][(int)Pad::Analog::Right_Y]);
 
   // Act
-  Pad::SetAnalogAxisValue(static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS), 100.0);
+  Pad::SetAnalogAxisValue(mapping_info_, static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS), 100.0);
 
   // Assert
   float* keyboard_analog_buffer = Pad::GetKeyboardInputAnalogBuffer(0);
@@ -117,7 +102,7 @@ TEST_F(PeripheralTest, SetAnalogAxisValue_InputLargerThanMaxValue_SetMaxValue) {
   float expected_analog_value = 1;
 
   // Act
-  Pad::SetAnalogAxisValue(static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS), 100.0);
+  Pad::SetAnalogAxisValue(mapping_info_, static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS), 100.0);
 
   // Assert
   float* keyboard_analog_buffer = Pad::GetKeyboardInputAnalogBuffer(0);
@@ -128,7 +113,8 @@ TEST_F(PeripheralTest, SetAnalogAxisValue_InputSmallerThanMinValue_SetMinValue) 
   float expected_analog_value = -1;
 
   // Act
-  Pad::SetAnalogAxisValue(static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS), -100.0);
+  Pad::SetAnalogAxisValue(mapping_info_, static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS),
+                          -100.0);
 
   // Assert
   float* keyboard_analog_buffer = Pad::GetKeyboardInputAnalogBuffer(0);
@@ -139,7 +125,8 @@ TEST_F(PeripheralTest, SetAnalogAxisValue_InputIsNAN_SetZero) {
   float expected_analog_value = 0;
 
   // Act
-  Pad::SetAnalogAxisValue(static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS), std::nan("1"));
+  Pad::SetAnalogAxisValue(mapping_info_, static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS),
+                          std::nan("1"));
 
   // Assert
   float* keyboard_analog_buffer = Pad::GetKeyboardInputAnalogBuffer(0);
@@ -151,14 +138,12 @@ TEST_F(
   // Arrange
   float expected_x_axis_sensitivity = 1e-4;
   mapping_info_.mouse_x_axis_sensitivities[0] = 0;
-  Pad::SetMapping(mapping_info_);
 
   // Act
-  Pad::SetAnalogAxisValue(static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS), 100);
+  Pad::SetAnalogAxisValue(mapping_info_, static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS), 100);
 
   // Assert
-  auto actual_mapping = Pad::GetMapping();
-  EXPECT_FLOAT_EQ(expected_x_axis_sensitivity, actual_mapping.mouse_x_axis_sensitivities[0]);
+  EXPECT_FLOAT_EQ(expected_x_axis_sensitivity, mapping_info_.mouse_x_axis_sensitivities[0]);
 }
 TEST_F(
     PeripheralTest,
@@ -166,14 +151,12 @@ TEST_F(
   // Arrange
   float expected_y_axis_sensitivity = 1e-4;
   mapping_info_.mouse_y_axis_sensitivities[0] = 0;
-  Pad::SetMapping(mapping_info_);
 
   // Act
-  Pad::SetAnalogAxisValue(static_cast<int>(GlfwKeyCustomAxis::CURSOR_Y_AXIS), 100);
+  Pad::SetAnalogAxisValue(mapping_info_, static_cast<int>(GlfwKeyCustomAxis::CURSOR_Y_AXIS), 100);
 
   // Assert
-  auto actual_mapping = Pad::GetMapping();
-  EXPECT_FLOAT_EQ(expected_y_axis_sensitivity, actual_mapping.mouse_y_axis_sensitivities[0]);
+  EXPECT_FLOAT_EQ(expected_y_axis_sensitivity, mapping_info_.mouse_y_axis_sensitivities[0]);
 }
 
 TEST_F(PeripheralTest, UpdateAxisValue_XAxisPositiveKey_IncrementValue) {
@@ -185,7 +168,7 @@ TEST_F(PeripheralTest, UpdateAxisValue_XAxisPositiveKey_IncrementValue) {
   keyboard_buffered_key_buffer[key] = true;
 
   // Act
-  Pad::UpdateAxisValue();
+  Pad::UpdateAxisValue(mapping_info_);
 
   // Arrange
   float* keyboard_analog_buffer = Pad::GetKeyboardInputAnalogBuffer(pad_index);
@@ -201,7 +184,7 @@ TEST_F(PeripheralTest, UpdateAxisValue_YAxisPositiveKey_DecrementValue) {
   keyboard_buffered_key_buffer[key] = true;
 
   // Act
-  Pad::UpdateAxisValue();
+  Pad::UpdateAxisValue(mapping_info_);
 
   // Arrange
   float* keyboard_analog_buffer = Pad::GetKeyboardInputAnalogBuffer(pad_index);
@@ -218,7 +201,7 @@ TEST_F(PeripheralTest, UpdateAxisValue_XAxisNegativeKey_DecrementValue) {
   keyboard_buffered_key_buffer[key] = true;
 
   // Act
-  Pad::UpdateAxisValue();
+  Pad::UpdateAxisValue(mapping_info_);
 
   // Arrange
   float* keyboard_analog_buffer = Pad::GetKeyboardInputAnalogBuffer(pad_index);
@@ -235,7 +218,7 @@ TEST_F(PeripheralTest, UpdateAxisValue_RightYAxisPositiveKey_IncrementValue) {
   keyboard_buffered_key_buffer[key] = true;
 
   // Act
-  Pad::UpdateAxisValue();
+  Pad::UpdateAxisValue(mapping_info_);
 
   // Arrange
   float* keyboard_analog_buffer = Pad::GetKeyboardInputAnalogBuffer(pad_index);

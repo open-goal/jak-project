@@ -351,10 +351,11 @@ void GLDisplay::on_mouse_key(GLFWwindow* window, int button, int action, int mod
 }
 
 void GLDisplay::on_cursor_position(GLFWwindow* window, double xposition, double yposition) {
+  Pad::MappingInfo mapping_info = Gfx::get_button_mapping();
   if (g_cursor_input_mode == GLFW_CURSOR_NORMAL) {
     if (is_cursor_position_valid == true) {
-      Pad::ClearAnalogAxisValue(GlfwKeyCustomAxis::CURSOR_X_AXIS);
-      Pad::ClearAnalogAxisValue(GlfwKeyCustomAxis::CURSOR_Y_AXIS);
+      Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS);
+      Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS);
       is_cursor_position_valid = false;
     }
     return;
@@ -370,8 +371,8 @@ void GLDisplay::on_cursor_position(GLFWwindow* window, double xposition, double 
   double xoffset = xposition - last_cursor_x_position;
   double yoffset = yposition - last_cursor_y_position;
 
-  Pad::SetAnalogAxisValue(GlfwKeyCustomAxis::CURSOR_X_AXIS, xoffset);
-  Pad::SetAnalogAxisValue(GlfwKeyCustomAxis::CURSOR_Y_AXIS, yoffset);
+  Pad::SetAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS, xoffset);
+  Pad::SetAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS, yoffset);
 
   last_cursor_x_position = xposition;
   last_cursor_y_position = yposition;
@@ -433,8 +434,8 @@ void render_game_frame(int game_width,
     options.game_res_h = game_height;
     options.window_framebuffer_width = window_fb_width;
     options.window_framebuffer_height = window_fb_height;
-    options.draw_region_height = draw_region_height;
     options.draw_region_width = draw_region_width;
+    options.draw_region_height = draw_region_height;
     options.msaa_samples = msaa_samples;
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
@@ -675,7 +676,9 @@ void GLDisplay::render() {
     auto p = scoped_prof("poll-gamepads");
     glfwPollEvents();
     glfwMakeContextCurrent(m_window);
-    Pad::update_gamepads();
+
+    auto& mapping_info = Gfx::get_button_mapping();
+    Pad::update_gamepads(mapping_info);
   }
 
   // imgui start of frame

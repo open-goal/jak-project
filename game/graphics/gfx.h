@@ -118,12 +118,13 @@ namespace Gfx {
 extern GfxGlobalSettings g_global_settings;
 extern GfxSettings g_settings;
 
-
 const GfxRendererModule* GetCurrentRenderer();
 
 u32 Init(GameVersion version);
 void Loop(std::function<bool()> f);
 u32 Exit();
+
+Pad::MappingInfo& get_button_mapping();
 
 u32 vsync();
 u32 sync_path();
@@ -151,7 +152,7 @@ void set_msaa(int samples);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);
-bool get_debug_menu_visible_on_startup() ;
+bool get_debug_menu_visible_on_startup();
 
 int PadIsPressed(Pad::Button button, int port);
 int PadGetAnalogValue(Pad::Analog analog, int port);
