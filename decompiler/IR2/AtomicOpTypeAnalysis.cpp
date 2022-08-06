@@ -703,7 +703,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
 
   if (m_kind == Kind::OR && arg0_type.typespec() == TypeSpec("float") &&
       arg1_type.typespec() == TypeSpec("float")) {
-    env.func->warnings.general_warning("Using logior on floats");
+    env.func->warnings.warning("Using logior on floats");
     // returning int instead of uint because they like to use the float sign bit as an integer sign
     // bit.
     return TP_Type::make_from_ts(TypeSpec("float"));
@@ -1433,13 +1433,12 @@ TypeState StackSpillLoadOp::propagate_types_internal(const TypeState& input,
   // stack slot load
   auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
-    env.func->warnings.general_warning(
-        "Stack slot load at {} mismatch: defined as size {}, got size {}", m_offset, info.size,
-        m_size);
+    env.func->warnings.error("Stack slot load at {} mismatch: defined as size {}, got size {}",
+                             m_offset, info.size, m_size);
   }
 
   if (info.is_signed != m_is_signed) {
-    env.func->warnings.general_warning("Stack slot offset {} signed mismatch", m_offset);
+    env.func->warnings.warning("Stack slot offset {} signed mismatch", m_offset);
   }
 
   auto& loaded_type = input.get_slot(m_offset);
@@ -1453,8 +1452,8 @@ TypeState StackSpillStoreOp::propagate_types_internal(const TypeState& input,
                                                       DecompilerTypeSystem& dts) {
   auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
-    env.func->warnings.general_warning(
-        "Stack slot store mismatch: defined as size {}, got size {}\n", info.size, m_size);
+    env.func->warnings.error("Stack slot store mismatch: defined as size {}, got size {}\n",
+                             info.size, m_size);
   }
 
   auto stored_type = m_value.get_type(input, env, dts);

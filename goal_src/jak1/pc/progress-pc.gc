@@ -326,16 +326,16 @@
 
 
 
-(defmacro def-language-remap-info (langs)
-  `(quote ,(apply (lambda (x) `((the binteger (game-text-id ,x)) (the binteger (pc-subtitle-lang ,x)))) langs))
+(defmacro def-language-remap-info (name langs)
+  `(define ,name (quote ,(apply (lambda (x) `((the binteger (game-text-id ,x)) (the binteger (pc-subtitle-lang ,x)))) langs)))
   )
 
-(define *language-remap-info-pc* (def-language-remap-info
-        (english uk-english french german spanish italian japanese portuguese br-portuguese swedish finnish danish norwegian)))
+(def-language-remap-info *language-remap-info-pc*
+        (english uk-english french german spanish italian japanese portuguese br-portuguese swedish finnish danish norwegian))
 (define *text-languages* (static-text-list-array
-                                  english uk-english french german spanish italian japanese))
+        english uk-english french german spanish italian japanese))
 (define *subtitle-languages* (static-text-list-array
-                                  english german spanish))
+        english german spanish))
 
 
 
@@ -403,11 +403,23 @@
   )
 
 (defmacro add-flava-player-option (text-id flava)
-  "add a resolution button to *temp-options* with specified size"
+  "add a music player w/ flava button to *temp-options* with specified size"
   `(let ((option (-> *temp-options* (length *temp-options*))))
       (set! (-> option option-type) (game-option-type button-flava))
       (set! (-> option name) ,text-id)
       (set! (-> option param1) (the float ,flava))
+      (set! (-> option scale) #t)
+
+      (1+! (-> *temp-options* length))
+      )
+  )
+
+(defmacro add-monitor-option (text-id monitor)
+  "add a display button to *temp-options* with specified size"
+  `(let ((option (-> *temp-options* (length *temp-options*))))
+      (set! (-> option option-type) (game-option-type monitor))
+      (set! (-> option name) ,text-id)
+      (set! (-> option param1) (the float ,monitor))
       (set! (-> option scale) #t)
 
       (1+! (-> *temp-options* length))
@@ -434,7 +446,8 @@
         ;; hack - do not use screen resolution in windowed mode, taskbar etc. messes it up and makes it useless!
         (skip? (= 'windowed display-mode))
         ;; shortcut
-        (max-options (1- (-> *temp-options* allocated-length))))
+        ;; we reserve 3 options.
+        (max-options (+ -3 (-> *temp-options* allocated-length))))
 
     ;; get screen size (for capping)
     (pc-get-screen-size -1 (the (pointer int32) (& sx)) (the (pointer int32) (& sy)))
@@ -476,15 +489,12 @@
           (true! done?))
       ))
     ;; extra funny options
-    (when (and (!= display-mode 'windowed)
-               (< (length *temp-options*) (- (-> *temp-options* allocated-length) 3)))
+    (when (!= display-mode 'windowed)
         (add-resolution-option 512 224)
-        (add-resolution-option 512 448)
-        )
+        (add-resolution-option 512 448))
 
     (add-back-option)
     )
-
 
   *temp-options*
   )
@@ -507,18 +517,11 @@
   (set! (-> *temp-options* length) 0)
 
   (dotimes (i (pc-get-monitor-count))
-    (let ((option (-> *temp-options* (length *temp-options*))))
-      (set! (-> option option-type) (game-option-type monitor))
-      (set! (-> option name) (game-text-id display-fmt))
-      (set! (-> option param1) (the float i))
-      (set! (-> option scale) #t)
-
-      (1+! (-> *temp-options* length))
-      )
+    (add-monitor-option (game-text-id display-fmt) i)
     )
   
   (add-back-option)
-  )
+  *temp-options*)
 
 
 
@@ -635,10 +638,13 @@
     (set! (-> *options-remap* i) #f)
     )
 
+  ;; give cheats
+  (when (task-closed? (game-task finalboss-movies) (task-status need-reminder))
+      (logior! (-> *pc-settings* cheats-known) (pc-cheats sidekick-blue invinc tunes sky))
+      (when (>= (calculate-completion (the progress #f)) 100.0)
+          (logior! (-> *pc-settings* cheats-known) (pc-cheats eco-blue eco-red eco-green eco-yellow))))
+
   ;; set up options for each screen
-  (when (>= (calculate-completion (the progress #f)) 100.0)
-      (logior! (-> *pc-settings* cheats-known) (pc-cheats eco-blue eco-red eco-green eco-yellow sidekick-blue invinc tunes sky))
-      )
   (set! (-> *options-remap* (progress-screen settings)) (if (or *cheat-mode* (nonzero? (-> *pc-settings* cheats-known)))
                                                             *main-options-secrets*
                                                             *main-options-pc*))
@@ -1671,6 +1677,7 @@
             (unkx 27)
             (unk2 0)
             (font (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning)))
+            (locked-str (lookup-text! *common-text* (game-text-id locked) #f))
             )
         ;; set the common params for the text drawing
         (set-width! font 370)
@@ -1717,6 +1724,7 @@
         (let ((option-str (the string #f)) ;; the option text
               (option-x 17)
               (option-y y-off)
+              (locked? #f)
               )
           (case (-> options index option-type)
             (((game-option-type yes-no))
@@ -1730,24 +1738,25 @@
              ;; menu option or simple button. just draw its text!
              (if (nonzero? (-> options index name))
                  (set! option-str (lookup-text! *common-text* (-> options index name) #f))
-                 (set! option-str (the-as string #f))
+                 (set! option-str #f)
                  )
-             (if (and (not (-> *setting-control* default auto-save))
+             (when (and (not (-> *setting-control* default auto-save))
                       (= (game-text-id disable-auto-save) (-> options index name)))
-                 (set! option-str (lookup-text! *common-text* (game-text-id auto-save-disabled) #f)))
+                 (set! option-str (lookup-text! *common-text* (game-text-id auto-save-disabled) #f))
+                 (true! locked?))
              )
             (((game-option-type button-music))
              ;; a button for the music player. has the text "locked" sometimes!
              (if (and (nonzero? (-> options index name)) (find-music-log (progress-get-music-by-index index)))
                  (set! option-str (lookup-text! *common-text* (-> options index name) #f))
-                 (set! option-str (lookup-text! *common-text* (game-text-id locked) #f))
+                 (set! option-str locked-str)
                  )
              )
             (((game-option-type button-flava))
              ;; a button for the flava player. has the text "locked" sometimes!
              (if (and (nonzero? (-> options index name)) (find-flava-log (progress-get-music-by-index *progress-music*) (the int (-> options index param1))))
                  (set! option-str (lookup-text! *common-text* (-> options index name) #f))
-                 (set! option-str (lookup-text! *common-text* (game-text-id locked) #f))
+                 (set! option-str locked-str)
                  )
              )
             (((game-option-type resolution) (game-option-type aspect-new))
@@ -1812,17 +1821,10 @@
                     )
                   )
                  (((game-option-type cheat-toggle))
-                  (cond
-                    ((not (logtest? (-> *pc-settings* cheats-known) (ash 1 (the int (-> options index param1)))))
-                      (set! option-str (lookup-text! *common-text* (game-text-id locked) #f))
+                  (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
+                      (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (game-text-id on) #f) (lookup-text! *common-text* (game-text-id off) #f)))
+                      (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (game-text-id on) #f) (lookup-text! *common-text* (game-text-id off) #f)))
                       )
-                    (else
-                      (if (-> (the-as (pointer symbol) (-> options index value-to-modify)))
-                          (set! option-str (string-format "~30L~S~0L ~S" (lookup-text! *common-text* (game-text-id on) #f) (lookup-text! *common-text* (game-text-id off) #f)))
-                          (set! option-str (string-format "~0L~S ~30L~S" (lookup-text! *common-text* (game-text-id on) #f) (lookup-text! *common-text* (game-text-id off) #f)))
-                          )
-                      )
-                    )
                   )
                  (((game-option-type display-mode)
                    (game-option-type msaa)
@@ -1938,7 +1940,21 @@
                   (((game-option-type cheat-toggle))
                     (cond
                       ((not (logtest? (-> *pc-settings* cheats-known) (ash 1 (the int (-> options index param1)))))
-                       (set! option-str (lookup-text! *common-text* (game-text-id locked) #f))
+                       (true! locked?)
+                       (case (ash 1 (the int (-> options index param1)))
+                           (((pc-cheats eco-blue)
+                             (pc-cheats eco-green)
+                             (pc-cheats eco-red)
+                             (pc-cheats eco-yellow))
+                             (set! option-str (lookup-text! *common-text* (game-text-id cheat-req-100-percent) #f)))
+                           (((pc-cheats sky)
+                             (pc-cheats sidekick-blue)
+                             (pc-cheats tunes)
+                             (pc-cheats invinc))
+                             (set! option-str (lookup-text! *common-text* (game-text-id cheat-req-beat-game) #f)))
+                           (else
+                             (set! option-str locked-str))
+                           )
                        )
                       (else
                         (set! option-str (string-format "~S: ~S" (lookup-text! *common-text* (-> options index name) #f)
@@ -1995,12 +2011,8 @@
                 )
               (set-color! font (cond
                                  ((and (!= index (-> obj option-index))
-                                       (string= (lookup-text! *common-text* (game-text-id locked) #f) option-str)) ;; hacky..
+                                       (or locked? (= locked-str option-str)))
                                   ;; for "locked" options!
-                                  (font-color flat-dark-purple))
-                                 ((and (!= index (-> obj option-index))
-                                       (not (-> *setting-control* default auto-save))
-                                       (= (game-text-id disable-auto-save) (-> options index name)))
                                   (font-color flat-dark-purple))
                                  ((and (= index (-> obj option-index))
                                        (not (or (progress-scrolling?) (-> obj in-transition))))

@@ -575,7 +575,7 @@ void Merc2::flush_draw_buckets(SharedRenderState* /*render_state*/, ScopedProfil
     );
 
     glVertexAttribIPointer(5,                                            // location 0 in the
-                           3,                                            // 3 floats per vert
+                           4,                                            // 3 floats per vert
                            GL_UNSIGNED_BYTE,                             // u8's
                            sizeof(tfrag3::MercVertex),                   //
                            (void*)offsetof(tfrag3::MercVertex, mats[0])  // offset in array

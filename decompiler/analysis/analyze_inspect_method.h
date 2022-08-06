@@ -44,11 +44,11 @@ std::string inspect_inspect_method(Function& inspect_method,
                                    TypeInspectorCache& ti_cache,
                                    ObjectFileDB::PerObjectAllTypeInfo& object_file_meta);
 
-std::string inspect_top_level_for_metadata(Function& top_level,
-                                           LinkedObjectFile& file,
-                                           DecompilerTypeSystem& dts,
-                                           DecompilerTypeSystem& previous_game_ts,
-                                           ObjectFileDB::PerObjectAllTypeInfo& object_file_meta);
+void inspect_top_level_for_metadata(Function& top_level,
+                                    LinkedObjectFile& file,
+                                    DecompilerTypeSystem& dts,
+                                    DecompilerTypeSystem& previous_game_ts,
+                                    ObjectFileDB::PerObjectAllTypeInfo& object_file_meta);
 
 std::string inspect_top_level_symbol_defines(Function& top_level,
                                              LinkedObjectFile& file,
