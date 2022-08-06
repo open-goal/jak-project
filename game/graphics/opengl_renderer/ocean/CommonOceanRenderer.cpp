@@ -54,7 +54,7 @@ CommonOceanRenderer::CommonOceanRenderer() {
   // byte data
   glEnableVertexAttribArray(3);
   glVertexAttribIPointer(3,                            // location 3 in the shader
-                         1,                            //
+                         4,                            //
                          GL_UNSIGNED_BYTE,             // u8's
                          sizeof(Vertex),               //
                          (void*)offsetof(Vertex, fog)  // offset in array
