@@ -31,7 +31,9 @@ bool is_set_reg_to_int(AtomicOp* op, Register dst, s64 value) {
   return true;
 }
 
-bool is_set_reg_to_symbol_value(AtomicOp* op, Register dst, const std::string& value) {
+bool is_set_reg_to_symbol_value(AtomicOp* op,
+                                std::optional<Register> dst,
+                                const std::string& value) {
   // should be a set reg to int math 2 ir
   auto set = dynamic_cast<SetVarOp*>(op);
   if (!set) {
@@ -39,9 +41,11 @@ bool is_set_reg_to_symbol_value(AtomicOp* op, Register dst, const std::string& v
   }
 
   // destination should be a register
-  auto dest = set->dst();
-  if (dst != dest.reg()) {
-    return false;
+  if (dst) {
+    auto dest = set->dst();
+    if (dst != dest.reg()) {
+      return false;
+    }
   }
 
   auto math = set->src();
@@ -58,7 +62,7 @@ bool is_set_reg_to_symbol_value(AtomicOp* op, Register dst, const std::string& v
   return true;
 }
 
-bool is_set_reg_to_symbol_ptr(AtomicOp* op, Register dst, const std::string& value) {
+bool is_set_reg_to_symbol_ptr(AtomicOp* op, std::optional<Register> dst, const std::string& value) {
   // should be a set reg to int math 2 ir
   auto set = dynamic_cast<SetVarOp*>(op);
   if (!set) {
@@ -66,9 +70,11 @@ bool is_set_reg_to_symbol_ptr(AtomicOp* op, Register dst, const std::string& val
   }
 
   // destination should be a register
-  auto dest = set->dst();
-  if (dst != dest.reg()) {
-    return false;
+  if (dst) {
+    auto dest = set->dst();
+    if (dst != dest.reg()) {
+      return false;
+    }
   }
 
   auto math = set->src();
@@ -83,6 +89,131 @@ bool is_set_reg_to_symbol_ptr(AtomicOp* op, Register dst, const std::string& val
   }
 
   return true;
+}
+
+std::optional<std::string> get_set_reg_to_symbol_ptr(AtomicOp* op, std::optional<Register> dst) {
+  // should be a set reg to int math 2 ir
+  auto set = dynamic_cast<SetVarOp*>(op);
+  if (!set) {
+    return {};
+  }
+
+  // destination should be a register
+  if (dst) {
+    auto dest = set->dst();
+    if (dst != dest.reg()) {
+      return {};
+    }
+  }
+
+  auto math = set->src();
+  if (SimpleExpression::Kind::IDENTITY != math.kind()) {
+    return {};
+  }
+
+  auto arg = math.get_arg(0);
+
+  if (!arg.is_sym_ptr()) {
+    return {};
+  }
+
+  return arg.get_str();
+}
+
+std::optional<std::string> get_set_reg_to_symbol_value(AtomicOp* op, std::optional<Register> dst) {
+  // should be a set reg to int math 2 ir
+  auto set = dynamic_cast<SetVarOp*>(op);
+  if (!set) {
+    return {};
+  }
+
+  // destination should be a register
+  if (dst) {
+    auto dest = set->dst();
+    if (dst != dest.reg()) {
+      return {};
+    }
+  }
+
+  auto math = set->src();
+  if (SimpleExpression::Kind::IDENTITY != math.kind()) {
+    return {};
+  }
+
+  auto arg = math.get_arg(0);
+
+  if (!arg.is_sym_val()) {
+    return {};
+  }
+
+  return arg.get_str();
+}
+
+bool is_set_reg_to_load(AtomicOp* op, Register dst, int offset) {
+  auto lvo = dynamic_cast<LoadVarOp*>(op);
+  if (!lvo) {
+    return false;
+  }
+
+  // destination should be a register
+  auto dest = lvo->get_set_destination();
+  if (dst != dest.reg()) {
+    return false;
+  }
+
+  if (lvo->kind() != LoadVarOp::Kind::UNSIGNED) {
+    return false;
+  }
+
+  if (lvo->size() != 4) {
+    return false;
+  }
+
+  IR2_RegOffset ro;
+  if (!get_as_reg_offset(lvo->src(), &ro)) {
+    return false;
+  }
+  if (ro.offset != offset) {
+    return false;
+  }
+
+  return true;
+}
+
+std::optional<u64> get_set_reg_to_u64_load(AtomicOp* op,
+                                           Register dst,
+                                           const LinkedObjectFile& file) {
+  auto lvo = dynamic_cast<LoadVarOp*>(op);
+  if (!lvo) {
+    return false;
+  }
+
+  // destination should be a register
+  auto dest = lvo->get_set_destination();
+  if (dst != dest.reg()) {
+    return false;
+  }
+
+  if (lvo->src().kind() != SimpleExpression::Kind::IDENTITY) {
+    return false;
+  }
+
+  if (lvo->size() != 8) {
+    return false;
+  }
+
+  const auto& s = lvo->src().get_arg(0);
+  if (!s.is_label()) {
+    return false;
+  }
+  auto lab = file.labels.at(s.label());
+
+  auto& low = file.words_by_seg.at(lab.target_segment).at(lab.offset / 4);
+  auto& hi = file.words_by_seg.at(lab.target_segment).at((lab.offset / 4) + 1);
+  if (low.kind() != LinkedWord::PLAIN_DATA || hi.kind() != LinkedWord::PLAIN_DATA) {
+    return false;
+  }
+  return ((u64)low.data) | (((u64)hi.data) << 32);
 }
 
 std::optional<std::string> get_string_loaded_to_reg(AtomicOp* op,
@@ -1275,11 +1406,11 @@ std::string get_label_type_name(LinkedObjectFile& file, std::string label_name) 
   }
 }
 
-std::string inspect_top_level_for_metadata(Function& top_level,
-                                           LinkedObjectFile& file,
-                                           DecompilerTypeSystem& dts,
-                                           DecompilerTypeSystem& previous_game_ts,
-                                           ObjectFileDB::PerObjectAllTypeInfo& objectFile) {
+void inspect_top_level_for_metadata(Function& top_level,
+                                    LinkedObjectFile& file,
+                                    DecompilerTypeSystem& dts,
+                                    DecompilerTypeSystem& previous_game_ts,
+                                    ObjectFileDB::PerObjectAllTypeInfo& objectFile) {
   // State as a method:
   /*
   lui v1, L267              ;; [ 77] (set! gp-0 L267) [] -> [gp: <uninitialized> ]
@@ -1297,9 +1428,10 @@ std::string inspect_top_level_for_metadata(Function& top_level,
   sw v1, target-roll(s7)    ;; [355] (s.w! target-roll v1-38) [v1: <uninitialized> ] -> []
   */
   if (!top_level.ir2.atomic_ops) {
-    return "";
+    return;
   }
-  std::string result;
+
+  // Check for non-method states
   std::string last_seen_label = "";
   // TODO - safely increment op number
   for (int i = 0; i < top_level.ir2.atomic_ops->ops.size(); i++) {
@@ -1352,7 +1484,75 @@ std::string inspect_top_level_for_metadata(Function& top_level,
       objectFile.state_methods[type_match][method_id] = state_name;
     }
   }
-  return "";
+
+  // Check for types
+  // if there's no inspect method, we can use just use the call to the type's new method
+  // to find the type
+  const auto& env = top_level.ir2.env;
+  for (int i = 0; i < ((int)top_level.ir2.atomic_ops->ops.size()) - 5; i++) {
+    // lw v1, type(s7)           ;; [ 20] (set! v1-10 type) [] -> [v1: <the etype type> ]
+    const auto& aop_0 = top_level.ir2.atomic_ops->ops.at(i);
+    if (!is_set_reg_to_symbol_value(aop_0.get(), {}, "type")) {
+      continue;
+    }
+
+    fmt::print("got 1\n");
+
+    // lwu t9, 16(v1)            ;; [ 21] (set! t9-0 (l.wu (+ v1-10 16)))
+    //                           ;; [v1: <the etype type> ] -> [t9: (function symbol type int type)
+    const auto& aop_1 = top_level.ir2.atomic_ops->ops.at(i + 1);
+    if (!is_set_reg_to_load(aop_1.get(), Register(Reg::GPR, Reg::T9), 16)) {
+      fmt::print("fail1\n");
+      continue;
+    }
+
+    // daddiu a0, s7, float-type ;; [ 22] (set! a0-0 'float-type) [] -> [a0: symbol ]
+    const auto& aop_2 = top_level.ir2.atomic_ops->ops.at(i + 2);
+    auto type_name = get_set_reg_to_symbol_ptr(aop_2.get(), Register(Reg::GPR, Reg::A0));
+    if (!type_name) {
+      fmt::print("fail2\n");
+      continue;
+    }
+
+    // lw a1, uint32(s7)         ;; [ 23] (set! a1-0 uint32) [] -> [a1: <the etype uint32> ]
+    const auto& aop_3 = top_level.ir2.atomic_ops->ops.at(i + 3);
+    auto parent_name = get_set_reg_to_symbol_value(aop_3.get(), Register(Reg::GPR, Reg::A1));
+    if (!parent_name) {
+      fmt::print("fail3\n");
+      continue;
+    }
+
+    // ld a2, L117(fp)           ;; [ 24] (set! a2-0 (l.d L117)) [] -> [a2: uint ]
+    const auto& aop_4 = top_level.ir2.atomic_ops->ops.at(i + 4);
+    auto flags = get_set_reg_to_u64_load(aop_4.get(), Register(Reg::GPR, Reg::A2), file);
+    if (!flags) {
+      fmt::print("fail3\n");
+      continue;
+    }
+
+    // jalr ra, t9               ;; [ 25] (call! a0-0 a1-0 a2-0)
+    const auto& aop_5 = top_level.ir2.atomic_ops->ops.at(i + 5);
+    if (!dynamic_cast<CallOp*>(aop_5.get())) {
+      fmt::print("fial4\n");
+      continue;
+    }
+
+    if (objectFile.type_info.count(*type_name) == 0) {
+      objectFile.type_names_in_order.push_back(*type_name);
+    }
+    auto& info = objectFile.type_info[*type_name];
+    if (!info.from_inspect_method) {
+      // no inspect method! generate a deftype.
+      info.type_definition = fmt::format(
+          ";; (deftype {} ({})\n"
+          ";;   ()\n"
+          ";;   :flag-assert #x{:x}\n"
+          ";;   )\n",
+          *type_name, *parent_name, *flags);
+    }
+    info.parent = *parent_name;
+    info.flags = *flags;
+  }
 }
 
 std::string inspect_top_level_symbol_defines(Function& top_level,
