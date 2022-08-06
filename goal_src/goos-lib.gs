@@ -456,9 +456,9 @@
 ;;  build system      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defglobalconstant GAME_TERRITORY_SCEA 0)
-(defglobalconstant GAME_TERRITORY_SCEE 1)
-(defglobalconstant GAME_TERRITORY_SCEI 2)
+(define GAME_TERRITORY_SCEA 0)
+(define GAME_TERRITORY_SCEE 1)
+(define GAME_TERRITORY_SCEI 2)
 
 (define *jak1-full-game* (if (user? dass) #t #f))
 (define *jak1-territory* GAME_TERRITORY_SCEA)
