@@ -1,6 +1,7 @@
 #pragma once
 #include <stdexcept>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "common/util/Assert.h"
@@ -13,44 +14,43 @@ class DecompWarnings {
   DecompWarnings() = default;
 
   template <typename... Args>
-  void general_warning(const std::string& str, Args&&... args) {
-    warning(Warning::Kind::GENERAL, str, std::forward<Args>(args)...);
+  void warning(const std::string& str, Args&&... args) {
+    _warning(Warning::Kind::WARN, false, str, std::forward<Args>(args)...);
   }
 
   template <typename... Args>
-  void warn_and_throw(const std::string& str, Args&&... args) {
+  void unique_warning(const std::string& str, Args&&... args) {
+    _warning(Warning::Kind::WARN, true, str, std::forward<Args>(args)...);
+  }
+
+  template <typename... Args>
+  void error(const std::string& str, Args&&... args) {
+    _warning(Warning::Kind::ERR, false, str, std::forward<Args>(args)...);
+  }
+
+  template <typename... Args>
+  void unique_error(const std::string& str, Args&&... args) {
+    _warning(Warning::Kind::ERR, true, str, std::forward<Args>(args)...);
+  }
+
+  template <typename... Args>
+  void error_and_throw(const std::string& str, Args&&... args) {
     auto text = fmt::format(str, std::forward<Args>(args)...);
-    warning(Warning::Kind::GENERAL, text);
+    _warning(Warning::Kind::ERR, false, text);
     throw std::runtime_error(text);
   }
 
   template <typename... Args>
-  void expression_build_warning(const std::string& str, Args&&... args) {
-    warning(Warning::Kind::EXPR_BUILD_FAILED, str, std::forward<Args>(args)...);
-  }
-
-  template <typename... Args>
-  void cfg_build_warning(const std::string& str, Args&&... args) {
-    warning(Warning::Kind::CFG_FAILED, str, std::forward<Args>(args)...);
-  }
-
-  template <typename... Args>
-  void type_prop_warning(const std::string& str, Args&&... args) {
-    warning(Warning::Kind::TYPE_PROP_FAILED, str, std::forward<Args>(args)...);
-  }
-
-  template <typename... Args>
-  void bad_vf_dependency(const std::string& str, Args&&... args) {
-    warning(Warning::Kind::BAD_VF_DEPENDENCY, str, std::forward<Args>(args)...);
-  }
-
-  template <typename... Args>
   void info(const std::string& str, Args&&... args) {
-    warning(Warning::Kind::INFO, str, std::forward<Args>(args)...);
+    _warning(Warning::Kind::INFO, false, str, std::forward<Args>(args)...);
   }
 
-  bool has_warnings() const { return !m_warnings.empty() || m_used_lq_sq; }
-  void warn_sq_lq() { m_used_lq_sq = true; }
+  template <typename... Args>
+  void unique_info(const std::string& str, Args&&... args) {
+    _warning(Warning::Kind::INFO, true, str, std::forward<Args>(args)...);
+  }
+
+  bool has_warnings() const { return !m_warnings.empty(); }
 
   std::string get_warning_text(bool as_comment) const {
     std::string result;
@@ -60,38 +60,26 @@ class DecompWarnings {
       }
       result += w.print();
     }
-    if (m_used_lq_sq) {
-      result += ";; Used lq/sq\n";
-    }
     return result;
   }
 
  private:
+  // Add warnings without thinking about it, if you say they should be unique, only max of 1 will be
+  // logged with that same text.
+  std::unordered_set<std::string> unique_warnings;
+
   struct Warning {
-    enum class Kind {
-      GENERAL,
-      EXPR_BUILD_FAILED,
-      CFG_FAILED,
-      TYPE_PROP_FAILED,
-      INFO,
-      BAD_VF_DEPENDENCY
-    };
+    enum class Kind { INFO, WARN, ERR };
     Warning(Kind kind, std::string text) : warning_kind(kind), message(std::move(text)) {}
 
     std::string print() const {
       switch (warning_kind) {
-        case Kind::GENERAL:
-          return fmt::format("WARN: {}\n", message);
-        case Kind::EXPR_BUILD_FAILED:
-          return fmt::format("WARN: Expression building failed: {}\n", message);
-        case Kind::CFG_FAILED:
-          return fmt::format("WARN: CFG building failed: {}\n", message);
-        case Kind::TYPE_PROP_FAILED:
-          return fmt::format("WARN: Type Propagation failed: {}\n", message);
-        case Kind::BAD_VF_DEPENDENCY:
-          return fmt::format("WARN: Bad vector register dependency: {}\n", message);
         case Kind::INFO:
           return fmt::format("INFO: {}\n", message);
+        case Kind::WARN:
+          return fmt::format("WARN: {}\n", message);
+        case Kind::ERR:
+          return fmt::format("ERROR: {}\n", message);
         default:
           ASSERT(false);
           return {};
@@ -103,8 +91,15 @@ class DecompWarnings {
   };
 
   template <typename... Args>
-  void warning(Warning::Kind kind, const std::string& str, Args&&... args) {
-    Warning warn(kind, fmt::format(str, std::forward<Args>(args)...));
+  void _warning(Warning::Kind kind, bool unique, const std::string& str, Args&&... args) {
+    std::string msg = fmt::format(str, std::forward<Args>(args)...);
+    if (unique) {
+      if (unique_warnings.find(msg) != unique_warnings.end()) {
+        return;
+      }
+      unique_warnings.insert(msg);
+    }
+    Warning warn(kind, msg);
     m_warnings.push_back(warn);
   }
 

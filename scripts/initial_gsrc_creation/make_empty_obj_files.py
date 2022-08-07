@@ -27,6 +27,8 @@ def make_file(root, path, name, name_in_dgo, dgos, version):
 ;; name in dgo: {}
 ;; dgos: {}
 
+;; DECOMP BEGINS
+
 """.format(filename, name_in_dgo, dgo_names_string(dgos))
 		Path(os.path.join(root, path)).mkdir(parents=True, exist_ok=True)
 		with open(os.path.join(root, path, filename), "w") as f:

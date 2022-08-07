@@ -423,7 +423,7 @@ int main(int argc, char* argv[]) {
 
   lg::info("Finding files...");
   auto files = find_files(game_name, config->dgos);
-  if (max_files > 0 && max_files < files.size()) {
+  if (max_files > 0 && max_files < (int)files.size()) {
     files.erase(files.begin() + max_files, files.end());
   }
 

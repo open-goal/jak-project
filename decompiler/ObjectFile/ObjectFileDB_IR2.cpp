@@ -301,39 +301,53 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
 void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
                                          const std::optional<std::string>& previous_game_types,
                                          const std::unordered_set<std::string>& bad_types) {
-  struct PerObject {
-    std::string object_name;
-    std::vector<std::string> type_defs;
-    std::string symbol_defs;
-  };
-
-  std::vector<PerObject> per_object;
+  std::vector<PerObjectAllTypeInfo> per_object;
 
   DecompilerTypeSystem previous_game_ts(GameVersion::Jak1);  // version here doesn't matter.
   if (previous_game_types) {
     previous_game_ts.parse_type_defs({*previous_game_types});
   }
 
-  std::unordered_set<std::string> already_seen;
   TypeInspectorCache ti_cache;
 
   for_each_obj([&](ObjectFileData& data) {
     if (data.obj_version != 3) {
       return;
     }
+
     auto& object_result = per_object.emplace_back();
     object_result.object_name = data.to_unique_name();
 
+    // Go through the top-level segment first to identify the type names associated with each symbol
+    // def
+    for_each_function_in_seg_in_obj(TOP_LEVEL_SEGMENT, data, [&](Function& f) {
+      inspect_top_level_for_metadata(f, data.linked_data, dts, previous_game_ts, object_result);
+    });
+
+    // Handle the top level last, which is fine as all symbol_defs are always written after typedefs
     for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
-      if (seg == TOP_LEVEL_SEGMENT) {
-        object_result.symbol_defs += inspect_top_level_symbol_defines(
-            already_seen, f, data.linked_data, dts, previous_game_ts);
-      } else {
+      if (seg != TOP_LEVEL_SEGMENT) {
         if (f.is_inspect_method && bad_types.find(f.guessed_name.type_name) == bad_types.end()) {
-          object_result.type_defs.push_back(inspect_inspect_method(
-              f, f.guessed_name.type_name, dts, data.linked_data, previous_game_ts.ts, ti_cache));
+          auto deftype_from_inspect =
+              inspect_inspect_method(f, f.guessed_name.type_name, dts, data.linked_data,
+                                     previous_game_ts, ti_cache, object_result);
+          bool already_seen = object_result.type_info.count(f.guessed_name.type_name) > 0;
+          if (!already_seen) {
+            object_result.type_names_in_order.push_back(f.guessed_name.type_name);
+          }
+          auto& info = object_result.type_info[f.guessed_name.type_name];
+          info.from_inspect_method = true;
+          info.type_definition = deftype_from_inspect;
+        } else {
+          // no inspect methods
+          // - can we solve custom print methods in a generic way?  ie `entity-links`
         }
       }
+    });
+
+    for_each_function_in_seg_in_obj(TOP_LEVEL_SEGMENT, data, [&](Function& f) {
+      object_result.symbol_defs += inspect_top_level_symbol_defines(
+          f, data.linked_data, dts, previous_game_ts, object_result);
     });
   });
 
@@ -344,8 +358,9 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
     result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
     result += fmt::format(";; {:30s} ;;\n", obj.object_name);
     result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n\n");
-    for (auto& t : obj.type_defs) {
-      result += t;
+    for (const auto& type_name : obj.type_names_in_order) {
+      auto& info = obj.type_info.at(type_name);
+      result += info.type_definition;
       result += "\n";
     }
     result += obj.symbol_defs;
@@ -421,7 +436,7 @@ void ObjectFileDB::ir2_stack_spill_slot_pass(int seg, ObjectFileData& data) {
       auto spill_map = build_spill_map(func.instructions, {func.prologue_end, func.epilogue_start});
       func.ir2.env.set_stack_spills(spill_map);
     } catch (std::exception& e) {
-      func.warnings.general_warning("stack spill failed: {}", e.what());
+      func.warnings.warning("stack spill failed: {}", e.what());
     }
   });
 }
@@ -458,7 +473,7 @@ void ObjectFileDB::ir2_atomic_op_pass(int seg, const Config& config, ObjectFileD
       } catch (std::exception& e) {
         lg::warn("Function {} from {} could not be converted to atomic ops: {}", func.name(),
                  data.to_unique_name(), e.what());
-        func.warnings.general_warning("Failed to convert to atomic ops: {}", e.what());
+        func.warnings.error("Failed to convert to atomic ops: {}", e.what());
       }
     }
   });
@@ -526,11 +541,11 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
         if (run_type_analysis_ir2(ts, dts, func)) {
           func.ir2.env.types_succeeded = true;
         } else {
-          func.warnings.type_prop_warning("Type analysis failed");
+          func.warnings.error("Type Propagation failed: Type analysis failed");
         }
       } else {
         lg::warn("Function {} didn't know its type", func.name());
-        func.warnings.type_prop_warning("Function {} has unknown type", func.name());
+        func.warnings.error("Function {} has unknown type", func.name());
       }
     }
   });
@@ -560,7 +575,7 @@ void ObjectFileDB::ir2_register_usage_pass(int seg, ObjectFileData& data) {
         for (auto& x : dep_regs) {
           if ((x.get_kind() == Reg::VF && x.get_vf() != 0) || x.get_kind() == Reg::SPECIAL) {
             lg::error("Bad vf dependency on {} in {}", x.to_charp(), func.name());
-            func.warnings.bad_vf_dependency("{}", x.to_string());
+            func.warnings.error("Bad vector register dependency: {}", x.to_string());
             continue;
           }
 
@@ -574,8 +589,7 @@ void ObjectFileDB::ir2_register_usage_pass(int seg, ObjectFileData& data) {
           }
 
           lg::error("Bad register dependency on {} in {}", x.to_charp(), func.name());
-          func.warnings.general_warning("Function may read a register that is not set: {}",
-                                        x.to_string());
+          func.warnings.error("Function may read a register that is not set: {}", x.to_string());
         }
       }
     }
@@ -612,7 +626,7 @@ void ObjectFileDB::ir2_cfg_build_pass(int seg, ObjectFileData& data) {
       try {
         build_initial_forms(func);
       } catch (std::exception& e) {
-        func.warnings.general_warning("Failed to structure: {}", e.what());
+        func.warnings.error("Failed to structure: {}", e.what());
         func.ir2.top_form = nullptr;
       }
     }
@@ -657,7 +671,7 @@ void ObjectFileDB::ir2_insert_lets(int seg, ObjectFileData& data) {
             "none if something is actually returned.",
             e.what());
         lg::warn(err);
-        func.warnings.general_warning(err);
+        func.warnings.error(err);
       }
     }
   });
@@ -681,7 +695,7 @@ void ObjectFileDB::ir2_insert_anonymous_functions(int seg, ObjectFileData& data)
       try {
         insert_static_refs(func.ir2.top_form, *func.ir2.form_pool, func, dts);
       } catch (std::exception& e) {
-        func.warnings.general_warning("Failed static ref finding: {}\n", e.what());
+        func.warnings.error("Failed static ref finding: {}\n", e.what());
         lg::error("Function {} failed static ref: {}\n", func.name(), e.what());
       }
     }
