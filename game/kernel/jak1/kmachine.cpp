@@ -594,8 +594,33 @@ void set_msaa(s64 samples) {
   Gfx::set_msaa(samples);
 }
 
-u64 input_name_get(int pad) {
-  return make_string_from_c(Pad::input_name_get(pad));
+void joy_name_get(u32 str, int pad) {
+  strcpy(Ptr<String>(str).c()->data(), Pad::joy_name_get(pad));
+}
+
+void input_map_reset(u32 device) {
+  if (device == s7.offset + jak1_symbols::FIX_SYM_TRUE)
+    Pad::joy_map_reset(Gfx::g_settings.pad_mapping_info);
+  else
+    Pad::DefaultMapping(Gfx::g_settings.pad_mapping_info);
+}
+
+void keyboard_enable(u32 enable) {
+  if (enable == s7.offset + jak1_symbols::FIX_SYM_TRUE)
+    Pad::keyboard_enable(1);
+  else
+    Pad::keyboard_enable(0);
+}
+
+void joy_enable(u32 enable) {
+  if (enable == s7.offset + jak1_symbols::FIX_SYM_TRUE)
+    Pad::joy_enable(1);
+  else
+    Pad::joy_enable(0);
+}
+
+void keycode_to_str(u32 str, int key) {
+  strcpy(Ptr<String>(str).c()->data(), Pad::KeyCodeToString((Pad::KeyCode)key));
 }
 
 void InitMachine_PCPort() {
@@ -610,14 +635,26 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
   // pad stuff
-  make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
   make_function_symbol_from_c("pc-pad-input-map-save!", (void*)Gfx::input_mode_save);
   make_function_symbol_from_c("pc-pad-input-mode-set", (void*)Gfx::input_mode_set);
   make_function_symbol_from_c("pc-pad-input-pad-set", (void*)Pad::input_mode_pad_set);
   make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
   make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
+  make_function_symbol_from_c("pc-pad-input-key-set", (void*)Pad::input_mode_set_key);
   make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);
-  make_function_symbol_from_c("pc-pad-input-name-get", (void*)input_name_get);
+  make_function_symbol_from_c("pc-pad-input-joy-get", (void*)Pad::input_mode_get_joy);
+  make_function_symbol_from_c("pc-pad-input-joy-set", (void*)Pad::input_mode_set_joy);
+  make_function_symbol_from_c("pc-pad-joy-name-get", (void*)joy_name_get);
+  make_function_symbol_from_c("pc-pad-joy-map-set", (void*)Pad::joy_map_set);
+  make_function_symbol_from_c("pc-pad-joy-get-mapped-button", (void*)Gfx::joy_get_mapped_button);
+  make_function_symbol_from_c("pc-pad-joy-has-mapped-button", (void*)Gfx::joy_has_mapped_button);
+  make_function_symbol_from_c("pc-pad-map-reset!", (void*)input_map_reset);
+  make_function_symbol_from_c("pc-pad-kb-map-set", (void*)Pad::kb_map_set);
+  make_function_symbol_from_c("pc-pad-joy-enable", (void*)joy_enable);
+  make_function_symbol_from_c("pc-pad-kb-enable", (void*)keyboard_enable);
+  make_function_symbol_from_c("pc-pad-keycode-to-str", (void*)keycode_to_str);
+  make_function_symbol_from_c("pc-pad-kb-get-mapped-button", (void*)Gfx::kb_get_mapped_button);
+  make_function_symbol_from_c("pc-pad-kb-has-mapped-button", (void*)Gfx::kb_has_mapped_button);
 
   // os stuff
   make_function_symbol_from_c("pc-get-os", (void*)get_os);

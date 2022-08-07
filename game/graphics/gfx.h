@@ -149,7 +149,10 @@ void set_game_resolution(int w, int h);
 void set_msaa(int samples);
 void input_mode_set(u32 enable);
 void input_mode_save();
-s64 get_mapped_button(s64 pad, s64 button);
+s64 kb_get_mapped_button(s64 pad, s64 button);
+s64 kb_has_mapped_button(s64 pad, s64 key);
+s64 joy_get_mapped_button(s64 pad, s64 button);
+s64 joy_has_mapped_button(s64 pad, s64 button);
 
 int PadIsPressed(Pad::Button button, int port);
 int PadAnalogValue(Pad::Analog analog, int port);
