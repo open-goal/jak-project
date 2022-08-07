@@ -469,7 +469,7 @@ void InitMachine_PCPort() {
   // make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
   // pad stuff
-  make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
+  make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::kb_get_mapped_button);
   make_function_symbol_from_c("pc-pad-input-map-save!", (void*)Gfx::input_mode_save);
   make_function_symbol_from_c("pc-pad-input-mode-set", (void*)Gfx::input_mode_set);
   make_function_symbol_from_c("pc-pad-input-pad-set", (void*)Pad::input_mode_pad_set);
