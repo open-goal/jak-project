@@ -3,7 +3,7 @@
 #include "decompiler/IR2/AtomicOp.h"
 #include "decompiler/IR2/bitfields.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "decompiler/types2/Type.h"
+#include "decompiler/types2/types2.h"
 #include "decompiler/util/goal_constants.h"
 
 /*!
@@ -32,6 +32,11 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
                                  FieldReverseMultiLookupOutput& out,
                                  bool tag_lock) {
   ASSERT(out.success && !out.results.empty());
+
+  // HACK - this is disabled for now. This probably works, but the expression pass needs
+  // a way to get the decisions.
+  type.type = TP_Type::make_from_ts(out.results.front().result_type);
+  return;
 
   // see if we've tagged this instruction in a previous iteration..
   if (instr.field_access_tag) {
@@ -235,7 +240,9 @@ namespace types2 {
 /*!
  * Given a tagged type, and an expectation for what it should be, backprop constraints.
  */
-bool backprop_tagged_type(const TP_Type& expected_type, types2::Type& actual_type) {
+bool backprop_tagged_type(const TP_Type& expected_type,
+                          types2::Type& actual_type,
+                          const DecompilerTypeSystem& dts) {
   switch (actual_type.tag.kind) {
     case types2::Tag::NONE:
       return false;
@@ -276,6 +283,55 @@ bool backprop_tagged_type(const TP_Type& expected_type, types2::Type& actual_typ
                    actual_type.tag.unknown_label->selected_type->print());
         return true;
       }
+
+    case types2::Tag::UNKNOWN_STACK_STRUCTURE:
+      if (actual_type.tag.unknown_stack_structure->selected_type &&
+          actual_type.tag.unknown_stack_structure->selected_type == expected_type.typespec()) {
+        return false;  // no need to update
+      } else {
+        auto& tag = actual_type.tag.unknown_stack_structure;
+        actual_type.tag.unknown_stack_structure->selected_type = expected_type.typespec();
+        fmt::print("Stack Guess: {} is a {}\n", tag->stack_offset,
+                   actual_type.tag.unknown_stack_structure->selected_type->print());
+        return true;
+      }
+
+    case types2::Tag::FIELD_ACCESS: {
+      ASSERT(false);  // this code works, but the later stuff can't get use it yet.
+      auto* tag = actual_type.tag.field_access;
+      bool needs_redo = false;
+      auto expected_typespec = expected_type.typespec();
+      if (tag->selected_possibility >= 0) {
+        if (!dts.ts.tc(expected_typespec, tag->possibilities.at(tag->selected_possibility).type)) {
+          // we picked something, but it no longer matches this constraint...
+          needs_redo = true;
+        }
+      }
+      if (tag->selected_possibility < 0) {
+        needs_redo = true;
+      }
+      if (needs_redo) {
+        int best_idx = 0;  // if nothing else matches, use 0.
+        for (size_t ci = 0; ci < tag->possibilities.size(); ci++) {
+          if (dts.ts.tc(expected_typespec, tag->possibilities.at(ci).type)) {
+            // match!
+            best_idx = ci;  // first is highest scored, so don't bother with the rest.
+            break;
+          }
+        }
+
+        if (best_idx != tag->selected_possibility) {
+          tag->selected_possibility = best_idx;
+          return true;
+        } else {
+          // failed again, in the same way, no need to update (it'll become a cast...)
+          return false;
+        }
+      } else {
+        return false;  // no need to update
+      }
+
+    } break;
 
     default:
       ASSERT_MSG(false, fmt::format("unhandled tag: {}\n", (int)actual_type.tag.kind));
@@ -903,6 +959,65 @@ void types2_for_sub(types2::Type& type_out,
              fmt::format("unhandled for sub: {} and {}\n", arg0_type.print(), arg1_type.print()));
 }
 
+void types2_addr_on_stack(types2::Type& type_out,
+                          types2::Instruction& instr,
+                          int offset,
+                          const Env& env,
+                          const DecompilerTypeSystem& dts,
+                          const types2::TypeState& types,
+                          bool tag_lock) {
+  (void)dts;
+
+  // first look for a stack structure
+  for (auto& structure : env.stack_structure_hints()) {
+    if (offset < structure.hint.stack_offset ||
+        offset >= (structure.hint.stack_offset + structure.size)) {
+      continue;  // reject, it isn't in this variable
+    }
+
+    if (offset == structure.hint.stack_offset) {
+      // special case just getting the variable
+      type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
+      return;
+    }
+  }
+
+  // look for a stack variable
+  auto sss = types.try_find_stack_spill_slot(offset);
+  if (sss && sss->type) {
+    type_out.type = TP_Type::make_from_ts(TypeSpec("pointer", {sss->type->typespec()}));
+  }
+
+  // Neither matched... see if there's a tag.
+  if (instr.unknown_stack_structure_tag) {
+    auto& tag = instr.unknown_stack_structure_tag;
+    if (tag->selected_type) {
+      // use the resolved tag!
+      type_out.type = TP_Type::make_from_ts(*tag->selected_type);
+      return;
+    } else {
+      // unresolved tag, do nothing and hope for the best.
+      type_out.type = {};
+      return;
+    }
+  } else {
+    // no tag. can we create one?
+    if (tag_lock) {
+      // nope.
+      throw std::runtime_error(
+          fmt::format("Failed to find a stack variable or structure at offset {}", offset));
+    } else {
+      fmt::print("Encountered unknown stack address {} : {}\n", env.func->name(), offset);
+      instr.unknown_stack_structure_tag = std::make_unique<types2::UnknownStackStructure>();
+      instr.unknown_stack_structure_tag->stack_offset = offset;
+      type_out.tag.unknown_stack_structure = instr.unknown_stack_structure_tag.get();
+      type_out.tag.kind = types2::Tag::UNKNOWN_STACK_STRUCTURE;
+      type_out.type = {};
+      return;
+    }
+  }
+}
+
 void types2_for_add(types2::Type& type_out,
                     types2::Instruction& output_instr,
                     const SimpleExpression& expr,
@@ -934,9 +1049,10 @@ void types2_for_add(types2::Type& type_out,
 
   // access the stack - either a stack variable or structure.
   if (arg0.is_var() && arg0.var().reg() == Register(Reg::GPR, Reg::SP) && arg1.is_int()) {
-    // todo: will needs tags!
-    ASSERT(false);
-    // return get_stack_type_at_constant_offset(arg1.get_int(), env, dts, input);
+    // get_stack_type_at_constant_offset(arg1.get_int(), env, dts, input);
+    types2_addr_on_stack(type_out, output_instr, arg1.get_int(), env, dts, input_types,
+                         extras.tags_locked);
+    return;
   }
 
   // if things go wrong, and we add a pointer to another address, just return int
@@ -1197,7 +1313,7 @@ void types2_for_normal_all_float(types2::Type& type_out,
     auto& arg = expr.get_arg(i);
     auto& arg_type = input_types[arg.var().reg()];
     if (arg_type->tag.has_tag()) {
-      if (types2::backprop_tagged_type(TP_Type::make_from_ts("float"), *arg_type)) {
+      if (types2::backprop_tagged_type(TP_Type::make_from_ts("float"), *arg_type, dts)) {
         extras.needs_rerun = true;
       }
     }
@@ -1218,7 +1334,7 @@ void types2_for_vector_dot_3_4(types2::Type& type_out,
     auto& arg = expr.get_arg(i);
     auto& arg_type = input_types[arg.var().reg()];
     if (arg_type->tag.has_tag()) {
-      if (types2::backprop_tagged_type(TP_Type::make_from_ts("vector"), *arg_type)) {
+      if (types2::backprop_tagged_type(TP_Type::make_from_ts("vector"), *arg_type, dts)) {
         extras.needs_rerun = true;
       }
     }
@@ -1239,7 +1355,7 @@ void types2_for_vector_in_and_out(types2::Type& type_out,
     auto& arg = expr.get_arg(i);
     auto& arg_type = input_types[arg.var().reg()];
     if (arg_type->tag.has_tag()) {
-      if (types2::backprop_tagged_type(TP_Type::make_from_ts("vector"), *arg_type)) {
+      if (types2::backprop_tagged_type(TP_Type::make_from_ts("vector"), *arg_type, dts)) {
         extras.needs_rerun = true;
       }
     }
@@ -1251,11 +1367,12 @@ void types2_for_vector_in_and_out(types2::Type& type_out,
 void types2_for_float_to_int(types2::Type& type_out,
                              const SimpleExpression& expr,
                              types2::TypeState& input_types,
+                             const DecompilerTypeSystem& dts,
                              types2::TypePropExtras& extras) {
   auto& arg = expr.get_arg(0);
   auto& arg_type = input_types[arg.var().reg()];
   if (arg_type->tag.has_tag()) {
-    if (types2::backprop_tagged_type(TP_Type::make_from_ts("float"), *arg_type)) {
+    if (types2::backprop_tagged_type(TP_Type::make_from_ts("float"), *arg_type, dts)) {
       extras.needs_rerun = true;
     }
   }
@@ -1265,12 +1382,13 @@ void types2_for_float_to_int(types2::Type& type_out,
 void types2_for_int_to_float(types2::Type& type_out,
                              const SimpleExpression& expr,
                              types2::TypeState& input_types,
+                             const DecompilerTypeSystem& dts,
                              types2::TypePropExtras& extras) {
   // backprop here might be bad...
   auto& arg = expr.get_arg(0);
   auto& arg_type = input_types[arg.var().reg()];
   if (arg_type->tag.has_tag()) {
-    if (types2::backprop_tagged_type(TP_Type::make_from_ts("int"), *arg_type)) {
+    if (types2::backprop_tagged_type(TP_Type::make_from_ts("int"), *arg_type, dts)) {
       extras.needs_rerun = true;
     }
   }
@@ -1362,10 +1480,10 @@ void types2_for_expr(types2::Type& type_out,
       types2_for_normal_int1(type_out, output_instr, expr, env, input_types, dts);
       break;
     case SimpleExpression::Kind::FLOAT_TO_INT:
-      types2_for_float_to_int(type_out, expr, input_types, extras);
+      types2_for_float_to_int(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::INT_TO_FLOAT:
-      types2_for_int_to_float(type_out, expr, input_types, extras);
+      types2_for_int_to_float(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::VECTOR_3_DOT:
     case SimpleExpression::Kind::VECTOR_4_DOT:
@@ -1563,7 +1681,7 @@ void StoreOp::propagate_types2(types2::Instruction& instr,
               fmt::print("\n");
             }
 
-            if (backprop_tagged_type(location_type.at(0), *value_type)) {
+            if (backprop_tagged_type(location_type.at(0), *value_type, dts)) {
               extras.needs_rerun = true;
             }
           }
@@ -1797,6 +1915,7 @@ bool load_var_op_determine_type(types2::Type& type_out,
             return true;
           }
         } else {
+          /*
           fmt::print("ambiguous deref. Choices are:\n");
           for (auto& result : rd.results) {
             fmt::print(" {} : ", result.result_type.print());
@@ -1805,6 +1924,7 @@ bool load_var_op_determine_type(types2::Type& type_out,
             }
             fmt::print("\n");
           }
+           */
 
           types2_from_ambiguous_deref(output_instr, type_out, rd, extras.tags_locked);
           return true;
@@ -1877,10 +1997,9 @@ bool load_var_op_determine_type(types2::Type& type_out,
       }
     }
 
-    ASSERT(false);  // nyi
-
+    throw std::runtime_error(fmt::format("Could not figure out load: {}", op.to_string(env)));
   } else {
-    ASSERT(false);  // nyi
+    throw std::runtime_error(fmt::format("Could not figure out load: {}", op.to_string(env)));
   }
 }
 
@@ -1925,7 +2044,7 @@ void BranchOp::propagate_types2(types2::Instruction& instr,
         auto& arg = m_condition.src(i);
         auto& arg_type = input_types[arg.var().reg()];
         if (arg_type->tag.has_tag()) {
-          if (types2::backprop_tagged_type(TP_Type::make_from_ts("float"), *arg_type)) {
+          if (types2::backprop_tagged_type(TP_Type::make_from_ts("float"), *arg_type, dts)) {
             extras.needs_rerun = true;
           }
         }
@@ -2031,10 +2150,14 @@ void CallOp::propagate_types2(types2::Instruction& instr,
     throw std::runtime_error("Called something that was not a function: " + in_type.print());
   }
 
+  // backprop
+  bool can_backprop = true;
+
   // special case: go
   // If we call enter-state, update our type.
   if (in_tp.kind == TP_Type::Kind::ENTER_STATE_FUNCTION) {
     ASSERT(false);
+    can_backprop = false; // for now... can special case this later.
     // this is a GO!
     /*
     auto state_type = input.next_state_type.typespec();
@@ -2058,6 +2181,7 @@ void CallOp::propagate_types2(types2::Instruction& instr,
   // special case: process initialization
   if (in_tp.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION ||
       in_tp.kind == TP_Type::Kind::SET_TO_RUN_FUNCTION) {
+    can_backprop = false; // for now... can special case this later.
     auto func_to_run_type = input_types[Register(Reg::GPR, arg_regs[1])];
     auto func_to_run_ts =
         func_to_run_type->type ? func_to_run_type->type->typespec() : TypeSpec("object");
@@ -2090,6 +2214,7 @@ void CallOp::propagate_types2(types2::Instruction& instr,
 
   // special case: variable argument count
   if (in_type.arg_count() == 2 && in_type.get_arg(0) == TypeSpec("_varargs_")) {
+    can_backprop = false; // for now... can special case this later.
     // we're calling a varags function, which is format. We can determine the argument count
     // by looking at the format string, if we can get it.
     TP_Type arg_type = TP_Type::make_uninitialized();
@@ -2172,6 +2297,16 @@ void CallOp::propagate_types2(types2::Instruction& instr,
   // GOAL seems to insert coloring moves even on functions returning none.
   m_write_regs.clear();
   m_write_regs.emplace_back(Reg::GPR, Reg::V0);
+
+  if (can_backprop) {
+    for (int i = 0; i < int(m_call_type.arg_count()) - 1; i++) {
+      auto& expected_type = m_call_type.get_arg(i);
+      auto& actual_type = input_types[Register(Reg::GPR, arg_regs[i])];
+      if (actual_type->tag.has_tag()) {
+        types2::backprop_tagged_type(TP_Type::make_from_ts(expected_type), *actual_type, dts);
+      }
+    }
+  }
 }
 
 void FunctionEndOp::propagate_types2(types2::Instruction& instr,

@@ -29,7 +29,7 @@
 #include "decompiler/analysis/symbol_def_map.h"
 #include "decompiler/analysis/type_analysis.h"
 #include "decompiler/analysis/variable_naming.h"
-#include "decompiler/types2/Type.h"
+#include "decompiler/types2/types2.h"
 
 namespace decompiler {
 

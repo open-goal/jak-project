@@ -3,7 +3,7 @@
 #include <set>
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "decompiler/types2/Type.h"
+#include "decompiler/types2/types2.h"
 
 namespace decompiler::types2 {
 
@@ -46,9 +46,9 @@ std::set<int> find_stack_spill_slots(const Function& f) {
 /*!
  * Set up types for the entry of a function.
  */
-BlockStartTypes construct_function_entry_types(const TypeSpec& f_ts,
-                                               const std::set<int>& stack_slots) {
-  BlockStartTypes result;
+void construct_function_entry_types(BlockStartTypes& result,
+                                    const TypeSpec& f_ts,
+                                    const std::set<int>& stack_slots) {
   for (auto& x : result.gpr_types) {
     x.type = TP_Type::make_uninitialized();
   }
@@ -57,9 +57,10 @@ BlockStartTypes construct_function_entry_types(const TypeSpec& f_ts,
   }
 
   for (auto x : stack_slots) {
-    auto& slot = result.stack_slot_types.emplace_back();
-    slot.slot = x;
-    slot.type.type = TP_Type::make_uninitialized();
+    auto slot = result.try_find_stack_spill_slot(x);
+    ASSERT(slot);
+    slot->slot = x;
+    slot->type.type = TP_Type::make_uninitialized();
   }
 
   int goal_args[] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3, Reg::T0, Reg::T1, Reg::T2, Reg::T3};
@@ -76,7 +77,6 @@ BlockStartTypes construct_function_entry_types(const TypeSpec& f_ts,
       TP_Type::make_from_ts(TypeSpec(f_ts.try_get_tag("behavior").value_or("process")));
 
   // initialize stack slots as uninitialized (I think safe to skip)
-  return result;
 }
 
 /*!
@@ -237,8 +237,6 @@ class TypeStateCasted {
   TypeState* m_state;
 };
 
-bool backprop_tagged_type(const TP_Type& expected_type, types2::Type& actual_type);
-
 void backprop_from_preds(FunctionCache& cache,
                          int block_idx,
                          Function& func,
@@ -312,7 +310,7 @@ void backprop_from_preds(FunctionCache& cache,
 
         // we got info from the successor, pass it back into this block
         if (resolve_type) {
-          if (backprop_tagged_type(*resolve_type, *(*block_end_typestate)[reg])) {
+          if (backprop_tagged_type(*resolve_type, *(*block_end_typestate)[reg], dts)) {
             // if we've changed things, mark this block to be re-ran.
             cblock.needs_run = true;
           }
@@ -587,8 +585,8 @@ void run(Output& out, const Input& input) {
 
   // mark the entry block
   function_cache.blocks.at(0).needs_run = true;
-  function_cache.blocks.at(0).start_types =
-      construct_function_entry_types(input.function_type, stack_slots);
+  construct_function_entry_types(function_cache.blocks.at(0).start_types, input.function_type,
+                                 stack_slots);
 
   // Run propagation, until we get through an iteration with no changes
   int blocks_run = 0;
@@ -616,7 +614,7 @@ void run(Output& out, const Input& input) {
       auto& last_instr = function_cache.instructions.back().types[Register(Reg::GPR, Reg::V0)];
       if (last_instr->tag.has_tag()) {
         if (!last_instr->type || !input.dts->ts.tc(return_type, last_instr->type->typespec())) {
-          if (backprop_tagged_type(TP_Type::make_from_ts(return_type), *last_instr)) {
+          if (backprop_tagged_type(TP_Type::make_from_ts(return_type), *last_instr, *input.dts)) {
             needs_rerun = true;
           }
         }
@@ -660,7 +658,7 @@ void run(Output& out, const Input& input) {
     }
   }
 
-  end_type_pass:
+end_type_pass:
   std::string error;
   if (!convert_to_old_format(out, function_cache, error, input.func->ir2.env.casts(),
                              input.func->ir2.env.stack_casts(), *input.dts, hit_error)) {
@@ -705,11 +703,33 @@ void run(Output& out, const Input& input) {
 
   // notify the label db of guessed labels
   for (auto& instr : function_cache.instructions) {
-    if (instr.unknown_label_tag && instr.unknown_label_tag->selected_type) {
+    if (instr.unknown_label_tag) {
+      if (!instr.unknown_label_tag->selected_type) {
+        throw std::runtime_error(fmt::format("Failed to guess label use for {} in {}:{}",
+                                             instr.unknown_label_tag->label_name,
+                                             input.func->name(), instr.aop_idx));
+      }
       auto& type = instr.unknown_label_tag->selected_type.value();
       int idx = instr.unknown_label_tag->label_idx;
-      ASSERT(type.base_type() != "pointer"); // want to test this if we find example...
+      ASSERT(type.base_type() != "pointer");  // want to test this if we find example...
       env.file->label_db->set_and_get_previous(idx, type, false, {});
+    }
+
+    if (instr.unknown_stack_structure_tag) {
+      if (!instr.unknown_stack_structure_tag->selected_type) {
+        throw std::runtime_error(fmt::format("Failed to guess stack use for {} in {}:{}",
+                                             instr.unknown_stack_structure_tag->stack_offset,
+                                             input.func->name(), instr.aop_idx));
+      }
+
+      auto& type = instr.unknown_stack_structure_tag->selected_type.value();
+      int offset = instr.unknown_stack_structure_tag->stack_offset;
+      ASSERT(type.base_type() != "pointer");  // want to test this if we find example...
+      StackStructureHint hint;
+      hint.stack_offset = offset;
+      hint.container_type = StackStructureHint::ContainerType::NONE;
+      hint.element_type = type.print();
+      env.add_stack_structure_hint(hint);
     }
   }
 

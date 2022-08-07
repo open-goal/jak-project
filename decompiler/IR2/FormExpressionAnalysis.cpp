@@ -940,6 +940,18 @@ void SimpleExpressionElement::update_from_stack_si_1(const Env& env,
       make_cast_if_needed(arg, in_type, TypeSpec("int"), pool, env)));
 }
 
+struct MultiSelectionResult {
+  bool succeeded = false;
+  int idx_to_use = -1;
+  std::optional<TypeSpec> cast;
+};
+
+MultiSelectionResult select_from_multi(const FieldReverseMultiLookupOutput& multi, const Env& env) {
+  MultiSelectionResult result;
+
+  return result;
+}
+
 void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                                                       FormPool& pool,
                                                       FormStack& stack,
