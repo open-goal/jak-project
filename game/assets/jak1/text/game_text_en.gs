@@ -205,42 +205,54 @@
         "INPUT OPTIONS")
 (#x10a1 "DEVICE"
         "DEVICE")
-(#x10a2 "KEYBOARD"
+(#x10a2 "CONTROLLER"
+        "CONTROLLER")
+(#x10a3 "KEYBOARD"
         "KEYBOARD")
-(#x10a3 "<PAD_X>"
+(#x10a4 "<PAD_X>"
         "<PAD_X>")
-(#x10a4 "<PAD_SQUARE>"
+(#x10a5 "<PAD_SQUARE>"
         "<PAD_SQUARE>")
-(#x10a5 "<PAD_CIRCLE>"
+(#x10a6 "<PAD_CIRCLE>"
         "<PAD_CIRCLE>")
-(#x10a6 "<PAD_TRIANGLE>"
+(#x10a7 "<PAD_TRIANGLE>"
         "<PAD_TRIANGLE>")
-(#x10a7 "L1"
+(#x10a8 "L1"
         "L1")
-(#x10a8 "R1"
+(#x10a9 "R1"
         "R1")
-(#x10a9 "L2"
+(#x10aa "L2"
         "L2")
-(#x10aa "R2"
+(#x10ab "R2"
         "R2")
-(#x10ab "L3"
+(#x10ac "L3"
         "L3")
-(#x10ac "R3"
+(#x10ad "R3"
         "R3")
-(#x10ad "START"
-        "START")
 (#x10ae "SELECT"
         "SELECT")
-(#x10af "D-PAD UP"
+(#x10af "START"
+        "START")
+(#x10b0 "D-PAD UP"
         "D-PAD UP")
-(#x10b0 "D-PAD DOWN"
+(#x10b1 "D-PAD DOWN"
         "D-PAD DOWN")
-(#x10b1 "D-PAD LEFT"
+(#x10b2 "D-PAD LEFT"
         "D-PAD LEFT")
-(#x10b2 "D-PAD RIGHT"
+(#x10b3 "D-PAD RIGHT"
         "D-PAD RIGHT")
-(#x10b3 "PRESS BUTTON TO ASSIGN TO ~S (~D)..."
-        "PRESS BUTTON TO ASSIGN TO ~S (~D)...")
+(#x10b4 "LEFT ANALOG UP"
+        "LEFT ANALOG UP")
+(#x10b5 "LEFT ANALOG DOWN"
+        "LEFT ANALOG DOWN")
+(#x10b6 "RIGHT ANALOG UP"
+        "RIGHT ANALOG UP")
+(#x10b7 "RIGHT ANALOG DOWN"
+        "RIGHT ANALOG DOWN")
+(#x10b8 "PRESS BUTTON/KEY TO ASSIGN TO ~S (~D)..."
+        "PRESS BUTTON/KEY TO ASSIGN TO ~S (~D)...")
+(#x10b9 "DISABLE KEYBOARD"
+        "DISABLE KEYBOARD")
 
 (#x10c0 "MUSIC PLAYER"
         "MUSIC PLAYER")
