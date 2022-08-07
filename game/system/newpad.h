@@ -301,10 +301,10 @@ constexpr const char* KeyCodeToString(KeyCode keycode) noexcept {
   }  // common key, don't treat as an unlikely scenario
 
   if (keycode >= 44 && keycode <= 96)
-      [[likely]] { return LUT44To96[keycode - 44]; }
+    [[likely]] { return LUT44To96[keycode - 44]; }
 
   if (keycode >= 256 && keycode <= 348)
-      [[likely]] { return LUT256To348[keycode - 256]; }
+    [[likely]] { return LUT256To348[keycode - 256]; }
 
   // unlikely scenario where the keycode didn't fall inside one of the two lookup tables
   switch (keycode) {
