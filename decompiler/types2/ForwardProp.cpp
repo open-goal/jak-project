@@ -1681,8 +1681,15 @@ void StoreOp::propagate_types2(types2::Instruction& instr,
               fmt::print("\n");
             }
 
+
             if (backprop_tagged_type(location_type.at(0), *value_type, dts)) {
               extras.needs_rerun = true;
+            }
+          } else {
+            if (m_kind == Kind::FLOAT) {
+              if (backprop_tagged_type(TP_Type::make_from_ts("float"), *value_type, dts)) {
+                extras.needs_rerun = true;
+              }
             }
           }
         }
@@ -2023,6 +2030,23 @@ void LoadVarOp::propagate_types2(types2::Instruction& instr,
   m_type = type_out->type ? type_out->type->typespec() : std::optional<TypeSpec>();
 }
 
+void branch_delay_types2(IR2_BranchDelay& delay, types2::Instruction& instr, const Env& env) {
+  switch (delay.kind()) {
+    case IR2_BranchDelay::Kind::NOP:
+    case IR2_BranchDelay::Kind::NO_DELAY:
+      break;
+    case IR2_BranchDelay::Kind::SET_REG_FALSE:
+      instr.types[delay.var(0).reg()]->type = TP_Type::make_false();
+      break;
+    case IR2_BranchDelay::Kind::SET_REG_TRUE:
+      instr.types[delay.var(0).reg()]->type = TP_Type::make_from_ts("symbol");
+      break;
+    default:
+      ASSERT_MSG(false, fmt::format("propagate_types2 BranchOp unknown branch delay: {}",
+                                    (int)delay.kind()));
+  }
+}
+
 void BranchOp::propagate_types2(types2::Instruction& instr,
                                 const Env& env,
                                 types2::TypeState& input_types,
@@ -2054,20 +2078,7 @@ void BranchOp::propagate_types2(types2::Instruction& instr,
       break;
   }
 
-  switch (m_branch_delay.kind()) {
-    case IR2_BranchDelay::Kind::NOP:
-    case IR2_BranchDelay::Kind::NO_DELAY:
-      break;
-    case IR2_BranchDelay::Kind::SET_REG_FALSE:
-      instr.types[m_branch_delay.var(0).reg()]->type = TP_Type::make_false();
-      break;
-    case IR2_BranchDelay::Kind::SET_REG_TRUE:
-      instr.types[m_branch_delay.var(0).reg()]->type = TP_Type::make_from_ts("symbol");
-      break;
-    default:
-      ASSERT_MSG(false,
-                 fmt::format("propagate_types2 BranchOp unknown branch delay: {}", to_string(env)));
-  }
+  branch_delay_types2(m_branch_delay, instr, env);
 }
 
 void AsmBranchOp::propagate_types2(types2::Instruction& instr,
@@ -2075,8 +2086,15 @@ void AsmBranchOp::propagate_types2(types2::Instruction& instr,
                                    types2::TypeState& input_types,
                                    DecompilerTypeSystem& dts,
                                    types2::TypePropExtras& extras) {
-  throw std::runtime_error(
-      fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
+  if (m_branch_delay) {
+    m_branch_delay->propagate_types2(instr, env, input_types, dts, extras);
+  }
+  // for now, just make everything uint
+  for (auto x : m_write_regs) {
+    if (x.allowed_local_gpr()) {
+      instr.types[x]->type = TP_Type::make_from_ts("uint");
+    }
+  }
 }
 
 void SpecialOp::propagate_types2(types2::Instruction& instr,
@@ -2157,7 +2175,7 @@ void CallOp::propagate_types2(types2::Instruction& instr,
   // If we call enter-state, update our type.
   if (in_tp.kind == TP_Type::Kind::ENTER_STATE_FUNCTION) {
     ASSERT(false);
-    can_backprop = false; // for now... can special case this later.
+    can_backprop = false;  // for now... can special case this later.
     // this is a GO!
     /*
     auto state_type = input.next_state_type.typespec();
@@ -2181,7 +2199,7 @@ void CallOp::propagate_types2(types2::Instruction& instr,
   // special case: process initialization
   if (in_tp.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION ||
       in_tp.kind == TP_Type::Kind::SET_TO_RUN_FUNCTION) {
-    can_backprop = false; // for now... can special case this later.
+    can_backprop = false;  // for now... can special case this later.
     auto func_to_run_type = input_types[Register(Reg::GPR, arg_regs[1])];
     auto func_to_run_ts =
         func_to_run_type->type ? func_to_run_type->type->typespec() : TypeSpec("object");
@@ -2214,7 +2232,7 @@ void CallOp::propagate_types2(types2::Instruction& instr,
 
   // special case: variable argument count
   if (in_type.arg_count() == 2 && in_type.get_arg(0) == TypeSpec("_varargs_")) {
-    can_backprop = false; // for now... can special case this later.
+    can_backprop = false;  // for now... can special case this later.
     // we're calling a varags function, which is format. We can determine the argument count
     // by looking at the format string, if we can get it.
     TP_Type arg_type = TP_Type::make_uninitialized();

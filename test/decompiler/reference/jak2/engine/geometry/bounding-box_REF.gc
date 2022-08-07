@@ -1,17 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: bounding-box.gc
-;; name in dgo: bounding-box
-;; dgos: ENGINE, GAME
-
-;; Implementation of bounding box functions.
-;; These boxes are used as a primitive in the foreground collision system.
-
-;; DECOMP BEGINS
-
+;; definition for method 19 of type bounding-box
 (defmethod inside-xyz? bounding-box ((obj bounding-box) (arg0 vector))
-  "Is the point in the box?"
   (and (< (-> obj min x) (-> arg0 x))
        (< (-> obj min y) (-> arg0 y))
        (< (-> obj min z) (-> arg0 z))
@@ -21,8 +12,8 @@
        )
   )
 
+;; definition for method 20 of type bounding-box
 (defmethod inside-xz? bounding-box ((obj bounding-box) (arg0 vector))
-  "Is the point in the box? Check xz only."
   (and (< (-> obj min x) (-> arg0 x))
        (< (-> obj min z) (-> arg0 z))
        (< (-> arg0 x) (-> obj max x))
@@ -30,8 +21,8 @@
        )
   )
 
+;; definition for function box-vector-enside?
 (defun box-vector-enside? ((arg0 bounding-box) (arg1 vector))
-  "Is the point in the box? On the edge doesn't count."
   (and (< (-> arg0 min x) (-> arg1 x))
        (< (-> arg0 min y) (-> arg1 y))
        (< (-> arg0 min z) (-> arg1 z))
@@ -41,8 +32,8 @@
        )
   )
 
+;; definition for function box-vector-inside?
 (defun box-vector-inside? ((arg0 bounding-box) (arg1 vector))
-  "Is the point in the box? On the edge counts."
   (and (>= (-> arg1 x) (-> arg0 min x))
        (>= (-> arg1 y) (-> arg0 min y))
        (>= (-> arg1 z) (-> arg0 min z))
@@ -52,8 +43,9 @@
        )
   )
 
+;; definition for method 13 of type bounding-box
+;; INFO: Return type mismatch int vs none.
 (defmethod set-from-point-offset! bounding-box ((obj bounding-box) (arg0 vector) (arg1 vector))
-  "Set to the smallest box containing arg0, (arg0 + arg1)"
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -76,8 +68,9 @@
     )
   )
 
+;; definition for method 11 of type bounding-box
+;; INFO: Return type mismatch int vs none.
 (defmethod add-point! bounding-box ((obj bounding-box) (arg0 vector))
-  "Expand the box as needed to contain the given point."
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -94,8 +87,8 @@
     )
   )
 
+;; definition for method 10 of type bounding-box
 (defmethod add-box! bounding-box ((obj bounding-box) (arg0 bounding-box))
-  "Expand the box as needed to contain the given box."
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -113,16 +106,18 @@
     )
   )
 
+;; definition for method 15 of type bounding-box
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 (defmethod set-to-point! bounding-box ((obj bounding-box) (arg0 vector))
-  "Set the box to be a single point."
   (set! (-> obj min quad) (-> arg0 quad))
   (set! (-> obj max quad) (-> arg0 quad))
   0
   (none)
   )
 
+;; definition for method 14 of type bounding-box
 (defmethod set-from-point-offset-pad! bounding-box ((obj bounding-box) (arg0 vector) (arg1 vector) (arg2 float))
-  "Set the box to contain arg0, arg0 + offset, with some padding."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -148,8 +143,9 @@
     )
   )
 
+;; definition for method 16 of type bounding-box
+;; INFO: Return type mismatch int vs none.
 (defmethod set-from-sphere! bounding-box ((obj bounding-box) (arg0 sphere))
-  "Set the box to contain a single sphere."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -168,83 +164,14 @@
     )
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;; multi-sphere methods
-;;;;;;;;;;;;;;;;;;;;;;;;;
+;; definition for method 17 of type bounding-box
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; these are used in the collision system to build bounding boxes around collision geometries, so they are quite optimized.
+;; definition for method 9 of type bounding-box
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-(defmethod add-spheres! bounding-box ((obj bounding-box) (spheres (inline-array sphere)) (count int))
-  "Add count spheres."
-  ;; the PS2 implementation is very optimized
-  ;; It is unrolled and 'software pipelined' to do 4 at a time.
-  ;; This is slightly less optimized.
-  (rlet ((current-min :class vf)
-         (current-max :class vf)
-         (sph-min :class vf)
-         (sph-max :class vf)
-         (sph :class vf))
-
-    (when (nonzero? count)
-      ;; load these outside the loop
-      (.lvf current-min (-> obj min))
-      (.lvf current-max (-> obj max))
-
-      (dotimes (i count)
-        (.lvf sph (-> spheres i))
-        (.sub.w.vf sph-min sph sph :mask #b111)
-        (.add.w.vf sph-max sph sph :mask #b111)
-        (.min.vf current-min current-min sph-min :mask #b111)
-        (.max.vf current-max current-max sph-max :mask #b111)
-        )
-
-      (.svf (-> obj min) current-min)
-      (.svf (-> obj max) current-max)
-      )
-    )
-  0
-  )
-
-(defmethod set-from-spheres! bounding-box ((obj bounding-box) (spheres (inline-array sphere)) (count int))
-  "Reset box to hold the given spheres. Note: this implementation could be optimized."
-  ;; This is also unrolled, but does 7 at a time.
-  (rlet ((vf0 :class vf)
-         (current-min :class vf)
-         (current-max :class vf)
-         (sph-min :class vf)
-         (sph-max :class vf)
-         (sph :class vf))
-    ;; init constant
-    (init-vf0-vector)
-    ;; init min/max. in the case we don't have any spheres, we should return (0,0,0,1) for min/max.
-    (set! current-min vf0)
-    (set! current-max vf0)
-
-    (dotimes (i count)
-      (.lvf sph (-> spheres i))
-      (.sub.w.vf sph-min sph sph :mask #b111)
-      (.add.w.vf sph-max sph sph :mask #b111)
-      (cond
-        ((zero? i)
-         (set! current-min sph-min)
-         (set! current-max sph-max)
-         )
-        (else
-         (.min.vf current-min current-min sph-min :mask #b111)
-         (.max.vf current-max current-max sph-max :mask #b111)
-         )
-        )
-      )
-
-    (.svf (-> obj min) current-min)
-    (.svf (-> obj max) current-max)
-    )
-  0
-  )
-
-
+;; definition for method 18 of type bounding-box
 (defmethod get-bounding-sphere bounding-box ((obj bounding-box) (arg0 vector))
-  "Get a bounding sphere for a bounding box."
   (let* ((a1-2 (vector-! (new 'stack-no-clear 'vector) (-> obj max) (-> obj min)))
          (a0-3 (vector-float*! (new 'stack-no-clear 'vector) a1-2 0.5))
          )
@@ -254,13 +181,7 @@
   arg0
   )
 
-;;;;;;;;;;;;;;
-;; line clip
-;;;;;;;;;;;;;;
-
-;; The "liang-barsky" algorithm for line clipping is just using the parametric equation for a line.
-;; this is used to implement a "line segment intersects square in xz plane" check.
-
+;; definition of type liang-barsky-line-clip-params
 (deftype liang-barsky-line-clip-params (structure)
   ((te float  :offset-assert   0)
    (tl float  :offset-assert   4)
@@ -270,8 +191,21 @@
   :flag-assert         #x900000008
   )
 
+;; definition for method 3 of type liang-barsky-line-clip-params
+(defmethod inspect liang-barsky-line-clip-params ((obj liang-barsky-line-clip-params))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'liang-barsky-line-clip-params)
+  (format #t "~1Tte: ~f~%" (-> obj te))
+  (format #t "~1Ttl: ~f~%" (-> obj tl))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function liang-barsky-line-clipt
 (defun liang-barsky-line-clipt ((arg0 liang-barsky-line-clip-params) (arg1 float) (arg2 float))
-  "Clip test in 1 dimension. Is arg1 in arg2?"
   (cond
     ((< 0.0 arg1)
      (let ((f0-2 (/ arg2 arg1)))
@@ -302,9 +236,9 @@
   #t
   )
 
+;; definition for method 12 of type bounding-box
+;; WARN: disable def twice: 23. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod intersects-line-segment? bounding-box ((obj bounding-box) (arg0 vector) (arg1 vector))
-  "Check intersection in xz plane, using liang-barsky. Not sure if this actually
-   a useful check or not..."
   (let ((f28-0 (- (-> arg1 x) (-> arg0 x)))
         (f30-0 (- (-> arg1 z) (-> arg0 z)))
         )
