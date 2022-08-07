@@ -264,6 +264,19 @@ bool backprop_tagged_type(const TP_Type& expected_type, types2::Type& actual_typ
         actual_type.tag.block_entry->selected_type = expected_type;
         return true;
       }
+
+    case types2::Tag::UNKNOWN_LABEL:
+      if (actual_type.tag.unknown_label->selected_type &&
+          actual_type.tag.unknown_label->selected_type == expected_type.typespec()) {
+        return false;  // no need to update
+      } else {
+        auto& tag = actual_type.tag.unknown_label;
+        actual_type.tag.unknown_label->selected_type = expected_type.typespec();
+        fmt::print("Label Guess: {} is a {}\n", tag->label_name,
+                   actual_type.tag.unknown_label->selected_type->print());
+        return true;
+      }
+
     default:
       ASSERT_MSG(false, fmt::format("unhandled tag: {}\n", (int)actual_type.tag.kind));
   }
@@ -275,10 +288,11 @@ bool backprop_tagged_type(const TP_Type& expected_type, types2::Type& actual_typ
  * If the label is unknown, this will set up a tag. But that's not implemented yet...
  */
 void types2_for_label(types2::Type& type_out,
-                      types2::Instruction& output_instr,
+                      types2::Instruction& instr,
                       types2::TypeState& input_types,
                       int label_idx,
-                      const Env& env) {
+                      const Env& env,
+                      const types2::TypePropExtras& extras) {
   // first, see if the label type is known (either through obvious auto-detect, or a cast)
 
   auto known_type = try_get_type_of_label(label_idx, env);
@@ -286,6 +300,36 @@ void types2_for_label(types2::Type& type_out,
     type_out.type = known_type;
     return;
   } else {
+    if (instr.unknown_label_tag) {
+      auto& tag = instr.unknown_label_tag;
+      if (tag->selected_type) {
+        // resolved tag, use that
+        type_out.type = TP_Type::make_from_ts(*tag->selected_type);
+        return;
+      } else {
+        // unresolved tag, do nothing and hope for the best.
+        type_out.type = {};
+        return;
+      }
+    } else {
+      // no tag.
+      if (extras.tags_locked) {
+        // this really shouldn't happen.
+        throw std::runtime_error(fmt::format("Encountered unknown label {}, but tags were locked.",
+                                             env.file->labels.at(label_idx).name));
+      } else {
+        auto& name = env.file->labels.at(label_idx).name;
+        fmt::print("Encountered unknown label: {}\n", name);
+        instr.unknown_label_tag = std::make_unique<types2::UnknownLabel>();
+        instr.unknown_label_tag->label_idx = label_idx;
+        instr.unknown_label_tag->label_name = name;
+        type_out.tag.unknown_label = instr.unknown_label_tag.get();
+        type_out.tag.kind = types2::Tag::UNKNOWN_LABEL;
+        type_out.type = {};
+        return;
+      }
+    }
+
     ASSERT(false);  // todo, implement this case... this is where we'd set up label type guessing
   }
 }
@@ -507,7 +551,7 @@ void types2_for_atom(types2::Type& type_out,
                      types2::TypePropExtras& extras) {
   switch (atom.get_kind()) {
     case SimpleAtom::Kind::STATIC_ADDRESS:
-      types2_for_label(type_out, output_instr, input_types, atom.label(), env);
+      types2_for_label(type_out, output_instr, input_types, atom.label(), env, extras);
       return;
     case SimpleAtom::Kind::SYMBOL_VAL: {
       auto type = get_type_symbol_val(atom.get_str(), dts, env);
@@ -1162,6 +1206,48 @@ void types2_for_normal_all_float(types2::Type& type_out,
   type_out.type = TP_Type::make_from_ts(TypeSpec("float"));
 }
 
+void types2_for_vector_dot_3_4(types2::Type& type_out,
+                               types2::Instruction& output_instr,
+                               const SimpleExpression& expr,
+                               const Env& env,
+                               types2::TypeState& input_types,
+                               const DecompilerTypeSystem& dts,
+                               types2::TypePropExtras& extras) {
+  // backprop to make inputs vector
+  for (int i = 0; i < expr.args(); i++) {
+    auto& arg = expr.get_arg(i);
+    auto& arg_type = input_types[arg.var().reg()];
+    if (arg_type->tag.has_tag()) {
+      if (types2::backprop_tagged_type(TP_Type::make_from_ts("vector"), *arg_type)) {
+        extras.needs_rerun = true;
+      }
+    }
+  }
+
+  type_out.type = TP_Type::make_from_ts(TypeSpec("float"));
+}
+
+void types2_for_vector_in_and_out(types2::Type& type_out,
+                                  types2::Instruction& output_instr,
+                                  const SimpleExpression& expr,
+                                  const Env& env,
+                                  types2::TypeState& input_types,
+                                  const DecompilerTypeSystem& dts,
+                                  types2::TypePropExtras& extras) {
+  // backprop to make inputs vector
+  for (int i = 0; i < expr.args(); i++) {
+    auto& arg = expr.get_arg(i);
+    auto& arg_type = input_types[arg.var().reg()];
+    if (arg_type->tag.has_tag()) {
+      if (types2::backprop_tagged_type(TP_Type::make_from_ts("vector"), *arg_type)) {
+        extras.needs_rerun = true;
+      }
+    }
+  }
+
+  type_out.type = TP_Type::make_from_ts(TypeSpec("vector"));
+}
+
 void types2_for_float_to_int(types2::Type& type_out,
                              const SimpleExpression& expr,
                              types2::TypeState& input_types,
@@ -1281,9 +1367,18 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::INT_TO_FLOAT:
       types2_for_int_to_float(type_out, expr, input_types, extras);
       break;
+    case SimpleExpression::Kind::VECTOR_3_DOT:
+    case SimpleExpression::Kind::VECTOR_4_DOT:
+      types2_for_vector_dot_3_4(type_out, output_instr, expr, env, input_types, dts, extras);
+      break;
+    case SimpleExpression::Kind::VECTOR_CROSS:
+    case SimpleExpression::Kind::VECTOR_MINUS:
+    case SimpleExpression::Kind::VECTOR_PLUS:
+      types2_for_vector_in_and_out(type_out, output_instr, expr, env, input_types, dts, extras);
+      break;
     default:
-      ASSERT_MSG(false, fmt::format("Unhandled types2_for_expr: {} {}\n", expr.to_string(env),
-                                    (int)expr.kind()));
+      throw std::runtime_error(
+          fmt::format("Unhandled types2_for_expr: {} {}\n", expr.to_string(env), (int)expr.kind()));
   }
 }
 
@@ -1452,22 +1547,25 @@ void StoreOp::propagate_types2(types2::Instruction& instr,
   // backprop on the value being stored.
   {
     if (m_value.is_var()) {  // only applicable if we're storing a var
-      const auto& value_type = input_types[m_value.var().reg()];
-      if (value_type->tag.has_tag()) {  // don't bother if we don't have a tag to resolve
-        auto location_type = try_get_type_of_expr(input_types, m_addr, env, dts);
-        if (!location_type.empty()) {  // need to know where we're storing
+      auto reg = m_value.var().reg();
+      if (reg.get_kind() != Reg::VF) {
+        const auto& value_type = input_types[m_value.var().reg()];
+        if (value_type->tag.has_tag()) {  // don't bother if we don't have a tag to resolve
+          auto location_type = try_get_type_of_expr(input_types, m_addr, env, dts);
+          if (!location_type.empty()) {  // need to know where we're storing
 
-          // temp warning if we have multiple store types
-          if (location_type.size() > 1) {
-            fmt::print("StoreOp::propagate_types2: multiple possible store types: ");
-            for (auto& t : location_type) {
-              fmt::print("{} ", t.print());
+            // temp warning if we have multiple store types
+            if (location_type.size() > 1) {
+              fmt::print("StoreOp::propagate_types2: multiple possible store types: ");
+              for (auto& t : location_type) {
+                fmt::print("{} ", t.print());
+              }
+              fmt::print("\n");
             }
-            fmt::print("\n");
-          }
 
-          if (backprop_tagged_type(location_type.at(0), *value_type)) {
-            extras.needs_rerun = true;
+            if (backprop_tagged_type(location_type.at(0), *value_type)) {
+              extras.needs_rerun = true;
+            }
           }
         }
       }

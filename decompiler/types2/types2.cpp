@@ -703,11 +703,15 @@ void run(Output& out, const Input& input) {
     //         info.second.tp_type.print());
   }
 
-  // final casts
-
-  // stack spill var things
-
-  // warn on return type
+  // notify the label db of guessed labels
+  for (auto& instr : function_cache.instructions) {
+    if (instr.unknown_label_tag && instr.unknown_label_tag->selected_type) {
+      auto& type = instr.unknown_label_tag->selected_type.value();
+      int idx = instr.unknown_label_tag->label_idx;
+      ASSERT(type.base_type() != "pointer"); // want to test this if we find example...
+      env.file->label_db->set_and_get_previous(idx, type, false, {});
+    }
+  }
 
   out.succeeded = !hit_error;
 }

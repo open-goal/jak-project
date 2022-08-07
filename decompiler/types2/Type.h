@@ -33,6 +33,7 @@ struct AmbiguousFieldAccess {
  */
 struct UnknownLabel {
   int label_idx = -1;
+  std::string label_name;  // just for debug prints
   std::optional<TypeSpec> selected_type;
 };
 
