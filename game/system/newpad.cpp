@@ -101,6 +101,10 @@ void get_mouse_pos(u32 x_ptr, u32 y_ptr) {
   glfwGetCursorPos(window, &x, &y);
   float* fx = x_ptr ? Ptr<float>(x_ptr).c() : NULL;
   float* fy = y_ptr ? Ptr<float>(y_ptr).c() : NULL;
+  if (fx == NULL || fy == NULL) {
+    lg::error("get_mouse_pos(): Couldn't convert GOAL pointer! Passed a null reference?");
+    return;
+  }
   *fx = (float)x;
   *fy = (float)y;
 }
