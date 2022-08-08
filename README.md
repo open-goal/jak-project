@@ -49,7 +49,7 @@ Additionally you can find further information and answers to **frequently asked 
 
 ### How to play the game
 
-To just play the game, follow the steps in this video https://www.youtube.com/watch?v=yQBKCnS5MDY
+To just play the game, follow the steps in this video https://www.youtube.com/watch?v=p8I9NfuZOgE
 
 We don't save any assets from the game - you must use your own legitimately obtained copy of the game.
 
