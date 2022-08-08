@@ -613,6 +613,9 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
   make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
   make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);
+  make_function_symbol_from_c("pc-mouse-get-pos", (void*)Pad::get_mouse_pos);
+  make_function_symbol_from_c("pc-mouse-get-mode", (void*)Pad::get_mouse_mode);
+  make_function_symbol_from_c("pc-mouse-set-mode", (void*)Pad::set_mouse_mode);
 
   // os stuff
   make_function_symbol_from_c("pc-get-os", (void*)get_os);

@@ -89,6 +89,11 @@ u64 input_mode_get_key();
 u64 input_mode_get_index();
 void input_mode_pad_set(s64);
 
+void get_mouse_pos(u32 x_ptr, u32 y_ptr);
+// GLFW function for set mouse pos is available -- is it necessary?
+int get_mouse_mode();
+void set_mouse_mode(s64 mode);
+
 void initialize();
 void update_gamepads();
 int rumble(int pad, float slow_motor, float fast_motor);

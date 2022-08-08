@@ -11,6 +11,7 @@
 #include "common/util/FileUtil.h"
 
 #include "game/graphics/pipelines/opengl.h"  // for GLFW macros
+#include "game/kernel/common/Ptr.h"
 
 #include "third-party/imgui/imgui.h"
 
@@ -88,6 +89,63 @@ void OnKeyRelease(int key) {
   }
   ASSERT(key < NUM_KEYS);
   g_key_status[key] = false;
+}
+
+/*!
+ * Store mouse position, or "virtual position" while GLFW_CURSOR_DISABLED
+ * maybe these functions should go somewhere else?
+ */
+void get_mouse_pos(u32 x_ptr, u32 y_ptr) {
+  GLFWwindow* window = (GLFWwindow*)Display::GetMainDisplay()->get_window();
+  double x, y;
+  glfwGetCursorPos(window, &x, &y);
+  float* fx = x_ptr ? Ptr<float>(x_ptr).c() : NULL;
+  float* fy = y_ptr ? Ptr<float>(y_ptr).c() : NULL;
+  *fx = (float)x;
+  *fy = (float)y;
+}
+
+/*!
+ * Return the current mouse mode as an int that maps onto the cursor-mode enum in
+ * pc-mouse-polling.gc
+ */
+int get_mouse_mode() {
+  GLFWwindow* window = (GLFWwindow*)Display::GetMainDisplay()->get_window();
+  auto mode = glfwGetInputMode(window, GLFW_CURSOR);
+  switch (mode) {
+    case GLFW_CURSOR_NORMAL:
+      return 0;
+    case GLFW_CURSOR_DISABLED:
+      return 1;
+    case GLFW_CURSOR_HIDDEN:
+      return 2;
+    case GLFW_CURSOR_UNAVAILABLE:
+      return 3;
+    default:
+      return 4;
+  }
+}
+
+/*!
+ * Set the cursor mode using an int value from the cursor-mode enum in
+ * pc-mouse-polling.gc
+ */
+void set_mouse_mode(s64 mode) {
+  GLFWwindow* window = (GLFWwindow*)Display::GetMainDisplay()->get_window();
+  switch (mode) {
+    case 0:
+      glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+      break;
+    case 1:
+      glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+      break;
+    case 2:
+      lg::info("GLFW: set cursor mode to hidden? what");
+      glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+      break;
+    default:
+      lg::error("tried to set cursor mode to an invalid value ({})", mode);
+  }
 }
 
 /*

@@ -110,6 +110,29 @@ void ClearGlobalGLFWCallbacks() {
 
   g_glfw_state.callbacks_registered = false;
 }
+// =======
+// void SetDisplayCallbacks(GLFWwindow* d) {
+//   glfwSetKeyCallback(
+//       d, [](GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
+//         if (action == GlfwKeyAction::Press) {
+//           // lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
+//           Pad::OnKeyPress(key);
+//         } else if (action == GlfwKeyAction::Release) {
+//           // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
+//           Pad::OnKeyRelease(key);
+//           GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
+//           if (display != NULL) {  // toggle ImGui when pressing Alt
+//             if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
+//                 glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+//               auto bar_visible = !display->is_imgui_visible();
+//               display->set_imgui_visible(bar_visible);
+//               glfwSetInputMode(window, GLFW_CURSOR,
+//                                (bar_visible ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED));
+//             }
+//           }
+//         }
+//       });
+// >>>>>>> Stashed changes
 
 void ErrorCallback(int err, const char* msg) {
   lg::error("GLFW ERR {}: {}", err, std::string(msg));
@@ -234,6 +257,12 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   // cursor error is set here that we clear.
   glfwGetError(NULL);
 
+  if (glfwRawMouseMotionSupported()) {
+    glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+  } else {
+    lg::info("raw mouse motion is not supported");
+  }
+
   // set up the renderer
   ImGui_ImplOpenGL3_Init("#version 430");
 
@@ -298,7 +327,11 @@ void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action
     Pad::OnKeyRelease(key);
     if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
         glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
-      set_imgui_visible(!is_imgui_visible());
+      // set_imgui_visible(!is_imgui_visible());
+      auto is_visible_now = !is_imgui_visible();
+      set_imgui_visible(is_visible_now);
+      glfwSetInputMode(window, GLFW_CURSOR,
+                        (is_visible_now ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED));
     }
   }
 }
