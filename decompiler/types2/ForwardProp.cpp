@@ -1453,6 +1453,7 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::ADD_S:
     case SimpleExpression::Kind::ABS_S:
     case SimpleExpression::Kind::NEG_S:
+    case SimpleExpression::Kind::SQRT_S:
       types2_for_normal_all_float(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::SUB:
@@ -1532,10 +1533,10 @@ void SetVarOp::propagate_types2(types2::Instruction& instr,
 }
 
 void AsmOp::propagate_types2(types2::Instruction& instr,
-                             const Env& env,
+                             const Env& /*env*/,
                              types2::TypeState& input_types,
                              DecompilerTypeSystem& dts,
-                             types2::TypePropExtras& extras) {
+                             types2::TypePropExtras& /*extras*/) {
   // update clobbers.
   for (auto& clobber : m_clobber_regs) {
     instr.types[clobber]->type = TP_Type::make_uninitialized();
@@ -1651,10 +1652,10 @@ void AsmOp::propagate_types2(types2::Instruction& instr,
 }
 
 void SetVarConditionOp::propagate_types2(types2::Instruction& instr,
-                                         const Env& env,
-                                         types2::TypeState& input_types,
-                                         DecompilerTypeSystem& dts,
-                                         types2::TypePropExtras& extras) {
+                                         const Env& /*env*/,
+                                         types2::TypeState& /*input_types*/,
+                                         DecompilerTypeSystem& /*dts*/,
+                                         types2::TypePropExtras& /*extras*/) {
   // update clobbers.
   for (auto& clobber : m_clobber_regs) {
     instr.types[clobber]->type = TP_Type::make_uninitialized();
@@ -1682,24 +1683,24 @@ void StoreOp::propagate_types2(types2::Instruction& instr,
       if (reg.get_kind() != Reg::VF) {
         const auto& value_type = input_types[m_value.var().reg()];
         if (value_type->tag.has_tag()) {  // don't bother if we don't have a tag to resolve
-          auto location_type = try_get_type_of_expr(input_types, m_addr, env, dts);
-          if (!location_type.empty()) {  // need to know where we're storing
-
-            // temp warning if we have multiple store types
-            if (location_type.size() > 1) {
-              fmt::print("StoreOp::propagate_types2: multiple possible store types: ");
-              for (auto& t : location_type) {
-                fmt::print("{} ", t.print());
-              }
-              fmt::print("\n");
-            }
-
-            if (backprop_tagged_type(location_type.at(0), *value_type, dts)) {
+          if (m_kind == Kind::FLOAT) {
+            if (backprop_tagged_type(TP_Type::make_from_ts("float"), *value_type, dts)) {
               extras.needs_rerun = true;
             }
           } else {
-            if (m_kind == Kind::FLOAT) {
-              if (backprop_tagged_type(TP_Type::make_from_ts("float"), *value_type, dts)) {
+            auto location_type = try_get_type_of_expr(input_types, m_addr, env, dts);
+            if (!location_type.empty()) {  // need to know where we're storing
+
+              // temp warning if we have multiple store types
+              if (location_type.size() > 1) {
+                fmt::print("StoreOp::propagate_types2: multiple possible store types: ");
+                for (auto& t : location_type) {
+                  fmt::print("{} ", t.print());
+                }
+                fmt::print("\n");
+              }
+
+              if (backprop_tagged_type(location_type.at(0), *value_type, dts)) {
                 extras.needs_rerun = true;
               }
             }
@@ -1953,7 +1954,9 @@ bool load_var_op_determine_type(types2::Type& type_out,
       }
     }
 
-    if (input_type.typespec() == TypeSpec("pointer")) {
+    if (input_type.typespec() == TypeSpec("pointer") ||
+        // this seems like a bit of a hack, but we did it in the old type pass...
+        input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
       // we got a plain pointer. let's just assume we're loading an integer.
       // perhaps we should disable this feature by default on 4-byte loads if we're getting
       // lots of false positives for loading pointers from plain pointers.
@@ -2044,7 +2047,7 @@ void LoadVarOp::propagate_types2(types2::Instruction& instr,
   m_type = type_out->type ? type_out->type->typespec() : std::optional<TypeSpec>();
 }
 
-void branch_delay_types2(IR2_BranchDelay& delay, types2::Instruction& instr, const Env& env) {
+void branch_delay_types2(IR2_BranchDelay& delay, types2::Instruction& instr) {
   switch (delay.kind()) {
     case IR2_BranchDelay::Kind::NOP:
     case IR2_BranchDelay::Kind::NO_DELAY:
@@ -2062,7 +2065,7 @@ void branch_delay_types2(IR2_BranchDelay& delay, types2::Instruction& instr, con
 }
 
 void BranchOp::propagate_types2(types2::Instruction& instr,
-                                const Env& env,
+                                const Env& /*env*/,
                                 types2::TypeState& input_types,
                                 DecompilerTypeSystem& dts,
                                 types2::TypePropExtras& extras) {
@@ -2092,7 +2095,7 @@ void BranchOp::propagate_types2(types2::Instruction& instr,
       break;
   }
 
-  branch_delay_types2(m_branch_delay, instr, env);
+  branch_delay_types2(m_branch_delay, instr);
 }
 
 void AsmBranchOp::propagate_types2(types2::Instruction& instr,
@@ -2112,10 +2115,10 @@ void AsmBranchOp::propagate_types2(types2::Instruction& instr,
 }
 
 void SpecialOp::propagate_types2(types2::Instruction& instr,
-                                 const Env& env,
-                                 types2::TypeState& input_types,
-                                 DecompilerTypeSystem& dts,
-                                 types2::TypePropExtras& extras) {
+                                 const Env& /*env*/,
+                                 types2::TypeState& /*input_types*/,
+                                 DecompilerTypeSystem& /*dts*/,
+                                 types2::TypePropExtras& /*extras*/) {
   // update clobbers.
   for (auto& clobber : m_clobber_regs) {
     instr.types[clobber]->type = TP_Type::make_uninitialized();
@@ -2135,7 +2138,7 @@ void CallOp::propagate_types2(types2::Instruction& instr,
                               const Env& env,
                               types2::TypeState& input_types,
                               DecompilerTypeSystem& dts,
-                              types2::TypePropExtras& extras) {
+                              types2::TypePropExtras& /*extras*/) {
   for (auto& clobber : m_clobber_regs) {
     instr.types[clobber]->type = TP_Type::make_uninitialized();
   }
@@ -2342,38 +2345,38 @@ void CallOp::propagate_types2(types2::Instruction& instr,
 }
 
 void FunctionEndOp::propagate_types2(types2::Instruction& instr,
-                                     const Env& env,
-                                     types2::TypeState& input_types,
-                                     DecompilerTypeSystem& dts,
-                                     types2::TypePropExtras& extras) {
+                                     const Env& /*env*/,
+                                     types2::TypeState& /*input_types*/,
+                                     DecompilerTypeSystem& /*dts*/,
+                                     types2::TypePropExtras& /*extras*/) {
   for (auto& clobber : m_clobber_regs) {
     instr.types[clobber]->type = TP_Type::make_uninitialized();
   }
 }
 
-void StackSpillStoreOp::propagate_types2(types2::Instruction& instr,
-                                         const Env& env,
-                                         types2::TypeState& input_types,
-                                         DecompilerTypeSystem& dts,
-                                         types2::TypePropExtras& extras) {
+void StackSpillStoreOp::propagate_types2(types2::Instruction& /*instr*/,
+                                         const Env& /*env*/,
+                                         types2::TypeState& /*input_types*/,
+                                         DecompilerTypeSystem& /*dts*/,
+                                         types2::TypePropExtras& /*extras*/) {
   throw std::runtime_error(
       fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
 }
 
-void StackSpillLoadOp::propagate_types2(types2::Instruction& instr,
-                                        const Env& env,
-                                        types2::TypeState& input_types,
-                                        DecompilerTypeSystem& dts,
-                                        types2::TypePropExtras& extras) {
+void StackSpillLoadOp::propagate_types2(types2::Instruction& /*instr*/,
+                                        const Env& /*env*/,
+                                        types2::TypeState& /*input_types*/,
+                                        DecompilerTypeSystem& /*dts*/,
+                                        types2::TypePropExtras& /*extras*/) {
   throw std::runtime_error(
       fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
 }
 
 void ConditionalMoveFalseOp::propagate_types2(types2::Instruction& instr,
-                                              const Env& env,
-                                              types2::TypeState& input_types,
-                                              DecompilerTypeSystem& dts,
-                                              types2::TypePropExtras& extras) {
+                                              const Env& /*env*/,
+                                              types2::TypeState& /*input_types*/,
+                                              DecompilerTypeSystem& /*dts*/,
+                                              types2::TypePropExtras& /*extras*/) {
   auto& typ = instr.types[m_dst.reg()]->type;
   if (typ) {
     if (typ->typespec() != TypeSpec("symbol")) {
