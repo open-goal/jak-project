@@ -331,7 +331,7 @@ void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action
       auto is_visible_now = !is_imgui_visible();
       set_imgui_visible(is_visible_now);
       glfwSetInputMode(window, GLFW_CURSOR,
-                        (is_visible_now ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED));
+                       (is_visible_now ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED));
     }
   }
 }
