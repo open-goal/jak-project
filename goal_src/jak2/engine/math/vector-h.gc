@@ -532,7 +532,12 @@
   :flag-assert         #x90000000c
   )
 
-
+(define-extern vector-cross! (function vector vector vector vector))
+(define-extern vector-float*! (function vector vector float vector))
+(define-extern vector-identity! (function vector vector))
+(define-extern vector-normalize! (function vector float vector))
+(define-extern vector-normalize-copy! (function vector vector float vector))
+(define-extern vector-length (function vector float))
 (define-extern vector-length-squared (function vector float))
 
 
@@ -726,3 +731,12 @@
 
 (define *zero-vector* (new 'static 'vector))
 
+(defmacro new-stack-vector0 ()
+  "Get a stack vector that's set to 0.
+   This is more efficient than (new 'stack 'vector) because
+   this doesn't call the constructor."
+  `(let ((vec (new 'stack-no-clear 'vector)))
+     (set! (-> vec quad) (the-as uint128 0))
+     vec
+     )
+  )

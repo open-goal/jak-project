@@ -621,7 +621,6 @@ void run(Output& out, const Input& input) {
       }
     }
   }
-
   for (auto block_idx : function_cache.block_visit_order) {
     if (block_idx != 0) {
       auto& cblock = function_cache.blocks.at(block_idx).start_types;

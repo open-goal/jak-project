@@ -266,7 +266,6 @@ bool backprop_tagged_type(const TP_Type& expected_type,
         return false;
       }
       {
-        auto& tag = actual_type.tag.block_entry;
         actual_type.tag.block_entry->updated = true;
         actual_type.tag.block_entry->selected_type = expected_type;
         return true;
@@ -345,7 +344,6 @@ bool backprop_tagged_type(const TP_Type& expected_type,
  */
 void types2_for_label(types2::Type& type_out,
                       types2::Instruction& instr,
-                      types2::TypeState& input_types,
                       int label_idx,
                       const Env& env,
                       const types2::TypePropExtras& extras) {
@@ -385,8 +383,6 @@ void types2_for_label(types2::Type& type_out,
         return;
       }
     }
-
-    ASSERT(false);  // todo, implement this case... this is where we'd set up label type guessing
   }
 }
 
@@ -432,15 +428,7 @@ void types2_for_right_shift(types2::Type& type_out,
     return;
   }
 
-  auto arg1_type_info = try_get_type_of_atom(input_types, expr.get_arg(1), env, dts);
-  if (!arg1_type_info) {
-    // fail!
-    type_out.type = {};
-    return;
-  }
-
   auto& arg0_type = *arg0_type_info;
-  auto& arg1_type = *arg1_type_info;
   // bitfield access, with a single shift
 
   if (expr.get_arg(1).is_int()) {
@@ -607,7 +595,7 @@ void types2_for_atom(types2::Type& type_out,
                      types2::TypePropExtras& extras) {
   switch (atom.get_kind()) {
     case SimpleAtom::Kind::STATIC_ADDRESS:
-      types2_for_label(type_out, output_instr, input_types, atom.label(), env, extras);
+      types2_for_label(type_out, output_instr, atom.label(), env, extras);
       return;
     case SimpleAtom::Kind::SYMBOL_VAL: {
       auto type = get_type_symbol_val(atom.get_str(), dts, env);
@@ -660,7 +648,6 @@ void types2_for_gpr_to_fpr(types2::Type& type_out,
 }
 
 void types2_for_integer_mul(types2::Type& type_out,
-                            types2::Instruction& output_instr,
                             const SimpleExpression& expr,
                             const Env& env,
                             types2::TypeState& input_types,
@@ -696,11 +683,13 @@ void types2_for_integer_mul(types2::Type& type_out,
   if (common_int2_case(type_out, dts, arg0_type, arg1_type)) {
     return;
   }
-  ASSERT(false);
+
+  throw std::runtime_error(
+      fmt::format("Couldn't figure out integer multiplication: {} ({} and {})\n",
+                  expr.to_string(env), arg0_type.print(), arg1_type.print()));
 }
 
 void types2_for_logior(types2::Type& type_out,
-                       types2::Instruction& output_instr,
                        const SimpleExpression& expr,
                        const Env& env,
                        types2::TypeState& input_types,
@@ -739,11 +728,11 @@ void types2_for_logior(types2::Type& type_out,
   if (common_int2_case(type_out, dts, arg0_type, arg1_type)) {
     return;
   }
-  ASSERT(false);
+  throw std::runtime_error(fmt::format("Couldn't figure out logior: {} ({} and {})\n",
+                                       expr.to_string(env), arg0_type.print(), arg1_type.print()));
 }
 
 void types2_for_logand(types2::Type& type_out,
-                       types2::Instruction& output_instr,
                        const SimpleExpression& expr,
                        const Env& env,
                        types2::TypeState& input_types,
@@ -805,7 +794,6 @@ void types2_for_logand(types2::Type& type_out,
 }
 
 void types2_for_normal_int2(types2::Type& type_out,
-                            types2::Instruction& output_instr,
                             const SimpleExpression& expr,
                             const Env& env,
                             types2::TypeState& input_types,
@@ -833,7 +821,6 @@ void types2_for_normal_int2(types2::Type& type_out,
 }
 
 void types2_for_div_mod_signed(types2::Type& type_out,
-                               types2::Instruction& output_instr,
                                const SimpleExpression& expr,
                                const Env& env,
                                types2::TypeState& input_types,
@@ -865,11 +852,41 @@ void types2_for_div_mod_signed(types2::Type& type_out,
     return;
   }
 
-  ASSERT(false);
+  throw std::runtime_error(fmt::format("Couldn't figure out integer mod/divide: {} ({} and {})\n",
+                                       expr.to_string(env), arg0_type.print(), arg1_type.print()));
+}
+
+void types2_for_pcpyld(types2::Type& type_out,
+                       const SimpleExpression& expr,
+                       const Env& env,
+                       types2::TypeState& input_types,
+                       const DecompilerTypeSystem& dts) {
+  auto arg0_type_info = try_get_type_of_atom(input_types, expr.get_arg(0), env, dts);
+  if (!arg0_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto arg1_type_info = try_get_type_of_atom(input_types, expr.get_arg(1), env, dts);
+  if (!arg1_type_info) {
+    // fail!
+    type_out.type = {};
+    return;
+  }
+
+  auto& arg0_type = *arg0_type_info;
+  auto& arg1_type = *arg1_type_info;
+
+  if (arg0_type.kind == TP_Type::Kind::PCPYUD_BITFIELD) {
+    type_out.type = arg1_type;
+    return;
+  }
+
+  type_out.type = TP_Type::make_from_ts("uint");
 }
 
 void types2_for_sub(types2::Type& type_out,
-                    types2::Instruction& output_instr,
                     const SimpleExpression& expr,
                     const Env& env,
                     types2::TypeState& input_types,
@@ -955,8 +972,8 @@ void types2_for_sub(types2::Type& type_out,
   if (common_int2_case(type_out, dts, arg0_type, arg1_type)) {
     return;
   }
-  ASSERT_MSG(false,
-             fmt::format("unhandled for sub: {} and {}\n", arg0_type.print(), arg1_type.print()));
+  throw std::runtime_error(fmt::format("Couldn't figure out integer subtract: {} ({} and {})\n",
+                                       expr.to_string(env), arg0_type.print(), arg1_type.print()));
 }
 
 void types2_addr_on_stack(types2::Type& type_out,
@@ -1302,9 +1319,7 @@ void types2_for_add(types2::Type& type_out,
 }
 
 void types2_for_normal_all_float(types2::Type& type_out,
-                                 types2::Instruction& output_instr,
                                  const SimpleExpression& expr,
-                                 const Env& env,
                                  types2::TypeState& input_types,
                                  const DecompilerTypeSystem& dts,
                                  types2::TypePropExtras& extras) {
@@ -1323,9 +1338,7 @@ void types2_for_normal_all_float(types2::Type& type_out,
 }
 
 void types2_for_vector_dot_3_4(types2::Type& type_out,
-                               types2::Instruction& output_instr,
                                const SimpleExpression& expr,
-                               const Env& env,
                                types2::TypeState& input_types,
                                const DecompilerTypeSystem& dts,
                                types2::TypePropExtras& extras) {
@@ -1344,9 +1357,7 @@ void types2_for_vector_dot_3_4(types2::Type& type_out,
 }
 
 void types2_for_vector_in_and_out(types2::Type& type_out,
-                                  types2::Instruction& output_instr,
                                   const SimpleExpression& expr,
-                                  const Env& env,
                                   types2::TypeState& input_types,
                                   const DecompilerTypeSystem& dts,
                                   types2::TypePropExtras& extras) {
@@ -1396,11 +1407,8 @@ void types2_for_int_to_float(types2::Type& type_out,
 }
 
 void types2_for_normal_int1(types2::Type& type_out,
-                            types2::Instruction& output_instr,
                             const SimpleExpression& expr,
-                            const Env& env,
-                            types2::TypeState& input_types,
-                            const DecompilerTypeSystem& dts) {
+                            types2::TypeState& input_types) {
   type_out.type = {};
   auto& input_type = input_types[expr.get_arg(0).var().reg()];
   if (input_type->type) {
@@ -1445,20 +1453,20 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::ADD_S:
     case SimpleExpression::Kind::ABS_S:
     case SimpleExpression::Kind::NEG_S:
-      types2_for_normal_all_float(type_out, output_instr, expr, env, input_types, dts, extras);
+      types2_for_normal_all_float(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::SUB:
-      types2_for_sub(type_out, output_instr, expr, env, input_types, dts);
+      types2_for_sub(type_out, expr, env, input_types, dts);
       break;
     case SimpleExpression::Kind::MUL_SIGNED:
-      types2_for_integer_mul(type_out, output_instr, expr, env, input_types, dts, false);
+      types2_for_integer_mul(type_out, expr, env, input_types, dts, false);
       break;
     case SimpleExpression::Kind::MUL_UNSIGNED:
-      types2_for_integer_mul(type_out, output_instr, expr, env, input_types, dts, true);
+      types2_for_integer_mul(type_out, expr, env, input_types, dts, true);
       break;
     case SimpleExpression::Kind::DIV_SIGNED:
     case SimpleExpression::Kind::MOD_SIGNED:
-      types2_for_div_mod_signed(type_out, output_instr, expr, env, input_types, dts);
+      types2_for_div_mod_signed(type_out, expr, env, input_types, dts);
       break;
     case SimpleExpression::Kind::NEG:
     case SimpleExpression::Kind::MIN_SIGNED:
@@ -1467,17 +1475,17 @@ void types2_for_expr(types2::Type& type_out,
       type_out.type = TP_Type::make_from_ts("int");  // ?
       break;
     case SimpleExpression::Kind::OR:
-      types2_for_logior(type_out, output_instr, expr, env, input_types, dts);
+      types2_for_logior(type_out, expr, env, input_types, dts);
       break;
     case SimpleExpression::Kind::AND:
-      types2_for_logand(type_out, output_instr, expr, env, input_types, dts);
+      types2_for_logand(type_out, expr, env, input_types, dts);
       break;
     case SimpleExpression::Kind::NOR:
     case SimpleExpression::Kind::XOR:
-      types2_for_normal_int2(type_out, output_instr, expr, env, input_types, dts);
+      types2_for_normal_int2(type_out, expr, env, input_types, dts);
       break;
     case SimpleExpression::Kind::LOGNOT:
-      types2_for_normal_int1(type_out, output_instr, expr, env, input_types, dts);
+      types2_for_normal_int1(type_out, expr, input_types);
       break;
     case SimpleExpression::Kind::FLOAT_TO_INT:
       types2_for_float_to_int(type_out, expr, input_types, dts, extras);
@@ -1487,12 +1495,15 @@ void types2_for_expr(types2::Type& type_out,
       break;
     case SimpleExpression::Kind::VECTOR_3_DOT:
     case SimpleExpression::Kind::VECTOR_4_DOT:
-      types2_for_vector_dot_3_4(type_out, output_instr, expr, env, input_types, dts, extras);
+      types2_for_vector_dot_3_4(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::VECTOR_CROSS:
     case SimpleExpression::Kind::VECTOR_MINUS:
     case SimpleExpression::Kind::VECTOR_PLUS:
-      types2_for_vector_in_and_out(type_out, output_instr, expr, env, input_types, dts, extras);
+      types2_for_vector_in_and_out(type_out, expr, input_types, dts, extras);
+      break;
+    case SimpleExpression::Kind::PCPYLD:
+      types2_for_pcpyld(type_out, expr, env, input_types, dts);
       break;
     default:
       throw std::runtime_error(
@@ -1559,18 +1570,20 @@ void AsmOp::propagate_types2(types2::Instruction& instr,
 
   // pextuw t0, r0, gp
   if (m_instr.kind == InstructionKind::PEXTUW) {
-    ASSERT(false);
-    //    if (m_src[0] && m_src[0]->reg() == Register(Reg::GPR, Reg::R0)) {
-    //      ASSERT(m_src[1]);
-    //      auto type = dts.ts.lookup_type(result.get(m_src[1]->reg()).typespec());
-    //      auto as_bitfield = dynamic_cast<BitFieldType*>(type);
-    //      if (as_bitfield) {
-    //        auto field = find_field(dts.ts, as_bitfield, 64, 32, true);
-    //        ASSERT(m_dst);
-    //        result.get(m_dst->reg()) = TP_Type::make_from_ts(field.type());
-    //        return result;
-    //      }
-    //    }
+    if (m_src[0] && m_src[0]->reg() == Register(Reg::GPR, Reg::R0)) {
+      ASSERT(m_src[1]);
+      auto& in_type = input_types[m_src[1]->reg()]->type;
+      if (in_type) {
+        auto type = dts.ts.lookup_type(in_type->typespec());
+        auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+        if (as_bitfield) {
+          auto field = find_field(dts.ts, as_bitfield, 64, 32, true);
+          ASSERT(m_dst);
+          out[m_dst->reg()]->type = TP_Type::make_from_ts(field.type());
+          return;
+        }
+      }
+    }
   }
 
   // sllv out, in, r0
@@ -1681,7 +1694,6 @@ void StoreOp::propagate_types2(types2::Instruction& instr,
               fmt::print("\n");
             }
 
-
             if (backprop_tagged_type(location_type.at(0), *value_type, dts)) {
               extras.needs_rerun = true;
             }
@@ -1782,7 +1794,8 @@ bool load_var_op_determine_type(types2::Type& type_out,
     auto& input_type_info = input_types[ro.reg];
     if (!input_type_info->type) {
       // todo: could try some basic stuff to resolve float loads here...
-      ASSERT(false);
+      // ASSERT(false);
+      return false;
     }
     auto& input_type = input_type_info->type.value();
 
@@ -1870,7 +1883,8 @@ bool load_var_op_determine_type(types2::Type& type_out,
           type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(rd.results.front().result_type));
           return true;
         } else {
-          ASSERT(false);  // ambiguous deref case...
+          types2_from_ambiguous_deref(output_instr, type_out, rd, extras.tags_locked);
+          return true;
         }
       }
     }
