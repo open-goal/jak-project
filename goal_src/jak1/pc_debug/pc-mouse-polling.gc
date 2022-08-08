@@ -1,0 +1,87 @@
+;; -*-Lisp-*-
+(in-package goal)
+
+(defenum cursor-mode
+  (normal)
+  (disabled) ;; mouse "trapped" by the window
+  (hidden)
+  (unavailable)
+  (invalid)
+  )
+
+(deftype mouse-info (structure)
+  ((pos-x   float)
+   (pos-y   float)
+   (delta-x float)
+   (delta-y float)
+   (mode    cursor-mode) ;; field unused for now, would need wrapper over (pc-mouse-set-mode)
+                         ;; is having this worth it at all?
+   (poll    handle)
+   )
+  )
+
+(define *mouse-info* (new 'static 'mouse-info))
+(set! (-> *mouse-info* poll) (the handle #f))
+
+(deftype mouse-poll-process (process)
+  ((last-x float)
+   (last-y float)
+   )
+  )
+
+(defun-debug pc-input-start-poll-mouse ()
+  (if (not (handle->process (-> *mouse-info* poll)))
+      (let* (
+        (last-paused (paused?)) ;; TODO it seems like this is always true at first
+        (procp (process-spawn-function mouse-poll-process :name 'poll-proc
+          (lambda :behavior mouse-poll-process ()
+            (stack-size-set! (-> self main-thread) 512)
+            (with-pp (process-mask-clear! (-> pp mask) pause menu progress))
+            (pc-mouse-get-pos
+              (&-> *mouse-info* pos-x)
+              (&-> *mouse-info* pos-y)
+              )
+            (set! (-> self last-x) (-> *mouse-info* pos-x))
+            (set! (-> self last-y) (-> *mouse-info* pos-y))
+            (loop
+              (pc-mouse-get-pos
+                (&-> *mouse-info* pos-x)   (&-> *mouse-info* pos-y)
+                )
+              (set! (-> *mouse-info* delta-x)
+                    (- (-> *mouse-info* pos-x) (-> self last-x)))
+              (set! (-> *mouse-info* delta-y)
+                    (- (-> *mouse-info* pos-y) (-> self last-y)))
+              (format *stdcon* "~%~%~% mouse~%  X ~F~%  Y ~F~%  DX ~F~%  DY ~F~% MODE ~D"
+                (-> *mouse-info* pos-x)   (-> *mouse-info* pos-y)
+                (-> *mouse-info* delta-x) (-> *mouse-info* delta-y)
+                (pc-mouse-get-mode)
+                )
+              (set! (-> self last-x) (-> *mouse-info* pos-x))
+              (set! (-> self last-y) (-> *mouse-info* pos-y))
+              (if last-paused
+                (cond ((and (not (paused?)) (= (pc-mouse-get-mode) (the int (cursor-mode normal))))
+                       (format #t "Just unpaused and cursor mode normal, try to set to disabled")
+                       (pc-mouse-set-mode (the int (cursor-mode disabled)))
+                       )
+                  ) ;; else
+                (cond ((and (paused?) (= (pc-mouse-get-mode) (the int (cursor-mode disabled))))
+                       (format #t "Just paused and cursor mode disabled, try to set to normal")
+                       (pc-mouse-set-mode (the int (cursor-mode normal)))
+                       )
+                  )
+                )
+              (set! last-paused (paused?))
+              (suspend)
+              )
+            )
+          ))
+        )
+        (set! (-> *mouse-info* poll) (ppointer->handle procp))
+        )
+      (format #t "Mouse is already being polled")
+    )
+  )
+
+(defun-debug pc-input-stop-poll-mouse ()
+  (kill-by-name 'poll-proc *active-pool*)
+  )
