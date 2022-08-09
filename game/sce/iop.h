@@ -20,10 +20,15 @@
 #define SCECdComplete 0x02
 #define SCECdNotReady 0x06
 #define KE_OK 0
+#define KE_SEMA_ZERO -419
+#define KE_SEMA_OVF -420
 #define KE_MBOX_NOMSG -424
 #define KE_WAIT_DELETE -425
 
 #define TH_C 0x02000000
+
+#define SA_THFIFO 0
+#define SA_THPRI 1
 
 class IOP;
 
@@ -81,9 +86,9 @@ struct ThreadParam {
 
 struct SemaParam {
   uint32_t attr;
+  uint32_t option;
   int32_t init_count;
   int32_t max_count;
-  uint32_t option;
 };
 
 // void PS2_RegisterIOP(IOP *iop);
@@ -131,6 +136,7 @@ void GetSystemTime(SysClock* time);
 s32 CreateSema(SemaParam* param);
 s32 WaitSema(s32 sema);
 s32 SignalSema(s32 sema);
+s32 PollSema(s32 sema);
 
 void FlushDcache();
 
