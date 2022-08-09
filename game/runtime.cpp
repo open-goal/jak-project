@@ -209,6 +209,7 @@ void iop_runner(SystemThreadInterface& iface) {
   iop.reset_allocator();
   ee::LIBRARY_sceSif_register(&iop);
   iop::LIBRARY_register(&iop);
+  Gfx::register_vsync_callback([&iop]() { iop.kernel.signal_vblank(); });
 
   // todo!
   dma_init_globals();
@@ -256,6 +257,8 @@ void iop_runner(SystemThreadInterface& iface) {
     // So we can wait for that long or until something else needs it to wake up.
     iop.wait_run_iop(iop.kernel.dispatch());
   }
+
+  Gfx::clear_vsync_callback();
 }
 }  // namespace
 

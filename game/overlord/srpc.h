@@ -170,7 +170,7 @@ extern s32 gMusicTweak;
 u32 Thread_Loader();
 u32 Thread_Player();
 
-s32 VBlank_Handler();
+s32 VBlank_Handler(void*);
 
 // added for PC port
 extern u32 gMusicFadeHack;
