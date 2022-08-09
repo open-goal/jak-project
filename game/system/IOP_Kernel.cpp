@@ -75,7 +75,7 @@ void IOP_Kernel::DelayThread(u32 usec) {
   _currentThread->waitType = IopThread::Wait::Delay;
   _currentThread->resumeTime =
       time_point_cast<microseconds>(steady_clock::now()) + microseconds(usec);
-  exitThread();
+  leaveThread();
 }
 
 /*!
@@ -85,7 +85,7 @@ void IOP_Kernel::SleepThread() {
   ASSERT(_currentThread);
 
   _currentThread->state = IopThread::State::Suspend;
-  exitThread();
+  leaveThread();
 }
 
 /*!
@@ -96,10 +96,41 @@ void IOP_Kernel::WakeupThread(s32 id) {
   threads.at(id).state = IopThread::State::Ready;
 }
 
+s32 IOP_Kernel::WaitSema(s32 id) {
+  auto& sema = semas.at(id);
+  if (sema.count >= 0) {
+    sema.count--;
+    return KE_OK;
+  }
+
+  sema.wait_list.push_back(_currentThread);
+  leaveThread();
+
+  return KE_OK;
+}
+
+s32 IOP_Kernel::SignalSema(s32 id) {
+  auto& sema = semas.at(id);
+  if (sema.wait_list.empty()) {
+    sema.count++;
+  }
+}
+
+s32 IOP_Kernel::PollSema(s32 id) {
+  auto& sema = semas.at(id);
+  if (sema.count > 0) {
+    sema.count--;
+    ASSERT(sema.count >= 0);
+    return KE_OK;
+  }
+
+  return KE_SEMA_ZERO;
+}
+
 /*!
  * Return to kernel from a thread, not to be called from the kernel thread.
  */
-void IOP_Kernel::exitThread() {
+void IOP_Kernel::leaveThread() {
   IopThread* oldThread = _currentThread;
   co_switch(kernel_thread);
 

@@ -170,7 +170,7 @@ class IOP_Kernel {
 
  private:
   void runThread(IopThread* thread);
-  void exitThread();
+  void leaveThread();
   void updateDelay();
   void processWakeups();
 
