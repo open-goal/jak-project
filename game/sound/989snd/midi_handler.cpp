@@ -259,7 +259,7 @@ void midi_handler::channel_pressure() {
 void midi_handler::channel_pitch() {
   u8 channel = m_status & 0xF;
   u32 pitch = (m_seq_ptr[0] << 7) | m_seq_ptr[1];
-  fmt::print("{}: pitch ch{:01x} {:04x}\n", m_time, channel, pitch);
+  // fmt::print("{}: pitch ch{:01x} {:04x}\n", m_time, channel, pitch);
   m_seq_ptr += 2;
 }
 

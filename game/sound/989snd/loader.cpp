@@ -46,8 +46,6 @@ u32 loader::read_music_bank(SoundBankData* data) {
   bank->bank_name = data->BankID;
   m_soundbanks.emplace(handle, std::move(bank));
 
-  fmt::print("Loaded music bank {:.4}\n", (char*)&data->BankID);
-
   return handle;
 }
 
@@ -123,8 +121,6 @@ u32 loader::read_bank(std::fstream& in) {
     in.seekg(origin + attr.where[chunk::midi].offset, std::fstream::beg);
     load_midi(in);
   }
-
-  fmt::print("Created bank {}\n", bank_id);
 
   return bank_id;
 }
