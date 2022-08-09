@@ -1310,6 +1310,18 @@ void types2_for_add(types2::Type& type_out,
     }
   }
 
+  if (env.version == GameVersion::Jak2 && tc(dts, TypeSpec("symbol"), arg1_type) &&
+      is_int_or_uint(dts, arg0_type)) {
+    if (arg0_type.is_integer_constant(jak2::SYM_TO_STRING_OFFSET)) {
+      // symbol -> GOAL String
+      // NOTE - the offset doesn't fit in a s16, so it's loaded into a register first.
+      // so we expect the arg to be a variable, and the type propagation will figure out the
+      // integer constant.
+      type_out.type = TP_Type::make_from_ts(dts.ts.make_pointer_typespec("string"));
+      return;
+    }
+  }
+
   fmt::print("checks: {} {} {}\n", tc(dts, TypeSpec("structure"), arg1_type),
              !expr.get_arg(0).is_int(), is_int_or_uint(dts, arg0_type));
 

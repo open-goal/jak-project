@@ -327,7 +327,7 @@ void backprop_from_preds(FunctionCache& cache,
       my_tag->updated = false;
       // fmt::print("clearing {}\n", block_idx);
       cblock.needs_run = true;                                 // maybe?
-      *my_tag->type_to_clear = TP_Type::make_uninitialized();  // meh..
+      *my_tag->type_to_clear = {};  // meh..
     }
   }
 
@@ -442,15 +442,6 @@ bool propagate_block(FunctionCache& cache,
     previous_typestate = &instr->types;
   }
 
-  if (debug) {
-    fmt::print("ended block {} with type {} and {}\n", block_idx,
-               cblock.start_type_state[Register(Reg::GPR, Reg::V0)]
-                   ->type.value_or(TP_Type::make_uninitialized())
-                   .print(),
-               previous_typestate->operator[](Register(Reg::GPR, Reg::V0))
-                   ->type.value_or(TP_Type::make_uninitialized())
-                   .print());
-  }
 
   // now that we've reached the end, handle backprop across blocks
   if (!tag_lock) {
