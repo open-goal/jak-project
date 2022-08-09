@@ -1622,7 +1622,7 @@
 (define-extern quaternion-axis-angle! (function quaternion float float float float quaternion))
 (define-extern quaternion-vector-angle! (function quaternion vector float quaternion))
 (define-extern vector-angle<-quaternion! (function vector quaternion vector))
-(define-extern quaternion-look-at! (function vector vector vector quaternion))
+(define-extern quaternion-look-at! (function quaternion vector vector quaternion))
 (define-extern quaternion-zero! (function quaternion quaternion))
 (define-extern quaternion-identity! (function quaternion quaternion))
 (define-extern quaternion-i! (function quaternion quaternion))
@@ -2948,11 +2948,25 @@
   (rn34)
   )
 
+(defenum tpage-category
+  :type int8
+  (tfrag  0)
+  (pris   1)
+  (shrub  2)
+  (alpha  3)
+  (water  4)
+  (warp   5)
+  (pris2  6)
+  (sprite 7)
+  (map    8)
+  (sky    9)
+  )
+
 (deftype dma-foreground-sink (basic)
-  ((bucket                   bucket-id :offset-assert 4)
-   (foreground-texture-page  int8      :offset-assert 8)
-   (foreground-texture-level int8      :offset-assert 9)
-   (foreground-output-bucket int8      :offset-assert 10)
+  ((bucket                   bucket-id      :offset-assert 4)
+   (foreground-texture-page  tpage-category :offset-assert 8)
+   (foreground-texture-level int8           :offset-assert 9)
+   (foreground-output-bucket int8           :offset-assert 10)
    )
   :method-count-assert 9
   :size-assert         #xb
@@ -2982,13 +2996,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype profile-segment (structure)
-  ((name       basic   :offset-assert 0)
+  ((name       symbol  :offset-assert 0)
    (start-time int16   :offset-assert 4)
    (end-time   int16   :offset-assert 6)
    (count      uint8   :offset-assert 8)
    (vu-count   uint8   :offset-assert 9)
    (depth      uint16  :offset-assert 10)
-   (color      uint32  :offset-assert 12)
+   (color      rgba    :offset-assert 12)
    (code-time  uint16  :offset 4)
    (vu-time    uint16  :offset 6)
    )
@@ -3014,7 +3028,7 @@
    (depth     int8        :offset-assert 6)
    (max-depth int8        :offset-assert 7)
    (base-time int16       :offset-assert 8)
-   (segment   basic 9   :offset-assert 12) ;; todo
+   (segment   profile-segment 9   :offset-assert 12) ;; todo
    (data      profile-segment 512 :inline :offset-assert 48)
    )
   :method-count-assert 13
@@ -3022,9 +3036,9 @@
   :flag-assert         #xd00002030
   (:methods
     (get-total-time (_type_) int 9)
-    (profile-segment-array-method-10 () none 10)
-    (profile-segment-array-method-11 () none 11)
-    (profile-segment-array-method-12 () none 12)
+    (start-frame! (_type_) none 10)
+    (start-segment! (_type_ symbol rgba) none 11)
+    (end-segment! (_type_) none 12)
     )
   )
 
@@ -3037,9 +3051,9 @@
   :size-assert         #x8
   :flag-assert         #xc00000008
   (:methods
-    (profile-array-method-9 () none 9)
-    (profile-array-method-10 () none 10)
-    (profile-array-method-11 () none 11)
+    (profile-array-method-9 (_type_) none 9)
+    (profile-array-method-10 (_type_) none 10)
+    (profile-array-method-11 (_type_) none 11)
     )
   )
 
@@ -6037,12 +6051,12 @@
 (define-extern *profile-w* int)
 (define-extern *profile-h* int)
 (define-extern *profile-ticks* symbol)
-;; (define-extern profile-texture-test function)
-;; (define-extern profile-tfrag-test function)
-;; (define-extern profile-tie-test function)
-;; (define-extern profile-merc-test function)
-;; (define-extern profile-emerc-test function)
-;; (define-extern profile-mercneric-test function)
+(define-extern profile-texture-test (function bucket-id symbol))
+(define-extern profile-tfrag-test (function bucket-id symbol))
+(define-extern profile-tie-test (function bucket-id symbol))
+(define-extern profile-merc-test (function bucket-id symbol))
+(define-extern profile-emerc-test (function bucket-id symbol))
+(define-extern profile-mercneric-test (function bucket-id symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; display                        ;;

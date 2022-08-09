@@ -1610,17 +1610,19 @@ void AsmOp::propagate_types2(types2::Instruction& instr,
 
   // srl out, bitfield, int
   if (m_instr.kind == InstructionKind::SRL) {
-    ASSERT(false);
-    //    auto type = dts.ts.lookup_type(result.get(m_src[0]->reg()).typespec());
-    //    auto as_bitfield = dynamic_cast<BitFieldType*>(type);
-    //    if (as_bitfield) {
-    //      int sa = m_instr.src[1].get_imm();
-    //      int offset = sa;
-    //      int size = 32 - offset;
-    //      auto field = find_field(dts.ts, as_bitfield, offset, size, {});
-    //      result.get(m_dst->reg()) = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
-    //      return result;
-    //    }
+    auto& src_type = input_types[m_src[0]->reg()];
+    if (src_type) {
+      auto type = dts.ts.lookup_type(src_type->type->typespec());
+      auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+      if (as_bitfield) {
+        int sa = m_instr.src[1].get_imm();
+        int offset = sa;
+        int size = 32 - offset;
+        auto field = find_field(dts.ts, as_bitfield, offset, size, {});
+        out[m_dst->reg()]->type = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
+        return;
+      }
+    }
   }
 
   // general case fallback: if we write a register we should at least set something...
