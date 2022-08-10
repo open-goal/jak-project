@@ -282,12 +282,12 @@ void check_gamepads() {
         if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
           g_gamepads.gamepad_idx[pad] = i;
           g_gamepads.glfw_joystick_used[i] = true;
-          lg::warn("Using joystick {} for pad {}: {}, {}", i, pad, glfwGetJoystickName(i), glfwGetGamepadName(i));
+          lg::info("Using joystick {} for pad {}: {}, {}", i, pad, glfwGetJoystickName(i), glfwGetGamepadName(i));
           break;
         }
       }
     } else if (!glfwJoystickPresent(g_gamepads.gamepad_idx[pad])) {
-      lg::warn("Pad {} / joystick {} has been disconnected", pad, g_gamepads.gamepad_idx[pad]);
+      lg::info("Pad {} / joystick {} has been disconnected", pad, g_gamepads.gamepad_idx[pad]);
       g_gamepads.glfw_joystick_used[g_gamepads.gamepad_idx[pad]] = false;
       g_gamepads.gamepad_idx[pad] = -1;
       return false;
