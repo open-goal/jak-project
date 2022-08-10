@@ -135,7 +135,7 @@ void DumpToJson(ghc::filesystem::path& filename) {
 }
 
 void SavePeripheralSettings() {
-  auto filename = (file_util::get_user_settings_dir() / "controller-settings.json");
+  auto filename = (file_util::get_user_config_dir() / "controller" / "controller-settings.json");
   file_util::create_dir_if_needed_for_file(filename);
 
   DumpToJson(filename);
@@ -217,16 +217,12 @@ void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
 }
 
 void LoadSettings() {
-  auto filename = (file_util::get_user_settings_dir() / "controller-settings.json");
+  auto filename = (file_util::get_user_config_dir() / "controller" / "controller-settings.json");
   if (fs::exists(filename)) {
     LoadPeripheralSettings(filename);
     lg::info("Loaded graphics configuration file.");
     return;
   }
-
-  file_util::create_dir_if_needed_for_file(filename);
-  SavePeripheralSettings();
-  lg::info("Created graphics configuration file {}", filename.string());
 }
 
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
@@ -408,6 +404,7 @@ void set_vsync(bool vsync) {
 
 void set_frame_rate(int rate) {
   g_global_settings.target_fps = rate;
+  Pad::SetFrameRate(rate);
 }
 
 void set_letterbox(int w, int h) {

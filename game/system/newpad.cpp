@@ -46,6 +46,20 @@ u64 input_mode_key = -1;
 u64 input_mode_mod = 0;
 u64 input_mode_index = 0;
 MappingInfo g_input_mode_mapping;
+float g_frame_rate = 60.0f; //frame rate reference so mouse sensitivity can be consistent on frame rate changes
+
+void SetFrameRate(float frame_rate) {
+  const float minimum_frame_rate = 0.0001f; //Arbituary value
+  if (frame_rate < minimum_frame_rate) {
+    g_frame_rate = minimum_frame_rate;
+  } else {
+    g_frame_rate = frame_rate;
+  }
+}
+
+float GetFrameRate() {
+  return g_frame_rate;
+}
 
 void ClearKey(int key) {
   if (key < 0 || key > glfw::NUM_KEYS) {
@@ -158,7 +172,7 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
 }
 
 void SetAnalogAxisValue(MappingInfo& mapping_info, int axis, double value) {
-  const double sensitivity_numerator = 100.0f;
+  const double sensitivity_numerator = g_frame_rate;
   const double minimum_sensitivity = 1e-4;
 
   for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
