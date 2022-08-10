@@ -14,7 +14,18 @@
 #include "common/goal_constants.h"
 #include "common/util/Assert.h"
 
+#include "common/goos/TextDB.h"
+
 class TypeSystem;
+
+// Various metadata that can be associated with a symbol or form
+// This is awkwardly used in a few spots that aren't true symbols (like defenums)
+// in the decompiler so similar metadata can be appended to them (atleast with the current set of
+// possible metadata you see here)
+struct SymbolMetadata {
+  std::optional<goos::TextDb::ShortInfo> definition_info;
+  std::optional<std::string> docstring;
+};
 
 struct MethodInfo {
   int id = -1;
@@ -23,6 +34,7 @@ struct MethodInfo {
   std::string defined_in_type;
   bool no_virtual = false;
   bool overrides_method_type_of_parent = false;
+  std::optional<std::string> docstring;
 
   bool operator==(const MethodInfo& other) const;
   bool operator!=(const MethodInfo& other) const { return !((*this) == other); }
@@ -106,6 +118,8 @@ class Type {
 
   bool gen_inspect() const { return m_generate_inspect; }
 
+  SymbolMetadata m_metadata;
+
  protected:
   Type(std::string parent, std::string name, bool is_boxed, int heap_base);
   virtual std::string diff_impl(const Type& other) const = 0;
@@ -123,13 +137,6 @@ class Type {
   std::string m_runtime_name;
   bool m_is_boxed = false;  // does this have runtime type information?
   int m_heap_base = 0;
-
-  // definition information
-  // TODO - LSP - .gc support
-  /*std::string m_defining_file;
-  int m_line_number;
-  int m_line_offset;
-  void update_definition_meta(const std::string& defining_file, int line_number, int line_offset);*/
 };
 
 /*!
