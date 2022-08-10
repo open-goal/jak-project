@@ -29,13 +29,13 @@ bool is_signed(const DecompilerTypeSystem& dts, const TP_Type& type) {
  */
 void types2_from_ambiguous_deref(types2::Instruction& instr,
                                  types2::Type& type,
-                                 FieldReverseMultiLookupOutput& out,
+                                 const std::vector<FieldReverseLookupOutput>& out,
                                  bool tag_lock) {
-  ASSERT(out.success && !out.results.empty());
+  ASSERT(!out.empty());
 
   // HACK - this is disabled for now. This probably works, but the expression pass needs
   // a way to get the decisions.
-  type.type = TP_Type::make_from_ts(out.results.front().result_type);
+  type.type = TP_Type::make_from_ts(out.front().result_type);
   return;
 
   // see if we've tagged this instruction in a previous iteration..
@@ -47,7 +47,7 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
       // there's a chance that we are a different deref than last time, so do our best to
       // find a matching type.
       auto& desired_type = tag->possibilities.at(tag->selected_possibility).type;
-      for (auto& sel : out.results) {
+      for (auto& sel : out) {
         if (sel.result_type == desired_type) {
           // found one, take it.
           type.type = TP_Type::make_from_ts(desired_type);
@@ -58,11 +58,11 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
       // use the first one (highest scored).
       fmt::print("type2_from_ambiguous_deref: wanted type {}, but couldn't find it.\n",
                  desired_type.print());
-      type.type = TP_Type::make_from_ts(out.results.front().result_type);
+      type.type = TP_Type::make_from_ts(out.front().result_type);
       return;
     } else {
       // we've got a tag, but no info, just pick the first.
-      type.type = TP_Type::make_from_ts(out.results.front().result_type);
+      type.type = TP_Type::make_from_ts(out.front().result_type);
       return;
     }
   } else {
@@ -70,7 +70,7 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
     if (!tag_lock) {  // but only if we're in the first pass.
       instr.field_access_tag = std::make_unique<types2::AmbiguousFieldAccess>();
       auto& tag = instr.field_access_tag;
-      for (auto& poss : out.results) {
+      for (auto& poss : out) {
         auto& slot = tag->possibilities.emplace_back();
         slot.type = poss.result_type;
       }
@@ -80,7 +80,7 @@ void types2_from_ambiguous_deref(types2::Instruction& instr,
       // don't think this should be possible
       lg::warn("Tag lock prevented the creation of a tag in types2_from_ambiguous_deref");
     }
-    type.type = TP_Type::make_from_ts(out.results.front().result_type);
+    type.type = TP_Type::make_from_ts(out.front().result_type);
     return;
   }
 }
@@ -1116,7 +1116,7 @@ void types2_for_add(types2::Type& type_out,
         type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
         return;
       } else {
-        types2_from_ambiguous_deref(output_instr, type_out, out, extras.tags_locked);
+        types2_from_ambiguous_deref(output_instr, type_out, out.results, extras.tags_locked);
         return;
       }
     }
@@ -1132,7 +1132,7 @@ void types2_for_add(types2::Type& type_out,
         type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
         return;
       } else {
-        types2_from_ambiguous_deref(output_instr, type_out, out, extras.tags_locked);
+        types2_from_ambiguous_deref(output_instr, type_out, out.results, extras.tags_locked);
         return;
       }
     }
@@ -1150,7 +1150,7 @@ void types2_for_add(types2::Type& type_out,
         type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
         return;
       } else {
-        types2_from_ambiguous_deref(output_instr, type_out, out, extras.tags_locked);
+        types2_from_ambiguous_deref(output_instr, type_out, out.results, extras.tags_locked);
         return;
       }
     }
@@ -1174,7 +1174,7 @@ void types2_for_add(types2::Type& type_out,
         type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
         return;
       } else {
-        types2_from_ambiguous_deref(output_instr, type_out, out, extras.tags_locked);
+        types2_from_ambiguous_deref(output_instr, type_out, out.results, extras.tags_locked);
         return;
       }
     }
@@ -1203,7 +1203,8 @@ void types2_for_add(types2::Type& type_out,
           TP_Type::make_from_ts(coerce_to_reg_type(filtered_results.front().result_type));
       return;
     } else {
-      ASSERT(false);
+      types2_from_ambiguous_deref(output_instr, type_out, filtered_results, extras.tags_locked);
+      return;
     }
   }
 
@@ -1898,7 +1899,7 @@ bool load_var_op_determine_type(types2::Type& type_out,
           type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(rd.results.front().result_type));
           return true;
         } else {
-          types2_from_ambiguous_deref(output_instr, type_out, rd, extras.tags_locked);
+          types2_from_ambiguous_deref(output_instr, type_out, rd.results, extras.tags_locked);
           return true;
         }
       }
@@ -1962,7 +1963,7 @@ bool load_var_op_determine_type(types2::Type& type_out,
           }
            */
 
-          types2_from_ambiguous_deref(output_instr, type_out, rd, extras.tags_locked);
+          types2_from_ambiguous_deref(output_instr, type_out, rd.results, extras.tags_locked);
           return true;
         }
       }
@@ -2368,22 +2369,43 @@ void FunctionEndOp::propagate_types2(types2::Instruction& instr,
   }
 }
 
-void StackSpillStoreOp::propagate_types2(types2::Instruction& /*instr*/,
-                                         const Env& /*env*/,
-                                         types2::TypeState& /*input_types*/,
-                                         DecompilerTypeSystem& /*dts*/,
-                                         types2::TypePropExtras& /*extras*/) {
-  throw std::runtime_error(
-      fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
+void StackSpillStoreOp::propagate_types2(types2::Instruction& instr,
+                                         const Env& env,
+                                         types2::TypeState& input_types,
+                                         DecompilerTypeSystem& dts,
+                                         types2::TypePropExtras& extras) {
+
+  auto& info = env.stack_spills().lookup(m_offset);
+  if (info.size != m_size) {
+    env.func->warnings.error("Stack slot store mismatch: defined as size {}, got size {}\n",
+                             info.size, m_size);
+  }
+
+  // auto stored_type = m_value.get_type(input, env, dts);
+  auto* type_out = instr.types.try_find_stack_spill_slot(m_offset);
+  ASSERT(type_out);
+  types2_for_atom(*type_out, instr, input_types, m_value, env, dts, extras);
 }
 
-void StackSpillLoadOp::propagate_types2(types2::Instruction& /*instr*/,
-                                        const Env& /*env*/,
-                                        types2::TypeState& /*input_types*/,
-                                        DecompilerTypeSystem& /*dts*/,
-                                        types2::TypePropExtras& /*extras*/) {
-  throw std::runtime_error(
-      fmt::format("propagate types 2 not implemented for {}", typeid(*this).name()));
+void StackSpillLoadOp::propagate_types2(types2::Instruction& instr,
+                                        const Env& env,
+                                        types2::TypeState& input_types,
+                                        DecompilerTypeSystem& dts,
+                                        types2::TypePropExtras& extras) {
+  // stack slot load
+  auto& info = env.stack_spills().lookup(m_offset);
+  if (info.size != m_size) {
+    env.func->warnings.error("Stack slot load at {} mismatch: defined as size {}, got size {}",
+                             m_offset, info.size, m_size);
+  }
+
+  if (info.is_signed != m_is_signed) {
+    env.func->warnings.warning("Stack slot offset {} signed mismatch", m_offset);
+  }
+
+  auto* type_in = input_types.try_find_stack_spill_slot(m_offset);
+  ASSERT(type_in);
+  instr.types[m_dst.reg()]->type = type_in->type;
 }
 
 void ConditionalMoveFalseOp::propagate_types2(types2::Instruction& instr,

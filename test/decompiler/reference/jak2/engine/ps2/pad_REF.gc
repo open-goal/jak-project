@@ -1,45 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: pad.gc
-;; name in dgo: pad
-;; dgos: ENGINE, GAME
-
-;; Interface for game controllers.
-;; the *cpad-list* contains both game controllers.
-;; Use the service-cpads functions once per frame to update the data and vibration control
-;; The cpad-set-buzz! function can be used for vibration.
-
-(defenum pad-buttons
-    :bitfield #t
-    :type uint32
-    (select   0)
-    (l3       1)
-    (r3       2)
-    (start    3)
-    (up       4)
-    (right    5)
-    (down     6)
-    (left     7)
-    (l2       8)
-    (r2       9)
-    (l1       10)
-    (r1       11)
-    (triangle 12)
-    (circle   13)
-    (x        14)
-    (square   15)
-    )
-
-(defenum pad-type
-  (normal 4)
-  (analog 5)
-  (dualshock 7)
-  (negcon 2)
-  (namco-gun 6)
-  )
-
-
+;; definition of type scf-time
 (deftype scf-time (structure)
   ((stat   uint8  :offset-assert   0)
    (second uint8  :offset-assert   1)
@@ -55,37 +17,66 @@
   :flag-assert         #x900000008
   )
 
+;; definition for method 3 of type scf-time
+(defmethod inspect scf-time ((obj scf-time))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'scf-time)
+  (format #t "~1Tstat: ~D~%" (-> obj stat))
+  (format #t "~1Tsecond: #x~X~%" (-> obj second))
+  (format #t "~1Tminute: #x~X~%" (-> obj minute))
+  (format #t "~1Thour: #x~X~%" (-> obj hour))
+  (format #t "~1Tweek: #x~X~%" (-> obj week))
+  (format #t "~1Tday: #x~X~%" (-> obj day))
+  (format #t "~1Tmonth: #x~X~%" (-> obj month))
+  (format #t "~1Tyear: #x~X~%" (-> obj year))
+  (label cfg-4)
+  obj
+  )
 
-;; this gets set to #f later on.
+;; definition for symbol *cheat-mode*, type symbol
 (define *cheat-mode* #t)
 
-;; data that comes directly from hardware. it's 32 bytes + type tag (ignored in C kernel).
+;; definition of type hw-cpad
 (deftype hw-cpad (basic)
-  (;; BASIC CONTROLLER data
-   ;; status = 0x40 | (data length / 2)
-   (valid   uint8     :offset-assert 4) ;; 0 if success, 255 if fail
-   (status  uint8     :offset-assert 5) ;; depends on controller
-   (button0 uint16    :offset-assert 6) ;; binary button states!
-   ;; DUALSHOCK or JOYSTICK data
-   ;; status (dualshock) = 0x70 | (data length / 2)
-   ;; status (joystick)  = 0x50 | (data length / 2)
-   (rightx  uint8     :offset-assert 8) ;; right stick xdir
-   (righty  uint8     :offset-assert 9) ;; right stick ydir
-   (leftx   uint8     :offset-assert 10) ;; left stick xdir
-   (lefty   uint8     :offset-assert 11) ;; left stick ydir
-   ;; DUALSHOCK 2 data
-   ;; status = 0x70 | (data length / 2)
-   (abutton uint8  12 :offset-assert 12) ;; pressure sensitivity information
-
-   ;; pad buffer needs to be 32 bytes large.
-   (dummy   uint8  12 :offset-assert 24)
+  ((valid   uint8     :offset-assert   4)
+   (status  uint8     :offset-assert   5)
+   (button0 uint16    :offset-assert   6)
+   (rightx  uint8     :offset-assert   8)
+   (righty  uint8     :offset-assert   9)
+   (leftx   uint8     :offset-assert  10)
+   (lefty   uint8     :offset-assert  11)
+   (abutton uint8  12 :offset-assert  12)
+   (dummy   uint8  12 :offset-assert  24)
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
 
-;; data from hardware + additional info calculated here.
+;; definition for method 3 of type hw-cpad
+(defmethod inspect hw-cpad ((obj hw-cpad))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tvalid: #x~X~%" (-> obj valid))
+  (format #t "~1Tstatus: #x~X~%" (-> obj status))
+  (format #t "~1Tbutton0: #x~X~%" (-> obj button0))
+  (format #t "~1Trightx: ~D~%" (-> obj rightx))
+  (format #t "~1Trighty: ~D~%" (-> obj righty))
+  (format #t "~1Tleftx: ~D~%" (-> obj leftx))
+  (format #t "~1Tlefty: ~D~%" (-> obj lefty))
+  (format #t "~1Tabutton[12] @ #x~X~%" (-> obj abutton))
+  (format #t "~1Tdummy[12] @ #x~X~%" (-> obj dummy))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type cpad-info
 (deftype cpad-info (hw-cpad)
   ((number             int32         :offset-assert  36)
    (cpad-file          int32         :offset-assert  40)
@@ -119,13 +110,50 @@
     )
   )
 
-
-(defmacro cpad-type? (type)
-  `(= (shr (-> pad status) 4) (cpad-type ,type))
+;; definition for method 3 of type cpad-info
+(defmethod inspect cpad-info ((obj cpad-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tvalid: #x~X~%" (-> obj valid))
+  (format #t "~1Tstatus: #x~X~%" (-> obj status))
+  (format #t "~1Tbutton0: #x~X~%" (-> obj button0))
+  (format #t "~1Trightx: ~D~%" (-> obj rightx))
+  (format #t "~1Trighty: ~D~%" (-> obj righty))
+  (format #t "~1Tleftx: ~D~%" (-> obj leftx))
+  (format #t "~1Tlefty: ~D~%" (-> obj lefty))
+  (format #t "~1Tabutton[12] @ #x~X~%" (-> obj abutton))
+  (format #t "~1Tdummy[12] @ #x~X~%" (-> obj dummy))
+  (format #t "~1Tnumber: ~D~%" (-> obj number))
+  (format #t "~1Tcpad-file: ~D~%" (-> obj cpad-file))
+  (format #t "~1Tbutton0-abs[3] @ #x~X~%" (-> obj button0-abs))
+  (format #t "~1Tbutton0-shadow-abs[1] @ #x~X~%" (-> obj button0-shadow-abs))
+  (format #t "~1Tbutton0-rel[3] @ #x~X~%" (-> obj button0-rel))
+  (format #t "~1Tstick0-dir: ~f~%" (-> obj stick0-dir))
+  (format #t "~1Tstick0-speed: ~f~%" (-> obj stick0-speed))
+  (format #t "~1Tnew-pad: ~D~%" (-> obj new-pad))
+  (format #t "~1Tstate: ~D~%" (-> obj state))
+  (format #t "~1Talign[6] @ #x~X~%" (-> obj align))
+  (format #t "~1Tdirect[6] @ #x~X~%" (-> obj direct))
+  (format #t "~1Tbuzz-val[2] @ #x~X~%" (-> obj buzz-val))
+  (format #t "~1Tbuzz-pause-val[1] @ #x~X~%" (-> obj buzz-pause-val))
+  (format #t "~1Tbuzz-pause-time: ~D~%" (-> obj buzz-pause-time))
+  (format #t "~1Tbuzz-time[2] @ #x~X~%" (-> obj buzz-time))
+  (format #t "~1Tbuzz: ~A~%" (-> obj buzz))
+  (format #t "~1Tbuzz-act: ~D~%" (-> obj buzz-act))
+  (format #t "~1Tchange-time: ~D~%" (-> obj change-time))
+  (format #t "~1Told-rightx[2] @ #x~X~%" (-> obj old-rightx))
+  (format #t "~1Told-righty[2] @ #x~X~%" (-> obj old-righty))
+  (format #t "~1Told-leftx[2] @ #x~X~%" (-> obj old-leftx))
+  (format #t "~1Told-lefty[2] @ #x~X~%" (-> obj old-lefty))
+  (label cfg-4)
+  obj
   )
 
+;; definition for function cpad-invalid!
 (defun cpad-invalid! ((arg0 cpad-info))
- "Reset all data in a cpad-info"
   (logior! (-> arg0 valid) 128)
   (set! (-> arg0 button0) (the-as uint 0))
   (set! (-> arg0 button0-abs 0) (pad-buttons))
@@ -151,7 +179,6 @@
     (nop!)
     (set! (-> arg0 direct v1-14) (the-as uint 0))
     )
-  ;; hey, this was fixed from jak 1!
   (dotimes (v1-17 2)
     (nop!)
     (set! (-> arg0 buzz-val v1-17) (the-as uint 0))
@@ -162,8 +189,8 @@
   arg0
   )
 
+;; definition for method 0 of type cpad-info
 (defmethod new cpad-info ((allocation symbol) (type-to-make type) (arg0 int))
-  "Allocate a new cpad-info and open the pad itself through the kernel"
   (let ((s5-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> s5-0 number) arg0)
     (set! (-> s5-0 buzz) #f)
@@ -172,7 +199,7 @@
     )
   )
 
-;; List of controllers. It always has 2 controllers.
+;; definition of type cpad-list
 (deftype cpad-list (basic)
   ((num-cpads int32       :offset-assert   4)
    (cpads     cpad-info 2 :offset-assert   8)
@@ -185,9 +212,21 @@
     )
   )
 
+;; definition for method 3 of type cpad-list
+(defmethod inspect cpad-list ((obj cpad-list))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tnum-cpads: ~D~%" (-> obj num-cpads))
+  (format #t "~1Tcpads[2] @ #x~X~%" (-> obj cpads))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 0 of type cpad-list
 (defmethod new cpad-list ((allocation symbol) (type-to-make type))
-  "Create a cpad-list for 2 controllers. It's fine to do this even if one or both controllers
-   aren't connected yet."
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 num-cpads) 2)
     (set! (-> gp-0 cpads 0) (new 'global 'cpad-info 0))
@@ -196,11 +235,8 @@
     )
   )
 
+;; definition for function analog-input
 (defun analog-input ((arg0 int) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
-  "Convert integer input from pad into a float between -out-range and +out-range.
-   The offset is applied directly to the input.
-   The center val is the expected value for 0, after applying offset.
-   The max val is the expected value with the stick pushed all the way"
   (let* ((f1-1 (- (the float arg0) arg1))
          (f0-3 (- (fabs f1-1) arg2))
          (v1-0 (- arg3 arg2))
@@ -222,8 +258,9 @@
     )
   )
 
+;; definition for function cpad-set-buzz!
+;; INFO: Return type mismatch int vs none.
 (defun cpad-set-buzz! ((arg0 cpad-info) (arg1 int) (arg2 int) (arg3 time-frame))
-  "Turn on vibration motor 'buzz-idx' for duration, at magnitude buzz-amount."
   (cond
     ((zero? arg2)
      (set! (-> arg0 buzz-val arg1) (the-as uint 0))
@@ -241,14 +278,14 @@
   (none)
   )
 
-;; the two controllers
+;; definition for symbol *cpad-list*, type cpad-list
 (define *cpad-list* (new 'global 'cpad-list))
 
-;; weird leftover debug thing, enabling overrides the x position of both sticks on both controllers.
+;; definition for symbol *cpad-debug*, type symbol
 (define *cpad-debug* #f)
 
+;; definition for function service-cpads
 (defun service-cpads ()
-  "Read from cpads and update vibration"
   (let ((gp-0 *cpad-list*))
     (dotimes (s5-0 (-> gp-0 num-cpads))
       (let ((s4-0 (-> *cpad-list* cpads s5-0)))
@@ -487,41 +524,16 @@
   *cpad-list*
   )
 
+;; definition for function buzz-stop!
+;; INFO: Return type mismatch int vs none.
 (defun buzz-stop! ((arg0 int))
-  "Set the buzz to 0 on both vibration motors of the given cpad."
   (cpad-set-buzz! (-> *cpad-list* cpads arg0) 0 0 0)
   (cpad-set-buzz! (-> *cpad-list* cpads arg0) 1 0 0)
   0
   (none)
   )
 
-(defmacro cpad-pressed (pad-idx)
-  `(-> *cpad-list* cpads ,pad-idx button0-rel 0)
-  )
-
-(defmacro cpad-hold (pad-idx)
-  `(-> *cpad-list* cpads ,pad-idx button0-abs 0)
-  )
-
-(defmacro cpad-pressed? (pad-idx &rest buttons)
-  `(logtest? (cpad-pressed ,pad-idx) (pad-buttons ,@buttons))
-  )
-
-(defmacro cpad-hold? (pad-idx &rest buttons)
-  `(logtest? (cpad-hold ,pad-idx) (pad-buttons ,@buttons))
-  )
-
-(defmacro cpad-clear! (pad-idx &rest buttons)
-  `(begin
-      (logclear! (cpad-pressed ,pad-idx) (pad-buttons ,@buttons))
-      (logclear! (cpad-hold ,pad-idx) (pad-buttons ,@buttons))
-      )
-  )
-
-(defmacro cpad-change-time (pad-idx)
-  `(-> *cpad-list* cpads ,pad-idx change-time)
-  )
-
+;; definition of type mouse-info
 (deftype mouse-info (basic)
   ((active             symbol               :offset-assert   4)
    (cursor             basic                :offset-assert   8)
@@ -552,8 +564,42 @@
     )
   )
 
+;; definition for method 3 of type mouse-info
+(defmethod inspect mouse-info ((obj mouse-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-7)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tactive: ~A~%" (-> obj active))
+  (format #t "~1Tcursor: ~A~%" (-> obj cursor))
+  (format #t "~1Tvalid: ~A~%" (-> obj valid))
+  (format #t "~1Tid: ~D~%" (-> obj id))
+  (format #t "~1Tstatus: #x~X~%" (-> obj status))
+  (format #t "~1Tbutton0: #x~X~%" (-> obj button0))
+  (format #t "~1Tdeltax: ~D~%" (-> obj deltax))
+  (format #t "~1Tdeltay: ~D~%" (-> obj deltay))
+  (format #t "~1Twheel: ~D~%" (-> obj wheel))
+  (format #t "~1Tchange-time: ~D~%" (-> obj change-time))
+  (format #t "~1Tbutton0-abs[3] @ #x~X~%" (-> obj button0-abs))
+  (format #t "~1Tbutton0-shadow-abs[1] @ #x~X~%" (-> obj button0-shadow-abs))
+  (format #t "~1Tbutton0-rel[3] @ #x~X~%" (-> obj button0-rel))
+  (format #t "~1Tpos[2] @ #x~X~%" (-> obj pos))
+  (dotimes (s5-0 2)
+    (format #t "~T  [~D]~1Tpos: ~`vector`P~%" s5-0 (-> obj pos s5-0))
+    )
+  (format #t "~1Tposx: ~f~%" (-> obj posx))
+  (format #t "~1Tposy: ~f~%" (-> obj posy))
+  (format #t "~1Toldposx: ~f~%" (-> obj pos 1 x))
+  (format #t "~1Toldposy: ~f~%" (-> obj oldposy))
+  (format #t "~1Tspeedx: ~f~%" (-> obj speedx))
+  (format #t "~1Tspeedy: ~f~%" (-> obj speedy))
+  (label cfg-7)
+  obj
+  )
+
+;; definition for method 0 of type mouse-info
 (defmethod new mouse-info ((allocation symbol) (type-to-make type))
-  "Allocate a new mouse."
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 active) #f)
     (set! (-> v0-0 valid) #f)
@@ -562,10 +608,13 @@
     )
   )
 
+;; definition for symbol *mouse*, type mouse-info
 (define *mouse* (new 'global 'mouse-info))
 
+;; definition for function service-mouse
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch mouse-info vs none.
 (defun service-mouse ()
-  "Update the mouse, and draw the cursor."
   (let ((gp-0 *mouse*))
     (mouse-get-data gp-0)
     (set! (-> gp-0 pos 1 quad) (-> gp-0 pos 0 quad))

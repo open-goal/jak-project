@@ -326,7 +326,7 @@ void backprop_from_preds(FunctionCache& cache,
       tags_updated = true;
       my_tag->updated = false;
       // fmt::print("clearing {}\n", block_idx);
-      cblock.needs_run = true;                                 // maybe?
+      cblock.needs_run = true;      // maybe?
       *my_tag->type_to_clear = {};  // meh..
     }
   }
@@ -382,10 +382,18 @@ bool tp_lca(types2::TypeState* combined, const types2::TypeState& add, Decompile
 
   for (auto& x : add.stack_slot_types) {
     bool diff = false;
-    auto new_type = tp_lca(combined->stack_slot_types[x->slot]->type, x->type, &diff, dts);
+    auto comb = combined->try_find_stack_spill_slot(x->slot);
+    if (!comb) {
+      fmt::print("failed to find {}\n", x->slot);
+      for (auto& x : combined->stack_slot_types) {
+        fmt::print("x = {}\n", x->slot);
+      }
+    }
+    ASSERT(comb);
+    auto new_type = tp_lca(*comb, x->type, &diff, dts);
     if (diff) {
       result = true;
-      combined->stack_slot_types[x->slot]->type.type = new_type;
+      comb->type = new_type;
     }
   }
 
@@ -441,7 +449,6 @@ bool propagate_block(FunctionCache& cache,
     }
     previous_typestate = &instr->types;
   }
-
 
   // now that we've reached the end, handle backprop across blocks
   if (!tag_lock) {
@@ -623,9 +630,9 @@ void run(Output& out, const Input& input) {
       }
 
       for (auto x : stack_slots) {
-        auto& slot = cblock.stack_slot_types.emplace_back();
-        slot.slot = x;
-        slot.type.type = TP_Type::make_uninitialized();
+        auto slot = cblock.try_find_stack_spill_slot(x);
+        ASSERT(slot);
+        slot->type.type = TP_Type::make_uninitialized();
       }
     }
   }
