@@ -640,9 +640,9 @@
 
   ;; give cheats
   (when (task-closed? (game-task finalboss-movies) (task-status need-reminder))
-      (logior! (-> *pc-settings* cheats-known) (pc-cheats sidekick-blue invinc tunes sky))
+      (logior! (-> *pc-settings* cheats-known) (pc-cheats sidekick-blue tunes sky))
       (when (>= (calculate-completion (the progress #f)) 100.0)
-          (logior! (-> *pc-settings* cheats-known) (pc-cheats eco-blue eco-red eco-green eco-yellow))))
+          (logior! (-> *pc-settings* cheats-known) (pc-cheats invinc eco-blue eco-red eco-green eco-yellow))))
 
   ;; set up options for each screen
   (set! (-> *options-remap* (progress-screen settings)) (if (or *cheat-mode* (nonzero? (-> *pc-settings* cheats-known)))
@@ -1081,11 +1081,6 @@
                (set! (-> (the-as (pointer symbol) (-> options (-> obj option-index) value-to-modify)))
                      (-> *progress-state* on-off-backup))
                )
-              (((game-option-type cheat-toggle))
-               (if (-> *progress-state* on-off-backup)
-                   (logior!   (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1))))
-                   (logclear! (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1)))))
-               )
               )
             ;; ding
             (sound-play "cursor-options")
@@ -1364,9 +1359,15 @@
              (set! (-> obj selected-option) #f)
              (case (-> options (-> obj option-index) option-type)
                (((game-option-type cheat-toggle))
-                 (if (-> (the (pointer symbol) (-> options (-> obj option-index) value-to-modify)))
-                     (logior!   (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1))))
-                     (logclear! (-> *pc-settings* cheats) (ash 1 (the int (-> options (-> obj option-index) param1)))))
+                (let ((the-cheat (ash 1 (the int (-> options (-> obj option-index) param1)))))
+                    (cond
+                      ((-> (the (pointer symbol) (-> options (-> obj option-index) value-to-modify)))
+                        (logior!   (-> *pc-settings* cheats) the-cheat))
+                      (else
+                        (logclear! (-> *pc-settings* cheats) the-cheat)
+                        (when (and *target* (= the-cheat (pc-cheats invinc)))
+                            (logclear! (-> *target* state-flags) (state-flags invulnerable)))))
+                    )
                 )
                (((game-option-type aspect-ratio))
                 ;; aspect ratio is first written to the backup. so this is for applying the change if we went through with it.
@@ -1945,12 +1946,12 @@
                            (((pc-cheats eco-blue)
                              (pc-cheats eco-green)
                              (pc-cheats eco-red)
-                             (pc-cheats eco-yellow))
+                             (pc-cheats eco-yellow)
+                             (pc-cheats invinc))
                              (set! option-str (lookup-text! *common-text* (game-text-id cheat-req-100-percent) #f)))
                            (((pc-cheats sky)
                              (pc-cheats sidekick-blue)
-                             (pc-cheats tunes)
-                             (pc-cheats invinc))
+                             (pc-cheats tunes))
                              (set! option-str (lookup-text! *common-text* (game-text-id cheat-req-beat-game) #f)))
                            (else
                              (set! option-str locked-str))
