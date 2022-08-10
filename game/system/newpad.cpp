@@ -33,7 +33,7 @@ float g_gamepad_analogs[CONTROLLER_COUNT][(int)Analog::Max] = {{0}};
 
 struct GamepadState {
   int gamepad_idx[CONTROLLER_COUNT] = {-1, -1, -1, -1};
-  bool glfw_joystick_used[GLFW_JOYSTICK_LAST+1] = {false};
+  bool glfw_joystick_used[GLFW_JOYSTICK_LAST + 1] = {false};
 } g_gamepads;
 
 // input mode for controller mapping
@@ -282,7 +282,8 @@ void check_gamepads() {
         if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
           g_gamepads.gamepad_idx[pad] = i;
           g_gamepads.glfw_joystick_used[i] = true;
-          lg::info("Using joystick {} for pad {}: {}, {}", i, pad, glfwGetJoystickName(i), glfwGetGamepadName(i));
+          lg::info("Using joystick {} for pad {}: {}, {}", i, pad, glfwGetJoystickName(i),
+                   glfwGetGamepadName(i));
           break;
         }
       }
