@@ -1327,7 +1327,6 @@ Val* Compiler::compile_defenum(const goos::Object& form, const goos::Object& res
   (void)form;
   (void)env;
 
-  // TODO
   parse_defenum(rest, &m_ts, {});
   return get_none();
 }

@@ -43,7 +43,9 @@ std::string symbol_string(const goos::Object& obj) {
 
 }  // namespace
 
-EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts, SymbolMetadata* symbol_metadata) {
+EnumType* parse_defenum(const goos::Object& defenum,
+                        TypeSystem* ts,
+                        SymbolMetadata* symbol_metadata) {
   // default enum type will be int32.
   TypeSpec base_type = ts->make_typespec("int32");
   bool is_bitfield = false;
@@ -55,7 +57,10 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts, SymbolMetad
   iter = cdr(iter);
   // check for docstring
   if (iter->is_pair() && car(iter).is_string()) {
-    symbol_metadata->docstring = car(iter).as_string()->data;
+    // TODO - docstring - store and use docstring if coming from the compiler
+    if (symbol_metadata) {
+      symbol_metadata->docstring = car(iter).as_string()->data;
+    }
     iter = cdr(iter);
   }
 
