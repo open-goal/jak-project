@@ -1894,7 +1894,11 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
 
 std::string TypeSystem::generate_deftype_for_bitfield(const BitFieldType* type) const {
   std::string result;
-  result += fmt::format("(deftype {} ({})\n  (", type->get_name(), type->get_parent());
+  result += fmt::format("(deftype {} ({})\n", type->get_name(), type->get_parent());
+  if (type->m_metadata.docstring) {
+    result += fmt::format("  \"{}\"\n", type->m_metadata.docstring.value());
+  }
+  result += "  (";
 
   int longest_field_name = 0;
   int longest_type_name = 0;
