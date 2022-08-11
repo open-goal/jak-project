@@ -40,10 +40,10 @@ std::optional<goos::TextDb::ShortInfo> Workspace::get_symbol_info_from_all_types
     return {};
   }
   const auto& dts = m_tracked_all_types_files[all_types_uri].m_dts;
-  if (dts.symbol_definition_info.count(symbol_name) == 0) {
+  if (dts.symbol_metadata_map.count(symbol_name) == 0) {
     return {};
   }
-  return dts.symbol_definition_info.at(symbol_name);
+  return dts.symbol_metadata_map.at(symbol_name).definition_info;
 }
 
 void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
