@@ -178,9 +178,14 @@ class TypeSystem {
   MethodInfo define_method(const std::string& type_name,
                            const std::string& method_name,
                            const TypeSpec& ts,
-    const std::optional<std::string>& docstring);
-  MethodInfo define_method(Type* type, const std::string& method_name, const TypeSpec& ts, const std::optional<std::string>& docstring);
-  MethodInfo add_new_method(Type* type, const TypeSpec& ts, const std::optional<std::string>& docstring);
+                           const std::optional<std::string>& docstring);
+  MethodInfo define_method(Type* type,
+                           const std::string& method_name,
+                           const TypeSpec& ts,
+                           const std::optional<std::string>& docstring);
+  MethodInfo add_new_method(Type* type,
+                            const TypeSpec& ts,
+                            const std::optional<std::string>& docstring);
   MethodInfo lookup_method(const std::string& type_name, const std::string& method_name) const;
   MethodInfo lookup_method(const std::string& type_name, int method_id) const;
   bool try_lookup_method(const Type* type, const std::string& method_name, MethodInfo* info) const;

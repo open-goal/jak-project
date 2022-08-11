@@ -12,9 +12,8 @@
 #include "TypeSpec.h"
 
 #include "common/goal_constants.h"
-#include "common/util/Assert.h"
-
 #include "common/goos/TextDB.h"
+#include "common/util/Assert.h"
 
 class TypeSystem;
 

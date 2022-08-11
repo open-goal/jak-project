@@ -253,8 +253,8 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     });
     function_typespec.add_arg(parse_typespec(type_system, return_type));
 
-    auto info = type_system->declare_method(type, method_name, docstring, no_virtual, function_typespec,
-                                            replace_method, id);
+    auto info = type_system->declare_method(type, method_name, docstring, no_virtual,
+                                            function_typespec, replace_method, id);
 
     // check the method assert
     if (id != -1) {

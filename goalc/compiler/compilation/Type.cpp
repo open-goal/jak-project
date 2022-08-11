@@ -614,7 +614,8 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   m_symbol_info.add_method(symbol_string(method_name), symbol_string(type_name), form);
 
   // TODO!
-  auto info = m_ts.define_method(symbol_string(type_name), symbol_string(method_name), lambda_ts, {});
+  auto info =
+      m_ts.define_method(symbol_string(type_name), symbol_string(method_name), lambda_ts, {});
   auto type_obj = compile_get_symbol_value(form, symbol_string(type_name), env)->to_gpr(form, env);
   auto id_val = compile_integer(info.id, env)->to_gpr(form, env);
   auto method_val = place->to_gpr(form, env);
