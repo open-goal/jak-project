@@ -2062,7 +2062,9 @@ void LoadVarOp::propagate_types2(types2::Instruction& instr,
   m_type = type_out->type ? type_out->type->typespec() : std::optional<TypeSpec>();
 }
 
-void branch_delay_types2(IR2_BranchDelay& delay, types2::Instruction& instr) {
+void branch_delay_types2(IR2_BranchDelay& delay,
+                         types2::Instruction& instr,
+                         types2::TypeState& input_types) {
   switch (delay.kind()) {
     case IR2_BranchDelay::Kind::NOP:
     case IR2_BranchDelay::Kind::NO_DELAY:
@@ -2072,6 +2074,9 @@ void branch_delay_types2(IR2_BranchDelay& delay, types2::Instruction& instr) {
       break;
     case IR2_BranchDelay::Kind::SET_REG_TRUE:
       instr.types[delay.var(0).reg()]->type = TP_Type::make_from_ts("symbol");
+      break;
+    case IR2_BranchDelay::Kind::SET_REG_REG:
+      instr.types[delay.var(0).reg()]->type = input_types[delay.var(1).reg()]->type;
       break;
     default:
       ASSERT_MSG(false, fmt::format("propagate_types2 BranchOp unknown branch delay: {}",
@@ -2110,7 +2115,7 @@ void BranchOp::propagate_types2(types2::Instruction& instr,
       break;
   }
 
-  branch_delay_types2(m_branch_delay, instr);
+  branch_delay_types2(m_branch_delay, instr, input_types);
 }
 
 void AsmBranchOp::propagate_types2(types2::Instruction& instr,
@@ -2374,7 +2379,6 @@ void StackSpillStoreOp::propagate_types2(types2::Instruction& instr,
                                          types2::TypeState& input_types,
                                          DecompilerTypeSystem& dts,
                                          types2::TypePropExtras& extras) {
-
   auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
     env.func->warnings.error("Stack slot store mismatch: defined as size {}, got size {}\n",
