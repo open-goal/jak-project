@@ -146,7 +146,7 @@ void OnKeyRelease(int key) {
 */
 
 static int CheckPadIdx(int pad) {
-  if (pad < 0 || pad > CONTROLLER_COUNT) {
+  if (pad < 0 || pad >= CONTROLLER_COUNT) {
     lg::error("Invalid pad {}", pad);
     return -1;
   }
