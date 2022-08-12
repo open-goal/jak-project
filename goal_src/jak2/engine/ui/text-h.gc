@@ -7,3 +7,30 @@
 
 ;; DECOMP BEGINS
 
+(deftype game-text (structure)
+  ((id   game-text-id  :offset-assert   0)
+   (text string        :offset-assert   4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype game-text-info (basic)
+  ((length      int32              :offset-assert   4)
+   (language-id int32              :offset-assert   8)
+   (group-name  string             :offset-assert  12)
+   (data        game-text :dynamic :offset-assert  16)
+   )
+  :method-count-assert 10
+  :size-assert         #x10
+  :flag-assert         #xa00000010
+  (:methods
+    (lookup-text! (_type_ game-text-id symbol) string 9)
+    )
+  )
+
+(define *text-group-names* (the-as (array string) (new 'static 'boxed-array :type string "common")))
+(define *common-text-heap* (new 'global 'kheap))
+(define *common-text* (the-as game-text-info #f))
