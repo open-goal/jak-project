@@ -837,7 +837,7 @@
   (let ((a1-0 #xffffffff80000000)
         (v1-0 #x3f800000)
         )
-    (the-as float (logior (logand arg0 (the-as uint a1-0)) v1-0))
+    (the-as float (logior (logand (the-as uint arg0) (the-as uint a1-0)) v1-0))
     )
   )
 
@@ -938,9 +938,21 @@
   )
 
 (defun acos ((arg0 float))
-  "Inverse cosine, rotation units."
-  (- 16384.0 (asin arg0))
+  "Inverse cosine. Returns rotation units"
+  (let ((result (- 16384.000000 (asin arg0))))
+    (#when PC_PORT
+      ;; to avoid punch glitch:
+      ;; (note: it might be a better fix to change the global rounding mode,
+      ;;  but it's not super clear to me that the mode picked by PCSX2 is
+      ;;  more accurate than normal in all cases. So, we'll do this for now.)
+      (when (= result 0.0)
+        (set! result 0.00000000001)
+        )
+      )
+    result
+    )
   )
+
 
 (defun acos-rad ((arg0 float))
   "Inverse cosine, radians."

@@ -1,14 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: profile.gc
-;; name in dgo: profile
-;; dgos: ENGINE, GAME
-(define-extern *dproc* process)
-
-;; DECOMP BEGINS
-
-;; DMA templates for profile drawing
+;; definition of type profile-work
 (deftype profile-work (structure)
   ((sprite-tmpl dma-gif-packet :inline :offset-assert   0)
    (line-tmpl   dma-gif-packet :inline :offset-assert  32)
@@ -19,49 +12,57 @@
   :flag-assert         #x900000044
   )
 
-;; dma templates
-(define *profile-work*
-  (new 'static 'profile-work
-    :sprite-tmpl (new 'static 'dma-gif-packet
-      :dma-vif (new 'static 'dma-packet
-        :dma (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt))
-        :vif1 (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1)
-        )
-      :gif0 (new 'static 'gif-tag64
-        :nloop #x1
-        :eop #x1
-        :pre #x1
-        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1)
-        :nreg #x3
-        )
-      :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id rgbaq) :regs1 (gif-reg-id xyz2) :regs2 (gif-reg-id xyz2))
-      )
-    :line-tmpl (new 'static 'dma-gif-packet
-      :dma-vif (new 'static 'dma-packet
-        :dma (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt))
-        :vif1 (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1)
-        )
-      :gif0 (new 'static 'gif-tag64
-        :nloop #x1
-        :eop #x1
-        :pre #x1
-        :prim (new 'static 'gs-prim :prim (gs-prim-type line) :abe #x1)
-        :nreg #x3
-        )
-      :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id rgbaq) :regs1 (gif-reg-id xyz2) :regs2 (gif-reg-id xyz2))
-      )
+;; definition for method 3 of type profile-work
+(defmethod inspect profile-work ((obj profile-work))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
     )
+  (format #t "[~8x] ~A~%" obj 'profile-work)
+  (format #t "~1Tsprite-tmpl: #<dma-gif-packet @ #x~X>~%" (-> obj sprite-tmpl))
+  (format #t "~1Tline-tmpl: #<dma-gif-packet @ #x~X>~%" (-> obj line-tmpl))
+  (format #t "~1Tlast-index: ~D~%" (-> obj last-index))
+  (label cfg-4)
+  obj
   )
 
-;; profile setting
+;; definition for symbol *profile-work*, type profile-work
+(define *profile-work* (new 'static 'profile-work
+                         :sprite-tmpl (new 'static 'dma-gif-packet
+                           :dma-vif (new 'static 'dma-packet
+                             :dma (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt))
+                             :vif1 (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1)
+                             )
+                           :gif (new 'static 'array uint64 2 #x3023400000008001 #x551)
+                           )
+                         :line-tmpl (new 'static 'dma-gif-packet
+                           :dma-vif (new 'static 'dma-packet
+                             :dma (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt))
+                             :vif1 (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1)
+                             )
+                           :gif (new 'static 'array uint64 2 #x3020c00000008001 #x551)
+                           )
+                         )
+        )
+
+;; definition for symbol *profile-x*, type int
 (define *profile-x* 1808)
+
+;; definition for symbol *profile-y*, type int
 (define *profile-y* 1848)
+
+;; definition for symbol *profile-w*, type int
 (define *profile-w* 416)
+
+;; definition for symbol *profile-h*, type int
 (define *profile-h* 8)
+
+;; definition for symbol *profile-ticks*, type symbol
 (define *profile-ticks* #f)
 
+;; definition for method 10 of type profile-segment-array
+;; INFO: Return type mismatch int vs none.
 (defmethod start-frame! profile-segment-array ((obj profile-segment-array))
-  "Start a frame."
   (set! (-> obj count) 0)
   (set! (-> obj depth) 0)
   (set! (-> obj max-depth) 0)
@@ -71,8 +72,9 @@
   (none)
   )
 
+;; definition for method 11 of type profile-segment-array
+;; INFO: Return type mismatch int vs none.
 (defmethod start-segment! profile-segment-array ((obj profile-segment-array) (arg0 symbol) (arg1 rgba))
-  "Push a new segment onto the profiling stack."
   (when (and *dproc* *debug-segment*)
     (let ((s4-0 (-> obj data (-> obj count))))
       (let ((s3-0 (-> obj base-time)))
@@ -91,8 +93,9 @@
   (none)
   )
 
+;; definition for method 12 of type profile-segment-array
+;; INFO: Return type mismatch int vs none.
 (defmethod end-segment! profile-segment-array ((obj profile-segment-array))
-  "Pop the last pushed segment."
   (when (and *dproc* *debug-segment*)
     (let* ((v1-4 (+ (-> obj depth) -1))
            (s5-0 (-> obj segment v1-4))
@@ -108,8 +111,8 @@
   (none)
   )
 
+;; definition for function profile-texture-test
 (defun profile-texture-test ((arg0 bucket-id))
-  "Is this a texture bucket?"
   (or (= arg0 (bucket-id bucket-4))
       (= arg0 (bucket-id bucket-7))
       (= arg0 (bucket-id bucket-18))
@@ -150,8 +153,8 @@
       )
   )
 
+;; definition for function profile-tfrag-test
 (defun profile-tfrag-test ((arg0 bucket-id))
-  "Is this a tfrag bucket?"
   (or (= arg0 (bucket-id bucket-8))
       (= arg0 (bucket-id bucket-19))
       (= arg0 (bucket-id bucket-30))
@@ -191,8 +194,8 @@
       )
   )
 
+;; definition for function profile-tie-test
 (defun profile-tie-test ((arg0 bucket-id))
-  "Is this a tie bucket?"
   (or (= arg0 (bucket-id bucket-9))
       (= arg0 (bucket-id bucket-20))
       (= arg0 (bucket-id bucket-31))
@@ -250,8 +253,8 @@
       )
   )
 
+;; definition for function profile-merc-test
 (defun profile-merc-test ((arg0 bucket-id))
-  "Is this a merc bucket?"
   (or (= arg0 (bucket-id bucket-14))
       (= arg0 (bucket-id bucket-25))
       (= arg0 (bucket-id bucket-36))
@@ -296,8 +299,8 @@
       )
   )
 
+;; definition for function profile-emerc-test
 (defun profile-emerc-test ((arg0 bucket-id))
-  "Is this an emerc bucket?"
   (or (= arg0 (bucket-id bucket-15))
       (= arg0 (bucket-id bucket-26))
       (= arg0 (bucket-id bucket-37))
@@ -335,8 +338,8 @@
       )
   )
 
+;; definition for function profile-mercneric-test
 (defun profile-mercneric-test ((arg0 bucket-id))
-  "Is this a mercneric bucket?"
   (or (= arg0 (bucket-id bucket-16))
       (= arg0 (bucket-id bucket-27))
       (= arg0 (bucket-id bucket-38))
@@ -382,25 +385,18 @@
       )
   )
 
+;; definition for method 9 of type profile-array
+;; INFO: Return type mismatch int vs none.
 (defmethod setup-categories! profile-array ((obj profile-array))
-  "Summarize data collected."
-
-  ;; loop over both EE and VU profilers
   (dotimes (s5-0 2)
-    ;; each of the two display-frames has its own profile-array
-    ;; assume this is called on a display-frame's profile-array and copy us to the
-    ;; global one.
     (let ((s3-0 (-> *profile-array* data s5-0))
           (s4-0 *profile-collapse*)
           )
       (mem-copy! (&-> s3-0 type) (&-> (-> obj data s5-0) type) 8240)
-
       (cond
         ((zero? s5-0)
-         ;; we're the EE profiler.
          ((lambda ((arg0 profile-segment-array) (arg1 profile-collapse))
             (let ((v0-0 0))
-              ;; loop over categories in summary and set to defaults
               (dotimes (v1-0 48)
                 (set! (-> arg1 data v1-0 name) #f)
                 (set! (-> arg1 data v1-0 count) (the-as uint 0))
@@ -409,13 +405,11 @@
                 (set! (-> arg1 data v1-0 start-time) 0)
                 (set! (-> arg1 data v1-0 end-time) 0)
                 )
-              ;; loop over events we got
               (dotimes (v1-3 (-> arg0 count))
                 (let ((a2-15 (- (-> arg0 data v1-3 end-time) (-> arg0 data v1-3 start-time))))
                   (let ((t0-0 (-> arg0 data v1-3 name)))
-                    ;; search for category that matches
                     (dotimes (a3-5 v0-0)
-                      (when (= (-> arg1 data a3-5 name) t0-0) ;; got it!
+                      (when (= (-> arg1 data a3-5 name) t0-0)
                         (+! (-> arg1 data a3-5 count) 1)
                         (set! (-> arg1 data a3-5 start-time) (the-as int (+ (-> arg1 data a3-5 code-time) a2-15)))
                         (goto cfg-11)
@@ -440,7 +434,6 @@
           )
          )
         (else
-          ;; VU
           (let ((s2-0 3)
                 (s1-0 (+ (-> s3-0 count) -1))
                 )
@@ -550,8 +543,10 @@
   (none)
   )
 
+;; definition for method 10 of type profile-array
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 (defmethod draw-bars! profile-array ((obj profile-array) (arg0 dma-buffer) (arg1 int))
-  "Draw the two bars at the top."
   (local-vars (sv-16 (function _varargs_ object)) (sv-32 (function _varargs_ object)))
   (let* ((v1-0 arg0)
          (a0-1 (the-as object (-> v1-0 base)))
@@ -778,8 +773,9 @@
   (none)
   )
 
+;; definition for method 11 of type profile-array
+;; INFO: Return type mismatch int vs none.
 (defmethod draw-text! profile-array ((obj profile-array))
-  "Draw the table of times."
   (let ((gp-0 *profile-collapse*))
     (dotimes (s5-0 (-> gp-0 count))
       (when (or (nonzero? (-> gp-0 data s5-0 count)) (nonzero? (-> gp-0 data s5-0 vu-count)))

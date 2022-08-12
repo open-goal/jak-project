@@ -10,6 +10,12 @@
 ;; Use the service-cpads functions once per frame to update the data and vibration control
 ;; The cpad-set-buzz! function can be used for vibration.
 
+(define-extern get-current-time (function time-frame))
+(define-extern get-integral-current-time (function time-frame))
+(define-extern get-current-language (function language-enum))
+(define-extern add-debug-cursor (function symbol bucket-id int int int none))
+
+
 (defenum pad-buttons
     :bitfield #t
     :type uint32
@@ -381,34 +387,34 @@
            (let ((s3-1 (-> s4-0 button0)))
              (cond
                ((< (-> s4-0 lefty) (the-as uint 30))
-                (set! s3-1 (logior #x10000 s3-1))
+                (set! s3-1 (logior s3-1 #x10000))
                 )
                ((< (the-as uint 225) (-> s4-0 lefty))
-                (set! s3-1 (logior #x40000 s3-1))
+                (set! s3-1 (logior s3-1 #x40000))
                 )
                )
              (cond
                ((< (-> s4-0 leftx) (the-as uint 30))
-                (set! s3-1 (logior #x80000 s3-1))
+                (set! s3-1 (logior s3-1 #x80000))
                 )
                ((< (the-as uint 225) (-> s4-0 leftx))
-                (set! s3-1 (logior #x20000 s3-1))
+                (set! s3-1 (logior s3-1 #x20000))
                 )
                )
              (cond
                ((< (-> s4-0 righty) (the-as uint 30))
-                (set! s3-1 (logior #x100000 s3-1))
+                (set! s3-1 (logior s3-1 #x100000))
                 )
                ((< (the-as uint 225) (-> s4-0 righty))
-                (set! s3-1 (logior #x400000 s3-1))
+                (set! s3-1 (logior s3-1 #x400000))
                 )
                )
              (cond
                ((< (-> s4-0 rightx) (the-as uint 30))
-                (set! s3-1 (logior #x800000 s3-1))
+                (set! s3-1 (logior s3-1 #x800000))
                 )
                ((< (the-as uint 225) (-> s4-0 rightx))
-                (set! s3-1 (logior #x200000 s3-1))
+                (set! s3-1 (logior s3-1 #x200000))
                 )
                )
              (let ((v1-123 (get-current-language)))
@@ -417,12 +423,12 @@
                   (case (scf-get-territory)
                     ((2 3)
                      (if (logtest? s3-1 8192)
-                         (set! s3-1 (logior #x1000000 s3-1))
+                         (set! s3-1 (logior s3-1 #x1000000))
                          )
                      )
                     (else
                       (if (logtest? s3-1 #x6000)
-                          (set! s3-1 (logior #x1000000 s3-1))
+                          (set! s3-1 (logior s3-1 #x1000000))
                           )
                       )
                     )
@@ -431,12 +437,12 @@
                     (or (= v1-135 2) (= v1-135 3))
                     )
                   (if (logtest? s3-1 #x6000)
-                      (set! s3-1 (logior #x1000000 s3-1))
+                      (set! s3-1 (logior s3-1 #x1000000))
                       )
                   )
                  (else
                    (if (logtest? s3-1 #x4000)
-                       (set! s3-1 (logior #x1000000 s3-1))
+                       (set! s3-1 (logior s3-1 #x1000000))
                        )
                    )
                  )
@@ -599,7 +605,7 @@
     (if (and (-> gp-0 active) (-> gp-0 valid) (-> gp-0 cursor))
         (add-debug-cursor
           #t
-          (bucket-id debug)
+          (bucket-id debug-no-zbuf)
           (+ (the int (-> gp-0 posx)) 256)
           (+ (the int (-> gp-0 posy)) 208)
           (the-as int (-> gp-0 button0-abs 0))
