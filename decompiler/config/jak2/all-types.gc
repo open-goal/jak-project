@@ -1346,10 +1346,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype matrix (structure)
-  ((data   float   16      :offset-assert 0)
-   (vector vector  4       :offset        0)
-   (quad   uint128 4       :offset        0)
-   (trans  vector  :inline :offset        48)
+  ((data   float   16          :offset-assert 0)
+   (vector vector  4  :inline  :offset        0 :score 2)
+   (quad   uint128 4           :offset        0 :score 2)
+   (trans  vector  :inline     :offset        48)
    )
   :method-count-assert 10
   :size-assert         #x40
@@ -5934,6 +5934,7 @@
 
 (defenum font-color
   :type uint32
+  (zero 0)
   )
 
 (defenum font-flags
@@ -6090,22 +6091,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern get-current-time (function time-frame))
-(define-extern get-integral-current-time (function time-frame))
-(define-extern set-display (function display int int int int int display))
-;; (define-extern allocate-dma-buffers function) ;; (function display display)
-;; (define-extern *font-context* object) ;; font-context
-;; (define-extern draw-sprite2d-xy function) ;; (function dma-buffer int int int int rgba none)
-;; (define-extern draw-sprite2d-xy-absolute function)
-;; (define-extern draw-quad2d function) ;; (function dma-buffer draw-context none)
-;; (define-extern screen-gradient function) ;; (function dma-buffer rgba rgba rgba rgba none)
-;; (define-extern vif1-handler-debug function) ;; (function none)
-;; (define-extern vif1-handler function) ;; (function none)
-;; (define-extern vblank-handler function) ;; (function int)
-;; (define-extern set-display-gs-state function) ;; (function dma-buffer int int int int int dma-buffer)
-;; (define-extern set-display-gs-state-offset function) ;; (function dma-buffer int int int int int int int dma-buffer)
-;; (define-extern reset-display-gs-state function) ;; (function display dma-buffer int display)
-;; (define-extern *vu0-dma-list* object) ;; dma-buffer
+(define-extern get-integral-current-time (function uint))
+(define-extern set-display (function display display))
+(define-extern allocate-dma-buffers (function display display))
+(define-extern *font-context* font-context)
+(define-extern draw-sprite2d-xy (function dma-buffer int int int int rgba none))
+(define-extern draw-sprite2d-xy-absolute (function dma-buffer int int int int rgba none))
+(define-extern draw-quad2d (function dma-buffer draw-context none))
+(define-extern screen-gradient (function dma-buffer rgba rgba rgba rgba none))
+(define-extern vif1-handler-debug (function none))
+(define-extern vif1-handler (function none))
+(define-extern vblank-handler (function int))
+(define-extern set-display-gs-state (function dma-buffer int int int int int dma-buffer))
+(define-extern set-display-gs-state-offset (function dma-buffer int int int int int int int dma-buffer))
+(define-extern reset-display-gs-state (function display dma-buffer int display))
+(define-extern *vu0-dma-list* dma-buffer)
 (define-extern *display* display)
+
+(define-extern install-handler (function int function int))  ;; GOAL thinks it returns something.
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; connect                        ;;
@@ -25778,7 +25782,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern set-video-mode function) ;; (function symbol none)
-;; (define-extern get-video-mode function) ;; (function symbol)
+(define-extern get-video-mode (function symbol))
 ;; (define-extern set-aspect-ratio function) ;; (function symbol none)
 ;; (define-extern get-aspect-ratio function) ;; (function symbol)
 ;; (define-extern set-progressive-scan function)

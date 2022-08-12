@@ -2713,7 +2713,8 @@ bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack
         } else {
           matcher = Matcher::set(
               Matcher::deref(Matcher::any_reg(0), false,
-                             {DerefTokenMatcher::string("quad"), DerefTokenMatcher::integer(i)}),
+                             {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
+                              DerefTokenMatcher::string("quad")}),
               Matcher::cast("uint128", Matcher::integer(0)));
         }
 
