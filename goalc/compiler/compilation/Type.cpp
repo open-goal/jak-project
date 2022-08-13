@@ -1003,9 +1003,14 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
       args.push_back(array_size);
     }
 
-    auto array = compile_real_function_call(form, malloc_func, args, env);
-    array->set_type(ts);
-    return array;
+    auto new_array = compile_real_function_call(form, malloc_func, args, env);
+    if (info.is_struct) {
+      new_array->set_type(ts);
+    } else {
+      // allocs of value types are exactly the same as a pointer deref
+      new_array->set_type(TypeSpec("pointer", {ts.get_single_arg()}));
+    }
+    return new_array;
   } else {
     bool got_content_type = false;  // for boxed array
     std::string content_type;       // for boxed array.

@@ -1060,9 +1060,11 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
 
   auto inline_array_type = m_ts.make_inline_array_typespec(content_type);
   auto deref_info = m_ts.get_deref_info(inline_array_type);
-  if (!deref_info.can_deref || deref_info.mem_deref) {
+  if (!deref_info.is_struct) {
     throw_compiler_error(form, "new static inline array of value types is currently not supported");
   }
+  ASSERT(deref_info.can_deref);
+  ASSERT(!deref_info.mem_deref);
   auto obj = std::make_unique<StaticStructure>(seg);
   obj->set_offset(is_basic(content_type) ? 4 : 0);
   obj->data.resize(length * deref_info.stride);
