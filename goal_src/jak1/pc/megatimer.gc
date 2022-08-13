@@ -1,0 +1,201 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+  A built-in in-game timer!
+  A "timer" here keeps track of a "clock" that you can query, start, stop, reset etc.
+  It keeps track of *all* kinds of timestamps.
+ |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;  types
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(deftype megaclock (structure)
+  ( ;; the various timestamps
+   (real-frame-counter            time-frame :offset 0)
+   (base-frame-counter            time-frame :offset 8)
+   (game-frame-counter            time-frame :offset 16)
+   (integral-frame-counter        time-frame :offset 24)
+   (real-integral-frame-counter   time-frame :offset 32)
+   (actual-frame-counter          time-frame :offset 40)
+   (real-actual-frame-counter     time-frame :offset 48)
+   (part-frame-counter            time-frame :offset 56)
+   (frame-counters  time-frame 8  :overlay-at real-frame-counter)
+   )
+  )
+
+(deftype megatimer (process)
+  (
+   ;; the currently tracking clock
+   (clock       megaclock :inline)
+   ;; a backup clock
+   (last-clock  megaclock :inline)
+
+   (active?  symbol)
+   )
+  (:methods
+    (backup-clock! (_type_) megaclock)
+    )
+  (:states
+    megatimer-idle)
+  )
+
+(defmethod backup-clock! megatimer ((obj megatimer))
+  "copy the current clock to the backup"
+  (declare (inline))
+
+  (mem-copy! (-> obj last-clock frame-counters) (-> obj clock frame-counters) (size-of megaclock))
+  (-> obj clock)
+  )
+
+(define *frame-counter-names-debug* (new 'static 'array string 8
+    "real"
+    "base"
+    "game"
+    "integral"
+    "real-integral"
+    "actual"
+    "real-actual"
+    "part"
+    ))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;  helper funcs
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun megaclock<-display-times! ((clk megaclock))
+  "copy the times from the display into the clock.
+   effectively resets the clock."
+  (set! (-> clk real-frame-counter) (-> *display* real-frame-counter))
+  (set! (-> clk base-frame-counter) (-> *display* base-frame-counter))
+  (set! (-> clk game-frame-counter) (-> *display* game-frame-counter))
+  (set! (-> clk integral-frame-counter) (-> *display* integral-frame-counter))
+  (set! (-> clk real-integral-frame-counter) (-> *display* real-integral-frame-counter))
+  (set! (-> clk actual-frame-counter) (-> *display* actual-frame-counter))
+  (set! (-> clk real-actual-frame-counter) (-> *display* real-actual-frame-counter))
+  (set! (-> clk part-frame-counter) (-> *display* part-frame-counter))
+  clk
+  )
+
+(defun megaclock- ((dest megaclock) (a megaclock) (b megaclock))
+  "megaclock subtract"
+  (dotimes (i 8)
+    (set! (-> dest frame-counters i) (- (-> a frame-counters i) (-> b frame-counters i))))
+  dest
+  )
+
+(defun megaclock-! ((dest megaclock) (src megaclock))
+  "in-place megaclock subtract"
+  (megaclock- dest dest src)
+  )
+
+;; macros for minute rendering
+(defmacro time-frame-get-ms (t)
+  "return the milliseconds part of a time-frame"
+  `(the int (* (/ (the float (mod ,t TICKS_PER_SECOND)) TICKS_PER_SECOND) 1000.0))
+  )
+(defmacro time-frame-get-sec (t)
+  "return the seconds part of a time-frame"
+  `(mod (/ ,t TICKS_PER_SECOND) 60)
+  )
+(defmacro time-frame-get-min (t)
+  "return the minutes part of a time-frame"
+  `(/ ,t (* 60 TICKS_PER_SECOND))
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;  states
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defbehavior megatimer-default-event-handler megatimer ((from process) (argc int) (msg symbol) (block event-message-block))
+  (case msg
+    (('stop)
+      (go megatimer-idle)
+      )
+    (('reset)
+      (megaclock<-display-times! (-> self clock))
+      )
+    (('start)
+      (backup-clock! self)
+      (megaclock<-display-times! (-> self clock))
+      (go megatimer-active)
+      )
+    (('copy)
+      (backup-clock! self)
+      )
+    )
+  )
+
+(defstatehandler megatimer :event megatimer-default-event-handler)
+
+(defstate megatimer-active (megatimer)
+  
+  :enter (behavior ()
+    (true! (-> self active?))
+    (none))
+  :code looping-code
+  :post (behavior ()
+    
+    (when *debug-segment*
+        (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                      (bucket-id debug-no-zbuf))
+            (let ((clock-d (megaclock-! (megaclock<-display-times! (new 'stack-no-clear 'megaclock)) (-> self clock)))
+                  (txt-y (get-screen-y 0.5)))
+              (dotimes (i 8)
+                (draw-string-xy (string-format "~S = ~2D:~2,'0D.~3,'0D (~7D)" (-> *frame-counter-names-debug* i)
+                                                                              (time-frame-get-min (-> clock-d frame-counters i))
+                                                                              (time-frame-get-sec (-> clock-d frame-counters i))
+                                                                              (time-frame-get-ms (-> clock-d frame-counters i))
+                                                                              (-> clock-d frame-counters i))
+                        buf (get-screen-x 0.975) (+ txt-y (* i 8)) (font-color default) (font-flags shadow right)))
+              )
+            ))
+    
+    0)
+  )
+
+(defstate megatimer-idle (megatimer)
+  
+  :enter (behavior ()
+    (false! (-> self active?))
+    (none))
+  :code looping-code
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;  start the process
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defbehavior megatimer-init-by-other megatimer ()
+  (megaclock<-display-times! (-> self clock))
+  (go megatimer-idle)
+  )
+
+
+(define *megatimer* (the (pointer megatimer) #f))
+
+(defun megatimer-stop ()
+  "stop the megatimer process."
+  (kill-by-name 'megatimer *active-pool*)
+  (set! *megatimer* #f)
+  )
+
+(defun megatimer-start ()
+  "start the megatimer."
+  (when *megatimer*
+      (megatimer-stop))
+  
+  (set! *megatimer* (process-spawn megatimer :from *pc-dead-pool* :to *display-pool*))
+  )
+
+
+(megatimer-start)
+

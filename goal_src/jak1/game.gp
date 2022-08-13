@@ -2041,6 +2041,7 @@
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
 (goal-src "pc/util/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
 (goal-src "pc/hud-classes-pc.gc" "pckernel" "hud" "battlecontroller" "generic-obs")
+(goal-src "pc/megatimer.gc" "pckernel" "display")
 
 ;; the debug menu is modified to include PC specific options:
 (goal-src "engine/debug/default-menu.gc" "anim-tester-x" "part-tester")

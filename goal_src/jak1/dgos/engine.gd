@@ -197,6 +197,7 @@
   ("game-save.o" "game-save")
   ("settings.o" "settings")
   ("pckernel.o" "pckernel") ;; added
+  ("megatimer.o" "megatimer") ;; added
   ("mood-tables.o" "mood-tables")
   ("mood.o" "mood")
   ("weather-part.o" "weather-part")
