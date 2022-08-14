@@ -19,7 +19,7 @@
 
 namespace Pad {
 
-static constexpr int CONTROLLER_COUNT = 2;  // support 2 controllers.
+static constexpr int CONTROLLER_COUNT = 4;  // support 4 controllers.
 
 enum class Analog {
   Left_X = 0,
