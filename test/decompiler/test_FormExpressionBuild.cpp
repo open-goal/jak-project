@@ -4,7 +4,7 @@
 
 using namespace decompiler;
 
-TEST_F(FormRegressionTest, ExprIdentity) {
+TEST_F(FormRegressionTestJak1, DraftExprIdentity) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    or v0, a0, r0\n"
@@ -12,10 +12,10 @@ TEST_F(FormRegressionTest, ExprIdentity) {
       "    daddu sp, sp, r0";
   std::string type = "(function object object)";
   std::string expected = "arg0";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprFloatingPoint) {
+TEST_F(FormRegressionTestJak1, ExprFloatingPoint) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L345:\n"
@@ -31,10 +31,10 @@ TEST_F(FormRegressionTest, ExprFloatingPoint) {
       "    daddiu sp, sp, 16";
   std::string type = "(function float float)";
   std::string expected = "(/ 0.0 arg0)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprAdditionSigned) {
+TEST_F(FormRegressionTestJak1, ExprAdditionSigned) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddu v0, a0, a1\n"
@@ -42,10 +42,10 @@ TEST_F(FormRegressionTest, ExprAdditionSigned) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(+ arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprAdditionUnSigned) {
+TEST_F(FormRegressionTestJak1, ExprAdditionUnSigned) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddu v0, a0, a1\n"
@@ -53,10 +53,10 @@ TEST_F(FormRegressionTest, ExprAdditionUnSigned) {
       "    daddu sp, sp, r0";
   std::string type = "(function uint uint uint)";
   std::string expected = "(+ arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprAdditionMixed1) {
+TEST_F(FormRegressionTestJak1, ExprAdditionMixed1) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddu v0, a0, a1\n"
@@ -64,10 +64,10 @@ TEST_F(FormRegressionTest, ExprAdditionMixed1) {
       "    daddu sp, sp, r0";
   std::string type = "(function int uint int)";
   std::string expected = "(+ arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprAdditionMixed2) {
+TEST_F(FormRegressionTestJak1, ExprAdditionMixed2) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddu v0, a0, a1\n"
@@ -75,10 +75,10 @@ TEST_F(FormRegressionTest, ExprAdditionMixed2) {
       "    daddu sp, sp, r0";
   std::string type = "(function uint int uint)";
   std::string expected = "(+ arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprAdditionSignedWrongReturn) {
+TEST_F(FormRegressionTestJak1, ExprAdditionSignedWrongReturn) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddu v0, a0, a1\n"
@@ -86,10 +86,10 @@ TEST_F(FormRegressionTest, ExprAdditionSignedWrongReturn) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int uint)";
   std::string expected = "(the-as uint (+ arg0 arg1))";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprAdditionUnSignedWrongReturn) {
+TEST_F(FormRegressionTestJak1, ExprAdditionUnSignedWrongReturn) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddu v0, a0, a1\n"
@@ -97,10 +97,10 @@ TEST_F(FormRegressionTest, ExprAdditionUnSignedWrongReturn) {
       "    daddu sp, sp, r0";
   std::string type = "(function uint uint int)";
   std::string expected = "(the-as int (+ arg0 arg1))";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprAdditionMixed1WrongReturn) {
+TEST_F(FormRegressionTestJak1, ExprAdditionMixed1WrongReturn) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddu v0, a0, a1\n"
@@ -108,10 +108,10 @@ TEST_F(FormRegressionTest, ExprAdditionMixed1WrongReturn) {
       "    daddu sp, sp, r0";
   std::string type = "(function int uint uint)";
   std::string expected = "(the-as uint (+ arg0 arg1))";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprAdditionMixed2WrongReturn) {
+TEST_F(FormRegressionTestJak1, ExprAdditionMixed2WrongReturn) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddu v0, a0, a1\n"
@@ -119,10 +119,10 @@ TEST_F(FormRegressionTest, ExprAdditionMixed2WrongReturn) {
       "    daddu sp, sp, r0";
   std::string type = "(function uint int int)";
   std::string expected = "(the-as int (+ arg0 arg1))";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprSubtraction) {
+TEST_F(FormRegressionTestJak1, ExprSubtraction) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    dsubu v0, a0, a1\n"
@@ -130,10 +130,10 @@ TEST_F(FormRegressionTest, ExprSubtraction) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(- arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprMultiplication) {
+TEST_F(FormRegressionTestJak1, ExprMultiplication) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    mult3 v0, a0, a1\n"
@@ -141,10 +141,10 @@ TEST_F(FormRegressionTest, ExprMultiplication) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(* arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprMultiplicationWrong1) {
+TEST_F(FormRegressionTestJak1, ExprMultiplicationWrong1) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    mult3 v0, a0, a1\n"
@@ -152,10 +152,10 @@ TEST_F(FormRegressionTest, ExprMultiplicationWrong1) {
       "    daddu sp, sp, r0";
   std::string type = "(function int uint int)";
   std::string expected = "(* arg0 (the-as int arg1))";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprMultiplicationWrong2) {
+TEST_F(FormRegressionTestJak1, ExprMultiplicationWrong2) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    mult3 v0, a0, a1\n"
@@ -163,10 +163,10 @@ TEST_F(FormRegressionTest, ExprMultiplicationWrong2) {
       "    daddu sp, sp, r0";
   std::string type = "(function uint int int)";
   std::string expected = "(* (the-as int arg0) arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprMultiplicationWrong3) {
+TEST_F(FormRegressionTestJak1, ExprMultiplicationWrong3) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    mult3 v0, a0, a1\n"
@@ -174,10 +174,10 @@ TEST_F(FormRegressionTest, ExprMultiplicationWrong3) {
       "    daddu sp, sp, r0";
   std::string type = "(function uint uint uint)";
   std::string expected = "(the-as uint (* (the-as int arg0) (the-as int arg1)))";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprDivision1) {
+TEST_F(FormRegressionTestJak1, ExprDivision1) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    div a0, a1\n"
@@ -186,10 +186,10 @@ TEST_F(FormRegressionTest, ExprDivision1) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(/ arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprDivision2) {
+TEST_F(FormRegressionTestJak1, ExprDivision2) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    div a0, a1\n"
@@ -198,10 +198,10 @@ TEST_F(FormRegressionTest, ExprDivision2) {
       "    daddu sp, sp, r0";
   std::string type = "(function uint int int)";
   std::string expected = "(/ (the-as int arg0) arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprDivision3) {
+TEST_F(FormRegressionTestJak1, ExprDivision3) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    div a0, a1\n"
@@ -210,10 +210,10 @@ TEST_F(FormRegressionTest, ExprDivision3) {
       "    daddu sp, sp, r0";
   std::string type = "(function int uint int)";
   std::string expected = "(/ arg0 (the-as int arg1))";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprDivision4) {
+TEST_F(FormRegressionTestJak1, ExprDivision4) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    div a0, a1\n"
@@ -222,10 +222,10 @@ TEST_F(FormRegressionTest, ExprDivision4) {
       "    daddu sp, sp, r0";
   std::string type = "(function uint uint uint)";
   std::string expected = "(the-as uint (/ (the-as int arg0) (the-as int arg1)))";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprAsh) {
+TEST_F(FormRegressionTestJak1, ExprAsh) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L305:\n"
@@ -240,10 +240,10 @@ TEST_F(FormRegressionTest, ExprAsh) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(ash arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprMod) {
+TEST_F(FormRegressionTestJak1, ExprMod) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    div a0, a1\n"
@@ -252,10 +252,10 @@ TEST_F(FormRegressionTest, ExprMod) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(mod arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprAbs) {
+TEST_F(FormRegressionTestJak1, ExprAbs) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L301:\n"
@@ -268,10 +268,10 @@ TEST_F(FormRegressionTest, ExprAbs) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int)";
   std::string expected = "(abs arg0)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprMin) {
+TEST_F(FormRegressionTestJak1, ExprMin) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    or v0, a0, r0\n"
@@ -282,10 +282,10 @@ TEST_F(FormRegressionTest, ExprMin) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(min arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprMax) {
+TEST_F(FormRegressionTestJak1, ExprMax) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    or v0, a0, r0\n"
@@ -296,10 +296,10 @@ TEST_F(FormRegressionTest, ExprMax) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(max arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprLogior) {
+TEST_F(FormRegressionTestJak1, ExprLogior) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    or v0, a0, a1\n"
@@ -307,10 +307,10 @@ TEST_F(FormRegressionTest, ExprLogior) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(logior arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprLogxor) {
+TEST_F(FormRegressionTestJak1, ExprLogxor) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    xor v0, a0, a1\n"
@@ -318,10 +318,10 @@ TEST_F(FormRegressionTest, ExprLogxor) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(logxor arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprLognor) {
+TEST_F(FormRegressionTestJak1, ExprLognor) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    nor v0, a0, a1\n"
@@ -329,10 +329,10 @@ TEST_F(FormRegressionTest, ExprLognor) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(lognor arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprLogand) {
+TEST_F(FormRegressionTestJak1, ExprLogand) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    and v0, a0, a1\n"
@@ -340,10 +340,10 @@ TEST_F(FormRegressionTest, ExprLogand) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(logand arg0 arg1)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprLognot) {
+TEST_F(FormRegressionTestJak1, ExprLognot) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    nor v0, a0, r0\n"
@@ -351,10 +351,10 @@ TEST_F(FormRegressionTest, ExprLognot) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int)";
   std::string expected = "(lognot arg0)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprFalse) {
+TEST_F(FormRegressionTestJak1, ExprFalse) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    or v0, s7, r0\n"
@@ -362,10 +362,10 @@ TEST_F(FormRegressionTest, ExprFalse) {
       "    daddu sp, sp, r0";
   std::string type = "(function symbol)";
   std::string expected = "#f";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprTrue) {
+TEST_F(FormRegressionTestJak1, ExprTrue) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddiu v0, s7, #t\n"
@@ -373,10 +373,10 @@ TEST_F(FormRegressionTest, ExprTrue) {
       "    daddu sp, sp, r0";
   std::string type = "(function symbol)";
   std::string expected = "#t";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprPrintBfloat) {
+TEST_F(FormRegressionTestJak1, ExprPrintBfloat) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddiu sp, sp, -32\n"
@@ -403,10 +403,10 @@ TEST_F(FormRegressionTest, ExprPrintBfloat) {
   std::string type = "(function bfloat bfloat)";
 
   std::string expected = "(begin (format #t \"~f\" (-> arg0 data)) arg0)";
-  test_with_expr_jak1(func, type, expected, false, "", {{"L343", "~f"}});
+  test_with_expr(func, type, expected, false, "", {{"L343", "~f"}});
 }
 
-TEST_F(FormRegressionTest, ExprSizeOfType) {
+TEST_F(FormRegressionTestJak1, ExprSizeOfType) {
   std::string func =
       "L346:\n"  // fake label.
       "    sll r0, r0, 0\n"
@@ -425,10 +425,10 @@ TEST_F(FormRegressionTest, ExprSizeOfType) {
   std::string type = "(function type uint)";
 
   std::string expected = "(logand 3 (+ (* (-> arg0 allocated-length) 4) 43))";
-  test_with_expr_jak1(func, type, expected, false, "");
+  test_with_expr(func, type, expected, false, "");
 }
 
-TEST_F(FormRegressionTest, ExprBasicTypeP) {
+TEST_F(FormRegressionTestJak1, ExprBasicTypeP) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L285:\n"
@@ -468,10 +468,10 @@ TEST_F(FormRegressionTest, ExprBasicTypeP) {
       "   )\n"
       "  #f\n"
       "  )";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, FinalBasicTypeP) {
+TEST_F(FormRegressionTestJak1, FinalBasicTypeP) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L285:\n"
@@ -511,10 +511,10 @@ TEST_F(FormRegressionTest, FinalBasicTypeP) {
       "   )\n"
       "  #f\n"
       "  )";
-  test_final_function_jak1(func, type, expected);
+  test_final_function(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprTypeTypep) {
+TEST_F(FormRegressionTestJak1, ExprTypeTypep) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L280:\n"
@@ -565,10 +565,10 @@ TEST_F(FormRegressionTest, ExprTypeTypep) {
       "   )\n"
       "  #f\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, false, "");
+  test_with_expr(func, type, expected, false, "");
 }
 
-TEST_F(FormRegressionTest, ExprFindParentMethod) {
+TEST_F(FormRegressionTestJak1, ExprFindParentMethod) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L275:\n"
@@ -629,10 +629,10 @@ TEST_F(FormRegressionTest, ExprFindParentMethod) {
       "   )\n"
       "  v0-0\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, false, "");
+  test_with_expr(func, type, expected, false, "");
 }
 
-TEST_F(FormRegressionTest, ExprRef) {
+TEST_F(FormRegressionTestJak1, ExprRef) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L272:\n"
@@ -660,10 +660,10 @@ TEST_F(FormRegressionTest, ExprRef) {
 
   std::string expected =
       "(begin (dotimes (v1-0 arg1) (nop!) (nop!) (set! arg0 (cdr arg0))) (car arg0))";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprPairMethod4) {
+TEST_F(FormRegressionTestJak1, ExprPairMethod4) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L266:\n"
@@ -728,10 +728,10 @@ TEST_F(FormRegressionTest, ExprPairMethod4) {
       "   )\n"
       "  v0-0\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprPairMethod5) {
+TEST_F(FormRegressionTestJak1, ExprPairMethod5) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    lw v1, pair(s7)\n"
@@ -741,10 +741,10 @@ TEST_F(FormRegressionTest, ExprPairMethod5) {
   std::string type = "(function pair uint)";
 
   std::string expected = "(-> pair size)";
-  test_with_expr_jak1(func, type, expected, false, "");
+  test_with_expr(func, type, expected, false, "");
 }
 
-TEST_F(FormRegressionTest, ExprLast) {
+TEST_F(FormRegressionTestJak1, ExprLast) {
   std::string func =
       "    sll r0, r0, 0\n"
 
@@ -774,10 +774,10 @@ TEST_F(FormRegressionTest, ExprLast) {
       "  (while (not (null? (cdr v0-0))) (nop!) (nop!) (set! v0-0 (cdr v0-0)))\n"
       "  v0-0\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprMember) {
+TEST_F(FormRegressionTestJak1, ExprMember) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L257:\n"
@@ -826,10 +826,10 @@ TEST_F(FormRegressionTest, ExprMember) {
       "   )\n"
       "  (if (not (null? v1-0)) v1-0)\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprNmember) {
+TEST_F(FormRegressionTestJak1, ExprNmember) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddiu sp, sp, -48\n"
@@ -888,10 +888,10 @@ TEST_F(FormRegressionTest, ExprNmember) {
       "   )\n"
       "  (if (not (null? arg1)) arg1)\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprAssoc) {
+TEST_F(FormRegressionTestJak1, ExprAssoc) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    or v1, a1, r0\n"
@@ -939,10 +939,10 @@ TEST_F(FormRegressionTest, ExprAssoc) {
       "   )\n"
       "  (if (not (null? v1-0)) (car v1-0))\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprAssoce) {
+TEST_F(FormRegressionTestJak1, ExprAssoce) {
   std::string func =
       "    sll r0, r0, 0\n"
 
@@ -1007,10 +1007,10 @@ TEST_F(FormRegressionTest, ExprAssoce) {
       "   )\n"
       "  (if (not (null? v1-0)) (car v1-0))\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprNassoc) {
+TEST_F(FormRegressionTestJak1, ExprNassoc) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddiu sp, sp, -48\n"
@@ -1098,10 +1098,10 @@ TEST_F(FormRegressionTest, ExprNassoc) {
       "   )\n"
       "  (if (not (null? arg1)) (car arg1))\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprNassoce) {
+TEST_F(FormRegressionTestJak1, ExprNassoce) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L230:\n"
@@ -1203,10 +1203,10 @@ TEST_F(FormRegressionTest, ExprNassoce) {
       "   )\n"
       "  (if (not (null? arg1)) (car arg1))\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprAppend) {
+TEST_F(FormRegressionTestJak1, ExprAppend) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L224:\n"
@@ -1262,10 +1262,10 @@ TEST_F(FormRegressionTest, ExprAppend) {
       "   arg0\n"
       "   )\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprDelete) {
+TEST_F(FormRegressionTestJak1, ExprDelete) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L217:\n"
@@ -1339,10 +1339,10 @@ TEST_F(FormRegressionTest, ExprDelete) {
       "    )\n"
       "   )\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprDeleteCar) {
+TEST_F(FormRegressionTestJak1, ExprDeleteCar) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L210:\n"
@@ -1418,10 +1418,10 @@ TEST_F(FormRegressionTest, ExprDeleteCar) {
       "    )\n"
       "   )\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprInsertCons) {
+TEST_F(FormRegressionTestJak1, ExprInsertCons) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddiu sp, sp, -32\n"
@@ -1451,10 +1451,10 @@ TEST_F(FormRegressionTest, ExprInsertCons) {
 
   // NOTE - this appears to _not_ be a nested call.
   std::string expected = "(let ((a3-0 (delete-car! (car arg0) arg1))) (cons arg0 a3-0))";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprSort) {
+TEST_F(FormRegressionTestJak1, ExprSort) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddiu sp, sp, -112\n"
@@ -1587,10 +1587,10 @@ TEST_F(FormRegressionTest, ExprSort) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "");
+  test_with_expr(func, type, expected, true, "");
 }
 
-TEST_F(FormRegressionTest, ExprInlineArrayMethod0) {
+TEST_F(FormRegressionTestJak1, ExprInlineArrayMethod0) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddiu sp, sp, -32\n"
@@ -1639,10 +1639,10 @@ TEST_F(FormRegressionTest, ExprInlineArrayMethod0) {
       "   )\n"
       "  v0-0\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "inline-array-class");
+  test_with_expr(func, type, expected, true, "inline-array-class");
 }
 
-TEST_F(FormRegressionTest, ExprInlineArrayMethod4) {
+TEST_F(FormRegressionTestJak1, ExprInlineArrayMethod4) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    lw v0, 0(a0)\n"
@@ -1651,10 +1651,10 @@ TEST_F(FormRegressionTest, ExprInlineArrayMethod4) {
   std::string type = "(function inline-array-class int)";
 
   std::string expected = "(-> arg0 length)";
-  test_with_expr_jak1(func, type, expected, true, "inline-array-class");
+  test_with_expr(func, type, expected, true, "inline-array-class");
 }
 
-TEST_F(FormRegressionTest, ExprInlineArrayMethod5) {
+TEST_F(FormRegressionTestJak1, ExprInlineArrayMethod5) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    lwu v1, -4(a0)\n"
@@ -1676,10 +1676,10 @@ TEST_F(FormRegressionTest, ExprInlineArrayMethod5) {
       "   (* (-> arg0 allocated-length) (the-as int (-> arg0 type heap-base)))\n"
       "   )\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "inline-array-class");
+  test_with_expr(func, type, expected, true, "inline-array-class");
 }
 
-TEST_F(FormRegressionTest, ExprArrayMethod0) {
+TEST_F(FormRegressionTestJak1, ExprArrayMethod0) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddiu sp, sp, -112\n"
@@ -1758,10 +1758,10 @@ TEST_F(FormRegressionTest, ExprArrayMethod0) {
       "  (set! (-> v0-1 content-type) arg2)\n"
       "  v0-1\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "array");
+  test_with_expr(func, type, expected, true, "array");
 }
 
-TEST_F(FormRegressionTest, ExprArrayMethod4) {
+TEST_F(FormRegressionTestJak1, ExprArrayMethod4) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L90:\n"
@@ -1771,10 +1771,10 @@ TEST_F(FormRegressionTest, ExprArrayMethod4) {
   std::string type = "(function array int)";
 
   std::string expected = "(-> arg0 length)";
-  test_with_expr_jak1(func, type, expected, true, "array");
+  test_with_expr(func, type, expected, true, "array");
 }
 
-TEST_F(FormRegressionTest, ExprArrayMethod5) {
+TEST_F(FormRegressionTestJak1, ExprArrayMethod5) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L87:\n"
@@ -1826,10 +1826,10 @@ TEST_F(FormRegressionTest, ExprArrayMethod5) {
       "    )\n"
       "   )\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, true, "array");
+  test_with_expr(func, type, expected, true, "array");
 }
 
-TEST_F(FormRegressionTest, ExprMemCopy) {
+TEST_F(FormRegressionTestJak1, ExprMemCopy) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L84:\n"
@@ -1866,10 +1866,10 @@ TEST_F(FormRegressionTest, ExprMemCopy) {
       "   )\n"
       "  v0-0\n"
       "  )";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprMemSet32) {
+TEST_F(FormRegressionTestJak1, ExprMemSet32) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L75:\n"
@@ -1905,10 +1905,10 @@ TEST_F(FormRegressionTest, ExprMemSet32) {
       "   )\n"
       "  v0-0\n"
       "  )";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprMemOr) {
+TEST_F(FormRegressionTestJak1, ExprMemOr) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L72:\n"
@@ -1948,10 +1948,10 @@ TEST_F(FormRegressionTest, ExprMemOr) {
       "   )\n"
       "  v0-0\n"
       "  )";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprFact) {
+TEST_F(FormRegressionTestJak1, ExprFact) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L65:\n"
@@ -1982,10 +1982,10 @@ TEST_F(FormRegressionTest, ExprFact) {
   std::string type = "(function int int)";
 
   std::string expected = "(if (= arg0 1) 1 (* arg0 (fact (+ arg0 -1))))";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprPrint) {
+TEST_F(FormRegressionTestJak1, ExprPrint) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L63:\n"
@@ -2010,10 +2010,10 @@ TEST_F(FormRegressionTest, ExprPrint) {
   std::string type = "(function object object)";
 
   std::string expected = "((method-of-type (rtype-of arg0) print) arg0)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprPrintl) {
+TEST_F(FormRegressionTestJak1, ExprPrintl) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L61:\n"
@@ -2058,10 +2058,10 @@ TEST_F(FormRegressionTest, ExprPrintl) {
       "  (format #t \"~%\")\n"
       "  arg0\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, false, "", {{"L324", "~%"}});
+  test_with_expr(func, type, expected, false, "", {{"L324", "~%"}});
 }
 
-TEST_F(FormRegressionTest, ExprInspect) {
+TEST_F(FormRegressionTestJak1, ExprInspect) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L59:\n"
@@ -2086,10 +2086,10 @@ TEST_F(FormRegressionTest, ExprInspect) {
   std::string type = "(function object object)";
 
   std::string expected = "((method-of-type (rtype-of arg0) inspect) arg0)";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, ExprPrintTreeBitmask) {
+TEST_F(FormRegressionTestJak1, ExprPrintTreeBitmask) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L54:\n"
@@ -2157,10 +2157,10 @@ TEST_F(FormRegressionTest, ExprPrintTreeBitmask) {
       "   )\n"
       "  #f\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, false, "", {{"L323", "    "}, {"L322", "|   "}});
+  test_with_expr(func, type, expected, false, "", {{"L323", "    "}, {"L322", "|   "}});
 }
 
-TEST_F(FormRegressionTest, ExprPrintName) {
+TEST_F(FormRegressionTestJak1, ExprPrintName) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L136:\n"
@@ -2278,12 +2278,12 @@ TEST_F(FormRegressionTest, ExprPrintName) {
       "(the-as int arg0))))))\n"
       "   )\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, false, "", {},
-                      "[\t\t[24, \"a1\", \"symbol\"],\n"
-                      "\t\t[39, \"a0\", \"symbol\"]]");
+  test_with_expr(func, type, expected, false, "", {},
+                 "[\t\t[24, \"a1\", \"symbol\"],\n"
+                 "\t\t[39, \"a0\", \"symbol\"]]");
 }
 
-TEST_F(FormRegressionTest, ExprProfileBarMethod9) {
+TEST_F(FormRegressionTestJak1, ExprProfileBarMethod9) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    lw v1, 0(a0)\n"
@@ -2296,10 +2296,10 @@ TEST_F(FormRegressionTest, ExprProfileBarMethod9) {
   std::string type = "(function profile-bar int uint)";
 
   std::string expected = "(-> arg0 data (+ (-> arg0 profile-frame-count) -2) time-stamp)";
-  test_with_expr_jak1(func, type, expected, false, "");
+  test_with_expr(func, type, expected, false, "");
 }
 
-TEST_F(FormRegressionTest, ExprStopwatchElapsedSeconds) {
+TEST_F(FormRegressionTestJak1, ExprStopwatchElapsedSeconds) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L20:\n"
@@ -2326,10 +2326,10 @@ TEST_F(FormRegressionTest, ExprStopwatchElapsedSeconds) {
   std::string type = "(function int float)";
 
   std::string expected = "(let ((v1-0 (abs arg0))) (* 0.0 (the float v1-0)))";
-  test_with_expr_jak1(func, type, expected, false, "");
+  test_with_expr(func, type, expected, false, "");
 }
 
-TEST_F(FormRegressionTest, ExprCopyStringString) {
+TEST_F(FormRegressionTestJak1, ExprCopyStringString) {
   std::string func =
       "  sll r0, r0, 0\n"
       "L161:\n"
@@ -2374,10 +2374,10 @@ TEST_F(FormRegressionTest, ExprCopyStringString) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, false, "");
+  test_with_expr(func, type, expected, false, "");
 }
 
-TEST_F(FormRegressionTest, StringLt) {
+TEST_F(FormRegressionTestJak1, StringLt) {
   std::string func =
       "  sll r0, r0, 0\n"
       "L91:\n"
@@ -2479,10 +2479,10 @@ TEST_F(FormRegressionTest, StringLt) {
       "   )\n"
       "  #f\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, false, "");
+  test_with_expr(func, type, expected, false, "");
 }
 
-TEST_F(FormRegressionTest, ExprAssert) {
+TEST_F(FormRegressionTestJak1, ExprAssert) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    daddiu sp, sp, -16\n"
@@ -2510,10 +2510,10 @@ TEST_F(FormRegressionTest, ExprAssert) {
   std::string type = "(function symbol string int)";
 
   std::string expected = "(begin (if (not arg0) (format #t \"A ~A\" arg1)) 0)";
-  test_with_expr_jak1(func, type, expected, false, "", {{"L17", "A ~A"}});
+  test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
 }
 
-TEST_F(FormRegressionTest, ExprTerminal2) {
+TEST_F(FormRegressionTestJak1, ExprTerminal2) {
   std::string func =
       "sll r0, r0, 0\n"
       "L29:\n"
@@ -2547,10 +2547,10 @@ TEST_F(FormRegressionTest, ExprTerminal2) {
       "  ((f0-4 (sqrtf (/ (- (* 0.0 arg0) arg1) arg2))))\n"
       "  (- f0-4 (+ arg1 (* arg2 (* f0-4 f0-4))))\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, false, "", {{"L17", "A ~A"}});
+  test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
 }
 
-TEST_F(FormRegressionTest, MoveFalse) {
+TEST_F(FormRegressionTestJak1, MoveFalse) {
   std::string func =
       "sll r0, r0, 0\n"
       "L29:\n"
@@ -2568,11 +2568,11 @@ TEST_F(FormRegressionTest, MoveFalse) {
   std::string type = "(function int symbol)";
 
   std::string expected = "(logtest? (+ arg0 12) 1)";
-  test_with_expr_jak1(func, type, expected, false, "", {{"L17", "A ~A"}});
+  test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
 }
 
 // Good for testing that in-place ops (+!) check the _variable_ is the same.
-TEST_F(FormRegressionTest, QMemCpy) {
+TEST_F(FormRegressionTestJak1, QMemCpy) {
   std::string func =
       "sll r0, r0, 0\n"
       "L78:\n"
@@ -2620,10 +2620,10 @@ TEST_F(FormRegressionTest, QMemCpy) {
       "   )\n"
       "  v0-0\n"
       "  )";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, StripStripTrailingWhitespace) {
+TEST_F(FormRegressionTestJak1, StripStripTrailingWhitespace) {
   std::string func =
       "sll r0, r0, 0\n"
       "L52:\n"
@@ -2728,11 +2728,11 @@ TEST_F(FormRegressionTest, StripStripTrailingWhitespace) {
       "   )\n"
       "  #f\n"
       "  )";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
 // Let bug (github #328)
-TEST_F(FormRegressionTest, TimeToGround) {
+TEST_F(FormRegressionTestJak1, TimeToGround) {
   std::string func =
       "sll r0, r0, 0\n"
       "    daddiu sp, sp, -16\n"
@@ -2782,11 +2782,11 @@ TEST_F(FormRegressionTest, TimeToGround) {
       "   )\n"
       "  (the-as float v0-0)\n"
       "  )";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
 // Infinite loop bug (github #196)
-TEST_F(FormRegressionTest, LoopingCode) {
+TEST_F(FormRegressionTestJak1, LoopingCode) {
   std::string func =
       "sll r0, r0, 0\n"
       "L1:\n"
@@ -2815,10 +2815,10 @@ TEST_F(FormRegressionTest, LoopingCode) {
       "   )\n"
       "  (the-as symbol #f)\n"
       "  )";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
-TEST_F(FormRegressionTest, AbsAsSideEffect) {
+TEST_F(FormRegressionTestJak1, AbsAsSideEffect) {
   std::string func =
       "sll r0, r0, 0\n"
       "    dsubu v1, a1, a0\n"
@@ -2869,12 +2869,12 @@ TEST_F(FormRegressionTest, AbsAsSideEffect) {
       "    )\n"
       "   )\n"
       "  )";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
 // for github https://github.com/water111/jak-project/issues/332
 // method 11 bit-array
-TEST_F(FormRegressionTest, AshPropagation) {
+TEST_F(FormRegressionTestJak1, AshPropagation) {
   // (ash a2-0 a3-0)
   std::string func =
       "sll r0, r0, 0\n"
@@ -2905,13 +2905,13 @@ TEST_F(FormRegressionTest, AshPropagation) {
       "  (logior! (-> arg0 bytes (/ arg1 8)) (ash 1 (logand arg1 7)))\n"
       "  0\n"
       "  )";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }
 
 // for github https://github.com/water111/jak-project/issues/332
 // method 9 bit-array
 // also checks output prop.
-TEST_F(FormRegressionTest, AshPropagation2) {
+TEST_F(FormRegressionTestJak1, AshPropagation2) {
   // (ash a2-0 a3-0)
   std::string func =
       "sll r0, r0, 0\n"
@@ -2939,5 +2939,5 @@ TEST_F(FormRegressionTest, AshPropagation2) {
       "(let ((v1-2 (-> arg0 bytes (/ arg1 8))))\n"
       "  (logtest? v1-2 (ash 1 (logand arg1 7)))\n"
       "  )";
-  test_with_expr_jak1(func, type, expected);
+  test_with_expr(func, type, expected);
 }

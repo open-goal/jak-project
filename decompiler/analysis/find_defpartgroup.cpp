@@ -45,7 +45,7 @@ L82:
   auto& first_word = words.at(start_word_idx);
   if (first_word.kind() != LinkedWord::TYPE_PTR ||
       first_word.symbol_name() != "sparticle-launch-group") {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Reference to sparticle-launch-group bad: invalid type pointer");
   }
 
@@ -58,7 +58,7 @@ L82:
 
   auto& string_word = words.at(start_word_idx + 3);
   if (string_word.kind() != LinkedWord::PTR) {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Reference to sparticle-launch-group bad: invalid name label");
   }
   group.name = env.file->get_goal_string_by_label(
@@ -66,7 +66,7 @@ L82:
 
   auto& array_word = words.at(start_word_idx + 4);
   if (array_word.kind() != LinkedWord::PTR) {
-    env.func->warnings.warn_and_throw(
+    env.func->warnings.error_and_throw(
         "Reference to sparticle-launch-group bad: invalid array label");
   }
   auto& array_lab = env.file->get_label_by_name(env.file->get_label_name(array_word.label_id()));
@@ -90,7 +90,7 @@ L82:
   for (int i = 0; i < 4; i++) {
     auto& word = words.at(start_word_idx + 8 + i);
     if (word.kind() != LinkedWord::PLAIN_DATA) {
-      env.func->warnings.warn_and_throw("Reference to sparticle-launch-group bad: invalid bounds");
+      env.func->warnings.error_and_throw("Reference to sparticle-launch-group bad: invalid bounds");
     }
     group.bounds[i] = *reinterpret_cast<float*>(&word.data);
   }
@@ -124,19 +124,19 @@ L80:
   auto& first_word = words.at(start_word_idx);
   if (first_word.kind() != LinkedWord::TYPE_PTR ||
       first_word.symbol_name() != "sparticle-launcher") {
-    env.func->warnings.warn_and_throw("Reference to sparticle-launcher bad: invalid type pointer");
+    env.func->warnings.error_and_throw("Reference to sparticle-launcher bad: invalid type pointer");
   }
 
   auto& empty1 = words.at(start_word_idx + 1);
   auto& empty2 = words.at(start_word_idx + 2);
   if (empty1.kind() != LinkedWord::PLAIN_DATA || empty1.data != 0 ||
       empty2.kind() != LinkedWord::PLAIN_DATA || empty2.data != 0) {
-    env.func->warnings.warn_and_throw("Reference to sparticle-launcher bad: accums not empty");
+    env.func->warnings.error_and_throw("Reference to sparticle-launcher bad: accums not empty");
   }
 
   auto& array_word = words.at(start_word_idx + 3);
   if (array_word.kind() != LinkedWord::PTR) {
-    env.func->warnings.warn_and_throw("Reference to sparticle-launcher bad: invalid array label");
+    env.func->warnings.error_and_throw("Reference to sparticle-launcher bad: invalid array label");
   }
   auto& array_lab = env.file->get_label_by_name(env.file->get_label_name(array_word.label_id()));
   auto& array_words = env.file->words_by_seg.at(array_lab.target_segment);

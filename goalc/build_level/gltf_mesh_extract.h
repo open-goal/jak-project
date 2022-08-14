@@ -15,6 +15,7 @@ struct Input {
   bool get_colors = true;
   bool auto_wall_enable = true;
   float auto_wall_angle = 30.f;
+  bool double_sided_collide = false;
 };
 
 struct TfragOutput {

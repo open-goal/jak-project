@@ -6,6 +6,7 @@ import sys
 parser = argparse.ArgumentParser("update-env")
 parser.add_argument("--game", help="The name of the game", type=str)
 parser.add_argument("--decomp_config", help="The decompiler config file", type=str)
+parser.add_argument("--info", help="Just print out current settings", action='store_true')
 args = parser.parse_args()
 
 # TODO - read from defaults
@@ -27,6 +28,10 @@ with open(env_path, 'r') as env_file:
     tokens = flag.split("=")
     if tokens[0] in file:
       file[tokens[0]] = tokens[1].strip()
+
+if args.info:
+  print(file)
+  sys.exit(0)
 
 valid_games = ["jak1", "jak2"]
 

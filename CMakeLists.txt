@@ -46,6 +46,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         # Note: this is only _reserved_ memory, not necessarily _committed_ memory
         # TODO - test with add_link_options instead
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LDFLAGS} -Xlinker /STACK:16000000")
+    else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -g -Wextra")
     endif()
 
     # additional c++ and linker flags for release mode for our projects
@@ -78,6 +80,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         -Wcast-qual \
         -Wdisabled-optimization \
         -Wformat \
+        -Wextra \
         -Wmissing-include-dirs \
         -Woverloaded-virtual \
         -Wredundant-decls \

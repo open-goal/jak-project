@@ -169,7 +169,7 @@ static void gl_exit() {
 static std::shared_ptr<GfxDisplay> gl_make_display(int width,
                                                    int height,
                                                    const char* title,
-                                                   GfxSettings& settings,
+                                                   GfxSettings& /*settings*/,
                                                    GameVersion game_version,
                                                    bool is_main) {
   GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
@@ -392,7 +392,7 @@ void GLDisplay::on_window_size(GLFWwindow* /*window*/, int width, int height) {
   }
 }
 
-void GLDisplay::on_iconify(GLFWwindow* window, int iconified) {
+void GLDisplay::on_iconify(GLFWwindow* /*window*/, int iconified) {
   m_minimized = iconified == GLFW_TRUE;
 }
 
