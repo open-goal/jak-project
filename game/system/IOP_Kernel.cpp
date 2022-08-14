@@ -243,9 +243,17 @@ void IOP_Kernel::processWakeups() {
  * Run the next IOP thread.
  */
 time_stamp IOP_Kernel::dispatch() {
+  // Check vblank interrupt
+  if (vblank_handler != nullptr && vblank_recieved) {
+    vblank_handler(nullptr);
+    vblank_recieved = false;
+  }
+
+  // Update thread states
   updateDelay();
   processWakeups();
 
+  // Run until all threads are idle
   IopThread* next = schedNext();
   while (next != nullptr) {
     // printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);

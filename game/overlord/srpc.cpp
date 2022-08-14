@@ -440,7 +440,7 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
 
 static s32 dmaid = 0;
 
-s32 VBlank_Handler() {
+s32 VBlank_Handler(void*) {
   if (!gSoundEnable)
     return 1;
 

@@ -138,6 +138,8 @@ s32 WaitSema(s32 sema);
 s32 SignalSema(s32 sema);
 s32 PollSema(s32 sema);
 
+s32 RegisterVblankHandler(int edge, int priority, int (*handler)(void*), void* userdata);
+
 void FlushDcache();
 
 u32 sceSifCheckInit();

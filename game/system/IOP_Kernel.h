@@ -173,6 +173,13 @@ class IOP_Kernel {
   s32 SignalSema(s32 id);
   s32 PollSema(s32 id);
 
+  s32 RegisterVblankHandler(int (*handler)(void*)) {
+    vblank_handler = handler;
+    return 0;
+  }
+
+  void signal_vblank() { vblank_recieved = true; };
+
   void read_disc_sectors(u32 sector, u32 sectors, void* buffer);
   bool sif_busy(u32 id);
 
@@ -192,6 +199,9 @@ class IOP_Kernel {
 
   IopThread* schedNext();
   time_stamp nextWakeup();
+
+  s32 (*vblank_handler)(void*);
+  std::atomic_bool vblank_recieved = false;
 
   cothread_t kernel_thread;
   s32 _nextThID = 0;
