@@ -312,7 +312,7 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) const {
         result_type->get_load_signed();  // should the load be sign extended? false for refs.
     info.is_struct = result_type->is_reference();  // is the underlying type a value or a reference?
 
-      info.stride =
+    info.stride =
         align(result_type->get_size_in_memory(), result_type->get_inline_array_stride_alignment());
   } else if (ts.base_type() == "pointer") {
     info.can_deref = true;
