@@ -131,7 +131,7 @@ std::unique_ptr<Res> res_from_json_array(const std::string& name,
       data.push_back(json_array[i].get<float>());
     }
     return std::make_unique<ResFloat>(name, data, -1000000000.0000);
-  } else if (array_type == "floatm") {
+  } else if (array_type == "meters") {
     std::vector<float> data;
     for (size_t i = 1; i < json_array.size(); i++) {
       data.push_back(json_array[i].get<float>() * METER_LENGTH);
