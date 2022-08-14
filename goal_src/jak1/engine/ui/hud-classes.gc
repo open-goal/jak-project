@@ -745,41 +745,39 @@
   (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
          (gp-0 (-> s5-0 base))
          )
-    (let ((s4-0 draw-string-xy))
-      (cond
-        ((cpad-hold? 0 up)
-          ;; show total collectables across entire game
-          (format (clear *temp-string*) "~D~%/~D" 
-            (the int (-> *game-info* money-total))
-            2000  ;;(-> (the progress (-> *progress-process* 0)) total-nb-of-orbs)
-            )
-        )
-        ((cpad-hold? 0 down)
-          (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
-            ;; show collectables this level
-            (format (clear *temp-string*) "~D~%/~D"
-              (-> *game-info* money-per-level lvl-idx)
-              (-> *game-counts* data lvl-idx money-count)
-              )
-            )
-        )
-        (else
-          ;; show vanilla
-          (format (clear *temp-string*) "~D" (-> obj value))
-        )
+    (case *hud-collectable-view*
+      (((hud-collectable-view game-totals))
+        ;; show total collectables across entire game
+        (format (clear *temp-string*) "~D~%/~D" 
+          (the int (-> *game-info* money-total))
+          2000  ;;(-> (the progress (-> *progress-process* 0)) total-nb-of-orbs)
+          )
       )
-      (s4-0
-        *temp-string*
-        s5-0
-        (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
-        (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
-              (the int (-> *video-parms* relative-y-scale))
-              )
-           2
-           )
-        (font-color dark-yellow)
-        (font-flags shadow kerning large)
-        )
+      (((hud-collectable-view level-totals))
+        (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
+          ;; show collectables this level
+          (format (clear *temp-string*) "~D~%/~D"
+            (-> *game-info* money-per-level lvl-idx)
+            (-> *game-counts* data lvl-idx money-count)
+            )
+          )
+      )
+      (((hud-collectable-view original))
+        ;; show vanilla
+        (format (clear *temp-string*) "~D" (-> obj value))
+      )
+    )
+    (draw-string-xy
+      *temp-string*
+      s5-0
+      (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
+      (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+            (the int (-> *video-parms* relative-y-scale))
+            )
+          2
+          )
+      (font-color dark-yellow)
+      (font-flags shadow kerning large)
       )
     (let ((a3-7 (-> s5-0 base)))
       (let ((v1-8 (the-as dma-packet (-> s5-0 base))))
@@ -1145,49 +1143,47 @@
   (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
          (gp-0 (-> s5-0 base))
          )
-    (let ((s4-0 draw-string-xy))
-      (cond
-        ((cpad-hold? 0 up)
-          ;; show total collectables across entire game
-          (format (clear *temp-string*) "~D~%/~D" 
-            (the int (-> *game-info* fuel))
-            101  ;;(-> (the progress (-> *progress-process* 0)) total-nb-of-power-cells)
-            )
+    (case *hud-collectable-view*
+      (((hud-collectable-view game-totals))
+        ;; show total collectables across entire game
+        (format (clear *temp-string*) "~D~%/~D" 
+          (the int (-> *game-info* fuel))
+          101  ;;(-> (the progress (-> *progress-process* 0)) total-nb-of-power-cells)
+          )
         )
-        ((cpad-hold? 0 down)
-          (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1)))
-                (completed-task-count 0))
-            ;; determine number of cells collected in this level
-            (dotimes (task-idx (-> *level-task-data* lvl-idx nb-of-tasks))
-              (if (= (get-task-status (-> *level-task-data* lvl-idx task-info task-idx task-id)) (task-status invalid))
-                (+! completed-task-count 1)
-                )
-            )
-
-            ;; show collectables this level
-            (format (clear *temp-string*) "~D~%/~D"
-              completed-task-count
-              (-> *level-task-data* lvl-idx nb-of-tasks)
+      (((hud-collectable-view level-totals))
+        (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1)))
+              (completed-task-count 0))
+          ;; determine number of cells collected in this level
+          (dotimes (task-idx (-> *level-task-data* lvl-idx nb-of-tasks))
+            (if (= (get-task-status (-> *level-task-data* lvl-idx task-info task-idx task-id)) (task-status invalid))
+              (+! completed-task-count 1)
               )
+          )
+
+          ;; show collectables this level
+          (format (clear *temp-string*) "~D~%/~D"
+            completed-task-count
+            (-> *level-task-data* lvl-idx nb-of-tasks)
             )
+          )
         )
-        (else
-          ;; show vanilla
-          (format (clear *temp-string*) "~D" (-> obj value))
+      (((hud-collectable-view original))
+        ;; show vanilla
+        (format (clear *temp-string*) "~D" (-> obj value))
         )
       )
-      (s4-0
-        *temp-string*
-        s5-0
-        (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
-        (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
-              (the int (-> *video-parms* relative-y-scale))
-              )
-           2
-           )
-        (font-color dark-yellow)
-        (font-flags shadow kerning large)
+    (draw-string-xy
+      *temp-string*
+      s5-0
+      (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
+      (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+            (the int (-> *video-parms* relative-y-scale))
+            )
+        2
         )
+      (font-color dark-yellow)
+      (font-flags shadow kerning large)
       )
     (let ((a3-7 (-> s5-0 base)))
       (let ((v1-8 (the-as object (-> s5-0 base))))
@@ -1443,41 +1439,39 @@
   (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
          (gp-0 (-> s5-0 base))
          )
-    (let ((s3-0 draw-string-xy))
-      (cond
-        ((cpad-hold? 0 up)
-          ;; show total collectables across entire game
-          (format (clear *temp-string*) " ~D~% /~D" 
-            (the int (-> *game-info* buzzer-total)) 
-            112 ;; (-> (the progress (-> *progress-process* 0)) total-nb-of-buzzers)
-            )
+    (case *hud-collectable-view*
+      (((hud-collectable-view game-totals))
+        ;; show total collectables across entire game
+        (format (clear *temp-string*) " ~D~% /~D" 
+          (the int (-> *game-info* buzzer-total)) 
+          112 ;; (-> (the progress (-> *progress-process* 0)) total-nb-of-buzzers)
+          )
         )
-        ((cpad-hold? 0 down)
-          (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
-            ;; show collectables this level
-            (format (clear *temp-string*) " ~D~% /~D"
-              (buzzer-count *game-info* (-> *level-task-data* lvl-idx task-info (-> *level-task-data* lvl-idx buzzer-task-index) task-id))
-              (-> *game-counts* data lvl-idx buzzer-count)
-              )
+      (((hud-collectable-view level-totals))
+        (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
+          ;; show collectables this level
+          (format (clear *temp-string*) " ~D~% /~D"
+            (buzzer-count *game-info* (-> *level-task-data* lvl-idx task-info (-> *level-task-data* lvl-idx buzzer-task-index) task-id))
+            (-> *game-counts* data lvl-idx buzzer-count)
             )
+          )
         )
-        (else
-          ;; show vanilla
-          (format (clear *temp-string*) " ~D" (-> obj value))
+      (((hud-collectable-view original))
+        ;; show vanilla
+        (format (clear *temp-string*) " ~D" (-> obj value))
         )
       )
-      (s3-0
-        *temp-string*
-        s5-0
-        (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
-        (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
-              (the int (-> *video-parms* relative-y-scale))
-              )
-           2
-           )
-        (font-color dark-yellow)
-        (font-flags shadow kerning large)
-        )
+    (draw-string-xy
+      *temp-string*
+      s5-0
+      (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
+      (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+            (the int (-> *video-parms* relative-y-scale))
+            )
+          2
+          )
+      (font-color dark-yellow)
+      (font-flags shadow kerning large)
       )
     (let ((a3-7 (-> s5-0 base)))
       (let ((v1-11 (the-as object (-> s5-0 base))))

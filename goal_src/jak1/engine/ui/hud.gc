@@ -39,6 +39,20 @@
             )
         )
       )
+    (cond
+      ((cpad-hold? 0 up)
+        (set! *hud-collectable-view* (hud-collectable-view game-totals))
+        (set! (-> obj trigger-time) (-> *display* base-frame-counter))
+        )
+      ((cpad-hold? 0 down)
+        (set! *hud-collectable-view* (hud-collectable-view level-totals))
+        (set! (-> obj trigger-time) (-> *display* base-frame-counter))
+        )
+      ((or (cpad-hold? 0 left) (cpad-hold? 0 right))
+        (set! *hud-collectable-view* (hud-collectable-view original))
+        (set! (-> obj trigger-time) (-> *display* base-frame-counter))
+        )
+      )
     )
   0
   (none)
@@ -207,6 +221,30 @@
   (= (-> obj next-state name) 'hud-hidden)
   )
 
+(defun hud-collectables-hidden? ()
+  (local-vars (gp-0 symbol))
+  (cond
+    (*target*
+      (set! gp-0 #t)
+      (dotimes (s5-0 9)
+        (when (-> *hud-parts* parts s5-0)
+          (when (not (hidden? (-> (the-as (pointer hud) (-> *hud-parts* parts s5-0)) 0)))
+              (case (-> (the-as (pointer hud) (-> *hud-parts* parts s5-0)) 0 name)
+                  (('hud-money 'hud-buzzers 'hud-fuel-cell)
+                    (set! gp-0 #f)
+                    )
+                )
+              )
+          )
+        )
+      )
+    (else
+      (set! gp-0 #t)
+      )
+    )
+  gp-0
+  )
+
 (defstate hud-hidden (hud)
   :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
     (local-vars (v0-0 object))
@@ -270,6 +308,10 @@
   :code (behavior ()
     (logior! (-> self mask) (process-mask sleep-code))
     (loop
+      ;; if all collectable hud parts are hidden, revert collectables view to original
+      (if (and (!= *hud-collectable-view* (hud-collectable-view original)) (hud-collectables-hidden?))
+        (set! *hud-collectable-view* (hud-collectable-view original))
+        )
       (suspend)
       )
     (none)
