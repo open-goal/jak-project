@@ -48,7 +48,6 @@ struct DerefInfo {
   bool can_deref = false;
   bool mem_deref = false;
   bool sign_extend = false;
-  bool is_struct;
   RegClass reg = RegClass::INVALID;
   int stride = -1;
   int load_size = -1;

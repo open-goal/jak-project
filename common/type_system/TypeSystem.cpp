@@ -279,7 +279,6 @@ std::string TypeSystem::get_runtime_type(const TypeSpec& ts) {
  */
 DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) const {
   DerefInfo info;
-  info.is_struct = true;
 
   if (!ts.has_single_arg()) {
     // not enough info.
@@ -297,23 +296,26 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) const {
 
   if (ts.base_type() == "inline-array") {
     auto result_type = lookup_type(ts.get_single_arg());
-    if (auto result_structure_type = dynamic_cast<StructureType*>(result_type);
-        result_structure_type && result_structure_type->is_dynamic()) {
+    auto result_structure_type = dynamic_cast<StructureType*>(result_type);
+    if (!result_structure_type || result_structure_type->is_dynamic()) {
       info.can_deref = false;
       return info;
     }
 
-    // it's an inline array of something. We can "dereference". But really we don't do a memory
+    // it's an inline array of structures. We can "dereference". But really we don't do a memory
     // dereference, we just add stride*idx to the pointer.
     info.can_deref = true;                   // deref operators should work...
     info.mem_deref = false;                  // but don't actually dereference a pointer
     info.result_type = ts.get_single_arg();  // what we're an inline-array of
-    info.sign_extend =
-        result_type->get_load_signed();  // should the load be sign extended? false for refs.
-    info.is_struct = result_type->is_reference();  // is the underlying type a value or a reference?
+    info.sign_extend = false;                // not applicable anyway
 
-    info.stride =
-        align(result_type->get_size_in_memory(), result_type->get_inline_array_stride_alignment());
+    if (result_type->is_reference()) {
+      info.stride = align(result_type->get_size_in_memory(),
+                          result_type->get_inline_array_stride_alignment());
+    } else {
+      // can't have an inline array of value types!
+      ASSERT(false);
+    }
   } else if (ts.base_type() == "pointer") {
     info.can_deref = true;
     info.result_type = ts.get_single_arg();
