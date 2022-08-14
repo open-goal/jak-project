@@ -279,7 +279,9 @@ goos::Object decompile_value_array(const TypeSpec& elt_type,
     for (int j = start; j < end; j++) {
       auto& word = obj_words.at(j / 4);
       if (word.kind() != LinkedWord::PLAIN_DATA) {
-        throw std::runtime_error("Got bad word in kind in array of values");
+        throw std::runtime_error(fmt::format(
+            "Got bad word in kind in array of values: expecting array of {}'s, got a {}\n",
+            elt_type.print(), (int)word.kind()));
       }
       elt_bytes.push_back(word.get_byte(j % 4));
     }
@@ -430,7 +432,7 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     const LinkedObjectFile* file,
     const TypeSpec& array_elt_type,
     int stride) {
-  // fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
+  fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
 
   // verify the stride matches the type system
   auto elt_type_info = ts.lookup_type(array_elt_type);
@@ -751,7 +753,7 @@ goos::Object decompile_structure(const TypeSpec& type,
     if (type == TypeSpec("sparticle-group-item")) {
       return decompile_sparticle_group_item(type, label, labels, words, ts, file);
     }
-    if (type == TypeSpec("sound-spec")) {
+    if (type == TypeSpec("sound-spec") && file->version != GameVersion::Jak2) {
       return decompile_sound_spec(type, label, labels, words, ts, file);
     }
   }
@@ -769,7 +771,7 @@ goos::Object decompile_structure(const TypeSpec& type,
   if (is_basic) {
     const auto& word = words.at(label.target_segment).at((offset_location / 4));
     if (word.kind() != LinkedWord::TYPE_PTR) {
-      throw std::runtime_error("Basic does not start with type pointer");
+      throw std::runtime_error(fmt::format("Basic does not start with type pointer: {}", label.name));
     }
 
     if (word.symbol_name() != actual_type.base_type()) {

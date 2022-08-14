@@ -73,6 +73,10 @@
 (define-extern file-stream-write (function file-stream pointer uint uint))
 (define-extern file-stream-close (function file-stream file-stream))
 (define-extern new-dynamic-structure (function symbol type int structure))
+(define-extern kernel-shutdown (function none))
+(define-extern scf-get-timeout (function int))
+(define-extern scf-get-inactive-timeout (function int))
+(define-extern syncv (function int int))
 
 
 (defenum kmalloc-flags
@@ -933,6 +937,7 @@
    (w    int8    :offset        3)
    (clr  int32   :offset        0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -1804,7 +1809,7 @@
 (defenum sound-group
   :bitfield #t
   :type uint8
-  (sog0)
+  (sfx)
   (sog1)
   (sog2)
   (sog3)
@@ -1812,9 +1817,9 @@
   (sog5)
   (sog6)
   (sog7)
-  ; (sfx)
-  ; (music)
-  ; (dialog)
+
+  ; (music) 1
+  ; (dialog) 2
   ; (sog3)
   ; (ambient)
   ; (sog5)
@@ -1825,15 +1830,15 @@
 (defenum sound-mask
   :bitfield #t
   :type uint16
-  ; (volume)
-  ; (pitch)
-  ; (bend)
-  ; (unused)
-  ; (time)
-  ; (trans)
-  ; (fo-min)
-  ; (fo-max)
-  ; (fo-curve)
+  (volume)
+  (pitch)
+  (bend)
+  (unused)
+  (time)
+  (trans)
+  (fo-min)
+  (fo-max)
+  (fo-curve)
   )
 
 
@@ -2147,7 +2152,7 @@
    (group           sound-group :offset-assert 12)
    (reg             uint8 3     :offset-assert 13)
    (sound-name-char uint8 16    :offset-assert 16)
-   (sound-name      sound-name  :offset 16)
+   (sound-name      sound-name  :offset 16 :score 1)
    (trans           int32 4     :offset-assert 32)
    (volume          int32       :offset-assert 48)
    (pitch-mod       int32       :offset-assert 52)
@@ -5538,15 +5543,15 @@
    (use-camera-other    basic     :offset-assert 68)
    (part-engine-max     int32     :offset-assert 72)
    (city-map-bits       uint64    :offset-assert 80)
-   (continues           basic     :offset-assert 88)
-   (tasks               basic     :offset-assert 92)
+   (continues           pair      :offset-assert 88)
+   (tasks               pair     :offset-assert 92)
    (priority            int32     :offset-assert 96)
-   (load-commands       basic     :offset-assert 100)
-   (alt-load-commands   basic     :offset-assert 104)
+   (load-commands       pair     :offset-assert 100)
+   (alt-load-commands   pair     :offset-assert 104)
    (bsp-mask            uint64    :offset-assert 112)
    (buzzer              int32     :offset-assert 120)
    (buttom-height       meters    :offset-assert 124)
-   (run-packages        basic     :offset-assert 128)
+   (run-packages        pair     :offset-assert 128)
    (prev-level          basic     :offset-assert 132)
    (next-level          basic     :offset-assert 136)
    (wait-for-load       symbol    :offset-assert 140)
@@ -5579,7 +5584,7 @@
    (max-rain            float      :offset-assert 272)
    (fog-mult            float      :offset-assert 276)
    (ocean-alpha         float      :offset-assert 280)
-   (extra-sound-bank    basic      :offset-assert 284)
+   (extra-sound-bank    pair       :offset-assert 284)
    )
   :method-count-assert 9
   :size-assert         #x120
@@ -5611,7 +5616,7 @@
    (borrow-heap       kheap 2 :inline :offset-assert 64)
    (bsp               bsp-header :offset-assert 96)
    (art-group         basic :offset-assert 100)
-   (info              basic :offset-assert 104)
+   (info              level-load-info :offset-assert 104)
    (texture-page      texture-page 18 :offset-assert 108)
    (loaded-texture-page texture-page 16 :offset-assert 180)
    (loaded-texture-page-count int32 :offset-assert 244)
@@ -5680,12 +5685,12 @@
   :flag-assert         #x1e0000146c
   ;; Failed to read fields.
   (:methods
-    (level-method-9 () none 9) ;; (deactivate (_type_) _type_ 9)
+    (deactivate (_type_) _type_ 9)
     (level-method-10 () none 10) ;; (is-object-visible? (_type_ int) symbol 10)
     (level-method-11 () none 11) ;; (add-irq-to-tex-buckets! (_type_) none 11)
     (level-method-12 () none 12) ;; (unload! (_type_) _type_ 12)
     (level-method-13 () none 13) ;; (bsp-name (_type_) symbol 13)
-    (level-method-14 () none 14) ;; (compute-memory-usage (_type_ object) memory-usage-block 14)
+    (compute-memory-usage (_type_ object) memory-usage-block 14)
     (level-method-15 () none 15) ;; (point-in-boxes? (_type_ vector) symbol 15)
     (level-method-16 () none 16) ;; (update-vis! (_type_ level-vis-info uint uint) symbol 16)
     (level-method-17 () none 17) ;; (load-continue (_type_) _type_ 17)
@@ -5760,7 +5765,7 @@
     (level-group-method-17 () none 17) ;; (level-get-target-inside (_type_) level 17)
     (level-group-method-18 () none 18) ;; (alloc-levels! (_type_ symbol) int 18)
     (level-group-method-19 () none 19) ;; (load-commands-set! (_type_ pair) pair 19)
-    (level-group-method-20 () none 20) ;; (art-group-get-by-name (_type_ string) art-group 20)
+    (level-get-target-inside (_type_) level 20) ;; (art-group-get-by-name (_type_ string) art-group 20)
     (level-group-method-21 () none 21) ;; (load-command-get-index (_type_ symbol int) pair 21)
     (level-group-method-22 () none 22) ;; (update-vis-volumes (_type_) none 22)
     (level-group-method-23 () none 23) ;; (update-vis-volumes-from-nav-mesh (_type_) none 23)
@@ -6282,6 +6287,7 @@
   :type uint32
   :bitfield #f
 ;; GAME-TEXT-ID ENUM BEGINS
+  (pause 257)
 ;; GAME-TEXT-ID ENUM ENDS
 )
 
@@ -7566,13 +7572,13 @@
   :flag-assert         #x1100000020
   (:methods
     (drawable-method-9 () none 9) ;; (login (_type_) _type_ 9)
-    (drawable-method-10 () none 10) ;; (draw (_type_ _type_ display-frame) none 10)
+    (draw (_type_ _type_ display-frame) none 10)
     (drawable-method-11 () none 11) ;; (collide-with-box (_type_ int collide-list) none 11)
     (drawable-method-12 () none 12) ;; (collide-y-probe (_type_ int collide-list) none 12)
     (drawable-method-13 () none 13) ;; (collide-ray (_type_ int collide-list) none 13)
     (drawable-method-14 () none 14) ;; (collect-stats (_type_) none 14)
-    (drawable-method-15 () none 15) ;; (debug-draw (_type_ drawable display-frame) none 15)
-    (drawable-method-16 () none 16) ;; (unpack-vis (_type_ (pointer int8) (pointer int8)) (pointer int8) 16)
+    (unpack-vis (_type_ (pointer int8) (pointer int8)) (pointer int8) 15) ;; (debug-draw (_type_ drawable display-frame) none 15)
+    (drawable-method-16 () none 16) ;;
     )
   )
 
@@ -11183,17 +11189,48 @@
 (defenum continue-flags
   :type uint32
   :bitfield #t
+  (cf0 0)
+  (cf1 1)
+  (cf2 2)
+  (cf3 3)
+  (cf4 4)
+  (cf5 5)
+  (cf6 6)
+  (cf7 7)
+  (cf8 8)
+  (cf9 9)
+  (cf10 10)
+  (cf11 11)
+  (cf12 12)
+  (cf13 13)
+  (cf14 14)
+  (cf15 15)
+  (cf16 16)
+  (cf17 17)
+  (cf18 18)
+  (cf19 19)
+  (cf20 20)
+  (cf21 21)
+  (cf22 22)
+  (cf23 23)
+  (cf24 24)
+  (cf25 25)
+  (cf26 26)
+  (cf27 27)
+  (cf28 28)
+  (cf29 29)
+  (cf30 30)
   )
 
 (deftype continue-point (basic)
-  ((name symbol) ;; ?
+  ((name string) ;; ?
    (level symbol) ;; ?
    (flags continue-flags)
    (trans vector :inline)
    (quat vector :inline)
    (camera-trans vector :inline)
    (camera-rot float 9)
-   (on-goto basic)
+   (on-goto pair)
    (vis-nick symbol)
    (want level-buffer-state 6 :inline)
    (want-sound symbol 3)
@@ -15985,7 +16022,6 @@
 ;; bsp-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype bsp-node (structure)
   ((front         int16            :offset-assert 0) ;; int32
    (back          int16            :offset-assert 2) ;; int32
@@ -15998,9 +16034,7 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype game-level (basic)
   ((master-bsp basic  :offset-assert 4)
    )
@@ -16008,9 +16042,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype view-frustum (structure)
   ((hither-top-left     vector :inline :offset-assert 0)
    (hither-top-right    vector :inline :offset-assert 16)
@@ -16025,11 +16057,46 @@
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-|#
 
-#|
 (deftype bsp-header (drawable)
-  ()
+  (
+   ; (info file-info :offset 4)
+   (all-visible-list (pointer uint16) :offset-assert 32)
+   (visible-list-length int16 :offset-assert 36)
+   (drawable-trees drawable-tree-array :offset-assert 40)
+   (pat pointer :offset-assert 44)
+   (pat-length int32 :offset-assert 48)
+
+   ; ;; some sort of texture remapping info
+   ; (texture-remap-table (pointer uint64) :offset-assert 52)
+   ; (texture-remap-table-len int32 :offset-assert 56)
+
+   ; (texture-ids (pointer texture-id) :offset-assert 60)
+   ; (texture-page-count int32 :offset-assert 64)
+
+   ; (unk-zero-0 basic :offset-assert 68)
+
+   ; (name symbol :offset-assert 72)
+   ; (nickname symbol :offset-assert 76)
+   ; (vis-info level-vis-info 8 :offset-assert 80)
+   ; (actors drawable-inline-array-actor :offset-assert 112)
+   ; (cameras (array entity-camera) :offset-assert 116)
+   (nodes (inline-array bsp-node) :offset 120)
+
+   ; (level level :offset-assert 124)
+   ; (current-leaf-idx uint16 :offset-assert 128)
+   ; (unk-data-2 uint16 9 :offset-assert 130)
+
+   ; (boxes box8s-array :offset-assert 148)
+   ; (current-bsp-back-flags uint32 :offset-assert 152)
+   ; (ambients drawable-inline-array-ambient :offset-assert 156)
+   ; (unk-data-4 float :offset-assert 160)
+   ; (unk-data-5 float :offset-assert 164)
+   ; (adgifs adgif-shader-array :offset-assert 168)
+   ; (actor-birth-order (pointer uint32) :offset-assert 172)
+   ; (split-box-indices (pointer uint16) :offset-assert 176)
+   (unk-data-8 uint32 55 :offset 180)
+   )
   :method-count-assert 19
   :size-assert         #x190
   :flag-assert         #x1300000190
@@ -16039,27 +16106,24 @@
     (bsp-header-method-18 () none 18) ;; (birth (_type_) none 18)
     )
   )
-|#
 
-#|
-(deftype collide-stats (structure)
-  ((calls             uint32            :offset-assert 0)
-   (spheres           uint32            :offset-assert 4)
-   (nodes             uint32            :offset-assert 8)
-   (frags             uint32            :offset-assert 12)
-   (tris              uint32            :offset-assert 16)
-   (output            uint32            :offset-assert 20)
-   (total-target      stopwatch :inline :offset-assert 28)
-   (target-cache-fill stopwatch :inline :offset-assert 60)
-   (target-ray-poly   stopwatch :inline :offset-assert 92)
-   )
-  :method-count-assert 9
-  :size-assert         #x78
-  :flag-assert         #x900000078
-  )
-|#
+; (deftype collide-stats (structure)
+;   ((calls             uint32            :offset-assert 0)
+;    (spheres           uint32            :offset-assert 4)
+;    (nodes             uint32            :offset-assert 8)
+;    (frags             uint32            :offset-assert 12)
+;    (tris              uint32            :offset-assert 16)
+;    (output            uint32            :offset-assert 20)
+;    (total-target      stopwatch :inline :offset-assert 28)
+;    (target-cache-fill stopwatch :inline :offset-assert 60)
+;    (target-ray-poly   stopwatch :inline :offset-assert 92)
+;    )
+;   :method-count-assert 9
+;   :size-assert         #x78
+;   :flag-assert         #x900000078
+;   )
 
-;; (define-extern inspect-bsp-tree function) ;; (function bsp-header bsp-node none)
+(define-extern inspect-bsp-tree (function bsp-header bsp-node none))
 ;; (define-extern map-bsp-tree function) ;; (function (function bsp-node none) bsp-header bsp-node none)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -16254,7 +16318,6 @@
 ;; shrubbery-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype billboard (drawable)
   ((flat adgif-shader :inline :offset-assert 32)
    )
@@ -16264,41 +16327,45 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype shrub-view-data (structure)
   ((data           uint128 3       :offset-assert 0) ;; guessed by decompiler
-   (texture-giftag qword   :inline :offset-assert 0) ;; gs-gif-tag :inline
-   (consts         vector  :inline :offset-assert 16)
-   (fog-clamp      vector  :inline :offset-assert 32)
-   (tex-start-ptr  int32           :offset-assert 16)
-   (gifbufsum      float           :offset-assert 16)
-   (mtx-buf-ptr    int32           :offset-assert 20)
-   (exp23          float           :offset-assert 20)
-   (fog-0          float           :offset-assert 24)
-   (fog-1          float           :offset-assert 28)
-   (fog-min        float           :offset-assert 32)
-   (fog-max        float           :offset-assert 36)
+   (texture-giftag gs-gif-tag   :inline :offset 0) ;; was qword
+   (consts         vector  :inline :offset 16)
+   (fog-clamp      vector  :inline :offset 32)
+   (tex-start-ptr  int32           :offset 16)
+   (gifbufsum      float           :offset 16)
+   (mtx-buf-ptr    int32           :offset 20)
+   (exp23          float           :offset 20)
+   (fog-0          float           :offset 24)
+   (fog-1          float           :offset 28)
+   (fog-min        float           :offset 32)
+   (fog-max        float           :offset 36)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype shrubbery (drawable)
-  ((textures (inline-array adgif-shader)  :offset-assert 4) ;; guessed by decompiler
-   (header   qword                        :offset-assert 8)
-   (obj-qwc  uint8                        :offset-assert 12)
-   (vtx-qwc  uint8                        :offset-assert 13)
-   (col-qwc  uint8                        :offset-assert 14)
-   (stq-qwc  uint8                        :offset-assert 15)
-   (obj      uint32                       :offset-assert 16)
-   (vtx      uint32                       :offset-assert 20)
-   (col      uint32                       :offset-assert 24)
-   (stq      uint32                       :offset-assert 28)
+  ((textures (inline-array adgif-shader) :offset 4)
+   ;; header breakdown:
+   ;; [0] - number of textures / 2
+   ;; [1] - number of vertices
+   ;; [2] - number of triangle strips
+   ;; [3] - ??
+   ;;
+   ;; Number of Triangles in the Shrub = header[2] - 2 * header[1]
+   (header   qword          :offset 8)
+   (obj-qwc  uint8          :offset 12)
+   (vtx-qwc  uint8          :offset 13)
+   (col-qwc  uint8          :offset 14)
+   (stq-qwc  uint8          :offset 15)
+   ;; start of static dma-chain
+   (obj      uint32         :score 999 :offset 16)
+   (vtx      uint32         :score 999 :offset 20)
+   (col      uint32         :score 999 :offset 24)
+   (stq      uint32         :score 999 :offset 28)
    )
   :method-count-assert 17
   :size-assert         #x20
@@ -16306,13 +16373,11 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype instance-shrubbery (instance)
   ((flat-normal vector :inline :offset-assert 64)
-   (flat-hwidth float          :offset-assert 76)
-   (color       uint32         :offset-assert 8)
+   (flat-hwidth float          :offset 76)
+   (color       uint32         :offset 8)
    )
   :method-count-assert 17
   :size-assert         #x50
@@ -16320,30 +16385,32 @@
   (:methods
     )
   )
-|#
 
-;; (deftype drawable-inline-array-instance-shrub (drawable-inline-array)
-;;   ()
-;;   :flag-assert #x1100000074
-;;   )
+(deftype drawable-inline-array-instance-shrub (drawable-inline-array)
+  ((data instance-shrubbery 1 :inline :offset-assert 32)
+   (pad uint32)
+   )
+  :flag-assert #x1100000074
+  )
 
-;; (deftype drawable-tree-instance-shrub (drawable-tree)
-;;   ()
-;;   :flag-assert #x1100000020
-;;   )
+(deftype drawable-tree-instance-shrub (drawable-tree)
+  ((info prototype-array-shrub-info :offset 8)
+   (colors-added time-of-day-palette :offset 12) ;; added
+   )
+  :flag-assert #x1100000020
+  )
 
-#|
 (deftype generic-shrub-fragment (drawable)
-  ((textures (inline-array adgif-shader)  :offset-assert 4) ;; guessed by decompiler
-   (vtx-cnt  uint32                       :offset-assert 8)
-   (cnt-qwc  uint8                        :offset-assert 12)
-   (vtx-qwc  uint8                        :offset-assert 13)
-   (col-qwc  uint8                        :offset-assert 14)
-   (stq-qwc  uint8                        :offset-assert 15)
-   (cnt      uint32                       :offset-assert 16)
-   (vtx      uint32                       :offset-assert 20)
-   (col      uint32                       :offset-assert 24)
-   (stq      uint32                       :offset-assert 28)
+  ((textures (inline-array adgif-shader)  :offset 4) ;; guessed by decompiler
+   (vtx-cnt  uint32                       :offset 8)
+   (cnt-qwc  uint8                        :offset 12)
+   (vtx-qwc  uint8                        :offset 13)
+   (col-qwc  uint8                        :offset 14)
+   (stq-qwc  uint8                        :offset 15)
+   (cnt      uint32                       :offset 16)
+   (vtx      uint32                       :offset 20)
+   (col      uint32                       :offset 24)
+   (stq      uint32                       :offset 28)
    )
   :method-count-assert 17
   :size-assert         #x20
@@ -16351,11 +16418,12 @@
   (:methods
     )
   )
-|#
 
-#|
+
 (deftype prototype-shrubbery (drawable-inline-array)
-  ()
+  ((data shrubbery 1 :inline :offset-assert 32)
+   (pad uint32)
+   )
   :method-count-assert 17
   :size-assert         #x44
   :flag-assert         #x1100000044
@@ -16363,7 +16431,6 @@
   (:methods
     )
   )
-|#
 
 ;; (deftype prototype-trans-shrubbery (prototype-shrubbery)
 ;;   ()
@@ -16499,35 +16566,32 @@
 ;; tie-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype tie-fragment-debug (structure)
   ((num-tris    uint16  :offset-assert 0)
    (num-dverts  uint16  :offset-assert 2)
-   (debug-lines basic   :offset-assert 4)
+   (debug-lines (array vector-array)   :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype tie-fragment (drawable)
-  ((gif-ref       (inline-array adgif-shader)  :offset-assert 4) ;; guessed by decompiler
-   (point-ref     uint32                       :offset-assert 8)
-   (color-index   uint16                       :offset-assert 12)
-   (base-colors   uint8                        :offset-assert 14)
-   (tex-count     uint16                       :offset-assert 32)
-   (gif-count     uint16                       :offset-assert 34)
-   (vertex-count  uint16                       :offset-assert 36)
-   (color-count   uint16                       :offset-assert 38)
-   (dp-ref        uint32                       :offset-assert 40)
-   (dp-qwc        uint32                       :offset-assert 44)
-   (generic-ref   uint32                       :offset-assert 48)
-   (generic-count uint16                       :offset-assert 52) ;; uint32
-   (normal-count  uint16                       :offset-assert 54)
-   (normal-ref    uint32                       :offset-assert 56)
-   (debug         tie-fragment-debug           :offset-assert 60)
+  ((gif-ref       (inline-array adgif-shader)  :offset 4) ;; guessed by decompiler
+   (point-ref     uint32                       :offset 8)
+   (color-index   uint16                       :offset 12)
+   (base-colors   uint8                        :offset 14)
+   (tex-count     uint16                       :offset 32)
+   (gif-count     uint16                       :offset 34)
+   (vertex-count  uint16                       :offset 36)
+   (color-count   uint16                       :offset 38)
+   (dp-ref        uint32                       :offset 40)
+   (dp-qwc        uint32                       :offset 44)
+   (generic-ref   uint32                       :offset 48)
+   (generic-count uint16                       :offset 52) ;; uint32
+   (normal-count  uint16                       :offset 54)
+   (normal-ref    uint32                       :offset 56)
+   (debug         tie-fragment-debug           :offset 60)
    )
   :method-count-assert 17
   :size-assert         #x40
@@ -16535,14 +16599,12 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype instance-tie (instance)
-  ((color-indices uint32                :offset-assert 8)
-   (bucket-ptr    prototype-bucket-tie  :offset-assert 12) ;; guessed by decompiler
-   (max-scale     uint16                :offset-assert 38)
-   (rmin-scale    uint16                :offset-assert 54)
+  ((color-indices uint32                :offset 8)
+   (bucket-ptr    prototype-bucket-tie  :offset 12) ;; guessed by decompiler
+   (max-scale     uint16                :offset 38)
+   (rmin-scale    uint16                :offset 54)
    )
   :method-count-assert 17
   :size-assert         #x40
@@ -16550,11 +16612,11 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype drawable-inline-array-instance-tie (drawable-inline-array)
-  ()
+  ((data instance-tie 1 :inline :offset-assert 32)  ;; not sure on type here
+   (pad uint32)
+   )
   :method-count-assert 17
   :size-assert         #x64
   :flag-assert         #x1100000064
@@ -16562,11 +16624,10 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype drawable-tree-instance-tie (drawable-tree)
-  ()
+  ((prototypes proxy-prototype-array-tie           :offset 8)
+   )
   :method-count-assert 17
   :size-assert         #x20
   :flag-assert         #x1100000020
@@ -16574,7 +16635,6 @@
   (:methods
     )
   )
-|#
 
 #|
 (deftype prototype-tie (drawable-inline-array)
@@ -16854,7 +16914,6 @@
 ;; tfrag-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype tfragment-stats (structure)
   ((num-tris   uint16 4 :offset-assert 0) ;; guessed by decompiler
    (num-dverts uint16 4 :offset-assert 8) ;; guessed by decompiler
@@ -16863,9 +16922,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype tfragment-debug-data (structure)
   ((stats       tfragment-stats      :inline :offset-assert 0)
    (debug-lines (array vector-array)         :offset-assert 16) ;; guessed by decompiler
@@ -16874,9 +16931,7 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype generic-tfragment (structure)
   ((dummy int32  :offset-assert 0)
    )
@@ -16884,29 +16939,27 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype tfragment (drawable)
-  ((color-index         uint16                        :offset-assert 6)
-   (debug-data          tfragment-debug-data          :offset-assert 8)
-   (color-indices       uint32                        :offset-assert 12)
-   (colors              uint32                        :offset-assert 12)
-   (dma-chain           uint32                      3 :offset-assert 32) ;; guessed by decompiler
-   (dma-common          uint32                        :offset-assert 32)
-   (dma-level-0         uint32                        :offset-assert 32)
-   (dma-base            uint32                        :offset-assert 36)
-   (dma-level-1         uint32                        :offset-assert 40)
-   (dma-qwc             uint8                       4 :offset-assert 44) ;; guessed by decompiler
-   (shader              (inline-array adgif-shader)   :offset-assert 48) ;; guessed by decompiler
-   (num-shaders         uint8                         :offset-assert 52)
-   (num-base-colors     uint8                         :offset-assert 53)
-   (num-level0-colors   uint8                         :offset-assert 54)
-   (num-level1-colors   uint8                         :offset-assert 55)
-   (color-offset        uint8                         :offset-assert 56)
-   (color-count         uint8                         :offset-assert 57)
-   (texture-masks-index uint16                        :offset-assert 58)
-   (generic             generic-tfragment             :offset-assert 60)
+  ((color-index         uint16                        :offset 6)
+   (debug-data          tfragment-debug-data          :offset 8)
+   (color-indices       uint32                        :offset 12)
+   (colors              uint32                        :offset 12)
+   (dma-chain           uint32                      3 :offset 32) ;; guessed by decompiler
+   (dma-common          uint32                        :offset 32)
+   (dma-level-0         uint32                        :offset 32)
+   (dma-base            uint32                        :offset 36)
+   (dma-level-1         uint32                        :offset 40)
+   (dma-qwc             uint8                       4 :offset 44) ;; guessed by decompiler
+   (shader              (inline-array adgif-shader)   :offset 48) ;; guessed by decompiler
+   (num-shaders         uint8                         :offset 52)
+   (num-base-colors     uint8                         :offset 53)
+   (num-level0-colors   uint8                         :offset 54)
+   (num-level1-colors   uint8                         :offset 55)
+   (color-offset        uint8                         :offset 56)
+   (color-count         uint8                         :offset 57)
+   (texture-masks-index uint16                        :offset 58)
+   (generic             generic-tfragment             :offset 60)
    )
   :method-count-assert 17
   :size-assert         #x40
@@ -16914,11 +16967,10 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype drawable-inline-array-tfrag (drawable-inline-array)
-  ()
+  ((data tfragment 1 :inline :offset-assert 32)
+   (pad uint32))
   :method-count-assert 17
   :size-assert         #x64
   :flag-assert         #x1100000064
@@ -16926,32 +16978,37 @@
   (:methods
     )
   )
-|#
 
-;; (deftype drawable-inline-array-tfrag-trans (drawable-inline-array-tfrag)
-;;   ()
-;;   :flag-assert #x11000000b4
-;;   )
+(deftype drawable-inline-array-tfrag-trans (drawable-inline-array-tfrag)
+  ;; same bug here as jak 1
+  ((data2 tfragment 1 :inline :offset-assert 112)
+   (pad2 uint32))
+  :flag-assert #x11000000b4
+  )
 
-;; (deftype drawable-inline-array-tfrag-water (drawable-inline-array-tfrag)
-;;   ()
-;;   :flag-assert #x11000000b4
-;;   )
+(deftype drawable-inline-array-tfrag-water (drawable-inline-array-tfrag)
+  ;; same bug here as jak 1
+  ((data2 tfragment 1 :inline :offset-assert 112)
+   (pad2 uint32))
+  :flag-assert #x11000000b4
+  )
 
-;; (deftype drawable-tree-tfrag (drawable-tree)
-;;   ()
-;;   :flag-assert #x1100000020
-;;   )
+(deftype drawable-tree-tfrag (drawable-tree)
+  ((time-of-day-pal time-of-day-palette :offset 12)
+   (arrays    drawable-inline-array :dynamic :offset 32 :score 100) ;; either drawable-inline-array-node or drawable-inline-array-tfrag
+   )
+  :flag-assert #x1100000020
+  )
 
-;; (deftype drawable-tree-tfrag-trans (drawable-tree-tfrag)
-;;   ()
-;;   :flag-assert #x1100000020
-;;   )
+(deftype drawable-tree-tfrag-trans (drawable-tree-tfrag)
+  ()
+  :flag-assert #x1100000020
+  )
 
-;; (deftype drawable-tree-tfrag-water (drawable-tree-tfrag-trans)
-;;   ()
-;;   :flag-assert #x1100000020
-;;   )
+(deftype drawable-tree-tfrag-water (drawable-tree-tfrag-trans)
+  ()
+  :flag-assert #x1100000020
+  )
 
 #|
 (deftype tfrag-dists (structure)
@@ -17107,17 +17164,16 @@
 ;; background-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype background-work (basic)
   ((tfrag-tree-count       int32                          :offset-assert 4)
    (tfrag-trees            drawable-tree-tfrag          8 :offset-assert 8) ;; guessed by decompiler
    (tfrag-levels           level                        8 :offset-assert 40) ;; guessed by decompiler
    (tfrag-trans-tree-count int32                          :offset-assert 72)
-   (tfrag-trans-trees      UNKNOWN                      8 :offset-assert 76)
-   (tfrag-trans-levels     UNKNOWN                      8 :offset-assert 108)
+   (tfrag-trans-trees      drawable-tree-tfrag-trans    8 :offset-assert 76)
+   (tfrag-trans-levels     level                        8 :offset-assert 108)
    (tfrag-water-tree-count int32                          :offset-assert 140)
-   (tfrag-water-trees      UNKNOWN                      8 :offset-assert 144)
-   (tfrag-water-levels     UNKNOWN                      8 :offset-assert 176)
+   (tfrag-water-trees      drawable-tree-tfrag-water    8 :offset-assert 144)
+   (tfrag-water-levels     level                        8 :offset-assert 176)
    (shrub-tree-count       int32                          :offset-assert 208)
    (shrub-trees            drawable-tree-instance-shrub 8 :offset-assert 212) ;; guessed by decompiler
    (shrub-levels           level                        8 :offset-assert 244) ;; guessed by decompiler
@@ -17125,15 +17181,13 @@
    (tie-trees              drawable-tree-instance-tie   8 :offset-assert 280) ;; guessed by decompiler
    (tie-levels             level                        8 :offset-assert 312) ;; guessed by decompiler
    (tie-generic            basic                        8 :offset-assert 344) ;; guessed by decompiler
-   (tie-generic-trans      UNKNOWN                      8 :offset-assert 376)
+   (tie-generic-trans      basic                        8 :offset-assert 376)
    (wait-to-vu0            uint32                         :offset-assert 408)
    )
   :method-count-assert 9
   :size-assert         #x19c
   :flag-assert         #x90000019c
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; subdivide-h                    ;;
@@ -18350,7 +18404,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern *external-cam-options* object) ;; external-cam-option
-;; (define-extern *external-cam-mode* object) ;; symbol
+(define-extern *external-cam-mode* symbol)
 ;; (define-extern *camera-look-through-other* object) ;; int
 ;; (define-extern *camera-other-fov* bfloat) ;; bfloat
 ;; (define-extern *camera-other-trans* object) ;; vector
@@ -20546,7 +20600,7 @@
 ;; (define-extern current-str-pos function) ;; (function sound-id int)
 ;; (define-extern is-ramdisk-loaded? function)
 ;; (define-extern is-cd-in? function) ;; (function symbol)
-;; (define-extern new-sound-id function) ;; (function sound-id)
+(define-extern new-sound-id (function sound-id))
 ;; (define-extern check-irx-version function) ;; (function int)
 ;; (define-extern sound-bank-iop-store function)
 ;; (define-extern sound-bank-iop-free function)
@@ -20573,7 +20627,7 @@
 ;; (define-extern sound-set-reverb function) ;; (function int float float uint int)
 ;; (define-extern sound-set-ear-trans function) ;; (function vector vector float int)
 ;; (define-extern sound-play-by-name function) ;; (function sound-name sound-id int int int sound-group symbol sound-id)
-;; (define-extern sound-play-by-spec function) ;; (function sound-spec sound-id vector sound-id)
+(define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id))
 ;; (define-extern sound-pause function) ;; (function sound-id int)
 ;; (define-extern sound-stop function) ;; (function sound-id int)
 ;; (define-extern sound-continue function) ;; (function sound-id int)
@@ -20586,7 +20640,7 @@
 ;; (define-extern sound-volume-off function) ;; (function int)
 ;; (define-extern *ambient-spec* sound-spec) ;; sound-spec
 (define-extern show-iop-info (function dma-buffer int))
-;; (define-extern show-iop-memory function) ;; (function dma-buffer int)
+(define-extern show-iop-memory (function dma-buffer int))
 (define-extern ear-trans (function vector))
 ;; (define-extern make-sqrt-table function) ;; (function int)
 ;; (define-extern loader-test-command function)
@@ -20724,13 +20778,13 @@
 ;; wind-work                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *wind-work* wind-work) ;; wind-work
+(define-extern *wind-work* wind-work)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wind                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern update-wind function) ;; (function wind-work (array uint8) none)
+(define-extern update-wind (function wind-work (array uint8) none))
 ;; (define-extern wind-get-hashed-index function) ;; (function vector int)
 ;; (define-extern level-update-wind function)
 
@@ -20741,7 +20795,7 @@
 ;; (define-extern mem-usage-bsp-tree function) ;; (function bsp-header bsp-node memory-usage-block int none)
 ;; (define-extern *test-shrub* object) ;; int
 ;; (define-extern bsp-camera-asm function) ;; (function bsp-header vector none)
-;; (define-extern print-collide-stats function) ;; (function none)
+(define-extern print-collide-stats (function none))
 ;; (define-extern level-remap-texture function) ;; (function texture-id texture-id)
 ;; (define-extern build-masks function)
 
@@ -20755,7 +20809,7 @@
 ;; (define-extern *stat-string-tfrag-scissor* object)
 ;; (define-extern *stat-string-total* object) ;; string
 ;; (define-extern print-tr-stat function) ;; (function tr-stat string string none)
-;; (define-extern print-terrain-stats function) ;; (function none)
+(define-extern print-terrain-stats (function none))
 ;; (define-extern update-subdivide-settings! function) ;; (function subdivide-settings math-camera int none)
 ;; (define-extern *subdivide-settings* object) ;; subdivide-settings
 ;; (define-extern set-tfrag-dists! function) ;; (function tfrag-dists none)
@@ -20767,9 +20821,9 @@
 ;; (define-extern GSH_TIME object) ;; int
 (define-extern *perf-stats* perf-stat-array)
 ;; (define-extern *gomi-stats-hack* object) ;; (inline-array perf-stat)
-;; (define-extern start-perf-stat-collection function) ;; (function none)
-;; (define-extern end-perf-stat-collection function) ;; (function none)
-;; (define-extern print-perf-stats function) ;; (function none)
+(define-extern start-perf-stat-collection (function none))
+(define-extern end-perf-stat-collection (function none))
+(define-extern print-perf-stats (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sprite                         ;;
@@ -20898,7 +20952,7 @@
 ;; (define-extern sprite-add-2d-all function) ;; (function sprite-array-2d dma-buffer int none)
 ;; (define-extern sprite-add-3d-chunk function) ;; (function sprite-array-3d int int dma-buffer none)
 ;; (define-extern sprite-add-3d-all function) ;; (function sprite-array-3d dma-buffer int none)
-;; (define-extern sprite-draw function) ;; (function display none)
+(define-extern sprite-draw (function display none))
 ;; (define-extern sprite-allocate-user-hvdf function) ;; (function int)
 ;; (define-extern sprite-release-user-hvdf function) ;; (function int none)
 ;; (define-extern sprite-get-user-hvdf function) ;; (function int vector)
@@ -21470,9 +21524,9 @@
 ;; (define-extern bones-vu0-block object) ;; vu-function
 ;; (define-extern bones-set-sqwc function) ;; (function none)
 ;; (define-extern bones-reset-sqwc function) ;; (function none)
-;; (define-extern bones-init function) ;; (function dma-buffer dma-foreground-sink-group none)
+(define-extern bones-init (function dma-buffer none))
 ;; (define-extern bones-mtx-calc function) ;; (function int pointer pointer int object none)
-;; (define-extern bones-mtx-calc-execute function) ;; (function none)
+(define-extern bones-mtx-calc-execute (function none))
 ;; (define-extern dump-qword function) ;; (function qword none)
 ;; (define-extern dump-mem function) ;; (function pointer int none)
 ;; (define-extern bones-debug function) ;; (function none)
@@ -21497,12 +21551,12 @@
 ;; (define-extern vu1-bucket-map function)
 ;; (define-extern generic-bucket-state-init function)
 ;; (define-extern mercneric-chain-init function)
-;; (define-extern foreground-init function)
+(define-extern foreground-init (function none))
 ;; (define-extern texscroll-make-request function) ;; (function merc-effect none)
 (define-extern texscroll-execute (function none))
 ;; (define-extern vu-lights<-light-group! function) ;; (function vu-lights light-group none)
 ;; (define-extern foreground-add-mtx-calc function)
-;; (define-extern foreground-wrapup function)
+(define-extern foreground-wrapup (function none))
 ;; (define-extern *default-shadow-settings* object) ;; shadow-settings
 ;; (define-extern foreground-shadow function)
 ;; (define-extern foreground-generic-merc-death function)
@@ -21514,7 +21568,7 @@
 ;; (define-extern foreground-ripple function)
 ;; (define-extern foreground-draw function)
 ;; (define-extern foreground-draw-hud function)
-;; (define-extern *foreground-draw-engine* object)
+(define-extern *foreground-draw-engine* engine)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-vu0                    ;;
@@ -21603,7 +21657,7 @@
 ;; (define-extern generic-merc-death function)
 ;; (define-extern generic-merc-execute-asm function) ;; (function none)
 ;; (define-extern generic-merc-do-chain function)
-;; (define-extern generic-merc-execute-all function) ;; (function dma-buffer none)
+(define-extern generic-merc-execute-all (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-tie                    ;;
@@ -21704,7 +21758,7 @@
 ;; (define-extern debug-draw-settings function)
 ;; (define-extern shadow-execute function) ;; (function shadow-dma-packet pointer pointer)
 ;; (define-extern shadow-vu0-upload function) ;; (function none)
-;; (define-extern shadow-execute-all function) ;; (function dma-buffer shadow-queue none)
+(define-extern shadow-execute-all (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; shadow-vu1                     ;;
@@ -21818,15 +21872,15 @@
 ;; texture-anim-tables            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sky-texture-anim-array* texture-anim-array)
+(define-extern *sky-texture-anim-array* texture-anim-array)
 ;; (define-extern set-fog-height! function)
 ;; (define-extern set-cloud-minmax! function)
-;; (define-extern *darkjak-texture-anim-array* texture-anim-array)
+(define-extern *darkjak-texture-anim-array* texture-anim-array)
 ;; (define-extern set-darkjak-texture-morph! function)
-;; (define-extern *skull-gem-texture-anim-array* texture-anim-array)
-;; (define-extern *waterfall-texture-anim-array* texture-anim-array)
-;; (define-extern *waterfall-b-texture-anim-array* texture-anim-array)
-;; (define-extern *bomb-texture-anim-array* texture-anim-array)
+(define-extern *skull-gem-texture-anim-array* texture-anim-array)
+(define-extern *waterfall-texture-anim-array* texture-anim-array)
+(define-extern *waterfall-b-texture-anim-array* texture-anim-array)
+(define-extern *bomb-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; blit-displays                  ;;
@@ -21883,15 +21937,15 @@
 ;; background                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *background-work* object) ;; background-work
+(define-extern *background-work* background-work)
 ;; (define-extern background-vu0-block object) ;; vu-function
 ;; (define-extern background-upload-vu0 function) ;; (function none)
-;; (define-extern init-background function) ;; (function none)
+(define-extern init-background (function none))
 ;; (define-extern upload-vis-bits function) ;; (function level level bsp-header none)
 ;; (define-extern set-background-regs! function)
 ;; (define-extern set-tie-quard-planes! function)
 ;; (define-extern set-shrub-quard-planes! function)
-;; (define-extern finish-background function) ;; (function none)
+(define-extern finish-background (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; draw-node                      ;;
@@ -22393,7 +22447,7 @@
 ;; (define-extern sp-relaunch-setup-fields function) ;; (function object sparticle-launcher sparticle-cpuinfo sprite-vec-data-3d none)
 ;; (define-extern sp-relaunch-particle-2d function) ;; (function object sparticle-launcher sparticle-cpuinfo sprite-vec-data-3d none)
 ;; (define-extern sp-relaunch-particle-3d function) ;; (function object sparticle-launcher sparticle-cpuinfo sprite-vec-data-3d none)
-;; (define-extern execute-part-engine function)
+(define-extern execute-part-engine (function none))
 ;; (define-extern sparticle-track-root function) ;; (function object sparticle-cpuinfo vector none)
 ;; (define-extern sparticle-track-root-prim function) ;; (function object sparticle-cpuinfo vector none)
 ;; (define-extern sparticle-track-joint function)
@@ -22531,7 +22585,7 @@
 ;; (define-extern task-level->string function)
 ;; (define-extern level-name->task-level function)
 ;; (define-extern trsq->continue-point function) ;; (function trsq none)
-;; (define-extern position->stream function)
+(define-extern position->stream (function string symbol symbol none))
 ;; (define-extern bug-report-display function)
 ;; (define-extern print-continues function)
 ;; (define-extern *highscore-info-array* array)
@@ -22820,7 +22874,7 @@
 ;; (define-extern update-mood-exterior function)
 ;; (define-extern copy-mood-exterior function)
 ;; (define-extern copy-mood-exterior-ambi function)
-;; (define-extern clear-mood-context function)
+(define-extern clear-mood-context (function int none))
 ;; (define-extern update-mood-interior function)
 ;; (define-extern update-mood-flames function) ;; (function mood-context int int int float float float none)
 ;; (define-extern *flash0* array) ;; (array float)
@@ -23784,14 +23838,14 @@
 ;; (define-extern set-filter-color! function)
 ;; (define-extern tod-madd! function)
 ;; (define-extern update-environment-colors function)
-;; (define-extern update-time-of-day function) ;; (function time-of-day-context none)
+(define-extern update-time-of-day (function time-of-day-context none))
 ;; (define-extern calc-fade-from-fog function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sky-data                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sky-work* object) ;; sky-work
+(define-extern *sky-work* sky-work)
 ;; (define-extern sky-base-polygons object) ;; (inline-array sky-vertex)
 ;; (define-extern sky-roof-polygons object) ;; (inline-array sky-vertex)
 ;; (define-extern *cloud-vert-array* object)
@@ -23827,165 +23881,165 @@
 ;; level-info                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *task-level* array)
-;; (define-extern default-level level-load-info) ;; level-load-info
-;; (define-extern intro level-load-info) ;; level-load-info
-;; (define-extern demo level-load-info) ;; level-load-info
-;; (define-extern title level-load-info) ;; level-load-info
-;; (define-extern vinroom level-load-info)
-;; (define-extern drillmid level-load-info)
-;; (define-extern drill level-load-info)
-;; (define-extern drillb level-load-info)
-;; (define-extern drillmtn level-load-info)
-;; (define-extern sewer level-load-info)
-;; (define-extern sewerb level-load-info)
-;; (define-extern sewesc level-load-info)
-;; (define-extern sewescb level-load-info)
-;; (define-extern tomba level-load-info)
-;; (define-extern tombb level-load-info)
-;; (define-extern tombc level-load-info)
-;; (define-extern tombd level-load-info)
-;; (define-extern tombe level-load-info)
-;; (define-extern tombext level-load-info)
-;; (define-extern tombboss level-load-info)
-;; (define-extern under level-load-info)
-;; (define-extern underb level-load-info)
-;; (define-extern palcab level-load-info)
-;; (define-extern palshaft level-load-info)
-;; (define-extern palboss level-load-info)
-;; (define-extern palroof level-load-info)
-;; (define-extern palout level-load-info)
-;; (define-extern throne level-load-info)
-;; (define-extern lbrnermk level-load-info)
-;; (define-extern lashthrn level-load-info)
-;; (define-extern lthrnout level-load-info)
-;; (define-extern palent level-load-info)
-;; (define-extern prison level-load-info)
-;; (define-extern ldjakbrn level-load-info)
-;; (define-extern lprsncst level-load-info)
-;; (define-extern forexita level-load-info)
-;; (define-extern forexitb level-load-info)
-;; (define-extern forresca level-load-info)
-;; (define-extern forrescb level-load-info)
-;; (define-extern fordumpa level-load-info)
-;; (define-extern fordumpb level-load-info)
-;; (define-extern fordumpc level-load-info)
-;; (define-extern fordumpd level-load-info)
-;; (define-extern strip level-load-info)
-;; (define-extern ruins level-load-info)
-;; (define-extern sagehut level-load-info)
-;; (define-extern atoll level-load-info)
-;; (define-extern atollext level-load-info)
-;; (define-extern mountain level-load-info)
-;; (define-extern mtnext level-load-info)
-;; (define-extern forest level-load-info)
-;; (define-extern forestb level-load-info)
-;; (define-extern mincan level-load-info)
-;; (define-extern ctywide level-load-info)
-;; (define-extern lwidea level-load-info)
-;; (define-extern lwideb level-load-info)
-;; (define-extern lwidec level-load-info)
-;; (define-extern ctykora level-load-info)
-;; (define-extern ctyasha level-load-info)
-;; (define-extern ctygena level-load-info)
-;; (define-extern ctygenb level-load-info)
-;; (define-extern ctygenc level-load-info)
-;; (define-extern ctysluma level-load-info)
-;; (define-extern ctyslumb level-load-info)
-;; (define-extern ctyslumc level-load-info)
-;; (define-extern ctyport level-load-info)
-;; (define-extern ljkdxash level-load-info)
-;; (define-extern ctyfarma level-load-info)
-;; (define-extern ctyfarmb level-load-info)
-;; (define-extern ctyinda level-load-info)
-;; (define-extern consite level-load-info)
-;; (define-extern consiteb level-load-info)
-;; (define-extern ctyindb level-load-info)
-;; (define-extern ctymarka level-load-info)
-;; (define-extern ctymarkb level-load-info)
-;; (define-extern ctypal level-load-info)
-;; (define-extern stadium level-load-info)
-;; (define-extern stadiumb level-load-info)
-;; (define-extern stadiumc level-load-info)
-;; (define-extern stadiumd level-load-info)
-;; (define-extern skatea level-load-info)
-;; (define-extern garage level-load-info)
-;; (define-extern stadblmp level-load-info)
-;; (define-extern lwidesta level-load-info)
-;; (define-extern lerrol level-load-info)
-;; (define-extern lkeirift level-load-info)
-;; (define-extern lracelit level-load-info)
-;; (define-extern lracebb level-load-info)
-;; (define-extern lracebf level-load-info)
-;; (define-extern lracecb level-load-info)
-;; (define-extern lracecf level-load-info)
-;; (define-extern lracedb level-load-info)
-;; (define-extern lracedf level-load-info)
-;; (define-extern lgarcsta level-load-info)
-;; (define-extern lsamergd level-load-info)
-;; (define-extern lerbrngd level-load-info)
-;; (define-extern lsmysbrt level-load-info)
-;; (define-extern lashgrd level-load-info)
-;; (define-extern onintent level-load-info)
-;; (define-extern ltentout level-load-info)
-;; (define-extern ltentob level-load-info)
-;; (define-extern kiosk level-load-info)
-;; (define-extern oracle level-load-info) ;; type
-;; (define-extern hideout level-load-info)
-;; (define-extern ltrntess level-load-info)
-;; (define-extern ltrnkrkd level-load-info)
-;; (define-extern ltrnysam level-load-info)
-;; (define-extern lysamsam level-load-info)
-;; (define-extern lyskdcd level-load-info)
-;; (define-extern lkiddoge level-load-info)
-;; (define-extern lhelldog level-load-info)
-;; (define-extern lpackage level-load-info)
-;; (define-extern lsack level-load-info)
-;; (define-extern lportrun level-load-info)
-;; (define-extern lshuttle level-load-info)
-;; (define-extern lmeetbrt level-load-info)
-;; (define-extern lpower level-load-info)
-;; (define-extern lerlchal level-load-info)
-;; (define-extern lprtrace level-load-info)
-;; (define-extern lbombbot level-load-info)
-;; (define-extern lbbush level-load-info)
-;; (define-extern lprotect level-load-info)
-;; (define-extern hiphog level-load-info)
-;; (define-extern ltess level-load-info)
-;; (define-extern lhipout level-load-info)
-;; (define-extern lwhack level-load-info)
-;; (define-extern lguard level-load-info)
-;; (define-extern lcguard level-load-info)
-;; (define-extern lerltess level-load-info)
-;; (define-extern gungame level-load-info)
-;; (define-extern dig1 level-load-info)
-;; (define-extern dig3a level-load-info)
-;; (define-extern dig3b level-load-info)
-;; (define-extern caspad level-load-info)
-;; (define-extern castle level-load-info)
-;; (define-extern casboss level-load-info)
-;; (define-extern casext level-load-info)
-;; (define-extern cascity level-load-info)
-;; (define-extern village1 level-load-info) ;; level-load-info
-;; (define-extern introcst level-load-info)
-;; (define-extern lcitylow level-load-info)
-;; (define-extern lintcstb level-load-info)
-;; (define-extern ljakdax level-load-info)
-;; (define-extern nest level-load-info)
-;; (define-extern nestb level-load-info)
-;; (define-extern outrocst level-load-info)
-;; (define-extern portwall level-load-info)
-;; (define-extern loutcstb level-load-info)
-;; (define-extern island1 level-load-info)
-;; (define-extern city-start function)
-;; (define-extern skatepark level-load-info)
-;; (define-extern halfpipe level-load-info) ;; level-load-info
-;; (define-extern vistest level-load-info)
-;; (define-extern woodstest level-load-info)
-;; (define-extern tobytest level-load-info)
-;; (define-extern chartest level-load-info)
-;; (define-extern dptest level-load-info)
-;; (define-extern ctyfence level-load-info)
+(define-extern *task-level* array)
+(define-extern default-level level-load-info) ;; level-load-info
+(define-extern intro level-load-info) ;; level-load-info
+(define-extern demo level-load-info) ;; level-load-info
+(define-extern title level-load-info) ;; level-load-info
+(define-extern vinroom level-load-info)
+(define-extern drillmid level-load-info)
+(define-extern drill level-load-info)
+(define-extern drillb level-load-info)
+(define-extern drillmtn level-load-info)
+(define-extern sewer level-load-info)
+(define-extern sewerb level-load-info)
+(define-extern sewesc level-load-info)
+(define-extern sewescb level-load-info)
+(define-extern tomba level-load-info)
+(define-extern tombb level-load-info)
+(define-extern tombc level-load-info)
+(define-extern tombd level-load-info)
+(define-extern tombe level-load-info)
+(define-extern tombext level-load-info)
+(define-extern tombboss level-load-info)
+(define-extern under level-load-info)
+(define-extern underb level-load-info)
+(define-extern palcab level-load-info)
+(define-extern palshaft level-load-info)
+(define-extern palboss level-load-info)
+(define-extern palroof level-load-info)
+(define-extern palout level-load-info)
+(define-extern throne level-load-info)
+(define-extern lbrnermk level-load-info)
+(define-extern lashthrn level-load-info)
+(define-extern lthrnout level-load-info)
+(define-extern palent level-load-info)
+(define-extern prison level-load-info)
+(define-extern ldjakbrn level-load-info)
+(define-extern lprsncst level-load-info)
+(define-extern forexita level-load-info)
+(define-extern forexitb level-load-info)
+(define-extern forresca level-load-info)
+(define-extern forrescb level-load-info)
+(define-extern fordumpa level-load-info)
+(define-extern fordumpb level-load-info)
+(define-extern fordumpc level-load-info)
+(define-extern fordumpd level-load-info)
+(define-extern strip level-load-info)
+(define-extern ruins level-load-info)
+(define-extern sagehut level-load-info)
+(define-extern atoll level-load-info)
+(define-extern atollext level-load-info)
+(define-extern mountain level-load-info)
+(define-extern mtnext level-load-info)
+(define-extern forest level-load-info)
+(define-extern forestb level-load-info)
+(define-extern mincan level-load-info)
+(define-extern ctywide level-load-info)
+(define-extern lwidea level-load-info)
+(define-extern lwideb level-load-info)
+(define-extern lwidec level-load-info)
+(define-extern ctykora level-load-info)
+(define-extern ctyasha level-load-info)
+(define-extern ctygena level-load-info)
+(define-extern ctygenb level-load-info)
+(define-extern ctygenc level-load-info)
+(define-extern ctysluma level-load-info)
+(define-extern ctyslumb level-load-info)
+(define-extern ctyslumc level-load-info)
+(define-extern ctyport level-load-info)
+(define-extern ljkdxash level-load-info)
+(define-extern ctyfarma level-load-info)
+(define-extern ctyfarmb level-load-info)
+(define-extern ctyinda level-load-info)
+(define-extern consite level-load-info)
+(define-extern consiteb level-load-info)
+(define-extern ctyindb level-load-info)
+(define-extern ctymarka level-load-info)
+(define-extern ctymarkb level-load-info)
+(define-extern ctypal level-load-info)
+(define-extern stadium level-load-info)
+(define-extern stadiumb level-load-info)
+(define-extern stadiumc level-load-info)
+(define-extern stadiumd level-load-info)
+(define-extern skatea level-load-info)
+(define-extern garage level-load-info)
+(define-extern stadblmp level-load-info)
+(define-extern lwidesta level-load-info)
+(define-extern lerrol level-load-info)
+(define-extern lkeirift level-load-info)
+(define-extern lracelit level-load-info)
+(define-extern lracebb level-load-info)
+(define-extern lracebf level-load-info)
+(define-extern lracecb level-load-info)
+(define-extern lracecf level-load-info)
+(define-extern lracedb level-load-info)
+(define-extern lracedf level-load-info)
+(define-extern lgarcsta level-load-info)
+(define-extern lsamergd level-load-info)
+(define-extern lerbrngd level-load-info)
+(define-extern lsmysbrt level-load-info)
+(define-extern lashgrd level-load-info)
+(define-extern onintent level-load-info)
+(define-extern ltentout level-load-info)
+(define-extern ltentob level-load-info)
+(define-extern kiosk level-load-info)
+(define-extern oracle level-load-info) ;; type
+(define-extern hideout level-load-info)
+(define-extern ltrntess level-load-info)
+(define-extern ltrnkrkd level-load-info)
+(define-extern ltrnysam level-load-info)
+(define-extern lysamsam level-load-info)
+(define-extern lyskdcd level-load-info)
+(define-extern lkiddoge level-load-info)
+(define-extern lhelldog level-load-info)
+(define-extern lpackage level-load-info)
+(define-extern lsack level-load-info)
+(define-extern lportrun level-load-info)
+(define-extern lshuttle level-load-info)
+(define-extern lmeetbrt level-load-info)
+(define-extern lpower level-load-info)
+(define-extern lerlchal level-load-info)
+(define-extern lprtrace level-load-info)
+(define-extern lbombbot level-load-info)
+(define-extern lbbush level-load-info)
+(define-extern lprotect level-load-info)
+(define-extern hiphog level-load-info)
+(define-extern ltess level-load-info)
+(define-extern lhipout level-load-info)
+(define-extern lwhack level-load-info)
+(define-extern lguard level-load-info)
+(define-extern lcguard level-load-info)
+(define-extern lerltess level-load-info)
+(define-extern gungame level-load-info)
+(define-extern dig1 level-load-info)
+(define-extern dig3a level-load-info)
+(define-extern dig3b level-load-info)
+(define-extern caspad level-load-info)
+(define-extern castle level-load-info)
+(define-extern casboss level-load-info)
+(define-extern casext level-load-info)
+(define-extern cascity level-load-info)
+(define-extern village1 level-load-info) ;; level-load-info
+(define-extern introcst level-load-info)
+(define-extern lcitylow level-load-info)
+(define-extern lintcstb level-load-info)
+(define-extern ljakdax level-load-info)
+(define-extern nest level-load-info)
+(define-extern nestb level-load-info)
+(define-extern outrocst level-load-info)
+(define-extern portwall level-load-info)
+(define-extern loutcstb level-load-info)
+(define-extern island1 level-load-info)
+(define-extern city-start (function none))
+(define-extern skatepark level-load-info)
+(define-extern halfpipe level-load-info) ;; level-load-info
+(define-extern vistest level-load-info)
+(define-extern woodstest level-load-info)
+(define-extern tobytest level-load-info)
+(define-extern chartest level-load-info)
+(define-extern dptest level-load-info)
+(define-extern ctyfence level-load-info)
 (define-extern *level-load-list* pair) ;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -23995,7 +24049,7 @@
 (define-extern lookup-level-info (function symbol level-load-info))
 ;; (define-extern remap-level-name function) ;; (function level-load-info symbol)
 ;; (define-extern add-bsp-drawable function) ;; (function bsp-header level symbol display-frame none)
-;; (define-extern *login-state* object) ;; login-state
+(define-extern *login-state* login-state)
 (define-extern *print-login* symbol)
 ;; (define-extern load-buffer-resize function)
 ;; (define-extern level-update-after-load function) ;; (function level login-state level)
@@ -24203,7 +24257,7 @@
 ;; (define-extern cshape-reaction-update-state function)
 ;; (define-extern cshape-reaction-default function)
 ;; (define-extern cshape-reaction-just-move function)
-;; (define-extern collide-shape-draw-debug-marks function) ;; (function none)
+(define-extern collide-shape-draw-debug-marks (function none))
 ;; (define-extern *col-timer* object) ;; stopwatch
 ;; (define-extern *frame-timer* object) ;; stopwatch
 ;; (define-extern *col-timer-enable* object) ;; symbol
@@ -24716,7 +24770,7 @@
 ;; (define-extern update-visible function) ;; (function math-camera symbol)
 ;; (define-extern *save-camera-inv-rot* object) ;; matrix
 ;; (define-extern move-camera-from-pad function) ;; (function math-camera math-camera)
-;; (define-extern external-cam-reset! function) ;; (function none)
+(define-extern external-cam-reset! (function none))
 ;; (define-extern *start-timer* object) ;; int
 ;; (define-extern *timer-value* object) ;; int
 ;; (define-extern *start-pos* object) ;; vector
@@ -25377,7 +25431,7 @@
 ;; (define-extern lightning-start function)
 ;; (define-extern *lightning-globals* object)
 ;; (define-extern *lightning* object)
-;; (define-extern lightning-draw-all function)
+(define-extern lightning-draw-all (function none))
 ;; (define-extern unlink-lightning-spec-by-heap function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -25833,7 +25887,7 @@
 ;; (define-extern target-init function)
 ;; (define-extern tobot-init function)
 (define-extern stop (function symbol int))
-;; (define-extern start function) ;; (function symbol continue-point target)
+(define-extern start  (function symbol continue-point target))
 ;; (define-extern tobot-start function)
 ;; (define-extern tobot-stop function)
 
@@ -26751,13 +26805,13 @@
 ;; drawable                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern sphere-cull function) ;; (function vector symbol)
-;; (define-extern guard-band-cull function) ;; (function vector symbol)
-;; (define-extern sphere-in-view-frustum? function) ;; (function sphere symbol)
+(define-extern sphere-cull (function vector symbol))
+(define-extern guard-band-cull (function vector symbol))
+(define-extern sphere-in-view-frustum? (function sphere symbol))
 ;; (define-extern line-in-view-frustum? function) ;; (function vector vector symbol)
 ;; (define-extern vis-cull function) ;; (function int symbol)
 ;; (define-extern vis-cull-debug function)
-;; (define-extern error-sphere function) ;; (function drawable-error string none)
+(define-extern error-sphere (function drawable-error string none))
 ;; (define-extern *edit-instance* object) ;; string
 ;; (define-extern *instance-mem-usage* object) ;; memory-usage-block
 ;; (define-extern find-instance-by-name-level function)
@@ -26775,22 +26829,22 @@
 ;; (define-extern *hud-lights* object) ;; vu-lights
 ;; (define-extern dma-add-process-drawable-hud function) ;; (function process-drawable draw-control symbol dma-buffer none)
 ;; (define-extern add-process-drawable function) ;; (function process-drawable draw-control symbol dma-buffer none)
-;; (define-extern foreground-engine-execute function) ;; (function engine display-frame int int none)
+(define-extern foreground-engine-execute (function engine display-frame none))
 ;; (define-extern main-debug-hook function) ;; (function none)
 ;; (define-extern *debug-hook* object) ;; (function none)
-;; (define-extern *add-sphere* object) ;; symbol
+(define-extern *add-sphere* symbol)
 ;; (define-extern *generic-effect-mode* object) ;; int
-;; (define-extern foreground-initialize-engines function)
-;; (define-extern foreground-execute-cpu-vu0-engines function)
-;; (define-extern real-main-draw-hook function) ;; (function none)
-;; (define-extern main-draw-hook function) ;; (function none)
-;; (define-extern *draw-hook* object) ;; (function none)
+(define-extern foreground-initialize-engines (function none))
+(define-extern foreground-execute-cpu-vu0-engines (function none))
+(define-extern real-main-draw-hook (function none))
+(define-extern main-draw-hook (function none))
+(define-extern *draw-hook* (function none))
 ;; (define-extern default-init-buffer function)
 ;; (define-extern default-end-buffer function)
 ;; (define-extern screen-shot-scale function)
 ;; (define-extern screen-shot function)
 ;; (define-extern display-frame-start function) ;; (function display int int none)
-;; (define-extern display-frame-finish function) ;; (function display display)
+(define-extern display-frame-finish (function display display))
 ;; (define-extern determine-pause-mode function) ;; (function int)
 (define-extern display-sync (function display none))
 (define-extern swap-display (function display none))
@@ -26861,7 +26915,7 @@
 (define-extern display-loop-main (function display none))
 (define-extern display-loop  (function int :behavior process))
 (define-extern on (function symbol process))
-;; (define-extern off function) ;; (function int)
+(define-extern off (function int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-cache                  ;;
@@ -36002,7 +36056,7 @@
 ;; (define-extern draw-large-polygon-vortex function)
 ;; (define-extern render-vortex-quad function)
 ;; (define-extern update-vortex-data function)
-;; (define-extern draw-vortex function)
+(define-extern draw-vortex (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ai-task-h                      ;;

@@ -25,7 +25,7 @@ namespace decompiler {
  */
 class LinkedObjectFile {
  public:
-  LinkedObjectFile() = default;
+  LinkedObjectFile(GameVersion version) : version(version){};
   void set_segment_count(int n_segs);
   void push_back_word_to_segment(uint32_t word, int segment);
   int get_label_id_for(int seg, int offset);
@@ -136,6 +136,8 @@ class LinkedObjectFile {
   std::vector<DecompilerLabel> labels;
 
   std::unique_ptr<LabelDB> label_db;
+
+  GameVersion version;
 
  private:
   goos::Object to_form_script(int seg, int word_idx, std::vector<bool>& seen);

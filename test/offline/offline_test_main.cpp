@@ -446,6 +446,7 @@ int main(int argc, char* argv[]) {
   auto compare_result = compare(decompiler, files, dump_current_output);
   lg::info("Compared {} lines. {}/{} files passed.", compare_result.total_lines,
            compare_result.ok_files, compare_result.total_files);
+  lg::info("Dump? {}\n", dump_current_output);
 
   if (!compare_result.failing_files.empty()) {
     lg::error("Failing files:");
