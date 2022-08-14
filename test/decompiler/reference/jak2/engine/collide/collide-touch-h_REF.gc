@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: collide-touch-h.gc
-;; name in dgo: collide-touch-h
-;; dgos: ENGINE, GAME
-
-;; DECOMP BEGINS
-
+;; definition of type touching-prim
 (deftype touching-prim (structure)
   ((cprim    collide-shape-prim         :offset-assert   0)
    (has-tri? symbol                     :offset-assert   4)
@@ -17,6 +12,21 @@
   :flag-assert         #x900000068
   )
 
+;; definition for method 3 of type touching-prim
+(defmethod inspect touching-prim ((obj touching-prim))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'touching-prim)
+  (format #t "~1Tcprim: ~A~%" (-> obj cprim))
+  (format #t "~1Thas-tri?: ~A~%" (-> obj has-tri?))
+  (format #t "~1Ttri: #<collide-tri-result @ #x~X>~%" (-> obj tri))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type touching-prims-entry
 (deftype touching-prims-entry (structure)
   ((next       touching-prims-entry         :offset-assert   0)
    (prev       touching-prims-entry         :offset-assert   4)
@@ -35,6 +45,24 @@
     )
   )
 
+;; definition for method 3 of type touching-prims-entry
+(defmethod inspect touching-prims-entry ((obj touching-prims-entry))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'touching-prims-entry)
+  (format #t "~1Tnext: #<touching-prims-entry @ #x~X>~%" (-> obj next))
+  (format #t "~1Tprev: #<touching-prims-entry @ #x~X>~%" (-> obj prev))
+  (format #t "~1Tallocated?: ~A~%" (-> obj allocated?))
+  (format #t "~1Tu: ~f~%" (-> obj u))
+  (format #t "~1Tprim1: #<touching-prim @ #x~X>~%" (-> obj prim1))
+  (format #t "~1Tprim2: #<touching-prim @ #x~X>~%" (-> obj prim2))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type touching-prims-entry-pool
 (deftype touching-prims-entry-pool (structure)
   ((head  touching-prims-entry            :offset-assert   0)
    (nodes touching-prims-entry 64 :inline :offset-assert  16)
@@ -50,6 +78,21 @@
     )
   )
 
+;; definition for method 3 of type touching-prims-entry-pool
+(defmethod inspect touching-prims-entry-pool ((obj touching-prims-entry-pool))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'touching-prims-entry-pool)
+  (format #t "~1Thead: #<touching-prims-entry @ #x~X>~%" (-> obj head))
+  (format #t "~1Tnodes[64] @ #x~X~%" (-> obj nodes))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 11 of type touching-prims-entry-pool
+;; INFO: Return type mismatch int vs none.
 (defmethod init-list! touching-prims-entry-pool ((obj touching-prims-entry-pool))
   (let ((v1-0 (the-as touching-prims-entry #f)))
     (let ((a1-0 (the-as touching-prims-entry (-> obj nodes))))
@@ -70,6 +113,8 @@
   (none)
   )
 
+;; definition for method 0 of type touching-prims-entry-pool
+;; INFO: Return type mismatch structure vs touching-prims-entry-pool.
 (defmethod new touching-prims-entry-pool ((allocation symbol) (type-to-make type))
   (let ((t9-0 (method-of-type structure new))
         (v1-1 type-to-make)
@@ -82,6 +127,7 @@
     )
   )
 
+;; definition of type touching-shapes-entry
 (deftype touching-shapes-entry (structure)
   ((cshape1   collide-shape         :offset-assert   0)
    (cshape2   collide-shape         :offset-assert   4)
@@ -104,6 +150,24 @@
     )
   )
 
+;; definition for method 3 of type touching-shapes-entry
+(defmethod inspect touching-shapes-entry ((obj touching-shapes-entry))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'touching-shapes-entry)
+  (format #t "~1Tcshape1: ~A~%" (-> obj cshape1))
+  (format #t "~1Tcshape2: ~A~%" (-> obj cshape2))
+  (format #t "~1Tresolve-u: ~D~%" (-> obj resolve-u))
+  (format #t "~1Thead: #<touching-prims-entry @ #x~X>~%" (-> obj head))
+  (format #t "~1Thandle1: ~D~%" (-> obj handle1))
+  (format #t "~1Thandle2: ~D~%" (-> obj handle2))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type touching-list
 (deftype touching-list (structure)
   ((num-touching-shapes int32                            :offset-assert   0)
    (resolve-u           int8                             :offset-assert   4)
@@ -121,6 +185,22 @@
     )
   )
 
+;; definition for method 3 of type touching-list
+(defmethod inspect touching-list ((obj touching-list))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'touching-list)
+  (format #t "~1Tnum-touching-shapes: ~D~%" (-> obj num-touching-shapes))
+  (format #t "~1Tresolve-u: ~D~%" (-> obj resolve-u))
+  (format #t "~1Ttouching-shapes[32] @ #x~X~%" (-> obj touching-shapes))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 0 of type touching-list
+;; INFO: Return type mismatch structure vs touching-list.
 (defmethod new touching-list ((allocation symbol) (type-to-make type))
   (let ((t9-0 (method-of-type structure new))
         (v1-1 type-to-make)
@@ -134,19 +214,27 @@
     )
   )
 
+;; definition for method 9 of type touching-shapes-entry
 (defmethod get-head touching-shapes-entry ((obj touching-shapes-entry))
   (-> obj head)
   )
 
+;; definition for method 10 of type touching-shapes-entry
+;; INFO: Return type mismatch collide-shape vs touching-prims-entry.
 (defmethod get-next touching-shapes-entry ((obj touching-shapes-entry) (arg0 touching-shapes-entry))
   (the-as touching-prims-entry (-> arg0 cshape1))
   )
 
+;; failed to figure out what this is:
 (kmemopen global "collide-touching-lists")
 
+;; definition (perm) for symbol *touching-prims-entry-pool*, type touching-prims-entry-pool
 (define-perm *touching-prims-entry-pool* touching-prims-entry-pool (new 'global 'touching-prims-entry-pool))
+
+;; definition (perm) for symbol *touching-list*, type touching-list
 (define-perm *touching-list* touching-list (new 'global 'touching-list))
 
+;; failed to figure out what this is:
 (kmemclose)
 
 

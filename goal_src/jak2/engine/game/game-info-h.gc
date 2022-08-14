@@ -5,6 +5,36 @@
 ;; name in dgo: game-info-h
 ;; dgos: ENGINE, GAME
 
+(declare-type entity-perm-array inline-array-class)
+(declare-type continue-point basic)
+
+(defenum mc-status-code
+  :type uint32
+  ; (busy 0)
+  ; (ok 1)
+  ; (bad-handle 2)
+  ; (format-failed 3)
+  ; (internal-error 4)
+  ; (write-error 5)
+  ; (read-error 6)
+  ; (new-game 7)
+  ; (no-memory 8)
+  ; (no-card 9)
+  ; (no-last 10)
+  ; (no-format 11)
+  ; (no-file 12)
+  ; (no-save 13)
+  ; (no-space 14)
+  ; (bad-version 15)
+  ; (no-process 16)
+  ; (no-auto-save 17)
+  )
+
+(defenum continue-flags
+  :type uint32
+  :bitfield #t
+  )
+
 ;; DECOMP BEGINS
 
 (deftype game-bank (basic)
@@ -298,15 +328,12 @@
 
 (define-extern *game-info* game-info)
 (when (or (not *game-info*) (zero? *game-info*))
-  (set! gp-0 (new 'static 'game-info :mode 'debug :current-continue #f :last-continue #f))
-  (set! (-> gp-0 unknown-array1) (the-as (array uint64) (new 'global 'boxed-array uint64 110)))
-  (set! (-> gp-0 unknown-array4) (the-as (array uint64) (new 'global 'boxed-array uint64 110)))
-  (set! (-> gp-0 unknown-array2) (the-as (array uint64) (new 'global 'boxed-array uint64 32)))
-  (set! (-> gp-0 unknown-array3) (the-as (array uint64) (new 'global 'boxed-array uint64 32)))
-  (set! *game-info* gp-0)
+  (let  ((gp-0 (new 'static 'game-info :mode 'debug :current-continue #f :last-continue #f)))
+    (set! (-> gp-0 unknown-array1) (the-as (array uint64) (new 'global 'boxed-array uint64 110)))
+    (set! (-> gp-0 unknown-array4) (the-as (array uint64) (new 'global 'boxed-array uint64 110)))
+    (set! (-> gp-0 unknown-array2) (the-as (array uint64) (new 'global 'boxed-array uint64 32)))
+    (set! (-> gp-0 unknown-array3) (the-as (array uint64) (new 'global 'boxed-array uint64 32)))
+    (set! *game-info* gp-0)
+    )
   )
-)
-
-
-
 
