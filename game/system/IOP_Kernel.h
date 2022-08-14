@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <list>
 #include <mutex>
 #include <queue>
 #include <string>
@@ -79,11 +80,17 @@ struct IopThread {
 };
 
 struct Semaphore {
-  u32 option;
-  u32 attr;
-  s32 count;
-  s32 maxCount;
-  s32 initCount;
+  enum class attribute { fifo, prio };
+  Semaphore(attribute attr, s32 option, s32 init_count, s32 max_count)
+      : attr(attr), option(option), count(init_count), initCount(init_count), maxCount(max_count) {}
+
+  attribute attr{attribute::fifo};
+  u32 option{0};
+  s32 count{0};
+  s32 initCount{0};
+  s32 maxCount{0};
+
+  std::list<IopThread*> wait_list;
 };
 
 class IOP_Kernel {
@@ -93,6 +100,7 @@ class IOP_Kernel {
     threads.reserve(16);
     CreateThread("null-thread", nullptr, 0);
     CreateMbx();
+    CreateSema(0, 0, 0, 0);
     kernel_thread = co_active();
   }
 
@@ -155,7 +163,15 @@ class IOP_Kernel {
     return 0;
   }
 
-  s32 CreateSema() { return 1; }
+  s32 CreateSema(s32 attr, s32 option, s32 init_count, s32 max_count) {
+    s32 id = semas.size();
+    semas.emplace_back((Semaphore::attribute)attr, option, init_count, max_count);
+    return id;
+  }
+
+  s32 WaitSema(s32 id);
+  s32 SignalSema(s32 id);
+  s32 PollSema(s32 id);
 
   void read_disc_sectors(u32 sector, u32 sectors, void* buffer);
   bool sif_busy(u32 id);
@@ -170,7 +186,7 @@ class IOP_Kernel {
 
  private:
   void runThread(IopThread* thread);
-  void exitThread();
+  void leaveThread();
   void updateDelay();
   void processWakeups();
 

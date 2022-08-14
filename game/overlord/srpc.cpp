@@ -93,21 +93,22 @@ u32 Thread_Loader() {
 void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
   if (gSoundEnable) {
     gFreeMem = QueryTotalFreeMemSize();
-    // if (!PollSema(gSema)) {
-    if (gMusic) {
-      if (!gMusicPause && !LookupSound(666)) {
-        Sound* music = AllocateSound();
-        if (music != nullptr) {
-          gMusicFade = 0;
-          gMusicFadeDir = 1;
-          SetMusicVol();
-          music->sound_handle = snd_PlaySoundVolPanPMPB(gMusic, 0, 0x400, -1, 0, 0);
-          music->id = 666;
-          music->is_music = 1;
+    if (!PollSema(gSema)) {
+      if (gMusic) {
+        if (!gMusicPause && !LookupSound(666)) {
+          Sound* music = AllocateSound();
+          if (music != nullptr) {
+            gMusicFade = 0;
+            gMusicFadeDir = 1;
+            SetMusicVol();
+            music->sound_handle = snd_PlaySoundVolPanPMPB(gMusic, 0, 0x400, -1, 0, 0);
+            music->id = 666;
+            music->is_music = 1;
+          }
         }
       }
+      SignalSema(gSema);
     }
-    //}
 
     SetMusicVol();
     Sound* music = LookupSound(666);
@@ -396,8 +397,8 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           printf("IOP language: %s\n", gLanguage);  // added.
         } break;
         case SoundCommand::LOAD_MUSIC: {
-          // while (WaitSema(gSema))
-          //   ;
+          while (WaitSema(gSema))
+            ;
           if (gMusic) {
             gMusicFadeDir = -1;
             while (gMusicFade) {
@@ -408,14 +409,14 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
             gMusic = 0;
           }
           LoadMusic(cmd->load_bank.bank_name, &gMusic);
-          //  SignalSema(gSema);
+          SignalSema(gSema);
         } break;
         case SoundCommand::LIST_SOUNDS: {
           PrintActiveSounds();
         } break;
         case SoundCommand::UNLOAD_MUSIC: {
-          // while (WaitSema(gSema))
-          //   ;
+          while (WaitSema(gSema))
+            ;
           if (gMusic) {
             gMusicFadeDir = -1;
             while (gMusicFade) {
@@ -425,7 +426,7 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
             snd_ResolveBankXREFS();
             gMusic = 0;
           }
-          // SignalSema(gSema);
+          SignalSema(gSema);
         } break;
         default:
           ASSERT_MSG(false, fmt::format("Unhandled RPC Loader command {}", (int)cmd->command));

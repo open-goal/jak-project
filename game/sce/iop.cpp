@@ -206,20 +206,19 @@ void SleepThread() {
 }
 
 s32 CreateSema(SemaParam* param) {
-  (void)param;
-  return iop->kernel.CreateSema();
+  return iop->kernel.CreateSema(param->attr, param->option, param->max_count, param->init_count);
 }
 
 s32 WaitSema(s32 sema) {
-  (void)sema;
-  ASSERT(false);  // nyi
-  return 0;
+  return iop->kernel.WaitSema(sema);
 }
 
 s32 SignalSema(s32 sema) {
-  (void)sema;
-  ASSERT(false);  // nyi
-  return 0;
+  return iop->kernel.SignalSema(sema);
+}
+
+s32 PollSema(s32 sema) {
+  return iop->kernel.PollSema(sema);
 }
 
 s32 WakeupThread(s32 thid) {
