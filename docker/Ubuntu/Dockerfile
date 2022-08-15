@@ -12,7 +12,6 @@ RUN useradd -m -d /home/${user} ${user}
 
 USER $user
 
-
 WORKDIR /home/$user
 
 RUN mkdir /home/$user/jak-project/

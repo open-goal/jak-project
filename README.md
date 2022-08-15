@@ -106,17 +106,19 @@ Pick your supported prefered flavour of linux and build your chosen image
 docker build -f docker/(Arch|Fedora|Ubuntu)/Dockerfile -t jak .
 ```
 
-This will create an image with all required dependencies and built the project on startup.
+This will create an image with all required dependencies and already built.
 
 ```
 docker run -v "$(pwd)"/build:/home/jak/jak-project/build -it jak bash
 ```
 
+Note: If you the build directory you'll need to rerun the build command. Alteratively you can get the build via `docker cp`
+
 This will link your build folder to the images so can validate your build or test it on an external device. 
 
 Docker images can be linked into your IDE (e.g. CLion) to help with codesniffing, static analysis, run tests and continuous build.
 
-Unfortently you'll still need task runner on your local to run the game or manually run the game via the commands found in `Taskfile.yml`
+Unfortently you'll still need task runner on your local machine to run the game or instead, manually run the game via the commands found in `Taskfile.yml`
 
 ### Linux
 
