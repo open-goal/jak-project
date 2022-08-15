@@ -82,12 +82,11 @@ void InitBuffers() {
   sStrBuffer[N_STR_BUFFERS - 1].header.next = nullptr;
   sFreeStrBuffer = &sStrBuffer[0];
 
-  // TODO - this has options
   SemaParam params;
-  params.attr = 1;
+  params.attr = SA_THPRI;
   params.max_count = 1;
-  params.option = 1;
-  params.init_count = 0;
+  params.init_count = 1;
+  params.option = 0;
   sSema = CreateSema(&params);
 
   if (sSema < 0) {
@@ -332,8 +331,8 @@ VagCommand* GetVAGCommand() {
     }
 
     // wait for VAG semaphore
-    // while (WaitSema(sSema)) {
-    //}
+    while (WaitSema(sSema)) {
+    }
 
     // try to get something.
     for (s32 i = 0; i < N_VAG_CMDS; i++) {
@@ -344,24 +343,24 @@ VagCommand* GetVAGCommand() {
         if (vag_cmd_cnt > max_vag_cmd_cnt) {
           max_vag_cmd_cnt = vag_cmd_cnt;
         }
-        // SignalSema(sSema);
+        SignalSema(sSema);
         return &vag_cmds[i];
       }
     }
 
-    // SignalSema(sSema);
+    SignalSema(sSema);
   }
 }
 
 void FreeVAGCommand(VagCommand* cmd) {
   s32 idx = cmd - vag_cmds;
   if (idx >= 0 && idx < N_VAG_CMDS && ((vag_cmd_used >> (idx & 0x1f)) & 1)) {
-    // while (WaitSema(sSema)) {
-    // }
+    while (WaitSema(sSema)) {
+    }
 
     vag_cmd_used &= ~(1 << (idx & 0x1f));
     vag_cmd_cnt--;
-    // SignalSema(sSema);
+    SignalSema(sSema);
   } else {
     printf("[OVERLORD] Invalid FreeVAGCommand!\n");
   }
