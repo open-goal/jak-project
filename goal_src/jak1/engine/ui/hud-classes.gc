@@ -742,38 +742,17 @@
   (let ((t9-0 (method-of-type hud draw-hud)))
     (t9-0 obj)
     )
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-         (gp-0 (-> s5-0 base))
-         )
-    (let ((s4-0 draw-string-xy))
-      (format (clear *temp-string*) "~D" (-> obj value))
-      (s4-0
-        *temp-string*
-        s5-0
-        (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
-        (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
-              (the int (-> *video-parms* relative-y-scale))
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                               (bucket-id debug))
+    (draw-string-xy (string-format "~D" (-> obj value)) buf
+            (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
+            (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
+                  (the int (-> *video-parms* relative-y-scale))
+                  )
+              2
               )
-           2
-           )
-        (font-color dark-yellow)
-        (font-flags shadow kerning large)
-        )
-      )
-    (let ((a3-7 (-> s5-0 base)))
-      (let ((v1-8 (the-as dma-packet (-> s5-0 base))))
-        (set! (-> v1-8 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> v1-8 vif0) (new 'static 'vif-tag))
-        (set! (-> v1-8 vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (&+ (the-as pointer v1-8) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-        (bucket-id debug)
-        gp-0
-        (the-as (pointer dma-tag) a3-7)
-        )
-      )
+            (font-color dark-yellow)
+            (font-flags shadow kerning large))
     )
   0
   (none)
