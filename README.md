@@ -17,6 +17,7 @@
   - [Current Status](#current-status)
   - [Methodology](#methodology)
 - [Setting up a Development Environment](#setting-up-a-development-environment)
+  - [Docker](#docker)
   - [Linux](#linux)
     - [Ubuntu (20.04)](#ubuntu-2004)
     - [Arch](#arch)
@@ -94,6 +95,30 @@ Our decompiler is designed specifically for processing the output of the origina
 The remainder of this README is catered towards people interested in building the project from source, typically with the intention on contributing as a developer.
 
 If this does not sound like you and you just want to play the game, refer to the above section [How to play the game](#how-to-play-the-game)
+
+### Docker
+
+All three Linux systems are supported using Docker. 
+
+Pick your supported prefered flavour of linux and build your chosen image
+
+```
+docker build -f docker/(Arch|Fedora|Ubuntu)/Dockerfile -t jak .
+```
+
+This will create an image with all required dependencies and already built.
+
+```
+docker run -v "$(pwd)"/build:/home/jak/jak-project/build -it jak bash
+```
+
+Note: If you the build directory you'll need to rerun the build command. Alteratively you can get the build via `docker cp`
+
+This will link your build folder to the images so can validate your build or test it on an external device. 
+
+Docker images can be linked into your IDE (e.g. CLion) to help with codesniffing, static analysis, run tests and continuous build.
+
+Unfortently you'll still need task runner on your local machine to run the game or instead, manually run the game via the commands found in `Taskfile.yml`
 
 ### Linux
 
