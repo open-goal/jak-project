@@ -33,6 +33,7 @@
 import re
 from rapidfuzz import fuzz
 
+
 class CommentMeta:
     def __init__(self):
         self.data = ""
@@ -49,7 +50,8 @@ class CommentMeta:
         self.containing_form = None  # none - top level
         self.inline = False
         self.code_in_line = None  # only for inline comments
-        self.line_in_file = None # a worst-case scenario fallback
+        self.line_in_file = None  # a worst-case scenario fallback
+
     def __str__(self):
         return "{}:{}:{}".format(self.data, self.symbol_before, self.symbol_after)
 
@@ -324,221 +326,239 @@ lines_to_ignore = [
 
 decomp_lines = []
 
+
 def should_ignore_line(line):
-  for ignore_line in lines_to_ignore:
-    if line.lower().startswith(ignore_line.lower()):
-      return True
-  return False
+    for ignore_line in lines_to_ignore:
+        if line.lower().startswith(ignore_line.lower()):
+            return True
+    return False
+
 
 with open("./decompiler_out/jak2/gkernel_disasm.gc") as f:
-  lines = f.readlines()
-  for line in lines:
-    if should_ignore_line(line):
-      continue
-    decomp_lines.append(line)
+    lines = f.readlines()
+    for line in lines:
+        if should_ignore_line(line):
+            continue
+        decomp_lines.append(line)
 
 # Step 3: Start merging the new code + comments
 final_lines = []
 decomp_started = False
 
+
 def get_symbol_at_line(line):
-  tline = line.strip()
-  matches = re.search(
-      r"(?:define|define-extern|defun|defstate|deftype)\s+([^\s]*)\s", tline
-  )
-  if matches is not None:
-    return matches.group(1)
-  return None
+    tline = line.strip()
+    matches = re.search(
+        r"(?:define|define-extern|defun|defstate|deftype)\s+([^\s]*)\s", tline
+    )
+    if matches is not None:
+        return matches.group(1)
+    return None
+
 
 def relevant_symbol_comments_for_line_before(line, within_form):
-  if within_form is not None:
-    return []
-  symbol = get_symbol_at_line(line)
-  if symbol is None:
-    return []
-  # Loop through comments, finding any that match the symbol
-  # they WILL be placed, so we can remove them from our list now
-  i = 0
-  relevant_comments = []
-  while i < len(comments):
-    comment = comments[i]
-    if comment.symbol_after == symbol:
-      relevant_comments.append(comment)
-      comments.pop(i)
-    else:
-      i = i + 1
-  return relevant_comments
+    if within_form is not None:
+        return []
+    symbol = get_symbol_at_line(line)
+    if symbol is None:
+        return []
+    # Loop through comments, finding any that match the symbol
+    # they WILL be placed, so we can remove them from our list now
+    i = 0
+    relevant_comments = []
+    while i < len(comments):
+        comment = comments[i]
+        if comment.symbol_after == symbol:
+            relevant_comments.append(comment)
+            comments.pop(i)
+        else:
+            i = i + 1
+    return relevant_comments
+
 
 def padding_before_comment(comment):
-  if comment.containing_form is None:
-    if comment.symbol_after is not None:
-      return "\n" * comment.symbol_padding_after
-  return ""
+    if comment.containing_form is None:
+        if comment.symbol_after is not None:
+            return "\n" * comment.symbol_padding_after
+    return ""
+
 
 def padding_after_comment(comment):
-  if comment.containing_form is None:
-    if comment.symbol_before is not None:
-      return "\n" * comment.symbol_padding_before
-  return ""
+    if comment.containing_form is None:
+        if comment.symbol_before is not None:
+            return "\n" * comment.symbol_padding_before
+    return ""
+
 
 def relevant_symbol_comments_for_line_after(line, within_form):
-  if within_form is not None:
-    return []
-  symbol = get_symbol_at_line(line)
-  if symbol is None:
-    return []
-  # Loop through comments, finding any that match the symbol
-  # they WILL be placed, so we can remove them from our list now
-  i = 0
-  relevant_comments = []
-  while i < len(comments):
-    comment = comments[i]
-    # if we can, we prefer to put comments before not after (more accurate re-creation)
-    if comment.symbol_after is None and comment.symbol_before == symbol:
-      relevant_comments.append(comment)
-      comments.pop(i)
-    else:
-      i = i + 1
-  return relevant_comments
+    if within_form is not None:
+        return []
+    symbol = get_symbol_at_line(line)
+    if symbol is None:
+        return []
+    # Loop through comments, finding any that match the symbol
+    # they WILL be placed, so we can remove them from our list now
+    i = 0
+    relevant_comments = []
+    while i < len(comments):
+        comment = comments[i]
+        # if we can, we prefer to put comments before not after (more accurate re-creation)
+        if comment.symbol_after is None and comment.symbol_before == symbol:
+            relevant_comments.append(comment)
+            comments.pop(i)
+        else:
+            i = i + 1
+    return relevant_comments
+
 
 # the first half of the defmethod/etc lines (before arg list) is less likely to change
 # so we want to split it to weight it more heavily
 def split_def_line(line):
-  first_part = ""
-  second_part = ""
-  for index, char in enumerate(line):
-    if char == "(":
-      if index == 0:
-        first_part = first_part + char
-      else:
-        second_part = second_part + char
-      continue
-    else:
-      if second_part != "":
-        second_part = second_part + char
-      else:
-        first_part = first_part + char
-  return first_part, second_part
+    first_part = ""
+    second_part = ""
+    for index, char in enumerate(line):
+        if char == "(":
+            if index == 0:
+                first_part = first_part + char
+            else:
+                second_part = second_part + char
+            continue
+        else:
+            if second_part != "":
+                second_part = second_part + char
+            else:
+                first_part = first_part + char
+    return first_part, second_part
+
 
 def get_relevant_form_comments(form_def_line):
-  threshold = 90.0
-  relevant_comments = []
-  code_def_part, code_rest = split_def_line(form_def_line)
-  # TODO - what if there is no rest!
-  i = 0
-  while i < len(comments):
-    comment = comments[i]
-    if comment.containing_form is None:
-      i = i + 1
-      continue
-    comment_def_part, comment_rest = split_def_line(comment.containing_form)
-    def_score = fuzz.ratio(code_def_part, comment_def_part) * 0.65
-    rest_score = fuzz.ratio(code_rest, comment_rest) * 0.35
+    threshold = 90.0
+    relevant_comments = []
+    code_def_part, code_rest = split_def_line(form_def_line)
+    # TODO - what if there is no rest!
+    i = 0
+    while i < len(comments):
+        comment = comments[i]
+        if comment.containing_form is None:
+            i = i + 1
+            continue
+        comment_def_part, comment_rest = split_def_line(comment.containing_form)
+        def_score = fuzz.ratio(code_def_part, comment_def_part) * 0.65
+        rest_score = fuzz.ratio(code_rest, comment_rest) * 0.35
 
-    if def_score + rest_score >= threshold:
-      relevant_comments.append(comment)
-      comments.pop(i)
-    else:
-      i = i + 1
-  return relevant_comments
+        if def_score + rest_score >= threshold:
+            relevant_comments.append(comment)
+            comments.pop(i)
+        else:
+            i = i + 1
+    return relevant_comments
+
 
 with open("./goal_src/jak2/kernel/gkernel.gc") as f:
-  lines = f.readlines()
-  within_form = None
-  line_num_in_form = None
-  form_paren_stack = []
-  for line in lines:
-    if "[DEBUG]" in line:
-      continue
-    if line.lower().lstrip().startswith(";; decomp begins"):
-      decomp_started = True
-      final_lines.append(line)
-      break
-    if not decomp_started:
-      final_lines.append(line)
-      continue
+    lines = f.readlines()
+    within_form = None
+    line_num_in_form = None
+    form_paren_stack = []
+    for line in lines:
+        if "[DEBUG]" in line:
+            continue
+        if line.lower().lstrip().startswith(";; decomp begins"):
+            decomp_started = True
+            final_lines.append(line)
+            break
+        if not decomp_started:
+            final_lines.append(line)
+            continue
 
-  i = 0
-  while i < len(decomp_lines):
-    line = decomp_lines[i]
-    # Otherwise, its a part of the output we have to be more careful about
-    # For every line in the decompiled output, we scan our comment list to see if anything matches
-    # if it does, we insert it appropriately and remove the comment from the list
-    #
-    # This is the main source of inefficiency, but the process gets progressively faster as comments are eliminated
-    if within_form is None:
-      # lets see if we are now in one
-      within_form = is_line_start_of_form(line)
-      # TODO - check line for symbol matches?
-      if within_form is not None:
-        line_num_in_form = 0
-        if has_form_ended(form_paren_stack, line):
-          within_form = None
-          form_paren_stack = []
-        else:
-          # Get all of the lines of the form at once
-          form_start = decomp_lines[i]
-          form_lines = [form_start]
-          while i < len(decomp_lines):
-            i = i + 1
-            line = decomp_lines[i]
-            if has_form_ended(form_paren_stack, line):
-              within_form = None
-              form_paren_stack = []
-              break
-            else:
-              form_lines.append(line)
-          # Add any comments needed to the form contents
-          # - first we get all comments that have match well with the form's start line (ie. defmethod ....)
-          form_comments = get_relevant_form_comments(form_start)
-          # - for each comment, let's find which line matches it the best,
-          # if NONE exceed the threshold (if both match the same, pick the first), we default to the line offset
-          highest_score = -1
-          index_to_insert = -1
-          threshold = 50.0
-          place_comment_after = True
-          for comment in form_comments:
-            for index, form_line in enumerate(form_lines):
-              # skip any comments that were previously added
-              if form_line.lstrip().startswith(";"):
-                continue
-              if comment.code_before is not None:
-                score = fuzz.ratio(form_line, comment.code_before)
-                if score >= threshold and score > threshold:
-                  index_to_insert = index
-                  highest_score = score
-                  place_comment_after = True
-              if comment.code_after is not None:
-                score = fuzz.ratio(form_line, comment.code_after)
-                if score >= threshold and score > threshold:
-                  index_to_insert = index
-                  highest_score = score
-                  place_comment_after = False
-            # add the comment!
-            if index_to_insert == -1:
-              form_lines.insert(comment.line_num_in_form, comment.data)
-            elif place_comment_after:
-              form_lines.insert(index_to_insert, padding_before_comment(comment) + comment.data)
-            else:
-              form_lines.insert(index_to_insert, padding_after_comment(comment) + comment.data)
-          # Add the lines to the final output
-          for form_line in form_lines:
-            final_lines.append(form_line)
+    i = 0
+    while i < len(decomp_lines):
+        line = decomp_lines[i]
+        # Otherwise, its a part of the output we have to be more careful about
+        # For every line in the decompiled output, we scan our comment list to see if anything matches
+        # if it does, we insert it appropriately and remove the comment from the list
+        #
+        # This is the main source of inefficiency, but the process gets progressively faster as comments are eliminated
+        if within_form is None:
+            # lets see if we are now in one
+            within_form = is_line_start_of_form(line)
+            # TODO - check line for symbol matches?
+            if within_form is not None:
+                line_num_in_form = 0
+                if has_form_ended(form_paren_stack, line):
+                    within_form = None
+                    form_paren_stack = []
+                else:
+                    # Get all of the lines of the form at once
+                    form_start = decomp_lines[i]
+                    form_lines = [form_start]
+                    while i < len(decomp_lines):
+                        i = i + 1
+                        line = decomp_lines[i]
+                        if has_form_ended(form_paren_stack, line):
+                            within_form = None
+                            form_paren_stack = []
+                            break
+                        else:
+                            form_lines.append(line)
+                    # Add any comments needed to the form contents
+                    # - first we get all comments that have match well with the form's start line (ie. defmethod ....)
+                    form_comments = get_relevant_form_comments(form_start)
+                    # - for each comment, let's find which line matches it the best,
+                    # if NONE exceed the threshold (if both match the same, pick the first), we default to the line offset
+                    highest_score = -1
+                    index_to_insert = -1
+                    threshold = 50.0
+                    place_comment_after = True
+                    for comment in form_comments:
+                        for index, form_line in enumerate(form_lines):
+                            # skip any comments that were previously added
+                            if form_line.lstrip().startswith(";"):
+                                continue
+                            if comment.code_before is not None:
+                                score = fuzz.ratio(form_line, comment.code_before)
+                                if score >= threshold and score > threshold:
+                                    index_to_insert = index
+                                    highest_score = score
+                                    place_comment_after = True
+                            if comment.code_after is not None:
+                                score = fuzz.ratio(form_line, comment.code_after)
+                                if score >= threshold and score > threshold:
+                                    index_to_insert = index
+                                    highest_score = score
+                                    place_comment_after = False
+                        # add the comment!
+                        if index_to_insert == -1:
+                            form_lines.insert(comment.line_num_in_form, comment.data)
+                        elif place_comment_after:
+                            form_lines.insert(
+                                index_to_insert,
+                                padding_before_comment(comment) + comment.data,
+                            )
+                        else:
+                            form_lines.insert(
+                                index_to_insert,
+                                padding_after_comment(comment) + comment.data,
+                            )
+                    # Add the lines to the final output
+                    for form_line in form_lines:
+                        final_lines.append(form_line)
 
-    # Otherwise, we are at the top-level!
-    if within_form is None:
-      # TODO - handle non-symbol associated comments at the top level
-      before_comments = relevant_symbol_comments_for_line_before(line, within_form)
-      for comment in before_comments:
-        final_lines.append(padding_before_comment(comment) + comment.data)
-      final_lines.append(line)
-      after_comments = relevant_symbol_comments_for_line_after(line, within_form)
-      for comment in after_comments:
-        final_lines.append(padding_after_comment(comment) + comment.data)
-    # TODO - test comments above defuns!
-    i = i + 1
+        # Otherwise, we are at the top-level!
+        if within_form is None:
+            # TODO - handle non-symbol associated comments at the top level
+            before_comments = relevant_symbol_comments_for_line_before(
+                line, within_form
+            )
+            for comment in before_comments:
+                final_lines.append(padding_before_comment(comment) + comment.data)
+            final_lines.append(line)
+            after_comments = relevant_symbol_comments_for_line_after(line, within_form)
+            for comment in after_comments:
+                final_lines.append(padding_after_comment(comment) + comment.data)
+        # TODO - test comments above defuns!
+        i = i + 1
 
 
 # Step 4: Write it out
 with open("./goal_src/jak2/kernel/gkernel.gc", "w") as f:
-  f.writelines(final_lines)
+    f.writelines(final_lines)
