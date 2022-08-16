@@ -6,8 +6,11 @@
 #include "opengl.h"
 
 #include <condition_variable>
+#include <ctime>
+#include <iomanip>
 #include <memory>
 #include <mutex>
+#include <sstream>
 
 #include "common/dma/dma_copy.h"
 #include "common/global_profiler/GlobalProfiler.h"
@@ -77,6 +80,8 @@ struct GraphicsData {
 };
 
 std::unique_ptr<GraphicsData> g_gfx_data;
+
+static bool want_hotkey_screenshot = false;
 
 bool is_cursor_position_valid = false;
 double last_cursor_x_position = 0;
@@ -317,10 +322,18 @@ void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action
   } else if (action == GlfwKeyAction::Release) {
     // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
     Pad::OnKeyRelease(key);
-    if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
-        glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
-      set_imgui_visible(!is_imgui_visible());
-      update_cursor_visibility(window, is_imgui_visible());
+    // Debug keys input mapping TODO add remapping
+    switch (key) {
+      case GLFW_KEY_LEFT_ALT:
+      case GLFW_KEY_RIGHT_ALT:
+        if (glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+          set_imgui_visible(!is_imgui_visible());
+          update_cursor_visibility(window, is_imgui_visible());
+        }
+        break;
+      case GLFW_KEY_F2:
+        want_hotkey_screenshot = true;
+        break;
     }
   }
 }
@@ -389,11 +402,23 @@ void GLDisplay::on_iconify(GLFWwindow* /*window*/, int iconified) {
 }
 
 namespace {
-std::string make_output_file_name(const std::string& file_name) {
+std::string make_full_screenshot_output_file_path(const std::string& file_name) {
   file_util::create_dir_if_needed(file_util::get_file_path({"gfx_dumps"}));
   return file_util::get_file_path({"gfx_dumps", file_name});
 }
 }  // namespace
+
+static std::string get_current_timestamp() {
+  auto current_time = std::time(nullptr);
+  auto local_current_time = *std::localtime(&current_time);
+  std::ostringstream oss;
+  oss << std::put_time(&local_current_time, "%Y_%m_%d_%H_%M_%S");
+  return oss.str();
+}
+
+static std::string make_hotkey_screenshot_file_name() {
+  return version_to_game_name(g_game_version) + "_" + get_current_timestamp() + ".png";
+}
 
 static bool endsWith(std::string_view str, std::string_view suffix) {
   return str.size() >= suffix.size() &&
@@ -435,7 +460,9 @@ void render_game_frame(int game_width,
     options.save_screenshot = false;
     options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();
     options.borderless_windows_hacks = windows_borderless_hack;
-    if (g_gfx_data->debug_gui.get_screenshot_flag()) {
+    want_hotkey_screenshot =
+        want_hotkey_screenshot && g_gfx_data->debug_gui.screenshot_hotkey_enabled;
+    if (g_gfx_data->debug_gui.get_screenshot_flag() || want_hotkey_screenshot) {
       options.save_screenshot = true;
       options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
       options.game_res_h = g_gfx_data->debug_gui.screenshot_height;
@@ -453,13 +480,22 @@ void render_game_frame(int game_width,
     }
 
     if (options.save_screenshot) {
-      // ensure the screenshot has an extension
-      std::string temp_path = g_gfx_data->debug_gui.screenshot_name();
-      if (!endsWith(temp_path, ".png")) {
-        temp_path += ".png";
+      std::string screenshot_file_name;
+      if (want_hotkey_screenshot) {
+        screenshot_file_name = make_hotkey_screenshot_file_name();
+        want_hotkey_screenshot = false;
+      } else {
+        // Debug gui triggered screenshot
+        // ensure the screenshot has an extension
+        screenshot_file_name = g_gfx_data->debug_gui.screenshot_name();
+        if (!endsWith(screenshot_file_name, ".png")) {
+          screenshot_file_name += ".png";
+        }
       }
-      options.screenshot_path = make_output_file_name(temp_path);
+
+      options.screenshot_path = make_full_screenshot_output_file_path(screenshot_file_name);
     }
+
     if constexpr (run_dma_copy) {
       auto& chain = g_gfx_data->dma_copier.get_last_result();
       g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), options);
