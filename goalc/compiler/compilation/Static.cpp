@@ -1052,7 +1052,7 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
   // get all arguments now
   auto args = get_list_as_vector(rest);
   if (args.size() < 4) {
-    throw_compiler_error(form, "new static boxed array must have type and min-size arguments");
+    throw_compiler_error(form, "new static inline array must have type and min-size arguments");
   }
   auto content_type = parse_typespec(args.at(2), env);
   s64 min_size = get_constant_integer_or_error(args.at(3), env);
@@ -1060,8 +1060,10 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
 
   auto inline_array_type = m_ts.make_inline_array_typespec(content_type);
   auto deref_info = m_ts.get_deref_info(inline_array_type);
-  ASSERT(deref_info.can_deref);
-  ASSERT(!deref_info.mem_deref);
+  if (!deref_info.can_deref || deref_info.mem_deref) {
+    throw_compiler_error(form, "new static inline array of type {} is currently not supported",
+                         content_type.print());
+  }
   auto obj = std::make_unique<StaticStructure>(seg);
   obj->set_offset(is_basic(content_type) ? 4 : 0);
   obj->data.resize(length * deref_info.stride);

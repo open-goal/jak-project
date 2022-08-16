@@ -401,6 +401,14 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;
+;; kernel Group
+;;;;;;;;;;;;;;;;;;;;;
+;; the kernel group is a group of files required to boot the game kernel
+
+(group "kernel" "$OUT/iso/KERNEL.CGO")
+
+
+;;;;;;;;;;;;;;;;;;;;;
 ;; engine Group
 ;;;;;;;;;;;;;;;;;;;;;
 ;; the engine group is a group of files required to boot the game engine with no levels

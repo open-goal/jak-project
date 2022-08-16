@@ -36,7 +36,8 @@ bool g_gamepad_buttons[CONTROLLER_COUNT][(int)Button::Max] = {{0}};
 float g_gamepad_analogs[CONTROLLER_COUNT][(int)Analog::Max] = {{0}};
 
 struct GamepadState {
-  std::atomic<int> gamepad_idx[CONTROLLER_COUNT] = {-1, -1};
+  int gamepad_idx[CONTROLLER_COUNT] = {-1, -1, -1, -1};
+  bool glfw_joystick_used[GLFW_JOYSTICK_LAST + 1] = {false};
 } g_gamepads;
 
 // input mode for controller mapping
@@ -455,25 +456,29 @@ void check_gamepads() {
   auto check_pad = [](int pad) {  // -> bool
     if (g_gamepads.gamepad_idx[pad] == -1) {
       for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
-        if (pad == 1 && i == g_gamepads.gamepad_idx[0])
+        if (g_gamepads.glfw_joystick_used[i]) {
           continue;
+        }
         if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
           g_gamepads.gamepad_idx[pad] = i;
-          lg::info("Using joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
+          g_gamepads.glfw_joystick_used[i] = true;
+          lg::info("Using joystick {} for pad {}: {}, {}", i, pad, glfwGetJoystickName(i),
+                   glfwGetGamepadName(i));
           break;
         }
       }
     } else if (!glfwJoystickPresent(g_gamepads.gamepad_idx[pad])) {
-      lg::info("Pad {} has been disconnected", pad);
+      lg::info("Pad {} / joystick {} has been disconnected", pad, g_gamepads.gamepad_idx[pad]);
+      g_gamepads.glfw_joystick_used[g_gamepads.gamepad_idx[pad]] = false;
       g_gamepads.gamepad_idx[pad] = -1;
       return false;
     }
     return true;  // pad already exists or was created
   };
-  if (check_pad(0))
-    check_pad(1);
-  else
-    g_gamepads.gamepad_idx[1] = -1;
+
+  for (int i = 0; i < CONTROLLER_COUNT; i++) {
+    check_pad(i);
+  }
 }
 
 void initialize() {
@@ -529,14 +534,11 @@ void update_gamepads(MappingInfo& mapping_info) {
     }
   };
 
-  read_pad_state(0);
-
-  for (int pad = 1; pad < CONTROLLER_COUNT; ++pad) {
-    if (g_gamepads.gamepad_idx[pad] != -1) {
-      read_pad_state(pad);
-    } else {
-      clear_pad(pad);
-    }
+  for (int i = 0; i < CONTROLLER_COUNT; i++) {
+    if (g_gamepads.gamepad_idx[i] != -1)
+      read_pad_state(i);
+    else
+      clear_pad(i);
   }
 }
 

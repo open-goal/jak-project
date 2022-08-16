@@ -113,6 +113,30 @@ std::unique_ptr<Res> res_from_json_array(const std::string& name,
       data.push_back(json_array[i].get<int>());
     }
     return std::make_unique<ResInt32>(name, data, -1000000000.0000);
+  } else if (array_type == "vector") {
+    std::vector<math::Vector4f> data;
+    for (size_t i = 1; i < json_array.size(); i++) {
+      data.push_back(vector_from_json(json_array[i]));
+    }
+    return std::make_unique<ResVector>(name, data, -1000000000.0000);
+  } else if (array_type == "vector4m") {
+    std::vector<math::Vector4f> data;
+    for (size_t i = 1; i < json_array.size(); i++) {
+      data.push_back(vectorm4_from_json(json_array[i]));
+    }
+    return std::make_unique<ResVector>(name, data, -1000000000.0000);
+  } else if (array_type == "float") {
+    std::vector<float> data;
+    for (size_t i = 1; i < json_array.size(); i++) {
+      data.push_back(json_array[i].get<float>());
+    }
+    return std::make_unique<ResFloat>(name, data, -1000000000.0000);
+  } else if (array_type == "meters") {
+    std::vector<float> data;
+    for (size_t i = 1; i < json_array.size(); i++) {
+      data.push_back(json_array[i].get<float>() * METER_LENGTH);
+    }
+    return std::make_unique<ResFloat>(name, data, -1000000000.0000);
   } else {
     ASSERT_MSG(false, fmt::format("unsupported array type: {}\n", array_type));
   }
