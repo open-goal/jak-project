@@ -1454,7 +1454,7 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
   f.ir2.env.disable_def(b2_delay_op.dst(), f.warnings);
   f.ir2.env.disable_use(shift_left->expr().get_arg(0).var());
 
-  f.warnings.general_warning("Using new Jak 2 rtype-of");
+  f.warnings.warning("Using new Jak 2 rtype-of");
   return b0_ptr;
 }
 
@@ -2046,7 +2046,7 @@ void build_initial_forms(Function& function) {
 
     function.ir2.top_form = result;
   } catch (std::runtime_error& e) {
-    function.warnings.general_warning(e.what());
+    function.warnings.error(e.what());
     lg::warn("Failed to build initial forms in {}: {}", function.name(), e.what());
   }
 }

@@ -193,8 +193,10 @@ void WorkspaceIRFile::identify_diagnostics(const uint32_t line_num_zero_based,
                                            const std::string& line) {
   std::regex info_regex(";; INFO: (.*)");
   std::regex warn_regex(";; WARN: (.*)");
+  std::regex error_regex(";; ERROR: (.*)");
   std::smatch info_matches;
   std::smatch warn_matches;
+  std::smatch error_matches;
 
   LSPSpec::Range diag_range;
   diag_range.m_start = {line_num_zero_based, 0};
@@ -221,6 +223,21 @@ void WorkspaceIRFile::identify_diagnostics(const uint32_t line_num_zero_based,
     if (warn_matches.size() == 2) {
       auto match = warn_matches[1];
       lg::debug("Found warn-level diagnostic - {}", match.str());
+      LSPSpec::Diagnostic new_diag;
+      new_diag.m_severity = LSPSpec::DiagnosticSeverity::Warning;
+      new_diag.m_message = match.str();
+      new_diag.m_range = diag_range;
+      new_diag.m_source = "OpenGOAL LSP";
+      m_diagnostics.push_back(new_diag);
+      return;
+    }
+  }
+  // Check for a error level warnings
+  if (std::regex_search(line, error_matches, error_regex)) {
+    // NOTE - assumes we can only find 1 function per line
+    if (error_matches.size() == 2) {
+      auto match = error_matches[1];
+      lg::debug("Found error-level diagnostic - {}", match.str());
       LSPSpec::Diagnostic new_diag;
       new_diag.m_severity = LSPSpec::DiagnosticSeverity::Error;
       new_diag.m_message = match.str();

@@ -2162,7 +2162,7 @@ void SimpleExpressionElement::update_from_stack_subu_l32_s7(const Env& env,
   auto arg = pop_to_forms({var}, env, pool, stack, allow_side_effects).at(0);
   auto type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
   if (type != TypeSpec("handle")) {
-    env.func->warnings.general_warning(
+    env.func->warnings.warning(
         ".subu (32-bit) used on a {} at idx {}. This probably should be a handle.", type.print(),
         var.idx());
   }
@@ -3618,7 +3618,7 @@ void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
 
   stack.push_form_element(this, true);
   if (false_destination) {
-    env.func->warnings.general_warning("new jak 2 until loop case, check carefully");
+    env.func->warnings.warning("new jak 2 until loop case, check carefully");
     stack.push_value_to_reg(*false_destination,
                             pool.form<SimpleAtomElement>(SimpleAtom::make_sym_val("#f")), true,
                             TypeSpec("symbol"));
@@ -5695,7 +5695,7 @@ bool try_vector_reset_inline(const Env& env,
   // the function that attempts the pop.
   auto store_var = form_as_ra(store);
   if (!store_var) {
-    env.func->warnings.general_warning("Almost found vector reset, but couldn't get store var.");
+    env.func->warnings.warning("Almost found vector reset, but couldn't get store var.");
     // stack.push_form_element(new_thing->elts().at(0), true);
     return false;
   }

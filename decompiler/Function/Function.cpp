@@ -71,7 +71,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
             "Function {} was flagged as asm due to this instruction: {}. Consider flagging as asm "
             "in config!",
             name(), instr.to_string(file.labels));
-        warnings.general_warning("Flagged as asm because of {}", instr.to_string(file.labels));
+        warnings.warning("Flagged as asm because of {}", instr.to_string(file.labels));
         suspected_asm = true;
         return;
       }
@@ -97,7 +97,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
             "Function {} was flagged as asm due to this instruction: {}. Consider flagging as asm "
             "in config!",
             name(), instr.to_string(file.labels));
-        warnings.general_warning("Flagged as asm because of {}", instr.to_string(file.labels));
+        warnings.warning("Flagged as asm because of {}", instr.to_string(file.labels));
         suspected_asm = true;
         return;
       }
@@ -133,7 +133,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       // sometimes stack memory is zeroed or a register is spilled immediately after gpr backups,
       // and this fools the previous check.
       if (store_reg == make_gpr(Reg::R0) || store_reg == make_gpr(Reg::A0)) {
-        warnings.general_warning("Check prologue - tricky store of {}", store_reg.to_string());
+        warnings.warning("Check prologue - tricky store of {}", store_reg.to_string());
         expect_nothing_after_gprs = true;
         break;
       }
@@ -152,8 +152,8 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
           suspected_asm = true;
           lg::warn("Function {} stores on the stack in a strange way ({}), flagging as asm!",
                    instructions.at(idx + i).to_string(file.labels), name());
-          warnings.general_warning("Flagged as asm due to strange stack store: {}",
-                                   instructions.at(idx + i).to_string(file.labels));
+          warnings.warning("Flagged as asm due to strange stack store: {}",
+                           instructions.at(idx + i).to_string(file.labels));
           return;
         }
       }
@@ -181,8 +181,8 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
             suspected_asm = true;
             lg::warn("Function {} stores on the stack in a strange way ({}), flagging as asm!",
                      instructions.at(idx + i).to_string(file.labels), name());
-            warnings.general_warning("Flagged as asm due to strange stack store: {}",
-                                     instructions.at(idx + i).to_string(file.labels));
+            warnings.warning("Flagged as asm due to strange stack store: {}",
+                             instructions.at(idx + i).to_string(file.labels));
             return;
           }
         }
@@ -372,7 +372,7 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
       ASSERT(is_jr_ra(instructions.at(idx)));
       idx--;
       lg::warn("Function {} has a double return and is being flagged as asm.", name());
-      warnings.general_warning("Flagged as asm due to double return");
+      warnings.warning("Flagged as asm due to double return");
     }
     // delay slot should be daddiu sp, sp, offset
     ASSERT(is_gpr_2_imm_int(instructions.at(idx), InstructionKind::DADDIU, make_gpr(Reg::SP),

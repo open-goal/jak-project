@@ -158,13 +158,13 @@ bool convert_to_expressions(
             "Function {} has a return type of none, but the expression builder found a return "
             "statement.",
             f.name());
-        f.warnings.expression_build_warning(warn);
+        f.warnings.warning(warn);
         lg::warn(warn);
       }
     }
 
   } catch (std::exception& e) {
-    f.warnings.expression_build_warning("In {}: {}", f.name(), e.what());
+    f.warnings.error("Expression building failed: In {}: {}", f.name(), e.what());
     lg::warn("In {}: {}", f.name(), e.what());
     return false;
   }
