@@ -417,7 +417,6 @@ void set_vsync(bool vsync) {
 
 void set_frame_rate(int rate) {
   g_global_settings.target_fps = rate;
-  Pad::SetFrameRate(rate);
 }
 
 void set_letterbox(int w, int h) {

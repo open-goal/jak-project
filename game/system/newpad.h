@@ -94,7 +94,6 @@ void OnKeyRelease(int key);
 void ClearKey(int key);
 void ForceClearKeys();
 void ClearKeys();
-void SetFrameRate(float frame_rate);
 
 void DefaultMapping(MappingInfo& mapping);
 int IsPressed(MappingInfo& mapping, Button button, int pad);
