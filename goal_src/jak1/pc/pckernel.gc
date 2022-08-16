@@ -372,6 +372,7 @@
 (defmethod update-cheats pc-settings ((obj pc-settings))
   "run cheats."
 
+  ;; first check for cheat inputs.
   (when (and (cpad-hold? 0 l2) (cpad-hold? 0 l1) (cpad-hold? 0 r2) (cpad-hold? 0 r1))
     (pc-check-cheat-code (-> *pc-cheat-temp* 0) 0 spirit :extra (x)
           (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-green))
@@ -405,6 +406,8 @@
     (pc-check-cheat-code (-> *pc-cheat-temp* 14) 0 lunatic (pc-cheat-toggle-and-tune (-> obj cheats) hero-mode))
     )
 
+  ;; run cheats here.
+  ;;;;;;;;;;;;;;;;;;;
   (when *target*
 
       (with-pp (protect ((-> *target* fact-info-target eco-source) *sound-player-enable*)
@@ -466,13 +469,16 @@
       )
 
   (if (pc-cheats? (-> obj cheats) sky)
-      (let ((date (new 'stack 'scf-time)))
+      (let ((date (new 'stack-no-clear 'scf-time)))
           (scf-get-time date)
           (when (zero? (-> date stat))
-            (set-time-of-day (+ (the float (bcd->dec (-> date hour))) (/ (the float (bcd->dec (-> date minute))) 60)))
-        )
-      )
-  )
+            (set-time-of-day (+ (the float (bcd->dec (-> date hour))) (/ (the float (bcd->dec (-> date minute))) 60))))
+          ))
+  
+  (pc-set-gfx-hack (pc-gfx-hack no-tex) (logtest? (-> obj cheats) (pc-cheats no-tex)))
+
+  ;; run cheats end!!!
+  ;;;;;;;;;;;;;;;;;;;;
 
   (logior! (-> obj cheats-known) (-> obj cheats))
   0)

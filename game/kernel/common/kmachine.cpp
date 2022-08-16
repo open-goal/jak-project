@@ -461,6 +461,14 @@ u32 get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask) 
                                                    : s7.offset;
 }
 
+void set_gfx_hack(u64 which, u32 symptr) {
+  switch (which) {
+    case 0:  // no tex
+      Gfx::g_global_settings.hack_no_tex = symptr != s7.offset;
+      break;
+  }
+}
+
 /*!
  * PC PORT FUNCTIONS END
  */

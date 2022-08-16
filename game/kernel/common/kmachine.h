@@ -74,5 +74,6 @@ void set_collision(u32 symptr);
 void set_collision_wireframe(u32 symptr);
 void set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask, u32 symptr);
 u32 get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask);
+void set_gfx_hack(u64 which, u32 symptr);
 u32 offset_of_s7();
 void vif_interrupt_callback();

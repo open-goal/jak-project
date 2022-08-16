@@ -63,17 +63,21 @@ void Generic2::opengl_cleanup() {
 }
 
 void Generic2::init_shaders(ShaderLibrary& shaders) {
-  shaders[ShaderId::GENERIC].activate();
-  m_ogl.alpha_reject = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "alpha_reject");
-  m_ogl.color_mult = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "color_mult");
-  m_ogl.fog_color = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "fog_color");
+  const auto& shader = shaders[ShaderId::GENERIC];
+  auto id = shader.id();
 
-  m_ogl.scale = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "scale");
-  m_ogl.mat_23 = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "mat_23");
-  m_ogl.mat_32 = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "mat_32");
-  m_ogl.mat_33 = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "mat_33");
-  m_ogl.fog_consts = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "fog_constants");
-  m_ogl.hvdf_offset = glGetUniformLocation(shaders[ShaderId::GENERIC].id(), "hvdf_offset");
+  shader.activate();
+  m_ogl.alpha_reject = glGetUniformLocation(id, "alpha_reject");
+  m_ogl.color_mult = glGetUniformLocation(id, "color_mult");
+  m_ogl.fog_color = glGetUniformLocation(id, "fog_color");
+
+  m_ogl.scale = glGetUniformLocation(id, "scale");
+  m_ogl.mat_23 = glGetUniformLocation(id, "mat_23");
+  m_ogl.mat_32 = glGetUniformLocation(id, "mat_32");
+  m_ogl.mat_33 = glGetUniformLocation(id, "mat_33");
+  m_ogl.fog_consts = glGetUniformLocation(id, "fog_constants");
+  m_ogl.hvdf_offset = glGetUniformLocation(id, "hvdf_offset");
+  m_ogl.gfx_hack_no_tex = glGetUniformLocation(id, "gfx_hack_no_tex");
 }
 
 void Generic2::opengl_bind_and_setup_proj(SharedRenderState* render_state) {
@@ -90,6 +94,7 @@ void Generic2::opengl_bind_and_setup_proj(SharedRenderState* render_state) {
               m_drawing_config.fog_max);
   glUniform4f(m_ogl.hvdf_offset, m_drawing_config.hvdf_offset[0], m_drawing_config.hvdf_offset[1],
               m_drawing_config.hvdf_offset[2], m_drawing_config.hvdf_offset[3]);
+  glUniform1i(m_ogl.gfx_hack_no_tex, Gfx::g_global_settings.hack_no_tex);
 }
 
 void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
@@ -317,6 +322,7 @@ void Generic2::do_draws(SharedRenderState* render_state, ScopedProfilerNode& pro
     glUniform1f(m_ogl.mat_23, m_drawing_config.hud_mat_23);
     glUniform1f(m_ogl.mat_32, m_drawing_config.hud_mat_32);
     glUniform1f(m_ogl.mat_33, m_drawing_config.hud_mat_33);
+    glUniform1i(m_ogl.gfx_hack_no_tex, false);
 
     do_hud_draws(render_state, prof);
   }

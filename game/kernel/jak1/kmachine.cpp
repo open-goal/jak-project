@@ -639,6 +639,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-collision-mask", (void*)get_collision_mask);
   make_function_symbol_from_c("pc-set-collision-wireframe", (void*)set_collision_wireframe);
   make_function_symbol_from_c("pc-set-collision", (void*)set_collision);
+  make_function_symbol_from_c("pc-set-gfx-hack", (void*)set_gfx_hack);
 
   // file related functions
   make_function_symbol_from_c("pc-filepath-exists?", (void*)filepath_exists);
