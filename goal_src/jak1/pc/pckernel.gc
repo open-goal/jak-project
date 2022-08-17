@@ -369,8 +369,14 @@
 
   (none))
 
-(defun cspace-array-map-children ((nodes cspace-array) (parent-joint-idx int) (func (function bone object object object)) p0 p1)
-  "run func on all joints' bones that are children of parent-joint-idx, including itself"
+(defun matrix*!-bone-callback ((the-bone bone) (mtx matrix) a)
+  "apply a transform matrix to a bone."
+  (matrix*! (-> the-bone transform) (-> the-bone transform) mtx)
+  )
+
+(defun cspace-array-map-children ((nodes cspace-array) (parent-joint-idx int) (include-parent? symbol) (func (function bone object object object)) p0 p1)
+  "run func on all joints' bones that are children of parent-joint-idx
+   if include-parent? = #t then also apply to that parent joint."
   ;; iterate through all cspace nodes
   (let ((parent-joint (-> nodes data parent-joint-idx joint)))
       (dotimes (i (-> nodes length))
@@ -380,7 +386,8 @@
             ;; run func if we ARE the parent!
             ((= it parent-joint)
               ;;(format #t "running map on parent ~A~%" it)
-              (func (-> nodes data i bone) p0 p1))
+              (if include-parent?
+                  (func (-> nodes data i bone) p0 p1)))
             ;; otherwise go up our parents until we hit what we want (yay!) or nothing (nay...)
             (else
               (let ((cur-parent it))
@@ -397,27 +404,27 @@
         ))
   )
 
-(define *cheat-big-head-scale* (new 'static 'vector :x 1.7 :y 1.7 :z 1.7 :w 1.0))
-(define *cheat-small-head-scale* (new 'static 'vector :x 0.7 :y 0.7 :z 0.7 :w 1.0))
+(define *cheat-big-head-scale* (new 'static 'vector :x 1.5 :y 1.5 :z 1.5 :w 1.0))
+(define *cheat-small-head-scale* (new 'static 'vector :x 0.667 :y 0.667 :z 0.667 :w 1.0))
 (defun target-joint-callback-pc ((obj target))
   "custom animation callback for *target*"
   
-  (cond
-    ((pc-cheats? (-> *pc-settings* cheats) small-head)
-      (cspace-array-map-children (-> obj node-list) 6
-              (lambda ((the-bone bone) (scale vector) b)
-                  (scale-matrix! (-> the-bone transform) scale (-> the-bone transform))
-                  )
-              *cheat-small-head-scale* #f)
-      )
-    ((pc-cheats? (-> *pc-settings* cheats) big-head)
-      (cspace-array-map-children (-> obj node-list) 6
-              (lambda ((the-bone bone) (scale vector) b)
-                  (scale-matrix! (-> the-bone transform) scale (-> the-bone transform))
-                  )
-              *cheat-big-head-scale* #f)
-      )
-    )
+  (let ((scale-mtx (new-stack-matrix0))
+        (neck-mtx (-> obj node-list data 6 bone transform)))
+      (cond
+        ((pc-cheats? (-> *pc-settings* cheats) small-head)
+          (scale-matrix! scale-mtx *cheat-small-head-scale* neck-mtx)
+          (cspace-array-map-children (-> obj node-list) 6 #t matrix*!-bone-callback
+                  (matrix*! scale-mtx (matrix-4x4-inverse! (new-stack-matrix0) neck-mtx) scale-mtx)
+                  #f)
+          )
+        ((pc-cheats? (-> *pc-settings* cheats) big-head)
+          (scale-matrix! scale-mtx *cheat-big-head-scale* neck-mtx)
+          (cspace-array-map-children (-> obj node-list) 6 #t matrix*!-bone-callback
+                  (matrix*! scale-mtx (matrix-4x4-inverse! (new-stack-matrix0) neck-mtx) scale-mtx)
+                  #f)
+          )
+        ))
   0 (none)
   )
 
