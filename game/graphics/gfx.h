@@ -125,6 +125,8 @@ void Loop(std::function<bool()> f);
 u32 Exit();
 
 u32 vsync();
+void register_vsync_callback(std::function<void()> f);
+void clear_vsync_callback();
 u32 sync_path();
 void send_chain(const void* data, u32 offset);
 void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr);

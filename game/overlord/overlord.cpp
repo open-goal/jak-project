@@ -39,7 +39,7 @@ int start_overlord(int argc, const char* const* argv) {
     InitSound_Overlord();
   }
   InitRamdisk();
-  // RegisterVblankHandler(0, 0x20, VBlank_Handler, nullptr);
+  RegisterVblankHandler(0, 0x20, VBlank_Handler, nullptr);
 
   ThreadParam thread_param;
   thread_param.attr = TH_C;
