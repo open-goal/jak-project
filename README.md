@@ -53,7 +53,7 @@ Additionally, you can find further documentation and answers to **frequently ask
 
 If you just want to play the game, you can follow the steps in this video: https://www.youtube.com/watch?v=yQBKCnS5MDY
 
-We do not use any assets from the game - you must use your own legitimately obtained PS2 copy of the game. We support every PAL, NTSC, and NTSC-J build, including Greatest Hits copies. 
+We do not use any assets from the game - you must use your own legitimately obtained PS2 copy of the game. We support every retail PAL, NTSC, and NTSC-J build, including Greatest Hits copies. 
 
 > Please be aware that this installation method is a temporary stop gap while we work on something more user-friendly.
 
