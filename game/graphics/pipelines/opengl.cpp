@@ -735,28 +735,10 @@ void GLDisplay::render() {
   // update fullscreen mode, if requested
   {
     auto p = scoped_prof("fullscreen-update");
-    {
-      auto _ = scoped_prof("part1");
-      update_last_fullscreen_mode();
-    }
+    update_last_fullscreen_mode();
 
-    bool fsp;
-    {
-      auto _ = scoped_prof("get-fsp");
-      fsp = fullscreen_pending();
-    }
-
-    if (fsp && !minimized()) {
-      bool is_minimized;
-      {
-        auto _ = scoped_prof("get-minimized");
-        is_minimized = minimized();
-
-        if (!is_minimized) {
-          auto _ = scoped_prof("flush");
-          fullscreen_flush();
-        }
-      }
+    if (fullscreen_pending() && !minimized()) {
+      fullscreen_flush();
     }
   }
 
