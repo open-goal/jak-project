@@ -45,7 +45,7 @@ Our repositories on GitHub are primarily for development of the project and trac
 
 For questions or additional information pertaining to the project, we have a Discord for discussion here: https://discord.gg/VZbXMHXzWv
 
-Additionally, you can find further documentation and answers to **frequently asked questions** on the project's main website https://open-goal.github.io/
+Additionally, you can find further documentation and answers to **frequently asked questions** on the project's main website: https://open-goal.github.io/
 
 **Do not use this decompilation project without providing your own legally purchased copy of the game.**
 
