@@ -11,8 +11,8 @@
   <a href="https://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt=PRs Welcome></a>
 </p>
 
-- [READ FIRST](#read-first)
-  - [How to play the game](#how-to-play-the-game)
+- [Please read first](#please-read-first)
+  - [Quick Start](#quick-start)
 - [Project Description](#project-description)
   - [Current Status](#current-status)
   - [Methodology](#methodology)
@@ -39,7 +39,7 @@
   - [`goal_src/`](#goal_src)
   - [`game` runtime](#game-runtime)
 
-## READ FIRST
+## Please read first
 
 Our repositories on GitHub are primarily for development of the project and tracking active issues. Most of the information you will find here pertains to setting up the project for development purposes and is not relevant to the end-user. The Releases page will provide you with a pre-compiled set of tools you need to get this project running on your machine. 
 
@@ -95,7 +95,7 @@ Our decompiler is designed specifically for processing the output of the origina
 
 The remainder of this README is catered towards people interested in building the project from source, typically with the intention on contributing as a developer.
 
-If this does not sound like you and you just want to play the game, refer to the above section [How to play the game](#how-to-play-the-game)
+If this does not sound like you and you just want to play the game, refer to the above section [Quick Start](#quick-start)
 
 ### Linux
 
