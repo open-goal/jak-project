@@ -41,19 +41,21 @@
 
 ## READ FIRST
 
-The github repositories are for development of the project and tracking active issues.  Most of the information you will find here pertains to setting up the project for development purposes and is not relevant to a general user.
+Our repositories on GitHub are primarily for development of the project and tracking active issues. Most of the information you will find here pertains to setting up the project for development purposes and is not relevant to the end-user. The Releases page will provide you with a pre-compiled set of tools you need to get this project running on your machine. 
 
-There is a discord server where discussion occur https://discord.gg/VZbXMHXzWv
+For questions or additional information pertaining to the project, we have a Discord for discussion here: https://discord.gg/VZbXMHXzWv
 
-Additionally you can find further information and answers to **frequently asked questions** on the project's main website https://open-goal.github.io/
+Additionally, you can find further documentation and answers to **frequently asked questions** on the project's main website https://open-goal.github.io/
 
-### How to play the game
+**Do not use this decompilation project without providing your own legally purchased copy of the game.**
 
-To just play the game, follow the steps in this video https://www.youtube.com/watch?v=yQBKCnS5MDY
+### Quick Start
 
-We don't save any assets from the game - you must use your own legitimately obtained copy of the game.
+If you just want to play the game, you can follow the steps in this video: https://www.youtube.com/watch?v=yQBKCnS5MDY
 
-> Note that this installation method is a temporary stop gap while we work on something more user-friendly.
+We do not use any assets from the game - you must use your own legitimately obtained PS2 copy of the game. We support every PAL, NTSC, and NTSC-J build, including Greatest Hits copies. 
+
+> Please be aware that this installation method is a temporary stop gap while we work on something more user-friendly.
 
 ## Project Description
 
