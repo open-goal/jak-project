@@ -369,6 +369,58 @@
 
   (none))
 
+(defun cspace-array-map-children ((nodes cspace-array) (parent-joint-idx int) (func (function bone object object object)) p0 p1)
+  "run func on all joints' bones that are children of parent-joint-idx, including itself"
+  ;; iterate through all cspace nodes
+  (let ((parent-joint (-> nodes data parent-joint-idx joint)))
+      (dotimes (i (-> nodes length))
+        ;; see if it's a joint and keep that for later
+        (awhen (-> nodes data i joint)
+          (cond
+            ;; run func if we ARE the parent!
+            ((= it parent-joint)
+              ;;(format #t "running map on parent ~A~%" it)
+              (func (-> nodes data i bone) p0 p1))
+            ;; otherwise go up our parents until we hit what we want (yay!) or nothing (nay...)
+            (else
+              (let ((cur-parent it))
+                (until (or (not cur-parent) (= cur-parent parent-joint))
+                  (set! cur-parent (-> cur-parent parent))
+                  )
+                (when (= cur-parent parent-joint)
+                    ;;(format #t "running map on child ~A~%" it)
+                    (func (-> nodes data i bone) p0 p1))
+                )
+              )
+            )
+          )
+        ))
+  )
+
+(define *cheat-big-head-scale* (new 'static 'vector :x 1.7 :y 1.7 :z 1.7 :w 1.0))
+(define *cheat-small-head-scale* (new 'static 'vector :x 0.7 :y 0.7 :z 0.7 :w 1.0))
+(defun target-joint-callback-pc ((obj target))
+  "custom animation callback for *target*"
+  
+  (cond
+    ((pc-cheats? (-> *pc-settings* cheats) small-head)
+      (cspace-array-map-children (-> obj node-list) 6
+              (lambda ((the-bone bone) (scale vector) b)
+                  (scale-matrix! (-> the-bone transform) scale (-> the-bone transform))
+                  )
+              *cheat-small-head-scale* #f)
+      )
+    ((pc-cheats? (-> *pc-settings* cheats) big-head)
+      (cspace-array-map-children (-> obj node-list) 6
+              (lambda ((the-bone bone) (scale vector) b)
+                  (scale-matrix! (-> the-bone transform) scale (-> the-bone transform))
+                  )
+              *cheat-big-head-scale* #f)
+      )
+    )
+  0 (none)
+  )
+
 (defmethod update-cheats pc-settings ((obj pc-settings))
   "run cheats."
 
@@ -409,6 +461,9 @@
   ;; run cheats here.
   ;;;;;;;;;;;;;;;;;;;
   (when *target*
+      ;; hook custom animation callback
+      (if (nonzero? (-> *target* skel))
+          (set! (-> *target* skel postbind-function) target-joint-callback-pc))
 
       (with-pp (protect ((-> *target* fact-info-target eco-source) *sound-player-enable*)
       ;; act as if this isnt a new source of eco to prevent spamming sounds. then restore the old source!
