@@ -15,6 +15,7 @@ struct LevelData {
 
   struct TieOpenGL {
     GLuint vertex_buffer;
+    GLuint index_buffer;
     bool has_wind = false;
     GLuint wind_indices;
   };

@@ -6,6 +6,8 @@
 
 #include "game/graphics/opengl_renderer/loader/LoaderStages.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
+
 namespace {
 std::string uppercase_string(const std::string& s) {
   std::string result;
@@ -192,6 +194,7 @@ void Loader::load_common(TexturePool& tex_pool, const std::string& name) {
 bool Loader::upload_textures(Timer& timer, LevelData& data, TexturePool& texture_pool) {
   // try to move level from initializing to initialized:
 
+  auto evt = scoped_prof("upload-textures");
   constexpr int MAX_TEX_BYTES_PER_FRAME = 1024 * 128;
 
   int bytes_this_run = 0;
@@ -303,6 +306,7 @@ void Loader::update(TexturePool& texture_pool) {
       loader_input.tex_pool = &texture_pool;
 
       for (auto& stage : m_loader_stages) {
+        auto evt = scoped_prof(fmt::format("stage-{}", stage->name()).c_str());
         Timer stage_timer;
         done = stage->run(loader_timer, loader_input);
         if (stage_timer.getMs() > 5.f) {
@@ -314,6 +318,7 @@ void Loader::update(TexturePool& texture_pool) {
       }
 
       if (done) {
+        auto evt = scoped_prof("finish-stages");
         lk.lock();
         m_loaded_tfrag3_levels[name] = std::move(lev);
         m_initializing_tfrag3_levels.erase(it);
@@ -326,6 +331,7 @@ void Loader::update(TexturePool& texture_pool) {
   }
 
   if (!did_gpu_stuff) {
+    auto evt = scoped_prof("gpu-unload");
     // try to remove levels.
     Timer unload_timer;
     if (m_loaded_tfrag3_levels.size() >= 3) {
@@ -362,6 +368,7 @@ void Loader::update(TexturePool& texture_pool) {
               if (tie_tree.has_wind) {
                 glDeleteBuffers(1, &tie_tree.wind_indices);
               }
+              glDeleteBuffers(1, &tie_tree.index_buffer);
             }
           }
 
