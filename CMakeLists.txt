@@ -46,6 +46,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         # Note: this is only _reserved_ memory, not necessarily _committed_ memory
         # TODO - test with add_link_options instead
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LDFLAGS} -Xlinker /STACK:16000000")
+    else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -g -Wextra")
     endif()
 
     # additional c++ and linker flags for release mode for our projects
@@ -78,6 +80,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         -Wcast-qual \
         -Wdisabled-optimization \
         -Wformat \
+        -Wextra \
         -Wmissing-include-dirs \
         -Woverloaded-virtual \
         -Wredundant-decls \
@@ -151,19 +154,22 @@ add_subdirectory(common)
 add_subdirectory(decompiler)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS} ")
-add_subdirectory(third-party/cubeb)
+add_subdirectory(third-party/cubeb EXCLUDE_FROM_ALL)
 
 # build LSP
 add_subdirectory(lsp)
 
+# build libco
+add_subdirectory(third-party/libco)
+
 # build glfw library
-add_subdirectory(third-party/glfw)
-add_subdirectory(third-party/zstd)
+add_subdirectory(third-party/glfw EXCLUDE_FROM_ALL)
+add_subdirectory(third-party/zstd EXCLUDE_FROM_ALL)
 
 # build imgui
 include_directories(third-party/glad/include)
 include_directories(third-party/glfw/include)
-add_subdirectory(third-party/imgui)
+add_subdirectory(third-party/imgui EXCLUDE_FROM_ALL)
 string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # build the game code in C++

@@ -1,0 +1,310 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+
+;; This file is used for debugging and testing the PC port pad (controller/input) implementation.
+;; It contains a function for creating a process for debugging cpad inputs and a function to kill that process.
+;; It also contains a function to start a process to map keys to cpad inputs (X, circle, etc.), and another one to kill it.
+;; This file should *not* be included as part of any packages, it should be manually loaded by the user.
+
+;; To run this:
+
+#|
+(mi)  ;; build the game
+(lt)  ;; connect to the runtime
+(ml "goal_src/jak1/pc/util/pc-pad-utils.gc")  ;; build and load this file.
+|#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; types
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; a structure to hold the handles used in this file
+(deftype pc-pad-proc-list (structure)
+  ((show   handle)
+   (input  handle)
+   )
+  )
+
+(define *pc-pad-proc-list* (new 'static 'pc-pad-proc-list))
+(set! (-> *pc-pad-proc-list* show) INVALID_HANDLE)
+(set! (-> *pc-pad-proc-list* input) INVALID_HANDLE)
+
+;; a pc pad process
+(deftype pc-pad-proc (process)
+  ((state-time   time-frame)
+   (input-index  uint64)
+   (pad-idx      int64)
+   )
+  :heap-base #x20
+  (:states
+    pc-pi-mapping-button
+    )
+  )
+
+(define *pc-pad-button-names*
+    (new 'static 'array string 16
+          "SELECT"
+          "L3"
+          "R3"
+          "START"
+
+          "UP"
+          "RIGHT"
+          "DOWN"
+          "LEFT"
+
+          "L2"
+          "R2"
+          "L1"
+          "R1"
+
+          "TRIANGLE"
+          "CIRCLE"
+          "X"
+          "SQUARE"
+        ))
+
+;; there is a matching enum in newpad.h
+(defenum pc-pad-input-status
+  (disabled)
+  (enabled)
+  (canceled)
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defconstant PC_PAD_INPUT_NOTICE_TIME (seconds 1.5))
+(defconstant PC_PAD_TOP_Y 40)
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun-debug pc-pad-show-start ()
+  "Start the PC port pad debug display"
+
+  (if (not (handle->process (-> *pc-pad-proc-list* show)))
+    (let ((procp
+      (process-spawn-function pc-pad-proc :name 'pc-pad-show
+        (lambda :behavior pc-pad-proc ()
+          (stack-size-set! (-> self main-thread) 512)
+          (format #t "Reference keycode constants at https://www.glfw.org/docs/latest/group__keys.html~%")
+          (loop
+            (dotimes (_ 9)
+              (format *stdcon* "~%")
+              )
+            (dotimes (ii 2)
+              (format *stdcon* " ~0k~3Lcpad ~D~0L~%" ii)
+              (dotimes (j 8)
+                (dotimes (i 2)
+                  (format *stdcon* "  ") 
+                  (let* (
+                    (btn-idx (+ i(* j 2)))
+                    (btn-name (-> *pc-pad-button-names* btn-idx))
+                    (keycode (pc-pad-get-mapped-button ii btn-idx))
+                    )
+                    (format *stdcon* "~8L~S: " btn-name)
+                    ;; longest button string is TRIANGLE, which is 8 characters in length
+                    ;; but only shows up in the left column. CIRCLE and SQUARE are longest in the right with 6
+                    (dotimes (_ (- 
+                                (cond ((= i 0) 8) ((= i 1) 6))
+                                (length btn-name)))
+                      (format *stdcon* " ")
+                      )
+                    (format *stdcon* "~0L~D" keycode)
+                    (when (< keycode 100)
+                      (format *stdcon* " ")
+                      (if (< keycode 10)
+                        (format *stdcon* " ")
+                        )
+                      )
+                    )
+                  )
+                  (format *stdcon* "~%")
+                )
+              )
+            (suspend)
+            )
+          )
+        )
+      ))
+      (set! (-> *pc-pad-proc-list* show) (ppointer->handle procp))
+      )
+    
+    (format #t "That process is already running. :-)~%")
+    )
+  )
+
+(defun-debug pc-pad-show-stop ()
+  "Stop the PC port pad debug display"
+  
+  (kill-by-name 'pc-pad-show *active-pool*)
+  )
+
+(defun-debug pc-pad-input-start ((pad-idx int))
+  "Start the PC port pad debug key mapping"
+  
+  (if (not (handle->process (-> *pc-pad-proc-list* input)))
+    (let ((procp
+      (process-spawn pc-pad-proc :name 'pc-pad-input
+        :init (lambda :behavior pc-pad-proc ((pad-idx int))
+          (set! (-> self pad-idx) pad-idx)
+          (pc-pad-input-mode-set #t)
+          (pc-pad-input-pad-set (-> self pad-idx))
+          (go pc-pi-mapping-button)
+          )
+        pad-idx
+        )
+      ))
+      (set! (-> *pc-pad-proc-list* input) (ppointer->handle procp))
+      )
+    
+    (format #t "That process is already running. :-)~%")
+    )
+  )
+
+(defun-debug pc-pad-input-stop ()
+  "Stop the PC port pad debug key mapping"
+  
+  (kill-by-name 'pc-pad-input *active-pool*)
+  (pc-pad-input-mode-set 'canceled)
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; behaviors
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defbehavior pc-pi-post pc-pad-proc ()
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                               (bucket-id debug-no-zbuf))
+    (draw-string-xy (string-format "MAPPING PAD ~D" (-> self pad-idx)) buf 256 PC_PAD_TOP_Y
+          (font-color red) (font-flags shadow kerning large middle))
+    )
+  )
+
+
+(defstatehandler pc-pad-proc :post pc-pi-post)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; states
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defstate pc-pi-new-mapping (pc-pad-proc)
+    
+    :enter (behavior () (set! (-> self input-index) (pc-pad-input-index-get)) )
+    :code (behavior ()
+      (set-state-time)
+      (until (time-passed? PC_PAD_INPUT_NOTICE_TIME)
+        (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                     (bucket-id debug-no-zbuf))
+          (draw-string-xy (string-format "MAPPED ~D TO ~S!"
+                                         (pc-pad-input-key-get) (-> *pc-pad-button-names* (1- (-> self input-index))))
+                             buf 256 (+ PC_PAD_TOP_Y 64) (font-color green) (font-flags shadow kerning large middle))
+          )
+        (suspend)
+        )
+      (go pc-pi-mapping-button)
+      )
+    :trans (behavior ()
+      (if (or (!= (-> self input-index) (pc-pad-input-index-get))
+              (!= (pc-pad-input-mode-get) (pc-pad-input-status enabled)))
+        ;; something's changed, go back to the main state and check everything
+        (go pc-pi-mapping-button)
+        )
+      (none)
+      )
+    
+    )
+
+(defstate pc-pi-canceled (pc-pad-proc)
+    
+    :code (behavior ()
+      (set-state-time)
+      (until (time-passed? PC_PAD_INPUT_NOTICE_TIME)
+        (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                     (bucket-id debug-no-zbuf))
+          (draw-string-xy "CANCELED!" buf 256 (+ PC_PAD_TOP_Y 64) (font-color red-reverse) (font-flags shadow kerning large middle))
+          )
+        (suspend)
+        )
+      )
+    )
+
+(defstate pc-pi-done (pc-pad-proc)
+    
+    :enter (behavior () (set! (-> self input-index) 16))
+    :code (behavior ()
+      (pc-pad-input-map-save!)
+      (set-state-time)
+      (until (time-passed? PC_PAD_INPUT_NOTICE_TIME)
+        (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                     (bucket-id debug-no-zbuf))
+          (draw-string-xy (string-format "MAPPED ~D TO ~S!"
+                                         (pc-pad-input-key-get) (-> *pc-pad-button-names* (1- (-> self input-index))))
+                             buf 256 (+ PC_PAD_TOP_Y 64) (font-color green) (font-flags shadow kerning large middle))
+          )
+        (suspend)
+        )
+      (set-state-time)
+      (until (time-passed? PC_PAD_INPUT_NOTICE_TIME)
+        (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                     (bucket-id debug-no-zbuf))
+          (draw-string-xy (string-format "KEY MAPPING COMPLETE!~%SETTINGS SAVED.") buf 256 (+ PC_PAD_TOP_Y 64) (font-color green) (font-flags shadow kerning large middle))
+          )
+        (suspend)
+        )
+      )
+    )
+
+(defstate pc-pi-mapping-button (pc-pad-proc)
+    
+    :code (behavior ()
+      (loop
+        (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                     (bucket-id debug-no-zbuf))
+          (draw-string-xy "PRESS ESCAPE TO EXIT" buf 256 (+ PC_PAD_TOP_Y 32) (font-color default) (font-flags shadow kerning large middle))
+          (draw-string-xy (string-format "PRESS KEY FOR ~S" (-> *pc-pad-button-names* (-> self input-index)))
+                              buf 256 (+ PC_PAD_TOP_Y 64) (font-color default) (font-flags shadow kerning large middle))
+          )
+        (suspend)
+        )
+      )
+    :trans (behavior ()
+      (cond
+        ;; canceled
+        ((= (pc-pad-input-mode-get) (pc-pad-input-status canceled))
+         (go pc-pi-canceled)
+         )
+        ;; finished
+        ((or (>= (pc-pad-input-index-get) 16)
+             (= (pc-pad-input-mode-get) (pc-pad-input-status disabled)))
+         (go pc-pi-done)
+         )
+        ;; waiting input
+        ((= (-> self input-index) (pc-pad-input-index-get))
+         )
+        ;; one input has been done!
+        ((= (1+ (-> self input-index)) (pc-pad-input-index-get))
+         (go pc-pi-new-mapping)
+         )
+        ;; more than one input has been done. go to last mapping.
+        ((< (1+ (-> self input-index)) (pc-pad-input-index-get))
+         (go pc-pi-new-mapping)
+         )
+        )
+      )
+    
+    )
+
+

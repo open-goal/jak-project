@@ -105,22 +105,27 @@
            (!= (pc-get-screen-rate -1) rate))
       (set! (-> obj vsync?) #f))
   (case rate
+    ((50)
+      (set! (-> obj target-fps) rate)
+      (set! (-> *setting-control* default video-mode) 'pal)
+      )
     ((60)
       (set! (-> obj target-fps) rate)
       (set! (-> *setting-control* default video-mode) 'ntsc)
       )
-    ((100)
+    (else
       (set! (-> obj target-fps) rate)
-      (set! (-> *setting-control* default video-mode) '100fps)
-      )
-    ((150)
-      (set! (-> obj target-fps) rate)
-      (set! (-> *setting-control* default video-mode) '150fps)
+      (set! (-> *setting-control* default video-mode) 'custom)
       )
     )
   (set! (-> *setting-control* current video-mode) #f)
 
   rate)
+
+(defmethod set-monitor! pc-settings ((obj pc-settings) (monitor int))
+  "set the monitor to use when in fullscreen/borderless"
+  (set! (-> obj monitor) monitor)
+  (none))
 
 (defmethod commit-to-file pc-settings ((obj pc-settings))
   "commits the current settings to the file"
@@ -187,8 +192,16 @@
      )
     )
 
+  ;; if monitor selection is out of bounds (e.g. if a monitor got disconnected),
+  ;; then default to the primary monitor
+  (when (>= (-> obj monitor) (pc-get-monitor-count))
+    (format 0 "Monitor selection out of bounds, defaulting to primary monitor.~%")
+    (set! (-> obj monitor) 0)
+    )
+
   ;; set fullscreen to what we want
-  (pc-set-fullscreen (-> obj display-mode) 0)
+  (pc-set-fullscreen (-> obj display-mode) (-> obj monitor))
+
   ;; set window size and fps automatically if the window lock is enabled.
   (when (-> obj window-lock?)
     (pc-set-vsync (-> obj vsync?))
@@ -398,7 +411,7 @@
 
       (cond
         ;; green eco!
-        ((pc-cheats? obj eco-green)
+        ((pc-cheats? (-> obj cheats) eco-green)
          (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-green))
                    (<= (-> *target* fact-info-target eco-level) 0.0))
             (define-extern vent type)
@@ -409,14 +422,14 @@
             )
          )
         ;; red eco!
-        ((pc-cheats? obj eco-red)
+        ((pc-cheats? (-> obj cheats) eco-red)
          (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-red))
                    (<= (-> *target* fact-info-target eco-level) 0.0))
             (send-event *target* 'get-pickup (pickup-type eco-red) (-> *FACT-bank* eco-full-inc))
             )
          )
         ;; blue eco!
-        ((pc-cheats? obj eco-blue)
+        ((pc-cheats? (-> obj cheats) eco-blue)
          (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-blue))
                    (<= (-> *target* fact-info-target eco-level) 0.0))
             (protect ((-> *target* event-hook))
@@ -427,7 +440,7 @@
             )
          )
         ;; yellow eco!
-        ((pc-cheats? obj eco-yellow)
+        ((pc-cheats? (-> obj cheats) eco-yellow)
          (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-yellow))
                    (<= (-> *target* fact-info-target eco-level) 0.0))
             (send-event *target* 'get-pickup (pickup-type eco-yellow) (-> *FACT-bank* eco-full-inc))
@@ -436,18 +449,18 @@
         )
       ))
 
-      (when (pc-cheats? obj invinc)
+      (when (pc-cheats? (-> obj cheats) invinc)
         (logior! (-> *target* state-flags) (state-flags invulnerable))
         )
 
       )
 
-  (if (pc-cheats? obj tunes)
+  (if (pc-cheats? (-> obj cheats) tunes)
       (set! (-> obj flava-hack) -1)
       (set! (-> obj flava-hack) 0)
       )
 
-  (if (pc-cheats? obj sky)
+  (if (pc-cheats? (-> obj cheats) sky)
       (let ((date (new 'stack 'scf-time)))
           (scf-get-time date)
           (when (zero? (-> date stat))
@@ -786,6 +799,7 @@
                       )
                   )
                 (("display-mode") (set-display-mode! obj (file-stream-read-symbol file)))
+                (("monitor") (set-monitor! obj (file-stream-read-int file)))
                 (("letterbox") (set! (-> obj letterbox?) (file-stream-read-symbol file)))
                 (("vsync") (set! (-> obj vsync?) (file-stream-read-symbol file)))
                 (("font-scale") (set! (-> obj font-scale) (file-stream-read-float file)))
@@ -845,6 +859,10 @@
                       (("hard-fish-hiscore") (set! (-> obj secrets hard-fish-hiscore) (file-stream-read-int file)))
                       (("hard-rats-hiscore") (set! (-> obj secrets hard-rats-hiscore) (file-stream-read-int file)))
                       (("hard-rats-hiwave") (set! (-> obj secrets hard-rats-hiwave) (file-stream-read-int file)))
+                      (("cheats")
+                        (set! (-> obj cheats-known) (the pc-cheats (file-stream-read-int file)))
+                        (set! (-> obj cheats) (logand (-> obj cheats-known) (file-stream-read-int file)))
+                        )
                       (("music")
                         (dotimes (i PC_MUSIC_LOG_LENGTH)
                           (when (!= #x29 (file-stream-get-next-char-ret file))
@@ -903,6 +921,7 @@
                                                   (-> obj aspect-custom-x) (-> obj aspect-custom-y)
                                                   (-> obj aspect-ratio-auto?))
     (format file "  (display-mode ~A)~%" (-> obj display-mode))
+    (format file "  (monitor ~D)~%" (-> obj monitor))
     (format file "  (letterbox ~A)~%" (-> obj letterbox?))
     (format file "  (vsync ~A)~%" (-> obj vsync?))
     (format file "  (font-scale ~f)~%" (-> obj font-scale))
@@ -971,6 +990,7 @@
     (format file "    (hard-rats-hiscore ~D)~%" (-> obj secrets hard-rats-hiscore))
     (format file "    (hard-rats-hiwave ~D)~%" (-> obj secrets hard-rats-hiwave))
     |#
+    (format file "    (cheats #x~x #x~x)~%" (-> obj cheats-known) (-> obj cheats))
 
     (format file "    (music~%")
     (dotimes (i PC_MUSIC_LOG_LENGTH)

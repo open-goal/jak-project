@@ -7,6 +7,7 @@
 
 #include <cstdio>
 #include <functional>
+#include <utility>
 
 #include "display.h"
 
@@ -49,6 +50,7 @@ void InitSettings(GfxSettings& settings) {
 
 namespace Gfx {
 
+std::function<void()> vsync_callback;
 GfxGlobalSettings g_global_settings;
 GfxSettings g_settings;
 // const std::vector<const GfxRendererModule*> renderers = {&moduleOpenGL};
@@ -149,8 +151,19 @@ u32 Exit() {
   return 0;
 }
 
+void register_vsync_callback(std::function<void()> f) {
+  vsync_callback = std::move(f);
+}
+
+void clear_vsync_callback() {
+  vsync_callback = nullptr;
+}
+
 u32 vsync() {
   if (GetCurrentRenderer()) {
+    // Inform the IOP kernel that we're vsyncing so it can run the vblank handler
+    if (vsync_callback != nullptr)
+      vsync_callback();
     return GetCurrentRenderer()->vsync();
   }
   return 0;
@@ -223,7 +236,7 @@ void get_window_scale(float* x, float* y) {
 
 GfxDisplayMode get_fullscreen() {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_fullscreen();
+    return Display::GetMainDisplay()->fullscreen_mode();
   } else {
     return GfxDisplayMode::Windowed;
   }
@@ -239,6 +252,13 @@ int get_screen_vmode_count() {
 int get_screen_rate(s64 vmode_idx) {
   if (Display::GetMainDisplay()) {
     return Display::GetMainDisplay()->get_screen_rate(vmode_idx);
+  }
+  return 0;
+}
+
+int get_monitor_count() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_monitor_count();
   }
   return 0;
 }

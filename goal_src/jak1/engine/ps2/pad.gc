@@ -147,27 +147,29 @@
    )
   )
 
-;; List of controllers. It always has 2 controllers.
+;; List of controllers. It always has 4 controllers.
 (deftype cpad-list (basic)
   ((num-cpads int32       :offset-assert 4)
-   (cpads     cpad-info 2 :offset-assert 8)
+   (cpads     cpad-info 4 :offset-assert 8)  ;; modified from 2->4 for PC 4-pad support
    )
   (:methods
    (new (symbol type) _type_ 0)
    )
   :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
+  :size-assert         #x18
+  :flag-assert         #x900000018
   )
 
 
 (defmethod new cpad-list ((allocation symbol) (type-to-make type))
-  "Create a cpad-list for 2 controllers. It's fine to do this even if one or both controllers
+  "Create a cpad-list for 4 controllers. It's fine to do this even if controllers
    aren't connected yet. "
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> gp-0 num-cpads) 2)
+    (set! (-> gp-0 num-cpads) 4)
     (set! (-> gp-0 cpads 0) (new 'global 'cpad-info 0))
     (set! (-> gp-0 cpads 1) (new 'global 'cpad-info 1))
+    (set! (-> gp-0 cpads 2) (new 'global 'cpad-info 2))
+    (set! (-> gp-0 cpads 3) (new 'global 'cpad-info 3))
     gp-0
     )
   )
@@ -261,10 +263,10 @@
   (none)
   )
 
-;; the two controllers
+;; the four controllers
 (define *cpad-list* (new 'global 'cpad-list))
 
-;; weird leftover debug thing, enabling overrides the x position of both sticks on both controllers.
+;; weird leftover debug thing, enabling overrides the x position of both sticks on all controllers.
 (define *cpad-debug* #f)
 
 (#if PC_PORT

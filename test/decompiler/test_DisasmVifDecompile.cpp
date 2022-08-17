@@ -5,7 +5,7 @@
 
 using namespace decompiler;
 
-TEST_F(FormRegressionTest, ExprDisasmVif) {
+TEST_F(FormRegressionTestJak1, ExprDisasmVif) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L53:\n"
@@ -681,17 +681,17 @@ TEST_F(FormRegressionTest, ExprDisasmVif) {
       "   )\n"
       "  (- gp-0 (* arg1 4))\n"
       "  )";
-  test_with_expr_jak1(func, type, expected, false, "",
-                      {{"L139", " #x~X:"},
-                       {"L138", "  (~s :irq ~D)~%"},
-                       {"L137", "  (~s :irq ~D :~s #x~X)~%"},
-                       {"L136", "  (~s :irq ~D :wl ~D :cl ~D)~%"},
-                       {"L135", "  (~s :irq ~D :~s "},
-                       {"L134", "#x~X #x~X #x~X #x~X)~%"},
-                       {"L133", "  (~s :irq ~D :instructions #x~D :addr #x~X)~%"},
-                       {"L132", "  (~s :irq ~D :qwc #x~D)~%"},
-                       {"L145", "  #x~X:    #x~8x #x~8x #x~8x #x~8x~%"},
-                       {"L131", "  (~s :irq ~D :num ~D :addr #x~X "},
-                       {"L130", ":msk ~D :flg ~D :usn ~D [skip ~d])~%"},
-                       {"L129", "  (*unknown* vif-tag #x~X)~%"}});
+  test_with_expr(func, type, expected, false, "",
+                 {{"L139", " #x~X:"},
+                  {"L138", "  (~s :irq ~D)~%"},
+                  {"L137", "  (~s :irq ~D :~s #x~X)~%"},
+                  {"L136", "  (~s :irq ~D :wl ~D :cl ~D)~%"},
+                  {"L135", "  (~s :irq ~D :~s "},
+                  {"L134", "#x~X #x~X #x~X #x~X)~%"},
+                  {"L133", "  (~s :irq ~D :instructions #x~D :addr #x~X)~%"},
+                  {"L132", "  (~s :irq ~D :qwc #x~D)~%"},
+                  {"L145", "  #x~X:    #x~8x #x~8x #x~8x #x~8x~%"},
+                  {"L131", "  (~s :irq ~D :num ~D :addr #x~X "},
+                  {"L130", ":msk ~D :flg ~D :usn ~D [skip ~d])~%"},
+                  {"L129", "  (*unknown* vif-tag #x~X)~%"}});
 }

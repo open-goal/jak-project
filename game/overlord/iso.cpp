@@ -658,11 +658,6 @@ u32 ISOThread() {
     ProcessMessageData();
 
     if (!read_buffer) {
-      // HACK!! sometimes when we want to exit, some other threads will wait for stuff to be loaded
-      // in such cases, we continue running until we're the last thread alive when it's safe to die
-      if (ThreadWantsExit(GetThreadId()) && OnlyThreadAlive(GetThreadId())) {
-        return 0;
-      }
       // didn't actually start a read, just delay for a bit I guess.
       DelayThread(100);
     } else {

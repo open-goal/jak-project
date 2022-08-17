@@ -13,6 +13,7 @@
 #include <regex>
 
 #include "common/log/log.h"
+#include "common/util/unicode_util.h"
 
 #include "lsp/handlers/lsp_router.h"
 #include "lsp/state/workspace.h"
@@ -48,10 +49,7 @@ void setup_logging(bool verbose, std::string log_file) {
 }
 
 int main(int argc, char** argv) {
-  fs::u8arguments u8guard(argc, argv);
-  if (!u8guard.valid()) {
-    exit(EXIT_FAILURE);
-  }
+  ArgumentGuard u8_guard(argc, argv);
 
   CLI::App app{"OpenGOAL Language Server"};
 

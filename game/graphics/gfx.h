@@ -125,6 +125,8 @@ void Loop(std::function<bool()> f);
 u32 Exit();
 
 u32 vsync();
+void register_vsync_callback(std::function<void()> f);
+void clear_vsync_callback();
 u32 sync_path();
 void send_chain(const void* data, u32 offset);
 void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr);
@@ -138,6 +140,7 @@ void get_window_scale(float* x, float* y);
 GfxDisplayMode get_fullscreen();
 int get_screen_vmode_count();
 int get_screen_rate(s64 vmode_idx);
+int get_monitor_count();
 void get_screen_size(s64 vmode_idx, s32* w, s32* h);
 void set_frame_rate(int rate);
 void set_vsync(bool vsync);

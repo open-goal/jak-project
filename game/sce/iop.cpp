@@ -86,7 +86,14 @@ void* AllocSysMemory(int type, unsigned long size, void* addr) {
  * Create a new thread
  */
 s32 CreateThread(ThreadParam* param) {
-  return iop->kernel.CreateThread(param->name, (u32(*)())param->entry);
+  return iop->kernel.CreateThread(param->name, (void (*)())param->entry, param->initPriority);
+}
+
+/*!
+ * Exit current thread
+ */
+s32 ExitThread() {
+  return iop->kernel.ExitThread();
 }
 
 /*!
@@ -158,8 +165,7 @@ int sceCdMmode(int media) {
 }
 
 void DelayThread(u32 usec) {
-  iop->kernel.SuspendThread();
-  (void)usec;
+  iop->kernel.DelayThread(usec);
 }
 
 int sceCdBreak() {
@@ -200,20 +206,19 @@ void SleepThread() {
 }
 
 s32 CreateSema(SemaParam* param) {
-  (void)param;
-  return iop->kernel.CreateSema();
+  return iop->kernel.CreateSema(param->attr, param->option, param->max_count, param->init_count);
 }
 
 s32 WaitSema(s32 sema) {
-  (void)sema;
-  ASSERT(false);  // nyi
-  return 0;
+  return iop->kernel.WaitSema(sema);
 }
 
 s32 SignalSema(s32 sema) {
-  (void)sema;
-  ASSERT(false);  // nyi
-  return 0;
+  return iop->kernel.SignalSema(sema);
+}
+
+s32 PollSema(s32 sema) {
+  return iop->kernel.PollSema(sema);
 }
 
 s32 WakeupThread(s32 thid) {
@@ -221,11 +226,10 @@ s32 WakeupThread(s32 thid) {
   return 0;
 }
 
-bool ThreadWantsExit(s32 thid) {
-  return iop->kernel.GetWantExit(thid);
+s32 RegisterVblankHandler(int edge, int priority, int (*handler)(void*), void* userdata) {
+  (void)edge;
+  (void)priority;
+  return iop->kernel.RegisterVblankHandler(handler);
 }
 
-bool OnlyThreadAlive(s32 thid) {
-  return iop->kernel.OnlyThreadAlive(thid);
-}
 }  // namespace iop

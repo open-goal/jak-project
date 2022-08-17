@@ -58,7 +58,7 @@ std::vector<math::Vector2f> extract_vec2f(const u8* data, u32 count, u32 stride)
 }
 
 /*!
- * Convert a GLTF color buffer to u8 colors.
+ * Convert a GLTF color buffer (u16 format) to u8 colors.
  */
 std::vector<math::Vector<u8, 4>> extract_color_from_vec4_u16(const u8* data,
                                                              u32 count,
@@ -111,6 +111,9 @@ struct ExtractedVertices {
   std::vector<math::Vector3f> normals;
 };
 
+/*!
+ * Extract positions, colors, and normals from a mesh.
+ */
 ExtractedVertices gltf_vertices(const tinygltf::Model& model,
                                 const std::map<std::string, int>& attributes,
                                 const math::Matrix4f& w_T_local,
@@ -298,6 +301,8 @@ int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex) {
   if (existing != pool->textures_by_name.end()) {
     lg::info("Reusing image: {}", tex.name);
     return existing->second;
+  } else {
+    lg::info("adding new texture: {}, size {} kB", tex.name, tex.width * tex.height * 4 / 1024);
   }
 
   ASSERT(tex.bits == 8);
@@ -313,9 +318,9 @@ int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex) {
   tt.debug_tpage_name = "custom-level";
   tt.load_to_pool = false;
   tt.combo_id = 0;  // doesn't matter, not a pool tex
-  tt.data.resize(tt.w * tt.h * 4);
+  tt.data.resize(tt.w * tt.h);
   ASSERT(tex.image.size() >= tt.data.size());
-  memcpy(tt.data.data(), tex.image.data(), tt.data.size());
+  memcpy(tt.data.data(), tex.image.data(), tt.data.size() * 4);
   return idx;
 }
 }  // namespace
@@ -517,14 +522,17 @@ void extract(const Input& in,
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
+    if (node.extras.Has("set_invisible") && node.extras.Get("set_invisible").Get<int>()) {
+      continue;
+    }
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
-      if (!mesh.extras.Has("tfrag")) {
-        // fmt::print("skip tfrag: {}\n", mesh.name);
-        // continue;
-      }
       mesh_count++;
       for (const auto& prim : mesh.primitives) {
+        if (prim.material >= 0 && model.materials[prim.material].extras.Has("set_invisible") &&
+            model.materials[prim.material].extras.Get("set_invisible").Get<int>()) {
+          continue;
+        }
         prim_count++;
         // extract index buffer
         std::vector<u32> prim_indices = gltf_index_buffer(model, prim.indices, out.vertices.size());
@@ -671,7 +679,7 @@ struct PatResult {
   PatSurface pat;
 };
 
-PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& debug_name) {
+PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*debug_name*/) {
   PatResult result;
   if (!val.IsObject() || !val.Has("set_collision") || !val.Get("set_collision").Get<int>()) {
     // unset.
@@ -701,6 +709,12 @@ PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& deb
 
   if (val.Get("noedge").Get<int>()) {
     result.pat.set_noedge(true);
+  }
+
+  if (val.Has("collide_mode")) {
+    int mode = val.Get("collide_mode").Get<int>();
+    ASSERT(mode < (int)PatSurface::Mode::MAX_MODE);
+    result.pat.set_mode(PatSurface::Mode(mode));
   }
 
   if (val.Get("nocamera").Get<int>()) {
@@ -806,6 +820,16 @@ void extract(const Input& in,
       fixed_faces.push_back(face);
     }
   }
+
+  if (in.double_sided_collide) {
+    size_t os = fixed_faces.size();
+    for (size_t i = 0; i < os; i++) {
+      auto f0 = fixed_faces.at(i);
+      std::swap(f0.v[0], f0.v[1]);
+      fixed_faces.push_back(f0);
+    }
+  }
+
   out.faces = std::move(fixed_faces);
 
   if (in.auto_wall_enable) {

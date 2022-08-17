@@ -23,6 +23,8 @@
 
 (defconstant PC_SUBTITLE_FILE_SIZE (* 192 1024)) ;; 192K heap for subtitles. adjust later if necessary.
 (defconstant PC_SUBTITLE_FILE_NAME "subtit")
+(defconstant PC_SUB_DBG_Y 32)
+(defconstant PC_SUB_DBG_CHECK_GROUP_SIZE 22)
 (defglobalconstant PC_SUBTITLE_DEBUG #f)
 
 
@@ -64,7 +66,7 @@
   (
    ;; the channel to play the text on, useful for lookup since it can also be used to tell subtitle types apart
    (kind  pc-subtitle-channel)
-   ;; the amount of keyframes
+   ;; the amount of keyframes/lines
    (length int16)
    ;; data
    (keyframes (inline-array subtitle-keyframe))
@@ -124,7 +126,7 @@
 
 (define *SUBTITLE-bank*
     (new 'static 'subtitle-bank
-                  :scale 0.49
+                  :scale 0.5
                   :width 0.87
                   :height 0.75
                   :lines 2.0
@@ -146,6 +148,12 @@
    (text-id game-text-id)
    (cur-channel pc-subtitle-channel)
 
+   ;; debug things
+   (debug-lines?  symbol)
+   (checking-lines?  symbol)
+   (current-debug-scene  int16)
+   (current-debug-line   int16)
+
    (want-subtitle  subtitle-keyframe) ;; the subtitle we want to display
    (hint-subtitle? symbol)
    )
@@ -154,7 +162,8 @@
     (subtitle-format (_type_ subtitle-keyframe) string)
     )
   (:states
-    subtitle-debug)
+    subtitle-debug
+    subtitle-debug-checking-lines)
   )
 
 
@@ -287,7 +296,8 @@
   `(begin
       (asm-text-file subtitle :files ("game/assets/game_subtitle.gp"))
       (if *subtitle-text*
-          (+! (-> *subtitle-text* lang) (the-as pc-subtitle-lang 1)))))
+          (+! (-> *subtitle-text* lang) (the-as pc-subtitle-lang 1)))
+      (load-level-subtitle-files 0)))
 
 
 
@@ -543,6 +553,34 @@
   (if (< pos 0) -1 (the int (/ pos (/ 1024.0 60)))))
 
 
+(defbehavior setup-subtitle-font subtitle ()
+  "setup the subtitle font."
+
+  ;; set font settings.
+  (set! (-> self font origin x) (* (- 1.0 (-> *SUBTITLE-bank* width)) 256))
+  (set! (-> self font origin y) (* (if (not (movie?))
+                                       (-> *SUBTITLE-bank* hint-height)
+                                       (-> *SUBTITLE-bank* height)
+                                       ) 224))
+  (set-width! (-> self font) (the int (* (-> *SUBTITLE-bank* width) 512)))
+  (set-height! (-> self font) (the int (* (-> *SUBTITLE-bank* lines) 11)))
+  (set-scale! (-> self font) (-> *SUBTITLE-bank* scale))
+  )
+
+(defbehavior draw-subtitle subtitle ()
+  "draw the current subtitle using the current font."
+
+  (when (and (-> self want-subtitle) (subtitle? (-> self hint-subtitle?)))
+      ;; we got a valid subtitle! render it.
+      (hide-bottom-hud)
+      (print-game-subtitle (subtitle-format self (-> self want-subtitle)) (-> self font) #f 128 22)
+      (#when PC_SUBTITLE_DEBUG
+        (draw-debug-text-box (-> self font))
+        )
+      )
+  )
+
+
 (defstate subtitle-process (subtitle)
 
   :event (behavior ((from process) (argc int) (msg symbol) (block event-message-block))
@@ -602,6 +640,14 @@
 
     ;; do subtitles
 
+    ;; intro first time notice (if subtitles are disabled)
+    (when (and (= (pc-subtitle-channel movie) (-> self cur-channel))
+               (!= (-> self old-spool-name) (-> self spool-name))
+               (string= (-> self spool-name) "sage-intro-sequence-a"))
+          (set-state-time)
+          (set! (-> self notice-id) (game-text-id subtitle-hint))
+          )
+
     ;; get a subtitle info that matches our current status
     (let ((keyframe (the subtitle-keyframe #f)))
     (when *subtitle-text*
@@ -611,6 +657,16 @@
           (set! (-> self hint-subtitle?) #f)
           (awhen (get-scene-by-name *subtitle-text* (-> self cur-channel) (-> self spool-name))
 
+            ;; during a cutscene, check if user toggled subtitles
+            (when (and (= 'game *master-mode*)
+                       (cpad-pressed? 0 square))
+                (not! (-> *pc-settings* subtitles?))
+                (set-state-time)
+                (if (-> *pc-settings* subtitles?)
+                    (set! (-> self notice-id) (game-text-id subtitle-enabled))
+                    (set! (-> self notice-id) (game-text-id subtitle-disabled))
+                    )
+                )
             ;; find out position in the scene.
             (let ((pos 0))
                 ;; get frame num
@@ -648,25 +704,8 @@
         ;; save whatever subtitle we got.
         (set! (-> self want-subtitle) keyframe))
 
-    (when (and (!= (-> self old-spool-name) (-> self spool-name))
-               (string= (-> self spool-name) "sage-intro-sequence-a"))
-          (set-state-time)
-          (set! (-> self notice-id) (game-text-id subtitle-hint))
-          )
     ;; keep this for later
     (set! (-> self old-spool-name) (-> self spool-name))
-
-    ;; during a cutscene, check if user toggled subtitles
-    (when (and (= (pc-subtitle-channel movie) (-> self cur-channel))
-               (= 'game *master-mode*)
-               (cpad-pressed? 0 square))
-        (not! (-> *pc-settings* subtitles?))
-        (set-state-time)
-        (if (-> *pc-settings* subtitles?)
-            (set! (-> self notice-id) (game-text-id subtitle-enabled))
-            (set! (-> self notice-id) (game-text-id subtitle-disabled))
-            )
-        )
 
     (when *debug-segment*
         (when (and (cpad-hold? 0 l3) (cpad-pressed? 0 start))
@@ -680,24 +719,8 @@
 
   :post (behavior ()
 
-    ;; set font settings.
-    (set! (-> self font origin x) (* (- 1.0 (-> *SUBTITLE-bank* width)) 256))
-    (set! (-> self font origin y) (* (if (not (movie?))
-                                         (-> *SUBTITLE-bank* hint-height)
-                                         (-> *SUBTITLE-bank* height)
-                                         ) 224))
-    (set-width! (-> self font) (the int (* (-> *SUBTITLE-bank* width) 512)))
-    (set-height! (-> self font) (the int (* (-> *SUBTITLE-bank* lines) 11)))
-    (set-scale! (-> self font) (-> *SUBTITLE-bank* scale))
-
-    (when (and (-> self want-subtitle) (subtitle? (-> self hint-subtitle?)))
-        ;; we got a valid subtitle! render it.
-        (hide-bottom-hud)
-        (print-game-subtitle (subtitle-format self (-> self want-subtitle)) (-> self font) #f 128 22)
-        (#when PC_SUBTITLE_DEBUG
-          (draw-debug-text-box (-> self font))
-          )
-        )
+    (setup-subtitle-font)
+    (draw-subtitle)
 
     (cond
       ((!= *master-mode* 'game)
@@ -723,7 +746,6 @@
   )
 
 
-
 (defstate subtitle-debug (subtitle)
 
 
@@ -739,46 +761,131 @@
         (mem-copy! (the pointer (-> self bank-backup)) (the pointer *SUBTITLE-bank*) (size-of subtitle-bank))
         (set-master-mode 'pause)
         )
-    :exit (behavior ()
-        (toggle-pause) (none)) ;; todo fuck
 
     :trans (behavior ()
 
       (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
                                    (bucket-id debug))
 
-        (draw-string-xy "~3LSUBTITLE DEBUG!~0L"     buf 16 40 (font-color default) (font-flags shadow kerning))
-        (draw-string-xy "Square: reset"             buf 16 48 (font-color default) (font-flags shadow kerning))
-        (draw-string-xy "Up/down: Move vertically"  buf 16 56 (font-color default) (font-flags shadow kerning))
-        (draw-string-xy "Triangle+R1/L1: width"     buf 16 64 (font-color default) (font-flags shadow kerning))
-        (draw-string-xy "Triangle+R2/L2: height"    buf 16 72 (font-color default) (font-flags shadow kerning))
-        (draw-string-xy "Circle+R1/L1: scale"       buf 16 80 (font-color default) (font-flags shadow kerning))
-        (draw-string-xy "L3+Start: exit"            buf 16 88 (font-color default) (font-flags shadow kerning))
-
-            )
+        (draw-string-xy "~3LSUBTITLE DEBUG!~0L"     buf 14 (+ PC_SUB_DBG_Y (* 0 8)) (font-color default) (font-flags shadow kerning))
+        (draw-string-xy "L3+Start: exit"            buf 14 (+ PC_SUB_DBG_Y (* 1 8)) (font-color default) (font-flags shadow kerning))
+        (if (!= 'pause *master-mode*)
+            (draw-string-xy "Pause the game to continue" buf 14 (+ PC_SUB_DBG_Y (* 2 8)) (font-color default) (font-flags shadow kerning)))
 
       (when (= 'pause *master-mode*)
-        (when (cpad-pressed? 0 square)
-            (mem-copy! (the pointer *SUBTITLE-bank*) (the pointer (-> self bank-backup)) (size-of subtitle-bank))
-            )
-
-        (when (cpad-hold? 0 up) (+! (-> *SUBTITLE-bank* height) -0.01))
-        (when (cpad-hold? 0 down) (+! (-> *SUBTITLE-bank* height) 0.01))
-
         (cond
-          ((cpad-hold? 0 triangle)
-            (when (cpad-hold? 0 r1) (-! (-> *SUBTITLE-bank* width) 0.01))
-            (when (cpad-hold? 0 l1) (+! (-> *SUBTITLE-bank* width) 0.01))
-            (when (cpad-hold? 0 r2) (-! (-> *SUBTITLE-bank* lines) 0.05))
-            (when (cpad-hold? 0 l2) (+! (-> *SUBTITLE-bank* lines) 0.05))
+          ((and (cpad-hold? 0 l3) (cpad-pressed? 0 x))
+            (set! (-> self debug-lines?) #t)
             )
-          ((cpad-hold? 0 circle)
-            (when (cpad-hold? 0 r1) (+! (-> *SUBTITLE-bank* scale) 0.01))
-            (when (cpad-hold? 0 l1) (-! (-> *SUBTITLE-bank* scale) 0.01))
+          ((and (cpad-hold? 0 l3) (cpad-pressed? 0 triangle))
+            (set! (-> self debug-lines?) #f)
             )
           )
-        )
+        (draw-string-xy "L3+X: debug lines"         buf 14 (+ PC_SUB_DBG_Y (* 2 8)) (font-color default) (font-flags shadow kerning))
+        (draw-string-xy "L3+Triangle: debug box"    buf 14 (+ PC_SUB_DBG_Y (* 3 8)) (font-color default) (font-flags shadow kerning))
 
+        (cond
+          ((or (not *subtitle-text*) (zero? (-> *subtitle-text* length)))
+            (draw-string-xy "NO SUBTITLES LOADED!!!" buf 14 (+ PC_SUB_DBG_Y (* 10 8)) (font-color red) (font-flags shadow kerning))
+            (load-level-subtitle-files 0)
+            (set! (-> self current-debug-scene) 0)
+            (set! (-> self current-debug-line) 0)
+            )
+          ((-> self debug-lines?)
+
+            (cond
+              ((cpad-pressed? 0 square)
+                (true! (-> self checking-lines?))
+                )
+              ((cpad-pressed? 0 left)
+                (if (> (-> self current-debug-line) 0)
+                    (1-! (-> self current-debug-line)))
+                )
+              ((cpad-pressed? 0 right)
+                (if (< (-> self current-debug-line) (1- (-> *subtitle-text* data (-> self current-debug-scene) length)))
+                    (1+! (-> self current-debug-line)))
+                )
+              ((or (cpad-pressed? 0 up) (and (cpad-hold? 0 l2) (cpad-hold? 0 up)))
+                (when (> (-> self current-debug-scene) 0)
+                    (1-! (-> self current-debug-scene))
+                    (set! (-> self current-debug-line) 0))
+                )
+              ((or (cpad-pressed? 0 down) (and (cpad-hold? 0 l2) (cpad-hold? 0 down)))
+                (when (< (-> self current-debug-scene) (1- (-> *subtitle-text* length)))
+                    (1+! (-> self current-debug-scene))
+                    (set! (-> self current-debug-line) 0))
+                )
+              )
+
+          (let ((cur-scene (-> *subtitle-text* data (-> self current-debug-scene))))
+            (if (nonzero? (-> cur-scene length))
+                (set! (-> self want-subtitle) (-> *subtitle-text* data (-> self current-debug-scene) keyframes (-> self current-debug-line)))
+                (set! (-> self want-subtitle) #f))
+
+          (draw-string-xy "Up/down: Pick scene"            buf 14 (+ PC_SUB_DBG_Y (* 4 8)) (font-color default) (font-flags shadow kerning))
+          (draw-string-xy "L2+Up/down: Pick scene (fast)"  buf 14 (+ PC_SUB_DBG_Y (* 5 8)) (font-color default) (font-flags shadow kerning))
+          (draw-string-xy "Left/right: Pick line"          buf 14 (+ PC_SUB_DBG_Y (* 6 8)) (font-color default) (font-flags shadow kerning))
+          (draw-string-xy "Square: Check all line heights" buf 14 (+ PC_SUB_DBG_Y (* 7 8)) (font-color default) (font-flags shadow kerning))
+          (draw-string-xy (string-format "Scene: ~D/~D" (1+ (-> self current-debug-scene)) (-> *subtitle-text* length))
+                          buf 14 (+ PC_SUB_DBG_Y (* 8 8)) (font-color default) (font-flags shadow kerning))
+          (draw-string-xy (string-format "Line: ~D/~D" (1+ (-> self current-debug-line)) (-> cur-scene length))
+                          buf 14 (+ PC_SUB_DBG_Y (* 9 8)) (font-color default) (font-flags shadow kerning))
+
+            (case (-> cur-scene kind)
+              (((pc-subtitle-channel movie))
+                (draw-string-xy (string-format "Current scene: ~3L~A~0L" (-> cur-scene name))
+                                buf 14 (+ PC_SUB_DBG_Y (* 10 8)) (font-color default) (font-flags shadow kerning))
+                )
+              (((pc-subtitle-channel hint-named))
+                (draw-string-xy (string-format "Current scene: ~3L~A~0L (~3L#x~X~0L)" (-> cur-scene name) (-> cur-scene id))
+                                buf 14 (+ PC_SUB_DBG_Y (* 10 8)) (font-color default) (font-flags shadow kerning))
+                )
+              (((pc-subtitle-channel hint))
+                (draw-string-xy (string-format "Current scene: ~3L#x~X~0L" (-> cur-scene id))
+                                buf 14 (+ PC_SUB_DBG_Y (* 10 8)) (font-color default) (font-flags shadow kerning))
+                )
+              (else
+                (draw-string-xy (string-format "Unknown scene kind ~D" (-> cur-scene kind))
+                                buf 14 (+ PC_SUB_DBG_Y (* 10 8)) (font-color red) (font-flags shadow kerning))
+                )
+              ))
+
+            )
+
+          (else
+          (draw-string-xy "Square: reset"             buf 14 (+ PC_SUB_DBG_Y (* 4 8)) (font-color default) (font-flags shadow kerning))
+          (draw-string-xy "Up/down: Move vertically"  buf 14 (+ PC_SUB_DBG_Y (* 5 8)) (font-color default) (font-flags shadow kerning))
+          (draw-string-xy "Triangle+R1/L1: width"     buf 14 (+ PC_SUB_DBG_Y (* 6 8)) (font-color default) (font-flags shadow kerning))
+          (draw-string-xy "Triangle+R2/L2: height"    buf 14 (+ PC_SUB_DBG_Y (* 7 8)) (font-color default) (font-flags shadow kerning))
+          (draw-string-xy "Circle+R1/L1: scale"       buf 14 (+ PC_SUB_DBG_Y (* 8 8)) (font-color default) (font-flags shadow kerning))
+
+
+          (when (cpad-pressed? 0 square)
+              (mem-copy! (the pointer *SUBTITLE-bank*) (the pointer (-> self bank-backup)) (size-of subtitle-bank))
+              )
+
+          (when (cpad-hold? 0 up) (+! (-> *SUBTITLE-bank* height) -0.01))
+          (when (cpad-hold? 0 down) (+! (-> *SUBTITLE-bank* height) 0.01))
+
+          (cond
+            ((cpad-hold? 0 triangle)
+              (when (cpad-hold? 0 r1) (-! (-> *SUBTITLE-bank* width) 0.01))
+              (when (cpad-hold? 0 l1) (+! (-> *SUBTITLE-bank* width) 0.01))
+              (when (cpad-hold? 0 r2) (-! (-> *SUBTITLE-bank* lines) 0.05))
+              (when (cpad-hold? 0 l2) (+! (-> *SUBTITLE-bank* lines) 0.05))
+              )
+            ((cpad-hold? 0 circle)
+              (when (cpad-hold? 0 r1) (+! (-> *SUBTITLE-bank* scale) 0.01))
+              (when (cpad-hold? 0 l1) (-! (-> *SUBTITLE-bank* scale) 0.01))
+              )
+            ))
+          )
+        ))
+
+      (when (-> self checking-lines?)
+          (false! (-> self checking-lines?))
+          (go subtitle-debug-checking-lines)
+          )
       (when (and (cpad-hold? 0 l3) (cpad-pressed? 0 start))
           (cpad-clear! 0 start)
           (send-event self 'debug)
@@ -787,10 +894,54 @@
       (none))
 
     :code (-> subtitle-process code)
-    :post (-> subtitle-process post)
+    :post (behavior ()
+      (setup-subtitle-font)
+      (draw-subtitle)
+      (draw-debug-text-box (-> self font))
+      0)
 
     )
 
+(defstate subtitle-debug-checking-lines (subtitle)
+
+    :trans (behavior () (setup-subtitle-font) (none))
+    :code (behavior ()
+      (protect ((-> *pc-settings* subtitle-speaker?))
+      (set! (-> *pc-settings* subtitle-speaker?) #t)
+      (let ((lines-so-far 0)
+            (lines-this-time 0)
+            (bad-lines 0))
+        (dotimes (i (length *subtitle-text*))
+          (dotimes (ii (length (-> *subtitle-text* data i)))
+            (when (= lines-this-time PC_SUB_DBG_CHECK_GROUP_SIZE)
+                (set! lines-this-time 0)
+                (suspend))
+
+            (set! (-> self want-subtitle) (-> *subtitle-text* data i keyframes ii))
+            (1+! lines-this-time)
+            (when (< (* (-> *SUBTITLE-bank* lines) 11) (print-game-subtitle (subtitle-format self (-> self want-subtitle)) (-> self font) #f 128 22))
+                (format 0  "LINE ~D IN SCENE ~D IS TOO LARGE!~%" (1+ ii) (1+ i))
+                (format #t "LINE ~D IN SCENE ~D IS TOO LARGE!~%" (1+ ii) (1+ i))
+                (1+! bad-lines)
+                )
+            )
+          )
+        (suspend)
+        (if (> bad-lines 0)
+            (format 0 "~D bad lines detected.~%" bad-lines)
+            (format 0 "no bad lines detected!~%" bad-lines))
+        ))
+      (go subtitle-debug)
+      )
+    :post (behavior ()
+      (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                   (bucket-id debug))
+        (draw-string-xy "Checking for bad lines... See console for info" buf 14 PC_SUB_DBG_Y (font-color red) (font-flags shadow kerning))
+        )
+      (draw-debug-text-box (-> self font))
+      0)
+
+    )
 
 
 
@@ -817,6 +968,8 @@
 
   (set! (-> self font) (new 'process 'font-context *font-default-matrix*
                             0 0 0.0 (font-color default) (font-flags shadow kerning middle large)))
+  (set! (-> self debug-lines?) #t)
+  (set! (-> self checking-lines?) #f)
   (go subtitle-process)
   )
 

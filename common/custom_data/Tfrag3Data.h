@@ -53,7 +53,7 @@ enum MemoryUsageCategory {
   NUM_CATEGORIES
 };
 
-constexpr int TFRAG3_VERSION = 20;
+constexpr int TFRAG3_VERSION = 21;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -376,7 +376,6 @@ struct MercEffect {
 struct MercModel {
   std::string name;
   std::vector<MercEffect> effects;
-  float scale_xyz;
   u32 max_draws;
   u32 max_bones;
   void serialize(Serializer& ser);

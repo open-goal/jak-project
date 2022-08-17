@@ -84,12 +84,12 @@ s32 sceSifCallRpc(sceSifClientData* bd,
   ASSERT(!end_para);
   ASSERT(mode == 1);  // async
   iop->kernel.sif_rpc(bd->rpcd.id, fno, mode, send, ssize, recv, rsize);
-  iop->signal_run_iop(false);
+  iop->signal_run_iop();
   return 0;
 }
 
 s32 sceSifCheckStatRpc(sceSifRpcData* bd) {
-  iop->signal_run_iop(false);
+  iop->signal_run_iop();
   return iop->kernel.sif_busy(bd->id);
 }
 

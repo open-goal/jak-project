@@ -17,6 +17,13 @@
 
 #include "game/discord.h"
 
+#ifdef _WIN32
+extern "C" {
+__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+#endif
+
 // Discord RPC
 extern int64_t gStartTime;
 
@@ -42,10 +49,7 @@ void setup_logging(bool verbose) {
  * Entry point for the game.
  */
 int main(int argc, char** argv) {
-  fs::u8arguments u8guard(argc, argv);
-  if (!u8guard.valid()) {
-    exit(EXIT_FAILURE);
-  }
+  ArgumentGuard u8_guard(argc, argv);
 
   // TODO - replace with CLI11 and just propagate args through
   // - https://github.com/CLIUtils/CLI11/issues/744

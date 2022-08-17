@@ -63,8 +63,7 @@ Decompiler setup_decompiler(const std::vector<DecompilerFile>& files,
   decompiler::init_opcode_info();
   dc.config = std::make_unique<decompiler::Config>(decompiler::read_config_file(
       (file_util::get_jak_project_dir() / "decompiler" / "config" / game_name_to_config[game_name])
-          .string(),
-      {}));
+          .string()));
 
   // modify the config
   std::unordered_set<std::string> object_files;
@@ -389,11 +388,7 @@ std::optional<OfflineTestConfig> parse_config(const std::string_view& game_name)
 }
 
 int main(int argc, char* argv[]) {
-  fs::u8arguments u8guard(argc, argv);
-  if (!u8guard.valid()) {
-    std::cerr << "Bad encoding, needs UTF-8." << std::endl;
-    exit(EXIT_FAILURE);
-  }
+  ArgumentGuard u8_guard(argc, argv);
 
   lg::initialize();
 
@@ -428,7 +423,7 @@ int main(int argc, char* argv[]) {
 
   lg::info("Finding files...");
   auto files = find_files(game_name, config->dgos);
-  if (max_files > 0 && max_files < files.size()) {
+  if (max_files > 0 && max_files < (int)files.size()) {
     files.erase(files.begin() + max_files, files.end());
   }
 

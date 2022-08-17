@@ -209,6 +209,7 @@ void iop_runner(SystemThreadInterface& iface) {
   iop.reset_allocator();
   ee::LIBRARY_sceSif_register(&iop);
   iop::LIBRARY_register(&iop);
+  Gfx::register_vsync_callback([&iop]() { iop.kernel.signal_vblank(); });
 
   // todo!
   dma_init_globals();
@@ -241,23 +242,23 @@ void iop_runner(SystemThreadInterface& iface) {
 
   // init
 
-  start_overlord(iop.overlord_argc, iop.overlord_argv);  // todo!
+  bool complete = false;
+  start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);  // todo!
+  while (complete == false) {
+    iop.wait_run_iop(iop.kernel.dispatch());
+  }
 
   // unblock the EE, the overlord is set up!
   iop.signal_overlord_init_finish();
 
   // IOP Kernel loop
   while (!iface.get_want_exit() && !iop.want_exit) {
-    // the IOP kernel just runs at full blast, so we only run the IOP when the EE is waiting on the
-    // IOP. Each time the EE is waiting on the IOP, it will run an iteration of the IOP kernel.
-    iop.wait_run_iop();
-    iop.kernel.dispatchAll();
+    // The IOP scheduler informs us of how many microseconds are left until it has something to do.
+    // So we can wait for that long or until something else needs it to wake up.
+    iop.wait_run_iop(iop.kernel.dispatch());
   }
 
-  // stop all threads in the iop kernel.
-  // if the threads are not stopped nicely, we will deadlock on trying to destroy the kernel's
-  // condition variables.
-  iop.kernel.shutdown();
+  Gfx::clear_vsync_callback();
 }
 }  // namespace
 

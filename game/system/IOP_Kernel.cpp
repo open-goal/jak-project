@@ -7,185 +7,268 @@
 
 #include "game/sce/iop.h"
 
+using namespace std::chrono;
+
+/*
+** wrap thread entry points to ensure they don't return into libco
+*/
+static void (*thread_entry)() = nullptr;
+static cothread_t wrap_return;
+void IopThread::functionWrapper() {
+  void (*f)() = thread_entry;
+  co_switch(wrap_return);
+  if (f != nullptr) {
+    f();
+  }
+  // libco threads must not return
+  while (true) {
+    iop::ExitThread();
+  }
+}
+
+/*
+** -----------------------------------------------------------------------------
+** Functions callable by threads
+** -----------------------------------------------------------------------------
+*/
+
 /*!
  * Create a new thread.  Will not run the thread.
  */
-s32 IOP_Kernel::CreateThread(std::string name, u32 (*func)()) {
-  ASSERT(_currentThread == -1);  // can only create thread from kernel thread.
-
+s32 IOP_Kernel::CreateThread(std::string name, void (*func)(), u32 priority) {
   u32 ID = (u32)_nextThID++;
   ASSERT(ID == threads.size());
 
   // add entry
-  threads.emplace_back(name, func, ID, this);
-  // setup the thread!
-  // printf("[IOP Kernel] SetupThread %s...\n", name.c_str());
+  threads.emplace_back(name, func, ID, priority);
 
-  // allow creating a "null thread" which doesn't/can't run but occupies slot 0.
-  if (func) {
-    _currentThread = ID;
-    // create OS thread, will run the setupThread function
-    threads.back().thread = new std::thread(&IOP_Kernel::setupThread, this, ID);
-    // wait for thread to finish setup.
-    threads.back().waitForReturnToKernel();
-    // ensure we are back in the kernel.
-    _currentThread = -1;
-  }
+  // enter the function wrapper so it can put the actual thread enry on its stack
+  // to call it when the thread is eventually started
+  thread_entry = func;
+  wrap_return = co_active();
+  co_switch(threads.at(ID).thread);
 
   return ID;
 }
 
 /*!
- * Start a thread.  Runs it once, then marks it to run on each dispatch of the IOP kernel.
+ * Start a thread. Marking it to run on each dispatch of the IOP kernel.
  */
 void IOP_Kernel::StartThread(s32 id) {
-  threads.at(id).started = true;  // mark for run
-  runThread(id);                  // run now
+  threads.at(id).state = IopThread::State::Ready;
+}
+
+s32 IOP_Kernel::ExitThread() {
+  ASSERT(_currentThread);
+  _currentThread->state = IopThread::State::Dormant;
+
+  return 0;
 }
 
 /*!
- * Wrapper around entry for a thread.
+ * Put a thread in Wait state for desired amount of usecs.
  */
-void IOP_Kernel::setupThread(s32 id) {
-  // printf("\tthread %s has started!\n", threads.at(id).name.c_str());
-  returnToKernel();
-  threads.at(id).waitForDispatch();
-  // printf("[IOP Kernel] Thread %s first dispatch!\n", threads.at(id).name.c_str());
-  ASSERT(_currentThread == id);  // should run in the thread.
-  (threads.at(id).function)();
-  //  printf("Thread %s has returned!\n", threads.at(id).name.c_str());
-  threads.at(id).done = true;
-  returnToKernel();
-}
+void IOP_Kernel::DelayThread(u32 usec) {
+  ASSERT(_currentThread);
 
-/*!
- * Run a thread (call from kernel)
- */
-void IOP_Kernel::runThread(s32 id) {
-  ASSERT(_currentThread == -1);  // should run in the kernel thread
-  _currentThread = id;
-  threads.at(id).dispatch();
-  threads.at(id).waitForReturnToKernel();
-  _currentThread = -1;
-}
-
-/*!
- * Suspend a thread (call from user thread).  Will simply allow other threads to run.
- * Unless we are sleeping, in which case this will return when we are woken up
- * Like yield
- */
-void IOP_Kernel::SuspendThread() {
-  s32 oldThread = getCurrentThread();
-  threads.at(oldThread).returnToKernel();
-  threads.at(oldThread).waitForDispatch();
-  // check kernel resumed us correctly
-  ASSERT(_currentThread == oldThread);
+  _currentThread->state = IopThread::State::Wait;
+  _currentThread->waitType = IopThread::Wait::Delay;
+  _currentThread->resumeTime =
+      time_point_cast<microseconds>(steady_clock::now()) + microseconds(usec);
+  leaveThread();
 }
 
 /*!
  * Sleep a thread.  Must be explicitly woken up.
  */
 void IOP_Kernel::SleepThread() {
-  if (getCurrentThread() == -1) {
-    mainThreadSleep = true;
-    while (mainThreadSleep) {
-      dispatchAll();
-    }
-  } else {
-    threads.at(getCurrentThread()).started = false;
-    SuspendThread();
-  }
+  ASSERT(_currentThread);
+
+  _currentThread->state = IopThread::State::Suspend;
+  leaveThread();
 }
 
 /*!
  * Wake up a thread. Doesn't run it immediately though.
  */
 void IOP_Kernel::WakeupThread(s32 id) {
-  if (id == -1) {
-    mainThreadSleep = false;
+  ASSERT(id > 0);
+  threads.at(id).state = IopThread::State::Ready;
+}
+
+s32 IOP_Kernel::WaitSema(s32 id) {
+  auto& sema = semas.at(id);
+  if (sema.count > 0) {
+    sema.count--;
+    return KE_OK;
+  }
+
+  sema.wait_list.push_back(_currentThread);
+  _currentThread->state = IopThread::State::Wait;
+  _currentThread->waitType = IopThread::Wait::Semaphore;
+  leaveThread();
+
+  return KE_OK;
+}
+
+s32 IOP_Kernel::SignalSema(s32 id) {
+  auto& sema = semas.at(id);
+
+  if (sema.count >= sema.maxCount) {
+    return KE_SEMA_OVF;
+  }
+
+  if (sema.wait_list.empty()) {
+    sema.count++;
+    return KE_OK;
+  }
+
+  IopThread* to_run = nullptr;
+
+  if (sema.attr == Semaphore::attribute::fifo) {
+    to_run = sema.wait_list.front();
+    sema.wait_list.pop_front();
   } else {
-    threads.at(id).started = true;
+    auto it =
+        std::max_element(sema.wait_list.begin(), sema.wait_list.end(),
+                         [](IopThread*& a, IopThread*& b) { return a->priority < b->priority; });
+    to_run = *it;
+    sema.wait_list.erase(it);
   }
-  // todo, should we ever switch directly to that thread?
+
+  to_run->waitType = IopThread::Wait::None;
+  to_run->state = IopThread::State::Ready;
+  return KE_OK;
 }
 
-bool IOP_Kernel::OnlyThreadAlive(s32 thid) {
-  bool yes = false;
-  for (u64 i = 0; i < threads.size(); i++) {
-    if (threads[i].started && !threads[i].done) {
-      if ((s32)i != thid) {
-        return false;
-      }
-      if ((s32)i == thid) {
-        yes = true;
+s32 IOP_Kernel::PollSema(s32 id) {
+  auto& sema = semas.at(id);
+  if (sema.count > 0) {
+    sema.count--;
+    ASSERT(sema.count >= 0);
+    return KE_OK;
+  }
+
+  return KE_SEMA_ZERO;
+}
+
+/*!
+ * Return to kernel from a thread, not to be called from the kernel thread.
+ */
+void IOP_Kernel::leaveThread() {
+  IopThread* oldThread = _currentThread;
+  co_switch(kernel_thread);
+
+  // check kernel resumed us correctly
+  ASSERT(_currentThread == oldThread);
+}
+
+/*
+** -----------------------------------------------------------------------------
+** Kernel functions.
+** -----------------------------------------------------------------------------
+*/
+
+/*!
+ * Run a thread (call from kernel)
+ */
+void IOP_Kernel::runThread(IopThread* thread) {
+  ASSERT(_currentThread == nullptr);  // should run in the kernel thread
+  _currentThread = thread;
+  thread->state = IopThread::State::Run;
+  co_switch(thread->thread);
+  _currentThread = nullptr;
+}
+
+/*!
+** Update wait states for delayed threads
+*/
+void IOP_Kernel::updateDelay() {
+  for (auto& t : threads) {
+    if (t.waitType == IopThread::Wait::Delay) {
+      if (steady_clock::now() > t.resumeTime) {
+        t.waitType = IopThread::Wait::None;
+        t.state = IopThread::State::Ready;
       }
     }
   }
-  return yes;
 }
 
-/*!
- * Dispatch all IOP threads.
- */
-void IOP_Kernel::dispatchAll() {
-  for (u64 i = 0; i < threads.size(); i++) {
-    if (threads[i].started && !threads[i].done) {
-      //      printf("[IOP Kernel] Dispatch %s (%ld)\n", threads[i].name.c_str(), i);
-      _currentThread = i;
-      threads[i].dispatch();
-      threads[i].waitForReturnToKernel();
-      _currentThread = -1;
-      // printf("[IOP Kernel] back to kernel!\n");
+time_stamp IOP_Kernel::nextWakeup() {
+  time_stamp lowest = time_point_cast<microseconds>(steady_clock::now()) + microseconds(1000);
+
+  for (auto& t : threads) {
+    if (t.waitType == IopThread::Wait::Delay) {
+      if (t.resumeTime < lowest) {
+        lowest = t.resumeTime;
+      }
     }
   }
+
+  return lowest;
 }
 
 /*!
- * Start running kernel.
- */
-void IopThreadRecord::returnToKernel() {
-  runThreadReady = false;
-  // should be called from the correct thread
-  ASSERT(kernel->getCurrentThread() == thID);
+** Get next thread to run.
+** i.e. Highest prio in ready state.
+*/
+IopThread* IOP_Kernel::schedNext() {
+  IopThread* highest_prio = nullptr;
 
-  {
-    std::lock_guard<std::mutex> lck(*threadToKernelMutex);
-    syscallReady = true;
+  for (auto& t : threads) {
+    if (t.state == IopThread::State::Ready) {
+      if (highest_prio == nullptr) {
+        highest_prio = &t;
+      }
+
+      // Lower number = higher priority
+      if (t.priority < highest_prio->priority) {
+        highest_prio = &t;
+      }
+    }
   }
-  threadToKernelCV->notify_one();
-}
 
-/*!
- * Start running thread.
- */
-void IopThreadRecord::dispatch() {
-  syscallReady = false;
-  ASSERT(kernel->getCurrentThread() == thID);
+  return highest_prio;
+};
 
-  {
-    std::lock_guard<std::mutex> lck(*kernelToThreadMutex);
-    runThreadReady = true;
+void IOP_Kernel::processWakeups() {
+  std::scoped_lock lock(wakeup_mtx);
+  while (!wakeup_queue.empty()) {
+    WakeupThread(wakeup_queue.front());
+    wakeup_queue.pop();
   }
-  kernelToThreadCV->notify_one();
 }
 
 /*!
- * Kernel waits for thread to return
+ * Run the next IOP thread.
  */
-void IopThreadRecord::waitForReturnToKernel() {
-  std::unique_lock<std::mutex> lck(*threadToKernelMutex);
-  threadToKernelCV->wait(lck, [this] { return syscallReady; });
-}
+time_stamp IOP_Kernel::dispatch() {
+  // Check vblank interrupt
+  if (vblank_handler != nullptr && vblank_recieved) {
+    vblank_handler(nullptr);
+    vblank_recieved = false;
+  }
 
-/*!
- * Thread waits for kernel to dispatch it.
- */
-void IopThreadRecord::waitForDispatch() {
-  std::unique_lock<std::mutex> lck(*kernelToThreadMutex);
-  kernelToThreadCV->wait(lck, [this] { return runThreadReady; });
+  // Update thread states
+  updateDelay();
+  processWakeups();
+
+  // Run until all threads are idle
+  IopThread* next = schedNext();
+  while (next != nullptr) {
+    // printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
+    runThread(next);
+    updateDelay();
+    next = schedNext();
+    // printf("[IOP Kernel] back to kernel!\n");
+  }
+
+  // printf("[IOP Kernel] No runnable threads\n");
+  return nextWakeup();
 }
 
 void IOP_Kernel::set_rpc_queue(iop::sceSifQueueData* qd, u32 thread) {
+  sif_mtx.lock();
   for (const auto& r : sif_records) {
     ASSERT(!(r.qd == qd || r.thread_to_wake == thread));
   }
@@ -193,6 +276,7 @@ void IOP_Kernel::set_rpc_queue(iop::sceSifQueueData* qd, u32 thread) {
   rec.thread_to_wake = thread;
   rec.qd = qd;
   sif_records.push_back(rec);
+  sif_mtx.unlock();
 }
 
 typedef void* (*sif_rpc_handler)(unsigned int, void*, int);
@@ -249,6 +333,11 @@ void IOP_Kernel::sif_rpc(s32 rpcChannel,
   rec->cmd.started = false;
   rec->cmd.finished = false;
 
+  {
+    std::scoped_lock lock(wakeup_mtx);
+    wakeup_queue.push(rec->thread_to_wake);
+  }
+
   sif_mtx.unlock();
 }
 
@@ -272,10 +361,6 @@ void IOP_Kernel::rpc_loop(iop::sceSifQueueData* qd) {
 
     // handle command
     if (got_cmd) {
-      if (cmd.shutdown_now) {
-        return;
-      }
-
       if (!cmd.started) {
         // cf
         ASSERT(func);
@@ -294,7 +379,8 @@ void IOP_Kernel::rpc_loop(iop::sceSifQueueData* qd) {
         sif_mtx.unlock();
       }
     }
-    SuspendThread();
+
+    SleepThread();
   }
 }
 
@@ -309,26 +395,6 @@ void IOP_Kernel::read_disc_sectors(u32 sector, u32 sectors, void* buffer) {
   }
   auto rv = fread(buffer, sectors * 0x800, 1, iso_disc_file);
   ASSERT(rv == 1);
-}
-
-void IOP_Kernel::shutdown() {
-  // shutdown most threads
-  for (auto& r : sif_records) {
-    r.cmd.shutdown_now = true;
-  }
-
-  for (auto& t : threads) {
-    t.wantExit = true;
-  }
-
-  for (auto& t : threads) {
-    if (t.thID == 0)
-      continue;
-    while (!t.done) {
-      dispatchAll();
-    }
-    t.thread->join();
-  }
 }
 
 IOP_Kernel::~IOP_Kernel() {

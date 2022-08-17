@@ -1481,6 +1481,8 @@
   (subtitle-enabled             #x1040)
   (subtitle-disabled            #x1041)
   (text-language                #x1042)
+  (display                      #x1043)
+  (display-fmt                  #x1044)
   (msaa                         #x1050)
   (x-times-fmt                  #x1051)
   (2-times                      #x1052)
@@ -1526,6 +1528,8 @@
   (cheat-invinc                 #x1095)
   (cheat-tunes                  #x1096)
   (cheat-sky                    #x1097)
+  (cheat-req-100-percent        #x1098)
+  (cheat-req-beat-game          #x1099)
   (music-player                 #x10c0)
   (scene-player                 #x10c1)
   (play-credits                 #x10c2)
@@ -4219,13 +4223,13 @@
 
 (deftype cpad-list (basic)
   ((num-cpads int32     :offset-assert 4)
-   (cpads     cpad-info 2 :offset-assert 8) ;; guess
+   (cpads     cpad-info 4 :offset-assert 8) ;; guess, modified from 2->4 for PC 4-pad support
    )
   (:methods
     (new (symbol type) _type_ 0))
   :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
+  :size-assert         #x18
+  :flag-assert         #x900000018
   )
 
 ;; - Functions
@@ -6286,7 +6290,6 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-
 
 ;; ----------------------
 ;; File - capture
@@ -15737,6 +15740,7 @@
   (flava-player)
   (memcard-disable-auto-save)
   (memcard-auto-save-disabled)
+  (monitor)
 
   ;; the last one!
   (max)
@@ -15770,6 +15774,7 @@
   (button-music)
   (button-flava)
   (cheat-toggle)
+  (monitor)
   )
 
 (defenum game-option-menu
@@ -20803,7 +20808,7 @@
 (define-extern birth-func-target-orient (function int sparticle-cpuinfo sparticle-launchinfo none))
 (define-extern birth-func-vector-orient (function int sparticle-cpuinfo sparticle-launchinfo none))
 (define-extern part-tracker-track-target-joint (function int sparticle-cpuinfo sparticle-launchinfo none)) ;; 3rd arg could also be a vector
-(define-extern process-drawable-burn-effect (function time-frame rgbaf :behavior target))
+(define-extern process-drawable-burn-effect (function time-frame none :behavior target))
 
 
 ;; ----------------------
@@ -21046,7 +21051,7 @@
 (define-extern death-movie-remap (function int int int))
 (define-extern pov-camera-init-by-other (function vector skeleton-group string pov-camera-flag process-drawable pair none :behavior pov-camera)) ;; TODO - not confirmed -- sunken-elevator
 (define-extern target-hit-effect (function attack-info none :behavior target))
-(define-extern target-hit-setup-anim (function attack-info object :behavior target))
+(define-extern target-hit-setup-anim (function attack-info none :behavior target))
 (define-extern target-hit-move (function attack-info symbol (function none :behavior target) float none :behavior target))
 (define-extern target-hit-orient (function attack-info vector symbol :behavior target))
 (define-extern target-hit-push (function vector matrix float float attack-info object :behavior target))

@@ -8,9 +8,11 @@
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"
-#include <common/util/FileUtil.h>
+#include "common/util/FileUtil.h"
 
 #include "game/graphics/pipelines/opengl.h"  // for GLFW macros
+
+#include "third-party/imgui/imgui.h"
 
 namespace Pad {
 
@@ -30,7 +32,8 @@ bool g_gamepad_buttons[CONTROLLER_COUNT][(int)Button::Max] = {{0}};
 float g_gamepad_analogs[CONTROLLER_COUNT][(int)Analog::Max] = {{0}};
 
 struct GamepadState {
-  int gamepad_idx[CONTROLLER_COUNT] = {-1, -1};
+  int gamepad_idx[CONTROLLER_COUNT] = {-1, -1, -1, -1};
+  bool glfw_joystick_used[GLFW_JOYSTICK_LAST + 1] = {false};
 } g_gamepads;
 
 // input mode for controller mapping
@@ -57,6 +60,10 @@ void ClearKeys() {
 }
 
 void OnKeyPress(int key) {
+  if (ImGui::IsAnyItemActive()) {
+    return;
+  }
+
   if (input_mode == InputModeStatus::Enabled) {
     if (key == GLFW_KEY_ESCAPE) {
       ExitInputMode(true);
@@ -118,14 +125,13 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
 // returns the value of the analog axis (in the future, likely pressure sensitive if we support it?)
 // if invalid or otherwise -- returns 127 (analog stick neutral position)
 int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
-  float input = 0.0f;
-
   if (CheckPadIdx(pad) == -1) {
     // Pad out of range, return a stable value
     return 127;
   }
 
-  if (pad == 0 && g_gamepads.gamepad_idx[0] == -1) {  // Gamepad not present - use keyboard
+  float input = 0.0f;
+  if (pad == 0) {
     // Movement controls mapped to WASD keys
     if (g_buffered_key_status[GLFW_KEY_W] && analog == Analog::Left_Y)
       input += -1.0f;
@@ -145,7 +151,7 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
       input += -1.0f;
     if (g_buffered_key_status[GLFW_KEY_L] && analog == Analog::Right_X)
       input += 1.0f;
-  } else if (pad == 1 && g_gamepads.gamepad_idx[1] == -1) {
+  } else if (pad == 1) {
     // these bindings are not sane
     if (g_buffered_key_status[GLFW_KEY_KP_5] && analog == Analog::Left_Y)
       input += -1.0f;
@@ -165,7 +171,9 @@ int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
       input += -1.0f;
     if (g_buffered_key_status[GLFW_KEY_KP_9] && analog == Analog::Right_X)
       input += 1.0f;
-  } else {  // Gamepad present
+  }
+
+  if (input == 0) {
     input = g_gamepad_analogs[pad][(int)analog];
   }
 
@@ -268,25 +276,29 @@ void check_gamepads() {
   auto check_pad = [](int pad) {  // -> bool
     if (g_gamepads.gamepad_idx[pad] == -1) {
       for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
-        if (pad == 1 && i == g_gamepads.gamepad_idx[0])
+        if (g_gamepads.glfw_joystick_used[i]) {
           continue;
+        }
         if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
           g_gamepads.gamepad_idx[pad] = i;
-          lg::info("Using joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
+          g_gamepads.glfw_joystick_used[i] = true;
+          lg::info("Using joystick {} for pad {}: {}, {}", i, pad, glfwGetJoystickName(i),
+                   glfwGetGamepadName(i));
           break;
         }
       }
     } else if (!glfwJoystickPresent(g_gamepads.gamepad_idx[pad])) {
-      lg::info("Pad {} has been disconnected", pad);
+      lg::info("Pad {} / joystick {} has been disconnected", pad, g_gamepads.gamepad_idx[pad]);
+      g_gamepads.glfw_joystick_used[g_gamepads.gamepad_idx[pad]] = false;
       g_gamepads.gamepad_idx[pad] = -1;
       return false;
     }
     return true;  // pad already exists or was created
   };
-  if (check_pad(0))
-    check_pad(1);
-  else
-    g_gamepads.gamepad_idx[1] = -1;
+
+  for (int i = 0; i < CONTROLLER_COUNT; i++) {
+    check_pad(i);
+  }
 }
 
 void initialize() {
@@ -310,12 +322,6 @@ void clear_pad(int pad) {
 
 void update_gamepads() {
   check_gamepads();
-
-  if (g_gamepads.gamepad_idx[0] == -1) {
-    clear_pad(0);
-    clear_pad(1);
-    return;
-  }
 
   constexpr std::pair<Button, int> gamepad_map[] = {
       {Button::Select, GLFW_GAMEPAD_BUTTON_BACK},
@@ -355,12 +361,12 @@ void update_gamepads() {
     }
   };
 
-  read_pad_state(0);
-
-  if (g_gamepads.gamepad_idx[1] != -1)
-    read_pad_state(1);
-  else
-    clear_pad(1);
+  for (int i = 0; i < CONTROLLER_COUNT; i++) {
+    if (g_gamepads.gamepad_idx[i] != -1)
+      read_pad_state(i);
+    else
+      clear_pad(i);
+  }
 }
 
 int rumble(int pad, float slow_motor, float fast_motor) {

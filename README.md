@@ -17,6 +17,7 @@
   - [Current Status](#current-status)
   - [Methodology](#methodology)
 - [Setting up a Development Environment](#setting-up-a-development-environment)
+  - [Docker](#docker)
   - [Linux](#linux)
     - [Ubuntu (20.04)](#ubuntu-2004)
     - [Arch](#arch)
@@ -50,7 +51,6 @@ Additionally, you can find further documentation and answers to **frequently ask
 **Do not use this decompilation project without providing your own legally purchased copy of the game.**
 
 ### Quick Start
-
 If you just want to play the game, you can follow the steps in this video: https://www.youtube.com/watch?v=yQBKCnS5MDY
 
 We do not use any assets from the game - you must use your own legitimately obtained PS2 copy of the game. We support every retail PAL, NTSC, and NTSC-J build, including Greatest Hits copies. 
@@ -97,6 +97,30 @@ The remainder of this README is catered towards people interested in building th
 
 If this does not sound like you and you just want to play the game, refer to the above section [Quick Start](#quick-start)
 
+### Docker
+
+All three Linux systems are supported using Docker. 
+
+Pick your supported prefered flavour of linux and build your chosen image
+
+```
+docker build -f docker/(Arch|Fedora|Ubuntu)/Dockerfile -t jak .
+```
+
+This will create an image with all required dependencies and already built.
+
+```
+docker run -v "$(pwd)"/build:/home/jak/jak-project/build -it jak bash
+```
+
+Note: If you the build directory you'll need to rerun the build command. Alteratively you can get the build via `docker cp`
+
+This will link your build folder to the images so can validate your build or test it on an external device. 
+
+Docker images can be linked into your IDE (e.g. CLion) to help with codesniffing, static analysis, run tests and continuous build.
+
+Unfortently you'll still need task runner on your local machine to run the game or instead, manually run the game via the commands found in `Taskfile.yml`
+
 ### Linux
 
 #### Ubuntu (20.04)
@@ -137,7 +161,7 @@ cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse
 Install packages and init repository:
 
 ```sh
-sudo pacman -S cmake libpulse base-devel nasm python
+sudo pacman -S cmake libpulse base-devel nasm python libx11 libxrandr libxinerama libxcursor libxi
 yay -S go-task
 ```
 
@@ -160,7 +184,7 @@ Run tests:
 Install packages and init repository:
 
 ```sh
-sudo dnf install cmake lld clang nasm libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel pulseaudio-libs-devel
+sudo dnf install cmake python lld clang nasm libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel pulseaudio-libs-devel
 sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 ```
 

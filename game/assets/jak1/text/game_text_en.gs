@@ -104,6 +104,10 @@
         "SUBTITLES DISABLED")
 (#x1042 "TEXT LANGUAGE"
         "TEXT LANGUAGE")
+(#x1043 "DISPLAY"
+        "DISPLAY")
+(#x1044 "DISPLAY ~D"
+        "DISPLAY ~D")
 
 (#x1050 "MSAA"
         "MSAA")
@@ -196,6 +200,10 @@
         "ALL MUSIC TRACKS")
 (#x1097 "REAL TIME OF DAY"
         "REAL TIME OF DAY")
+(#x1098 "REACH 100% COMPLETION"
+        "REACH 100% COMPLETION")
+(#x1099 "BEAT THE GAME"
+        "BEAT THE GAME")
 
 (#x10c0 "MUSIC PLAYER"
         "MUSIC PLAYER")
@@ -333,7 +341,6 @@
         "DANSK")
 (#x1116 "NORSK"
         "NORSK")
-
 
 ;; -----------------
 ;; test

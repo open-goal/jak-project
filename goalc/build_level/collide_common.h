@@ -3,7 +3,7 @@
 #include "common/math/Vector.h"
 
 struct PatSurface {
-  enum class Mode { GROUND = 0, WALL = 1, OBSTACLE = 2 };
+  enum class Mode { GROUND = 0, WALL = 1, OBSTACLE = 2, MAX_MODE = 3 };
   enum class Material {
     STONE = 0,
     ICE = 1,

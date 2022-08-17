@@ -18,6 +18,9 @@ constexpr int ARRAY_DATA_OFFSET = 12;  // not including type tag
 // constexpr s32 SYM_INFO_OFFSET = 8167 * 8 - 4;
 
 namespace jak1 {
+constexpr s32 ORIGINAL_MAX_GOAL_SYMBOLS = 8192;
+constexpr s32 ORIGINAL_SYM_TO_STRING_OFFSET = 0xff38;
+
 constexpr s32 GOAL_MAX_SYMBOLS = 16384;
 constexpr s32 SYM_INFO_OFFSET = GOAL_MAX_SYMBOLS * 8 - 4;
 

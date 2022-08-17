@@ -2095,7 +2095,7 @@ int convert_block_to_atomic_ops(int begin_idx,
     std::unique_ptr<AtomicOp> op;
 
     if (instr[0].kind == InstructionKind::SQ || instr[0].kind == InstructionKind::LQ) {
-      warnings.warn_sq_lq();
+      warnings.unique_info("Used lq/sq");
     }
 
     if (!converted && n_instr >= 12) {

@@ -415,7 +415,7 @@ void Sprite3::distort_dma(DmaFollower& dma, ScopedProfilerNode& /*prof*/) {
       } else {
         // VU address >= 512 is the actual vertex data
         ASSERT(dest >= 512);
-        ASSERT(sprite_idx + (qwc / 3) <= m_sprite_distorter_frame_data.capacity());
+        ASSERT(sprite_idx + (qwc / 3) <= (int)m_sprite_distorter_frame_data.capacity());
 
         unpack_to_no_stcycl(&m_sprite_distorter_frame_data.at(sprite_idx), distort_data,
                             VifCode::Kind::UNPACK_V4_32, qwc * 16, dest, false, false);
