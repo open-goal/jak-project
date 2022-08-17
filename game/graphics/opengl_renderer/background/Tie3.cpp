@@ -1,8 +1,8 @@
 #include "Tie3.h"
 
-#include "third-party/imgui/imgui.h"
 #include "common/global_profiler/GlobalProfiler.h"
 
+#include "third-party/imgui/imgui.h"
 
 Tie3::Tie3(const std::string& name, BucketId my_id, int level_id)
     : BucketRenderer(name, my_id), m_level_id(level_id) {

@@ -639,7 +639,8 @@ void GLDisplay::update_glfw() {
   glfwGetWindowContentScale(m_window, &m_display_state_copy.window_scale_x,
                             &m_display_state_copy.window_scale_y);
 
-  glfwGetWindowPos(m_window, &m_display_state_copy.window_pos_x, &m_display_state_copy.window_pos_y);
+  glfwGetWindowPos(m_window, &m_display_state_copy.window_pos_x,
+                   &m_display_state_copy.window_pos_y);
 
   GLFWmonitor* monitor = get_monitor(fullscreen_screen());
   auto current_vmode = glfwGetVideoMode(monitor);
@@ -660,7 +661,7 @@ void GLDisplay::update_glfw() {
   m_display_state_copy.largest_vmode_width = 1;
   m_display_state_copy.largest_vmode_refresh_rate = 1;
   for (int i = 0; i < count; i++) {
-    if (vmodes[i].height > m_display_state_copy.largest_vmode_height) {
+    if (vmodes[i].width > m_display_state_copy.largest_vmode_width) {
       m_display_state_copy.largest_vmode_height = vmodes[i].height;
       m_display_state_copy.largest_vmode_width = vmodes[i].width;
     }

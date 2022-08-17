@@ -78,7 +78,6 @@ class GLDisplay : public GfxDisplay {
   } m_display_state, m_display_state_copy;
   std::mutex m_lock;
 
-
   struct {
     bool pending = false;
     int width = 0;

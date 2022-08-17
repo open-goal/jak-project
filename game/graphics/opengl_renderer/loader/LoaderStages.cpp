@@ -368,7 +368,6 @@ class TieLoadStage : public LoaderStage {
       auto evt = scoped_prof("tie-wind");
       bool abort = false;
       for (; m_next_geo < tfrag3::TIE_GEOS; m_next_geo++) {
-
         auto& geo_trees = data.lev_data->level->tie_trees[m_next_geo];
         for (; m_next_tree < geo_trees.size(); m_next_tree++) {
           if (abort) {
@@ -404,7 +403,6 @@ class TieLoadStage : public LoaderStage {
       m_next_geo = 0;
       m_next_vert = 0;
       m_next_tree = 0;
-
 
       if (timer.getMs() > LOAD_BUDGET) {
         return false;

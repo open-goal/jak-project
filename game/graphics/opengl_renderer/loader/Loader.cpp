@@ -1,12 +1,11 @@
 #include "Loader.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 #include "common/util/compress.h"
 
 #include "game/graphics/opengl_renderer/loader/LoaderStages.h"
-
-#include "common/global_profiler/GlobalProfiler.h"
 
 namespace {
 std::string uppercase_string(const std::string& s) {
