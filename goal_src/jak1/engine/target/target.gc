@@ -8,6 +8,52 @@
 
 ;; TODO - almost all of these are in target-handler or target2, temporary
 
+;;(-! *shop-count* amount)
+
+;; item names
+(define *shop-item* (new 'static 'array string 1
+  "JUMP"
+  "DOUBLE JUMP"
+  "PUNCH"
+  "SPIN KICK"
+  "CROUCH"
+  "ROLL JUMP"
+  "JUMP DIVE"
+  )
+)
+
+;; how much does an item cost
+(define *shop-price* (new 'static 'array int 1
+  2     ;; min  0 max 6
+  3     ;; min 40 max 44
+  4
+  5
+  6
+  7
+  8
+  )
+)
+
+;; can the item be purchased?
+(define *shop-first-purchase* (new 'static 'array int 1
+  1
+  1
+  1
+  1
+  1
+  1
+  1
+  )
+)
+
+(defun buy ((idx int))
+  "purchase the item"
+  (cond ((and (>= *shop-count* (-> *shop-price* idx)) (= (-> *shop-first-purchase* idx) 1))
+       (-! *shop-count* (-> *shop-price* idx))
+       (set! (-> *shop-first-purchase* idx) 0)
+))
+)
+
 (define-extern target-state-hook-exit (function none :behavior target))
 (define-extern target-effect-exit (function none :behavior target))
 (define-extern target-post (function none :behavior target))
@@ -97,7 +143,7 @@
   )
 
 (defbehavior target-falling-trans target ((arg0 basic) (arg1 time-frame))
-  (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet?))
+  (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet?) (zero? (-> *shop-first-purchase* 3)))
       (go target-attack-air #f)
       )
   (when (= arg0 'target-eco-powerup)
@@ -111,6 +157,7 @@
              (zero? (logand (-> self water flags) (water-flags wt09)))
              (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
              (zero? (logand (-> self state-flags) (state-flags prevent-jump)))
+             (zero? (-> *shop-first-purchase* 0))
              )
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
         )
@@ -372,7 +419,7 @@
       (remove-exit)
       (go target-walk)
       )
-    (when (and (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1) (can-duck?))
+    (when (and (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1) (can-duck?) (zero? (-> *shop-first-purchase* 4)))
       (set! (-> self control unknown-float81) 0.0)
       (remove-exit)
       (go target-duck-stance)
@@ -385,6 +432,7 @@
                        (pad-buttons x)
                        )
              (can-jump? #f)
+             (zero? (-> *shop-first-purchase* 0))
              )
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
         )
@@ -396,10 +444,11 @@
                        (pad-buttons circle)
                        )
              (can-feet?)
+             (zero? (-> *shop-first-purchase* 3))
              )
         (go target-attack)
         )
-    (if (can-hands? #t)
+    (if (and (can-hands? #t) (zero? (-> *shop-first-purchase* 2)))
         (go target-running-attack)
         )
     (slide-down-test)
@@ -609,12 +658,12 @@
                        (pad-buttons l1 r1)
                        )
              (and (>= (- (-> *display* base-frame-counter) (-> *TARGET-bank* wheel-timeout)) (-> self control unknown-dword30))
-                  (and (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0) (can-wheel?))
+                  (and (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0) (can-wheel?) (zero? (-> *shop-first-purchase* 4)))
                   )
              )
         (go target-wheel)
         )
-    (when (and (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1) (can-duck?))
+    (when (and (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1) (can-duck?) (zero? (-> *shop-first-purchase* 4)))
       (target-effect-exit)
       (remove-exit)
       (go target-duck-walk)
@@ -632,6 +681,7 @@
                        (pad-buttons x)
                        )
              (can-jump? #f)
+             (zero? (-> *shop-first-purchase* 0))
              )
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
         )
@@ -643,10 +693,11 @@
                        (pad-buttons circle)
                        )
              (can-feet?)
+             (zero? (-> *shop-first-purchase* 3))
              )
         (go target-attack)
         )
-    (if (can-hands? #t)
+    (if (and (can-hands? #t) (zero? (-> *shop-first-purchase* 2)))
         (go target-running-attack)
         )
     (when (and (turn-around?) (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.3)))
@@ -995,13 +1046,14 @@
                        (pad-buttons x)
                        )
              (can-jump? #f)
+             (zero? (-> *shop-first-purchase* 0))
              )
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
         )
-    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet?))
+    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet?) (zero? (-> *shop-first-purchase* 3)))
         (go target-attack)
         )
-    (if (can-hands? #t)
+    (if (and (can-hands? #t) (zero? (-> *shop-first-purchase* 2)))
         (go target-running-attack)
         )
     (if (and (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
@@ -1247,13 +1299,14 @@
                          (pad-buttons x)
                          )
                (can-jump? #f)
+               (zero? (-> *shop-first-purchase* 0))
                )
       (if (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
           (go target-high-jump (-> *TARGET-bank* duck-jump-height-min) (-> *TARGET-bank* duck-jump-height-max) 'duck)
           (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
           )
       )
-    (if (and (can-hands? #t) (can-exit-duck?))
+    (if (and (can-hands? #t) (can-exit-duck?) (zero? (-> *shop-first-purchase* 2)))
         (go
           target-attack-uppercut
           (-> *TARGET-bank* attack-jump-height-min)
@@ -1334,13 +1387,14 @@
                          (pad-buttons x)
                          )
                (can-jump? #f)
+               (zero? (-> *shop-first-purchase* 0))
                )
       (if (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
           (go target-high-jump (-> *TARGET-bank* duck-jump-height-min) (-> *TARGET-bank* duck-jump-height-max) 'duck)
           (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
           )
       )
-    (if (and (can-hands? #t) (can-exit-duck?))
+    (if (and (can-hands? #t) (can-exit-duck?) (zero? (-> *shop-first-purchase* 2)))
         (go
           target-attack-uppercut
           (-> *TARGET-bank* attack-jump-height-min)
@@ -1469,6 +1523,7 @@
                   (zero? (logand (-> self water flags) (water-flags wt09)))
                   (zero? (logand (-> self state-flags) (state-flags prevent-jump)))
                   )
+             (zero? (-> *shop-first-purchase* 1))
              )
         (go target-double-jump (-> *TARGET-bank* double-jump-height-min) (-> *TARGET-bank* double-jump-height-max))
         )
@@ -1482,6 +1537,7 @@
                   (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
                          )
                   )
+                         (zero? (-> *shop-first-purchase* 6))
              )
         (go
           target-flop
@@ -1603,6 +1659,7 @@
                   (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
                          )
                   )
+                         (zero? (-> *shop-first-purchase* 6))
              )
         (go
           target-flop
@@ -1703,6 +1760,7 @@
                   (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
                          )
                   )
+                         (zero? (-> *shop-first-purchase* 6))
              )
         (go
           target-flop
@@ -1976,10 +2034,11 @@
                        (pad-buttons x)
                        )
              (can-jump? #f)
+             (zero? (-> *shop-first-purchase* 0))
              )
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
         )
-    (if (and (not (can-exit-duck?)) (can-duck?))
+    (if (and (not (can-exit-duck?)) (can-duck?) (zero? (-> *shop-first-purchase* 4)))
         (go target-duck-stance)
         )
     (when (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
@@ -1988,13 +2047,13 @@
           (go target-walk)
           )
       )
-    (if (and (or (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1) (not (can-exit-duck?))) (can-duck?))
+    (if (and (or (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1) (not (can-exit-duck?))) (can-duck?) (zero? (-> *shop-first-purchase* 4)))
         (go target-duck-stance)
         )
-    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet?))
+    (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet?) (zero? (-> *shop-first-purchase* 3)))
         (go target-attack)
         )
-    (if (can-hands? #t)
+    (if (and (can-hands? #t) (zero? (-> *shop-first-purchase* 2)))
         (go target-running-attack)
         )
     (fall-test)
@@ -2053,6 +2112,7 @@
                          (pad-buttons x)
                          )
                (can-jump? #f)
+               (zero? (-> *shop-first-purchase* 0))
                )
           (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
           )
@@ -2210,6 +2270,7 @@
                     (zero? (logand (-> self state-flags) (state-flags prevent-jump prevent-attack)))
                     (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump)))
                     )
+                    (zero? (-> *shop-first-purchase* 0))
                )
           (go
             target-attack-uppercut
@@ -2600,6 +2661,7 @@
                     (zero? (logand (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
                            )
                     )
+                         (zero? (-> *shop-first-purchase* 6))
                )
       (set-quaternion! (-> self control) (-> self control dir-targ))
       (build-conversions (-> self control transv))
@@ -2616,6 +2678,7 @@
       )
     (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle)
              (can-feet?)
+             (zero? (-> *shop-first-purchase* 3))
              (ja-group? eichar-attack-uppercut-ja)
              (>= (ja-aframe-num 0) 12.0)
              )
@@ -2950,7 +3013,7 @@
   :exit target-exit
   :trans (behavior ()
     (when (!= (-> self control unknown-spoolanim00) 'stuck)
-      (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet?))
+      (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet?) (zero? (-> *shop-first-purchase* 3)))
           (go target-attack-air 'flop)
           )
       )
@@ -3075,6 +3138,9 @@
                    (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
                    )
                (can-jump? 'target-wheel-flip)
+               (zero? (-> *shop-first-purchase* 0))
+               (zero? (-> *shop-first-purchase* 4))
+               (zero? (-> *shop-first-purchase* 5))
                )
           (go target-wheel-flip (-> *TARGET-bank* wheel-flip-height) (-> *TARGET-bank* wheel-flip-dist))
           )
@@ -3096,6 +3162,9 @@
                                    (pad-buttons x)
                                    )
                          (can-jump? 'target-wheel-flip)
+                         (zero? (-> *shop-first-purchase* 0))
+                         (zero? (-> *shop-first-purchase* 4))
+                         (zero? (-> *shop-first-purchase* 5))
                          )
                     (go target-wheel-flip (-> *TARGET-bank* wheel-flip-height) (-> *TARGET-bank* wheel-flip-dist))
                     )
@@ -3132,6 +3201,7 @@
         )
     (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle)
              (can-feet?)
+             (zero? (-> *shop-first-purchase* 3))
              (and (ja-group? eichar-jump-loop-ja) (= (-> self skel root-channel 0) (-> self skel channel)))
              )
         (go target-attack-air #f)
@@ -3225,6 +3295,7 @@
                                    (pad-buttons x)
                                    )
                          (can-jump? #f)
+                         (zero? (-> *shop-first-purchase* 0))
                          )
                     (go target-high-jump (-> *TARGET-bank* flip-jump-height-min) (-> *TARGET-bank* flip-jump-height-max) 'flip)
                     )
