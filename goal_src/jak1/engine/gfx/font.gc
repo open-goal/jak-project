@@ -1830,3 +1830,49 @@
     (draw-string str buf context)
     )
   )
+
+(defun draw-string-xy-scaled ((str string) (buf dma-buffer) (x int) (y int) (color font-color) (flags font-flags) (scale float))
+  "Draw a string at the given xy location."
+  (let ((font-ctxt (new 'stack 'font-context *font-default-matrix* x y 0.0 color flags)))
+    (let ((scaled-width (* (-> font-ctxt width) scale))
+          (scaled-height (* (-> font-ctxt height) scale))
+          (orig-mat-x-scale (-> font-ctxt mat vector 0 x))
+          (orig-mat-y-scale (-> font-ctxt mat vector 1 y))
+          (orig-vid-parms-x-scale (-> *video-parms* relative-x-scale))
+          (orig-vid-parms-y-scale (-> *video-parms* relative-y-scale))
+          )
+      (*! (-> font-ctxt scale) scale)
+      (set! (-> font-ctxt width) scaled-width)
+      (set! (-> font-ctxt height) scaled-height)
+
+      ;; adjustments copied from print-game-text-scaled
+      (if (logtest? (-> font-ctxt flags) (font-flags middle))
+        (+! (-> font-ctxt origin x) (* 0.5 (- (-> font-ctxt width) scaled-width)))
+        )
+      (if (logtest? (-> font-ctxt flags) (font-flags left))
+        ;; this code is really weird. it does the divide with an int, but fails
+        ;; to convert it back to a float before adding??
+        (+! (-> font-ctxt origin y) (the-as float (/ (the int (- (-> font-ctxt height) scaled-height)) 2)))
+        )
+      
+      ;; scaling globals *font-default-matrix*, *video-parms* (mimicking print-game-text scaling)
+      (*! (-> *font-default-matrix* vector 0 x) scale)
+      (*! (-> *font-default-matrix* vector 1 y) scale)
+      (*! (-> *video-parms* relative-x-scale) scale)
+      (*! (-> *video-parms* relative-y-scale) scale)
+      (set! (-> *video-parms* relative-x-scale-reciprical) (/ 1.0 (-> *video-parms* relative-x-scale)))
+      (set! (-> *video-parms* relative-y-scale-reciprical) (/ 1.0 scale))
+
+      (draw-string str buf font-ctxt)
+      
+      ;; un-scaling globals *font-default-matrix*, *video-params*
+      (set! (-> *font-default-matrix* vector 0 x) orig-mat-x-scale)
+      (set! (-> *font-default-matrix* vector 1 y) orig-mat-y-scale)
+      (set! (-> *video-parms* relative-x-scale) orig-vid-parms-x-scale)
+      (set! (-> *video-parms* relative-y-scale) orig-vid-parms-y-scale)
+      (set! (-> *video-parms* relative-x-scale-reciprical) (/ 1.0 (-> *video-parms* relative-x-scale)))
+      (set! (-> *video-parms* relative-y-scale-reciprical) (/ 1.0 (-> *video-parms* relative-y-scale)))
+      )
+    )
+  (none)
+  )
