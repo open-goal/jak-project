@@ -29,9 +29,11 @@
 # Known Issues:
 # - there are likely ways to make this more efficient
 # - codes a mess, as one would probably expect for something as miserable as this
+
 # - use defuns as symbols (consistent names), but account for padding properly
 # - padding after decomp deviation blocks / blocks in general is wrong
-# - blocks starting inline (ie '(define foo 'bar) #|start of a block comment that continues on and on...)
+# - blocks starting inline (ie '(define foo 'bar) #|start of a block comment that continues on...)
+# - decomp deviation blocks inside forms can cause paren counting issues
 
 # Potential Improvements:
 # - decomp deviation with meta - specify a form to ignore
@@ -156,6 +158,8 @@ def lookahead_for_code(lines, index):
 
 # returns form, or none
 def is_line_start_of_form(line):
+    if line.rstrip().startswith(";"):
+        return None
     matches = re.search(r"\(\s*([^\s.]*)\s+", line)
     if matches is not None:
         return line
@@ -225,7 +229,7 @@ with open("./goal_src/jak2/kernel/gkernel.gc") as f:
         debug_lines.append(lines[i])
         tline = lines[i].lstrip()
         if "*kernel-context*" in tline:
-          print("ye")
+            print("ye")
         if "decomp begins" in tline.lower():
             found_output = True
             i = i + 1
@@ -239,7 +243,7 @@ with open("./goal_src/jak2/kernel/gkernel.gc") as f:
             within_form = is_line_start_of_form(lines[i])
             if within_form is not None:
                 if "kernel-dispatcher" in within_form:
-                  print("ye")
+                    print("ye")
                 line_num_in_form = 0
                 if has_form_ended(form_paren_stack, lines[i]):
                     within_form = None
@@ -282,14 +286,18 @@ with open("./goal_src/jak2/kernel/gkernel.gc") as f:
             if "decomp deviation" in next_line.lower() or next_line.startswith("|#"):
                 in_deviation_block = False
             while i + 1 < len(lines) and (
-                in_deviation_block or next_line.lstrip().startswith(";") or next_line.lstrip().startswith("|#")
+                in_deviation_block
+                or next_line.lstrip().startswith(";")
+                or next_line.lstrip().startswith("|#")
             ):
                 debug_lines.append(lines[i + 1])
                 i = i + 1
                 current_comment.data = current_comment.data + next_line
                 if i + 1 < len(lines):
                     next_line = lines[i + 1]
-                if "decomp deviation" in next_line.lower() or next_line.startswith("|#"):
+                if "decomp deviation" in next_line.lower() or next_line.startswith(
+                    "|#"
+                ):
                     in_deviation_block = False
             (
                 current_comment.symbol_after,
@@ -384,9 +392,13 @@ lines_to_ignore = [
     ";; INFO:",
     ";; failed to figure",
     ";; Used lq/sq",
+    ";; this part is debug only",
 ]
 
 decomp_lines = []
+# cache all form definition lines from the incoming decompilation
+# this way, we can "quickly" figure out which form is the most relevant
+decomp_form_def_lines = []
 
 
 def should_ignore_line(line):
@@ -402,6 +414,31 @@ with open("./decompiler_out/jak2/gkernel_disasm.gc") as f:
         if should_ignore_line(line):
             continue
         decomp_lines.append(line)
+
+decomp_form_paren_stack = []
+decomp_within_form = None
+decomp_i = 0
+while decomp_i < len(decomp_lines):
+    line = decomp_lines[decomp_i]
+    if "Function (method 17 dead-pool-heap)" in line:
+        print("Ye")
+    decomp_within_form = is_line_start_of_form(line)
+    if decomp_within_form is not None:
+        if has_form_ended(decomp_form_paren_stack, line):
+            decomp_within_form = None
+            decomp_form_paren_stack = []
+            decomp_i = decomp_i + 1
+        else:
+            decomp_form_def_lines.append(decomp_within_form)
+            while decomp_i < len(decomp_lines):
+                decomp_i = decomp_i + 1
+                line = decomp_lines[decomp_i]
+                if has_form_ended(form_paren_stack, line):
+                    decomp_within_form = None
+                    decomp_form_paren_stack = []
+                    break
+    else:
+        decomp_i = decomp_i + 1
 
 # Step 3: Start merging the new code + comments
 final_lines = []
@@ -614,27 +651,93 @@ def get_most_relevant_containing_form(form_def_line, decomp_lines):
     return highest_form
 
 
-def get_relevant_form_comments(form_def_line, decomp_lines):
-    if "defun kernel-dispatcher" in form_def_line:
+def get_relevant_form_comments(form_def_line):
+    form_kind, form_func_name, form_type = get_form_metadata(form_def_line)
+    code_def_part, code_rest = split_def_line(form_def_line)
+    if "dead-pool-heap" in form_def_line:
         print("ye")
     relevant_comments = []
     # First, find the most relevant form and use that, not all comments that match closely with
     # an existing form
-    best_matching_form = get_most_relevant_containing_form(form_def_line, decomp_lines)
-    if best_matching_form is None:
-        return relevant_comments
+    # best_matching_form = get_most_relevant_containing_form(form_def_line, decomp_lines)
+    # if best_matching_form is None:
+    #     return relevant_comments
     i = 0
     while i < len(comments):
         comment = comments[i]
         if comment.containing_form is None:
             i = i + 1
             continue
-        score = score_alg(comment.containing_form, best_matching_form)
-        if score > 90.0:
+        (
+            comment_form_kind,
+            comment_form_func_name,
+            comment_form_type,
+        ) = get_form_metadata(comment.containing_form)
+        # First disqualify the form if it's obviously unrelated
+        if comment_form_kind != "unknown":
+            if form_kind != comment_form_kind:
+                i = i + 1
+                continue
+            elif form_kind == "function" and comment_form_func_name != form_func_name:
+                i = i + 1
+                continue
+            elif form_kind == "behavior" and comment_form_func_name != form_func_name:
+                i = i + 1
+                continue
+            elif form_kind == "method" and (
+                comment_form_type != form_type
+                or different_method_names(form_func_name, comment_form_func_name)
+            ):
+                i = i + 1
+                continue
+        # Evaluate it's score (comments and current def line)
+        def_part, rest = split_def_line(comment.containing_form)
+        def_score = fuzz.ratio(code_def_part, def_part) * 0.65
+        if def_score == 65.0 and form_kind != "unknown":
             relevant_comments.append(comment)
             comments.pop(i)
-        else:
+            continue
+        rest_score = fuzz.ratio(code_rest, rest) * 0.35
+        combined_score = def_score + rest_score
+        threshold = 50.0
+        if combined_score < threshold:
             i = i + 1
+            continue
+        # Now, let's look at ALL other def lines yet to come from the decomp output
+        # if any are a better match, don't add the comment yet -- we'll add it when we get there!
+        # TODO - remove lines from the list as we find them so speed this up
+        found_better_form = False
+        for decomp_def_line in decomp_form_def_lines:
+            line_form_kind, line_form_func_name, line_form_type = get_form_metadata(
+                decomp_def_line
+            )
+            if form_kind != "unknown":
+                if form_kind != line_form_kind:
+                    continue
+                elif form_kind == "function" and line_form_func_name != form_func_name:
+                    continue
+                elif form_kind == "behavior" and line_form_func_name != form_func_name:
+                    continue
+                elif form_kind == "method" and (
+                    line_form_type != form_type
+                    or different_method_names(form_func_name, line_form_func_name)
+                ):
+                    continue
+                def_part, rest = split_def_line(decomp_def_line)
+                def_score = fuzz.ratio(code_def_part, def_part) * 0.65
+                if def_score == 65.0 and form_kind != "unknown":
+                    found_better_form = True
+                    break
+                rest_score = fuzz.ratio(code_rest, rest) * 0.35
+                if combined_score < def_score + rest_score:
+                    found_better_form = True
+                    break
+            # TODO otherwise? still test?
+        if found_better_form:
+            i = i + 1
+            continue
+        relevant_comments.append(comment)
+        comments.pop(i)
     return relevant_comments
 
 
@@ -648,6 +751,8 @@ def score_alg(line1, line2):
         return -1
     return fuzz.ratio(tline1, tline2)
 
+
+# TODO - improvement on comparison - a higher score on a longer line == better? some sort of weighting approach here too?
 
 with open("./goal_src/jak2/kernel/gkernel.gc") as f:
     lines = f.readlines()
@@ -697,14 +802,14 @@ with open("./goal_src/jak2/kernel/gkernel.gc") as f:
                             form_lines.append(line)
                     # Add any comments needed to the form contents
                     # - first we get all comments that have match well with the form's start line (ie. defmethod ....)
-                    form_comments = get_relevant_form_comments(form_start, decomp_lines)
+                    form_comments = get_relevant_form_comments(form_start)
                     # - for each comment, let's find which line matches it the best,
                     # if NONE exceed the threshold (if both match the same, pick the first), we default to the line offset
                     for comment in form_comments:
                         highest_score = -1
                         index_to_insert = -1
                         threshold = 50.0
-                        place_comment_after = True
+                        place_kind = None
                         for index, form_line in enumerate(form_lines):
                             # skip any comments that were previously added
                             if form_line.lstrip().startswith(";"):
@@ -714,18 +819,21 @@ with open("./goal_src/jak2/kernel/gkernel.gc") as f:
                                 if score >= threshold and score > highest_score:
                                     index_to_insert = index
                                     highest_score = score
+                                    place_kind = "inline"
                             if comment.code_before is not None:
                                 score = score_alg(form_line, comment.code_before)
                                 if score >= threshold and score > highest_score:
                                     index_to_insert = index
                                     highest_score = score
                                     place_comment_after = True
+                                    place_kind = "next_line"
                             if comment.code_after is not None:
                                 score = score_alg(form_line, comment.code_after)
                                 if score >= threshold and score > highest_score:
                                     index_to_insert = index
                                     highest_score = score
                                     place_comment_after = False
+                                    place_kind = "before_line"
                         # add the comment!
                         if index_to_insert == -1:
                             if comment.inline:
@@ -739,14 +847,15 @@ with open("./goal_src/jak2/kernel/gkernel.gc") as f:
                                     comment.line_num_in_form, comment.data
                                 )
                         elif comment.inline:
-                            form_lines[index_to_insert] = (
-                                form_lines[index_to_insert].rstrip()
-                                + " "
-                                + comment.data
+                            form_index = index_to_insert
+                            if place_kind == "next_line":
+                                form_index = index_to_insert + 1
+                            form_lines[form_index] = (
+                                form_lines[form_index].rstrip() + " " + comment.data
                             )
-                        elif place_comment_after:
+                        elif place_kind == "next_line":
                             form_lines.insert(
-                                index_to_insert,
+                                index_to_insert + 1,
                                 padding_before_comment(comment) + comment.data,
                             )
                         else:
