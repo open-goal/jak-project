@@ -215,10 +215,6 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
 
   auto display = std::make_shared<GLDisplay>(window, is_main);
 
-  display->set_imgui_visible(Gfx::get_debug_menu_visible_on_startup());
-  display->update_cursor_visibility(window, display->is_imgui_visible());
-  glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
-
   // lg::debug("init display #x{:x}", (uintptr_t)display);
 
   // setup imgui

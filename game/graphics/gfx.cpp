@@ -224,6 +224,9 @@ void LoadSettings() {
     LoadPeripheralSettings(filename);
     lg::info("Loaded graphics configuration file.");
     return;
+  } else {
+    SavePeripheralSettings();
+    lg::info("Couldn't find controller-settings.json creating new controller settings file.");
   }
 }
 
