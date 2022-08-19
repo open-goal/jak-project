@@ -6,6 +6,9 @@
 
 #include "newpad.h"
 
+#include <atomic>
+#include <cmath>
+
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
@@ -22,11 +25,12 @@ namespace Pad {
 ********************************
 */
 
-constexpr int NUM_KEYS = GLFW_KEY_LAST + 1;
 // key-down status of any detected key.
-bool g_key_status[NUM_KEYS] = {0};
+bool g_key_status[glfw::NUM_KEYS] = {0};
 // key-down status of any detected key. this is buffered for the remainder of a frame.
-bool g_buffered_key_status[NUM_KEYS] = {0};
+bool g_buffered_key_status[glfw::NUM_KEYS] = {0};
+
+float g_key_analogs[CONTROLLER_COUNT][(int)Analog::Max] = {{0}};
 
 bool g_gamepad_buttons[CONTROLLER_COUNT][(int)Button::Max] = {{0}};
 float g_gamepad_analogs[CONTROLLER_COUNT][(int)Analog::Max] = {{0}};
@@ -44,6 +48,36 @@ u64 input_mode_mod = 0;
 u64 input_mode_index = 0;
 MappingInfo g_input_mode_mapping;
 
+void ClearKey(int key) {
+  if (key < 0 || key > glfw::NUM_KEYS) {
+    lg::warn("ClearKey failed: Attempted to clear invalid key {}", key);
+    return;
+  }
+
+  g_key_status[key] = false;
+  g_buffered_key_status[key] = false;
+}
+
+void ClearAnalogAxisValue(MappingInfo& mapping_info, int axis) {
+  for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
+    for (int analog = 0; analog < (int)Analog::Max; ++analog) {
+      if (mapping_info.keyboard_analog_mapping[pad][analog].axis_id == axis &&
+          mapping_info.keyboard_analog_mapping[pad][analog].mode ==
+              AnalogMappingMode::AnalogInput) {
+        g_key_analogs[pad][analog] = 0.0f;
+      }
+    }
+  }
+}
+
+void ForceClearAnalogValue() {
+  for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
+    for (int analog = 0; analog < (int)Analog::Max; ++analog) {
+      g_key_analogs[pad][analog] = 0.0f;
+    }
+  }
+}
+
 void ForceClearKeys() {
   for (auto& key : g_key_status) {
     key = false;
@@ -54,7 +88,7 @@ void ForceClearKeys() {
 }
 
 void ClearKeys() {
-  for (int key = 0; key < NUM_KEYS; key++) {
+  for (int key = 0; key < glfw::NUM_KEYS; key++) {
     g_buffered_key_status[key] = g_key_status[key];
   }
 }
@@ -77,7 +111,7 @@ void OnKeyPress(int key) {
     return;
   }
   // set absolute key status
-  ASSERT(key < NUM_KEYS);
+  ASSERT(key < glfw::NUM_KEYS);
   g_key_status[key] = true;
   // set buffered key status
   g_buffered_key_status[key] = true;
@@ -87,7 +121,7 @@ void OnKeyRelease(int key) {
   if (input_mode == InputModeStatus::Enabled) {
     return;
   }
-  ASSERT(key < NUM_KEYS);
+  ASSERT(key < glfw::NUM_KEYS);
   g_key_status[key] = false;
 }
 
@@ -98,14 +132,15 @@ void OnKeyRelease(int key) {
 */
 
 static int CheckPadIdx(int pad) {
-  if (pad < 0 || pad > CONTROLLER_COUNT) {
+  if (pad < 0 || pad >= CONTROLLER_COUNT) {
     lg::error("Invalid pad {}", pad);
     return -1;
   }
   return pad;
 }
 
-// returns 1 if button is pressed. returns 0 if invalid or not pressed.
+// returns 1 if either keyboard or controller button is pressed. Controller button has priority.
+// returns 0 if invalid or not pressed.
 int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
   if (CheckPadIdx(pad) == -1) {
     return 0;
@@ -114,67 +149,119 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
   if (g_gamepad_buttons[pad][(int)button]) {
     return 1;
   }
-  auto key = mapping.pad_mapping[pad][(int)button];
+
+  int key = mapping.keyboard_button_mapping[pad][(int)button];
   if (key == -1)
     return 0;
   auto& keymap = mapping.buffer_mode ? g_buffered_key_status : g_key_status;
-  ASSERT(key < NUM_KEYS);
+  ASSERT(key < glfw::NUM_KEYS);
   return keymap[key];
+}
+
+void SetAnalogAxisValue(MappingInfo& mapping_info, int axis, double value) {
+  const double sensitivity_numerator = Gfx::g_global_settings.target_fps;
+  const double minimum_sensitivity = 1e-4;
+
+  for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
+    for (int analog = 0; analog < (int)Analog::Max; ++analog) {
+      if (mapping_info.keyboard_analog_mapping[pad][analog].axis_id == axis) {
+        double newValue = value;
+        if (axis == GlfwKeyCustomAxis::CURSOR_X_AXIS) {
+          if (mapping_info.mouse_x_axis_sensitivities[pad] < minimum_sensitivity) {
+            mapping_info.mouse_x_axis_sensitivities[pad] = minimum_sensitivity;
+          }
+          newValue /= (sensitivity_numerator / mapping_info.mouse_x_axis_sensitivities[pad]);
+        } else if (axis == GlfwKeyCustomAxis::CURSOR_Y_AXIS) {
+          if (mapping_info.mouse_y_axis_sensitivities[pad] < minimum_sensitivity) {
+            mapping_info.mouse_y_axis_sensitivities[pad] = minimum_sensitivity;
+          }
+          newValue /= (sensitivity_numerator / mapping_info.mouse_y_axis_sensitivities[pad]);
+        }
+
+        if (newValue > 1.0) {
+          g_key_analogs[pad][analog] = 1.0;
+        } else if (newValue < -1.0) {
+          g_key_analogs[pad][analog] = -1.0;
+        } else if (std::isnan(newValue)) {
+          g_key_analogs[pad][analog] = 0.0;
+        } else {
+          g_key_analogs[pad][analog] = newValue;
+        }
+
+        // Invert logic used here. Left Y axis movement is based on towrds the camera.
+        // In game forward is treated as going away from the camera and backwards is headed towards
+        // the camera.
+        if (axis == GlfwKeyCustomAxis::CURSOR_Y_AXIS) {
+          g_key_analogs[pad][analog] *= -1;
+        }
+      }
+    }
+  }
+}
+
+void UpdateAxisValue(MappingInfo& mapping_info) {
+  for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
+    for (int analog = 0; analog < (int)Analog::Max; ++analog) {
+      if (mapping_info.keyboard_analog_mapping[pad][analog].mode ==
+          AnalogMappingMode::AnalogInput) {
+        continue;  // Assumed Set Axis set value already
+      }
+
+      // Invert logic used here. Left Y axis movement is based on towrds the camera.
+      // In game forward is treated as going away from the camera and backwards is headed towards
+      // the camera.
+      double input = 0.0f;
+      if (mapping_info.keyboard_analog_mapping[pad][analog].positive_key > -1 &&
+          mapping_info.keyboard_analog_mapping[pad][analog].positive_key < glfw::NUM_KEYS) {
+        if (analog == static_cast<int>(Analog::Left_Y) ||
+            analog == static_cast<int>(Analog::Right_Y)) {
+          input -=
+              g_buffered_key_status[mapping_info.keyboard_analog_mapping[pad][analog].positive_key];
+        } else {
+          input +=
+              g_buffered_key_status[mapping_info.keyboard_analog_mapping[pad][analog].positive_key];
+        }
+      }
+      if (mapping_info.keyboard_analog_mapping[pad][analog].negative_key > -1 &&
+          mapping_info.keyboard_analog_mapping[pad][analog].negative_key < glfw::NUM_KEYS) {
+        if (analog == static_cast<int>(Analog::Left_Y) ||
+            analog == static_cast<int>(Analog::Right_Y)) {
+          input +=
+              g_buffered_key_status[mapping_info.keyboard_analog_mapping[pad][analog].negative_key];
+        } else {
+          input -=
+              g_buffered_key_status[mapping_info.keyboard_analog_mapping[pad][analog].negative_key];
+        }
+      }
+      g_key_analogs[pad][analog] = input;
+    }
+  }
 }
 
 // returns the value of the analog axis (in the future, likely pressure sensitive if we support it?)
 // if invalid or otherwise -- returns 127 (analog stick neutral position)
-int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
+int GetAnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
+  float input = 0.0f;
   if (CheckPadIdx(pad) == -1) {
     // Pad out of range, return a stable value
     return 127;
   }
 
-  float input = 0.0f;
-  if (pad == 0) {
-    // Movement controls mapped to WASD keys
-    if (g_buffered_key_status[GLFW_KEY_W] && analog == Analog::Left_Y)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_S] && analog == Analog::Left_Y)
-      input += 1.0f;
-    if (g_buffered_key_status[GLFW_KEY_A] && analog == Analog::Left_X)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_D] && analog == Analog::Left_X)
-      input += 1.0f;
-
-    // Camera controls mapped to IJKL keys
-    if (g_buffered_key_status[GLFW_KEY_I] && analog == Analog::Right_Y)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_K] && analog == Analog::Right_Y)
-      input += 1.0f;
-    if (g_buffered_key_status[GLFW_KEY_J] && analog == Analog::Right_X)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_L] && analog == Analog::Right_X)
-      input += 1.0f;
-  } else if (pad == 1) {
-    // these bindings are not sane
-    if (g_buffered_key_status[GLFW_KEY_KP_5] && analog == Analog::Left_Y)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_KP_2] && analog == Analog::Left_Y)
-      input += 1.0f;
-    if (g_buffered_key_status[GLFW_KEY_KP_1] && analog == Analog::Left_X)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_KP_3] && analog == Analog::Left_X)
-      input += 1.0f;
-
-    // these bindings are not sane
-    if (g_buffered_key_status[GLFW_KEY_KP_DIVIDE] && analog == Analog::Right_Y)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_KP_8] && analog == Analog::Right_Y)
-      input += 1.0f;
-    if (g_buffered_key_status[GLFW_KEY_KP_7] && analog == Analog::Right_X)
-      input += -1.0f;
-    if (g_buffered_key_status[GLFW_KEY_KP_9] && analog == Analog::Right_X)
-      input += 1.0f;
+  float controller_input = 0.0f;
+  if (g_gamepads.gamepad_idx[pad] > -1) {
+    controller_input = g_gamepad_analogs[pad][(int)analog];
   }
 
-  if (input == 0) {
-    input = g_gamepad_analogs[pad][(int)analog];
+  float keyboard_input = g_key_analogs[pad][(int)analog];
+  // Hack. Clearing the buffer immediately can lead to inconsistencies on analog input.
+  // If a mouse is disconnected or can't calculate a new delta it would stay stuck at 1.
+  // Decreasing the values gradually seems like a good comprise.
+  g_key_analogs[pad][(int)analog] *= 0.95;
+
+  if (fabs(controller_input) > fabs(keyboard_input)) {
+    input = controller_input;
+  } else {
+    input = keyboard_input;
   }
 
   // GLFW provides float in range -1 to 1, caller expects 0-255
@@ -195,15 +282,62 @@ void MapButton(MappingInfo& mapping, Button button, int pad, int key) {
     return;
   }
 
-  mapping.pad_mapping[pad][(int)button] = key;
+  if (g_gamepads.gamepad_idx[pad] == -1) {
+    // TODO: Check if other pad is keyboard and if key is already bound
+    mapping.keyboard_button_mapping[pad][(int)button] = key;
+  } else {
+    mapping.controller_button_mapping[pad][(int)button] = key;
+  }
+}
+
+void MapAnalog(MappingInfo& mapping, Analog button, int pad, AnalogMappingInfo& analomapping_info) {
+  // check if pad is valid. dont map buttons with invalid pads.
+  if (CheckPadIdx(pad) == -1) {
+    return;
+  }
+
+  if (g_gamepads.gamepad_idx[pad] == -1) {
+    // TODO: Check if other pad is keyboard and if key is already bound
+    mapping.keyboard_analog_mapping[pad][(int)button] = analomapping_info;
+  } else {
+    mapping.controller_analog_mapping[pad][(int)button] = analomapping_info;
+  }
 }
 
 // reset button mappings
 void DefaultMapping(MappingInfo& mapping) {
   // make every button invalid
-  for (int p = 0; p < CONTROLLER_COUNT; ++p) {
-    for (int i = 0; i < (int)Button::Max; ++i) {
-      MapButton(mapping, (Button)i, p, -1);
+  for (int32_t pad = 0; pad < CONTROLLER_COUNT; ++pad) {
+    for (int32_t button = 0; button < (int)Pad::Button::Max; ++button) {
+      mapping.controller_button_mapping[pad][button] = -1;
+      mapping.keyboard_button_mapping[pad][button] = -1;
+    }
+
+    for (int32_t analog = 0; analog < (int)Pad::Analog::Max; ++analog) {
+      mapping.controller_analog_mapping[pad][analog] = AnalogMappingInfo();
+      mapping.keyboard_analog_mapping[pad][analog] = AnalogMappingInfo();
+    }
+  }
+
+  constexpr std::pair<Button, int> gamepad_map[] = {
+      {Button::Select, GLFW_GAMEPAD_BUTTON_BACK},
+      {Button::L3, GLFW_GAMEPAD_BUTTON_LEFT_THUMB},
+      {Button::R3, GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
+      {Button::Start, GLFW_GAMEPAD_BUTTON_START},
+      {Button::Up, GLFW_GAMEPAD_BUTTON_DPAD_UP},
+      {Button::Right, GLFW_GAMEPAD_BUTTON_DPAD_RIGHT},
+      {Button::Down, GLFW_GAMEPAD_BUTTON_DPAD_DOWN},
+      {Button::Left, GLFW_GAMEPAD_BUTTON_DPAD_LEFT},
+      {Button::L1, GLFW_GAMEPAD_BUTTON_LEFT_BUMPER},
+      {Button::R1, GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER},
+      {Button::Triangle, GLFW_GAMEPAD_BUTTON_TRIANGLE},
+      {Button::Circle, GLFW_GAMEPAD_BUTTON_CIRCLE},
+      {Button::X, GLFW_GAMEPAD_BUTTON_CROSS},
+      {Button::Square, GLFW_GAMEPAD_BUTTON_SQUARE}};
+
+  for (int32_t pad = 0; pad < CONTROLLER_COUNT; ++pad) {
+    for (const auto& [button, value] : gamepad_map) {
+      mapping.controller_button_mapping[pad][(int)button] = value;
     }
   }
 
@@ -211,6 +345,8 @@ void DefaultMapping(MappingInfo& mapping) {
   // the keyboard to be bound to controls regardless
   //
   // Need someway to toggle off -- where do we have access to the game's settings?
+
+  // TODO - What should the second pc default controls be?
 
   // R1 / L1
   MapButton(mapping, Button::L1, 0, GLFW_KEY_Q);
@@ -238,6 +374,31 @@ void DefaultMapping(MappingInfo& mapping) {
   // l3/r3 for menu
   MapButton(mapping, Button::L3, 0, GLFW_KEY_COMMA);
   MapButton(mapping, Button::R3, 0, GLFW_KEY_PERIOD);
+
+  AnalogMappingInfo analomapping_info;
+
+  analomapping_info.positive_key = GLFW_KEY_D;
+  analomapping_info.negative_key = GLFW_KEY_A;
+  MapAnalog(mapping, Analog::Left_X, 0, analomapping_info);
+
+  analomapping_info.positive_key = GLFW_KEY_W;
+  analomapping_info.negative_key = GLFW_KEY_S;
+  MapAnalog(mapping, Analog::Left_Y, 0, analomapping_info);
+
+  analomapping_info.mode = AnalogMappingMode::AnalogInput;
+  analomapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_X_AXIS;
+  MapAnalog(mapping, Analog::Right_X, 0, analomapping_info);
+
+  analomapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_Y_AXIS;
+  MapAnalog(mapping, Analog::Right_Y, 0, analomapping_info);
+
+  const double default_mouse_x_sensitivity = 5.0f;
+  const double default_mouse_y_sensitivity = 2.0f;
+
+  for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
+    mapping.mouse_x_axis_sensitivities[pad] = default_mouse_x_sensitivity;
+    mapping.mouse_y_axis_sensitivities[pad] = default_mouse_y_sensitivity;
+  }
 }
 
 void EnterInputMode() {
@@ -315,29 +476,21 @@ void clear_pad(int pad) {
   for (int i = 0; i < (int)Button::Max; ++i) {
     g_gamepad_buttons[pad][i] = false;
   }
-  for (int i = 0; i < 4; ++i) {
+  for (int i = 0; i < (int)Analog::Max; ++i) {
     g_gamepad_analogs[pad][i] = 0;
   }
 }
 
-void update_gamepads() {
+void update_gamepads(MappingInfo& mapping_info) {
   check_gamepads();
+  UpdateAxisValue(mapping_info);
 
-  constexpr std::pair<Button, int> gamepad_map[] = {
-      {Button::Select, GLFW_GAMEPAD_BUTTON_BACK},
-      {Button::L3, GLFW_GAMEPAD_BUTTON_LEFT_THUMB},
-      {Button::R3, GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
-      {Button::Start, GLFW_GAMEPAD_BUTTON_START},
-      {Button::Up, GLFW_GAMEPAD_BUTTON_DPAD_UP},
-      {Button::Right, GLFW_GAMEPAD_BUTTON_DPAD_RIGHT},
-      {Button::Down, GLFW_GAMEPAD_BUTTON_DPAD_DOWN},
-      {Button::Left, GLFW_GAMEPAD_BUTTON_DPAD_LEFT},
-      {Button::L1, GLFW_GAMEPAD_BUTTON_LEFT_BUMPER},
-      {Button::R1, GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER},
-      {Button::Triangle, GLFW_GAMEPAD_BUTTON_TRIANGLE},
-      {Button::Circle, GLFW_GAMEPAD_BUTTON_CIRCLE},
-      {Button::X, GLFW_GAMEPAD_BUTTON_CROSS},
-      {Button::Square, GLFW_GAMEPAD_BUTTON_SQUARE}};
+  if (g_gamepads.gamepad_idx[0] == -1) {
+    for (int pad = 0; pad < CONTROLLER_COUNT; ++pad) {
+      clear_pad(pad);
+    }
+    return;
+  }
 
   constexpr std::pair<Analog, int> gamepad_analog_map[] = {
       {Analog::Left_X, GLFW_GAMEPAD_AXIS_LEFT_X},
@@ -345,12 +498,13 @@ void update_gamepads() {
       {Analog::Right_X, GLFW_GAMEPAD_AXIS_RIGHT_X},
       {Analog::Right_Y, GLFW_GAMEPAD_AXIS_RIGHT_Y}};
 
-  auto read_pad_state = [gamepad_map, gamepad_analog_map](int pad) {
+  auto read_pad_state = [gamepad_analog_map, mapping_info](int pad) {
     GLFWgamepadstate state;
     glfwGetGamepadState(g_gamepads.gamepad_idx[pad], &state);
 
-    for (const auto& [button, idx] : gamepad_map) {
-      g_gamepad_buttons[pad][(int)button] = state.buttons[idx];
+    for (int32_t button = 0; button < (int)Pad::Button::Max; ++button) {
+      int key = mapping_info.controller_button_mapping[pad][button];
+      g_gamepad_buttons[pad][(int)button] = state.buttons[key];
     }
 
     g_gamepad_buttons[pad][(int)Button::L2] = state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] > 0;
@@ -375,6 +529,39 @@ int rumble(int pad, float slow_motor, float fast_motor) {
     return 1;
   }
   return 0;
+}
+
+int GetGamepadState(int pad) {
+  return g_gamepads.gamepad_idx[pad];
+}
+
+// The following setters/getters are mainly used for unit tests
+void SetGamepadState(int pad, int pad_index) {
+  if (CheckPadIdx(pad) != -1) {
+    if (pad_index <= GLFW_JOYSTICK_LAST) {
+      g_gamepads.gamepad_idx[pad] = pad_index;
+    }
+  }
+}
+
+bool* GetKeyboardInputBuffer() {
+  return g_key_status;
+}
+// key-down status of any detected key. this is buffered for the remainder of a frame.
+bool* GetKeyboardBufferedInputBuffer() {
+  return g_buffered_key_status;
+}
+
+float* GetKeyboardInputAnalogBuffer(int pad) {
+  return g_key_analogs[pad];
+}
+
+bool* GetControllerInputBuffer(int pad) {
+  return g_gamepad_buttons[pad];
+}
+
+float* GetControllerAnalogInputBuffer(int pad) {
+  return g_gamepad_analogs[pad];
 }
 
 };  // namespace Pad
