@@ -940,18 +940,6 @@ void SimpleExpressionElement::update_from_stack_si_1(const Env& env,
       make_cast_if_needed(arg, in_type, TypeSpec("int"), pool, env)));
 }
 
-struct MultiSelectionResult {
-  bool succeeded = false;
-  int idx_to_use = -1;
-  std::optional<TypeSpec> cast;
-};
-
-MultiSelectionResult select_from_multi(const FieldReverseMultiLookupOutput& multi, const Env& env) {
-  MultiSelectionResult result;
-
-  return result;
-}
-
 void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                                                       FormPool& pool,
                                                       FormStack& stack,
@@ -1618,7 +1606,14 @@ FormElement* SimpleExpressionElement::update_from_stack_logor_or_logand_helper(
     FormStack& stack,
     bool allow_side_effects) {
   // grab the normal variable type
-  auto arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
+  TypeSpec arg0_type;
+  if (m_expr.get_arg(0).is_var()) {
+    arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
+  } else if (m_expr.get_arg(0).is_int(0)) {
+    arg0_type = TypeSpec("int");  // ??
+  } else {
+    ASSERT(false);
+  }
 
   // and try to get it as a bitfield
   auto type_info = env.dts->ts.lookup_type(arg0_type);
@@ -1626,7 +1621,7 @@ FormElement* SimpleExpressionElement::update_from_stack_logor_or_logand_helper(
   bool had_pcpyud = false;
   TypeSpec bitfield_type = arg0_type;
 
-  if (!bitfield_info) {
+  if (!bitfield_info && m_expr.get_arg(0).is_var()) {
     // the above won't work if we're already done a pcpyud to grab the upper 64 bits.
     // we need to grab the type in the register (a TP_type) and check
     const auto& arg0_reg_type =
@@ -1684,15 +1679,25 @@ FormElement* SimpleExpressionElement::update_from_stack_logor_or_logand_helper(
   } else {
     // and, two forms
     auto arg1_type = env.get_variable_type(m_expr.get_arg(1).var(), true);
-    auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
-    auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+    auto arg0_i =
+        m_expr.get_arg(0).is_var() ? is_int_type(env, m_my_idx, m_expr.get_arg(0).var()) : true;
+    auto arg0_u =
+        m_expr.get_arg(0).is_var() ? is_uint_type(env, m_my_idx, m_expr.get_arg(0).var()) : false;
     auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
     auto arg1_u = is_uint_type(env, m_my_idx, m_expr.get_arg(1).var());
     auto arg0_n = arg0_i || arg0_u;
     auto arg1_n = arg1_i || arg1_u;
 
-    auto args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
-                             allow_side_effects);
+    std::vector<Form*> args;
+
+    if (m_expr.get_arg(0).is_var()) {
+      args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
+                          allow_side_effects);
+    } else {
+      args = pop_to_forms({m_expr.get_arg(1).var()}, env, pool, stack, allow_side_effects);
+      args.insert(args.begin(), pool.form<SimpleAtomElement>(
+                                    SimpleAtom::make_int_constant(m_expr.get_arg(0).get_int())));
+    }
 
     if (bitfield_info) {
       // either the immediate didn't fit in the 16-bit imm or it's with a variable
