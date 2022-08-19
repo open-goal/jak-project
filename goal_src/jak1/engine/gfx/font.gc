@@ -1831,6 +1831,7 @@
     )
   )
 
+;; Added for PC port
 (defun draw-string-xy-scaled ((str string) (buf dma-buffer) (x int) (y int) (color font-color) (flags font-flags) (scale float))
   "Draw a string at the given xy location, with the given scale."
   (let ((font-ctxt (new 'stack 'font-context *font-default-matrix* x y 0.0 color flags)))
@@ -1844,16 +1845,6 @@
       (*! (-> font-ctxt scale) scale)
       (set! (-> font-ctxt width) scaled-width)
       (set! (-> font-ctxt height) scaled-height)
-
-      ;; adjustments copied from print-game-text-scaled
-      (if (logtest? (-> font-ctxt flags) (font-flags middle))
-        (+! (-> font-ctxt origin x) (* 0.5 (- (-> font-ctxt width) scaled-width)))
-        )
-      (if (logtest? (-> font-ctxt flags) (font-flags left))
-        ;; this code is really weird. it does the divide with an int, but fails
-        ;; to convert it back to a float before adding??
-        (+! (-> font-ctxt origin y) (the-as float (/ (the int (- (-> font-ctxt height) scaled-height)) 2)))
-        )
       
       ;; scaling globals *font-default-matrix*, *video-parms* (mimicking print-game-text scaling)
       (*! (-> *font-default-matrix* vector 0 x) scale)
