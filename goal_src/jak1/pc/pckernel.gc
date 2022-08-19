@@ -369,6 +369,19 @@
 
   (none))
 
+
+(defun matrix-diagonal! ((out matrix) (value float))
+  (set! (-> out vector 0 quad) (the-as uint128 0))
+  (set! (-> out vector 1 quad) (the-as uint128 0))
+  (set! (-> out vector 2 quad) (the-as uint128 0))
+  (set! (-> out vector 3 quad) (the-as uint128 0))
+  (set! (-> out vector 0 data 0) value)
+  (set! (-> out vector 1 data 1) value)
+  (set! (-> out vector 2 data 2) value)
+  (set! (-> out vector 3 data 3) value)
+  out
+  )
+
 (defun matrix*!-bone-callback ((the-bone bone) (mtx matrix) a)
   "apply a transform matrix to a bone."
   (matrix*! (-> the-bone transform) (-> the-bone transform) mtx)
@@ -382,8 +395,23 @@
       (scale-matrix! (-> the-bone transform) scale (-> the-bone transform))
       )
     (else
-      (let ((scale-mtx (scale-matrix! (new-stack-matrix0) scale parent-mtx)))
-          (matrix*! (-> the-bone transform) (-> the-bone transform) (matrix*! scale-mtx (matrix-4x4-inverse! (new-stack-matrix0) parent-mtx) scale-mtx)))
+      (let* ((scale-mtx (scale-matrix! (new-stack-matrix0) scale parent-mtx))
+
+             (unscale-q (matrix-diagonal! (new-stack-matrix0) (/ 1.0 (-> parent-mtx data 15))))
+             (scale-q (matrix-diagonal! (new-stack-matrix0) (-> parent-mtx data 15)))
+
+             (scale-mat (matrix-scale! (new-stack-matrix0) scale))
+             (parent-fixed (matrix*! (new-stack-matrix0) parent-mtx unscale-q))
+
+             (inv-parent (matrix-4x4-inverse! (new-stack-matrix0) parent-fixed))
+             ;;  bone * inverse(parent * unscale-q) * scale * parent * scale-q
+
+             (matrix1 (matrix*! (new-stack-matrix0) inv-parent scale-mat))
+             (matrix2 (matrix*! (new-stack-matrix0) matrix1 parent-mtx))
+             (matrix3 (matrix*! (new-stack-matrix0) matrix2 scale-q))
+             )
+        (matrix*! (-> the-bone transform) (-> the-bone transform) matrix3)
+        )
       ))
   )
 
