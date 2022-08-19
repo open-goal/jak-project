@@ -27,21 +27,21 @@
 # 4. hope for the best...
 
 # Known Issues:
-# - there are likely ways to make this more efficient
-# - codes a mess, as one would probably expect for something as miserable as this
-
 # - use defuns as symbols (consistent names), but account for padding properly
 # - padding after decomp deviation blocks / blocks in general is wrong
 # - blocks starting inline (ie '(define foo 'bar) #|start of a block comment that continues on...)
 # - decomp deviation blocks inside forms can cause paren counting issues
+# -
+# - codes a mess, as one would probably expect for something as miserable as this, it needs a refactor
+# - there are likely ways to make this more efficient
 
-# Potential Improvements:
-# - decomp deviation with meta - specify a form to ignore
-
+import argparse
 import re
 from rapidfuzz import fuzz
+from utils import get_gsrc_path_from_filename
 
-
+# TODO - rename and refactor all usages, it's not _always_ a comment anymore!
+# RetainedCode or something
 class CommentMeta:
     def __init__(self):
         self.data = ""
@@ -68,7 +68,19 @@ class CommentMeta:
         return "{}:{}:{}".format(self.data, self.symbol_before, self.symbol_after)
 
 
-# TODO - make this work for multiple files
+parser = argparse.ArgumentParser("update-from-decomp")
+parser.add_argument("--game", help="The name of the game", type=str)
+parser.add_argument("--file", help="The name of the file", type=str)
+parser.add_argument(
+    "--debug", help="Output debug metadata on every block", action="store_true"
+)
+parser.add_argument(
+    "--clearDebug", help="Clear debug metadata", action="store_true"
+)  # TODO - implement!
+args = parser.parse_args()
+
+gsrc_path = get_gsrc_path_from_filename(args.game, args.file)
+
 comments = []
 debug_lines = []
 
@@ -211,13 +223,21 @@ def append_form_metadata(comment, form_start_line):
     comment.containing_form_type = None
 
 
-with open("./goal_src/jak2/kernel/gkernel.gc") as f:
+decomp_ignore_forms = []
+decomp_ignore_errors = False
+
+with open(gsrc_path) as f:
     lines_temp = f.readlines()
     lines = []
     # Get rid of debug lines, this is so i can re-run without having to reset the file
     for line in lines_temp:
         if "[DEBUG]" in line:
             continue
+        # Check for comment annotate overrides / settings, this is the "nicest" place to shove this
+        if "og:ignore-errors" in line and "true" in line:
+            decomp_ignore_errors = True
+        if "og:ignore-form" in line:
+            decomp_ignore_forms.append(line.partition("ignore-form:")[2].strip())
         lines.append(line)
     # track if we are inside a define*/defun/defmethod/deftype/defstate
     within_form = None
@@ -228,8 +248,6 @@ with open("./goal_src/jak2/kernel/gkernel.gc") as f:
     while i < len(lines):
         debug_lines.append(lines[i])
         tline = lines[i].lstrip()
-        if "*kernel-context*" in tline:
-            print("ye")
         if "decomp begins" in tline.lower():
             found_output = True
             i = i + 1
@@ -242,8 +260,6 @@ with open("./goal_src/jak2/kernel/gkernel.gc") as f:
             # lets see if we are now in one
             within_form = is_line_start_of_form(lines[i])
             if within_form is not None:
-                if "kernel-dispatcher" in within_form:
-                    print("ye")
                 line_num_in_form = 0
                 if has_form_ended(form_paren_stack, lines[i]):
                     within_form = None
@@ -378,10 +394,10 @@ with open("./goal_src/jak2/kernel/gkernel.gc") as f:
         i = i + 1
 
 
-# TODO - gate this behind a flag, debug mode, prints out info in the file itself next to the comments
-# with open("./goal_src/jak2/kernel/gkernel.gc", "w") as f:
-#     f.writelines(debug_lines)
-# exit(0)
+if args.debug:
+    with open(gsrc_path, "w") as f:
+        f.writelines(debug_lines)
+    exit(0)
 
 # Step 2: Cleanup the decomp output
 
@@ -394,6 +410,10 @@ lines_to_ignore = [
     ";; Used lq/sq",
     ";; this part is debug only",
 ]
+
+if decomp_ignore_errors:
+    lines_to_ignore.append(";; ERROR:")
+    lines_to_ignore.append(";; WARN:")
 
 decomp_lines = []
 # cache all form definition lines from the incoming decompilation
@@ -408,37 +428,51 @@ def should_ignore_line(line):
     return False
 
 
-with open("./decompiler_out/jak2/gkernel_disasm.gc") as f:
+# TODO - check for existance probably
+decomp_file_path = "./decompiler_out/{}/{}_disasm.gc".format(args.game, args.file)
+with open(decomp_file_path) as f:
     lines = f.readlines()
-    for line in lines:
+    i = 0
+    decomp_form_paren_stack = []
+    decomp_within_form = None
+    while i < len(lines):
+        line = lines[i]
         if should_ignore_line(line):
+            i = i + 1
             continue
-        decomp_lines.append(line)
-
-decomp_form_paren_stack = []
-decomp_within_form = None
-decomp_i = 0
-while decomp_i < len(decomp_lines):
-    line = decomp_lines[decomp_i]
-    if "Function (method 17 dead-pool-heap)" in line:
-        print("Ye")
-    decomp_within_form = is_line_start_of_form(line)
-    if decomp_within_form is not None:
-        if has_form_ended(decomp_form_paren_stack, line):
-            decomp_within_form = None
-            decomp_form_paren_stack = []
-            decomp_i = decomp_i + 1
-        else:
-            decomp_form_def_lines.append(decomp_within_form)
-            while decomp_i < len(decomp_lines):
-                decomp_i = decomp_i + 1
-                line = decomp_lines[decomp_i]
-                if has_form_ended(form_paren_stack, line):
-                    decomp_within_form = None
-                    decomp_form_paren_stack = []
+        decomp_within_form = is_line_start_of_form(line)
+        # Check if we should ignore the form
+        if decomp_within_form is not None:
+            # See if we should skip it
+            skip_form = False
+            for form_to_ignore in decomp_ignore_forms:
+                if form_to_ignore in decomp_within_form:
+                    skip_form = True
                     break
-    else:
-        decomp_i = decomp_i + 1
+            if has_form_ended(decomp_form_paren_stack, line):
+                decomp_within_form = None
+                decomp_form_paren_stack = []
+                if not skip_form:
+                    decomp_lines.append(line)
+                i = i + 1
+            else:
+                if not skip_form:
+                    decomp_form_def_lines.append(decomp_within_form)
+                    decomp_lines.append(line)
+                while i < len(lines):
+                    i = i + 1
+                    line = lines[i]
+                    if not skip_form:
+                        decomp_lines.append(line)
+                    if has_form_ended(decomp_form_paren_stack, line):
+                        decomp_within_form = None
+                        decomp_form_paren_stack = []
+                        i = i + 1
+                        break
+        else:
+            decomp_lines.append(line)
+            i = i + 1
+
 
 # Step 3: Start merging the new code + comments
 final_lines = []
@@ -579,89 +613,10 @@ def different_method_names(form_func_name, comment_form_func_name):
     return form_func_name != comment_form_func_name
 
 
-def get_most_relevant_containing_form(form_def_line, decomp_lines):
-    form_kind, form_func_name, form_type = get_form_metadata(form_def_line)
-    # TODO - what if there is no rest!
-    code_def_part, code_rest = split_def_line(form_def_line)
-    threshold = 50.0
-    highest_score = -1
-    highest_form = ""
-    for comment in comments:
-        if comment.containing_form is None:
-            continue
-        if comment.containing_form_kind != "unknown":
-            if comment.containing_form_kind != form_kind:
-                continue
-            elif (
-                form_kind == "function"
-                and comment.containing_form_func_name != form_func_name
-            ):
-                continue
-            elif (
-                form_kind == "behavior"
-                and comment.containing_form_func_name != form_func_name
-            ):
-                continue
-            elif form_kind == "method" and (
-                comment.containing_form_type != form_type
-                or different_method_names(
-                    form_func_name, comment.containing_form_func_name
-                )
-            ):
-                continue
-        comment_def_part, comment_rest = split_def_line(comment.containing_form)
-        def_score = fuzz.ratio(code_def_part, comment_def_part) * 0.65
-        if def_score == 65.0 and form_kind != "unknown":
-            return comment.containing_form.strip()
-        rest_score = fuzz.ratio(code_rest, comment_rest) * 0.35
-        combined_score = def_score + rest_score
-        if combined_score >= threshold and combined_score > highest_score:
-            highest_score = combined_score
-            highest_form = comment.containing_form.strip()
-    if highest_score == -1:
-        return None
-    # Now check that there is no better form in existance.  If there is, then that means this form has NO comments
-    # because we were able to find a better match (the above loop only checks form def lines associated with comments)
-    for line in decomp_lines:
-        within_form = is_line_start_of_form(line)
-        if within_form is not None:
-            line_form_kind, line_form_func_name, line_form_type = get_form_metadata(
-                within_form
-            )
-            if form_kind != "unknown":
-                if form_kind != line_form_kind:
-                    continue
-                elif form_kind == "function" and line_form_func_name != form_func_name:
-                    continue
-                elif form_kind == "behavior" and line_form_func_name != form_func_name:
-                    continue
-                elif form_kind == "method" and (
-                    line_form_type != form_type
-                    or different_method_names(form_func_name, line_form_func_name)
-                ):
-                    continue
-            def_part, rest = split_def_line(within_form)
-            def_score = fuzz.ratio(code_def_part, def_part) * 0.65
-            if def_score == 65.0 and form_kind != "unknown":
-                return line.strip()
-            rest_score = fuzz.ratio(code_rest, rest) * 0.35
-            combined_score = def_score + rest_score
-            if combined_score > highest_score:
-                return None
-    return highest_form
-
-
 def get_relevant_form_comments(form_def_line):
     form_kind, form_func_name, form_type = get_form_metadata(form_def_line)
     code_def_part, code_rest = split_def_line(form_def_line)
-    if "dead-pool-heap" in form_def_line:
-        print("ye")
     relevant_comments = []
-    # First, find the most relevant form and use that, not all comments that match closely with
-    # an existing form
-    # best_matching_form = get_most_relevant_containing_form(form_def_line, decomp_lines)
-    # if best_matching_form is None:
-    #     return relevant_comments
     i = 0
     while i < len(comments):
         comment = comments[i]
@@ -754,7 +709,7 @@ def score_alg(line1, line2):
 
 # TODO - improvement on comparison - a higher score on a longer line == better? some sort of weighting approach here too?
 
-with open("./goal_src/jak2/kernel/gkernel.gc") as f:
+with open(gsrc_path) as f:
     lines = f.readlines()
     within_form = None
     line_num_in_form = None
@@ -869,8 +824,6 @@ with open("./goal_src/jak2/kernel/gkernel.gc") as f:
 
         # Otherwise, we are at the top-level!
         if within_form is None:
-            if "*kernel-context*" in line:
-                print("ye")
             before_comments = relevant_symbol_comments_for_line_before(line)
             for comment in before_comments:
                 final_lines.append(padding_before_comment(comment) + comment.data)
@@ -1000,7 +953,7 @@ for comment in comments:
         )
     elif place_comment_after:
         final_lines.insert(
-            index_to_insert,
+            index_to_insert + 1,
             padding_before_comment(comment) + comment.data,
         )
     else:
@@ -1010,5 +963,5 @@ for comment in comments:
         )
 
 # Step 4: Write it out
-with open("./goal_src/jak2/kernel/gkernel.gc", "w") as f:
+with open(gsrc_path, "w") as f:
     f.writelines(final_lines)
