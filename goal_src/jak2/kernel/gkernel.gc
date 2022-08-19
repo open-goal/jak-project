@@ -5,6 +5,25 @@
 ;; name in dgo: gkernel
 ;; dgos: KERNEL
 
+;; og:ignore-errors:true
+;; og:ignore-form:defun kernel-dispatcher
+
+;; forward declared stuff
+(define-extern *kernel-clock* clock)
+(define-extern *debug-dead-pool* dead-pool-heap)
+(define-extern *null-process* process)
+(define-extern *vis-boot* symbol)
+(define-extern *listener-process* process)
+(define-extern *active-pool* process-tree)
+(define-extern *default-level* level)
+
+(define-extern change-parent (function process-tree process-tree process-tree))
+(define-extern search-process-tree (function process-tree (function process-tree object) process-tree))
+(define-extern iterate-process-tree (function process-tree (function object object) kernel-context object))
+(define-extern execute-process-tree (function process-tree (function object object) kernel-context object))
+(define-extern inspect-process-tree (function process-tree int int symbol process-tree))
+(define-extern process-disconnect (function process int))
+
 ;; DECOMP BEGINS
 
 ;; Version constants
@@ -16,29 +35,11 @@
 (define *kernel-boot-level* #f)
 (define *use-old-listener-print* #f)
 
-
 ;; Stats
 (define *deci-count* 0)
 (define *last-loado-length* 0)
 (define *last-loado-global-usage* 0)
 (define *last-loado-debug-usage* 0)
-
-;; forward declared stuff
-(define-extern *kernel-clock* clock)
-(define-extern *debug-dead-pool* dead-pool-heap)
-(define-extern *null-process* process)
-(define-extern *vis-boot* symbol)
-(define-extern *listener-process* process)
-(define-extern *active-pool* process-tree)
-(define-extern *default-level* level)
-
-
-(define-extern change-parent (function process-tree process-tree process-tree))
-(define-extern search-process-tree (function process-tree (function process-tree object) process-tree))
-(define-extern iterate-process-tree (function process-tree (function object object) kernel-context object))
-(define-extern execute-process-tree (function process-tree (function object object) kernel-context object))
-(define-extern inspect-process-tree (function process-tree int int symbol process-tree))
-(define-extern process-disconnect (function process int))
 
 (defmethod relocate object ((obj object) (arg0 int))
   "Most general relocate method."
@@ -90,8 +91,10 @@
 ;; the main execution stack that's not on the scratchpad
 (define *dram-stack* (the-as (pointer uint8) (malloc 'global DPROCESS_STACK_SIZE)))
 
+;; DECOMP DEVIATION
 ;; the top of the stack.
 (defconstant *kernel-dram-stack* (&+ *dram-stack* DPROCESS_STACK_SIZE))
+;; DECOMP DEVIATION
 
 ;; the top of the scratchpad stack
 (set! (-> *kernel-context* fast-stack-top) (the-as pointer #x70004000))
@@ -102,6 +105,7 @@
 ;; PC Port Scratchpad
 ;;;;;;;;;;;;;;;;;;;;;;;
 
+;; DECOMP DEVIATION
 (#cond
   (PC_PORT
   ;; we'll create a fake scratchpad:
@@ -140,7 +144,7 @@
      (< (the-as int ,x) (scratchpad-end))
      )
   )
-
+;; DECOMP DEVIATION
 
 ;;;;;;;;;;;;;
 ;; Thread
@@ -238,11 +242,13 @@
   (none)
   )
 
+;; decomp deviation
 (defun-debug stream<-process-mask ((arg0 object) (arg1 process-mask))
   "Print a process mask."
   (bit-enum->string process-mask arg1 arg0)
   arg1
   )
+;; decomp deviation
 
 (define *master-mode* 'game)
 (define *pause-lock* #f)
@@ -417,6 +423,7 @@
   obj
   )
 
+;; decomp deviation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Context Suspend And Resume - Kernel
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -789,6 +796,8 @@
     )
   (none)
   )
+;; decomp deviation
+
 
 (defmethod new dead-pool ((allocation symbol) (type-to-make type) (arg0 int) (arg1 int) (arg2 string))
   "Allocate a tree of dead processes."
@@ -814,6 +823,7 @@
     )
   )
 
+;; decomp deviation
 (defmethod get-process dead-pool ((obj dead-pool) (arg0 type) (arg1 int))
   "Try to get a process from this dead pool. If it fails, try the debug dead pool and complain."
 
@@ -835,7 +845,6 @@
       ;; this didn't work right in the original game, just crash here.
       (break)
       )
-
     (cond
       (s4-0
         ;; got a process somehow, set the type and return.
@@ -854,6 +863,7 @@
       )
     )
   )
+;; decomp deviation
 
 (defmethod return-process dead-pool ((obj dead-pool) (arg0 process))
   "Return a process to the dead pool."
@@ -1127,6 +1137,7 @@
     )
   )
 
+;; decomp deviation
 (defmethod return-process dead-pool-heap ((obj dead-pool-heap) (proc process))
   "Return a process to a dead pool heap"
 
@@ -1215,6 +1226,8 @@
     )
   obj
   )
+;; decomp deviation
+
 (defmethod compact dead-pool-heap ((obj dead-pool-heap) (arg0 int))
   "Relocate processes to remove gaps and increase free memory."
 
@@ -1521,6 +1534,7 @@
   (the-as process-tree #f)
   )
 
+;; decomp deviation
 (defun kernel-dispatcher ()
   "Main entry point to GOAL from C++."
 
@@ -1649,6 +1663,7 @@
   )
 
 |#
+;; decomp deviation
 
 (defun sync-dispatcher ()
   "Run just the listener function. Used for SQL query stuff."
@@ -1726,6 +1741,7 @@
   `(the-as (function uint uint uint uint uint uint object) ,func)
   )
 
+;; decomp deviation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Stack Frame Stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1843,7 +1859,6 @@
     )
   )
 
-
 (defun throw-dispatch ((obj catch-frame) value)
   "Throw the given value to the catch frame.
   Only can throw a 64-bit value. The original could throw 128 bits."
@@ -1940,6 +1955,7 @@
   (format 0 "ERROR: throw could not find tag ~A~%" name)
   (break)
   )
+;; decomp deviation
 
 (defmethod new protect-frame ((allocation symbol) (type-to-make type) (arg0 (function none)))
   "Create a new protect frame, must be on the stack."
@@ -2086,6 +2102,7 @@
   arg0
   )
 
+;; decomp deviation
 (defmethod activate process ((obj process) (arg0 process-tree) (arg1 basic) (arg2 pointer))
   "Start a process!"
   ;; if we got the scratchpad stack, move to the fake scratchpad.
@@ -2139,7 +2156,6 @@
   ;; move to the active pool
   (change-parent obj arg0)
   )
-
 
 (defun run-function-in-process ((obj process) (func function) a0 a1 a2 a3 a4 a5)
   "Switch to the given process and run the function. This is used to initialize a process.
@@ -2242,9 +2258,8 @@
     (.add a4 a4)
     (.add a5 a5)
     )
-
   )
-
+;; decomp deviation
 
 (defun set-to-run ((thread cpu-thread) (func function) a0 a1 a2 a3 a4 a5)
   "Set the given thread to call the given function with the given arguments next time it resumes.
@@ -2290,6 +2305,7 @@
 (set! (-> dead-state code) (the (function none :behavior process) nothing))
 (define entity-deactivate-handler (the-as (function process entity-actor none) nothing))
 
+;; decomp deviation
 (defmethod deactivate process ((obj process))
   "Kill a process."
   (with-pp
@@ -2376,6 +2392,7 @@
     (none)
     )
   )
+;; decomp deviation
 
 ;;;;;;;;;;;;;;;;;;;
 ;; Kernel globals

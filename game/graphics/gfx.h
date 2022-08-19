@@ -124,6 +124,8 @@ u32 Init(GameVersion version);
 void Loop(std::function<bool()> f);
 u32 Exit();
 
+Pad::MappingInfo& get_button_mapping();
+
 u32 vsync();
 void register_vsync_callback(std::function<void()> f);
 void clear_vsync_callback();
@@ -152,9 +154,10 @@ void set_msaa(int samples);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);
+bool get_debug_menu_visible_on_startup();
 
 int PadIsPressed(Pad::Button button, int port);
-int PadAnalogValue(Pad::Analog analog, int port);
+int PadGetAnalogValue(Pad::Analog analog, int port);
 
 // matching enum in kernel-defs.gc !!
 enum class RendererTreeType { NONE = 0, TFRAG3 = 1, TIE3 = 2, INVALID };
