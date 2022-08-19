@@ -64,8 +64,10 @@ This is used for funny cheat codes and the like.
         ))
   )
 
-(defun scale-joints ((obj process-drawable) (cspace-idx int) (scale vector))
-  "scale a joint (cspace-idx) in an actor. also scales all child joints."
+(defun scale-joints ((obj process-drawable) (cspace-idx int) (scale-children? symbol) (scale vector))
+  "scale a joint (cspace-idx) in an actor. if scale-children? = #t, also scales all child joints."
+  (if (= cspace-idx -1)
+      (return #f))
   (let* ((parent-mtx (-> obj node-list data cspace-idx bone transform))
          (unscale-q (matrix-diagonal! (new-stack-matrix0) (/ 1.0 (-> parent-mtx data 15))))
          (scale-q (matrix-diagonal! (new-stack-matrix0) (-> parent-mtx data 15)))
@@ -80,7 +82,10 @@ This is used for funny cheat codes and the like.
          (matrix2 (matrix*! (new-stack-matrix0) matrix1 parent-mtx))
          (matrix3 (matrix*! (new-stack-matrix0) matrix2 scale-q))
          )
-    (cspace-map-joints obj cspace-idx #t matrix*!-bone-callback matrix3 scale)
+    (if scale-children?
+        (cspace-map-joints obj cspace-idx #t matrix*!-bone-callback matrix3 scale)
+        (matrix*!-bone-callback (-> obj node-list data cspace-idx bone) #t matrix3 scale)
+        )
     )
   )
 
@@ -89,16 +94,24 @@ This is used for funny cheat codes and the like.
   
   (let ((neckA-idx (cspace-index-by-name obj "neckA")))
       (cond
-        ((pc-cheats? (-> *pc-settings* cheats) small-head) (scale-joints obj neckA-idx *cheat-small-head-scale*))
-        ((pc-cheats? (-> *pc-settings* cheats) huge-head) (scale-joints obj neckA-idx *cheat-huge-head-scale*))
-        ((pc-cheats? (-> *pc-settings* cheats) big-head) (scale-joints obj neckA-idx *cheat-big-head-scale*))
+        ((pc-cheats? (-> *pc-settings* cheats) small-head) (scale-joints obj neckA-idx #t *cheat-small-head-scale*))
+        ((pc-cheats? (-> *pc-settings* cheats) huge-head) (scale-joints obj neckA-idx #t *cheat-huge-head-scale*))
+        ((pc-cheats? (-> *pc-settings* cheats) big-head) (scale-joints obj neckA-idx #t *cheat-big-head-scale*))
         ))
-  (let* ((armL-idx (cspace-index-by-name obj "sk_lhand"))
-         (armR-idx (cspace-index-by-name obj "sk_rhand")))
-      (when (pc-cheats? (-> *pc-settings* cheats) big-fist)
-          (scale-joints obj armL-idx *cheat-huge-head-scale*)
-          (scale-joints obj armR-idx *cheat-huge-head-scale*)
-          ))
+  (when (pc-cheats? (-> *pc-settings* cheats) big-fist)
+      (scale-joints obj (cspace-index-by-name obj "sk_lhand") #t *cheat-huge-head-scale*)
+      (scale-joints obj (cspace-index-by-name obj "sk_rhand") #t *cheat-huge-head-scale*)
+      )
+  0 (none)
+  )
+
+(defun process-drawable-joint-callback-pc ((obj process-drawable))
+  "custom animation callback for any process drawable"
+  
+  (when (pc-cheats? (-> *pc-settings* cheats) oh-my-goodness)
+      (scale-joints obj (cspace-index-by-name obj "lbood") #t *cheat-huge-head-scale*)
+      (scale-joints obj (cspace-index-by-name obj "rboob") #t *cheat-huge-head-scale*)
+      )
   0 (none)
   )
 
