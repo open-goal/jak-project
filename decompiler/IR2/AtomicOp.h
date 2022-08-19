@@ -188,6 +188,8 @@ class SimpleAtom {
     return m_string;
   }
   void mark_as_float();
+  bool is_integer_promoted_to_float() const;
+  float get_integer_promoted_to_float() const;
 
  private:
   Kind m_kind = Kind::INVALID;

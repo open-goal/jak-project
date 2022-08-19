@@ -107,6 +107,7 @@ struct StackSlotType {
 struct TypeState {
   Type* gpr_types[32];
   Type* fpr_types[32];
+  Type* next_state_type = nullptr;
 
   Type*& operator[](const Register& reg) {
     switch (reg.get_kind()) {
@@ -159,6 +160,7 @@ struct TypeState {
     for (auto spill : stack_slot_types) {
       f(spill->type);
     }
+    f(*next_state_type);
   }
 
   std::vector<StackSlotType*> stack_slot_types;
@@ -169,6 +171,7 @@ struct Instruction {
   size_t aop_idx = -1;
   std::vector<RegType> written_reg_types;
   std::optional<StackSlotType> written_stack_slot_type;
+  std::optional<Type> written_next_state_type;
   std::unique_ptr<AmbiguousFieldAccess> field_access_tag;
   std::unique_ptr<UnknownLabel> unknown_label_tag;
   std::unique_ptr<UnknownStackStructure> unknown_stack_structure_tag;
@@ -178,6 +181,7 @@ struct Instruction {
 struct BlockStartTypes {
   Type gpr_types[32];
   Type fpr_types[32];
+  Type next_state_type;
   std::vector<StackSlotType> stack_slot_types;
 
   StackSlotType* try_find_stack_spill_slot(int slot) {

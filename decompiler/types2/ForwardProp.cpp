@@ -1003,6 +1003,7 @@ void types2_addr_on_stack(types2::Type& type_out,
   auto sss = types.try_find_stack_spill_slot(offset);
   if (sss && sss->type) {
     type_out.type = TP_Type::make_from_ts(TypeSpec("pointer", {sss->type->typespec()}));
+    return;
   }
 
   // Neither matched... see if there's a tag.
@@ -1755,21 +1756,17 @@ void StoreOp::propagate_types2(types2::Instruction& instr,
 
   // handle the next-state thing
   // look for setting the next state of the current process
-  int offset_for_next_state = 0;
-  switch (env.version) {
-    case GameVersion::Jak1:
-      offset_for_next_state = 72;
-      break;
-    case GameVersion::Jak2:
-      offset_for_next_state = 64;
-      break;
-    default:
-      ASSERT(false);
-  }
   IR2_RegOffset ro;
   if (get_as_reg_offset(m_addr, &ro)) {
-    if (ro.reg == Register(Reg::GPR, Reg::S6) && ro.offset == offset_for_next_state) {
-      ASSERT(false);  // todo, implement..
+    if (ro.reg == Register(Reg::GPR, Reg::S6) &&
+        ro.offset == OFFSET_OF_NEXT_STATE_STORE[env.version]) {
+      ASSERT(m_value.is_var());
+      auto& store_type = input_types[m_value.var().reg()]->type;
+      if (store_type) {
+        instr.types.next_state_type->type = store_type;
+      } else {
+        instr.types.next_state_type->type = TP_Type::make_from_ts("state");  // idk
+      }
     }
   }
 
@@ -2233,26 +2230,31 @@ void CallOp::propagate_types2(types2::Instruction& instr,
   // special case: go
   // If we call enter-state, update our type.
   if (in_tp.kind == TP_Type::Kind::ENTER_STATE_FUNCTION) {
-    ASSERT(false);
     can_backprop = false;  // for now... can special case this later.
     // this is a GO!
-    /*
-    auto state_type = input.next_state_type.typespec();
-    if (state_type.base_type() != "state") {
+    const auto& state_type = instr.types.next_state_type;
+    if (!state_type->type) {
+      throw std::runtime_error(
+          fmt::format("At op {}, called enter-state, but we have no idea what the type of the "
+                      "next-states is. This can probably be fixed by providing some more casts, or "
+                      "improving the decompiler to backtrack go's.",
+                      m_my_idx));
+    }
+    auto state_typespec = state_type->type->typespec();
+    if (state_typespec.base_type() != "state") {
       throw std::runtime_error(
           fmt::format("At op {}, called enter-state, but the current next-state has type {}, which "
                       "is not a valid state.",
-                      m_my_idx, input.next_state_type.print()));
+                      m_my_idx, state_typespec.print()));
     }
 
-    if (state_type.arg_count() == 0) {
+    if (state_typespec.arg_count() == 0) {
       throw std::runtime_error(fmt::format(
           "At op {}, tried to enter-state, but the type of (-> s6 next-state) is just a plain "
           "state.  The decompiler must know the specific state type.",
           m_my_idx));
     }
-    in_type = state_to_go_function(state_type, TypeSpec("object"));
-     */
+    in_type = state_to_go_function(state_typespec, TypeSpec("object"));
   }
 
   // special case: process initialization

@@ -594,6 +594,16 @@ goos::Object sp_launch_grp_launcher_decompile(const std::vector<LinkedWord>& wor
   return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
                                                file, TypeSpec("sparticle-group-item"), 32);
 }
+goos::Object probe_dir_decompile(const std::vector<LinkedWord>& words,
+                                 const std::vector<DecompilerLabel>& labels,
+                                 int my_seg,
+                                 int field_location,
+                                 const TypeSystem& ts,
+                                 const std::vector<std::vector<LinkedWord>>& all_words,
+                                 const LinkedObjectFile* file) {
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
+                                               file, TypeSpec("vector"), 16);
+}
 
 goos::Object decompile_sound_spec(const TypeSpec& type,
                                   const DecompilerLabel& label,
@@ -771,7 +781,8 @@ goos::Object decompile_structure(const TypeSpec& type,
   if (is_basic) {
     const auto& word = words.at(label.target_segment).at((offset_location / 4));
     if (word.kind() != LinkedWord::TYPE_PTR) {
-      throw std::runtime_error(fmt::format("Basic does not start with type pointer: {}", label.name));
+      throw std::runtime_error(
+          fmt::format("Basic does not start with type pointer: {}", label.name));
     }
 
     if (word.symbol_name() != actual_type.base_type()) {
@@ -978,6 +989,10 @@ goos::Object decompile_structure(const TypeSpec& type,
               field.name(), decomp_ref_to_integer_array_guess_size(
                                 obj_words, labels, label.target_segment, field_start, ts, words,
                                 file, TypeSpec("uint8"), 1));
+        } else if (field.name() == "probe-dirs" && type.print() == "lightning-probe-vars") {
+          field_defs_out.emplace_back(field.name(),
+                                      probe_dir_decompile(obj_words, labels, label.target_segment,
+                                                          field_start, ts, words, file));
         } else {
           if (field.type().base_type() == "pointer") {
             if (obj_words.at(field_start / 4).kind() != LinkedWord::SYM_PTR) {

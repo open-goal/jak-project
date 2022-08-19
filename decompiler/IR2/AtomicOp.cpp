@@ -154,6 +154,19 @@ void SimpleAtom::mark_as_float() {
   m_display_int_as_float = true;
 }
 
+bool SimpleAtom::is_integer_promoted_to_float() const {
+  return m_kind == Kind::INTEGER_CONSTANT && m_display_int_as_float;
+}
+
+float SimpleAtom::get_integer_promoted_to_float() const {
+  ASSERT(is_integer_promoted_to_float());
+  s32 as_s32 = get_int();
+  ASSERT(get_int() == (s64)as_s32);
+  float result;
+  memcpy(&result, &as_s32, 4);
+  return result;
+}
+
 goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   switch (m_kind) {
     case Kind::VARIABLE:

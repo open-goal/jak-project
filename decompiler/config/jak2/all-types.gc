@@ -1155,7 +1155,7 @@
   )
 
 (deftype vector-array (inline-array-class)
-  ((data vector :inline :dynamic :offset-assert 16)
+  ((data vector :inline :dynamic :offset-assert 16 :score 10)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -5129,7 +5129,7 @@
   )
 
 (deftype light-sphere (structure)
-  ((name                basic           :offset-assert 0)
+  ((name                string          :offset-assert 0)
    (bsphere             vector  :inline :offset-assert 16)
    (direction           vector  :inline :offset-assert 32)
    (color               vector  :inline :offset-assert 48)
@@ -5158,13 +5158,13 @@
   ((num-lights         uint16           :offset-assert 4)
    (num-indices        uint16           :offset-assert 6)
    (num-buckets        uint16           :offset-assert 8)
-   (bucket-step        uint16  2        :offset-assert 10)
+   (bucket-step        uint8   2        :offset-assert 10)
    (base-trans         vector   :inline :offset-assert 16)
    (axis-scale         vector   :inline :offset-assert 32)
    (dimension-array    vector4w :inline :offset-assert 48)
-   (bucket-array       uint32           :offset-assert 64)
-   (index-array        uint32           :offset-assert 68)
-   (light-sphere-array uint32           :offset-assert 72)
+   (bucket-array       pointer          :offset-assert 64)
+   (index-array        pointer          :offset-assert 68)
+   (light-sphere-array (inline-array light-sphere) :offset-assert 72)
    )
   :method-count-assert 9
   :size-assert         #x4c
@@ -5184,13 +5184,14 @@
    (dir1 light :inline :offset-assert 48)
    (dir2 light :inline :offset-assert 96)
    (ambi light :inline :offset-assert 144)
+   (lights light 4 :inline :offset 0) ;; added
    )
   :method-count-assert 9
   :size-assert         #xc0
   :flag-assert         #x9000000c0
   )
 
-(define-extern *light-hash* light-hash-work)
+(define-extern *light-hash* light-hash)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood-h                         ;;
@@ -12353,11 +12354,14 @@
 ;; lightning-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO skipped
-
 (defenum lightning-spec-flags
   :type uint16
   :bitfield #t
+  (lsf0 0)
+  (lsf1 1)
+  (lsf2 2)
+  (lsf3 3)
+  (size-from-adjust-dist 4)
   )
 
 (deftype lightning-spec (basic)
@@ -12402,9 +12406,9 @@
    (points-to-draw int32               :offset-assert 8)
    (box-size       float               :offset-assert 12)
    (gcf-control    gcf-control :inline :offset-assert 16)
-   (line           basic               :offset-assert 128)
-   (meet           basic               :offset-assert 132)
-   (path           basic               :offset-assert 136)
+   (line           vector-array        :offset-assert 128)
+   (meet           vector-array        :offset-assert 132)
+   (path           vector-array        :offset-assert 136)
    (start-color    uint32              :offset-assert 140)
    (end-color      uint32              :offset-assert 144)
    )
@@ -12415,18 +12419,19 @@
 
 (deftype lightning-control (basic)
   ((spec    lightning-spec          :offset-assert 4)
-   (process uint32                  :offset-assert 8)
+   (process process                 :offset-assert 8)
    (state   lightning-state :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #xa4
   :flag-assert         #xe000000a4
   (:methods
+    (new (symbol type lightning-spec process float) _type_)
     (change-mode (_type_ lightning-mode) lightning-mode 9)
     (get-mode (_type_) lightning-mode 10)
-    (lightning-control-method-11 (_type_ object object) none 11)
-    (lightning-control-method-12 (_type_ object) none 12)
-    (lightning-control-method-13 (_type_ int) none 13)
+    (set-point (_type_ int vector) none 11)
+    (set-first-meet-point (_type_ vector) none 12)
+    (set-last-meet-point (_type_ vector) none 13)
     )
   )
 
@@ -12437,7 +12442,7 @@
    (point           vector 2 :inline       :offset-assert 32)
    (start-pos       vector  :inline :offset 32)
    (end-pos         vector  :inline :offset 48)
-   (probe-dirs      uint32          :offset-assert 64)
+   (probe-dirs      (inline-array vector)          :offset-assert 64)
    )
   :method-count-assert 9
   :size-assert         #x44
@@ -12445,13 +12450,11 @@
   )
 
 (define-extern lookup-lightning-spec-by-name (function string lightning-spec))
-;; (define-extern *lightning-probe-vars* lightning-probe-vars)
+(define-extern *lightning-probe-vars* lightning-probe-vars)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; res-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; TODO skip
 
 ;; TODO confirm, this is just copied from jak1
 (deftype res-tag (uint128)
@@ -12475,9 +12478,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; res                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; TODO skip
-
 
 (deftype res-tag-pair (uint64)
   ((lo  int32 :offset 0)
@@ -12517,27 +12517,27 @@
     )
   )
 
-;; (define-extern *res-static-buf* object) ;; pointer
+(define-extern *res-static-buf* pointer)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; lights                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO skip
+;; TODO skip some asm stuff, maybe needs mips2c.
 
-;; (define-extern *light-hash-work* object)
-;; (define-extern light-slerp function) ;; (function light light light float light)
-;; (define-extern light-group-slerp function) ;; (function light-group light-group light-group float light-group)
-;; (define-extern light-group-process! function) ;; (function vu-lights light-group vector vector none)
-;; (define-extern *default-lights* object) ;; vu-lights
-;; (define-extern vu-lights-default! function) ;; (function vu-lights vu-lights)
-;; (define-extern init-light-hash function)
-;; (define-extern light-hash-count-items function)
+(define-extern *light-hash-work* light-hash-work)
+(define-extern light-slerp (function light light light float light))
+(define-extern light-group-slerp (function light-group light-group light-group float light-group))
+(define-extern light-group-process! (function vu-lights light-group vector vector none))
+(define-extern *default-lights* vu-lights)
+(define-extern vu-lights-default! (function vu-lights vu-lights))
+(define-extern init-light-hash (function none))
+(define-extern light-hash-count-items (function light-hash none))
 ;; (define-extern light-hash-add-items function)
-;; (define-extern reset-light-hash function)
-;; (define-extern update-light-hash function)
-;; (define-extern lookup-light-sphere-by-name function)
-;; (define-extern light-hash-get-bucket-index function)
+(define-extern reset-light-hash (function none))
+(define-extern update-light-hash (function light-hash none))
+(define-extern lookup-light-sphere-by-name (function string light-hash light-sphere))
+(define-extern light-hash-get-bucket-index (function light-hash vector int))
 ;; (define-extern add-light-sphere-to-light-group function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -12938,12 +12938,12 @@
   )
 
 (deftype fact-info (basic)
-  ((process process)
-   (pickup-type pickup-type)
-   (pickup-amount float)
-   (pickup-spawn-amount float)
-   (options actor-option)
-   (fade-time time-frame)
+  ((process process :offset-assert 4)
+   (pickup-type pickup-type :offset-assert 8)
+   (pickup-amount float :offset-assert 12)
+   (pickup-spawn-amount float :offset-assert 16)
+   (options actor-option :offset-assert 24)
+   (fade-time time-frame :offset-assert 32)
    )
   :method-count-assert 12
   :size-assert         #x28
@@ -13053,7 +13053,7 @@
   :flag-assert         #xd00000053
   ;; Failed to read fields.
   (:methods
-     ;; (new (symbol type process-drawable pickup-type float) _type_ 0)
+    (new (symbol type process (pointer float) float) _type_ 0)
     (fact-info-enemy-method-12 () none 12)
     )
   )
@@ -20066,6 +20066,7 @@
   )
 |#
 
+(define-extern nav-mesh type) ;; remove once we have this.
 #|
 (deftype nav-mesh (basic)
   ()
@@ -21554,7 +21555,7 @@
 (define-extern foreground-init (function none))
 ;; (define-extern texscroll-make-request function) ;; (function merc-effect none)
 (define-extern texscroll-execute (function none))
-;; (define-extern vu-lights<-light-group! function) ;; (function vu-lights light-group none)
+(define-extern vu-lights<-light-group! (function vu-lights light-group none))
 ;; (define-extern foreground-add-mtx-calc function)
 (define-extern foreground-wrapup (function none))
 ;; (define-extern *default-shadow-settings* object) ;; shadow-settings
@@ -22425,7 +22426,7 @@
 ;; (define-extern *sp-temp* object)
 ;; (define-extern lookup-part-group-by-name function) ;; (function string basic)
 ;; (define-extern lookup-part-group-pointer-by-name function) ;; (function string (pointer sparticle-launch-group))
-;; (define-extern part-group-pointer? function) ;; (function pointer symbol)
+(define-extern part-group-pointer? (function pointer symbol))
 ;; (define-extern unlink-part-group-by-heap function) ;; (function kheap int)
 ;; (define-extern sp-init-fields! function) ;; (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol object)
 ;; (define-extern *sp-launcher-lock* object) ;; symbol
@@ -25205,7 +25206,7 @@
 ;; (define-extern draw-joint-axes function)
 ;; (define-extern draw-root function)
 ;; (define-extern empty-state state) ;; (state process)
-;; (define-extern process-drawable-art-error state) ;; (state string process-drawable)
+(define-extern process-drawable-art-error (state string process-drawable))
 ;; (define-extern process-drawable-idle state) ;; (state process-drawable)
 ;; (define-extern skeleton-group->draw-control function)
 ;; (define-extern ja-done? function) ;; (function int symbol :behavior process-drawable)
@@ -27038,7 +27039,7 @@
 ;; (define-extern entity-remap-names function) ;; (function pair none)
 ;; (define-extern process-status-bits function) ;; (function process symbol none)
 ;; (define-extern process-entity-set! function)
-;; (define-extern process-task-mask function)
+(define-extern process-task-mask (function process task-mask))
 ;; (define-extern update-actor-vis-box function) ;; (function process-drawable vector vector none)
 ;; (define-extern expand-bounding-box function)
 ;; (define-extern expand-vis-box-with-point function) ;; (function entity vector none)

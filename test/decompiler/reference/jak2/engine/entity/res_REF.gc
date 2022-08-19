@@ -1,68 +1,32 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: res.gc
-;; name in dgo: res
-;; dgos: ENGINE, GAME
-
-#|
-res is a generic storage system for not very large data, used mostly for the game entities.
-These res files store collections of data, which can be as values (int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, vector), or any structure (as references), which are tagged and identified with a res-tag.
-The data is stored similar to an unboxed inline-array, the type of the data is stored in the res-tag.
-
-A res-lump stores and is used to access all of the data for a single "resource", a collection of varying data.
-This is similar to a C++ map or C# dictionary. The key is a res-tag and the value is the corresponding binary data.
-
-A res-tag is a tag that contains information about a particular property of this resource, such as type, name, and amount of elements.
-For example, information about an array of vectors that make up a path - for a moving platform - or an integer to store its entity ID.
-
-Keyframes are used to specify when/where the data is relevant.
-For example (this is made-up), say you have a camera spline, and you want the FOV to change at three specific points:
-when it starts, somewhere in the middle, and at the end.
-You would store an array of three FOV values. The key-frame field could then be used to say at which point in the spline
-the FOV should be at that value. If the camera is somewhere between those points, the result could then be interpolated.
-
-Properties are looked up from a res-lump using their name (a symbol).
-You can look up the data of the property you want directly using the various get-property methods.
-Curves can be quickly filled in using the get-curve-data! method.
-
-
-This is updated from the entity system used in Crash 2, which had most of these features and worked very similarly!
-|#
-
-;; DECOMP BEGINS
-
-(defmacro res-ref? (tag)
-  "Checks resource tag, and returns #t if resource data is a reference type, #f if it is inlined."
-
-  `(zero? (-> ,tag inlined?))
-  )
-
+;; definition for method 2 of type res-tag
 (defmethod print res-tag ((obj res-tag))
-  "print a res-tag."
-
-    (if (res-ref? obj)
-
-      (format #t "#<res-tag :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
-                  (-> obj name)
-                  (-> obj key-frame)
-                  (-> obj elt-type)
-                  (-> obj elt-count)
-                  )
-
-      (format #t "#<res-tag (i) :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
-                  (-> obj name)
-                  (-> obj key-frame)
-                  (-> obj elt-type)
-                  (-> obj elt-count)
-                  )
+  (if (zero? (-> obj inlined?))
+      (format
+        #t
+        "#<res-tag :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
+        (-> obj name)
+        (-> obj key-frame)
+        (-> obj elt-type)
+        (-> obj elt-count)
+        )
+      (format
+        #t
+        "#<res-tag (i) :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
+        (-> obj name)
+        (-> obj key-frame)
+        (-> obj elt-type)
+        (-> obj elt-count)
+        )
       )
-
-    obj
+  obj
   )
 
+;; definition for method 4 of type res-tag
+;; INFO: Return type mismatch uint vs int.
 (defmethod length res-tag ((obj res-tag))
-  "get the length in bytes of this tag's resource."
   (the-as int (if (zero? (-> obj inlined?))
                   (* (-> obj elt-count) 4)
                   (* (-> obj elt-count) (-> obj elt-type size))
@@ -70,18 +34,19 @@ This is updated from the entity system used in Crash 2, which had most of these 
           )
   )
 
+;; definition for method 13 of type res-lump
+;; INFO: Used lq/sq
 (defmethod get-tag-index-data res-lump ((obj res-lump) (arg0 int))
-  "get the data address of the n'th tag."
   (&+ (-> obj data-base) (-> obj tag arg0 data-offset))
   )
 
+;; definition for method 14 of type res-lump
 (defmethod get-tag-data res-lump ((obj res-lump) (arg0 res-tag))
-  "get the data address of the specified tag."
   (&+ (-> obj data-base) (-> arg0 data-offset))
   )
 
+;; definition for method 0 of type res-lump
 (defmethod new res-lump ((allocation symbol) (type-to-make type) (arg0 int) (arg1 int))
-  "Allocate a new res-lump."
   (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* (+ arg0 -1) 16) arg1)))))
     (set! (-> v0-0 allocated-length) arg0)
     (set! (-> v0-0 data-size) arg1)
@@ -92,16 +57,19 @@ This is updated from the entity system used in Crash 2, which had most of these 
     )
   )
 
+;; definition for method 4 of type res-lump
 (defmethod length res-lump ((obj res-lump))
-  "get the amount of resources in a res-lump."
   (-> obj length)
   )
 
+;; definition for method 5 of type res-lump
+;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of res-lump ((obj res-lump))
-  "get the allocated size of a res-lump."
   (the-as int (+ (-> obj type psize) (* (-> obj allocated-length) 16) (-> obj data-size)))
   )
 
+;; definition for method 3 of type res-lump
+;; INFO: Used lq/sq
 (defmethod inspect res-lump ((obj res-lump))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Textra: ~A~%" (-> obj extra))
@@ -111,14 +79,28 @@ This is updated from the entity system used in Crash 2, which had most of these 
   (format #t "~Tdata-top: #x~X~%" (-> obj data-top))
   (format #t "~Tdata-size: #x~X~%" (-> obj data-size))
   (format #t "~Ttag[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj tag))
-  (dotimes (i (-> obj length))
-    (format #t "~T  [~D] " i)
-    (print (-> (-> obj tag) i))
-    (format #t " @ #x~X" (get-tag-index-data obj i))
+  (dotimes (s5-0 (-> obj length))
+    (format #t "~T  [~D] " s5-0)
+    (print (-> obj tag s5-0))
+    (let ((t9-10 format)
+          (a0-12 #t)
+          (a1-9 " @ #x~X")
+          (a3-2 obj)
+          (a2-9 s5-0)
+          )
+      (t9-10 a0-12 a1-9 (&+ (-> a3-2 data-base) (-> a3-2 tag a2-9 data-offset)))
+      )
     (cond
-      ((res-ref? (-> obj tag i))
-        (format #t " = ~A~%" (deref basic (get-tag-index-data obj i)))
-        )
+      ((zero? (-> obj tag s5-0 inlined?))
+       (let ((t9-11 format)
+             (a0-14 #t)
+             (a1-10 " = ~A~%")
+             (a3-4 obj)
+             (a2-17 s5-0)
+             )
+         (t9-11 a0-14 a1-10 (-> (the-as (pointer uint32) (&+ (-> a3-4 data-base) (-> a3-4 tag a2-17 data-offset)))))
+         )
+       )
       (else
         (format #t "~%")
         )
@@ -127,18 +109,10 @@ This is updated from the entity system used in Crash 2, which had most of these 
   obj
   )
 
+;; definition for method 19 of type res-lump
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs res-tag-pair.
 (defmethod lookup-tag-idx res-lump ((obj res-lump) (arg0 symbol) (arg1 symbol) (arg2 float))
-  "Look up the index of the tag containing with the given name and timestamp.
-   Correct lookups return a res-tag-pair, which contains one tag index in the lower 32 bits and one in the upper 32 bits.
-   Depending on the mode, they may be the same, or they may be two tags that you should interpolate
-   between, if the exact time was not found.
-
-   name-sym should be the name of the thing you want.
-   time is for the timestamp you want.
-   If mode = 'base, then both the indices are the same and the timestamp is ignored.
-   If mode = 'interp, then it tries to get closest below/closest above (or both the same, if exact match found)
-   If mode = 'exact, then it requires an exact timestamp match and both indices are the same.
-   If things go wrong, returns a negative number"
   (local-vars (t4-1 int))
   (when (or (= arg0 'id)
             (= arg0 'aid)
@@ -236,11 +210,9 @@ This is updated from the entity system used in Crash 2, which had most of these 
     )
   )
 
+;; definition for method 20 of type res-lump
+;; INFO: Used lq/sq
 (defmethod make-property-data res-lump ((obj res-lump) (arg0 float) (arg1 res-tag-pair) (arg2 pointer))
-   "Returns (a pointer to) the value data of a property with the tag-pair.
-   If tag-pair does not represent an exact point in the timeline, then the data is interpolated based on time
-   with the result written into buf. buf must have enough space to copy all of the data.
-   Otherwise, simply returns an address to the resource binary."
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -420,20 +392,16 @@ This is updated from the entity system used in Crash 2, which had most of these 
     )
   )
 
+;; definition for method 9 of type res-lump
+;; INFO: Used lq/sq
 (defmethod get-property-data res-lump ((obj res-lump)
-                                       (arg0 symbol)
-                                       (arg1 symbol)
-                                       (arg2 float)
-                                       (arg3 pointer)
-                                       (arg4 (pointer res-tag))
-                                       (arg5 pointer)
-                                       )
-  "Returns an address to a given property's data at a specific time stamp, or default on error.
-  name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
-  default is the default result returned in the case of an error.
-  tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
-  buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
-
+                                     (arg0 symbol)
+                                     (arg1 symbol)
+                                     (arg2 float)
+                                     (arg3 pointer)
+                                     (arg4 (pointer res-tag))
+                                     (arg5 pointer)
+                                     )
   (let ((s3-0 (lookup-tag-idx obj arg0 arg1 arg2)))
     (cond
       ((< (the-as int s3-0) 0)
@@ -450,19 +418,17 @@ This is updated from the entity system used in Crash 2, which had most of these 
   arg3
   )
 
+;; definition for method 10 of type res-lump
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch object vs structure.
 (defmethod get-property-struct res-lump ((obj res-lump)
-                                         (arg0 symbol)
-                                         (arg1 symbol)
-                                         (arg2 float)
-                                         (arg3 structure)
-                                         (arg4 (pointer res-tag))
-                                         (arg5 pointer)
-                                         )
-  "Returns a given struct property's value at a specific time stamp, or default on error.
-  name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
-  default is the default result returned in the case of an error.
-  tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
-  buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+                                       (arg0 symbol)
+                                       (arg1 symbol)
+                                       (arg2 float)
+                                       (arg3 structure)
+                                       (arg4 (pointer res-tag))
+                                       (arg5 pointer)
+                                       )
   (let ((s3-0 (lookup-tag-idx obj arg0 arg1 arg2)))
     (cond
       ((< (the-as int s3-0) 0)
@@ -485,19 +451,17 @@ This is updated from the entity system used in Crash 2, which had most of these 
   (the-as structure arg3)
   )
 
+;; definition for method 11 of type res-lump
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs uint128.
 (defmethod get-property-value res-lump ((obj res-lump)
-                                        (arg0 symbol)
-                                        (arg1 symbol)
-                                        (arg2 float)
-                                        (arg3 uint128)
-                                        (arg4 (pointer res-tag))
-                                        (arg5 pointer)
-                                        )
-  "Returns a given value property's value at a specific time stamp, or default on error.
-  name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
-  default is the default result returned in the case of an error.
-  tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
-  buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+                                      (arg0 symbol)
+                                      (arg1 symbol)
+                                      (arg2 float)
+                                      (arg3 uint128)
+                                      (arg4 (pointer res-tag))
+                                      (arg5 pointer)
+                                      )
   (let ((a2-1 (lookup-tag-idx obj arg0 arg1 arg2)))
     (cond
       ((< (the-as int a2-1) 0)
@@ -565,8 +529,9 @@ This is updated from the entity system used in Crash 2, which had most of these 
   (the-as uint128 arg3)
   )
 
+;; definition for method 12 of type res-lump
+;; INFO: Used lq/sq
 (defmethod get-property-value-float res-lump ((obj res-lump) (arg0 symbol) (arg1 symbol) (arg2 float) (arg3 float) (arg4 (pointer res-tag)) (arg5 pointer))
-  "same as get-property-value but float type is checked first?"
   (local-vars (v1-8 uint) (v1-11 int))
   (let ((a2-1 (lookup-tag-idx obj arg0 arg1 arg2)))
     (cond
@@ -637,8 +602,9 @@ This is updated from the entity system used in Crash 2, which had most of these 
   arg3
   )
 
+;; definition for method 16 of type res-lump
+;; INFO: Used lq/sq
 (defmethod sort! res-lump ((obj res-lump))
-  "Sort all tags based on name, then key-frame."
   (let ((v1-0 -1))
     (while (nonzero? v1-0)
       (set! v1-0 0)
@@ -665,12 +631,9 @@ This is updated from the entity system used in Crash 2, which had most of these 
   obj
   )
 
+;; definition for method 15 of type res-lump
+;; INFO: Used lq/sq
 (defmethod allocate-data-memory-for-tag! res-lump ((obj res-lump) (arg0 res-tag))
-  "Find space for the data described by arg0 in obj.
-   Returns a tag with data-offset set correctly for this res-lump.
-   If the lump already contains memory for the given tag, and it is big enough,
-   it will be reused.  Alignment will be at least 8 bytes.
-   If the input tag has elt-count = 0, it will return a tag for elt-count = 1."
   (local-vars (resource-mem pointer))
   (let* ((tag-pair (lookup-tag-idx obj (-> arg0 name) 'exact (-> arg0 key-frame)))
          (existing-tag (-> obj tag (-> tag-pair lo)))
@@ -733,10 +696,8 @@ This is updated from the entity system used in Crash 2, which had most of these 
     )
   )
 
+;; definition for method 17 of type res-lump
 (defmethod add-data! res-lump ((obj res-lump) (arg0 res-tag) (arg1 pointer))
-  "Given a tag and a pointer to its data, copy it to this res-lump.
-   This doesn't seem to do the right thing if the given tag is a non-inline tag
-   with > 1 element."
   (let ((a0-2 (allocate-data-memory-for-tag! obj arg0)))
     (when a0-2
       (let* ((v1-2 obj)
@@ -760,23 +721,16 @@ This is updated from the entity system used in Crash 2, which had most of these 
   obj
   )
 
+;; definition for method 18 of type res-lump
 (defmethod add-32bit-data! res-lump ((obj res-lump) (arg0 res-tag) (arg1 object))
-  "Add a single 32-bit value using add-data."
-  (set! (-> arg0 inlined?) 1)
-  (add-data! obj arg0 (& arg1)) ;; note, only 32-bits are spilled to the stack here.
-  #|
   (local-vars (sv-16 object))
   (set! sv-16 arg1)
-  (let* ((v1-0 arg0)
-         (a1-4 (copy-and-set-bf v1-0 :inlined? 1))
-         )
-   (add-data! obj a1-4 (& sv-16))
-   )
-   |#
+  (let* ((v1-0 arg0) (a1-4 (copy-and-set-field v1-0 inlined? 1))) (add-data! obj a1-4 (& sv-16)))
   )
 
+;; definition for method 21 of type res-lump
+;; INFO: Used lq/sq
 (defmethod get-curve-data! res-lump ((obj res-lump) (arg0 curve) (arg1 symbol) (arg2 symbol) (arg3 float))
-  "Read curve data and write it to curve-target. Return #t if both control points and knots data was succesfully read, #f otherwise."
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (let ((s5-0 #f))
     (set! sv-16 (new 'static 'res-tag))
@@ -813,8 +767,16 @@ This is updated from the entity system used in Crash 2, which had most of these 
     )
   )
 
+;; definition for method 8 of type res-lump
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs res-lump.
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Using new Jak 2 rtype-of
+;; WARN: Using new Jak 2 rtype-of
 (defmethod mem-usage res-lump ((obj res-lump) (arg0 memory-usage-block) (arg1 int))
-  "Get the memory usage of this lump and its data"
   (local-vars (sv-16 int))
   (let ((s3-0 48)
         (s2-0 "res")
@@ -908,93 +870,5 @@ This is updated from the entity system used in Crash 2, which had most of these 
 (define *res-static-buf* (malloc 'global 128))
 
 
-
-
-;; There are four common types of lookup:
-;; data. This is something like (pointer int32) or (inline-array vector), it should have a size.
-;; struct. This will get a GOAL struct or basic. Like a string.
-;; value. This will get a value. Possibly even a 128-bit value, though this does not appear to work properly.
-;; float. This will get a float. If the value stored is an int, it will be converted to a float.
-
-(defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
-  "Helper macro to get data from a res-lump without interpolation."
-  `(the-as ,type ((method-of-type res-lump get-property-data)
-                  ,lump
-                  ,name
-                  'interp
-                  ,time
-                  (the-as pointer #f)
-                  ,tag-ptr
-                  *res-static-buf*
-                  )
-           )
-  )
-
-(defmacro res-lump-data-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
-  "Helper macro to get start of data from a res-lump."
-  `(the-as ,type ((method-of-type res-lump get-property-data)
-                  ,lump
-                  ,name
-                  'exact
-                  ,time
-                  (the-as pointer #f)
-                  ,tag-ptr
-                  *res-static-buf*
-                  )
-           )
-  )
-
-(defmacro res-lump-struct (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
-  `(the-as ,type ((method-of-type res-lump get-property-struct)
-                  ,lump
-                  ,name
-                  'interp
-                  ,time
-                  (the-as structure #f)
-                  ,tag-ptr
-                  *res-static-buf*
-                  )
-           )
-  )
-
-(defmacro res-lump-struct-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
-  `(the-as ,type ((method-of-type res-lump get-property-struct)
-                  ,lump
-                  ,name
-                  'exact
-                  ,time
-                  (the-as structure #f)
-                  ,tag-ptr
-                  *res-static-buf*
-                  )
-           )
-  )
-
-(defmacro res-lump-value (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default (the-as uint128 0)) &key (time -1000000000.0))
-  "Helper macro to get a value from a res-lump with no interpolation."
-  `(the-as ,type ((method-of-type res-lump get-property-value)
-                  ,lump
-                  ,name
-                  'interp
-                  ,time
-                  ,default
-                  ,tag-ptr
-                  *res-static-buf*
-                  )
-           )
-  )
-
-(defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0) &key (time -1000000000.0))
-  "Helper macro to get a float from a res-lump with no interpolation."
-  `((method-of-type res-lump get-property-value-float)
-                  ,lump
-                  ,name
-                  'interp
-                  ,time
-                  ,default
-                  ,tag-ptr
-                  *res-static-buf*
-                  )
-  )
 
 

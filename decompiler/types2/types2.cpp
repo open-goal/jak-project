@@ -4,6 +4,7 @@
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/types2/types2.h"
+#include "decompiler/util/goal_constants.h"
 
 namespace decompiler::types2 {
 
@@ -20,6 +21,7 @@ TypeState make_typestate_from_block_types(BlockStartTypes& block_start_types) {
   for (auto& s : block_start_types.stack_slot_types) {
     result.stack_slot_types.push_back(&s);
   }
+  result.next_state_type = &block_start_types.next_state_type;
   return result;
 }
 
@@ -55,6 +57,7 @@ void construct_function_entry_types(BlockStartTypes& result,
   for (auto& x : result.fpr_types) {
     x.type = TP_Type::make_uninitialized();
   }
+  result.next_state_type.type = TP_Type::make_uninitialized();
 
   for (auto x : stack_slots) {
     auto slot = result.try_find_stack_spill_slot(x);
@@ -166,6 +169,22 @@ void build_function(FunctionCache& function_cache,
           }
         }
         ASSERT(found);
+      }
+
+      // do the same for next state (maybe)
+      auto as_store_op = dynamic_cast<StoreOp*>(aop.get());
+      if (as_store_op) {
+        IR2_RegOffset ro;
+        // note that this isn't 100% sure to actually be a next state.
+        // the implementation of StoreOp will have to notice these false positives and copy
+        // the next state type (not a big deal).
+        if (get_as_reg_offset(as_store_op->addr(), &ro)) {
+          if (ro.reg == Register(Reg::GPR, Reg::S6) &&
+              ro.offset == OFFSET_OF_NEXT_STATE_STORE[func.ir2.env.version]) {
+            instr->written_next_state_type = types2::Type();
+            state.next_state_type = &instr->written_next_state_type.value();
+          }
+        }
       }
 
       // now store the state:
@@ -397,13 +416,12 @@ bool tp_lca(types2::TypeState* combined, const types2::TypeState& add, Decompile
     }
   }
 
-  // TODO...
-  //  bool diff = false;
-  //  auto new_type = tp_lca(combined->next_state_type, add.next_state_type, &diff);
-  //  if (diff) {
-  //    result = true;
-  //    combined->next_state_type = new_type;
-  //  }
+  bool diff = false;
+  auto new_type = tp_lca(*combined->next_state_type, *add.next_state_type, &diff, dts);
+  if (diff) {
+    result = true;
+    combined->next_state_type->type = new_type;
+  }
 
   return result;
 }
@@ -505,6 +523,11 @@ bool convert_to_old_format(::decompiler::TypeState& out,
       error_string += fmt::format("Failed to convert GPR: {} ", Register(Reg::GPR, i).to_string());
       return false;
     }
+  }
+
+  if (!convert_to_old_format(out.next_state_type, in.next_state_type, recovery_mode)) {
+    error_string += "Failed to convert next state ";
+    return false;
   }
 
   const auto& reg_casts = casts.find(my_idx);
@@ -634,6 +657,8 @@ void run(Output& out, const Input& input) {
         ASSERT(slot);
         slot->type.type = TP_Type::make_uninitialized();
       }
+
+      cblock.next_state_type.type = TP_Type::make_uninitialized();
     }
   }
 
