@@ -78,6 +78,11 @@ struct GraphicsData {
 
 std::unique_ptr<GraphicsData> g_gfx_data;
 
+std::atomic<int> g_cursor_input_mode = GLFW_CURSOR_DISABLED;
+bool is_cursor_position_valid = false;
+double last_cursor_x_position = 0;
+double last_cursor_y_position = 0;
+
 struct {
   bool callbacks_registered = false;
   GLFWmonitor** monitors;
@@ -209,6 +214,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   }
 
   auto display = std::make_shared<GLDisplay>(window, is_main);
+
   // lg::debug("init display #x{:x}", (uintptr_t)display);
 
   // setup imgui
@@ -255,6 +261,16 @@ GLDisplay::GLDisplay(GLFWwindow* window, bool is_main) : m_window(window) {
     display->on_key(window, key, scancode, action, mods);
   });
 
+  glfwSetMouseButtonCallback(window, [](GLFWwindow* window, int button, int action, int mode) {
+    GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
+    display->on_mouse_key(window, button, action, mode);
+  });
+
+  glfwSetCursorPosCallback(window, [](GLFWwindow* window, double xposition, double yposition) {
+    GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
+    display->on_cursor_position(window, xposition, yposition);
+  });
+
   glfwSetWindowPosCallback(window, [](GLFWwindow* window, int xpos, int ypos) {
     GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
     display->on_window_pos(window, xpos, ypos);
@@ -289,6 +305,11 @@ GLDisplay::~GLDisplay() {
   }
 }
 
+void GLDisplay::update_cursor_visibility(GLFWwindow* window, bool is_visible) {
+  g_cursor_input_mode = (is_visible) ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
+  glfwSetInputMode(window, GLFW_CURSOR, g_cursor_input_mode);
+}
+
 void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
   if (action == GlfwKeyAction::Press) {
     // lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
@@ -296,11 +317,61 @@ void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action
   } else if (action == GlfwKeyAction::Release) {
     // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
     Pad::OnKeyRelease(key);
-    if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
-        glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
-      set_imgui_visible(!is_imgui_visible());
+    GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
+    if (display != NULL) {  // toggle ImGui when pressing Alt
+      if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
+          glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+        display->set_imgui_visible(!display->is_imgui_visible());
+        update_cursor_visibility(window, display->is_imgui_visible());
+      }
     }
   }
+}
+
+void GLDisplay::on_mouse_key(GLFWwindow* window, int button, int action, int mode) {
+  int key =
+      button + GLFW_KEY_LAST;  // Mouse button index are appended after initial GLFW keys in newpad
+
+  if (button == GLFW_MOUSE_BUTTON_LEFT &&
+      g_cursor_input_mode ==
+          GLFW_CURSOR_NORMAL) {  // Are there any other mouse buttons we don't want to use?
+    Pad::ClearKey(key);
+    return;
+  }
+
+  if (action == GlfwKeyAction::Press) {
+    Pad::OnKeyPress(key);
+  } else if (action == GlfwKeyAction::Release) {
+    Pad::OnKeyRelease(key);
+  }
+}
+
+void GLDisplay::on_cursor_position(GLFWwindow* window, double xposition, double yposition) {
+  Pad::MappingInfo mapping_info = Gfx::get_button_mapping();
+  if (g_cursor_input_mode == GLFW_CURSOR_NORMAL) {
+    if (is_cursor_position_valid == true) {
+      Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS);
+      Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS);
+      is_cursor_position_valid = false;
+    }
+    return;
+  }
+
+  if (is_cursor_position_valid == false) {
+    last_cursor_x_position = xposition;
+    last_cursor_y_position = yposition;
+    is_cursor_position_valid = true;
+    return;
+  }
+
+  double xoffset = xposition - last_cursor_x_position;
+  double yoffset = yposition - last_cursor_y_position;
+
+  Pad::SetAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS, xoffset);
+  Pad::SetAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS, yoffset);
+
+  last_cursor_x_position = xposition;
+  last_cursor_y_position = yposition;
 }
 
 void GLDisplay::on_window_pos(GLFWwindow* /*window*/, int xpos, int ypos) {
@@ -451,7 +522,8 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
         x = m_last_windowed_xpos;
         y = m_last_windowed_ypos;
       } else {
-        // fullscreen -> windowed, use last windowed size but on the monitor previously fullscreened
+        // fullscreen -> windowed, use last windowed size but on the monitor previously
+        // fullscreened
         int monitorX, monitorY, monitorWidth, monitorHeight;
         glfwGetMonitorWorkarea(monitor, &monitorX, &monitorY, &monitorWidth, &monitorHeight);
 
@@ -464,8 +536,8 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
       glfwSetWindowAttrib(m_window, GLFW_DECORATED, GLFW_TRUE);
       glfwSetWindowFocusCallback(m_window, NULL);
       glfwSetWindowAttrib(m_window, GLFW_FLOATING, GLFW_FALSE);
+
       glfwSetWindowMonitor(m_window, NULL, x, y, width, height, GLFW_DONT_CARE);
-      set_imgui_visible(true);
 
       // these might have changed
       m_last_windowed_width = width;
@@ -480,7 +552,6 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
       glfwSetWindowFocusCallback(m_window, NULL);
       glfwSetWindowAttrib(m_window, GLFW_FLOATING, GLFW_FALSE);
       glfwSetWindowMonitor(m_window, monitor, 0, 0, vmode->width, vmode->height, GLFW_DONT_CARE);
-      set_imgui_visible(false);
     } break;
     case GfxDisplayMode::Borderless: {
       // borderless fullscreen
@@ -495,7 +566,6 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
 #else
       glfwSetWindowMonitor(m_window, NULL, x, y, vmode->width, vmode->height, GLFW_DONT_CARE);
 #endif
-      set_imgui_visible(false);
     } break;
   }
 }
@@ -602,7 +672,9 @@ void GLDisplay::render() {
     auto p = scoped_prof("poll-gamepads");
     glfwPollEvents();
     glfwMakeContextCurrent(m_window);
-    Pad::update_gamepads();
+
+    auto& mapping_info = Gfx::get_button_mapping();
+    Pad::update_gamepads(mapping_info);
   }
 
   // imgui start of frame
@@ -761,13 +833,15 @@ void gl_send_chain(const void* data, u32 offset) {
     // we copy the dma data and give a copy of it to the render.
     // the copy has a few advantages:
     // - if the game code has a bug and corrupts the DMA buffer, the renderer won't see it.
-    // - the copied DMA is much smaller than the entire game memory, so it can be dumped to a file
+    // - the copied DMA is much smaller than the entire game memory, so it can be dumped to a
+    // file
     //    separate of the entire RAM.
     // - it verifies the DMA data is valid early on.
-    // but it may also be pretty expensive. Both the renderer and the game wait on this to complete.
+    // but it may also be pretty expensive. Both the renderer and the game wait on this to
+    // complete.
 
-    // The renderers should just operate on DMA chains, so eliminating this step in the future may
-    // be easy.
+    // The renderers should just operate on DMA chains, so eliminating this step in the future
+    // may be easy.
 
     g_gfx_data->dma_copier.set_input_data(data, offset, run_dma_copy);
 

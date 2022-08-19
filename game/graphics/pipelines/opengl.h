@@ -18,6 +18,11 @@ enum GlfwKeyAction {
   Repeat = GLFW_REPEAT     // repeated input on hold e.g. when typing something
 };
 
+enum GlfwKeyCustomAxis {
+  CURSOR_X_AXIS = GLFW_GAMEPAD_AXIS_LAST + 1,
+  CURSOR_Y_AXIS = GLFW_GAMEPAD_AXIS_LAST + 2
+};
+
 class GLDisplay : public GfxDisplay {
  public:
   GLDisplay(GLFWwindow* window, bool is_main);
@@ -42,6 +47,9 @@ class GLDisplay : public GfxDisplay {
   void on_window_pos(GLFWwindow* window, int xpos, int ypos);
   void on_window_size(GLFWwindow* window, int width, int height);
   void on_iconify(GLFWwindow* window, int iconified);
+  void on_mouse_key(GLFWwindow* window, int button, int action, int mode);
+  void on_cursor_position(GLFWwindow* window, double xposition, double yposition);
+  void update_cursor_visibility(GLFWwindow* window, bool is_visible);
 
  private:
   GLFWwindow* m_window;
@@ -52,3 +60,6 @@ class GLDisplay : public GfxDisplay {
 };
 
 extern const GfxRendererModule gRendererOpenGL;
+namespace glfw {
+static const int NUM_KEYS = GLFW_KEY_LAST + GLFW_MOUSE_BUTTON_LAST + 1;
+}
