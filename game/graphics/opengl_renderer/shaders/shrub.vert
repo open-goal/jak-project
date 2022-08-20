@@ -75,4 +75,5 @@ void main() {
     fragment_color.a *= 2;
 
     tex_coord = tex_coord_in;
+    tex_coord.xy /= 4096;
 }

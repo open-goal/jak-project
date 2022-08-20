@@ -192,6 +192,7 @@
   ("game-info.o" "game-info")
   ("game-save.o" "game-save")
   ("settings.o" "settings")
+  ("pc-anim-util.o" "pc-anim-util") ;; added
   ("pckernel.o" "pckernel") ;; added
   ("mood-tables.o" "mood-tables")
   ("mood.o" "mood")

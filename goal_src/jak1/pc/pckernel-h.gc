@@ -103,7 +103,7 @@
   (korean 98) ;; future-proofing here
   (russian 97) ;; same thing
 
-  (custom 500) ;; temp
+  (custom 100) ;; temp
   )
 
 
@@ -115,6 +115,7 @@
   )
 
 ;; cheats
+(defconstant PC_CHEAT_MAX 18) ;; number of cheats
 (defenum pc-cheats
   :bitfield #t
   :type uint64
@@ -126,6 +127,16 @@
   (sidekick-blue)
   (tunes)
   (sky)
+  (mirror)
+  (big-head)
+  (small-head)
+  (big-fist)
+  (no-tex)
+  (hard-rats)
+  (hero-mode)
+  (huge-head)
+  (big-head-npc)
+  (oh-my-goodness)
   )
 
 (defmacro pc-cheats? (obj &rest cheats)
@@ -531,55 +542,53 @@
   )
 
 (seval (define *pc-cheat-map*
-          '((a (triangle triangle))
-            (b (square square))
-            (c (circle circle))
-            (d (x x))
-            (e (right right))
-            (f (right up))
-            (g (right down))
-            (h (left right))
-            (i (up right))
-            (j (down left))
-            (k (square right))
-            (l (left down))
-            (m (up circle))
-            (n (up up))
-            (o (circle square))
-            (p (down circle))
-            (q (dowm square))
-            (r (circle x))
-            (s (down x))
-            (t (triangle square))
-            (u (square x))
-            (v (x triangle))
-            (w (left left))
-            (x (up down))
-            (y (up x))
-            (z (up circle))
+          '((#\a (circle triangle))
+            (#\b (square x))
+            (#\c (circle))
+            (#\d (down))
+            (#\e (right right))
+            ;; #\f
+            ;; #\g
+            ;; #\h
+            (#\i (up))
+            ;; #\j
+            (#\k (circle))
+            (#\l (left))
+            (#\m (triangle))
+            (#\n (up up))
+            (#\o (square))
+            (#\p (square circle))
+            ;; #\q
+            (#\r (right))
+            (#\s (down down))
+            (#\t (triangle))
+            (#\u (up))
+            (#\v (down))
+            (#\w (left left))
+            (#\x (x))
+            (#\y (triangle))
+            (#\z (x x))
             ))
         )
 
-(desfun pc-cheat-encode (letters extra)
+(desfun pc-cheat-encode (word extra)
   "turn a cheat word into input names."
-  (let ((out '()))
+  (let ((out '())
+        (word-str (symbol->string word)))
 
-  (dolist (in letters)
-
-    (let ((buttons (cadr (assoc (car in) *pc-cheat-map*))))
-      (dolist (button buttons)
-
-        (set! out (cons (car button) out))
-        )
-      )
-    )
+  (dotimes (i (string-length word-str))
+    (let ((char-to-inputs (assoc (string-ref word-str i) *pc-cheat-map*)))
+    (if (null? char-to-inputs)
+        (ferror "bad input for pc cheat name: {}" (string-ref word-str i))
+        (dolist (button (cadr char-to-inputs))
+          (set! out (cons (car button) out))
+          ))
+    ))
 
   (dolist (ex extra)
-
-    (set! out (cons (car ex) out))
-    )
-  (reverse out)
-    )
+    (set! out (cons (car ex) out)))
+  
+  out)
   )
 
 (defmacro pc-check-cheat-code (cheat-var pad-idx input &key (extra ()) &rest body)

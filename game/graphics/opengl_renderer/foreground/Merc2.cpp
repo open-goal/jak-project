@@ -73,6 +73,7 @@ void Merc2::init_for_frame(SharedRenderState* render_state) {
   glUniform4f(m_uniforms.fog_color, render_state->fog_color[0] / 255.f,
               render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
               render_state->fog_intensity / 255);
+  glUniform1i(m_uniforms.gfx_hack_no_tex, Gfx::g_global_settings.hack_no_tex);
 }
 
 void Merc2::draw_debug_window() {
@@ -86,28 +87,31 @@ void Merc2::draw_debug_window() {
 }
 
 void Merc2::init_shaders(ShaderLibrary& shaders) {
+  const auto& shader = shaders[ShaderId::MERC2];
+  auto id = shader.id();
   shaders[ShaderId::MERC2].activate();
-  m_uniforms.light_direction[0] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_dir0");
-  m_uniforms.light_direction[1] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_dir1");
-  m_uniforms.light_direction[2] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_dir2");
-  m_uniforms.light_color[0] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_col0");
-  m_uniforms.light_color[1] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_col1");
-  m_uniforms.light_color[2] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_col2");
-  m_uniforms.light_ambient = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "light_ambient");
+  m_uniforms.light_direction[0] = glGetUniformLocation(id, "light_dir0");
+  m_uniforms.light_direction[1] = glGetUniformLocation(id, "light_dir1");
+  m_uniforms.light_direction[2] = glGetUniformLocation(id, "light_dir2");
+  m_uniforms.light_color[0] = glGetUniformLocation(id, "light_col0");
+  m_uniforms.light_color[1] = glGetUniformLocation(id, "light_col1");
+  m_uniforms.light_color[2] = glGetUniformLocation(id, "light_col2");
+  m_uniforms.light_ambient = glGetUniformLocation(id, "light_ambient");
 
-  m_uniforms.hvdf_offset = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "hvdf_offset");
-  m_uniforms.perspective[0] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "perspective0");
-  m_uniforms.perspective[1] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "perspective1");
-  m_uniforms.perspective[2] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "perspective2");
-  m_uniforms.perspective[3] = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "perspective3");
+  m_uniforms.hvdf_offset = glGetUniformLocation(id, "hvdf_offset");
+  m_uniforms.perspective[0] = glGetUniformLocation(id, "perspective0");
+  m_uniforms.perspective[1] = glGetUniformLocation(id, "perspective1");
+  m_uniforms.perspective[2] = glGetUniformLocation(id, "perspective2");
+  m_uniforms.perspective[3] = glGetUniformLocation(id, "perspective3");
 
-  m_uniforms.fog = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "fog_constants");
-  m_uniforms.decal = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "decal_enable");
+  m_uniforms.fog = glGetUniformLocation(id, "fog_constants");
+  m_uniforms.decal = glGetUniformLocation(id, "decal_enable");
 
-  m_uniforms.fog_color = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "fog_color");
-  m_uniforms.perspective_matrix =
-      glGetUniformLocation(shaders[ShaderId::MERC2].id(), "perspective_matrix");
-  m_uniforms.ignore_alpha = glGetUniformLocation(shaders[ShaderId::MERC2].id(), "ignore_alpha");
+  m_uniforms.fog_color = glGetUniformLocation(id, "fog_color");
+  m_uniforms.perspective_matrix = glGetUniformLocation(id, "perspective_matrix");
+  m_uniforms.ignore_alpha = glGetUniformLocation(id, "ignore_alpha");
+
+  m_uniforms.gfx_hack_no_tex = glGetUniformLocation(id, "gfx_hack_no_tex");
 }
 
 /*!

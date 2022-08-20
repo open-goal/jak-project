@@ -614,8 +614,8 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
 
   if (m_render_state.draw_region_w <= 0 || m_render_state.draw_region_h <= 0) {
     // trying to draw to 0 size region... opengl doesn't like this.
-    m_render_state.draw_region_w = 640;
-    m_render_state.draw_region_h = 480;
+    m_render_state.draw_region_w = 320;
+    m_render_state.draw_region_h = 240;
   }
 
   if (m_fbo_state.render_fbo->is_window) {
