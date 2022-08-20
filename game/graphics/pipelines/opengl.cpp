@@ -306,8 +306,9 @@ GLDisplay::~GLDisplay() {
 }
 
 void GLDisplay::update_cursor_visibility(GLFWwindow* window, bool is_visible) {
-  g_cursor_input_mode = (is_visible) ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
-  glfwSetInputMode(window, GLFW_CURSOR, g_cursor_input_mode);
+  auto cursor_mode = (is_visible) ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
+  g_cursor_input_mode = cursor_mode;
+  glfwSetInputMode(window, GLFW_CURSOR, cursor_mode);
 }
 
 void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
@@ -333,8 +334,8 @@ void GLDisplay::on_mouse_key(GLFWwindow* window, int button, int action, int mod
       button + GLFW_KEY_LAST;  // Mouse button index are appended after initial GLFW keys in newpad
 
   if (button == GLFW_MOUSE_BUTTON_LEFT &&
-      g_cursor_input_mode ==
-          GLFW_CURSOR_NORMAL) {  // Are there any other mouse buttons we don't want to use?
+      g_cursor_input_mode !=
+          GLFW_CURSOR_DISABLED) {  // Are there any other mouse buttons we don't want to use?
     Pad::ClearKey(key);
     return;
   }
@@ -348,7 +349,7 @@ void GLDisplay::on_mouse_key(GLFWwindow* window, int button, int action, int mod
 
 void GLDisplay::on_cursor_position(GLFWwindow* window, double xposition, double yposition) {
   Pad::MappingInfo mapping_info = Gfx::get_button_mapping();
-  if (g_cursor_input_mode == GLFW_CURSOR_NORMAL) {
+  if (g_cursor_input_mode != GLFW_CURSOR_DISABLED) {
     if (is_cursor_position_valid == true) {
       Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS);
       Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS);
