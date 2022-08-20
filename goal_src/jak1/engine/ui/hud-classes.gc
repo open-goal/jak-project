@@ -737,22 +737,79 @@
   :flag-assert         #x1b00c00124
   )
 
-
+(define-extern *game-counts* game-count-info)
 (defmethod draw-hud hud-money ((obj hud-money))
   (let ((t9-0 (method-of-type hud draw-hud)))
     (t9-0 obj)
     )
+  ;; modified for pc port
+  (cond
+    ((cpad-hold? 0 up)
+      (set! *hud-collectable-view* (hud-collectable-view game-totals))
+      (set! (-> obj trigger-time) (-> *display* base-frame-counter))
+      )
+    ((cpad-hold? 0 down)
+      (set! *hud-collectable-view* (hud-collectable-view level-totals))
+      (set! (-> obj trigger-time) (-> *display* base-frame-counter))
+      )
+    ((or (cpad-hold? 0 left) (cpad-hold? 0 right))
+      (set! *hud-collectable-view* (hud-collectable-view original))
+      (set! (-> obj trigger-time) (-> *display* base-frame-counter))
+      )
+    )
   (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
                                (bucket-id debug))
-    (draw-string-xy (string-format "~D" (-> obj value)) buf
-            (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
-            (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
-                  (the int (-> *video-parms* relative-y-scale))
-                  )
-              2
+    (let* ((string-x (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset))))
+           (string-y (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset)) (the int (-> *video-parms* relative-y-scale))) 2))
+           )
+      (case *hud-collectable-view*
+        (((hud-collectable-view game-totals))
+          ;; show orbs collected/total across entire game
+          (draw-string-xy-scaled
+            (string-format 
+              "~D~%/~D"
+              (the int (-> *game-info* money-total))
+              2000  ;;(-> (the progress (-> *progress-process* 0)) total-nb-of-orbs)
               )
+            buf
+            string-x
+            (- string-y 5)
             (font-color dark-yellow)
-            (font-flags shadow kerning large))
+            (font-flags shadow kerning large)
+            0.8
+            )
+          )
+        (((hud-collectable-view level-totals))
+          (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
+            ;; show orbs collected/total this level
+            (draw-string-xy-scaled
+              (string-format 
+                "~D~%/~D"
+                (-> *game-info* money-per-level lvl-idx)
+                (-> *game-counts* data lvl-idx money-count)
+                )
+              buf
+              string-x
+              (- string-y 5)
+              (font-color dark-yellow)
+              (font-flags shadow kerning large)
+              0.8
+              )
+            )
+        )
+        (((hud-collectable-view original))
+          ;; show original (total collected, unspent orbs)
+          (draw-string-xy
+            (string-format "~D" (-> obj value))
+            buf
+            string-x
+            string-y
+            (font-color dark-yellow)
+            (font-flags shadow kerning large)
+            )
+          )
+        )
+      )
     )
   0
   (none)
@@ -1099,37 +1156,81 @@
 (defmethod draw-hud hud-fuel-cell ((obj hud-fuel-cell))
   (let ((t9-0 (method-of-type hud draw-hud)))
     (t9-0 obj)
-    )
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-         (gp-0 (-> s5-0 base))
-         )
-    (let ((s4-0 draw-string-xy))
-      (format (clear *temp-string*) "~D" (-> obj value))
-      (s4-0
-        *temp-string*
-        s5-0
-        (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
-        (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
-              (the int (-> *video-parms* relative-y-scale))
-              )
-           2
-           )
-        (font-color dark-yellow)
-        (font-flags shadow kerning large)
-        )
+  )
+  ;; modified for pc port
+  (cond
+    ((cpad-hold? 0 up)
+      (set! *hud-collectable-view* (hud-collectable-view game-totals))
+      (set! (-> obj trigger-time) (-> *display* base-frame-counter))
       )
-    (let ((a3-7 (-> s5-0 base)))
-      (let ((v1-8 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as (pointer int64) v1-8)) #x20000000)
-        (set! (-> (the-as dma-packet v1-8) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-8) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (&+ (the-as pointer v1-8) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-        (bucket-id debug)
-        gp-0
-        (the-as (pointer dma-tag) a3-7)
+    ((cpad-hold? 0 down)
+      (set! *hud-collectable-view* (hud-collectable-view level-totals))
+      (set! (-> obj trigger-time) (-> *display* base-frame-counter))
+      )
+    ((or (cpad-hold? 0 left) (cpad-hold? 0 right))
+      (set! *hud-collectable-view* (hud-collectable-view original))
+      (set! (-> obj trigger-time) (-> *display* base-frame-counter))
+      )
+    )
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                               (bucket-id debug))
+    (let* ((string-x (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset))))
+            (string-y (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset)) (the int (-> *video-parms* relative-y-scale))) 2))
+            )
+      (case *hud-collectable-view*
+        (((hud-collectable-view game-totals))
+          ;; show cells collected/total across entire game
+          (draw-string-xy-scaled
+            (string-format 
+              "~D~%/~D"
+              (the int (-> *game-info* fuel))
+              101  ;;(-> (the progress (-> *progress-process* 0)) total-nb-of-power-cells)
+              )
+            buf
+            string-x
+            (- string-y 5)
+            (font-color dark-yellow)
+            (font-flags shadow kerning large)
+            0.8
+            )
+          )
+        (((hud-collectable-view level-totals))
+          (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1)))
+                (completed-task-count 0))
+            ;; determine number of cells collected in this level
+            (dotimes (task-idx (-> *level-task-data* lvl-idx nb-of-tasks))
+              (if (= (get-task-status (-> *level-task-data* lvl-idx task-info task-idx task-id)) (task-status invalid))
+                (+! completed-task-count 1)
+                )
+            )
+
+            ;; show cells/total collected this level
+            (draw-string-xy-scaled
+              (string-format 
+                "~D~%/~D"
+                completed-task-count
+                (-> *level-task-data* lvl-idx nb-of-tasks)
+                )
+              buf
+              string-x
+              (- string-y 5)
+              (font-color dark-yellow)
+              (font-flags shadow kerning large)
+              0.8
+              )
+            )
+          )
+        (((hud-collectable-view original))
+          ;; show original (cells collected across entire game)
+          (draw-string-xy
+            (string-format "~D" (-> obj value))
+            buf
+            string-x
+            string-y
+            (font-color dark-yellow)
+            (font-flags shadow kerning large)
+            )
+          )
         )
       )
     )
@@ -1362,6 +1463,21 @@
   (let ((t9-0 (method-of-type hud draw-hud)))
     (t9-0 obj)
     )
+  ;; modified for pc port
+  (cond
+    ((cpad-hold? 0 up)
+      (set! *hud-collectable-view* (hud-collectable-view game-totals))
+      (set! (-> obj trigger-time) (-> *display* base-frame-counter))
+      )
+    ((cpad-hold? 0 down)
+      (set! *hud-collectable-view* (hud-collectable-view level-totals))
+      (set! (-> obj trigger-time) (-> *display* base-frame-counter))
+      )
+    ((or (cpad-hold? 0 left) (cpad-hold? 0 right))
+      (set! *hud-collectable-view* (hud-collectable-view original))
+      (set! (-> obj trigger-time) (-> *display* base-frame-counter))
+      )
+    )
   (set! (-> obj text-y) (+ (if (nonzero? (-> obj next-y-offset))
                                (-> obj text-y-offset)
                                0
@@ -1369,36 +1485,57 @@
                            362
                            )
         )
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-         (gp-0 (-> s5-0 base))
-         )
-    (let ((s3-0 draw-string-xy))
-      (format (clear *temp-string*) "~2,' D" (-> obj value))
-      (s3-0
-        *temp-string*
-        s5-0
-        (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset)))
-        (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset))
-              (the int (-> *video-parms* relative-y-scale))
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                               (bucket-id debug))
+    (let* ((string-x (+ (-> obj text-x) (* (-> obj x-sgn) (-> obj offset))))
+          (string-y (/ (* (+ (-> obj text-y) (* (-> obj y-sgn) (-> obj offset)) (-> obj y-offset)) (the int (-> *video-parms* relative-y-scale))) 2))
+          )
+      (case *hud-collectable-view*
+        (((hud-collectable-view game-totals))
+          ;; show flies collected/total across entire game
+          (draw-string-xy-scaled
+            (string-format 
+              " ~D~% /~D"
+              (the int (-> *game-info* buzzer-total))
+              112 ;; (-> (the progress (-> *progress-process* 0)) total-nb-of-buzzers)
               )
-           2
-           )
-        (font-color dark-yellow)
-        (font-flags shadow kerning large)
-        )
-      )
-    (let ((a3-7 (-> s5-0 base)))
-      (let ((v1-11 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as (pointer int64) v1-11)) #x20000000)
-        (set! (-> (the-as dma-packet v1-11) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-11) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (&+ (the-as pointer v1-11) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-        (bucket-id debug)
-        gp-0
-        (the-as (pointer dma-tag) a3-7)
+            buf
+            string-x
+            (- string-y 5)
+            (font-color dark-yellow)
+            (font-flags shadow kerning large)
+            0.8
+            )
+          )
+        (((hud-collectable-view level-totals))
+          (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
+            ;; show flies collected/total this level
+            (draw-string-xy-scaled
+              (string-format 
+                " ~D~% /~D"
+                (buzzer-count *game-info* (-> *level-task-data* lvl-idx task-info (-> *level-task-data* lvl-idx buzzer-task-index) task-id))
+                (-> *game-counts* data lvl-idx buzzer-count)
+                )
+              buf
+              string-x
+              (- string-y 5)
+              (font-color dark-yellow)
+              (font-flags shadow kerning large)
+              0.8
+              )
+            )
+          )
+        (((hud-collectable-view original))
+          ;; show original (flies collected this level)
+          (draw-string-xy
+            (string-format " ~D" (-> obj value))
+            buf
+            string-x
+            string-y
+            (font-color dark-yellow)
+            (font-flags shadow kerning large)
+            )
+          )
         )
       )
     )
