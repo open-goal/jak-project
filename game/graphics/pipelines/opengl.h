@@ -6,6 +6,8 @@
  */
 
 #define GLFW_INCLUDE_NONE
+#include <mutex>
+
 #include "game/graphics/display.h"
 #include "game/graphics/gfx.h"
 
@@ -52,9 +54,43 @@ class GLDisplay : public GfxDisplay {
   void update_cursor_visibility(GLFWwindow* window, bool is_visible);
 
  private:
+  void update_glfw();
+
   GLFWwindow* m_window;
   bool m_minimized = false;
   GLFWvidmode m_last_video_mode = {0, 0, 0, 0, 0, 0};
+
+  static constexpr int MAX_VMODES = 128;
+
+  struct VMode {
+    void set(const GLFWvidmode* vmode);
+    int width = 640, height = 480;
+    int refresh_rate = 60;
+  };
+
+  struct DisplayState {
+    s32 window_pos_x = 0;
+    s32 window_pos_y = 0;
+    int window_size_width = 640, window_size_height = 480;
+    float window_scale_x = 1.f, window_scale_y = 1.f;
+
+    bool pending_size_change = false;
+    s32 requested_size_width = 0;
+    s32 requested_size_height = 0;
+
+    int num_vmodes = 0;
+    VMode vmodes[MAX_VMODES];
+    int largest_vmode_width = 640, largest_vmode_height = 480;
+    int largest_vmode_refresh_rate = 60;
+    VMode current_vmode;
+  } m_display_state, m_display_state_copy;
+  std::mutex m_lock;
+
+  struct {
+    bool pending = false;
+    int width = 0;
+    int height = 0;
+  } m_pending_size;
 
   GLFWmonitor* get_monitor(int index);
 };

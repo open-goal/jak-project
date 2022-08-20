@@ -340,6 +340,7 @@ void DecodeTime(u32 ptr) {
  */
 /*!
  * Get a 300MHz timer value.
+ * Called from EE thread
  */
 u64 read_ee_timer() {
   u64 ns = ee_clock_timer.getNs();
@@ -354,7 +355,7 @@ void c_memmove(u32 dst, u32 src, u32 size) {
 }
 
 /*!
- * Returns size of window.
+ * Returns size of window. Called from game thread
  */
 void get_window_size(u32 w_ptr, u32 h_ptr) {
   if (w_ptr) {

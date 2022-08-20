@@ -213,7 +213,8 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   }
 
   auto display = std::make_shared<GLDisplay>(window, is_main);
-
+  display->set_imgui_visible(Gfx::get_debug_menu_visible_on_startup());
+  display->update_cursor_visibility(window, display->is_imgui_visible());
   // lg::debug("init display #x{:x}", (uintptr_t)display);
 
   // setup imgui
@@ -482,19 +483,40 @@ void render_game_frame(int game_width,
 }
 
 void GLDisplay::get_position(int* x, int* y) {
-  glfwGetWindowPos(m_window, x, y);
+  std::lock_guard<std::mutex> lk(m_lock);
+  if (x) {
+    *x = m_display_state.window_pos_x;
+  }
+  if (y) {
+    *y = m_display_state.window_pos_y;
+  }
 }
 
 void GLDisplay::get_size(int* width, int* height) {
-  glfwGetFramebufferSize(m_window, width, height);
+  std::lock_guard<std::mutex> lk(m_lock);
+  if (width) {
+    *width = m_display_state.window_size_width;
+  }
+  if (height) {
+    *height = m_display_state.window_size_height;
+  }
 }
 
 void GLDisplay::get_scale(float* xs, float* ys) {
-  glfwGetWindowContentScale(m_window, xs, ys);
+  std::lock_guard<std::mutex> lk(m_lock);
+  if (xs) {
+    *xs = m_display_state.window_scale_x;
+  }
+  if (ys) {
+    *ys = m_display_state.window_scale_y;
+  }
 }
 
 void GLDisplay::set_size(int width, int height) {
-  glfwSetWindowSize(m_window, width, height);
+  // glfwSetWindowSize(m_window, width, height);
+  m_pending_size.width = width;
+  m_pending_size.height = height;
+  m_pending_size.pending = true;
 
   if (windowed()) {
     m_last_windowed_width = width;
@@ -566,48 +588,45 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
 }
 
 int GLDisplay::get_screen_vmode_count() {
-  int count = 0;
-  glfwGetVideoModes(get_monitor(fullscreen_screen()), &count);
-  return count;
+  std::lock_guard<std::mutex> lk(m_lock);
+  return m_display_state.num_vmodes;
 }
 
 void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out) {
-  GLFWmonitor* monitor = get_monitor(fullscreen_screen());
-  auto vmode = glfwGetVideoMode(monitor);
-  int count = 0;
-  auto vmodes = glfwGetVideoModes(monitor, &count);
-  if (vmode_idx >= 0) {
-    vmode = &vmodes[vmode_idx];
-  } else if (fullscreen_mode() == GfxDisplayMode::Fullscreen) {
-    for (int i = 0; i < count; ++i) {
-      if (!vmode || vmode->height < vmodes[i].height) {
-        vmode = &vmodes[i];
-      }
+  std::lock_guard<std::mutex> lk(m_lock);
+  if (vmode_idx >= 0 && vmode_idx < MAX_VMODES) {
+    if (w_out) {
+      *w_out = m_display_state.vmodes[vmode_idx].width;
     }
-  }
-  if (w_out) {
-    *w_out = vmode->width;
-  }
-  if (h_out) {
-    *h_out = vmode->height;
+    if (h_out) {
+      *h_out = m_display_state.vmodes[vmode_idx].height;
+    }
+  } else if (fullscreen_mode() == Fullscreen) {
+    if (w_out) {
+      *w_out = m_display_state.largest_vmode_width;
+    }
+    if (h_out) {
+      *h_out = m_display_state.largest_vmode_height;
+    }
+  } else {
+    if (w_out) {
+      *w_out = m_display_state.current_vmode.width;
+    }
+    if (h_out) {
+      *h_out = m_display_state.current_vmode.height;
+    }
   }
 }
 
 int GLDisplay::get_screen_rate(int vmode_idx) {
-  GLFWmonitor* monitor = get_monitor(fullscreen_screen());
-  auto vmode = glfwGetVideoMode(monitor);
-  int count = 0;
-  auto vmodes = glfwGetVideoModes(monitor, &count);
-  if (vmode_idx >= 0) {
-    vmode = &vmodes[vmode_idx];
+  std::lock_guard<std::mutex> lk(m_lock);
+  if (vmode_idx >= 0 && vmode_idx < MAX_VMODES) {
+    return m_display_state.vmodes[vmode_idx].refresh_rate;
   } else if (fullscreen_mode() == GfxDisplayMode::Fullscreen) {
-    for (int i = 0; i < count; ++i) {
-      if (!vmode || vmode->refreshRate < vmodes[i].refreshRate) {
-        vmode = &vmodes[i];
-      }
-    }
+    return m_display_state.largest_vmode_refresh_rate;
+  } else {
+    return m_display_state.current_vmode.refresh_rate;
   }
-  return vmode->refreshRate;
 }
 
 GLFWmonitor* GLDisplay::get_monitor(int index) {
@@ -632,8 +651,17 @@ void GLDisplay::set_lock(bool lock) {
 }
 
 bool GLDisplay::fullscreen_pending() {
-  GLFWmonitor* monitor = get_monitor(fullscreen_screen());
-  auto vmode = glfwGetVideoMode(monitor);
+  GLFWmonitor* monitor;
+  {
+    auto _ = scoped_prof("get_monitor");
+    monitor = get_monitor(fullscreen_screen());
+  }
+
+  const GLFWvidmode* vmode;
+  {
+    auto _ = scoped_prof("get-video-mode");
+    vmode = glfwGetVideoMode(monitor);
+  }
 
   return GfxDisplay::fullscreen_pending() ||
          (vmode->width != m_last_video_mode.width || vmode->height != m_last_video_mode.height ||
@@ -658,19 +686,73 @@ void update_global_profiler() {
   prof().set_enable(g_gfx_data->debug_gui.record_events);
 }
 
+void GLDisplay::VMode::set(const GLFWvidmode* vmode) {
+  width = vmode->width;
+  height = vmode->height;
+  refresh_rate = vmode->refreshRate;
+}
+
+void GLDisplay::update_glfw() {
+  auto p = scoped_prof("update_glfw");
+
+  glfwPollEvents();
+  glfwMakeContextCurrent(m_window);
+  auto& mapping_info = Gfx::get_button_mapping();
+  Pad::update_gamepads(mapping_info);
+
+  glfwGetFramebufferSize(m_window, &m_display_state_copy.window_size_width,
+                         &m_display_state_copy.window_size_height);
+
+  glfwGetWindowContentScale(m_window, &m_display_state_copy.window_scale_x,
+                            &m_display_state_copy.window_scale_y);
+
+  glfwGetWindowPos(m_window, &m_display_state_copy.window_pos_x,
+                   &m_display_state_copy.window_pos_y);
+
+  GLFWmonitor* monitor = get_monitor(fullscreen_screen());
+  auto current_vmode = glfwGetVideoMode(monitor);
+  if (current_vmode) {
+    m_display_state_copy.current_vmode.set(current_vmode);
+  }
+
+  int count = 0;
+  auto vmodes = glfwGetVideoModes(monitor, &count);
+
+  if (count > MAX_VMODES) {
+    fmt::print("got too many vmodes: {}\n", count);
+    count = MAX_VMODES;
+  }
+
+  m_display_state_copy.num_vmodes = count;
+
+  m_display_state_copy.largest_vmode_width = 1;
+  m_display_state_copy.largest_vmode_refresh_rate = 1;
+  for (int i = 0; i < count; i++) {
+    if (vmodes[i].width > m_display_state_copy.largest_vmode_width) {
+      m_display_state_copy.largest_vmode_height = vmodes[i].height;
+      m_display_state_copy.largest_vmode_width = vmodes[i].width;
+    }
+
+    if (vmodes[i].refreshRate > m_display_state_copy.largest_vmode_refresh_rate) {
+      m_display_state_copy.largest_vmode_refresh_rate = vmodes[i].refreshRate;
+    }
+    m_display_state_copy.vmodes[i].set(&vmodes[i]);
+  }
+
+  if (m_pending_size.pending) {
+    glfwSetWindowSize(m_window, m_pending_size.width, m_pending_size.height);
+    m_pending_size.pending = false;
+  }
+
+  std::lock_guard<std::mutex> lk(m_lock);
+  m_display_state = m_display_state_copy;
+}
+
 /*!
  * Main function called to render graphics frames. This is called in a loop.
  */
 void GLDisplay::render() {
-  // poll events
-  {
-    auto p = scoped_prof("poll-gamepads");
-    glfwPollEvents();
-    glfwMakeContextCurrent(m_window);
-
-    auto& mapping_info = Gfx::get_button_mapping();
-    Pad::update_gamepads(mapping_info);
-  }
+  update_glfw();
 
   // imgui start of frame
   {
@@ -717,18 +799,30 @@ void GLDisplay::render() {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   }
 
+  // update fullscreen mode, if requested
+  {
+    auto p = scoped_prof("fullscreen-update");
+    update_last_fullscreen_mode();
+
+    if (fullscreen_pending() && !minimized()) {
+      fullscreen_flush();
+    }
+  }
+
   // actual vsync
   g_gfx_data->debug_gui.finish_frame();
-  {
-    auto p = scoped_prof("swap-buffers");
-    glfwSwapBuffers(m_window);
-  }
   if (Gfx::g_global_settings.framelimiter) {
     auto p = scoped_prof("frame-limiter");
     g_gfx_data->frame_limiter.run(
         Gfx::g_global_settings.target_fps, Gfx::g_global_settings.experimental_accurate_lag,
         Gfx::g_global_settings.sleep_in_frame_limiter, g_gfx_data->last_engine_time);
   }
+
+  {
+    auto p = scoped_prof("swap-buffers");
+    glfwSwapBuffers(m_window);
+  }
+
   // actually wait for vsync
   if (g_gfx_data->debug_gui.should_gl_finish()) {
     glFinish();
@@ -753,16 +847,6 @@ void GLDisplay::render() {
     std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
     g_gfx_data->frame_idx++;
     g_gfx_data->sync_cv.notify_all();
-  }
-
-  // update fullscreen mode, if requested
-  {
-    auto p = scoped_prof("fullscreen-update");
-    update_last_fullscreen_mode();
-
-    if (fullscreen_pending() && !minimized()) {
-      fullscreen_flush();
-    }
   }
 
   // reboot whole game, if requested
@@ -845,6 +929,11 @@ void gl_send_chain(const void* data, u32 offset) {
   }
 }
 
+/*!
+ * Upload texture outside of main DMA chain.
+ * We trust the game to not remove textures that are currently being used, but if the game is messed
+ * up, there is a possible race to updating this texture.
+ */
 void gl_texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
   // block
   if (g_gfx_data) {
@@ -855,6 +944,10 @@ void gl_texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
   }
 }
 
+/*!
+ * Handle a local->local texture copy. The texture pool can just update texture pointers.
+ * This is called from the main thread and the texture pool itself will handle locking.
+ */
 void gl_texture_relocate(u32 destination, u32 source, u32 format) {
   if (g_gfx_data) {
     g_gfx_data->texture_pool->relocate(destination, source, format);
