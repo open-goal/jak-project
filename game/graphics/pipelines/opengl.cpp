@@ -78,7 +78,6 @@ struct GraphicsData {
 
 std::unique_ptr<GraphicsData> g_gfx_data;
 
-std::atomic<int> g_cursor_input_mode = GLFW_CURSOR_DISABLED;
 bool is_cursor_position_valid = false;
 double last_cursor_x_position = 0;
 double last_cursor_y_position = 0;
@@ -306,8 +305,8 @@ GLDisplay::~GLDisplay() {
 }
 
 void GLDisplay::update_cursor_visibility(GLFWwindow* window, bool is_visible) {
-  g_cursor_input_mode = (is_visible) ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
-  glfwSetInputMode(window, GLFW_CURSOR, g_cursor_input_mode);
+  auto cursor_mode = (is_visible) ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
+  glfwSetInputMode(window, GLFW_CURSOR, cursor_mode);
 }
 
 void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
@@ -317,13 +316,10 @@ void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action
   } else if (action == GlfwKeyAction::Release) {
     // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
     Pad::OnKeyRelease(key);
-    GLDisplay* display = reinterpret_cast<GLDisplay*>(glfwGetWindowUserPointer(window));
-    if (display != NULL) {  // toggle ImGui when pressing Alt
-      if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
-          glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
-        display->set_imgui_visible(!display->is_imgui_visible());
-        update_cursor_visibility(window, display->is_imgui_visible());
-      }
+    if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
+        glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+      set_imgui_visible(!is_imgui_visible());
+      update_cursor_visibility(window, is_imgui_visible());
     }
   }
 }
@@ -333,8 +329,7 @@ void GLDisplay::on_mouse_key(GLFWwindow* window, int button, int action, int mod
       button + GLFW_KEY_LAST;  // Mouse button index are appended after initial GLFW keys in newpad
 
   if (button == GLFW_MOUSE_BUTTON_LEFT &&
-      g_cursor_input_mode ==
-          GLFW_CURSOR_NORMAL) {  // Are there any other mouse buttons we don't want to use?
+      is_imgui_visible()) {  // Are there any other mouse buttons we don't want to use?
     Pad::ClearKey(key);
     return;
   }
@@ -348,7 +343,7 @@ void GLDisplay::on_mouse_key(GLFWwindow* window, int button, int action, int mod
 
 void GLDisplay::on_cursor_position(GLFWwindow* window, double xposition, double yposition) {
   Pad::MappingInfo mapping_info = Gfx::get_button_mapping();
-  if (g_cursor_input_mode == GLFW_CURSOR_NORMAL) {
+  if (is_imgui_visible()) {
     if (is_cursor_position_valid == true) {
       Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS);
       Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS);
