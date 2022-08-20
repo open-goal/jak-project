@@ -125,8 +125,8 @@ FormElement* handle_get_property_data_or_structure(const std::vector<Form*>& for
 
   // get the time. It can be anything, but there's a default.
   auto time = forms.at(3);
-  auto lookup_time = time->try_as_element<ConstantFloatElement>();
-  if (lookup_time && lookup_time->value() == DEFAULT_RES_TIME) {
+  auto lookup_time = try_get_const_float(time);
+  if (lookup_time && *lookup_time == DEFAULT_RES_TIME) {
     time = nullptr;
   }
 
@@ -167,8 +167,9 @@ FormElement* handle_get_property_data(const std::vector<Form*>& forms,
 FormElement* handle_get_property_struct(const std::vector<Form*>& forms,
                                         FormPool& pool,
                                         const Env& env) {
-  return handle_get_property_data_or_structure(forms, pool, env, ResLumpMacroElement::Kind::STRUCT,
-                                               "#f", TypeSpec("structure"));
+  return handle_get_property_data_or_structure(
+      forms, pool, env, ResLumpMacroElement::Kind::STRUCT,
+      env.version == GameVersion::Jak2 ? "(the-as structure #f)" : "#f", TypeSpec("structure"));
 }
 
 FormElement* handle_get_property_value(const std::vector<Form*>& forms,

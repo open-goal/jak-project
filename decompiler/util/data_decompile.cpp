@@ -1417,6 +1417,8 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
             (word.data & 0b111) == 0) {
           s32 val = word.data;
           result.push_back(pretty_print::to_symbol(fmt::format("(the binteger {})", val / 8)));
+        } else if (content_type == TypeSpec("type") && word.kind() == LinkedWord::TYPE_PTR) {
+          result.push_back(pretty_print::to_symbol(word.symbol_name()));
         } else {
           throw std::runtime_error(
               fmt::format("Unknown content type in boxed array of references, word idx {}",

@@ -1,14 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: bsp-h.gc
-;; name in dgo: bsp-h
-;; dgos: ENGINE, GAME
-
-;; the bsp-node class seems broken - it has int16's that get used a pointers.
-
-;; DECOMP BEGINS
-
+;; definition of type bsp-node
 (deftype bsp-node (structure)
   ((front         int16            :offset-assert   0)
    (back          int16            :offset-assert   2)
@@ -22,6 +15,24 @@
   :flag-assert         #x900000014
   )
 
+;; definition for method 3 of type bsp-node
+(defmethod inspect bsp-node ((obj bsp-node))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bsp-node)
+  (format #t "~1Tfront: ~D~%" (-> obj front))
+  (format #t "~1Tback: ~D~%" (-> obj back))
+  (format #t "~1Tfront-box-min: #<vector4b @ #x~X>~%" (-> obj front-box-min))
+  (format #t "~1Tfront-box-max: #<vector4b @ #x~X>~%" (-> obj front-box-max))
+  (format #t "~1Tback-box-min: #<vector4b @ #x~X>~%" (-> obj back-box-min))
+  (format #t "~1Tback-box-max: #<vector4b @ #x~X>~%" (-> obj back-box-max))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type bsp-header
 (deftype bsp-header (drawable)
   ((all-visible-list    (pointer uint16)           :offset-assert  32)
    (visible-list-length int16                      :offset-assert  36)
@@ -40,7 +51,7 @@
     )
   )
 
-;; unused
+;; definition of type game-level
 (deftype game-level (basic)
   ((master-bsp basic  :offset-assert   4)
    )
@@ -49,7 +60,19 @@
   :flag-assert         #x900000008
   )
 
+;; definition for method 3 of type game-level
+(defmethod inspect game-level ((obj game-level))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tmaster-bsp: ~A~%" (-> obj master-bsp))
+  (label cfg-4)
+  obj
+  )
 
+;; definition of type view-frustum
 (deftype view-frustum (structure)
   ((hither-top-left     vector :inline :offset-assert   0)
    (hither-top-right    vector :inline :offset-assert  16)
@@ -65,6 +88,26 @@
   :flag-assert         #x900000080
   )
 
+;; definition for method 3 of type view-frustum
+(defmethod inspect view-frustum ((obj view-frustum))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'view-frustum)
+  (format #t "~1Thither-top-left: #<vector @ #x~X>~%" (-> obj hither-top-left))
+  (format #t "~1Thither-top-right: #<vector @ #x~X>~%" (-> obj hither-top-right))
+  (format #t "~1Thither-bottom-left: #<vector @ #x~X>~%" (-> obj hither-bottom-left))
+  (format #t "~1Thither-bottom-right: #<vector @ #x~X>~%" (-> obj hither-bottom-right))
+  (format #t "~1Tyon-top-left: #<vector @ #x~X>~%" (-> obj yon-top-left))
+  (format #t "~1Tyon-top-right: #<vector @ #x~X>~%" (-> obj yon-top-right))
+  (format #t "~1Tyon-bottom-left: #<vector @ #x~X>~%" (-> obj yon-bottom-left))
+  (format #t "~1Tyon-bottom-right: #<vector @ #x~X>~%" (-> obj yon-bottom-right))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 3 of type bsp-header
 (defmethod inspect bsp-header ((obj bsp-header))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tall-visible-list: #x~X~%" (-> obj all-visible-list))
@@ -72,10 +115,12 @@
   (format #t "~Tdrawable-trees: ~A~%" (-> obj drawable-trees))
   (format #t "~Tpat: #x~X~%" (-> obj pat))
   (format #t "~Tpat-length: ~D~%" (-> obj pat-length))
-  (inspect-bsp-tree obj (-> obj nodes 0)) ;; this is probably broken..
+  (inspect-bsp-tree obj (-> obj nodes 0))
   obj
   )
 
+;; definition (debug) for function inspect-bsp-tree
+;; INFO: Return type mismatch bsp-header vs none.
 (defun-debug inspect-bsp-tree ((arg0 bsp-header) (arg1 bsp-node))
   (cond
     ((zero? arg1)
@@ -86,11 +131,11 @@
       (let ((s4-0 *print-column*))
         (set! *print-column* (+ *print-column* 64))
         (if (> (-> arg1 front) 0)
-            (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 front))) ;; also broken?
+            (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 front)))
             (format #t "_#x~X________________~%" arg1)
             )
         (if (> (-> arg1 back) 0)
-            (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 back))) ;; also broken?
+            (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 back)))
             (format #t "_#x~X________________~%" arg1)
             )
         (set! *print-column* s4-0)
@@ -100,17 +145,19 @@
   (none)
   )
 
+;; definition for function map-bsp-tree
+;; INFO: Return type mismatch bsp-header vs none.
 (defun map-bsp-tree ((arg0 (function bsp-node none)) (arg1 bsp-header) (arg2 bsp-node))
   (cond
     ((zero? arg2)
      )
     (else
       (if (> (-> arg2 front) 0)
-          (map-bsp-tree arg0 arg1 (the-as bsp-node (-> arg2 front))) ;; also broken?
+          (map-bsp-tree arg0 arg1 (the-as bsp-node (-> arg2 front)))
           (arg0 arg2)
           )
       (if (> (-> arg2 back) 0)
-          (map-bsp-tree arg0 arg1 (the-as bsp-node (-> arg2 back))) ;; also broken?
+          (map-bsp-tree arg0 arg1 (the-as bsp-node (-> arg2 back)))
           (arg0 arg2)
           )
       )
@@ -118,9 +165,7 @@
   (none)
   )
 
-;; more broken stuff: the stopwatches have wrong alignment?
-;; just replaced with some arrays for now. I don't think this is
-;; used anyway.
+;; definition of type collide-stats
 (deftype collide-stats (structure)
   ((calls             uint32   :offset-assert   0)
    (spheres           uint32   :offset-assert   4)
@@ -137,6 +182,30 @@
   :size-assert         #x78
   :flag-assert         #x900000078
   )
+
+;; definition for method 3 of type collide-stats
+(defmethod inspect collide-stats ((obj collide-stats))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'collide-stats)
+  (format #t "~1Tcalls: ~D~%" (-> obj calls))
+  (format #t "~1Tspheres: ~D~%" (-> obj spheres))
+  (format #t "~1Tnodes: ~D~%" (-> obj nodes))
+  (format #t "~1Tfrags: ~D~%" (-> obj frags))
+  (format #t "~1Ttris: ~D~%" (-> obj tris))
+  (format #t "~1Toutput: ~D~%" (-> obj output))
+  (format #t "~1Ttotal-target: #<stopwatch @ #x~X>~%" (&-> obj pad0 1))
+  (format #t "~1Ttarget-cache-fill: #<stopwatch @ #x~X>~%" (&-> obj total-target 7))
+  (format #t "~1Ttarget-ray-poly: #<stopwatch @ #x~X>~%" (&-> obj target-cache-fill 7))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+0
+
 
 
 
