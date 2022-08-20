@@ -162,6 +162,7 @@
 (define *misc-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id money-starburst) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id discord-rpc) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id speedrunner-mode) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
   )
@@ -750,6 +751,7 @@
   (set! (-> *graphic-options-no-frame-rate-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *misc-options* 0 value-to-modify) (&-> *pc-settings* money-starburst?))
   (set! (-> *misc-options* 1 value-to-modify) (&-> *pc-settings* discord-rpc?))
+  (set! (-> *misc-options* 2 value-to-modify) (&-> *pc-settings* speedrunner-mode?))
   (set! (-> *camera-options* 0 value-to-modify) (&-> *pc-settings* first-camera-h-inverted?))
   (set! (-> *camera-options* 1 value-to-modify) (&-> *pc-settings* first-camera-v-inverted?))
   (set! (-> *camera-options* 2 value-to-modify) (&-> *pc-settings* third-camera-h-inverted?))
@@ -1479,11 +1481,13 @@
              ((< (-> obj option-index) 4)
               (sound-play "start-options")
               (set! (-> *progress-state* which) (-> obj option-index))
+              ;; save slot selected
               (if (zero? (-> s5-0 file (-> obj option-index) present))
                   (set! (-> obj next-display-state) (progress-screen memcard-saving))
                   (set! (-> obj next-display-state) (progress-screen memcard-data-exists))
                   )
               )
+             ;; continue without saving
              ((and (= (-> obj display-state) (progress-screen save-game-title)) (= (-> obj option-index) 4))
               (sound-play "starts-options")
               (sound-volume-off)
@@ -1526,7 +1530,19 @@
                (sound-play "cursor-options")
                (sound-volume-off)
                (set! (-> *game-info* mode) 'play)
-               (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
+               ;; Start a new game differently if speedrunning mode is active
+               (cond ((= (-> *pc-settings* speedrunner-mode?) #t)
+                      ;; spawn at the warp gate
+                      (initialize! *game-info* 'game (the-as game-save #f) "game-start")
+                      ;; disable hints (this seems to be overriden by your slot 1 save though)
+                      (set! (-> *setting-control* default play-hints) #f)
+                      ;; skip intro cutscene
+                      (close-specific-task! (game-task intro) (task-status need-resolution))
+                      ;; enable auto saving by default
+                      (set! (-> *setting-control* default auto-save) #t))
+                      ;; start the game normally
+                      (else
+                       (initialize! *game-info* 'game (the-as game-save #f) "intro-start")))
                (set-master-mode 'game)
                )
              )
@@ -1540,7 +1556,19 @@
               (sound-play "start-options")
               (sound-volume-off)
               (set! (-> *game-info* mode) 'play)
-              (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
+              ;; Start a new game differently if speedrunning mode is active
+              (cond ((= (-> *pc-settings* speedrunner-mode?) #t)
+                     ;; spawn at the warp gate
+                     (initialize! *game-info* 'game (the-as game-save #f) "game-start")
+                     ;; disable hints (this seems to be overriden by your slot 1 save though)
+                     (set! (-> *setting-control* default play-hints) #f)
+                     ;; skip intro cutscene
+                     (close-specific-task! (game-task intro) (task-status need-resolution))
+                     ;; enable auto saving by default
+                     (set! (-> *setting-control* default auto-save) #t))
+                     ;; start the game normally
+                     (else
+                      (initialize! *game-info* 'game (the-as game-save #f) "intro-start")))
               (set-master-mode 'game)
               )
              ((nonzero? (-> obj display-state-stack 0))
@@ -1623,7 +1651,19 @@
               (sound-play "start-options")
               (sound-volume-off)
               (set! (-> *game-info* mode) 'play)
-              (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
+              ;; Start a new game differently if speedrunning mode is active
+              (cond ((= (-> *pc-settings* speedrunner-mode?) #t)
+                     ;; spawn at the warp gate
+                     (initialize! *game-info* 'game (the-as game-save #f) "game-start")
+                     ;; disable hints (this seems to be overriden by your slot 1 save though)
+                     (set! (-> *setting-control* default play-hints) #f)
+                     ;; skip intro cutscene
+                     (close-specific-task! (game-task intro) (task-status need-resolution))
+                     ;; enable auto saving by default
+                     (set! (-> *setting-control* default auto-save) #t))
+                     ;; start the game normally
+                     (else
+                      (initialize! *game-info* 'game (the-as game-save #f) "intro-start")))
               (set-master-mode 'game)
               )
              (else

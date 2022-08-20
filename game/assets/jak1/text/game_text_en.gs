@@ -356,6 +356,9 @@
 (#x1116 "NORSK"
         "NORSK")
 
+(#x1500 "SPEEDRUNNER MODE"
+        "SPEEDRUNNER MODE")
+
 ;; -----------------
 ;; test (DO NOT TRANSLATE)
 
