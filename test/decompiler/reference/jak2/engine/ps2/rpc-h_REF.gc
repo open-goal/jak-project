@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: rpc-h.gc
-;; name in dgo: rpc-h
-;; dgos: ENGINE, GAME
-
-;; DECOMP BEGINS
-
+;; definition of type rpc-buffer
 (deftype rpc-buffer (basic)
   ((elt-size  uint32           :offset-assert   4)
    (elt-count uint32           :offset-assert   8)
@@ -23,6 +18,24 @@
     )
   )
 
+;; definition for method 3 of type rpc-buffer
+(defmethod inspect rpc-buffer ((obj rpc-buffer))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Telt-size: ~D~%" (-> obj elt-size))
+  (format #t "~1Telt-count: ~D~%" (-> obj elt-count))
+  (format #t "~1Telt-used: ~D~%" (-> obj elt-used))
+  (format #t "~1Tbusy: ~A~%" (-> obj busy))
+  (format #t "~1Tbase: ~D~%" (-> obj base))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 0 of type rpc-buffer
 (defmethod new rpc-buffer ((allocation symbol) (type-to-make type) (arg0 uint) (arg1 uint))
   (let* ((a2-2 (+ (-> type-to-make size) 63 (* (the-as int arg0) (the-as int arg1))))
          (v0-0 (object-new allocation type-to-make (the-as int a2-2)))
@@ -35,6 +48,8 @@
     v0-0
     )
   )
+
+;; definition of type rpc-buffer-pair
 (deftype rpc-buffer-pair (basic)
   ((buffer           rpc-buffer 2 :offset-assert   4)
    (current          rpc-buffer   :offset-assert  12)
@@ -55,6 +70,22 @@
     )
   )
 
+;; definition for method 3 of type rpc-buffer-pair
+(defmethod inspect rpc-buffer-pair ((obj rpc-buffer-pair))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tbuffer[2] @ #x~X~%" (-> obj buffer))
+  (format #t "~1Tcurrent: ~A~%" (-> obj current))
+  (format #t "~1Tlast-recv-buffer: #x~X~%" (-> obj last-recv-buffer))
+  (format #t "~1Trpc-port: ~D~%" (-> obj rpc-port))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 0 of type rpc-buffer-pair
 (defmethod new rpc-buffer-pair ((allocation symbol) (type-to-make type) (arg0 uint) (arg1 uint) (arg2 int))
   (let ((s3-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> s3-0 buffer 0) (new 'global 'rpc-buffer arg0 arg1))
@@ -66,6 +97,7 @@
     )
   )
 
+;; definition for method 12 of type rpc-buffer-pair
 (defmethod sync rpc-buffer-pair ((obj rpc-buffer-pair) (arg0 symbol))
   (let ((s5-0 (if (= (-> obj current) (-> obj buffer 0))
                   (-> obj buffer 1)
@@ -97,6 +129,7 @@
   0
   )
 
+;; definition for method 13 of type rpc-buffer-pair
 (defmethod check-busy rpc-buffer-pair ((obj rpc-buffer-pair))
   (let ((gp-0 (if (= (-> obj current) (-> obj buffer 0))
                   (-> obj buffer 1)
@@ -116,6 +149,7 @@
   #f
   )
 
+;; definition for method 9 of type rpc-buffer-pair
 (defmethod call rpc-buffer-pair ((obj rpc-buffer-pair) (arg0 uint) (arg1 pointer) (arg2 uint))
   (when (nonzero? (-> obj current elt-used))
     (let ((s2-0 (if (= (-> obj current) (-> obj buffer 0))
@@ -161,6 +195,7 @@
   0
   )
 
+;; definition for method 14 of type rpc-buffer-pair
 (defmethod pop-last-received rpc-buffer-pair ((obj rpc-buffer-pair))
   (let ((v0-0 (-> obj last-recv-buffer)))
     (set! (-> obj last-recv-buffer) (the-as pointer #f))
@@ -168,6 +203,7 @@
     )
   )
 
+;; definition for method 10 of type rpc-buffer-pair
 (defmethod add-element rpc-buffer-pair ((obj rpc-buffer-pair))
   (let ((v1-0 (-> obj current)))
     (when (= (-> v1-0 elt-used) (-> v1-0 elt-count))
@@ -184,9 +220,17 @@
     )
   )
 
+;; definition for method 11 of type rpc-buffer-pair
 (defmethod decrement-elt-used rpc-buffer-pair ((obj rpc-buffer-pair))
   (if (> (-> obj current elt-used) 0)
       (+! (-> obj current elt-used) -1)
       )
   0
   )
+
+;; failed to figure out what this is:
+0
+
+
+
+

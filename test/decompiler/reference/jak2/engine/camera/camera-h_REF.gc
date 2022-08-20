@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: camera-h.gc
-;; name in dgo: camera-h
-;; dgos: ENGINE, GAME
-
-;; DECOMP BEGINS
-
+;; definition of type cam-index
 (deftype cam-index (structure)
   ((flags cam-index-options           :offset-assert   0)
    (vec   vector            2 :inline :offset-assert  16)
@@ -20,6 +15,20 @@
     )
   )
 
+;; definition for method 3 of type cam-index
+(defmethod inspect cam-index ((obj cam-index))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'cam-index)
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Tvec[2] @ #x~X~%" (-> obj vec))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type tracking-point
 (deftype tracking-point (structure)
   ((position    vector :inline :offset-assert   0)
    (direction   vector :inline :offset-assert  16)
@@ -32,6 +41,23 @@
   :flag-assert         #x90000002c
   )
 
+;; definition for method 3 of type tracking-point
+(defmethod inspect tracking-point ((obj tracking-point))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'tracking-point)
+  (format #t "~1Tposition: #<vector @ #x~X>~%" (-> obj position))
+  (format #t "~1Tdirection: #<vector @ #x~X>~%" (-> obj direction))
+  (format #t "~1Ttp-length: ~f~%" (-> obj tp-length))
+  (format #t "~1Tnext: ~D~%" (-> obj next))
+  (format #t "~1Tincarnation: ~D~%" (-> obj incarnation))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type tracking-spline-sampler
 (deftype tracking-spline-sampler (structure)
   ((cur-pt     int32  :offset-assert   0)
    (partial-pt float  :offset-assert   4)
@@ -41,6 +67,20 @@
   :flag-assert         #x900000008
   )
 
+;; definition for method 3 of type tracking-spline-sampler
+(defmethod inspect tracking-spline-sampler ((obj tracking-spline-sampler))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'tracking-spline-sampler)
+  (format #t "~1Tcur-pt: ~D~%" (-> obj cur-pt))
+  (format #t "~1Tpartial-pt: ~f~%" (-> obj partial-pt))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type tracking-spline
 (deftype tracking-spline (structure)
   ((point              tracking-point 32 :inline :offset-assert   0)
    (summed-len         float                     :offset-assert 1536)
@@ -79,6 +119,32 @@
     )
   )
 
+;; definition for method 3 of type tracking-spline
+(defmethod inspect tracking-spline ((obj tracking-spline))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'tracking-spline)
+  (format #t "~1Tpoint[32] @ #x~X~%" (-> obj point))
+  (format #t "~1Tsummed-len: ~f~%" (-> obj summed-len))
+  (format #t "~1Tfree-point: ~D~%" (-> obj free-point))
+  (format #t "~1Tused-point: ~D~%" (-> obj used-point))
+  (format #t "~1Tpartial-point: ~f~%" (-> obj partial-point))
+  (format #t "~1Tend-point: ~D~%" (-> obj end-point))
+  (format #t "~1Tnext-to-last-point: ~D~%" (-> obj next-to-last-point))
+  (format #t "~1Tmax-move: ~f~%" (-> obj max-move))
+  (format #t "~1Tsample-len: ~f~%" (-> obj sample-len))
+  (format #t "~1Tused-count: ~D~%" (-> obj used-count))
+  (format #t "~1Told-position: #<vector @ #x~X>~%" (-> obj old-position))
+  (format #t "~1Tdebug-old-position: #<vector @ #x~X>~%" (-> obj debug-old-position))
+  (format #t "~1Tdebug-out-position: #<vector @ #x~X>~%" (-> obj debug-out-position))
+  (format #t "~1Tdebug-last-point: ~D~%" (-> obj debug-last-point))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type cam-float-seeker
 (deftype cam-float-seeker (structure)
   ((target      float  :offset-assert   0)
    (value       float  :offset-assert   4)
@@ -99,6 +165,25 @@
     )
   )
 
+;; definition for method 3 of type cam-float-seeker
+(defmethod inspect cam-float-seeker ((obj cam-float-seeker))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'cam-float-seeker)
+  (format #t "~1Ttarget: ~f~%" (-> obj target))
+  (format #t "~1Tvalue: ~f~%" (-> obj value))
+  (format #t "~1Tvel: ~f~%" (-> obj vel))
+  (format #t "~1Taccel: ~f~%" (-> obj accel))
+  (format #t "~1Tmax-vel: ~f~%" (-> obj max-vel))
+  (format #t "~1Tmax-partial: ~f~%" (-> obj max-partial))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 9 of type cam-float-seeker
+;; INFO: Return type mismatch int vs none.
 (defmethod init cam-float-seeker ((obj cam-float-seeker) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
   (set! (-> obj target) arg0)
   (set! (-> obj value) arg0)
@@ -110,6 +195,8 @@
   (none)
   )
 
+;; definition for method 10 of type cam-float-seeker
+;; INFO: Return type mismatch int vs none.
 (defmethod copy-to cam-float-seeker ((obj cam-float-seeker) (arg0 cam-float-seeker))
   (set! (-> obj target) (-> arg0 target))
   (set! (-> obj value) (-> arg0 value))
@@ -121,6 +208,8 @@
   (none)
   )
 
+;; definition for method 11 of type cam-float-seeker
+;; INFO: Return type mismatch int vs none.
 (defmethod update! cam-float-seeker ((obj cam-float-seeker) (arg0 float))
   (with-pp
     0.0
@@ -147,12 +236,14 @@
     )
   )
 
+;; definition for method 12 of type cam-float-seeker
 (defmethod jump-to-target! cam-float-seeker ((obj cam-float-seeker) (arg0 float))
   (set! (-> obj value) (+ (-> obj target) arg0))
   (set! (-> obj vel) 0.0)
   0.0
   )
 
+;; definition of type cam-vector-seeker
 (deftype cam-vector-seeker (structure)
   ((target      vector :inline :offset-assert   0)
    (value       vector :inline :offset-assert  16)
@@ -170,6 +261,26 @@
     )
   )
 
+;; definition for method 3 of type cam-vector-seeker
+(defmethod inspect cam-vector-seeker ((obj cam-vector-seeker))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'cam-vector-seeker)
+  (format #t "~1Ttarget: #<vector @ #x~X>~%" (-> obj target))
+  (format #t "~1Tvalue: #<vector @ #x~X>~%" (-> obj value))
+  (format #t "~1Tvel: #<vector @ #x~X>~%" (-> obj vel))
+  (format #t "~1Taccel: ~f~%" (-> obj accel))
+  (format #t "~1Tmax-vel: ~f~%" (-> obj max-vel))
+  (format #t "~1Tmax-partial: ~f~%" (-> obj max-partial))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 9 of type cam-vector-seeker
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 (defmethod init cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (cond
     (arg0
@@ -189,6 +300,8 @@
   (none)
   )
 
+;; definition for method 10 of type cam-vector-seeker
+;; INFO: Return type mismatch int vs none.
 (defmethod update! cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector))
   (with-pp
     (let ((v1-0 (new 'stack-no-clear 'vector)))
@@ -221,6 +334,7 @@
     )
   )
 
+;; definition of type cam-rotation-tracker
 (deftype cam-rotation-tracker (structure)
   ((inv-mat                 matrix           :inline :offset-assert   0)
    (no-follow               basic                    :offset-assert  64)
@@ -240,6 +354,30 @@
   :flag-assert         #x900000108
   )
 
+;; definition for method 3 of type cam-rotation-tracker
+(defmethod inspect cam-rotation-tracker ((obj cam-rotation-tracker))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'cam-rotation-tracker)
+  (format #t "~1Tinv-mat: ~`matrix`P~%" (-> obj inv-mat))
+  (format #t "~1Tno-follow: ~A~%" (-> obj no-follow))
+  (format #t "~1Tfollow-pt: ~`vector`P~%" (-> obj follow-pt))
+  (format #t "~1Tfollow-off: ~`vector`P~%" (-> obj follow-off))
+  (format #t "~1Tfollow-blend: ~f~%" (-> obj follow-blend))
+  (format #t "~1Ttilt-adjust: #<cam-float-seeker @ #x~X>~%" (-> obj tilt-adjust))
+  (format #t "~1Tpoint-of-interest-blend: #<cam-float-seeker @ #x~X>~%" (-> obj point-of-interest-blend))
+  (format #t "~1Tunderwater-blend: #<cam-float-seeker @ #x~X>~%" (-> obj underwater-blend))
+  (format #t "~1Tlooking-at: ~`vector`P~%" (-> obj looking-at))
+  (format #t "~1Tlooking-interesting: ~`vector`P~%" (-> obj looking-interesting))
+  (format #t "~1Told-cam-trans: ~`vector`P~%" (-> obj old-cam-trans))
+  (format #t "~1Tfollow-height-extra: #<cam-float-seeker @ #x~X>~%" (-> obj follow-height-extra))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type camera-combiner
 (deftype camera-combiner (process)
   ((trans             vector               :inline :offset-assert 128)
    (inv-camera-rot    matrix               :inline :offset-assert 144)
@@ -261,6 +399,33 @@
   :flag-assert         #xe01b0022c
   )
 
+;; definition for method 3 of type camera-combiner
+(defmethod inspect camera-combiner ((obj camera-combiner))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Ttrans: ~`vector`P~%" (-> obj stack))
+  (format #t "~2Tinv-camera-rot: ~`matrix`P~%" (-> obj inv-camera-rot))
+  (format #t "~2Tfov: ~f~%" (-> obj fov))
+  (format #t "~2Tinterp-val: ~f~%" (-> obj interp-val))
+  (format #t "~2Tinterp-step: ~f~%" (-> obj interp-step))
+  (format #t "~2Tdist-from-src: ~f~%" (-> obj dist-from-src))
+  (format #t "~2Tdist-from-dest: ~f~%" (-> obj dist-from-dest))
+  (format #t "~2Tflip-control-axis: #<vector @ #x~X>~%" (-> obj flip-control-axis))
+  (format #t "~2Tvelocity: #<vector @ #x~X>~%" (-> obj velocity))
+  (format #t "~2Ttracking-status: ~D~%" (-> obj tracking-status))
+  (format #t "~2Ttracking-options: ~D~%" (-> obj tracking-options))
+  (format #t "~2Ttracking: #<cam-rotation-tracker @ #x~X>~%" (-> obj tracking))
+  (format #t "~2Tfast-rot: ~A~%" (-> obj fast-rot))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type camera-slave
 (deftype camera-slave (process)
   ((trans                         vector               :inline :offset-assert 128)
    (fov                           float                        :offset-assert 144)
@@ -324,6 +489,75 @@
   :flag-assert         #xe0a200a94
   )
 
+;; definition for method 3 of type camera-slave
+(defmethod inspect camera-slave ((obj camera-slave))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Ttrans: ~`vector`P~%" (-> obj stack))
+  (format #t "~2Tfov: ~f~%" (-> obj fov))
+  (format #t "~2Tfov0: ~f~%" (-> obj fov0))
+  (format #t "~2Tfov1: ~f~%" (-> obj fov1))
+  (format #t "~2Tfov-index: #<cam-index @ #x~X>~%" (-> obj fov-index))
+  (format #t "~2Ttracking: #<cam-rotation-tracker @ #x~X>~%" (-> obj tracking))
+  (format #t "~2Tview-off-param: ~f~%" (-> obj view-off-param))
+  (format #t "~2Tview-off: ~`vector`P~%" (-> obj view-off))
+  (format #t "~2Tjoystick-saved-view-off: ~`vector`P~%" (-> obj joystick-saved-view-off))
+  (format #t "~2Tmin-z-override: ~f~%" (-> obj min-z-override))
+  (format #t "~2Tview-flat: ~`vector`P~%" (-> obj view-flat))
+  (format #t "~2Tstring-vel-dir: ~D~%" (-> obj string-vel-dir))
+  (format #t "~2Tstring-trans: ~`vector`P~%" (-> obj string-trans))
+  (format #t "~2Tposition-spline: #<tracking-spline @ #x~X>~%" (-> obj position-spline))
+  (format #t "~2Tpivot-pt: ~`vector`P~%" (-> obj pivot-pt))
+  (format #t "~2Tpivot-rad: ~f~%" (-> obj pivot-rad))
+  (format #t "~2Tcircular-follow: #<vector @ #x~X>~%" (-> obj circular-follow))
+  (format #t "~2Tmax-angle-offset: ~f~%" (-> obj max-angle-offset))
+  (format #t "~2Tmax-angle-curr: ~f~%" (-> obj max-angle-curr))
+  (format #t "~2Toptions: ~D~%" (-> obj options))
+  (format #t "~2Tcam-entity: ~A~%" (-> obj cam-entity))
+  (format #t "~2Tbutt-timer: ~D~%" (-> obj butt-timer))
+  (format #t "~2Tbutt-seek: ~A~%" (-> obj butt-seek))
+  (format #t "~2Tbutt-vector: ~`vector`P~%" (-> obj butt-vector))
+  (format #t "~2Tvelocity: ~`vector`P~%" (-> obj velocity))
+  (format #t "~2Tdesired-pos: ~`vector`P~%" (-> obj desired-pos))
+  (format #t "~2Ttime-dist-too-far: ~D~%" (-> obj time-dist-too-far))
+  (format #t "~2Tlos-state: ~D~%" (-> obj los-state))
+  (format #t "~2Tgood-point: ~`vector`P~%" (-> obj good-point))
+  (format #t "~2Tlos-tgt-spline-pt: ~D~%" (-> obj los-tgt-spline-pt))
+  (format #t "~2Tlos-tgt-spline-pt-incarnation: ~D~%" (-> obj los-tgt-spline-pt-incarnation))
+  (format #t "~2Tlos-last-pos: ~`vector`P~%" (-> obj los-last-pos))
+  (format #t "~2Tintro-curve: #<curve @ #x~X>~%" (-> obj intro-curve))
+  (format #t "~2Tintro-offset: #<vector @ #x~X>~%" (-> obj intro-offset))
+  (format #t "~2Tintro-t: ~f~%" (-> obj intro-t))
+  (format #t "~2Tintro-t-step: ~f~%" (-> obj intro-t-step))
+  (format #t "~2Toutro-exit-value: ~f~%" (-> obj outro-exit-value))
+  (format #t "~2Tspline-exists: ~A~%" (-> obj spline-exists))
+  (format #t "~2Tspline-curve: #<curve @ #x~X>~%" (-> obj spline-curve))
+  (format #t "~2Tspline-offset: #<vector @ #x~X>~%" (-> obj spline-offset))
+  (format #t "~2Tindex: #<cam-index @ #x~X>~%" (-> obj index))
+  (format #t "~2Tsaved-pt: #<vector @ #x~X>~%" (-> obj saved-pt))
+  (format #t "~2Tspline-tt: ~f~%" (-> obj spline-tt))
+  (format #t "~2Tspline-follow-dist: ~f~%" (-> obj spline-follow-dist))
+  (format #t "~2Tenter-has-run: ~A~%" (-> obj enter-has-run))
+  (format #t "~2Tblend-from-type: ~D~%" (-> obj blend-from-type))
+  (format #t "~2Tblend-to-type: ~D~%" (-> obj blend-to-type))
+  (format #t "~2Thave-phony-joystick: ~A~%" (-> obj have-phony-joystick))
+  (format #t "~2Tphony-joystick-x: ~f~%" (-> obj phony-joystick-x))
+  (format #t "~2Tphony-joystick-y: ~f~%" (-> obj phony-joystick-y))
+  (format #t "~2Tstring-min-val: #<vector @ #x~X>~%" (-> obj string-min-val))
+  (format #t "~2Tstring-max-val: #<vector @ #x~X>~%" (-> obj string-max-val))
+  (format #t "~2Tstring-val-locked: ~A~%" (-> obj string-val-locked))
+  (format #t "~2Trelative-position: #<vector @ #x~X>~%" (-> obj relative-position))
+  (format #t "~2Tstring-relative: ~A~%" (-> obj string-relative))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type camera-master
 (deftype camera-master (process)
   ((master-options      uint32                           :offset-assert 128)
    (settings            cam-setting-data                 :offset-assert 132)
@@ -375,3 +609,62 @@
     (camera-master-method-16 () none 16)
     )
   )
+
+;; definition for method 3 of type camera-master
+(defmethod inspect camera-master ((obj camera-master))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tmaster-options: ~D~%" (-> obj master-options))
+  (format #t "~2Tsettings: #<cam-setting-data @ #x~X>~%" (-> obj settings))
+  (format #t "~2Tslave: #x~X~%" (-> obj slave))
+  (format #t "~2Tdecel: #x~X~%" (-> obj decel))
+  (format #t "~2Tslave-options: ~D~%" (-> obj slave-options))
+  (format #t "~2Tview-off-param-save: ~f~%" (-> obj view-off-param-save))
+  (format #t "~2Tchanger: #x~X~%" (-> obj changer))
+  (format #t "~2Tstring-min: #<cam-vector-seeker @ #x~X>~%" (-> obj string-min))
+  (format #t "~2Tstring-max: #<cam-vector-seeker @ #x~X>~%" (-> obj string-max))
+  (format #t "~2Tstring-push-z: ~f~%" (-> obj string-push-z))
+  (format #t "~2Tlocal-down: ~`vector`P~%" (-> obj local-down))
+  (format #t "~2Tfocus: #<focus @ #x~X>~%" (-> obj focus))
+  (format #t "~2Tbeing-attacked: ~A~%" (-> obj being-attacked))
+  (format #t "~2Tattack-start: ~D~%" (-> obj attack-start))
+  (format #t "~2Ton-ground: ~A~%" (-> obj on-ground))
+  (format #t "~2Tunder-water: ~D~%" (-> obj under-water))
+  (format #t "~2Ton-pole: ~A~%" (-> obj on-pole))
+  (format #t "~2Ttgt-rot-mat: ~`matrix`P~%" (-> obj tgt-rot-mat))
+  (format #t "~2Ttgt-face-mat: ~`matrix`P~%" (-> obj tgt-face-mat))
+  (format #t "~2Ttpos-old: ~`vector`P~%" (-> obj tpos-old))
+  (format #t "~2Ttpos-curr: ~`vector`P~%" (-> obj tpos-curr))
+  (format #t "~2Ttpos-old-adj: ~`vector`P~%" (-> obj tpos-old-adj))
+  (format #t "~2Ttpos-curr-adj: ~`vector`P~%" (-> obj tpos-curr-adj))
+  (format #t "~2Ttpos-tgt: ~`vector`P~%" (-> obj tpos-tgt))
+  (format #t "~2Tupspeed: ~f~%" (-> obj upspeed))
+  (format #t "~2Tpitch-off: ~`vector`P~%" (-> obj pitch-off))
+  (format #t "~2Ttarget-spline: #<tracking-spline @ #x~X>~%" (-> obj target-spline))
+  (format #t "~2Tease-from: #<vector @ #x~X>~%" (-> obj ease-from))
+  (format #t "~2Tease-t: ~f~%" (-> obj ease-t))
+  (format #t "~2Tease-step: ~f~%" (-> obj ease-step))
+  (format #t "~2Tease-to: #<vector @ #x~X>~%" (-> obj ease-to))
+  (format #t "~2Toutro-curve: #<curve @ #x~X>~%" (-> obj outro-curve))
+  (format #t "~2Toutro-t: ~f~%" (-> obj outro-t))
+  (format #t "~2Toutro-t-step: ~f~%" (-> obj outro-t-step))
+  (format #t "~2Toutro-exit-value: ~f~%" (-> obj outro-exit-value))
+  (format #t "~2Twater-drip-time: ~D~%" (-> obj water-drip-time))
+  (format #t "~2Twater-drip: ~A~%" (-> obj water-drip))
+  (format #t "~2Twater-drip-mult: ~f~%" (-> obj water-drip-mult))
+  (format #t "~2Twater-drip-speed: ~f~%" (-> obj water-drip-speed))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

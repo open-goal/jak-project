@@ -1,12 +1,9 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: actor-link-h.gc
-;; name in dgo: actor-link-h
-;; dgos: ENGINE, GAME
-
-;; DECOMP BEGINS
-
+;; definition for function entity-actor-lookup
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch entity vs entity-actor.
 (defun entity-actor-lookup ((arg0 res-lump) (arg1 symbol) (arg2 int))
   (local-vars (sv-16 res-tag))
   (set! sv-16 (new 'static 'res-tag))
@@ -23,6 +20,9 @@
     )
   )
 
+;; definition for function entity-actor-count
+;; WARN: Check prologue - tricky store of r0
+;; INFO: Used lq/sq
 (defun entity-actor-count ((arg0 res-lump) (arg1 symbol))
   (local-vars (sv-16 res-tag))
   (set! sv-16 (new 'static 'res-tag))
@@ -32,6 +32,7 @@
       )
   )
 
+;; definition of type actor-link-info
 (deftype actor-link-info (basic)
   ((process process       :offset-assert   4)
    (next    entity-actor  :offset-assert   8)
@@ -62,14 +63,31 @@
     )
   )
 
+;; definition for method 3 of type actor-link-info
+(defmethod inspect actor-link-info ((obj actor-link-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tprocess: ~A~%" (-> obj process))
+  (format #t "~1Tnext: ~A~%" (-> obj next))
+  (format #t "~1Tprev: ~A~%" (-> obj prev))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 27 of type entity-actor
 (defmethod next-actor entity-actor ((obj entity-actor))
   (entity-actor-lookup obj 'next-actor 0)
   )
 
+;; definition for method 28 of type entity-actor
 (defmethod prev-actor entity-actor ((obj entity-actor))
   (entity-actor-lookup obj 'prev-actor 0)
   )
 
+;; definition for method 0 of type actor-link-info
 (defmethod new actor-link-info ((allocation symbol) (type-to-make type) (arg0 process) (arg1 symbol))
   (let* ((a0-1 (-> arg0 entity))
          (s4-0 (entity-actor-lookup a0-1 'next-actor 0))
@@ -87,22 +105,29 @@
     )
   )
 
+;; definition for method 12 of type actor-link-info
 (defmethod get-next actor-link-info ((obj actor-link-info))
   (-> obj next)
   )
 
+;; definition for method 13 of type actor-link-info
 (defmethod get-prev actor-link-info ((obj actor-link-info))
   (-> obj prev)
   )
 
+;; definition for method 14 of type actor-link-info
+;; INFO: Return type mismatch basic vs process.
 (defmethod get-next-process actor-link-info ((obj actor-link-info))
   (the-as process (and (-> obj next) (-> obj next extra process)))
   )
 
+;; definition for method 15 of type actor-link-info
+;; INFO: Return type mismatch basic vs process.
 (defmethod get-prev-process actor-link-info ((obj actor-link-info))
   (the-as process (and (-> obj prev) (-> obj prev extra process)))
   )
 
+;; definition for method 11 of type actor-link-info
 (defmethod link-to-next-and-prev-actor actor-link-info ((obj actor-link-info))
   (let ((a0-1 (-> obj process entity)))
     (set! (-> obj next) (entity-actor-lookup a0-1 'next-actor 0))
@@ -113,6 +138,7 @@
   obj
   )
 
+;; definition for method 16 of type actor-link-info
 (defmethod apply-function-forward actor-link-info ((obj actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
   (let ((s3-0 (-> obj next)))
     (while s3-0
@@ -125,6 +151,7 @@
   0
   )
 
+;; definition for method 17 of type actor-link-info
 (defmethod apply-function-reverse actor-link-info ((obj actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
   (let ((s3-0 (-> obj prev)))
     (while s3-0
@@ -137,6 +164,7 @@
   0
   )
 
+;; definition for method 18 of type actor-link-info
 (defmethod apply-all actor-link-info ((obj actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
   (let ((s4-0 (-> obj process entity)))
     (while (let ((a0-2 s4-0))
@@ -156,6 +184,7 @@
   0
   )
 
+;; definition for method 20 of type actor-link-info
 (defmethod send-to-all-after actor-link-info ((obj actor-link-info) (arg0 symbol))
   (with-pp
     (let ((s4-0 (-> obj next))
@@ -179,6 +208,7 @@
     )
   )
 
+;; definition for method 21 of type actor-link-info
 (defmethod send-to-all-before actor-link-info ((obj actor-link-info) (arg0 symbol))
   (with-pp
     (let ((s4-0 (-> obj prev))
@@ -202,6 +232,8 @@
     )
   )
 
+;; definition for method 23 of type actor-link-info
+;; INFO: Return type mismatch symbol vs none.
 (defmethod send-to-next actor-link-info ((obj actor-link-info) (arg0 symbol))
   (with-pp
     (let ((a0-1 (-> obj next)))
@@ -217,6 +249,8 @@
     )
   )
 
+;; definition for method 24 of type actor-link-info
+;; INFO: Return type mismatch symbol vs none.
 (defmethod send-to-prev actor-link-info ((obj actor-link-info) (arg0 symbol))
   (with-pp
     (let ((a0-1 (-> obj prev)))
@@ -232,18 +266,23 @@
     )
   )
 
+;; definition for method 22 of type actor-link-info
+;; INFO: Return type mismatch symbol vs none.
 (defmethod send-to-next-and-prev actor-link-info ((obj actor-link-info) (arg0 symbol))
   (send-to-next obj arg0)
   (send-to-prev obj arg0)
   (none)
   )
 
+;; definition for method 19 of type actor-link-info
+;; INFO: Return type mismatch symbol vs none.
 (defmethod send-to-all actor-link-info ((obj actor-link-info) (arg0 symbol))
   (send-to-all-after obj arg0)
   (send-to-all-before obj arg0)
   (none)
   )
 
+;; definition for method 25 of type actor-link-info
 (defmethod actor-count actor-link-info ((obj actor-link-info))
   (let ((s5-0 (-> obj process entity))
         (gp-0 0)
@@ -263,6 +302,7 @@
     )
   )
 
+;; definition for method 9 of type actor-link-info
 (defmethod get-matching-actor-type-mask actor-link-info ((obj actor-link-info) (arg0 type))
   (let ((s3-0 (the-as entity-actor (-> obj process entity)))
         (s5-0 0)
@@ -287,6 +327,7 @@
     )
   )
 
+;; definition for method 10 of type actor-link-info
 (defmethod actor-count-before actor-link-info ((obj actor-link-info))
   (let* ((s5-0 (-> obj process entity))
          (s4-0 s5-0)
@@ -307,6 +348,7 @@
     )
   )
 
+;; definition for function actor-link-subtask-complete-hook
 (defun actor-link-subtask-complete-hook ((arg0 entity-actor) (arg1 (pointer symbol)))
   (cond
     ((logtest? (-> arg0 extra perm status) (entity-perm-status subtask-complete))
@@ -320,6 +362,7 @@
     )
   )
 
+;; definition for function actor-link-subtask-incomplete-count-hook
 (defun actor-link-subtask-incomplete-count-hook ((arg0 entity-actor) (arg1 (pointer uint64)))
   (cond
     ((logtest? (-> arg0 extra perm status) (entity-perm-status subtask-complete))
@@ -332,6 +375,7 @@
     )
   )
 
+;; definition for function actor-link-dead-hook
 (defun actor-link-dead-hook ((arg0 entity-actor) (arg1 (pointer symbol)))
   (cond
     ((logtest? (-> arg0 extra perm status) (entity-perm-status dead))
@@ -345,6 +389,7 @@
     )
   )
 
+;; definition for function alt-actor-list-subtask-incomplete-count
 (defun alt-actor-list-subtask-incomplete-count ((arg0 process-drawable))
   (let ((s4-0 (entity-actor-count (-> arg0 entity) 'alt-actor))
         (gp-0 0)

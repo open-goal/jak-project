@@ -26,12 +26,28 @@
   :flag-assert         #x900000040
   )
 
+;; a transform with:
+;; - type information (child of basic)
+;; - rotation stored as quaternion
+;; - velocity information.
+;; This is a very commonly used type to represent the position of an in-game object.
+;; The "root" of a process-drawable (the parent "in-game object" type) is a trsqv.
+;; Additionally, the collision system uses trsqv as the parent type for foreground
+;; collision objects (collide-shape, collide-shape-moving)
+;; As a result, this type has a lot of weird methods and extra stuff hidden in it.
 (deftype trsqv (trsq)
-  ((pause-adjust-distance meters             :offset          4)
+  (;; some extra info for game objects, hidden in the unused space.
+   (pause-adjust-distance meters             :offset          4)
    (nav-radius            meters             :offset          8)
+
+   ;; velocities
    (transv                vector     :inline :offset-assert  64)
    (rotv                  vector     :inline :offset-assert  80)
    (scalev                vector     :inline :offset-assert  96)
+
+   ;; trsqv also supports the ability to adjust its orientation
+   ;; to face a target. This has some logic to prevent chattering
+   ;; that requires some additional state here:
    (dir-targ              quaternion :inline :offset-assert 112)
    (angle-change-time     time-frame         :offset-assert 128)
    (old-y-angle-diff      float              :offset-assert 136)

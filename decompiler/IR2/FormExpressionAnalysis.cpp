@@ -1504,24 +1504,28 @@ void SimpleExpressionElement::update_from_stack_vector_float_product(
   result->push_back(new_form);
 }
 
-void SimpleExpressionElement::update_from_stack_vector_dot(FixedOperatorKind kind,
-                                                           const Env& env,
-                                                           FormPool& pool,
-                                                           FormStack& stack,
-                                                           std::vector<FormElement*>* result,
-                                                           bool allow_side_effects) {
-  std::vector<Form*> popped_args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()},
-                                                env, pool, stack, allow_side_effects);
+void SimpleExpressionElement::update_from_stack_vectors_in_common(FixedOperatorKind kind,
+                                                                  const Env& env,
+                                                                  FormPool& pool,
+                                                                  FormStack& stack,
+                                                                  std::vector<FormElement*>* result,
+                                                                  bool allow_side_effects) {
+  std::vector<RegisterAccess> register_acccesses;
+  for (int arg_idx = 0; arg_idx < m_expr.args(); arg_idx++) {
+    register_acccesses.push_back(m_expr.get_arg(arg_idx).var());
+  }
+  std::vector<Form*> popped_args =
+      pop_to_forms(register_acccesses, env, pool, stack, allow_side_effects);
 
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < m_expr.args(); i++) {
     auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
     if (arg_type.typespec() != TypeSpec("vector")) {
       popped_args.at(i) = cast_form(popped_args.at(i), TypeSpec("vector"), pool, env);
     }
   }
 
-  auto new_form = pool.alloc_element<GenericElement>(
-      GenericOperator::make_fixed(kind), std::vector<Form*>{popped_args.at(0), popped_args.at(1)});
+  auto new_form =
+      pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind), popped_args);
   result->push_back(new_form);
 }
 
@@ -2335,12 +2339,16 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       update_from_stack_subu_l32_s7(env, pool, stack, result, allow_side_effects);
       break;
     case SimpleExpression::Kind::VECTOR_3_DOT:
-      update_from_stack_vector_dot(FixedOperatorKind::VECTOR_3_DOT, env, pool, stack, result,
-                                   allow_side_effects);
+      update_from_stack_vectors_in_common(FixedOperatorKind::VECTOR_3_DOT, env, pool, stack, result,
+                                          allow_side_effects);
       break;
     case SimpleExpression::Kind::VECTOR_4_DOT:
-      update_from_stack_vector_dot(FixedOperatorKind::VECTOR_4_DOT, env, pool, stack, result,
-                                   allow_side_effects);
+      update_from_stack_vectors_in_common(FixedOperatorKind::VECTOR_4_DOT, env, pool, stack, result,
+                                          allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_LENGTH:
+      update_from_stack_vectors_in_common(FixedOperatorKind::VECTOR_LENGTH, env, pool, stack,
+                                          result, allow_side_effects);
       break;
     default:
       throw std::runtime_error(

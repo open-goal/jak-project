@@ -758,9 +758,11 @@ goos::Object decompile_structure(const TypeSpec& type,
   // some structures we want to decompile to fancy macros instead of a raw static definiton
   if (use_fancy_macros) {
     if (type == TypeSpec("sp-field-init-spec")) {
+      ASSERT(file->version == GameVersion::Jak1); // need to update enums
       return decompile_sparticle_field_init(type, label, labels, words, ts, file);
     }
     if (type == TypeSpec("sparticle-group-item")) {
+      ASSERT(file->version == GameVersion::Jak1); // need to update enums
       return decompile_sparticle_group_item(type, label, labels, words, ts, file);
     }
     if (type == TypeSpec("sound-spec") && file->version != GameVersion::Jak2) {

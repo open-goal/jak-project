@@ -1351,11 +1351,11 @@ void types2_for_normal_all_float(types2::Type& type_out,
   type_out.type = TP_Type::make_from_ts(TypeSpec("float"));
 }
 
-void types2_for_vector_dot_3_4(types2::Type& type_out,
-                               const SimpleExpression& expr,
-                               types2::TypeState& input_types,
-                               const DecompilerTypeSystem& dts,
-                               types2::TypePropExtras& extras) {
+void types2_for_vectors_in_float_out(types2::Type& type_out,
+                                     const SimpleExpression& expr,
+                                     types2::TypeState& input_types,
+                                     const DecompilerTypeSystem& dts,
+                                     types2::TypePropExtras& extras) {
   // backprop to make inputs vector
   for (int i = 0; i < expr.args(); i++) {
     auto& arg = expr.get_arg(i);
@@ -1530,7 +1530,8 @@ void types2_for_expr(types2::Type& type_out,
       break;
     case SimpleExpression::Kind::VECTOR_3_DOT:
     case SimpleExpression::Kind::VECTOR_4_DOT:
-      types2_for_vector_dot_3_4(type_out, expr, input_types, dts, extras);
+    case SimpleExpression::Kind::VECTOR_LENGTH:
+      types2_for_vectors_in_float_out(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::VECTOR_CROSS:
     case SimpleExpression::Kind::VECTOR_MINUS:
