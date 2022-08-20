@@ -13,17 +13,23 @@ uniform int ignore_alpha;
 
 uniform int decal_enable;
 
+uniform int gfx_hack_no_tex;
 
 void main() {
-    vec4 T0 = texture(tex_T0, vtx_st);
+    if (gfx_hack_no_tex == 0) {
+      vec4 T0 = texture(tex_T0, vtx_st);
 
-    if (decal_enable == 0) {
-        color.xyz = vtx_color * T0.xyz;
+      if (decal_enable == 0) {
+          color.rgb = vtx_color * T0.rgb;
+      } else {
+          color.rgb = T0.rgb * 0.5;
+      }
+      color.a = T0.a;
+      color *= 2;
     } else {
-        color.xyz = T0.xyz * 0.5;
+      color.rgb = vtx_color;
+      color.a = 1;
     }
-    color.w = T0.w;
-    color *= 2;
 
 
     if (ignore_alpha == 0 && color.w < 0.128) {

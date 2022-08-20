@@ -98,6 +98,8 @@ class Merc2 : public BucketRenderer {
 
     GLuint ignore_alpha;
     GLuint decal;
+
+    GLuint gfx_hack_no_tex;
   } m_uniforms;
 
   GLuint m_vao;

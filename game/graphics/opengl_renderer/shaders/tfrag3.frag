@@ -11,10 +11,16 @@ uniform float alpha_min;
 uniform float alpha_max;
 uniform vec4 fog_color;
 
+uniform int gfx_hack_no_tex;
+
 void main() {
-    //vec4 T0 = texture(tex_T0, tex_coord);
-    vec4 T0 = texture(tex_T0, tex_coord.xy);
-    color = fragment_color * T0;
+    if (gfx_hack_no_tex == 0) {
+      //vec4 T0 = texture(tex_T0, tex_coord);
+      vec4 T0 = texture(tex_T0, tex_coord.xy);
+      color = fragment_color * T0;
+    } else {
+      color = fragment_color/2;
+    }
 
     if (color.a < alpha_min || color.a > alpha_max) {
         discard;

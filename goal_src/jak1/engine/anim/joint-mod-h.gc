@@ -49,8 +49,8 @@
    (up              uint8                          :offset-assert 136)
    (nose            uint8                          :offset-assert 137)
    (ear             uint8                          :offset-assert 138)
-   (shutting-down?  basic                          :offset-assert 140)
-   (parented-scale? basic                          :offset        128)
+   (shutting-down?  symbol                         :offset-assert 140)
+   (parented-scale? symbol                         :offset        128)
    )
   :method-count-assert 16
   :size-assert         #x90
@@ -63,7 +63,7 @@
    (reset-blend! (_type_) _type_ 12)
    (set-twist! (_type_ float float float) vector 13)
    (set-trs! (_type_ vector quaternion vector) none 14)
-   (shut-down! (_type_) float 15)
+   (shut-down! (_type_) none 15)
    )
   )
 
@@ -161,10 +161,8 @@
 (defmethod shut-down! joint-mod ((obj joint-mod))
   "Shut down and set the blend to zero."
   (set! (-> obj shutting-down?) #t)
-  (let ((f0-0 0.0))
-    (set! (-> obj blend) f0-0)
-    f0-0
-    )
+  (set! (-> obj blend) 0.0)
+  (none)
   )
 
 (defmethod set-twist! joint-mod ((obj joint-mod) (x float) (y float) (z float))
@@ -178,14 +176,14 @@
 (defmethod set-trs! joint-mod ((obj joint-mod) (trans vector) (rot quaternion) (scale vector))
   "Set the translation, rotation, and scale."
   (if trans
-   (set! (-> obj trans quad) (-> trans quad))
-   )
+    (set! (-> obj trans quad) (-> trans quad))
+    )
   (if rot
-   (quaternion-copy! (-> obj quat) rot)
-   )
+    (quaternion-copy! (-> obj quat) rot)
+    )
   (if scale
-   (set! (-> obj scale quad) (-> scale quad))
-   )
+    (set! (-> obj scale quad) (-> scale quad))
+    )
   (none)
   )
 
@@ -225,8 +223,8 @@
 
 (defmethod look-at-enemy! joint-mod ((obj joint-mod) (target-trans vector) (option symbol) (proc process))
   "Set up animation for Jak looking at an enemy. If option is 'attacking, remember when this happened.
-  Will only override an existing look-at if this one is closer, or option is 'force.
-  "
+  Will only override an existing look-at if this one is closer, or option is 'force."
+
   (when (= option 'attacking)
     ;; make sure we got a process-drawable
     (let* ((s3-0 proc)
@@ -725,16 +723,16 @@
 
 (deftype joint-mod-set-local (basic)
   ((transform       transformq :inline :offset-assert 16)
-   (set-rotation    basic              :offset-assert 64)
-   (set-scale       basic              :offset-assert 68)
-   (set-translation basic              :offset-assert 72)
-   (enable          basic              :offset-assert 76)
+   (set-rotation    symbol             :offset-assert 64)
+   (set-scale       symbol             :offset-assert 68)
+   (set-translation symbol             :offset-assert 72)
+   (enable          symbol             :offset-assert 76)
    )
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
   (:methods
-   (new (symbol type process-drawable int basic basic basic) _type_ 0)
+   (new (symbol type process-drawable int symbol symbol symbol) _type_ 0)
    )
   )
 
@@ -762,7 +760,7 @@
   (none)
   )
 
-(defmethod new joint-mod-set-local ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 basic) (arg3 basic) (arg4 basic))
+(defmethod new joint-mod-set-local ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 symbol) (arg4 symbol))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 set-translation) arg2)
     (set! (-> v0-0 set-rotation) arg3)
