@@ -43,7 +43,7 @@
 
 ;; new jak 2 light, is applied to stuff in the sphere.
 (deftype light-sphere (structure)
-  ((name                basic          :offset-assert   0)
+  ((name                string         :offset-assert   0)
    (bsphere             vector :inline :offset-assert  16)
    (direction           vector :inline :offset-assert  32)
    (color               vector :inline :offset-assert  48)
@@ -70,16 +70,16 @@
   )
 
 (deftype light-hash (basic)
-  ((num-lights         uint16           :offset-assert   4)
-   (num-indices        uint16           :offset-assert   6)
-   (num-buckets        uint16           :offset-assert   8)
-   (bucket-step        uint16   2       :offset-assert  10)
-   (base-trans         vector   :inline :offset-assert  16)
-   (axis-scale         vector   :inline :offset-assert  32)
-   (dimension-array    vector4w :inline :offset-assert  48)
-   (bucket-array       uint32           :offset-assert  64)
-   (index-array        uint32           :offset-assert  68)
-   (light-sphere-array uint32           :offset-assert  72)
+  ((num-lights         uint16                              :offset-assert   4)
+   (num-indices        uint16                              :offset-assert   6)
+   (num-buckets        uint16                              :offset-assert   8)
+   (bucket-step        uint8                       2       :offset-assert  10)
+   (base-trans         vector                      :inline :offset-assert  16)
+   (axis-scale         vector                      :inline :offset-assert  32)
+   (dimension-array    vector4w                    :inline :offset-assert  48)
+   (bucket-array       pointer                             :offset-assert  64)
+   (index-array        pointer                             :offset-assert  68)
+   (light-sphere-array (inline-array light-sphere)         :offset-assert  72)
    )
   :method-count-assert 9
   :size-assert         #x4c
@@ -94,7 +94,7 @@
   :flag-assert         #x900000010
   )
 
-(define *light-hash* (the-as light-hash-work #f))
+(define *light-hash* (the-as light-hash #f))
 
 (defmethod print light ((obj light))
   (format
@@ -111,10 +111,11 @@
 
 ;; jak1-style 3x directional + ambient lighting.
 (deftype light-group (structure)
-  ((dir0 light :inline :offset-assert   0)
-   (dir1 light :inline :offset-assert  48)
-   (dir2 light :inline :offset-assert  96)
-   (ambi light :inline :offset-assert 144)
+  ((dir0   light :inline   :offset-assert   0)
+   (dir1   light :inline   :offset-assert  48)
+   (dir2   light :inline   :offset-assert  96)
+   (ambi   light :inline   :offset-assert 144)
+   (lights light 4 :inline :offset          0)
    )
   :method-count-assert 9
   :size-assert         #xc0

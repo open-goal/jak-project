@@ -5,6 +5,115 @@
 ;; name in dgo: fact-h
 ;; dgos: ENGINE, GAME
 
+(defenum pickup-type
+  :bitfield #f
+  :type int32
+  (none            0)
+  (eco-yellow      1)
+  (eco-red         2)
+  (eco-blue        3)
+  (eco-dark        4)
+  (eco-green       5)
+  (eco-pill-green  6)
+  (eco-pill-dark   7)
+  (eco-pill-random 8)
+  (money           9)
+  (fuel-cell      10)
+  (buzzer         11)
+  (darkjak        12)
+  (ammo-yellow    13)
+  (ammo-red       14)
+  (ammo-blue      15)
+  (ammo-dark      16)
+  (shield         17)
+  (health         18)
+  (trick-point    19)
+  (trick-judge    20)
+  (gem            21)
+  (skill          22)
+  (karma          23)
+  (gun-red        24)
+  (gun-yellow     25)
+  (gun-blue       26)
+  (gun-dark       27)
+  (board          28)
+  (pass-red       29)
+  (pass-green     30)
+  (pass-yellow    31)
+  (pass-blue      32)
+  (ammo-random    33)
+  )
+
+(defenum actor-option
+  :bitfield #t
+  :type uint64
+
+  (blocked           0) ;; 1
+  (spawns-fuel-cell  1) ;; 2
+  (draw-blocker      2) ;; 4
+  (loop              3) ;; 8
+  (reflect           4) ;; 16
+  (wait-for-cue      5) ;; 32
+  (auto-pickup       6) ;; 64
+  (fuel-cell-no-jump 7) ;; 128
+  (suck-in           8) ;; 256
+  (fade-out          9) ;; 512
+  (big-collision    10) ;; 1024
+  (racer-only       11) ;; 2048
+  (no-reaction      12) ;; 4096
+  (no-shadow        13) ;; 8192
+  (wait-for-task-complete 14) ;; 16384
+  (respawn-delay    15) ;; 32768
+
+  (no-amb-sound     16) ;; hi 1
+  (user17           17) ;; hi 2
+  (user18           18) ;; hi 4
+  (user19           19) ;; hi 8
+  (user20           20) ;; hi 16
+  (cond-hide        21) ;; hi 32
+  (cond-respawn     22) ;; hi 64
+  (fall             23) ;; hi 128
+  (mirror           24) ;; hi 256
+  (cond-low-ammo             25) ;; hi 512
+  (no-distance-check-fadeout 26) ;; 1024
+  (no-track                  27) ;; hi 2048
+  )
+
+(defenum enemy-option
+  :bitfield #t
+  :type uint32
+  (user0              0) ;; 1
+  (user1              1) ;; 2
+  (user2              2) ;; 4
+  (user3              3) ;; 8
+  (user4              4) ;; 16
+  (user5              5) ;; 32
+  (user6              6) ;; 64
+  (user7              7) ;; 128
+  (user8              8) ;; 256
+  (user9              9) ;; 512
+  (user10            10) ;; 1024
+  (user11            11) ;; 2048
+  (user12            12) ;; 4096
+  (user13            13) ;; 8192
+  (user14            14) ;; 16k
+  (user15            15)
+
+  (dormant           16) ;; hi 1
+  (dormant-aware     17) ;; hi 2
+  (ambush            18) ;; hi 4
+  (spawner           19) ;; hi 8
+  (prespawned        20) ;; hi 16
+  (multi-focus       21) ;; hi 32
+  (has-trigger       22)
+  (idle-til-trigger  23) ;; hi 128
+  (knocked-into-water 24) ;; hi 256
+  (water             25) ;; hi 512
+  )
+
+(declare-type entity res-lump)
+(define-extern process-task-mask (function process task-mask))
+
 ;; DECOMP BEGINS
 
 (deftype fact-bank (basic)
@@ -253,7 +362,7 @@
                               )
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (let ((gp-0 (the-as fact-info-enemy ((method-of-type fact-info new) allocation type-to-make arg0 arg2 arg3))))
-    (let ((s5-0 (-> gp-0 process entity)))
+    (let ((s5-0 (the res-lump (-> gp-0 process entity))))
       (set! (-> gp-0 speed) (res-lump-float s5-0 'speed :default 1.0))
       (set! (-> gp-0 idle-distance) (res-lump-float s5-0 'idle-distance :default (-> arg1 0)))
       (set! (-> gp-0 notice-top) (res-lump-float s5-0 'notice-top :default 4096000.0))
@@ -313,7 +422,7 @@
 
 (defmethod new fact-info-crate ((allocation symbol) (type-to-make type) (arg0 process) (arg1 pickup-type) (arg2 float))
   (let ((gp-0 (the-as fact-info-crate ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
-    (let ((a0-1 (-> gp-0 process entity)))
+    (let ((a0-1 (the res-lump (-> gp-0 process entity))))
       (set! (-> gp-0 suck-count) (res-lump-value a0-1 'suck-count int :time -1000000000.0))
       )
     gp-0

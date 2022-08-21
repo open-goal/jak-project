@@ -5,6 +5,11 @@
 ;; name in dgo: projectile-h
 ;; dgos: ENGINE, GAME
 
+(defenum projectile-options
+  :type uint64
+  :bitfield #t
+  )
+
 ;; DECOMP BEGINS
 
 (deftype projectile (process-drawable)
@@ -82,13 +87,15 @@
   :flag-assert         #x900000058
   )
 
+(define-extern projectile-init-by-other (function projectile-init-by-other-params projectile))
+
 (defun spawn-projectile ((arg0 type) (arg1 projectile-init-by-other-params) (arg2 process-tree) (arg3 dead-pool))
   (let ((s4-0 (get-process arg3 arg0 #x4000)))
     (when s4-0
       (let ((t9-1 (method-of-type process activate)))
         (t9-1 s4-0 arg2 (symbol->string (-> arg0 symbol)) (the-as pointer #x70004000))
         )
-      (run-now-in-process s4-0 projectile-init-by-other)
+      (run-now-in-process s4-0 projectile-init-by-other arg1)
       (-> s4-0 ppointer)
       )
     )

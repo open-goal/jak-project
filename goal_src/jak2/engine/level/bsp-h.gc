@@ -7,6 +7,11 @@
 
 ;; the bsp-node class seems broken - it has int16's that get used a pointers.
 
+(declare-type entity-camera entity)
+(declare-type entity-race-mesh entity)
+(declare-type entity-nav-mesh entity)
+(declare-type actor-group basic)
+
 ;; DECOMP BEGINS
 
 (deftype bsp-node (structure)
@@ -22,21 +27,43 @@
   :flag-assert         #x900000014
   )
 
+(define-extern inspect-bsp-tree (function bsp-header bsp-node none))
+(define-extern map-bsp-tree (function (function bsp-node none) bsp-header bsp-node none))
+
 (deftype bsp-header (drawable)
-  ((all-visible-list    (pointer uint16)           :offset-assert  32)
-   (visible-list-length int16                      :offset-assert  36)
-   (drawable-trees      drawable-tree-array        :offset-assert  40)
-   (pat                 pointer                    :offset-assert  44)
-   (pat-length          int32                      :offset-assert  48)
-   (nodes               (inline-array bsp-node)    :offset        120)
-   (unk-data-8          uint32                  55 :offset        180)
+  ((info                file-info                      :offset          4)
+   (all-visible-list    (pointer uint16)               :offset-assert  32)
+   (visible-list-length int16                          :offset-assert  36)
+   (drawable-trees      drawable-tree-array            :offset-assert  40)
+   (pat                 pointer                        :offset-assert  44)
+   (pat-length          int32                          :offset-assert  48)
+   (texture-ids         (pointer texture-id)           :offset         60)
+   (texture-page-count  int32                          :offset         64)
+   (name                symbol                         :offset         72)
+   (nickname            symbol                         :offset-assert  76)
+   (vis-info            level-vis-info              8  :offset         80)
+   (actors              drawable-inline-array-actor    :offset-assert 112)
+   (cameras             (array entity-camera)          :offset-assert 116)
+   (nodes               (inline-array bsp-node)        :offset        120)
+   (level               level                          :offset-assert 124)
+   (unk-data-2          uint16                      9  :offset        130)
+   (unk-byte            uint8                          :offset        152)
+   (unk-data-4          float                          :offset        160)
+   (unk-data-5          float                          :offset-assert 164)
+   (race-meshes         (array entity-race-mesh)       :offset        168)
+   (light-hash          light-hash                     :offset        176)
+   (nav-meshes          (array entity-nav-mesh)        :offset        180)
+   (actor-groups        (array actor-group)            :offset        184)
+   (collide-hash        collide-hash                   :offset        196)
+   (region-tree         drawable-tree-region-prim      :offset        252)
+   (unk-data-8          uint32                      55 :offset        180)
    )
   :method-count-assert 19
   :size-assert         #x190
   :flag-assert         #x1300000190
   (:methods
-    (bsp-header-method-17 () none 17)
-    (bsp-header-method-18 () none 18)
+    (birth (_type_) none 17)
+    (deactivate-entities (_type_) none 18)
     )
   )
 

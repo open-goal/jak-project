@@ -664,27 +664,7 @@
 
 ;; definition for function vector-length
 (defun vector-length ((arg0 vector))
-  (local-vars (v0-0 float))
-  (rlet ((acc :class vf)
-         (Q :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         )
-    (init-vf0-vector)
-    (.lvf vf1 (&-> arg0 quad))
-    (.mul.vf vf1 vf1 vf1)
-    (.mul.x.vf acc vf0 vf1 :mask #b1000)
-    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
-    (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
-    (.sqrt.vf Q vf1 :ftf #b11)
-    (.add.w.vf vf1 vf0 vf0 :mask #b1)
-    (.wait.vf)
-    (.mul.vf vf1 vf1 Q :mask #b1)
-    (.nop.vf)
-    (.nop.vf)
-    (.mov v0-0 vf1)
-    v0-0
-    )
+  (vector-length arg0)
   )
 
 ;; definition for function vector-length-squared
@@ -903,42 +883,22 @@
 ;; definition for function vector-normalize-copy!
 ;; INFO: Used lq/sq
 (defun vector-normalize-copy! ((arg0 vector) (arg1 vector) (arg2 float))
-  (local-vars (v1-1 float))
-  (rlet ((acc :class vf)
-         (Q :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         )
-    (init-vf0-vector)
-    (.lvf vf1 (&-> arg1 quad))
-    (.mul.vf vf1 vf1 vf1)
-    (.mul.x.vf acc vf0 vf1 :mask #b1000)
-    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
-    (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
-    (.sqrt.vf Q vf1 :ftf #b11)
-    (.add.w.vf vf1 vf0 vf0 :mask #b1)
-    (.wait.vf)
-    (.mul.vf vf1 vf1 Q :mask #b1)
-    (.nop.vf)
-    (.nop.vf)
-    (.mov v1-1 vf1)
-    (let ((f0-0 v1-1))
-      (cond
-        ((= f0-0 0.0)
-         (set! (-> arg0 quad) (-> arg1 quad))
-         )
-        (else
-          (let ((v1-3 (/ arg2 f0-0)))
-            (set! (-> arg0 x) (* (-> arg1 x) v1-3))
-            (set! (-> arg0 y) (* (-> arg1 y) v1-3))
-            (set! (-> arg0 z) (* (-> arg1 z) v1-3))
-            )
+  (let ((f0-0 (vector-length arg1)))
+    (cond
+      ((= f0-0 0.0)
+       (set! (-> arg0 quad) (-> arg1 quad))
+       )
+      (else
+        (let ((v1-3 (/ arg2 f0-0)))
+          (set! (-> arg0 x) (* (-> arg1 x) v1-3))
+          (set! (-> arg0 y) (* (-> arg1 y) v1-3))
+          (set! (-> arg0 z) (* (-> arg1 z) v1-3))
           )
         )
       )
-    (set! (-> arg0 w) 1.0)
-    arg0
     )
+  (set! (-> arg0 w) 1.0)
+  arg0
   )
 
 ;; definition for function vector-xz-normalize!
@@ -981,38 +941,18 @@
 
 ;; definition for function vector-length-max!
 (defun vector-length-max! ((arg0 vector) (arg1 float))
-  (local-vars (v1-1 float))
-  (rlet ((acc :class vf)
-         (Q :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         )
-    (init-vf0-vector)
-    (.lvf vf1 (&-> arg0 quad))
-    (.mul.vf vf1 vf1 vf1)
-    (.mul.x.vf acc vf0 vf1 :mask #b1000)
-    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
-    (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
-    (.sqrt.vf Q vf1 :ftf #b11)
-    (.add.w.vf vf1 vf0 vf0 :mask #b1)
-    (.wait.vf)
-    (.mul.vf vf1 vf1 Q :mask #b1)
-    (.nop.vf)
-    (.nop.vf)
-    (.mov v1-1 vf1)
-    (let ((f0-0 v1-1))
-      (when (not (or (= f0-0 0.0) (< f0-0 arg1)))
-        (let ((f0-1 (/ f0-0 arg1)))
-          (when (!= f0-1 0.0)
-            (set! (-> arg0 x) (/ (-> arg0 x) f0-1))
-            (set! (-> arg0 y) (/ (-> arg0 y) f0-1))
-            (set! (-> arg0 z) (/ (-> arg0 z) f0-1))
-            )
+  (let ((f0-0 (vector-length arg0)))
+    (when (not (or (= f0-0 0.0) (< f0-0 arg1)))
+      (let ((f0-1 (/ f0-0 arg1)))
+        (when (!= f0-1 0.0)
+          (set! (-> arg0 x) (/ (-> arg0 x) f0-1))
+          (set! (-> arg0 y) (/ (-> arg0 y) f0-1))
+          (set! (-> arg0 z) (/ (-> arg0 z) f0-1))
           )
         )
       )
-    arg0
     )
+  arg0
   )
 
 ;; definition for function vector-xz-length-max!
@@ -1698,7 +1638,3 @@
       )
     )
   )
-
-
-
-
