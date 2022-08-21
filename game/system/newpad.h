@@ -75,7 +75,7 @@ struct AnalogMappingInfo {
 };
 
 struct MappingInfo {
-  bool debug = true;        // debug mode
+  bool debug = true;  // debug mode
   bool use_mouse = false;
   bool buffer_mode = true;  // use buffered inputs
 
