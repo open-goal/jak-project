@@ -28,12 +28,13 @@ class GfxDisplay {
   // next mode
   GfxDisplayMode m_fullscreen_target_mode = GfxDisplayMode::Windowed;
   // current mode (start as -1 to force an initial fullscreen update)
-  GfxDisplayMode m_fullscreen_mode = (GfxDisplayMode)-1;
+  GfxDisplayMode m_fullscreen_mode = GfxDisplayMode::ForceUpdate;
   // previous mode (last frame)
   GfxDisplayMode m_last_fullscreen_mode = GfxDisplayMode::Windowed;
 
-  int m_last_windowed_xpos = 0;
-  int m_last_windowed_ypos = 0;
+  // move it a bit away from the top, or the title bar can be hidden
+  int m_last_windowed_xpos = 50;
+  int m_last_windowed_ypos = 50; 
   int m_last_windowed_width = 640;
   int m_last_windowed_height = 480;
 
@@ -74,7 +75,9 @@ class GfxDisplay {
     m_fullscreen_target_mode = mode;
     m_fullscreen_target_screen = screen;
   }
-  void update_last_fullscreen_mode() { m_last_fullscreen_mode = fullscreen_mode(); }
+  void update_last_fullscreen_mode() {
+    m_last_fullscreen_mode = fullscreen_mode();
+  }
   GfxDisplayMode last_fullscreen_mode() const { return m_last_fullscreen_mode; }
   GfxDisplayMode fullscreen_mode() { return m_fullscreen_mode; }
   int fullscreen_screen() const { return m_fullscreen_screen; }
@@ -84,6 +87,14 @@ class GfxDisplay {
 
   int width();
   int height();
+
+  struct DisplaySettings {
+    int window_xpos;
+    int window_ypos;
+  };
+
+  void save_display_settings();
+  void restore_display_settings();
 };
 
 namespace Display {
