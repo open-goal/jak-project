@@ -306,8 +306,10 @@ GLDisplay::~GLDisplay() {
 }
 
 void GLDisplay::update_cursor_visibility(GLFWwindow* window, bool is_visible) {
-  auto cursor_mode = (is_visible) ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
-  glfwSetInputMode(window, GLFW_CURSOR, cursor_mode);
+  if (Gfx::get_button_mapping().use_mouse) {
+    auto cursor_mode = is_visible ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
+    glfwSetInputMode(window, GLFW_CURSOR, cursor_mode);
+  }
 }
 
 void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
@@ -344,7 +346,7 @@ void GLDisplay::on_mouse_key(GLFWwindow* window, int button, int action, int mod
 
 void GLDisplay::on_cursor_position(GLFWwindow* window, double xposition, double yposition) {
   Pad::MappingInfo mapping_info = Gfx::get_button_mapping();
-  if (is_imgui_visible()) {
+  if (is_imgui_visible() || !mapping_info.use_mouse) {
     if (is_cursor_position_valid == true) {
       Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS);
       Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS);
