@@ -22,14 +22,15 @@
 #include <vector>
 
 #include "common/common_types.h"
+#include "common/versions.h"
 
 namespace fs = ghc::filesystem;
 
 namespace file_util {
 fs::path get_user_home_dir();
 fs::path get_user_config_dir();
-fs::path get_user_settings_dir();
-fs::path get_user_memcard_dir();
+fs::path get_user_settings_dir(GameVersion game_version);
+fs::path get_user_memcard_dir(GameVersion game_version);
 fs::path get_jak_project_dir();
 
 bool create_dir_if_needed(const fs::path& path);
