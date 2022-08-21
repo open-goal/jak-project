@@ -48,18 +48,18 @@
 ;;;; updates
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-
 (defmethod set-display-mode! pc-settings ((obj pc-settings) (mode symbol))
   "sets the game's display mode"
-
   ;; change the display mode.
   (set! (-> obj display-mode) mode)
+  ;; if windowed mode, set the size properly
+  (when (= (-> obj display-mode) 'windowed)
+    (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
   0)
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
   "sets the size of the display window"
-  (format #t "Setting size to ~D x ~D~%" width height)
+  (format 0 "Setting ~A size to ~D x ~D~%" (-> obj display-mode) width height)
   (cond
     ((= 'windowed (-> obj display-mode))
       (set! (-> obj win-width) width)
@@ -72,7 +72,6 @@
       )
     )
   (none))
-
 
 (defmethod set-aspect! pc-settings ((obj pc-settings) (aw int) (ah int))
   "set the aspect ratio used for rendering. this forces native widescreen and takes width and height ratios."
@@ -916,6 +915,10 @@
 
   (format 0 "pc settings file read: ~A~%" filename)
 
+  ;; restore the windowed mode resolution properly
+  (when (= (-> obj display-mode) 'windowed)
+    (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
+
   #t
   )
 
@@ -932,13 +935,13 @@
     (format file "(settings #x~X~%" (-> obj version))
 
     (format file "  (fps ~D)~%" (-> obj target-fps))
-    (format file "  (game-size ~D ~D)~%" (-> obj width) (-> obj height))
     (format file "  (msaa ~D)~%" (-> obj gfx-msaa))
-    (format file "  (window-size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
     (format file "  (aspect-state ~A ~D ~D ~A)~%" (-> *setting-control* default aspect-ratio)
                                                   (-> obj aspect-custom-x) (-> obj aspect-custom-y)
                                                   (-> obj aspect-ratio-auto?))
     (format file "  (display-mode ~A)~%" (-> obj display-mode))
+    (format file "  (window-size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
+    (format file "  (game-size ~D ~D)~%" (-> obj width) (-> obj height))
     (format file "  (monitor ~D)~%" (-> obj monitor))
     (format file "  (letterbox ~A)~%" (-> obj letterbox?))
     (format file "  (vsync ~A)~%" (-> obj vsync?))
