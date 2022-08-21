@@ -1599,7 +1599,9 @@
 (goal-src-sequence
  "levels/title/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("$OUT/obj/ticky.o")
+ ("$OUT/obj/ticky.o"
+  "$OUT/obj/progress-pc.o"
+  )
 
  "title-obs.gc"
  )
