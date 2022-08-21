@@ -69,8 +69,9 @@ class GLDisplay : public GfxDisplay {
   };
 
   struct DisplayState {
-    s32 window_pos_x = 0;
-    s32 window_pos_y = 0;
+    // move it a bit away from the top by default
+    s32 window_pos_x = 50;
+    s32 window_pos_y = 50;
     int window_size_width = 640, window_size_height = 480;
     float window_scale_x = 1.f, window_scale_y = 1.f;
 
