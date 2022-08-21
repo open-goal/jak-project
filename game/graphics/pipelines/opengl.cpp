@@ -372,7 +372,8 @@ void GLDisplay::on_cursor_position(GLFWwindow* window, double xposition, double 
 
 void GLDisplay::on_window_pos(GLFWwindow* /*window*/, int xpos, int ypos) {
   // only change them on a legit change, not on the initial update
-  if (m_fullscreen_mode != GfxDisplayMode::ForceUpdate && m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
+  if (m_fullscreen_mode != GfxDisplayMode::ForceUpdate &&
+      m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
     m_last_windowed_xpos = xpos;
     m_last_windowed_ypos = ypos;
   }
@@ -380,7 +381,8 @@ void GLDisplay::on_window_pos(GLFWwindow* /*window*/, int xpos, int ypos) {
 
 void GLDisplay::on_window_size(GLFWwindow* /*window*/, int width, int height) {
   // only change them on a legit change, not on the initial update
-  if (m_fullscreen_mode != GfxDisplayMode::ForceUpdate && m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
+  if (m_fullscreen_mode != GfxDisplayMode::ForceUpdate &&
+      m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
     m_last_windowed_width = width;
     m_last_windowed_height = height;
   }
