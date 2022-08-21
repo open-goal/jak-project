@@ -403,8 +403,8 @@ void GLDisplay::on_iconify(GLFWwindow* /*window*/, int iconified) {
 
 namespace {
 std::string make_full_screenshot_output_file_path(const std::string& file_name) {
-  file_util::create_dir_if_needed(file_util::get_file_path({"gfx_dumps"}));
-  return file_util::get_file_path({"gfx_dumps", file_name});
+  file_util::create_dir_if_needed(file_util::get_file_path({"screenshots"}));
+  return file_util::get_file_path({"screenshots", file_name});
 }
 }  // namespace
 
@@ -460,16 +460,29 @@ void render_game_frame(int game_width,
     options.save_screenshot = false;
     options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();
     options.borderless_windows_hacks = windows_borderless_hack;
+
     want_hotkey_screenshot =
         want_hotkey_screenshot && g_gfx_data->debug_gui.screenshot_hotkey_enabled;
-    if (g_gfx_data->debug_gui.get_screenshot_flag() || want_hotkey_screenshot) {
+    if (want_hotkey_screenshot) {
+      want_hotkey_screenshot = false;
+      options.save_screenshot = true;
+      std::string screenshot_file_name = make_hotkey_screenshot_file_name();
+      options.screenshot_path = make_full_screenshot_output_file_path(screenshot_file_name);
+    }
+    if (g_gfx_data->debug_gui.get_screenshot_flag()) {
       options.save_screenshot = true;
       options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
       options.game_res_h = g_gfx_data->debug_gui.screenshot_height;
       options.draw_region_width = options.game_res_w;
       options.draw_region_height = options.game_res_h;
       options.msaa_samples = g_gfx_data->debug_gui.screenshot_samples;
+      std::string screenshot_file_name = g_gfx_data->debug_gui.screenshot_name();
+      if (!endsWith(screenshot_file_name, ".png")) {
+        screenshot_file_name += ".png";
+      }
+      options.screenshot_path = make_full_screenshot_output_file_path(screenshot_file_name);
     }
+
     options.draw_small_profiler_window = g_gfx_data->debug_gui.small_profiler;
     options.pmode_alp_register = g_gfx_data->pmode_alp;
 
@@ -477,23 +490,6 @@ void render_game_frame(int game_width,
     glGetIntegerv(GL_MAX_SAMPLES, &msaa_max);
     if (options.msaa_samples > msaa_max) {
       options.msaa_samples = msaa_max;
-    }
-
-    if (options.save_screenshot) {
-      std::string screenshot_file_name;
-      if (want_hotkey_screenshot) {
-        screenshot_file_name = make_hotkey_screenshot_file_name();
-        want_hotkey_screenshot = false;
-      } else {
-        // Debug gui triggered screenshot
-        // ensure the screenshot has an extension
-        screenshot_file_name = g_gfx_data->debug_gui.screenshot_name();
-        if (!endsWith(screenshot_file_name, ".png")) {
-          screenshot_file_name += ".png";
-        }
-      }
-
-      options.screenshot_path = make_full_screenshot_output_file_path(screenshot_file_name);
     }
 
     if constexpr (run_dma_copy) {
