@@ -816,7 +816,7 @@ LinkedObjectFile to_linked_object_file(const std::vector<uint8_t>& data,
                                        const std::string& name,
                                        DecompilerTypeSystem& dts,
                                        GameVersion game_version) {
-  LinkedObjectFile result;
+  LinkedObjectFile result(game_version);
   const auto* header = (const LinkHeaderCommon*)&data.at(0);
 
   // use appropriate linker

@@ -37,6 +37,7 @@ struct ObjectFileRecord {
  * All of the data for a single object file
  */
 struct ObjectFileData {
+  ObjectFileData(GameVersion version) : linked_data(version) {}
   std::vector<uint8_t> data;     // raw bytes
   LinkedObjectFile linked_data;  // data including linking annotations
   ObjectFileRecord record;       // name

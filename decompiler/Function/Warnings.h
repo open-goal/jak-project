@@ -104,6 +104,5 @@ class DecompWarnings {
   }
 
   std::vector<Warning> m_warnings;
-  bool m_used_lq_sq = false;
 };
 }  // namespace decompiler
