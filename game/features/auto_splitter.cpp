@@ -19,8 +19,6 @@ void update_autosplitter_block_jak1(u32 jak1_autosplit_info) {
   gJak1AutoSplitterBlock.num_orbs = (int)*Ptr<float>(info->num_orbs).c();
   gJak1AutoSplitterBlock.num_scout_flies = (int)*Ptr<float>(info->num_scout_flies).c();
 
-  // TODO - set new game hash so we know when to restart timer (or change it to a timestamp,
-  // whatever)
   gJak1AutoSplitterBlock.in_cutscene =
       Ptr<jak1::Symbol>(info->in_cutscene)->value != offset_of_s7();
 
