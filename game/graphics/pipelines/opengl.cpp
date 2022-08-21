@@ -306,8 +306,10 @@ GLDisplay::~GLDisplay() {
 }
 
 void GLDisplay::update_cursor_visibility(GLFWwindow* window, bool is_visible) {
-  auto cursor_mode = (is_visible) ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
-  glfwSetInputMode(window, GLFW_CURSOR, cursor_mode);
+  if (Gfx::get_button_mapping().use_mouse) {
+    auto cursor_mode = is_visible ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
+    glfwSetInputMode(window, GLFW_CURSOR, cursor_mode);
+  }
 }
 
 void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
@@ -344,7 +346,7 @@ void GLDisplay::on_mouse_key(GLFWwindow* window, int button, int action, int mod
 
 void GLDisplay::on_cursor_position(GLFWwindow* window, double xposition, double yposition) {
   Pad::MappingInfo mapping_info = Gfx::get_button_mapping();
-  if (is_imgui_visible()) {
+  if (is_imgui_visible() || !mapping_info.use_mouse) {
     if (is_cursor_position_valid == true) {
       Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS);
       Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS);
@@ -371,14 +373,18 @@ void GLDisplay::on_cursor_position(GLFWwindow* window, double xposition, double 
 }
 
 void GLDisplay::on_window_pos(GLFWwindow* /*window*/, int xpos, int ypos) {
-  if (m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
+  // only change them on a legit change, not on the initial update
+  if (m_fullscreen_mode != GfxDisplayMode::ForceUpdate &&
+      m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
     m_last_windowed_xpos = xpos;
     m_last_windowed_ypos = ypos;
   }
 }
 
 void GLDisplay::on_window_size(GLFWwindow* /*window*/, int width, int height) {
-  if (m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
+  // only change them on a legit change, not on the initial update
+  if (m_fullscreen_mode != GfxDisplayMode::ForceUpdate &&
+      m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
     m_last_windowed_width = width;
     m_last_windowed_height = height;
   }
@@ -556,11 +562,13 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
 
       glfwSetWindowMonitor(m_window, NULL, x, y, width, height, GLFW_DONT_CARE);
 
-      // these might have changed
-      m_last_windowed_width = width;
-      m_last_windowed_height = height;
-      m_last_windowed_xpos = x;
-      m_last_windowed_ypos = y;
+      // these might have changed, only store them on a legit change, not on the initial update
+      if (m_last_fullscreen_mode != GfxDisplayMode::ForceUpdate) {
+        m_last_windowed_width = width;
+        m_last_windowed_height = height;
+        m_last_windowed_xpos = x;
+        m_last_windowed_ypos = y;
+      }
     } break;
     case GfxDisplayMode::Fullscreen: {
       // fullscreen
@@ -584,6 +592,9 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
       glfwSetWindowMonitor(m_window, NULL, x, y, vmode->width, vmode->height, GLFW_DONT_CARE);
 #endif
     } break;
+    default: {
+      break;
+    }
   }
 }
 

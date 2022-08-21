@@ -94,6 +94,7 @@ void DumpToJson(ghc::filesystem::path& filename) {
   nlohmann::json json;
   json["Debug Menu Visibility"] = false;  // Assume start up debug display is disabled
   auto& peripherals_json = json["Peripherals"];
+  json["Use Mouse"] = g_settings.pad_mapping_info.use_mouse;
 
   for (uint32_t i = 0; i < Pad::CONTROLLER_COUNT; ++i) {
     nlohmann::json peripheral_json;
@@ -153,6 +154,8 @@ void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
   if (configuration.find("Debug Menu Visibility") != configuration.end()) {
     g_is_debug_menu_visible_on_startup = configuration["Debug Menu Visibility"].get<bool>();
   }
+
+  g_settings.pad_mapping_info.use_mouse = configuration.value<bool>("Use Mouse", false);
 
   int controller_index = 0;
   for (const auto& peripheral : configuration["Peripherals"]) {

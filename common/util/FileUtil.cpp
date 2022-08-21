@@ -33,8 +33,8 @@
 #include <cstring>
 #include <unistd.h>
 #endif
+#include "common/log/log.h"
 #include "common/util/Assert.h"
-#include <common/log/log.h>
 
 namespace file_util {
 fs::path get_user_home_dir() {
@@ -66,14 +66,14 @@ fs::path get_user_config_dir() {
   return config_base_path / "OpenGOAL";
 }
 
-fs::path get_user_settings_dir() {
-  // TODO - jak2
-  return get_user_config_dir() / "jak1" / "settings";
+fs::path get_user_settings_dir(GameVersion game_version) {
+  auto game_version_name = game_version_names[game_version];
+  return get_user_config_dir() / game_version_name / "settings";
 }
 
-fs::path get_user_memcard_dir() {
-  // TODO - jak2
-  return get_user_config_dir() / "jak1" / "saves";
+fs::path get_user_memcard_dir(GameVersion game_version) {
+  auto game_version_name = game_version_names[game_version];
+  return get_user_config_dir() / game_version_name / "saves";
 }
 
 struct {
