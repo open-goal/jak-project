@@ -150,5 +150,6 @@ struct AutoSplitInfoJak1 {
   u32 res_lavatube_balls;
   u32 res_intro;
   u32 res_ogre_secret;
+  u32 int_finalboss_movies;
 };
 }  // namespace jak1

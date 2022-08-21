@@ -232,6 +232,9 @@ void update_autosplitter_block_jak1(u32 jak1_autosplit_info) {
   gJak1AutoSplitterBlock.res_intro = Ptr<jak1::Symbol>(info->res_intro)->value != offset_of_s7();
   gJak1AutoSplitterBlock.res_ogre_secret =
       Ptr<jak1::Symbol>(info->res_ogre_secret)->value != offset_of_s7();
+
+  gJak1AutoSplitterBlock.int_finalboss_movies =
+      Ptr<jak1::Symbol>(info->int_finalboss_movies)->value != offset_of_s7();
 }
 
 void update_autosplitter_jak1_new_game() {

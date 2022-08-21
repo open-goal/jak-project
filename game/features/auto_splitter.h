@@ -124,6 +124,9 @@ struct AutoSplitterBlockJak1 {
   u8 res_lavatube_balls = 0;
   u8 res_intro = 0;
 
+  // need introduction tasks
+  u8 int_finalboss_movies = 0;
+
   // Just to make things a bit nicer in a memory view
   const char end[4] = "end";
 };
