@@ -233,8 +233,13 @@ void update_autosplitter_block_jak1(u32 jak1_autosplit_info) {
   gJak1AutoSplitterBlock.res_ogre_secret =
       Ptr<jak1::Symbol>(info->res_ogre_secret)->value != offset_of_s7();
 
+  // Misc Tasks
   gJak1AutoSplitterBlock.int_finalboss_movies =
       Ptr<jak1::Symbol>(info->int_finalboss_movies)->value != offset_of_s7();
+  gJak1AutoSplitterBlock.unk_finalboss_movies =
+      Ptr<jak1::Symbol>(info->unk_finalboss_movies)->value != offset_of_s7();
+  gJak1AutoSplitterBlock.int_jungle_fishgame =
+      Ptr<jak1::Symbol>(info->int_jungle_fishgame)->value != offset_of_s7();
 }
 
 void update_autosplitter_jak1_new_game() {

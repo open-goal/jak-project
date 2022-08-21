@@ -150,6 +150,9 @@ struct AutoSplitInfoJak1 {
   u32 res_lavatube_balls;
   u32 res_intro;
   u32 res_ogre_secret;
+  // misc tasks
   u32 int_finalboss_movies;
+  u32 unk_finalboss_movies;
+  u32 int_jungle_fishgame;
 };
 }  // namespace jak1
