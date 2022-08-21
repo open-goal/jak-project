@@ -3,10 +3,10 @@
 #include "atomic_op_builder.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
+#include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/Function/Warnings.h"
-#include "decompiler/Disasm/DecompilerLabel.h"
 
 namespace decompiler {
 
@@ -1960,7 +1960,6 @@ std::unique_ptr<AtomicOp> convert_vector_length(const Instruction* instrs, int i
   if (instrs[1].kind != InstructionKind::VMUL || instrs[1].get_dst(0).get_reg() != vf1 ||
       instrs[1].get_src(0).get_reg() != vf1 || instrs[1].get_src(1).get_reg() != vf1 ||
       instrs[1].cop2_dest != 0b1111) {
-    fmt::print("fail 1: {}\n", instrs[1].to_string(labels));
     return nullptr;
   }
 
@@ -1968,7 +1967,6 @@ std::unique_ptr<AtomicOp> convert_vector_length(const Instruction* instrs, int i
   if (instrs[2].kind != InstructionKind::VMULA_BC || instrs[2].get_src(0).get_reg() != vf0 ||
       instrs[2].get_src(1).get_reg() != vf1 || instrs[2].cop2_dest != 0b0001 ||
       instrs[2].cop2_bc != 0) {
-    fmt::print("fail 2: {} {} {}\n", instrs[2].to_string(labels), instrs[2].cop2_dest, instrs[2].cop2_bc);
     return nullptr;
   }
 
@@ -1976,7 +1974,6 @@ std::unique_ptr<AtomicOp> convert_vector_length(const Instruction* instrs, int i
   if (instrs[3].kind != InstructionKind::VMADDA_BC || instrs[3].get_src(0).get_reg() != vf0 ||
       instrs[3].get_src(1).get_reg() != vf1 || instrs[3].cop2_dest != 0b0001 ||
       instrs[3].cop2_bc != 1) {
-    fmt::print("fail 3: {}\n", instrs[3].to_string(labels));
     return nullptr;
   }
 
@@ -1984,13 +1981,11 @@ std::unique_ptr<AtomicOp> convert_vector_length(const Instruction* instrs, int i
   if (instrs[4].kind != InstructionKind::VMADD_BC || instrs[4].get_dst(0).get_reg() != vf1 ||
       instrs[4].get_src(0).get_reg() != vf0 || instrs[4].get_src(1).get_reg() != vf1 ||
       instrs[4].cop2_dest != 0b0001 || instrs[4].cop2_bc != 2) {
-    fmt::print("fail 4: {}\n", instrs[4].to_string(labels));
     return nullptr;
   }
 
   // 5: vsqrt Q, vf1.w
   if (instrs[5].kind != InstructionKind::VSQRT || instrs[5].get_src(0).get_reg() != vf1) {
-    fmt::print("fail 5: {}\n", instrs[5].to_string(labels));
     return nullptr;
   }
 
@@ -1998,20 +1993,17 @@ std::unique_ptr<AtomicOp> convert_vector_length(const Instruction* instrs, int i
   if (instrs[6].kind != InstructionKind::VADD_BC || instrs[6].get_dst(0).get_reg() != vf1 ||
       instrs[6].get_src(0).get_reg() != vf0 || instrs[6].get_src(1).get_reg() != vf0 ||
       instrs[6].cop2_dest != 0b1000 || instrs[6].cop2_bc != 3) {
-    fmt::print("fail 6: {} {} {}\n", instrs[6].to_string(labels), instrs[6].cop2_dest, instrs[6].cop2_bc);
     return nullptr;
   }
 
   // 7:  vwaitq
   if (instrs[7].kind != InstructionKind::VWAITQ) {
-    fmt::print("fail 7: {}\n", instrs[7].to_string(labels));
     return nullptr;
   }
 
   // 8: vmulq.x vf1, vf1, Q
   if (instrs[8].kind != InstructionKind::VMULQ || instrs[8].get_dst(0).get_reg() != vf1 ||
       instrs[8].get_src(0).get_reg() != vf1 || instrs[8].cop2_dest != 0b1000) {
-    fmt::print("fail 8: {}\n", instrs[8].to_string(labels));
     return nullptr;
   }
 
