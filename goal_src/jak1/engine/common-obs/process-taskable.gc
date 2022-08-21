@@ -432,7 +432,11 @@
      (if (-> self blend-on-exit)
          (set! (-> self blend-on-exit) arg0)
          )
-     (if (and *debug-segment* *cheat-mode*)
+     ;; allow cutscene skipping on pc port
+     ;; save a sort of timestamp just so we know whether it took at least 1 frame
+     (#when PC_PORT
+        (define *play-anim-time* (current-time)))
+     (if (#if PC_PORT #t (and *debug-segment* *cheat-mode*))
          (ja-play-spooled-anim
            (the-as spool-anim arg1)
            arg0
@@ -446,6 +450,8 @@
            (the-as (function process-drawable symbol) false-func)
            )
          )
+     (#when PC_PORT
+        (if (= (current-time) *play-anim-time*) (suspend)))
      (remove-setting! 'music-volume)
      (remove-setting! 'sfx-volume)
      (remove-setting! 'ambient-volume)

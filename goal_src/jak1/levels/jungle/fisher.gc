@@ -1636,6 +1636,43 @@
     )
   )
 
+(#when PC_PORT
+;; pc port needs its own implementation of play-anim for cutscene skipping
+(define *fisher-camera-backup-fov* (degrees 46.2356))
+(define *fisher-camera-backup-trans* (new 'static 'vector :x 1095664.2500 :y 15926.4003 :z -945203.3750 :w 1.0000))
+(define *fisher-camera-backup-matrix* (new 'static 'matrix :vector (new 'static 'inline-array vector 4
+                                                    (new 'static 'vector :x -0.8677 :y -0.0000 :z 0.4969)
+                                                    (new 'static 'vector :x -0.0081 :y 0.9998  :z -0.0141)
+                                                    (new 'static 'vector :x -0.4968 :y -0.0163 :z -0.8676)
+                                                    (new 'static 'vector :w 1.0)
+                                                    )))
+(define *fisher-camera-use-backup* #f)
+
+(defstate play-anim (fisher)
+  :virtual #t
+
+  :enter (behavior ()
+    (set! *fisher-camera-use-backup* #f)
+    ((-> (method-of-type process-taskable play-anim) enter))
+    0
+    (none))
+
+  :exit (behavior ()
+    (set! *fisher-camera-use-backup* (and (= (get-response (-> self query)) 'no) (or (not (= *cheat-mode* 'debug)) (not (cpad-hold? 0 r1)))
+                                          (-> self training)))
+    (set! (-> self cur-trans-hook) (lambda () (when *fisher-camera-use-backup*
+                                                  (set! (-> *camera-other-fov* data) *fisher-camera-backup-fov*)
+                                                  (vector-copy! *camera-other-trans* *fisher-camera-backup-trans*)
+                                                  (matrix-copy! *camera-other-matrix* *fisher-camera-backup-matrix*)
+                                                  )
+                                              (none)))
+    ((-> (method-of-type process-taskable play-anim) exit))
+    0
+    (none))
+  
+  )
+)
+
 (defstate query (fisher)
   :virtual #t
   :enter (behavior ()
@@ -1650,6 +1687,12 @@
       )
     (none)
     )
+  :exit (behavior ()
+    (#when PC_PORT
+    ;; needed for cutscene skipping
+      (set! (-> self cur-trans-hook) nothing)
+      )
+    ((-> (method-of-type process-taskable play-anim) exit)))
   )
 
 (defmethod TODO-RENAME-43 fisher ((obj fisher))
