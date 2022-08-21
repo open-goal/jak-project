@@ -490,15 +490,16 @@
     )
   :trans (behavior ()
     ((-> (method-of-type logo startup) trans))
-    (if  (and (or *debug-segment* PC_PORT)
-             (cpad-pressed? 0 start circle x)
-             (member (level-status *level* 'village1) '(loaded active))
-             )
+    (if  (and *debug-segment*
+              (cpad-pressed? 0 start circle x)
+              (member (level-status *level* 'village1) '(loaded active))
+              )
         (set-setting! 'bg-a 'abs 1.0 0)
         )
     (when (and (= (-> *setting-control* current bg-a) 1.0)
                (and (member (level-status *level* 'village1) '(active loaded))
-                    (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
+                    ;; i think we can forgo the time check here...
+                    (#if PC_PORT #t (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3)))
                     (let ((gp-2 (level-get *level* 'village1)))
                       (when gp-2
                         (load-state-want-levels 'title 'village1)
@@ -556,12 +557,27 @@
     (send-event (handle->process (-> self sidekick)) 'origin-joint-index 6)
     (set! (-> self anim) (-> self next-anim))
     (set! (-> self next-anim) (new 'static 'spool-anim :name "logo-intro" :index 5 :parts 3 :command-list '()))
-    (ja-play-spooled-anim
-      (-> self anim)
-      (the-as art-joint-anim #f)
-      (the-as art-joint-anim #f)
-      (the-as (function process-drawable symbol) false-func)
-      )
+    (#cond
+      (PC_PORT
+        (cond
+          (*quit-to-title*
+            (set! *quit-to-title* #f))
+          (else
+            (ja-play-spooled-anim
+              (-> self anim)
+              (the-as art-joint-anim #f)
+              (the-as art-joint-anim #f)
+              (the-as (function process-drawable symbol) false-func)
+              ))
+          ))
+      (#t
+        (ja-play-spooled-anim
+          (-> self anim)
+          (the-as art-joint-anim #f)
+          (the-as art-joint-anim #f)
+          (the-as (function process-drawable symbol) false-func)
+          )
+        ))
     (set! (-> self done?) #t)
     (set-setting! 'bg-a 'abs 1.0 0)
     (anim-loop)
