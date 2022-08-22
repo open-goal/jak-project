@@ -552,23 +552,14 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
 
         width = m_last_windowed_width;
         height = m_last_windowed_height;
-        x = monitorX + (monitorWidth / 2) - (width / 2);
-        y = monitorY + (monitorHeight / 2) - (height / 2);
+        x = m_last_windowed_xpos;
+        y = m_last_windowed_ypos;
       }
 
       glfwSetWindowAttrib(m_window, GLFW_DECORATED, GLFW_TRUE);
       glfwSetWindowFocusCallback(m_window, NULL);
       glfwSetWindowAttrib(m_window, GLFW_FLOATING, GLFW_FALSE);
-
       glfwSetWindowMonitor(m_window, NULL, x, y, width, height, GLFW_DONT_CARE);
-
-      // these might have changed, only store them on a legit change, not on the initial update
-      if (m_last_fullscreen_mode != GfxDisplayMode::ForceUpdate) {
-        m_last_windowed_width = width;
-        m_last_windowed_height = height;
-        m_last_windowed_xpos = x;
-        m_last_windowed_ypos = y;
-      }
     } break;
     case GfxDisplayMode::Fullscreen: {
       // fullscreen
