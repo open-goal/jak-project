@@ -587,7 +587,6 @@ bool convert_to_old_format(Output& out,
  * Main Types2 Analysis pass.
  */
 void run(Output& out, const Input& input) {
-  fmt::print("types: {}\n", input.func->name());
   // First, construct our graph
   FunctionCache function_cache;
   auto stack_slots = find_stack_spill_slots(*input.func);

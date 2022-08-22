@@ -1599,7 +1599,9 @@
 (goal-src-sequence
  "levels/title/"
  :deps ;; no idea what these depend on, make it depend on the whole engine
- ("$OUT/obj/ticky.o")
+ ("$OUT/obj/ticky.o"
+  "$OUT/obj/progress-pc.o"
+  )
 
  "title-obs.gc"
  )
@@ -2035,9 +2037,11 @@
  )
 
 ;; Custom or Modified Code
+(goal-src "pc/features/autosplit-h.gc")
+(goal-src "pc/features/autosplit.gc" "autosplit-h" "task-control-h")
 (goal-src "pc/pckernel-h.gc" "dma-buffer")
 (goal-src "pc/util/pc-anim-util.gc" "target-h")
-(goal-src "pc/pckernel.gc" "pc-anim-util" "settings" "video" "target-h")
+(goal-src "pc/pckernel.gc" "pc-anim-util" "settings" "video" "target-h" "autosplit-h")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
 (goal-src "pc/util/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")

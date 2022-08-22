@@ -645,6 +645,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
   make_function_symbol_from_c("pc-set-game-resolution", (void*)set_game_resolution);
   make_function_symbol_from_c("pc-set-msaa", (void*)set_msaa);
+  make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
 
   // graphics things
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
@@ -677,8 +678,7 @@ void InitMachine_PCPort() {
   auto user_dir_path = file_util::get_user_config_dir();
   intern_from_c("*pc-user-dir-base-path*")->value =
       make_string_from_c(user_dir_path.string().c_str());
-  // TODO - we will eventually need a better way to know what game we are playing
-  auto settings_path = file_util::get_user_settings_dir();
+  auto settings_path = file_util::get_user_settings_dir(g_game_version);
   intern_from_c("*pc-settings-folder*")->value = make_string_from_c(settings_path.string().c_str());
   intern_from_c("*pc-settings-built-sha*")->value = make_string_from_c(GIT_VERSION);
 }

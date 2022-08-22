@@ -116,7 +116,7 @@ u32 mc_checksum(Ptr<u8> data, s32 size) {
  * PC port function that returns whether a given bank ID's file exists or not.
  */
 bool file_is_present(int id, int bank = 0) {
-  auto bankname = file_util::get_user_memcard_dir() / filename[4 + id * 2 + bank];
+  auto bankname = file_util::get_user_memcard_dir(g_game_version) / filename[4 + id * 2 + bank];
   if (!fs::exists(bankname) || fs::file_size(bankname) < BANK_TOTAL_SIZE) {
     // file doesn't exist, or size is bad. we do not want to open files that will crash on read!
     return false;
@@ -146,13 +146,14 @@ void pc_update_card() {
   // int highest_save_count = 0;
   mc_last_file = -1;
   for (s32 file = 0; file < 4; file++) {
-    auto bankname = file_util::get_user_memcard_dir() / filename[4 + file * 2];
+    auto bankname = file_util::get_user_memcard_dir(g_game_version) / filename[4 + file * 2];
     mc_files[file].present = file_is_present(file);
     if (mc_files[file].present) {
       auto bankdata = file_util::read_binary_file(bankname.string());
       auto header1 = reinterpret_cast<McHeader*>(bankdata.data());
       if (file_is_present(file, 1)) {
-        auto bankname2 = file_util::get_user_memcard_dir() / filename[1 + 4 + file * 2];
+        auto bankname2 =
+            file_util::get_user_memcard_dir(g_game_version) / filename[1 + 4 + file * 2];
         auto bankdata2 = file_util::read_binary_file(bankname2.string());
         auto header2 = reinterpret_cast<McHeader*>(bankdata2.data());
 
@@ -189,7 +190,7 @@ void pc_game_save_synch() {
   Timer mc_timer;
   mc_timer.start();
   pc_update_card();
-  auto path = file_util::get_user_memcard_dir() / filename[0];
+  auto path = file_util::get_user_memcard_dir(g_game_version) / filename[0];
   file_util::create_dir_if_needed_for_file(path.string());
 
   // cd_reprobe_save //
@@ -211,7 +212,8 @@ void pc_game_save_synch() {
   // file*2 + p4 is the bank (2 banks per file, p4 is 0 or 1 to select the bank)
   // 4 is the first bank file
   mc_print("open {} for saving", filename[op.param2 * 2 + 4 + p4]);
-  auto save_path = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p4];
+  auto save_path =
+      file_util::get_user_memcard_dir(g_game_version) / filename[op.param2 * 2 + 4 + p4];
   file_util::create_dir_if_needed_for_file(save_path.string());
   auto fd = file_util::open_file(save_path.string().c_str(), "wb");
   mc_print("synchronous save file open took {:.2f}ms\n", mc_timer.getMs());
@@ -281,11 +283,12 @@ void pc_game_load_open_file(FILE* fd) {
       if (fclose(fd) == 0) {
         // cb_closedload //
         // added : check if aux bank exists
-        if (p2 < 1 &&
-            fs::exists(file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p2 + 1])) {
+        if (p2 < 1 && fs::exists(file_util::get_user_memcard_dir(g_game_version) /
+                                 filename[op.param2 * 2 + 4 + p2 + 1])) {
           p2++;
           mc_print("reading next save bank {}", filename[op.param2 * 2 + 4 + p2]);
-          auto new_bankname = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4 + p2];
+          auto new_bankname =
+              file_util::get_user_memcard_dir(g_game_version) / filename[op.param2 * 2 + 4 + p2];
           auto new_fd = file_util::open_file(new_bankname.string().c_str(), "rb");
           pc_game_load_open_file(new_fd);
         } else {
@@ -402,7 +405,7 @@ void pc_game_load_synch() {
   p2 = 0;
   mc_print("opening save file {}", filename[op.param2 * 2 + 4]);
 
-  auto path = file_util::get_user_memcard_dir() / filename[op.param2 * 2 + 4];
+  auto path = file_util::get_user_memcard_dir(g_game_version) / filename[op.param2 * 2 + 4];
   auto fd = file_util::open_file(path.string().c_str(), "rb");
   pc_game_load_open_file(fd);
 

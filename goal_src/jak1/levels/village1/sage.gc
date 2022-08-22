@@ -506,6 +506,16 @@
           )
       )
     ((-> (method-of-type process-taskable play-anim) exit))
+    (#when PC_PORT
+      ;; extra stuff when skipping cutscene
+      (when (and (= (get-response (-> self query)) 'no) (or (not (= *cheat-mode* 'debug)) (not (cpad-hold? 0 r1)))
+                 (= (current-task (-> self tasks)) (game-task intro)))
+          (close-specific-task! (game-task intro) (task-status need-resolution))
+          (start 'play (get-continue-by-name *game-info* "game-start"))
+          (set-blackout-frames (seconds 0.1))
+          (return #f)
+          )
+      )
     (case (get-task-status (game-task intro))
       (((task-status need-resolution))
        (remove-setting! 'music-volume-movie)

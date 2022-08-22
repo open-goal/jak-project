@@ -432,7 +432,7 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     const LinkedObjectFile* file,
     const TypeSpec& array_elt_type,
     int stride) {
-  fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
+  // fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
 
   // verify the stride matches the type system
   auto elt_type_info = ts.lookup_type(array_elt_type);
@@ -758,11 +758,11 @@ goos::Object decompile_structure(const TypeSpec& type,
   // some structures we want to decompile to fancy macros instead of a raw static definiton
   if (use_fancy_macros) {
     if (type == TypeSpec("sp-field-init-spec")) {
-      ASSERT(file->version == GameVersion::Jak1); // need to update enums
+      ASSERT(file->version == GameVersion::Jak1);  // need to update enums
       return decompile_sparticle_field_init(type, label, labels, words, ts, file);
     }
     if (type == TypeSpec("sparticle-group-item")) {
-      ASSERT(file->version == GameVersion::Jak1); // need to update enums
+      ASSERT(file->version == GameVersion::Jak1);  // need to update enums
       return decompile_sparticle_group_item(type, label, labels, words, ts, file);
     }
     if (type == TypeSpec("sound-spec") && file->version != GameVersion::Jak2) {

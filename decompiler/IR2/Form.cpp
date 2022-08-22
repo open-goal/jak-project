@@ -3195,7 +3195,7 @@ goos::Object DefpartElement::to_form_internal(const Env& env) const {
       // sp-end
       break;
     }
-    ASSERT(env.version == GameVersion::Jak1); // need to update enums
+    ASSERT(env.version == GameVersion::Jak1);  // need to update enums
     item_forms.push_back(decompile_sparticle_field_init(e, env.dts->ts));
   }
   if (!item_forms.empty()) {

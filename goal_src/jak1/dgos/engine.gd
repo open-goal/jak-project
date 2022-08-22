@@ -197,6 +197,8 @@
   ("game-save.o" "game-save")
   ("settings.o" "settings")
   ("pc-anim-util.o" "pc-anim-util") ;; added
+  ("autosplit-h.o" "autosplit-h") ;; added
+  ("autosplit.o" "autosplit") ;; added
   ("pckernel.o" "pckernel") ;; added
   ("mood-tables.o" "mood-tables")
   ("mood.o" "mood")

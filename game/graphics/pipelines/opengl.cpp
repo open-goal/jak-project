@@ -306,8 +306,10 @@ GLDisplay::~GLDisplay() {
 }
 
 void GLDisplay::update_cursor_visibility(GLFWwindow* window, bool is_visible) {
-  auto cursor_mode = (is_visible) ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
-  glfwSetInputMode(window, GLFW_CURSOR, cursor_mode);
+  if (Gfx::get_button_mapping().use_mouse) {
+    auto cursor_mode = is_visible ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
+    glfwSetInputMode(window, GLFW_CURSOR, cursor_mode);
+  }
 }
 
 void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
@@ -344,7 +346,7 @@ void GLDisplay::on_mouse_key(GLFWwindow* window, int button, int action, int mod
 
 void GLDisplay::on_cursor_position(GLFWwindow* window, double xposition, double yposition) {
   Pad::MappingInfo mapping_info = Gfx::get_button_mapping();
-  if (is_imgui_visible()) {
+  if (is_imgui_visible() || !mapping_info.use_mouse) {
     if (is_cursor_position_valid == true) {
       Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_X_AXIS);
       Pad::ClearAnalogAxisValue(mapping_info, GlfwKeyCustomAxis::CURSOR_Y_AXIS);
@@ -371,14 +373,18 @@ void GLDisplay::on_cursor_position(GLFWwindow* window, double xposition, double 
 }
 
 void GLDisplay::on_window_pos(GLFWwindow* /*window*/, int xpos, int ypos) {
-  if (m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
+  // only change them on a legit change, not on the initial update
+  if (m_fullscreen_mode != GfxDisplayMode::ForceUpdate &&
+      m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
     m_last_windowed_xpos = xpos;
     m_last_windowed_ypos = ypos;
   }
 }
 
 void GLDisplay::on_window_size(GLFWwindow* /*window*/, int width, int height) {
-  if (m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
+  // only change them on a legit change, not on the initial update
+  if (m_fullscreen_mode != GfxDisplayMode::ForceUpdate &&
+      m_fullscreen_target_mode == GfxDisplayMode::Windowed) {
     m_last_windowed_width = width;
     m_last_windowed_height = height;
   }
@@ -530,6 +536,7 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
   switch (mode) {
     case GfxDisplayMode::Windowed: {
       // windowed
+      // TODO - display mode doesn't re-position the window
       int x, y, width, height;
 
       if (m_last_fullscreen_mode == GfxDisplayMode::Windowed) {
@@ -538,31 +545,43 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
         height = m_last_windowed_height;
         x = m_last_windowed_xpos;
         y = m_last_windowed_ypos;
+        lg::debug("Windowed -> Windowed - x:{} | y:{}", x, y);
       } else {
-        // fullscreen -> windowed, use last windowed size but on the monitor previously
-        // fullscreened
+        // fullscreen -> windowed, use last windowed size but on the monitor previously fullscreened
+        //
+        // glfwGetMonitorWorkarea will return the width/height of the scaled fullscreen window
+        // - for example, you full screened a 1280x720 game on a 4K monitor -- you won't get the 4k
+        // resolution!
+        //
+        // Additionally, the coordinates for the top left seem very weird in stacked displays (you
+        // get a negative Y coordinate)
         int monitorX, monitorY, monitorWidth, monitorHeight;
         glfwGetMonitorWorkarea(monitor, &monitorX, &monitorY, &monitorWidth, &monitorHeight);
 
         width = m_last_windowed_width;
         height = m_last_windowed_height;
-        x = monitorX + (monitorWidth / 2) - (width / 2);
-        y = monitorY + (monitorHeight / 2) - (height / 2);
+        if (monitorX < 0) {
+          x = monitorX - 50;
+        } else {
+          x = monitorX + 50;
+        }
+        if (monitorY < 0) {
+          y = monitorY - 50;
+        } else {
+          y = monitorY + 50;
+        }
+        lg::debug("FS -> Windowed screen: {} - x:{}:{}/{} | y:{}:{}/{}", screen, monitorX, x, width,
+                  monitorY, y, height);
       }
 
       glfwSetWindowAttrib(m_window, GLFW_DECORATED, GLFW_TRUE);
       glfwSetWindowFocusCallback(m_window, NULL);
       glfwSetWindowAttrib(m_window, GLFW_FLOATING, GLFW_FALSE);
-
       glfwSetWindowMonitor(m_window, NULL, x, y, width, height, GLFW_DONT_CARE);
-
-      // these might have changed
-      m_last_windowed_width = width;
-      m_last_windowed_height = height;
-      m_last_windowed_xpos = x;
-      m_last_windowed_ypos = y;
     } break;
     case GfxDisplayMode::Fullscreen: {
+      // TODO - when transitioning from fullscreen to windowed, it will use the old primary display
+      // which is to say, dragging the window to a different monitor won't update the used display
       // fullscreen
       const GLFWvidmode* vmode = glfwGetVideoMode(monitor);
       glfwSetWindowAttrib(m_window, GLFW_DECORATED, GLFW_FALSE);
@@ -571,6 +590,8 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
       glfwSetWindowMonitor(m_window, monitor, 0, 0, vmode->width, vmode->height, GLFW_DONT_CARE);
     } break;
     case GfxDisplayMode::Borderless: {
+      // TODO - when transitioning from fullscreen to windowed, it will use the old primary display
+      // which is to say, dragging the window to a different monitor won't update the used display
       // borderless fullscreen
       int x, y;
       glfwGetMonitorPos(monitor, &x, &y);
@@ -584,6 +605,9 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
       glfwSetWindowMonitor(m_window, NULL, x, y, vmode->width, vmode->height, GLFW_DONT_CARE);
 #endif
     } break;
+    default: {
+      break;
+    }
   }
 }
 
