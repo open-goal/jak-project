@@ -44,7 +44,6 @@
 #include "game/sce/sif_ee.h"
 #include "game/sce/stubs.h"
 #include "game/system/vm/vm.h"
-#include <game/features/auto_splitter.h>
 
 using namespace ee;
 
@@ -475,14 +474,6 @@ u64 get_os() {
 #endif
 }
 
-void update_jak1_autosplit_info(u32 auto_splitter_info) {
-  update_autosplitter_block_jak1(auto_splitter_info);
-}
-
-void jak1_autosplit_new_game() {
-  update_autosplitter_jak1_new_game();
-}
-
 void update_discord_rpc(u32 discord_info) {
   if (gDiscordRpcEnabled) {
     DiscordRichPresence rpc;
@@ -654,6 +645,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
   make_function_symbol_from_c("pc-set-game-resolution", (void*)set_game_resolution);
   make_function_symbol_from_c("pc-set-msaa", (void*)set_msaa);
+  make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
 
   // graphics things
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
@@ -672,10 +664,6 @@ void InitMachine_PCPort() {
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
-
-  // auto splitting
-  make_function_symbol_from_c("pc-autosplit-update-jak1", (void*)update_jak1_autosplit_info);
-  make_function_symbol_from_c("pc-autosplit-new-game-jak1", (void*)jak1_autosplit_new_game);
 
   // profiler
   make_function_symbol_from_c("pc-prof", (void*)prof_event);

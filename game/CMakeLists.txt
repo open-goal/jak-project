@@ -145,8 +145,7 @@ set(RUNTIME_SOURCE
         graphics/pipelines/opengl.cpp
         system/vm/dmac.cpp
         system/vm/vm.cpp
-        tools/subtitles/subtitle_editor.cpp
-        features/auto_splitter.cpp)
+        tools/subtitles/subtitle_editor.cpp)
 
 find_package(Git)
 
