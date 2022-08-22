@@ -645,6 +645,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
   make_function_symbol_from_c("pc-set-game-resolution", (void*)set_game_resolution);
   make_function_symbol_from_c("pc-set-msaa", (void*)set_msaa);
+  make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
 
   // graphics things
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);

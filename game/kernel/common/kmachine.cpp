@@ -412,6 +412,10 @@ int get_monitor_count() {
   return Gfx::get_monitor_count();
 }
 
+int get_unix_timestamp() {
+  return std::time(nullptr);
+}
+
 void mkdir_path(u32 filepath) {
   auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
   file_util::create_dir_if_needed_for_file(filepath_str);
