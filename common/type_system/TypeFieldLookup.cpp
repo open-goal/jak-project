@@ -482,20 +482,6 @@ FieldReverseLookupOutput TypeSystem::reverse_field_lookup(
   // just use the multi-lookup set to 1 and grab the first result.
   auto multi_result = reverse_field_multi_lookup(input, 100);
 
-  for (auto& result : multi_result.results) {
-    // compute the score.
-    result.total_score = 0;
-    for (auto& tok : result.tokens) {
-      result.total_score += tok.score();
-    }
-  }
-
-  // use stable sort to make sure we break ties by being first in the order.
-  std::stable_sort(multi_result.results.begin(), multi_result.results.end(),
-                   [](const FieldReverseLookupOutput& a, const FieldReverseLookupOutput& b) {
-                     return a.total_score > b.total_score;
-                   });
-
   /*
   if (multi_result.results.size() > 1) {
     fmt::print("Multiple:\n");
@@ -532,6 +518,19 @@ FieldReverseMultiLookupOutput TypeSystem::reverse_field_multi_lookup(
   try_reverse_lookup(input, *this, nullptr, &result, max_count);
   if (!result.results.empty()) {
     result.success = true;
+    for (auto& r : result.results) {
+      // compute the score.
+      r.total_score = 0;
+      for (auto& tok : r.tokens) {
+        r.total_score += tok.score();
+      }
+    }
+
+    // use stable sort to make sure we break ties by being first in the order.
+    std::stable_sort(result.results.begin(), result.results.end(),
+                     [](const FieldReverseLookupOutput& a, const FieldReverseLookupOutput& b) {
+                       return a.total_score > b.total_score;
+                     });
   }
   return result;
 }

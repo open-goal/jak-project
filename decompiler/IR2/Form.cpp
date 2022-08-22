@@ -1862,6 +1862,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "cpad-pressed?";
     case FixedOperatorKind::CPAD_HOLD_P:
       return "cpad-hold?";
+    case FixedOperatorKind::VECTOR_LENGTH:
+      return "vector-length";
     default:
       ASSERT(false);
       return "";
@@ -3193,6 +3195,7 @@ goos::Object DefpartElement::to_form_internal(const Env& env) const {
       // sp-end
       break;
     }
+    ASSERT(env.version == GameVersion::Jak1);  // need to update enums
     item_forms.push_back(decompile_sparticle_field_init(e, env.dts->ts));
   }
   if (!item_forms.empty()) {

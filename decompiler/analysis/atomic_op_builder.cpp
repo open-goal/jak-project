@@ -3,10 +3,10 @@
 #include "atomic_op_builder.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
+#include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/Function/Warnings.h"
-#include "decompiler/util/TP_Type.h"
 
 namespace decompiler {
 
@@ -1944,6 +1944,87 @@ std::unique_ptr<AtomicOp> convert_vector3_dot(const Instruction* instrs, int idx
       idx);
 }
 
+std::unique_ptr<AtomicOp> convert_vector_length(const Instruction* instrs, int idx) {
+  // 0:  lqc2 vf1, 0(a1)
+  if (instrs[0].kind != InstructionKind::LQC2 || instrs[0].get_dst(0).get_reg() != make_vf(1) ||
+      !instrs[0].get_src(0).is_imm(0)) {
+    return nullptr;
+  }
+  Register vec_src = instrs[0].get_src(1).get_reg();
+
+  auto vf0 = make_vf(0);
+  auto vf1 = make_vf(1);
+
+  // 1: vmul.xyzw vf1, vf1, vf1
+  std::vector<DecompilerLabel> labels;
+  if (instrs[1].kind != InstructionKind::VMUL || instrs[1].get_dst(0).get_reg() != vf1 ||
+      instrs[1].get_src(0).get_reg() != vf1 || instrs[1].get_src(1).get_reg() != vf1 ||
+      instrs[1].cop2_dest != 0b1111) {
+    return nullptr;
+  }
+
+  // 2:  vmulax.w acc, vf0, vf1
+  if (instrs[2].kind != InstructionKind::VMULA_BC || instrs[2].get_src(0).get_reg() != vf0 ||
+      instrs[2].get_src(1).get_reg() != vf1 || instrs[2].cop2_dest != 0b0001 ||
+      instrs[2].cop2_bc != 0) {
+    return nullptr;
+  }
+
+  // 3: vmadday.w acc, vf0, vf1
+  if (instrs[3].kind != InstructionKind::VMADDA_BC || instrs[3].get_src(0).get_reg() != vf0 ||
+      instrs[3].get_src(1).get_reg() != vf1 || instrs[3].cop2_dest != 0b0001 ||
+      instrs[3].cop2_bc != 1) {
+    return nullptr;
+  }
+
+  // 4: vmaddz.w vf1, vf0, vf1
+  if (instrs[4].kind != InstructionKind::VMADD_BC || instrs[4].get_dst(0).get_reg() != vf1 ||
+      instrs[4].get_src(0).get_reg() != vf0 || instrs[4].get_src(1).get_reg() != vf1 ||
+      instrs[4].cop2_dest != 0b0001 || instrs[4].cop2_bc != 2) {
+    return nullptr;
+  }
+
+  // 5: vsqrt Q, vf1.w
+  if (instrs[5].kind != InstructionKind::VSQRT || instrs[5].get_src(0).get_reg() != vf1) {
+    return nullptr;
+  }
+
+  // 6: vaddw.x vf1, vf0, vf0
+  if (instrs[6].kind != InstructionKind::VADD_BC || instrs[6].get_dst(0).get_reg() != vf1 ||
+      instrs[6].get_src(0).get_reg() != vf0 || instrs[6].get_src(1).get_reg() != vf0 ||
+      instrs[6].cop2_dest != 0b1000 || instrs[6].cop2_bc != 3) {
+    return nullptr;
+  }
+
+  // 7:  vwaitq
+  if (instrs[7].kind != InstructionKind::VWAITQ) {
+    return nullptr;
+  }
+
+  // 8: vmulq.x vf1, vf1, Q
+  if (instrs[8].kind != InstructionKind::VMULQ || instrs[8].get_dst(0).get_reg() != vf1 ||
+      instrs[8].get_src(0).get_reg() != vf1 || instrs[8].cop2_dest != 0b1000) {
+    return nullptr;
+  }
+
+  // 9:  vnop
+  if (instrs[9].kind != InstructionKind::VNOP) {
+    return nullptr;
+  }
+  // 10:  vnop
+  if (instrs[10].kind != InstructionKind::VNOP) {
+    return nullptr;
+  }
+  // 11:  qmfc2.i a1, vf1
+  if (instrs[11].kind != InstructionKind::QMFC2 || instrs[11].src->get_reg() != vf1) {
+    return nullptr;
+  }
+  auto dst = instrs[11].get_dst(0).get_reg();
+  return std::make_unique<SetVarOp>(
+      make_dst_var(dst, idx),
+      SimpleExpression(SimpleExpression::Kind::VECTOR_LENGTH, make_src_atom(vec_src, idx)), idx);
+}
+
 // 12 instructions
 std::unique_ptr<AtomicOp> convert_vector4_dot(const Instruction* instrs, int idx) {
   //    lwc1 f0, 0(a0)
@@ -2060,6 +2141,11 @@ std::unique_ptr<AtomicOp> convert_12(const Instruction* instrs, int idx) {
   auto as_vector4_dot = convert_vector4_dot(instrs, idx);
   if (as_vector4_dot) {
     return as_vector4_dot;
+  }
+
+  auto as_vector_length = convert_vector_length(instrs, idx);
+  if (as_vector_length) {
+    return as_vector_length;
   }
   return nullptr;
 }

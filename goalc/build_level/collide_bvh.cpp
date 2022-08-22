@@ -1,6 +1,7 @@
 #include "collide_bvh.h"
 
 #include <algorithm>
+#include <map>
 #include <unordered_set>
 
 #include "common/log/log.h"
@@ -18,15 +19,6 @@ namespace collide {
 
 namespace {
 constexpr int MAX_UNIQUE_VERTS_IN_FRAG = 128;
-
-struct BBox {
-  math::Vector3f mins, maxs;
-  std::string sz_to_string() const {
-    return fmt::format("{} {} ({})", (mins / 4096.f).to_string_aligned(),
-                       (maxs / 4096.f).to_string_aligned(),
-                       ((maxs - mins) / 4096.f).to_string_aligned());
-  }
-};
 
 /*!
  * The Collide node.
@@ -46,20 +38,6 @@ struct VectorHash {
 };
 
 /*!
- * Recursively get a set of unique vertices.
- */
-void collect_vertices(const CNode& node, std::unordered_set<math::Vector3f, VectorHash>& verts) {
-  for (auto& child : node.child_nodes) {
-    collect_vertices(child, verts);
-  }
-  for (auto& face : node.faces) {
-    verts.insert(face.v[0]);
-    verts.insert(face.v[1]);
-    verts.insert(face.v[2]);
-  }
-}
-
-/*!
  * Recursively get a list of vertices.
  */
 void collect_vertices(const CNode& node, std::vector<math::Vector3f>& verts) {
@@ -71,30 +49,6 @@ void collect_vertices(const CNode& node, std::vector<math::Vector3f>& verts) {
     verts.push_back(face.v[1]);
     verts.push_back(face.v[2]);
   }
-}
-
-/*!
- * Get the axis-aligned bounding box of these vertices
- */
-BBox compute_my_bbox(const std::vector<math::Vector3f>& verts) {
-  ASSERT(!verts.empty());
-  BBox result;
-  result.mins = verts.front();
-  result.maxs = verts.front();
-  for (auto& v : verts) {
-    result.mins.min_in_place(v);
-    result.maxs.min_in_place(v);
-  }
-  return result;
-}
-
-/*!
- * Get the axis-aligned bounding box of all vertices in this node and its children
- */
-BBox compute_my_bbox(const CNode& node) {
-  std::vector<math::Vector3f> verts;
-  collect_vertices(node, verts);
-  return compute_my_bbox(verts);
 }
 
 /*!
@@ -154,6 +108,7 @@ void split_along_dim(std::vector<CollideFace>& faces,
   std::sort(faces.begin(), faces.end(), [=](const CollideFace& a, const CollideFace& b) {
     return a.bsphere[dim] < b.bsphere[dim];
   });
+  fmt::print("splitting with size: {}\n", faces.size());
   size_t split_idx = faces.size() / 2;
   out0->insert(out0->end(), faces.begin(), faces.begin() + split_idx);
   out1->insert(out1->end(), faces.begin() + split_idx, faces.end());
@@ -165,7 +120,6 @@ void split_along_dim(std::vector<CollideFace>& faces,
 void split_node_once(CNode& node, CNode* out0, CNode* out1) {
   compute_my_bsphere_ritters(node);
   CNode temps[6];
-  // split_along_dim(node.faces, pick_dim_for_split(node.faces), &out0->faces, &out1->faces);
   split_along_dim(node.faces, 0, &temps[0].faces, &temps[1].faces);
   split_along_dim(node.faces, 1, &temps[2].faces, &temps[3].faces);
   split_along_dim(node.faces, 2, &temps[4].faces, &temps[5].faces);
@@ -211,7 +165,7 @@ bool needs_split(const CNode& node) {
     }
   }
 
-  return unique_verts.size() >= 128;
+  return unique_verts.size() >= MAX_UNIQUE_VERTS_IN_FRAG;
 }
 
 void split_recursive(CNode& to_split) {
@@ -342,7 +296,17 @@ CollideTree construct_collide_bvh(const std::vector<CollideFace>& tris) {
   bvh_timer.start();
   auto tree = build_collide_tree(root);
   debug_stats(tree);
+
   lg::info("Tree layout done in {:.2f} ms", bvh_timer.getMs());
+  std::map<int, int> size_histogram;
+  for (const auto& f : tree.frags.frags) {
+    size_histogram[f.faces.size()]++;
+  }
+
+  for (auto [size, count] : size_histogram) {
+    fmt::print(" [{:3d}] {:3d} ({})\n", size, count, size * count);
+  }
+
   return tree;
 }
 

@@ -1157,7 +1157,7 @@ bool allow_guess(const Field& field) {
 std::string TypeInspectorResult::print_as_deftype(
     StructureType* old_game_type,
     std::unordered_map<std::string, TypeInspectorResult>& previous_results,
-    DecompilerTypeSystem& previous_game_ts,
+    DecompilerTypeSystem& /*previous_game_ts*/,
     ObjectFileDB::PerObjectAllTypeInfo& object_file_meta) {
   std::string result;
 
@@ -1408,8 +1408,8 @@ std::string get_label_type_name(LinkedObjectFile& file, std::string label_name) 
 
 void inspect_top_level_for_metadata(Function& top_level,
                                     LinkedObjectFile& file,
-                                    DecompilerTypeSystem& dts,
-                                    DecompilerTypeSystem& previous_game_ts,
+                                    DecompilerTypeSystem& /*dts*/,
+                                    DecompilerTypeSystem& /*previous_game_ts*/,
                                     ObjectFileDB::PerObjectAllTypeInfo& objectFile) {
   // State as a method:
   /*
@@ -1434,7 +1434,7 @@ void inspect_top_level_for_metadata(Function& top_level,
   // Check for non-method states
   std::string last_seen_label = "";
   // TODO - safely increment op number
-  for (int i = 0; i < top_level.ir2.atomic_ops->ops.size(); i++) {
+  for (int i = 0; i < (int)top_level.ir2.atomic_ops->ops.size(); i++) {
     const auto& aop = top_level.ir2.atomic_ops->ops.at(i);
     const std::string as_str = aop.get()->to_string(top_level.ir2.env);
 
@@ -1488,7 +1488,6 @@ void inspect_top_level_for_metadata(Function& top_level,
   // Check for types
   // if there's no inspect method, we can use just use the call to the type's new method
   // to find the type
-  const auto& env = top_level.ir2.env;
   for (int i = 0; i < ((int)top_level.ir2.atomic_ops->ops.size()) - 5; i++) {
     // lw v1, type(s7)           ;; [ 20] (set! v1-10 type) [] -> [v1: <the etype type> ]
     const auto& aop_0 = top_level.ir2.atomic_ops->ops.at(i);

@@ -716,7 +716,7 @@ void save_level_background_as_gltf(const tfrag3::Level& level, const fs::path& g
   // a "scene" is a traditional scene graph, made up of Nodes.
   // sadly, attempting to nest stuff makes the blender importer unhappy, so we just dump
   // everything into the top level.
-  auto& scene = model.scenes.emplace_back();
+  model.scenes.emplace_back();
 
   // hack, add a default material.
   tinygltf::Material mat;
@@ -755,7 +755,7 @@ void save_level_foreground_as_gltf(const tfrag3::Level& level, const fs::path& g
   // a "scene" is a traditional scene graph, made up of Nodes.
   // sadly, attempting to nest stuff makes the blender importer unhappy, so we just dump
   // everything into the top level.
-  auto& scene = model.scenes.emplace_back();
+  model.scenes.emplace_back();
 
   // hack, add a default material.
   tinygltf::Material mat;

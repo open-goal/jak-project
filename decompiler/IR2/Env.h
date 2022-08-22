@@ -174,6 +174,7 @@ class Env {
   }
 
   void set_stack_structure_hints(const std::vector<StackStructureHint>& hints);
+  void add_stack_structure_hint(const StackStructureHint& hint);
   const std::vector<StackStructureEntry>& stack_structure_hints() const {
     return m_stack_structures;
   }
