@@ -397,6 +397,7 @@ class TieLoadStage : public LoaderStage {
             abort = true;
           }
         }
+        m_next_tree = 0;
       }
 
       m_wind_indices_done = true;
