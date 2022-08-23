@@ -292,6 +292,8 @@ void InitIOP() {
   }
 }
 
+AutoSplitterBlock gAutoSplitterBlock;
+
 /*!
  * Initialize GOAL Runtime. This is the main initialization which is called before entering
  * the GOAL kernel dispatch loop (KernelCheckAndDispatch).
@@ -353,6 +355,10 @@ int InitMachine() {
   if (goal_status < 0) {
     return goal_status;
   }
+
+  // TODO - better place to put this?
+  gAutoSplitterBlock.pointer_to_symbol =
+      (u64)g_ee_main_mem + intern_from_c("*autosplit-info-jak1*")->value;
 
   lg::info("InitListenerConnect");
   InitListenerConnect();
