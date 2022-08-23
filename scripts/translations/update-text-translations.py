@@ -1,5 +1,5 @@
-from tokenize import group
 import yaml
+import collections
 
 with open("./localization/jak1/text/meta.yml", 'r', encoding="utf-8") as f:
   meta = yaml.safe_load(f)
@@ -36,8 +36,10 @@ for gs_file_name, info in meta.items():
           string_dict[group_name][string_id].append("\"{}\"".format(string_val))
   # Create final output
   for group_name, strings in string_dict.items():
+    # Sort strings to maintain order
+    sorted_strings = collections.OrderedDict(sorted(strings.items()))
     output_lines.append("\n;; {}\n".format(group_name))
-    for string_id, translated_vals in strings.items():
+    for string_id, translated_vals in sorted_strings.items():
       if len(translated_vals) == 1:
         output_lines.append("(#x{} {})\n".format(string_id, translated_vals[0].lstrip()))
       else:
