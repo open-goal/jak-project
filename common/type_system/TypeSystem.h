@@ -162,20 +162,28 @@ class TypeSystem {
 
   MethodInfo declare_method(const std::string& type_name,
                             const std::string& method_name,
+                            const std::optional<std::string>& docstring,
                             bool no_virtual,
                             const TypeSpec& ts,
                             bool override_type);
   MethodInfo declare_method(Type* type,
                             const std::string& method_name,
+                            const std::optional<std::string>& docstring,
                             bool no_virtual,
                             const TypeSpec& ts,
                             bool override_type,
                             int id = -1);
   MethodInfo define_method(const std::string& type_name,
                            const std::string& method_name,
-                           const TypeSpec& ts);
-  MethodInfo define_method(Type* type, const std::string& method_name, const TypeSpec& ts);
-  MethodInfo add_new_method(Type* type, const TypeSpec& ts);
+                           const TypeSpec& ts,
+                           const std::optional<std::string>& docstring);
+  MethodInfo define_method(Type* type,
+                           const std::string& method_name,
+                           const TypeSpec& ts,
+                           const std::optional<std::string>& docstring);
+  MethodInfo add_new_method(Type* type,
+                            const TypeSpec& ts,
+                            const std::optional<std::string>& docstring);
   MethodInfo lookup_method(const std::string& type_name, const std::string& method_name) const;
   MethodInfo lookup_method(const std::string& type_name, int method_id) const;
   bool try_lookup_method(const Type* type, const std::string& method_name, MethodInfo* info) const;

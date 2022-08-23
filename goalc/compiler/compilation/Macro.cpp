@@ -166,6 +166,14 @@ Val* Compiler::compile_define_constant(const goos::Object& form,
 
   auto sym = pair_car(*rest).as_symbol();
   rest = &pair_cdr(*rest);
+
+  // check for potential docstring
+  // TODO - docstring - actually do something with this!
+  if (rest->is_pair() && pair_car(*rest).is_string() && !pair_cdr(*rest).is_empty_list()) {
+    // std::string docstring = pair_car(*rest).as_string()->data;
+    rest = &pair_cdr(*rest);
+  }
+
   auto value = pair_car(*rest);
 
   rest = &rest->as_pair()->cdr;

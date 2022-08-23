@@ -201,6 +201,12 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     // (name args return-type [:no-virtual] [:replace] [:state] [id])
     auto method_name = symbol_string(car(obj));
     obj = cdr(obj);
+    // check for docstring
+    std::optional<std::string> docstring;
+    if (obj->is_pair() && car(obj).is_string()) {
+      docstring = car(obj).as_string()->data;
+      obj = cdr(obj);
+    }
     auto& args = car(obj);
     obj = cdr(obj);
     auto& return_type = car(obj);
@@ -247,8 +253,8 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     });
     function_typespec.add_arg(parse_typespec(type_system, return_type));
 
-    auto info = type_system->declare_method(type, method_name, no_virtual, function_typespec,
-                                            replace_method, id);
+    auto info = type_system->declare_method(type, method_name, docstring, no_virtual,
+                                            function_typespec, replace_method, id);
 
     // check the method assert
     if (id != -1) {
@@ -566,6 +572,7 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
 DeftypeResult parse_deftype(const goos::Object& deftype,
                             TypeSystem* ts,
                             std::unordered_map<goos::HeapObject*, goos::Object>* constants) {
+  DefinitionMetadata symbol_metadata;
   std::unordered_map<goos::HeapObject*, goos::Object> no_consts;
   auto& constants_to_use = no_consts;
   if (constants != nullptr) {
@@ -578,6 +585,11 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
   iter = cdr(iter);
   auto& parent_list_obj = car(iter);
   iter = cdr(iter);
+  // check for docstring
+  if (iter->is_pair() && car(iter).is_string()) {
+    symbol_metadata.docstring = car(iter).as_string()->data;
+    iter = cdr(iter);
+  }
   auto& field_list_obj = car(iter);
   iter = cdr(iter);
   auto& options_obj = *iter;
@@ -593,6 +605,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
 
   if (is_type("basic", parent_type, ts)) {
     auto new_type = std::make_unique<BasicType>(parent_type_name, name, false, 0);
+    new_type->m_metadata = symbol_metadata;
     auto pto = dynamic_cast<BasicType*>(ts->lookup_type(parent_type));
     ASSERT(pto);
     if (pto->final()) {
@@ -630,6 +643,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
     ts->add_type(name, std::move(new_type));
   } else if (is_type("structure", parent_type, ts)) {
     auto new_type = std::make_unique<StructureType>(parent_type_name, name, false, false, false, 0);
+    new_type->m_metadata = symbol_metadata;
     auto pto = dynamic_cast<StructureType*>(ts->lookup_type(parent_type));
     ASSERT(pto);
     new_type->inherit(pto);
@@ -658,6 +672,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
     ASSERT(pto);
     auto new_type = std::make_unique<BitFieldType>(
         parent_type_name, name, pto->get_size_in_memory(), pto->get_load_signed());
+    new_type->m_metadata = symbol_metadata;
     auto parent_value = dynamic_cast<ValueType*>(pto);
     ASSERT(parent_value);
     new_type->inherit(parent_value);

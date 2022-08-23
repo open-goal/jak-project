@@ -464,22 +464,25 @@ goos::Object SetFormFormElement::to_form_internal(const Env& env) const {
   }
 }
 
-goos::Object SetFormFormElement::to_form_for_define(const Env& env) const {
+goos::Object SetFormFormElement::to_form_for_define(
+    const Env& env,
+    const std::optional<std::string>& docstring) const {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("define"), m_dst->to_form(env)};
+  if (docstring) {
+    forms.push_back(pretty_print::to_symbol(fmt::format("\"{}\"", docstring.value())));
+  }
   if (m_cast_for_define) {
     // for vu-function, we just put a 0. These aren't supported
     if (*m_cast_for_define == TypeSpec("vu-function")) {
-      return pretty_print::build_list(
-          fmt::format("define"), m_dst->to_form(env),
-          pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
-                                   pretty_print::to_symbol("0")));
+      forms.push_back(pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
+                                               pretty_print::to_symbol("0")));
+      return pretty_print::build_list(forms);
     }
-    return pretty_print::build_list(
-        fmt::format("define"), m_dst->to_form(env),
-        pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
-                                 m_src->to_form(env)));
+    forms.push_back(pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
+                                             m_src->to_form(env)));
+    return pretty_print::build_list(forms);
   } else {
-    std::vector<goos::Object> forms = {pretty_print::to_symbol("define"), m_dst->to_form(env),
-                                       m_src->to_form(env)};
+    forms.push_back(m_src->to_form(env));
     return pretty_print::build_list(forms);
   }
 }

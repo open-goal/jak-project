@@ -54,28 +54,32 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
   for_each_in_list(data, [&](goos::Object& o) {
     try {
       if (car(o).as_symbol()->name == "define-extern") {
+        auto symbol_metadata = DefinitionMetadata();
         auto* rest = &cdr(o);
         auto sym_name = car(*rest);
         rest = &cdr(*rest);
+        // check for docstring
+        if (rest->is_pair() && car(*rest).is_string()) {
+          symbol_metadata.docstring = car(*rest).as_string()->data;
+          rest = &cdr(*rest);
+        }
         auto sym_type = car(*rest);
         if (!cdr(*rest).is_empty_list()) {
           throw std::runtime_error("malformed define-extern");
         }
-        auto info = m_reader.db.get_short_info_for(o);
-        add_symbol(sym_name.as_symbol()->name, parse_typespec(&ts, sym_type), info);
-
+        symbol_metadata.definition_info = m_reader.db.get_short_info_for(o);
+        add_symbol(sym_name.as_symbol()->name, parse_typespec(&ts, sym_type), symbol_metadata);
       } else if (car(o).as_symbol()->name == "deftype") {
         auto dtr = parse_deftype(cdr(o), &ts);
-        auto info = m_reader.db.get_short_info_for(o);
+        dtr.type_info->m_metadata.definition_info = m_reader.db.get_short_info_for(o);
         if (dtr.create_runtime_type) {
-          add_symbol(dtr.type.base_type(), "type", info);
+          add_symbol(dtr.type.base_type(), "type", dtr.type_info->m_metadata);
         }
         // declare the type's states globally
         for (auto& state : dtr.type_info->get_states_declared_for_type()) {
           // TODO - get definition info for the state definitions specifically
-          add_symbol(state.first, state.second, info);
+          add_symbol(state.first, state.second, dtr.type_info->m_metadata);
         }
-
       } else if (car(o).as_symbol()->name == "declare-type") {
         auto* rest = &cdr(o);
         auto type_name = car(*rest);
@@ -86,7 +90,12 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         }
         ts.forward_declare_type_as(type_name.as_symbol()->name, type_kind.as_symbol()->name);
       } else if (car(o).as_symbol()->name == "defenum") {
-        parse_defenum(cdr(o), &ts);
+        auto symbol_metadata = DefinitionMetadata();
+        parse_defenum(cdr(o), &ts, &symbol_metadata);
+        symbol_metadata.definition_info = m_reader.db.get_short_info_for(o);
+        auto* rest = &cdr(o);
+        const auto& enum_name = car(*rest).as_symbol()->name;
+        symbol_metadata_map[enum_name] = symbol_metadata;
         // so far, enums are never runtime types so there's no symbol for them.
       } else {
         throw std::runtime_error("Decompiler cannot parse " + car(o).print());
@@ -161,16 +170,16 @@ bool DecompilerTypeSystem::lookup_flags(const std::string& type, u64* dest) cons
   return false;
 }
 
-void DecompilerTypeSystem::add_symbol(
-    const std::string& name,
-    const TypeSpec& type_spec,
-    const std::optional<goos::TextDb::ShortInfo>& definition_info) {
+void DecompilerTypeSystem::add_symbol(const std::string& name,
+                                      const TypeSpec& type_spec,
+                                      const DefinitionMetadata& symbol_metadata) {
   add_symbol(name);
   auto skv = symbol_types.find(name);
   if (skv == symbol_types.end() || skv->second == type_spec) {
     symbol_types[name] = type_spec;
-    if (definition_info) {
-      symbol_definition_info[name] = definition_info.value();
+    // TODO - could get rid of this if there is a way to go from TypeSpec -> full Type
+    if (symbol_metadata.definition_info) {
+      symbol_metadata_map[name] = symbol_metadata;
     }
   } else {
     if (ts.tc(type_spec, skv->second)) {

@@ -410,7 +410,8 @@ class SetFormFormElement : public FormElement {
                      std::optional<TypeSpec> cast_for_set = {},
                      std::optional<TypeSpec> cast_for_define = {});
   goos::Object to_form_internal(const Env& env) const override;
-  goos::Object to_form_for_define(const Env& env) const;
+  goos::Object to_form_for_define(const Env& env,
+                                  const std::optional<std::string>& docstring) const;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
