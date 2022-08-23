@@ -359,7 +359,7 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   }
 
   // nope, have to add a new one.
-  ObjectFileData data;
+  ObjectFileData data(config.game_version);
   data.data.resize(obj_size);
   memcpy(data.data.data(), obj_data, obj_size);
   data.record.hash = hash;

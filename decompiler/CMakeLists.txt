@@ -69,6 +69,9 @@ add_library(
         ObjectFile/ObjectFileDB.cpp
         ObjectFile/ObjectFileDB_IR2.cpp
 
+        types2/ForwardProp.cpp
+        types2/types2.cpp
+
         util/config_parsers.cpp
         util/data_decompile.cpp
         util/DataParser.cpp

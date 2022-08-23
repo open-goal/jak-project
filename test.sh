@@ -3,4 +3,4 @@
 # Directory of this script
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-$DIR/build/goalc-test --gtest_brief=1 --gtest_color=yes "$@" --gtest_filter="-*MANUAL_TEST*"
+$DIR/build/goalc-test --gtest_color=yes "$@" --gtest_filter="-*MANUAL_TEST*"

@@ -9,6 +9,20 @@
 
 namespace decompiler {
 
+// needed for jak 2.
+std::optional<float> try_get_const_float(const Form* form) {
+  auto* as_cfe = form->try_as_element<ConstantFloatElement>();
+  if (as_cfe) {
+    return as_cfe->value();
+  }
+
+  auto atom = form_as_atom(form);
+  if (atom && atom->is_integer_promoted_to_float()) {
+    return atom->get_integer_promoted_to_float();
+  }
+  return {};
+}
+
 FormElement* handle_get_property_value_float(const std::vector<Form*>& forms,
                                              FormPool& pool,
                                              const Env& env) {
@@ -35,8 +49,8 @@ FormElement* handle_get_property_value_float(const std::vector<Form*>& forms,
   }
 
   // get the time. It must be DEFAULT_RES_TIME
-  auto lookup_time = forms.at(3)->try_as_element<ConstantFloatElement>();
-  if (!lookup_time || lookup_time->value() != DEFAULT_RES_TIME) {
+  auto lookup_time = try_get_const_float(forms.at(3));
+  if (!lookup_time || *lookup_time != DEFAULT_RES_TIME) {
     fmt::print("fail: bad time {}\n", forms.at(3)->to_string(env));
     return nullptr;
   }
@@ -44,8 +58,8 @@ FormElement* handle_get_property_value_float(const std::vector<Form*>& forms,
   // get the default value. It can be anything...
   Form* default_value = forms.at(4);
   // but let's see if it's 0, because that's the default in the macro
-  auto default_value_float = default_value->try_as_element<ConstantFloatElement>();
-  if (default_value_float && default_value_float->value() == 0) {
+  auto default_value_float = try_get_const_float(default_value);
+  if (default_value_float && *default_value_float == 0) {
     default_value = nullptr;
   }
 
@@ -111,8 +125,8 @@ FormElement* handle_get_property_data_or_structure(const std::vector<Form*>& for
 
   // get the time. It can be anything, but there's a default.
   auto time = forms.at(3);
-  auto lookup_time = time->try_as_element<ConstantFloatElement>();
-  if (lookup_time && lookup_time->value() == DEFAULT_RES_TIME) {
+  auto lookup_time = try_get_const_float(time);
+  if (lookup_time && *lookup_time == DEFAULT_RES_TIME) {
     time = nullptr;
   }
 
@@ -153,8 +167,9 @@ FormElement* handle_get_property_data(const std::vector<Form*>& forms,
 FormElement* handle_get_property_struct(const std::vector<Form*>& forms,
                                         FormPool& pool,
                                         const Env& env) {
-  return handle_get_property_data_or_structure(forms, pool, env, ResLumpMacroElement::Kind::STRUCT,
-                                               "#f", TypeSpec("structure"));
+  return handle_get_property_data_or_structure(
+      forms, pool, env, ResLumpMacroElement::Kind::STRUCT,
+      env.version == GameVersion::Jak2 ? "(the-as structure #f)" : "#f", TypeSpec("structure"));
 }
 
 FormElement* handle_get_property_value(const std::vector<Form*>& forms,

@@ -340,6 +340,9 @@
   ;; math camera stuff
   (set! (-> data basis-x quad) (the-as uint128 0))
   (set! (-> data basis-x x) (- (-> *math-camera* perspective vector 0 x)))
+  (with-pc
+    (when (pc-cheats? (-> *pc-settings* cheats) mirror)
+        (*! (-> data basis-x x) -1.0)))
   (set! (-> data basis-y quad) (the-as uint128 0))
   (set! (-> data basis-y y) (- (-> *math-camera* perspective vector 1 y)))
   (set! (-> data min-scale) (sqrtf (* (/ 1.0 (-> data basis-x x)) (/ 1.0 (-> data basis-y y)))))
@@ -551,13 +554,17 @@
              (f2-0 (-> *math-camera* perspective vector 1 y))
              (f0-1 (* -1.9996 (-> *math-camera* perspective vector 0 x)))
              )
-         (#when PC_PORT
-           (when (and *pc-settings* (not (-> *pc-settings* use-vis?)))
+         (with-pc
+           (when (not (-> *pc-settings* use-vis?))
              ;; when the game is in widescreen, HUD sprites are generally enlarged, which looks terrible.
              ;; this reverts that.
              (*! f1-0 (-> *pc-settings* aspect-ratio-scale))
              (*! f0-1 (-> *pc-settings* aspect-ratio-scale))
              )
+          (when (pc-cheats? (-> *pc-settings* cheats) mirror)
+              (*! f1-0 -1.0)
+              (*! f0-1 -1.0)
+              )
            )
          (set-vector! (-> mtx2 vector 0) f0-1 0.0 0.0 0.0)
          (set-vector! (-> mtx2 vector 1) 0.0 (- (* (/ f2-0 f1-0) f0-1)) 0.0 0.0)

@@ -279,7 +279,9 @@ goos::Object decompile_value_array(const TypeSpec& elt_type,
     for (int j = start; j < end; j++) {
       auto& word = obj_words.at(j / 4);
       if (word.kind() != LinkedWord::PLAIN_DATA) {
-        throw std::runtime_error("Got bad word in kind in array of values");
+        throw std::runtime_error(fmt::format(
+            "Got bad word in kind in array of values: expecting array of {}'s, got a {}\n",
+            elt_type.print(), (int)word.kind()));
       }
       elt_bytes.push_back(word.get_byte(j % 4));
     }
@@ -592,6 +594,16 @@ goos::Object sp_launch_grp_launcher_decompile(const std::vector<LinkedWord>& wor
   return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
                                                file, TypeSpec("sparticle-group-item"), 32);
 }
+goos::Object probe_dir_decompile(const std::vector<LinkedWord>& words,
+                                 const std::vector<DecompilerLabel>& labels,
+                                 int my_seg,
+                                 int field_location,
+                                 const TypeSystem& ts,
+                                 const std::vector<std::vector<LinkedWord>>& all_words,
+                                 const LinkedObjectFile* file) {
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
+                                               file, TypeSpec("vector"), 16);
+}
 
 goos::Object decompile_sound_spec(const TypeSpec& type,
                                   const DecompilerLabel& label,
@@ -746,12 +758,14 @@ goos::Object decompile_structure(const TypeSpec& type,
   // some structures we want to decompile to fancy macros instead of a raw static definiton
   if (use_fancy_macros) {
     if (type == TypeSpec("sp-field-init-spec")) {
+      ASSERT(file->version == GameVersion::Jak1);  // need to update enums
       return decompile_sparticle_field_init(type, label, labels, words, ts, file);
     }
     if (type == TypeSpec("sparticle-group-item")) {
+      ASSERT(file->version == GameVersion::Jak1);  // need to update enums
       return decompile_sparticle_group_item(type, label, labels, words, ts, file);
     }
-    if (type == TypeSpec("sound-spec")) {
+    if (type == TypeSpec("sound-spec") && file->version != GameVersion::Jak2) {
       return decompile_sound_spec(type, label, labels, words, ts, file);
     }
   }
@@ -769,7 +783,8 @@ goos::Object decompile_structure(const TypeSpec& type,
   if (is_basic) {
     const auto& word = words.at(label.target_segment).at((offset_location / 4));
     if (word.kind() != LinkedWord::TYPE_PTR) {
-      throw std::runtime_error("Basic does not start with type pointer");
+      throw std::runtime_error(
+          fmt::format("Basic does not start with type pointer: {}", label.name));
     }
 
     if (word.symbol_name() != actual_type.base_type()) {
@@ -976,6 +991,10 @@ goos::Object decompile_structure(const TypeSpec& type,
               field.name(), decomp_ref_to_integer_array_guess_size(
                                 obj_words, labels, label.target_segment, field_start, ts, words,
                                 file, TypeSpec("uint8"), 1));
+        } else if (field.name() == "probe-dirs" && type.print() == "lightning-probe-vars") {
+          field_defs_out.emplace_back(field.name(),
+                                      probe_dir_decompile(obj_words, labels, label.target_segment,
+                                                          field_start, ts, words, file));
         } else {
           if (field.type().base_type() == "pointer") {
             if (obj_words.at(field_start / 4).kind() != LinkedWord::SYM_PTR) {
@@ -1400,6 +1419,8 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
             (word.data & 0b111) == 0) {
           s32 val = word.data;
           result.push_back(pretty_print::to_symbol(fmt::format("(the binteger {})", val / 8)));
+        } else if (content_type == TypeSpec("type") && word.kind() == LinkedWord::TYPE_PTR) {
+          result.push_back(pretty_print::to_symbol(word.symbol_name()));
         } else {
           throw std::runtime_error(
               fmt::format("Unknown content type in boxed array of references, word idx {}",

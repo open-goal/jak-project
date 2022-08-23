@@ -8,17 +8,21 @@ SOURCE=${3}
 
 mkdir -p $DEST
 
-cp $BIN_SOURCE/game/gk $DEST
-cp $BIN_SOURCE/goalc/goalc $DEST
-cp $BIN_SOURCE/decompiler/extractor $DEST
+PREP_BIN="${PREP_BIN:-true}"
 
-strip $DEST/gk
-strip $DEST/goalc
-strip $DEST/extractor
+if [ "$PREP_BIN" = "true" ]; then
+  cp $BIN_SOURCE/game/gk $DEST
+  cp $BIN_SOURCE/goalc/goalc $DEST
+  cp $BIN_SOURCE/decompiler/extractor $DEST
 
-chmod +x $DEST/gk
-chmod +x $DEST/goalc
-chmod +x $DEST/extractor
+  strip $DEST/gk
+  strip $DEST/goalc
+  strip $DEST/extractor
+
+  chmod +x $DEST/gk
+  chmod +x $DEST/goalc
+  chmod +x $DEST/extractor
+fi
 
 mkdir -p $DEST/data
 mkdir -p $DEST/data/launcher/

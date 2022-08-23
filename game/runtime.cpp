@@ -355,20 +355,28 @@ RuntimeExitStatus exec_runtime(int argc, char** argv) {
   // TODO relegate this to its own function
   if (enable_display) {
     Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
-    Gfx::Exit();
   }
 
   // hack to make the IOP die quicker if it's loading/unloading music
   gMusicFade = 0;
 
+  // if we have no display, wait here for DECI to shutdown
   deci_thread.join();
-  // DECI has been killed, shutdown!
+
+  // fully shut down EE first before stopping the other threads
+  ee_thread.join();
 
   // to be extra sure
   tm.shutdown();
 
   // join and exit
   tm.join();
+
+  // kill renderer after all threads are stopped.
+  // this makes sure the std::shared_ptr<Display> is destroyed in the main thread.
+  if (enable_display) {
+    Gfx::Exit();
+  }
   lg::info("GOAL Runtime Shutdown (code {})", MasterExit);
   munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
   return MasterExit;

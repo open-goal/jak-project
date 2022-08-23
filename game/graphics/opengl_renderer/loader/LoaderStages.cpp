@@ -2,6 +2,8 @@
 
 #include "Loader.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
+
 constexpr float LOAD_BUDGET = 2.5f;
 
 /*!
@@ -278,6 +280,7 @@ class TieLoadStage : public LoaderStage {
     }
 
     if (!m_opengl_created) {
+      auto evt = scoped_prof("tie-opengl-create");
       for (int geo = 0; geo < tfrag3::TIE_GEOS; geo++) {
         auto& in_trees = data.lev_data->level->tie_trees[geo];
         for (auto& in_tree : in_trees) {
@@ -287,6 +290,11 @@ class TieLoadStage : public LoaderStage {
           glBufferData(GL_ARRAY_BUFFER,
                        in_tree.unpacked.vertices.size() * sizeof(tfrag3::PreloadedVertex), nullptr,
                        GL_STATIC_DRAW);
+
+          glGenBuffers(1, &tree_out.index_buffer);
+          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, tree_out.index_buffer);
+          glBufferData(GL_ELEMENT_ARRAY_BUFFER, in_tree.unpacked.indices.size() * sizeof(u32),
+                       nullptr, GL_STATIC_DRAW);
         }
       }
       m_opengl_created = true;
@@ -294,6 +302,7 @@ class TieLoadStage : public LoaderStage {
     }
 
     if (!m_verts_done) {
+      auto evt = scoped_prof("tie-verts");
       constexpr u32 CHUNK_SIZE = 32768;
       u32 uploaded_bytes = 0;
 
@@ -324,8 +333,12 @@ class TieLoadStage : public LoaderStage {
                      data.lev_data->tie_data[m_next_geo][m_next_tree].vertex_buffer);
         u32 upload_size =
             (end_vert_for_chunk - start_vert_for_chunk) * sizeof(tfrag3::PreloadedVertex);
-        glBufferSubData(GL_ARRAY_BUFFER, start_vert_for_chunk * sizeof(tfrag3::PreloadedVertex),
-                        upload_size, tree.unpacked.vertices.data() + start_vert_for_chunk);
+        {
+          auto bsd = scoped_prof(fmt::format("buffer-{}k", upload_size / 1024).c_str());
+          glBufferSubData(GL_ARRAY_BUFFER, start_vert_for_chunk * sizeof(tfrag3::PreloadedVertex),
+                          upload_size, tree.unpacked.vertices.data() + start_vert_for_chunk);
+        }
+
         uploaded_bytes += upload_size;
 
         if (complete_tree) {
@@ -352,6 +365,7 @@ class TieLoadStage : public LoaderStage {
     }
 
     if (!m_wind_indices_done) {
+      auto evt = scoped_prof("tie-wind");
       bool abort = false;
       for (; m_next_geo < tfrag3::TIE_GEOS; m_next_geo++) {
         auto& geo_trees = data.lev_data->level->tie_trees[m_next_geo];
@@ -383,12 +397,75 @@ class TieLoadStage : public LoaderStage {
             abort = true;
           }
         }
-        m_next_tree = 0;
       }
 
-      m_indices_done = true;
-      m_done = true;
-      return true;
+      m_wind_indices_done = true;
+      m_next_geo = 0;
+      m_next_vert = 0;
+      m_next_tree = 0;
+
+      if (timer.getMs() > LOAD_BUDGET) {
+        return false;
+      }
+    }
+
+    if (!m_indices_done) {
+      auto evt = scoped_prof("tie-ind");
+      constexpr u32 CHUNK_SIZE = 32768 * 8;
+      u32 uploaded_bytes = 0;
+
+      while (true) {
+        const auto& tree = data.lev_data->level->tie_trees[m_next_geo][m_next_tree];
+        u32 end_ind_in_tree = tree.unpacked.indices.size();
+        // the number of indices we'd need to finish the tree right now
+        size_t num_inds_left_in_tree = end_ind_in_tree - m_next_vert;
+        size_t start_ind_for_chunk;
+        size_t end_ind_for_chunk;
+
+        bool complete_tree;
+
+        if (num_inds_left_in_tree > CHUNK_SIZE) {
+          complete_tree = false;
+          // should only do partial
+          start_ind_for_chunk = m_next_vert;
+          end_ind_for_chunk = start_ind_for_chunk + CHUNK_SIZE;
+          m_next_vert += CHUNK_SIZE;
+        } else {
+          // should do all!
+          start_ind_for_chunk = m_next_vert;
+          end_ind_for_chunk = end_ind_in_tree;
+          complete_tree = true;
+        }
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
+                     data.lev_data->tie_data[m_next_geo][m_next_tree].index_buffer);
+        u32 upload_size = (end_ind_for_chunk - start_ind_for_chunk) * sizeof(u32);
+        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, start_ind_for_chunk * sizeof(u32), upload_size,
+                        tree.unpacked.indices.data() + start_ind_for_chunk);
+        uploaded_bytes += upload_size;
+
+        if (complete_tree) {
+          // and move on to next tree
+          m_next_vert = 0;
+          m_next_tree++;
+          if (m_next_tree >= data.lev_data->level->tie_trees[m_next_geo].size()) {
+            m_next_tree = 0;
+            m_next_geo++;
+            if (m_next_geo >= tfrag3::TIE_GEOS) {
+              m_indices_done = true;
+              m_next_tree = 0;
+              m_next_geo = 0;
+              m_next_vert = 0;
+              m_done = true;
+              return true;
+            }
+          }
+        }
+
+        if (timer.getMs() > LOAD_BUDGET || (uploaded_bytes / 1024) > 2048) {
+          return false;
+        }
+      }
     }
 
     return false;
@@ -461,6 +538,23 @@ class CollideLoaderStage : public LoaderStage {
   bool m_done = false;
 };
 
+class StallLoaderStage : public LoaderStage {
+ public:
+  StallLoaderStage() : LoaderStage("stall") {}
+  bool run(Timer&, LoaderInput& data) override {
+    m_count++;
+    if (m_count > 10) {
+      return true;
+    }
+    return false;
+  }
+
+  void reset() override { m_count = 0; }
+
+ private:
+  int m_count = 0;
+};
+
 MercLoaderStage::MercLoaderStage() : LoaderStage("merc") {}
 void MercLoaderStage::reset() {
   m_done = false;
@@ -531,5 +625,6 @@ std::vector<std::unique_ptr<LoaderStage>> make_loader_stages() {
   ret.push_back(std::make_unique<ShrubLoadStage>());
   ret.push_back(std::make_unique<CollideLoaderStage>());
   ret.push_back(std::make_unique<MercLoaderStage>());
+  ret.push_back(std::make_unique<StallLoaderStage>());
   return ret;
 }

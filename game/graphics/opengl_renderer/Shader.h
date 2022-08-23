@@ -9,7 +9,7 @@ class Shader {
   static constexpr char shader_folder[] = "game/graphics/opengl_renderer/shaders/";
   Shader(const std::string& shader_name);
   Shader() = default;
-  void activate();
+  void activate() const;
   bool okay() const { return m_is_okay; }
   u64 id() const { return m_program; }
 

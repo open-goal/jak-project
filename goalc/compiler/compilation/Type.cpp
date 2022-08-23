@@ -982,8 +982,9 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
       throw_compiler_error(form, "new array form got more arguments than expected");
     }
 
-    auto ts = is_inline ? m_ts.make_inline_array_typespec(elt_type)
-                        : m_ts.make_pointer_typespec(elt_type);
+    auto ts = is_inline && m_ts.lookup_type(elt_type)->is_reference()
+                  ? m_ts.make_inline_array_typespec(elt_type)
+                  : m_ts.make_pointer_typespec(elt_type);
     auto info = m_ts.get_deref_info(ts);
     if (!info.can_deref) {
       throw_compiler_error(form, "Cannot make an {} of {}\n", main_type.print(), ts.print());
@@ -1003,9 +1004,9 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
       args.push_back(array_size);
     }
 
-    auto array = compile_real_function_call(form, malloc_func, args, env);
-    array->set_type(ts);
-    return array;
+    auto new_array = compile_real_function_call(form, malloc_func, args, env);
+    new_array->set_type(ts);
+    return new_array;
   } else {
     bool got_content_type = false;  // for boxed array
     std::string content_type;       // for boxed array.

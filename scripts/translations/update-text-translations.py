@@ -6,14 +6,14 @@ with open("./localization/jak1/text/meta.yml", 'r', encoding="utf-8") as f:
 
 for gs_file_name, info in meta.items():
   # Build up the file
-  language_ids = set()
+  language_ids = []
   output_lines = [
     "(group-name \"{}\")\n".format(info["group-name"]),
   ]
   translations = []
   for language in info["languages"]:
     for lang_code, lang_info in language.items():
-      language_ids.add(str(lang_info["id"]))
+      language_ids.append(str(lang_info["id"]))
       file_name = "./localization/jak1/text/text.{}.yml".format(lang_code)
       with open(file_name, 'r', encoding="utf-8") as f:
         translations.append(yaml.safe_load(f))
@@ -31,9 +31,9 @@ for gs_file_name, info in meta.items():
         if group_name not in string_dict:
           string_dict[group_name] = {}
         if string_id not in string_dict[group_name]:
-          string_dict[group_name][string_id] = ["  \"{}\"".format(string_val)]
+          string_dict[group_name][string_id] = ["\"{}\"".format(string_val)]
         else:
-          string_dict[group_name][string_id].append("  \"{}\"".format(string_val))
+          string_dict[group_name][string_id].append("\"{}\"".format(string_val))
   # Create final output
   for group_name, strings in string_dict.items():
     output_lines.append("\n;; {}\n".format(group_name))
@@ -41,7 +41,12 @@ for gs_file_name, info in meta.items():
       if len(translated_vals) == 1:
         output_lines.append("(#x{} {})\n".format(string_id, translated_vals[0].lstrip()))
       else:
-        output_lines.append("(#x{}\n{})\n".format(string_id, "\n".join(translated_vals)))
+        # add the first string inline
+        output_lines.append("(#x{} {}".format(string_id, translated_vals[0]))
+        translated_vals.pop(0)
+        for val in translated_vals:
+          output_lines.append("\n        {}".format(val))
+        output_lines.append(")\n")
 
   output_path = "./game/assets/jak1/text/{}.gs".format(gs_file_name)
   with open(output_path, "w", encoding="utf-8") as f:

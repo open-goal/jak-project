@@ -31,7 +31,7 @@ class FormRegressionTest : public ::testing::TestWithParam<GameVersion> {
   static void TearDownTestCase();
 
   struct TestData {
-    explicit TestData(int instrs, GameVersion version) : func(0, instrs, version) {}
+    explicit TestData(int instrs, GameVersion version) : func(0, instrs, version), file(version) {}
     decompiler::Function func;
     decompiler::LinkedObjectFile file;
 

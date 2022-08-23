@@ -48,18 +48,18 @@
 ;;;; updates
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-
 (defmethod set-display-mode! pc-settings ((obj pc-settings) (mode symbol))
   "sets the game's display mode"
-
   ;; change the display mode.
   (set! (-> obj display-mode) mode)
+  ;; if windowed mode, set the size properly
+  (when (= (-> obj display-mode) 'windowed)
+    (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
   0)
 
 (defmethod set-size! pc-settings ((obj pc-settings) (width int) (height int))
   "sets the size of the display window"
-  (format #t "Setting size to ~D x ~D~%" width height)
+  (format 0 "Setting ~A size to ~D x ~D~%" (-> obj display-mode) width height)
   (cond
     ((= 'windowed (-> obj display-mode))
       (set! (-> obj win-width) width)
@@ -72,7 +72,6 @@
       )
     )
   (none))
-
 
 (defmethod set-aspect! pc-settings ((obj pc-settings) (aw int) (ah int))
   "set the aspect ratio used for rendering. this forces native widescreen and takes width and height ratios."
@@ -249,12 +248,15 @@
 
   (none))
 
-(define *pc-cheat-temp* (the-as (pointer int32) (malloc 'global (* 4 8))))
-(defmacro pc-cheat-toggle-and-tune (obj cheat)
+;; where we store the input progress for the cheat codes. make sure there's enough space for all cheats.
+(define *pc-cheat-temp* (new 'global 'inline-array 'uint8 PC_CHEAT_MAX))
+
+(defmacro pc-cheat-toggle-and-tune (cheats-var cheat)
+  "quickly toggle a cheat code and play an appropriate sound"
   `(begin
     (cpad-clear! 0 r1)
-    (logxor! (-> ,obj cheats) (pc-cheats ,cheat))
-    (cheats-sound-play (logtest? (-> ,obj cheats) (pc-cheats ,cheat)))
+    (logxor! ,cheats-var (pc-cheats ,cheat))
+    (cheats-sound-play (logtest? ,cheats-var (pc-cheats ,cheat)))
     )
   )
 
@@ -324,6 +326,11 @@
     (with-profiler "discord-update" (pc-discord-rpc-update info))
     )
 
+  ;; update auto-splitter info
+  (when (-> *pc-settings* speedrunner-mode?)
+    (with-profiler "autosplit-update-jak1"
+      (update-autosplit-info-jak1)))
+
   (when (not (-> obj use-vis?))
     (set! (-> *video-parms* relative-x-scale) (-> obj aspect-ratio-reciprocal))
     (set! (-> *video-parms* relative-x-scale-reciprical) (-> obj aspect-ratio-scale))
@@ -369,38 +376,49 @@
 (defmethod update-cheats pc-settings ((obj pc-settings))
   "run cheats."
 
+  ;; first check for cheat inputs.
   (when (and (cpad-hold? 0 l2) (cpad-hold? 0 l1) (cpad-hold? 0 r2) (cpad-hold? 0 r1))
-    (pc-check-cheat-code (-> *pc-cheat-temp* 0) 0 (s p i r i t) :extra (x)
+    (pc-check-cheat-code (-> *pc-cheat-temp* 0) 0 spirit :extra (x)
           (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-green))
-          (pc-cheat-toggle-and-tune obj eco-blue))
+          (pc-cheat-toggle-and-tune (-> obj cheats) eco-blue))
 
-    (pc-check-cheat-code (-> *pc-cheat-temp* 1) 0 (s p i r i t) :extra (circle)
+    (pc-check-cheat-code (-> *pc-cheat-temp* 1) 0 spirit :extra (circle)
           (logclear! (-> obj cheats) (pc-cheats eco-blue eco-yellow eco-green))
-          (pc-cheat-toggle-and-tune obj eco-red))
+          (pc-cheat-toggle-and-tune (-> obj cheats) eco-red))
 
-    (pc-check-cheat-code (-> *pc-cheat-temp* 2) 0 (s p i r i t) :extra (triangle)
+    (pc-check-cheat-code (-> *pc-cheat-temp* 2) 0 spirit :extra (triangle)
           (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-blue))
-          (pc-cheat-toggle-and-tune obj eco-green))
+          (pc-cheat-toggle-and-tune (-> obj cheats) eco-green))
 
-    (pc-check-cheat-code (-> *pc-cheat-temp* 3) 0 (s p i r i t) :extra (square)
+    (pc-check-cheat-code (-> *pc-cheat-temp* 3) 0 spirit :extra (square)
           (logclear! (-> obj cheats) (pc-cheats eco-red eco-blue eco-green))
-          (pc-cheat-toggle-and-tune obj eco-yellow))
+          (pc-cheat-toggle-and-tune (-> obj cheats) eco-yellow))
 
-    (pc-check-cheat-code (-> *pc-cheat-temp* 4) 0 (s t e e l)
+    (pc-check-cheat-code (-> *pc-cheat-temp* 4) 0 undead
           (logclear! (-> *target* state-flags) 16)
-          (pc-cheat-toggle-and-tune obj invinc))
+          (pc-cheat-toggle-and-tune (-> obj cheats) invinc))
 
-    (pc-check-cheat-code (-> *pc-cheat-temp* 5) 0 (l e a d s)
-          (pc-cheat-toggle-and-tune obj sidekick-blue))
-
-    (pc-check-cheat-code (-> *pc-cheat-temp* 6) 0 (t u n e s)
-          (pc-cheat-toggle-and-tune obj tunes))
-
-    (pc-check-cheat-code (-> *pc-cheat-temp* 7) 0 (s k y)
-          (pc-cheat-toggle-and-tune obj sky))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 5) 0 bluemoon (pc-cheat-toggle-and-tune (-> obj cheats) sidekick-blue))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 6) 0 boombox (pc-cheat-toggle-and-tune (-> obj cheats) tunes))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 7) 0 skies (pc-cheat-toggle-and-tune (-> obj cheats) sky))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 8) 0 speclum (pc-cheat-toggle-and-tune (-> obj cheats) mirror))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 9) 0 brains (pc-cheat-toggle-and-tune (-> obj cheats) big-head))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 10) 0 driedup (pc-cheat-toggle-and-tune (-> obj cheats) small-head))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 11) 0 yourpalm (pc-cheat-toggle-and-tune (-> obj cheats) big-fist))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 12) 0 bakeonly (pc-cheat-toggle-and-tune (-> obj cheats) no-tex))
+    ;(pc-check-cheat-code (-> *pc-cheat-temp* 13) 0 rodent (pc-cheat-toggle-and-tune (-> obj cheats) hard-rats))
+    ;(pc-check-cheat-code (-> *pc-cheat-temp* 14) 0 lunatic (pc-cheat-toggle-and-tune (-> obj cheats) hero-mode))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 15) 0 plzstop (pc-cheat-toggle-and-tune (-> obj cheats) huge-head))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 16) 0 evilbabe (pc-cheat-toggle-and-tune (-> obj cheats) oh-my-goodness))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 17) 0 smart (pc-cheat-toggle-and-tune (-> obj cheats) big-head-npc))
     )
 
+  ;; run cheats here.
+  ;;;;;;;;;;;;;;;;;;;
   (when *target*
+      ;; hook custom animation callback
+      (if (nonzero? (-> *target* skel))
+          (set! (-> *target* skel postbind-function) target-joint-callback-pc))
 
       (with-pp (protect ((-> *target* fact-info-target eco-source) *sound-player-enable*)
       ;; act as if this isnt a new source of eco to prevent spamming sounds. then restore the old source!
@@ -461,13 +479,16 @@
       )
 
   (if (pc-cheats? (-> obj cheats) sky)
-      (let ((date (new 'stack 'scf-time)))
+      (let ((date (new 'stack-no-clear 'scf-time)))
           (scf-get-time date)
           (when (zero? (-> date stat))
-            (set-time-of-day (+ (the float (bcd->dec (-> date hour))) (/ (the float (bcd->dec (-> date minute))) 60)))
-        )
-      )
-  )
+            (set-time-of-day (+ (the float (bcd->dec (-> date hour))) (/ (the float (bcd->dec (-> date minute))) 60))))
+          ))
+  
+  (pc-set-gfx-hack (pc-gfx-hack no-tex) (logtest? (-> obj cheats) (pc-cheats no-tex)))
+
+  ;; run cheats end!!!
+  ;;;;;;;;;;;;;;;;;;;;
 
   (logior! (-> obj cheats-known) (-> obj cheats))
   0)
@@ -793,7 +814,7 @@
                   (set! (-> obj aspect-custom-y) (file-stream-read-int file))
                   ;; aspect auto
                   (set! (-> obj aspect-ratio-auto?) (file-stream-read-symbol file))
-                  
+
                   (unless (-> obj aspect-ratio-auto?)
                       (set-aspect! obj (-> obj aspect-custom-x) (-> obj aspect-custom-y))
                       )
@@ -833,6 +854,7 @@
                 (("subtitles?") (set! (-> obj subtitles?) (file-stream-read-symbol file)))
                 (("hinttitles?") (set! (-> obj hinttitles?) (file-stream-read-symbol file)))
                 (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
+                (("speedrunner-mode?") (set! (-> obj speedrunner-mode?) (file-stream-read-symbol file)))
                 (("first-camera-h-inverted?") (set! (-> obj first-camera-h-inverted?) (file-stream-read-symbol file)))
                 (("first-camera-v-inverted?") (set! (-> obj first-camera-v-inverted?) (file-stream-read-symbol file)))
                 (("third-camera-h-inverted?") (set! (-> obj third-camera-h-inverted?) (file-stream-read-symbol file)))
@@ -898,6 +920,10 @@
 
   (format 0 "pc settings file read: ~A~%" filename)
 
+  ;; restore the windowed mode resolution properly
+  (when (= (-> obj display-mode) 'windowed)
+    (pc-set-window-size (max PC_MIN_WIDTH (-> obj win-width)) (max PC_MIN_HEIGHT (-> obj win-height))))
+
   #t
   )
 
@@ -914,13 +940,13 @@
     (format file "(settings #x~X~%" (-> obj version))
 
     (format file "  (fps ~D)~%" (-> obj target-fps))
-    (format file "  (game-size ~D ~D)~%" (-> obj width) (-> obj height))
     (format file "  (msaa ~D)~%" (-> obj gfx-msaa))
-    (format file "  (window-size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
     (format file "  (aspect-state ~A ~D ~D ~A)~%" (-> *setting-control* default aspect-ratio)
                                                   (-> obj aspect-custom-x) (-> obj aspect-custom-y)
                                                   (-> obj aspect-ratio-auto?))
     (format file "  (display-mode ~A)~%" (-> obj display-mode))
+    (format file "  (window-size ~D ~D)~%" (-> obj win-width) (-> obj win-height))
+    (format file "  (game-size ~D ~D)~%" (-> obj width) (-> obj height))
     (format file "  (monitor ~D)~%" (-> obj monitor))
     (format file "  (letterbox ~A)~%" (-> obj letterbox?))
     (format file "  (vsync ~A)~%" (-> obj vsync?))
@@ -954,6 +980,7 @@
     (format file "  (use-vis? ~A)~%" (-> obj use-vis?))
     (format file "  (skip-movies? ~A)~%" (-> obj skip-movies?))
     (format file "  (discord-rpc? ~A)~%" (-> obj discord-rpc?))
+    (format file "  (speedrunner-mode? ~A)~%" (-> obj speedrunner-mode?))
     (format file "  (first-camera-h-inverted? ~A)~%" (-> obj first-camera-h-inverted?))
     (format file "  (first-camera-v-inverted? ~A)~%" (-> obj first-camera-v-inverted?))
     (format file "  (third-camera-h-inverted? ~A)~%" (-> obj third-camera-h-inverted?))

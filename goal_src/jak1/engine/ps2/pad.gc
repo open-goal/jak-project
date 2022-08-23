@@ -316,14 +316,14 @@
            (set! (-> pad button0-abs 1) (-> pad button0-shadow-abs 0))
            (set! (-> pad button0-rel 2) (-> pad button0-rel 1))
            (set! (-> pad button0-rel 1) (-> pad button0-rel 0))
-           ;; we might want to clear a button so we back it up in a "shadow" field
+           ;; we might want to clear a button after it is pressed, so we back it up in a "shadow" field
            (let ((current-button0 (-> pad button0)))
              (set! (-> pad button0-shadow-abs 0) (the-as pad-buttons current-button0))
              (set! (-> pad button0-abs 0) (the-as pad-buttons current-button0))
              )
            ;; buttons going down
            (set! (-> pad button0-rel 0) (logclear (-> pad button0-abs 0) (-> pad button0-abs 1)))
-           ;; ??
+           ;; some debugging thing they wrote at some point
            (when *cpad-debug*
              (set! (-> pad leftx) (the-as uint 255))
              (set! (-> pad rightx) (the-as uint 255))
@@ -332,8 +332,14 @@
            ;; compute a speed and direction for stick0
            (set! (-> pad stick0-speed) 1.0)
            (cond
-             ;; check if analog is valid?
+             ;; check if controller is a valid dualshock 2
              ((= (shr (-> pad status) 4) 7)
+              ;; invert analogs if mirrored mode. trust me, you'll need this.
+              (#when PC_PORT
+                  (when (pc-cheats? (-> *pc-settings* cheats) mirror)
+                      (set! (-> pad leftx) (- 255 (-> pad leftx)))
+                      (set! (-> pad rightx) (- 255 (-> pad rightx)))
+                      ))
               ;; compute speed and direction, with deadband.
               (let ((f30-0 (* 0.0078125 (the float (+ (-> pad leftx) -128))))
                     (f28-0 (* 0.0078125 (the float (- 127 (the-as int (-> pad lefty))))))

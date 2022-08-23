@@ -52,6 +52,10 @@
     (1+! (-> *progress-scroll* start-index))))
 
 
+;; used in title logo
+(define *quit-to-title* #f)
+
+
 ;; ############################
 ;; CAROUSELL STUFF
 ;; ############################
@@ -162,6 +166,7 @@
 (define *misc-options* (new 'static 'boxed-array :type game-option
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id money-starburst) :scale #t)
     (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id discord-rpc) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type on-off) :name (game-text-id speedrunner-mode) :scale #t)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
   )
@@ -238,14 +243,21 @@
   )
 
 (define *cheats* (new 'static 'boxed-array :type game-option
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-sidekick-alt) :scale #t :param1 5.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-big-head) :scale #t :param1 9.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-small-head) :scale #t :param1 10.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-big-fist) :scale #t :param1 11.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-big-head-npc) :scale #t :param1 16.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-tunes) :scale #t :param1 6.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-sky) :scale #t :param1 7.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-huge-head) :scale #t :param1 15.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-mirror) :scale #t :param1 8.0)
     (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-eco-yellow) :scale #t :param1 3.0)
     (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-eco-blue) :scale #t :param1 2.0)
     (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-eco-red) :scale #t :param1 1.0)
     (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-eco-green) :scale #t :param1 0.0)
     (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-invinc) :scale #t :param1 4.0)
-    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-sidekick-alt) :scale #t :param1 5.0)
-    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-tunes) :scale #t :param1 6.0)
-    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-sky) :scale #t :param1 7.0)
+    (new 'static 'game-option :option-type (game-option-type cheat-toggle) :name (game-text-id cheat-no-tex) :scale #t :param1 12.0)
     (new 'static 'game-option :option-type (game-option-type button) :name (game-text-id back) :scale #t)
     )
   )
@@ -640,9 +652,9 @@
 
   ;; give cheats
   (when (task-closed? (game-task finalboss-movies) (task-status need-reminder))
-      (logior! (-> *pc-settings* cheats-known) (pc-cheats sidekick-blue tunes sky))
+      (logior! (-> *pc-settings* cheats-known) (pc-cheats sidekick-blue tunes sky big-head small-head big-fist big-head-npc))
       (when (>= (calculate-completion (the progress #f)) 100.0)
-          (logior! (-> *pc-settings* cheats-known) (pc-cheats invinc eco-blue eco-red eco-green eco-yellow))))
+          (logior! (-> *pc-settings* cheats-known) (pc-cheats invinc eco-blue eco-red eco-green eco-yellow huge-head mirror no-tex))))
 
   ;; set up options for each screen
   (set! (-> *options-remap* (progress-screen settings)) (if (or *cheat-mode* (nonzero? (-> *pc-settings* cheats-known)))
@@ -743,6 +755,7 @@
   (set! (-> *graphic-options-no-frame-rate-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *misc-options* 0 value-to-modify) (&-> *pc-settings* money-starburst?))
   (set! (-> *misc-options* 1 value-to-modify) (&-> *pc-settings* discord-rpc?))
+  (set! (-> *misc-options* 2 value-to-modify) (&-> *pc-settings* speedrunner-mode?))
   (set! (-> *camera-options* 0 value-to-modify) (&-> *pc-settings* first-camera-h-inverted?))
   (set! (-> *camera-options* 1 value-to-modify) (&-> *pc-settings* first-camera-v-inverted?))
   (set! (-> *camera-options* 2 value-to-modify) (&-> *pc-settings* third-camera-h-inverted?))
@@ -756,14 +769,9 @@
   (set! (-> *sound-options-pc* 0 value-to-modify) (&-> *setting-control* default sfx-volume))
   (set! (-> *sound-options-pc* 1 value-to-modify) (&-> *setting-control* default music-volume))
   (set! (-> *sound-options-pc* 2 value-to-modify) (&-> *setting-control* default dialog-volume))
-  (set! (-> *cheats* 0 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 1 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 2 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 3 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 4 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 5 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 6 value-to-modify) (&-> *progress-carousell* symbol-backup))
-  (set! (-> *cheats* 7 value-to-modify) (&-> *progress-carousell* symbol-backup))
+  (dotimes (i (1- (-> *cheats* length)))
+    (set! (-> *cheats* i value-to-modify) (&-> *progress-carousell* symbol-backup))
+    )
   ;(set! (-> *sound-options-pc* 3 value-to-modify) (&-> *pc-settings* music-fadein?))
 
   (set! (-> *progress-carousell* aspect-native-choice) (-> *pc-settings* use-vis?))
@@ -1477,11 +1485,13 @@
              ((< (-> obj option-index) 4)
               (sound-play "start-options")
               (set! (-> *progress-state* which) (-> obj option-index))
+              ;; save slot selected
               (if (zero? (-> s5-0 file (-> obj option-index) present))
                   (set! (-> obj next-display-state) (progress-screen memcard-saving))
                   (set! (-> obj next-display-state) (progress-screen memcard-data-exists))
                   )
               )
+             ;; continue without saving
              ((and (= (-> obj display-state) (progress-screen save-game-title)) (= (-> obj option-index) 4))
               (sound-play "starts-options")
               (sound-volume-off)
@@ -1524,7 +1534,20 @@
                (sound-play "cursor-options")
                (sound-volume-off)
                (set! (-> *game-info* mode) 'play)
-               (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
+               ;; Start a new game differently if speedrunning mode is active
+               (cond ((= (-> *pc-settings* speedrunner-mode?) #t)
+                      (update-autosplit-jak1-new-game)
+                      ;; spawn at the warp gate
+                      (initialize! *game-info* 'game (the-as game-save #f) "game-start")
+                      ;; disable hints (this seems to be overriden by your slot 1 save though)
+                      (set! (-> *setting-control* default play-hints) #f)
+                      ;; skip intro cutscene
+                      (close-specific-task! (game-task intro) (task-status need-resolution))
+                      ;; enable auto saving by default
+                      (set! (-> *setting-control* default auto-save) #t))
+                      ;; start the game normally
+                      (else
+                       (initialize! *game-info* 'game (the-as game-save #f) "intro-start")))
                (set-master-mode 'game)
                )
              )
@@ -1538,7 +1561,20 @@
               (sound-play "start-options")
               (sound-volume-off)
               (set! (-> *game-info* mode) 'play)
-              (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
+              ;; Start a new game differently if speedrunning mode is active
+              (cond ((= (-> *pc-settings* speedrunner-mode?) #t)
+                     (update-autosplit-jak1-new-game)
+                     ;; spawn at the warp gate
+                     (initialize! *game-info* 'game (the-as game-save #f) "game-start")
+                     ;; disable hints (this seems to be overriden by your slot 1 save though)
+                     (set! (-> *setting-control* default play-hints) #f)
+                     ;; skip intro cutscene
+                     (close-specific-task! (game-task intro) (task-status need-resolution))
+                     ;; enable auto saving by default
+                     (set! (-> *setting-control* default auto-save) #t))
+                     ;; start the game normally
+                     (else
+                      (initialize! *game-info* 'game (the-as game-save #f) "intro-start")))
               (set-master-mode 'game)
               )
              ((nonzero? (-> obj display-state-stack 0))
@@ -1600,6 +1636,7 @@
           (((progress-screen quit))
            (cond
              ((-> *progress-state* yes-no-choice)
+              (set! *quit-to-title* #t)
               (sound-play "start-options")
               (sound-volume-off)
               (set! (-> *game-info* mode) 'play)
@@ -1621,7 +1658,20 @@
               (sound-play "start-options")
               (sound-volume-off)
               (set! (-> *game-info* mode) 'play)
-              (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
+              ;; Start a new game differently if speedrunning mode is active
+              (cond ((= (-> *pc-settings* speedrunner-mode?) #t)
+                     (update-autosplit-jak1-new-game)
+                     ;; spawn at the warp gate
+                     (initialize! *game-info* 'game (the-as game-save #f) "game-start")
+                     ;; disable hints (this seems to be overriden by your slot 1 save though)
+                     (set! (-> *setting-control* default play-hints) #f)
+                     ;; skip intro cutscene
+                     (close-specific-task! (game-task intro) (task-status need-resolution))
+                     ;; enable auto saving by default
+                     (set! (-> *setting-control* default auto-save) #t))
+                     ;; start the game normally
+                     (else
+                      (initialize! *game-info* 'game (the-as game-save #f) "intro-start")))
               (set-master-mode 'game)
               )
              (else
@@ -1947,13 +1997,23 @@
                              (pc-cheats eco-green)
                              (pc-cheats eco-red)
                              (pc-cheats eco-yellow)
-                             (pc-cheats invinc))
+                             (pc-cheats invinc)
+                             (pc-cheats huge-head)
+                             (pc-cheats mirror)
+                             (pc-cheats no-tex)
+                             )
                              (set! option-str (lookup-text! *common-text* (game-text-id cheat-req-100-percent) #f)))
                            (((pc-cheats sky)
                              (pc-cheats sidekick-blue)
-                             (pc-cheats tunes))
+                             (pc-cheats tunes)
+                             (pc-cheats big-head)
+                             (pc-cheats small-head)
+                             (pc-cheats big-fist)
+                             (pc-cheats big-head-npc)
+                             )
                              (set! option-str (lookup-text! *common-text* (game-text-id cheat-req-beat-game) #f)))
                            (else
+                             ;; (format 0 "weird case ~f #x~x~%" (-> options index param1) (ash 1 (the int (-> options index param1))))
                              (set! option-str locked-str))
                            )
                        )

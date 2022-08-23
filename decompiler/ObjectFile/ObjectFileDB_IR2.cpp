@@ -29,6 +29,7 @@
 #include "decompiler/analysis/symbol_def_map.h"
 #include "decompiler/analysis/type_analysis.h"
 #include "decompiler/analysis/variable_naming.h"
+#include "decompiler/types2/types2.h"
 
 namespace decompiler {
 
@@ -538,14 +539,33 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
           func.ir2.env.set_art_group(obj_name + "-ag");
         }
 
-        if (run_type_analysis_ir2(ts, dts, func)) {
-          func.ir2.env.types_succeeded = true;
+        constexpr bool kForceNewTypes = false;
+        if (config.game_version == GameVersion::Jak2 || kForceNewTypes) {
+          // use new types for jak 2 always
+          types2::Input in;
+          types2::Output out;
+          in.func = &func;
+          in.function_type = ts;
+          in.dts = &dts;
+          try {
+            types2::run(out, in);
+            func.ir2.env.set_types(out.block_init_types, out.op_end_types, *func.ir2.atomic_ops,
+                                   ts);
+          } catch (const std::exception& e) {
+            func.warnings.warning("Type analysis failed: {}", e.what());
+          }
+          func.ir2.env.types_succeeded = out.succeeded;
         } else {
-          func.warnings.error("Type Propagation failed: Type analysis failed");
+          // old type pass
+          if (run_type_analysis_ir2(ts, dts, func)) {
+            func.ir2.env.types_succeeded = true;
+          } else {
+            func.warnings.warning("Type analysis failed");
+          }
         }
       } else {
         lg::warn("Function {} didn't know its type", func.name());
-        func.warnings.error("Function {} has unknown type", func.name());
+        func.warnings.warning("Function {} has unknown type", func.name());
       }
     }
   });
@@ -872,9 +892,11 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
     result += ";; Warnings:\n" + func.warnings.get_warning_text(true) + "\n";
   }
 
+  /*
   if (func.ir2.env.has_local_vars()) {
     result += func.ir2.env.print_local_var_types(func.ir2.top_form);
   }
+   */
 
   bool print_atomics = func.ir2.atomic_ops_succeeded;
   // print each instruction in the function.
