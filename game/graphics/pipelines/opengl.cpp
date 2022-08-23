@@ -6,11 +6,8 @@
 #include "opengl.h"
 
 #include <condition_variable>
-#include <ctime>
-#include <iomanip>
 #include <memory>
 #include <mutex>
-#include <sstream>
 
 #include "common/dma/dma_copy.h"
 #include "common/global_profiler/GlobalProfiler.h"
@@ -28,10 +25,12 @@
 #include "game/graphics/texture/TexturePool.h"
 #include "game/runtime.h"
 #include "game/system/newpad.h"
+#include "game/sce/libscf.h"
 
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_impl_glfw.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
+#include "third-party/fmt/core.h"
 #define STBI_WINDOWS_UTF8
 #include "third-party/stb_image/stb_image.h"
 
@@ -409,11 +408,12 @@ std::string make_full_screenshot_output_file_path(const std::string& file_name) 
 }  // namespace
 
 static std::string get_current_timestamp() {
-  auto current_time = std::time(nullptr);
+  auto current_time = std::time(0);
   auto local_current_time = *std::localtime(&current_time);
-  std::ostringstream oss;
-  oss << std::put_time(&local_current_time, "%Y_%m_%d_%H_%M_%S");
-  return oss.str();
+  // Remember to increase size of result if the date format is changed
+  char result[20];
+  std::strftime(result, sizeof(result), "%Y_%m_%d_%H_%M_%S", &local_current_time);
+  return std::string(result);
 }
 
 static std::string make_hotkey_screenshot_file_name() {
