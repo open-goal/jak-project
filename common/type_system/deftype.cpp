@@ -572,7 +572,7 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
 DeftypeResult parse_deftype(const goos::Object& deftype,
                             TypeSystem* ts,
                             std::unordered_map<goos::HeapObject*, goos::Object>* constants) {
-  SymbolMetadata symbol_metadata;
+  DefinitionMetadata symbol_metadata;
   std::unordered_map<goos::HeapObject*, goos::Object> no_consts;
   auto& constants_to_use = no_consts;
   if (constants != nullptr) {

@@ -1714,11 +1714,7 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
   std::string methods_string;
   auto new_info = type->get_new_method_defined_for_type();
   if (new_info) {
-    methods_string.append("(new ");
-    if (new_info->docstring) {
-      methods_string.append(fmt::format("\"{}\" ", new_info->docstring.value()));
-    }
-    methods_string.append("(");
+    methods_string.append("(new (");
     for (size_t i = 0; i < new_info->type.arg_count() - 1; i++) {
       methods_string.append(new_info->type.get_arg(i).print());
       if (i != new_info->type.arg_count() - 2) {

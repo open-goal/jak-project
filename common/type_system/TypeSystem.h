@@ -18,8 +18,6 @@
 #include "Type.h"
 #include "TypeSpec.h"
 
-#include <common/goos/TextDB.h>
-
 struct TypeFlags {
   union {
     uint64_t flag = 0;

@@ -18,10 +18,7 @@
 class TypeSystem;
 
 // Various metadata that can be associated with a symbol or form
-// This is awkwardly used in a few spots that aren't true symbols (like defenums)
-// in the decompiler so similar metadata can be appended to them (atleast with the current set of
-// possible metadata you see here)
-struct SymbolMetadata {
+struct DefinitionMetadata {
   std::optional<goos::TextDb::ShortInfo> definition_info;
   std::optional<std::string> docstring;
 };
@@ -117,7 +114,7 @@ class Type {
 
   bool gen_inspect() const { return m_generate_inspect; }
 
-  SymbolMetadata m_metadata;
+  DefinitionMetadata m_metadata;
 
  protected:
   Type(std::string parent, std::string name, bool is_boxed, int heap_base);

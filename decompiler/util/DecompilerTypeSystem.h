@@ -17,7 +17,7 @@ class DecompilerTypeSystem {
 
   std::unordered_map<std::string, TypeSpec> symbol_types;
   std::unordered_set<std::string> symbols;
-  std::unordered_map<std::string, SymbolMetadata> symbol_metadata_map;
+  std::unordered_map<std::string, DefinitionMetadata> symbol_metadata_map;
   std::vector<std::string> symbol_add_order;
 
   std::unordered_map<std::string, u64> type_flags;
@@ -36,13 +36,13 @@ class DecompilerTypeSystem {
 
   void add_symbol(const std::string& name,
                   const std::string& base_type,
-                  const SymbolMetadata& symbol_metadata) {
+                  const DefinitionMetadata& symbol_metadata) {
     add_symbol(name, TypeSpec(base_type), symbol_metadata);
   }
 
   void add_symbol(const std::string& name,
                   const TypeSpec& type_spec,
-                  const SymbolMetadata& symbol_metadata);
+                  const DefinitionMetadata& symbol_metadata);
   void parse_type_defs(const std::vector<std::string>& file_path);
   TypeSpec parse_type_spec(const std::string& str) const;
   void add_type_flags(const std::string& name, u64 flags);

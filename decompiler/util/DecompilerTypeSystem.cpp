@@ -54,7 +54,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
   for_each_in_list(data, [&](goos::Object& o) {
     try {
       if (car(o).as_symbol()->name == "define-extern") {
-        auto symbol_metadata = SymbolMetadata();
+        auto symbol_metadata = DefinitionMetadata();
         auto* rest = &cdr(o);
         auto sym_name = car(*rest);
         rest = &cdr(*rest);
@@ -90,7 +90,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         }
         ts.forward_declare_type_as(type_name.as_symbol()->name, type_kind.as_symbol()->name);
       } else if (car(o).as_symbol()->name == "defenum") {
-        auto symbol_metadata = SymbolMetadata();
+        auto symbol_metadata = DefinitionMetadata();
         parse_defenum(cdr(o), &ts, &symbol_metadata);
         symbol_metadata.definition_info = m_reader.db.get_short_info_for(o);
         auto* rest = &cdr(o);
@@ -172,7 +172,7 @@ bool DecompilerTypeSystem::lookup_flags(const std::string& type, u64* dest) cons
 
 void DecompilerTypeSystem::add_symbol(const std::string& name,
                                       const TypeSpec& type_spec,
-                                      const SymbolMetadata& symbol_metadata) {
+                                      const DefinitionMetadata& symbol_metadata) {
   add_symbol(name);
   auto skv = symbol_types.find(name);
   if (skv == symbol_types.end() || skv->second == type_spec) {

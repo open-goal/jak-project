@@ -45,7 +45,7 @@ std::string symbol_string(const goos::Object& obj) {
 
 EnumType* parse_defenum(const goos::Object& defenum,
                         TypeSystem* ts,
-                        SymbolMetadata* symbol_metadata) {
+                        DefinitionMetadata* symbol_metadata) {
   // default enum type will be int32.
   TypeSpec base_type = ts->make_typespec("int32");
   bool is_bitfield = false;
