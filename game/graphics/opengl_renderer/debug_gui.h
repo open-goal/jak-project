@@ -66,6 +66,7 @@ class OpenGlDebugGui {
   int screenshot_width = 1920;
   int screenshot_height = 1080;
   int screenshot_samples = 16;
+  bool screenshot_hotkey_enabled = true;
 
  private:
   FrameTimeRecorder m_frame_timer;
