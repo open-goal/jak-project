@@ -24,13 +24,13 @@
 #include "game/graphics/opengl_renderer/debug_gui.h"
 #include "game/graphics/texture/TexturePool.h"
 #include "game/runtime.h"
-#include "game/system/newpad.h"
 #include "game/sce/libscf.h"
+#include "game/system/newpad.h"
 
+#include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_impl_glfw.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
-#include "third-party/fmt/core.h"
 #define STBI_WINDOWS_UTF8
 #include "third-party/stb_image/stb_image.h"
 
