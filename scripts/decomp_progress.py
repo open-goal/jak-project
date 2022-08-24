@@ -62,7 +62,7 @@ def main():
 
         total_gc_files += 1
 
-        if line_count == 7 or short_name in excluded_files:
+        if line_count < 10 or short_name in excluded_files:
             # the template has 7 lines, just skip it.
             continue
 

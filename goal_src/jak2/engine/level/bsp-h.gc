@@ -5,5 +5,165 @@
 ;; name in dgo: bsp-h
 ;; dgos: ENGINE, GAME
 
+;; the bsp-node class seems broken - it has int16's that get used a pointers.
+
+(declare-type entity-camera entity)
+(declare-type entity-race-mesh entity)
+(declare-type entity-nav-mesh entity)
+(declare-type actor-group basic)
+
 ;; DECOMP BEGINS
+
+(deftype bsp-node (structure)
+  ((front         int16            :offset-assert   0)
+   (back          int16            :offset-assert   2)
+   (front-box-min vector4b :inline :offset-assert   4)
+   (front-box-max vector4b :inline :offset-assert   8)
+   (back-box-min  vector4b :inline :offset-assert  12)
+   (back-box-max  vector4b :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+(define-extern inspect-bsp-tree (function bsp-header bsp-node none))
+(define-extern map-bsp-tree (function (function bsp-node none) bsp-header bsp-node none))
+
+(deftype bsp-header (drawable)
+  ((info                file-info                      :offset          4)
+   (all-visible-list    (pointer uint16)               :offset-assert  32)
+   (visible-list-length int16                          :offset-assert  36)
+   (drawable-trees      drawable-tree-array            :offset-assert  40)
+   (pat                 pointer                        :offset-assert  44)
+   (pat-length          int32                          :offset-assert  48)
+   (texture-ids         (pointer texture-id)           :offset         60)
+   (texture-page-count  int32                          :offset         64)
+   (name                symbol                         :offset         72)
+   (nickname            symbol                         :offset-assert  76)
+   (vis-info            level-vis-info              8  :offset         80)
+   (actors              drawable-inline-array-actor    :offset-assert 112)
+   (cameras             (array entity-camera)          :offset-assert 116)
+   (nodes               (inline-array bsp-node)        :offset        120)
+   (level               level                          :offset-assert 124)
+   (unk-data-2          uint16                      9  :offset        130)
+   (unk-byte            uint8                          :offset        152)
+   (unk-data-4          float                          :offset        160)
+   (unk-data-5          float                          :offset-assert 164)
+   (race-meshes         (array entity-race-mesh)       :offset        168)
+   (light-hash          light-hash                     :offset        176)
+   (nav-meshes          (array entity-nav-mesh)        :offset        180)
+   (actor-groups        (array actor-group)            :offset        184)
+   (collide-hash        collide-hash                   :offset        196)
+   (region-tree         drawable-tree-region-prim      :offset        252)
+   (unk-data-8          uint32                      55 :offset        180)
+   )
+  :method-count-assert 19
+  :size-assert         #x190
+  :flag-assert         #x1300000190
+  (:methods
+    (birth (_type_) none 17)
+    (deactivate-entities (_type_) none 18)
+    )
+  )
+
+;; unused
+(deftype game-level (basic)
+  ((master-bsp basic  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(deftype view-frustum (structure)
+  ((hither-top-left     vector :inline :offset-assert   0)
+   (hither-top-right    vector :inline :offset-assert  16)
+   (hither-bottom-left  vector :inline :offset-assert  32)
+   (hither-bottom-right vector :inline :offset-assert  48)
+   (yon-top-left        vector :inline :offset-assert  64)
+   (yon-top-right       vector :inline :offset-assert  80)
+   (yon-bottom-left     vector :inline :offset-assert  96)
+   (yon-bottom-right    vector :inline :offset-assert 112)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
+
+(defmethod inspect bsp-header ((obj bsp-header))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tall-visible-list: #x~X~%" (-> obj all-visible-list))
+  (format #t "~Tvisible-list-length: ~D~%" (-> obj visible-list-length))
+  (format #t "~Tdrawable-trees: ~A~%" (-> obj drawable-trees))
+  (format #t "~Tpat: #x~X~%" (-> obj pat))
+  (format #t "~Tpat-length: ~D~%" (-> obj pat-length))
+  (inspect-bsp-tree obj (-> obj nodes 0)) ;; this is probably broken..
+  obj
+  )
+
+(defun-debug inspect-bsp-tree ((arg0 bsp-header) (arg1 bsp-node))
+  (cond
+    ((zero? arg1)
+     )
+    (else
+      (format #t "_#x~X________________~%" arg1)
+      (inspect arg1)
+      (let ((s4-0 *print-column*))
+        (set! *print-column* (+ *print-column* 64))
+        (if (> (-> arg1 front) 0)
+            (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 front))) ;; also broken?
+            (format #t "_#x~X________________~%" arg1)
+            )
+        (if (> (-> arg1 back) 0)
+            (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 back))) ;; also broken?
+            (format #t "_#x~X________________~%" arg1)
+            )
+        (set! *print-column* s4-0)
+        )
+      )
+    )
+  (none)
+  )
+
+(defun map-bsp-tree ((arg0 (function bsp-node none)) (arg1 bsp-header) (arg2 bsp-node))
+  (cond
+    ((zero? arg2)
+     )
+    (else
+      (if (> (-> arg2 front) 0)
+          (map-bsp-tree arg0 arg1 (the-as bsp-node (-> arg2 front))) ;; also broken?
+          (arg0 arg2)
+          )
+      (if (> (-> arg2 back) 0)
+          (map-bsp-tree arg0 arg1 (the-as bsp-node (-> arg2 back))) ;; also broken?
+          (arg0 arg2)
+          )
+      )
+    )
+  (none)
+  )
+
+;; more broken stuff: the stopwatches have wrong alignment?
+;; just replaced with some arrays for now. I don't think this is
+;; used anyway.
+(deftype collide-stats (structure)
+  ((calls             uint32   :offset-assert   0)
+   (spheres           uint32   :offset-assert   4)
+   (nodes             uint32   :offset-assert   8)
+   (frags             uint32   :offset-assert  12)
+   (tris              uint32   :offset-assert  16)
+   (output            uint32   :offset-assert  20)
+   (pad0              uint32 2 :offset-assert  24)
+   (total-target      uint32 8 :offset-assert  32)
+   (target-cache-fill uint32 8 :offset-assert  64)
+   (target-ray-poly   uint32 6 :offset-assert  96)
+   )
+  :method-count-assert 9
+  :size-assert         #x78
+  :flag-assert         #x900000078
+  )
+
+
 

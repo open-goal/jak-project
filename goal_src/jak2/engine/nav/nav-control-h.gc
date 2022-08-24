@@ -5,5 +5,225 @@
 ;; name in dgo: nav-control-h
 ;; dgos: ENGINE, GAME
 
+(defenum nav-state-flag
+  :type uint32
+  :bitfield #t
+
+  (display-marks      0) ;; 1
+  (recovery-mode      1) ;; 2
+  (initialized        2) ;; 4
+  (debug              3) ;; 8
+  (directional-mode   4) ;; 16
+  (trapped-by-sphere  5) ;; 32
+  (target-poly-dirty  6) ;; 64
+  (blocked            7) ;; 128
+  (in-target-poly     8) ;; 256
+  (at-target          9) ;; 512
+  (target-inside     10) ;; 1024
+  (in-mesh           11) ;; 2048
+  (avoiding-sphere   12) ;; 4096
+  (touching-sphere   13) ;; 8192
+  (at-gap            14) ;; 16384
+  )
+
+(defenum nav-control-flag
+  :type uint32
+  :bitfield #t
+  (display-marks        0) ;; 1
+  (debug                1) ;; 2
+  (no-redirect-in-clamp 2) ;; 4
+  (limit-rotation-rate  3) ;; 8
+  (update-heading-from-facing 4) ;; 16
+  (use-momentum        5) ;; 32
+  (momentum-ignore-heading 6) ;; 64
+  (output-sphere-hash  7) ;; 128
+  (kernel-run          8) ;; 256
+  )
+
 ;; DECOMP BEGINS
 
+(deftype check-vector-collision-with-nav-spheres-info (structure)
+  ((u         float          :offset-assert   0)
+   (intersect vector :inline :offset-assert  16)
+   (normal    vector :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype nav-gap-info (structure)
+  ((dest vector   :inline :offset-assert   0)
+   (poly nav-poly         :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+(deftype nav-avoid-spheres-params (structure)
+  ((current-pos          vector :inline   :offset-assert   0)
+   (travel               vector :inline   :offset-assert  16)
+   (pref-dir             vector :inline   :offset-assert  32)
+   (out-travel           vector 2 :inline :offset-assert  48)
+   (closest-sphere-dist2 float            :offset-assert  80)
+   (avoiding-sphere?     basic            :offset-assert  84)
+   )
+  :method-count-assert 9
+  :size-assert         #x58
+  :flag-assert         #x900000058
+  )
+
+(deftype nav-callback-info (structure)
+  ((callback-count int32     :offset-assert   0)
+   (callback-array uint32 10 :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+(deftype nav-state (structure)
+  ((flags                     nav-state-flag         :offset-assert   0)
+   (nav                       basic                  :offset-assert   4)
+   (user-poly                 nav-poly               :offset-assert   8)
+   (mesh                      nav-mesh               :offset-assert  12)
+   (current-poly              nav-poly               :offset-assert  16)
+   (virtual-current-poly      nav-poly               :offset-assert  20)
+   (next-poly                 nav-poly               :offset-assert  24)
+   (target-poly               nav-poly               :offset-assert  28)
+   (rotation-rate             float                  :offset-assert  32)
+   (speed                     meters                 :offset-assert  36)
+   (prev-speed                meters                 :offset-assert  40)
+   (pad0                      uint32         1       :offset-assert  44)
+   (travel                    vector         :inline :offset-assert  48)
+   (target-post               vector         :inline :offset-assert  64)
+   (current-pos               vector         :inline :offset-assert  80)
+   (current-pos-local         vector         :inline :offset-assert  96)
+   (virtual-current-pos-local vector         :inline :offset-assert 112)
+   (velocity                  vector         :inline :offset-assert 128)
+   (heading                   vector         :inline :offset-assert 144)
+   (target-dir                vector         :inline :offset-assert 160)
+   (accel                     vector         :inline :offset        160)
+   )
+  :method-count-assert 55
+  :size-assert         #xb0
+  :flag-assert         #x37000000b0
+  (:methods
+    (nav-state-method-9 () none 9)
+    (nav-state-method-10 () none 10)
+    (nav-state-method-11 () none 11)
+    (nav-state-method-12 () none 12)
+    (nav-state-method-13 () none 13)
+    (nav-state-method-14 () none 14)
+    (nav-state-method-15 () none 15)
+    (nav-state-method-16 () none 16)
+    (nav-state-method-17 () none 17)
+    (nav-state-method-18 () none 18)
+    (nav-state-method-19 () none 19)
+    (nav-state-method-20 () none 20)
+    (nav-state-method-21 () none 21)
+    (nav-state-method-22 () none 22)
+    (nav-state-method-23 () none 23)
+    (nav-state-method-24 () none 24)
+    (nav-state-method-25 () none 25)
+    (nav-state-method-26 () none 26)
+    (nav-state-method-27 () none 27)
+    (nav-state-method-28 () none 28)
+    (nav-state-method-29 () none 29)
+    (nav-state-method-30 () none 30)
+    (nav-state-method-31 () none 31)
+    (nav-state-method-32 () none 32)
+    (nav-state-method-33 () none 33)
+    (nav-state-method-34 () none 34)
+    (nav-state-method-35 () none 35)
+    (nav-state-method-36 () none 36)
+    (nav-state-method-37 () none 37)
+    (nav-state-method-38 () none 38)
+    (nav-state-method-39 () none 39)
+    (nav-state-method-40 () none 40)
+    (nav-state-method-41 () none 41)
+    (nav-state-method-42 () none 42)
+    (nav-state-method-43 () none 43)
+    (nav-state-method-44 () none 44)
+    (nav-state-method-45 () none 45)
+    (nav-state-method-46 () none 46)
+    (nav-state-method-47 () none 47)
+    (nav-state-method-48 () none 48)
+    (nav-state-method-49 () none 49)
+    (nav-state-method-50 () none 50)
+    (nav-state-method-51 () none 51)
+    (nav-state-method-52 () none 52)
+    (nav-state-method-53 () none 53)
+    (nav-state-method-54 () none 54)
+    )
+  )
+
+(deftype nav-control (structure)
+  ((flags                nav-control-flag              :offset-assert   0)
+   (callback-info        nav-callback-info             :offset-assert   4)
+   (process              process                       :offset-assert   8)
+   (pad0                 uint32                        :offset-assert  12)
+   (shape                basic                         :offset-assert  16)
+   (nearest-y-threshold  meters                        :offset-assert  20)
+   (nav-cull-radius      meters                        :offset-assert  24)
+   (sec-per-frame        float                         :offset-assert  28)
+   (target-speed         meters                        :offset-assert  32)
+   (acceleration         meters                        :offset-assert  36)
+   (turning-acceleration meters                        :offset-assert  40)
+   (max-rotation-rate    float                         :offset-assert  44)
+   (speed-scale          float                         :offset-assert  48)
+   (sphere-count         int32                         :offset-assert  52)
+   (sphere-array         (inline-array sphere)         :offset-assert  56)
+   (root-sphere-id       uint8                         :offset-assert  60)
+   (sphere-mask          uint8                         :offset-assert  61)
+   (pad1                 uint8                 2       :offset-assert  62)
+   (sphere-id-array      uint8                 16      :offset-assert  64)
+   (extra-nav-sphere     vector                :inline :offset-assert  80)
+   (root-nav-sphere      vector                :inline :offset-assert  96)
+   (state                nav-state             :inline :offset-assert 112)
+   )
+  :method-count-assert 47
+  :size-assert         #x120
+  :flag-assert         #x2f00000120
+  (:methods
+    (nav-control-method-9 () none 9)
+    (nav-control-method-10 () none 10)
+    (nav-control-method-11 () none 11)
+    (nav-control-method-12 () none 12)
+    (nav-control-method-13 () none 13)
+    (nav-control-method-14 () none 14)
+    (nav-control-method-15 () none 15)
+    (nav-control-method-16 () none 16)
+    (nav-control-method-17 () none 17)
+    (nav-control-method-18 () none 18)
+    (nav-control-method-19 () none 19)
+    (nav-control-method-20 () none 20)
+    (nav-control-method-21 () none 21)
+    (nav-control-method-22 () none 22)
+    (nav-control-method-23 () none 23)
+    (nav-control-method-24 () none 24)
+    (nav-control-method-25 () none 25)
+    (nav-control-method-26 () none 26)
+    (nav-control-method-27 () none 27)
+    (nav-control-method-28 () none 28)
+    (nav-control-method-29 () none 29)
+    (nav-control-method-30 () none 30)
+    (nav-control-method-31 () none 31)
+    (nav-control-method-32 () none 32)
+    (nav-control-method-33 () none 33)
+    (nav-control-method-34 () none 34)
+    (nav-control-method-35 () none 35)
+    (nav-control-method-36 () none 36)
+    (nav-control-method-37 () none 37)
+    (nav-control-method-38 () none 38)
+    (nav-control-method-39 () none 39)
+    (nav-control-method-40 () none 40)
+    (nav-control-method-41 () none 41)
+    (nav-control-method-42 () none 42)
+    (nav-control-method-43 () none 43)
+    (nav-control-method-44 () none 44)
+    (nav-control-method-45 () none 45)
+    (nav-control-method-46 () none 46)
+    )
+  )
