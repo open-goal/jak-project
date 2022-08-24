@@ -4441,7 +4441,7 @@
 (define-extern vector4-array-scale! (function (inline-array vector4) (inline-array vector4) float int none))
 (define-extern vector4-array-madd! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
 (define-extern vector4-array-msub! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
-(define-extern vector4-array-lerp! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
+(define-extern vector4-array-lerp! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int symbol))
 (define-extern spheres-overlap? (function sphere sphere symbol))
 (define-extern sphere<-vector! (function sphere vector sphere))
 (define-extern sphere<-vector+r! (function sphere vector float sphere))
@@ -22815,7 +22815,7 @@
 (define-extern clear-mood-times "Clear all of the mood times on the given context" (function mood-context symbol))
 (define-extern update-mood-itimes (function mood-context none))
 (define-extern update-mood-direction (function mood-context-core3 mood-table float float))
-(define-extern update-mood-exterior (function mood-context-core3 mood-table float int symbol))
+(define-extern update-mood-exterior (function mood-context-core3 mood-table float int object)) ;; TODO - so many potential return values...
 (define-extern copy-mood-exterior (function mood-context symbol))
 (define-extern copy-mood-exterior-ambi (function mood-context symbol none))
 (define-extern clear-mood-context (function int none))
@@ -24670,16 +24670,16 @@
 ;; vol-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype plane-volume (structure)
   ((volume-type  symbol                :offset-assert 0) ;; guessed by decompiler
    (point-count  int16                 :offset-assert 4)
    (normal-count int16                 :offset-assert 6)
-   (first-point  vector                :offset-assert 8) ;; (pointer vector)
-   (first-normal vector                :offset-assert 12) ;; (pointer vector)
+   (first-point  (pointer vector)                :offset-assert 8) ;; (pointer vector)
+   (first-normal (pointer vector)                :offset-assert 12) ;; (pointer vector)
    (num-planes   int32                 :offset-assert 16)
    (plane        (inline-array plane)  :offset-assert 20) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 12
   :size-assert         #x18
   :flag-assert         #xc00000018
@@ -24689,30 +24689,35 @@
     (plane-volume-method-11 () none 11) ;; (dummy-11 (_type_ vector float) symbol 11)
     )
   )
-|#
 
-#|
+(defenum vol-flags
+  :bitfield #t
+  :type uint32
+  (display?)
+  )
+
 (deftype vol-control (basic)
-  ((flags         uint32              :offset-assert 4)
-   (process       process-drawable    :offset-assert 8) ;; guessed by decompiler
-   (pos-vol-count int32               :offset-assert 12)
-   (pos-vol       plane-volume     32 :offset-assert 16) ;; guessed by decompiler
-   (neg-vol-count int32               :offset-assert 784)
-   (neg-vol       plane-volume     32 :offset-assert 788) ;; guessed by decompiler
-   (debug-point   vector-array        :offset-assert 1556) ;; guessed by decompiler
-   (debug-normal  vector-array        :offset-assert 1560) ;; guessed by decompiler
+  ((flags         vol-flags     :offset-assert 4)
+   (process       process-drawable      :offset-assert 8)
+   (pos-vol-count int32      :offset-assert 12)
+   (pos-vol       plane-volume 32 :inline :offset-assert 16)
+   (neg-vol-count int32      :offset-assert 784)
+   (neg-vol       plane-volume 32 :inline :offset-assert 788)
+   (debug-point   vector-array      :offset-assert 1556)
+   (debug-normal  vector-array      :offset-assert 1560)
    )
   :method-count-assert 12
   :size-assert         #x61c
   :flag-assert         #xc0000061c
   (:methods
-     ;; (new (symbol type process-drawable) _type_ 0)
-    (vol-control-method-9 () none 9) ;; (dummy-9 (_type_) symbol 9)
-    (vol-control-method-10 () none 10) ;; (dummy-10 (_type_ vector) symbol 10)
-    (vol-control-method-11 () none 11) ;; (TODO-RENAME-11 (_type_) symbol 11)
+    (new (symbol type process-drawable) _type_ 0)
+    (vol-control-method-9 (_type_) symbol 9) ;; (dummy-9 (_type_) symbol 9)
+    (vol-control-method-10 (_type_ vector) symbol 10) ;; (dummy-10 (_type_ vector) symbol 10)
+    (should-display?
+      "Returns true/false if the volume's marks should be displayed"
+      (_type_) symbol 11)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
