@@ -378,15 +378,18 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
 
   if (settings.save_screenshot) {
     Fbo* screenshot_src;
+    int read_buffer;
 
     // can't screenshot from a multisampled buffer directly -
     if (m_fbo_state.resources.resolve_buffer.valid) {
       screenshot_src = &m_fbo_state.resources.resolve_buffer;
+      read_buffer = GL_COLOR_ATTACHMENT0;
     } else {
       screenshot_src = m_fbo_state.render_fbo;
+      read_buffer = GL_FRONT;
     }
     finish_screenshot(settings.screenshot_path, screenshot_src->width, screenshot_src->height, 0, 0,
-                      screenshot_src->fbo_id);
+                      screenshot_src->fbo_id, read_buffer);
   }
   if (settings.gpu_sync) {
     glFinish();
@@ -709,13 +712,14 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
                                        int height,
                                        int x,
                                        int y,
-                                       GLuint fbo) {
+                                       GLuint fbo,
+                                       int read_buffer) {
   std::vector<u32> buffer(width * height);
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
   GLint oldbuf;
   glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &oldbuf);
   glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-  glReadBuffer(GL_COLOR_ATTACHMENT0);
+  glReadBuffer(read_buffer);
   glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
   // flip upside down in place
   for (int h = 0; h < height / 2; h++) {
