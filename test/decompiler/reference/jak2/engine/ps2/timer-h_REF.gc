@@ -1,0 +1,117 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type timer-mode
+(deftype timer-mode (uint32)
+  ((clks timer-clock-selection :offset   0 :size   2)
+   (gate uint8                 :offset   2 :size   1)
+   (gats uint8                 :offset   3 :size   1)
+   (gatm uint8                 :offset   4 :size   2)
+   (zret uint8                 :offset   6 :size   1)
+   (cue  uint8                 :offset   7 :size   1)
+   (cmpe uint8                 :offset   8 :size   1)
+   (ovfe uint8                 :offset   9 :size   1)
+   (equf uint8                 :offset  10 :size   1)
+   (ovff uint8                 :offset  11 :size   1)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition of type timer-bank
+(deftype timer-bank (structure)
+  ((count uint32      :offset-assert   0)
+   (mode  timer-mode  :offset         16)
+   (comp  uint32      :offset         32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+;; definition for method 3 of type timer-bank
+(defmethod inspect timer-bank ((obj timer-bank))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'timer-bank)
+  (format #t "~1Tcount: #x~X~%" (-> obj count))
+  (format #t "~1Tmode: #x~X~%" (-> obj mode))
+  (format #t "~1Tcomp: #x~X~%" (-> obj comp))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type timer-hold-bank
+(deftype timer-hold-bank (timer-bank)
+  ((hold uint32  :offset  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+;; definition for method 3 of type timer-hold-bank
+(defmethod inspect timer-hold-bank ((obj timer-hold-bank))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'timer-hold-bank)
+  (format #t "~1Tcount: #x~X~%" (-> obj count))
+  (format #t "~1Tmode: #x~X~%" (-> obj mode))
+  (format #t "~1Tcomp: #x~X~%" (-> obj comp))
+  (format #t "~1Thold: #x~X~%" (-> obj hold))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type stopwatch
+(deftype stopwatch (basic)
+  ((prev-time-elapsed time-frame  :offset-assert   8)
+   (start-time        time-frame  :offset-assert  16)
+   (begin-level       int32       :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+;; definition for method 3 of type stopwatch
+(defmethod inspect stopwatch ((obj stopwatch))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tprev-time-elapsed: ~D~%" (-> obj prev-time-elapsed))
+  (format #t "~1Tstart-time: ~D~%" (-> obj start-time))
+  (format #t "~1Tbegin-level: ~D~%" (-> obj begin-level))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *ticks-per-frame*, type int
+(define *ticks-per-frame* 9765)
+
+;; definition for function timer-init
+(defun timer-init ((arg0 timer-bank) (arg1 timer-mode))
+  (set! (-> arg0 mode) arg1)
+  (set! (-> arg0 count) (the-as uint 0))
+  0
+  )
+
+;; failed to figure out what this is:
+(timer-init
+  (the-as timer-bank #x10000800)
+  (new 'static 'timer-mode :clks (timer-clock-selection busclk/256) :cue #x1)
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

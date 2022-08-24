@@ -5,5 +5,67 @@
 ;; name in dgo: traffic-h
 ;; dgos: ENGINE, GAME
 
+;; todo: some types, method names.
+
 ;; DECOMP BEGINS
 
+(define *traffic-manager* (the-as process #f))
+(define *ctywide-entity* (the-as object #f))
+(define *lwide-entity* (the-as object #f))
+(define *race-vehicle-entity* (the-as object #f))
+
+(deftype traffic-danger-info (structure)
+  ((sphere        sphere :inline :offset-assert   0)
+   (velocity      vector :inline :offset-assert  16)
+   (handle        uint64         :offset-assert  32)
+   (notify-radius float          :offset-assert  40)
+   (danger-level  float          :offset-assert  44)
+   (decay-rate    float          :offset-assert  48)
+   (flags         uint8          :offset-assert  52)
+   (danger-type   uint8          :offset-assert  53)
+   )
+  :method-count-assert 9
+  :size-assert         #x36
+  :flag-assert         #x900000036
+  )
+
+(deftype traffic-suppression-params (structure)
+  ((bbox     bounding-box :inline :offset-assert   0)
+   (duration uint64               :offset-assert  32)
+   (id       int8                 :offset-assert  40)
+   )
+  :method-count-assert 13
+  :size-assert         #x29
+  :flag-assert         #xd00000029
+  (:methods
+    (traffic-suppression-params-method-9 () none 9)
+    (traffic-suppression-params-method-10 () none 10)
+    (has-valid-id? (_type_) none 11)
+    (traffic-suppression-params-method-12 () none 12)
+    )
+  )
+
+(defmethod has-valid-id? traffic-suppression-params ((obj traffic-suppression-params))
+  (!= (-> obj id) -1)
+  (none)
+  )
+
+(deftype traffic-object-spawn-params (structure)
+  ((object-type uint8              :offset-assert   0)
+   (behavior    uint64             :offset-assert   8)
+   (id          uint32             :offset-assert  16)
+   (nav-mesh    basic              :offset-assert  20)
+   (nav-branch  basic              :offset-assert  24)
+   (position    vector     :inline :offset-assert  32)
+   (rotation    quaternion :inline :offset-assert  48)
+   (velocity    vector     :inline :offset-assert  64)
+   (handle      uint64             :offset-assert  80)
+   (guard-type  uint8              :offset-assert  88)
+   (user-data   uint32             :offset-assert  92)
+   (flags       uint32             :offset-assert  96)
+   (proc        basic              :offset-assert 100)
+   )
+  :method-count-assert 9
+  :size-assert         #x68
+  :flag-assert         #x900000068
+  )

@@ -5,5 +5,91 @@
 ;; name in dgo: process-focusable
 ;; dgos: ENGINE, GAME
 
+(defenum focus-status
+  :bitfield #t
+  :type uint32
+  (fs0 0) ;; if set, all collide checks fail
+  (fs1 1) ;; if set, all collide checks fail
+  (fs2 2)
+  )
+
 ;; DECOMP BEGINS
 
+(deftype process-focusable (process-drawable)
+  ((focus-status focus-status  :offset-assert 200)
+   )
+  :heap-base #x50
+  :method-count-assert 27
+  :size-assert         #xcc
+  :flag-assert         #x1b005000cc
+  (:methods
+    (get-trans (_type_ int) vector 20)
+    (get-quat (_type_) quaternion 21)
+    (get-transv (_type_) vector 22)
+    (process-focusable-method-23 (_type_) none 23)
+    (process-focusable-method-24 (_type_) none 24)
+    (process-focusable-method-25 (_type_) none 25)
+    (process-focusable-method-26 (_type_) none 26)
+    )
+  )
+
+(defmethod inspect process-focusable ((obj process-focusable))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tfocus-status: ~D~%" (-> obj focus-status))
+  (label cfg-4)
+  obj
+  )
+
+(defmethod get-trans process-focusable ((obj process-focusable) (arg0 int))
+  (let ((gp-0 (-> obj root)))
+    (the-as vector (cond
+                     ((zero? arg0)
+                      (-> gp-0 trans)
+                      )
+                     ((and (= arg0 1) (type? gp-0 collide-shape-moving))
+                      (-> (the-as collide-shape-moving gp-0) gspot-pos)
+                      )
+                     ((and (or (= arg0 2) (= arg0 3)) (type? gp-0 collide-shape))
+                      (-> (the-as collide-shape gp-0) root-prim prim-core)
+                      )
+                     (else
+                       (-> gp-0 trans)
+                       )
+                     )
+            )
+    )
+  )
+
+(defmethod get-transv process-focusable ((obj process-focusable))
+  (-> obj root transv)
+  )
+
+(defmethod get-quat process-focusable ((obj process-focusable))
+  (-> obj root quat)
+  )
+
+(defmethod process-focusable-method-23 process-focusable ((obj process-focusable))
+  0
+  (none)
+  )
+
+(defmethod process-focusable-method-24 process-focusable ((obj process-focusable))
+  0
+  (none)
+  )
+
+(defmethod process-focusable-method-26 process-focusable ((obj process-focusable))
+  0
+  (none)
+  )
+
+(defmethod process-focusable-method-25 process-focusable ((obj process-focusable))
+  0
+  (none)
+  )

@@ -110,7 +110,13 @@ class OpenGLRenderer {
   void do_pcrtc_effects(float alp, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void init_bucket_renderers();
   void draw_renderer_selection_window();
-  void finish_screenshot(const std::string& output_name, int px, int py, int x, int y, GLuint fbo);
+  void finish_screenshot(const std::string& output_name,
+                         int px,
+                         int py,
+                         int x,
+                         int y,
+                         GLuint fbo,
+                         int read_buffer);
   template <typename T, class... Args>
   T* init_bucket_renderer(const std::string& name,
                           BucketCategory cat,

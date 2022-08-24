@@ -509,5 +509,14 @@ It type checks the arguments for the entry function.
   )
 
 
-
+(defmacro send-event (proc msg &key (from (with-pp pp)) &rest params)
+  "Send an event to a process. This should be used over send-event-function"
+  `(let ((event-data (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-data from) (process->ppointer ,from))
+        (set! (-> event-data num-params) ,(length params))
+        (set! (-> event-data message) ,msg)
+        ,@(apply-i (lambda (x i) `(set! (-> event-data param ,i) (the-as uint ,x))) params)
+        (send-event-function ,proc event-data)
+        )
+  )
 

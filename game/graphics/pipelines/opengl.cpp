@@ -24,8 +24,10 @@
 #include "game/graphics/opengl_renderer/debug_gui.h"
 #include "game/graphics/texture/TexturePool.h"
 #include "game/runtime.h"
+#include "game/sce/libscf.h"
 #include "game/system/newpad.h"
 
+#include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_impl_glfw.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
@@ -77,6 +79,8 @@ struct GraphicsData {
 };
 
 std::unique_ptr<GraphicsData> g_gfx_data;
+
+static bool want_hotkey_screenshot = false;
 
 bool is_cursor_position_valid = false;
 double last_cursor_x_position = 0;
@@ -319,10 +323,18 @@ void GLDisplay::on_key(GLFWwindow* window, int key, int /*scancode*/, int action
   } else if (action == GlfwKeyAction::Release) {
     // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
     Pad::OnKeyRelease(key);
-    if ((key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT) &&
-        glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
-      set_imgui_visible(!is_imgui_visible());
-      update_cursor_visibility(window, is_imgui_visible());
+    // Debug keys input mapping TODO add remapping
+    switch (key) {
+      case GLFW_KEY_LEFT_ALT:
+      case GLFW_KEY_RIGHT_ALT:
+        if (glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+          set_imgui_visible(!is_imgui_visible());
+          update_cursor_visibility(window, is_imgui_visible());
+        }
+        break;
+      case GLFW_KEY_F2:
+        want_hotkey_screenshot = true;
+        break;
     }
   }
 }
@@ -395,11 +407,24 @@ void GLDisplay::on_iconify(GLFWwindow* /*window*/, int iconified) {
 }
 
 namespace {
-std::string make_output_file_name(const std::string& file_name) {
-  file_util::create_dir_if_needed(file_util::get_file_path({"gfx_dumps"}));
-  return file_util::get_file_path({"gfx_dumps", file_name});
+std::string make_full_screenshot_output_file_path(const std::string& file_name) {
+  file_util::create_dir_if_needed(file_util::get_file_path({"screenshots"}));
+  return file_util::get_file_path({"screenshots", file_name});
 }
 }  // namespace
+
+static std::string get_current_timestamp() {
+  auto current_time = std::time(0);
+  auto local_current_time = *std::localtime(&current_time);
+  // Remember to increase size of result if the date format is changed
+  char result[20];
+  std::strftime(result, sizeof(result), "%Y_%m_%d_%H_%M_%S", &local_current_time);
+  return std::string(result);
+}
+
+static std::string make_hotkey_screenshot_file_name() {
+  return version_to_game_name(g_game_version) + "_" + get_current_timestamp() + ".png";
+}
 
 static bool endsWith(std::string_view str, std::string_view suffix) {
   return str.size() >= suffix.size() &&
@@ -441,6 +466,15 @@ void render_game_frame(int game_width,
     options.save_screenshot = false;
     options.gpu_sync = g_gfx_data->debug_gui.should_gl_finish();
     options.borderless_windows_hacks = windows_borderless_hack;
+
+    want_hotkey_screenshot =
+        want_hotkey_screenshot && g_gfx_data->debug_gui.screenshot_hotkey_enabled;
+    if (want_hotkey_screenshot) {
+      want_hotkey_screenshot = false;
+      options.save_screenshot = true;
+      std::string screenshot_file_name = make_hotkey_screenshot_file_name();
+      options.screenshot_path = make_full_screenshot_output_file_path(screenshot_file_name);
+    }
     if (g_gfx_data->debug_gui.get_screenshot_flag()) {
       options.save_screenshot = true;
       options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
@@ -448,7 +482,13 @@ void render_game_frame(int game_width,
       options.draw_region_width = options.game_res_w;
       options.draw_region_height = options.game_res_h;
       options.msaa_samples = g_gfx_data->debug_gui.screenshot_samples;
+      std::string screenshot_file_name = g_gfx_data->debug_gui.screenshot_name();
+      if (!endsWith(screenshot_file_name, ".png")) {
+        screenshot_file_name += ".png";
+      }
+      options.screenshot_path = make_full_screenshot_output_file_path(screenshot_file_name);
     }
+
     options.draw_small_profiler_window = g_gfx_data->debug_gui.small_profiler;
     options.pmode_alp_register = g_gfx_data->pmode_alp;
 
@@ -458,14 +498,6 @@ void render_game_frame(int game_width,
       options.msaa_samples = msaa_max;
     }
 
-    if (options.save_screenshot) {
-      // ensure the screenshot has an extension
-      std::string temp_path = g_gfx_data->debug_gui.screenshot_name();
-      if (!endsWith(temp_path, ".png")) {
-        temp_path += ".png";
-      }
-      options.screenshot_path = make_output_file_name(temp_path);
-    }
     if constexpr (run_dma_copy) {
       auto& chain = g_gfx_data->dma_copier.get_last_result();
       g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), options);

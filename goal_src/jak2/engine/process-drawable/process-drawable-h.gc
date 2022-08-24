@@ -5,5 +5,196 @@
 ;; name in dgo: process-drawable-h
 ;; dgos: ENGINE, GAME
 
+(define-extern cspace-by-name (function process-drawable string cspace))
+(define-extern cspace-index-by-name (function process-drawable string int))
+(define-extern joint-control-reset! (function joint-control joint-control-channel none :behavior process-drawable))
+
 ;; DECOMP BEGINS
 
+(defun cspace-by-name-no-fail ((arg0 process-drawable) (arg1 string))
+  (let ((v0-0 (the-as object (cspace-by-name arg0 arg1))))
+    (the-as cspace (cond
+                     ((the-as cspace v0-0)
+                      (empty)
+                      v0-0
+                      )
+                     (else
+                       (format 0 "no cspace (~A)~%" arg1)
+                       (-> arg0 node-list data)
+                       )
+                     )
+            )
+    )
+  )
+
+(defun cspace-index-by-name-no-fail ((arg0 process-drawable) (arg1 string))
+  (let ((v0-0 (cspace-index-by-name arg0 arg1)))
+    (cond
+      ((< v0-0 0)
+       (format 0 "no cspace[ndx] (~A)~%" arg1)
+       0
+       )
+      (else
+        (empty)
+        v0-0
+        )
+      )
+    )
+  )
+
+(defun num-func-none ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (-> arg0 frame-num)
+  )
+
+(defun num-func-+! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (with-pp
+    (let ((f0-1 (+ (-> arg0 frame-num) (* arg1 (* (-> arg0 frame-group speed) (-> pp clock time-adjust-ratio))))))
+      (set! (-> arg0 frame-num) f0-1)
+      f0-1
+      )
+    )
+  )
+
+(defun num-func--! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (with-pp
+    (let ((f0-1 (- (-> arg0 frame-num) (* arg1 (* (-> arg0 frame-group speed) (-> pp clock time-adjust-ratio))))))
+      (set! (-> arg0 frame-num) f0-1)
+      f0-1
+      )
+    )
+  )
+
+(defun num-func-loop! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (with-pp
+    (let* ((f0-1 (the float (+ (-> arg0 frame-group frames num-frames) -1)))
+           (f1-2 (+ (-> arg0 frame-num) f0-1 (* arg1 (* (-> arg0 frame-group speed) (-> pp clock time-adjust-ratio)))))
+           (f0-3 (- f1-2 (* (the float (the int (/ f1-2 f0-1))) f0-1)))
+           )
+      (set! (-> arg0 frame-num) f0-3)
+      f0-3
+      )
+    )
+  )
+
+(defun num-func-loop-speedless! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (let* ((f0-1 (the float (+ (-> arg0 frame-group frames num-frames) -1)))
+         (f1-2 (+ (-> arg0 frame-num) f0-1 arg1))
+         (f0-3 (- f1-2 (* (the float (the int (/ f1-2 f0-1))) f0-1)))
+         )
+    (set! (-> arg0 frame-num) f0-3)
+    f0-3
+    )
+  )
+
+(defun num-func-seek! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (with-pp
+    (let ((f0-3
+            (seek (-> arg0 frame-num) arg1 (* arg2 (* (-> arg0 frame-group speed) (-> pp clock time-adjust-ratio))))
+            )
+          )
+      (set! (-> arg0 frame-num) f0-3)
+      f0-3
+      )
+    )
+  )
+
+(defun num-func-blend-in! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (with-pp
+    (let ((f30-0 (seek (-> arg0 frame-interp 0) 1.0 (* arg1 (-> pp clock time-adjust-ratio)))))
+      (set! (-> arg0 frame-interp 0) f30-0)
+      (set! (-> arg0 frame-interp 1) f30-0)
+      (if (= f30-0 1.0)
+          (joint-control-reset! (-> arg0 parent) arg0)
+          )
+      f30-0
+      )
+    )
+  )
+
+(defun joint-channel-float-delete! ((arg0 joint-control-channel))
+  (let ((v1-0 (-> arg0 parent)))
+    (+! (-> v1-0 float-channels) -1)
+    (when (nonzero? (-> v1-0 float-channels))
+      (let ((a1-5 (/ (&- (the-as pointer arg0) (the-as uint (the-as pointer (-> v1-0 channel)))) 64)))
+        (if (< a1-5 (the-as int (+ (-> v1-0 active-channels) (-> v1-0 float-channels))))
+            (qmem-copy<-!
+              (the-as pointer (-> v1-0 channel a1-5))
+              (the-as pointer (-> v1-0 channel (+ a1-5 1)))
+              (the-as int (* (-> v1-0 float-channels) 64))
+              )
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun num-func-interp-play! ((arg0 joint-control-channel) (arg1 float) (arg2 float) (arg3 float))
+  (with-pp
+    (let ((f30-0 (the float (+ (-> arg0 frame-group frames num-frames) -1)))
+          (f28-0 (* arg3 (-> arg0 frame-group speed)))
+          )
+      (seek! (-> arg0 frame-num) f30-0 (* arg1 (* (-> arg0 frame-group speed) (-> pp clock time-adjust-ratio))))
+      (cond
+        ((< (-> arg0 frame-num) f28-0)
+         (set! (-> arg0 frame-interp 0) (/ (* (-> arg0 frame-num) arg2) f28-0))
+         )
+        ((< (- f30-0 f28-0) (-> arg0 frame-num))
+         (set! (-> arg0 frame-interp 0) (/ (* (- f30-0 (-> arg0 frame-num)) arg2) f28-0))
+         (when (and (= (-> arg0 frame-num) f30-0) (logtest? (-> arg0 command) (joint-control-command eight)))
+           (joint-channel-float-delete! arg0)
+           (return 0.0)
+           )
+         )
+        (else
+          (set! (-> arg0 frame-interp 0) arg2)
+          )
+        )
+      )
+    (set! (-> arg0 frame-interp 1) (-> arg0 frame-interp 0))
+    (-> arg0 frame-num)
+    )
+  )
+
+(defun num-func-interp1-play! ((arg0 joint-control-channel) (arg1 float) (arg2 float) (arg3 float))
+  (with-pp
+    (let ((f30-0 (the float (+ (-> arg0 frame-group frames num-frames) -1)))
+          (f28-0 (* arg3 (-> arg0 frame-group speed)))
+          )
+      (seek! (-> arg0 frame-num) f30-0 (* arg1 (* (-> arg0 frame-group speed) (-> pp clock time-adjust-ratio))))
+      (cond
+        ((< (-> arg0 frame-num) f28-0)
+         (set! (-> arg0 frame-interp 1) (/ (* (-> arg0 frame-num) arg2) f28-0))
+         )
+        ((< (- f30-0 f28-0) (-> arg0 frame-num))
+         (set! (-> arg0 frame-interp 1) (/ (* (- f30-0 (-> arg0 frame-num)) arg2) f28-0))
+         (when (and (= (-> arg0 frame-num) f30-0) (logtest? (-> arg0 command) (joint-control-command eight)))
+           (joint-channel-float-delete! arg0)
+           (return 0.0)
+           )
+         )
+        (else
+          (set! (-> arg0 frame-interp 1) arg2)
+          )
+        )
+      )
+    (-> arg0 frame-num)
+    )
+  )
+
+(defun num-func-chan ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (let ((f0-2
+          (-> (the-as joint-control-channel (+ (the-as uint arg0) (* (- (the int arg1) (-> arg0 group-sub-index)) 64)))
+              frame-num
+              )
+          )
+        )
+    (set! (-> arg0 frame-num) f0-2)
+    f0-2
+    )
+  )
+
+(defun num-func-identity ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  (-> arg0 frame-num)
+  )

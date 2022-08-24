@@ -5,5 +5,706 @@
 ;; name in dgo: texture-h
 ;; dgos: ENGINE, GAME
 
+;; TODO document and method names with texture.gc
+
+(declare-type texture-page basic)
+
 ;; DECOMP BEGINS
+
+(deftype texture-id (uint32)
+  ((index uint16 :offset   8 :size  12)
+   (page  uint16 :offset  20 :size  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype texture-pool-segment (structure)
+  ((dest uint32  :offset-assert   0)
+   (size uint32  :offset-assert   4)
+   )
+  :pack-me
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype texture-pool (basic)
+  ((top                      int32                                                                 :offset-assert   4)
+   (cur                      int32                                                                 :offset-assert   8)
+   (allocate-func            (function texture-pool texture-page kheap int texture-page)           :offset-assert  12)
+   (font-palette             int32                                                                 :offset-assert  16)
+   (segment                  texture-pool-segment                                        4 :inline :offset-assert  20)
+   (segment-near             texture-pool-segment                                        :inline   :offset         20)
+   (segment-common           texture-pool-segment                                        :inline   :offset         28)
+   (common-page              texture-page                                                32        :offset-assert  52)
+   (common-page-mask         int32                                                                 :offset-assert 180)
+   (update-sprites-flag      symbol                                                                 :offset-assert 184)
+   (update-flag              symbol                                                                 :offset-assert 188)
+   (texture-enable-user      uint64                                                                :offset-assert 192)
+   (texture-enable-user-menu uint64                                                                :offset-assert 200)
+   (ids                      uint32                                                      128       :offset-assert 208)
+   )
+  :method-count-assert 26
+  :size-assert         #x2d0
+  :flag-assert         #x1a000002d0
+  (:methods
+    (new (symbol type) _type_ 0)
+    (initialize! (_type_) _type_ 9)
+    (texture-pool-method-10 () none 10) ;; (print-usage (_type_) _type_ 10)
+    (texture-pool-method-11 () none 11) ;; (setup-font-texture! (_type_) none 11)
+    (allocate-defaults! (_type_) none 12)
+    (login-level-textures (_type_ level int (pointer texture-id)) none 13)
+    (texture-pool-method-14 () none 14) ;; (add-tex-to-dma! (_type_ level int) none 14)
+    (allocate-vram-words! (_type_ int) int 15)
+    (allocate-segment! (_type_ texture-pool-segment int) texture-pool-segment 16)
+    (texture-pool-method-17 () none 17) ;; (unused-17 () none 17)
+    (texture-pool-method-18 (_type_ int) int 18) ;; (unused-18 () none 18)
+    (update-warp-and-hud (_type_) none 19) ;; (unused-19 () none 19)
+    (update-sprites (_type_) none 20) ;; (unload! (_type_ texture-page) int 20)
+    (flag-update-and-sprite (_type_) none 21) ;; (upload-one-common! (_type_ level) symbol 21)
+    (relocate-sprite-dests! (_type_) none 22) ;; (lookup-boot-common-id (_type_ int) int 22)
+    (relocate-hud-dests! (_type_) none 23)
+    (relocate-warp-dests! (_type_) none 24)
+    (clear-ids (_type_) none 25)
+    )
+  )
+
+(deftype texture-mask (structure)
+  ((mask vector4w :inline :offset-assert   0)
+   (dist float            :offset         12)
+   (long uint64   2       :offset          0)
+   (quad uint128          :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype texture-masks (structure)
+  ((data texture-mask 3 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype texture-masks-array (inline-array-class)
+  ((data texture-masks :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+(set! (-> texture-masks-array heap-base) (the-as uint 48))
+
+(define *texture-masks* (the-as texture-masks #f))
+(define *texture-masks-array* (the-as texture-masks-array #f))
+
+(deftype texture (basic)
+  ((w            int16                 :offset-assert   4)
+   (h            int16                 :offset-assert   6)
+   (num-mips     uint8                 :offset-assert   8)
+   (tex1-control uint8                 :offset-assert   9)
+   (psm          gs-psm                :offset-assert  10)
+   (mip-shift    uint8                 :offset-assert  11)
+   (clutpsm      uint16                :offset-assert  12)
+   (dest         uint16        7       :offset-assert  14)
+   (clutdest     uint16                :offset-assert  28)
+   (width        uint8         7       :offset-assert  30)
+   (name         string                :offset-assert  40)
+   (size         uint32                :offset-assert  44)
+   (uv-dist      float                 :offset-assert  48)
+   (pad          uint32        3       :offset-assert  52)
+   (masks        texture-masks :inline :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
+
+(deftype texture-page-segment (structure)
+  ((block-data pointer  :offset-assert   0)
+   (size       uint32   :offset-assert   4)
+   (dest       uint32   :offset-assert   8)
+   )
+  :pack-me
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(defun texture-mip->segment ((arg0 int) (arg1 int))
+  (if (>= 2 arg1)
+      (+ (- -1 arg0) arg1)
+      (max 0 (- 2 arg0))
+      )
+  )
+
+(deftype texture-page (basic)
+  ((info      file-info                      :offset-assert   4)
+   (name      basic                          :offset-assert   8)
+   (id        uint32                         :offset-assert  12)
+   (length    int32                          :offset-assert  16)
+   (mip0-size uint32                         :offset-assert  20)
+   (size      uint32                         :offset-assert  24)
+   (segment   texture-page-segment 3 :inline :offset-assert  28)
+   (dram-size uint32                         :offset-assert  64)
+   (pad       uint32               15        :offset-assert  68)
+   (data      texture              :dynamic  :offset-assert 128)
+   )
+  :method-count-assert 14
+  :size-assert         #x80
+  :flag-assert         #xe00000080
+  (:methods
+    (remove-from-heap (_type_ kheap) _type_ 9)
+    (get-leftover-block-count (_type_ int int) int 10)
+    (relocate-dests! (_type_ int int) none 11) ;; (unused-11 () none 11)
+    (texture-page-method-12 () none 12) ;;
+    (upload-now! (_type_ int) none 13) ;; (add-to-dma-buffer (_type_ dma-buffer int) int 13)
+    )
+  )
+
+(deftype shader-ptr (uint32)
+  ((shader uint32 :offset   8 :size  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype texture-link (structure)
+  ((next shader-ptr  :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype texture-page-dir-entry (structure)
+  ((length int16         :offset-assert   0)
+   (status uint16        :offset-assert   2)
+   (page   texture-page  :offset-assert   4)
+   (link   texture-link  :offset-assert   8)
+   )
+  :pack-me
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype texture-page-dir (basic)
+  ((length  int32                            :offset-assert   4)
+   (entries texture-page-dir-entry 1 :inline :offset-assert   8)
+   )
+  :method-count-assert 10
+  :size-assert         #x14
+  :flag-assert         #xa00000014
+  (:methods
+    (relocate (_type_ kheap (pointer uint8)) none :replace 7)
+    (unlink-textures-in-heap! (_type_ kheap) int 9)
+    )
+  )
+
+(deftype texture-relocate-later (basic)
+  ((memcpy symbol                  :offset-assert   4)
+   (dest   uint32                  :offset-assert   8)
+   (source uint32                  :offset-assert  12)
+   (move   uint32                  :offset-assert  16)
+   (entry  texture-page-dir-entry  :offset-assert  20)
+   (page   texture-page            :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+(define *texture-relocate-later* (new 'global 'texture-relocate-later))
+(set! (-> *texture-relocate-later* memcpy) #f)
+
+(define *texture-page-dir* (the-as texture-page-dir #f))
+
+(defenum link-test-flags
+  :type uint32
+  :bitfield #t
+  ; (needs-log-in 8)
+  ; (bit-9 9)
+  )
+
+(deftype adgif-shader (structure)
+  ((quad       qword           5 :inline :offset-assert   0)
+   (prims      gs-reg64        10        :offset          0)
+   (reg-0      uint8                     :offset          8)
+   (reg-1      uint8                     :offset         24)
+   (reg-2      uint8                     :offset         40)
+   (reg-3      uint8                     :offset         56)
+   (reg-4      uint8                     :offset         72)
+   (tex0       gs-tex0                   :offset          0)
+   (tex1       gs-tex1                   :offset         16)
+   (miptbp1    gs-miptbp                 :offset         32)
+   (clamp      gs-clamp                  :offset         48)
+   (clamp-reg  gs-reg64                  :offset         56)
+   (alpha      gs-alpha                  :offset         64)
+   (link-test  link-test-flags           :offset          8)
+   (texture-id texture-id                :offset         24)
+   (next       shader-ptr                :offset         40)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+(deftype adgif-shader-array (inline-array-class)
+  ((data adgif-shader :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+(set! (-> adgif-shader-array heap-base) (the-as uint 80))
+
+(deftype texture-base (structure)
+  ((vram-page  uint32  :offset-assert   0)
+   (vram-block uint32  :offset-assert   4)
+   (vram-word  uint32  :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+
+(define ct32-24-block-table
+        (new 'static 'boxed-array :type int32
+             0 1 4 5 16 17 20 21 2 3 6 7 18 19 22 23
+             8 9 12 13 24 25 28 29 10 11 14 15 26 27
+             30 31 )
+        )
+
+(define mz32-24-block-table
+        (new 'static 'boxed-array :type int32
+             16 17 20 21 0 1 4 5 18 19 22 23 2 3 6 7
+             24 25 28 29 8 9 12 13 26 27 30 31 10 11
+             14 15 )
+
+        )
+
+(define ct16-block-table
+        (new 'static 'boxed-array :type int32
+             0 2 8 10 1 3 9 11 4 6 12 14 5 7 13 15 16 18
+             24 26 17 19 25 27 20 22 28 30 21 23 29 31
+             )
+
+        )
+
+(define ct16s-block-table
+        (new 'static 'boxed-array :type int32
+             0 2 16 18 1 3 17 19 8 10 24 26 9 11 25 27
+             4 6 20 22 5 7 21 23 12 14 28 30 13 15 29 31
+             )
+
+        )
+
+(define mz16-block-table
+        (new 'static 'boxed-array :type int32
+             16 18 24 26 17 19 25 27 20 22 28 30 21 23 29
+             31 0 2 8 10 1 3 9 11 4 6 12 14 5 7 13 15)
+        )
+
+(define mz16s-block-table
+        (new 'static 'boxed-array :type int32
+             16 18 0 2 17 19 1 3 24 26 8 10 25 27 9 11
+             20 22 4 6 21 23 5 7 28 30 12 14 29 31 13
+             15
+             )
+        )
+
+(define mt8-block-table
+        (new 'static 'boxed-array :type int32
+             0 1 4 5 16 17 20 21 2 3 6 7 18 19 22 23 8 9
+             12 13 24 25 28 29 10 11 14 15 26 27 30 31
+             )
+        )
+
+(define mt4-block-table
+        (new 'static 'boxed-array :type int32
+             0 2 8 10 1 3 9 11 4 6 12 14 5 7 13 15 16 18
+             24 26 17 19 25 27 20 22 28 30 21 23 29 31
+             )
+        )
+
+(deftype texture-page-translate-item (structure)
+  ((bucket             bucket-id  :offset-assert   0)
+   (level-index        uint32     :offset-assert   4)
+   (level-texture-page uint32     :offset-assert   8)
+   (texture-user       uint32     :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+
+(define *texture-page-translate*
+        (new 'static 'boxed-array :type texture-page-translate-item
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-4)
+                  :level-index #x6
+                  :level-texture-page #x9
+                  :texture-user #x100
+                  )
+             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-7) :texture-user #x1)
+             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-18) :level-index #x1 :texture-user #x1)
+             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-29) :level-index #x2 :texture-user #x1)
+             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-40) :level-index #x3 :texture-user #x1)
+             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-51) :level-index #x4 :texture-user #x1)
+             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-62) :level-index #x5 :texture-user #x1)
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-73)
+                  :level-texture-page #x2
+                  :texture-user #x4
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-82)
+                  :level-index #x1
+                  :level-texture-page #x2
+                  :texture-user #x4
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-91)
+                  :level-index #x2
+                  :level-texture-page #x2
+                  :texture-user #x4
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-100)
+                  :level-index #x3
+                  :level-texture-page #x2
+                  :texture-user #x4
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-109)
+                  :level-index #x4
+                  :level-texture-page #x2
+                  :texture-user #x4
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-118)
+                  :level-index #x5
+                  :level-texture-page #x2
+                  :texture-user #x4
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-127)
+                  :level-texture-page #x3
+                  :texture-user #x8
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-137)
+                  :level-index #x1
+                  :level-texture-page #x3
+                  :texture-user #x8
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-147)
+                  :level-index #x2
+                  :level-texture-page #x3
+                  :texture-user #x8
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-157)
+                  :level-index #x3
+                  :level-texture-page #x3
+                  :texture-user #x8
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-167)
+                  :level-index #x4
+                  :level-texture-page #x3
+                  :texture-user #x8
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-177)
+                  :level-index #x5
+                  :level-texture-page #x3
+                  :texture-user #x8
+                  )
+             (new 'static 'texture-page-translate-item :bucket (bucket-id bucket-187) :level-index #x6 :texture-user #x1)
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-191)
+                  :level-index #x6
+                  :level-texture-page #x2
+                  :texture-user #x4
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-196)
+                  :level-texture-page #x1
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-200)
+                  :level-index #x1
+                  :level-texture-page #x1
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-204)
+                  :level-index #x2
+                  :level-texture-page #x1
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-208)
+                  :level-index #x3
+                  :level-texture-page #x1
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-212)
+                  :level-index #x4
+                  :level-texture-page #x1
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-216)
+                  :level-index #x5
+                  :level-texture-page #x1
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-220)
+                  :level-index #x6
+                  :level-texture-page #x1
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-224)
+                  :level-texture-page #x6
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-228)
+                  :level-index #x1
+                  :level-texture-page #x6
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-232)
+                  :level-index #x2
+                  :level-texture-page #x6
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-236)
+                  :level-index #x3
+                  :level-texture-page #x6
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-240)
+                  :level-index #x4
+                  :level-texture-page #x6
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-244)
+                  :level-index #x5
+                  :level-texture-page #x6
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-248)
+                  :level-index #x6
+                  :level-texture-page #x6
+                  :texture-user #x2
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-252)
+                  :level-texture-page #x4
+                  :texture-user #x10
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-261)
+                  :level-index #x1
+                  :level-texture-page #x4
+                  :texture-user #x10
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-270)
+                  :level-index #x2
+                  :level-texture-page #x4
+                  :texture-user #x10
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-279)
+                  :level-index #x3
+                  :level-texture-page #x4
+                  :texture-user #x10
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-288)
+                  :level-index #x4
+                  :level-texture-page #x4
+                  :texture-user #x10
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-297)
+                  :level-index #x5
+                  :level-texture-page #x4
+                  :texture-user #x10
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-306)
+                  :level-index #x6
+                  :level-texture-page #x4
+                  :texture-user #x10
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-309)
+                  :level-index #x6
+                  :level-texture-page #x9
+                  :texture-user #x100
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-312)
+                  :level-texture-page #x7
+                  :texture-user #x40
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-312)
+                  :level-index #x1
+                  :level-texture-page #x7
+                  :texture-user #x40
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-312)
+                  :level-index #x2
+                  :level-texture-page #x7
+                  :texture-user #x40
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-312)
+                  :level-index #x3
+                  :level-texture-page #x7
+                  :texture-user #x40
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-312)
+                  :level-index #x4
+                  :level-texture-page #x7
+                  :texture-user #x40
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-312)
+                  :level-index #x5
+                  :level-texture-page #x7
+                  :texture-user #x40
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-312)
+                  :level-index #x6
+                  :level-texture-page #x7
+                  :texture-user #x40
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-316)
+                  :level-texture-page #x5
+                  :texture-user #x20
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-316)
+                  :level-index #x1
+                  :level-texture-page #x5
+                  :texture-user #x20
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-316)
+                  :level-index #x2
+                  :level-texture-page #x5
+                  :texture-user #x20
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-316)
+                  :level-index #x3
+                  :level-texture-page #x5
+                  :texture-user #x20
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-316)
+                  :level-index #x4
+                  :level-texture-page #x5
+                  :texture-user #x20
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-316)
+                  :level-index #x5
+                  :level-texture-page #x5
+                  :texture-user #x20
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-316)
+                  :level-index #x6
+                  :level-texture-page #x5
+                  :texture-user #x20
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-319)
+                  :level-texture-page #x8
+                  :texture-user #x80
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-319)
+                  :level-index #x1
+                  :level-texture-page #x8
+                  :texture-user #x80
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-319)
+                  :level-index #x2
+                  :level-texture-page #x8
+                  :texture-user #x80
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-319)
+                  :level-index #x3
+                  :level-texture-page #x8
+                  :texture-user #x80
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-319)
+                  :level-index #x4
+                  :level-texture-page #x8
+                  :texture-user #x80
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-319)
+                  :level-index #x5
+                  :level-texture-page #x8
+                  :texture-user #x80
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-319)
+                  :level-index #x6
+                  :level-texture-page #x8
+                  :texture-user #x80
+                  )
+             (new 'static 'texture-page-translate-item
+                  :bucket (bucket-id bucket-319)
+                  :level-index #x6
+                  :level-texture-page #x3
+                  :texture-user #x80
+                  )
+             )
+        )
+
+(define *eyes-texture-base* (new 'static 'texture-base))
+(define *skull-gem-texture-base* (new 'static 'texture-base))
+(define *ocean-texture-base* (new 'static 'texture-base))
+(define *ocean-envmap-texture-base* (new 'static 'texture-base))
+(define *grey-scale-base* (new 'static 'texture-base))
+(define *map-texture-base* (new 'static 'texture-base))
 

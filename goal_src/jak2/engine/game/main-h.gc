@@ -7,3 +7,209 @@
 
 ;; DECOMP BEGINS
 
+;; engine debug settings
+(define *stats-poly* #f)
+(define *stats-memory* #f)
+(define *stats-memory-short* #f)
+(define *stats-memory-level-index* 0)
+(define *stats-collide* #f)
+(define *stats-bsp* #f)
+(define *stats-buffer* #f)
+(define *stats-target* #f)
+(define *stats-profile-bars* #f)
+(define *stats-perf* #f)
+(define *artist-all-visible* #f)
+(define *artist-flip-visible* #f)
+(define *artist-fix-visible* #f)
+(define *artist-fix-frustum* #f)
+(define *artist-error-spheres* #f)
+(define *artist-use-menu-subdiv* #f)
+(define *display-profile* #t)
+(define *display-sidekick-stats* #f)
+(define *display-quad-stats* #f)
+(define *display-tri-stats* #f)
+(define *display-ground-stats* #f)
+(define *display-collision-marks* #f)
+(define *display-collide-cache* #f)
+(define *display-render-collision* #f)
+(define *display-hipri-collision-marks* #f)
+(define *display-edge-collision-marks* #f)
+(define *display-geo-marks* #f)
+(define *display-target-marks* #f)
+(define *target-rc-board-controls* #f)
+(define *display-collide-history* 0)
+(define *display-xyz-axes* #f)
+(define *display-cam-collide-history* #f)
+(define *record-cam-collide-history* #f)
+(define *display-cam-master-marks* #f)
+(define *display-cam-other* #f)
+(define *display-camera-marks* #f)
+(define *camera-no-mip-correction* #f)
+(define *display-cam-los-info* #f)
+(define *display-cam-los-debug* #f)
+(define *display-cam-los-marks* #f)
+(define *display-cam-coll-marks* #f)
+(define *display-camera-info* #f)
+(define *display-camera-old-stats* #f)
+(define *display-camera-last-attacker* #f)
+(define *display-file-info* #f)
+(define *display-actor-marks* #f)
+(define *display-sprite-info* #f)
+(define *display-sprite-marks* #f)
+(define *display-sprite-spheres* #f)
+(define *display-entity-errors* #t)
+(define *display-instance-info* #f)
+(define *display-deci-count* #f)
+(define *sync-dma* #f)
+(define *display-strip-lines* 0)
+(define *display-battle-marks* #f)
+(define *display-joint-axes* #f)
+(define *display-nav-marks* #f)
+(define *display-nav-network* #f)
+(define *display-path-marks* #f)
+(define *display-vol-marks* #f)
+(define *display-water-marks* #f)
+(define *display-nav-mesh* #f)
+(define *display-actor-pointer* #f)
+(define *display-actor-vis* #f)
+(define *display-actor-graph* #f)
+(define *display-traffic-height-map* #f)
+(define *display-trail-graph* #f)
+(define *display-color-bars* #f)
+(define *display-bug-report* #f)
+(define *display-level-border* #f)
+(define *display-memcard-info* #f)
+(define *display-split-boxes* #f)
+(define *display-split-box-info* #f)
+(define *display-texture-distances* #f)
+(define *display-texture-download* #f)
+(define *display-art-control* #f)
+(define *display-gui-control* #f)
+(define *display-level-spheres* #f)
+(define *time-of-day-fast* #f)
+(define *display-iop-info* #f)
+(define *ambient-sound-class* #t)
+(define *slow-frame-rate* #f)
+(define *display-region-marks* #f)
+(define *execute-regions* #t)
+(define *debug-pause* #f)
+(define *debug-view-anims* #f)
+(define *debug-unkillable* #f)
+(define *debug-actor* (the-as object #f))
+(define *gun-marks* #f)
+(define *bug-report-output-mode*
+        (if *debug-segment*
+            'file-stream
+            '*stdcon*
+            )
+        )
+(define *display-scene-control* 0)
+(define *display-bot-marks* 0)
+(define *display-race-marks* 0)
+(define *race-record-path* #f)
+(define *select-race* 0)
+(define *select-race-path* 0)
+(define *bot-record-path* -1)
+(define *subdivide-draw-mode* 0)
+(define *subdivide-scissor-draw-mode* 0)
+(define *subdivide-foreground-draw-mode* 0)
+(define *subdivide-ocean-draw-mode* 0)
+(define *ocean-height-hack* 0)
+
+;; Main Loop stuff
+(define-perm *dproc* process #f) ;; the main display process
+(define *run* #f) ;; should we run the main loop?
+(define *teleport* #f) ;; did we just teleport locations?
+;; set to a nonzero amount to apply the *teleport* for several frames.
+(define *teleport-count* 0)
+
+;; main hooks to call from the main loop
+
+;; hook for rendering system
+(define *draw-hook* nothing)
+
+;; hook for various debug functions that should run separately from everything else
+(define *debug-hook* '())
+
+;; hook to draw the debug menu
+(declare-type debug-menu-context basic)
+(define *menu-hook* (the-as (function debug-menu-context) nothing))
+
+;; hook to run the progress menu
+(define *progress-hook* nothing)
+
+;; function to call if main DMA times out, to try to recover
+(define *dma-timeout-hook* nothing)
+
+;; unused?
+(deftype frame-stats (structure)
+  ((field-time time-frame 2 :offset-assert   0)
+   (field      int32        :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+(define *frame-stats* (new 'static 'frame-stats))
+
+
+(deftype screen-filter (basic)
+  ((draw?          symbol         :offset-assert 4)
+   (bucket         bucket-id      :offset-assert 8)
+   (color          vector :inline :offset-assert 16)
+   (color-src      vector :inline :offset-assert 32)
+   (color-dest     vector :inline :offset-assert 48)
+   (extra          vector :inline :offset-assert 64)
+   (speed          float          :offset 64)
+   (current-interp float          :offset 68)
+   )
+  :method-count-assert 12
+  :size-assert         #x50
+  :flag-assert         #xc00000050
+  (:methods
+    (draw (_type_) none 9)
+    (setup (_type_ vector vector float bucket-id) none 10)
+    (disable (_type_) none 11)
+    )
+  )
+
+;; collision renderer settings.
+(deftype col-rend (basic)
+  ((draw?               symbol         :offset-assert   4)
+   (outline?            symbol         :offset-assert   8)
+   (show-back-faces?    symbol         :offset-assert  12)
+   (show-normals?       symbol         :offset-assert  16)
+   (ghost-hidden?       symbol         :offset-assert  20)
+   (show-only           uint32         :offset-assert  24)
+   (cspec               uint32         :offset-assert  28)
+   (track               uint8          :offset-assert  32)
+   (bbox-radius         float          :offset-assert  36)
+   (bbox-center         vector :inline :offset-assert  48)
+   (camera-to-bbox-dist float          :offset-assert  64)
+   )
+  :method-count-assert 10
+  :size-assert         #x44
+  :flag-assert         #xa00000044
+  (:methods
+    (col-rend-method-9 () none 9)
+    )
+  )
+
+(define *col-rend* (new 'static 'col-rend
+                     :draw? #f
+                     :outline? #t
+                     :show-back-faces? #t
+                     :show-normals? #f
+                     :ghost-hidden? #t
+                     :cspec #x38
+                     :track #x1
+                     :bbox-radius 24576.0
+                     :camera-to-bbox-dist 65536.0
+                     )
+        )
+
+
+(defun-debug debug-actor? ((arg0 object))
+  (= arg0 *debug-actor*)
+  )
+

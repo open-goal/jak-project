@@ -1231,7 +1231,8 @@ void types2_for_add(types2::Type& type_out,
           TP_Type::make_from_ts(coerce_to_reg_type(filtered_results.front().result_type));
       return;
     } else {
-      ASSERT(false);
+      types2_from_ambiguous_deref(output_instr, type_out, filtered_results, extras.tags_locked);
+      return;
     }
   }
 
