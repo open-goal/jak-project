@@ -408,9 +408,9 @@ StructureDefResult parse_structure_def(
   }
 
   if (size_assert != -1 && flags.size != u16(size_assert)) {
-    throw std::runtime_error("Type " + type->get_name() + " came out to size " +
-                             std::to_string(int(flags.size)) + " but size-assert was set to " +
-                             std::to_string(size_assert));
+    throw std::runtime_error(
+        fmt::format("Type {} came out to size {}[{:#x}] but size-assert was set to {}",
+                    type->get_name(), int(flags.size), int(flags.size), size_assert));
   }
 
   flags.methods = ts->get_next_method_id(type);
@@ -497,9 +497,9 @@ BitFieldTypeDefResult parse_bitfield_type_def(BitFieldType* type,
   }
 
   if (size_assert != -1 && flags.size != u16(size_assert)) {
-    throw std::runtime_error("Type " + type->get_name() + " came out to size " +
-                             std::to_string(int(flags.size)) + " but size-assert was set to " +
-                             std::to_string(size_assert));
+    throw std::runtime_error(
+        fmt::format("Type {} came out to size {}[{:#x}] but size-assert was set to {}",
+                    type->get_name(), int(flags.size), int(flags.size), size_assert));
   }
 
   flags.methods = ts->get_next_method_id(type);

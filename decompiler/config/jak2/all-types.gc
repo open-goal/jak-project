@@ -1067,7 +1067,7 @@
   )
 
 (deftype vector4 (structure)
-  ((data  float 4  :offset-assert 0)
+  ((data  float 4  :offset-assert 0 :score -1)
    (x     float    :offset        0)
    (y     float    :offset        4)
    (z     float    :offset        8)
@@ -4441,7 +4441,7 @@
 (define-extern vector4-array-scale! (function (inline-array vector4) (inline-array vector4) float int none))
 (define-extern vector4-array-madd! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
 (define-extern vector4-array-msub! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
-(define-extern vector4-array-lerp! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int none))
+(define-extern vector4-array-lerp! (function (inline-array vector4) (inline-array vector4) (inline-array vector4) float int symbol))
 (define-extern spheres-overlap? (function sphere sphere symbol))
 (define-extern sphere<-vector! (function sphere vector sphere))
 (define-extern sphere<-vector+r! (function sphere vector float sphere))
@@ -5198,7 +5198,7 @@
 
 (deftype mood-channel (structure)
   ((data float 24 :offset-assert 0)
-   (vecs vector4 6 :inline  :offset 0)
+   (vecs vector4 6 :inline :offset 0 :score 999)
    )
   :method-count-assert 9
   :size-assert         #x60
@@ -5364,7 +5364,7 @@
 
 (deftype mood-context (mood-context-core3)
   ((itimes vector4w 4  :inline :offset-assert 1776)
-   (state  uint32    32 :offset-assert 1840)
+   (state  uint32    32 :offset-assert 1840) ;; arbitrary data - can be floats | symbols
    )
   :method-count-assert 9
   :size-assert         #x7b0
@@ -5405,31 +5405,52 @@
    (lightning-time        int32                :offset-assert 128)
    (lightning-time2       float                :offset-assert 132)
    (lightning-flash       float                :offset-assert 136)
-   (lightning-id          uint32               :offset-assert 140)
+   (lightning-id          sound-id             :offset-assert 140)
    (lightning-count0      uint32               :offset-assert 144)
    (lightning-count1      uint32               :offset-assert 148)
    (lightning-count2      uint32               :offset-assert 152)
    (rain-id               uint32               :offset-assert 156)
    (sound-pitch           float                :offset-assert 160)
-   (fogs                  mood-fog     9       :offset-assert 164) ;; these 4 are guesses
-   (colors                mood-color   3       :offset-assert 200)
-   (channels              mood-channel 3       :offset-assert 212)
+   (fogs                  mood-fog-table     9       :offset-assert 164)
+   (colors                mood-color-table   3       :offset-assert 200)
+   (channels              mood-channel-group 3       :offset-assert 212)
    (clouds                mood-clouds  9       :offset-assert 224)
    )
   :method-count-assert 19
   :size-assert         #x104
   :flag-assert         #x1300000104
   (:methods
-    (mood-control-method-9 () none 9)
-    (mood-control-method-10 () none 10)
-    (mood-control-method-11 () none 11)
-    (mood-control-method-12 () none 12)
-    (mood-control-method-13 () none 13)
-    (mood-control-method-14 () none 14)
-    (mood-control-method-15 () none 15)
-    (mood-control-method-16 () none 16)
-    (mood-control-method-17 () none 17)
-    (mood-control-method-18 () none 18)
+    (init-weather!
+      ;; TODO - local-vars mess up docstring placement
+      ;; "A bunch of setup around moods and weather depending on a variety of conditions"
+      (_type_) none :behavior process 9)
+    (update-mood-weather!
+      "Set the `target-interp` and `speed-interp` for the clouds and fog
+       If `*-speed` is 0.0, use the `*-target` args to set `current-interp`
+       See [[mood-weather]]"
+      (_type_ float float float float) none 10)
+    (update-mood-range!
+      "Set the minimum and maximum ranges of clouds and fog
+       See [[mood-range]]"
+      (_type_ float float float float) none 11)
+    (set-time-for-random-weather!
+      "Set the `time-until-random`'s cloud and fog values
+       See [[mood-weather]]"
+      (_type_ float float) none 12)
+    (apply-mood-clouds-and-fog (_type_ mood-control-work) none 13)
+    (apply-mood-color (_type_ mood-control-work) none 14)
+    (apply-mood-channels (_type_ mood-control-work) none 15)
+    (adjust-num-clouds! (_type_ mood-control-work) none 16)
+    (gen-lightning-and-thunder!
+      ;; TODO - docstrings with behaviors!
+      ;; "Generates the lightning and thunder to play, kicks off the associated sounds"
+      (_type_) number 17)
+    (play-or-stop-lightning!
+      "Handles playing/stopping of the lightning sound
+       - Plays the lightning sound if we are not loading and `lightning-id` is zero
+       - Stops the lightning sound first if `lightning-id` is non-zero
+       Returns the current value of `lightning-id`"
+      (_type_ sound-spec vector) sound-id 18)
     )
   )
 
@@ -5761,6 +5782,10 @@
    (level4 level :inline :offset 21184)
    (level5 level :inline :offset 26416)
    (default-level level :inline :offset 31648)
+
+   (unknown-inline-vec-01 (inline-array vector) :offset 32064)
+   (unknown-inline-vec-02 (inline-array vector) :offset 33712)
+
    (pad2 uint8 4)
    )
   :method-count-assert 31
@@ -9540,7 +9565,6 @@
   :flag-assert         #x900000014
   )
 
-
 (deftype time-of-day-context (basic)
   ((interp               float       6       :offset-assert 4) ;; guessed by decompiler
    (current-fog          mood-fog    :inline :offset-assert 32)
@@ -9560,7 +9584,7 @@
    (sky                  symbol              :offset-assert 2060) ;; guessed by decompiler
    (use-camera-other     basic               :offset-assert 2064)
    (title-updated        symbol              :offset-assert 2068) ;; guessed by decompiler
-   (mode                 uint32              :offset-assert 2072)
+   (mode                 uint32              :offset-assert 2072) ;; TODO - bitfield?
    (overide-enable       basic               :offset-assert 2076)
    (overide-palette      uint32              :offset-assert 2080)
    (max-rain             float               :offset-assert 2084)
@@ -16110,7 +16134,7 @@
    ; (boxes box8s-array :offset-assert 148)
    ; (current-bsp-back-flags uint32 :offset-assert 152)
    (unk-byte uint8 :offset 152)
-   ; (ambients drawable-inline-array-ambient :offset-assert 156) ;; now just #t?
+   (ambients symbol :offset-assert 156) ;; now just #t?
    (unk-data-4 float :offset 160)
    (unk-data-5 float :offset-assert 164)
    ; (adgifs adgif-shader-array :offset-assert 168)
@@ -17910,8 +17934,8 @@
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (sparticle-launcher-method-9 () none 9)
-    (sparticle-launcher-method-10 () none 10)
+    (sparticle-launcher-method-9 (_type_ int) uint 9)
+    (sparticle-launcher-method-10 (_type_) none 10)
     )
   )
 
@@ -20523,7 +20547,7 @@
 |#
 
 ;; (define-extern *sound-loop-engine* object)
-;; (define-extern *sound-player-rpc* object) ;; rpc-buffer-pair
+(define-extern *sound-player-rpc* rpc-buffer-pair)
 ;; (define-extern *sound-loader-rpc* object) ;; rpc-buffer-pair
 ;; (define-extern sound-name= function) ;; (function sound-name sound-name symbol)
 ;; (define-extern *sound-iop-info* object) ;; sound-iop-info
@@ -20547,9 +20571,9 @@
 ;; (define-extern list-sounds function) ;; (function int)
 ;; (define-extern sound-command->string function) ;; (function sound-command string)
 ;; (define-extern sound-buffer-dump function) ;; (function int)
-;; (define-extern *sound-player-enable* object) ;; symbol
+(define-extern *sound-player-enable* symbol)
 (define-extern swap-sound-buffers  (function vector vector float int))
-;; (define-extern get-sound-buffer-entry function) ;; (function pointer)
+(define-extern get-sound-buffer-entry (function pointer))
 ;; (define-extern free-last-sound-buffer-entry function) ;; (function int)
 ;; (define-extern sound-basic-cb function) ;; (function int (pointer int32) none)
 ;; (define-extern sound-trans-convert function) ;; (function vector3w vector int)
@@ -20558,10 +20582,10 @@
 ;; (define-extern sound-set-volume function) ;; (function sound-group float int)
 ;; (define-extern sound-set-reverb function) ;; (function int float float uint int)
 ;; (define-extern sound-set-ear-trans function) ;; (function vector vector float int)
-;; (define-extern sound-play-by-name function) ;; (function sound-name sound-id int int int sound-group symbol sound-id)
+(define-extern sound-play-by-name (function sound-name sound-id int int int sound-group symbol sound-id))
 (define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id))
 ;; (define-extern sound-pause function) ;; (function sound-id int)
-;; (define-extern sound-stop function) ;; (function sound-id int)
+(define-extern sound-stop "Stops a sound identified by the given id" (function sound-id int))
 ;; (define-extern sound-continue function) ;; (function sound-id int)
 (define-extern sound-group-pause (function sound-group int))
 ;; (define-extern sound-group-stop function) ;; (function sound-group int)
@@ -22352,7 +22376,7 @@
   )
 |#
 
-;; (define-extern *part-id-table* object) ;; (array sparticle-launcher)
+(define-extern *part-id-table* (array sparticle-launcher))
 ;; (define-extern *part-group-id-table* object) ;; (array sparticle-launch-group)
 ;; (define-extern *sp-temp* object)
 ;; (define-extern lookup-part-group-by-name function) ;; (function string basic)
@@ -22662,80 +22686,85 @@
 ;; mood-tables                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *no-cloud-haze-mood-fog-table* object)
-;; (define-extern *no-cloud-clear-mood-fog-table* object)
-;; (define-extern *no-cloud-smog-mood-fog-table* object)
-;; (define-extern *overcast-fog-mood-fog-table* object)
-;; (define-extern *overcast-clear-mood-fog-table* object)
-;; (define-extern *overcast-rain-mood-fog-table* object)
-;; (define-extern *storm-fog-mood-fog-table* object)
-;; (define-extern *storm-clear-mood-fog-table* object)
-;; (define-extern *storm-rain-mood-fog-table* object)
-;; (define-extern *no-cloud-mood-color-table* object)
-;; (define-extern *overcast-mood-color-table* object)
-;; (define-extern *storm-mood-color-table* object)
-;; (define-extern *no-cloud-mood-channel-group* object)
-;; (define-extern *overcast-mood-channel-group* object)
-;; (define-extern *stormy-mood-channel-group* object)
-;; (define-extern *clouds-000* object)
-;; (define-extern *clouds-125* object)
-;; (define-extern *clouds-250* object)
-;; (define-extern *clouds-375* object)
-;; (define-extern *clouds-500* object)
-;; (define-extern *clouds-625* object)
-;; (define-extern *clouds-750* object)
-;; (define-extern *clouds-875* object)
-;; (define-extern *clouds-1000* object)
-;; (define-extern *drill-mood-fog-table* object)
-;; (define-extern *drill-mood-color-table* object)
-;; (define-extern *drill-mood-direction-table* object)
-;; (define-extern *mood-direction-table* object)
-;; (define-extern *mood-sky-table* object)
-;; (define-extern *mood-interp-table* object)
-;; (define-extern init-mood-control function)
+(define-extern *no-cloud-haze-mood-fog-table* mood-fog-table)
+(define-extern *no-cloud-clear-mood-fog-table* mood-fog-table)
+(define-extern *no-cloud-smog-mood-fog-table* mood-fog-table)
+(define-extern *overcast-fog-mood-fog-table* mood-fog-table)
+(define-extern *overcast-clear-mood-fog-table* mood-fog-table)
+(define-extern *overcast-rain-mood-fog-table* mood-fog-table)
+(define-extern *storm-fog-mood-fog-table* mood-fog-table)
+(define-extern *storm-clear-mood-fog-table* mood-fog-table)
+(define-extern *storm-rain-mood-fog-table* mood-fog-table)
+(define-extern *no-cloud-mood-color-table* mood-color-table)
+(define-extern *overcast-mood-color-table* mood-color-table)
+(define-extern *storm-mood-color-table* mood-color-table)
+(define-extern *no-cloud-mood-channel-group* mood-channel-group)
+(define-extern *overcast-mood-channel-group* mood-channel-group)
+(define-extern *stormy-mood-channel-group* mood-channel-group)
+(define-extern *clouds-000* mood-clouds)
+(define-extern *clouds-125* mood-clouds)
+(define-extern *clouds-250* mood-clouds)
+(define-extern *clouds-375* mood-clouds)
+(define-extern *clouds-500* mood-clouds)
+(define-extern *clouds-625* mood-clouds)
+(define-extern *clouds-750* mood-clouds)
+(define-extern *clouds-875* mood-clouds)
+(define-extern *clouds-1000* mood-clouds)
+(define-extern *drill-mood-fog-table* mood-fog-table)
+(define-extern *drill-mood-color-table* mood-color-table)
+(define-extern *drill-mood-direction-table* mood-direction-table)
+(define-extern *mood-direction-table* mood-direction-table)
+(define-extern *mood-sky-table* mood-sky-table)
+(define-extern *mood-interp-table* sky-color-day)
+(define-extern init-mood-control (function mood-control none))
 (define-extern *mood-control* mood-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood-tables2                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *overide-mood-color-table* object)
-;; (define-extern *overide-mood-fog-table* object)
-;; (define-extern init-overide-table function)
-;; (define-extern *overide-table* mood-table)
-;; (define-extern print-mood-tables function)
-;; (define-extern desaturate-mood-colors function)
-;; (define-extern desaturate-mood-fog function)
+(define-extern *overide-mood-color-table* mood-color-table)
+(define-extern *overide-mood-fog-table* mood-fog-table)
+(define-extern init-overide-table (function mood-table none))
+(define-extern *overide-table* mood-table)
+(define-extern print-mood-tables
+  "Print out the contents of the [[*overide-table*]]"
+  (function none))
+(define-extern desaturate-mood-colors
+  "Unused - Generate GOAL code for a new [[*overide-mood-color-table*]] definition that desaturates the color
+   Apply said overrides to the [[*overide-table*]]"
+  (function float float float none))
+(define-extern desaturate-mood-fog
+  "Unused - Generate GOAL code for a new [[*overide-mood-fog-table*]] definition that desaturates the fog color
+   Apply said overrides to the [[*overide-table*]]"
+  (function (pointer mood-fog-table) float float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype flames-state (structure)
   ((time   float  :offset-assert 0) ;; uint8
    (index  uint8  :offset-assert 4)
    (length uint8  :offset-assert 5)
    (height uint8  :offset-assert 6)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x7
   :flag-assert         #x900000007
   )
-|#
 
-#|
 (deftype light-state (structure)
   ((time float  :offset-assert 0)
    (fade float  :offset-assert 4) ;; uint8
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype lava-state (structure)
   ((lava float  :offset-assert 0)
    )
@@ -22743,9 +22772,7 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype flicker-state (structure)
   ((flicker-off uint8  :offset-assert 0)
    (flicker-on  uint8  :offset-assert 1)
@@ -22754,9 +22781,7 @@
   :size-assert         #x2
   :flag-assert         #x900000002
   )
-|#
 
-#|
 (deftype florescent-state (structure)
   ((value  float  :offset-assert 0)
    (delay  int8   :offset-assert 4)
@@ -22766,30 +22791,26 @@
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype electricity-state (structure)
   ((value float  :offset-assert 0)
    (scale float  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype pulse-state (structure)
   ((pulse float  :offset-assert 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype strobe-state (structure)
   ((time float  :offset-assert 0)
    )
@@ -22797,87 +22818,77 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (define-extern palette-select-special function)
-;; (define-extern clear-mood-times function) ;; (function mood-context symbol)
-;; (define-extern update-mood-itimes function) ;; (function mood-context none)
-;; (define-extern update-mood-direction function)
-;; (define-extern update-mood-exterior function)
-;; (define-extern copy-mood-exterior function)
-;; (define-extern copy-mood-exterior-ambi function)
+(define-extern palette-select-special "Use the `special` time-of-day mode palette" (function mood-context-core3 symbol))
+(define-extern clear-mood-times "Clear all of the mood times on the given context" (function mood-context symbol))
+(define-extern update-mood-itimes (function mood-context none))
+(define-extern update-mood-direction (function mood-context-core3 mood-table float float))
+(define-extern update-mood-exterior (function mood-context-core3 mood-table float int object)) ;; TODO - so many potential return values...
+(define-extern copy-mood-exterior (function mood-context symbol))
+(define-extern copy-mood-exterior-ambi (function mood-context symbol none))
 (define-extern clear-mood-context (function int none))
 ;; (define-extern update-mood-interior function)
-;; (define-extern update-mood-flames function) ;; (function mood-context int int int float float float none)
-;; (define-extern *flash0* array) ;; (array float)
-;; (define-extern *flash1* array) ;; (array float)
-;; (define-extern *flash2* array) ;; (array float)
-;; (define-extern *flash3* array) ;; (array float)
-;; (define-extern *flash4* array) ;; (array float)
-;; (define-extern *flash5* array) ;; (array float)
-;; (define-extern *flash6* array) ;; (array float)
-;; (define-extern *flash7* array) ;; (array float)
-;; (define-extern update-mood-light function) ;; (function mood-context int int int float float float int none)
+(define-extern update-mood-flames (function mood-context int int int float float float float :behavior process))
+(define-extern *flash0* (array float))
+(define-extern *flash1* (array float))
+(define-extern *flash2* (array float))
+(define-extern *flash3* (array float))
+(define-extern *flash4* (array float))
+(define-extern *flash5* (array float))
+(define-extern *flash6* (array float))
+(define-extern *flash7* (array float))
+(define-extern update-mood-light (function mood-context int int int float float float int none))
 ;; (define-extern update-mood-lava function) ;; (function mood-context int int symbol none)
 ;; (define-extern update-mood-flicker function)
 ;; (define-extern update-mood-florescent function)
-;; (define-extern update-mood-electricity function)
-;; (define-extern update-mood-pulse function)
+(define-extern update-mood-electricity (function mood-context int int int float float float int none))
+(define-extern update-mood-pulse (function mood-context int int int float float float int none))
 ;; (define-extern update-mood-strobe function)
-;; (define-extern update-mood-caustics function) ;; (function mood-context int int none)
+(define-extern update-mood-caustics (function mood-context int float float float float float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood-funcs                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype ruins-states (UNKNOWN)
+(deftype ruins-states (structure)
   ((light  light-state        :inline :offset-assert 0)
    (spec-0 sp-field-init-spec         :offset-assert 8)
    (spec-1 sp-field-init-spec         :offset-assert 12)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype strip-states (UNKNOWN)
+(deftype strip-states (structure)
   ((light0 light-state        :inline :offset-assert 0)
    (light1 light-state        :inline :offset-assert 8)
    (spec-0 sp-field-init-spec         :offset-assert 16)
    (spec-1 sp-field-init-spec         :offset-assert 20)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
   )
-|#
 
-#|
-(deftype ctywide-states (UNKNOWN)
+(deftype ctywide-states (structure)
   ((light light-state  :inline :offset-assert 0)
    (flame flames-state :inline :offset-assert 8)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #xf
+  :flag-assert         #x90000000f
   )
-|#
 
-#|
-(deftype ctyind-states (UNKNOWN)
+(deftype ctyind-states (structure)
   ((light light-state :inline :offset-assert 0)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
   )
-|#
 
-#|
-(deftype ctysluma-states (UNKNOWN)
+(deftype ctysluma-states (structure)
   ((light           light-state        :inline :offset-assert 0)
    (neon            light-state        :inline :offset-assert 8)
    (flame           flames-state       :inline :offset-assert 16)
@@ -22885,131 +22896,109 @@
    (spec-1          sp-field-init-spec         :offset-assert 28)
    (neon-min-bright float                      :offset-assert 32)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
   )
-|#
 
-#|
-(deftype ctyslumb-states (UNKNOWN)
+(deftype ctyslumb-states (structure)
   ((light  light-state        :inline :offset-assert 0)
    (flame  flames-state       :inline :offset-assert 8)
    (spec-0 sp-field-init-spec         :offset-assert 16)
    (spec-1 sp-field-init-spec         :offset-assert 20)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
   )
-|#
 
-#|
-(deftype ctyslumc-states (UNKNOWN)
+(deftype ctyslumc-states (structure)
   ((light  light-state        :inline :offset-assert 0)
    (spec-0 sp-field-init-spec         :offset-assert 8)
    (spec-1 sp-field-init-spec         :offset-assert 12)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype ctyport-states (UNKNOWN)
+(deftype ctyport-states (structure)
   ((light           light-state        :inline :offset-assert 0)
    (spec-0          sp-field-init-spec         :offset-assert 8)
    (neon-min-bright float                      :offset-assert 12)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype ctymarka-states (UNKNOWN)
+(deftype ctymarka-states (structure)
   ((light light-state :inline :offset-assert 0)
    (blink float               :offset-assert 8)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
   )
-|#
 
-#|
-(deftype ctymarkb-states (UNKNOWN)
+(deftype ctymarkb-states (structure)
   ((light light-state :inline :offset-assert 0)
    (blink float               :offset-assert 8)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
   )
-|#
 
-#|
-(deftype palcab-states (UNKNOWN)
+(deftype palcab-states (structure)
   ((light        light-state       :inline :offset-assert 0)
    (turret-value float                     :offset-assert 8)
    (electricity  electricity-state :inline :offset-assert 12)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
   )
-|#
 
-#|
-(deftype stadium-states (UNKNOWN)
+(deftype stadium-states (structure)
   ((light light-state  :inline :offset-assert 0)
    (flame flames-state :inline :offset-assert 8)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #xf
+  :flag-assert         #x90000000f
   )
-|#
 
-#|
-(deftype stadiumb-states (UNKNOWN)
+(deftype stadiumb-states (structure)
   ((light        light-state :inline :offset-assert 0)
    (shield-count float               :offset-assert 8)
    (shield       float               :offset-assert 12)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype skatea-states (UNKNOWN)
+(deftype skatea-states (structure)
   ((light light-state  :inline :offset-assert 0)
    (flame flames-state :inline :offset-assert 8)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #xf
+  :flag-assert         #x90000000f
   )
-|#
 
-#|
-(deftype ltentout-states (UNKNOWN)
+(deftype ltentout-states (structure)
   ((light light-state  :inline :offset-assert 0)
    (flame flames-state :inline :offset-assert 8)
    (totem flames-state :inline :offset-assert 16)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x17
+  :flag-assert         #x900000017
   )
-|#
 
-#|
-(deftype mountain-states (UNKNOWN)
+(deftype mountain-states (structure)
   ((light0 light-state        :inline :offset-assert 0)
    (light1 light-state        :inline :offset-assert 8)
    (spec-0 sp-field-init-spec         :offset-assert 16)
@@ -23020,235 +23009,209 @@
    (spec-5 sp-field-init-spec         :offset-assert 36)
    (spec-6 sp-field-init-spec         :offset-assert 40)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
   )
-|#
 
-#|
-(deftype forest-states (UNKNOWN)
+(deftype forest-states (structure)
   ((light light-state :inline :offset-assert 0)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
   )
-|#
 
-#|
-(deftype atoll-states (UNKNOWN)
+(deftype atoll-states (structure)
   ((light     light-state :inline :offset-assert 0)
    (explosion float               :offset-assert 8)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
   )
-|#
 
-#|
-(deftype drill-states (UNKNOWN)
+(deftype drill-states (structure)
   ((fire-floor      float                :offset-assert 0)
    (fire-floor-fade float                :offset-assert 4)
    (fire-floor-flag basic                :offset-assert 8)
    (flame           flames-state :inline :offset-assert 12)
-   (electricity     UNKNOWN      2       :offset-assert 20)
-   (pulse           pulse-state  :inline :offset-assert 52)
+   (electricity     electricity-state      2  :inline     :offset-assert 20) ;; TODO - probably wrong, elec-wall? (but its an array....)
+   (pulse           pulse-state  :inline :offset 52)
    (light-flag      basic                :offset-assert 56)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x3c
+  :flag-assert         #x90000003c
   )
-|#
 
-#|
-(deftype drillb-states (UNKNOWN)
+(deftype drillb-states (structure)
   ((fire-floor      float               :offset-assert 0)
    (fire-floor-fade float               :offset-assert 4)
    (fire-floor-flag basic               :offset-assert 8)
    (pulse           pulse-state :inline :offset-assert 12)
    (light-flag      basic               :offset-assert 16)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
   )
-|#
 
-#|
-(deftype casboss-states (UNKNOWN)
+(deftype casboss-states (structure)
   ((light     light-state :inline :offset-assert 0)
    (explosion float               :offset-assert 8)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
   )
-|#
 
-#|
-(deftype caspad-states (UNKNOWN)
+(deftype caspad-states (structure)
   ((light       light-state :inline :offset-assert 0)
    (red         float               :offset-assert 8)
    (white       float               :offset-assert 12)
    (white-count int32               :offset-assert 16)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
   )
-|#
 
-#|
-(deftype palout-states (UNKNOWN)
+(deftype palout-states (structure)
   ((light light-state  :inline :offset-assert 0)
    (flame flames-state :inline :offset-assert 8)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #xf
+  :flag-assert         #x90000000f
   )
-|#
 
-#|
-(deftype palroof-states (UNKNOWN)
-  ((electricity UNKNOWN 2 :offset-assert 0)
+(deftype palroof-states (structure)
+  ((electricity vector 2 :inline :offset-assert 0) ;; TODO - probably wrong, elec-wall? (but its an array....)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
   )
-|#
 
-#|
-(deftype palent-states (UNKNOWN)
+(deftype palent-states (structure)
   ((flame        flames-state :inline :offset-assert 0)
    (turret-value float                :offset-assert 8)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
   )
-|#
 
-#|
-(deftype nest-states (UNKNOWN)
+(deftype nest-states (structure)
   ((light       light-state :inline :offset-assert 0)
    (green-flag  basic               :offset-assert 8)
    (green       float               :offset-assert 12)
    (green-noise float               :offset-assert 16)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
   )
-|#
 
-#|
-(deftype village1-states (UNKNOWN)
+(deftype village1-states (structure)
   ((interp      float  :offset-assert 0)
    (interp-flag basic  :offset-assert 4)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
   )
-|#
 
-#|
-(deftype consite-states (UNKNOWN)
+(deftype consite-states (structure)
   ((light light-state :inline :offset-assert 0)
    (flash float               :offset-assert 8)
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
   )
-|#
 
-#|
-(deftype mincan-states (UNKNOWN)
-  ((beams UNKNOWN 2 :offset-assert 0)
+(deftype mincan-states (structure)
+  ((beams strobe-state 2 :offset-assert 0) ;; a guess!
    )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
   )
-|#
 
-;; (define-extern update-mood-default function) ;; (function mood-context float int none)
-;; (define-extern get-sphere-interp function)
-;; (define-extern init-mood-ruins function)
-;; (define-extern update-mood-ruins function)
-;; (define-extern init-mood-strip function)
-;; (define-extern update-mood-strip function)
-;; (define-extern update-mood-ctywide function)
-;; (define-extern update-mood-copy-ctywide function)
-;; (define-extern update-mood-ctyind function)
-;; (define-extern init-mood-ctysluma function)
-;; (define-extern update-mood-ctysluma function)
-;; (define-extern init-mood-ctyslumb function)
-;; (define-extern update-mood-ctyslumb function)
-;; (define-extern init-mood-ctyslumc function)
-;; (define-extern update-mood-ctyslumc function)
-;; (define-extern init-mood-ctyport function)
-;; (define-extern init-mood-ctyport-no-part function)
-;; (define-extern update-mood-ctyport function)
-;; (define-extern update-mood-ctymarka function)
-;; (define-extern update-mood-ctymarkb function)
-;; (define-extern init-mood-palcab function)
-;; (define-extern update-mood-palcab function)
-;; (define-extern set-palcab-turret-flash! function)
-;; (define-extern update-stadium-lights function)
-;; (define-extern update-mood-stadium function)
-;; (define-extern update-mood-copy-stadium function)
-;; (define-extern update-stadiumb-lights function)
-;; (define-extern update-mood-stadiumb function)
-;; (define-extern update-mood-skatea function)
-;; (define-extern update-ltentout-lights function)
-;; (define-extern update-mood-ltentout function)
-;; (define-extern init-mood-mountain function)
-;; (define-extern update-mood-mountain function)
-;; (define-extern update-mood-forest function)
-;; (define-extern init-mood-atoll function)
-;; (define-extern update-mood-atoll function)
-;; (define-extern set-atoll-explosion! function)
-;; (define-extern update-mood-atollext function)
-;; (define-extern init-mood-drill function)
-;; (define-extern update-drill-lights function)
-;; (define-extern update-mood-drill function)
-;; (define-extern set-drill-fire-floor! function)
-;; (define-extern set-drill-electricity-scale! function)
-;; (define-extern update-mood-drillmnt function)
-;; (define-extern init-mood-drillb function)
-;; (define-extern update-mood-drillb function)
-;; (define-extern update-casboss-lights function)
-;; (define-extern update-mood-casboss function)
-;; (define-extern set-casboss-explosion! function)
-;; (define-extern update-mood-caspad function)
-;; (define-extern init-mood-palout function)
-;; (define-extern update-mood-palout function)
-;; (define-extern init-mood-palroof function)
-;; (define-extern update-mood-palroof function)
-;; (define-extern set-palroof-electricity-scale! function)
-;; (define-extern update-mood-palent function)
-;; (define-extern set-palent-turret-flash! function)
-;; (define-extern init-mood-nest function)
-;; (define-extern update-nest-lights function)
-;; (define-extern update-mood-nest function)
-;; (define-extern set-nest-green-flag! function)
-;; (define-extern init-mood-village1 function)
-;; (define-extern update-village1-lights function)
-;; (define-extern update-mood-village1 function) ;; (function mood-context float int none)
-;; (define-extern update-mood-copy-village1 function)
-;; (define-extern clear-village1-interp! function)
-;; (define-extern set-village1-interp! function)
-;; (define-extern update-mood-consite function)
-;; (define-extern set-consite-flash! function)
-;; (define-extern update-mood-mincan function)
-;; (define-extern set-mincan-beam! function)
+
+(define-extern update-mood-default (function mood-context float int none))
+(define-extern get-sphere-interp (function sphere vector float float float))
+(define-extern init-mood-ruins (function mood-context none))
+(define-extern update-mood-ruins (function mood-context int int none))
+(define-extern init-mood-strip "TODO - returns element at offset 20 in the context's state" (function mood-context uint))
+(define-extern update-mood-strip (function mood-context int int none))
+(define-extern update-mood-ctywide (function mood-context int int none))
+(define-extern update-mood-copy-ctywide (function mood-context int int none))
+(define-extern update-mood-ctyind (function mood-context float int none))
+(define-extern init-mood-ctysluma (function mood-context float))
+(define-extern update-mood-ctysluma (function mood-context float int none))
+(define-extern init-mood-ctyslumb (function mood-context uint))
+(define-extern update-mood-ctyslumb (function mood-context float int none))
+(define-extern init-mood-ctyslumc (function mood-context none))
+(define-extern update-mood-ctyslumc (function mood-context float int none))
+(define-extern init-mood-ctyport (function mood-context uint))
+(define-extern init-mood-ctyport-no-part (function mood-context none)) ;; seems like the return is the particle (group) id perhaps implied by this name?
+(define-extern update-mood-ctyport (function mood-context float int none))
+(define-extern update-mood-ctymarka (function mood-context float int none))
+(define-extern update-mood-ctymarkb (function mood-context float int none))
+(define-extern init-mood-palcab (function mood-context float)) ;; sometimes they are floats though
+(define-extern update-mood-palcab (function mood-context float int none))
+(define-extern set-palcab-turret-flash! (function float float))
+(define-extern update-stadium-lights (function mood-context none))
+(define-extern update-mood-stadium (function mood-context float int none))
+(define-extern update-mood-copy-stadium (function mood-context float int none))
+(define-extern update-stadiumb-lights (function mood-context none))
+(define-extern update-mood-stadiumb (function mood-context float int none :behavior process)) ;; process - time of day?
+(define-extern update-mood-skatea (function mood-context float int none))
+(define-extern update-ltentout-lights (function mood-context none))
+(define-extern update-mood-ltentout (function mood-context float int none))
+(define-extern init-mood-mountain (function mood-context uint))
+(define-extern update-mood-mountain (function mood-context float int none))
+(define-extern update-mood-forest (function mood-context float int none))
+(define-extern init-mood-atoll (function mood-context float))
+(define-extern update-mood-atoll (function mood-context float int none))
+(define-extern set-atoll-explosion! (function float float))
+(define-extern update-mood-atollext (function mood-context float int none))
+(define-extern init-mood-drill (function mood-context symbol))
+(define-extern update-drill-lights (function mood-context none))
+(define-extern update-mood-drill (function mood-context float int object object float float int none))
+(define-extern set-drill-fire-floor! (function symbol symbol))
+(define-extern set-drill-electricity-scale! (function float float float))
+(define-extern update-mood-drillmnt (function mood-context float int none))
+(define-extern init-mood-drillb (function mood-context symbol))
+(define-extern update-mood-drillb (function mood-context float int none))
+(define-extern update-casboss-lights (function mood-context float))
+(define-extern update-mood-casboss (function mood-context float int none))
+(define-extern set-casboss-explosion! (function float))
+(define-extern update-mood-caspad (function mood-context float int none))
+(define-extern init-mood-palout (function mood-context vector))
+(define-extern update-mood-palout (function mood-context float int none))
+(define-extern init-mood-palroof (function mood-context float))
+(define-extern update-mood-palroof (function mood-context object int object object float float float none))
+(define-extern set-palroof-electricity-scale! "TODO - guess on vector, comes from palroof-elec-gate and is probably a pointer to palettes?" (function float (inline-array vector) float))
+(define-extern update-mood-palent (function mood-context float int none))
+(define-extern set-palent-turret-flash! (function float float))
+(define-extern init-mood-nest (function mood-context symbol))
+(define-extern update-nest-lights (function mood-context pointer))
+(define-extern update-mood-nest (function mood-context float int none))
+(define-extern set-nest-green-flag! (function symbol symbol))
+(define-extern init-mood-village1 (function mood-context symbol))
+(define-extern update-village1-lights (function mood-context float))
+(define-extern update-mood-village1 (function mood-context float int none))
+(define-extern update-mood-copy-village1 (function mood-context float int none))
+(define-extern clear-village1-interp! (function symbol))
+(define-extern set-village1-interp! (function symbol))
+(define-extern update-mood-consite (function mood-context float int none))
+(define-extern set-consite-flash! (function float))
+(define-extern update-mood-mincan (function mood-context float int none))
+(define-extern set-mincan-beam! (function int float float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood-funcs2                    ;;
@@ -23767,7 +23730,7 @@
 ;; (define-extern time-of-day-interp-colors function) ;; (function (pointer rgba) uint mood-context none)
 ;; (define-extern time-of-day-interp-colors-scratch function) ;; (function (pointer rgba) time-of-day-palette mood-context none)
 (define-extern init-time-of-day-context (function time-of-day-context none))
-;; (define-extern set-filter-color! function)
+(define-extern set-filter-color! (function float float int none))
 ;; (define-extern tod-madd! function)
 ;; (define-extern update-environment-colors function)
 (define-extern update-time-of-day (function time-of-day-context none))
@@ -24469,8 +24432,8 @@
 ;; (define-extern matrix-local->world function) ;; (function symbol symbol matrix)
 ;; (define-extern matrix-world->local function) ;; (function matrix)
 ;; (define-extern *camera-dummy-vector* object) ;; vector
-(define-extern camera-pos (function vector)) ;;
-;; (define-extern math-camera-pos function) ;; (function vector)
+(define-extern camera-pos (function vector))
+(define-extern math-camera-pos (function vector))
 ;; (define-extern camera-matrix function)
 ;; (define-extern math-camera-matrix function)
 (define-extern camera-angle (function float))
@@ -24715,16 +24678,16 @@
 ;; vol-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype plane-volume (structure)
   ((volume-type  symbol                :offset-assert 0) ;; guessed by decompiler
    (point-count  int16                 :offset-assert 4)
    (normal-count int16                 :offset-assert 6)
-   (first-point  vector                :offset-assert 8) ;; (pointer vector)
-   (first-normal vector                :offset-assert 12) ;; (pointer vector)
+   (first-point  (pointer vector)                :offset-assert 8) ;; (pointer vector)
+   (first-normal (pointer vector)                :offset-assert 12) ;; (pointer vector)
    (num-planes   int32                 :offset-assert 16)
    (plane        (inline-array plane)  :offset-assert 20) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 12
   :size-assert         #x18
   :flag-assert         #xc00000018
@@ -24734,30 +24697,35 @@
     (plane-volume-method-11 () none 11) ;; (dummy-11 (_type_ vector float) symbol 11)
     )
   )
-|#
 
-#|
+(defenum vol-flags
+  :bitfield #t
+  :type uint32
+  (display?)
+  )
+
 (deftype vol-control (basic)
-  ((flags         uint32              :offset-assert 4)
-   (process       process-drawable    :offset-assert 8) ;; guessed by decompiler
-   (pos-vol-count int32               :offset-assert 12)
-   (pos-vol       plane-volume     32 :offset-assert 16) ;; guessed by decompiler
-   (neg-vol-count int32               :offset-assert 784)
-   (neg-vol       plane-volume     32 :offset-assert 788) ;; guessed by decompiler
-   (debug-point   vector-array        :offset-assert 1556) ;; guessed by decompiler
-   (debug-normal  vector-array        :offset-assert 1560) ;; guessed by decompiler
+  ((flags         vol-flags     :offset-assert 4)
+   (process       process-drawable      :offset-assert 8)
+   (pos-vol-count int32      :offset-assert 12)
+   (pos-vol       plane-volume 32 :inline :offset-assert 16)
+   (neg-vol-count int32      :offset-assert 784)
+   (neg-vol       plane-volume 32 :inline :offset-assert 788)
+   (debug-point   vector-array      :offset-assert 1556)
+   (debug-normal  vector-array      :offset-assert 1560)
    )
   :method-count-assert 12
   :size-assert         #x61c
   :flag-assert         #xc0000061c
   (:methods
-     ;; (new (symbol type process-drawable) _type_ 0)
-    (vol-control-method-9 () none 9) ;; (dummy-9 (_type_) symbol 9)
-    (vol-control-method-10 () none 10) ;; (dummy-10 (_type_ vector) symbol 10)
-    (vol-control-method-11 () none 11) ;; (TODO-RENAME-11 (_type_) symbol 11)
+    (new (symbol type process-drawable) _type_ 0)
+    (vol-control-method-9 (_type_) symbol 9) ;; (dummy-9 (_type_) symbol 9)
+    (vol-control-method-10 (_type_ vector) symbol 10) ;; (dummy-10 (_type_ vector) symbol 10)
+    (should-display?
+      "Returns true/false if the volume's marks should be displayed"
+      (_type_) symbol 11)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27453,7 +27421,7 @@
 ;; (define-extern task-close! function)
 ;; (define-extern task-closed? function) ;; (function game-task task-status symbol)
 ;; (define-extern open-task-nodes function)
-;; (define-extern task-node-closed? function)
+(define-extern task-node-closed? (function int symbol)) ;; TODO - probably the task id?
 ;; (define-extern task-node-close! function)
 ;; (define-extern task-node-open? function)
 ;; (define-extern task-node-open! function)

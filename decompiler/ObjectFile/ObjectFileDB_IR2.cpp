@@ -565,7 +565,7 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
         }
       } else {
         lg::warn("Function {} didn't know its type", func.name());
-        func.warnings.warning("Function {} has unknown type", func.name());
+        func.warnings.error("Function {} has unknown type", func.name());
       }
     }
   });
