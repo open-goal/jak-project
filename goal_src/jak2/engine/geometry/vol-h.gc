@@ -5,6 +5,12 @@
 ;; name in dgo: vol-h
 ;; dgos: ENGINE, GAME
 
+(defenum vol-flags
+  :bitfield #t
+  :type uint32
+  (display?)
+  )
+
 ;; DECOMP BEGINS
 
 (deftype plane-volume (structure)
@@ -27,23 +33,6 @@
     )
   )
 
-(defmethod inspect plane-volume ((obj plane-volume))
-  (when (not obj)
-    (set! obj obj)
-    (goto cfg-4)
-    )
-  (format #t "[~8x] ~A~%" obj 'plane-volume)
-  (format #t "~1Tvolume-type: ~A~%" (-> obj volume-type))
-  (format #t "~1Tpoint-count: ~D~%" (-> obj point-count))
-  (format #t "~1Tnormal-count: ~D~%" (-> obj normal-count))
-  (format #t "~1Tfirst-point: #<vector @ #x~X>~%" (-> obj first-point))
-  (format #t "~1Tfirst-normal: #<vector @ #x~X>~%" (-> obj first-normal))
-  (format #t "~1Tnum-planes: ~D~%" (-> obj num-planes))
-  (format #t "~1Tplane: #x~X~%" (-> obj plane))
-  (label cfg-4)
-  obj
-  )
-
 (deftype vol-control (basic)
   ((flags         vol-flags                   :offset-assert   4)
    (process       process-drawable            :offset-assert   8)
@@ -63,24 +52,6 @@
     (vol-control-method-10 (_type_ vector) symbol 10)
     (should-display? (_type_) symbol 11)
     )
-  )
-
-(defmethod inspect vol-control ((obj vol-control))
-  (when (not obj)
-    (set! obj obj)
-    (goto cfg-4)
-    )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Tflags: #x~X~%" (-> obj flags))
-  (format #t "~1Tprocess: ~A~%" (-> obj process))
-  (format #t "~1Tpos-vol-count: ~D~%" (-> obj pos-vol-count))
-  (format #t "~1Tpos-vol[32] @ #x~X~%" (-> obj pos-vol))
-  (format #t "~1Tneg-vol-count: ~D~%" (-> obj neg-vol-count))
-  (format #t "~1Tneg-vol[32] @ #x~X~%" (-> obj neg-vol))
-  (format #t "~1Tdebug-point: ~A~%" (-> obj debug-point))
-  (format #t "~1Tdebug-normal: ~A~%" (-> obj debug-normal))
-  (label cfg-4)
-  obj
   )
 
 (defmethod new vol-control ((allocation symbol) (type-to-make type) (arg0 process-drawable))
