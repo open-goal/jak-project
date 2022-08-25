@@ -5639,6 +5639,7 @@
   (ten 10)
   )
 
+(declare-type game-text-id uint32)
 (deftype level (basic)
   ((name              symbol  :offset-assert 4)
    (load-name         basic   :offset-assert 8)
@@ -5735,7 +5736,7 @@
     (debug-print-region-splitbox (_type_ vector object) none 20) ;; (vis-load (_type_) uint 20)
     (get-art-group-by-name (_type_ string) art-group 21) ;; (unused-21 (_type_) none 21)
     (level-method-22 () none 22) ;; (birth (_type_) _type_ 22)
-    (level-method-23 () none 23) ;; (level-status-set! (_type_ symbol) _type_ 23)
+    (level-method-23 (_type_ game-text-id symbol) string 23) ;; (level-status-set! (_type_ symbol) _type_ 23)
     (level-method-24 () none 24)
     (birth (_type_) _type_ 25) ;; (init-vis (_type_) int 25)
     (level-status-update! (_type_ symbol) _type_ 26)
@@ -6354,7 +6355,7 @@
   ((length      int32              :offset-assert 4)
    (language-id int32              :offset-assert 8)
    (group-name  string             :offset-assert 12) ;; guessed by decompiler
-   (data        game-text :dynamic :offset-assert 16) ;; guessed by decompiler
+   (data        game-text :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 10
   :size-assert         #x10
@@ -13541,7 +13542,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype script-form (structure)
-  ((name basic  :offset-assert 0)
+  ((name string  :offset-assert 0)
    (spec basic  :offset-assert 4)
    (func basic  :offset-assert 8)
    )
@@ -21154,7 +21155,7 @@
 ;; (define-extern debug-reset-buffers function) ;; (function symbol)
 (define-extern debug-draw-buffers (function symbol))
 (define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
-;; (define-extern add-debug-line2d function) ;; (function symbol bucket-id vector vector vector symbol)
+(define-extern add-debug-line2d (function symbol bucket-id vector vector vector symbol))
 ;; (define-extern add-debug-box function) ;; (function symbol bucket-id vector vector rgba symbol)
 ;; (define-extern add-debug-box-with-transform function)
 (define-extern add-debug-x (function symbol bucket-id vector rgba symbol))
@@ -21899,8 +21900,8 @@
 
 ;; (define-extern gen-font-12 function)
 ;; (define-extern draw-string-asm function)
-;; (define-extern draw-string function) ;; (function string dma-buffer font-context float)
-;; (define-extern get-string-length function) ;; (function string font-context float)
+(define-extern draw-string (function string dma-buffer font-context float))
+(define-extern get-string-length (function string font-context float))
 (define-extern draw-string-xy (function string dma-buffer int int font-color font-flags float))
 ;; (define-extern draw-string-adv function) ;; (function string dma-buffer font-context none)
 
@@ -23996,34 +23997,30 @@
 ;; text                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype game-text-info (basic)
-  ()
-  :method-count-assert 10
-  :size-assert         #x10
-  :flag-assert         #xa00000010
-  ;; Failed to read fields.
-  (:methods
-    (game-text-info-method-9 () none 9) ;; (lookup-text! (_type_ game-text-id symbol) string 9)
-    )
-  )
-|#
-
-;; (define-extern *expand-buf-number* object)
-;; (define-extern *game-text-word* object) ;; string
-;; (define-extern *game-text-line* object) ;; string
-;; (define-extern *expanded-text-line0* object)
-;; (define-extern *expanded-text-line1* object)
-;; (define-extern *level-text-file-load-flag* object) ;; symbol
-;; (define-extern convert-korean-text function)
-;; (define-extern text-is-loading object) ;; symbol
-;; (define-extern load-game-text-info function) ;; (function string symbol kheap int)
-(define-extern load-level-text-files (function int none))
-;; (define-extern draw-debug-text-box function) ;; (function font-context none)
-;; (define-extern print-game-text-scaled function) ;; (function string float font-context int none)
-;; (define-extern print-game-text function) ;; (function string font-context symbol int int float)
-;; (define-extern disable-level-text-file-loading function) ;; (function none)
-;; (define-extern enable-level-text-file-loading function) ;; (function none)
+(define-extern *expand-buf-number* int)
+(define-extern *game-text-word* string)
+(define-extern *game-text-line* string)
+(define-extern *expanded-text-line0* string)
+(define-extern *expanded-text-line1* string)
+(define-extern *level-text-file-load-flag* symbol)
+(define-extern convert-korean-text
+  "Converts the provided [[game-text]] into korean. Returns a [[string]]"
+  (function game-text string))
+(define-extern text-is-loading symbol)
+(define-extern load-game-text-info
+  "Load text, if needed. txt-name is the group name, curr-text is the _symbol_ for
+   the game-text-info, and heap is the heap to load to. The heap will be cleared."
+  (function string symbol kheap int))
+(define-extern load-level-text-files
+  "Load the text files needed for level idx.
+   This function made more sense back when text files were split up, but in the end they put everything
+   in a single text group and file."
+  (function int none))
+(define-extern draw-debug-text-box "Draws some lines" (function font-context none))
+(define-extern print-game-text-scaled "Print text, with a given scaling" (function string float font-context int none))
+(define-extern print-game-text "Print text." (function string font-context symbol int int float))
+(define-extern disable-level-text-file-loading "Disables [[*level-text-file-load-flag*]]" (function none))
+(define-extern enable-level-text-file-loading "Disables [[*level-text-file-load-flag*]]" (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-hash                   ;;
@@ -25233,19 +25230,24 @@
 ;; script                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern command-get-int function) ;; (function object int int)
-;; (define-extern command-get-float function) ;; (function object float float)
-;; (define-extern command-get-time function) ;; (function object int int)
-;; (define-extern command-get-param function) ;; (function object object object)
-;; (define-extern command-get-quoted-param function) ;; (function object object object)
-;; (define-extern command-get-process function) ;; (function object process process :behavior camera-tracker)
-;; (define-extern command-get-entity function)
-;; (define-extern command-get-trans function) ;; (function object vector vector)
-;; (define-extern key-assoc function)
-;; (define-extern *script-form* object)
+(define-extern command-get-int (function object int int))
+(define-extern command-get-float (function object float float))
+(define-extern command-get-time (function object int int))
+(define-extern command-get-param (function object object object))
+(define-extern command-get-quoted-param (function object object object))
+;; (define-extern command-get-process (function object process process :behavior camera-tracker))
+(define-extern command-get-entity
+  "- If `search` is a [[process]] - return it's `entity`
+   - If `search` is an [[entity]] - return it
+   - If `search` is a [[string]] - return the result of [[entity-by-name]]
+   - If `search` is [[null?]] or [[empty]] or if no other condition passes, return `fallback`"
+  (function object entity entity))
+(define-extern command-get-trans (function object vector vector))
+(define-extern key-assoc (function none))
+(define-extern *script-form* int)
 ;; (define-extern level-from-heap function)
-;; (define-extern *syntax-context* object)
-;; (define-extern *script-context* object)
+(define-extern *syntax-context* int)
+(define-extern *script-context* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-obs                    ;;
