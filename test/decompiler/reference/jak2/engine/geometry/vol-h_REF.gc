@@ -1,18 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: vol-h.gc
-;; name in dgo: vol-h
-;; dgos: ENGINE, GAME
-
-(defenum vol-flags
-  :bitfield #t
-  :type uint32
-  (display?)
-  )
-
-;; DECOMP BEGINS
-
+;; definition of type plane-volume
 (deftype plane-volume (structure)
   ((volume-type  symbol                :offset-assert   0)
    (point-count  int16                 :offset-assert   4)
@@ -33,6 +22,25 @@
     )
   )
 
+;; definition for method 3 of type plane-volume
+(defmethod inspect plane-volume ((obj plane-volume))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'plane-volume)
+  (format #t "~1Tvolume-type: ~A~%" (-> obj volume-type))
+  (format #t "~1Tpoint-count: ~D~%" (-> obj point-count))
+  (format #t "~1Tnormal-count: ~D~%" (-> obj normal-count))
+  (format #t "~1Tfirst-point: #<vector @ #x~X>~%" (-> obj first-point))
+  (format #t "~1Tfirst-normal: #<vector @ #x~X>~%" (-> obj first-normal))
+  (format #t "~1Tnum-planes: ~D~%" (-> obj num-planes))
+  (format #t "~1Tplane: #x~X~%" (-> obj plane))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type vol-control
 (deftype vol-control (basic)
   ((flags         vol-flags                   :offset-assert   4)
    (process       process-drawable            :offset-assert   8)
@@ -54,6 +62,28 @@
     )
   )
 
+;; definition for method 3 of type vol-control
+(defmethod inspect vol-control ((obj vol-control))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tflags: #x~X~%" (-> obj flags))
+  (format #t "~1Tprocess: ~A~%" (-> obj process))
+  (format #t "~1Tpos-vol-count: ~D~%" (-> obj pos-vol-count))
+  (format #t "~1Tpos-vol[32] @ #x~X~%" (-> obj pos-vol))
+  (format #t "~1Tneg-vol-count: ~D~%" (-> obj neg-vol-count))
+  (format #t "~1Tneg-vol[32] @ #x~X~%" (-> obj neg-vol))
+  (format #t "~1Tdebug-point: ~A~%" (-> obj debug-point))
+  (format #t "~1Tdebug-normal: ~A~%" (-> obj debug-normal))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 0 of type vol-control
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch object vs vol-control.
 (defmethod new vol-control ((allocation symbol) (type-to-make type) (arg0 process-drawable))
   (let ((gp-0 (the-as object (object-new allocation type-to-make (the-as int (-> type-to-make size))))))
     (when (zero? (the-as vol-control gp-0))
@@ -111,6 +141,7 @@
     )
   )
 
+;; definition for method 11 of type vol-control
 (defmethod should-display? vol-control ((obj vol-control))
   "Returns true/false if the volume's marks should be displayed"
   (and *display-vol-marks* (logtest? (-> obj flags) (vol-flags display?)))
