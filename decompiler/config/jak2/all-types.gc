@@ -13716,13 +13716,13 @@
   :size-assert         #x10
   :flag-assert         #x1000000010
   (:methods
-    (sync-info-method-9 () none 9) ;; (get-current-value (_type_ float) float 9)
-    (sync-info-method-10 () none 10) ;; (get-current-phase-no-mod (_type_) float 10)
-    (sync-info-method-11 () none 11) ;; (get-current-phase (_type_) float 11)
-    (sync-info-method-12 () none 12) ;; (get-current-value-with-mirror (_type_ float) float 12)
-    (sync-info-method-13 () none 13) ;; (get-current-phase-with-mirror (_type_) float 13)
-    (sync-info-method-14 () none 14) ;; (setup-params! (_type_ uint float float float) none 14)
-    (sync-info-method-15 () none 15) ;; (load-params! (_type_ process uint float float float) symbol 15)
+    (sync-info-method-9 (_type_) none 9) ;; (get-current-value (_type_ float) float 9)
+    (get-phase-offset "Get the offset, as a fraction of period" (_type_) float 10)
+    (get-norm! "Abstract method, stubbed" (_type_) float 11)
+    (multiply-norm! "Multiples result of `get-norm!` by the provided float" (_type_ float object) float 12)
+    (initialize! "Abstract method, stubbed" () none 13)
+    (sync-info-method-14 (_type_ time-frame) time-frame 14)
+    (sync-info-method-15 (_type_ float) none 15) ;; (load-params! (_type_ process uint float float float) symbol 15)
     )
   )
 
@@ -21455,39 +21455,47 @@
 ;; ripple                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ripple-request (structure)
   ((waveform ripple-wave  :offset-assert 0) ;; guessed by decompiler
    (effect   merc-effect  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype ripple-globals (structure)
   ((count    int32             :offset-assert 0)
-   (requests ripple-request 16 :offset-assert 4) ;; guessed by decompiler
+   (requests ripple-request 16 :inline :offset-assert 4) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x84
   :flag-assert         #x900000084
   )
-|#
 
-;; (define-extern *ripple-globals* object) ;; ripple-globals
-;; (define-extern ripple-make-request function) ;; (function ripple-wave merc-effect none)
-;; (define-extern ripple-update-waveform-offs function) ;; (function ripple-wave-set none)
-;; (define-extern ripple-execute-init function) ;; (function none)
-;; (define-extern ripple-create-wave-table function) ;; (function ripple-wave-set int)
-;; (define-extern ripple-apply-wave-table function) ;; (function merc-effect symbol)
-(define-extern ripple-execute (function none))
-;; (define-extern ripple-matrix-scale function) ;; function
-;; (define-extern ripple-add-debug-sphere function) ;; (function process-drawable vector float float none)
-;; (define-extern ripple-slow-add-sine-waves function) ;; (function ripple-wave-set float float float)
-;; (define-extern ripple-find-height function) ;; (function process-drawable int vector float)
+(define-extern *ripple-globals* "A collection of [[ripple-request]] (max of 16)" ripple-globals)
+(define-extern ripple-make-request
+  "Iterate through [[*ripple-globals*]] `requests` looking for the one that matches the provided `effect`
+   If NOT found, append a new [[ripple-request]] with the providded `effect` and `waveform` to the end of the `requests`.
+
+   NOTE: There can only be 16 effects at a given time, NOOP if already at that limit!"
+  (function ripple-wave merc-effect none))
+(define-extern ripple-update-waveform-offs (function ripple-wave-set none))
+(define-extern ripple-execute-init "TODO - Handled by MIPS2C" (function none))
+(define-extern ripple-create-wave-table "TODO - Handled by MIPS2C" (function ripple-wave-set int))
+(define-extern ripple-apply-wave-table "TODO - Handled by MIPS2C" (function merc-effect symbol))
+(define-extern ripple-execute
+  "Iterate through [[*ripple-globals*]] requests, from the end to index `0`
+   For each request, if it has a `waveform` create the wave-table via `ripple-create-wave-table`
+   Then for each `waveform` apply the `effect` using `ripple-apply-wave-table`
+
+   Once completed, all `requests` have been processed and the `count` is reset to `0`"
+  (function none))
+(define-extern ripple-matrix-scale "TODO - Handled by MIPS2C" function)
+(define-extern ripple-add-debug-sphere (function process-drawable vector float float none))
+(define-extern ripple-slow-add-sine-waves (function ripple-wave-set float float float))
+(define-extern ripple-find-height (function process-drawable int vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; bones                          ;;
