@@ -47,6 +47,19 @@
     (force-debug 4)
     (fast-link 5)
     )
+
+(defenum language-enum
+  :type int64
+  (english)
+  (french)
+  (german)
+  (spanish)
+  (italian)
+  (japanese)
+  (korean)
+  (uk-english)
+  )
+
 (define-extern *debug-segment* symbol)
 (define-extern nothing (function none))
 (define-extern _format (function _varargs_ object))
@@ -82,6 +95,7 @@
 (define-extern link-begin (function pointer (pointer uint8) int kheap link-flag int))
 (define-extern link-resume (function int))
 (define-extern link-reset (function none))
+(define-extern kset-language (function language-enum int))
 
 (define-extern loading-level kheap)
 
@@ -1552,7 +1566,7 @@
     (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion 14)
     (set-roll-to-grav! (_type_ float) quaternion 15)
     (set-roll-to-grav-2! (_type_ float) quaternion 16)
-    (rotate-toward-orientation! (_type_ quaternion float float) quaternion 17)
+    (rotate-toward-orientation! (_type_ quaternion float float int float float) quaternion 17)
     (set-quaternion! (_type_ quaternion) quaternion 18)
     (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion 19)
     (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion 20)
@@ -1778,30 +1792,57 @@
 
 (defenum sound-command
   :type uint16
-  ; (load-bank)
-  ; (load-music)
-  ; (unload-bank)
-  ; (play)
-  ; (pause-sound)
-  ; (stop-sound)
-  ; (continue-sound)
-  ; (set-param)
-  ; (set-master-volume)
-  ; (pause-group)
-  ; (stop-group)
-  ; (continue-group)
-  ; (get-irx-version)
-  ; (set-falloff-curve)
-  ; (set-sound-falloff)
-  ; (reload-info)
-  ; (set-language)
-  ; (set-flava)
-  ; (set-reverb)
-  ; (set-ear-trans)
-  ; (shutdown)
-  ; (list-sounds)
-  ; (unload-music)
-  ; (set-fps)
+  (iop-store            0) ;; sound-rpc-bank-cmd
+  (iop-free             1) ;; sound-rpc-bank-cmd
+  (load-bank            2) ;; sound-rpc-load-bank
+  (load-bank-from-iop   3) ;; sound-rpc-load-bank
+  (load-bank-from-ee    4) ;; sound-rpc-load-bank
+  (load-music           5) ;; sound-rpc-load-music
+  (unload-bank          6) ;; sound-rpc-bank-cmd
+  (play                 7) ;; sound-rpc-play
+  (pause-sound          8) ;; sound-rpc-pause-sound
+  (stop-sound           9) ;; sound-rpc-stop-sound
+  (continue-sound      10) ;; sound-rpc-continue-sound
+  (set-param           11)
+  (set-master-volume   12) ;; sound-rpc-set-master-volume
+  (pause-group         13) ;; sound-rpc-pause-group
+  (stop-group          14) ;; sound-rpc-stop-group
+  (continue-group      15) ;; sound-rpc-continue-group
+  (get-irx-version     16)
+  (set-falloff-curve   17)
+  (set-sound-falloff   18)
+  (reload-info         19)
+  (set-language        20) ;; sound-rpc-set-language
+  (set-flava           21) ;; sound-rpc-set-flava
+  (set-midi-reg        22) ;; sound-rpc-set-midi-reg
+  (set-reverb          23) ;; sound-rpc-set-reverb
+  (set-ear-trans       24) ;; sound-rpc-set-ear-trans
+  (shutdown            25)
+  (list-sounds         26) ;; sound-rpc-list-sounds
+  (unload-music        27) ;; sound-rpc-unload-music
+  (set-fps             28) ;; sound-rpc-set-fps
+  (boot-load           29)
+  (game-load           30)
+  (num-tests           31)
+  (num-testruns        32)
+  (num-sectors         33)
+  (num-streamsectors   34)
+  (num-streambanks     35)
+  (track-pitch         36)
+  (linvel-nom          37)
+  (linvel-stm          38)
+  (seek-nom            39)
+  (seek-stm            40)
+  (read-seq-nom        41)
+  (read-seq-stm        42)
+  (read-spr-nom        43)
+  (read-spr-stm        44)
+  (read-spr-strn-nom   45)
+  (rand-stm-abort      46)
+  (rand-nom-abort      47)
+  (iop-mem             48)
+  (cancel-dgo          49)
+  (set-stereo-mode     50) ;; sound-rpc-set-stereo-mode
   )
 
 (defenum sound-group
@@ -1844,6 +1885,7 @@
 (deftype sound-stream-name (structure)
   ((name uint8 48 :offset-assert 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
@@ -1870,6 +1912,7 @@
    (trans     int32   3 :offset-assert 16)
    (group     uint8     :offset-assert 28)
    (reg       uint8   3 :offset-assert 29)
+   (group-and-regs uint32 :offset 28)
    )
   :allow-misaligned
   :method-count-assert 9
@@ -1906,8 +1949,8 @@
   )
 
 (deftype sound-rpc-test-cmd (sound-rpc-cmd)
-  ((ee-addr uint32  :offset-assert 4)
-   (param0  uint16  :offset-assert 8)
+  ((ee-addr pointer  :offset-assert 4)
+   (param0  uint16   :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xa
@@ -1931,7 +1974,7 @@
   )
 
 (deftype sound-rpc-load-bank (sound-rpc-bank-cmd)
-  ((ee-addr uint32  :offset-assert 32)
+  ((ee-addr pointer  :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x24
@@ -2150,6 +2193,7 @@
    (num             float       :offset-assert 8)
    (group           sound-group :offset-assert 12)
    (reg             uint8 3     :offset-assert 13)
+   (group-and-regs  uint32      :offset 12)
    (sound-name-char uint8 16    :offset-assert 16)
    (sound-name      sound-name  :offset 16 :score 1)
    (trans           int32 4     :offset-assert 32)
@@ -2190,14 +2234,14 @@
   :size-assert         #x6c
   :flag-assert         #x100000006c
   (:methods
-     ;; (new (symbol type basic vector) _type_ 0)
-    (ambient-sound-method-9 () none 9) ;; (update! (_type_) int 9)
-    (ambient-sound-method-10 () none 10) ;; (change-sound! (_type_ sound-name) int 10)
-    (ambient-sound-method-11 () none 11) ;; (update-trans! (_type_ vector) int 11)
-    (ambient-sound-method-12 () none 12) ;; (update-vol! (_type_ int) int 12)
-    (ambient-sound-method-13 () none 13) ;; (stop! (_type_) int 13)
-    (ambient-sound-method-14 () none 14)
-    (ambient-sound-method-15 () none 15)
+    (new (symbol type basic vector) _type_ 0)
+    (update! (_type_) int 9)
+    (change-sound! (_type_ sound-name) int 10)
+    (update-trans! (_type_ vector) int 11)
+    (update-vol! (_type_ float) int 12)
+    (update-pitch-mod! (_type_ float) none 13)
+    (set-falloff-far! (_type_ float) none 14)
+    (stop! (_type_) int 15)
     )
   )
 
@@ -6016,7 +6060,7 @@
 
 (defenum font-color
   :type uint32
-  (zero 0)
+  (default 0)
   (one 1)
   (orange-red 3)
   )
@@ -6308,7 +6352,7 @@
   (:methods
     (new (symbol type symbol int type) _type_ 0)
     (schedule-callback (_type_ object time-frame) connection-pers 9)
-    (kill-callback (_type_) none 10)
+    (kill-callback (_type_ connection-pers) none 10)
     (kill-by-key (_type_ object) none 11)
     (kill-matching (_type_ (function engine-pers connection-pers object object symbol) object object) none 12)
     (update-callback (_type_) none 13)
@@ -7202,8 +7246,8 @@
   (:methods
     (new (symbol type int) _type_ 0)
     (setting-control-method-9 () none 9) ;; (add-setting (_type_ process symbol object object object) none 9)
-    (setting-control-method-10 () none 10) ;; (set-setting (_type_ process symbol object object object) none 10)
-    (setting-control-method-11 () none 11) ;; (remove-setting (_type_ process symbol) none 11)
+    (setting-control-method-10 () none 10) ;;
+    (set-setting (_type_ process symbol object object object) none 11) ;; (remove-setting (_type_ process symbol) none 11)
     (setting-control-method-12 () none 12) ;; (apply-settings (_type_) setting-data 12)
     (setting-control-method-13 () none 13) ;; (update (_type_) setting-data 13)
     (setting-control-method-14 () none 14)
@@ -11221,7 +11265,7 @@
     (reset! (_type_) _type_ 9)
     (update! (_type_) int 10)
     (want-levels (_type_ (pointer symbol)) int 11)
-    (load-state-method-12 () none 12) ;; (want-display-level (_type_ symbol symbol) int 12)
+    (want-sound-banks (_type_ (pointer symbol)) none 12) ;; (want-display-level (_type_ symbol symbol) int 12)
     (want-display-level (_type_ symbol symbol) int 13)
     (want-vis-level (_type_ symbol) none 14) ;; (want-force-vis (_type_ symbol symbol) int 14)
     (load-state-method-15 () none 15) ;; (execute-command (_type_ pair) none 15)
@@ -13051,7 +13095,7 @@
   :flag-assert         #xd00000110
   ;; Failed to read fields.
   (:methods
-     ;; (new (symbol type process-drawable pickup-type float) _type_ 0)
+    (new (symbol type process pickup-type float) _type_ 0)
     (fact-info-target-method-12 () none 12)
     )
   )
@@ -13119,6 +13163,7 @@
   :flag-assert         #xc0000002c
   ;; Failed to read fields.
   (:methods
+    (new (symbol type process pickup-type float) _type_ 0)
     )
   )
 
@@ -14718,6 +14763,7 @@
   :flag-assert         #x44000001dc
   ;; Failed to read fields.
   (:methods
+    (new (symbol type process-drawable collide-list-enum) _type_ 0)
     (collide-shape-moving-method-55 () none 55)
     (collide-shape-moving-method-56 () none 56) ;; (set-and-handle-pat! (_type_ pat-surface) none 56)
     (collide-shape-moving-method-57 () none 57) ;; (integrate-no-collide! (_type_ vector) none 57)
@@ -15135,7 +15181,7 @@
   :size-assert         #x3c10
   :flag-assert         #xd00003c10
   (:methods
-     ;; (new (symbol type) _type_ 0)
+    (new (symbol type) _type_ 0)
     (touching-prims-entry-pool-method-9 () none 9) ;; (alloc-node (_type_) touching-prims-entry 9)
     (touching-prims-entry-pool-method-10 () none 10) ;; (get-free-node-count (_type_) int 10)
     (init-list! (_type_) none 11)
@@ -15174,7 +15220,7 @@
   :size-assert         #x408
   :flag-assert         #xe00000408
   (:methods
-     ;; (new (symbol type) _type_ 0)
+    (new (symbol type) _type_ 0)
     (touching-list-method-9 () none 9) ;; (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none 9)
     (touching-list-method-10 () none 10) ;; (dummy-10 () none 10)
     (touching-list-method-11 () none 11) ;; (update-from-step-size (_type_ float) none 11)
@@ -20476,7 +20522,6 @@
 ;; ramdisk                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ramdisk-rpc-fill (structure)
   ((rsvd1    int32     :offset-assert 0)
    (ee-id    int32     :offset-assert 4)
@@ -20487,9 +20532,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype ramdisk-rpc-load (structure)
   ((rsvd   int32   :offset-assert 0)
    (ee-id  int32   :offset-assert 4)
@@ -20500,9 +20543,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype ramdisk-rpc-load-to-ee (structure)
   ((rsvd     int32    :offset-assert 0)
    (addr     int32    :offset-assert 4)
@@ -20514,18 +20555,20 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-;; (define-extern *ramdisk-rpc* object) ;; rpc-buffer-pair
-;; (define-extern *current-ramdisk-id* object) ;; int
-;; (define-extern ramdisk-load function) ;; (function int uint uint pointer int)
-;; (define-extern ramdisk-sync function) ;; (function none)
+(define-extern *ramdisk-rpc* rpc-buffer-pair)
+(define-extern *current-ramdisk-id* int)
+(define-extern ramdisk-load (function int uint uint pointer int))
+(define-extern ramdisk-sync (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gsound                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; ghost function
+(define-extern *debug-effect-control* symbol)
+(define-extern effect-param->sound-spec (function sound-spec (pointer float) int sound-spec))
+
 (deftype engine-sound-pers (engine-pers)
   ()
   :method-count-assert 15
@@ -20534,86 +20577,122 @@
   (:methods
     )
   )
-|#
 
-#|
+(defenum stream-status
+  :type uint32
+  :bitfield #t
+  (zero        0)
+  (one         1) ;; another way to be playing
+  (two         2)
+  (three       3)
+  (four        4) ;; is playing?
+  (five        5)
+  (six         6) ;; another way to be playing.
+  (seven       7)
+  )
+
+(defenum stereo-mode
+  :type int32
+  )
+
 (deftype sound-iop-info (structure)
-  ()
+  ((frame uint32 :offset-assert 0)
+   (strpos int32 :offset-assert 4)
+   (str-id uint32 :offset-assert 8)
+   (str-id-sign int32 :offset 8)
+   (freemem uint32 :offset-assert 12)
+   (chinfo uint8 48 :offset-assert 16)
+   (freemem2 uint32 :offset-assert 64)
+   (nocd uint32 :offset-assert 68)
+   (dirtycd uint32 :offset-assert 72)
+   (diskspeed uint32 2 :offset-assert 76)
+   (lastspeed uint32 :offset-assert 84)
+   (dupseg int32 :offset-assert 88)
+   (times int32 41 :offset-assert 92)
+   (times-seq uint32 :offset-assert 256)
+   (iop-ticks uint32 :offset-assert 260)
+   (stream-position uint32 4 :offset 272)
+   (stream-status stream-status 4 :offset-assert 288)
+   (stream-name sound-stream-name 4 :inline :offset-assert 304)
+   (stream-id uint32 4 :offset-assert 496)
+   (music-register uint8 17 :offset-assert 512)
+   (music-excite int8 :offset 528)
+   (ramdisk-name uint8 48 :offset-assert 529)
+   )
   :method-count-assert 9
   :size-assert         #x241
   :flag-assert         #x900000241
   ;; Failed to read fields.
   )
-|#
 
-;; (define-extern *sound-loop-engine* object)
+(define-extern *sound-loop-engine* engine-sound-pers)
 (define-extern *sound-player-rpc* rpc-buffer-pair)
-;; (define-extern *sound-loader-rpc* object) ;; rpc-buffer-pair
-;; (define-extern sound-name= function) ;; (function sound-name sound-name symbol)
-;; (define-extern *sound-iop-info* object) ;; sound-iop-info
-;; (define-extern str-is-playing? function) ;; (function symbol)
-;; (define-extern str-id-is-playing? function)
-;; (define-extern current-str-pos function) ;; (function sound-id int)
-;; (define-extern is-ramdisk-loaded? function)
-;; (define-extern is-cd-in? function) ;; (function symbol)
+(define-extern *sound-loader-rpc* rpc-buffer-pair)
+(define-extern sound-name= (function sound-name sound-name symbol))
+(define-extern *sound-iop-info* sound-iop-info)
+(define-extern str-is-playing? (function symbol))
+(define-extern str-id-is-playing? (function int symbol))
+(define-extern current-str-pos (function sound-id int))
+(define-extern is-ramdisk-loaded? (function symbol symbol))
+(define-extern is-cd-in? (function symbol))
 (define-extern new-sound-id (function sound-id))
-;; (define-extern check-irx-version function) ;; (function int)
-;; (define-extern sound-bank-iop-store function)
-;; (define-extern sound-bank-iop-free function)
-;; (define-extern sound-bank-load function) ;; (function sound-name sound-id)
-;; (define-extern sound-bank-load-from-iop function)
-;; (define-extern sound-bank-load-from-ee function)
-;; (define-extern sound-bank-unload function) ;; (function sound-name int)
-;; (define-extern sound-music-load function) ;; (function sound-name int)
-;; (define-extern sound-music-unload function) ;; (function int)
-;; (define-extern set-language function) ;; (function language-enum int)
-;; (define-extern sound-set-stereo-mode function)
-;; (define-extern list-sounds function) ;; (function int)
-;; (define-extern sound-command->string function) ;; (function sound-command string)
-;; (define-extern sound-buffer-dump function) ;; (function int)
+(define-extern check-irx-version (function int))
+(define-extern sound-bank-iop-store (function sound-name sound-id))
+(define-extern sound-bank-iop-free (function sound-name sound-id))
+(define-extern sound-bank-load (function sound-name sound-id))
+(define-extern sound-bank-load-from-iop (function sound-name sound-id))
+(define-extern sound-bank-load-from-ee (function sound-name pointer sound-id))
+(define-extern sound-bank-unload (function sound-name int))
+(define-extern sound-music-load (function sound-name int))
+(define-extern sound-music-unload (function int))
+(define-extern set-language (function language-enum int))
+(define-extern sound-set-stereo-mode (function stereo-mode none))
+(define-extern list-sounds (function none))
+(define-extern sound-command->string (function sound-command string))
+(define-extern sound-buffer-dump (function int))
 (define-extern *sound-player-enable* symbol)
-(define-extern swap-sound-buffers  (function vector vector float int))
+(define-extern swap-sound-buffers  (function vector vector vector float int))
 (define-extern get-sound-buffer-entry (function pointer))
-;; (define-extern free-last-sound-buffer-entry function) ;; (function int)
-;; (define-extern sound-basic-cb function) ;; (function int (pointer int32) none)
-;; (define-extern sound-trans-convert function) ;; (function vector3w vector int)
-;; (define-extern sound-angle-convert function) ;; (function float int)
+(define-extern free-last-sound-buffer-entry (function none))
+(define-extern sound-basic-cb (function int (pointer int32) none))
+(define-extern sound-trans-convert (function vector3w vector int))
+(define-extern sound-angle-convert (function float int))
 (define-extern string->sound-name  (function string sound-name))
-;; (define-extern sound-set-volume function) ;; (function sound-group float int)
-;; (define-extern sound-set-reverb function) ;; (function int float float uint int)
-;; (define-extern sound-set-ear-trans function) ;; (function vector vector float int)
+(define-extern sound-set-volume (function sound-group float int))
+(define-extern sound-set-reverb (function int float float uint int))
+(define-extern sound-set-ear-trans (function vector vector vector float int))
 (define-extern sound-play-by-name (function sound-name sound-id int int int sound-group symbol sound-id))
 (define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id))
-;; (define-extern sound-pause function) ;; (function sound-id int)
-(define-extern sound-stop "Stops a sound identified by the given id" (function sound-id int))
-;; (define-extern sound-continue function) ;; (function sound-id int)
+(define-extern sound-pause (function sound-id int))
+(define-extern sound-stop (function sound-id int))
+(define-extern sound-continue (function sound-id int))
 (define-extern sound-group-pause (function sound-group int))
-;; (define-extern sound-group-stop function) ;; (function sound-group int)
+(define-extern sound-group-stop (function sound-group int))
 (define-extern sound-group-continue (function sound-group int))
-;; (define-extern sound-set-flava function) ;; (function uint int)
-;; (define-extern sound-set-midi-reg function)
-;; (define-extern sound-set-fps function) ;; (function int int)
-;; (define-extern sound-volume-off function) ;; (function int)
-;; (define-extern *ambient-spec* sound-spec) ;; sound-spec
+(define-extern sound-set-flava (function uint uint int))
+(define-extern sound-set-midi-reg (function int int int))
+(define-extern sound-set-fps (function int int))
+(define-extern sound-volume-off (function int))
+(define-extern *ambient-spec* sound-spec)
 (define-extern show-iop-info (function dma-buffer int))
 (define-extern show-iop-memory (function dma-buffer int))
-(define-extern ear-trans (function vector))
-;; (define-extern make-sqrt-table function) ;; (function int)
-;; (define-extern loader-test-command function)
-;; (define-extern doppler-pitch-shift function)
-;; (define-extern sound-bank-reload function)
+(define-extern ear-trans (function int vector))
+(define-extern make-sqrt-table (function int))
+(define-extern loader-test-command (function sound-command uint none))
+(define-extern doppler-pitch-shift (function vector vector float))
+(define-extern sound-bank-reload (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; transformq                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern transformq-copy! function) ;; (function transformq transformq transformq)
+(define-extern transformq-copy! (function transformq transformq transformq))
 (define-extern matrix<-transformq! (function matrix transformq matrix))
-;; (define-extern matrix<-no-trans-transformq! function) ;; (function matrix transformq matrix)
-;; (define-extern matrix<-transformq+trans! function) ;; (function matrix transformq vector matrix)
-;; (define-extern matrix<-transformq+world-trans! function) ;; (function matrix transformq vector matrix)
+(define-extern matrix<-no-trans-transformq! (function matrix transformq matrix))
+(define-extern matrix<-transformq+trans! (function matrix transformq vector matrix))
+(define-extern matrix<-transformq+world-trans! (function matrix transformq vector matrix))
 (define-extern matrix<-parented-transformq! (function matrix transformq vector matrix))
-;; (define-extern matrix<-transformq+rot-offset! function)
+(define-extern matrix<-transformq+rot-offset! (function matrix transformq vector matrix))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-func                   ;;
