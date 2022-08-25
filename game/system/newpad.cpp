@@ -375,22 +375,23 @@ void DefaultMapping(MappingInfo& mapping) {
   MapButton(mapping, Button::L3, 0, GLFW_KEY_COMMA);
   MapButton(mapping, Button::R3, 0, GLFW_KEY_PERIOD);
 
-  AnalogMappingInfo analomapping_info;
+  AnalogMappingInfo analog_mapping_info;
 
-  analomapping_info.positive_key = GLFW_KEY_D;
-  analomapping_info.negative_key = GLFW_KEY_A;
-  MapAnalog(mapping, Analog::Left_X, 0, analomapping_info);
+  analog_mapping_info.positive_key = GLFW_KEY_D;
+  analog_mapping_info.negative_key = GLFW_KEY_A;
+  MapAnalog(mapping, Analog::Left_X, 0, analog_mapping_info);
 
-  analomapping_info.positive_key = GLFW_KEY_W;
-  analomapping_info.negative_key = GLFW_KEY_S;
-  MapAnalog(mapping, Analog::Left_Y, 0, analomapping_info);
+  analog_mapping_info.positive_key = GLFW_KEY_W;
+  analog_mapping_info.negative_key = GLFW_KEY_S;
+  MapAnalog(mapping, Analog::Left_Y, 0, analog_mapping_info);
 
-  analomapping_info.mode = AnalogMappingMode::AnalogInput;
-  analomapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_X_AXIS;
-  MapAnalog(mapping, Analog::Right_X, 0, analomapping_info);
+  analog_mapping_info.positive_key = GLFW_KEY_L;
+  analog_mapping_info.negative_key = GLFW_KEY_J;
+  MapAnalog(mapping, Analog::Right_X, 0, analog_mapping_info);
 
-  analomapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_Y_AXIS;
-  MapAnalog(mapping, Analog::Right_Y, 0, analomapping_info);
+  analog_mapping_info.positive_key = GLFW_KEY_I;
+  analog_mapping_info.negative_key = GLFW_KEY_K;
+  MapAnalog(mapping, Analog::Right_Y, 0, analog_mapping_info);
 
   const double default_mouse_x_sensitivity = 5.0f;
   const double default_mouse_y_sensitivity = 2.0f;
