@@ -21159,7 +21159,7 @@
 ;; (define-extern add-debug-line2d function) ;; (function symbol bucket-id vector vector vector symbol)
 ;; (define-extern add-debug-box function) ;; (function symbol bucket-id vector vector rgba symbol)
 ;; (define-extern add-debug-box-with-transform function)
-;; (define-extern add-debug-x function) ;; (function symbol bucket-id vector rgba symbol)
+(define-extern add-debug-x (function symbol bucket-id vector rgba symbol))
 ;; (define-extern add-debug-cross function)
 (define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
 ;; (define-extern add-debug-sphere-with-transform function) ;; (function symbol bucket-id vector meters matrix rgba symbol)
@@ -21168,7 +21168,7 @@
 ;; (define-extern add-debug-spheres function) ;; (function symbol bucket-id (inline-array vector) int rgba symbol)
 ;; (define-extern add-debug-line-sphere function)
 ;; (define-extern add-debug-circle function) ;; (function symbol bucket-id vector float rgba matrix symbol)
-;; (define-extern add-debug-vector function) ;; (function symbol bucket-id vector vector meters rgba symbol)
+(define-extern add-debug-vector (function symbol bucket-id vector vector meters rgba symbol))
 (define-extern add-debug-matrix (function symbol bucket-id matrix float matrix))
 ;; (define-extern add-debug-rot-matrix function) ;; (function symbol bucket-id matrix vector matrix)
 ;; (define-extern add-debug-quaternion function)
@@ -21204,70 +21204,102 @@
 ;; history                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum collide-status
+  :bitfield #t
+  :type uint64
+  (on-surface 0)
+  (on-ground 1)
+  (touch-surface 2)
+  (touch-wall 3)
+  (touch-ceiling 4)
+  (touch-actor 5)
+  (on-special-surface 6)
+  (touch-edge 7)
+  (no-touch 8)
+  (blocked 9)
+  (on-water 10)
+  (impact-surface 11)
+  (touch-background 12)
+  (stuck 13)
+  (touch-ceiling-sticky 14)
+  (glance 15)
+  (probe-hit 16)
+  )
+
 (deftype history-elt (structure)
-  ((record-tag-bytes      UNKNOWN 4       :offset-assert 0)
-   (record-tag            uint32          :offset-assert 0)
-   (record-id             uint16          :offset-assert 0)
-   (owner                 uint8           :offset-assert 2)
+  ((record-tag-bytes      uint8 4       :offset-assert 0)
+   (record-tag            uint32          :offset 0)
+   (record-id             uint16          :offset 0)
+   (owner                 uint8           :offset 2)
    (channel               uint8           :offset-assert 4)
-   (timestamp             uint64          :offset-assert 8)
+   (timestamp             time-frame          :offset-assert 8)
    (origin                vector  :inline :offset-assert 16)
-   (bytes                 UNKNOWN 16      :offset-assert 32)
-   (vector                vector  :inline :offset-assert 32)
-   (float                 float           :offset-assert 32)
-   (collide-status        uint64          :offset-assert 32)
-   (collide-reaction-flag uint32          :offset-assert 40)
-   (pat                   uint32          :offset-assert 32)
+   (bytes                 uint8 16      :offset-assert 32)
+   (vector                vector  :inline :offset 32)
+   (float                 float           :offset 32)
+   (collide-status        collide-status          :offset 32)
+   (collide-reaction-flag uint32          :offset 40)
+   (pat                   uint32          :offset 32)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype history-iterator (basic)
   ((max-age      uint32  :offset-assert 4)
    (owner        uint8   :offset-assert 8)
-   (proc         basic   :offset-assert 12)
+   (proc         process   :offset-assert 12)
    (out          basic   :offset-assert 16)
    (channel-mask uint64  :offset-assert 24)
    (index        int32   :offset-assert 32)
-   (done?        basic   :offset-assert 36)
+   (done?        symbol   :offset-assert 36)
    )
   :method-count-assert 12
   :size-assert         #x28
   :flag-assert         #xc00000028
-  ;; field out uses ~A with a signed load
   (:methods
-    (history-iterator-method-9 () none 9)
-    (history-iterator-method-10 () none 10)
-    (history-iterator-method-11 () none 11)
+    (new (symbol type uint32) _type_ 0)
+    (frame-counter-delta
+     "Returns the difference between [[*display*]]'s `base-clock.frame-counter` and the elt's `timestamp`"
+     (_type_ history-elt) time-frame 9)
+    (update-entries!
+     "Iterate through each [[history-elt]] in [[*history*]]
+      - If we hit the end set `done?` to true
+      - If the `timestamp` on the elt, minus the current framecounter exceeds `max-age`, we are also done, return #f
+      - However if we find an elt who's `owner` matches the iterator's, break out early returning that `elt`"
+     (_type_) history-elt 10)
+    (history-iterator-method-11
+     "TODO - Unsure of the purpose
+      `min(1.0, ((history-elt.timestamp - 1) + frame-counter) / (max-age + 1)) - 1.0`"
+     (_type_ history-elt) float 11)
     )
   )
-|#
 
-#|
 (deftype history (basic)
   ((alloc-index      int32            :offset-assert 4)
    (allocated-length int32            :offset-assert 8)
-   (elts             UNKNOWN :dynamic :offset-assert 16)
+   (elts             history-elt :dynamic :offset 16)
    )
   :method-count-assert 11
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (history-method-9 () none 9)
-    (history-method-10 () none 10)
+    (new (symbol type int) _type_ 0)
+    (history-method-asm-9 () none 9)
+    (clear-history-entries!
+      "Iterates through each [[history-elt]] in the `elt` dynamic array
+       For each entry:
+       - clear `timestamp`
+       - clear `record-tag`"
+      (_type_) none 10)
     )
   )
-|#
 
-;; (define-extern history-channel->string function)
-;; (define-extern *history* object)
-;; (define-extern history-print function)
-;; (define-extern history-draw function)
+(define-extern history-channel->string (function uint string))
+(define-extern *history* history)
+(define-extern history-print (function history-iterator none))
+(define-extern history-draw (function history-iterator none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; merc-vu1                       ;;
