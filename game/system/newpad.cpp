@@ -288,7 +288,10 @@ void MapButton(MappingInfo& mapping, Button button, int pad, int key) {
   }
 }
 
-void MapAnalog(MappingInfo& mapping, Analog button, int pad, AnalogMappingInfo& analomapping_info) {
+void MapAnalog(MappingInfo& mapping,
+               Analog button,
+               int pad,
+               AnalogMappingInfo& analog_mapping_info) {
   // check if pad is valid. dont map buttons with invalid pads.
   if (CheckPadIdx(pad) == -1) {
     return;
@@ -296,9 +299,9 @@ void MapAnalog(MappingInfo& mapping, Analog button, int pad, AnalogMappingInfo& 
 
   if (g_gamepads.gamepad_idx[pad] == -1) {
     // TODO: Check if other pad is keyboard and if key is already bound
-    mapping.keyboard_analog_mapping[pad][(int)button] = analomapping_info;
+    mapping.keyboard_analog_mapping[pad][(int)button] = analog_mapping_info;
   } else {
-    mapping.controller_analog_mapping[pad][(int)button] = analomapping_info;
+    mapping.controller_analog_mapping[pad][(int)button] = analog_mapping_info;
   }
 }
 
