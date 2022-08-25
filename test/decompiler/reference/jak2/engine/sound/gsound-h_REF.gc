@@ -5,6 +5,7 @@
 (deftype sound-stream-name (structure)
   ((name uint8 48 :offset-assert   0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
@@ -76,17 +77,18 @@
 
 ;; definition of type sound-play-params
 (deftype sound-play-params (structure)
-  ((mask      uint16   :offset-assert   0)
-   (pitch-mod int16    :offset-assert   2)
-   (bend      int16    :offset-assert   4)
-   (fo-min    int16    :offset-assert   6)
-   (fo-max    int16    :offset-assert   8)
-   (fo-curve  int8     :offset-assert  10)
-   (priority  int8     :offset-assert  11)
-   (volume    int32    :offset-assert  12)
-   (trans     int32  3 :offset-assert  16)
-   (group     uint8    :offset-assert  28)
-   (reg       uint8  3 :offset-assert  29)
+  ((mask           uint16   :offset-assert   0)
+   (pitch-mod      int16    :offset-assert   2)
+   (bend           int16    :offset-assert   4)
+   (fo-min         int16    :offset-assert   6)
+   (fo-max         int16    :offset-assert   8)
+   (fo-curve       int8     :offset-assert  10)
+   (priority       int8     :offset-assert  11)
+   (volume         int32    :offset-assert  12)
+   (trans          int32  3 :offset-assert  16)
+   (group          uint8    :offset-assert  28)
+   (reg            uint8  3 :offset-assert  29)
+   (group-and-regs uint32   :offset         28)
    )
   :allow-misaligned
   :method-count-assert 9
@@ -142,8 +144,8 @@
 
 ;; definition of type sound-rpc-test-cmd
 (deftype sound-rpc-test-cmd (sound-rpc-cmd)
-  ((ee-addr uint32  :offset-assert   4)
-   (param0  uint16  :offset-assert   8)
+  ((ee-addr pointer  :offset-assert   4)
+   (param0  uint16   :offset-assert   8)
    )
   :method-count-assert 9
   :size-assert         #xa
@@ -213,7 +215,7 @@
 
 ;; definition of type sound-rpc-load-bank
 (deftype sound-rpc-load-bank (sound-rpc-bank-cmd)
-  ((ee-addr uint32  :offset-assert  32)
+  ((ee-addr pointer  :offset-assert  32)
    )
   :method-count-assert 9
   :size-assert         #x24
@@ -829,6 +831,7 @@
    (num             float          :offset-assert   8)
    (group           sound-group    :offset-assert  12)
    (reg             uint8       3  :offset-assert  13)
+   (group-and-regs  uint32         :offset         12)
    (sound-name-char uint8       16 :offset-assert  16)
    (sound-name      sound-name     :offset         16)
    (trans           int32       4  :offset-assert  32)
@@ -901,13 +904,14 @@
   :size-assert         #x6c
   :flag-assert         #x100000006c
   (:methods
-    (ambient-sound-method-9 () none 9)
-    (ambient-sound-method-10 () none 10)
-    (ambient-sound-method-11 () none 11)
-    (ambient-sound-method-12 () none 12)
-    (ambient-sound-method-13 () none 13)
-    (ambient-sound-method-14 () none 14)
-    (ambient-sound-method-15 () none 15)
+    (new (symbol type basic vector) _type_ 0)
+    (update! (_type_) int 9)
+    (change-sound! (_type_ sound-name) int 10)
+    (update-trans! (_type_ vector) int 11)
+    (update-vol! (_type_ float) int 12)
+    (update-pitch-mod! (_type_ float) none 13)
+    (set-falloff-far! (_type_ float) none 14)
+    (stop! (_type_) int 15)
     )
   )
 

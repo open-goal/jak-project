@@ -5,34 +5,59 @@
 ;; name in dgo: gsound-h
 ;; dgos: ENGINE, GAME
 
-;; TODO: methods for ambient-sound.
-
 (defenum sound-command
   :type uint16
-  ; (load-bank)
-  ; (load-music)
-  ; (unload-bank)
-  ; (play)
-  ; (pause-sound)
-  ; (stop-sound)
-  ; (continue-sound)
-  ; (set-param)
-  ; (set-master-volume)
-  ; (pause-group)
-  ; (stop-group)
-  ; (continue-group)
-  ; (get-irx-version)
-  ; (set-falloff-curve)
-  ; (set-sound-falloff)
-  ; (reload-info)
-  ; (set-language)
-  ; (set-flava)
-  ; (set-reverb)
-  ; (set-ear-trans)
-  ; (shutdown)
-  ; (list-sounds)
-  ; (unload-music)
-  ; (set-fps)
+  (iop-store            0) ;; sound-rpc-bank-cmd
+  (iop-free             1) ;; sound-rpc-bank-cmd
+  (load-bank            2) ;; sound-rpc-load-bank
+  (load-bank-from-iop   3) ;; sound-rpc-load-bank
+  (load-bank-from-ee    4) ;; sound-rpc-load-bank
+  (load-music           5) ;; sound-rpc-load-music
+  (unload-bank          6) ;; sound-rpc-bank-cmd
+  (play                 7) ;; sound-rpc-play
+  (pause-sound          8) ;; sound-rpc-pause-sound
+  (stop-sound           9) ;; sound-rpc-stop-sound
+  (continue-sound      10) ;; sound-rpc-continue-sound
+  (set-param           11)
+  (set-master-volume   12) ;; sound-rpc-set-master-volume
+  (pause-group         13) ;; sound-rpc-pause-group
+  (stop-group          14) ;; sound-rpc-stop-group
+  (continue-group      15) ;; sound-rpc-continue-group
+  (get-irx-version     16)
+  (set-falloff-curve   17)
+  (set-sound-falloff   18)
+  (reload-info         19)
+  (set-language        20) ;; sound-rpc-set-language
+  (set-flava           21) ;; sound-rpc-set-flava
+  (set-midi-reg        22) ;; sound-rpc-set-midi-reg
+  (set-reverb          23) ;; sound-rpc-set-reverb
+  (set-ear-trans       24) ;; sound-rpc-set-ear-trans
+  (shutdown            25)
+  (list-sounds         26) ;; sound-rpc-list-sounds
+  (unload-music        27) ;; sound-rpc-unload-music
+  (set-fps             28) ;; sound-rpc-set-fps
+  (boot-load           29)
+  (game-load           30)
+  (num-tests           31)
+  (num-testruns        32)
+  (num-sectors         33)
+  (num-streamsectors   34)
+  (num-streambanks     35)
+  (track-pitch         36)
+  (linvel-nom          37)
+  (linvel-stm          38)
+  (seek-nom            39)
+  (seek-stm            40)
+  (read-seq-nom        41)
+  (read-seq-stm        42)
+  (read-spr-nom        43)
+  (read-spr-stm        44)
+  (read-spr-strn-nom   45)
+  (rand-stm-abort      46)
+  (rand-nom-abort      47)
+  (iop-mem             48)
+  (cancel-dgo          49)
+  (set-stereo-mode     50) ;; sound-rpc-set-stereo-mode
   )
 
 (defenum sound-group
@@ -70,12 +95,30 @@
   (fo-curve)
   )
 
+(defenum stream-status
+  :type uint32
+  :bitfield #t
+  (zero        0)
+  (one         1) ;; another way to be playing
+  (two         2)
+  (three       3)
+  (four        4) ;; is playing?
+  (five        5)
+  (six         6) ;; another way to be playing.
+  (seven       7)
+  )
+
+(defenum stereo-mode
+  :type int32
+  )
+
 
 ;; DECOMP BEGINS
 
 (deftype sound-stream-name (structure)
   ((name uint8 48 :offset-assert   0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
@@ -117,24 +160,24 @@
   )
 
 (deftype sound-play-params (structure)
-  ((mask      uint16   :offset-assert   0)
-   (pitch-mod int16    :offset-assert   2)
-   (bend      int16    :offset-assert   4)
-   (fo-min    int16    :offset-assert   6)
-   (fo-max    int16    :offset-assert   8)
-   (fo-curve  int8     :offset-assert  10)
-   (priority  int8     :offset-assert  11)
-   (volume    int32    :offset-assert  12)
-   (trans     int32  3 :offset-assert  16)
-   (group     uint8    :offset-assert  28)
-   (reg       uint8  3 :offset-assert  29)
+  ((mask           uint16   :offset-assert   0)
+   (pitch-mod      int16    :offset-assert   2)
+   (bend           int16    :offset-assert   4)
+   (fo-min         int16    :offset-assert   6)
+   (fo-max         int16    :offset-assert   8)
+   (fo-curve       int8     :offset-assert  10)
+   (priority       int8     :offset-assert  11)
+   (volume         int32    :offset-assert  12)
+   (trans          int32  3 :offset-assert  16)
+   (group          uint8    :offset-assert  28)
+   (reg            uint8  3 :offset-assert  29)
+   (group-and-regs uint32   :offset         28)
    )
   :allow-misaligned
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-
 
 (deftype sound-rpc-bank-cmd (sound-rpc-cmd)
   ((bank-name sound-name  :offset-assert  16)
@@ -145,8 +188,8 @@
   )
 
 (deftype sound-rpc-test-cmd (sound-rpc-cmd)
-  ((ee-addr uint32  :offset-assert   4)
-   (param0  uint16  :offset-assert   8)
+  ((ee-addr pointer  :offset-assert   4)
+   (param0  uint16   :offset-assert   8)
    )
   :method-count-assert 9
   :size-assert         #xa
@@ -170,7 +213,7 @@
   )
 
 (deftype sound-rpc-load-bank (sound-rpc-bank-cmd)
-  ((ee-addr uint32  :offset-assert  32)
+  ((ee-addr pointer  :offset-assert  32)
    )
   :method-count-assert 9
   :size-assert         #x24
@@ -389,6 +432,7 @@
    (num             float          :offset-assert   8)
    (group           sound-group    :offset-assert  12)
    (reg             uint8       3  :offset-assert  13)
+   (group-and-regs  uint32         :offset         12)
    (sound-name-char uint8       16 :offset-assert  16)
    (sound-name      sound-name     :offset         16)
    (trans           int32       4  :offset-assert  32)
@@ -406,7 +450,6 @@
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-
 (define *current-sound-id* (the-as sound-id #x10000))
 
 (deftype ambient-sound (basic)
@@ -431,16 +474,25 @@
   :size-assert         #x6c
   :flag-assert         #x100000006c
   (:methods
-    (ambient-sound-method-9 () none 9)
-    (ambient-sound-method-10 () none 10)
-    (ambient-sound-method-11 () none 11)
-    (ambient-sound-method-12 () none 12)
-    (ambient-sound-method-13 () none 13)
-    (ambient-sound-method-14 () none 14)
-    (ambient-sound-method-15 () none 15)
+    (new (symbol type basic vector) _type_ 0)
+    (update! (_type_) int 9)
+    (change-sound! (_type_ sound-name) int 10)
+    (update-trans! (_type_ vector) int 11)
+    (update-vol! (_type_ float) int 12)
+    (update-pitch-mod! (_type_ float) none 13)
+    (set-falloff-far! (_type_ float) none 14)
+    (stop! (_type_) int 15)
     )
   )
 
 
 
+;; DECOMP ENDS
+(define-extern string->sound-name  (function string sound-name))
+(define-extern get-sound-buffer-entry (function pointer))
+(define-extern sound-set-ear-trans (function vector vector vector float int))
+(define-extern ear-trans (function int vector))
 
+;; ghost function
+(define-extern *debug-effect-control* symbol)
+(define-extern effect-param->sound-spec (function sound-spec (pointer float) int sound-spec))
