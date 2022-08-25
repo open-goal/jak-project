@@ -213,8 +213,7 @@ void UpdateAxisValue(MappingInfo& mapping_info) {
       double input = 0.0f;
       if (mapping_info.keyboard_analog_mapping[pad][analog].positive_key > -1 &&
           mapping_info.keyboard_analog_mapping[pad][analog].positive_key < glfw::NUM_KEYS) {
-        if (analog == static_cast<int>(Analog::Left_Y) ||
-            analog == static_cast<int>(Analog::Right_Y)) {
+        if (analog == static_cast<int>(Analog::Left_Y)) {
           input -=
               g_buffered_key_status[mapping_info.keyboard_analog_mapping[pad][analog].positive_key];
         } else {
@@ -224,8 +223,7 @@ void UpdateAxisValue(MappingInfo& mapping_info) {
       }
       if (mapping_info.keyboard_analog_mapping[pad][analog].negative_key > -1 &&
           mapping_info.keyboard_analog_mapping[pad][analog].negative_key < glfw::NUM_KEYS) {
-        if (analog == static_cast<int>(Analog::Left_Y) ||
-            analog == static_cast<int>(Analog::Right_Y)) {
+        if (analog == static_cast<int>(Analog::Left_Y)) {
           input +=
               g_buffered_key_status[mapping_info.keyboard_analog_mapping[pad][analog].negative_key];
         } else {
