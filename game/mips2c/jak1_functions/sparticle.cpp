@@ -3,7 +3,7 @@
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/jak1/kscheme.h"
 using namespace jak1;
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace sp_process_block_3d {
 struct Cache {
   void* sp_frame_time; // *sp-frame-time*
@@ -371,7 +371,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace sp_process_block_2d {
 struct Cache {
   void* sp_frame_time; // *sp-frame-time*

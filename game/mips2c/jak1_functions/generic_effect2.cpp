@@ -3,7 +3,7 @@
 #include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
 using namespace jak1;
-namespace Mips2C {
+namespace Mips2C::jak1 {
 
 // clang-format off
 void vcallms48(ExecutionContext* c) {
@@ -659,7 +659,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace generic_interp_dproc {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
@@ -838,7 +838,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace generic_no_light_dproc {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*

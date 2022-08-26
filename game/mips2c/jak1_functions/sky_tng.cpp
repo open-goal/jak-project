@@ -3,17 +3,17 @@
 #include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
 using namespace jak1;
-namespace Mips2C {
+namespace Mips2C::jak1 {
 
 ExecutionContext sky_regs_vfs;
 
-}  // namespace Mips2C
+}  // namespace Mips2C::jak1
 
 // clang-format off
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace init_sky_regs {
 struct Cache {
   void* math_camera; // *math-camera*
@@ -108,7 +108,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace set_tex_offset {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -156,7 +156,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace clip_polygon_against_positive_hyperplane {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -441,7 +441,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace clip_polygon_against_negative_hyperplane {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -736,7 +736,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace draw_large_polygon {
 struct Cache {
   void* clip_polygon_against_negative_hyperplane; // clip-polygon-against-negative-hyperplane
@@ -886,7 +886,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace render_sky_quad {
 struct Cache {
   void* math_camera; // *math-camera*
@@ -990,7 +990,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace render_sky_tri {
 struct Cache {
   void* draw_large_polygon; // draw-large-polygon
@@ -1075,7 +1075,7 @@ void link() {
 } // namespace render_sky_tri
 } // namespace Mips2C
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace set_sky_vf27 {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -1091,7 +1091,7 @@ void link() {
 }  // namespace set_sky_vf27
 }  // namespace Mips2C
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace set_sky_vf23_value {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -1108,7 +1108,7 @@ void link() {
 }  // namespace set_sky_vf23_value
 }  // namespace Mips2C
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace init_boundary_regs {
 struct Cache {
   void* math_camera; // *math-camera*
@@ -1169,7 +1169,7 @@ void link() {
 } // namespace Mips2C
 
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace draw_boundary_polygon {
 struct Cache {
   void* clip_polygon_against_negative_hyperplane; // clip-polygon-against-negative-hyperplane
@@ -1303,7 +1303,7 @@ void link() {
 } // namespace Mips2C
 
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace render_boundary_quad {
 struct Cache {
   void* math_camera; // *math-camera*
@@ -1437,7 +1437,7 @@ void link() {
 } // namespace render_boundary_quad
 } // namespace Mips2C
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace render_boundary_tri {
 struct Cache {
   void* draw_boundary_polygon; // draw-boundary-polygon

@@ -6,7 +6,7 @@
 using namespace jak1;
 // clang-format off
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace generic_prepare_dma_double {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
@@ -451,7 +451,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace generic_light_proc {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
@@ -891,7 +891,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace generic_envmap_proc {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
@@ -1660,7 +1660,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace generic_prepare_dma_single {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*

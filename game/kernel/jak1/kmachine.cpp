@@ -36,7 +36,6 @@
 #include "game/kernel/jak1/kscheme.h"
 #include "game/kernel/jak1/ksound.h"
 #include "game/kernel/svnrev.h"
-#include "game/mips2c/mips2c_table.h"
 #include "game/sce/deci2.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/libdma.h"
@@ -403,16 +402,6 @@ void pc_texture_upload_now(u32 page, u32 mode) {
 
 void pc_texture_relocate(u32 dst, u32 src, u32 format) {
   Gfx::texture_relocate(dst, src, format);
-}
-
-/*!
- * Called from the game thread at initialization.
- * The game thread is the only one to touch the mips2c function table (through the linker and
- * through this function), so no locking is needed.
- */
-u64 pc_get_mips2c(u32 name) {
-  const char* n = Ptr<String>(name).c()->data();
-  return Mips2C::gLinkedFunctionTable.get(n);
 }
 
 /*!

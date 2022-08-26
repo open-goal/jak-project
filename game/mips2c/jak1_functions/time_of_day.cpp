@@ -6,7 +6,7 @@
 using namespace jak1;
 
 // clang-format off
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace time_of_day_interp_colors_scratch {
 
 struct Cache {

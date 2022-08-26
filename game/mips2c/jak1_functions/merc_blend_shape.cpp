@@ -4,7 +4,7 @@
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/jak1/kscheme.h"
 using namespace jak1;
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace blerc_execute {
 struct Cache {
   void* blerc_globals; // *blerc-globals*
@@ -408,7 +408,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace setup_blerc_chains_for_one_fragment {
 struct Cache {
   void* blerc_globals; // *blerc-globals*

@@ -3,7 +3,7 @@
 #include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
 using namespace jak1;
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace draw_inline_array_tfrag {
 struct Cache {
   void* tfrag_work;            // *tfrag-work*
@@ -710,13 +710,13 @@ void link() {
 }
 
 }  // namespace draw_inline_array_tfrag
-}  // namespace Mips2C
+}  // namespace Mips2C::jak1
 
 // clang-format off
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace stats_tfrag_asm {
 struct Cache {
   void* tfrag_work; // *tfrag-work*

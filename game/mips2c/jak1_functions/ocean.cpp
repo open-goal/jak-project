@@ -4,7 +4,7 @@
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/jak1/kscheme.h"
 using namespace jak1;
-namespace Mips2C {
+namespace Mips2C::jak1 {
 ExecutionContext ocean_regs_vfs;
 
 namespace init_ocean_far_regs {
@@ -64,7 +64,7 @@ void link() {
 } // namespace init_ocean_far_regs
 } // namespace Mips2C
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace clip_polygon_against_positive_hyperplane {
 u64 execute(void* ctxt);
 }
@@ -75,7 +75,7 @@ u64 execute(void* ctxt);
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace draw_large_polygon_ocean {
 struct Cache {
   void* clip_polygon_against_negative_hyperplane; // clip-polygon-against-negative-hyperplane
@@ -269,7 +269,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace render_ocean_quad {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*

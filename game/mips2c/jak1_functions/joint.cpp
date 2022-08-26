@@ -16,7 +16,7 @@ struct Cache {
 } cache;
 }
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace decompress_frame_data_pair_to_accumulator {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -820,7 +820,7 @@ u32 jump_table_vals[16] = {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace decompress_frame_data_to_accumulator {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -1420,7 +1420,7 @@ u32 jump_table_vals[16] = {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace decompress_fixed_data_to_accumulator {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -2036,7 +2036,7 @@ u32 jump_table_vals[16] = {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace normalize_frame_quaternions {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -2090,7 +2090,7 @@ u64 execute(void* ctxt) {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace clear_frame_accumulator {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -2150,7 +2150,7 @@ u64 execute(void* ctxt) {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace calc_animation_from_spr {
 
 
@@ -2396,7 +2396,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace cspace_parented_transformq_joint {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;

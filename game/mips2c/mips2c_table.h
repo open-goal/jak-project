@@ -26,7 +26,8 @@ class LinkedFunctionTable {
   std::unordered_map<std::string, Func> m_executes;
 };
 
-extern std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks;
+extern PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>>
+    gMips2CLinkCallbacks;
 extern LinkedFunctionTable gLinkedFunctionTable;
 
 struct Rng {

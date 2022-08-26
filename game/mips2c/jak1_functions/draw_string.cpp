@@ -3,7 +3,7 @@
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/jak1/kscheme.h"
 using namespace jak1;
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace draw_string {
 struct Cache {
   void* font_work; // *font-work*
