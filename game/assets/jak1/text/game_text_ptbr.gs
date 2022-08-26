@@ -188,7 +188,7 @@
 ;; test
 
 (#x7fff
-  "ARMADURA"
+  "ARMOR"
   )
 
 
