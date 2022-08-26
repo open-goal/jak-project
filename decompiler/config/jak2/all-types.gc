@@ -9801,7 +9801,7 @@
 
 (deftype art-group (art)
   ((info  file-info    :offset 4)
-   (data  art-element  :dynamic :offset 32) ;; might just be art?
+   (data  art-element  :score -1 :dynamic :offset 32) ;; might just be art?
    )
   :method-count-assert 15
   :size-assert         #x20
@@ -9876,7 +9876,7 @@
   :size-assert         #x74
   :flag-assert         #x1000000074
   (:methods
-    (skeleton-group-method-15 () none 15)
+    (add-to-loading-level (_type_) none 15)
     )
   )
 
@@ -11390,7 +11390,7 @@
    (purchase-secrets       uint32               :offset-assert 152)
    (unknown-pad2           uint32)
    (gun-type               int32                :offset-assert 160)
-   (gun-ammo               uint32            4  :offset-assert 164) ;; ??
+   (gun-ammo               float            4   :offset-assert 164) ;; ??
    (shield                 float                :offset-assert 180)
    (score                  float                :offset-assert 184)
    (score-owner            uint64               :offset-assert 192)
@@ -12110,7 +12110,7 @@
    (postbind-function function)
    (effect basic)
    (interp-select int64 2)
-   (top-anim basic)
+   (top-anim top-anim-joint-control)
    (override basic)
    (channel joint-control-channel :inline :dynamic)
    )
@@ -13054,6 +13054,9 @@
     )
   )
 
+(declare-type target process-focusable)
+(declare-type process-drawable process)
+
 (deftype fact-info-target (fact-info)
   ((eco-type int32)
    (eco-level float)
@@ -13095,8 +13098,8 @@
   :flag-assert         #xd00000110
   ;; Failed to read fields.
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
-    (fact-info-target-method-12 () none 12)
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
+    (get-gun-ammo (_type_ target) float 12)
     )
   )
 
@@ -13292,6 +13295,38 @@
 (defenum state-flags
   :bitfield #t
   :type uint32
+  (sf0 0)
+  (sf1 1)
+  (sf2 2)
+  (sf3 3)
+  (sf4 4)
+  (sf5 5)
+  (sf6 6)
+  (sf7 7)
+  (sf8 8)
+  (sf9 9)
+  (sf10 10)
+  (sf11 11)
+  (sf12 12)
+  (sf13 13)
+  (sf14 14)
+  (sf15 15)
+  (sf16 16)
+  (sf17 17)
+  (sf18 18)
+  (sf19 19)
+  (sf20 20)
+  (sf21 21)
+  (sf22 22)
+  (sf23 23)
+  (sf24 24)
+  (sf25 25)
+  (sf26 26)
+  (sf27 27)
+  (sf28 28)
+  (sf29 29)
+  (sf30 30)
+  (sf31 31)
   )
 
 (deftype process-drawable (process)
@@ -13574,6 +13609,7 @@
    (blend float  3 :offset-assert 4) ;; guessed by decompiler
    (group uint32 5 :offset-assert 16) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
@@ -15135,7 +15171,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype control-info (collide-shape-moving)
-  ((pad uint8 :offset #x190f)
+  ((unknown-qword00      vector     :offset 12)   ;; from board-h::want-to-board?
+   (unknown-surface00    surface    :offset 3832) ;; from board-h::want-to-board?
+   (unknown-cpad-info00  cpad-info  :offset 3848) ;; from board-h::want-to-board?
+   (unknown-time-frame00 time-frame :offset 4624) ;; from board-h::want-to-board?
+   (unknown-dword00      uint64     :offset 4656) ;; from board-h::want-to-board?
+   (unknown-dword01      uint64     :offset 5944) ;; from board-h::want-to-board?
+   (unknown-time-frame01 time-frame :offset 6368) ;; from board-h::want-to-board?
+   (pad                  uint8      :offset #x190f)
    )
   :flag-assert #x4400001910
   )
@@ -15426,6 +15469,35 @@
   (fs0 0) ;; if set, all collide checks fail
   (fs1 1) ;; if set, all collide checks fail
   (fs2 2)
+  (fs3 3)
+  (fs4 4)
+  (fs5 5)
+  (fs6 6)
+  (fs7 7)
+  (fs8 8)
+  (fs9 9)
+  (fs10 10)
+  (fs11 11)
+  (fs12 12)
+  (fs13 13)
+  (fs14 14)
+  (fs15 15)
+  (fs16 16)
+  (fs17 17)
+  (fs18 18)
+  (fs19 19)
+  (fs20 20)
+  (fs21 21)
+  (fs22 22)
+  (fs23 23)
+  (fs24 24)
+  (fs25 25)
+  (fs26 26)
+  (fs27 27)
+  (fs28 28)
+  (fs29 29)
+  (fs30 30)
+  (fs31 31)
   )
 
 (deftype process-focusable (process-drawable)
@@ -15887,9 +15959,12 @@
 (declare-type racer-info basic)
 (declare-type tube-info basic)
 (declare-type flut-info basic)
+(declare-type board-info basic)
+(declare-type pilot-info basic)
+(declare-type gun-info basic)
 
 (deftype target (process-focusable)
-  ((control                 control-info                             :offset 128) ;; guessed by decompiler
+  ((control                 control-info               :score 1      :offset 128) ;; guessed by decompiler
    (skel2                   basic                                    :offset-assert 204)
    (shadow-backup           basic                                    :offset-assert 208)
    (target-flags            uint32                                   :offset 188)
@@ -15946,9 +16021,9 @@
    (racer                   racer-info                               :offset-assert 2192) ;; guessed by decompiler
    (tube                    tube-info                                :offset-assert 2196) ;; guessed by decompiler
    (flut                    flut-info                                :offset-assert 2200) ;; guessed by decompiler
-   (board                   basic                                    :offset-assert 2204)
-   (pilot                   basic                                    :offset-assert 2208)
-   (gun                     basic                                    :offset-assert 2212)
+   (board                   board-info                               :offset-assert 2204)
+   (pilot                   pilot-info                               :offset-assert 2208)
+   (gun                     gun-info                                 :offset-assert 2212)
    (mech                    basic                                    :offset-assert 2216)
    (turret                  basic                                    :offset-assert 2220)
    (darkjak                 basic                                    :offset-assert 2224)
@@ -24422,48 +24497,123 @@
 ;; water-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum water-flags
+  :bitfield #t
+  :type uint32
+  (active)
+  (can-wade)
+  (can-swim)
+  (swim-ground)
+  (can-ground)
+  (use-ocean)
+  (tar)
+  (mud)
+  (deadly)
+  (use-water-anim)
+  (no-grab-ground)
+  (dark-eco)
+  (lava)
+  (swamp)
+  (flow)
+  (under-water)
+  (head-under-water)
+  (bouncing)
+  (wading)
+  (swimming)
+  (touch-water)
+  (jump-out)
+  (break-surface)
+  (spawn-drip)
+  (part-splash)
+  (part-drip)
+  (part-rings)
+  (part-water)
+  (event)
+  (over-water)
+  (find-water)
+  (touch-water-good)
+  )
+
 (deftype water-info (structure)
-  ()
+  ((trans       vector      :inline :offset-assert 0)
+   (normal      vector      :inline :offset-assert 16)
+   (base-height meters              :offset-assert 32)
+   (depth       meters              :offset-assert 36)
+   (handle      uint64              :offset-assert 40)
+   (flags       water-flags         :offset-assert 48)
+   (prim        basic               :offset-assert 52)
+   (extra-flags uint32              :offset-assert 56)
+   )
   :method-count-assert 9
   :size-assert         #x3c
   :flag-assert         #x90000003c
-  ;; Failed to read fields.
   )
-|#
 
-#|
 (deftype water-control (basic)
-  ()
+  ((flags             water-flags           :offset-assert 4)
+   (process           process-hidden        :offset-assert 8)
+   (joint-index       int32                 :offset-assert 12)
+   (top-y-offset      float                 :offset-assert 16)
+   (attack-id         uint32                :offset-assert 20)
+   (enter-water-time  time-frame            :offset-assert 24)
+   (wade-time         time-frame            :offset-assert 32)
+   (on-water-time     time-frame            :offset-assert 40)
+   (enter-swim-time   time-frame            :offset-assert 48)
+   (swim-time         time-frame            :offset-assert 56)
+   (base-height       meters                :offset-assert 64)
+   (wade-height       meters                :offset-assert 68)
+   (swim-height       meters                :offset-assert 72)
+   (surface-height    meters                :offset-assert 76)
+   (bottom-height     meters                :offset-assert 80)
+   (collide-height    meters                :offset-assert 84)
+   (height            meters                :offset-assert 88)
+   (height-offset     float 4     :score -1 :offset-assert 92)
+   (base-ocean-offset meters                :offset 92)
+   (real-ocean-offset meters                :offset 92)
+   (ocean-offset      meters                :offset 96)
+   (bob-offset        meters                :offset 100)
+   (align-offset      meters                :offset 104)
+   (swim-depth        meters                :offset 108)
+   (bob               smush-control :inline :offset 112)
+   (ripple            int64                 :offset 144)
+   (ripple-size       meters                :offset 152)
+   (wake-size         meters                :offset 156)
+   (bottom            vector      2 :inline :offset 160)
+   (top               vector      2 :inline :offset 192)
+   (enter-water-pos   vector        :inline :offset 224)
+   (drip-old-pos      vector        :inline :offset 240)
+   (drip-joint-index  int32                 :offset 256)
+   (drip-wetness      float                 :offset 260)
+   (drip-time         time-frame            :offset 264)
+   (drip-speed        float                 :offset 272)
+   (drip-height       meters                :offset 276)
+   (drip-mult         float                 :offset 280)
+   (distort-time      time-frame            :offset 288)
+   )
   :method-count-assert 17
   :size-assert         #x128
   :flag-assert         #x1100000128
-  ;; Failed to read fields.
   (:methods
-     ;; (new (symbol type process int float float float) _type_ 0)
+    (new (symbol type process int float float float) _type_ 0)
     (water-control-method-9 () none 9) ;; (dummy-9 (_type_) none 9)
     (water-control-method-10 () none 10) ;; (dummy-10 (_type_) none 10)
     (water-control-method-11 () none 11) ;; (start-bobbing! (_type_ float int int) none 11)
-    (water-control-method-12 () none 12) ;; (distance-from-surface (_type_) float 12)
+    (distance-from-surface (_type_) float 12)
     (water-control-method-13 () none 13) ;; (dummy-13 (_type_ float vector int vector) none 13)
-    (water-control-method-14 () none 14) ;; (display-water-marks? (_type_) symbol 14)
+    (display-water-marks? (_type_) symbol 14)
     (water-control-method-15 () none 15) ;; (TODO-RENAME-15 (_type_) none 15)
     (water-control-method-16 () none 16) ;; (TODO-RENAME-16 (_type_) none 16)
     )
   )
-|#
 
-#|
 (deftype water-vol (process-hidden)
   ()
   :method-count-assert 15
   :size-assert         #x80
   :flag-assert         #xf00000080
-  ;; Failed to read fields.
   (:methods
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -25444,20 +25594,18 @@
 ;; pilot-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vehicle-controls (structure)
   ((steering float  :offset-assert 0)
    (throttle float  :offset-assert 4)
    (brake    float  :offset-assert 8)
    (lean-z   float  :offset-assert 12)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype pilot-info (basic)
   ((entity                  basic                    :offset-assert 4)
    (vehicle                 uint64                   :offset-assert 8)
@@ -25472,37 +25620,35 @@
    (backup-nav-radius       float                    :offset-assert 44)
    (cam-side-shift          float                    :offset-assert 48)
    (enable-cam-side-shift   basic                    :offset-assert 52)
-   (gun?                    basic                    :offset-assert 56)
+   (gun?                    symbol                   :offset-assert 56)
    (controls                vehicle-controls :inline :offset-assert 60)
-   (accel-array             vector           :inline :offset-assert 80)
+   (accel-array             vector 8         :inline :offset-assert 80)
    (local-accel             vector           :inline :offset-assert 208)
    (pilot-trans             vector           :inline :offset-assert 224)
    (pilot-quat              vector           :inline :offset-assert 240)
    (pilot-scale             vector           :inline :offset-assert 256)
-   (pilot-time              time-frame                   :offset-assert 272)
-   (as-daxter?              basic                    :offset-assert 280)
+   (pilot-time              time-frame               :offset-assert 272)
+   (as-daxter?              symbol                   :offset-assert 280)
    (art-group-backup        basic                    :offset-assert 284)
    )
   :method-count-assert 9
   :size-assert         #x120
   :flag-assert         #x900000120
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-h                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun (process-drawable)
-  ((control       basic     :offset-assert 124)
-   (shadow-backup basic     :offset-assert 204)
-   (read-scale    basic     :offset-assert 208)
-   (gun-type      int32     :offset-assert 212)
-   (barrel        basic     :offset-assert 216)
-   (mag           UNKNOWN 4 :offset-assert 220)
-   (mag-scale     UNKNOWN 4 :offset-assert 236)
+  ((control       basic           :offset 128)
+   (shadow-backup basic           :offset 208)
+   (read-scale    basic           :offset-assert 212)
+   (gun-type      pickup-type     :offset-assert 216)
+   (barrel        basic           :offset-assert 220)
+   (mag           basic 4         :offset-assert 224) ;; guessed type
+   (mag-scale     float 4         :offset-assert 240)
    )
   :method-count-assert 24
   :size-assert         #x100
@@ -25514,36 +25660,113 @@
     (gun-method-23 () none 23)
     )
   )
-|#
 
-#|
 (deftype gun-info (basic)
-  ()
+  ((process                uint32             :offset-assert 4)
+   (gun                    uint32             :offset-assert 8)
+   (gun-pos                transformq :inline :offset-assert 16)
+   (gun-trans              vector     :inline :offset 16)
+   (gun-quat               quaternion :inline :offset 32)
+   (gun-scale              vector     :inline :offset 48)
+   (gun-type               pickup-type        :offset-assert 64)
+   (using-gun-type         pickup-type        :offset-assert 68)
+   (active?                symbol             :offset-assert 72)
+   (latch?                 symbol             :offset-assert 76)
+   (put-away?              symbol             :offset-assert 80)
+   (surpress-time          time-frame         :offset-assert 88)
+   (fire-time              time-frame         :offset-assert 96)
+   (gun-time               time-frame         :offset-assert 104)
+   (gun-get-on-time        time-frame         :offset-assert 112)
+   (active-time            time-frame         :offset-assert 120)
+   (fire-delay             uint32             :offset-assert 128)
+   (gun-control            uint32             :offset-assert 132)
+   (gun-target             uint32             :offset-assert 136)
+   (gun-daxter             float              :offset-assert 140)
+   (gun-roty-rel           degrees            :offset-assert 144)
+   (gun-roty               degrees            :offset-assert 148)
+   (gun-roty-targ          degrees            :offset-assert 152)
+   (hips                   basic              :offset-assert 156)
+   (upper-body             basic              :offset-assert 160)
+   (chest                  basic              :offset-assert 164)
+   (fire-dir-rot           degrees            :offset-assert 168)
+   (fire-dir               vector 2 :inline   :offset-assert 176) ;; guess
+   (fire-point             vector   :inline   :offset-assert 208)
+   (fire-dir-backup        vector   :inline   :offset-assert 224)
+   (fire-dir-out           vector   :inline   :offset-assert 240)
+   (fire-pending           int32              :offset-assert 256)
+   (fire-pending-time      time-frame         :offset-assert 264)
+   (fire-start-time        time-frame         :offset-assert 272)
+   (fire-charge            float              :offset-assert 280)
+   (fire-spin              degrees            :offset-assert 284)
+   (fire-spinv             degrees            :offset-assert 288)
+   (fire-chamber           int32              :offset-assert 292)
+   (fire-range             meters             :offset-assert 296)
+   (laser-active?          symbol             :offset-assert 300)
+   (laser-point            vector   :inline   :offset-assert 304)
+   (laser-dir              vector 2 :inline   :offset-assert 320) ;; guess
+   (laser-hit-point        vector   :inline   :offset-assert 352)
+   (track?                 uint16             :offset-assert 368)
+   (track-tilt             degrees            :offset-assert 372)
+   (track-turn             degrees            :offset-assert 376)
+   (track-find-range       meters             :offset-assert 380)
+   (track-turnv-range      meters             :offset-assert 384)
+   (track-tilt-range       meters             :offset-assert 388)
+   (track-turn-range       meters             :offset-assert 392)
+   (track-tilt-max         degrees            :offset-assert 396)
+   (track-turn-max         degrees            :offset-assert 400)
+   (track-angle-mult       float              :offset-assert 404)
+   (track-beam-size        float              :offset-assert 408)
+   (track-auto-fire        symbol             :offset-assert 412)
+   (track-require          uint32             :offset-assert 416)
+   (track-target-hold-time time-frame         :offset-assert 424)
+   (track-start-time       time-frame         :offset-assert 432)
+   (track-press-start-time time-frame         :offset-assert 440)
+   (track-target           focus 2 :inline    :offset-assert 448)
+   (track-trans            vector  :inline    :offset-assert 480)
+   (track-dir              vector  :inline    :offset-assert 496)
+   (turn-fast-hold-time    time-frame         :offset-assert 512)
+   (blue-whine-sound-id    uint32             :offset-assert 520)
+   (blue-whine-volume      float              :offset-assert 524)
+   (top-anim-twist         vector  :inline    :offset-assert 528)
+   (top-anim-twist-targ    vector  :inline    :offset-assert 544)
+   (top-anim-look-at       vector  :inline    :offset-assert 560)
+   (top-anim-twist-reset   uint64             :offset-assert 576)
+   (top-anim-gun-height    meters             :offset-assert 584)
+   (top-anim-blue-cycle    float              :offset-assert 588)
+   (top-anim-low-high      float              :offset-assert 592)
+   (top-anim-extra-twistv  degrees            :offset-assert 596)
+   (top-anim-tilt-up       degrees            :offset-assert 600)
+   (attack-combo           combo-tracker :inline  :offset-assert 608)
+   (combo-window-start     time-frame         :offset-assert 656)
+   (combo-window-state     uint32             :offset-assert 664)
+   (combo-fire-delay       uint32             :offset-assert 668)
+   (charge-ammo            float              :offset-assert 672)
+   (charge-start-time      time-frame         :offset-assert 680)
+   (charge-inc-time        time-frame         :offset-assert 688)
+   (charge-active?         uint64             :offset-assert 696)
+   )
   :method-count-assert 10
   :size-assert         #x2c0
   :flag-assert         #xa000002c0
-  ;; Failed to read fields.
   (:methods
     (gun-info-method-9 () none 9)
     )
   )
-|#
 
-;; (define-extern want-to-gun? function)
-;; (define-extern using-gun? function)
-;; (define-extern enabled-gun? function)
-;; (define-extern gun->ammo function)
-;; (define-extern *gun-shadow-control* shadow-control)
+(define-extern want-to-gun? (function target symbol symbol :behavior process))
+(define-extern using-gun? (function target symbol))
+(define-extern enabled-gun? (function target symbol))
+(define-extern gun->ammo (function pickup-type int))
+(define-extern *gun-shadow-control* shadow-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; board-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype board (process-drawable)
-  ((control       basic  :offset-assert 124)
-   (shadow-backup basic  :offset-assert 204)
-   (main          basic  :offset-assert 208)
+  ((control       basic       :score 1 :offset 128)
+   (shadow-backup basic                :offset 208)
+   (main          basic                :offset 212)
    )
   :method-count-assert 23
   :size-assert         #xd8
@@ -25554,23 +25777,144 @@
     (board-method-22 () none 22)
     )
   )
-|#
 
-#|
 (deftype board-info (basic)
-  ()
+  ((board                  uint32             :offset-assert 4)
+   (camera-interp          float              :offset-assert 8)
+   (process                uint32             :offset-assert 12)
+   (board-trans            vector :inline     :offset-assert 16)
+   (board-quat             vector :inline     :offset-assert 32)
+   (board-scale            vector :inline     :offset-assert 48)
+   (main                   basic              :offset-assert 64)
+   (upper-body             basic              :offset-assert 68)
+   (sound-bank-knob        float              :offset-assert 72)
+   (sound-air-knob         float              :offset-assert 76)
+   (wind-sound-id          uint32             :offset-assert 80)
+   (wind-sound-pitch       float              :offset-assert 84)
+   (wind-sound-volume      float              :offset-assert 88)
+   (engine-sound-id        uint32             :offset-assert 92)
+   (engine-sound-pitch     float              :offset-assert 96)
+   (engine-sound-volume    float              :offset-assert 100)
+   (bank-sound-id          uint32             :offset-assert 104)
+   (bank-sound-pitch       float              :offset-assert 108)
+   (bank-sound-volume      float              :offset-assert 112)
+   (ride-sound-id          uint32             :offset-assert 116)
+   (spin-sound-id          uint32             :offset-assert 120)
+   (spin-sound-volume      float              :offset-assert 124)
+   (spin-sound-pitch       float              :offset-assert 128)
+   (up-vector              vector 2 :inline   :offset-assert 144)
+   (slow-transv            vector   :inline   :offset-assert 176)
+   (board-time             time-frame         :offset-assert 192)
+   (board-get-on-time      time-frame         :offset-assert 200)
+   (in-air-time            time-frame         :offset-assert 208)
+   (stick-lock             basic              :offset 240)
+   (stick-off              basic              :offset-assert 244)
+   (stance-info            ground-tween-info :inline  :offset-assert 248)
+   (mods-backup            basic              :offset-assert 284)
+   (attack-id              uint32             :offset-assert 288)
+   (latch?                 symbol             :offset-assert 292)
+   (unstuck-time           time-frame         :offset 344)
+   (stuck-count            int32              :offset-assert 352)
+   (thrust-scale           float              :offset-assert 356)
+   (flip-time              time-frame         :offset-assert 360)
+   (transv-max             meters             :offset-assert 368)
+   (turn-anim-tilt?        symbol             :offset-assert 372)
+   (turn-anim-mag          float              :offset-assert 376)
+   (turn-anim-targ         float              :offset-assert 380)
+   (turn-anim-frame        float              :offset-assert 384)
+   (turn-anim-vel          float              :offset-assert 388)
+   (turn-anim-duck         float              :offset-assert 392)
+   (turn-anim-duck-vel     float              :offset-assert 396)
+   (tilt-anim-frame        vector   :inline   :offset-assert 400)
+   (tilt-anim-target       vector   :inline   :offset-assert 416)
+   (smack-surface-time     time-frame         :offset-assert 432)
+   (smack-speed            meters             :offset-assert 440)
+   (smack-normal           vector   :inline   :offset-assert 448)
+   (glance-time            time-frame         :offset-assert 464)
+   (glance-speed           meters             :offset-assert 472)
+   (glance-in-transv       vector   :inline   :offset-assert 480)
+   (glance-out-transv      vector   :inline   :offset-assert 496)
+   (glance-normal          vector   :inline   :offset-assert 512)
+   (on-flat-time           time-frame         :offset-assert 528)
+   (jump-land-time         time-frame         :offset-assert 536)
+   (slip-factor            float              :offset-assert 544)
+   (ground-on-dir          vector   :inline   :offset-assert 560)
+   (ride-time              time-frame         :offset-assert 576)
+   (ride-start-time        time-frame         :offset-assert 584)
+   (ride-button-time       time-frame         :offset-assert 592)
+   (ride-lean-targ         float              :offset-assert 600)
+   (ride-lean              float              :offset-assert 604)
+   (ride-leanv             float              :offset-assert 608)
+   (ride-lean-mag          float              :offset-assert 612)
+   (ride-tilt-targ         float              :offset-assert 616)
+   (ride-tilt              float              :offset-assert 620)
+   (ride-tiltv             float              :offset-assert 624)
+   (ride-tilt-mag          float              :offset-assert 628)
+   (ride-lock              symbol             :offset-assert 632)
+   (ride-lock-on           symbol             :offset-assert 636)
+   (ride-speed             meters             :offset-assert 640)
+   (ride-mode              uint32             :offset-assert 644)
+   (ride-rot               degrees            :offset-assert 648)
+   (ride-rot-old           degrees            :offset-assert 652)
+   (ride-rot-abs           degrees 2          :offset-assert 656)
+   (ride-rtv-abs           degrees            :offset-assert 664)
+   (ride-touch-segment     vector  2 :inline  :offset-assert 672)
+   (ride-dir               vector    :inline  :offset-assert 704)
+   (ride-vertex-length     int16              :offset-assert 720)
+   (ride-vertex-length-old int16              :offset-assert 722)
+   (ride-vertex-base       int16              :offset-assert 724)
+   (ride-vertex-base2      int16              :offset-assert 726)
+   (ride-vertex-index      float              :offset-assert 728)
+   (ride-vertex-index2     float              :offset-assert 732)
+   (ride-vertex-index-old  float              :offset-assert 736)
+   (ride-vertex            vector 3   :inline :offset-assert 752)
+   (ride-segment           vector     :inline :offset-assert 800)
+   (ride-dir-lean          vector     :inline :offset-assert 816)
+   (ride-pad-vector        vector 1   :inline :offset-assert 832)
+   (ride-vertex-old        vector 3   :inline :offset-assert 848)
+   (ride-segment-old       vector     :inline :offset-assert 896)
+   (ride-vertex-trail      vector 128 :inline :offset-assert 912)
+   (halfpipe-side-time     time-frame         :offset-assert 2960)
+   (halfpipe-jump-time     time-frame         :offset-assert 2968)
+   (halfpipe-lip-time      time-frame         :offset-assert 2976)
+   (halfpipe-time          time-frame         :offset-assert 2984)
+   (halfpipe-gspot-time    time-frame         :offset-assert 2992)
+   (halfpipe-lip-event     symbol             :offset-assert 3000)
+   (spin-check-time        time-frame         :offset-assert 3008)
+   (spin-time              time-frame         :offset-assert 3016)
+   (spin-start-time        time-frame         :offset-assert 3024)
+   (spin-start-dir         vector     :inline :offset-assert 3040)
+   (spin-control           float              :offset-assert 3056)
+   (spin-ground-start-time time-frame         :offset-assert 3064)
+   (spin-ground-time       time-frame         :offset-assert 3072)
+   (spin-ground-press-time time-frame         :offset-assert 3080)
+   (flip-control           float              :offset-assert 3088)
+   (flip-count             int32              :offset-assert 3092)
+   (trickx-count           int32              :offset 3144)
+   (trotyv-max             degrees            :offset-assert 3148)
+   (trotyv                 degrees            :offset-assert 3152)
+   (troty                  degrees            :offset-assert 3156)
+   (troty-cum              degrees            :offset-assert 3160)
+   (upper-body-rotyv-max   degrees            :offset 3168)
+   (upper-body-rotyv       degrees            :offset-assert 3172)
+   (upper-body-roty        degrees            :offset-assert 3176)
+   (cushion-base           meters             :offset-assert 3180)
+   (cushion-offset         meters             :offset-assert 3184)
+   (shock-offset           meters             :offset-assert 3188)
+   (shock-offsetv          meters             :offset-assert 3192)
+   (shock-rotx             meters             :offset-assert 3196)
+   (trick-count            int32              :offset 3204)
+   (pad                    uint8              :offset 3399)
+   )
   :method-count-assert 11
   :size-assert         #xd48
   :flag-assert         #xb00000d48
-  ;; Failed to read fields.
   (:methods
     (board-info-method-9 () none 9)
     (board-info-method-10 () none 10)
     )
   )
-|#
 
-#|
 (deftype target-board-bank (basic)
   ((jump-height-min        meters   :offset-assert 4)
    (jump-height-max        meters   :offset-assert 8)
@@ -25588,11 +25932,10 @@
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-;; (define-extern *TARGET_BOARD-bank* target-board-bank)
-;; (define-extern want-to-board? function)
-;; (define-extern *board-shadow-control* shadow-control)
+(define-extern *TARGET_BOARD-bank* target-board-bank)
+(define-extern want-to-board? (function symbol :behavior target))
+(define-extern *board-shadow-control* shadow-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; darkjak-h                      ;;
@@ -25760,7 +26103,7 @@
 ;; (define-extern smack-surface? function) ;; (function symbol symbol :behavior target)
 ;; (define-extern can-roll? function)
 ;; (define-extern can-duck? function) ;; (function symbol :behavior target)
-;; (define-extern can-exit-duck? function) ;; (function symbol :behavior target)
+(define-extern can-exit-duck? (function symbol :behavior target)) ;; (function symbol :behavior target)
 ;; (define-extern can-hands? function) ;; (function symbol symbol :behavior target)
 ;; (define-extern can-feet? function) ;; (function symbol :behavior target)
 ;; (define-extern are-still? function)
