@@ -3,7 +3,7 @@
 #include "game/mips2c/mips2c_private.h"
 using namespace jak1;
 // clang-format off
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace collide_do_primitives {
 struct Cache {
   void* ray_cylinder_intersect; // ray-cylinder-intersect
@@ -262,7 +262,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace moving_sphere_triangle_intersect {
 struct Cache {
   void* collide_do_primitives; // collide-do-primitives

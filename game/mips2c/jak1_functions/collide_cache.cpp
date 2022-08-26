@@ -16,7 +16,7 @@ void vlqi(Mips2C::ExecutionContext* c, int reg) {
 }
 }  // namespace
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 
 namespace pc_upload_collide_frag {
 u64 execute(void* ctxt) {
@@ -508,7 +508,7 @@ void link() {
 } // namespace Mips2C
 
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 
 // clip by box
 namespace method_26_collide_cache {
@@ -794,7 +794,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_28_collide_cache {
 struct Cache {
   void* already_printed_exeeded_max_cache_tris; // *already-printed-exeeded-max-cache-tris*
@@ -1077,7 +1077,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_27_collide_cache {
 struct Cache {
   void* already_printed_exeeded_max_cache_tris; // *already-printed-exeeded-max-cache-tris*
@@ -1373,7 +1373,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_29_collide_cache {
 struct Cache {
   void* collide_work; // *collide-work*
@@ -1562,7 +1562,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_12_collide_shape_prim_mesh {
 struct Cache {
   void* already_printed_exeeded_max_cache_tris; // *already-printed-exeeded-max-cache-tris*
@@ -1808,7 +1808,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_14_collide_shape_prim_mesh {
 struct Cache {
   void* already_printed_exeeded_max_cache_tris; // *already-printed-exeeded-max-cache-tris*
@@ -2053,7 +2053,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_13_collide_shape_prim_mesh {
 struct Cache {
   void* already_printed_exeeded_max_cache_tris; // *already-printed-exeeded-max-cache-tris*
@@ -2304,7 +2304,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_30_collide_cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -2506,7 +2506,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_9_collide_cache_prim {
 struct Cache {
   void* moving_sphere_triangle_intersect; // moving-sphere-triangle-intersect
@@ -2694,7 +2694,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_10_collide_cache_prim {
 struct Cache {
   void* moving_sphere_sphere_intersect; // moving-sphere-sphere-intersect
@@ -2906,7 +2906,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_10_collide_puss_work {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -3075,7 +3075,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_9_collide_puss_work {
 struct Cache {
   void* closest_pt_in_triangle; // closest-pt-in-triangle

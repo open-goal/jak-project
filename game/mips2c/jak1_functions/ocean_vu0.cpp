@@ -3,7 +3,7 @@
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/jak1/kscheme.h"
 using namespace jak1;
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace ocean_interp_wave {
 struct Cache {
   void* ocean_wave_frames; // *ocean-wave-frames*
@@ -204,7 +204,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace ocean_generate_verts {
 struct Cache {
   void* ocean_vu0_work; // *ocean-vu0-work*
