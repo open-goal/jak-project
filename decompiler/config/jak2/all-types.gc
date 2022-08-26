@@ -29775,7 +29775,6 @@
 ;; rigid-body-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype rigid-body-info (structure)
   ((mass                float           :offset-assert 0)
    (inv-mass            float           :offset-assert 4)
@@ -29787,7 +29786,7 @@
    (cm-offset-joint     vector  :inline :offset-assert 32)
    (inv-inertial-tensor matrix  :inline :offset-assert 48)
    (inertial-tensor     matrix  :inline :offset-assert 112)
-   (inertial-tensor-box UNKNOWN 3       :offset-assert 176)
+   (inertial-tensor-box meters 3        :offset-assert 176)
    )
   :method-count-assert 10
   :size-assert         #xbc
@@ -29796,50 +29795,45 @@
     (rigid-body-info-method-9 () none 9)
     )
   )
-|#
 
-#|
 (deftype rigid-body-object-extra-info (structure)
   ((max-time-step      float   :offset-assert 0)
    (gravity            meters  :offset-assert 4)
    (idle-distance      meters  :offset-assert 8)
    (attack-force-scale float   :offset-assert 12)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype rigid-body-object-constants (structure)
-  ((info               rigid-body-info              :inline :offset-assert 0)
-   (mass               float                                :offset-assert 0)
-   (inv-mass           float                                :offset-assert 4)
-   (cm-joint-x         meters                               :offset-assert 32)
-   (cm-joint-y         meters                               :offset-assert 36)
-   (cm-joint-z         meters                               :offset-assert 40)
-   (linear-damping     float                                :offset-assert 8)
-   (angular-damping    float                                :offset-assert 12)
-   (bounce-factor      float                                :offset-assert 16)
-   (friction-factor    float                                :offset-assert 20)
-   (inertial-tensor-x  meters                               :offset-assert 176)
-   (inertial-tensor-y  meters                               :offset-assert 180)
-   (inertial-tensor-z  meters                               :offset-assert 184)
-   (extra              rigid-body-object-extra-info :inline :offset-assert 188)
-   (max-time-step      float                                :offset-assert 188)
-   (gravity            meters                               :offset-assert 192)
-   (idle-distance      meters                               :offset-assert 196)
-   (attack-force-scale float                                :offset-assert 200)
+  ((info               rigid-body-info              :inline :offset-assert 0 :score -1)
+   (mass               float                                :offset 0)
+   (inv-mass           float                                :offset 4)
+   (cm-joint-x         meters                               :offset 32)
+   (cm-joint-y         meters                               :offset 36)
+   (cm-joint-z         meters                               :offset 40)
+   (linear-damping     float                                :offset 8)
+   (angular-damping    float                                :offset 12)
+   (bounce-factor      float                                :offset 16)
+   (friction-factor    float                                :offset 20)
+   (inertial-tensor-x  meters                               :offset 176)
+   (inertial-tensor-y  meters                               :offset 180)
+   (inertial-tensor-z  meters                               :offset 184)
+   (extra              rigid-body-object-extra-info :inline :offset-assert 188 :score -1)
+   (max-time-step      float                                :offset 188)
+   (gravity            meters                               :offset 192)
+   (idle-distance      meters                               :offset 196)
+   (attack-force-scale float                                :offset 200)
    (name               basic                                :offset-assert 204)
    )
   :method-count-assert 9
   :size-assert         #xd0
   :flag-assert         #x9000000d0
   )
-|#
 
-#|
 (deftype rigid-body-impact (structure)
   ((point    vector :inline :offset-assert 0)
    (normal   vector :inline :offset-assert 16)
@@ -29853,15 +29847,41 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
+(defenum rigid-body-flag
+  :bitfield #t
+  :type uint32
+  (display-marks 0)
+  (enable-physics 1)
+  (enable-collision 2)
+  (active 3)
+  (debug 4)
+  (blocker 5)
+  )
+
 (deftype rigid-body (structure)
-  ()
+  ((work           basic              :offset-assert 0)
+   (info           rigid-body-info    :offset-assert 4)
+   (flags          rigid-body-flag    :offset-assert 8)
+   (force-callback basic              :offset-assert 12)
+   (blocked-by     basic              :offset-assert 16)
+   (time-remaining float              :offset-assert 20)
+   (step-count     int16              :offset-assert 24)
+   (position       vector     :inline :offset-assert 32)
+   (rot            vector     :inline :offset-assert 48)
+   (rotation       quaternion :inline :offset 48)
+   (lin-momentum   vector     :inline :offset-assert 64)
+   (ang-momentum   vector     :inline :offset-assert 80)
+   (force          vector     :inline :offset-assert 96)
+   (torque         vector     :inline :offset-assert 112)
+   (lin-velocity   vector     :inline :offset-assert 128)
+   (ang-velocity   vector     :inline :offset-assert 144)
+   (matrix         matrix     :inline :offset-assert 160)
+   (inv-i-world    matrix     :inline :offset-assert 224)
+   )
   :method-count-assert 32
   :size-assert         #x120
   :flag-assert         #x2000000120
-  ;; Failed to read fields.
   (:methods
     (rigid-body-method-9 () none 9) ;; (TODO-RENAME-9 (_type_ float float float float) none 9)
     (rigid-body-method-10 () none 10) ;; (dummy-10 (_type_ float) none 10)
@@ -29888,15 +29908,32 @@
     (rigid-body-method-31 () none 31)
     )
   )
-|#
 
-#|
 (deftype rigid-body-control (basic)
-  ()
+  ((process        process            :offset-assert 4)
+   (state          rigid-body :inline :offset-assert 16 :score -1)
+   (work           basic              :offset 16)
+   (info           rigid-body-info    :offset 20)
+   (flags          rigid-body-flag    :offset 24)
+   (force-callback basic              :offset 28)
+   (blocked-by     basic              :offset 32)
+   (time-remaining float              :offset 36)
+   (step-count     int16              :offset 40)
+   (position       vector     :inline :offset 48)
+   (rot            vector     :inline :offset 64)
+   (rotation       quaternion :inline :offset 64)
+   (lin-momentum   vector     :inline :offset 80)
+   (ang-momentum   vector     :inline :offset 96)
+   (force          vector     :inline :offset 112)
+   (torque         vector     :inline :offset 128)
+   (lin-velocity   vector     :inline :offset 144)
+   (ang-velocity   vector     :inline :offset 160)
+   (matrix         matrix     :inline :offset 176)
+   (inv-i-world    matrix     :inline :offset 240)
+   )
   :method-count-assert 26
   :size-assert         #x130
   :flag-assert         #x1a00000130
-  ;; Failed to read fields.
   (:methods
     (rigid-body-control-method-9 () none 9)
     (rigid-body-control-method-10 () none 10)
@@ -29917,15 +29954,34 @@
     (rigid-body-control-method-25 () none 25)
     )
   )
-|#
 
-#|
+(defenum rigid-body-object-flag
+  :bitfield #t
+  :type uint64
+  (enable-collision 0)
+  (disturbed 1)
+  (damaged 2)
+  (dead 3)
+  (player-touching 4)
+  (player-edge-grabbing 5)
+  (player-standing-on 6)
+  (player-impulse-force 7)
+  (player-contact-force 8)
+  )
+
 (deftype rigid-body-object (process-focusable)
-  ()
+  ((info                  rigid-body-object-constants :offset-assert 204)
+   (flags                 rigid-body-object-flag      :offset-assert 208)
+   (max-time-step         float                       :offset-assert 216)
+   (incoming-attack-id    uint32                      :offset-assert 220)
+   (player-touch-time     time-frame                  :offset-assert 224)
+   (disturbed-time        time-frame                  :offset-assert 232)
+   (player-force-position vector              :inline :offset-assert 240)
+   (player-force          vector              :inline :offset-assert 256)
+   )
   :method-count-assert 53
   :size-assert         #x110
   :flag-assert         #x3500900110
-  ;; Failed to read fields.
   (:methods
     (rigid-body-object-method-27 () none 27)
     (rigid-body-object-method-28 () none 28)
@@ -29955,12 +30011,10 @@
     (rigid-body-object-method-52 () none 52)
     )
   )
-|#
 
-#|
 (deftype rigid-body-queue (structure)
   ((count int8        :offset-assert 0)
-   (array UNKNOWN 128 :offset-assert 8)
+   (array uint64 128  :offset 8) ;; TODO: unsure about type
    )
   :method-count-assert 17
   :size-assert         #x408
@@ -29976,7 +30030,6 @@
     (rigid-body-queue-method-16 () none 16)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
