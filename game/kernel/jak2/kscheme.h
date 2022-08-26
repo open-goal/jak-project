@@ -57,4 +57,6 @@ u64 loado(u32 file_name_in, u32 heap_in);
 u64 unload(u32 name);
 u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id);
 u64 call_goal_function_by_name(const char* name);
+u64 alloc_heap_object(u32 heap, u32 type, u32 size, u32 pp);
+u32 u32_in_fixed_sym(u32 offset);
 }  // namespace jak2

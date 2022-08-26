@@ -3,7 +3,7 @@
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/jak1/kscheme.h"
 using namespace jak1;
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace generic_tie_dma_to_spad_sync {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
@@ -108,7 +108,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 
 namespace generic_prepare_dma_double {
 extern u64 execute(void* ctxt);

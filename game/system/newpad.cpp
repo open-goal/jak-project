@@ -213,8 +213,7 @@ void UpdateAxisValue(MappingInfo& mapping_info) {
       double input = 0.0f;
       if (mapping_info.keyboard_analog_mapping[pad][analog].positive_key > -1 &&
           mapping_info.keyboard_analog_mapping[pad][analog].positive_key < glfw::NUM_KEYS) {
-        if (analog == static_cast<int>(Analog::Left_Y) ||
-            analog == static_cast<int>(Analog::Right_Y)) {
+        if (analog == static_cast<int>(Analog::Left_Y)) {
           input -=
               g_buffered_key_status[mapping_info.keyboard_analog_mapping[pad][analog].positive_key];
         } else {
@@ -224,8 +223,7 @@ void UpdateAxisValue(MappingInfo& mapping_info) {
       }
       if (mapping_info.keyboard_analog_mapping[pad][analog].negative_key > -1 &&
           mapping_info.keyboard_analog_mapping[pad][analog].negative_key < glfw::NUM_KEYS) {
-        if (analog == static_cast<int>(Analog::Left_Y) ||
-            analog == static_cast<int>(Analog::Right_Y)) {
+        if (analog == static_cast<int>(Analog::Left_Y)) {
           input +=
               g_buffered_key_status[mapping_info.keyboard_analog_mapping[pad][analog].negative_key];
         } else {
@@ -290,7 +288,10 @@ void MapButton(MappingInfo& mapping, Button button, int pad, int key) {
   }
 }
 
-void MapAnalog(MappingInfo& mapping, Analog button, int pad, AnalogMappingInfo& analomapping_info) {
+void MapAnalog(MappingInfo& mapping,
+               Analog button,
+               int pad,
+               AnalogMappingInfo& analog_mapping_info) {
   // check if pad is valid. dont map buttons with invalid pads.
   if (CheckPadIdx(pad) == -1) {
     return;
@@ -298,9 +299,9 @@ void MapAnalog(MappingInfo& mapping, Analog button, int pad, AnalogMappingInfo& 
 
   if (g_gamepads.gamepad_idx[pad] == -1) {
     // TODO: Check if other pad is keyboard and if key is already bound
-    mapping.keyboard_analog_mapping[pad][(int)button] = analomapping_info;
+    mapping.keyboard_analog_mapping[pad][(int)button] = analog_mapping_info;
   } else {
-    mapping.controller_analog_mapping[pad][(int)button] = analomapping_info;
+    mapping.controller_analog_mapping[pad][(int)button] = analog_mapping_info;
   }
 }
 
@@ -375,22 +376,23 @@ void DefaultMapping(MappingInfo& mapping) {
   MapButton(mapping, Button::L3, 0, GLFW_KEY_COMMA);
   MapButton(mapping, Button::R3, 0, GLFW_KEY_PERIOD);
 
-  AnalogMappingInfo analomapping_info;
+  AnalogMappingInfo analog_mapping_info;
 
-  analomapping_info.positive_key = GLFW_KEY_D;
-  analomapping_info.negative_key = GLFW_KEY_A;
-  MapAnalog(mapping, Analog::Left_X, 0, analomapping_info);
+  analog_mapping_info.positive_key = GLFW_KEY_D;
+  analog_mapping_info.negative_key = GLFW_KEY_A;
+  MapAnalog(mapping, Analog::Left_X, 0, analog_mapping_info);
 
-  analomapping_info.positive_key = GLFW_KEY_W;
-  analomapping_info.negative_key = GLFW_KEY_S;
-  MapAnalog(mapping, Analog::Left_Y, 0, analomapping_info);
+  analog_mapping_info.positive_key = GLFW_KEY_W;
+  analog_mapping_info.negative_key = GLFW_KEY_S;
+  MapAnalog(mapping, Analog::Left_Y, 0, analog_mapping_info);
 
-  analomapping_info.mode = AnalogMappingMode::AnalogInput;
-  analomapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_X_AXIS;
-  MapAnalog(mapping, Analog::Right_X, 0, analomapping_info);
+  analog_mapping_info.positive_key = GLFW_KEY_L;
+  analog_mapping_info.negative_key = GLFW_KEY_J;
+  MapAnalog(mapping, Analog::Right_X, 0, analog_mapping_info);
 
-  analomapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_Y_AXIS;
-  MapAnalog(mapping, Analog::Right_Y, 0, analomapping_info);
+  analog_mapping_info.positive_key = GLFW_KEY_I;
+  analog_mapping_info.negative_key = GLFW_KEY_K;
+  MapAnalog(mapping, Analog::Right_Y, 0, analog_mapping_info);
 
   const double default_mouse_x_sensitivity = 5.0f;
   const double default_mouse_y_sensitivity = 2.0f;

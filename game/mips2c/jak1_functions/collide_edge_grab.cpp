@@ -2,7 +2,7 @@
 #include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
 using namespace jak1;
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_16_collide_edge_work {
 struct Cache {
   void* format;  // format
@@ -195,7 +195,7 @@ void link() {
 } // namespace method_16_collide_edge_work
 } // namespace Mips2C
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_15_collide_edge_work {
 struct Cache {
   void* format; // format
@@ -596,7 +596,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_10_collide_edge_hold_list {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -690,7 +690,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_18_collide_edge_work {
 struct Cache {
   void* collide_edge_hold_list; // collide-edge-hold-list

@@ -4,7 +4,7 @@
 #include "game/mips2c/mips2c_private.h"
 using namespace jak1;
 // clang-format off
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_12_collide_mesh {
 struct Cache {
   void* closest_pt_in_triangle; // closest-pt-in-triangle
@@ -204,7 +204,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_11_collide_mesh {
 struct Cache {
   void* closest_pt_in_triangle; // closest-pt-in-triangle
@@ -379,7 +379,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_14_collide_mesh {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -583,7 +583,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace method_15_collide_mesh {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;

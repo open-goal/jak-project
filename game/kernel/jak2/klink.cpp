@@ -11,8 +11,10 @@
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/memory_layout.h"
 #include "game/kernel/jak2/kscheme.h"
+#include "game/mips2c/mips2c_table.h"
 
 #include "third-party/fmt/core.h"
+
 static constexpr bool link_debug_printfs = false;
 
 /*!
@@ -540,11 +542,12 @@ void link_control::jak2_finish(bool jump_from_c_to_goal) {
     // todo check function type of entry
 
     // setup mips2c functions
-    /*
-    for (auto& x : Mips2C::gMips2CLinkCallbacks[m_object_name]) {
-      x();
+    const auto& it = Mips2C::gMips2CLinkCallbacks[GameVersion::Jak2].find(m_object_name);
+    if (it != Mips2C::gMips2CLinkCallbacks[GameVersion::Jak2].end()) {
+      for (auto& x : it->second) {
+        x();
+      }
     }
-     */
 
     // execute top level!
     if (m_entry.offset && (m_flags & LINK_FLAG_EXECUTE)) {
