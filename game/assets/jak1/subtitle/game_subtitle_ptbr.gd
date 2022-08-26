@@ -2394,7 +2394,7 @@
 ("MAI-AM07" :hint #x0 (0 "MAIA" "NÃOOOOO!"))
 ("MAI-AM08" :hint #x0 (0 "MAIA" "VAMOS ABRIR O RESERVATÓRIO E DESTRUIR VOCÊS!"))
 ("MAI-AM09" :hint #x0 (0 "MAIA" "ELES NÃO PODEM PEGÁ-LO!"))
-("sksp0394" :hint #x0 (0 "DAXTER" PEGA O ECO AMARELO!"))
+("sksp0394" :hint #x0 (0 "DAXTER" "PEGA O ECO AMARELO!"))
 ("sksp0395" :hint #x0 (0 "DAXTER" "ATIRA NO ROBÔ, JAK!"))
 ("sksp0396" :hint #x0 (0 "DAXTER" "ATIRA NO BRAÇO DELE!"))
 ("sksp0397" :hint #x0 (0 "DAXTER" "ATIRA NA ARMA!"))
