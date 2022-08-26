@@ -5779,7 +5779,7 @@
     (debug-print-region-splitbox (_type_ vector object) none 20) ;; (vis-load (_type_) uint 20)
     (get-art-group-by-name (_type_ string) art-group 21) ;; (unused-21 (_type_) none 21)
     (level-method-22 () none 22) ;; (birth (_type_) _type_ 22)
-    (level-method-23 (_type_ game-text-id symbol) string 23) ;; (level-status-set! (_type_ symbol) _type_ 23)
+    (lookup-text (_type_ game-text-id symbol) string 23) ;; (level-status-set! (_type_ symbol) _type_ 23)
     (level-method-24 () none 24)
     (birth (_type_) _type_ 25) ;; (init-vis (_type_) int 25)
     (level-status-update! (_type_ symbol) _type_ 26)
@@ -21303,12 +21303,26 @@
   (probe-hit 16)
   )
 
+(defenum history-channel
+  :type uint8
+  (trans 0)
+  (transv 1)
+  (transv-in 2)
+  (transv-out 3)
+  (intersect 4)
+  (local-normal 5)
+  (surface-normal 6)
+  (collide-status 7)
+  (pat 8)
+  (time 9)
+  (friction 10))
+
 (deftype history-elt (structure)
   ((record-tag-bytes      uint8 4       :offset-assert 0)
    (record-tag            uint32          :offset 0)
    (record-id             uint16          :offset 0)
    (owner                 uint8           :offset 2)
-   (channel               uint8           :offset-assert 4)
+   (channel               history-channel           :offset-assert 4)
    (timestamp             time-frame          :offset-assert 8)
    (origin                vector  :inline :offset-assert 16)
    (bytes                 uint8 16      :offset-assert 32)
@@ -21316,7 +21330,7 @@
    (float                 float           :offset 32)
    (collide-status        collide-status          :offset 32)
    (collide-reaction-flag uint32          :offset 40)
-   (pat                   uint32          :offset 32)
+   (pat                   pat-surface          :offset 32)
    )
   :method-count-assert 9
   :size-assert         #x30
@@ -21356,14 +21370,20 @@
 (deftype history (basic)
   ((alloc-index      int32            :offset-assert 4)
    (allocated-length int32            :offset-assert 8)
-   (elts             history-elt :dynamic :offset 16)
+   (elts             history-elt :dynamic :inline :offset 16)
    )
   :method-count-assert 11
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
     (new (symbol type int) _type_ 0)
-    (history-method-asm-9 () none 9)
+    (clear-record-tags!
+      "First grab the latest [[history-elt]] at `alloc-index`
+       1. update it's `channel`, `record-id` and `owner` from the provided args
+       2. - if it's `record-tag` is zero -- return it
+           - otherwise, iterate through all `elts` until one is found that does not match it's `timestamp`
+             - if not `0` out the `record-tag` for that elt and continue iteration"
+      (_type_ history-channel uint uint) history-elt 9)
     (clear-history-entries!
       "Iterates through each [[history-elt]] in the `elt` dynamic array
        For each entry:
@@ -21373,7 +21393,7 @@
     )
   )
 
-(define-extern history-channel->string (function uint string))
+(define-extern history-channel->string (function history-channel string))
 (define-extern *history* history)
 (define-extern history-print (function history-iterator none))
 (define-extern history-draw (function history-iterator none))
