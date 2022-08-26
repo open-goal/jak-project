@@ -5,5 +5,164 @@
 ;; name in dgo: sync-info-h
 ;; dgos: ENGINE, GAME
 
-;; DECOMP BEGINS
+(defenum sync-flags
+  :type uint64
+  :bitfield #t
+  )
 
+;; DECOMP BEGINS
+(deftype sync-info-params (structure)
+  ((sync-type  basic       :offset-assert   0)
+   (sync-flags sync-flags  :offset-assert   8)
+   (entity     basic       :offset-assert  16)
+   (period     uint32      :offset-assert  20)
+   (percent    float       :offset-assert  24)
+   (ease-in    float       :offset-assert  28)
+   (ease-out   float       :offset-assert  32)
+   (pause-in   float       :offset-assert  36)
+   (pause-out  float       :offset-assert  40)
+   )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+(deftype sync-info (structure)
+  ((sync-flags sync-flags  :offset-assert   0)
+   (offset     float       :offset-assert   8)
+   (period     uint32      :offset-assert  12)
+   )
+  :method-count-assert 16
+  :size-assert         #x10
+  :flag-assert         #x1000000010
+  (:methods
+    (sync-info-method-9 () none 9)
+    (sync-info-method-10 () none 10)
+    (sync-info-method-11 () none 11)
+    (sync-info-method-12 () none 12)
+    (sync-info-method-13 () none 13)
+    (sync-info-method-14 () none 14)
+    (sync-info-method-15 () none 15)
+    )
+  )
+
+(deftype sync-linear (sync-info)
+  ()
+  :method-count-assert 16
+  :size-assert         #x10
+  :flag-assert         #x1000000010
+  )
+
+(deftype sync-eased (sync-info)
+  ((tlo       float  :offset-assert  16)
+   (thi       float  :offset-assert  20)
+   (ylo       float  :offset-assert  24)
+   (m2        float  :offset-assert  28)
+   (yend      float  :offset-assert  32)
+   (pause-in  float  :offset-assert  36)
+   (pause-out float  :offset-assert  40)
+   )
+  :method-count-assert 16
+  :size-assert         #x2c
+  :flag-assert         #x100000002c
+  )
+
+(deftype sync-paused (sync-info)
+  ((pause-in  float  :offset-assert  16)
+   (pause-out float  :offset-assert  20)
+   )
+  :method-count-assert 16
+  :size-assert         #x18
+  :flag-assert         #x1000000018
+  )
+
+(deftype delayed-rand-float (structure)
+  ((min-time   int32       :offset-assert   0)
+   (max-time   int32       :offset-assert   4)
+   (max-val    float       :offset-assert   8)
+   (timer      int32       :offset-assert  12)
+   (start-time time-frame  :offset-assert  16)
+   (value      float       :offset-assert  24)
+   )
+  :method-count-assert 13
+  :size-assert         #x1c
+  :flag-assert         #xd0000001c
+  (:methods
+    (delayed-rand-float-method-9 () none 9)
+    (delayed-rand-float-method-10 () none 10)
+    (delayed-rand-float-method-11 () none 11)
+    (delayed-rand-float-method-12 () none 12)
+    )
+  )
+
+(deftype oscillating-float (structure)
+  ((value   float  :offset-assert   0)
+   (target  float  :offset-assert   4)
+   (vel     float  :offset-assert   8)
+   (max-vel float  :offset-assert  12)
+   (damping float  :offset-assert  16)
+   (accel   float  :offset-assert  20)
+   )
+  :method-count-assert 11
+  :size-assert         #x18
+  :flag-assert         #xb00000018
+  (:methods
+    (oscillating-float-method-9 () none 9)
+    (oscillating-float-method-10 () none 10)
+    )
+  )
+
+(deftype bouncing-float (structure)
+  ((osc        oscillating-float :inline :offset-assert   0)
+   (max-value  float                     :offset-assert  24)
+   (min-value  float                     :offset-assert  28)
+   (elasticity float                     :offset-assert  32)
+   (state      int32                     :offset-assert  36)
+   )
+  :method-count-assert 13
+  :size-assert         #x28
+  :flag-assert         #xd00000028
+  (:methods
+    (bouncing-float-method-9 () none 9)
+    (bouncing-float-method-10 () none 10)
+    (bouncing-float-method-11 () none 11)
+    (bouncing-float-method-12 () none 12)
+    )
+  )
+
+(deftype delayed-rand-vector (structure)
+  ((min-time   int32              :offset-assert   0)
+   (max-time   int32              :offset-assert   4)
+   (xz-max     float              :offset-assert   8)
+   (y-max      float              :offset-assert  12)
+   (timer      int32              :offset-assert  16)
+   (start-time time-frame         :offset-assert  24)
+   (value      vector     :inline :offset-assert  32)
+   )
+  :method-count-assert 13
+  :size-assert         #x30
+  :flag-assert         #xd00000030
+  (:methods
+    (delayed-rand-vector-method-9 () none 9)
+    (delayed-rand-vector-method-10 () none 10)
+    (delayed-rand-vector-method-11 () none 11)
+    (delayed-rand-vector-method-12 () none 12)
+    )
+  )
+
+(deftype oscillating-vector (structure)
+  ((value   vector :inline :offset-assert   0)
+   (target  vector :inline :offset-assert  16)
+   (vel     vector :inline :offset-assert  32)
+   (max-vel float          :offset-assert  48)
+   (damping float          :offset-assert  52)
+   (accel   float          :offset-assert  56)
+   )
+  :method-count-assert 11
+  :size-assert         #x3c
+  :flag-assert         #xb0000003c
+  (:methods
+    (oscillating-vector-method-9 () none 9)
+    (oscillating-vector-method-10 () none 10)
+    )
+  )

@@ -507,67 +507,71 @@ void Env::disable_use(const RegisterAccess& access) {
  */
 void Env::set_stack_structure_hints(const std::vector<StackStructureHint>& hints) {
   for (auto& hint : hints) {
-    StackStructureEntry entry;
-    entry.hint = hint;
-
-    switch (hint.container_type) {
-      case StackStructureHint::ContainerType::NONE: {
-        // parse the type spec.
-        TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
-        auto type_info = dts->ts.lookup_type(base_typespec);
-        // just a plain object on the stack.
-        if (!type_info->is_reference()) {
-          throw std::runtime_error(
-              fmt::format("Stack variable type {} is not a reference and cannot be stored directly "
-                          "on the stack. Use an array instead.",
-                          base_typespec.print()));
-        }
-        entry.ref_type = base_typespec;
-        entry.size = type_info->get_size_in_memory();
-        // sanity check the alignment
-        if (align(entry.hint.stack_offset, type_info->get_in_memory_alignment()) !=
-            entry.hint.stack_offset) {
-          lg::error("Misaligned stack variable of type {} offset {} required align {}\n",
-                    entry.ref_type.print(), entry.hint.stack_offset,
-                    type_info->get_in_memory_alignment());
-        }
-      } break;
-
-      case StackStructureHint::ContainerType::INLINE_ARRAY: {
-        TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
-        auto type_info = dts->ts.lookup_type(base_typespec);
-        if (!type_info->is_reference()) {
-          throw std::runtime_error(
-              fmt::format("Stack inline-array element type {} is not a reference and cannot be "
-                          "stored in an inline-array. Use an array instead.",
-                          base_typespec.print()));
-        }
-
-        entry.ref_type = TypeSpec("inline-array", {TypeSpec(base_typespec)});
-        entry.size = 1;  // we assume that there is no constant propagation into this array and
-        // make this only trigger in get_stack_type if we hit exactly.
-        // sanity check the alignment
-        if (align(entry.hint.stack_offset, type_info->get_in_memory_alignment()) !=
-            entry.hint.stack_offset) {
-          lg::error("Misaligned stack variable of type {} offset {} required align {}\n",
-                    entry.ref_type.print(), entry.hint.stack_offset,
-                    type_info->get_in_memory_alignment());
-        }
-      } break;
-
-      case StackStructureHint::ContainerType::ARRAY: {
-        TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
-        entry.ref_type = TypeSpec("pointer", {TypeSpec(base_typespec)});
-        entry.size = 1;  // we assume that there is no constant propagation into this array and
-        // make this only trigger in get_stack_type if we hit exactly.
-        break;
-      }
-      default:
-        ASSERT(false);
-    }
-
-    m_stack_structures.push_back(entry);
+    add_stack_structure_hint(hint);
   }
+}
+
+void Env::add_stack_structure_hint(const StackStructureHint& hint) {
+  StackStructureEntry entry;
+  entry.hint = hint;
+
+  switch (hint.container_type) {
+    case StackStructureHint::ContainerType::NONE: {
+      // parse the type spec.
+      TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
+      auto type_info = dts->ts.lookup_type(base_typespec);
+      // just a plain object on the stack.
+      if (!type_info->is_reference()) {
+        throw std::runtime_error(
+            fmt::format("Stack variable type {} is not a reference and cannot be stored directly "
+                        "on the stack. Use an array instead.",
+                        base_typespec.print()));
+      }
+      entry.ref_type = base_typespec;
+      entry.size = type_info->get_size_in_memory();
+      // sanity check the alignment
+      if (align(entry.hint.stack_offset, type_info->get_in_memory_alignment()) !=
+          entry.hint.stack_offset) {
+        lg::error("Misaligned stack variable of type {} offset {} required align {}\n",
+                  entry.ref_type.print(), entry.hint.stack_offset,
+                  type_info->get_in_memory_alignment());
+      }
+    } break;
+
+    case StackStructureHint::ContainerType::INLINE_ARRAY: {
+      TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
+      auto type_info = dts->ts.lookup_type(base_typespec);
+      if (!type_info->is_reference()) {
+        throw std::runtime_error(
+            fmt::format("Stack inline-array element type {} is not a reference and cannot be "
+                        "stored in an inline-array. Use an array instead.",
+                        base_typespec.print()));
+      }
+
+      entry.ref_type = TypeSpec("inline-array", {TypeSpec(base_typespec)});
+      entry.size = 1;  // we assume that there is no constant propagation into this array and
+      // make this only trigger in get_stack_type if we hit exactly.
+      // sanity check the alignment
+      if (align(entry.hint.stack_offset, type_info->get_in_memory_alignment()) !=
+          entry.hint.stack_offset) {
+        lg::error("Misaligned stack variable of type {} offset {} required align {}\n",
+                  entry.ref_type.print(), entry.hint.stack_offset,
+                  type_info->get_in_memory_alignment());
+      }
+    } break;
+
+    case StackStructureHint::ContainerType::ARRAY: {
+      TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
+      entry.ref_type = TypeSpec("pointer", {TypeSpec(base_typespec)});
+      entry.size = 1;  // we assume that there is no constant propagation into this array and
+      // make this only trigger in get_stack_type if we hit exactly.
+      break;
+    }
+    default:
+      ASSERT(false);
+  }
+
+  m_stack_structures.push_back(entry);
 }
 
 std::optional<std::string> Env::get_art_elt_name(int idx) const {

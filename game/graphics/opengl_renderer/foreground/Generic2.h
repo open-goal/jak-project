@@ -198,5 +198,6 @@ class Generic2 : public BucketRenderer {
     GLuint index_buffer;
     GLuint alpha_reject, color_mult, fog_color, scale, mat_23, mat_32, mat_33, fog_consts,
         hvdf_offset;
+    GLuint gfx_hack_no_tex;
   } m_ogl;
 };

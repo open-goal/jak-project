@@ -39,4 +39,13 @@ struct DiscordInfo {
   u32 flutflut;   // are we riding on flut flut?
   u32 time_of_day;
 };
+
+// To speedup finding the auto-splitter block in GOAL memory
+// all this has is a marker for LiveSplit to find, and then the pointer
+// to the symbol
+struct AutoSplitterBlock {
+  const char marker[20] = "UnLiStEdStRaTs_JaK1";
+  u64 pointer_to_symbol = 0;
+};
+extern AutoSplitterBlock gAutoSplitterBlock;
 }  // namespace jak1

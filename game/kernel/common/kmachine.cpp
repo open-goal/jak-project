@@ -340,6 +340,7 @@ void DecodeTime(u32 ptr) {
  */
 /*!
  * Get a 300MHz timer value.
+ * Called from EE thread
  */
 u64 read_ee_timer() {
   u64 ns = ee_clock_timer.getNs();
@@ -354,7 +355,7 @@ void c_memmove(u32 dst, u32 src, u32 size) {
 }
 
 /*!
- * Returns size of window.
+ * Returns size of window. Called from game thread
  */
 void get_window_size(u32 w_ptr, u32 h_ptr) {
   if (w_ptr) {
@@ -411,6 +412,10 @@ int get_monitor_count() {
   return Gfx::get_monitor_count();
 }
 
+int get_unix_timestamp() {
+  return std::time(nullptr);
+}
+
 void mkdir_path(u32 filepath) {
   auto filepath_str = std::string(Ptr<String>(filepath).c()->data());
   file_util::create_dir_if_needed_for_file(filepath_str);
@@ -459,6 +464,14 @@ void set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask,
 u32 get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask) {
   return Gfx::CollisionRendererGetMask(mode, mask) ? s7.offset + true_symbol_offset(g_game_version)
                                                    : s7.offset;
+}
+
+void set_gfx_hack(u64 which, u32 symptr) {
+  switch (which) {
+    case 0:  // no tex
+      Gfx::g_global_settings.hack_no_tex = symptr != s7.offset;
+      break;
+  }
 }
 
 /*!

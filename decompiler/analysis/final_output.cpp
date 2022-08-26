@@ -111,6 +111,15 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
+    // docstring if available
+    if (dts.symbol_metadata_map.count(func.name()) != 0) {
+      auto meta = dts.symbol_metadata_map.at(func.name());
+      if (meta.docstring) {
+        inline_body.insert(inline_body.begin(),
+                           pretty_print::to_symbol(fmt::format("\"{}\"", meta.docstring.value())));
+      }
+    }
+
     append_body_to_function_definition(&top_form, inline_body, var_dec, func.type);
     return pretty_print::to_string(top_form);
   }
@@ -126,6 +135,10 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
+    if (method_info.docstring) {
+      inline_body.insert(inline_body.begin(), pretty_print::to_symbol(fmt::format(
+                                                  "\"{}\"", method_info.docstring.value())));
+    }
     append_body_to_function_definition(&top_form, inline_body, var_dec, method_info.type);
     return pretty_print::to_string(top_form);
   }
@@ -417,7 +430,13 @@ std::string write_from_top_level_form(Form* top_form,
             fmt::format(";; definition for symbol {}, type {}\n", sym_name, symbol_type.print());
         auto setset = dynamic_cast<SetFormFormElement*>(f.try_as_single_element());
         ASSERT(setset);
-        result += pretty_print::to_string(setset->to_form_for_define(env));
+        if (dts.symbol_metadata_map.count(sym_name) != 0) {
+          result += pretty_print::to_string(
+              setset->to_form_for_define(env, dts.symbol_metadata_map.at(sym_name).docstring));
+        } else {
+          result += pretty_print::to_string(setset->to_form_for_define(env, {}));
+        }
+
         result += "\n\n";
       }
     }

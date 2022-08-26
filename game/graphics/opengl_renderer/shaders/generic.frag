@@ -12,6 +12,8 @@ in vec4 fragment_color;
 
 in flat uvec2 tex_info;
 
+uniform int gfx_hack_no_tex;
+
 layout (binding = 0) uniform sampler2D tex_T0;
 layout (binding = 1) uniform sampler2D tex_T1;
 layout (binding = 2) uniform sampler2D tex_T2;
@@ -42,32 +44,56 @@ vec4 sample_tex(vec2 coord, uint unit) {
 }
 
 void main() {
-    vec4 T0 = sample_tex(tex_coord.xy, tex_info.x);
-    // y is tcc
-    // z is decal
+    // 0x1 is tcc
+    // 0x2 is decal
+    // 0x4 is fog
 
-    if ((tex_info.y & 1u) == 0) {
-        if ((tex_info.y & 2u) == 0) {
-            // modulate + no tcc
-            color.xyz = fragment_color.xyz * T0.xyz;
-            color.w = fragment_color.w;
-        } else {
-            // decal + no tcc
-            color.xyz = T0.xyz * 0.5;
-            color.w = fragment_color.w;
-        }
+    if (gfx_hack_no_tex == 0) {
+      vec4 T0 = sample_tex(tex_coord.xy, tex_info.x);
+      if ((tex_info.y & 1u) == 0) {
+          if ((tex_info.y & 2u) == 0) {
+              // modulate + no tcc
+              color.rgb = fragment_color.rgb * T0.rgb;
+              color.a = fragment_color.a;
+          } else {
+              // decal + no tcc
+              color.rgb = T0.rgb * 0.5;
+              color.a = fragment_color.a;
+          }
+      } else {
+          if ((tex_info.y & 2u) == 0) {
+              // modulate + tcc
+              color = fragment_color * T0;
+          } else {
+              // decal + tcc
+              color.rgb = T0.rgb * 0.5;
+              color.a = T0.a;
+          }
+      }
+      color *= 2;
     } else {
-        if ((tex_info.y & 2u) == 0) {
-            // modulate + tcc
-            color = fragment_color * T0;
-        } else {
-            // decal + tcc
-            color.xyz = T0.xyz * 0.5;
-            color.w = T0.w;
-        }
+      if ((tex_info.y & 1u) == 0) {
+          if ((tex_info.y & 2u) == 0) {
+              // modulate + no tcc
+              color.rgb = fragment_color.rgb;
+              color.a = fragment_color.a * 2;
+          } else {
+              // decal + no tcc
+              color.rgb = vec3(1);
+              color.a = fragment_color.a * 2;
+          }
+      } else {
+          if ((tex_info.y & 2u) == 0) {
+              // modulate + tcc
+              color = fragment_color;
+          } else {
+              // decal + tcc
+              color.rgb = vec3(0.5);
+              color.a = 1.0;
+          }
+      }
     }
-    color *= 2;
-    color.xyz *= color_mult;
+    color.rgb *= color_mult;
 
     if (color.a < alpha_reject) {
         discard;

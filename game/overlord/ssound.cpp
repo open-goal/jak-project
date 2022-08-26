@@ -134,7 +134,7 @@ void InitSound_Overlord() {
   snd_SetPlayBackMode(2);
 
   SemaParam sema;
-  sema.attr = 1;
+  sema.attr = SA_THPRI;
   sema.init_count = 1;
   sema.max_count = 1;
   sema.option = 0;

@@ -1,5 +1,7 @@
 #include "Tie3.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
+
 #include "third-party/imgui/imgui.h"
 
 Tie3::Tie3(const std::string& name, BucketId my_id, int level_id)
@@ -15,6 +17,7 @@ Tie3::~Tie3() {
 }
 
 void Tie3::update_load(const LevelData* loader_data) {
+  auto ul = scoped_prof("update-load");
   const tfrag3::Level* lev_data = loader_data->level.get();
   m_wind_vectors.clear();
   // We changed level!
@@ -31,6 +34,7 @@ void Tie3::update_load(const LevelData* loader_data) {
   size_t max_inds = 0;
   for (u32 l_geo = 0; l_geo < tfrag3::TIE_GEOS; l_geo++) {
     for (u32 l_tree = 0; l_tree < lev_data->tie_trees[l_geo].size(); l_tree++) {
+      auto ul = scoped_prof("load-tree");
       size_t wind_idx_buffer_len = 0;
       size_t num_grps = 0;
       const auto& tree = lev_data->tie_trees[l_geo][l_tree];
@@ -90,11 +94,7 @@ void Tie3::update_load(const LevelData* loader_data) {
       );
 
       glGenBuffers(1, &lod_tree[l_tree].single_draw_index_buffer);
-      glGenBuffers(1, &lod_tree[l_tree].index_buffer);
-      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lod_tree[l_tree].index_buffer);
-      // todo: move to loader, this will probably be quite slow.
-      glBufferData(GL_ELEMENT_ARRAY_BUFFER, tree.unpacked.indices.size() * sizeof(u32),
-                   tree.unpacked.indices.data(), GL_STATIC_DRAW);
+      lod_tree[l_tree].index_buffer = loader_data->tie_data[l_geo][l_tree].index_buffer;
 
       if (wind_idx_buffer_len > 0) {
         lod_tree[l_tree].wind_matrix_cache.resize(tree.wind_instance_info.size());
@@ -278,7 +278,7 @@ void Tie3::discard_tree_cache() {
     for (auto& tree : m_trees[geo]) {
       glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
       glDeleteTextures(1, &tree.time_of_day_texture);
-      glDeleteBuffers(1, &tree.index_buffer);
+      // glDeleteBuffers(1, &tree.index_buffer);
       glDeleteBuffers(1, &tree.single_draw_index_buffer);
       glDeleteVertexArrays(1, &tree.vao);
     }

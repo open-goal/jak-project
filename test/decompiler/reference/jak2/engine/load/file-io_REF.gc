@@ -1,0 +1,220 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type file-stream
+(deftype file-stream (basic)
+  ((flags uint32  :offset-assert   4)
+   (mode  symbol  :offset-assert   8)
+   (name  string  :offset-assert  12)
+   (file  uint32  :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  (:methods
+    (new (symbol type string symbol) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type file-stream
+(defmethod inspect file-stream ((obj file-stream))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tflags: #x~X~%" (-> obj flags))
+  (format #t "~1Tmode: ~A~%" (-> obj mode))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tfile: ~D~%" (-> obj file))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 0 of type file-stream
+(defmethod new file-stream ((allocation symbol) (type-to-make type) (arg0 string) (arg1 symbol))
+  (let ((a0-1 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (file-stream-open a0-1 arg0 arg1)
+    )
+  )
+
+;; failed to figure out what this is:
+(set! (-> file-stream method-table 4) file-stream-length)
+
+;; definition for function file-stream-read-string
+(defun file-stream-read-string ((arg0 file-stream) (arg1 string))
+  (clear arg1)
+  (file-stream-read arg0 (-> arg1 data) (length arg0))
+  arg1
+  )
+
+;; definition of type file-info
+(deftype file-info (basic)
+  ((file-type      (pointer string)  :offset-assert   4)
+   (file-name      basic             :offset-assert   8)
+   (major-version  uint32            :offset-assert  12)
+   (minor-version  uint32            :offset-assert  16)
+   (maya-file-name basic             :offset-assert  20)
+   (tool-debug     basic             :offset-assert  24)
+   (mdb-file-name  basic             :offset-assert  28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type file-info
+(defmethod inspect file-info ((obj file-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tfile-type: ~A~%" (-> obj file-type))
+  (format #t "~1Tfile-name: ~A~%" (-> obj file-name))
+  (format #t "~1Tmajor-version: ~D~%" (-> obj major-version))
+  (format #t "~1Tminor-version: ~D~%" (-> obj minor-version))
+  (format #t "~1Tmaya-file-name: ~A~%" (-> obj maya-file-name))
+  (format #t "~1Ttool-debug: ~A~%" (-> obj tool-debug))
+  (format #t "~1Tmdb-file-name: ~A~%" (-> obj mdb-file-name))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 2 of type file-info
+(defmethod print file-info ((obj file-info))
+  (format
+    #t
+    "#<~A ~A :version ~D.~D @ #x~X>"
+    (-> obj type)
+    (-> obj file-name)
+    (-> obj major-version)
+    (-> obj minor-version)
+    obj
+    )
+  obj
+  )
+
+;; definition for symbol *file-temp-string*, type string
+(define *file-temp-string* (new 'global 'string 128 (the-as string #f)))
+
+;; definition for function make-file-name
+(defun make-file-name ((arg0 file-kind) (arg1 string) (arg2 int) (arg3 symbol))
+  (clear *file-temp-string*)
+  (cond
+    ((= arg0 (file-kind dir-tpage))
+     (format *file-temp-string* "texture-page~D/dir-tpages" 8)
+     )
+    ((= arg0 (file-kind tpage))
+     (format *file-temp-string* "texture-page~D/tpage-~S" 8 arg1)
+     )
+    ((= arg0 (file-kind level-bt))
+     (format *file-temp-string* "level~D/~S-bt" 36 arg1)
+     )
+    ((= arg0 (file-kind tx))
+     (format *file-temp-string* "res~D/~S-tx" 1 arg1)
+     )
+    ((= arg0 (file-kind level-vs))
+     (format *file-temp-string* "level~D/~S-vs" 36 arg1)
+     )
+    ((= arg0 (file-kind vis))
+     (format *file-temp-string* "~S.VIS" arg1)
+     )
+    ((= arg0 (file-kind map))
+     (format *file-temp-string* "map~D/~S-mp" 1 arg1)
+     )
+    ((= arg0 (file-kind art-group))
+     (format
+       *file-temp-string*
+       "art-group~D/~S-ag"
+       (cond
+         ((> arg2 0)
+          (empty)
+          arg2
+          )
+         (else
+           7
+           )
+         )
+       arg1
+       )
+     )
+    )
+  *file-temp-string*
+  )
+
+;; definition for function make-vfile-name
+(defun make-vfile-name ((arg0 file-kind) (arg1 string))
+  (clear *file-temp-string*)
+  (cond
+    ((= arg0 (file-kind level-bt))
+     (format *file-temp-string* "$LEVEL/~S" arg1)
+     )
+    ((= arg0 (file-kind art-group))
+     (format *file-temp-string* "$ART_GROUP/~S" arg1)
+     )
+    )
+  *file-temp-string*
+  )
+
+;; definition for function file-info-correct-version?
+(defun file-info-correct-version? ((arg0 file-info) (arg1 file-kind) (arg2 int))
+  (let* ((s5-0 (cond
+                 ((zero? arg2)
+                  (case arg1
+                    (((file-kind tpage) (file-kind dir-tpage))
+                     8
+                     )
+                    (((file-kind level-bt))
+                     36
+                     )
+                    (((file-kind art-group))
+                     7
+                     )
+                    )
+                  )
+                 (else
+                   arg2
+                   )
+                 )
+               )
+         (v1-1 arg1)
+         (s4-0 (cond
+                 ((= v1-1 (file-kind tpage))
+                  "texture-page"
+                  )
+                 ((= v1-1 (file-kind level-bt))
+                  "bsp-header"
+                  )
+                 ((= v1-1 (file-kind art-group))
+                  "art-group"
+                  )
+                 )
+               )
+         )
+    (cond
+      ((not (name= (-> arg0 file-type 0) s4-0))
+       (format 0 "ERROR: file ~A is of type ~S but needs to be ~S.~%" (-> arg0 file-name) (-> arg0 file-type) s4-0)
+       #f
+       )
+      ((!= s5-0 (-> arg0 major-version))
+       (format
+         0
+         "ERROR: file ~A is version ~D.~D, but needs to be ~D.x~%"
+         (-> arg0 file-name)
+         (-> arg0 major-version)
+         (-> arg0 minor-version)
+         s5-0
+         )
+       #f
+       )
+      (else
+        #t
+        )
+      )
+    )
+  )
+
+
+
+

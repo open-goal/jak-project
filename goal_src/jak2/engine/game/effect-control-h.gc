@@ -5,5 +5,55 @@
 ;; name in dgo: effect-control-h
 ;; dgos: ENGINE, GAME
 
+(defenum effect-control-flag
+  :type uint32
+  :bitfield #t
+  )
+
 ;; DECOMP BEGINS
+
+(deftype effect-control (basic)
+  ((process          process-drawable     :offset-assert   4)
+   (flags            effect-control-flag  :offset-assert   8)
+   (last-frame-group art-joint-anim       :offset-assert  12)
+   (last-frame-num   float                :offset-assert  16)
+   (channel-offset   int32                :offset-assert  20)
+   (res              res-lump             :offset-assert  24)
+   (name             (pointer res-tag)    :offset-assert  28)
+   (param            uint32               :offset-assert  32)
+   )
+  :method-count-assert 15
+  :size-assert         #x24
+  :flag-assert         #xf00000024
+  (:methods
+    (new (symbol type process-drawable) _type_ 0)
+    (effect-control-method-9 () none 9)
+    (effect-control-method-10 () none 10)
+    (effect-control-method-11 () none 11)
+    (effect-control-method-12 () none 12)
+    (set-channel-offset! (_type_ int) none 13)
+    (effect-control-method-14 () none 14)
+    )
+  )
+
+(defmethod new effect-control ((allocation symbol) (type-to-make type) (arg0 process-drawable))
+  (cond
+    ((res-lump-struct (-> arg0 draw jgeo extra) 'effect-name structure)
+     (let ((v0-1 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+       (set! (-> v0-1 process) arg0)
+       (set! (-> v0-1 last-frame-group) #f)
+       v0-1
+       )
+     )
+    (else
+      (the-as effect-control #f)
+      )
+    )
+  )
+
+(defmethod set-channel-offset! effect-control ((obj effect-control) (arg0 int))
+  (set! (-> obj channel-offset) arg0)
+  0
+  (none)
+  )
 

@@ -36,12 +36,19 @@ tasks:
     cmds:
       - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" ./iso_data ./decompiler_out --config-override "{\\\"decompile_code\\\": false}"'
   boot-game:
-    desc: "Boots the game, it will fail if it's not already booted!"
+    desc: "Boots the game, it will fail if it's not already compiled!"
     preconditions:
       - sh: test -f {{.GK_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
         msg: "Couldn't locate runtime executable in '{{.GK_BIN_RELEASE_DIR}}/gk'"
     cmds:
       - "{{.GK_BIN_RELEASE_DIR}}/gk -boot -fakeiso -debug -v"
+  boot-game-retail:
+    desc: "Boots the game without debug mode, it will fail if it's not already compiled!"
+    preconditions:
+      - sh: test -f {{.GK_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
+        msg: "Couldn't locate runtime executable in '{{.GK_BIN_RELEASE_DIR}}/gk'"
+    cmds:
+      - "{{.GK_BIN_RELEASE_DIR}}/gk -boot -fakeiso -v"
   run-game:
     desc: "Start the game's runtime, to start the game itself the REPL is required"
     preconditions:
@@ -67,6 +74,8 @@ tasks:
       # npm install -g prettier
       - cmd: npx prettier --write ./decompiler/config/jak1_ntsc_black_label/*.jsonc
         ignore_error: true
+      - cmd: npx prettier --write ./decompiler/config/jak2/*.jsonc
+        ignore_error: true
   run-game-headless:
     cmds:
       - "{{.GK_BIN_RELEASE_DIR}}/gk -fakeiso -debug -nodisplay"
@@ -78,39 +87,20 @@ tasks:
     cmds:
       - rm ./decompiler_out/**/*.asm
       - rm ./decompiler_out/**/*disasm.gc
-  # TODO - the below are broken, need to be updated or replaced
-  # update-gsrc:
-  #   cmds:
-  #     - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
-  #     - task: decomp
-  #     - task: find-label-types
-  #     - python ./scripts/update-goal-src.py --files "{{.FILES}}"
-  #     - task: type-test
-  #     - task: check-gsrc-file
   # TOOLS
-  # TODO - broken!
-  # analyze-ee-memory:
-  #   cmds:
-  #     - '{{.MEMDUMP_BIN_RELEASE_DIR}}/memory_dump_tool "{{.FILE}}" ./ > ee-analysis.log'
-  # watch-pcsx2:
-  #   cmds:
-  #     - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
-  #   vars:
-  #     SAVESTATE_DIR: '{{default "." .SAVESTATE_DIR}}'
+  analyze-ee-memory:
+    cmds:
+      - python ./scripts/tasks/extract-zip.py --file "{{.FILE}}" --out ./savestate_out/
+      - '{{.MEMDUMP_BIN_RELEASE_DIR}}/memory_dump_tool ./savestate_out/eeMemory.bin --output-path ./ --game {{.GAME}} > ee-analysis.log'
+  watch-pcsx2:
+    cmds:
+      - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
+    vars:
+      SAVESTATE_DIR: '{{default "." .SAVESTATE_DIR}}'
   # TESTS
   offline-tests:
     cmds:
       - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}}'
-  # TODO - update or replace
-  # add-reference-test:
-  #   cmds:
-  #     - task: decomp-file
-  #     - python ./scripts/add-reference-test.py --file "{{.FILES}}"
-  #     - task: offline-tests
-  # add-reference-test-no-decomp:
-  #   cmds:
-  #     - python ./scripts/add-reference-test.py --file "{{.FILES}}"
-  #     - task: offline-tests
   update-ref-tests:
     cmds:
       - cmd: python ./scripts/tasks/default-file-or-folder.py --path failures

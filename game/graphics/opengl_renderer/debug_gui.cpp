@@ -113,6 +113,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::InputInt("Width", &screenshot_width);
       ImGui::InputInt("Height", &screenshot_height);
       ImGui::InputInt("MSAA", &screenshot_samples);
+      ImGui::Checkbox("Screenshot on f2", &screenshot_hotkey_enabled);
       ImGui::EndMenu();
     }
 

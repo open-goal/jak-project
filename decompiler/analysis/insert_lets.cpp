@@ -340,19 +340,46 @@ FormElement* rewrite_as_send_event(LetElement* in,
   ////////////////////////////////////////////////////////
   // (set! (-> block-var from) <something>)
   bool not_proc = false;
-  Matcher set_from_matcher = Matcher::set(
-      Matcher::deref(Matcher::reg(block_var_reg), false, {DerefTokenMatcher::string("from")}),
-      Matcher::any_reg(1));
+  Matcher set_from_matcher;
+  switch (env.version) {
+    case GameVersion::Jak1:
+      set_from_matcher = Matcher::set(
+          Matcher::deref(Matcher::reg(block_var_reg), false, {DerefTokenMatcher::string("from")}),
+          Matcher::any_reg(1));
+      break;
+    case GameVersion::Jak2:
+      // in jak 2, the event message block holds a ppointer instead.
+      set_from_matcher = Matcher::set(
+          Matcher::deref(Matcher::reg(block_var_reg), false, {DerefTokenMatcher::string("from")}),
+          Matcher::op_fixed(FixedOperatorKind::PROCESS_TO_PPOINTER, {Matcher::any_reg(1)}));
+      break;
+    default:
+      ASSERT(false);
+  }
   auto from_mr = match(set_from_matcher, body->at(0));
   if (!from_mr.matched) {
     // initial matcher failed. try more advanced "from" matcher now.
-    Matcher set_from_form_matcher = Matcher::set(
-        Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("from")}),
-        Matcher::any(1));
+    Matcher set_from_form_matcher;
+    switch (env.version) {
+      case GameVersion::Jak1:
+        set_from_form_matcher = Matcher::set(
+            Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("from")}),
+            Matcher::any(1));
+        break;
+      case GameVersion::Jak2:
+        set_from_form_matcher = Matcher::set(
+            Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("from")}),
+            Matcher::op_fixed(FixedOperatorKind::PROCESS_TO_PPOINTER, {Matcher::any(1)}));
+        break;
+      default:
+        ASSERT(false);
+    }
+
     from_mr = match(set_from_form_matcher, body->at(0));
     if (!from_mr.matched) {
       return nullptr;
     }
+    fmt::print("case 1: {}\n", from_mr.maps.forms.at(1)->to_string(env));
     not_proc = true;
   }
 

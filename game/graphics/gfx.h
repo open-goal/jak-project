@@ -21,7 +21,7 @@ class GfxDisplay;
 
 // enum for rendering pipeline
 enum class GfxPipeline { Invalid = 0, OpenGL };
-enum GfxDisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
+enum GfxDisplayMode { ForceUpdate = -1, Windowed = 0, Fullscreen = 1, Borderless = 2 };
 
 // module for the different rendering pipelines
 struct GfxRendererModule {
@@ -90,10 +90,6 @@ struct GfxGlobalSettings {
   int lod_tfrag = 0;
   int lod_tie = 0;
 
-  // collision renderer settings
-  bool collision_enable = false;
-  bool collision_wireframe = true;
-
   // vsync enable
   bool vsync = true;
   bool old_vsync = false;
@@ -102,8 +98,16 @@ struct GfxGlobalSettings {
   // use custom frame limiter
   bool framelimiter = true;
 
+  // frame timing things
   bool experimental_accurate_lag = false;
   bool sleep_in_frame_limiter = true;
+
+  // fancy effect things
+  bool hack_no_tex = false;
+
+  // collision renderer settings
+  bool collision_enable = false;
+  bool collision_wireframe = true;
 
   // matching enum in kernel-defs.gc !!
   enum CollisionRendererMode { None, Mode, Event, Material, Skip } collision_mode = Mode;
@@ -124,7 +128,11 @@ u32 Init(GameVersion version);
 void Loop(std::function<bool()> f);
 u32 Exit();
 
+Pad::MappingInfo& get_button_mapping();
+
 u32 vsync();
+void register_vsync_callback(std::function<void()> f);
+void clear_vsync_callback();
 u32 sync_path();
 void send_chain(const void* data, u32 offset);
 void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr);
@@ -150,9 +158,10 @@ void set_msaa(int samples);
 void input_mode_set(u32 enable);
 void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);
+bool get_debug_menu_visible_on_startup();
 
 int PadIsPressed(Pad::Button button, int port);
-int PadAnalogValue(Pad::Analog analog, int port);
+int PadGetAnalogValue(Pad::Analog analog, int port);
 
 // matching enum in kernel-defs.gc !!
 enum class RendererTreeType { NONE = 0, TFRAG3 = 1, TIE3 = 2, INVALID };

@@ -61,7 +61,7 @@ Shader::Shader(const std::string& shader_name) {
   m_is_okay = true;
 }
 
-void Shader::activate() {
+void Shader::activate() const {
   ASSERT(m_is_okay);
   glUseProgram(m_program);
 }
@@ -93,6 +93,6 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::DEPTH_CUE) = {"depth_cue"};
 
   for (auto& shader : m_shaders) {
-    ASSERT_MSG(shader.okay(), "Shader compiled");
+    ASSERT_MSG(shader.okay(), "error compiling shader");
   }
 }

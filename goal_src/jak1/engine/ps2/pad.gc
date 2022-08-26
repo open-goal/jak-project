@@ -147,27 +147,29 @@
    )
   )
 
-;; List of controllers. It always has 2 controllers.
+;; List of controllers. It always has 4 controllers.
 (deftype cpad-list (basic)
   ((num-cpads int32       :offset-assert 4)
-   (cpads     cpad-info 2 :offset-assert 8)
+   (cpads     cpad-info 4 :offset-assert 8)  ;; modified from 2->4 for PC 4-pad support
    )
   (:methods
    (new (symbol type) _type_ 0)
    )
   :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
+  :size-assert         #x18
+  :flag-assert         #x900000018
   )
 
 
 (defmethod new cpad-list ((allocation symbol) (type-to-make type))
-  "Create a cpad-list for 2 controllers. It's fine to do this even if one or both controllers
+  "Create a cpad-list for 4 controllers. It's fine to do this even if controllers
    aren't connected yet. "
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> gp-0 num-cpads) 2)
+    (set! (-> gp-0 num-cpads) 4)
     (set! (-> gp-0 cpads 0) (new 'global 'cpad-info 0))
     (set! (-> gp-0 cpads 1) (new 'global 'cpad-info 1))
+    (set! (-> gp-0 cpads 2) (new 'global 'cpad-info 2))
+    (set! (-> gp-0 cpads 3) (new 'global 'cpad-info 3))
     gp-0
     )
   )
@@ -261,10 +263,10 @@
   (none)
   )
 
-;; the two controllers
+;; the four controllers
 (define *cpad-list* (new 'global 'cpad-list))
 
-;; weird leftover debug thing, enabling overrides the x position of both sticks on both controllers.
+;; weird leftover debug thing, enabling overrides the x position of both sticks on all controllers.
 (define *cpad-debug* #f)
 
 (#if PC_PORT
@@ -314,14 +316,14 @@
            (set! (-> pad button0-abs 1) (-> pad button0-shadow-abs 0))
            (set! (-> pad button0-rel 2) (-> pad button0-rel 1))
            (set! (-> pad button0-rel 1) (-> pad button0-rel 0))
-           ;; we might want to clear a button so we back it up in a "shadow" field
+           ;; we might want to clear a button after it is pressed, so we back it up in a "shadow" field
            (let ((current-button0 (-> pad button0)))
              (set! (-> pad button0-shadow-abs 0) (the-as pad-buttons current-button0))
              (set! (-> pad button0-abs 0) (the-as pad-buttons current-button0))
              )
            ;; buttons going down
            (set! (-> pad button0-rel 0) (logclear (-> pad button0-abs 0) (-> pad button0-abs 1)))
-           ;; ??
+           ;; some debugging thing they wrote at some point
            (when *cpad-debug*
              (set! (-> pad leftx) (the-as uint 255))
              (set! (-> pad rightx) (the-as uint 255))
@@ -330,8 +332,14 @@
            ;; compute a speed and direction for stick0
            (set! (-> pad stick0-speed) 1.0)
            (cond
-             ;; check if analog is valid?
+             ;; check if controller is a valid dualshock 2
              ((= (shr (-> pad status) 4) 7)
+              ;; invert analogs if mirrored mode. trust me, you'll need this.
+              (#when PC_PORT
+                  (when (pc-cheats? (-> *pc-settings* cheats) mirror)
+                      (set! (-> pad leftx) (- 255 (-> pad leftx)))
+                      (set! (-> pad rightx) (- 255 (-> pad rightx)))
+                      ))
               ;; compute speed and direction, with deadband.
               (let ((f30-0 (* 0.0078125 (the float (+ (-> pad leftx) -128))))
                     (f28-0 (* 0.0078125 (the float (- 127 (the-as int (-> pad lefty))))))

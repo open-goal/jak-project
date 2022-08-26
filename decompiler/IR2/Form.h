@@ -228,12 +228,12 @@ class SimpleExpressionElement : public FormElement {
                                               FormStack& stack,
                                               std::vector<FormElement*>* result,
                                               bool allow_side_effects);
-  void update_from_stack_vector_dot(FixedOperatorKind kind,
-                                    const Env& env,
-                                    FormPool& pool,
-                                    FormStack& stack,
-                                    std::vector<FormElement*>* result,
-                                    bool allow_side_effects);
+  void update_from_stack_vectors_in_common(FixedOperatorKind kind,
+                                           const Env& env,
+                                           FormPool& pool,
+                                           FormStack& stack,
+                                           std::vector<FormElement*>* result,
+                                           bool allow_side_effects);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -410,7 +410,8 @@ class SetFormFormElement : public FormElement {
                      std::optional<TypeSpec> cast_for_set = {},
                      std::optional<TypeSpec> cast_for_define = {});
   goos::Object to_form_internal(const Env& env) const override;
-  goos::Object to_form_for_define(const Env& env) const;
+  goos::Object to_form_for_define(const Env& env,
+                                  const std::optional<std::string>& docstring) const;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;

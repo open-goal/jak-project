@@ -5,5 +5,112 @@
 ;; name in dgo: projectile-h
 ;; dgos: ENGINE, GAME
 
+(defenum projectile-options
+  :type uint64
+  :bitfield #t
+  )
+
 ;; DECOMP BEGINS
 
+(deftype projectile (process-drawable)
+  ((starting-pos    vector                     :inline :offset-assert 208)
+   (starting-dir    vector                     :inline :offset-assert 224)
+   (target-pos      vector                     :inline :offset-assert 240)
+   (base-target-pos vector                     :inline :offset-assert 256)
+   (pre-move-transv vector                     :inline :offset-assert 272)
+   (timeout         time-frame                         :offset-assert 288)
+   (spawn-time      time-frame                         :offset-assert 296)
+   (options         projectile-options                 :offset-assert 304)
+   (last-target     handle                             :offset-assert 312)
+   (notify-handle   handle                             :offset-assert 320)
+   (owner-handle    handle                             :offset-assert 328)
+   (ignore-handle   handle                             :offset-assert 336)
+   (update-velocity (function projectile none)         :offset-assert 344)
+   (move            basic                              :offset-assert 348)
+   (pick-target     basic                              :offset-assert 352)
+   (max-speed       float                              :offset-assert 356)
+   (old-dist        float                      16      :offset-assert 360)
+   (old-dist-count  int32                              :offset-assert 424)
+   (hits            int32                              :offset-assert 428)
+   (max-hits        int32                              :offset-assert 432)
+   (tween           float                              :offset-assert 436)
+   (attack-mode     symbol                             :offset-assert 440)
+   (attack-id       uint32                             :offset-assert 444)
+   (damage          float                              :offset-assert 448)
+   (charge-level    float                              :offset-assert 452)
+   (sound-id        sound-id                           :offset-assert 456)
+   (stop-speed      meters                             :offset-assert 460)
+   (invinc-time     time-frame                         :offset-assert 464)
+   )
+  :heap-base #x160
+  :method-count-assert 40
+  :size-assert         #x1d8
+  :flag-assert         #x28016001d8
+  (:methods
+    (projectile-method-20 () none 20)
+    (projectile-method-21 () none 21)
+    (projectile-method-22 () none 22)
+    (projectile-method-23 () none 23)
+    (projectile-method-24 () none 24)
+    (projectile-method-25 () none 25)
+    (projectile-method-26 () none 26)
+    (projectile-method-27 () none 27)
+    (projectile-method-28 () none 28)
+    (projectile-method-29 () none 29)
+    (projectile-method-30 () none 30)
+    (projectile-method-31 () none 31)
+    (projectile-method-32 () none 32)
+    (projectile-method-33 () none 33)
+    (projectile-method-34 () none 34)
+    (projectile-method-35 () none 35)
+    (projectile-method-36 () none 36)
+    (projectile-method-37 () none 37)
+    (projectile-method-38 () none 38)
+    (projectile-method-39 () none 39)
+    )
+  )
+
+(deftype projectile-init-by-other-params (structure)
+  ((ent           basic                      :offset-assert   0)
+   (charge        float                      :offset-assert   4)
+   (attack-id     uint32                     :offset-assert   8)
+   (options       projectile-options         :offset-assert  16)
+   (notify-handle handle                     :offset-assert  24)
+   (owner-handle  handle                     :offset-assert  32)
+   (ignore-handle handle                     :offset-assert  40)
+   (pos           vector             :inline :offset-assert  48)
+   (vel           vector             :inline :offset-assert  64)
+   (timeout       handle                     :offset-assert  80)
+   )
+  :method-count-assert 9
+  :size-assert         #x58
+  :flag-assert         #x900000058
+  )
+
+(define-extern projectile-init-by-other (function projectile-init-by-other-params projectile))
+
+(defun spawn-projectile ((arg0 type) (arg1 projectile-init-by-other-params) (arg2 process-tree) (arg3 dead-pool))
+  (let ((s4-0 (get-process arg3 arg0 #x4000)))
+    (when s4-0
+      (let ((t9-1 (method-of-type process activate)))
+        (t9-1 s4-0 arg2 (symbol->string (-> arg0 symbol)) (the-as pointer #x70004000))
+        )
+      (run-now-in-process s4-0 projectile-init-by-other arg1)
+      (-> s4-0 ppointer)
+      )
+    )
+  )
+
+(deftype projectile-bounce (projectile)
+  ((played-bounce-time time-frame         :offset-assert 472)
+   (tumble-quat        quaternion :inline :offset-assert 480)
+   )
+  :heap-base #x170
+  :method-count-assert 42
+  :size-assert         #x1f0
+  :flag-assert         #x2a017001f0
+  (:methods
+    (projectile-bounce-method-40 () none 40)
+    (projectile-bounce-method-41 () none 41)
+    )
+  )

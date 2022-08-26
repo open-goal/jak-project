@@ -142,16 +142,55 @@ SimpleAtom SimpleAtom::make_static_address(int static_label_id) {
   return result;
 }
 
+/*!
+ * Mark this atom as a float. It will be printed as a float.
+ * This can only be applied to an "integer" atom.
+ * This should be used carefully, as this doesn't handle casts/types - it just changes the
+ * representation, which will do the wrong thing unless the type system is aware of this
+ * too.
+ */
+void SimpleAtom::mark_as_float() {
+  ASSERT(is_int());
+  m_display_int_as_float = true;
+}
+
+bool SimpleAtom::is_integer_promoted_to_float() const {
+  return m_kind == Kind::INTEGER_CONSTANT && m_display_int_as_float;
+}
+
+float SimpleAtom::get_integer_promoted_to_float() const {
+  ASSERT(is_integer_promoted_to_float());
+  s32 as_s32 = get_int();
+  ASSERT(get_int() == (s64)as_s32);
+  float result;
+  memcpy(&result, &as_s32, 4);
+  return result;
+}
+
 goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   switch (m_kind) {
     case Kind::VARIABLE:
       return m_variable.to_form(env);
     case Kind::INTEGER_CONSTANT: {
-      if (std::abs(m_int) > INT32_MAX) {
-        u64 v = m_int;
-        return pretty_print::to_symbol(fmt::format("#x{:x}", v));
+      if (m_display_int_as_float) {
+        float f;
+        s32 as_s32 = m_int;
+        ASSERT(((s64)as_s32) == m_int);  // float should always be a sign extended 32-bit value.
+        memcpy(&f, &as_s32, 4);
+        if (f == f) {
+          return goos::Object::make_float(f);
+        } else {
+          // nan or weird
+          ASSERT(false);  // let's abort on this for now, can remove if it actually comes up.
+          return pretty_print::to_symbol(fmt::format("(the-as float #x{:x})", m_int));
+        }
       } else {
-        return goos::Object::make_integer(m_int);
+        if (std::abs(m_int) > INT32_MAX) {
+          u64 v = m_int;
+          return pretty_print::to_symbol(fmt::format("#x{:x}", v));
+        } else {
+          return goos::Object::make_integer(m_int);
+        }
       }
     }
 
@@ -311,6 +350,8 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "vec3dot";
     case SimpleExpression::Kind::VECTOR_4_DOT:
       return "vec4dot";
+    case SimpleExpression::Kind::VECTOR_LENGTH:
+      return "veclength";
     case SimpleExpression::Kind::SET_ON_LESS_THAN:
     case SimpleExpression::Kind::SET_ON_LESS_THAN_IMM:
       return "set-on-less-than";
@@ -378,6 +419,8 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::SET_ON_LESS_THAN:
     case SimpleExpression::Kind::SET_ON_LESS_THAN_IMM:
       return 2;
+    case SimpleExpression::Kind::VECTOR_LENGTH:
+      return 1;
     default:
       ASSERT(false);
       return -1;

@@ -292,6 +292,8 @@ void InitIOP() {
   }
 }
 
+AutoSplitterBlock gAutoSplitterBlock;
+
 /*!
  * Initialize GOAL Runtime. This is the main initialization which is called before entering
  * the GOAL kernel dispatch loop (KernelCheckAndDispatch).
@@ -354,6 +356,10 @@ int InitMachine() {
     return goal_status;
   }
 
+  // TODO - better place to put this?
+  gAutoSplitterBlock.pointer_to_symbol =
+      (u64)g_ee_main_mem + intern_from_c("*autosplit-info-jak1*")->value;
+
   lg::info("InitListenerConnect");
   InitListenerConnect();
   lg::info("InitCheckListener");
@@ -381,10 +387,16 @@ int ShutdownMachine() {
 }
 
 // todo, these could probably be moved to common
+/*!
+ * Called from game thread to submit rendering DMA chain.
+ */
 void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
   Gfx::send_chain(g_ee_main_mem, chain);
 }
 
+/*!
+ * Called from game thread to upload a texture outside of the main DMA chain.
+ */
 void pc_texture_upload_now(u32 page, u32 mode) {
   Gfx::texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
 }
@@ -393,11 +405,20 @@ void pc_texture_relocate(u32 dst, u32 src, u32 format) {
   Gfx::texture_relocate(dst, src, format);
 }
 
+/*!
+ * Called from the game thread at initialization.
+ * The game thread is the only one to touch the mips2c function table (through the linker and
+ * through this function), so no locking is needed.
+ */
 u64 pc_get_mips2c(u32 name) {
   const char* n = Ptr<String>(name).c()->data();
   return Mips2C::gLinkedFunctionTable.get(n);
 }
 
+/*!
+ * Called from the game thread at each frame to tell the PC rendering code which levels to start
+ * loading. The loader internally handles locking.
+ */
 void pc_set_levels(u32 l0, u32 l1) {
   std::string l0s = Ptr<String>(l0).c()->data();
   std::string l1s = Ptr<String>(l1).c()->data();
@@ -630,6 +651,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
   make_function_symbol_from_c("pc-set-game-resolution", (void*)set_game_resolution);
   make_function_symbol_from_c("pc-set-msaa", (void*)set_msaa);
+  make_function_symbol_from_c("pc-get-unix-timestamp", (void*)get_unix_timestamp);
 
   // graphics things
   make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
@@ -639,6 +661,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-collision-mask", (void*)get_collision_mask);
   make_function_symbol_from_c("pc-set-collision-wireframe", (void*)set_collision_wireframe);
   make_function_symbol_from_c("pc-set-collision", (void*)set_collision);
+  make_function_symbol_from_c("pc-set-gfx-hack", (void*)set_gfx_hack);
 
   // file related functions
   make_function_symbol_from_c("pc-filepath-exists?", (void*)filepath_exists);
@@ -661,8 +684,7 @@ void InitMachine_PCPort() {
   auto user_dir_path = file_util::get_user_config_dir();
   intern_from_c("*pc-user-dir-base-path*")->value =
       make_string_from_c(user_dir_path.string().c_str());
-  // TODO - we will eventually need a better way to know what game we are playing
-  auto settings_path = file_util::get_user_settings_dir();
+  auto settings_path = file_util::get_user_settings_dir(g_game_version);
   intern_from_c("*pc-settings-folder*")->value = make_string_from_c(settings_path.string().c_str());
   intern_from_c("*pc-settings-built-sha*")->value = make_string_from_c(GIT_VERSION);
 }
