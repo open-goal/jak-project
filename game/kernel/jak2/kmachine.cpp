@@ -465,7 +465,7 @@ void InitMachine_PCPort() {
   // make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
   // make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
   // make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
-  // make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
+  make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
   // make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
   // pad stuff

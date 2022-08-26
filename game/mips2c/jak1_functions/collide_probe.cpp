@@ -4,7 +4,7 @@
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/jak1/kscheme.h"
 using namespace jak1;
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace collide_probe_node {
 struct Cache {
   void* collide_probe_stack; // *collide-probe-stack*
@@ -355,7 +355,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace collide_probe_instance_tie {
 struct Cache {
   void* collide_probe_stack; // *collide-probe-stack*

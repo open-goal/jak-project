@@ -3,7 +3,7 @@
 #include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_private.h"
 using namespace jak1;
-namespace Mips2C {
+namespace Mips2C::jak1 {
 
 struct RippleVu0 {
   Vf data_mem[256];
@@ -90,7 +90,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace ripple_create_wave_table {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
@@ -421,7 +421,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace ripple_apply_wave_table {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
@@ -525,7 +525,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace ripple_matrix_scale {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;

@@ -2,7 +2,7 @@
 #include "game/mips2c/mips2c_private.h"
 using namespace jak1;
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace generic_prepare_dma_single {
 u64 execute(void* ctxt);
 }
@@ -21,11 +21,11 @@ u64 execute(void* ctxt);
 namespace high_speed_reject {
 u64 execute(void* ctxt);
 }
-}  // namespace Mips2C
+}  // namespace Mips2C::jak1
 
 //--------------------------MIPS2C---------------------
 // clang-format off
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace generic_merc_init_asm {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
@@ -284,7 +284,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace generic_merc_execute_asm {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
@@ -1352,7 +1352,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace mercneric_convert {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
@@ -3539,7 +3539,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace high_speed_reject {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*

@@ -3,7 +3,7 @@
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/jak1/kscheme.h"
 using namespace jak1;
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace sp_init_fields {
 struct Cache {
   void* part_id_table; // *part-id-table*
@@ -343,7 +343,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace particle_adgif {
 struct Cache {
   void* particle_adgif_cache; // *particle-adgif-cache*
@@ -479,7 +479,7 @@ void link() {
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 
-namespace Mips2C {
+namespace Mips2C::jak1 {
 namespace sp_launch_particles_var {
 struct Cache {
   void* level; // *level*
