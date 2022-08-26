@@ -99,6 +99,15 @@ TEST_F(PeripheralTest, SetAnalogAxisValue_NominalAnalogAxisY_SetConvertedValue) 
 }
 TEST_F(PeripheralTest, SetAnalogAxisValue_InputLargerThanMaxValue_SetMaxValue) {
   // Arrange
+  Pad::AnalogMappingInfo analog_mapping_info;
+
+  analog_mapping_info.mode = Pad::AnalogMappingMode::AnalogInput;
+  analog_mapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_X_AXIS;
+  Pad::MapAnalog(mapping_info_, Pad::Analog::Right_X, 0, analog_mapping_info);
+
+  analog_mapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_Y_AXIS;
+  Pad::MapAnalog(mapping_info_, Pad::Analog::Right_Y, 0, analog_mapping_info);
+
   float expected_analog_value = 1;
 
   // Act
@@ -111,6 +120,14 @@ TEST_F(PeripheralTest, SetAnalogAxisValue_InputLargerThanMaxValue_SetMaxValue) {
 TEST_F(PeripheralTest, SetAnalogAxisValue_InputSmallerThanMinValue_SetMinValue) {
   // Arrange
   float expected_analog_value = -1;
+  Pad::AnalogMappingInfo analog_mapping_info;
+
+  analog_mapping_info.mode = Pad::AnalogMappingMode::AnalogInput;
+  analog_mapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_X_AXIS;
+  Pad::MapAnalog(mapping_info_, Pad::Analog::Right_X, 0, analog_mapping_info);
+
+  analog_mapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_Y_AXIS;
+  Pad::MapAnalog(mapping_info_, Pad::Analog::Right_Y, 0, analog_mapping_info);
 
   // Act
   Pad::SetAnalogAxisValue(mapping_info_, static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS),
@@ -138,6 +155,14 @@ TEST_F(
   // Arrange
   float expected_x_axis_sensitivity = 1e-4;
   mapping_info_.mouse_x_axis_sensitivities[0] = 0;
+  Pad::AnalogMappingInfo analog_mapping_info;
+
+  analog_mapping_info.mode = Pad::AnalogMappingMode::AnalogInput;
+  analog_mapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_X_AXIS;
+  Pad::MapAnalog(mapping_info_, Pad::Analog::Right_X, 0, analog_mapping_info);
+
+  analog_mapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_Y_AXIS;
+  Pad::MapAnalog(mapping_info_, Pad::Analog::Right_Y, 0, analog_mapping_info);
 
   // Act
   Pad::SetAnalogAxisValue(mapping_info_, static_cast<int>(GlfwKeyCustomAxis::CURSOR_X_AXIS), 100);
@@ -151,6 +176,14 @@ TEST_F(
   // Arrange
   float expected_y_axis_sensitivity = 1e-4;
   mapping_info_.mouse_y_axis_sensitivities[0] = 0;
+  Pad::AnalogMappingInfo analog_mapping_info;
+
+  analog_mapping_info.mode = Pad::AnalogMappingMode::AnalogInput;
+  analog_mapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_X_AXIS;
+  Pad::MapAnalog(mapping_info_, Pad::Analog::Right_X, 0, analog_mapping_info);
+
+  analog_mapping_info.axis_id = GlfwKeyCustomAxis::CURSOR_Y_AXIS;
+  Pad::MapAnalog(mapping_info_, Pad::Analog::Right_Y, 0, analog_mapping_info);
 
   // Act
   Pad::SetAnalogAxisValue(mapping_info_, static_cast<int>(GlfwKeyCustomAxis::CURSOR_Y_AXIS), 100);
