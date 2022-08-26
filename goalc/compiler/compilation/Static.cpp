@@ -848,8 +848,10 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
       typecheck(form, TypeSpec("integer"), sr.typespec());
     } else {
       if (sr.is_symbol() && sr.symbol_name() == "#f") {
-        // allow #f for any structure.
-        typecheck(form, TypeSpec("structure"), content_type);
+        // allow #f for any structure, or symbol (no longer a structure in jak 2)
+        if (content_type.base_type() != "symbol") {
+          typecheck(form, TypeSpec("structure"), content_type);
+        }
       } else {
         typecheck(form, content_type, sr.typespec());
       }
