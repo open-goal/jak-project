@@ -1390,7 +1390,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype matrix (structure)
-  ((data   float   16          :offset-assert 0)
+  ((data   float   16          :offset-assert 0 :score -1)
    (vector vector  4  :inline  :offset        0)
    (quad   uint128 4           :offset        0)
    (trans  vector  :inline     :offset        48)
@@ -17697,9 +17697,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype sprite-vec-data-2d (structure)
-  ((x-y-z-sx    vector   :inline :offset-assert 0)
-   (flag-rot-sy vector   :inline :offset-assert 16)
-   (r-g-b-a     vector   :inline :offset-assert 32)
+  ((x-y-z-sx    vector   :inline :offset-assert 0  :score -1)
+   (flag-rot-sy vector   :inline :offset-assert 16 :score -1)
+   (r-g-b-a     vector   :inline :offset-assert 32 :score -1)
    (x           float            :offset 0)
    (y           float            :offset 4)
    (z           float            :offset 8)
@@ -20970,31 +20970,28 @@
   )
 |#
 
-#|
 (deftype sprite-aux-elem (structure)
   ((aux-type uint32               :offset-assert 0)
-   (data     UNKNOWN            3 :offset-assert 4)
-   (vec-data sprite-vec-data-2d   :offset-assert 4)
-   (gif-data adgif-shader         :offset-assert 8)
-   (aux-data sparticle-cpuinfo    :offset-assert 12)
+   (data     vector             3 :offset-assert 4)
+   (vec-data sprite-vec-data-2d   :offset 4)
+   (gif-data adgif-shader         :offset 8)
+   (aux-data sparticle-cpuinfo    :offset 12)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype sprite-aux-list (basic)
-  ((num-entries int32                       :offset-assert 4)
-   (entry       int32                       :offset-assert 8)
-   (data        sprite-vec-data-2d :dynamic :offset-assert 12) ;; guessed by decompiler
+  ((num-entries int32                            :offset-assert 4)
+   (entry       int32                            :offset-assert 8)
+   (data        sprite-aux-elem :dynamic :inline :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
 #|
 (deftype sprite-aux-list (basic)
@@ -21068,7 +21065,7 @@
 ;; (define-extern sprite-get-user-hvdf function) ;; (function int vector)
 ;; (define-extern *sprite-hvdf-data* object) ;; sprite-hvdf-data
 ;; (define-extern *sprite-hvdf-control* object) ;; sprite-hvdf-control
-;; (define-extern *sprite-aux-list* object) ;; sprite-aux-list
+(define-extern *sprite-aux-list* sprite-aux-list)
 ;; (define-extern *sprite-array-2d* object) ;; sprite-array-2d
 ;; (define-extern *sprite-array-3d* object) ;; sprite-array-3d
 
@@ -21076,26 +21073,24 @@
 ;; sprite-distort                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sprite-distorter-sine-tables (basic)
-  ((aspx   float          :offset-assert 4)
-   (aspy   float          :offset-assert 8)
-   (entry  vector 128     :offset-assert 16) ;; guessed by decompiler
-   (ientry qword  9       :offset-assert 2064) ;; guessed by decompiler
-   (giftag qword  :inline :offset-assert 2208) ;; gs-gif-tag :inline
-   (color  qword  :inline :offset-assert 2224)
+  ((aspx   float              :offset-assert 4)
+   (aspy   float              :offset-assert 8)
+   (entry  vector 128 :inline :offset-assert 16)
+   (ientry qword  9   :inline :offset-assert 2064)
+   (giftag gs-gif-tag :inline :offset-assert 2208)
+   (color  qword      :inline :offset-assert 2224)
    )
   :method-count-assert 9
   :size-assert         #x8c0
   :flag-assert         #x9000008c0
   )
-|#
 
-;; (define-extern *sprite-distorter-sine-tables* object) ;; sprite-distorter-sine-tables
+(define-extern *sprite-distorter-sine-tables* sprite-distorter-sine-tables)
 (define-extern sprite-distorter-generate-tables (function none))
-;; (define-extern sprite-distort-vu1-block object) ;; vu-function
-;; (define-extern sprite-init-distorter function) ;; (function dma-buffer uint none)
-;; (define-extern sprite-draw-distorters function) ;; (function dma-buffer none)
+(define-extern sprite-distort-vu1-block vu-function)
+(define-extern sprite-init-distorter (function dma-buffer none))
+(define-extern sprite-draw-distorters (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sprite-glow                    ;;
