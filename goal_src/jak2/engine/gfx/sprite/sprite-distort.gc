@@ -5,8 +5,30 @@
 ;; name in dgo: sprite-distort
 ;; dgos: ENGINE, GAME
 
+;; Works just like Jak 1 with some exceptions:
+;; - Sprite texture source doesn't seem to be the current framebuffer, instead tbp0 is hardcoded to #x3300.
+;; - The sprite-aux-list contains more than just distort sprites. Instead of containing sprite-vec-data-2d's
+;;   directly, it's now a list of sprite-aux-elem. If the aux-type is 0, then that element is a distort sprite.
+;; - No longer takes *video-params* screen-sy into account.
+;; TODO: check sprite distort VU program
+
+;; Sprite distort works by drawing a circle for each sprite whose texture is the framebuffer contents of what's
+;; been drawn so far. The texture coordinates are off slightly to give a "distortion" effect as the sprite moves
+;; across the screen. The resolution of the circle is defined by the number of "turns", which can range between
+;; 3 and 11. Turns basically define the number of edges that make up the circle, so 3 turns will create a triangle,
+;; 5 will create a pentagon, etc. The sprite-vec-data-2d 'warp-turns'/'flag' field contains the number of turns.
+
 ;; DECOMP BEGINS
 
+;; Contains sprite distort data that doesn't change per sprite. Everything excluding aspx and aspy
+;; are uploaded to VU memory.
+;;
+;; - entry: Every 2 vectors make up distort data for one turn.
+;; - ientry: Index into VU memory to the start of entry data for a number of turns.
+;;   For example, ientry[0] is 352 which is the data for 3 turns, ientry[1] is 358 which is the
+;;   data for 4 turns, etc.
+;;
+;; See sprite-distorter-generate-tables.
 (deftype sprite-distorter-sine-tables (basic)
   ((aspx   float                  :offset-assert   4)
    (aspy   float                  :offset-assert   8)
@@ -40,34 +62,46 @@
 (define *sprite-distorter-sine-tables* (new 'global 'sprite-distorter-sine-tables))
 (kmemclose)
 
+;; Called from update-math-camera. Whenever the camera's aspect ratio changes, recalculates the
+;; *sprite-distorter-sine-tables*. Fills the entry list with values for each valid number of turns (3-11).
+;;
+;; For example, the first valid number of turns is 3 so the first 6 vectors in the entry list make up
+;; its sine table data (one vector for distorting position, one for texture coords). Then the next 8 vectors
+;; make up the sine table data for 4 turns, and so on until 11 turns.
 (defun sprite-distorter-generate-tables ()
   (let ((gp-0 *sprite-distorter-sine-tables*))
-    (let ((s3-0 0)
-          (s5-0 0)
-          (s4-0 3)
-          (f28-0 (- (-> *math-camera* perspective data 0)))
-          (f30-0 (- (-> *math-camera* perspective data 5)))
+    (let ((entry-idx 0)
+          (ientry-idx 0)
+          (turns 3)
+          (cam-aspx (- (-> *math-camera* perspective data 0)))
+          (cam-aspy (- (-> *math-camera* perspective data 5)))
           )
-      (when (or (!= f28-0 (-> gp-0 aspx)) (!= f30-0 (-> gp-0 aspy)))
-        (set! (-> gp-0 aspx) f28-0)
-        (set! (-> gp-0 aspy) f30-0)
-        (while (< s4-0 12)
-          (set! (-> gp-0 ientry s5-0 vector4w x) (+ s3-0 352))
-          (+! s5-0 1)
-          (dotimes (s2-0 s4-0)
-            (let ((f26-0 (* 65536.0 (/ (the float s2-0) (the float s4-0)))))
-              (set-vector! (-> gp-0 entry s3-0) (* (sin f26-0) f28-0) (* (cos f26-0) f30-0) 0.0 0.0)
-              (let ((s3-1 (+ s3-0 1)))
-                (set-vector! (-> gp-0 entry s3-1) (* 0.001953125 f28-0 (sin f26-0)) (* 0.001953125 f30-0 (cos f26-0)) 0.0 0.0)
-                (set! s3-0 (+ s3-1 1))
+      (when (or (!= cam-aspx (-> gp-0 aspx)) (!= cam-aspy (-> gp-0 aspy)))
+        (set! (-> gp-0 aspx) cam-aspx)
+        (set! (-> gp-0 aspy) cam-aspy)
+        (while (< turns 12)
+          (set! (-> gp-0 ientry ientry-idx vector4w x) (+ entry-idx 352))
+          (+! ientry-idx 1)
+          (dotimes (turn turns)
+            (let ((f26-0 (* 65536.0 (/ (the float turn) (the float turns)))))
+              (set-vector! (-> gp-0 entry entry-idx) (* (sin f26-0) cam-aspx) (* (cos f26-0) cam-aspy) 0.0 0.0)
+              (let ((s3-1 (+ entry-idx 1)))
+                (set-vector!
+                  (-> gp-0 entry s3-1)
+                  (* 0.001953125 cam-aspx (sin f26-0))
+                  (* 0.001953125 cam-aspy (cos f26-0))
+                  0.0
+                  0.0
+                  )
+                (set! entry-idx (+ s3-1 1))
                 )
               )
             )
-          (+! s4-0 1)
+          (+! turns 1)
           )
-        (set-vector! (-> gp-0 entry s3-0) 0.0 f30-0 0.0 0.0)
-        (let ((v1-20 (+ s3-0 1)))
-          (set-vector! (-> gp-0 entry v1-20) 0.0 (* 0.001953125 f30-0) 0.0 0.0)
+        (set-vector! (-> gp-0 entry entry-idx) 0.0 cam-aspy 0.0 0.0)
+        (let ((v1-20 (+ entry-idx 1)))
+          (set-vector! (-> gp-0 entry v1-20) 0.0 (* 0.001953125 cam-aspy) 0.0 0.0)
           (+ v1-20 1)
           )
         )
@@ -109,6 +143,7 @@
 
 (define sprite-distort-vu1-block (new 'static 'vu-function :length 63 :qlength 32))
 
+;; Sets up GS registers, adds a reference to *sprite-distorter-sine-tables*, and loads the VU program.
 (defun sprite-init-distorter ((dma-buff dma-buffer))
   (let* ((v1-0 dma-buff)
          (a1-0 (the-as object (-> v1-0 base)))
@@ -187,6 +222,16 @@
   (none)
   )
 
+;; Calculates per-sprite data like positions and texture coordinates, puts each sprite onto
+;; the DMA chain in chunks, and calls into the VU program to draw.
+;;
+;; - Only aux sprites with an aux-type of 0 are processed.
+;; - Sprites will be skipped if their 'warp-turns' is 0 or if they fail the clipping test.
+;; - Sprite coordinates are transformed into screen-coordinates ahead of time in GOAL.
+;;   - If the sprite's 'matrix' field is 1, then the sprite is in screen-space,
+;;     otherwise it's in world-space.
+;; - Sprites are uploaded in chunks of 85.
+;; - For every 2 chunks, a call into the VU program is added.
 (defun sprite-draw-distorters ((dma-buff dma-buffer))
   (local-vars
     (v1-15 float)
@@ -265,9 +310,7 @@
                 (.svf (&-> (the-as vector dma-position) quad) vf1)
                 (.svf (&-> (the-as vector dma-color) quad) vf2)
                 (set! (-> (the-as vector dma-position) w) 255.0)
-                (set! (-> (the-as (pointer float) dma-st-flag))
-                      (* 0.001953125 (+ -1792.0 (-> (the-as vector dma-position) x)))
-                      )
+                (set! (-> (the-as vector dma-st-flag) x) (* 0.001953125 (+ -1792.0 (-> (the-as vector dma-position) x))))
                 (set! (-> (the-as vector dma-st-flag) y) (* 0.001953125 (+ -1840.0 (-> (the-as vector dma-position) y))))
                 )
               (set! (-> (the-as vector dma-st-flag) z) 1.0)
@@ -278,9 +321,9 @@
               (set! (-> (the-as (pointer int32) dma-st-flag) 3) (the-as int (-> sprite flag-rot-sy x)))
               (let* ((f1-4 (- (-> *math-camera* perspective data 5)))
                      (f2-2 (-> (the-as vector dma-st-flag) y))
-                     (f4-0 (+ f2-2 (* (-> (the-as (pointer float) dma-color)) f1-4)))
+                     (f4-0 (+ f2-2 (* (-> (the-as vector dma-color) x) f1-4)))
                      (f3-0 256.0)
-                     (f0-9 (-> (the-as (pointer float) dma-color)))
+                     (f0-9 (-> (the-as vector dma-color) x))
                      )
                 (if (< 416.0 f4-0)
                     (set! f3-0 (/ (- 416.0 f2-2) f1-4))
