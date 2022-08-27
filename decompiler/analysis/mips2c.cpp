@@ -153,14 +153,17 @@ struct Mips2C_Output {
    * Convert the output to a string.
    */
   std::string write_to_string(const FunctionName& goal_func_name,
+                              GameVersion version,
                               const std::string& extra = "") const {
     std::string name = goal_to_c_function_name(goal_func_name);
     std::string result = "//--------------------------MIPS2C---------------------\n";
+    result += "// clang-format off\n";
     result += "#include \"game/mips2c/mips2c_private.h\"\n";
-    result += "#include \"game/kernel/kscheme.h\"\n";
+    result += fmt::format("#include \"game/kernel/{}/kscheme.h\"\n", game_version_names[version]);
+    result += fmt::format("using ::{}::intern_from_c;\n", game_version_names[version]);
 
     // start of namespace for this function
-    result += "namespace Mips2C {\n";
+    result += fmt::format("namespace Mips2C::{} {{\n", game_version_names[version]);
     result += fmt::format("namespace {} {{\n", name);
 
     // definition of the symbol cache.
@@ -227,8 +230,8 @@ struct Mips2C_Output {
       result += fmt::format("  cache.{} = intern_from_c(\"{}\").c();\n", goal_to_c_name(sym), sym);
     }
     // this adds us to a table for lookup later, and also allocates our trampoline.
-    result +=
-        fmt::format("  gLinkedFunctionTable.reg(\"{}\", execute);\n", goal_func_name.to_string());
+    result += fmt::format("  gLinkedFunctionTable.reg(\"{}\", execute, PUT_STACK_SIZE_HERE);\n",
+                          goal_func_name.to_string());
     result += "}\n\n";
 
     result += extra;
@@ -1313,7 +1316,7 @@ void run_mips2c_jump_table(Function* f,
   }
   jump_loc_table += "};\n\n";
 
-  f->mips2c_output = output.write_to_string(f->guessed_name, jump_loc_table);
+  f->mips2c_output = output.write_to_string(f->guessed_name, version, jump_loc_table);
   if (g_unknown > 0) {
     lg::error("Mips to C pass in {} hit {} unknown instructions", f->name(), g_unknown);
   }
@@ -1431,7 +1434,7 @@ void run_mips2c(Function* f, GameVersion version) {
     }
   }
 
-  f->mips2c_output = output.write_to_string(f->guessed_name);
+  f->mips2c_output = output.write_to_string(f->guessed_name, version);
   if (g_unknown > 0) {
     lg::error("Mips to C pass in {} hit {} unknown instructions", f->name(), g_unknown);
   }

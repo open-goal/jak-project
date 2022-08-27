@@ -11,6 +11,7 @@
 #include "game/kernel/common/kernel_types.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
+#include "game/mips2c/mips2c_table.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/libpad.h"
 #include "game/sce/libscf.h"
@@ -490,4 +491,14 @@ void vif_interrupt_callback() {
  */
 u32 offset_of_s7() {
   return s7.offset;
+}
+
+/*!
+ * Called from the game thread at initialization.
+ * The game thread is the only one to touch the mips2c function table (through the linker and
+ * through this function), so no locking is needed.
+ */
+u64 pc_get_mips2c(u32 name) {
+  const char* n = Ptr<String>(name).c()->data();
+  return Mips2C::gLinkedFunctionTable.get(n);
 }

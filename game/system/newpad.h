@@ -100,7 +100,7 @@ void DefaultMapping(MappingInfo& mapping);
 int IsPressed(MappingInfo& mapping, Button button, int pad);
 int GetAnalogValue(MappingInfo& mapping, Analog analog, int pad);
 void MapButton(MappingInfo& mapping, Button button, int pad, int key);
-void MapAnalog(MappingInfo& mapping, Button button, int pad, AnalogMappingInfo& analogMapping);
+void MapAnalog(MappingInfo& mapping, Analog button, int pad, AnalogMappingInfo& analogMapping);
 void SetAnalogAxisValue(MappingInfo& mapping, int axis, double value);
 void ClearAnalogAxisValue(MappingInfo& mapping, int axis);
 
