@@ -643,21 +643,9 @@ void GLDisplay::update_fullscreen(GfxDisplayMode mode, int screen) {
   }
 }
 
-int GLDisplay::get_screen_vmode_count() {
+void GLDisplay::get_screen_size(s32* w_out, s32* h_out) {
   std::lock_guard<std::mutex> lk(m_lock);
-  return m_display_state.num_vmodes;
-}
-
-void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out) {
-  std::lock_guard<std::mutex> lk(m_lock);
-  if (vmode_idx >= 0 && vmode_idx < MAX_VMODES) {
-    if (w_out) {
-      *w_out = m_display_state.vmodes[vmode_idx].width;
-    }
-    if (h_out) {
-      *h_out = m_display_state.vmodes[vmode_idx].height;
-    }
-  } else if (fullscreen_mode() == Fullscreen) {
+  if (fullscreen_mode() == Fullscreen) {
     if (w_out) {
       *w_out = m_display_state.largest_vmode_width;
     }
@@ -674,11 +662,9 @@ void GLDisplay::get_screen_size(int vmode_idx, s32* w_out, s32* h_out) {
   }
 }
 
-int GLDisplay::get_screen_rate(int vmode_idx) {
+int GLDisplay::get_screen_rate() {
   std::lock_guard<std::mutex> lk(m_lock);
-  if (vmode_idx >= 0 && vmode_idx < MAX_VMODES) {
-    return m_display_state.vmodes[vmode_idx].refresh_rate;
-  } else if (fullscreen_mode() == GfxDisplayMode::Fullscreen) {
+  if (fullscreen_mode() == GfxDisplayMode::Fullscreen) {
     return m_display_state.largest_vmode_refresh_rate;
   } else {
     return m_display_state.current_vmode.refresh_rate;
@@ -774,13 +760,6 @@ void GLDisplay::update_glfw() {
   int count = 0;
   auto vmodes = glfwGetVideoModes(monitor, &count);
 
-  if (count > MAX_VMODES) {
-    fmt::print("got too many vmodes: {}\n", count);
-    count = MAX_VMODES;
-  }
-
-  m_display_state_copy.num_vmodes = count;
-
   m_display_state_copy.largest_vmode_width = 1;
   m_display_state_copy.largest_vmode_refresh_rate = 1;
   for (int i = 0; i < count; i++) {
@@ -792,7 +771,6 @@ void GLDisplay::update_glfw() {
     if (vmodes[i].refreshRate > m_display_state_copy.largest_vmode_refresh_rate) {
       m_display_state_copy.largest_vmode_refresh_rate = vmodes[i].refreshRate;
     }
-    m_display_state_copy.vmodes[i].set(&vmodes[i]);
   }
 
   if (m_pending_size.pending) {

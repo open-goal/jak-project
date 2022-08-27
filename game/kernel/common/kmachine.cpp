@@ -380,7 +380,7 @@ void get_window_scale(u32 x_ptr, u32 y_ptr) {
 /*!
  * Returns resolution of the monitor.
  */
-void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr) {
+void get_screen_size(u32 w_ptr, u32 h_ptr) {
   s32 *w_out = 0, *h_out = 0;
   if (w_ptr) {
     w_out = Ptr<s32>(w_ptr).c();
@@ -388,21 +388,14 @@ void get_screen_size(s64 vmode_idx, u32 w_ptr, u32 h_ptr) {
   if (h_ptr) {
     h_out = Ptr<s32>(h_ptr).c();
   }
-  Gfx::get_screen_size(vmode_idx, w_out, h_out);
+  Gfx::get_screen_size(w_out, h_out);
 }
 
 /*!
  * Returns refresh rate of the monitor.
  */
-s64 get_screen_rate(s64 vmode_idx) {
-  return Gfx::get_screen_rate(vmode_idx);
-}
-
-/*!
- * Returns amount of video modes of the monitor.
- */
-s64 get_screen_vmode_count() {
-  return Gfx::get_screen_vmode_count();
+s64 get_screen_rate() {
+  return Gfx::get_screen_rate();
 }
 
 /*!

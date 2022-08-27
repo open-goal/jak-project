@@ -45,9 +45,8 @@ class GfxDisplay {
   virtual void set_size(int w, int h) = 0;
   virtual void update_fullscreen(GfxDisplayMode mode, int screen) = 0;
   virtual void get_scale(float* x, float* y) = 0;
-  virtual int get_screen_vmode_count() = 0;
-  virtual void get_screen_size(int vmode_idx, s32* w, s32* h) = 0;
-  virtual int get_screen_rate(int vmode_idx) = 0;
+  virtual void get_screen_size(s32* w, s32* h) = 0;
+  virtual int get_screen_rate() = 0;
   virtual int get_monitor_count() = 0;
   virtual void get_position(int* x, int* y) = 0;
   virtual void get_size(int* w, int* h) = 0;

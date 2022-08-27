@@ -390,16 +390,9 @@ GfxDisplayMode get_fullscreen() {
   }
 }
 
-int get_screen_vmode_count() {
+int get_screen_rate() {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_screen_vmode_count();
-  }
-  return 0;
-}
-
-int get_screen_rate(s64 vmode_idx) {
-  if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_screen_rate(vmode_idx);
+    return Display::GetMainDisplay()->get_screen_rate();
   }
   return 0;
 }
@@ -411,9 +404,9 @@ int get_monitor_count() {
   return 0;
 }
 
-void get_screen_size(s64 vmode_idx, s32* w, s32* h) {
+void get_screen_size(s32* w, s32* h) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_screen_size(vmode_idx, w, h);
+    Display::GetMainDisplay()->get_screen_size(w, h);
   }
 }
 
