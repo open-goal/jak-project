@@ -29297,17 +29297,20 @@
 ;; idle-control                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+
 (deftype idle-control-frame (uint32)
-  ()
+  ((command  uint8  :offset 0)
+   (anim     uint8  :offset 8)
+   (param0   uint8  :offset 16)
+   (param1   uint8  :offset 24)
+  )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; Failed to read fields.
   )
-|#
 
-#|
+
+
 (deftype idle-control (structure)
   ((anim    uint32  :offset-assert 0)
    (current uint32  :offset-assert 4)
@@ -29318,11 +29321,11 @@
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (idle-control-method-9 () none 9)
-    (idle-control-method-10 () none 10)
+    (idle-control-method-9 (_type_ idle-control-frame idle-control-frame) idle-control 9)
+    (idle-control-method-10 (_type_ uint32 uint32) none 10)
     )
   )
-|#
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -29347,8 +29350,22 @@
 ;; enemy-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype enemy-focus (focus)
+;;Added hopefully temp structure since "focus" used the 12 method slot instead of enemy-focus
+(deftype temp-focus (structure)
+  ((handle       handle        :offset-assert 0)
+   (collide-with collide-spec  :offset-assert 8)
+   )
+  :method-count-assert 12
+  :size-assert         #xc
+  :flag-assert         #xc0000000c
+  (:methods
+    (clear-focused (_type_) none 9)
+    (collide-check? (_type_ process-focusable) object 10)
+    (reset-to-collide-spec (_type_ collide-spec) none 11)
+    )
+  )
+
+(deftype enemy-focus (temp-focus)
   ((aware uint64  :offset-assert 16)
    (flags uint64  :offset-assert 24)
    )
@@ -29356,12 +29373,13 @@
   :size-assert         #x20
   :flag-assert         #xe00000020
   (:methods
-    (enemy-focus-method-13 () none 13)
+    (enemy-focus-method-12 (_type_ uint32 uint32) none 12)
+    (enemy-focus-method-13 (_type_ uint32 uint32) symbol 13)
     )
   )
-|#
 
-#|
+
+
 (deftype enemy-info (basic)
   ((fact-defaults                       basic           :offset-assert 4)
    (use-die-falling                     basic           :offset-assert 8)
@@ -29449,12 +29467,12 @@
   :size-assert         #x180
   :flag-assert         #xa00000180
   (:methods
-    (enemy-info-method-9 () none 9)
+    (enemy-info-method-9 (_type_) uint32 9)
     )
   )
-|#
 
-#|
+
+
 (deftype enemy-knocked-info (structure)
   ((anim-speed         float   :offset-assert 0)
    (on-surface-count   int32   :offset-assert 4)
@@ -29465,9 +29483,9 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
+
+
 (deftype enemy-jump-info (structure)
   ((flags      uint8              :offset-assert 0)
    (anim-speed float              :offset-assert 4)
@@ -29480,9 +29498,9 @@
   :size-assert         #x58
   :flag-assert         #x900000058
   )
-|#
 
-#|
+
+
 (deftype enemy-init-by-other-params (structure)
   ((trans                      vector     :inline :offset-assert 0)
    (quat                       quaternion :inline :offset-assert 16)
@@ -29494,9 +29512,9 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype enemy-attack-info (structure)
   ((attack-id         uint32         :offset-assert 0)
    (knocked-type      uint8          :offset-assert 4)
@@ -29511,9 +29529,9 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
+
+
 (deftype enemy-best-focus (structure)
   ((proc   basic   :offset-assert 0)
    (rating float   :offset-assert 4)
@@ -29523,11 +29541,87 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
+;;TODO: Verify enum values are correct
+(defenum enemy-flag
+   :type int64 
+   :bitfield #t
+   (lock-focus 0)
+   (death-start 1)
+   (enable-on-active 2)
+   (checking-water 3)
+   (check-water 4)
+   (spawn-gem 5)
+   (chase-startup 6)
+   (attackable-backup 7)
+   (look-at-focus 8)
+   (use-notice-distance 9)
+   (enable-on-notice 10)
+   (look-at-move-dest 11)
+   (notice 12)
+   (auto-reset-penetrate 13)
+   (jump-check-blocked 14)
+   (drawn-mirrored 15)
+   (multi-focus 16)
+   (alert 17)
+   (victory 18)
+   (dangerous-backup 19)
+   (actor-pause-backup 20)
+   (trackable 21)
+   (called-dying 22)
+   (check-water-backup 23)
+   (no-initial-move-to-ground 24)
+   (cam-attack-mode 25)
+   (trackable-backup 26)
+   (enable-on-hostile 27)
+   (directed-ready 28)
+   (use-trigger 29)
+   (directed 30)
+   (dislike-combo 31)
+   (recover-applied-velocity 32)
+   (vulnerable-backup 33)
+   (vulnerable 34)
+   (recover 35)
+   )
+
+
 (deftype enemy (process-focusable)
-  ()
+  ((enemy-flags                 enemy-flag                  :offset-assert 208)
+   (enemy-info                  symbol                      :offset-assert 216)
+   (hit-points                  int32                       :offset-assert 220) 
+   (gnd-collide                 uint32                      :offset-assert 224) 
+   (attack-id                   uint32                      :offset-assert 228) 
+   (persistent-attack-id        uint32                      :offset-assert 232) 
+   (water-max-height            float                       :offset-assert 236) 
+   (water-surface-height        float                       :offset-assert 240) 
+   (desired-angle               float                       :offset-assert 244) 
+   (jump-why                    uint64                      :offset-assert 248) 
+   (penetrated-by-all           uint64                      :offset-assert 256) 
+   (penetrated-flinch           uint64                      :offset-assert 264) 
+   (penetrated-knocked          uint64                      :offset-assert 272) 
+   (reaction-time               uint64                      :offset-assert 280) 
+   (notice-time                 uint64                      :offset-assert 288) 
+   (state-timeout               uint64                      :offset-assert 296) 
+   (auto-reset-penetrate-time   uint64                      :offset-assert 304) 
+   (hit-focus-time              uint64                      :offset-assert 312) 
+   (last-draw-time              uint64                      :offset-assert 320) 
+   (starting-time               uint64                      :offset-assert 328) 
+   (fated-time                  uint64                      :offset-assert 336) 
+   (focus-pos                   vector            :inline   :offset-assert 352) 
+   (event-param-point           vector            :inline   :offset-assert 368) 
+   (jump-dest                   vector            :inline   :offset        368) 
+   (focus                       enemy-focus       :inline   :offset-assert 384) 
+   (incoming                    enemy-attack-info :inline   :offset-assert 416) 
+   (actor-group                 actor-group                 :offset-assert 480)
+   (actor-group-count           int32                       :offset-assert 484) 
+   (neck                        symbol                      :offset-assert 488) 
+   (on-notice                   symbol                      :offset-assert 492) 
+   (on-active                   symbol                      :offset-assert 496) 
+   (on-hostile                  symbol                      :offset-assert 500) 
+   (on-death                    symbol                      :offset-assert 504) 
+   (idle-anim-player            idle-control :inline        :offset-assert 512) 
+   (rand-gen                    symbol                      :offset-assert 528) 
+  )
   :method-count-assert 137
   :size-assert         #x214
   :flag-assert         #x8901a00214
@@ -29645,9 +29739,8 @@
     (enemy-method-136 () none 136)
     )
   )
-|#
 
-#|
+
 (deftype anim-info (structure)
   ((anim-index   int32   :offset-assert 0)
    (travel-speed meters  :offset-assert 4)
@@ -29656,14 +29749,14 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-enemy-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+
 (deftype nav-enemy-info (enemy-info)
   ((callback-info             nav-callback-info  :offset-assert 384)
    (use-momentum              symbol             :offset-assert 388) ;; guessed by decompiler
@@ -29681,11 +29774,11 @@
    (walk-travel-speed         meters             :offset-assert 436)
    (walk-acceleration         meters             :offset-assert 440)
    (walk-turning-acceleration meters             :offset-assert 444)
-   (maximum-rotation-rate     deg                :offset-assert 448)
+   (maximum-rotation-rate     degrees            :offset-assert 448) ;; deg to degrees
    (notice-nav-radius         meters             :offset-assert 452)
    (frustration-distance      meters             :offset-assert 456)
-   (frustration-time          time-frame             :offset-assert 464) ;; time-frame
-   (blocked-time              time-frame             :offset-assert 472)
+   (frustration-time          time-frame         :offset-assert 464) ;; time-frame
+   (blocked-time              time-frame         :offset-assert 472)
    (circle-dist-lo            float              :offset-assert 480)
    (circle-dist-hi            float              :offset-assert 484)
    (nav-mesh                  basic              :offset-assert 488)
@@ -29697,21 +29790,21 @@
     (nav-enemy-info-method-10 () none 10)
     )
   )
-|#
 
-#|
+
+
 (deftype nav-enemy (enemy)
-  ((frustration-point       vector :inline :offset-assert 540)
-   (move-dest               vector :inline :offset-assert 556)
-   (frustration-time        time-frame         :offset-assert 572) ;; time-frame
-   (blocked-start-time      time-frame         :offset-assert 580)
-   (restore-nav-radius-time time-frame         :offset-assert 588)
-   (nav-radius-backup       float          :offset-assert 596)
-   (circle-radial-dist      float          :offset-assert 240)
+  ((frustration-point       vector :inline :offset-assert 544)
+   (move-dest               vector :inline :offset-assert 560)
+   (frustration-time        time-frame         :offset-assert 576) ;; time-frame
+   (blocked-start-time      time-frame         :offset-assert 584)
+   (restore-nav-radius-time time-frame         :offset-assert 592)
+   (nav-radius-backup       float          :offset-assert 600)
+   (circle-radial-dist      float          :offset-assert 604)
    )
   :method-count-assert 178
-  :size-assert         #x25c
-  :flag-assert         #xb201e0025c
+  :size-assert         #x260
+  :flag-assert         #xb201e00260
   (:methods
     (nav-enemy-method-137 () none 137)
     (nav-enemy-method-138 () none 138)
@@ -29756,9 +29849,9 @@
     (nav-enemy-method-177 () none 177)
     )
   )
-|#
 
-#|
+
+
 (deftype nav-enemy-debug-control-info (basic)
   ((enable   basic  :offset-assert 4)
    (steering float  :offset-assert 8)
@@ -29768,7 +29861,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
