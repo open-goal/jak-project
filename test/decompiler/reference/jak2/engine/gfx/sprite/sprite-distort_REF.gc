@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: sprite-distort.gc
-;; name in dgo: sprite-distort
-;; dgos: ENGINE, GAME
-
-;; DECOMP BEGINS
-
+;; definition of type sprite-distorter-sine-tables
 (deftype sprite-distorter-sine-tables (basic)
   ((aspx   float                  :offset-assert   4)
    (aspy   float                  :offset-assert   8)
@@ -20,6 +15,7 @@
   :flag-assert         #x9000008c0
   )
 
+;; definition for method 3 of type sprite-distorter-sine-tables
 (defmethod inspect sprite-distorter-sine-tables ((obj sprite-distorter-sine-tables))
   (when (not obj)
     (set! obj obj)
@@ -36,10 +32,17 @@
   obj
   )
 
+;; failed to figure out what this is:
 (kmemopen global "sprite-distort-tables")
+
+;; definition for symbol *sprite-distorter-sine-tables*, type sprite-distorter-sine-tables
 (define *sprite-distorter-sine-tables* (new 'global 'sprite-distorter-sine-tables))
+
+;; failed to figure out what this is:
 (kmemclose)
 
+;; definition for function sprite-distorter-generate-tables
+;; INFO: Return type mismatch int vs none.
 (defun sprite-distorter-generate-tables ()
   (let ((gp-0 *sprite-distorter-sine-tables*))
     (let ((s3-0 0)
@@ -107,8 +110,11 @@
   (none)
   )
 
+;; definition for symbol sprite-distort-vu1-block, type vu-function
 (define sprite-distort-vu1-block (new 'static 'vu-function :length 63 :qlength 32))
 
+;; definition for function sprite-init-distorter
+;; INFO: Return type mismatch int vs none.
 (defun sprite-init-distorter ((dma-buff dma-buffer))
   (let* ((v1-0 dma-buff)
          (a1-0 (the-as object (-> v1-0 base)))
@@ -187,6 +193,11 @@
   (none)
   )
 
+;; definition for function sprite-draw-distorters
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+;; ERROR: Inline assembly instruction marked with TODO - [TODO.VCLIP]
+;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v1, Clipping]
 (defun sprite-draw-distorters ((dma-buff dma-buffer))
   (local-vars
     (v1-15 float)
@@ -253,13 +264,12 @@
                 (.add.mul.z.vf vf1 vf5 vf1 acc)
                 (.mul.vf vf10 vf1 vf8)
                 (.div.vf Q vf0 vf10 :fsf #b11 :ftf #b11)
-                ;;(TODO.VCLIP vf10 vf10)
+                (TODO.VCLIP vf10 vf10)
                 (b! (zero? (-> sprite flag-rot-sy x)) cfg-22 :delay (nop!))
                 (.wait.vf)
                 (.mul.vf vf1 vf1 Q :mask #b111)
                 (.mul.vf vf2 vf2 Q :mask #b111)
-                ;;(.cfc2.i clip-result Clipping)
-                (set! clip-result (vu-clip vf10 0)) ;; safe to just drop the higher bits.
+                (.cfc2.i clip-result Clipping)
                 (b! (logtest? clip-result 63) cfg-22 :delay (.add.vf vf1 vf1 vf9))
                 (.max.x.vf vf1 vf1 vf0 :mask #b1000)
                 (.svf (&-> (the-as vector dma-position) quad) vf1)
@@ -422,3 +432,7 @@
     (none)
     )
   )
+
+
+
+
