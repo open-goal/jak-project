@@ -17666,10 +17666,10 @@
   )
 
 (deftype entity-info (basic)
-  ((ptype     type   :offset-assert 4) ;; guessed by decompiler
-   (package   basic  :offset-assert 8)
-   (art-group pair   :offset-assert 12) ;; guessed by decompiler
-   (pool      basic  :offset-assert 16)
+  ((ptype     type   :offset-assert 4)
+   (package   string  :offset-assert 8)
+   (art-group pair   :offset-assert 12)
+   (pool      symbol  :offset-assert 16)
    (heap-size int32  :offset-assert 20)
    )
   :method-count-assert 9
@@ -22632,8 +22632,14 @@
 ;; entity-table                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *entity-info* array) ;; (array entity-info)
-;; (define-extern entity-info-lookup function) ;; (function type entity-info)
+(define-extern *entity-info* (array entity-info))
+(define-extern entity-info-lookup
+  "Given a type, return the [[entity-info]] from [[*entity-info*]] whos type
+   matches the `ptype` field.  Set's `method 13` on said type that returns the `length`
+   off the [[entity-info]]
+
+   If nothing matches, set `method 13` to `#f` and return `#f`"
+  (function type entity-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; loader                         ;;
