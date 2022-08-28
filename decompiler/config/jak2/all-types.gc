@@ -29664,7 +29664,7 @@
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (idle-control-method-9 (_type_ idle-control-frame idle-control-frame) idle-control 9)
+    (idle-control-method-9 (_type_ uint32 uint32) idle-control 9)
     (idle-control-method-10 (_type_ uint32 uint32) none 10)
     )
   )
@@ -29702,11 +29702,13 @@
   :size-assert         #xc
   :flag-assert         #xc0000000c
   (:methods
-    (clear-focused (_type_) none 9)
+    (clear-focused (_type_) uint 9)
     (collide-check? (_type_ process-focusable) object 10)
     (reset-to-collide-spec (_type_ collide-spec) none 11)
     )
   )
+
+(declare-type enemy object)
 
 (deftype enemy-focus (temp-focus)
   ((aware uint64  :offset-assert 16)
@@ -29716,12 +29718,10 @@
   :size-assert         #x20
   :flag-assert         #xe00000020
   (:methods
-    (enemy-focus-method-12 (_type_ uint32 uint32) none 12)
+    (enemy-focus-method-12 (_type_ uint32 enemy) symbol 12)
     (enemy-focus-method-13 (_type_ uint32 uint32) symbol 13)
     )
   )
-
-
 
 (deftype enemy-info (basic)
   ((fact-defaults                       basic           :offset-assert 4)
@@ -47148,9 +47148,40 @@
   )
 |#
 
-#|
+(defenum vehicle-controller-flag
+  :type uint32
+  :bitfield #t
+  (do-turn 0)
+  (off-path 1)
+  (attached 2)
+  (no-slowing-for-turns 3)
+  (recovery-mode 4)
+  (blocking-dest-node 5)
+  (direct-mode 6)
+  (ignore-others 7)
+  (debug 8)
+  (on-straightaway 9)
+  (draw-marks 10)
+  (left-turn 11)
+  )
+
 (deftype vehicle-controller (structure)
-  ()
+  ((flags                   vehicle-controller-flag  :offset-assert 0)
+   (traffic                 symbol                   :offset-assert 4)
+   (branch                  uint32                   :offset-assert 8) ;;FIXME: Should be nav branch pointer
+   (target-speed-offset     meters                   :offset-assert 12)
+   (target-speed            meters                   :offset-assert 16)
+   (choose-branch-callback  symbol                   :offset-assert 20)
+   (turn-accel              meters                   :offset-assert 24)
+   (max-turn-speed          meters                   :offset-assert 28)
+   (path-prev-point         vector      :inline      :offset-assert 32)
+   (turn-enter-point        vector      :inline      :offset-assert 48)
+   (turn-exit-point         vector      :inline      :offset-assert 64)
+   (turn-enter-dir          vector      :inline      :offset-assert 80)
+   (turn-exit-dir           vector      :inline      :offset-assert 96)
+   (dest-circle             vector      :inline      :offset-assert 112)
+   (target-point            vector      :inline      :offset-assert 128)
+  )
   :method-count-assert 22
   :size-assert         #x90
   :flag-assert         #x1600000090
@@ -47171,7 +47202,6 @@
     (vehicle-controller-method-21 () none 21)
     )
   )
-|#
 
 #|
 (deftype vehicle-section (structure)
@@ -47184,8 +47214,124 @@
 |#
 
 #|
-(deftype vehicle (rigid-body-object)
-  ()
+(defenum vehicle-flag
+    :bitfield #t
+    :type int64
+    (lights-update 0)
+    (camera-bike-mode 1)
+    (jump-sound 2)
+    (dead 3)
+    (waiting-for-player 4)
+    (no-hijack 5)
+    (hard-turn 6)
+    (turbo-boost 7)
+    (in-pursuit 8)
+    (traffic-managed 9)
+    (damaged 10)
+    (player-contact-force 11)
+    (player-grabbed 12)
+    (flight-level-transition-ending 13)
+    (alert 14)
+    (disturbed 14)
+    (enable-collision 15)
+    (player-edge-grabbing 16)
+    (lights-on 17)
+    (reverse-gear 18)
+    (ai-driving 19)
+    (persistent 20)
+    (jump 21)
+    (riding 22)
+    (on-flight-level 23)
+    (nav-spheres 24)
+    (player-driving 25)
+    (hack-edit-graph-mode 26)
+    (camera-rapid-tracking-mode 27)
+    (ignition 28)
+    (slide 29)
+    (on-ground 30)
+    (flight-level-transition 31)
+    (lights-dead 32)
+    (player-touching 33)
+    (target-in-sight 34)
+    (idle-sound 35)
+    (in-air 36)
+    (draw-marks 37)
+    (camera 38)
+    (player-standing-on 39)
+    (measure-control-parameters 40)
+    (player-impulse-force 41)
+    (rammed-target 42)
+    )
+|#
+#|
+(deftype vehicle (rigid-body-object)    
+  ((flags                       vehicle-flag                :offset-assert 272)
+  (controls                     vehicle-controls :inline    :offset-assert 280)
+  (prev-controls                vehicle-controls :inline    :offset-assert 296)
+  (up-dir                       vector           :inline    :offset-assert 320)
+  (jump-time                    float                       :offset-assert 336)
+  (jump-thrust                  float                       :offset-assert 340)
+  (engine-thrust                float                       :offset-assert 344)
+  (engine-power-factor          float                       :offset-assert 348)
+  (force-scale                  float                       :offset-assert 352)
+  (target-distance2             meters                      :offset-assert 356)
+  (pad0-vehicle                 uint64                      :offset-assert 360) ;decompiler said this was originally pad0 but vehicle inherits pad0 from process
+  (target-acceleration          vector           :inline    :offset-assert 368)
+  (impact-pos                   vector           :inline    :offset-assert 384)
+  (lin-acceleration             vector           :inline    :offset-assert 400)
+  (hit-points                   float                       :offset-assert 416)
+  (damage-factor                float                       :offset-assert 420)
+  (crash-level                  int8                        :offset-assert 424)
+  (force-level                  int8                        :offset-assert 425)
+  (traffic-hash-id              int8                        :offset-assert 426)
+  (traffic-priority-id          int8                        :offset-assert 427)
+  (power-fluctuation-factor     float                       :offset-assert 428)
+  (power-level                  float                       :offset-assert 432)
+  (flight-level-index           int8                        :offset-assert 436)
+  (flight-level-index-prev      int8                        :offset-assert 437)
+  (overlap-player-counter       uint8                       :offset-assert 438)
+  (physics-counter              uint8                       :offset-assert 439)
+  (flight-level                 float                       :offset-assert 440)
+  (brake-factor                 float                       :offset-assert 444)
+  (cam-speed-interp             float                       :offset-assert 448)
+  (camera-dist2                 float                       :offset-assert 452)
+  (player-dist2                 float                       :offset-assert 456)
+  (bound-radius                 float                       :offset-assert 460)
+  (rider-array                  uint64  4                   :offset-assert 464)
+  (lift-thrust                  uint32  2                   :offset-assert 496)
+  (roll-thrust                  uint32  2                   :offset-assert 504)
+  (sent-attack-time             int32                       :offset-assert 512)
+  (air-time                     int32                       :offset-assert 516)
+  (turn-time                    int32                       :offset-assert 520)
+  (crash-time                   int32                       :offset-assert 524)
+  (transition-time              int32                       :offset-assert 528)
+  (transition-end-time          int32                       :offset-assert 532)
+  (turbo-boost-time             int32                       :offset-assert 536)
+  (crash-duration               int32                       :offset-assert 540)
+  (turbo-boost-duration         int32                       :offset-assert 544)
+  (turbo-boost-factor           int32                       :offset-assert 548)
+  (crash-impulse                float                       :offset-assert 552)
+  (water-height                 float                       :offset-assert 556)
+  (lights-factor                float                       :offset-assert 560)
+  (outgoing-attack-id           uint32                      :offset-assert 564)
+  (scrape-sound-id              uint32                      :offset-assert 568)
+  (engine-sound-id              uint32                      :offset-assert 572)
+  (thrust-sound-id              uint32                      :offset-assert 576)
+  (roll-sound-id                uint32                      :offset-assert 580)
+  (damage-pop-sound-id          uint32                      :offset-assert 584)
+  (damage-zap-sound-id          uint32                      :offset-assert 588)
+  (extra-sound-id               uint32                      :offset-assert 592)
+  (fog-fade                     float                       :offset-assert 596)
+  (scrape-sound-envelope        float                       :offset-assert 600)
+  (engine-sound-envelope        float                       :offset-assert 604)
+  (sputter-sound-envelope       float                       :offset-assert 608)
+  (rutter-sound-envelope        float                       :offset-assert 612)
+  (fins-sound-envelope          float                       :offset-assert 616)
+  (exhaust-part-accum           uint32    2                 :offset-assert 620)
+  (smoke-part-accum             uint64    2                 :offset-assert 628)
+  (controller                   vehicle-controller :inline  :offset-assert 640)
+  (section-array                uint32    4                 :offset-assert 784)
+  )
   :method-count-assert 144
   :size-assert         #x370
   :flag-assert         #x9002f00370
@@ -47291,13 +47437,60 @@
 ;; citizen-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; kernel types
+(defenum citizen-flag
+    :bitfield #t
+    :type uint16
+    (female 0)
+    (knocked-out-car 1)
+    (sticky-weapon 2)
+    (in-pursuit 3)
+    (dark-debug 4)
+    (hostile 5)    
+    (persistent 6)
+    (shuffle-mode 6)
+    (knocked-out-bike 7)
+    (target-in-sight 8)
+    (run-mode 9)
+    )
+
+
 (deftype citizen (nav-enemy)
-  ()
+  ((flags                citizen-flag                :offset        608)
+   (traffic-id           int8                        :offset-assert 610)
+   (hit-by-player-count  int8                        :offset-assert 611)
+   (gnd-height           float                       :offset-assert 612)
+   (speed-scale          float                       :offset-assert 616)
+   (controller           vehicle-controller :inline  :offset-assert 624)
+   (danger-pos           sphere             :inline  :offset-assert 768)
+   (dest-point           vector             :inline  :offset        688)
+   (vehicle              int64                       :offset-assert 784)
+   (anim-shuffle         int64                       :offset-assert 792)
+   (dist-walk-anim       float                       :offset-assert 800)
+   (speed-walk           float                       :offset-assert 804)
+   (anim-walk            int32                       :offset-assert 808)
+   (dist-run-anim        float                       :offset-assert 812)
+   (speed-run            float                       :offset-assert 816)
+   (anim-run             float                       :offset-assert 820)
+   (water-run            int32                       :offset-assert 824)
+   (interp               float                       :offset-assert 828)
+   (last-danger-time     int64                       :offset-assert 832)
+   (next-time-look-at    int64                       :offset-assert 840)
+   (stop-time-look-at    int64                       :offset-assert 848)
+   (wait-return-state    symbol                      :offset-assert 856)
+   (wait-time            int64                       :offset-assert 864)
+   (cp-valid?            symbol                      :offset-assert 872)
+   (cp-sphere            sphere             :inline  :offset-assert 880)
+   (cp-vec               vector             :inline  :offset-assert 896)
+   (cp-next-time         int64                       :offset-assert 912)
+   (cp-exit-time         int64                       :offset-assert 920)
+   (cp-force             vector             :inline  :offset-assert 928)
+   (cp-plane             plane              :inline  :offset-assert 944)
+   (cp-factor            float                       :offset-assert 960)
+  )
   :method-count-assert 201
   :size-assert         #x3c4
   :flag-assert         #xc9035003c4
-  ;; Failed to read fields.
   (:methods
     (citizen-method-178 () none 178)
     (citizen-method-179 () none 179)
@@ -47324,7 +47517,7 @@
     (citizen-method-200 () none 200)
     )
   )
-|#
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
