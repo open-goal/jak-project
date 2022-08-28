@@ -1873,6 +1873,15 @@ bool load_var_op_determine_type(types2::Type& type_out,
         return true;
       } else {
         // normal virtual method access.
+        // first check special cases
+        if (type_name == "art" || type_name == "art-group") {
+          if (method_id == 10) {
+            type_out.type =
+                TP_Type::make_get_art_by_name(method_type, TypeSpec(type_name), method_id);
+            return true;
+          }
+        }
+        // nope
         type_out.type = TP_Type::make_virtual_method(method_type, TypeSpec(type_name), method_id);
         return true;
       }
@@ -2257,6 +2266,19 @@ void CallOp::propagate_types2(types2::Instruction& instr,
           m_my_idx));
     }
     in_type = state_to_go_function(state_typespec, TypeSpec("object"));
+  }
+
+  if (in_tp.kind == TP_Type::Kind::GET_ART_BY_NAME_METHOD) {
+    can_backprop = false;
+    // let's see what a2 holds...
+    auto& arg2_type = input_types[Register(Reg::GPR, arg_regs[2])];
+    if (arg2_type->type) {
+      auto& tpt = *arg2_type->type;
+      if (tpt.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+        ASSERT(in_type.last_arg() == TypeSpec("basic"));  // just to double check right function
+        in_type.last_arg() = tpt.get_type_objects_typespec();
+      }
+    }
   }
 
   // special case: process initialization
