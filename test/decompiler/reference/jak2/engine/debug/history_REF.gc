@@ -1,0 +1,951 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+(when *debug-segment*
+;; definition for function history-channel->string
+(defun history-channel->string ((arg0 history-channel))
+  (case arg0
+    (((history-channel friction))
+     "friction"
+     )
+    (((history-channel transv-out))
+     "transv-out"
+     )
+    (((history-channel pat))
+     "pat"
+     )
+    (((history-channel transv-in))
+     "transv-in"
+     )
+    (((history-channel trans))
+     "trans"
+     )
+    (((history-channel local-normal))
+     "local-normal"
+     )
+    (((history-channel collide-status))
+     "collide-status"
+     )
+    (((history-channel time))
+     "time"
+     )
+    (((history-channel intersect))
+     "intersect"
+     )
+    (((history-channel surface-normal))
+     "surface-normal"
+     )
+    (((history-channel transv))
+     "transv"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+;; definition of type history-elt
+(deftype history-elt (structure)
+  ((record-tag-bytes      uint8           4       :offset-assert   0)
+   (record-tag            uint32                  :offset          0)
+   (record-id             uint16                  :offset          0)
+   (owner                 uint8                   :offset          2)
+   (channel               history-channel         :offset-assert   4)
+   (timestamp             time-frame              :offset-assert   8)
+   (origin                vector          :inline :offset-assert  16)
+   (bytes                 uint8           16      :offset-assert  32)
+   (vector                vector          :inline :offset         32)
+   (float                 float                   :offset         32)
+   (collide-status        collide-status          :offset         32)
+   (collide-reaction-flag uint32                  :offset         40)
+   (pat                   pat-surface             :offset         32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; definition for method 3 of type history-elt
+(defmethod inspect history-elt ((obj history-elt))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'history-elt)
+  (format #t "~1Trecord-tag-bytes[4] @ #x~X~%" (-> obj record-tag-bytes))
+  (format #t "~1Trecord-tag: ~D~%" (-> obj record-tag))
+  (format #t "~1Trecord-id: ~D~%" (-> obj record-id))
+  (format #t "~1Towner: ~D~%" (-> obj owner))
+  (format #t "~1Tchannel: ~D~%" (-> obj channel))
+  (format #t "~1Ttimestamp: ~D~%" (-> obj timestamp))
+  (format #t "~1Torigin: #<vector @ #x~X>~%" (-> obj origin))
+  (format #t "~1Tbytes[16] @ #x~X~%" (-> obj bytes))
+  (format #t "~1Tvector: #<vector @ #x~X>~%" (-> obj bytes))
+  (format #t "~1Tfloat: ~f~%" (-> obj vector x))
+  (format #t "~1Tcollide-status: ~D~%" (-> obj collide-status))
+  (format #t "~1Tcollide-reaction-flag: ~D~%" (-> obj vector z))
+  (format #t "~1Tpat: ~D~%" (-> obj vector x))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type history-iterator
+(deftype history-iterator (basic)
+  ((max-age      uint32   :offset-assert   4)
+   (owner        uint8    :offset-assert   8)
+   (proc         process  :offset-assert  12)
+   (out          basic    :offset-assert  16)
+   (channel-mask uint64   :offset-assert  24)
+   (index        int32    :offset-assert  32)
+   (done?        symbol   :offset-assert  36)
+   )
+  :method-count-assert 12
+  :size-assert         #x28
+  :flag-assert         #xc00000028
+  (:methods
+    (new (symbol type uint32) _type_ 0)
+    (frame-counter-delta (_type_ history-elt) time-frame 9)
+    (update-entries! (_type_) history-elt 10)
+    (history-iterator-method-11 (_type_ history-elt) float 11)
+    )
+  )
+
+;; definition for method 3 of type history-iterator
+(defmethod inspect history-iterator ((obj history-iterator))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tmax-age: ~D~%" (-> obj max-age))
+  (format #t "~1Towner: ~D~%" (-> obj owner))
+  (format #t "~1Tproc: ~A~%" (-> obj proc))
+  (format #t "~1Tout: ~A~%" (-> obj out))
+  (format #t "~1Tchannel-mask: ~D~%" (-> obj channel-mask))
+  (format #t "~1Tindex: ~D~%" (-> obj index))
+  (format #t "~1Tdone?: ~A~%" (-> obj done?))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type history
+(deftype history (basic)
+  ((alloc-index      int32                        :offset-assert   4)
+   (allocated-length int32                        :offset-assert   8)
+   (elts             history-elt :inline :dynamic :offset         16)
+   )
+  :method-count-assert 11
+  :size-assert         #x10
+  :flag-assert         #xb00000010
+  (:methods
+    (new (symbol type int) _type_ 0)
+    (clear-record-tags! (_type_ history-channel uint uint) history-elt 9)
+    (clear-history-entries! (_type_) none 10)
+    )
+  )
+
+;; definition for method 3 of type history
+(defmethod inspect history ((obj history))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Talloc-index: ~D~%" (-> obj alloc-index))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Telts[0] @ #x~X~%" (-> obj elts))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 4 of type history
+(defmethod length history ((obj history))
+  (-> obj allocated-length)
+  )
+
+;; definition for method 5 of type history
+;; INFO: Return type mismatch uint vs int.
+(defmethod asize-of history ((obj history))
+  (the-as int (+ (-> obj type size) (* 48 (-> obj allocated-length))))
+  )
+
+;; definition for method 0 of type history
+(defmethod new history ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* 48 arg0))))))
+    (set! (-> v0-0 allocated-length) arg0)
+    v0-0
+    )
+  )
+
+;; definition for method 10 of type history
+;; INFO: Return type mismatch int vs none.
+(defmethod clear-history-entries! history ((obj history))
+  "Iterates through each [[history-elt]] in the `elt` dynamic array
+       For each entry:
+       - clear `timestamp`
+       - clear `record-tag`"
+  (set! (-> obj alloc-index) 0)
+  (countdown (v1-0 (-> obj allocated-length))
+    (let ((a1-3 (-> obj elts v1-0)))
+      (set! (-> a1-3 record-tag) (the-as uint 0))
+      (set! (-> a1-3 timestamp) 0)
+      )
+    0
+    )
+  0
+  (none)
+  )
+
+;; definition (perm) for symbol *history*, type history
+(define-perm *history* history (new 'debug 'history 4096))
+
+;; failed to figure out what this is:
+(clear-history-entries! *history*)
+
+;; definition for method 9 of type history
+;; WARN: new jak 2 until loop case, check carefully
+(defmethod clear-record-tags! history ((obj history) (arg0 history-channel) (arg1 uint) (arg2 uint))
+  "First grab the latest [[history-elt]] at `alloc-index`
+       1. update it's `channel`, `record-id` and `owner` from the provided args
+       2. - if it's `record-tag` is zero -- return it
+           - otherwise, iterate through all `elts` until one is found that does not match it's `timestamp`
+             - if not `0` out the `record-tag` for that elt and continue iteration"
+  (let* ((t1-0 (-> obj alloc-index))
+         (v1-0 (-> obj elts))
+         (v0-0 (-> v1-0 t1-0))
+         )
+    (let ((t2-0 (-> v0-0 record-tag))
+          (t0-2 (-> v0-0 timestamp))
+          )
+      (set! (-> v0-0 channel) arg0)
+      (set! (-> v0-0 record-id) arg1)
+      (set! (-> v0-0 owner) arg2)
+      (set! (-> v0-0 timestamp) (-> *display* base-clock frame-counter))
+      (let* ((a1-4 (-> obj allocated-length))
+             (a2-2 (mod (+ t1-0 1) a1-4))
+             )
+        (set! (-> obj alloc-index) a2-2)
+        (when (nonzero? t2-0)
+          (until #f
+            (let ((a0-4 (-> v1-0 a2-2)))
+              (if (!= t0-2 (-> a0-4 timestamp))
+                  (return v0-0)
+                  )
+              (set! (-> a0-4 record-tag) (the-as uint 0))
+              )
+            (set! a2-2 (mod (+ a2-2 1) a1-4))
+            )
+          #f
+          )
+        )
+      )
+    v0-0
+    )
+  )
+
+;; definition for method 0 of type history-iterator
+(defmethod new history-iterator ((allocation symbol) (type-to-make type) (arg0 uint32))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 max-age) (the-as uint arg0))
+    (set! (-> v0-0 owner) (the-as uint 1))
+    (set! (-> v0-0 proc) #f)
+    (set! (-> v0-0 out) *stdcon*)
+    (set! (-> v0-0 channel-mask) (the-as uint -1))
+    (set! (-> v0-0 index) (-> *history* alloc-index))
+    (set! (-> v0-0 done?) #f)
+    v0-0
+    )
+  )
+
+;; definition for method 10 of type history-iterator
+(defmethod update-entries! history-iterator ((obj history-iterator))
+  "Iterate through each [[history-elt]] in [[*history*]]
+      - If we hit the end set `done?` to true
+      - If the `timestamp` on the elt, minus the current framecounter exceeds `max-age`, we are also done, return #f
+      - However if we find an elt who's `owner` matches the iterator's, break out early returning that `elt`"
+  (let ((v1-0 *history*)
+        (a1-2 (-> *display* base-clock frame-counter))
+        )
+    (while (not (-> obj done?))
+      (let ((a2-1 (+ (-> obj index) -1)))
+        (if (< a2-1 0)
+            (set! a2-1 (+ (-> v1-0 allocated-length) -1))
+            )
+        (set! (-> obj index) a2-1)
+        (if (= a2-1 (-> v1-0 alloc-index))
+            (set! (-> obj done?) #t)
+            )
+        (let ((a2-5 (-> v1-0 elts a2-1)))
+          (when (nonzero? (-> a2-5 record-tag))
+            (when (< (the-as time-frame (-> obj max-age)) (- a1-2 (-> a2-5 timestamp)))
+              (set! (-> obj done?) #t)
+              (return (the-as history-elt #f))
+              )
+            (if (= (-> a2-5 owner) (-> obj owner))
+                (return a2-5)
+                )
+            )
+          )
+        )
+      )
+    )
+  (the-as history-elt #f)
+  )
+
+;; definition for method 11 of type history-iterator
+(defmethod history-iterator-method-11 history-iterator ((obj history-iterator) (arg0 history-elt))
+  "TODO - Unsure of the purpose
+      `min(1.0, ((history-elt.timestamp - 1) + frame-counter) / (max-age + 1)) - 1.0`"
+  (- 1.0 (fmin 1.0 (/ (the float (+ (- 1 (-> arg0 timestamp)) (-> *display* base-clock frame-counter)))
+                      (the float (+ (-> obj max-age) 1))
+                      )
+               )
+     )
+  )
+
+;; definition for method 9 of type history-iterator
+(defmethod frame-counter-delta history-iterator ((obj history-iterator) (arg0 history-elt))
+  "Returns the difference between [[*display*]]'s `base-clock.frame-counter` and the elt's `timestamp`"
+  (- (-> *display* base-clock frame-counter) (-> arg0 timestamp))
+  )
+
+;; definition for function history-print
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; INFO: Return type mismatch int vs none.
+;; WARN: new jak 2 until loop case, check carefully
+(defun history-print ((arg0 history-iterator))
+  (local-vars
+    (sv-16 basic)
+    (sv-24 int)
+    (sv-32 int)
+    (sv-40 history-elt)
+    (sv-48 time-frame)
+    (sv-56 uint)
+    (sv-64 collide-status)
+    (sv-72 float)
+    (sv-80 string)
+    (sv-96 string)
+    )
+  (set! sv-16 (-> arg0 out))
+  (set! sv-24 -1)
+  (set! sv-32 0)
+  (until #f
+    (set! sv-40 (update-entries! arg0))
+    (if (not sv-40)
+        (goto cfg-71)
+        )
+    (when (logtest? (-> arg0 channel-mask) (ash 1 (-> sv-40 channel)))
+      (set! sv-48 (frame-counter-delta arg0 sv-40))
+      (set! sv-56 (-> sv-40 record-id))
+      (cond
+        ((!= sv-24 sv-48)
+         (set! sv-24 (the-as int sv-48))
+         (set! sv-32 (the-as int sv-56))
+         (format sv-16 "~3D ~4X " sv-48 (-> sv-40 record-id))
+         )
+        ((!= sv-32 sv-56)
+         (set! sv-32 (the-as int sv-56))
+         (format sv-16 "    ~4X " (-> sv-40 record-id))
+         )
+        (else
+          (format sv-16 "         ")
+          )
+        )
+      (let ((v1-22 (-> sv-40 channel)))
+        (cond
+          ((or (= v1-22 (history-channel trans))
+               (or (= v1-22 (history-channel transv))
+                   (= v1-22 (history-channel transv-in))
+                   (= v1-22 (history-channel transv-out))
+                   (= v1-22 (history-channel intersect))
+                   )
+               )
+           (format
+             sv-16
+             "~-15S: ~14Mm ~14Mm ~14Mm~%"
+             (history-channel->string (-> sv-40 channel))
+             (-> sv-40 vector x)
+             (-> sv-40 vector y)
+             (-> sv-40 vector z)
+             )
+           )
+          ((or (= v1-22 (history-channel local-normal)) (= v1-22 (history-channel surface-normal)))
+           (format
+             sv-16
+             "~-15S: ~14f  ~14f  ~14f~%"
+             (history-channel->string (-> sv-40 channel))
+             (-> sv-40 vector x)
+             (-> sv-40 vector y)
+             (-> sv-40 vector z)
+             )
+           )
+          ((= v1-22 (history-channel pat))
+           (let* ((s2-0 (-> sv-40 vector x))
+                  (s5-2 format)
+                  (s4-2 sv-16)
+                  (s3-2 "~-15S: #x~6X  mode:~-8S  material:~-10S  event:~S~%")
+                  (s1-0 (history-channel->string (-> sv-40 channel)))
+                  (s0-0 s2-0)
+                  )
+             (set! sv-80 (pat-mode->string (the-as pat-surface s2-0)))
+             (set! sv-96 (pat-material->string (the-as pat-surface s2-0)))
+             (let ((t2-0 (pat-event->string (the-as pat-surface s2-0))))
+               (s5-2 s4-2 s3-2 s1-0 s0-0 sv-80 sv-96 t2-0)
+               )
+             )
+           )
+          ((= v1-22 (history-channel collide-status))
+           (set! sv-64 (-> sv-40 collide-status))
+           (set! sv-72 (-> sv-40 vector z))
+           (format sv-16 "~-15S: #x~6X " (history-channel->string (-> sv-40 channel)) sv-64)
+           (let ((s5-4 sv-64))
+             (if (= (logand s5-4 (collide-status touch-background)) (collide-status touch-background))
+                 (format sv-16 "touch-background ")
+                 )
+             (if (= (logand s5-4 (collide-status on-special-surface)) (collide-status on-special-surface))
+                 (format sv-16 "on-special-surface ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-wall)) (collide-status touch-wall))
+                 (format sv-16 "touch-wall ")
+                 )
+             (if (= (logand s5-4 (collide-status on-surface)) (collide-status on-surface))
+                 (format sv-16 "on-surface ")
+                 )
+             (if (= (logand s5-4 (collide-status impact-surface)) (collide-status impact-surface))
+                 (format sv-16 "impact-surface ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-ceiling)) (collide-status touch-ceiling))
+                 (format sv-16 "touch-ceiling ")
+                 )
+             (if (= (logand s5-4 (collide-status on-ground)) (collide-status on-ground))
+                 (format sv-16 "on-ground ")
+                 )
+             (if (= (logand s5-4 (collide-status glance)) (collide-status glance))
+                 (format sv-16 "glance ")
+                 )
+             (if (= (logand s5-4 (collide-status blocked)) (collide-status blocked))
+                 (format sv-16 "blocked ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-edge)) (collide-status touch-edge))
+                 (format sv-16 "touch-edge ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-ceiling-sticky)) (collide-status touch-ceiling-sticky))
+                 (format sv-16 "touch-ceiling-sticky ")
+                 )
+             (if (= (logand s5-4 (collide-status on-water)) (collide-status on-water))
+                 (format sv-16 "on-water ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-actor)) (collide-status touch-actor))
+                 (format sv-16 "touch-actor ")
+                 )
+             (if (= (logand (collide-status probe-hit) s5-4) (collide-status probe-hit))
+                 (format sv-16 "probe-hit ")
+                 )
+             (if (= (logand s5-4 (collide-status stuck)) (collide-status stuck))
+                 (format sv-16 "stuck ")
+                 )
+             (if (= (logand s5-4 (collide-status no-touch)) (collide-status no-touch))
+                 (format sv-16 "no-touch ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-surface)) (collide-status touch-surface))
+                 (format sv-16 "touch-surface ")
+                 )
+             )
+           (format sv-16 " #x~6X~%" sv-72)
+           )
+          ((= v1-22 (history-channel friction))
+           (let ((f30-0 (-> sv-40 vector x)))
+             (format sv-16 "~-15S: ~f~%" (history-channel->string (-> sv-40 channel)) f30-0)
+             )
+           )
+          )
+        )
+      )
+    )
+  #f
+  (label cfg-71)
+  0
+  (none)
+  )
+
+;; definition for function history-draw
+;; INFO: Return type mismatch int vs none.
+;; ERROR: Expression building failed: In history-draw: Unmatched field: start bit 24, size 40, signed? true, type rgba
+(defun history-draw ((arg0 history-iterator))
+  (local-vars
+    (v0-0 history-elt)
+    (v0-3 symbol)
+    (v0-4 symbol)
+    (v0-5 symbol)
+    (v0-6 symbol)
+    (v0-7 symbol)
+    (v0-8 symbol)
+    (v0-9 symbol)
+    (v0-10 symbol)
+    (v0-11 symbol)
+    (v0-12 int)
+    (v1-0 type)
+    (v1-8 int)
+    (v1-9 int)
+    (v1-11 int)
+    (v1-13 int)
+    (v1-15 int)
+    (v1-17 int)
+    (v1-18 int)
+    (v1-19 int)
+    (v1-20 int)
+    (v1-21 int)
+    (a0-1 history-iterator)
+    (a0-7 history-channel)
+    (a0-9 symbol)
+    (a0-10 symbol)
+    (a0-11 (pointer uint8))
+    (a0-12 (pointer uint8))
+    (a0-13 symbol)
+    (a0-14 symbol)
+    (a0-15 (pointer uint8))
+    (a0-16 symbol)
+    (a0-18 symbol)
+    (a0-20 symbol)
+    (a0-22 number)
+    (a0-23 int)
+    (a0-24 int)
+    (a0-25 int)
+    (a0-26 pat-mode-info)
+    (a0-27 rgba)
+    (a0-28 rgba)
+    (a0-29 symbol)
+    (a0-31 float)
+    (a0-33 vector)
+    (a0-34 symbol)
+    (a1-5 int)
+    (a1-6 int)
+    (a1-7 int)
+    (a1-9 int)
+    (a1-10 int)
+    (a1-11 int)
+    (a1-13 int)
+    (a1-14 int)
+    (a1-16 int)
+    (a1-17 int)
+    (a1-19 int)
+    (a1-20 history-channel)
+    (a1-21 symbol)
+    (a1-23 (inline-array pat-mode-info))
+    (a1-24 uint)
+    (a1-25 int)
+    (a1-26 int)
+    (a1-28 int)
+    (a1-29 float)
+    (a1-30 float)
+    (a1-31 int)
+    (a2-1 (pointer uint8))
+    (a2-2 (pointer uint8))
+    (a2-3 (pointer uint8))
+    (a2-4 (pointer uint8))
+    (a2-5 vector)
+    (a2-6 vector)
+    (a2-7 vector)
+    (a2-8 symbol)
+    (a2-9 history-channel)
+    (a2-10 vector)
+    (a2-11 vector)
+    (a3-0 (pointer uint8))
+    (a3-1 int)
+    (a3-2 int)
+    (a3-3 (pointer uint8))
+    (a3-4 int)
+    (a3-5 int)
+    (a3-6 (pointer uint8))
+    (a3-7 (pointer uint8))
+    (a3-8 (pointer uint8))
+    (a3-9 (pointer uint8))
+    (a3-10 vector)
+    (t0-0 int)
+    (t0-1 int)
+    (t0-2 int)
+    (t0-3 int)
+    (t0-4 int)
+    (t0-5 int)
+    (t0-6 int)
+    (t0-7 int)
+    (t0-8 int)
+    (t1-0 symbol)
+    (t1-1 symbol)
+    (t1-2 int)
+    (t1-3 int)
+    (t1-4 int)
+    (t1-5 int)
+    (t1-6 int)
+    (t1-7 rgba)
+    (t1-8 rgba)
+    (t1-9 int)
+    (t1-10 int)
+    (t2-0 int)
+    (t2-1 int)
+    (s5-0 history-elt)
+    (t9-0 (function history-iterator history-elt))
+    (t9-3 (function symbol bucket-id vector vector rgba symbol rgba symbol))
+    (t9-4 (function symbol bucket-id vector rgba symbol))
+    (t9-5 (function symbol bucket-id vector vector rgba symbol rgba symbol))
+    (t9-6 (function symbol bucket-id vector rgba symbol))
+    (t9-7 (function symbol bucket-id vector vector meters rgba symbol))
+    (t9-8 (function symbol bucket-id vector vector meters rgba symbol))
+    (t9-9 (function symbol bucket-id vector vector meters rgba symbol))
+    (t9-10 (function symbol bucket-id vector vector meters rgba symbol))
+    (t9-11 (function symbol bucket-id vector vector meters rgba symbol))
+    (f0-3 float)
+    (f0-4 float)
+    (f0-5 float)
+    (f0-6 float)
+    (f1-0 float)
+    (f1-1 float)
+    (sv-16 (pointer uint8))
+    (sv-20 (pointer uint8))
+    (sv-24 number)
+    )
+  (set! sv-16 #f)
+  (set! sv-20 #f)
+  (set! sv-24 0)
+  (until (begin
+           (when (logtest? (-> arg0 channel-mask) (ash 1 (-> s5-0 channel)))
+             (cond
+               ((= a0-7 (history-channel trans))
+                (cond
+                  (sv-16
+                    (set! t9-3 add-debug-line)
+                    (set! a0-9 #t)
+                    (set! a1-5 318)
+                    (set! a2-1 sv-16)
+                    (set! a3-0 (-> s5-0 bytes))
+                    (set! t0-0 #xffff00)
+                    (set! v1-9 (shl v1-8 24))
+                    (set! t0-1 (logior #xffff00 (shl v1-8 24)))
+                    (set! t1-0 #f)
+                    (set! t2-0 -1)
+                    (call! a0-9 a1-5 a2-1 a3-0 t0-1 t1-0 t2-0)
+                    (set! v1-10 v0-3)
+                    )
+                  (else
+                    (set! t9-4 add-debug-x)
+                    (set! a0-10 #t)
+                    (set! a1-6 318)
+                    (set! a2-2 (-> s5-0 bytes))
+                    (set! a3-1 #xffff00)
+                    (set! v1-11 (sll v1-8 24))
+                    (set! a3-2 (logior a3-1 v1-11))
+                    (call! a0-10 a1-6 a2-2 a3-2)
+                    (set! v1-12 v0-4)
+                    )
+                  )
+                (set! a0-11 (-> s5-0 bytes))
+                (set! sv-16 a0-11)
+                )
+               ((begin (set! a1-7 4) (= a0-7 a1-7))
+                (cond
+                  ((begin (set! a0-12 sv-20) a0-12)
+                   (set! t9-5 add-debug-line)
+                   (set! a0-13 #t)
+                   (set! a1-9 318)
+                   (set! a2-3 sv-20)
+                   (set! a3-3 (-> s5-0 bytes))
+                   (set! t0-2 #xffffff)
+                   (set! v1-13 (sll v1-8 24))
+                   (set! t0-3 (logior t0-2 v1-13))
+                   (set! t1-1 #f)
+                   (set! t2-1 -1)
+                   (call! a0-13 a1-9 a2-3 a3-3 t0-3 t1-1 t2-1)
+                   (set! v1-14 v0-5)
+                   )
+                  (else
+                    (set! t9-6 add-debug-x)
+                    (set! a0-14 #t)
+                    (set! a1-10 318)
+                    (set! a2-4 (-> s5-0 bytes))
+                    (set! a3-4 #xffffff)
+                    (set! v1-15 (sll v1-8 24))
+                    (set! a3-5 (logior a3-4 v1-15))
+                    (call! a0-14 a1-10 a2-4 a3-5)
+                    (set! v1-16 v0-6)
+                    )
+                  )
+                (set! a0-15 (-> s5-0 bytes))
+                (set! sv-20 a0-15)
+                )
+               ((begin (set! a1-11 1) (= a0-7 a1-11))
+                (set! t9-7 add-debug-vector)
+                (set! a0-16 #t)
+                (set! a1-13 318)
+                (set! a2-5 (-> s5-0 origin))
+                (set! a3-6 (-> s5-0 bytes))
+                (set! t0-4 #x3dcccccd)
+                (set! v1-17 (sll v1-8 24))
+                (set! t1-2 (logior v1-17 #xff00))
+                (call! a0-16 a1-13 a2-5 a3-6 t0-4 t1-2)
+                (set! a0-17 v0-7)
+                )
+               ((begin (set! a1-14 2) (= a0-7 a1-14))
+                (set! t9-8 add-debug-vector)
+                (set! a0-18 #t)
+                (set! a1-16 318)
+                (set! a2-6 (-> s5-0 origin))
+                (set! a3-7 (-> s5-0 bytes))
+                (set! t0-5 #x3dcccccd)
+                (set! t1-3 #x408040)
+                (set! v1-18 (sll v1-8 24))
+                (set! t1-4 (logior t1-3 v1-18))
+                (call! a0-18 a1-16 a2-6 a3-7 t0-5 t1-4)
+                (set! a0-19 v0-8)
+                )
+               ((begin (set! a1-17 3) (= a0-7 a1-17))
+                (set! t9-9 add-debug-vector)
+                (set! a0-20 #t)
+                (set! a1-19 318)
+                (set! a2-7 (-> s5-0 origin))
+                (set! a3-8 (-> s5-0 bytes))
+                (set! t0-6 #x3dcccccd)
+                (set! t1-5 #x404080)
+                (set! v1-19 (sll v1-8 24))
+                (set! t1-6 (logior t1-5 v1-19))
+                (call! a0-20 a1-19 a2-7 a3-8 t0-6 t1-6)
+                (set! a0-21 v0-9)
+                )
+               ((begin
+                  (or (begin (set! a1-20 (+ a0-7 -5)) (set! a2-8 (zero? a1-20)) a2-8)
+                      (begin (set! a2-9 (+ a0-7 -6)) (set! a1-21 (zero? a2-9)))
+                      )
+                  a1-21
+                  )
+                (set! a0-22 sv-24)
+                (set! a0-23 (sll a0-22 54))
+                (set! a0-24 (srl a0-23 61))
+                (set! a0-25 (sll a0-24 4))
+                (set! a1-23 *pat-mode-info*)
+                (set! a0-26 (+ a0-25 a1-23))
+                (set! a0-27 (-> a0-26 hilite-color))
+                (set! a1-24 (the-as uint #xffffffff00ffffff))
+                (set! a0-28 (logand a0-27 a1-24))
+                (set! t1-7 a0-28)
+                (set! t9-10 add-debug-vector)
+                (set! a0-29 #t)
+                (set! a1-25 318)
+                (set! a2-10 (-> s5-0 origin))
+                (set! a3-9 (-> s5-0 bytes))
+                (set! t0-7 #x45800000)
+                (set! v1-20 (sll v1-8 24))
+                (set! t1-8 (logior t1-7 v1-20))
+                (call! a0-29 a1-25 a2-10 a3-9 t0-7 t1-8)
+                (set! a0-30 v0-10)
+                )
+               ((begin (set! a1-26 8) (= a0-7 a1-26))
+                (set! a0-31 (-> s5-0 vector x))
+                (set! sv-24 a0-31)
+                )
+               ((begin (set! a1-28 10) (= a0-7 a1-28))
+                (set! f0-3 (-> s5-0 vector x))
+                (set! a3-10 (new 'stack-no-clear 'vector))
+                (set! a0-33 a3-10)
+                (set! f1-0 0.0)
+                (set! (-> a0-33 x) f1-0)
+                (set! a1-29 -8192.0)
+                (set! f1-1 (gpr->fpr a1-29))
+                (set! f0-4 (*.s f1-1 f0-3))
+                (set! (-> a0-33 y) f0-4)
+                (set! f0-5 0.0)
+                (set! (-> a0-33 z) f0-5)
+                (set! a1-30 1.0)
+                (set! f0-6 (gpr->fpr a1-30))
+                (set! (-> a0-33 w) f0-6)
+                (set! t9-11 add-debug-vector)
+                (set! a0-34 #t)
+                (set! a1-31 318)
+                (set! a2-11 (-> s5-0 origin))
+                (set! t0-8 #x3f800000)
+                (set! t1-9 #xffffff)
+                (set! v1-21 (sll v1-8 24))
+                (set! t1-10 (logior t1-9 v1-21))
+                (call! a0-34 a1-31 a2-11 a3-10 t0-8 t1-10)
+                (set! a0-35 v0-11)
+                )
+               )
+             )
+           #f
+           )
+    (if (begin
+          (set! a0-1 arg0)
+          (set! v1-0 (-> a0-1 type))
+          (set! t9-0 (method-of-type v1-0 update-entries!))
+          (set! v0-0 (call! a0-1))
+          (set! s5-0 v0-0)
+          (not s5-0)
+          )
+        (begin (goto cfg-34))
+        )
+    )
+  (label cfg-34)
+  (set! v0-12 0)
+  (ret-none)
+  )
+
+;; failed to figure out what this is:
+0
+
+)

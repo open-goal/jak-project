@@ -57,31 +57,32 @@ set(RUNTIME_SOURCE
         kernel/jak2/ksound.cpp
         kernel/asm_funcs.asm
         mips2c/mips2c_table.cpp
-        mips2c/functions/bones.cpp
-        mips2c/functions/collide_cache.cpp
-        mips2c/functions/collide_edge_grab.cpp
-        mips2c/functions/collide_func.cpp
-        mips2c/functions/collide_mesh.cpp
-        mips2c/functions/collide_probe.cpp
-        mips2c/functions/draw_string.cpp
-        mips2c/functions/generic_effect.cpp
-        mips2c/functions/generic_effect2.cpp
-        mips2c/functions/generic_merc.cpp
-        mips2c/functions/generic_tie.cpp
-        mips2c/functions/joint.cpp
-        mips2c/functions/merc_blend_shape.cpp
-        mips2c/functions/ocean.cpp
-        mips2c/functions/ocean_vu0.cpp
-        mips2c/functions/ripple.cpp
-        mips2c/functions/shadow.cpp
-        mips2c/functions/sky_tng.cpp
-        mips2c/functions/sparticle.cpp
-        mips2c/functions/sparticle_launcher.cpp
-        mips2c/functions/test_func.cpp
-        mips2c/functions/texture.cpp
-        mips2c/functions/tfrag.cpp
-        mips2c/functions/tie_methods.cpp
-        mips2c/functions/time_of_day.cpp
+        mips2c/jak1_functions/bones.cpp
+        mips2c/jak1_functions/collide_cache.cpp
+        mips2c/jak1_functions/collide_edge_grab.cpp
+        mips2c/jak1_functions/collide_func.cpp
+        mips2c/jak1_functions/collide_mesh.cpp
+        mips2c/jak1_functions/collide_probe.cpp
+        mips2c/jak1_functions/draw_string.cpp
+        mips2c/jak1_functions/generic_effect.cpp
+        mips2c/jak1_functions/generic_effect2.cpp
+        mips2c/jak1_functions/generic_merc.cpp
+        mips2c/jak1_functions/generic_tie.cpp
+        mips2c/jak1_functions/joint.cpp
+        mips2c/jak1_functions/merc_blend_shape.cpp
+        mips2c/jak1_functions/ocean.cpp
+        mips2c/jak1_functions/ocean_vu0.cpp
+        mips2c/jak1_functions/ripple.cpp
+        mips2c/jak1_functions/shadow.cpp
+        mips2c/jak1_functions/sky_tng.cpp
+        mips2c/jak1_functions/sparticle.cpp
+        mips2c/jak1_functions/sparticle_launcher.cpp
+        mips2c/jak1_functions/test_func.cpp
+        mips2c/jak1_functions/texture.cpp
+        mips2c/jak1_functions/tfrag.cpp
+        mips2c/jak1_functions/tie_methods.cpp
+        mips2c/jak1_functions/time_of_day.cpp
+        mips2c/jak2_functions/collide_func.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
         overlord/iso.cpp

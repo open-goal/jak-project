@@ -155,8 +155,9 @@ void LoadPeripheralSettings(const ghc::filesystem::path& filepath) {
     g_is_debug_menu_visible_on_startup = configuration["Debug Menu Visibility"].get<bool>();
   }
 
-  g_settings.pad_mapping_info.use_mouse = configuration.value<bool>("Use Mouse", false);
-
+  if (configuration.find("Debug Menu Visibility") != configuration.end()) {
+    g_settings.pad_mapping_info.use_mouse = configuration["Use Mouse"].get<bool>();
+  }
   int controller_index = 0;
   for (const auto& peripheral : configuration["Peripherals"]) {
     auto& controller_buttons_json = peripheral["Controller"]["Buttons"];

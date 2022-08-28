@@ -531,8 +531,11 @@ void link_control::jak1_finish(bool jump_from_c_to_goal) {
     // todo check function type of entry
 
     // setup mips2c functions
-    for (auto& x : Mips2C::gMips2CLinkCallbacks[m_object_name]) {
-      x();
+    const auto& it = Mips2C::gMips2CLinkCallbacks[GameVersion::Jak1].find(m_object_name);
+    if (it != Mips2C::gMips2CLinkCallbacks[GameVersion::Jak1].end()) {
+      for (auto& x : it->second) {
+        x();
+      }
     }
 
     // execute top level!
