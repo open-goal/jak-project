@@ -5840,7 +5840,7 @@
   (:methods
     (level-get (_type_ symbol) level 9)
     (level-get-with-status (_type_ symbol) level 10)
-    (get-level-by-heap-ptr-and-status (_type_ pointer uint) level 11) ;;
+    (get-level-by-heap-ptr-and-status (_type_ pointer symbol) level 11) ;;
     (level-get-for-use (_type_ symbol symbol) level 12)
     (activate-levels! (_type_) int 13) ;; (debug-print-entities (_type_ symbol type) none 13)
     (level-group-method-14 () none 14) ;; (debug-draw-actors (_type_ symbol) none 14)
@@ -7285,13 +7285,35 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defenum mem-usage-id
-  :type uint32
-  (bsp-leaf-vis-self 62)
-  (bsp-leaf-vis-adj  63)
+    :bitfield #f
+    :type uint32
+    (entity 43)
+    (camera 44)
 
-  (level-code   65)
-  (entity-links 66)
-  )
+    (res 48)
+
+    (bsp-leaf-vis-self 62)
+    (bsp-leaf-vis-adj  63)
+
+    (level-code   65)
+    (entity-links 66)
+
+    (joint            67)
+
+    (joint-anim-compressed-control 69)
+    (joint-anim-fixed 70)
+    (joint-anim-frame 71)
+
+    (art-group        73)
+    (art-mesh-anim    74)
+    (art-mesh-geo     75)
+    (art-joint-geo    76)
+    (art-joint-anim   77)
+
+    (joint-anim-drawable 78)
+
+    (eye-anim        111)
+    )
 
 (deftype memory-usage-info (structure)
   ((name  string  :offset-assert 0) ;; guessed by decompiler
@@ -7654,8 +7676,8 @@
   :flag-assert         #xa00000020
   ;; field param1 uses ~A with a signed load field param2 uses ~A with a signed load
   (:methods
-     ;; (new (symbol type basic) _type_ 0)
-    (cspace-method-9 () none 9) ;; (reset-and-assign-geo! (_type_ basic) _type_ 9)
+    (new (symbol type basic) _type_ 0)
+    (reset-and-assign-geo! (_type_ basic) _type_ 9)
     )
   )
 
@@ -9710,7 +9732,7 @@
 
 (deftype joint-anim-frame (structure)
   ((matrices matrix 2 :inline :offset-assert 0) ;; guessed by decompiler
-   (data     matrix :dynamic  :offset-assert 128) ;; guessed by decompiler
+   (data     transformq :dynamic :inline :offset-assert 128) ;; guessed by decompiler
    )
   (:methods
     (new (symbol type int) _type_ 0)
@@ -9777,10 +9799,10 @@
   :size-assert         #x14
   :flag-assert         #xd00000014
   (:methods
-    (art-method-9 () none 9) ;; (login (_type_) _type_ 9)
-    (art-method-10 () none 10) ;; (lookup-art (_type_ string type) joint 10)
-    (art-method-11 () none 11) ;; (lookup-idx-of-art (_type_ string type) int 11)
-    (art-method-12 () none 12) ;; (needs-link? (_type_) symbol 12)
+    (login (_type_) _type_ 9)
+    (get-art-by-name-method (_type_ string type) basic 10)
+    (get-art-idx-by-name-method (_type_ string type) int 11)
+    (needs-link? (_type_) symbol 12)
     )
   )
 
@@ -9794,15 +9816,16 @@
 
 
 (deftype art-mesh-anim (art-element)
-  ()
+  ((data basic :dynamic))
   :flag-assert #xd00000020
   )
 
+(declare-type merc-eye-anim-block structure)
 (deftype art-joint-anim (art-element)
   ((speed                  float                          :offset 20)
    (artist-base            float                          :offset 24)
    (artist-step            float                          :offset 28)
-   (eye-anim               basic                          :offset 4)
+   (eye-anim               merc-eye-anim-block            :offset 4)
    (master-art-group-name  string                         :offset-assert 32) ;; guessed by decompiler
    (master-art-group-index int32                          :offset-assert 36)
    (blend-shape-anim       basic                          :offset-assert 40)
@@ -9825,23 +9848,26 @@
   :flag-assert         #xf00000020
   ;; Failed to read fields.
   (:methods
-    (art-group-method-13 () none 13) ;; (link-art! (_type_) art-group 13)
+    (relocate (_type_ kheap (pointer uint8)) none :replace 7)
+    (link-art! (_type_) art-group 13)
     (art-group-method-14 () none 14) ;; (unlink-art! (_type_) int 14)
     )
   )
 
 (deftype art-mesh-geo (art-element)
-  ()
+  ((data  basic  :dynamic :offset-assert 32)
+   )
   :flag-assert #xd00000020
   )
 
 (deftype art-joint-geo (art-element)
-  ()
+  ((data  joint  :dynamic :offset-assert 32)
+   )
   :flag-assert #xd00000020
   )
 
 (deftype art-joint-anim-manager-slot (structure)
-  ((anim       basic   :offset-assert 0)
+  ((anim       art-joint-anim :offset-assert 0)
    (comp-data  uint32  :offset-assert 4)
    (time-stamp uint64  :offset-assert 8)
    )
@@ -9862,10 +9888,10 @@
   ;; Failed to read fields.
   (:methods
     (new (symbol type int) _type_ 0)
-    (art-joint-anim-manager-method-9 () none 9)
-    (art-joint-anim-manager-method-10 () none 10)
-    (unload-from-slot (_type_ int) none 11)
-    (art-joint-anim-manager-method-12 () none 12)
+    (decompress (_type_ art-joint-anim) art-joint-anim 9)
+    (update-time-stamp (_type_ art-joint-anim) art-joint-anim 10)
+    (unload-from-slot (_type_ int) art-joint-anim 11)
+    (used-bytes-for-slot (_type_ int) int 12)
     (unload-from-level (_type_ level) none 13)
     )
   )
@@ -12049,13 +12075,13 @@
    (frame-group      art-joint-anim    :offset-assert 4)
    (frame-num        float             :offset-assert 8)
    (dist             meters            :offset-assert 12)
-   (num-func   (function joint-control-channel float float float))
+   (num-func   (function joint-control-channel float float float float))
    (param float 3)
    (frame-interp float 2)
    (inspector-amount uint8)
    (command joint-control-command)
    (group-sub-index int8 :offset-assert 56)
-   (grou-size int8)
+   (group-size int8)
    (eval-time uint32)
    )
   :method-count-assert 9
@@ -12136,10 +12162,10 @@
   :flag-assert         #xc00000040
   ;; Failed to read fields.
   (:methods
-     ;; (new (symbol type int) _type_ 0)
+    (new (symbol type int) _type_ 0)
     (joint-control-method-9 () none 9) ;; (current-cycle-distance (_type_) float 9)
-    (joint-control-method-10 () none 10) ;; (debug-print-channels (_type_ symbol) int 10)
-    (joint-control-method-11 () none 11)
+    (joint-control-method-10 () none 10)
+    (debug-print-channels (_type_ symbol) int 11)
     )
   )
 
@@ -20803,47 +20829,47 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-;; (define-extern joint-anim-login function) ;; (function joint-anim-drawable joint-anim-drawable)
-;; (define-extern joint-anim-inspect-elt function) ;; (function joint-anim float joint-anim)
-;; (define-extern jacc-mem-usage function) ;; (function joint-anim-compressed-control memory-usage-block int joint-anim-compressed-control)
-;; (define-extern joint-control-channel-eval function) ;; (function joint-control-channel none)
-;; (define-extern joint-control-channel-eval! function) ;; (function joint-control-channel (function joint-control-channel float float float) none)
-;; (define-extern joint-control-channel-group-eval! function) ;; (function joint-control-channel art-joint-anim (function joint-control-channel float float float) int)
-;; (define-extern joint-control-channel-group! function) ;; (function joint-control-channel art-joint-anim (function joint-control-channel float float float) int)
-;; (define-extern joint-control-copy! function) ;; (function joint-control joint-control joint-control)
-;; (define-extern joint-control-remap! function) ;; (function joint-control art-group art-group pair int string object)
-;; (define-extern flatten-joint-control-to-spr function) ;; (function joint-control int)
-;; (define-extern matrix-from-joint-anim-frame function) ;; (function joint-anim-compressed-control int int matrix)
-;; (define-extern matrix-from-control-channel! function) ;; (function matrix joint joint-control-channel matrix)
-;; (define-extern matrix-from-control-pair! function) ;; (function matrix matrix joint matrix)
-;; (define-extern matrix-from-control! function) ;; (function matrix-stack joint joint-control symbol matrix)
-;; (define-extern cspace<-cspace! function) ;; (function cspace cspace matrix)
-;; (define-extern cspace<-cspace-normalized! function)
-;; (define-extern cspace<-parent-joint! function)
-;; (define-extern cspace<-rot-yxy! function) ;; (function cspace transform matrix)
-;; (define-extern cspace<-transform-yxy! function) ;; (function cspace transform matrix)
+(define-extern joint-anim-login (function joint-anim-drawable joint-anim-drawable))
+(define-extern joint-anim-inspect-elt (function joint-anim float joint-anim))
+(define-extern jacc-mem-usage (function joint-anim-compressed-control memory-usage-block int joint-anim-compressed-control))
+(define-extern joint-control-channel-eval (function joint-control-channel float :behavior process))
+(define-extern joint-control-channel-eval! (function joint-control-channel (function joint-control-channel float float float float) float :behavior process))
+(define-extern joint-control-channel-group-eval! (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int))
+(define-extern joint-control-channel-group! (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int))
+(define-extern joint-control-copy! (function joint-control joint-control joint-control))
+(define-extern joint-control-remap! (function joint-control art-group art-group pair int string object))
+(define-extern flatten-joint-control-to-spr (function joint-control int))
+(define-extern matrix-from-joint-anim-frame (function joint-anim-compressed-control int int matrix))
+(define-extern matrix-from-control-channel!  (function matrix joint joint-control-channel matrix))
+(define-extern matrix-from-control-pair! (function matrix matrix joint int matrix))
+(define-extern matrix-from-control! (function matrix-stack joint joint-control symbol matrix))
+(define-extern cspace<-cspace! (function cspace cspace matrix))
+(define-extern cspace<-cspace-normalized! (function cspace cspace matrix))
+(define-extern cspace<-parent-joint! (function cspace (pointer process-drawable) int matrix))
+(define-extern cspace<-rot-yxy! (function cspace transform matrix))
+(define-extern cspace<-transform-yxy! (function cspace transform matrix))
 (define-extern cspace<-transformq! (function cspace transformq matrix))
-;; (define-extern cspace<-transformq+trans! function) ;; (function cspace transformq vector matrix)
-;; (define-extern cspace<-transformq+world-trans! function) ;; (function cspace transformq vector matrix)
-;; (define-extern cspace<-transformq+rot-offset! function)
-;; (define-extern cspace-calc-total-matrix! function) ;; (function cspace matrix matrix)
-;; (define-extern cspace<-matrix-no-push-joint! function) ;; (function cspace joint-control matrix)
-;; (define-extern cspace<-matrix-joint! function) ;; (function cspace matrix matrix)
-;; (define-extern cspace<-parented-matrix-joint! function) ;; (function cspace matrix matrix)
-;; (define-extern cspace<-parented-matrix-mirror! function)
-;; (define-extern cspace<-parented-matrix-joint-flip-z! function)
-;; (define-extern cspace<-matrix-joint-flip-z! function)
+(define-extern cspace<-transformq+trans! (function cspace transformq vector matrix))
+(define-extern cspace<-transformq+world-trans! (function cspace transformq vector matrix))
+(define-extern cspace<-transformq+rot-offset! (function cspace transformq vector matrix))
+(define-extern cspace-calc-total-matrix! (function cspace matrix matrix))
+(define-extern cspace<-matrix-no-push-joint! (function cspace joint-control matrix))
+(define-extern cspace<-matrix-joint! (function cspace matrix matrix))
+(define-extern cspace<-parented-matrix-joint! (function cspace matrix matrix))
+(define-extern cspace<-parented-matrix-mirror! (function cspace matrix matrix))
+(define-extern cspace<-parented-matrix-joint-flip-z! (function cspace matrix matrix))
+(define-extern cspace<-matrix-joint-flip-z! (function cspace matrix none))
 (define-extern cspace<-parented-transformq-joint! (function cspace transformq none))
-;; (define-extern cspace<-parented-transformq-joint-flip-z! function)
+(define-extern cspace<-parented-transformq-joint-flip-z! (function cspace transformq none))
 ;; (define-extern clear-frame-accumulator function) ;; (function (inline-array vector) none)
 ;; (define-extern normalize-frame-quaternions function) ;; function
-;; (define-extern decompress-fixed-data-to-accumulator function) ;; (function none)
-;; (define-extern decompress-frame-data-to-accumulator function) ;; (function none)
-;; (define-extern decompress-frame-data-pair-to-accumulator function) ;; (function none)
-;; (define-extern make-joint-jump-tables function) ;; (function int)
-;; (define-extern calc-animation-from-spr function) ;; (function (inline-array vector) int none)
-;; (define-extern create-interpolated-joint-animation-frame function) ;; (function (inline-array vector) int process-drawable int)
-;; (define-extern create-interpolated2-joint-animation-frame function)
+(define-extern decompress-fixed-data-to-accumulator function) ;; (function none)
+(define-extern decompress-frame-data-to-accumulator function) ;; (function none)
+(define-extern decompress-frame-data-pair-to-accumulator function) ;; (function none)
+(define-extern make-joint-jump-tables (function int))
+(define-extern calc-animation-from-spr (function joint-anim-frame int none))
+(define-extern create-interpolated-joint-animation-frame (function joint-anim-frame int joint-control int))
+(define-extern create-interpolated2-joint-animation-frame (function joint-anim-frame int joint-control int))
 (define-extern *anim-manager* art-joint-anim-manager)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -22111,7 +22137,7 @@
 
 ;; (define-extern unpack-comp-rle function) ;; (function (pointer int8) (pointer int8) none)
 ;; (define-extern unpack-comp-huf function) ;; (function (pointer uint8) (pointer uint8) uint huf-dictionary-node none)
-;; (define-extern unpack-comp-lzo function)
+(define-extern unpack-comp-lzo (function object object none))
 ;; (define-extern pack-comp-rle function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27391,7 +27417,7 @@
   )
 |#
 
-;; (define-extern mem-size function) ;; (function basic symbol int int)
+(define-extern mem-size (function basic symbol int int))
 ;; (define-extern *max-dma* object) ;; int
 
 

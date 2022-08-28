@@ -3086,7 +3086,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
       auto vtable_var_name = env.get_variable_name(*vtable_reg);
       auto arg0_mr = match(Matcher::any_reg(0), unstacked.at(1));
       if (arg0_mr.matched && env.get_variable_name(*arg0_mr.maps.regs.at(0)) == vtable_var_name) {
-        if (tp_type.kind != TP_Type::Kind::VIRTUAL_METHOD) {
+        if (tp_type.kind != TP_Type::Kind::VIRTUAL_METHOD &&
+            tp_type.kind != TP_Type::Kind::GET_ART_BY_NAME_METHOD) {
           throw std::runtime_error(
               "Method internal mismatch. METHOD_OF_OBJECT operator didn't get a VIRTUAL_METHOD "
               "type.");
@@ -3110,6 +3111,13 @@ void FunctionCallElement::update_from_stack(const Env& env,
           // fmt::print("GOT: {}\n", pop->to_string(env));
           arg_forms.at(0) = pop;
           auto head = mr.maps.forms.at(1);
+
+          // rewrite get-art-by-name-method calls to get-art-by-name, which is a macro that
+          // will apply the appropriate cast.
+          if (tp_type.kind == TP_Type::Kind::GET_ART_BY_NAME_METHOD) {
+            ASSERT(head->to_string(env) == "get-art-by-name-method");
+            head = pool.form<ConstantTokenElement>("get-art-by-name");
+          }
 
           auto head_obj = head->to_form(env);
           if (head_obj.is_symbol() && tp_type.method_from_type().base_type() == "setting-control" &&

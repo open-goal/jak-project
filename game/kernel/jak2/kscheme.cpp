@@ -1000,8 +1000,6 @@ u64 method_set(u32 type_, u32 method_id, u32 method) {
                  method_id, sym_to_string(sym)->data());
           printf("***********************************\n");
         }
-        // todo remove once checked
-        printf("doing method set: %s %d\n", sym_to_string(sym)->data(), method_id);
         sym_value->get_method(method_id).offset = method;
       }
     }
@@ -1020,8 +1018,6 @@ u64 method_set(u32 type_, u32 method_id, u32 method) {
                  method_id, sym_to_string(sym)->data());
           printf("***********************************\n");
         }
-        // todo remove once checked
-        printf("doing method set: %s %d\n", sym_to_string(sym)->data(), method_id);
         sym_value->get_method(method_id).offset = method;
       }
     }
