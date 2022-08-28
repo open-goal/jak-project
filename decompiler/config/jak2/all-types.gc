@@ -17731,6 +17731,9 @@
    (pad         uint128                     4 :offset-assert 32) ;; guessed by decompiler
    (data        uint128                     1 :offset-assert 96) ;; guessed by decompiler
    )
+  (:methods
+    (new (symbol type int int) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
@@ -17769,6 +17772,9 @@
    (adgif-data  (inline-array adgif-shader)   :offset-assert 24) ;; guessed by decompiler
    (data        uint128                     1 :offset-assert 32) ;; guessed by decompiler
    )
+  (:methods
+    (new (symbol type int int) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
@@ -17810,7 +17816,7 @@
   :flag-assert         #xc00000008
   (:methods
     (simple-sprite-system-method-9 () none 9)
-    (simple-sprite-system-method-10 () none 10)
+    (simple-sprite-system-method-10 (_type_ dma-buffer) none 10)
     (simple-sprite-system-method-11 () none 11)
     )
   )
@@ -18166,7 +18172,7 @@
   (bit3 3)
   (bit4 4)
   (ready-to-launch 6) ;; maybe just just death?
-  (bit7 7)
+  (distort 7) ;; tells add-to-sprite-aux-list that the sprite is for distort
   (aux-list 8)     ;; prevents relaunch, adds to aux
   (bit9 9)
   (level0 10)
@@ -18174,6 +18180,7 @@
   (bit12 12)   ;; required to relaunch
   (bit13 13)
   (bit14 14)
+  (glow 15) ;; tells add-to-sprite-aux-list that the sprite is for glow? (probably?)
   (use-global-acc 16)
   (launch-along-z 17)
   (left-multiply-quat 18)
@@ -18181,6 +18188,7 @@
   (set-conerot 20)
   )
 
+(declare-type sparticle-system basic)
 (deftype sparticle-cpuinfo (structure)
   ((sprite        sprite-vec-data-2d               :offset-assert 0)
    (adgif         adgif-shader                     :offset-assert 4)
@@ -18204,7 +18212,7 @@
    (user-pntr     uint32                           :offset 108)
    (user-object   basic                            :offset 108)
    (user-sprite   sprite-vec-data-2d               :offset 108)
-   (sp-func       basic                            :offset-assert 112)
+   (sp-func       (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d uint none)                             :offset-assert 112)
    (next-time     uint32                           :offset-assert 116)
    (next-launcher basic                            :offset-assert 120)
    (cache-alpha   float                            :offset-assert 124)
@@ -20939,39 +20947,40 @@
 ;; sprite                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sprite-header (structure)
-  ((header      qword 1 :offset-assert 0) ;; guessed by decompiler
-   (num-sprites int32   :offset-assert 0)
+  ((header      qword 1 :inline :offset-assert 0)
+   (num-sprites int32           :offset        0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype sprite-hvdf-data (structure)
-  ((data qword 76 :offset-assert 0) ;; guessed by decompiler
+  ((data qword 76 :inline :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x4c0
   :flag-assert         #x9000004c0
   )
-|#
 
-#|
 (deftype sprite-hvdf-control (structure)
-  ((alloc int8 76 :offset-assert 0) ;; guessed by decompiler
+  ((alloc int8 76 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
+
+(defenum sprite-aux-type
+  :bitfield #f
+  :type uint32
+  (distort 0)
+  (glow 1) ;; might not be glow i'm just assuming for now
+  )
 
 (deftype sprite-aux-elem (structure)
-  ((aux-type uint32               :offset-assert 0)
+  ((aux-type sprite-aux-type      :offset-assert 0)
    (data     vector             3 :offset-assert 4)
    (vec-data sprite-vec-data-2d   :offset 4)
    (gif-data adgif-shader         :offset 8)
@@ -20988,38 +20997,30 @@
    (entry       int32                            :offset-assert 8)
    (data        sprite-aux-elem :dynamic :inline :offset-assert 12)
    )
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
 
-#|
-(deftype sprite-aux-list (basic)
-  ()
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
-  ;; Failed to read fields.
-  )
-|#
-
-#|
 (deftype sprite-frame-data (structure)
-  ((data               UNKNOWN      42      :offset-assert 0)
-   (cdata              vector       16      :offset-assert 0) ;; guessed by decompiler
-   (fdata              UNKNOWN      26      :offset-assert 256)
-   (xy-array           UNKNOWN      8       :offset-assert 0)
-   (st-array           UNKNOWN      4       :offset-assert 128)
-   (xyz-array          UNKNOWN      4       :offset-assert 192)
-   (hmge-scale         vector       :inline :offset-assert 256)
-   (consts             vector       :inline :offset-assert 272)
-   (pfog0              float                :offset-assert 272)
-   (deg-to-rad         float                :offset-assert 276)
-   (min-scale          float                :offset-assert 280)
-   (inv-area           float                :offset-assert 284)
-   (adgif-giftag       qword        :inline :offset-assert 288) ;; gs-gif-tag :inline
-   (sprite-2d-giftag   qword        :inline :offset-assert 304) ;; gs-gif-tag :inline
-   (sprite-2d-giftag-2 qword        :inline :offset-assert 320) ;; gs-gif-tag :inline
+  (;;(data               UNKNOWN      42      :offset-assert 0)
+   (cdata              vector    16 :inline :offset 0)
+   ;;(fdata              UNKNOWN      26      :offset-assert 256)
+   (xy-array           vector     8 :inline :offset 0)   ;; 0 - 32
+   (st-array           vector     4 :inline :offset 128) ;; 128 - 144
+   (xyz-array          vector     4 :inline :offset 192) ;; 192 - 208
+   (hmge-scale         vector       :inline :offset 256)
+   (consts             vector       :inline :offset 272 :score -1)
+   (pfog0              float                :offset 272)
+   (deg-to-rad         float                :offset 276)
+   (min-scale          float                :offset 280)
+   (inv-area           float                :offset 284)
+   (adgif-giftag       gs-gif-tag   :inline :offset-assert 288)
+   (sprite-2d-giftag   gs-gif-tag   :inline :offset-assert 304)
+   (sprite-2d-giftag-2 gs-gif-tag   :inline :offset-assert 320)
    (sincos-01          vector       :inline :offset-assert 336)
    (sincos-23          vector       :inline :offset-assert 352)
    (sincos-45          vector       :inline :offset-assert 368)
@@ -21027,47 +21028,46 @@
    (sincos-89          vector       :inline :offset-assert 400)
    (basis-x            vector       :inline :offset-assert 416)
    (basis-y            vector       :inline :offset-assert 432)
-   (sprite-3d-giftag   qword        :inline :offset-assert 448) ;; gs-gif-tag :inline
-   (sprite-3d-giftag-2 qword        :inline :offset-assert 464)
+   (sprite-3d-giftag   gs-gif-tag   :inline :offset-assert 448)
+   (sprite-3d-giftag-2 gs-gif-tag   :inline :offset-assert 464)
    (screen-shader      adgif-shader :inline :offset-assert 480)
-   (inv-hmge-scale     vector       :inline :offset-assert 576)
+   (inv-hmge-scale     vector       :inline :offset 576)
    (stq-offset         vector       :inline :offset-assert 592)
    (stq-scale          vector       :inline :offset-assert 608)
    (rgba-plain         qword        :inline :offset-assert 624)
-   (warp-giftag        qword        :inline :offset-assert 640) ;; gs-gif-tag :inline
+   (warp-giftag        gs-gif-tag   :inline :offset-assert 640)
    (fog-clamp          vector       :inline :offset-assert 656)
-   (fog-min            float                :offset-assert 656)
-   (fog-max            float                :offset-assert 660)
-   (max-scale          float                :offset-assert 664)
+   (fog-min            float                :offset 656)
+   (fog-max            float                :offset 660)
+   (max-scale          float                :offset 664 :score 1)
    )
   :method-count-assert 9
   :size-assert         #x2a0
   :flag-assert         #x9000002a0
   )
-|#
 
-;; (define-extern sprite-setup-header function) ;; (function sprite-header int none)
-;; (define-extern clear-sprite-aux-list function) ;; (function none)
-;; (define-extern add-to-sprite-aux-list function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d none)
-;; (define-extern sprite-setup-frame-data function) ;; (function sprite-frame-data int none)
-;; (define-extern sprite-vu1-block object) ;; vu-function
-;; (define-extern sprite-set-3d-quaternion! function) ;; (function sprite-vec-data-3d quaternion quaternion)
-;; (define-extern sprite-get-3d-quaternion! function) ;; (function quaternion sprite-vec-data-3d quaternion)
-;; (define-extern sprite-add-matrix-data function) ;; (function dma-buffer uint none)
-;; (define-extern sprite-add-frame-data function) ;; (function dma-buffer uint none)
-;; (define-extern sprite-add-2d-chunk function) ;; (function sprite-array-2d int int dma-buffer int none)
-;; (define-extern sprite-add-2d-all function) ;; (function sprite-array-2d dma-buffer int none)
-;; (define-extern sprite-add-3d-chunk function) ;; (function sprite-array-3d int int dma-buffer none)
-;; (define-extern sprite-add-3d-all function) ;; (function sprite-array-3d dma-buffer int none)
+(define-extern sprite-setup-header (function sprite-header int none))
+(define-extern clear-sprite-aux-list (function none))
+(define-extern add-to-sprite-aux-list (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d uint none))
+(define-extern sprite-setup-frame-data (function sprite-frame-data uint none))
+(define-extern sprite-vu1-block vu-function)
+(define-extern sprite-set-3d-quaternion! (function sprite-vec-data-3d quaternion quaternion))
+(define-extern sprite-get-3d-quaternion! (function quaternion sprite-vec-data-3d quaternion))
+(define-extern sprite-add-matrix-data (function dma-buffer uint none))
+(define-extern sprite-add-frame-data (function dma-buffer uint none))
+(define-extern sprite-add-2d-chunk (function sprite-array-2d int int dma-buffer int none))
+(define-extern sprite-add-2d-all (function sprite-array-2d dma-buffer int none))
+(define-extern sprite-add-3d-chunk (function sprite-array-3d int int dma-buffer none))
+(define-extern sprite-add-3d-all (function sprite-array-3d dma-buffer int none))
 (define-extern sprite-draw (function display none))
-;; (define-extern sprite-allocate-user-hvdf function) ;; (function int)
-;; (define-extern sprite-release-user-hvdf function) ;; (function int none)
-;; (define-extern sprite-get-user-hvdf function) ;; (function int vector)
-;; (define-extern *sprite-hvdf-data* object) ;; sprite-hvdf-data
-;; (define-extern *sprite-hvdf-control* object) ;; sprite-hvdf-control
+(define-extern sprite-allocate-user-hvdf (function int))
+(define-extern sprite-release-user-hvdf (function int none))
+(define-extern sprite-get-user-hvdf (function int vector))
+(define-extern *sprite-hvdf-data* sprite-hvdf-data)
+(define-extern *sprite-hvdf-control* sprite-hvdf-control)
 (define-extern *sprite-aux-list* sprite-aux-list)
-;; (define-extern *sprite-array-2d* object) ;; sprite-array-2d
-;; (define-extern *sprite-array-3d* object) ;; sprite-array-3d
+(define-extern *sprite-array-2d* sprite-array-2d)
+(define-extern *sprite-array-3d* sprite-array-3d)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sprite-distort                 ;;
@@ -21219,13 +21219,13 @@
 ;; (define-extern *sprite-glow-template* object)
 ;; (define-extern sprite-glow-vu1-block object)
 ;; (define-extern sprite-glow-init-consts function)
-;; (define-extern sprite-glow-init-engine function)
+(define-extern sprite-glow-init-engine (function dma-buffer none))
 ;; (define-extern *sprite-glow-dma-packet-data* object)
 ;; (define-extern sprite-glow-add-sprite function)
 ;; (define-extern sprite-glow-add-simple-sprite function)
-;; (define-extern sprite-glow-draw function)
+(define-extern sprite-glow-draw (function dma-buffer none))
 ;; (define-extern add-shader-to-dma function)
-;; (define-extern *simple-sprite-system* object)
+(define-extern *simple-sprite-system* simple-sprite-system)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; debug-sphere                   ;;
