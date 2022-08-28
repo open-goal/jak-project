@@ -29,3 +29,9 @@ def get_gsrc_path_from_filename(game_name, file_name):
     print("{} couldn't find in /goal_src/{}!".format(file_name, game_name))
     exit(1)
   return path
+
+def get_alltypes_path_from_game(game_name):
+  if game_name == "jak1":
+    return "./decompiler/config/all-types.gc"
+  else:
+    return "./decompiler/config/jak2/all-types.gc"
