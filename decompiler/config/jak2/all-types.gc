@@ -7022,7 +7022,12 @@
 (deftype user-setting-data (structure)
   ((border-mode symbol)
    (process-mask process-mask)
+   (unknown-int32-00 int32 :offset-assert 8)
    (language language-enum :offset 16)
+   (unknown-int32-01 int32 :offset-assert 24)
+   (unknown-int32-02 int32 :offset-assert 28)
+   (vibration symbol :offset 32)
+   (play-hints symbol :offset 36)
    (movie (pointer process) :offset 40)
    (talking (pointer process))
    (spooling (pointer process))
@@ -7030,6 +7035,7 @@
    (ambient (pointer process) :offset-assert 56)
    (video-mode symbol)
    (aspect-ratio symbol :offset-assert 64)
+   (unknown-uint32-02 uint32 :offset 68)
    (auto-save symbol :offset 72)
    (bg-r float :offset-assert 76)
    (bg-g float)
@@ -7039,9 +7045,15 @@
    (bg-a-force float)
    (allow-progress symbol :offset-assert 100)
    (allow-pause symbol :offset-assert 104)
+   (ocean-off symbol :offset-assert 108)
+   (allow-look-around symbol :offset-assert 112)
+   (unknowng-symbol-00 symbol :offset-assert 116)
    (movie-name symbol :offset 120)
    (weather symbol :offset-assert 124)
+   (mouse symbol :offset-assert 128)
+   (cursor symbol :offset-assert 132)
    (task-mask task-mask :offset 136)
+   (region-mode symbol :offset-assert 140)
    (duck symbol :offset 144)
    (attack symbol)
    (gun symbol)
@@ -7072,7 +7084,7 @@
    (airlock symbol :offset-assert 256)
    (minimap uint16)
    (sound-tune uint32)
-   (allow-continue symbol)
+   (allow-continue symbol :offset-assert 268)
    (spotlight-color rgba)
    (subtitle symbol :offset-assert 276)
    (borrow symbol)
@@ -7109,10 +7121,9 @@
   :method-count-assert 11
   :size-assert         #x210
   :flag-assert         #xb00000210
-  ;; Failed to read fields.
   (:methods
-    (user-setting-data-method-9 () none 9)
-    (user-setting-data-method-10 () none 10)
+    (user-setting-data-method-9 (_type_ engine engine-pers engine) user-setting-data 9)
+    (user-setting-data-method-10 "set-defaults! perhaps?" (_type_ object symbol float uint) user-setting-data 10)
     )
   )
 
@@ -7194,7 +7205,7 @@
    (entity-mask uint32 :offset-assert 232)
    (mode-name symbol)
    (real-entity-name string)
-   (cam-mode symbol)
+   (cam-mode symbol :offset-assert 244)
    (interp-time uint32)
    (no-intro symbol)
    (use-point-of-interest symbol)
@@ -7217,10 +7228,9 @@
   :method-count-assert 11
   :size-assert         #x30c
   :flag-assert         #xb0000030c
-  ;; Failed to read fields.
   (:methods
-    (cam-setting-data-method-9 () none 9)
-    (cam-setting-data-method-10 () none 10)
+    (cam-setting-data-method-9 (_type_ engine engine-pers engine) cam-setting-data 9)
+    (cam-setting-data-method-10 (_type_ object (pointer process) float int) none 10)
     )
   )
 
@@ -7233,8 +7243,8 @@
    (cam-target                   cam-setting-data  :inline :offset-assert 2384)
    (cam-default                  cam-setting-data  :inline :offset-assert 3168)
    (engine                       engine                    :offset-assert 3948) ;; guessed by decompiler
-   (engine-pers                  basic                     :offset-assert 3952)
-   (engine-hi                    basic                     :offset-assert 3956)
+   (engine-pers                  engine-pers                     :offset-assert 3952)
+   (engine-hi                    engine                     :offset-assert 3956)
    (sound-stinger-time           time-frame                    :offset-assert 3960)
    (sound-stinger-change-time    time-frame           4       :offset-assert 3968)
    (sound-excitement-change-time time-frame                    :offset-assert 4000)
@@ -7246,16 +7256,20 @@
   :flag-assert         #x1300000fb0
   (:methods
     (new (symbol type int) _type_ 0)
-    (setting-control-method-9 () none 9) ;; (add-setting (_type_ process symbol object object object) none 9)
-    (setting-control-method-10 () none 10) ;;
-    (set-setting (_type_ process symbol object object object) none 11) ;; (remove-setting (_type_ process symbol) none 11)
-    (setting-control-method-12 () none 12) ;; (apply-settings (_type_) setting-data 12)
-    (setting-control-method-13 () none 13) ;; (update (_type_) setting-data 13)
-    (setting-control-method-14 () none 14)
-    (setting-control-method-15 () none 15)
-    (setting-control-method-16 () none 16)
-    (setting-control-method-17 () none 17)
-    (update (_type_) none 18)
+    (add-setting (_type_ process symbol object object object) none 9)
+    (persist-with-delay (_type_ process time-frame object object float object) none 10)
+    (set-setting (_type_ process symbol object object object) none 11)
+    (remove-setting (_type_ process symbol) none 12)
+    (kill-persister "Calls [[engine-pers::kill-matching]]" (_type_ engine-pers object) none 13)
+    (setting-control-method-14 (_type_ object) connectable 14)
+    (remove-setting-by-arg0
+      "Calls [[engine::remove-by-param0]] on `engine-hi`"
+      (_type_ object) none 15)
+    (set-setting-by-param
+      "Same as [[setting-control::set-setting]] but will [[engine::remove-by-param0]] using the symbol provided"
+      (_type_ symbol object object object) connection 16)
+    (apply-settings (_type_) user-setting-data 17)
+    (update (_type_) user-setting-data 18)
     )
   )
 
@@ -7405,7 +7419,9 @@
 ;; (define-extern adgif-shader-login-fast function) ;; (function adgif-shader texture)
 ;; (define-extern adgif-shader-login-no-remap-fast function) ;; (function adgif-shader texture)
 ;; (define-extern adgif-shader<-texture-simple! function) ;; (function adgif-shader texture adgif-shader)
-;; (define-extern set-dirty-mask! function)
+(define-extern set-dirty-mask!
+  "First arg is the level name off the [[*level*]]'s `default-level`"
+  (function string int int int none))
 ;; (define-extern texture-page-dir-inspect function) ;; (function texture-page-dir symbol none)
 (define-extern *texture-pool* texture-pool)
 
@@ -11367,16 +11383,16 @@
 (declare-type game-save basic)
 
 (deftype game-info (basic)
-  ((mode                   symbol               :offset-assert 4) ;; guessed by decompiler
-   (save-name              string                :offset-assert 8)
-   (life                   float                :offset-assert 12)
-   (life-max               float                :offset-assert 16)
-   (money                  float                :offset-assert 20)
-   (money-total            float                :offset-assert 24)
-   (money-per-level        uint8             32 :offset-assert 28) ;; guessed by decompiler
-   (deaths-per-level       uint8             32 :offset-assert 60) ;; guessed by decompiler
-   (buzzer-total           float                :offset-assert 92)
-   (fuel                   float                :offset-assert 96)
+  ((mode                   symbol               :offset-assert   4)
+   (save-name              string               :offset-assert   8)
+   (life                   float                :offset-assert  12)
+   (life-max               float                :offset-assert  16)
+   (money                  float                :offset-assert  20)
+   (money-total            float                :offset-assert  24)
+   (money-per-level        uint8             32 :offset-assert  28)
+   (deaths-per-level       uint8             32 :offset-assert  60)
+   (buzzer-total           float                :offset-assert  92)
+   (fuel                   float                :offset-assert  96)
    (gem                    float                :offset-assert 100)
    (gem-total              float                :offset-assert 104)
    (skill                  float                :offset-assert 108)
@@ -11387,11 +11403,11 @@
    (features               uint64               :offset-assert 128)
    (debug-features         uint64               :offset-assert 136)
    (secrets                uint32               :offset-assert 144)
-   (unknown-pad1           uint32)
+   (unknown-pad1           uint32               :offset-assert 148)
    (purchase-secrets       uint32               :offset-assert 152)
-   (unknown-pad2           uint32)
+   (unknown-pad2           uint32               :offset-assert 156)
    (gun-type               int32                :offset-assert 160)
-   (gun-ammo               float            4   :offset-assert 164) ;; ??
+   (gun-ammo               float            4   :offset-assert 164)
    (shield                 float                :offset-assert 180)
    (score                  float                :offset-assert 184)
    (score-owner            uint64               :offset-assert 192)
@@ -11401,60 +11417,60 @@
    (counter                float                :offset-assert 220)
    (counter-flash          basic                :offset-assert 224)
    (attack-id              uint32               :offset-assert 228)
-   (perm-list              entity-perm-array    :offset-assert 232) ;; guessed by decompiler
-   (task-perm-list         entity-perm-array    :offset-assert 236) ;; guessed by decompiler
-   (current-continue       continue-point       :offset-assert 240) ;; guessed by decompiler
-   (last-continue          continue-point                :offset-assert 244)
-   (unknown-pad3           uint32 3)
+   (perm-list              entity-perm-array    :offset-assert 232)
+   (task-perm-list         entity-perm-array    :offset-assert 236)
+   (current-continue       continue-point       :offset-assert 240)
+   (last-continue          continue-point       :offset-assert 244)
+   (unknown-pad3           uint32            3  :offset-assert 248)
    (task-counter           uint32               :offset-assert 260)
-   (unknown-pad4           uint32)
-   (level-opened           uint8             32 :offset-assert 268) ;; guessed by decompiler
+   (unknown-pad4           uint32               :offset-assert 264)
+   (level-opened           uint8             32 :offset-assert 268)
    (total-deaths           int32                :offset-assert 300)
    (continue-deaths        int32                :offset-assert 304)
    (task-deaths            int32                :offset-assert 308)
    (total-trys             int32                :offset-assert 312)
-   (game-start-time        time-frame               :offset-assert 320) ;; time-frame
-   (continue-time          time-frame               :offset-assert 328) ;; time-frame
-   (death-time             time-frame               :offset-assert 336) ;; time-frame
-   (hit-time               time-frame               :offset-assert 344) ;; time-frame
-   (task-pickup-time       time-frame               :offset-assert 352)
-   (unknown-array1         (array uint64))
-   (unknown-array2         (array uint64))
-   (unknown-array3         (array uint64))
-   (death-pos              vector-array         :offset 372) ;; guessed by decompiler ??
+   (game-start-time        time-frame           :offset-assert 320)
+   (continue-time          time-frame           :offset-assert 328)
+   (death-time             time-frame           :offset-assert 336)
+   (hit-time               time-frame           :offset-assert 344)
+   (task-pickup-time       time-frame           :offset-assert 352)
+   (unknown-array1         (array uint64)       :offset-assert 360)
+   (unknown-array2         (array uint64)       :offset-assert 364)
+   (unknown-array3         (array uint64)       :offset-assert 368)
+   (death-pos              vector-array         :offset        372)
    (stop-watch-start       uint64               :offset-assert 376)
    (stop-watch-stop        uint64               :offset-assert 384)
-   (blackout-time          time-frame               :offset-assert 392) ;; time-frame
-   (letterbox-time         time-frame               :offset-assert 400) ;; time-frame
-   (hint-play-time         time-frame               :offset-assert 408) ;; time-frame
-   (display-text-time      time-frame               :offset-assert 416) ;; time-frame
-   (display-text-handle    uint64               :offset-assert 424) ;; handle
+   (blackout-time          time-frame           :offset-assert 392)
+   (letterbox-time         time-frame           :offset-assert 400)
+   (hint-play-time         time-frame           :offset-assert 408)
+   (display-text-time      time-frame           :offset-assert 416)
+   (display-text-handle    uint64               :offset-assert 424)
    (death-movie-tick       int32                :offset-assert 432)
-   (want-auto-save         symbol               :offset-assert 436) ;; guessed by decompiler
-   (auto-save-proc         handle               :offset-assert 440) ;; handle
-   (auto-save-status       mc-status-code       :offset-assert 448) ;; guessed by decompiler
+   (want-auto-save         symbol               :offset-assert 436)
+   (auto-save-proc         handle               :offset-assert 440)
+   (auto-save-status       mc-status-code       :offset-assert 448)
    (auto-save-card         int32                :offset-assert 452)
    (auto-save-which        int32                :offset-assert 456)
    (auto-save-count        int32                :offset-assert 460)
-   (pov-camera-handle      uint64               :offset-assert 464) ;; handle
-   (other-camera-handle    uint64               :offset-assert 472) ;; handle
-   (controller             uint64           2  :offset-assert 480) ;; ??
+   (pov-camera-handle      uint64               :offset-assert 464)
+   (other-camera-handle    uint64               :offset-assert 472)
+   (controller             uint64            2  :offset-assert 480)
    (race-timer             uint64               :offset-assert 496)
    (race-current-lap-count int32                :offset-assert 504)
    (race-total-lap-count   int32                :offset-assert 508)
    (race-position          int32                :offset-assert 512)
    (race-number-turbos     int32                :offset-assert 516)
-   (bot-health             uint32           3  :offset-assert 520) ;; ??
+   (bot-health             uint32            3  :offset-assert 520)
    (demo-state             uint32               :offset-assert 532)
    (wanted-flash           basic                :offset-assert 536)
    (distance               float                :offset-assert 540)
    (kiosk-timeout          uint64               :offset-assert 544)
-   (pause-start-time       time-frame               :offset-assert 552)
+   (pause-start-time       time-frame           :offset-assert 552)
    (game-score             (array highscore-info)                :offset-assert 560)
    (goal                   float                :offset-assert 564)
    (miss                   float                :offset-assert 568)
    (miss-max               float                :offset-assert 572)
-   (unknown-array4           (array uint64)) ;; ??
+   (unknown-array4         (array uint64)       :offset-assert 576)
    (live-eco-pill-count    int32                :offset-assert 580)
    (live-gem-count         int32                :offset-assert 584)
    (air-supply             float                :offset-assert 588)
@@ -11473,19 +11489,19 @@
     (game-info-method-13 () none 13) ;; (get-entity-task-perm (_type_ game-task) entity-perm 13)
     (game-info-method-14 () none 14) ;;  14)
     (game-info-method-15 () none 15)
-    (copy-perms-from-level! (_type_ level) none 16) ;; (debug-print (_type_ symbol) _type_ 16)
-    (copy-perms-to-level! (_type_ level) none 17) ;; (get-or-create-continue! (_type_) continue-point 17)
-    (game-info-method-18 () none 18) ;; (get-continue-by-name (_type_ string) continue-point 18)
-    (game-info-method-19 () none 19) ;; (set-continue! (_type_ basic) continue-point 19)
-    (game-info-method-20 () none 20) ;; (buzzer-count (_type_ game-task) int 20)
-    (set-continue! (_type_ basic) continue-point 21) ;; (seen-text? (_type_ game-text-id) symbol 21)
-    (game-info-method-22 () none 22) ;; (mark-text-as-seen (_type_ game-text-id) none 22)
-    (game-info-method-23 () none 23) ;; (got-buzzer? (_type_ game-task int) symbol 23)
-    (game-info-method-24 () none 24) ;; (save-game! (_type_ game-save string) none 24)
-    (game-info-method-25 () none 25) ;; (load-game! (_type_ game-save) game-save 25)
-    (game-info-method-26 () none 26) ;; (clear-text-seen! (_type_ game-text-id) none 26)
-    (get-next-attack-id (_type_) uint 27) ;; (get-death-count (_type_ symbol) int 27)
-    (game-info-method-28 () none 28) ;; (get-health-percent-lost (_type_ symbol) float 28)
+    (copy-perms-from-level! (_type_ level) none 16)
+    (copy-perms-to-level! (_type_ level) none 17)
+    (game-info-method-18 () none 18)
+    (game-info-method-19 () none 19)
+    (game-info-method-20 () none 20)
+    (set-continue! (_type_ basic) continue-point 21)
+    (game-info-method-22 () none 22)
+    (game-info-method-23 () none 23)
+    (game-info-method-24 () none 24)
+    (game-info-method-25 () none 25)
+    (game-info-method-26 () none 26)
+    (get-next-attack-id (_type_) uint 27)
+    (game-info-method-28 () none 28)
     (game-info-method-29 () none 29)
     (game-info-method-30 () none 30)
     )
@@ -21978,11 +21994,11 @@
 ;; warp                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern fx-copy-buf function)
-;; (define-extern *warp-shader* object)
-;; (define-extern create-blanket function)
-;; (define-extern *warp* object)
-;; (define-extern warp-test function)
+(define-extern fx-copy-buf (function dma-buffer none))
+(define-extern *warp-shader* adgif-shader)
+(define-extern create-blanket "Does nothing, always returns '#f" (function symbol))
+(define-extern *warp* symbol)
+(define-extern warp-test "First two args are unused" (function object object int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; texture-anim                   ;;
@@ -22051,7 +22067,7 @@
 ;; blit-displays                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *blit-displays-work* object)
+(define-extern *blit-displays-work* blit-displays-work)
 ;; (define-extern blit-disp-slow function)
 ;; (define-extern blur-disp function)
 ;; (define-extern filter-disp function)
@@ -22888,7 +22904,14 @@
 ;; settings                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern get-current-language (function language-enum))
+(define-extern set-aspect-ratio (function symbol none))
+(define-extern set-video-mode (function symbol none))
+(define-extern scf-get-volume "Defined in the kernel" (function int))
+(define-extern scf-get-language "Defined in the kernel" (function language-enum))
+(define-extern scf-get-aspect "Defined in the kernel" (function uint))
+(define-extern *boot-video-mode* "Defined in the kernel" int)
+
+(define-extern get-current-language "Returns the current [[language-enum]]" (function language-enum))
 (define-extern *setting-control* setting-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -24723,14 +24746,14 @@
 ;; cam-master                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern reset-follow function) ;; (function float :behavior camera-master)
+;; (define-extern reset-follow function) ;; (function flocam-eyeat :behavior camera-master)
 ;; (define-extern reset-target-tracking function) ;; (function symbol :behavior camera-master)
 ;; (define-extern master-track-target function) ;; (function symbol :behavior camera-master)
 ;; (define-extern setup-slave-for-hopefull function) ;; (function camera-slave none)
 ;; (define-extern master-is-hopeful-better? function) ;; (function camera-slave camera-slave symbol :behavior camera-master)
 ;; (define-extern master-choose-entity function)
-;; (define-extern cam-master-set-entity function)
-;; (define-extern cam-master-activate-slave function)
+(define-extern cam-master-set-entity (function cam-setting-data none))
+(define-extern cam-master-activate-slave (function symbol none))
 ;; (define-extern cam-master-active state) ;; (state camera-master)
 ;; (define-extern cam-master-init function) ;; (function none :behavior camera-master)
 
@@ -24842,10 +24865,10 @@
 ;; (define-extern cam-standoff state) ;; (state camera-slave)
 ;; (define-extern cam-standoff-read-entity state) ;; (state camera-slave)
 ;; (define-extern *CAM_EYE-bank* cam-eye-bank) ;; cam-eye-bank
-;; (define-extern cam-eye state) ;; (state camera-slave)
+(define-extern cam-eye (state camera-slave))
 ;; (define-extern cam-spline state) ;; (state camera-slave)
 ;; (define-extern cam-decel state) ;; (state camera-slave)
-;; (define-extern cam-endlessfall state) ;; (state camera-slave)
+(define-extern cam-endlessfall (state camera-slave))
 ;; (define-extern cam-circular-position-into-max-angle function) ;; (function vector vector float vector :behavior camera-slave)
 ;; (define-extern cam-circular-position function) ;; (function symbol vector :behavior camera-slave)
 ;; (define-extern cam-circular-code function) ;; (function float :behavior camera-slave)
@@ -24926,7 +24949,7 @@
 ;; (define-extern cam-mouse-input function)
 ;; (define-extern cam-free-floating-input function) ;; (function vector vector symbol int vector)
 ;; (define-extern cam-free-floating-move function) ;; (function matrix vector vector int vector)
-;; (define-extern cam-free-floating state) ;; (state camera-slave)
+(define-extern cam-free-floating (state camera-slave))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-combiner                   ;;
@@ -25437,7 +25460,7 @@
 ;; speech                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *speech-control* object)
+(define-extern *speech-control* speech-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; region                         ;;
