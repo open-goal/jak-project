@@ -4831,6 +4831,7 @@
     )
   )
 
+(declare-type adgif-shader structure)
 (deftype shader-ptr (uint32)
   ((shader uint32 :offset 8 :size 24))
   :method-count-assert 9
@@ -5442,8 +5443,8 @@
    (time-until-random     mood-weather :inline :offset-assert 80)
    (time-until-random-min mood-weather :inline :offset-assert 88)
    (time-until-random-max mood-weather :inline :offset-assert 96)
-   (display-flag          basic                :offset-assert 104)
-   (overide-weather-flag  basic                :offset-assert 108)
+   (display-flag          symbol                :offset-assert 104)
+   (overide-weather-flag  symbol                :offset-assert 108)
    (overide               mood-weather :inline :offset-assert 112)
    (lightning-index       int32                :offset-assert 120)
    (lightning-val         int32                :offset-assert 124)
@@ -5893,9 +5894,9 @@
 (deftype screen-shot-work (structure)
   ((count          int16  :offset-assert 0)
    (size           int16  :offset-assert 2)
-   (name           basic  :offset-assert 4)
-   (highres-enable basic  :offset-assert 8)
-   (hud-enable     basic  :offset-assert 12)
+   (name           string  :offset-assert 4)
+   (highres-enable symbol  :offset-assert 8)
+   (hud-enable     symbol  :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -7023,6 +7024,10 @@
   ((border-mode symbol)
    (process-mask process-mask)
    (language language-enum :offset 16)
+   (unknown-01 uint32 :offset 24)
+   (unknown-02 uint32 :offset 28)
+   (unknown-03 uint32 :offset 32)
+   (unknown-04 uint32 :offset 36)
    (movie (pointer process) :offset 40)
    (talking (pointer process))
    (spooling (pointer process))
@@ -7030,6 +7035,7 @@
    (ambient (pointer process) :offset-assert 56)
    (video-mode symbol)
    (aspect-ratio symbol :offset-assert 64)
+   (unknown-001 uint32 :offset 68)
    (auto-save symbol :offset 72)
    (bg-r float :offset-assert 76)
    (bg-g float)
@@ -7039,6 +7045,9 @@
    (bg-a-force float)
    (allow-progress symbol :offset-assert 100)
    (allow-pause symbol :offset-assert 104)
+   (unknown-05 uint32 :offset 108)
+   (unknown-06 uint32 :offset 112)
+   (unknown-07 uint32 :offset 116)
    (movie-name symbol :offset 120)
    (weather symbol :offset-assert 124)
    (task-mask task-mask :offset 136)
@@ -7251,9 +7260,9 @@
     (set-setting (_type_ process symbol object object object) none 11) ;; (remove-setting (_type_ process symbol) none 11)
     (setting-control-method-12 () none 12) ;; (apply-settings (_type_) setting-data 12)
     (setting-control-method-13 () none 13) ;; (update (_type_) setting-data 13)
-    (setting-control-method-14 () none 14)
-    (setting-control-method-15 () none 15)
-    (setting-control-method-16 () none 16)
+    (setting-control-method-14 (_type_ symbol) symbol 14)
+    (setting-control-method-15 (_type_ symbol) none 15)
+    (setting-control-method-16 (_type_ symbol string int int) none 16)
     (setting-control-method-17 () none 17)
     (update (_type_) none 18)
     )
@@ -7406,7 +7415,7 @@
 ;; (define-extern adgif-shader-login-no-remap-fast function) ;; (function adgif-shader texture)
 ;; (define-extern adgif-shader<-texture-simple! function) ;; (function adgif-shader texture adgif-shader)
 ;; (define-extern set-dirty-mask! function)
-;; (define-extern texture-page-dir-inspect function) ;; (function texture-page-dir symbol none)
+(define-extern texture-page-dir-inspect (function texture-page-dir symbol none))
 (define-extern *texture-pool* texture-pool)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -9743,7 +9752,7 @@
    (use-camera-other     basic               :offset-assert 2064)
    (title-updated        symbol              :offset-assert 2068) ;; guessed by decompiler
    (mode                 time-of-day-pallete              :offset-assert 2072)
-   (overide-enable       basic               :offset-assert 2076)
+   (overide-enable       symbol               :offset-assert 2076)
    (overide-palette      time-of-day-pallete              :offset-assert 2080)
    (max-rain             float               :offset-assert 2084)
    (fog-mult             float               :offset-assert 2088)
@@ -11500,7 +11509,14 @@
   (gun-upgrade-damage)
   (pass-red)
   (pass-green)
-  (pass-yellow))
+  (pass-yellow)
+  (unk-1)
+  (unk-2)
+  (unk-3)
+  (unk-4)
+  (unk-5)
+  (unk-6)
+  (unk-7))
 
 (defenum game-secrets
   :type uint32
@@ -11562,11 +11578,11 @@
    (task-perm-list         entity-perm-array    :offset-assert 236) ;; guessed by decompiler
    (current-continue       continue-point       :offset-assert 240) ;; guessed by decompiler
    (last-continue          basic                :offset-assert 244)
-   (unknown-pad3 uint32 :offset-assert 248)
-   (unknown-pad4 uint32 :offset-assert 252)
-   (unknown-pad5 uint32 :offset-assert 256)
+   (unknown-pad3 array :offset-assert 248)
+   (unknown-pad4 array :offset-assert 252)
+   (unknown-pad5 array :offset-assert 256)
    (task-counter           uint32               :offset-assert 260)
-   (unknown-pad6           uint32)
+   (unknown-pad6           array)
    (level-opened           uint8             32 :offset-assert 268) ;; guessed by decompiler
    (total-deaths           int32                :offset-assert 300)
    (continue-deaths        int32                :offset-assert 304)
@@ -15332,6 +15348,7 @@
 
 (deftype control-info (collide-shape-moving)
   ((unknown-qword00      vector     :offset 12)   ;; from board-h::want-to-board?
+   (unknown-float00  float  :offset 528) ;; (anon-function 82 default-menu)
    (unknown-surface00    surface    :offset 3832) ;; from board-h::want-to-board?
    (unknown-cpad-info00  cpad-info  :offset 3848) ;; from board-h::want-to-board?
    (unknown-time-frame00 time-frame :offset 4624) ;; from board-h::want-to-board?
@@ -18631,6 +18648,21 @@
   :flag-assert         #xe01b0022c
   )
 
+(defenum camera-slave-options
+  :type uint32
+  :bitfield #t
+  (butt-cam)
+  (same-side)
+  (move-spherical)
+  (allow-z-rot)
+  (pitch-for-jump)
+  (collide)
+  (find-hidden-target)
+  (drag)
+  (line-of-sight)
+  (no-rotate)
+  (sticky-angle))
+
 (deftype camera-slave (process)
   ((trans                         vector               :inline :offset-assert 128)
    (fov                           float                        :offset-assert 144)
@@ -18651,7 +18683,7 @@
    (circular-follow               vector               :inline :offset-assert 2256)
    (max-angle-offset              float                        :offset-assert 2272)
    (max-angle-curr                float                        :offset-assert 2276)
-   (options                       uint32                       :offset-assert 2280)
+   (options                       camera-slave-options                       :offset-assert 2280)
    (cam-entity                    entity                       :offset-assert 2284) ;; guessed by decompiler
    (butt-timer                    uint64                       :offset-assert 2288)
    (butt-seek                     basic                        :offset-assert 2296)
@@ -18774,9 +18806,9 @@
 ;; cam-interface-h                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *camera-init-mat*  matrix)
-(define-extern *camera*  camera-master)
-(define-extern *camera-combiner*  camera-combiner)
+(define-extern *camera-init-mat* matrix)
+(define-extern *camera* camera-master)
+(define-extern *camera-combiner* camera-combiner)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-update-h                   ;;
@@ -21721,7 +21753,7 @@
 ;; (define-extern texture-usage-init function)
 ;; (define-extern texture-usage-update function)
 ;; (define-extern merc-stats-display function) ;; (function merc-ctrl none)
-;; (define-extern merc-stats function) ;; (function none)
+(define-extern merc-stats (function none))
 ;; (define-extern merc-edge-stats function) ;; (function none)
 ;; (define-extern merc-vu1-add-vu-function function) ;; (function dma-packet vu-function int dma-gif-packet)
 ;; (define-extern merc-vu1-initialize-chain function) ;; (function dma-gif-packet dma-packet)
@@ -22860,7 +22892,7 @@
 ;; (define-extern *default-continue* continue-point) ;; continue-point
 ;; (define-extern task-level->string function)
 ;; (define-extern level-name->task-level function)
-;; (define-extern trsq->continue-point function) ;; (function trsq none)
+(define-extern trsq->continue-point (function trsq none))
 (define-extern position->stream (function string symbol symbol none))
 (define-extern bug-report-display (function none))
 ;; (define-extern print-continues function)
@@ -22991,7 +23023,7 @@
 ;; (define-extern *auto-save-info* object) ;; mc-slot-info
 ;; (define-extern auto-save-post function) ;; (function none :behavior auto-save)
 ;; (define-extern auto-save-init-by-other function) ;; (function symbol process-tree int int none :behavior auto-save)
-;; (define-extern auto-save-command function) ;; (function symbol int int process-tree none)
+(define-extern auto-save-command (function symbol int int process-tree symbol none))
 (define-extern auto-save-check (function none))
 ;; (define-extern auto-save-user function)
 
@@ -24822,7 +24854,7 @@
 ;; cam-interface                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern position-in-front-of-camera! function) ;; (function vector float float vector)
+(define-extern position-in-front-of-camera! (function vector float float vector)) 
 ;; (define-extern position-in-front-of-screen! function)
 ;; (define-extern matrix-local->world function) ;; (function symbol symbol matrix)
 ;; (define-extern matrix-world->local function) ;; (function matrix)
@@ -27268,8 +27300,8 @@
 (define-extern debug-menu-append-item (function debug-menu debug-menu-node debug-menu-node))
 (define-extern debug-menu-remove-all-items (function debug-menu debug-menu))
 ;; (define-extern debug-menu-func-decode function) ;; (function object function)
-;; (define-extern debug-menu-make-from-template (function debug-menu-context pair debug-menu-node)) ;; TODO - "has_local_vars" assertion
-;; (define-extern debug-menu-find-from-template function) ;; (function debug-menu-context pair debug-menu)
+(define-extern debug-menu-make-from-template (function debug-menu-context pair debug-menu-node))
+(define-extern debug-menu-find-from-template (function debug-menu-context pair debug-menu))
 ;; (define-extern debug-menu-item-submenu-render function) ;; (function debug-menu-item-submenu int int int symbol debug-menu-item-submenu)
 ;; (define-extern debug-menu-item-function-render function) ;; (function debug-menu-item-function int int int symbol debug-menu-item-function)
 ;; (define-extern debug-menu-item-flag-render function) ;; (function debug-menu-item-flag int int int symbol debug-menu-item-flag)
@@ -27312,7 +27344,7 @@
 ;; (define-extern prototypes-game-visible-set! function)
 ;; (define-extern find-instance-by-index function) ;; (function type int bsp-header prototype-bucket)
 (define-extern prototype-bucket-type (function prototype-bucket type))
-;; (define-extern prototype-bucket-recalc-fields function) ;; (function prototype-bucket prototype-bucket)
+(define-extern prototype-bucket-recalc-fields (function prototype-bucket prototype-bucket))
 (define-extern print-prototype-list (function none))
 ;; (define-extern draw-instance-info function) ;; (function string none)
 ;; (define-extern set-shadow-by-name function)
@@ -27537,14 +27569,14 @@
 ;; (define-extern expand-vis-box-with-point function) ;; (function entity vector none)
 ;; (define-extern *debug-actor-info* debug-actor-info)
 ;; (define-extern *pid-string* object)
-;; (define-extern debug-actor function)
+(define-extern debug-actor (function string none))
 ;; (define-extern draw-actor-marks function)
 ;; (define-extern init-entity function) ;; (function process entity-actor none)
 ;; (define-extern entity-deactivate-handler function) ;; (function process entity-actor none)
 ;; (define-extern check-for-rougue-process function)
 ;; (define-extern process-drawable-scale-from-entity! function)
 ;; (define-extern process-drawable-from-entity! function) ;; (function process-drawable entity-actor none)
-;; (define-extern reset-actors function) ;; (function symbol none)
+(define-extern reset-actors (function symbol none))
 ;; (define-extern reset-cameras function) ;; (function none)
 ;; (define-extern entity-birth-no-kill function) ;; (function entity none)
 ;; (define-extern entity-task-complete-on function) ;; (function entity none)
@@ -28055,7 +28087,7 @@
 ;; (define-extern *subtitle-work* object)
 ;; (define-extern draw-subtitle-image function)
 ;; (define-extern process-drawable-draw-subtitles function)
-(define-extern scene-player-init (function string symbol object none))
+(define-extern scene-player-init (function string symbol object none :behavior scene-player))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pov-camera                     ;;
@@ -29070,17 +29102,16 @@
   )
 |#
 
-#|
 (deftype editable-player (process-drawable)
-  ((current           basic     :offset-assert 196)
-   (select-command    uint32    :offset-assert 200)
-   (move-command      uint32    :offset-assert 204)
-   (extra-command     uint32    :offset-assert 208)
-   (left-handed       basic     :offset-assert 212)
-   (light-names       basic     :offset-assert 216)
-   (external-cam-mode basic     :offset-assert 220)
-   (command           UNKNOWN 6 :offset-assert 224)
-   (close-menu-time   time-frame    :offset-assert 252)
+  ((current           basic     :offset-assert 200)
+   (select-command    uint32    :offset-assert 204)
+   (move-command      uint32    :offset-assert 208)
+   (extra-command     uint32    :offset-assert 212)
+   (left-handed       basic     :offset-assert 216)
+   (light-names       basic     :offset-assert 220)
+   (external-cam-mode basic     :offset-assert 224)
+   (command           object 6 :offset-assert 228)
+   (close-menu-time   time-frame    :offset-assert 256)
    )
   :method-count-assert 22
   :size-assert         #x108
@@ -29090,7 +29121,6 @@
     (editable-player-method-21 () none 21)
     )
   )
-|#
 
 #|
 (deftype editable-work (basic)
@@ -29131,7 +29161,7 @@
 ;; (define-extern execute-select function)
 ;; (define-extern execute-mouse-move function)
 ;; (define-extern execute-move function)
-;; (define-extern editable-player-init function)
+(define-extern editable-player-init (function symbol none)) ;; TODO - return type not confirmed
 (define-extern *editable-menu-context* debug-menu-context)
 ;; (define-extern editable-menu-command function)
 ;; (define-extern editable-menu-command-no-close function)
@@ -29150,7 +29180,7 @@
 ;; mysql-nav-graph                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+
 (deftype mysql-nav-node (structure)
   ((mysql-save-flag  uint32         :offset-assert 0)
    (runtime-id       uint32         :offset-assert 4)
@@ -29167,6 +29197,7 @@
    (nav_node_flag    uint32         :offset-assert 60)
    (nav_mesh_id      uint32         :offset-assert 64)
    )
+  :pack-me
   :method-count-assert 11
   :size-assert         #x44
   :flag-assert         #xb00000044
@@ -29175,7 +29206,6 @@
     (mysql-nav-node-method-10 () none 10)
     )
   )
-|#
 
 #|
 (deftype mysql-nav-node-array (inline-array-class)
@@ -29189,7 +29219,6 @@
   )
 |#
 
-#|
 (deftype mysql-nav-edge (structure)
   ((mysql-save-flag   uint32          :offset-assert 0)
    (runtime-id        uint32          :offset-assert 4)
@@ -29209,6 +29238,7 @@
    (width             float           :offset-assert 60)
    (minimap_edge_flag int32           :offset-assert 64)
    )
+  :pack-me
   :method-count-assert 10
   :size-assert         #x44
   :flag-assert         #xa00000044
@@ -29216,7 +29246,6 @@
     (mysql-nav-edge-method-9 () none 9)
     )
   )
-|#
 
 #|
 (deftype mysql-nav-edge-array (inline-array-class)
@@ -29335,45 +29364,39 @@
   )
 |#
 
-#|
 (deftype nav-graph-editor (process)
-  ((nav-graph           basic                  :offset-assert 124)
-   (mode                uint32                 :offset-assert 128)
-   (command-id          int32                  :offset-assert 132)
-   (max-command         int32                  :offset-assert 136)
-   (selected-index      int32                  :offset-assert 140)
-   (selected-dist       float                  :offset-assert 144)
-   (selected-node-edge? basic                  :offset-assert 148)
-   (closest-node        int32                  :offset-assert 152)
-   (dist-closest-node   float                  :offset-assert 156)
-   (closest-edge        int32                  :offset-assert 160)
-   (dist-closest-edge   float                  :offset-assert 164)
-   (mouse-pos           vector         :inline :offset-assert 172)
-   (mouse-hit           vector         :inline :offset-assert 188)
-   (mouse-hit-pick      vector         :inline :offset-assert 204)
-   (mouse-normal        vector         :inline :offset-assert 220)
-   (mouse-spos-hold     vector         :inline :offset-assert 236)
-   (edge-src            int32                  :offset-assert 252)
-   (edge-dst            int32                  :offset-assert 256)
-   (edge-visibility     int32                  :offset-assert 260)
-   (vehicle-edit-mode   basic                  :offset-assert 264)
-   (hover-edit-mode     basic                  :offset-assert 268)
-   (clipping-dist       float                  :offset-assert 272)
-   (plane-height        float                  :offset-assert 276)
-   (plane-height-hold   float                  :offset-assert 280)
-   (default-node        mysql-nav-node :inline :offset-assert 284)
-   (default-edge        mysql-nav-edge :inline :offset-assert 352)
-   (command-array       basic                  :offset-assert 420)
+  ((nav-graph           basic                  :offset-assert 128)
+   (mode                uint32                 :offset-assert 132)
+   (command-id          int32                  :offset-assert 136)
+   (max-command         int32                  :offset-assert 140)
+   (selected-index      int32                  :offset-assert 144)
+   (selected-dist       float                  :offset-assert 148)
+   (selected-node-edge? basic                  :offset-assert 152)
+   (closest-node        int32                  :offset-assert 156)
+   (dist-closest-node   float                  :offset-assert 160)
+   (closest-edge        int32                  :offset-assert 164)
+   (dist-closest-edge   float                  :offset-assert 168)
+   (mouse-pos           vector         :inline :offset-assert 176)
+   (mouse-hit           vector         :inline :offset-assert 192)
+   (mouse-hit-pick      vector         :inline :offset-assert 208)
+   (mouse-normal        vector         :inline :offset-assert 224)
+   (mouse-spos-hold     vector         :inline :offset-assert 240)
+   (edge-src            int32                  :offset-assert 256)
+   (edge-dst            int32                  :offset-assert 260)
+   (edge-visibility     int32                  :offset-assert 264)
+   (vehicle-edit-mode   basic                  :offset-assert 268)
+   (hover-edit-mode     basic                  :offset-assert 272)
+   (clipping-dist       float                  :offset-assert 276)
+   (plane-height        float                  :offset-assert 280)
+   (plane-height-hold   float                  :offset-assert 284)
+   (default-node        mysql-nav-node :inline :offset-assert 288)
+   (default-edge        mysql-nav-edge :inline :offset-assert 356)
+   (command-array       basic                  :offset-assert 424)
    )
   :method-count-assert 64
   :size-assert         #x1ac
   :flag-assert         #x40013001ac
   (:methods
-    (nav-graph-editor-method-9 () none 9)
-    (nav-graph-editor-method-10 () none 10)
-    (nav-graph-editor-method-11 () none 11)
-    (nav-graph-editor-method-12 () none 12)
-    (nav-graph-editor-method-13 () none 13)
     (move-node () _type_ :state 14)
     (move-plane () _type_ :state 15)
     (create () _type_ :state 16)
@@ -29426,13 +29449,12 @@
     (nav-graph-editor-method-63 () none 63)
     )
   )
-|#
 
 ;; (define-extern *nav-graph-editor* object)
 ;; (define-extern nav-graph-editor-init-by-other function)
-;; (define-extern run-nav-graph-editor function)
-;; (define-extern get-nav-graph-editor function)
-;; (define-extern exit-nav-graph-editor function)
+(define-extern run-nav-graph-editor (function symbol none))
+(define-extern get-nav-graph-editor (function nav-graph-editor))
+(define-extern exit-nav-graph-editor (function none))
 ;; (define-extern set-minimap-edge-flag function)
 ;; (define-extern set-vehicle-edit-mode function)
 ;; (define-extern translate-nav-graph function)
@@ -29461,7 +29483,7 @@
 (define-extern dm-cam-mode-func (function (state camera-slave) debug-menu-msg object))
 (define-extern dm-cam-mode-default (function object debug-menu-msg symbol))
 (define-extern dm-cam-settings-default (function object debug-menu-msg symbol))
-(define-extern dm-cam-settings-func (function int debug-menu-msg symbol))
+(define-extern dm-cam-settings-func (function camera-slave-options debug-menu-msg symbol))
 (define-extern dm-cam-settings-func-int (function int debug-menu-msg int int int))
 (define-extern dm-cam-externalize (function symbol debug-menu-msg symbol))
 ;; (define-extern dm-cam-setting-float (function float debug-menu-msg symbol)) ;; TODO - causes decomp hang
@@ -48645,8 +48667,8 @@
 ;; (define-extern type-from-vehicle-type function)
 ;; (define-extern traffic-manager-event-handler function)
 ;; (define-extern traffic-manager-init-by-other function)
-;; (define-extern traffic-start function)
-;; (define-extern traffic-kill function)
+(define-extern traffic-start (function none))
+(define-extern traffic-kill (function none))
 ;; (define-extern riders-on function)
 ;; (define-extern riders-off function)
 ;; (define-extern ctywide-login function)
