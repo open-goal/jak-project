@@ -83,12 +83,16 @@ tasks:
   decomp:
     cmds:
       - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out"'
+  decomp-file:
+    cmds:
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --config-override '{\"allowed_objects\": [\"{{.FILE}}\"]}'"
   decomp-clean:
     cmds:
       - rm ./decompiler_out/**/*.asm
       - rm ./decompiler_out/**/*disasm.gc
   update-gsrc: # TODO - make this use git to update all files changed in _REF
     cmds:
+      - task: decomp-file
       - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file {{.FILE}}
   # TOOLS
   analyze-ee-memory:

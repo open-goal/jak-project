@@ -66,6 +66,7 @@ def update_all_blocks(game_name, block_dict):
                     i = i + 1
                     next_line = lines[i]
                     final_lines.append(next_line)
+                break
             if line.startswith(";; +++"):
                 final_lines.append(line)
                 block_id = line.split(";; +++")[1]
