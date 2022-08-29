@@ -4355,7 +4355,7 @@
 (define-extern quaternion-from-two-vectors-smooth! (function quaternion vector vector float int quaternion))
 (define-extern matrix-from-two-vectors-max-angle-partial! (function matrix vector vector float float matrix))
 (define-extern matrix-from-two-vectors-partial-linear! (function matrix vector vector float matrix))
-(define-extern matrix-remove-z-rot (function matrix matrix matrix))
+(define-extern matrix-remove-z-rot (function matrix vector matrix))
 (define-extern matrix-rot-diff! (function vector matrix matrix float))
 (define-extern quaternion-seek (function quaternion quaternion quaternion float float quaternion))
 (define-extern vector-deg-seek (function vector vector vector float vector))
@@ -14109,9 +14109,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defenum joint-mod-mode
-  :bitfield #f
+  :bitfield #t
   :type uint32
-
+  (flex-blend)
+  (look-at)
+  (world-look-at)
+  (rotate)
+  (joint-set)
+  (joint-set*)
+  (rotate2) ;; ??
+  (reset)
+  (polar-look-at)
+  (joint-set*-world)
+  (gun-look-at)
+  (foot-rot)
+  (joint-set-world)
   )
 
 (defenum track-mode
@@ -14128,12 +14140,12 @@
 
 (deftype joint-mod (basic)
   ((mode joint-mod-mode)
-   (process process)
+   (process process-drawable)
    (joint cspace)
-   (target vector :inline :offset 16)
-   (twist vector :inline :offset 32)
-   ;;(twist-max vector :inline)
-   (twist-max float 4)
+   (target vector :inline)
+   (twist vector :inline)
+   (twist-max vector :inline)
+   ;; (twist-max float 4)
    (extra-twist degrees :offset 40)
    (track-mode track-mode :offset 44)
    (loock-at-count uint16 :offset 46)
@@ -14171,19 +14183,19 @@
   :flag-assert         #x10000000b8
   ;; Failed to read fields.
   (:methods
-     ;; (new (symbol type joint-mod-handler-mode process-drawable int) _type_ 0)
-    (joint-mod-method-9 () none 9) ;; (set-mode! (_type_ joint-mod-handler-mode) _type_ 9)
-    (joint-mod-method-10 () none 10) ;; (set-target! (_type_ vector) none 10)
-    (joint-mod-method-11 () none 11) ;; (look-at-enemy! (_type_ vector symbol process) none 11)
+    (new (symbol type joint-mod-mode process-drawable int) _type_ 0)
+    (mode-set! (_type_ joint-mod-mode) none 9)
+    (target-set! (_type_ vector) none 10)
+    (look-at! (_type_ vector symbol process) none :behavior process 11)
     (reset-blend! (_type_) _type_ 12)
-    (joint-mod-method-13 () none 13) ;; (set-twist! (_type_ float float float) vector 13)
-    (joint-mod-method-14 () none 14) ;; (set-trs! (_type_ vector quaternion vector) none 14)
-    (joint-mod-method-15 () none 15) ;; (shut-down! (_type_) float 15)
+    (twist-set! (_type_ float float float) vector 13)
+    (trs-set! (_type_ vector quaternion vector) none 14)
+    (shut-down (_type_) none 15)
     )
   )
 
 (deftype try-to-look-at-info (basic)
-  ((who  uint64  :offset-assert 8) ;; handle
+  ((who  handle  :offset-assert 8)
    (horz float   :offset-assert 16)
    (vert float   :offset-assert 20)
    )
@@ -14279,10 +14291,18 @@
   :flag-assert         #x90000002c
   )
 
+(defenum joint-mod-blend-flags
+  :bitfield #t
+  :type uint32
+  (trans)
+  (scale)
+  (rotation)
+  )
+
 (deftype joint-mod-blend-world (basic)
   ((transform       transformq :inline :offset-assert 16)
    (blend-transform transformq :inline :offset-assert 64)
-   (blend-flags     uint32             :offset-assert 112)
+   (blend-flags     joint-mod-blend-flags  :offset-assert 112)
    (node-index      int32              :offset-assert 116)
    (blend           float              :offset-assert 120)
    (enable          symbol             :offset-assert 124)
@@ -14307,9 +14327,17 @@
   :flag-assert         #x900000020
   )
 
+(defenum joint-mod-ik-flags
+  :bitfield #t
+  :type uint32
+  (enable)
+  (elbow-trans-neg)
+  (elbow-rot-neg)
+  )
+
 (deftype joint-mod-ik (basic)
-  ((flags                  uint32         :offset-assert 4)
-   (process                basic          :offset-assert 8)
+  ((flags                  joint-mod-ik-flags  :offset-assert 4)
+   (process                process-drawable    :offset-assert 8)
    (hand-dist              float          :offset-assert 12)
    (handle-pos             vector :inline :offset-assert 16)
    (elbow-pole-vector-axis uint32         :offset-assert 32)
@@ -14318,7 +14346,7 @@
    (user-normal            vector :inline :offset-assert 64)
    (user-blend             float          :offset-assert 80)
    (user-float             float          :offset-assert 84)
-   (callback               basic          :offset-assert 88)
+   (callback               (function joint-mod-ik matrix matrix vector object)          :offset-assert 88)
    (shoulder-matrix-no-ik  matrix :inline :offset-assert 96)
    (elbow-matrix-no-ik     matrix :inline :offset-assert 160)
    (blend                  float          :offset-assert 224)
@@ -14328,8 +14356,9 @@
   :size-assert         #xe8
   :flag-assert         #xb000000e8
   (:methods
-    (joint-mod-ik-method-9 () none 9)
-    (joint-mod-ik-method-10 () none 10)
+    (new (symbol type process-drawable int float) _type_)
+    (handle-copy! (_type_ vector) none 9)
+    (enable-set! (_type_ symbol) none 10)
     )
   )
 
@@ -20876,21 +20905,21 @@
 ;; joint-mod                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern joint-mod-ik-callback function)
-;; (define-extern real-joint-mod-gun-look-at-handler function)
-;; (define-extern joint-mod-gun-look-at-handler function)
-;; (define-extern joint-mod-foot-rot-handler function)
-;; (define-extern last-try-to-look-at-data object) ;; try-to-look-at-info
-;; (define-extern joint-mod-look-at-handler function) ;; (function cspace transformq none)
-;; (define-extern joint-mod-polar-look-at-guts function)
-;; (define-extern joint-mod-polar-look-at-handler function)
-;; (define-extern joint-mod-world-look-at-handler function) ;; (function cspace transformq none)
-;; (define-extern joint-mod-rotate-handler function) ;; (function cspace transformq none)
-;; (define-extern joint-mod-scale-handler function)
-;; (define-extern joint-mod-joint-set-handler function) ;; (function cspace transformq none)
-;; (define-extern joint-mod-joint-set-world-handler function)
-;; (define-extern joint-mod-joint-set*-handler function) ;; (function cspace transformq none)
-;; (define-extern joint-mod-joint-set*-world-handler function)
+(define-extern joint-mod-ik-callback (function cspace transformq none :behavior process))
+(define-extern real-joint-mod-gun-look-at-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-gun-look-at-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-foot-rot-handler (function cspace transformq none :behavior process))
+(define-extern last-try-to-look-at-data try-to-look-at-info)
+(define-extern joint-mod-look-at-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-polar-look-at-guts (function cspace transformq none :behavior process))
+(define-extern joint-mod-polar-look-at-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-world-look-at-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-rotate-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-scale-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-joint-set-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-joint-set-world-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-joint-set*-handler (function cspace transformq none :behavior process))
+(define-extern joint-mod-joint-set*-world-handler (function cspace transformq none :behavior process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; chain-physics                  ;;
@@ -21358,7 +21387,7 @@
 (define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
 ;; (define-extern add-debug-sphere-with-transform function) ;; (function symbol bucket-id vector meters matrix rgba symbol)
 (define-extern add-debug-sphere (function symbol bucket-id vector float rgba symbol))
-;; (define-extern add-debug-text-sphere function) ;; (function symbol bucket-id vector float string rgba symbol)
+(define-extern add-debug-text-sphere (function symbol bucket-id vector float string rgba symbol))
 ;; (define-extern add-debug-spheres function) ;; (function symbol bucket-id (inline-array vector) int rgba symbol)
 ;; (define-extern add-debug-line-sphere function)
 ;; (define-extern add-debug-circle function) ;; (function symbol bucket-id vector float rgba matrix symbol)
@@ -25428,7 +25457,7 @@
 (define-extern cspace-by-name (function process-drawable string cspace))
 (define-extern cspace-index-by-name (function process-drawable string int))
 (define-extern vector<-cspace! (function vector cspace vector))
-;; (define-extern vector<-matrix! function)
+(define-extern vector<-matrix! (function vector matrix vector))
 ;; (define-extern vector<-cspace+vector! function) ;; (function vector cspace vector vector)
 ;; (define-extern cspace-children function) ;; (function process-drawable int pair)
 ;; (define-extern cspace-inspect-tree function) ;; (function process-drawable cspace int int object object)
