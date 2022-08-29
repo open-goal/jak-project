@@ -1390,7 +1390,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype matrix (structure)
-  ((data   float   16          :offset-assert 0)
+  ((data   float   16          :offset-assert 0 :score -10)
    (vector vector  4  :inline  :offset        0)
    (quad   uint128 4           :offset        0)
    (trans  vector  :inline     :offset        48)
@@ -15872,7 +15872,7 @@
   ((position  vector :inline :offset-assert 0)
    (velocity  vector :inline :offset-assert 16)
    (old-x     vector :inline :offset-assert 32)
-   (joint-mod basic          :offset-assert 48)
+   (joint-mod joint-mod      :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x34
@@ -15893,22 +15893,22 @@
    (negate-y              basic           :offset-assert 1360)
    (axial-slop            float           :offset-assert 1364)
    (maximum-stretch       float           :offset-assert 1368)
-   (turn-off-start        uint64          :offset-assert 1376)
-   (turn-off-duration     uint64          :offset-assert 1384)
+   (turn-off-start        time-frame      :offset-assert 1376)
+   (turn-off-duration     time-frame      :offset-assert 1384)
    )
   :method-count-assert 18
   :size-assert         #x570
   :flag-assert         #x1200000570
   (:methods
-    (chain-physics-method-9 () none 9)
-    (chain-physics-method-10 () none 10)
-    (chain-physics-method-11 () none 11)
-    (chain-physics-method-12 () none 12)
-    (chain-physics-method-13 () none 13)
-    (chain-physics-method-14 () none 14)
-    (chain-physics-method-15 () none 15)
-    (chain-physics-method-16 () none 16)
-    (chain-physics-method-17 () none 17)
+    (initialize-chain-joints (_type_) symbol 9)
+    (turn-off (_type_ time-frame) none :behavior process 10)
+    (update (_type_ process-drawable) none :behavior process 11)
+    (gravity-update (_type_) none 12)
+    (apply-gravity (_type_ vector int) none :behavior process 13)
+    (chain-physics-method-14 (_type_ vector int) none 14)
+    (clamp-length (_type_ vector vector) vector 15)
+    (chain-physics-method-16 (_type_ int) float 16)
+    (chain-physics-method-17 (_type_ vector) none 17)
     )
   )
 
@@ -20925,7 +20925,7 @@
 ;; chain-physics                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern chain-physics-initialize function)
+(define-extern chain-physics-initialize (function process-drawable chain-physics int float (array chain-physics-setup) int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cylinder                       ;;
@@ -24766,7 +24766,7 @@
 ;; (define-extern third-power function) ;; (function float float)
 ;; (define-extern parameter-ease-sqr-clamp function) ;; (function float float)
 ;; (define-extern parameter-ease-cube-clamp function)
-;; (define-extern parameter-ease-sin-clamp function) ;; (function float float)
+(define-extern parameter-ease-sin-clamp (function float float))
 ;; (define-extern cam-slave-init-vars function) ;; (function none :behavior camera-slave)
 ;; (define-extern cam-slave-go function) ;; (function state none)
 ;; (define-extern cam-slave-init function) ;; (function state entity none :behavior camera-slave)
@@ -45759,12 +45759,11 @@
   )
 |#
 
-#|
 (deftype under-mine (process-drawable)
-  ((chain             basic  :offset-assert 196)
-   (chain-initialized basic  :offset-assert 200)
-   (main-mod          basic  :offset-assert 204)
-   (head-mod          basic  :offset-assert 208)
+  ((chain             chain-physics  :offset-assert 200)
+   (chain-initialized symbol  :offset-assert 204)
+   (main-mod          joint-mod  :offset-assert 208)
+   (head-mod          joint-mod  :offset-assert 212)
    )
   :method-count-assert 22
   :size-assert         #xd8
@@ -45774,7 +45773,6 @@
     (idle () _type_ :state 21)
     )
   )
-|#
 
 #|
 (deftype under-lift (elevator)
