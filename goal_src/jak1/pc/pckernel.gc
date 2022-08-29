@@ -788,14 +788,15 @@
       (with-settings-scope (file)
         (case-str (file-stream-read-word file)
           (("settings")
-            (set! version (file-stream-read-int file))
+            (set! version (the pckernel-version (file-stream-read-int file)))
             (cond
-              ((= (logand version #xffffffff00000000) (logand PC_KERNEL_VERSION #xffffffff00000000))
+              ((and (= (-> version major) PC_KERNEL_VER_MAJOR)
+                    (= (-> version minor) PC_KERNEL_VER_MINOR))
                 ;; minor difference
                 )
               (else
                 ;; major difference
-                (format 0 "PC kernel version mismatch! Got ~D.~D vs ~D.~D~%" PC_KERNEL_VERSION_MAJOR PC_KERNEL_VERSION_MINOR (bit-field int version 32 16) (bit-field int version 48 16))
+                (format 0 "PC kernel version mismatch! Got ~D.~D vs ~D.~D~%" PC_KERNEL_VER_MAJOR PC_KERNEL_VER_MINOR (-> version major) (-> version minor))
                 (file-stream-close file)
                 (return #f)
                 )
@@ -843,6 +844,8 @@
                 (("lod-force-tie") (set! (-> obj lod-force-tie) (file-stream-read-int file)))
                 (("lod-force-ocean") (set! (-> obj lod-force-ocean) (file-stream-read-int file)))
                 (("lod-force-actor") (set! (-> obj lod-force-actor) (file-stream-read-int file)))
+                (("game-language") (set! (-> *setting-control* default language) (the-as language-enum (file-stream-read-int file))))
+                (("text-language") (set! (-> obj text-language) (the-as pc-subtitle-lang (file-stream-read-int file))))
                 (("subtitle-language") (set! (-> obj subtitle-language) (the-as pc-subtitle-lang (file-stream-read-int file))))
                 (("subtitle-speaker") (set! (-> obj subtitle-speaker?) (file-stream-read-symbol file)))
                 (("stick-deadzone") (set! (-> obj stick-deadzone) (file-stream-read-float file)))
@@ -998,6 +1001,8 @@
     (format file "  (music-fadeout? ~A)~%" (-> obj music-fadeout?))
     (format file "  (subtitles? ~A)~%" (-> obj subtitles?))
     (format file "  (hinttitles? ~A)~%" (-> obj hinttitles?))
+    (format file "  (game-language ~D)~%" (-> *setting-control* default language))
+    (format file "  (text-language ~D)~%" (-> obj text-language))
     (format file "  (subtitle-language ~D)~%" (-> obj subtitle-language))
     (format file "  (subtitle-speaker ~A)~%" (-> obj subtitle-speaker?))
 
