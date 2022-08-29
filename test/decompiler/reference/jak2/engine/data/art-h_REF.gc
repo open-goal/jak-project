@@ -88,8 +88,8 @@
 
 ;; definition of type joint-anim-frame
 (deftype joint-anim-frame (structure)
-  ((matrices matrix 2 :inline :offset-assert   0)
-   (data     matrix :dynamic  :offset-assert 128)
+  ((matrices matrix     2 :inline        :offset-assert   0)
+   (data     transformq :inline :dynamic :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x80
@@ -249,10 +249,10 @@
   :size-assert         #x14
   :flag-assert         #xd00000014
   (:methods
-    (art-method-9 () none 9)
-    (art-method-10 () none 10)
-    (art-method-11 () none 11)
-    (art-method-12 () none 12)
+    (login (_type_) _type_ 9)
+    (get-art-by-name-method (_type_ string type) basic 10)
+    (get-art-idx-by-name-method (_type_ string type) int 11)
+    (needs-link? (_type_) symbol 12)
     )
   )
 
@@ -295,7 +295,8 @@
 
 ;; definition of type art-mesh-anim
 (deftype art-mesh-anim (art-element)
-  ()
+  ((data basic :dynamic :offset-assert  32)
+   )
   :method-count-assert 13
   :size-assert         #x20
   :flag-assert         #xd00000020
@@ -306,7 +307,7 @@
   ((speed                  float                          :offset         20)
    (artist-base            float                          :offset         24)
    (artist-step            float                          :offset         28)
-   (eye-anim               basic                          :offset          4)
+   (eye-anim               merc-eye-anim-block            :offset          4)
    (master-art-group-name  string                         :offset-assert  32)
    (master-art-group-index int32                          :offset-assert  36)
    (blend-shape-anim       basic                          :offset-assert  40)
@@ -348,14 +349,16 @@
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
-    (art-group-method-13 () none 13)
+    (relocate (_type_ kheap (pointer uint8)) none :replace 7)
+    (link-art! (_type_) art-group 13)
     (art-group-method-14 () none 14)
     )
   )
 
 ;; definition of type art-mesh-geo
 (deftype art-mesh-geo (art-element)
-  ()
+  ((data basic :dynamic :offset-assert  32)
+   )
   :method-count-assert 13
   :size-assert         #x20
   :flag-assert         #xd00000020
@@ -363,7 +366,8 @@
 
 ;; definition of type art-joint-geo
 (deftype art-joint-geo (art-element)
-  ()
+  ((data joint :dynamic :offset-assert  32)
+   )
   :method-count-assert 13
   :size-assert         #x20
   :flag-assert         #xd00000020
@@ -371,9 +375,9 @@
 
 ;; definition of type art-joint-anim-manager-slot
 (deftype art-joint-anim-manager-slot (structure)
-  ((anim       basic   :offset-assert   0)
-   (comp-data  uint32  :offset-assert   4)
-   (time-stamp uint64  :offset-assert   8)
+  ((anim       art-joint-anim  :offset-assert   0)
+   (comp-data  uint32          :offset-assert   4)
+   (time-stamp uint64          :offset-assert   8)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -405,10 +409,10 @@
   :flag-assert         #xe00000430
   (:methods
     (new (symbol type int) _type_ 0)
-    (art-joint-anim-manager-method-9 () none 9)
-    (art-joint-anim-manager-method-10 () none 10)
-    (unload-from-slot (_type_ int) none 11)
-    (art-joint-anim-manager-method-12 () none 12)
+    (decompress (_type_ art-joint-anim) art-joint-anim 9)
+    (update-time-stamp (_type_ art-joint-anim) art-joint-anim 10)
+    (unload-from-slot (_type_ int) art-joint-anim 11)
+    (used-bytes-for-slot (_type_ int) int 12)
     (unload-from-level (_type_ level) none 13)
     )
   )

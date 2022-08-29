@@ -41,6 +41,7 @@ class TP_Type {
     ENTER_STATE_FUNCTION,
     RUN_FUNCTION_IN_PROCESS_FUNCTION,
     SET_TO_RUN_FUNCTION,
+    GET_ART_BY_NAME_METHOD,
     INVALID
   } kind = Kind::UNINITIALIZED;
   TP_Type() = default;
@@ -73,6 +74,7 @@ class TP_Type {
       case Kind::ENTER_STATE_FUNCTION:
       case Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION:
       case Kind::SET_TO_RUN_FUNCTION:
+      case Kind::GET_ART_BY_NAME_METHOD:
         return false;
       case Kind::UNINITIALIZED:
       case Kind::OBJECT_NEW_METHOD:
@@ -287,6 +289,17 @@ class TP_Type {
     return result;
   }
 
+  static TP_Type make_get_art_by_name(const TypeSpec& method_ts,
+                                      const TypeSpec& obj_ts,
+                                      int method_id) {
+    TP_Type result;
+    result.kind = Kind::GET_ART_BY_NAME_METHOD;
+    result.m_ts = method_ts;
+    result.m_method_from_type = obj_ts;
+    result.m_method_id = method_id;
+    return result;
+  }
+
   const TypeSpec& get_objects_typespec() const {
     ASSERT(kind == Kind::TYPESPEC || kind == Kind::INTEGER_CONSTANT_PLUS_VAR);
     return m_ts;
@@ -347,12 +360,14 @@ class TP_Type {
   }
 
   const TypeSpec& method_from_type() const {
-    ASSERT(kind == Kind::VIRTUAL_METHOD || kind == Kind::NON_VIRTUAL_METHOD);
+    ASSERT(kind == Kind::VIRTUAL_METHOD || kind == Kind::NON_VIRTUAL_METHOD ||
+           kind == Kind::GET_ART_BY_NAME_METHOD);
     return m_method_from_type;
   }
 
   int method_id() const {
-    ASSERT(kind == Kind::VIRTUAL_METHOD || kind == Kind::NON_VIRTUAL_METHOD);
+    ASSERT(kind == Kind::VIRTUAL_METHOD || kind == Kind::NON_VIRTUAL_METHOD ||
+           kind == Kind::GET_ART_BY_NAME_METHOD);
     return m_method_id;
   }
 

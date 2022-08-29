@@ -132,6 +132,12 @@ class TypeSpec {
     return m_arguments->back();
   }
 
+  TypeSpec& last_arg() {
+    ASSERT(m_arguments);
+    ASSERT(!m_arguments->empty());
+    return m_arguments->back();
+  }
+
   bool empty() const {
     if (!m_arguments) {
       return true;
