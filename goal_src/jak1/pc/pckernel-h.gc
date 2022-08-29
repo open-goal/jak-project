@@ -28,17 +28,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defglobalconstant PC_KERNEL_VERSION_BUILD #x0001)
-(defglobalconstant PC_KERNEL_VERSION_REVISION #x0001)
+(deftype pckernel-version (int64)
+  ((build     int16 :offset 0)
+   (revision  int16 :offset 16)
+   (minor     int16 :offset 32)
+   (major     int16 :offset 48)
+   )
+  )
 
-(defglobalconstant PC_KERNEL_VERSION_MINOR #x000a)
-(defglobalconstant PC_KERNEL_VERSION_MAJOR #x0001)
-(defglobalconstant PC_KERNEL_VERSION (logior
-                                        (ash PC_KERNEL_VERSION_MAJOR 48)
-                                        (ash PC_KERNEL_VERSION_MINOR 32)
-                                        (ash PC_KERNEL_VERSION_REVISION 16)
-                                        (ash PC_KERNEL_VERSION_BUILD 0)
-                                        ))
+(defmacro static-pckernel-version (major minor rev build)
+  `(new 'static 'pckernel-version :major ,major :minor ,minor :revision ,rev :build ,build))
+                                                  ;; version: 1.10.2.1
+(defglobalconstant PC_KERNEL_VERSION (static-pckernel-version 1 10 2 1))
+(defconstant PC_KERNEL_VER_MAJOR (-> PC_KERNEL_VERSION major))
+(defconstant PC_KERNEL_VER_MINOR (-> PC_KERNEL_VERSION minor))
+
 
 (defconstant PS2_VOICE_AMOUNT 48)
 (defconstant PC_VOICE_AMOUNT 256)
@@ -203,7 +207,7 @@
 ;; All of the configuration for the PC port in GOAL. Access things from here!
 ;; Includes some methods to change parameters.
 (deftype pc-settings (basic)
-  ((version uint64) ;; version of this settings
+  ((version pckernel-version) ;; version of this settings
 
    ;; "generic" graphics settings
    (target-fps int16) ;; the target framerate of the game
@@ -382,11 +386,11 @@
   )
 
 (defconstant PC_TEMP_STRING_LEN 512)
-(define *pc-temp-string* (new 'global 'string PC_TEMP_STRING_LEN (the-as string #f)))
-(define *pc-settings* (the-as pc-settings #f))
-(format 0 "PC kernel version: ~D.~D~%" PC_KERNEL_VERSION_MAJOR PC_KERNEL_VERSION_MINOR)
+(define *pc-temp-string* (new 'global 'string PC_TEMP_STRING_LEN (the string #f)))
+(define *pc-settings* (the pc-settings #f))
+(format 0 "PC kernel version: ~D.~D~%" PC_KERNEL_VER_MAJOR PC_KERNEL_VER_MINOR)
 
-(define *pc-temp-string-1* (new 'global 'string 2048 (the-as string #f)))
+(define *pc-temp-string-1* (new 'global 'string 2048 (the string #f)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; resets
@@ -496,6 +500,7 @@
   (set! (-> obj hinttitles?) #t)
   (set! (-> obj subtitle-speaker?) 'auto)
   (set! (-> obj subtitle-language) (pc-subtitle-lang english))
+  (set! (-> obj text-language) (pc-subtitle-lang english))
   (reset-original-camera obj)
   (set! (-> obj money-starburst?) #f)
   (set! (-> obj extra-hud?) #f)
