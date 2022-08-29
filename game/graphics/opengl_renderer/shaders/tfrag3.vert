@@ -67,14 +67,14 @@ void main() {
     // time of day lookup
     fragment_color = texelFetch(tex_T1, time_of_day_index, 0);
 
-    // fog hack
-    if (fragment_color.r < 0.0075 && fragment_color.g < 0.0075 && fragment_color.b < 0.0075) {
-        fogginess = 0;
-    }
-
     // color adjustment
     fragment_color *= 2;
     fragment_color.a *= 2;
+
+    // fog hack
+    if (fragment_color.r < 0.005 && fragment_color.g < 0.005 && fragment_color.b < 0.005) {
+        fogginess = 0;
+    }
     
     tex_coord = tex_coord_in;
 }
