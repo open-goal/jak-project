@@ -1,28 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: sprite-distort.gc
-;; name in dgo: sprite-distort
-;; dgos: ENGINE, GAME
-
-;; Works just like Jak 1 with some exceptions:
-;; - Sprite texture source doesn't seem to be the current framebuffer, instead tbp0 is hardcoded to #x3300.
-;; - The sprite-aux-list contains more than just distort sprites. Instead of containing sprite-vec-data-2d's
-;;   directly, it's now a list of sprite-aux-elem. If the aux-type is 0, then that element is a distort sprite.
-;; - No longer takes *video-params* screen-sy into account.
-
-;; Sprite distort works by drawing a circle for each sprite whose texture is the framebuffer contents of what's
-;; been drawn so far. The texture coordinates are off slightly to give a "distortion" effect as the sprite moves
-;; across the screen. The resolution of the circle is defined by the number of "turns", which can range between
-;; 3 and 11. Turns basically define the number of edges that make up the circle, so 3 turns will create a triangle,
-;; 5 will create a pentagon, etc. The sprite-vec-data-2d 'warp-turns'/'flag' field contains the number of turns.
-
-;; DECOMP BEGINS
-
-;; Contains the base mesh of each possible distort sprite shape. Everything excluding aspx and aspy
-;; are uploaded to VU memory.
-;;
-;; See sprite-distorter-generate-tables.
+;; definition of type sprite-distorter-sine-tables
 (deftype sprite-distorter-sine-tables (basic)
   ((aspx   float                  :offset-assert   4)
    (aspy   float                  :offset-assert   8)
@@ -36,6 +15,7 @@
   :flag-assert         #x9000008c0
   )
 
+;; definition for method 3 of type sprite-distorter-sine-tables
 (defmethod inspect sprite-distorter-sine-tables ((obj sprite-distorter-sine-tables))
   (when (not obj)
     (set! obj obj)
@@ -52,30 +32,17 @@
   obj
   )
 
+;; failed to figure out what this is:
 (kmemopen global "sprite-distort-tables")
+
+;; definition for symbol *sprite-distorter-sine-tables*, type sprite-distorter-sine-tables
 (define *sprite-distorter-sine-tables* (new 'global 'sprite-distorter-sine-tables))
+
+;; failed to figure out what this is:
 (kmemclose)
 
-;; Called from update-math-camera. 
-;; Whenever the camera's aspect ratio changes, recalculates the *sprite-distorter-sine-tables*.
-;;
-;; Every two vectors in 'entry' contain the position and texture coordinates for a vertex.
-;; The vertices for each circular shape made up of a given number of turns/edges are placed into this
-;; list. For example, the first 6 vectors in entry will be the 3 vertices of a circle made up of 3 turns.
-;; Then the next 8 vectors will be the 4 vertices of one made up of 4 turns, and so on until (and including) 11 turns.
-;;
-;; This list also cheats a little. When the VU program goes to render one of these shapes, the final vertex
-;; of the shape will be connected to the first vertex of the next shape. In other words, when rendering the
-;; shape of 3 turns, the final vertex will be connected to the first vertex of the vertices for 4 turns.
-;; Because of this, a single extra vertex is added after the 11 turns shape, totalling the 128 vectors.
-;; This works because the first vertex is always the same top-center position.
-;;
-;; The ientry list is given VU memory addresses into the entry list for each shape.
-;; For example, ientry[0] is 352 which is the vertex data for 3 turns, ientry[1] is 358 which is the
-;; vertex data for 4 turns, etc.
-;;
-;; Additionally, a giftag is pre-calculated for rendering each shape along with a color. But the giftag
-;; never changes and the color is always (1.0, 1.0, 1.0, 1.0).
+;; definition for function sprite-distorter-generate-tables
+;; INFO: Return type mismatch int vs none.
 (defun sprite-distorter-generate-tables ()
   (let ((tbls *sprite-distorter-sine-tables*))
     (let ((entry-idx 0)
@@ -149,9 +116,11 @@
   (none)
   )
 
+;; definition for symbol sprite-distort-vu1-block, type vu-function
 (define sprite-distort-vu1-block (new 'static 'vu-function :length 63 :qlength 32))
 
-;; Sets up GS registers, adds a reference to *sprite-distorter-sine-tables*, and loads the VU program.
+;; definition for function sprite-init-distorter
+;; INFO: Return type mismatch int vs none.
 (defun sprite-init-distorter ((dma-buff dma-buffer))
   (let* ((v1-0 dma-buff)
          (a1-0 (the-as object (-> v1-0 base)))
@@ -230,16 +199,11 @@
   (none)
   )
 
-;; Calculates per-sprite data like positions and texture coordinates, puts each sprite onto
-;; the DMA chain in chunks, and calls into the VU program to draw.
-;;
-;; - Only aux sprites with an aux-type of 0 are processed.
-;; - Sprites will be skipped if their 'warp-turns'/'flag' is 0 or if they fail the clipping test.
-;; - Sprite coordinates are transformed into screen-coordinates ahead of time in GOAL.
-;;   - If the sprite's 'matrix' field is 1, then the sprite is in screen-space,
-;;     otherwise it's in world-space.
-;; - Sprites are uploaded in chunks of 85.
-;; - For every 2 chunks, a call into the VU program is added.
+;; definition for function sprite-draw-distorters
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+;; ERROR: Inline assembly instruction marked with TODO - [TODO.VCLIP]
+;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v1, Clipping]
 (defun sprite-draw-distorters ((dma-buff dma-buffer))
   (local-vars
     (v1-15 float)
@@ -306,13 +270,12 @@
                 (.add.mul.z.vf vf1 vf5 vf1 acc)
                 (.mul.vf vf10 vf1 vf8)
                 (.div.vf Q vf0 vf10 :fsf #b11 :ftf #b11)
-                ;;(TODO.VCLIP vf10 vf10)
+                (TODO.VCLIP vf10 vf10)
                 (b! (zero? (-> sprite flag-rot-sy x)) cfg-22 :delay (nop!))
                 (.wait.vf)
                 (.mul.vf vf1 vf1 Q :mask #b111)
                 (.mul.vf vf2 vf2 Q :mask #b111)
-                ;;(.cfc2.i clip-result Clipping)
-                (set! clip-result (vu-clip vf10 0)) ;; safe to just drop the higher bits.
+                (.cfc2.i clip-result Clipping)
                 (b! (logtest? clip-result 63) cfg-22 :delay (.add.vf vf1 vf1 vf9))
                 (.max.x.vf vf1 vf1 vf0 :mask #b1000)
                 (.svf (&-> (the-as vector dma-position) quad) vf1)
@@ -473,3 +436,7 @@
     (none)
     )
   )
+
+
+
+
