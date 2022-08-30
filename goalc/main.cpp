@@ -57,15 +57,7 @@ int main(int argc, char** argv) {
       lg::error("Error: project path override '{}' does not exist", project_path_override.string());
       return 1;
     }
-    auto ok = file_util::setup_project_path(project_path_override);
-    if (!ok) {
-      lg::error("Could not setup project path!");
-      return 1;
-    }
-  }
-  else {
-    auto ok = file_util::setup_project_path({});
-    if (!ok) {
+    if (!file_util::setup_project_path(project_path_override)) {
       lg::error("Could not setup project path!");
       return 1;
     }
