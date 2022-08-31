@@ -5712,7 +5712,7 @@
    (meta-inside?      symbol :offset-assert 408)
    (force-inside?     symbol :offset-assert 412)
    (mood-context      mood-context :inline :offset-assert 416)
-   (mood-func         basic :offset-assert 2384)
+   (mood-func         (function mood-context float int none) :offset-assert 2384)
    (mood-init         (function mood-context none) :offset-assert 2388)
    (vis-bits          pointer :offset-assert 2392)
    (all-visible?      symbol :offset-assert 2396)
@@ -7732,7 +7732,8 @@
 (define-extern *col-rend* col-rend)
 (define-extern debug-actor? (function object symbol))
 
-(define-extern *time-of-day* (pointer process))
+(declare-type time-of-day-proc process)
+(define-extern *time-of-day* (pointer time-of-day-proc))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mspace-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -9723,8 +9724,8 @@
   :size-assert         #x110
   :flag-assert         #xb00000110
   (:methods
-    (palette-fade-controls-method-9 () none 9) ;; (reset! (_type_) symbol 9)
-    (palette-fade-controls-method-10 () none 10) ;; (set-fade! (_type_ int float float vector) object 10)
+    (reset! (_type_) none 9)
+    (set-fade! (_type_ int float float vector) object 10)
     )
   )
 
@@ -22260,7 +22261,7 @@
 ;; (define-extern cloud-texture-anim-layer-func function)
 ;; (define-extern cloud-texture-anim-func function)
 ;; (define-extern fog-texture-anim-init function)
-;; (define-extern *fog-texture-work* object)
+(define-extern *fog-texture-work* fog-texture-work)
 ;; (define-extern real-fog-texture-anim-func function)
 ;; (define-extern fog-texture-anim-func function)
 
@@ -22269,8 +22270,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *sky-texture-anim-array* texture-anim-array)
-;; (define-extern set-fog-height! function)
-;; (define-extern set-cloud-minmax! function)
+(define-extern set-fog-height! (function float none))
+(define-extern set-cloud-minmax! (function float float none))
 (define-extern *darkjak-texture-anim-array* texture-anim-array)
 ;; (define-extern set-darkjak-texture-morph! function)
 (define-extern *skull-gem-texture-anim-array* texture-anim-array)
@@ -22817,7 +22818,7 @@
 |#
 
 (define-extern *part-id-table* (array sparticle-launcher))
-;; (define-extern *part-group-id-table* object) ;; (array sparticle-launch-group)
+(define-extern *part-group-id-table* (array sparticle-launch-group)) ;; 
 ;; (define-extern *sp-temp* object)
 ;; (define-extern lookup-part-group-by-name function) ;; (function string basic)
 ;; (define-extern lookup-part-group-pointer-by-name function) ;; (function string (pointer sparticle-launch-group))
@@ -24159,13 +24160,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern group-rain-screend-drop object) ;; sparticle-launch-group
-;; (define-extern update-snow function) ;; (function target none)
+(define-extern update-snow (function target none))
 ;; (define-extern birth-func-omega-normal-orient function)
 ;; (define-extern birth-func-rain function)
 ;; (define-extern check-drop-level-rain function) ;; (function sparticle-system sparticle-cpuinfo vector none)
 ;; (define-extern check-drop-level-rain2 function)
 ;; (define-extern check-drop-level-splash function)
-;; (define-extern update-rain function) ;; (function target none)
+(define-extern update-rain (function target none))
 ;; (define-extern cam-master-effect function) ;; (function none :behavior camera-master)
 ;; (define-extern sparticle-track-sun function) ;; (function int sparticle-cpuinfo matrix none)
 
@@ -24173,21 +24174,21 @@
 ;; time-of-day                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern time-of-day-effect object) ;; (function none)
-;; (define-extern time-of-day-update function) ;; (function none :behavior time-of-day-proc)
-;; (define-extern update-counters function)
-;; (define-extern time-of-day-tick state) ;; (state time-of-day-proc)
-;; (define-extern init-time-of-day function) ;; (function none :behavior time-of-day-proc)
-;; (define-extern start-time-of-day function) ;; (function none)
+(define-extern time-of-day-effect (function none))
+(define-extern time-of-day-update (function none :behavior time-of-day-proc))
+(define-extern update-counters (function float :behavior time-of-day-proc))
+(define-extern time-of-day-tick (state time-of-day-proc))
+(define-extern init-time-of-day (function object :behavior time-of-day-proc)) ;; 
+(define-extern start-time-of-day (function (pointer process)))
 (define-extern time-of-day-setup (function symbol symbol))
 ;; (define-extern time-of-day-interp-colors function) ;; (function (pointer rgba) uint mood-context none)
 ;; (define-extern time-of-day-interp-colors-scratch function) ;; (function (pointer rgba) time-of-day-palette mood-context none)
-(define-extern init-time-of-day-context (function time-of-day-context none))
+(define-extern init-time-of-day-context (function time-of-day-context symbol))
 (define-extern set-filter-color! (function float float int none))
-;; (define-extern tod-madd! function)
-;; (define-extern update-environment-colors function)
-(define-extern update-time-of-day (function time-of-day-context none))
-;; (define-extern calc-fade-from-fog function)
+(define-extern tod-madd! (function vector vector vector float))
+(define-extern update-environment-colors (function time-of-day-context vector))
+;; (define-extern update-time-of-day (function time-of-day-context none))
+(define-extern calc-fade-from-fog (function vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sky-data                       ;;
@@ -28695,7 +28696,6 @@
   :flag-assert         #x900000008
   )
 
-#|
 (deftype glst-named-node (glst-node)
   ((privname string  :offset-assert 8) ;; guessed by decompiler
    )
@@ -28703,7 +28703,6 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
 (deftype glst-list (structure)
   ((head     glst-node  :offset-assert 0)
@@ -28716,33 +28715,41 @@
   :flag-assert         #x900000010
   )
 
-;; (define-extern glst-next function) ;; (function glst-node glst-node)
-;; (define-extern glst-prev function) ;; (function glst-node glst-node)
-;; (define-extern glst-head function) ;; (function glst-list glst-node)
-;; (define-extern glst-tail function) ;; (function glst-list glst-node)
-;; (define-extern glst-end-of-list? function) ;; (function glst-node symbol)
-;; (define-extern glst-start-of-list? function) ;; (function glst-node symbol)
-;; (define-extern glst-empty? function) ;; (function glst-list symbol)
-;; (define-extern glst-node-name function) ;; (function glst-named-node string)
-;; (define-extern glst-set-name! function) ;; (function glst-named-node string string)
+(define-extern glst-next (function glst-node glst-node))
+(define-extern glst-prev (function glst-node glst-node))
+(define-extern glst-head (function glst-list glst-node))
+(define-extern glst-tail (function glst-list glst-node))
+(define-extern glst-end-of-list? (function glst-node symbol))
+(define-extern glst-start-of-list? (function glst-node symbol))
+(define-extern glst-empty? (function glst-list symbol))
+(define-extern glst-node-name "Returns the `privname` of the provided [[glst-named-node]]" (function glst-named-node string))
+(define-extern glst-set-name! "Sets the `privname` of the provided [[glst-named-node]]" (function glst-named-node string string))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; glist                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern glst-num-elements function) ;; (function glst-list int)
-;; (define-extern glst-remove function) ;; (function glst-list glst-node glst-node)
-;; (define-extern glst-remove-tail function) ;; (function glst-list glst-node)
-;; (define-extern glst-remove-head function) ;; (function glst-list glst-node)
-;; (define-extern glst-insert-before function) ;; (function glst-list glst-node glst-node glst-node)
-;; (define-extern glst-insert-after function) ;; (function glst-list glst-node glst-node glst-node)
-;; (define-extern glst-add-tail function) ;; (function glst-list glst-node glst-node)
-;; (define-extern glst-add-head function) ;; (function glst-list glst-node glst-node)
-;; (define-extern glst-init-list! function) ;; (function glst-list glst-list)
-;; (define-extern glst-find-node-by-name function) ;; (function glst-list string glst-node)
-;; (define-extern glst-get-node-by-index function) ;; (function glst-list int glst-node)
-;; (define-extern glst-length-of-longest-name function) ;; (function glst-list int)
-;; (define-extern glst-get-node-index function) ;; (function glst-list glst-node int)
+(define-extern glst-num-elements "Returns `numelem` from the provided [[glst-list]]" (function glst-list int))
+(define-extern glst-remove "Removes the provided [[glst-node]] from the list and returns it back" (function glst-list glst-node glst-node))
+(define-extern glst-remove-tail
+  "Removes the tail of the [[glst-list]], returns #f if the list is empty, otherwise returns the [[glst-node]] that was removed"
+  (function glst-list glst-node))
+(define-extern glst-remove-head
+  "Removes the head of the [[glst-list]], returns #f if the list is empty, otherwise returns the [[glst-node]] that was removed"
+  (function glst-list glst-node))
+(define-extern glst-insert-before "Inserts `new` before `curr`, returns the newly inserted [[glst-node]]" (function glst-list glst-node glst-node glst-node))
+(define-extern glst-insert-after "Inserts `new` after `curr`, returns the newly inserted [[glst-node]]" (function glst-list glst-node glst-node glst-node))
+(define-extern glst-add-tail "Adds the provided [[glst-node]] to the end of the [[glst-list]]" (function glst-list glst-node glst-node))
+(define-extern glst-add-head "Adds the provided [[glst-node]] to the beginning of the [[glst-list]]" (function glst-list glst-node glst-node))
+(define-extern glst-init-list! "Clears the provided [[glst-list]]" (function glst-list glst-list))
+(define-extern glst-find-node-by-name
+  "Returns the [[glst-named-node]] by examining it's `privname`, returns #f if nothing is found"
+  (function glst-list string glst-node))
+(define-extern glst-get-node-by-index
+  "Returns the [[glst-node]] by index, returns #f if nothing is found"
+  (function glst-list int glst-node))
+(define-extern glst-length-of-longest-name "Returns the length of the longest `privname`" (function glst-list int))
+(define-extern glst-get-node-index "Given a [[glst-node]] return it's position in the [[glst-list]]" (function glst-list glst-node int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; anim-tester                    ;;
