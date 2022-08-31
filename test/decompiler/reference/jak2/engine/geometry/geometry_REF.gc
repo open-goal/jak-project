@@ -357,11 +357,11 @@
   (vector-normalize! (the-as vector (-> arg0 vector)) 1.0)
   (vector-cross! (-> arg0 vector 1) arg1 (the-as vector (-> arg0 vector)))
   (vector-normalize! (-> arg0 vector 1) 1.0)
-  (set! (-> arg0 vector 3 quad) (the-as uint128 0))
+  (set! (-> arg0 trans quad) (the-as uint128 0))
   (set! (-> arg0 vector 0 w) 0.0)
   (set! (-> arg0 vector 1 w) 0.0)
   (set! (-> arg0 vector 2 w) 0.0)
-  (set! (-> arg0 vector 3 w) 1.0)
+  (set! (-> arg0 trans w) 1.0)
   arg0
   )
 
@@ -374,11 +374,11 @@
   (vector-normalize! (the-as vector (-> arg0 vector)) 1.0)
   (vector-cross! (-> arg0 vector 2) (the-as vector (-> arg0 vector)) (-> arg0 vector 1))
   (vector-normalize! (-> arg0 vector 2) 1.0)
-  (set! (-> arg0 vector 3 quad) (the-as uint128 0))
+  (set! (-> arg0 trans quad) (the-as uint128 0))
   (set! (-> arg0 vector 0 w) 0.0)
   (set! (-> arg0 vector 1 w) 0.0)
   (set! (-> arg0 vector 2 w) 0.0)
-  (set! (-> arg0 vector 3 w) 1.0)
+  (set! (-> arg0 trans w) 1.0)
   arg0
   )
 
@@ -396,32 +396,15 @@
 ;; definition for function forward-up-nopitch->quaternion
 ;; INFO: Used lq/sq
 (defun forward-up-nopitch->quaternion ((arg0 quaternion) (arg1 vector) (arg2 vector))
-  (let ((gp-0 matrix->quaternion)
-        (s5-0 arg0)
-        (t9-0 forward-up-nopitch->inv-matrix)
-        (a0-1 (new 'stack-no-clear 'matrix))
-        )
-    (set! (-> a0-1 vector 0 quad) (the-as uint128 0))
-    (set! (-> a0-1 vector 1 quad) (the-as uint128 0))
-    (set! (-> a0-1 vector 2 quad) (the-as uint128 0))
-    (set! (-> a0-1 vector 3 quad) (the-as uint128 0))
-    (gp-0 s5-0 (t9-0 a0-1 arg1 arg2))
-    )
+  (matrix->quaternion arg0 (forward-up-nopitch->inv-matrix (new-stack-matrix0) arg1 arg2))
   )
 
 ;; definition for function forward-up->quaternion
 ;; INFO: Used lq/sq
 (defun forward-up->quaternion ((arg0 quaternion) (arg1 vector) (arg2 vector))
-  (let ((gp-0 matrix->quaternion)
-        (s5-0 arg0)
-        (s4-0 forward-down->inv-matrix)
-        (s3-0 (new 'stack-no-clear 'matrix))
-        )
-    (set! (-> s3-0 vector 0 quad) (the-as uint128 0))
-    (set! (-> s3-0 vector 1 quad) (the-as uint128 0))
-    (set! (-> s3-0 vector 2 quad) (the-as uint128 0))
-    (set! (-> s3-0 vector 3 quad) (the-as uint128 0))
-    (gp-0 s5-0 (s4-0 s3-0 arg1 (vector-negate! (new 'stack-no-clear 'vector) arg2)))
+  (matrix->quaternion
+    arg0
+    (forward-down->inv-matrix (new-stack-matrix0) arg1 (vector-negate! (new 'stack-no-clear 'vector) arg2))
     )
   )
 
@@ -645,11 +628,7 @@
   (let ((s4-0 (new-stack-vector0)))
     0.0
     0.0
-    (let ((s5-0 (new 'stack-no-clear 'matrix)))
-      (set! (-> s5-0 vector 0 quad) (the-as uint128 0))
-      (set! (-> s5-0 vector 1 quad) (the-as uint128 0))
-      (set! (-> s5-0 vector 2 quad) (the-as uint128 0))
-      (set! (-> s5-0 vector 3 quad) (the-as uint128 0))
+    (let ((s5-0 (new-stack-matrix0)))
       (vector-negate! s4-0 (the-as vector arg1))
       (vector-flatten! s4-0 s4-0 (-> arg0 vector 2))
       (vector-normalize! s4-0 1.0)
@@ -700,22 +679,14 @@
 ;; definition for function quaternion-seek
 ;; INFO: Used lq/sq
 (defun quaternion-seek ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float) (arg4 float))
-  (let ((s5-0 (new 'stack-no-clear 'matrix)))
-    (set! (-> s5-0 vector 0 quad) (the-as uint128 0))
-    (set! (-> s5-0 vector 1 quad) (the-as uint128 0))
-    (set! (-> s5-0 vector 2 quad) (the-as uint128 0))
-    (set! (-> s5-0 vector 3 quad) (the-as uint128 0))
-    (let ((s4-0 (new 'stack-no-clear 'matrix)))
-      (set! (-> s4-0 vector 0 quad) (the-as uint128 0))
-      (set! (-> s4-0 vector 1 quad) (the-as uint128 0))
-      (set! (-> s4-0 vector 2 quad) (the-as uint128 0))
-      (set! (-> s4-0 vector 3 quad) (the-as uint128 0))
-      (quaternion->matrix s5-0 arg1)
-      (quaternion->matrix s4-0 arg2)
-      (let ((s2-1 (new-stack-quaternion0)))
-        (quaternion-from-two-vectors-max-angle! s2-1 (-> s5-0 vector 2) (-> s4-0 vector 2) arg4)
-        (quaternion-normalize! (quaternion*! arg0 arg0 s2-1))
+  (let ((s5-0 (new-stack-matrix0))
+        (s4-0 (new-stack-matrix0))
         )
+    (quaternion->matrix s5-0 arg1)
+    (quaternion->matrix s4-0 arg2)
+    (let ((s2-1 (new-stack-quaternion0)))
+      (quaternion-from-two-vectors-max-angle! s2-1 (-> s5-0 vector 2) (-> s4-0 vector 2) arg4)
+      (quaternion-normalize! (quaternion*! arg0 arg0 s2-1))
       )
     )
   )
@@ -723,11 +694,7 @@
 ;; definition for function vector-deg-seek
 ;; INFO: Used lq/sq
 (defun vector-deg-seek ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
-  (let ((s4-0 (new 'stack-no-clear 'matrix)))
-    (set! (-> s4-0 vector 0 quad) (the-as uint128 0))
-    (set! (-> s4-0 vector 1 quad) (the-as uint128 0))
-    (set! (-> s4-0 vector 2 quad) (the-as uint128 0))
-    (set! (-> s4-0 vector 3 quad) (the-as uint128 0))
+  (let ((s4-0 (new-stack-matrix0)))
     (matrix-from-two-vectors-max-angle! s4-0 arg1 arg2 arg3)
     (vector-matrix*! arg0 arg1 s4-0)
     )
@@ -746,11 +713,7 @@
      arg0
      )
     (else
-      (let ((s1-0 (new 'stack-no-clear 'matrix)))
-        (set! (-> s1-0 vector 0 quad) (the-as uint128 0))
-        (set! (-> s1-0 vector 1 quad) (the-as uint128 0))
-        (set! (-> s1-0 vector 2 quad) (the-as uint128 0))
-        (set! (-> s1-0 vector 3 quad) (the-as uint128 0))
+      (let ((s1-0 (new-stack-matrix0)))
         (let ((s2-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 1.0))
               (a2-3 (vector-normalize-copy! (new 'stack-no-clear 'vector) arg2 1.0))
               )

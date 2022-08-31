@@ -1391,7 +1391,7 @@
 
 (deftype matrix (structure)
   ((data   float   16          :offset-assert 0 :score -1)
-   (vector vector  4  :inline  :offset        0 :score 999)
+   (vector vector  4  :inline  :offset        0)
    (quad   uint128 4           :offset        0)
    (trans  vector  :inline     :offset        48)
    )
@@ -18712,11 +18712,13 @@
   :flag-assert         #xe01b0022c
   )
 
+;; +++camera-h:camera-blend-to-type
 (defenum camera-blend-to-type
   :type uint64
   (unknown-0 0)
   (unknown-1 1)
   (unknown-2 2))
+;; ---camera-h:camera-blend-to-type
 
 (deftype camera-slave (process)
   ((trans                         vector               :inline :offset-assert 128 :score 999)
@@ -18778,7 +18780,27 @@
   :method-count-assert 14
   :size-assert         #xa94
   :flag-assert         #xe0a200a94
-  )
+  (:states
+    cam-really-fixed
+    cam-fixed
+    cam-fixed-read-entity
+    cam-pov
+    cam-pov180
+    cam-pov-track
+    cam-standoff
+    cam-standoff-read-entity
+    cam-eye
+    cam-spline
+    cam-decel
+    cam-endlessfall
+    cam-circular
+    cam-lookat
+    cam-string
+    cam-stick
+    cam-bike
+    cam-robotboss ;; TODO - state docstrings "A holdout from jak 1?"
+    cam-point-watch
+    cam-free-floating))
 
 (deftype camera-master (process)
   ((master-options      uint32                           :offset-assert 128)
@@ -21517,7 +21539,7 @@
   )
 |#
 
-(define-extern transform-float-point (function vector vector4w vector4w)) ;; 
+(define-extern transform-float-point (function vector vector4w vector4w))
 ;; (define-extern add-debug-point function) ;; (function symbol bucket-id vector symbol)
 ;; (define-extern debug-line-clip? function)
 ;; (define-extern internal-draw-debug-line function) ;; (function bucket-id vector vector rgba symbol rgba pointer)
@@ -22456,7 +22478,7 @@
 ;; tfrag-work                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *tfrag-work* tfrag-work) ;; 
+(define-extern *tfrag-work* tfrag-work)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tie                            ;;
@@ -25063,25 +25085,12 @@
   :flag-assert         #x900000014
   )
 
-(define-extern cam-really-fixed (state camera-slave))
-(define-extern cam-fixed (state camera-slave))
-(define-extern cam-fixed-read-entity (state camera-slave))
-(define-extern cam-pov (state camera-slave))
-(define-extern cam-pov180 (state camera-slave))
-(define-extern cam-pov-track (state camera-slave))
+
 (define-extern cam-standoff-calc-trans (function vector :behavior camera-slave))
-(define-extern cam-standoff (state camera-slave))
-(define-extern cam-standoff-read-entity (state camera-slave))
 (define-extern *CAM_EYE-bank* cam-eye-bank)
-(define-extern cam-eye (state camera-slave))
-(define-extern cam-spline (state camera-slave))
-(define-extern cam-decel (state camera-slave))
-(define-extern cam-endlessfall (state camera-slave))
 (define-extern cam-circular-position-into-max-angle (function vector vector float vector :behavior camera-slave))
 ;; (define-extern cam-circular-position (function symbol vector :behavior camera-slave)) ;; TODO - hang
 (define-extern cam-circular-code (function float :behavior camera-slave))
-(define-extern cam-circular (state camera-slave))
-(define-extern cam-lookat (state camera-slave))
 (define-extern *CAM_STRING-bank* cam-string-bank) ;; cam-string-bank
 (define-extern cam-string-find-position-rel! (function vector symbol)) ;; 
 (define-extern cam-string-set-position-rel! (function vector cam-slave-options :behavior camera-slave))
@@ -25103,16 +25112,13 @@
 (define-extern cam-string-move (function object :behavior camera-slave)) ;; 
 (define-extern cam-string-code (function vector :behavior camera-slave)) ;; 
 (define-extern set-string-params (function vector :behavior camera-slave))
-(define-extern cam-string (state camera-slave))
 (define-extern *CAM_STICK-bank* cam-stick-bank) ;; cam-stick-bank
 ;; (define-extern cam-stick-code (function none :behavior camera-slave)) ;; TODO - hang
-(define-extern cam-stick (state camera-slave))
 (define-extern *CAM_BIKE-bank* cam-bike-bank) ;; cam-bike-bank
 (define-extern cam-calc-bike-follow! (function cam-rotation-tracker vector symbol vector :behavior camera-slave)) ;; 
 ;; (define-extern cam-bike-code (function none :behavior camera-slave)) ;; TODO - hang
-(define-extern cam-bike (state camera-slave))
 
-(define-extern cam-robotboss "A holdout from jak 1?" (state camera-slave))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-states-dbg                 ;;
@@ -25148,12 +25154,10 @@
   )
 
 (define-extern *CAM_POINT_WATCH-bank* cam-point-watch-bank)
-(define-extern cam-point-watch (state camera-slave))
 (define-extern *CAM_FREE-bank* cam-free-bank)
 (define-extern cam-mouse-input (function vector vector float))
 (define-extern cam-free-floating-input (function vector vector symbol int vector))
 (define-extern cam-free-floating-move (function matrix vector vector int vector))
-(define-extern cam-free-floating (state camera-slave))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-combiner                   ;;
@@ -25536,13 +25540,13 @@
   :flag-assert         #x900000010
   )
 
-(define-extern *camera-old-cpu* int) ;; int
-(define-extern *camera-old-vu* int) ;; int
-(define-extern *camera-old-tfrag-bytes* int) ;; int
-(define-extern *camera-old-level* string) ;; string
-(define-extern *camera-old-stat-string-tfrag* string) ;; string
-(define-extern *camera-old-stat-string-tfrag-near* string) ;; string
-(define-extern *camera-old-stat-string-total* string) ;; string
+(define-extern *camera-old-cpu* int)
+(define-extern *camera-old-vu* int)
+(define-extern *camera-old-tfrag-bytes* int)
+(define-extern *camera-old-level* string)
+(define-extern *camera-old-stat-string-tfrag* string)
+(define-extern *camera-old-stat-string-tfrag-near* string)
+(define-extern *camera-old-stat-string-total* string)
 (define-extern cam-slave-options->string (function cam-slave-options object string))
 (define-extern cam-index-options->string (function cam-index-options object string))
 (define-extern slave-los-state->string (function slave-los-state string))
@@ -27648,7 +27652,7 @@
 ;; (define-extern process-drawable-scale-from-entity! function)
 ;; (define-extern process-drawable-from-entity! function) ;; (function process-drawable entity-actor none)
 (define-extern reset-actors (function symbol none))
-(define-extern reset-cameras (function none)) ;;
+(define-extern reset-cameras (function none))
 ;; (define-extern entity-birth-no-kill function) ;; (function entity none)
 ;; (define-extern entity-task-complete-on function) ;; (function entity none)
 ;; (define-extern entity-task-complete-off function) ;; (function entity none)
