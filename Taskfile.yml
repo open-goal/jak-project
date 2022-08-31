@@ -83,10 +83,17 @@ tasks:
   decomp:
     cmds:
       - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out"'
+  decomp-file:
+    cmds:
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --config-override '{\"allowed_objects\": [\"{{.FILE}}\"]}'"
   decomp-clean:
     cmds:
       - rm ./decompiler_out/**/*.asm
       - rm ./decompiler_out/**/*disasm.gc
+  update-gsrc: # TODO - make this use git to update all files changed in _REF
+    cmds:
+      - task: decomp-file
+      - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file {{.FILE}}
   # TOOLS
   analyze-ee-memory:
     cmds:
@@ -108,15 +115,10 @@ tasks:
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/
       - task: offline-tests
-  # find-label-types:
-  #   cmds:
-  #     - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
-  #     - task: decomp
-  #     - python ./scripts/find-label-types.py --file "{{.FILES}}"
   # check-gsrc-file:
   #   cmds:
   #     - python ./scripts/check-gsrc-file.py --files "{{.FILES}}"
   type-test:
     cmds:
-      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*MANUAL_TEST_TypeConsistencyWithBuildFirst*"'
+      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*Jak2TypeConsistency*"'
         ignore_error: true
