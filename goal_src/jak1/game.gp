@@ -2043,7 +2043,7 @@
 (goal-src "pc/features/speedruns.gc" "speedruns-h" "autosplit-h")
 (goal-src "pc/pckernel-h.gc" "dma-buffer")
 (goal-src "pc/util/pc-anim-util.gc" "target-h")
-(goal-src "pc/pckernel.gc" "pc-anim-util" "settings" "video" "target-h" "autosplit-h")
+(goal-src "pc/pckernel.gc" "pc-anim-util" "settings" "video" "target-h" "autosplit-h" "speedruns-h")
 (goal-src "pc/subtitle.gc" "text" "pckernel" "hint-control" "loader-h" "gsound" "ambient")
 (goal-src "pc/progress-pc.gc" "progress" "pckernel")
 (goal-src "pc/util/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
