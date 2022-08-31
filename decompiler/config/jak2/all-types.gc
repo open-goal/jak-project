@@ -1390,7 +1390,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype matrix (structure)
-  ((data   float   16          :offset-assert 0)
+  ((data   float   16          :offset-assert 0 :score -1)
    (vector vector  4  :inline  :offset        0)
    (quad   uint128 4           :offset        0)
    (trans  vector  :inline     :offset        48)
@@ -18569,8 +18569,8 @@
   :size-assert         #x30
   :flag-assert         #xb00000030
   (:methods
-    (cam-index-method-9 () none 9) ;; (dummy-9 (_type_ symbol entity vector curve) symbol 9)
-    (cam-index-method-10 () none 10) ;; (dummy-10 (_type_ vector) float 10)
+    (cam-index-method-9 (_type_ symbol entity vector curve) symbol 9)
+    (cam-index-method-10 (_type_ vector) float 10)
     )
   )
 
@@ -18615,21 +18615,21 @@
   :size-assert         #x664
   :flag-assert         #x1800000664
   (:methods
-    (tracking-spline-method-9 () none 9) ;; (TODO-RENAME-9 (_type_) none 9)
-    (tracking-spline-method-10 () none 10) ;; (TODO-RENAME-10 (_type_ vector) none 10)
-    (tracking-spline-method-11 () none 11) ;; (print-nth-point (_type_ int) none 11)
-    (tracking-spline-method-12 () none 12) ;; (TODO-RENAME-12 (_type_) none 12)
-    (tracking-spline-method-13 () none 13) ;; (TODO-RENAME-13 (_type_ int) none 13)
-    (tracking-spline-method-14 () none 14) ;; (TODO-RENAME-14 (_type_ tracking-spline-sampler) none 14)
-    (tracking-spline-method-15 () none 15) ;; (TODO-RENAME-15 (_type_) none 15)
-    (tracking-spline-method-16 () none 16) ;; (TODO-RENAME-16 (_type_ float) none 16)
-    (tracking-spline-method-17 () none 17) ;; (TODO-RENAME-17 (_type_ vector float float symbol) int 17)
-    (tracking-spline-method-18 () none 18) ;; (TODO-RENAME-18 (_type_ float vector tracking-spline-sampler) vector 18)
-    (tracking-spline-method-19 () none 19) ;; (TODO-RENAME-19 (_type_ float vector tracking-spline-sampler) vector 19)
-    (tracking-spline-method-20 () none 20) ;; (TODO-RENAME-20 (_type_ vector int) none 20)
-    (tracking-spline-method-21 () none 21) ;; (TODO-RENAME-21 (_type_ vector float float) vector 21)
-    (tracking-spline-method-22 () none 22) ;; (TODO-RENAME-22 (_type_ float) none 22)
-    (tracking-spline-method-23 () none 23) ;; (TODO-RENAME-23 (_type_) none 23)
+    (tracking-spline-method-9 (_type_) none 9)
+    (tracking-spline-method-10 (_type_ vector) none 10)
+    (tracking-spline-method-11 (_type_ int) none 11)
+    (tracking-spline-method-12 (_type_) none 12)
+    (tracking-spline-method-13 (_type_ int) none 13)
+    (tracking-spline-method-14 (_type_ tracking-spline-sampler) none 14)
+    (tracking-spline-method-15 (_type_) none 15)
+    (tracking-spline-method-16 (_type_ float) none 16)
+    (tracking-spline-method-17 (_type_ vector float float symbol) int 17)
+    (tracking-spline-method-18 (_type_ float vector tracking-spline-sampler) vector 18)
+    (tracking-spline-method-19 (_type_ float vector tracking-spline-sampler) vector 19)
+    (tracking-spline-method-20 (_type_ vector int) none 20)
+    (tracking-spline-method-21 (_type_ vector float float float) vector 21)
+    (tracking-spline-method-22 (_type_ float) none 22)
+    (tracking-spline-method-23 (_type_) none 23)
     )
   )
 
@@ -18690,8 +18690,8 @@
   )
 
 (deftype camera-combiner (process)
-  ((trans             vector               :inline :offset-assert 128)
-   (inv-camera-rot    matrix               :inline :offset-assert 144)
+  ((trans             vector               :inline :offset-assert 128 :score 999)
+   (inv-camera-rot    matrix               :inline :offset-assert 144 :score 999)
    (fov               float                        :offset-assert 208)
    (interp-val        float                        :offset-assert 212)
    (interp-step       float                        :offset-assert 216)
@@ -18722,10 +18722,25 @@
   (drag)
   (line-of-sight)
   (no-rotate)
-  (sticky-angle))
+  (sticky-angle)
+  (words)
+  (unk-13)
+  (unk-14)
+  (unk-15)
+  (unk-16)
+  (unk-17)
+  (unk-18)
+  (unk-19)
+  (unk-20)
+  (unk-21)
+  (unk-22))
+
+(defenum camera-blend-to-type
+  :type uint64
+  (unknown-2 2))
 
 (deftype camera-slave (process)
-  ((trans                         vector               :inline :offset-assert 128)
+  ((trans                         vector               :inline :offset-assert 128 :score 999)
    (fov                           float                        :offset-assert 144)
    (fov0                          float                        :offset-assert 148)
    (fov1                          float                        :offset-assert 152)
@@ -18771,7 +18786,7 @@
    (spline-follow-dist            float                        :offset-assert 2596)
    (enter-has-run                 symbol                       :offset-assert 2600) ;; guessed by decompiler
    (blend-from-type               uint64                       :offset-assert 2608)
-   (blend-to-type                 uint64                       :offset-assert 2616)
+   (blend-to-type                 camera-blend-to-type                       :offset-assert 2616)
    (have-phony-joystick           basic                        :offset-assert 2624)
    (phony-joystick-x              float                        :offset-assert 2628)
    (phony-joystick-y              float                        :offset-assert 2632)
@@ -18831,9 +18846,9 @@
   :size-assert         #x924
   :flag-assert         #x1108b00924
   (:methods
-    (camera-master-method-14 () none 14)
-    (camera-master-method-15 () none 15)
-    (camera-master-method-16 () none 16)
+    (camera-master-method-14 (_type_) none 14)
+    (camera-master-method-15 (_type_) none 15)
+    (camera-master-method-16 (_type_ symbol) none 16)
     )
   )
 
@@ -24916,51 +24931,64 @@
 ;; camera                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *cam-res-string* object) ;; string
-;; (define-extern cam-slave-get-vector-with-offset function) ;; (function entity-actor vector symbol symbol)
-;; (define-extern cam-slave-get-flags function) ;; (function entity symbol uint128)
-;; (define-extern cam-slave-get-float function) ;; (function entity symbol float float)
-;; (define-extern cam-slave-get-fov function) ;; (function entity float)
-;; (define-extern cam-slave-get-intro-step function) ;; (function entity float)
-;; (define-extern cam-slave-get-interp-time function) ;; (function entity float)
-;; (define-extern cam-slave-get-rot function) ;; (function entity-actor matrix matrix)
-;; (define-extern cam-state-from-entity function) ;; (function entity state)
-;; (define-extern parameter-ease-none function) ;; (function object object)
-;; (define-extern parameter-ease-clamp function) ;; (function float float)
-;; (define-extern parameter-ease-lerp-clamp function) ;; (function float float)
-;; (define-extern parameter-ease-sqrt-clamp function) ;; (function float float)
-;; (define-extern fourth-power function) ;; (function float float)
-;; (define-extern third-power function) ;; (function float float)
-;; (define-extern parameter-ease-sqr-clamp function) ;; (function float float)
-;; (define-extern parameter-ease-cube-clamp function)
-;; (define-extern parameter-ease-sin-clamp function) ;; (function float float)
-;; (define-extern cam-slave-init-vars function) ;; (function none :behavior camera-slave)
-;; (define-extern cam-slave-go function) ;; (function state none)
-;; (define-extern cam-slave-init function) ;; (function state entity none :behavior camera-slave)
-;; (define-extern cam-standard-event-handler function) ;; (function process int symbol event-message-block object :behavior camera-slave)
-;; (define-extern cam-curve-pos function) ;; (function vector vector curve symbol vector :behavior camera-slave)
-;; (define-extern cam-curve-setup function) ;; (function vector none :behavior camera-slave)
-;; (define-extern cam-calc-follow! function) ;; (function cam-rotation-tracker vector symbol vector)
-;; (define-extern mat-remove-z-rot function) ;; (function matrix vector matrix)
-;; (define-extern slave-matrix-blend-2 function) ;; (function matrix float vector matrix matrix)
-;; (define-extern vector-into-frustum-nosmooth! function) ;; (function matrix vector float vector)
-;; (define-extern slave-set-rotation! function) ;; (function cam-rotation-tracker vector float float symbol none)
-;; (define-extern v-slrp2! function) ;; (function vector vector vector float vector float vector)
-;; (define-extern v-slrp3! function) ;; (function vector vector vector vector float vector)
+(define-extern *cam-res-string* string)
+(define-extern cam-slave-get-vector-with-offset (function entity-actor vector symbol symbol))
+(define-extern cam-slave-get-flags (function entity symbol cam-index-options))
+(define-extern cam-slave-get-float (function entity symbol float float))
+(define-extern cam-slave-get-fov (function entity float))
+(define-extern cam-slave-get-intro-step (function entity float))
+(define-extern cam-slave-get-interp-time (function entity float))
+(define-extern cam-slave-get-rot (function entity-actor matrix matrix))
+(define-extern cam-state-from-entity (function entity (state camera-slave)))
+(define-extern parameter-ease-none (function object object))
+(define-extern parameter-ease-clamp (function float float))
+(define-extern parameter-ease-lerp-clamp (function float float))
+(define-extern parameter-ease-sqrt-clamp (function float float))
+(define-extern fourth-power (function float float))
+(define-extern third-power (function float float))
+(define-extern parameter-ease-sqr-clamp (function float float))
+(define-extern parameter-ease-cube-clamp (function float float))
+(define-extern parameter-ease-sin-clamp (function float float))
+(define-extern cam-slave-init-vars (function none :behavior camera-slave))
+(define-extern cam-slave-go (function (state camera-slave) none :behavior camera-slave))
+(define-extern cam-slave-init (function (state camera-slave) entity none :behavior camera-slave))
+(define-extern cam-standard-event-handler (function process int symbol event-message-block none :behavior camera-slave))
+(define-extern cam-curve-pos (function vector vector curve symbol vector :behavior camera-slave))
+(define-extern cam-curve-setup (function vector none :behavior camera-slave))
+(define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
+(define-extern mat-remove-z-rot (function matrix vector matrix))
+(define-extern slave-matrix-blend-2 (function matrix float vector matrix matrix))
+(define-extern vector-into-frustum-nosmooth! (function matrix vector float vector))
+(define-extern slave-set-rotation! (function cam-rotation-tracker vector float float symbol none))
+(define-extern v-slrp2! (function vector vector vector float vector float vector))
+(define-extern v-slrp3! (function vector vector vector vector float vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-interface                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern position-in-front-of-camera! (function vector float float vector)) 
-;; (define-extern position-in-front-of-screen! function)
-;; (define-extern matrix-local->world function) ;; (function symbol symbol matrix)
-;; (define-extern matrix-world->local function) ;; (function matrix)
-;; (define-extern *camera-dummy-vector* object) ;; vector
-(define-extern camera-pos (function vector))
-(define-extern math-camera-pos (function vector))
-;; (define-extern camera-matrix function)
-;; (define-extern math-camera-matrix function)
+(define-extern position-in-front-of-camera! (function vector float float vector))
+(define-extern position-in-front-of-screen! (function vector float vector vector))
+(define-extern matrix-local->world
+  "Returns [[*math-camera*]]'s `inv-camera-rot-smooth` if `smooth?` is true, else return `inv-camera-rot`"
+  (function symbol matrix))
+(define-extern matrix-world->local
+  "Returns [[*math-camera*]]'s `camera-rot`"
+  (function matrix))
+(define-extern *camera-dummy-vector* vector)
+(define-extern camera-pos
+  "Returns the `trans` vector from whatever is first determined to exist:
+   - [[*camera-combiner*]]
+   - [[*math-camera*]]
+   - else, [[*camera-dummy-vector*]]"
+  (function vector))
+(define-extern math-camera-pos "Returns [[*math-camera*]]'s `trans`" (function vector))
+(define-extern camera-matrix
+  "If [[*camera-combiner*]] exists, return it's `inv-camera-rot`.  Else, return [[*math-camera*]]'s"
+  (function matrix))
+(define-extern math-camera-matrix
+  "Returns [[*math-camera*]]'s `inv-camera-rot`"
+  (function matrix))
 (define-extern camera-angle (function float))
 (define-extern camera-teleport-to-entity (function entity-actor none :behavior process))
 
@@ -24968,15 +24996,15 @@
 ;; cam-master                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern reset-follow function) ;; (function flocam-eyeat :behavior camera-master)
-;; (define-extern reset-target-tracking function) ;; (function symbol :behavior camera-master)
-;; (define-extern master-track-target function) ;; (function symbol :behavior camera-master)
-;; (define-extern setup-slave-for-hopefull function) ;; (function camera-slave none)
-;; (define-extern master-is-hopeful-better? function) ;; (function camera-slave camera-slave symbol :behavior camera-master)
+(define-extern reset-follow (function symbol :behavior camera-master))
+(define-extern reset-target-tracking (function symbol :behavior camera-master)) ;; 
+(define-extern master-track-target (function symbol :behavior camera-master)) ;; 
+(define-extern setup-slave-for-hopefull (function camera-slave none)) ;; 
+(define-extern master-is-hopeful-better? (function camera-slave camera-slave symbol :behavior camera-master)) ;; 
 ;; (define-extern master-choose-entity function)
 (define-extern cam-master-set-entity (function cam-setting-data none))
 (define-extern cam-master-activate-slave (function symbol none))
-;; (define-extern cam-master-active state) ;; (state camera-master)
+(define-extern cam-master-active (state camera-master))
 ;; (define-extern cam-master-init function) ;; (function none :behavior camera-master)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -25079,13 +25107,13 @@
 
 ;; (define-extern cam-really-fixed state)
 (define-extern cam-fixed (state camera-slave))
-;; (define-extern cam-fixed-read-entity state) ;; (state camera-slave)
+(define-extern cam-fixed-read-entity (state camera-slave))
 (define-extern cam-pov (state camera-slave))
 (define-extern cam-pov180 (state camera-slave))
 (define-extern cam-pov-track (state camera-slave))
 ;; (define-extern cam-standoff-calc-trans function) ;; (function vector :behavior camera-slave)
 (define-extern cam-standoff (state camera-slave))
-;; (define-extern cam-standoff-read-entity state) ;; (state camera-slave)
+(define-extern cam-standoff-read-entity (state camera-slave))
 ;; (define-extern *CAM_EYE-bank* cam-eye-bank) ;; cam-eye-bank
 (define-extern cam-eye (state camera-slave))
 (define-extern cam-spline (state camera-slave))
@@ -25583,7 +25611,7 @@
 ;; (define-extern camera-line-draw function) ;; (function vector vector symbol)
 (define-extern camera-line (function vector vector vector4w none))
 ;; (define-extern camera-line-rel function) ;; (function vector vector vector4w none)
-;; (define-extern camera-line-rel-len function) ;; (function vector vector float vector4w none)
+(define-extern camera-line-rel-len (function vector vector float vector4w none))
 ;; (define-extern camera-sphere function) ;; (function vector float vector none)
 ;; (define-extern camera-cross function) ;; (function vector vector vector vector4w meters basic)
 ;; (define-extern camera-bounding-box-draw function) ;; (function bounding-box basic rgba none)
@@ -25599,7 +25627,7 @@
 ;; (define-extern camera-fov-frame function) ;; (function matrix vector float float float vector4w none)
 ;; (define-extern debug-euler function) ;; (function cam-dbg-scratch object)
 ;; (define-extern bike-cam-limit function) ;; (function float float)
-;; (define-extern camera-slave-debug function) ;; (function camera-slave none)
+(define-extern camera-slave-debug (function camera-slave none))
 ;; (define-extern master-draw-coordinates function) ;; (function vector none)
 ;; (define-extern *cam-collision-record-first* object) ;; int
 ;; (define-extern *cam-collision-record-last* object) ;; int
