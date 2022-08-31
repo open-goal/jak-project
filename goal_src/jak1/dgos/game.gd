@@ -195,6 +195,8 @@
   ("pc-anim-util.o" "pc-anim-util") ;; added
   ("autosplit-h.o" "autosplit-h") ;; added
   ("autosplit.o" "autosplit") ;; added
+  ("speedruns-h.o" "speedruns-h") ;; added
+  ("speedruns.o" "speedruns") ;; added
   ("pckernel.o" "pckernel") ;; added
   ("mood-tables.o" "mood-tables")
   ("mood.o" "mood")
