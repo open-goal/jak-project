@@ -25,5 +25,57 @@
   arg0
   )
 
+(defmethod link-art! art-group ((obj art-group))
+  (when obj
+    (countdown (s5-0 (-> obj length))
+      (let* ((s3-0 (-> obj data s5-0))
+             (s4-0 (if (type? s3-0 art-joint-anim)
+                       s3-0
+                       )
+                   )
+             (s2-0 #f)
+             )
+        (when s4-0
+          (let ((s3-1 7))
+            (while (begin (label cfg-24) (nonzero? s3-1))
+              (+! s3-1 -1)
+              (let ((v1-8 (get-art-group-by-name (-> *level* level s3-1) (-> (the-as art-joint-anim s4-0) master-art-group-name)))
+                    )
+                (when v1-8
+                  (countdown (a0-5 (-> v1-8 length))
+                    (if (= (-> v1-8 data a0-5) (the-as art-joint-anim s4-0))
+                        (goto cfg-24)
+                        )
+                    )
+                  (cond
+                    ((and (< (-> (the-as art-joint-anim s4-0) master-art-group-index) (-> v1-8 length))
+                          (not (-> v1-8 data (-> (the-as art-joint-anim s4-0) master-art-group-index)))
+                          )
+                     (set! (-> v1-8 data (-> (the-as art-joint-anim s4-0) master-art-group-index)) s4-0)
+                     (set! s2-0 #t)
+                     )
+                    (else
+                      (countdown (a0-17 (-> v1-8 length))
+                        (when (not (-> v1-8 data a0-17))
+                          (set! (-> v1-8 data a0-17) s4-0)
+                          (set! s2-0 #t)
+                          (goto cfg-24)
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          (if (not s2-0)
+              (format 0 "ERROR: ~A could not find a master slot to link for ~A.~%" (-> obj name) s4-0)
+              )
+          )
+        )
+      )
+    )
+  obj
+  )
 ;; DECOMP BEGINS
 
