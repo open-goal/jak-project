@@ -10116,6 +10116,7 @@
 
 (declare-type ripple-control basic)
 (declare-type shadow-control basic)
+(declare-type shadow-geo basic)
 
 (deftype draw-control (basic)
   ((process process :offset-assert 4)
@@ -10143,7 +10144,7 @@
    (death-timer-org uint8)
    (death-vertex-skip uint16)
    (death-effect uint32)
-   (shadow uint32)
+   (shadow shadow-geo)
    (shadow-ctrl shadow-control :offset-assert 108)
    (distance meters)
    (origin vector :inline)
@@ -14294,7 +14295,7 @@
 ;; joint-mod-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defenum joint-mod-handler-mode
+(defenum joint-mod-mode
     :bitfield #t
     :type uint32
     (flex-blend 0)  ;; 1
@@ -14305,12 +14306,6 @@
     (joint-set* 5)    ;; 32
     ;; ??             ;; 64
     (reset 7) ;; 128
-    )
-
-(defenum joint-mod-mode
-  :bitfield #t
-  :type uint32
-  
   )
 
 ;; +++joint-mod-h:track-mode
@@ -14372,7 +14367,7 @@
   :flag-assert         #x10000000b8
   ;; Failed to read fields.
   (:methods
-    (new (symbol type joint-mod-handler-mode process-drawable int) _type_ 0)
+    (new (symbol type joint-mod-mode process-drawable int) _type_ 0)
     (joint-mod-method-9 () none 9) ;; (set-mode! (_type_ joint-mod-handler-mode) _type_ 9)
     (joint-mod-method-10 () none 10) ;; (set-target! (_type_ vector) none 10)
     (joint-mod-method-11 () none 11) ;; (look-at-enemy! (_type_ vector symbol process) none 11)
@@ -16197,6 +16192,7 @@
 ;; missing ref test - there's a useless array defintion with a list of not-yet-defined types
 ;; and this doesn't work in goalc.
 
+(declare-type shadow-geo basic)
 (declare-type sidekick basic)
 (declare-type racer-info basic)
 (declare-type tube-info basic)
@@ -16208,7 +16204,7 @@
 (deftype target (process-focusable)
   ((control                 control-info               :score 1      :offset 128) ;; guessed by decompiler
    (skel2                   basic                                    :offset-assert 204)
-   (shadow-backup           shadow-control                           :offset-assert 208)
+   (shadow-backup           shadow-geo                               :offset-assert 208)
    (target-flags            uint32                                   :offset 188)
    (game                    game-info                                :offset-assert 212) ;; guessed by decompiler
    (neck                    joint-mod                                :offset-assert 216) ;; guessed by decompiler
@@ -16617,6 +16613,8 @@
     )
   )
 
+(declare-type collide-query structure)
+
 (deftype collide-cache (basic)
   ((num-tris         int32                      :offset-assert 4)
    (num-prims        int32                      :offset-assert 8)
@@ -16635,13 +16633,13 @@
   (:methods
     (collide-cache-method-9 () none 9) ;; (debug-draw (_type_) none 9)
     (collide-cache-method-10 () none 10) ;; (fill-and-probe-using-line-sphere (_type_ vector vector float collide-kind process collide-tri-result pat-surface) float 10)
-    (collide-cache-method-11 () none 11) ;; (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
-    (collide-cache-method-12 () none 12) ;; (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface) float 12)
+    (fill-and-probe-using-spheres (_type_ collide-query) symbol 11) ;; (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
+    (collide-cache-method-12 (_type_ collide-query) none 12) ;; (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface) float 12)
     (collide-cache-method-13 () none 13) ;; (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
-    (collide-cache-method-14 () none 14) ;; (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable pat-surface) none 14)
+    (fill-using-spheres (_type_ collide-query) none 14) ;; (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable pat-surface) none 14)
     (collide-cache-method-15 () none 15) ;; (fill-using-spheres (_type_ collide-using-spheres-params) none 15)
     (collide-cache-method-16 () none 16) ;; (fill-using-y-probe (_type_ vector float collide-kind process-drawable pat-surface) none 16)
-    (collide-cache-method-17 () none 17) ;; (initialize (_type_) none 17)
+    (probe-using-spheres (_type_ collide-query) symbol 17) ;; (initialize (_type_) none 17)
     (collide-cache-method-18 () none 18) ;; (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result pat-surface) float 18)
     (collide-cache-method-19 () none 19) ;; (probe-using-spheres (_type_ collide-using-spheres-params) symbol 19)
     (collide-cache-method-20 () none 20) ;; (probe-using-y-probe (_type_ vector float collide-kind collide-tri-result pat-surface) float 20)
@@ -16697,14 +16695,14 @@
    (exit-planes      plane              2       :offset-assert 256) ;; ?
    (radius           float                      :offset 268)
    (inv-mat          matrix             :inline :offset 288)
-   (spheres          uint32                     :offset 112)
+   (spheres          (inline-array sphere)      :offset 112 :score 1)
    (num-spheres      uint32                     :offset 116)
-   (solid-only       basic                      :offset 120)
-   (best-dist        float                      :offset 112 :score 1)
+   (solid-only       symbol                     :offset 120)
+   (best-dist        float                      :offset 112 :score -1)
    (best-other-prim  basic                      :offset 116)
    (best-my-prim     basic                      :offset 120)
    (move-vec         vector             :inline :offset 224)
-   (best-u           float                      :offset 112)
+   (best-u           float                      :offset 112 :score -1)
    (action-mask      uint32                     :offset-assert 352)
    (local-box4w      bounding-box4w     :inline :offset-assert 368)
    (search-box       bounding-box4w     :inline :offset-assert 400)
@@ -26080,8 +26078,8 @@
 
 (deftype board (process-drawable)
   ((control       control-info          :offset 128)
-   (shadow-backup shadow-control        :offset 208)
-   (main          basic                 :offset 212)
+   (shadow-backup shadow-geo            :offset 208)
+   (main          joint-mod             :offset 212)
    )
   :method-count-assert 23
   :size-assert         #xd8
@@ -26100,7 +26098,7 @@
    (board-trans            vector :inline     :offset-assert 16)
    (board-quat             vector :inline     :offset-assert 32)
    (board-scale            vector :inline     :offset-assert 48)
-   (main                   basic              :offset-assert 64)
+   (main                   joint-mod          :offset-assert 64)
    (upper-body             basic              :offset-assert 68)
    (sound-bank-knob        float              :offset-assert 72)
    (sound-air-knob         float              :offset-assert 76)
