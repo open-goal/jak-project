@@ -5,26 +5,6 @@
 ;; name in dgo: loader
 ;; dgos: ENGINE, GAME
 
-;; temporary hack to avoid crash at startup
-
-(defmethod set-loaded-art load-dir-art-group ((obj load-dir-art-group) (arg0 art-group))
-  (let ((s4-0 (-> obj string-array)))
-    (dotimes (s3-0 (-> s4-0 length))
-      (when (string= (-> arg0 name) (-> s4-0 s3-0))
-        (set! (-> obj art-group-array s3-0) arg0)
-        (set! arg0 (-> obj art-group-array s3-0))
-        (goto cfg-7)
-        )
-      )
-    (set! (-> s4-0 (-> s4-0 length)) (-> arg0 name))
-    (set! (-> obj art-group-array (-> s4-0 length)) arg0)
-    (+! (-> s4-0 length) 1)
-    )
-  (+! (-> obj art-group-array length) 1)
-  (label cfg-7)
-  arg0
-  )
-
 ;; DECOMP BEGINS
 
 (defmethod mem-usage subtitle-range ((obj subtitle-range) (arg0 memory-usage-block) (arg1 int))
@@ -751,47 +731,20 @@
      (set! (-> obj rec 0 name) arg0)
      (set! (-> obj rec 0 parts) arg1)
      (set! (-> obj rec 0 priority) arg3)
-     (let ((v1-35 (process->ppointer arg2)))
-       (set! (-> obj rec 0 owner) (the-as handle (logior (if v1-35
-                                                             (shl (-> v1-35 0 pid) 32)
-                                                             0
-                                                             )
-                                                         (.asm.sllv.r0 v1-35)
-                                                         )
-                                          )
-             )
-       )
+     (set! (-> obj rec 0 owner) (process->handle arg2))
      )
     ((< arg3 (-> obj rec 1 priority))
      (mem-copy! (&-> (-> obj rec 2) type) (&-> (-> obj rec 1) type) 44)
      (set! (-> obj rec 1 name) arg0)
      (set! (-> obj rec 1 parts) arg1)
      (set! (-> obj rec 1 priority) arg3)
-     (let ((v1-41 (process->ppointer arg2)))
-       (set! (-> obj rec 1 owner) (the-as handle (logior (if v1-41
-                                                             (shl (-> v1-41 0 pid) 32)
-                                                             0
-                                                             )
-                                                         (.asm.sllv.r0 v1-41)
-                                                         )
-                                          )
-             )
-       )
+     (set! (-> obj rec 1 owner) (process->handle arg2))
      )
     ((< arg3 (-> obj rec 2 priority))
      (set! (-> obj rec 2 name) arg0)
      (set! (-> obj rec 2 parts) arg1)
      (set! (-> obj rec 2 priority) arg3)
-     (let ((v1-45 (process->ppointer arg2)))
-       (set! (-> obj rec 2 owner) (the-as handle (logior (if v1-45
-                                                             (shl (-> v1-45 0 pid) 32)
-                                                             0
-                                                             )
-                                                         (.asm.sllv.r0 v1-45)
-                                                         )
-                                          )
-             )
-       )
+     (set! (-> obj rec 2 owner) (process->handle arg2))
      )
     )
   0
@@ -826,7 +779,7 @@
   (local-vars (v0-59 int) (sv-176 int))
   (let ((s2-0 arg2)
         (s1-0 arg3)
-        (gp-0 ((method-of-type spooler-block new) (new 'stack-no-clear 'symbol) spooler-block arg2 arg3))
+        (gp-0 (new 'stack-no-clear 'spooler-block arg2 arg3))
         )
     (let ((s5-0 gp-0))
       (set! (-> s5-0 anim) arg0)
@@ -2021,16 +1974,7 @@
                                )
                          )
                        (set! (-> sv-16 time-stamp) (-> obj update-time))
-                       (let ((v1-61 (process->ppointer arg0)))
-                         (set! (-> sv-16 handle) (the-as handle (logior (if v1-61
-                                                                            (shl (-> v1-61 0 pid) 32)
-                                                                            0
-                                                                            )
-                                                                        (.asm.sllv.r0 v1-61)
-                                                                        )
-                                                         )
-                               )
-                         )
+                       (set! (-> sv-16 handle) (process->handle arg0))
                        (set! (-> sv-16 priority) arg5)
                        (set! (-> sv-16 channel) arg1)
                        (set! (-> sv-16 action) arg2)
