@@ -158,7 +158,7 @@
     (set! (-> v0-0 allocated-length) (the-as uint arg0))
     (set! (-> v0-0 active-channels) (the-as uint 0))
     (set! (-> v0-0 float-channels) (the-as uint 0))
-    (set! (-> v0-0 root-channel) (the-as uint (-> v0-0 channel)))
+    (set! (-> v0-0 root-channel) (the-as (inline-array joint-control) (-> v0-0 channel)))
     (set! (-> v0-0 generate-frame-function) create-interpolated-joint-animation-frame)
     (set! (-> v0-0 prebind-function) #f)
     (set! (-> v0-0 postbind-function) #f)
@@ -666,7 +666,13 @@
   (set! (-> arg0 active-channels) (-> arg1 active-channels))
   (set! (-> arg0 float-channels) (the-as uint 0))
   (set! (-> arg0 root-channel)
-        (the-as uint (-> arg0 channel (/ (the-as int (- (-> arg1 root-channel) (the-as uint (-> arg1 channel)))) 64)))
+        (the-as
+          (inline-array joint-control)
+          (-> arg0
+              channel
+              (/ (the-as int (- (the-as uint (-> arg1 root-channel)) (the-as uint (the-as uint (-> arg1 channel))))) 64)
+              )
+          )
         )
   (let ((v1-10 (min (the-as int (-> arg0 allocated-length)) (the-as int (-> arg1 active-channels)))))
     (mem-copy! (the-as pointer (-> arg0 channel)) (the-as pointer (-> arg1 channel)) (* v1-10 64))
