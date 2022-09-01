@@ -5411,6 +5411,7 @@
 (deftype mood-context (mood-context-core3)
   ((itimes vector4w 4  :inline :offset-assert 1776)
    (state  uint32    32 :offset-assert 1840) ;; arbitrary data - can be floats | symbols
+   (clear  uint128   123 :offset 0) ;; added
    )
   :method-count-assert 9
   :size-assert         #x7b0
@@ -5853,7 +5854,7 @@
     (level-update (_type_) none 19) ;;
     (level-get-target-inside (_type_) level 20) ;; (art-group-get-by-name (_type_ string) art-group 20)
     (alloc-levels-if-needed (_type_ symbol) none 21)
-    (load-commands-set! (_type_ pair) pair 22) ;; (update-vis-volumes (_type_) none 22)
+    (load-commands-set! (_type_ pair) none 22) ;; (update-vis-volumes (_type_) none 22)
     (level-group-method-23 () none 23) ;; (update-vis-volumes-from-nav-mesh (_type_) none 23)
     (load-command-get-index (_type_ symbol int) pair 24) ;; (print-volume-sizes (_type_) none 24)
     (level-group-method-25 () none 25) ;; (level-status (_type_ symbol) symbol 25)
@@ -7421,7 +7422,7 @@
 (define-extern texture-page-level-allocate (function texture-pool texture-page kheap int texture-page))
 ;; (define-extern texture-page-size-check function) ;; (function texture-pool level symbol int)
 ;; (define-extern set-skull-gem-masks function)
-;; (define-extern upload-textures function)
+(define-extern upload-textures (function texture-pool none))
 (define-extern *txt-dma-list* dma-buffer)
 ;; (define-extern texture-relocate function) ;; (function dma-buffer texture int gs-psm int dma-buffer)
 (define-extern relocate-later (function symbol))
@@ -7810,6 +7811,7 @@
 ;; drawable-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare-type region-prim-list structure)
 
 (deftype drawable (basic)
   ((id      int16          :offset-assert 4)
@@ -11703,7 +11705,7 @@
     (game-info-method-14 () none 14) ;;  14)
     (game-info-method-15 () none 15)
     (copy-perms-from-level! (_type_ level) none 16)
-    (copy-perms-to-level! (_type_ level) none 17) 
+    (copy-perms-to-level! (_type_ level) none 17)
     (game-info-method-18 () none 18)
     (get-current-continue-point (_type_) continue-point 19)
     (get-continue-by-name (_type_ string) continue-point 20)
@@ -16454,6 +16456,10 @@
 (declare-type entity-nav-mesh entity)
 (declare-type actor-group basic)
 
+(defenum texture-page-flag
+  :type uint16
+  :bitfield #t)
+
 (deftype bsp-header (drawable)
   (
    ;; TYPE                                                          0
@@ -21047,7 +21053,7 @@
 ;; (define-extern ray-plane-intersect function) ;; (function vector vector vector vector vector vector vector float)
 ;; (define-extern ray-triangle-intersect function) ;; (function vector vector float matrix vector vector float)
 ;; (define-extern collide-do-primitives function) ;; (function float)
-(define-extern moving-sphere-triangle-intersect (function vector vector float collide-cache-tri vector vector float)) ;; 
+(define-extern moving-sphere-triangle-intersect (function vector vector float collide-cache-tri vector vector float)) ;;
 ;; (define-extern moving-sphere-sphere-intersect function) ;; (function vector vector vector vector float)
 ;; (define-extern moving-sphere-moving-sphere-intersect function) ;; (function vector vector vector vector vector float)
 
@@ -21168,7 +21174,7 @@
 
 ;; (define-extern mem-usage-bsp-tree function) ;; (function bsp-header bsp-node memory-usage-block int none)
 ;; (define-extern *test-shrub* object) ;; int
-(define-extern bsp-camera-asm (function bsp-header vector none)) ;; 
+(define-extern bsp-camera-asm (function bsp-header vector none)) ;;
 (define-extern print-collide-stats (function none))
 ;; (define-extern level-remap-texture function) ;; (function texture-id texture-id)
 (define-extern build-masks (function bsp-header none))
@@ -21544,14 +21550,14 @@
 ;; (define-extern internal-draw-debug-text-3d function) ;; (function bucket-id string vector font-color vector2h pointer)
 ;; (define-extern add-debug-outline-triangle function) ;; (function symbol bucket-id vector vector vector rgba symbol)
 ;; (define-extern add-debug-triangle-normal function) ;; (function symbol bucket-id vector vector vector rgba symbol)
-(define-extern add-debug-flat-triangle (function symbol bucket-id vector vector vector rgba symbol)) ;; 
+(define-extern add-debug-flat-triangle (function symbol bucket-id vector vector vector rgba symbol)) ;;
 ;; (define-extern *debug-lines* object) ;; (inline-array debug-line)
 ;; (define-extern *debug-lines-trk* object) ;; debug-tracking-thang
 ;; (define-extern *debug-text-3ds* object) ;; (inline-array debug-text-3d)
 ;; (define-extern *debug-text-3d-trk* object) ;; debug-tracking-thang
 ;; (define-extern get-debug-line function) ;; (function debug-line)
 ;; (define-extern get-debug-text-3d function) ;; (function debug-text-3d)
-;; (define-extern debug-reset-buffers function) ;; (function symbol)
+(define-extern debug-reset-buffers (function symbol))
 (define-extern debug-draw-buffers (function symbol))
 (define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
 (define-extern add-debug-line2d (function symbol bucket-id vector vector vector symbol))
@@ -21859,7 +21865,7 @@
 ;; (define-extern merc-vu1-add-vu-function function) ;; (function dma-packet vu-function int dma-gif-packet)
 ;; (define-extern merc-vu1-initialize-chain function) ;; (function dma-gif-packet dma-packet)
 ;; (define-extern merc-vu1-init-buffer function) ;; (function bucket-id gs-test int none)
-;; (define-extern merc-vu1-init-buffers function) ;; (function none)
+(define-extern merc-vu1-init-buffers (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; emerc                          ;;
@@ -21867,7 +21873,7 @@
 
 ;; (define-extern emerc-vu1-initialize-chain function)
 ;; (define-extern emerc-vu1-init-buffer function)
-;; (define-extern emerc-vu1-init-buffers function)
+(define-extern emerc-vu1-init-buffers (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ripple                         ;;
@@ -21999,7 +22005,7 @@
 ;; (define-extern generic-init-buf function) ;; (function dma-buffer int gs-zbuf none)
 ;; (define-extern generic-vu1-init-buf function)
 ;; (define-extern generic-vu1-init-buf-special function)
-;; (define-extern generic-vu1-init-buffers function)
+(define-extern generic-vu1-init-buffers (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-effect                 ;;
@@ -22393,7 +22399,7 @@
 ;; (define-extern mem-usage-shrub-walk function) ;; (function draw-node int memory-usage-block int draw-node)
 ;; (define-extern shrub-vu1-block object) ;; vu-function
 ;; (define-extern shrub-num-tris function) ;; (function shrubbery uint)
-(define-extern shrub-make-perspective-matrix (function matrix matrix)) ;; 
+(define-extern shrub-make-perspective-matrix (function matrix matrix)) ;;
 ;; (define-extern shrub-init-view-data function) ;; (function shrub-view-data symbol)
 ;; (define-extern shrub-upload-view-data function) ;; (function dma-buffer symbol)
 ;; (define-extern shrub-time function) ;; (function int int int int int int)
@@ -22413,7 +22419,7 @@
 ;; shrub-work                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *instance-shrub-work* instance-shrub-work) ;; 
+(define-extern *instance-shrub-work* instance-shrub-work) ;;
 ;; (define-extern upload-generic-shrub function) ;; (function dma-buffer generic-shrub-fragment int int dma-buffer)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -22470,7 +22476,7 @@
 ;; (define-extern tfrag-vu1-init-buf function)
 ;; (define-extern tfrag-scissor-vu1-init-buf function)
 ;; (define-extern *tfrag-init-table* object)
-;; (define-extern tfrag-vu1-init-buffers function)
+(define-extern tfrag-vu1-init-buffers (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tfrag-work                     ;;
@@ -22678,7 +22684,7 @@
 ;; tie-work                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *instance-tie-work* instance-tie-work) ;; 
+(define-extern *instance-tie-work* instance-tie-work) ;;
 ;; (define-extern *prototype-tie-work* object) ;; prototype-tie-work
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -22736,7 +22742,7 @@
 ;; (define-extern tie-init-envmap-buf function)
 ;; (define-extern tie-init-envmap-scissor-buf function)
 ;; (define-extern *tie-init-table* object)
-;; (define-extern tie-vu1-init-buffers function)
+(define-extern tie-vu1-init-buffers (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sync-info                      ;;
@@ -22832,7 +22838,7 @@
 |#
 
 (define-extern *part-id-table* (array sparticle-launcher))
-(define-extern *part-group-id-table* (array sparticle-launch-group)) ;; 
+(define-extern *part-group-id-table* (array sparticle-launch-group)) ;;
 ;; (define-extern *sp-temp* object)
 ;; (define-extern lookup-part-group-by-name function) ;; (function string basic)
 ;; (define-extern lookup-part-group-pointer-by-name function) ;; (function string (pointer sparticle-launch-group))
@@ -22844,7 +22850,7 @@
 ;; (define-extern *sp-launcher-enable* object) ;; symbol
 ;; (define-extern particle-setup-adgif function) ;; (function adgif-shader texture-id none)
 ;; (define-extern *particle-adgif-cache* object) ;; particle-adgif-cache
-;; (define-extern particle-adgif-cache-flush function)
+(define-extern particle-adgif-cache-flush (function none))
 ;; (define-extern particle-adgif function) ;; (function adgif-shader texture-id none)
 ;; (define-extern particle-adgif-callback function)
 ;; (define-extern sp-queue-launch function) ;; (function sparticle-system sparticle-launcher vector int)
@@ -22927,7 +22933,7 @@
 ;; (define-extern all-particles-50-to-60 function) ;; (function none)
 ;; (define-extern all-particles-60-to-50 function) ;; (function none)
 ;; (define-extern remap-particle function)
-;; (define-extern remap-all-particles function)
+(define-extern remap-all-particles (function none))
 (define-extern process-particles (function none))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; entity-table                   ;;
@@ -23294,7 +23300,7 @@
 (define-extern update-mood-exterior (function mood-context-core3 mood-table float int object)) ;; TODO - so many potential return values...
 (define-extern copy-mood-exterior (function mood-context symbol))
 (define-extern copy-mood-exterior-ambi (function mood-context symbol none))
-(define-extern clear-mood-context (function int none))
+(define-extern clear-mood-context (function mood-context none))
 ;; (define-extern update-mood-interior function)
 (define-extern update-mood-flames (function mood-context int int int float float float float :behavior process))
 (define-extern *flash0* (array float))
@@ -24173,7 +24179,7 @@
 ;; weather-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern group-rain-screend-drop sparticle-launch-group) ;; 
+(define-extern group-rain-screend-drop sparticle-launch-group) ;;
 (define-extern update-snow (function target none))
 ;; (define-extern birth-func-omega-normal-orient function)
 ;; (define-extern birth-func-rain function)
@@ -24181,7 +24187,7 @@
 ;; (define-extern check-drop-level-rain2 function)
 ;; (define-extern check-drop-level-splash function)
 (define-extern update-rain (function target none))
-(define-extern cam-master-effect (function none :behavior camera-master)) ;; 
+(define-extern cam-master-effect (function none :behavior camera-master)) ;;
 ;; (define-extern sparticle-track-sun function) ;; (function int sparticle-cpuinfo matrix none)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -24192,7 +24198,7 @@
 (define-extern time-of-day-update (function none :behavior time-of-day-proc))
 (define-extern update-counters (function float :behavior time-of-day-proc))
 (define-extern time-of-day-tick (state time-of-day-proc))
-(define-extern init-time-of-day (function object :behavior time-of-day-proc)) ;; 
+(define-extern init-time-of-day (function object :behavior time-of-day-proc)) ;;
 (define-extern start-time-of-day (function (pointer process)))
 (define-extern time-of-day-setup (function symbol symbol))
 ;; (define-extern time-of-day-interp-colors function) ;; (function (pointer rgba) uint mood-context none)
@@ -24416,7 +24422,7 @@
 (define-extern *print-login* symbol)
 (define-extern load-buffer-resize (function level pointer none))
 (define-extern level-update-after-load (function level login-state level))
-(define-extern bg (function symbol int))
+(define-extern bg (function symbol none))
 (define-extern play  (function symbol symbol int))
 (define-extern play-boot (function none))
 ;; (define-extern update-sound-banks function) ;; (function int)
@@ -25090,30 +25096,30 @@
 ;; (define-extern cam-circular-position (function symbol vector :behavior camera-slave)) ;; TODO - hang
 (define-extern cam-circular-code (function float :behavior camera-slave))
 (define-extern *CAM_STRING-bank* cam-string-bank) ;; cam-string-bank
-(define-extern cam-string-find-position-rel! (function vector symbol)) ;; 
+(define-extern cam-string-find-position-rel! (function vector symbol)) ;;
 (define-extern cam-string-set-position-rel! (function vector cam-slave-options :behavior camera-slave))
-(define-extern string-push-help (function float)) ;; 
-(define-extern cam-draw-collide-cache (function collide-cache none)) ;; 
-(define-extern dist-info-init (function collide-los-dist-info none)) ;; 
-(define-extern dist-info-valid? (function collide-los-dist-info symbol)) ;; 
-(define-extern dist-info-append (function collide-los-dist-info vector none)) ;; 
-(define-extern dist-info-print (function collide-los-dist-info string object)) ;; 
-(define-extern los-cw-ccw (function (inline-array collide-cache-tri) vector vector float collide-los-result vector float symbol)) ;; 
+(define-extern string-push-help (function float)) ;;
+(define-extern cam-draw-collide-cache (function collide-cache none)) ;;
+(define-extern dist-info-init (function collide-los-dist-info none)) ;;
+(define-extern dist-info-valid? (function collide-los-dist-info symbol)) ;;
+(define-extern dist-info-append (function collide-los-dist-info vector none)) ;;
+(define-extern dist-info-print (function collide-los-dist-info string object)) ;;
+(define-extern los-cw-ccw (function (inline-array collide-cache-tri) vector vector float collide-los-result vector float symbol)) ;;
 (define-extern cam-los-spline-collide (function vector vector pat-surface float)) ;;
-(define-extern cam-los-setup-lateral (function collide-los-result vector vector symbol :behavior camera-slave)) ;; 
-(define-extern cam-los-collide (function vector vector collide-los-result pat-surface symbol :behavior camera-slave)) ;; 
-(define-extern cam-string-follow (function object :behavior camera-slave)) ;; 
+(define-extern cam-los-setup-lateral (function collide-los-result vector vector symbol :behavior camera-slave)) ;;
+(define-extern cam-los-collide (function vector vector collide-los-result pat-surface symbol :behavior camera-slave)) ;;
+(define-extern cam-string-follow (function object :behavior camera-slave)) ;;
 ;; (define-extern cam-string-line-of-sight (function vector :behavior camera-slave)) ;; TODO - hang
-(define-extern cam-dist-analog-input (function int float float)) ;; 
-(define-extern cam-string-joystick (function vector :behavior camera-slave)) ;; 
-(define-extern cam-string-find-hidden (function none :behavior camera-slave)) ;; 
-(define-extern cam-string-move (function object :behavior camera-slave)) ;; 
-(define-extern cam-string-code (function vector :behavior camera-slave)) ;; 
+(define-extern cam-dist-analog-input (function int float float)) ;;
+(define-extern cam-string-joystick (function vector :behavior camera-slave)) ;;
+(define-extern cam-string-find-hidden (function none :behavior camera-slave)) ;;
+(define-extern cam-string-move (function object :behavior camera-slave)) ;;
+(define-extern cam-string-code (function vector :behavior camera-slave)) ;;
 (define-extern set-string-params (function vector :behavior camera-slave))
 (define-extern *CAM_STICK-bank* cam-stick-bank) ;; cam-stick-bank
 ;; (define-extern cam-stick-code (function none :behavior camera-slave)) ;; TODO - hang
 (define-extern *CAM_BIKE-bank* cam-bike-bank) ;; cam-bike-bank
-(define-extern cam-calc-bike-follow! (function cam-rotation-tracker vector symbol vector :behavior camera-slave)) ;; 
+(define-extern cam-calc-bike-follow! (function cam-rotation-tracker vector symbol vector :behavior camera-slave)) ;;
 ;; (define-extern cam-bike-code (function none :behavior camera-slave)) ;; TODO - hang
 
 
@@ -25169,17 +25175,17 @@
 ;; cam-update                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern plane-from-points (function (inline-array plane) vector vector vector int float)) ;; 
-(define-extern set-point (function vector float float float float)) ;; 
-(define-extern update-view-planes (function math-camera (inline-array plane) float matrix float)) ;; 
-(define-extern *update-leaf-when-outside-bsp* symbol) ;; 
-(define-extern update-visible (function math-camera symbol)) ;; 
-(define-extern *save-camera-inv-rot* matrix) ;; 
-(define-extern move-camera-from-pad (function math-camera math-camera)) ;; 
+(define-extern plane-from-points (function (inline-array plane) vector vector vector int float)) ;;
+(define-extern set-point (function vector float float float float)) ;;
+(define-extern update-view-planes (function math-camera (inline-array plane) float matrix float)) ;;
+(define-extern *update-leaf-when-outside-bsp* symbol) ;;
+(define-extern update-visible (function math-camera symbol)) ;;
+(define-extern *save-camera-inv-rot* matrix) ;;
+(define-extern move-camera-from-pad (function math-camera math-camera)) ;;
 (define-extern external-cam-reset! (function none))
-(define-extern *start-timer* int) ;; 
-(define-extern *timer-value* int) ;; 
-(define-extern *start-pos* vector) ;; 
+(define-extern *start-timer* int) ;;
+(define-extern *timer-value* int) ;;
+(define-extern *start-pos* vector) ;;
 (define-extern update-camera (function symbol)) ;;
 (define-extern move-level-by-name (function symbol float float float vector))
 
@@ -25548,40 +25554,40 @@
 (define-extern cam-slave-options->string (function cam-slave-options object string))
 (define-extern cam-index-options->string (function cam-index-options object string))
 (define-extern slave-los-state->string (function slave-los-state string))
-(define-extern cam-line-dma (function pointer)) ;; 
-(define-extern camera-line2d (function vector4w vector4w pointer)) ;; 
-(define-extern camera-plot-float-func (function float float float float (function float float) vector4w none)) ;; 
-(define-extern camera-line-setup (function vector4w none)) ;; 
-(define-extern camera-line-draw (function vector vector none)) ;; 
+(define-extern cam-line-dma (function pointer)) ;;
+(define-extern camera-line2d (function vector4w vector4w pointer)) ;;
+(define-extern camera-plot-float-func (function float float float float (function float float) vector4w none)) ;;
+(define-extern camera-line-setup (function vector4w none)) ;;
+(define-extern camera-line-draw (function vector vector none)) ;;
 (define-extern camera-line (function vector vector vector4w none))
-(define-extern camera-line-rel (function vector vector vector4w none)) ;; 
+(define-extern camera-line-rel (function vector vector vector4w none)) ;;
 (define-extern camera-line-rel-len (function vector vector float vector4w none))
-(define-extern camera-sphere (function vector float vector4w none)) ;; 
-(define-extern camera-cross (function vector vector vector vector4w meters none)) ;; 
-(define-extern camera-bounding-box-draw (function bounding-box basic rgba none)) ;; 
+(define-extern camera-sphere (function vector float vector4w none)) ;;
+(define-extern camera-cross (function vector vector vector vector4w meters none)) ;;
+(define-extern camera-bounding-box-draw (function bounding-box basic rgba none)) ;;
 (define-extern *cam-debug-los-tri-current* int) ;; int
-(define-extern *cam-debug-los-tri* (inline-array cam-debug-tri)) ;; 
+(define-extern *cam-debug-los-tri* (inline-array cam-debug-tri)) ;;
 (define-extern *cam-debug-coll-tri-current* int) ;; int
 (define-extern *cam-debug-coll-tri* (inline-array cam-debug-tri)) ;; (inline-array cam-debug-tri)
-(define-extern cam-debug-reset-coll-tri (function none)) ;; 
-(define-extern cam-debug-add-los-tri (function (inline-array collide-cache-tri) vector vector none)) ;; 
-(define-extern cam-debug-add-coll-tri (function cam-debug-tri vector cam-debug-tri none)) ;; 
-(define-extern cam-debug-draw-tris (function symbol)) ;; 
-(define-extern camera-fov-draw (function int int vector float float vector4w none)) ;; 
-(define-extern camera-fov-frame (function matrix vector float float float vector4w symbol)) ;; 
-(define-extern debug-euler (function cam-dbg-scratch object)) ;; 
-(define-extern bike-cam-limit (function float float)) ;; 
+(define-extern cam-debug-reset-coll-tri (function none)) ;;
+(define-extern cam-debug-add-los-tri (function (inline-array collide-cache-tri) vector vector none)) ;;
+(define-extern cam-debug-add-coll-tri (function cam-debug-tri vector cam-debug-tri none)) ;;
+(define-extern cam-debug-draw-tris (function symbol)) ;;
+(define-extern camera-fov-draw (function int int vector float float vector4w none)) ;;
+(define-extern camera-fov-frame (function matrix vector float float float vector4w symbol)) ;;
+(define-extern debug-euler (function cam-dbg-scratch object)) ;;
+(define-extern bike-cam-limit (function float float)) ;;
 (define-extern camera-slave-debug (function camera-slave none))
-(define-extern master-draw-coordinates (function vector none)) ;; 
+(define-extern master-draw-coordinates (function vector none)) ;;
 (define-extern *cam-collision-record-first* int) ;; int
 (define-extern *cam-collision-record-last* int) ;; int
 (define-extern *cam-collision-record-show* int) ;; int
-(define-extern *cam-collision-record* cam-collision-record-array) ;; 
-(define-extern cam-collision-record-save (function vector vector int symbol camera-slave none)) ;; 
-(define-extern cam-collision-record-step (function int none)) ;; 
-(define-extern cam-collision-record-draw (function none)) ;; 
-(define-extern camera-master-debug (function camera-master none)) ;; 
-(define-extern debug-set-camera-pos-rot! (function vector matrix vector)) ;; 
+(define-extern *cam-collision-record* cam-collision-record-array) ;;
+(define-extern cam-collision-record-save (function vector vector int symbol camera-slave none)) ;;
+(define-extern cam-collision-record-step (function int none)) ;;
+(define-extern cam-collision-record-draw (function none)) ;;
+(define-extern camera-master-debug (function camera-master none)) ;;
+(define-extern debug-set-camera-pos-rot! (function vector matrix vector)) ;;
 (define-extern cam-restore (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -25625,7 +25631,7 @@
 ;; (define-extern ja-group-size function) ;; (function int :behavior process-drawable)
 ;; (define-extern ja-eval function) ;; (function int :behavior process-drawable)
 ;; (define-extern ja-blend-eval function) ;; (function int :behavior process-drawable)
-;; (define-extern ja-post function) ;; (function none :behavior process-drawable)
+(define-extern ja-post (function none :behavior process-drawable))
 ;; (define-extern sleep-code function)
 ;; (define-extern transform-and-sleep function)
 ;; (define-extern transform-and-sleep-code function)
@@ -27437,13 +27443,13 @@
 (define-extern real-main-draw-hook (function none))
 (define-extern main-draw-hook (function none))
 (define-extern *draw-hook* (function none))
-;; (define-extern default-init-buffer function)
-;; (define-extern default-end-buffer function)
+(define-extern default-init-buffer (function int int int none))
+(define-extern default-end-buffer (function int int int none))
 ;; (define-extern screen-shot-scale function)
 ;; (define-extern screen-shot function)
-;; (define-extern display-frame-start function) ;; (function display int int none)
+(define-extern display-frame-start (function display int float none))
 (define-extern display-frame-finish (function display display))
-;; (define-extern determine-pause-mode function) ;; (function int)
+(define-extern determine-pause-mode (function int))
 (define-extern display-sync (function display none))
 (define-extern swap-display (function display none))
 
@@ -28649,7 +28655,7 @@
 ;; (define-extern render-eyes-64 function)
 ;; (define-extern render-eyes-64-different function)
 ;; (define-extern debug-eyes function)
-;; (define-extern update-eyes function) ;; (function none)
+(define-extern update-eyes (function none))
 ;; (define-extern get-eye-block function) ;; (function int int int)
 ;; (define-extern convert-eye-data function) ;; (function eye uint float)
 ;; (define-extern merc-eye-anim function) ;; (function process-drawable none)

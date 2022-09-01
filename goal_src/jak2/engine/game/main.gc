@@ -7,7 +7,33 @@
 
 ;; DECOMP BEGINS
 
+;; Rough loop outline:
+;; (while *run*
+;;    - suspend                                          ;; runs actors
+;;    - display-loop-main                                ;; runs the drawing/per frame updates
+;;       - per-frame updates for level, global effets
+;;       - draw-hook                                     ;; generates DMA data
+;;       - sync-path                                     ;; waits for previous frame to finish render
+;;       - end-display
+;;       - swap-display
+;;          - display-frame-finish
+;;          - display-sync
+;;             - display-frame-start
+;;    )
+
 (defun end-display ((arg0 display))
+  "Update debug drawing:
+    - debug draws (triangles, spheres, etc)
+    - profile bars
+    - file info
+    - console
+    - other info (iop, memcard, pause)
+
+  This function runs after DMA sync.
+  It's not clear why they did this - in the Jak 1 PC port, it is fine to move this to before sync.
+  Possibly they wanted to leave the bus alone for graphics DMA."
+
+  ;; DMA buffer for memory usage counting.
   (let ((s5-0 (-> (if *debug-segment*
                       (-> arg0 frames (-> arg0 on-screen) debug-buf)
                       (-> arg0 frames (-> arg0 on-screen) global-buf)
@@ -16,52 +42,41 @@
                   )
               )
         )
-    ; (when *debug-segment*
-    ;   (debug-draw-buffers)
-    ;   (let* ((s3-0 (-> arg0 frames (-> arg0 on-screen) debug-buf))
-    ;          (s4-0 (-> s3-0 base))
-    ;          )
-    ;     (when (or *display-profile* *stats-profile-bars*)
-    ;       (setup-categories! (-> arg0 frames (-> arg0 on-screen) profile-array))
-    ;       (let ((a2-0 7))
-    ;         (if *display-profile*
-    ;             (draw-bars! *profile-array* s3-0 a2-0)
-    ;             )
-    ;         )
-    ;       (if (and (!= *master-mode* 'menu) *stats-profile-bars*)
-    ;           (draw-text! *profile-array*)
-    ;           )
-    ;       )
-    ;     (when *display-deci-count*
-    ;       (let ((s2-0 draw-string-xy))
-    ;         (format (clear *temp-string*) "~D" *deci-count*)
-    ;         (s2-0 *temp-string* s3-0 448 210 (font-color default) (font-flags shadow))
-    ;         )
-    ;       )
-    ;     (display-file-info)
-    ;     (let ((a3-1 (-> s3-0 base)))
-    ;       (let ((v1-37 (the-as dma-packet (-> s3-0 base))))
-    ;         (set! (-> v1-37 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-    ;         (set! (-> v1-37 vif0) (new 'static 'vif-tag))
-    ;         (set! (-> v1-37 vif1) (new 'static 'vif-tag))
-    ;         (set! (-> s3-0 base) (the-as pointer (&+ v1-37 16)))
-    ;         )
-    ;       (dma-bucket-insert-tag
-    ;         (the-as (inline-array dma-bucket) (-> *display* frames (-> *display* on-screen) bucket-group))
-    ;         (bucket-id debug-no-zbuf)
-    ;         s4-0
-    ;         (the-as (pointer dma-tag) a3-1)
-    ;         )
-    ;       )
-    ;     )
-    ;   )
-    ; (let* ((s3-1 (if *debug-segment*
+
+    ;; debug draw, profile bars, deci count, file info
+    (when *debug-segment*
+      ;; do all debug drawing.
+      ; (debug-draw-buffers)
+      ; (with-dma-buffer-add-bucket ((s3-0 (-> arg0 frames (-> arg0 on-screen) debug-buf)) (bucket-id debug-no-zbuf))
+      ;   (when (or *display-profile* *stats-profile-bars*)
+      ;     (setup-categories! (-> arg0 frames (-> arg0 on-screen) profile-array))
+      ;     (let ((a2-0 7))
+      ;       (if *display-profile*
+      ;           (draw-bars! *profile-array* s3-0 a2-0)
+      ;           )
+      ;       )
+      ;     (if (and (!= *master-mode* 'menu) *stats-profile-bars*)
+      ;         (draw-text! *profile-array*)
+      ;         )
+      ;     )
+      ;   (when *display-deci-count*
+      ;     (let ((s2-0 draw-string-xy))
+      ;       (format (clear *temp-string*) "~D" *deci-count*)
+      ;       (s2-0 *temp-string* s3-0 448 210 (font-color default) (font-flags shadow))
+      ;       )
+      ;     )
+      ;   (display-file-info)
+      ;   )
+      )
+
+    ;; draw console buffer
+    ; (let ((buf (if *debug-segment*
     ;                  (-> arg0 frames (-> arg0 on-screen) debug-buf)
     ;                  (-> arg0 frames (-> arg0 on-screen) global-buf)
     ;                  )
     ;              )
-    ;        (s4-1 (-> s3-1 base))
     ;        )
+    ;   (with-dma-buffer-add-bucket ((s3-0 buf) (bucket-id debug-no-zbuf))
     ;   (if (and (= *master-mode* 'pause)
     ;            (and (!= *cheat-mode* 'camera) (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1)))
     ;            )
@@ -116,19 +131,6 @@
     ;   (if *display-memcard-info*
     ;       (show-mc-info s3-1)
     ;       )
-    ;   (let ((a3-7 (-> s3-1 base)))
-    ;     (let ((v1-94 (the-as dma-packet (-> s3-1 base))))
-    ;       (set! (-> v1-94 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-    ;       (set! (-> v1-94 vif0) (new 'static 'vif-tag))
-    ;       (set! (-> v1-94 vif1) (new 'static 'vif-tag))
-    ;       (set! (-> s3-1 base) (the-as pointer (&+ v1-94 16)))
-    ;       )
-    ;     (dma-bucket-insert-tag
-    ;       (the-as (inline-array dma-bucket) (-> *display* frames (-> *display* on-screen) bucket-group))
-    ;       (bucket-id debug-no-zbuf)
-    ;       s4-1
-    ;       (the-as (pointer dma-tag) a3-7)
-    ;       )
     ;     )
     ;   )
     ; (let ((v1-101 *dma-mem-usage*))
@@ -149,13 +151,15 @@
     ;     (set! (-> v1-101 data 87 total) (-> v1-101 data 87 used))
     ;     )
     ;   )
-    ; )
+    )
   (set! *stdcon* (clear *stdcon0*))
   0
   (none)
   )
 
 (defun display-loop-main ((arg0 display))
+  "Run the engine.
+   This function is called after actors update."
   (local-vars (a0-94 int) (a0-96 int))
   (with-pp
 
@@ -164,22 +168,23 @@
     ;     (load-continue (-> *level* loading-level))
     ;     )
 
-    ; ;; Run blerc to modify foreground models for
+    ; ;; Run blerc to modify foreground models
     ; (with-profiler 'merc *profile-merc-color*
     ;   (blerc-execute)
     ;   (blerc-init)
     ;   )
 
-    ; ;; Run
+    ; ;; Run other merc effects that modify vertices
     ; (texscroll-execute)
     ; (ripple-execute)
     ; (region-execute)
 
+    ;; final call to update joints before drawing.
     ; (with-profiler 'joints *profile-joints-color*
     ;   (execute-math-engine)
     ;   )
 
-
+    ;; execute the debug hook before doing the big updates
     ; (with-profiler 'debug *profile-debug-color*
     ;   (let* ((s5-5 *debug-hook*)
     ;          (t9-12 (car s5-5)))
@@ -192,20 +197,25 @@
     ;   (main-cheats)
     ;   )
 
+    ;; using the position of the in-game camera, update visiblity and matrices for rendering.
     ; (with-profiler 'camera *profile-camera-color*
     ;   (update-camera)
     ;   )
 
+    ;; map texture stuff
     ; (update *bigmap*)
 
+    ;; continue loading level
     ; (if (-> *level* loading-level)
     ;     (load-continue (-> *level* loading-level))
     ;     )
 
+    ;; drawing - this runs foreground/background drawing.
     ; (with-profiler 'draw-hook *profile-draw-hook-color*
     ;   (*draw-hook*)
     ;   )
 
+    ;; another level load
     ; (if (-> *level* loading-level)
     ;     (load-continue (-> *level* loading-level))
     ;     )
@@ -214,16 +224,20 @@
     ;     (draw-color-bars)
     ;     )
 
+    ;; draw and update menus
     ; (with-profiler 'menu-hook *profile-menu-hook-color*
     ;   (*menu-hook*)
     ;   )
 
+    ;; load text files as needed from the menu update
     ; (load-level-text-files -1)
 
+    ;; post-processing filter drawing
     ; (if (-> *screen-filter* draw?)
     ;     (draw *screen-filter*)
     ;     )
 
+    ;; letterbox drawing
     ; (when (or (movie?) (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time)))
     ;   (if (< (-> *game-info* letterbox-time) (-> *display* base-clock frame-counter))
     ;       (set! (-> *game-info* letterbox-time) (-> *display* base-clock frame-counter))
@@ -235,6 +249,7 @@
     ;       )
     ;   )
 
+    ;; blackout drawing
     ; (when (-> *setting-control* user-current render)
     ;   (if (< (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
     ;       (set! (-> *setting-control* user-default bg-a-force) 1.0)
@@ -242,9 +257,14 @@
     ;       )
     ;   )
 
+    ;; generate DMA data for doing the main blit
     ; (blit-displays)
 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; END of normal frame
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+    ;; and we're done with the main frame! end profiling/stat collection
     ; (when *debug-segment*
     ;   (let ((s5-13 (-> arg0 frames (-> arg0 on-screen) profile-array data 0)))
     ;     (when (and *dproc* *debug-segment*)
@@ -262,36 +282,68 @@
     ;   0
     ;   (read! (-> *perf-stats* data (perf-stat-bucket all-code)))
     ;   )
-    ; (when (nonzero? (sync-path 0 0))
-    ;   (*dma-timeout-hook*)
-    ;   (reset-vif1-path)
-    ;   )
-    ; (end-display arg0)
-    ; (swap-display arg0)
-    ; (when *debug-segment*
-    ;   (start-frame! (-> arg0 frames (-> arg0 on-screen) profile-array data 0))
-    ;   (reset! (-> *perf-stats* data (perf-stat-bucket all-code)))
-    ;   )
+
+    ;; now wait for the previous frame to finish rendering...
+    (when (nonzero? (sync-path 0 0))
+      (*dma-timeout-hook*)
+      (reset-vif1-path)
+      )
+
+    ;; debug drawing
+    (end-display arg0)
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; display the frame, and start a new one!
+    ;; this will kick off the next dma transfer
+    (swap-display arg0)
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+    ;; start profiling for the new frame
+    (when *debug-segment*
+      (start-frame! (-> arg0 frames (-> arg0 on-screen) profile-array data 0))
+      (reset! (-> *perf-stats* data (perf-stat-bucket all-code)))
+      )
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; START of next frame
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    ;; a few things before the actor updates...
+
     ; (set! (-> *time-of-day-context* title-updated) #f)
+
+    ;; update teleport counter
     ; (set! *teleport* #f)
     ; (when (nonzero? *teleport-count*)
     ;   (set! *teleport* #t)
     ;   (set! *teleport-count* (+ *teleport-count* -1))
     ;   )
 
+    ;; update particles (we're racing the DMA transfer again, do this asap)
     ; (let ((gp-1 (-> pp clock)))
     ;   (set! (-> pp clock) (-> *display* part-clock))
     ;   (process-particles)
     ;   (set! (-> pp clock) gp-1)
     ;   )
+
+    ;; set up VU0's VIF for collision code run by actors
     ; (dma-send
     ;   (the-as dma-bank #x10008000)
     ;   (the-as uint (-> *collide-vif0-init* data))
     ;   (the-as uint (/ (-> *collide-vif0-init* length) 4))
     ;   )
+
+    ;; send sound commands to IOP
     ; (swap-sound-buffers (ear-trans 0) (ear-trans 1) (camera-pos) (camera-angle))
+
+    ;; advance streaming animation
     ; (str-play-kick)
+
+    ;; handle spawning/despawning as needed.
     ; (level-update *level*)
+
+    ;; do some memory card operations, check auto-save
     ; (mc-run)
     ; (auto-save-check)
     (none)
@@ -300,6 +352,8 @@
 
 (defbehavior display-loop process ()
   (stack-size-set! (-> self main-thread) 512)
+
+  ;; spawn the matrix process. This is responsible for doing the first pass through joints
   ; (process-spawn-function
   ;   process
   ;   (lambda :behavior process
@@ -378,7 +432,7 @@
     ; (set! (-> gp-1 dog-ratio) 1.0)
     (while *run*
       ;(format 0 "hello from display process: ~A" (with-pp pp))
-      ;(display-loop-main gp-1)
+      (display-loop-main gp-1)
       (with-profiler 'actors *profile-actors-color*
         (suspend)
         )

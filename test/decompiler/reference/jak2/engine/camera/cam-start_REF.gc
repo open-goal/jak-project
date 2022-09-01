@@ -16,25 +16,18 @@
 (defun cam-start ((arg0 symbol))
   (cam-stop)
   (set! *camera-combiner*
-        (the-as camera-combiner (ppointer->process (process-spawn
-                                                     camera-combiner
-                                                     :init cam-combiner-init
-                                                     :name (symbol->string (-> camera-combiner symbol))
-                                                     :from *camera-dead-pool*
-                                                     :to *camera-pool*
-                                                     )
-                                                   )
-                                )
+        (the-as camera-combiner
+          (ppointer->process
+            (process-spawn camera-combiner :init cam-combiner-init :from *camera-dead-pool* :to *camera-pool*)
+            )
+          )
         )
-  (set! *camera* (the-as camera-master (ppointer->process (process-spawn
-                                                            camera-master
-                                                            :init cam-master-init
-                                                            :name (symbol->string (-> camera-master symbol))
-                                                            :from *camera-master-dead-pool*
-                                                            :to *camera-pool*
-                                                            )
-                                                          )
-                                       )
+  (set! *camera*
+        (the-as camera-master
+          (ppointer->process
+            (process-spawn camera-master :init cam-master-init :from *camera-master-dead-pool* :to *camera-pool*)
+            )
+          )
         )
   (if arg0
       (reset-cameras)
@@ -45,7 +38,3 @@
 
 ;; failed to figure out what this is:
 (cam-start #f)
-
-
-
-
