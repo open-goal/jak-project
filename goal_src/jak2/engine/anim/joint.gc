@@ -158,7 +158,7 @@
     (set! (-> v0-0 allocated-length) (the-as uint arg0))
     (set! (-> v0-0 active-channels) (the-as uint 0))
     (set! (-> v0-0 float-channels) (the-as uint 0))
-    (set! (-> v0-0 root-channel) (the-as (inline-array joint-control) (-> v0-0 channel)))
+    (set! (-> v0-0 root-channel) (-> v0-0 channel))
     (set! (-> v0-0 generate-frame-function) create-interpolated-joint-animation-frame)
     (set! (-> v0-0 prebind-function) #f)
     (set! (-> v0-0 postbind-function) #f)
@@ -667,7 +667,7 @@
   (set! (-> arg0 float-channels) (the-as uint 0))
   (set! (-> arg0 root-channel)
         (the-as
-          (inline-array joint-control)
+          (inline-array joint-control-channel)
           (-> arg0
               channel
               (/ (the-as int (- (the-as uint (-> arg1 root-channel)) (the-as uint (the-as uint (-> arg1 channel))))) 64)
@@ -683,6 +683,7 @@
   arg0
   )
 
+;; WARN: Using new Jak 2 rtype-of
 (defun joint-control-remap! ((arg0 joint-control) (arg1 art-group) (arg2 art-group) (arg3 pair) (arg4 int) (arg5 string))
   (local-vars
     (sv-16 int)
@@ -1138,9 +1139,9 @@
       (set! (-> gp-0 vector 2 quad) a1-1)
       (set! (-> gp-0 trans quad) a2-1)
       )
-    (vector-normalize! (the-as vector (-> gp-0 data)) 1.0)
-    (vector-normalize! (the-as vector (&-> gp-0 data 4)) 1.0)
-    (vector-normalize! (the-as vector (&-> gp-0 data 8)) 1.0)
+    (vector-normalize! (the-as vector (-> gp-0 vector)) 1.0)
+    (vector-normalize! (-> gp-0 vector 1) 1.0)
+    (vector-normalize! (-> gp-0 vector 2) 1.0)
     gp-0
     )
   )
@@ -1389,17 +1390,16 @@
   (none)
   )
 
-;; definition for function clear-frame-accumulator
+;; ERROR: function has no type analysis. Cannot decompile.
 
-;; definition for function normalize-frame-quaternions
+;; ERROR: function has no type analysis. Cannot decompile.
 
-;; definition for function decompress-fixed-data-to-accumulator
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; definition for function decompress-frame-data-to-accumulator
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; definition for function decompress-frame-data-pair-to-accumulator
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; definition for function make-joint-jump-tables
 (defun make-joint-jump-tables ()
 #|
     #x3ee6b6f9, // = 9 ^ 1055307504
@@ -1703,7 +1703,7 @@
                )
              )
            (set! s3-0 (-> obj slot (+ (-> obj free-index) -1)))
-           (set! (-> obj kheap current) (the pointer (- (the uint (-> obj kheap current)) (the-as uint s1-0))))
+           (set! (-> obj kheap current) (&- (-> obj kheap current) (the-as uint s1-0)))
            )
          )
         (else
@@ -1791,5 +1791,11 @@
   )
 
 (kmemopen global "anim-manager")
+
 (define *anim-manager* (new 'global 'art-joint-anim-manager #x30000))
+
 (kmemclose)
+
+
+
+

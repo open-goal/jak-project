@@ -756,7 +756,7 @@ goos::Object decompile_structure(const TypeSpec& type,
                                  const LinkedObjectFile* file,
                                  bool use_fancy_macros) {
   // some structures we want to decompile to fancy macros instead of a raw static definiton
-  if (use_fancy_macros) {
+  if (use_fancy_macros && file->version == GameVersion::Jak1) {
     if (type == TypeSpec("sp-field-init-spec")) {
       ASSERT(file->version == GameVersion::Jak1);  // need to update enums
       return decompile_sparticle_field_init(type, label, labels, words, ts, file);
