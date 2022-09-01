@@ -1568,10 +1568,6 @@ goos::Object decompile_pair(const DecompilerLabel& label,
             fmt::format("Invalid alignment for pair {}\n", to_print.offset % 16));
       } else {
         auto& word = words.at(to_print.target_segment).at(to_print.offset / 4);
-        if (word.kind() != LinkedWord::EMPTY_PTR) {
-          throw std::runtime_error(
-              fmt::format("Based on alignment, expected to get empty list for pair, but didn't"));
-        }
         // improper list
         lg::error(
             "There is an improper list. This is probably okay, but should be checked manually "

@@ -5854,7 +5854,7 @@
     (level-get-target-inside (_type_) level 20) ;; (art-group-get-by-name (_type_ string) art-group 20)
     (alloc-levels-if-needed (_type_ symbol) none 21)
     (load-commands-set! (_type_ pair) pair 22) ;; (update-vis-volumes (_type_) none 22)
-    (level-group-method-23 () none 23) ;; (update-vis-volumes-from-nav-mesh (_type_) none 23)
+    (art-group-get-by-name (_type_ string (pointer uint32)) art-group 23) ;; (update-vis-volumes-from-nav-mesh (_type_) none 23)
     (load-command-get-index (_type_ symbol int) pair 24) ;; (print-volume-sizes (_type_) none 24)
     (level-group-method-25 () none 25) ;; (level-status (_type_ symbol) symbol 25)
     (level-group-method-26 () none 26)
@@ -10117,6 +10117,7 @@
 
 (declare-type ripple-control basic)
 (declare-type shadow-control basic)
+(declare-type shadow-geo basic)
 
 (deftype draw-control (basic)
   ((process process :offset-assert 4)
@@ -10144,7 +10145,7 @@
    (death-timer-org uint8)
    (death-vertex-skip uint16)
    (death-effect uint32)
-   (shadow uint32)
+   (shadow shadow-geo)
    (shadow-ctrl shadow-control :offset-assert 108)
    (distance meters)
    (origin vector :inline)
@@ -12280,25 +12281,25 @@
 
 
 (deftype top-anim-joint-control (basic)
-  ((process             uint32    :offset-assert 4)
-   (interp-select       uint64  2 :offset-assert 8)
-   (base-anim           basic     :offset-assert 24)
-   (base-anim-speed     float     :offset-assert 28)
-   (base-anim-blend     float     :offset-assert 32)
-   (interp              float     :offset-assert 36)
-   (frame-group         basic     :offset-assert 40)
-   (frame-group-push    basic     :offset-assert 44)
-   (frame-num           float     :offset-assert 48)
-   (frame-targ          basic     :offset-assert 52)
-   (frame-speed         float     :offset-assert 56)
-   (frame-blend         float     :offset-assert 60)
-   (frame-cur-blend     float     :offset-assert 64)
-   (frame-start         float     :offset-assert 68)
-   (frame-post-blend    float     :offset-assert 72)
-   (frame-post-end      float     :offset-assert 76)
-   (frame-push-time     time-frame    :offset-assert 80)
-   (frame-post-put-away basic     :offset-assert 88)
-   (update-time         time-frame    :offset-assert 96)
+  ((process             uint32         :offset-assert 4)
+   (interp-select       uint64  2      :offset-assert 8)
+   (base-anim           basic          :offset-assert 24)
+   (base-anim-speed     float          :offset-assert 28)
+   (base-anim-blend     float          :offset-assert 32)
+   (interp              float          :offset-assert 36)
+   (frame-group         art-joint-anim :offset-assert 40)
+   (frame-group-push    basic          :offset-assert 44)
+   (frame-num           float          :offset-assert 48)
+   (frame-targ          basic          :offset-assert 52)
+   (frame-speed         float          :offset-assert 56)
+   (frame-blend         float          :offset-assert 60)
+   (frame-cur-blend     float          :offset-assert 64)
+   (frame-start         float          :offset-assert 68)
+   (frame-post-blend    float          :offset-assert 72)
+   (frame-post-end      float          :offset-assert 76)
+   (frame-push-time     time-frame     :offset-assert 80)
+   (frame-post-put-away basic          :offset-assert 88)
+   (update-time         time-frame     :offset-assert 96)
    )
   :method-count-assert 13
   :size-assert         #x68
@@ -12331,7 +12332,7 @@
   ((status joint-control-status)
    (allocated-length uint8)
    (active-channels uint8)
-   (root-channel (inline-array joint-control) :offset 16)
+   (root-channel (inline-array joint-control-channel) :offset 16)
    (blend-index uint8)
    (active-frame-interp uint8)
    (float-channels uint8)
@@ -13582,8 +13583,8 @@
   :size-assert         #xc8
   :flag-assert         #x14005000c8
   (:methods
-    (process-drawable-method-14 () none 14) ;; (initialize-skeleton (_type_ skeleton-group pair) none 14)
-    (process-drawable-method-15 () none 15) ;; (initialize-skeleton-by-name (_type_ string object) _type_ 15)
+    (initialize-skeleton (_type_ skeleton-group pair) none 14)
+    (initialize-skeleton-by-name (_type_ string object) draw-control 15)
     (process-drawable-method-16 () none 16) ;; (apply-alignment (_type_ align-opts transformq vector) collide-shape 16)
     (process-drawable-method-17 () none 17) ;; (do-joint-math! (_type_) none 17)
     (process-drawable-method-18 () none 18) ;; (cleanup-for-death (_type_) none 18)
@@ -14296,9 +14297,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defenum joint-mod-mode
-  :bitfield #f
-  :type uint32
-
+    :bitfield #t
+    :type uint32
+    (flex-blend 0)  ;; 1
+    (look-at 1)     ;; 2
+    (world-look-at 2) ;; 4
+    (rotate 3)        ;; 8
+    (joint-set 4)     ;; 16
+    (joint-set* 5)    ;; 32
+    ;; ??             ;; 64
+    (reset 7) ;; 128
   )
 
 ;; +++joint-mod-h:track-mode
@@ -14360,7 +14368,7 @@
   :flag-assert         #x10000000b8
   ;; Failed to read fields.
   (:methods
-     ;; (new (symbol type joint-mod-handler-mode process-drawable int) _type_ 0)
+    (new (symbol type joint-mod-mode process-drawable int) _type_ 0)
     (joint-mod-method-9 () none 9) ;; (set-mode! (_type_ joint-mod-handler-mode) _type_ 9)
     (joint-mod-method-10 () none 10) ;; (set-target! (_type_ vector) none 10)
     (joint-mod-method-11 () none 11) ;; (look-at-enemy! (_type_ vector symbol process) none 11)
@@ -16185,6 +16193,7 @@
 ;; missing ref test - there's a useless array defintion with a list of not-yet-defined types
 ;; and this doesn't work in goalc.
 
+(declare-type shadow-geo basic)
 (declare-type sidekick basic)
 (declare-type racer-info basic)
 (declare-type tube-info basic)
@@ -16196,7 +16205,7 @@
 (deftype target (process-focusable)
   ((control                 control-info               :score 1      :offset 128) ;; guessed by decompiler
    (skel2                   basic                                    :offset-assert 204)
-   (shadow-backup           basic                                    :offset-assert 208)
+   (shadow-backup           shadow-geo                               :offset-assert 208)
    (target-flags            uint32                                   :offset 188)
    (game                    game-info                                :offset-assert 212) ;; guessed by decompiler
    (neck                    joint-mod                                :offset-assert 216) ;; guessed by decompiler
@@ -16608,6 +16617,8 @@
     )
   )
 
+(declare-type collide-query structure)
+
 (deftype collide-cache (basic)
   ((num-tris         int32                      :offset-assert 4)
    (num-prims        int32                      :offset-assert 8)
@@ -16626,13 +16637,13 @@
   (:methods
     (collide-cache-method-9 () none 9) ;; (debug-draw (_type_) none 9)
     (fill-and-probe-using-line-sphere (_type_ vector vector float collide-spec process collide-tri-result pat-surface) float 10)
-    (collide-cache-method-11 () none 11) ;; (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
-    (collide-cache-method-12 () none 12) ;; (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface) float 12)
+    (fill-and-probe-using-spheres (_type_ collide-query) symbol 11) ;; (fill-and-probe-using-spheres (_type_ collide-using-spheres-params) symbol 11)
+    (collide-cache-method-12 (_type_ collide-query) none 12) ;; (fill-and-probe-using-y-probe (_type_ vector float collide-kind process-drawable collide-tri-result pat-surface) float 12)
     (collide-cache-method-13 () none 13) ;; (fill-using-bounding-box (_type_ bounding-box collide-kind process-drawable pat-surface) none 13)
-    (collide-cache-method-14 () none 14) ;; (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable pat-surface) none 14)
+    (fill-using-spheres (_type_ collide-query) none 14) ;; (fill-using-line-sphere (_type_ vector vector float collide-kind process-drawable pat-surface) none 14)
     (collide-cache-method-15 () none 15) ;; (fill-using-spheres (_type_ collide-using-spheres-params) none 15)
     (collide-cache-method-16 () none 16) ;; (fill-using-y-probe (_type_ vector float collide-kind process-drawable pat-surface) none 16)
-    (collide-cache-method-17 () none 17) ;; (initialize (_type_) none 17)
+    (probe-using-spheres (_type_ collide-query) symbol 17) ;; (initialize (_type_) none 17)
     (collide-cache-method-18 () none 18) ;; (probe-using-line-sphere (_type_ vector vector float collide-kind collide-tri-result pat-surface) float 18)
     (collide-cache-method-19 () none 19) ;; (probe-using-spheres (_type_ collide-using-spheres-params) symbol 19)
     (collide-cache-method-20 () none 20) ;; (probe-using-y-probe (_type_ vector float collide-kind collide-tri-result pat-surface) float 20)
@@ -16688,14 +16699,14 @@
    (exit-planes      plane              2       :offset-assert 256) ;; ?
    (radius           float                      :offset 268)
    (inv-mat          matrix             :inline :offset 288)
-   (spheres          uint32                     :offset 112)
+   (spheres          (inline-array sphere)      :offset 112 :score 1)
    (num-spheres      uint32                     :offset 116)
-   (solid-only       basic                      :offset 120)
-   (best-dist        float                      :offset 112 :score 1)
+   (solid-only       symbol                     :offset 120)
+   (best-dist        float                      :offset 112 :score -1)
    (best-other-prim  basic                      :offset 116)
    (best-my-prim     basic                      :offset 120)
    (move-vec         vector             :inline :offset 224)
-   (best-u           float                      :offset 112)
+   (best-u           float                      :offset 112 :score -1)
    (action-mask      uint32                     :offset-assert 352)
    (local-box4w      bounding-box4w     :inline :offset-assert 368)
    (search-box       bounding-box4w     :inline :offset-assert 400)
@@ -22853,7 +22864,7 @@
 ;; (define-extern sp-adjust-launch function) ;; (function sparticle-launchinfo sparticle-cpuinfo (inline-array sp-field-init-spec) none)
 ;; (define-extern sp-euler-convert function) ;; (function sparticle-launchinfo sparticle-cpuinfo none)
 ;; (define-extern sp-rotate-system function) ;; (function sparticle-launchinfo sparticle-cpuinfo transformq none)
-;; (define-extern sp-launch-particles-var function) ;; (function sparticle-system sparticle-launcher vector sparticle-launch-state sparticle-launch-control float none)
+(define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher vector sparticle-launch-state sparticle-launch-control float none))
 ;; (define-extern *death-adgif* object) ;; adgif-shader
 ;; (define-extern sp-launch-particles-death function) ;; (function sparticle-system sparticle-launcher vector none)
 ;; (define-extern sp-clear-queue function) ;; (function none)
@@ -22884,7 +22895,7 @@
 ;; (define-extern birth-func-y->userdata function) ;; (function sparticle-system sparticle-cpuinfo matrix none)
 ;; (define-extern birth-func-ocean-height function) ;; (function sparticle-system sparticle-cpuinfo matrix none)
 ;; (define-extern birth-func-camera-orient function)
-;; (define-extern *particle-quat* object) ;; quaternion
+(define-extern *particle-quat* quaternion)
 ;; (define-extern birth-func-set-quat function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
 ;; (define-extern *particle-vel* object)
 ;; (define-extern birth-func-set-vel function)
@@ -22895,8 +22906,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern sp-particle-copy! function) ;; (function sparticle-cpuinfo sparticle-cpuinfo none)
-;; (define-extern *sp-particle-system-2d* object) ;; sparticle-system
-;; (define-extern *sp-particle-system-3d* object) ;; sparticle-system
+(define-extern *sp-particle-system-2d* sparticle-system)
+(define-extern *sp-particle-system-3d* sparticle-system)
 ;; (define-extern sp-get-block-size function) ;; (function sparticle-system int int)
 ;; (define-extern sp-get-approx-alloc-size function) ;; (function sparticle-system int int)
 ;; (define-extern sp-free-particle function) ;; (function sparticle-system int sparticle-cpuinfo sprite-vec-data-2d none)
@@ -25611,24 +25622,24 @@
 (define-extern process-drawable-art-error (state string process-drawable))
 ;; (define-extern process-drawable-idle state) ;; (state process-drawable)
 ;; (define-extern skeleton-group->draw-control function)
-;; (define-extern ja-done? function) ;; (function int symbol :behavior process-drawable)
+(define-extern ja-done? (function int symbol :behavior process-drawable))
 ;; (define-extern ja-min? function) ;; (function int symbol :behavior process-drawable)
 ;; (define-extern ja-max? function) ;; (function int symbol :behavior process-drawable)
 ;; (define-extern ja-num-frames function) ;; (function int int :behavior process-drawable)
 ;; (define-extern ja-frame-num function) ;; (function int float :behavior process-drawable)
 ;; (define-extern ja-aframe-num function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-aframe function) ;; (function float int float :behavior process-drawable)
+(define-extern ja-aframe (function float int float :behavior process-drawable))
 ;; (define-extern ja-speed function) ;; (function int float :behavior process-drawable)
 ;; (define-extern ja-step function) ;; (function int float :behavior process-drawable)
-;; (define-extern ja-channel-set! function) ;; (function int int :behavior process-drawable)
-;; (define-extern ja-channel-push! function) ;; (function int time-frame int :behavior process-drawable)
+(define-extern ja-channel-set! (function int int :behavior process-drawable))
+(define-extern ja-channel-push! (function int time-frame int :behavior process-drawable))
 ;; (define-extern ja-channel-float! function)
 (define-extern joint-control-reset! (function joint-control joint-control-channel none :behavior process-drawable))
 ;; (define-extern ja-group-size function) ;; (function int :behavior process-drawable)
 ;; (define-extern ja-eval function) ;; (function int :behavior process-drawable)
 ;; (define-extern ja-blend-eval function) ;; (function int :behavior process-drawable)
-;; (define-extern ja-post function) ;; (function none :behavior process-drawable)
-;; (define-extern sleep-code function)
+(define-extern ja-post (function none :behavior process-drawable))
+(define-extern sleep-code (function symbol))
 ;; (define-extern transform-and-sleep function)
 ;; (define-extern transform-and-sleep-code function)
 ;; (define-extern transform-post function) ;; (function int :behavior process-drawable)
@@ -25919,28 +25930,28 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype gun (process-drawable)
-  ((control       basic           :offset 128)
-   (shadow-backup basic           :offset 208)
+  ((control       control-info    :offset 128)
+   (shadow-backup shadow-geo      :offset 208)
    (read-scale    basic           :offset-assert 212)
    (gun-type      pickup-type     :offset-assert 216)
-   (barrel        basic           :offset-assert 220)
-   (mag           basic 4         :offset-assert 224) ;; guessed type
+   (barrel        joint-mod       :offset-assert 220)
+   (mag           joint-mod 4     :offset-assert 224) ;; guessed type
    (mag-scale     float 4         :offset-assert 240)
    )
   :method-count-assert 24
   :size-assert         #x100
   :flag-assert         #x1800800100
   (:methods
-    (gun-method-20 () none 20)
-    (gun-method-21 () none 21)
-    (gun-method-22 () none 22)
-    (gun-method-23 () none 23)
+    (idle () _type_ :state 20)
+    (use (symbol) _type_ :state 21)
+    (hidden () _type_ :state 22)
+    (die () _type_ :state 23)
     )
   )
 
 (deftype gun-info (basic)
-  ((process                uint32             :offset-assert 4)
-   (gun                    uint32             :offset-assert 8)
+  ((process                (pointer target)   :offset-assert 4)
+   (gun                    (pointer gun)      :offset-assert 8)
    (gun-pos                transformq :inline :offset-assert 16)
    (gun-trans              vector     :inline :offset 16)
    (gun-quat               quaternion :inline :offset 32)
@@ -26026,7 +26037,7 @@
   :size-assert         #x2c0
   :flag-assert         #xa000002c0
   (:methods
-    (gun-info-method-9 () none 9)
+    (gun-info-method-9 (_type_) none 9)
     )
   )
 
@@ -26041,17 +26052,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype board (process-drawable)
-  ((control       basic       :score 1 :offset 128)
-   (shadow-backup basic                :offset 208)
-   (main          basic                :offset 212)
+  ((control       control-info          :offset 128)
+   (shadow-backup shadow-geo            :offset 208)
+   (main          joint-mod             :offset 212)
    )
   :method-count-assert 23
   :size-assert         #xd8
   :flag-assert         #x17006000d8
   (:methods
-    (board-method-20 () none 20)
-    (board-method-21 () none 21)
-    (board-method-22 () none 22)
+    (idle (symbol) _type_ :state 20)
+    (use () _type_ :state 21)
+    (hidden () _type_ :state 22)
     )
   )
 
@@ -26062,7 +26073,7 @@
    (board-trans            vector :inline     :offset-assert 16)
    (board-quat             vector :inline     :offset-assert 32)
    (board-scale            vector :inline     :offset-assert 48)
-   (main                   basic              :offset-assert 64)
+   (main                   joint-mod          :offset-assert 64)
    (upper-body             basic              :offset-assert 68)
    (sound-bank-knob        float              :offset-assert 72)
    (sound-air-knob         float              :offset-assert 76)
@@ -26218,7 +26229,6 @@
 ;; darkjak-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype darkjak-info (basic)
   ((process      uint32    :offset-assert 4)
    (attack-id    uint32    :offset-assert 8)
@@ -26229,20 +26239,18 @@
    (want-stage   uint32    :offset-assert 44)
    (clock-pos    float     :offset-assert 48)
    (clock-vel    float     :offset-assert 52)
-   (clock-on     basic     :offset-assert 56)
-   (hud          UNKNOWN 1 :offset-assert 64)
-   (tone         uint32    :offset-assert 72)
-   (bomb         uint32    :offset-assert 76)
+   (clock-on     symbol    :offset-assert 56)
+   (hud          handle  1 :offset 64)
+   (tone         uint32    :offset 72)
+   (bomb         uint32    :offset 76)
    )
   :method-count-assert 10
   :size-assert         #x50
   :flag-assert         #xa00000050
   (:methods
-    (darkjak-info-method-9 () none 9)
+    (darkjak-info-method-9 (_type_ int) none :behavior target 9)
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-util                    ;;
@@ -26360,7 +26368,7 @@
   )
 |#
 
-;; (define-extern *target-shadow-control* shadow-control) ;; shadow-control
+(define-extern *target-shadow-control* shadow-control)
 ;; (define-extern *TARGET-bank* target-bank) ;; target-bank
 ;; (define-extern target-start-attack function) ;; (function none :behavior target)
 ;; (define-extern target-danger-set! function) ;; (function symbol symbol float :behavior target)
@@ -26774,7 +26782,7 @@
 ;; (define-extern target-hide state)
 ;; (define-extern target-launch state) ;; (state float symbol vector int target)
 ;; (define-extern target-play-anim state) ;; (state string handle target)
-;; (define-extern target-clone-anim state) ;; (state handle target)
+(define-extern target-clone-anim (state handle target))
 ;; (define-extern *float-mods* object)
 ;; (define-extern target-float state)
 
@@ -26885,10 +26893,10 @@
 ;; (define-extern target-gun-combo-start function)
 ;; (define-extern target-gun-joint-pre0 function)
 ;; (define-extern target-gun-joint-pre function)
-;; (define-extern target-gun-compute-pos function)
+(define-extern target-gun-compute-pos (function matrix :behavior target))
 ;; (define-extern target-gun-joint-points function)
 ;; (define-extern target-gun-fire function)
-;; (define-extern target-gun-check function)
+(define-extern target-gun-check (function none :behavior target))
 ;; (define-extern camera-rotate-to-vector function)
 ;; (define-extern target-gun-real-post function)
 ;; (define-extern target-gun-post function)
@@ -26897,7 +26905,6 @@
 ;; gun-util                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-eject (projectile-bounce)
   ()
   :method-count-assert 42
@@ -26906,9 +26913,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype gun-mag-yellow (projectile-bounce)
   ()
   :method-count-assert 42
@@ -26917,9 +26922,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype gun-mag-red (projectile-bounce)
   ()
   :method-count-assert 42
@@ -26928,9 +26931,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype gun-mag-blue (projectile-bounce)
   ()
   :method-count-assert 42
@@ -26939,9 +26940,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype gun-mag-dark (projectile-bounce)
   ()
   :method-count-assert 42
@@ -26950,9 +26949,7 @@
   (:methods
     )
   )
-|#
 
-#|
 (deftype beam-info (structure)
   ((y-scale float  :offset-assert 0)
    )
@@ -26960,14 +26957,13 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (define-extern *beam-info* object)
-;; (define-extern birth-func-setup-beam function)
-;; (define-extern birth-func-laser-pointer function)
-;; (define-extern draw-beam function)
-;; (define-extern gun-post function)
-;; (define-extern gun-init function)
+(define-extern *beam-info* beam-info)
+(define-extern birth-func-setup-beam (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern birth-func-laser-pointer (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern draw-beam (function sparticle-launcher vector vector symbol symbol none)) ;; probably wrong args
+(define-extern gun-post (function none :behavior gun))
+(define-extern gun-init (function none :behavior gun))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-blue-shot                  ;;
@@ -26995,11 +26991,10 @@
 ;; gun-yellow-shot                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-yellow-shot (projectile)
-  ((hit-actor? basic          :offset-assert 468)
-   (tail-pos   vector :inline :offset-assert 476)
-   (hit-pos    vector :inline :offset-assert 492)
+  ((hit-actor? symbol         :offset-assert 472)
+   (tail-pos   vector :inline :offset-assert 480)
+   (hit-pos    vector :inline :offset-assert 496)
    )
   :method-count-assert 40
   :size-assert         #x200
@@ -27007,9 +27002,8 @@
   (:methods
     )
   )
-|#
 
-;; (define-extern target-gun-fire-yellow function)
+(define-extern target-gun-fire-yellow (function none :behavior target))
 ;; (define-extern someone-fire-yellow function)
 ;; (define-extern gun-yellow-shot-move function)
 
@@ -27094,8 +27088,8 @@
 ;; board-util                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern board-post function)
-;; (define-extern board-init function)
+(define-extern board-post (function none :behavior board))
+(define-extern board-init (function none :behavior board))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-board                   ;;
@@ -27408,7 +27402,7 @@
 (define-extern sphere-cull (function vector symbol))
 (define-extern guard-band-cull (function vector symbol))
 (define-extern sphere-in-view-frustum? (function sphere symbol))
-;; (define-extern line-in-view-frustum? function) ;; (function vector vector symbol)
+(define-extern line-in-view-frustum? (function vector vector symbol))
 (define-extern vis-cull (function int symbol))
 ;; (define-extern vis-cull-debug function)
 (define-extern error-sphere (function drawable-error string none))
