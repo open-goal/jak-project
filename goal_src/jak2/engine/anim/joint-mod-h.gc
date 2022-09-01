@@ -6,9 +6,16 @@
 ;; dgos: ENGINE, GAME
 
 (defenum joint-mod-mode
-  :bitfield #f
-  :type uint32
-
+    :bitfield #t
+    :type uint32
+    (flex-blend 0)  ;; 1
+    (look-at 1)     ;; 2
+    (world-look-at 2) ;; 4
+    (rotate 3)        ;; 8
+    (joint-set 4)     ;; 16
+    (joint-set* 5)    ;; 32
+    ;; ??             ;; 64
+    (reset 7) ;; 128
   )
 
 ;; +++track-mode
@@ -24,6 +31,10 @@
   (no-scale       6) ;; 64
   )
 ;; ---track-mode
+
+;; NOTE - for cam-debug
+(declare-type try-to-look-at-info basic)
+(define-extern last-try-to-look-at-data try-to-look-at-info)
 
 ;; DECOMP BEGINS
 
@@ -70,6 +81,7 @@
   :size-assert         #xb8
   :flag-assert         #x10000000b8
   (:methods
+    (new (symbol type joint-mod-mode process-drawable int) _type_ 0)
     (joint-mod-method-9 () none 9)
     (joint-mod-method-10 () none 10)
     (joint-mod-method-11 () none 11)
@@ -82,7 +94,7 @@
 
 
 (deftype try-to-look-at-info (basic)
-  ((who  uint64  :offset-assert   8)
+  ((who  handle  :offset-assert   8)
    (horz float   :offset-assert  16)
    (vert float   :offset-assert  20)
    )
@@ -488,9 +500,9 @@
              (matrix*! s2-0 s0-0 (-> arg0 parent bone transform))
              (set-vector!
                s1-0
-               (vector-length (the-as vector (-> s2-0 data)))
-               (vector-length (the-as vector (&-> s2-0 data 4)))
-               (vector-length (the-as vector (&-> s2-0 data 8)))
+               (vector-length (the-as vector (-> s2-0 vector)))
+               (vector-length (-> s2-0 vector 1))
+               (vector-length (-> s2-0 vector 2))
                1.0
                )
              (let ((v1-19 (-> gp-0 blend-transform scale)))
@@ -605,3 +617,10 @@
     (joint-mod-ik-method-10 () none 10)
     )
   )
+
+
+0
+
+
+
+
