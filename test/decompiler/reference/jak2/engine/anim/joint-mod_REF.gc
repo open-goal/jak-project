@@ -1,25 +1,9 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: joint-mod.gc
-;; name in dgo: joint-mod
-;; dgos: ENGINE, GAME
-
-(define-extern real-joint-mod-gun-look-at-handler (function cspace transformq none :behavior process))
-(define-extern joint-mod-gun-look-at-handler (function cspace transformq none :behavior process))
-(define-extern joint-mod-foot-rot-handler (function cspace transformq none :behavior process))
-(define-extern joint-mod-look-at-handler (function cspace transformq none :behavior process))
-(define-extern joint-mod-polar-look-at-handler (function cspace transformq none :behavior process))
-(define-extern joint-mod-world-look-at-handler (function cspace transformq none :behavior process))
-(define-extern joint-mod-rotate-handler (function cspace transformq none :behavior process))
-(define-extern joint-mod-scale-handler (function cspace transformq none :behavior process))
-(define-extern joint-mod-joint-set-handler (function cspace transformq none :behavior process))
-(define-extern joint-mod-joint-set-world-handler (function cspace transformq none :behavior process))
-(define-extern joint-mod-joint-set*-handler (function cspace transformq none :behavior process))
-(define-extern joint-mod-joint-set*-world-handler (function cspace transformq none :behavior process))
-
-;; DECOMP BEGINS
-
+;; definition for function joint-mod-ik-callback
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch matrix vs none.
 ;; WARN: Function joint-mod-ik-callback has a return type of none, but the expression builder found a return statement.
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
@@ -239,8 +223,20 @@
                     (sv-800 sv-816 sv-848 a2-9)
                     )
                   (vector-orient-by-quat! s2-3 s2-3 s1-1)
-                  (let ((f0-26 (fabs (vector-dot (vector-normalize-copy! (new 'stack-no-clear 'vector) s2-3 1.0)
-                                                 (vector-normalize-copy! (new 'stack-no-clear 'vector) s0-1 1.0)))))
+                  (set! sv-864 (vector-normalize-copy! (new 'stack-no-clear 'vector) s2-3 1.0))
+                  (let* ((v1-76 (vector-normalize-copy! (new 'stack-no-clear 'vector) s0-1 1.0))
+                         (f0-23 (-> sv-864 x))
+                         (f1-16 (-> sv-864 y))
+                         (f2-6 (-> sv-864 z))
+                         (f3-5 (-> v1-76 x))
+                         (f4-0 (-> v1-76 y))
+                         (f5-0 (-> v1-76 z))
+                         )
+                    (.mula.s f0-23 f3-5)
+                    (.madda.s f1-16 f4-0)
+                    (.madd.s f0-24 f2-6 f5-0)
+                    )
+                  (let ((f0-26 (fabs f0-24)))
                     (if (< 0.98 f0-26)
                         (vector-orient-by-quat! s2-3 s3-1 s1-1)
                         )
@@ -291,6 +287,7 @@
     )
   )
 
+;; definition for method 0 of type joint-mod-ik
 (defmethod new joint-mod-ik ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 float))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 process) arg0)
@@ -311,12 +308,17 @@
     )
   )
 
+;; definition for method 9 of type joint-mod-ik
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 (defmethod handle-copy! joint-mod-ik ((obj joint-mod-ik) (arg0 vector))
   (set! (-> obj handle-pos quad) (-> arg0 quad))
   0
   (none)
   )
 
+;; definition for method 10 of type joint-mod-ik
+;; INFO: Return type mismatch int vs none.
 (defmethod enable-set! joint-mod-ik ((obj joint-mod-ik) (arg0 symbol))
   (if arg0
       (logior! (-> obj flags) (joint-mod-ik-flags enable))
@@ -326,6 +328,8 @@
   (none)
   )
 
+;; definition for function real-joint-mod-gun-look-at-handler
+;; INFO: Return type mismatch int vs none.
 (defbehavior real-joint-mod-gun-look-at-handler process ((arg0 cspace) (arg1 transformq))
   (local-vars
     (sv-16 joint-mod)
@@ -505,11 +509,15 @@
     )
   )
 
+;; definition for function joint-mod-gun-look-at-handler
 (defbehavior joint-mod-gun-look-at-handler process ((arg0 cspace) (arg1 transformq))
   (real-joint-mod-gun-look-at-handler arg0 arg1)
   (none)
   )
 
+;; definition for function joint-mod-foot-rot-handler
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 (defbehavior joint-mod-foot-rot-handler process ((arg0 cspace) (arg1 transformq))
   (let ((s5-0 (the-as joint-mod (-> arg0 param1)))
         (gp-0 (-> arg0 bone transform))
@@ -568,6 +576,7 @@
   (none)
   )
 
+;; definition for method 0 of type joint-mod
 (defmethod new joint-mod ((allocation symbol) (type-to-make type) (arg0 joint-mod-mode) (arg1 process-drawable) (arg2 int))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 process) arg1)
@@ -594,6 +603,8 @@
     )
   )
 
+;; definition for method 9 of type joint-mod
+;; INFO: Return type mismatch joint-mod vs none.
 (defmethod mode-set! joint-mod ((obj joint-mod) (arg0 joint-mod-mode))
   (set! (-> obj mode) arg0)
   (let ((v1-0 (-> obj joint)))
@@ -701,12 +712,15 @@
   (none)
   )
 
+;; definition for method 15 of type joint-mod
+;; INFO: Return type mismatch joint-mod vs none.
 (defmethod shut-down joint-mod ((obj joint-mod))
   (set! (-> obj shutting-down?) #t)
   (set! (-> obj blend) 0.0)
   (none)
   )
 
+;; definition for method 13 of type joint-mod
 (defmethod twist-set! joint-mod ((obj joint-mod) (arg0 float) (arg1 float) (arg2 float))
   (if arg0
       (set! (-> obj twist x) arg0)
@@ -720,6 +734,9 @@
   (-> obj twist)
   )
 
+;; definition for method 14 of type joint-mod
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 (defmethod trs-set! joint-mod ((obj joint-mod) (arg0 vector) (arg1 quaternion) (arg2 vector))
   (if arg0
       (set! (-> obj trans quad) (-> arg0 quad))
@@ -734,6 +751,9 @@
   (none)
   )
 
+;; definition for method 10 of type joint-mod
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 (defmethod target-set! joint-mod ((obj joint-mod) (arg0 vector))
   (if (= (-> obj mode) (joint-mod-mode reset))
       (mode-set! obj (joint-mod-mode look-at))
@@ -750,8 +770,12 @@
   (none)
   )
 
+;; definition for symbol last-try-to-look-at-data, type try-to-look-at-info
 (define last-try-to-look-at-data (new 'global 'try-to-look-at-info))
 
+;; definition for method 11 of type joint-mod
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 (defmethod look-at! joint-mod ((obj joint-mod) (arg0 vector) (arg1 symbol) (arg2 process))
   (when (= arg1 'attacking)
     (let* ((s2-0 arg2)
@@ -804,10 +828,13 @@
   (none)
   )
 
+;; definition for function joint-mod-look-at-handler
+;; INFO: Used lq/sq
 ;; ERROR: Stack slot load at 176 mismatch: defined as size 4, got size 16
 ;; ERROR: Stack slot load at 176 mismatch: defined as size 4, got size 16
 ;; ERROR: Stack slot load at 176 mismatch: defined as size 4, got size 16
 ;; ERROR: Stack slot load at 176 mismatch: defined as size 4, got size 16
+;; INFO: Return type mismatch int vs none.
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
 ;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
@@ -843,7 +870,18 @@
         (let ((s2-1 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> gp-0 target) s2-0) 1.0)))
           (set! sv-160 (-> gp-0 process node-list data (-> gp-0 base-joint) bone transform vector (-> gp-0 base-nose)))
           (set! sv-80 (the-as symbol #f))
-          (if (< (vector-dot sv-144 s0-0) 0.0)
+          (let ((f0-0 (-> sv-144 x))
+                (f1-0 (-> sv-144 y))
+                (f2-0 (-> sv-144 z))
+                (f3-0 (-> s0-0 x))
+                (f4-0 (-> s0-0 y))
+                (f5-0 (-> s0-0 z))
+                )
+            (.mula.s f0-0 f3-0)
+            (.madda.s f1-0 f4-0)
+            (.madd.s f0-1 f2-0 f5-0)
+            )
+          (if (< f0-1 0.0)
               (set! sv-80 #t)
               )
           (let* ((f30-0 (vector-y-angle s3-0))
@@ -979,6 +1017,9 @@
     )
   )
 
+;; definition for function joint-mod-polar-look-at-guts
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch symbol vs none.
 (defbehavior joint-mod-polar-look-at-guts process ((arg0 cspace) (arg1 transformq))
   (let ((gp-0 (the-as joint-mod (-> arg0 param1))))
     (cspace<-parented-transformq-joint! arg0 arg1)
@@ -1101,12 +1142,17 @@
   (none)
   )
 
+;; definition for function joint-mod-polar-look-at-handler
+;; INFO: Return type mismatch int vs none.
 (defbehavior joint-mod-polar-look-at-handler process ((arg0 cspace) (arg1 transformq))
   (joint-mod-polar-look-at-guts arg0 arg1)
   0
   (none)
   )
 
+;; definition for function joint-mod-world-look-at-handler
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 (defbehavior joint-mod-world-look-at-handler process ((arg0 cspace) (arg1 transformq))
   (local-vars (sv-48 vector) (sv-52 vector) (sv-56 vector))
   (let ((gp-0 (the-as joint-mod (-> arg0 param1))))
@@ -1214,6 +1260,8 @@
   (none)
   )
 
+;; definition for function joint-mod-rotate-handler
+;; INFO: Return type mismatch int vs none.
 (defbehavior joint-mod-rotate-handler process ((arg0 cspace) (arg1 transformq))
   (rlet ((vf0 :class vf)
          (vf4 :class vf)
@@ -1294,6 +1342,8 @@
     )
   )
 
+;; definition for function joint-mod-scale-handler
+;; INFO: Return type mismatch int vs none.
 (defbehavior joint-mod-scale-handler process ((arg0 cspace) (arg1 transformq))
   (rlet ((vf0 :class vf)
          (vf4 :class vf)
@@ -1323,6 +1373,9 @@
     )
   )
 
+;; definition for function joint-mod-joint-set-handler
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 (defbehavior joint-mod-joint-set-handler process ((arg0 cspace) (arg1 transformq))
   (let ((s4-0 (the-as joint-mod (-> arg0 param1))))
     (if (zero? (logand (-> s4-0 track-mode) (track-mode no-trans)))
@@ -1340,6 +1393,9 @@
   (none)
   )
 
+;; definition for function joint-mod-joint-set-world-handler
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
 ;; WARN: Function joint-mod-joint-set-world-handler has a return type of none, but the expression builder found a return statement.
 (defbehavior joint-mod-joint-set-world-handler process ((arg0 cspace) (arg1 transformq))
   (cspace<-parented-transformq-joint! arg0 arg1)
@@ -1423,6 +1479,8 @@
   (none)
   )
 
+;; definition for function joint-mod-joint-set*-handler
+;; INFO: Return type mismatch int vs none.
 (defbehavior joint-mod-joint-set*-handler process ((arg0 cspace) (arg1 transformq))
   (rlet ((vf0 :class vf)
          (vf4 :class vf)
@@ -1460,6 +1518,8 @@
     )
   )
 
+;; definition for function joint-mod-joint-set*-world-handler
+;; INFO: Return type mismatch int vs none.
 (defbehavior joint-mod-joint-set*-world-handler process ((arg0 cspace) (arg1 transformq))
   (cspace<-parented-transformq-joint! arg0 arg1)
   (let ((s5-0 (the-as joint-mod (-> arg0 param1))))
@@ -1484,7 +1544,3 @@
   0
   (none)
   )
-
-
-
-

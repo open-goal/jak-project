@@ -115,42 +115,18 @@
     (ja-channel-push! 1 (seconds 0.1))
     (cond
       (arg0
-        (let ((gp-1 (-> self skel root-channel 0)))
-          (joint-control-channel-group-eval!
-            gp-1
-            (the-as art-joint-anim (-> self draw art-group data 4))
-            (the-as (function joint-control-channel float float float float) num-func-identity)
+        (ja :group! (-> self draw art-group data 4)
+            :num! (identity (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
             )
-          (set! (-> gp-1 frame-num)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1))
-                )
-          )
         )
       (else
-        (let ((a0-3 (-> self skel root-channel 0)))
-          (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> self draw art-group data 4)))
-          (set! (-> a0-3 param 0)
-                (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1))
-                )
-          (set! (-> a0-3 param 1) 1.0)
-          (set! (-> a0-3 frame-num) 0.0)
-          (joint-control-channel-group!
-            a0-3
-            (the-as art-joint-anim (-> self draw art-group data 4))
-            (the-as (function joint-control-channel float float float float) num-func-seek!)
-            )
-          )
+        (ja-no-eval :group! (-> self draw art-group data 4)
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
+                    :frame-num 0.0
+                    )
         (until (ja-done? 0)
           (suspend)
-          (let ((a0-4 (-> self skel root-channel 0)))
-            (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group frames num-frames) -1)))
-            (set! (-> a0-4 param 1) 1.0)
-            (joint-control-channel-group-eval!
-              a0-4
-              (the-as art-joint-anim #f)
-              (the-as (function joint-control-channel float float float float) num-func-seek!)
-              )
-            )
+          (ja :num! (seek!))
           )
         )
       )
@@ -210,30 +186,13 @@
   :code (behavior ()
     (set! (-> self draw shadow) (-> self shadow-backup))
     (ja-channel-push! 1 (seconds 0.1))
-    (let ((a0-2 (-> self skel root-channel 0)))
-      (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 3)))
-      (set! (-> a0-2 param 0)
-            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1))
-            )
-      (set! (-> a0-2 param 1) 1.0)
-      (set! (-> a0-2 frame-num) 0.0)
-      (joint-control-channel-group!
-        a0-2
-        (the-as art-joint-anim (-> self draw art-group data 3))
-        (the-as (function joint-control-channel float float float float) num-func-seek!)
-        )
-      )
+    (ja-no-eval :group! (-> self draw art-group data 3)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
+                :frame-num 0.0
+                )
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-        (set! (-> a0-3 param 0) (the float (+ (-> a0-3 frame-group frames num-frames) -1)))
-        (set! (-> a0-3 param 1) 1.0)
-        (joint-control-channel-group-eval!
-          a0-3
-          (the-as art-joint-anim #f)
-          (the-as (function joint-control-channel float float float float) num-func-seek!)
-          )
-        )
+      (ja :num! (seek!))
       )
     (sleep-code)
     (none)

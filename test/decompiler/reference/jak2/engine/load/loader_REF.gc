@@ -1,14 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: loader.gc
-;; name in dgo: loader
-;; dgos: ENGINE, GAME
-
-(define-extern art-group-load-check (function string kheap int art-group))
-
-;; DECOMP BEGINS
-
+;; definition for method 8 of type subtitle-range
 (defmethod mem-usage subtitle-range ((obj subtitle-range) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 73 (-> arg0 length)))
   (set! (-> arg0 data 72 name) "subtitle")
@@ -20,7 +13,32 @@
   obj
   )
 
+;; definition for method 3 of type load-dir
+;; INFO: Used lq/sq
+(defmethod inspect load-dir ((obj load-dir))
+  (local-vars (sv-16 basic))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlevel: ~A~%" (-> obj lev))
+  (format #t "~Tallocated-length: ~D~%" (-> obj string-array allocated-length))
+  (format #t "~Tlength: ~D~%" (-> obj string-array length))
+  (dotimes (s5-0 (-> obj string-array length))
+    (let ((s4-0 format)
+          (s3-0 #t)
+          (s2-0 "~T  [~D] ~S ~A  (~D bytes)~%")
+          (s1-0 s5-0)
+          (s0-0 (-> obj string-array s5-0))
+          )
+      (set! sv-16 (-> obj data-array s5-0))
+      (let ((t1-0 (mem-size (-> obj data-array s5-0) #f 0)))
+        (s4-0 s3-0 s2-0 s1-0 s0-0 sv-16 t1-0)
+        )
+      )
+    )
+  obj
+  )
 
+;; definition for method 8 of type load-dir
+;; INFO: Return type mismatch symbol vs load-dir.
 (defmethod mem-usage load-dir ((obj load-dir) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 85 (-> arg0 length)))
   (set! (-> arg0 data 84 name) "array")
@@ -49,6 +67,7 @@
   (the-as load-dir #f)
   )
 
+;; definition for method 9 of type load-dir-art-group
 (defmethod load-to-heap-by-name load-dir-art-group ((obj load-dir-art-group) (arg0 string) (arg1 symbol) (arg2 kheap) (arg3 int))
   (let ((s5-0 (-> obj string-array)))
     (dotimes (s3-0 (-> s5-0 length))
@@ -75,6 +94,7 @@
     )
   )
 
+;; definition for method 10 of type load-dir-art-group
 (defmethod set-loaded-art load-dir-art-group ((obj load-dir-art-group) (arg0 art-group))
   (let ((s4-0 (-> obj string-array)))
     (dotimes (s3-0 (-> s4-0 length))
@@ -93,14 +113,15 @@
   arg0
   )
 
+;; definition for function drawable-load
 (defun drawable-load ((arg0 drawable) (arg1 kheap))
-  ;; (local-vars (sp-0 pointer))
+  (local-vars (sp-0 pointer))
   (cond
     ((type? arg0 string)
-     ;; (the-as none sp-0)
-     ;; (if (< (the-as uint sp-0) (the-as uint *stack-top*))
-     ;;     (set! sp-0 (&+ *kernel-sp* -1024))
-     ;;     )
+     (the-as none sp-0)
+     (if (< (the-as uint sp-0) (the-as uint *stack-top*))
+         (set! sp-0 (&+ *kernel-sp* -1024))
+         )
      (let ((s5-1 (loado (the-as string arg0) arg1)))
        (if (and s5-1 (type? s5-1 drawable))
            (login (the-as drawable s5-1))
@@ -113,12 +134,13 @@
     )
   )
 
+;; definition for function art-load
 (defun art-load ((arg0 string) (arg1 kheap))
-  ;; (local-vars (sp-0 pointer))
-  ;; (the-as none sp-0)
-  ;; (if (< (the-as uint sp-0) (the-as uint *stack-top*))
-  ;;     (set! sp-0 (&+ *kernel-sp* -1024))
-  ;;     )
+  (local-vars (sp-0 pointer))
+  (the-as none sp-0)
+  (if (< (the-as uint sp-0) (the-as uint *stack-top*))
+      (set! sp-0 (&+ *kernel-sp* -1024))
+      )
   (let ((s5-0 (loado arg0 arg1)))
     (if (type? s5-0 art)
         (login (the-as art s5-0))
@@ -127,13 +149,14 @@
     )
   )
 
+;; definition for function art-group-load-check
 (defun art-group-load-check ((arg0 string) (arg1 kheap) (arg2 int))
-  ;; (local-vars (sp-0 pointer))
+  (local-vars (sp-0 pointer))
   (when *debug-segment*
-    ;; (the-as none sp-0)
-    ;; (if (< (the-as uint sp-0) (the-as uint *stack-top*))
-    ;;     (set! sp-0 (&+ *kernel-sp* -1024))
-    ;;     )
+    (the-as none sp-0)
+    (if (< (the-as uint sp-0) (the-as uint *stack-top*))
+        (set! sp-0 (&+ *kernel-sp* -1024))
+        )
     (let ((s3-1 (loado (make-file-name (file-kind art-group) arg0 arg2 #f) arg1)))
       (cond
         ((not s3-1)
@@ -155,6 +178,7 @@
     )
   )
 
+;; definition for method 2 of type external-art-buffer
 (defmethod print external-art-buffer ((obj external-art-buffer))
   (format
     #t
@@ -168,6 +192,7 @@
   obj
   )
 
+;; definition for function external-art-buffer-init
 (defun external-art-buffer-init ((arg0 external-art-buffer))
   (let ((v1-0 (-> arg0 heap)))
     (set! (-> v1-0 base) (the-as pointer (+ #x84000 (* #x3dc00 (-> arg0 index)))))
@@ -178,6 +203,7 @@
   0
   )
 
+;; definition for method 9 of type external-art-buffer
 (defmethod set-pending-file external-art-buffer ((obj external-art-buffer) (arg0 string) (arg1 int) (arg2 handle) (arg3 float))
   (set! (-> obj pending-load-file) arg0)
   (set! (-> obj pending-load-file-part) arg1)
@@ -186,15 +212,18 @@
   0
   )
 
+;; definition for method 15 of type external-art-buffer
 (defmethod unlock! external-art-buffer ((obj external-art-buffer))
   (set! (-> obj locked?) #f)
   0
   )
 
+;; definition for method 11 of type external-art-buffer
 (defmethod inactive? external-art-buffer ((obj external-art-buffer))
   (!= (-> obj status) 'active)
   )
 
+;; definition for method 12 of type external-art-buffer
 (defmethod file-status external-art-buffer ((obj external-art-buffer) (arg0 string) (arg1 int))
   (when (and (name= (-> obj pending-load-file) arg0) (= (-> obj pending-load-file-part) arg1))
     (if (and (name= (-> obj load-file) arg0) (= (-> obj load-file-part) arg1))
@@ -204,6 +233,7 @@
     )
   )
 
+;; definition for method 13 of type art-group
 (defmethod link-art! art-group ((obj art-group))
   (when obj
     (countdown (s5-0 (-> obj length))
@@ -256,6 +286,7 @@
   obj
   )
 
+;; definition for method 14 of type art-group
 (defmethod unlink-art! art-group ((obj art-group))
   (when obj
     (countdown (s5-0 (-> obj length))
@@ -293,6 +324,7 @@
   0
   )
 
+;; definition for method 13 of type external-art-buffer
 (defmethod link-file external-art-buffer ((obj external-art-buffer) (arg0 art-group))
   (when arg0
     (link-art! arg0)
@@ -301,6 +333,7 @@
   arg0
   )
 
+;; definition for method 14 of type external-art-buffer
 (defmethod unlink-file external-art-buffer ((obj external-art-buffer) (arg0 art-group))
   (when arg0
     (unlink-art! arg0)
@@ -309,6 +342,7 @@
   0
   )
 
+;; definition for method 10 of type external-art-buffer
 ;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
 (defmethod update external-art-buffer ((obj external-art-buffer))
   (when (or (not (name= (-> obj pending-load-file) (-> obj load-file)))
@@ -490,8 +524,10 @@
   0
   )
 
+;; definition for symbol *preload-spool-anims*, type symbol
 (define *preload-spool-anims* #t)
 
+;; definition for method 12 of type external-art-control
 (defmethod file-status external-art-control ((obj external-art-control) (arg0 string) (arg1 int))
   (dotimes (s3-0 2)
     (let ((v1-3 (file-status (-> obj buffer s3-0) arg0 arg1)))
@@ -503,6 +539,7 @@
   #f
   )
 
+;; definition for method 9 of type external-art-control
 (defmethod update external-art-control ((obj external-art-control) (arg0 symbol))
   (if (nonzero? (-> obj reserve-buffer-count))
       (spool-push obj "reserved" 0 *dproc* (if (-> obj reserve-buffer)
@@ -627,10 +664,12 @@
   0
   )
 
+;; definition for method 15 of type external-art-control
 (defmethod none-reserved? external-art-control ((obj external-art-control))
   (zero? (-> obj reserve-buffer-count))
   )
 
+;; definition for method 13 of type external-art-control
 (defmethod reserve-alloc external-art-control ((obj external-art-control))
   (cond
     ((or (nonzero? (-> obj dma-reserve-buffer-count)) (= *master-mode* 'progress))
@@ -655,6 +694,7 @@
     )
   )
 
+;; definition for method 14 of type external-art-control
 (defmethod reserve-free external-art-control ((obj external-art-control) (arg0 kheap))
   (cond
     ((nonzero? (-> obj dma-reserve-buffer-count))
@@ -683,6 +723,7 @@
   0
   )
 
+;; definition for method 10 of type external-art-control
 (defmethod clear-rec external-art-control ((obj external-art-control))
   (dotimes (v1-0 3)
     (set! (-> obj rec v1-0 type) spool-anim)
@@ -694,6 +735,7 @@
   0
   )
 
+;; definition for method 11 of type external-art-control
 (defmethod spool-push external-art-control ((obj external-art-control) (arg0 string) (arg1 int) (arg2 process) (arg3 float))
   (when (and (= arg3 -99.0) arg2)
     (let ((a0-2 (target-pos 0)))
@@ -752,6 +794,7 @@
   0
   )
 
+;; definition of type spooler-block
 (deftype spooler-block (basic)
   ((anim             spool-anim                          :offset-assert   4)
    (idle             art-joint-anim                      :offset-assert   8)
@@ -776,13 +819,37 @@
     )
   )
 
+;; definition for method 3 of type spooler-block
+(defmethod inspect spooler-block ((obj spooler-block))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tanim: ~A~%" (-> obj anim))
+  (format #t "~1Tidle: ~A~%" (-> obj idle))
+  (format #t "~1Texit: ~A~%" (-> obj exit))
+  (format #t "~1Tbreak-func: ~A~%" (-> obj break-func))
+  (format #t "~1Tpart: ~D~%" (-> obj part))
+  (format #t "~1Tpart-audio-start: ~f~%" (-> obj part-audio-start))
+  (format #t "~1Told-status: ~D~%" (-> obj old-status))
+  (format #t "~1Told-pos: ~D~%" (-> obj old-pos))
+  (format #t "~1Tgood-time: ~D~%" (-> obj good-time))
+  (format #t "~1Told-time: ~D~%" (-> obj old-time))
+  (format #t "~1Tgood-count: ~D~%" (-> obj good-count))
+  (format #t "~1Tsid: ~D~%" (-> obj sid))
+  (format #t "~1Treal-start-time: ~D~%" (-> obj real-start-time))
+  (format #t "~1Tpaused?: ~A~%" (-> obj paused?))
+  (label cfg-4)
+  obj
+  )
 
-(define-extern ja-abort-spooled-anim (function spool-anim art-joint-anim int int :behavior process-drawable))
+;; definition for function ja-play-spooled-anim
 (defbehavior ja-play-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 art-joint-anim) (arg3 (function process-drawable symbol)))
   (local-vars (v0-59 int) (sv-176 int))
   (let ((s2-0 arg2)
         (s1-0 arg3)
-        (gp-0 (new 'stack 'spooler-block arg2 arg3))
+        (gp-0 ((method-of-type spooler-block new) (new 'stack-no-clear 'symbol) spooler-block arg2 arg3))
         )
     (let ((s5-0 gp-0))
       (set! (-> s5-0 anim) arg0)
@@ -1090,6 +1157,7 @@
   0
   )
 
+;; definition for function ja-abort-spooled-anim
 (defbehavior ja-abort-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 int))
   (let ((s3-0 (new 'static 'sound-id)))
     (let ((v1-1
@@ -1140,7 +1208,25 @@
   0
   )
 
+;; definition for method 3 of type gui-control
+(defmethod inspect gui-control ((obj gui-control))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tengine: ~A~%" (-> obj engine))
+  (let ((a2-2 (-> obj engine alive-list next0)))
+    (-> obj engine)
+    (let ((s5-0 (-> a2-2 next0)))
+      (while (!= a2-2 (-> obj engine alive-list-end))
+        (format #t "~T~T~`gui-connection`P~%" a2-2)
+        (set! a2-2 s5-0)
+        (-> obj engine)
+        (set! s5-0 (-> s5-0 next0))
+        )
+      )
+    )
+  obj
+  )
 
+;; definition for method 2 of type gui-connection
 (defmethod print gui-connection ((obj gui-connection))
   (let* ((t9-0 format)
          (a0-1 #t)
@@ -1367,11 +1453,13 @@
   obj
   )
 
+;; definition for method 24 of type gui-control
 (defmethod channel-id-set! gui-control ((obj gui-control) (arg0 gui-connection) (arg1 sound-id))
   (set! (-> obj ids (-> arg0 channel)) arg1)
   0
   )
 
+;; definition for method 15 of type gui-control
 (defmethod gui-control-method-15 gui-control ((obj gui-control) (arg0 process) (arg1 gui-channel) (arg2 string) (arg3 sound-id))
   (let ((s1-0 (the-as gui-connection (-> obj engine alive-list next0))))
     (-> obj engine)
@@ -1406,6 +1494,7 @@
   (the-as gui-connection #f)
   )
 
+;; definition for method 14 of type gui-control
 (defmethod gui-control-method-14 gui-control ((obj gui-control) (arg0 string) (arg1 gui-channel) (arg2 gui-action))
   (let ((s2-0 (the-as gui-connection (-> obj engine alive-list next0))))
     (-> obj engine)
@@ -1437,6 +1526,7 @@
   0
   )
 
+;; definition for method 20 of type gui-control
 (defmethod gui-control-method-20 gui-control ((obj gui-control) (arg0 sound-id) (arg1 symbol) (arg2 int) (arg3 int) (arg4 int))
   (when (nonzero? arg0)
     (let ((v1-2 (gui-control-method-15 *gui-control* (the-as process #f) (gui-channel none) (the-as string #f) arg0)))
@@ -1462,6 +1552,8 @@
     )
   )
 
+;; definition for method 18 of type gui-control
+;; INFO: Return type mismatch object vs symbol.
 ;; WARN: disable def twice: 34. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod gui-control-method-18 gui-control ((obj gui-control) (arg0 gui-channel))
   (let ((v1-0 arg0))
@@ -1484,6 +1576,7 @@
     )
   )
 
+;; definition for method 23 of type gui-control
 (defmethod gui-control-method-23 gui-control ((obj gui-control) (arg0 gui-channel) (arg1 gui-channel) (arg2 symbol) (arg3 gui-connection))
   (let ((s5-0 (-> obj ids arg1)))
     (cond
@@ -1554,6 +1647,8 @@
   #t
   )
 
+;; definition for method 19 of type gui-control
+;; INFO: Used lq/sq
 (defmethod gui-control-method-19 gui-control ((obj gui-control) (arg0 gui-channel) (arg1 gui-connection))
   (local-vars (sv-16 int) (sv-32 int) (sv-48 int))
   (let ((gp-0 #t))
@@ -1620,6 +1715,8 @@
     )
   )
 
+;; definition for method 17 of type gui-control
+;; INFO: Return type mismatch int vs gui-action.
 (defmethod gui-control-method-17 gui-control ((obj gui-control) (arg0 sound-id))
   (let ((gp-0 (the-as gui-connection #f)))
     (if (zero? arg0)
@@ -1753,6 +1850,7 @@
     )
   )
 
+;; definition for method 16 of type gui-control
 (defmethod gui-control-method-16 gui-control ((obj gui-control)
                                             (arg0 gui-action)
                                             (arg1 sound-id)
@@ -1801,6 +1899,9 @@
   0
   )
 
+;; definition for method 9 of type gui-control
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs sound-id.
 (defmethod gui-control-method-9 gui-control ((obj gui-control)
                                            (arg0 process)
                                            (arg1 gui-channel)
@@ -1873,6 +1974,8 @@
           )
   )
 
+;; definition for method 10 of type gui-control
+;; INFO: Return type mismatch int vs none.
 (defmethod gui-control-method-10 gui-control ((obj gui-control) (arg0 process) (arg1 gui-channel))
   (let ((s3-0 (the-as gui-connection (-> obj engine alive-list next0))))
     (-> obj engine)
@@ -1891,6 +1994,9 @@
   (none)
   )
 
+;; definition for method 12 of type gui-control
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs sound-id.
 (defmethod gui-control-method-12 gui-control ((obj gui-control)
                                             (arg0 process)
                                             (arg1 gui-channel)
@@ -1991,6 +2097,7 @@
           )
   )
 
+;; definition for method 21 of type gui-control
 (defmethod gui-control-method-21 gui-control ((obj gui-control) (arg0 gui-connection) (arg1 vector))
   (case (shr (the-as int (-> arg0 channel)) 4)
     ((1 2)
@@ -2062,6 +2169,7 @@
   0
   )
 
+;; definition for method 11 of type gui-control
 (defmethod gui-control-method-11 gui-control ((obj gui-control) (arg0 gui-connection))
   (case (shr (the-as int (-> arg0 channel)) 4)
     ((1 2)
@@ -2076,8 +2184,10 @@
   0
   )
 
+;; definition for method 22 of type gui-control
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for method 13 of type gui-control
 (defmethod update gui-control ((obj gui-control) (arg0 symbol))
   (set! (-> obj ids 65)
         (the-as sound-id (if (and (>= (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
@@ -2247,6 +2357,7 @@
   0
   )
 
+;; definition for method 0 of type gui-control
 (defmethod new gui-control ((allocation symbol) (type-to-make type) (arg0 int))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 engine) ((method-of-type engine new) allocation engine 'gui-control arg0 gui-connection))
@@ -2454,16 +2565,16 @@
     )
   )
 
+;; failed to figure out what this is:
 (kmemopen global "gui-controls")
 
+;; definition for symbol *gui-control*, type gui-control
 (define *gui-control* (new 'global 'gui-control 64))
 
+;; failed to figure out what this is:
 (if (zero? *art-control*)
     (set! *art-control* (new 'global 'external-art-control))
     )
 
+;; failed to figure out what this is:
 (kmemclose)
-
-
-
-
