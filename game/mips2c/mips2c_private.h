@@ -1024,9 +1024,7 @@ struct ExecutionContext {
     gprs[dst].du64[0] = (gpr_src(src).du64[0] < imm) ? 1 : 0;
   }
 
-  void slti(int dst, int src, s64 imm) {
-    gprs[dst].du64[0] = (gpr_src(src).ds64[0] < imm) ? 1 : 0;
-  }
+  void slti(int dst, int src, s64 imm) { gprs[dst].du64[0] = (gpr_src(src).ds64[0] < imm) ? 1 : 0; }
 
   void sll(int dst, int src, int sa) {
     u32 value = gpr_src(src).du32[0] << sa;

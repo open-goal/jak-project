@@ -448,8 +448,8 @@ struct PrototypeBucketTie {
   u32 next[4];
   u16 count[4];
 
-//  u16 generic_count[4];
-//  u32 generic_next[4];
+  //  u16 generic_count[4];
+  //  u32 generic_next[4];
   u8 frag_count[4] = {0};
   u8 index_start[4];
   u16 base_qw[4];

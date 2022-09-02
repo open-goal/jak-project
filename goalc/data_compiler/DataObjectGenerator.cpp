@@ -7,7 +7,6 @@
 #include "common/util/Assert.h"
 #include "common/util/BitUtils.h"
 
-
 namespace {
 template <typename T>
 void add_data_to_vector(const T& data, std::vector<u8>* vec) {

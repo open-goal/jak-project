@@ -1421,7 +1421,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
         }
 
         std::string expected_name;
-        switch(env.version) {
+        switch (env.version) {
           case GameVersion::Jak1:
             expected_name = fmt::format("'{}", proc_type);
             break;

@@ -343,7 +343,7 @@ void MercEffect::from_ref(TypedRef tr,
   dvert_count = read_plain_data_field<u16>(tr, "dvert-count", dts);
   auto* type = dynamic_cast<StructureType*>(dts.ts.lookup_type("merc-effect"));
   Field temp;
-  if(type->lookup_field("envmap-usage", &temp)) {
+  if (type->lookup_field("envmap-usage", &temp)) {
     envmap_or_effect_usage = read_plain_data_field<u8>(tr, "envmap-usage", dts);
   } else {
     envmap_or_effect_usage = read_plain_data_field<u8>(tr, "effect-usage", dts);

@@ -797,8 +797,8 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data,
 }
 
 void DirectRenderer::handle_xyz2_packed(const u8* data,
-                                         SharedRenderState* render_state,
-                                         ScopedProfilerNode& prof) {
+                                        SharedRenderState* render_state,
+                                        ScopedProfilerNode& prof) {
   u32 x, y;
   memcpy(&x, data, 4);
   memcpy(&y, data + 4, 4);

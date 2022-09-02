@@ -1004,7 +1004,6 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
     for (int i = 0; i < 4; i++) {
       u32 start = index_start[i];
       u32 end = start + frag_count[i];
-      fmt::print("i = {}: {} -> {}\n", i, start, end);
       ASSERT(num_color_qwcs <= end);
       num_color_qwcs = std::max(end, num_color_qwcs);
     }

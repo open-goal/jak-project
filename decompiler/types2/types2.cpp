@@ -434,7 +434,6 @@ bool propagate_block(FunctionCache& cache,
                      Function& func,
                      DecompilerTypeSystem& dts,
                      bool tag_lock) {
-  bool debug = false;  // func.name() == "string->float";
   auto& cblock = cache.blocks.at(block_idx);
   auto& block = func.basic_blocks.at(block_idx);
   // for now, assume we'll be done. something might change this later, we'll see

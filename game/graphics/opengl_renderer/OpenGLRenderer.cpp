@@ -706,7 +706,7 @@ void OpenGLRenderer::dispatch_buckets_jak1(DmaFollower dma,
   m_render_state.next_bucket += 16;
 
   // loop over the buckets!
-  for (int bucket_id = 0; bucket_id < m_bucket_renderers.size(); bucket_id++) {
+  for (size_t bucket_id = 0; bucket_id < m_bucket_renderers.size(); bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
     auto bucket_prof = prof.make_scoped_child(renderer->name_and_id());
     g_current_render = renderer->name_and_id();
@@ -746,7 +746,7 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
   m_render_state.next_bucket = m_render_state.buckets_base + 16;
   m_render_state.bucket_for_vis_copy = 0;  // TODO
 
-  for (int bucket_id = 0; bucket_id < m_bucket_renderers.size(); bucket_id++) {
+  for (size_t bucket_id = 0; bucket_id < m_bucket_renderers.size(); bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
     auto bucket_prof = prof.make_scoped_child(renderer->name_and_id());
     g_current_render = renderer->name_and_id();
@@ -764,67 +764,6 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
     vif_interrupt_callback(bucket_id);
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
   }
-
-  //
-  //  // Find the default regs buffer
-  //  auto initial_call_tag = dma.current_tag();
-  //  fmt::print("first: {} @ 0x{:x}\n", initial_call_tag.print(), dma.current_tag_offset());
-  //  ASSERT(initial_call_tag.kind == DmaTag::Kind::CNT);
-  //  ASSERT(initial_call_tag.qwc == 0);
-  //
-  //  dma.read_and_advance();
-  //  fmt::print("first: {} @ 0x{:x}\n", dma.current_tag().print(), dma.current_tag_offset());
-  //  while (!dma.ended()) {
-  //    fmt::print("XF: {}", dma.current_tag().print());
-  //    auto xf = dma.read_and_advance();
-  //  }
-  //
-  //
-  //  auto initial_call_default_regs = dma.read_and_advance();
-  //  ASSERT(initial_call_default_regs.transferred_tag == 0);  // should be a nop.
-  //  m_render_state.default_regs_buffer = dma.current_tag_offset();
-  //  auto default_regs_tag = dma.current_tag();
-  //  ASSERT(default_regs_tag.kind == DmaTag::Kind::CNT);
-  //  ASSERT(default_regs_tag.qwc == 10);
-  //  // TODO verify data in here.
-  //  auto default_data = dma.read_and_advance();
-  //  ASSERT(default_data.size_bytes > 148);
-  //  memcpy(m_render_state.fog_color.data(), default_data.data + 144, 4);
-  //  auto default_ret_tag = dma.current_tag();
-  //  ASSERT(default_ret_tag.qwc == 0);
-  //  ASSERT(default_ret_tag.kind == DmaTag::Kind::RET);
-  //  dma.read_and_advance();
-  //
-  //  // now we should point to the first bucket!
-  //  ASSERT(dma.current_tag_offset() == m_render_state.next_bucket);
-  //  m_render_state.next_bucket += 16;
-  //
-  //  // loop over the buckets!
-  //  for (int bucket_id = 0; bucket_id < m_bucket_renderers.size(); bucket_id++) {
-  //    auto& renderer = m_bucket_renderers[bucket_id];
-  //    auto bucket_prof = prof.make_scoped_child(renderer->name_and_id());
-  //    g_current_render = renderer->name_and_id();
-  //    // lg::info("Render: {} start", g_current_render);
-  //    renderer->render(dma, &m_render_state, bucket_prof);
-  //    if (sync_after_buckets) {
-  //      auto pp = scoped_prof("finish");
-  //      glFinish();
-  //    }
-  //
-  //    // lg::info("Render: {} end", g_current_render);
-  //    //  should have ended at the start of the next chain
-  //    ASSERT(dma.current_tag_offset() == m_render_state.next_bucket);
-  //    m_render_state.next_bucket += 16;
-  //    vif_interrupt_callback();
-  //    m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
-  //
-  //    // hack to draw the collision mesh in the middle the drawing
-  //    if (bucket_id == 31 - 1 && Gfx::g_global_settings.collision_enable) {
-  //      auto p = prof.make_scoped_child("collision-draw");
-  //      m_collide_renderer.render(&m_render_state, p);
-  //    }
-  //  }
-  //  g_current_render = "";
 
   // TODO ending data.
 }
@@ -920,14 +859,14 @@ void OpenGLRenderer::do_pcrtc_effects(float alp,
     );
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
-  if (alp < 1) {
+  if (alp < 1 && m_version != GameVersion::Jak2) {  // TODO: enable blackout on jak 2.
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
     glBlendEquation(GL_FUNC_ADD);
     glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
 
-    // m_blackout_renderer.draw(Vector4f(0, 0, 0, 1.f - alp), render_state, prof);
+    m_blackout_renderer.draw(Vector4f(0, 0, 0, 1.f - alp), render_state, prof);
 
     glEnable(GL_DEPTH_TEST);
   }

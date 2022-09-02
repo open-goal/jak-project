@@ -2444,8 +2444,8 @@ void StackSpillStoreOp::propagate_types2(types2::Instruction& instr,
 void StackSpillLoadOp::propagate_types2(types2::Instruction& instr,
                                         const Env& env,
                                         types2::TypeState& input_types,
-                                        DecompilerTypeSystem& dts,
-                                        types2::TypePropExtras& extras) {
+                                        DecompilerTypeSystem& /*dts*/,
+                                        types2::TypePropExtras& /*extras*/) {
   // stack slot load
   auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {

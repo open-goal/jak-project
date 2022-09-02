@@ -1,9 +1,10 @@
 #include "jak2_tpage_dir.h"
-#include "jak1_tpage_dir.h"
 
 #include <vector>
 
 #include "common/common_types.h"
+
+#include "jak1_tpage_dir.h"
 
 // clang-format off
 namespace {

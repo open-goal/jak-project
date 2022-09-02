@@ -647,7 +647,6 @@ void Debugger::read_symbol_table_jak2() {
   m_symbol_offset_to_name_map.clear();
   m_symbol_name_to_value_map.clear();
 
-  u32 sym_type = 0;
   // now loop through all the symbols
   for (int i = 0; i < (SYM_TO_STRING_OFFSET + 4) / 4; i++) {
     u32 offset = i * 4;

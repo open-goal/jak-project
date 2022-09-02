@@ -54,7 +54,6 @@ u64 upload_to_gpu(const u8* data, u16 w, u16 h) {
 
 GpuTexture* TexturePool::give_texture(const TextureInput& in) {
   // const auto& it = m_loaded_textures.find(in.name);
-  fmt::print("name: {}\n", in.debug_name);
   const auto existing = m_loaded_textures.lookup_or_insert(in.id);
   if (!existing.second) {
     // nothing references this texture yet.
