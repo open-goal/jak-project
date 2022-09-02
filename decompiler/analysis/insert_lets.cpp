@@ -1132,7 +1132,7 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   auto form_fg = set_fg ? set_fg : arg_group;
   // jak 1: (the float (+ (-> a0-14 frame-group data 0 length) -1))
   // jak 2: (the float (+ (-> a0-14 frame-group frames num-frames) -1))
-  const auto matcher_cur_group_max_frames =
+  auto matcher_cur_group_max_frames =
       env.version == GameVersion::Jak1
           ? Matcher::deref(
                 Matcher::any_reg(0), false,

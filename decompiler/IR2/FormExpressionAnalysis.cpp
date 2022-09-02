@@ -1864,7 +1864,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
   // (logior (shl (-> v1-61 0 pid) 32) (.asm.sllv.r0 v1-61))
   // jak 2:
   // (logior (if v1-61 (shl (-> v1-61 0 pid) 32) 0) (.asm.sllv.r0 v1-61))
-  const auto pid_deref_matcher = Matcher::op_fixed(
+  auto pid_deref_matcher = Matcher::op_fixed(
       FixedOperatorKind::SHL,
       {Matcher::deref(Matcher::any_reg(0), false,
                       {DerefTokenMatcher::integer(0), DerefTokenMatcher::string("pid")}),
