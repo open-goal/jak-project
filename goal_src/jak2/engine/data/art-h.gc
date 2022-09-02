@@ -9,6 +9,7 @@
 (declare-type merc-ctrl art-element)
 (declare-type ripple-control basic)
 (declare-type shadow-control basic)
+(declare-type shadow-geo basic)
 (declare-type merc-eye-anim-block structure)
 
 (defenum draw-control-status
@@ -59,6 +60,7 @@
   :flag-assert         #x90000000c
   )
 
+
 (deftype joint-anim-matrix (joint-anim)
   ((data matrix :inline :dynamic :offset  16)
    )
@@ -75,6 +77,7 @@
   :flag-assert         #x900000010
   )
 
+
 (deftype joint-anim-drawable (joint-anim)
   ((data drawable :dynamic :offset-assert  12)
    )
@@ -82,6 +85,7 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
+
 
 (deftype joint-anim-frame (structure)
   ((matrices matrix     2 :inline        :offset-assert   0)
@@ -94,6 +98,7 @@
     (new (symbol type int) _type_ 0)
     )
   )
+
 
 (defmethod new joint-anim-frame ((allocation symbol) (type-to-make type) (arg0 int))
   (let ((v1-1 (max 0 (+ arg0 -2))))
@@ -114,6 +119,7 @@
   :flag-assert         #x900000040
   )
 
+
 (deftype joint-anim-compressed-fixed (structure)
   ((hdr       joint-anim-compressed-hdr :inline     :offset-assert   0)
    (offset-64 uint32                                :offset-assert  64)
@@ -127,6 +133,7 @@
   :flag-assert         #x9000008a0
   )
 
+
 (deftype joint-anim-compressed-frame (structure)
   ((offset-64 uint32             :offset-assert   0)
    (offset-32 uint32             :offset-assert   4)
@@ -138,6 +145,7 @@
   :size-assert         #x860
   :flag-assert         #x900000860
   )
+
 
 (deftype joint-anim-compressed-control (structure)
   ((num-frames uint16                               :offset-assert   0)
@@ -151,6 +159,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
 
 (deftype art (basic)
   ((name   string    :offset          8)
@@ -168,6 +177,7 @@
     )
   )
 
+
 (deftype art-element (art)
   ((pad uint8 12 :offset-assert  20)
    )
@@ -175,6 +185,7 @@
   :size-assert         #x20
   :flag-assert         #xd00000020
   )
+
 
 (deftype art-mesh-anim (art-element)
   ((data basic :dynamic :offset-assert  32)
@@ -198,6 +209,7 @@
   :size-assert         #x30
   :flag-assert         #xd00000030
   )
+
 
 (deftype art-group (art)
   ((info file-info            :offset   4)
@@ -230,14 +242,15 @@
   )
 
 (deftype art-joint-anim-manager-slot (structure)
-  ((anim       art-joint-anim   :offset-assert   0)
-   (comp-data  uint32           :offset-assert   4)
-   (time-stamp uint64           :offset-assert   8)
+  ((anim       art-joint-anim  :offset-assert   0)
+   (comp-data  uint32          :offset-assert   4)
+   (time-stamp uint64          :offset-assert   8)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
 
 (deftype art-joint-anim-manager (basic)
   ((kheap      kheap                       :inline    :offset-assert  16)
@@ -257,19 +270,6 @@
     )
   )
 
-(defmethod inspect art-joint-anim-manager ((obj art-joint-anim-manager))
-  (when (not obj)
-    (return obj)
-    )
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~1Theap: #<kheap @ #x~X>~%" (-> obj kheap))
-  (format #t "~1Tfree-index: ~D~%" (-> obj free-index))
-  (format #t "~1Tslot[64] @ #x~X~%" (-> obj slot))
-  (dotimes (s5-0 64)
-    (format #t "~T  [~D]~1Tslot: ~`art-joint-anim-manager-slot`P~%" s5-0 (-> obj slot s5-0))
-    )
-  obj
-  )
 
 (defmethod new art-joint-anim-manager ((allocation symbol) (type-to-make type) (arg0 int))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
@@ -314,6 +314,7 @@
     )
   )
 
+
 (deftype lod-group (structure)
   ((geo  merc-ctrl  :offset-assert   0)
    (dist meters     :offset-assert   4)
@@ -323,6 +324,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
+
 
 (deftype lod-set (structure)
   ((lod     lod-group 6 :inline :offset-assert   0)
@@ -335,6 +337,7 @@
     (lod-set-method-9 () none 9)
     )
   )
+
 
 (deftype draw-control (basic)
   ((process              process                            :offset-assert   4)
@@ -362,7 +365,7 @@
    (death-timer-org      uint8                              :offset-assert  97)
    (death-vertex-skip    uint16                             :offset-assert  98)
    (death-effect         uint32                             :offset-assert 100)
-   (shadow               uint32                             :offset-assert 104)
+   (shadow               shadow-geo                         :offset-assert 104)
    (shadow-ctrl          shadow-control                     :offset-assert 108)
    (distance             meters                             :offset-assert 112)
    (origin               vector                     :inline :offset-assert 128)
@@ -391,7 +394,13 @@
     )
   )
 
+
 (defmethod get-skeleton-origin draw-control ((obj draw-control))
-  (-> obj skeleton bones 0 transform trans)
+  (-> obj skeleton bones 0 transform vector 3)
   )
+
+0
+
+
+
 

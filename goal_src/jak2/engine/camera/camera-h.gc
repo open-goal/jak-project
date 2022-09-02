@@ -35,12 +35,29 @@
   (no-rotate)
   (sticky-angle))
 
+;; +++camera-blend-to-type
+(defenum camera-blend-to-type
+  :type uint64
+  (unknown-0 0)
+  (unknown-1 1)
+  (unknown-2 2))
+;; ---camera-h:camera-blend-to-type
+
 ;; NOTE - for settings
 (declare-type camera-slave process)
 (define-extern cam-master-set-entity (function cam-setting-data none))
 (define-extern cam-eye (state camera-slave))
 (define-extern cam-endlessfall (state camera-slave))
 (define-extern cam-master-activate-slave (function symbol none))
+
+;; NOTE - for camera
+(declare-type cam-rotation-tracker structure)
+(define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
+(define-extern slave-set-rotation! (function cam-rotation-tracker vector float float symbol none))
+
+;; NOTE - for cam-start
+(declare-type camera-master process)
+(define-extern cam-master-init (function none :behavior camera-master))
 
 ;; DECOMP BEGINS
 
@@ -52,10 +69,11 @@
   :size-assert         #x30
   :flag-assert         #xb00000030
   (:methods
-    (cam-index-method-9 () none 9)
-    (cam-index-method-10 () none 10)
+    (cam-index-method-9 (_type_ symbol entity vector curve) symbol 9)
+    (cam-index-method-10 (_type_ vector) float 10)
     )
   )
+
 
 (deftype tracking-point (structure)
   ((position    vector :inline :offset-assert   0)
@@ -69,6 +87,7 @@
   :flag-assert         #x90000002c
   )
 
+
 (deftype tracking-spline-sampler (structure)
   ((cur-pt     int32  :offset-assert   0)
    (partial-pt float  :offset-assert   4)
@@ -77,6 +96,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
+
 
 (deftype tracking-spline (structure)
   ((point              tracking-point 32 :inline :offset-assert   0)
@@ -98,23 +118,24 @@
   :size-assert         #x664
   :flag-assert         #x1800000664
   (:methods
-    (tracking-spline-method-9 () none 9)
-    (tracking-spline-method-10 () none 10)
-    (tracking-spline-method-11 () none 11)
-    (tracking-spline-method-12 () none 12)
-    (tracking-spline-method-13 () none 13)
-    (tracking-spline-method-14 () none 14)
-    (tracking-spline-method-15 () none 15)
-    (tracking-spline-method-16 () none 16)
-    (tracking-spline-method-17 () none 17)
-    (tracking-spline-method-18 () none 18)
-    (tracking-spline-method-19 () none 19)
-    (tracking-spline-method-20 () none 20)
-    (tracking-spline-method-21 () none 21)
-    (tracking-spline-method-22 () none 22)
-    (tracking-spline-method-23 () none 23)
+    (tracking-spline-method-9 (_type_) none 9)
+    (tracking-spline-method-10 (_type_ vector) none 10)
+    (debug-point-info (_type_ int) none 11)
+    (debug-all-points (_type_) none 12)
+    (tracking-spline-method-13 (_type_ int) none 13)
+    (tracking-spline-method-14 (_type_ tracking-spline-sampler) none 14)
+    (tracking-spline-method-15 (_type_) none 15)
+    (tracking-spline-method-16 (_type_ float) none 16)
+    (tracking-spline-method-17 (_type_ vector float float symbol) int 17)
+    (tracking-spline-method-18 (_type_ float vector tracking-spline-sampler) vector 18)
+    (tracking-spline-method-19 (_type_ float vector tracking-spline-sampler) vector 19)
+    (tracking-spline-method-20 (_type_ vector int) none 20)
+    (tracking-spline-method-21 (_type_ vector float float float) vector 21)
+    (tracking-spline-method-22 (_type_ float) none 22)
+    (debug-draw-spline (_type_) none 23)
     )
   )
+
 
 (deftype cam-float-seeker (structure)
   ((target      float  :offset-assert   0)
@@ -135,6 +156,7 @@
     (jump-to-target! (_type_ float) float 12)
     )
   )
+
 
 (defmethod init cam-float-seeker ((obj cam-float-seeker) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
   (set! (-> obj target) arg0)
@@ -207,6 +229,7 @@
     )
   )
 
+
 (defmethod init cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (cond
     (arg0
@@ -277,6 +300,7 @@
   :flag-assert         #x900000108
   )
 
+
 (deftype camera-combiner (process)
   ((trans             vector               :inline :offset-assert 128)
    (inv-camera-rot    matrix               :inline :offset-assert 144)
@@ -298,6 +322,7 @@
   :flag-assert         #xe01b0022c
   )
 
+
 (deftype camera-slave (process)
   ((trans                         vector               :inline :offset-assert 128)
    (fov                           float                        :offset-assert 144)
@@ -318,7 +343,7 @@
    (circular-follow               vector               :inline :offset-assert 2256)
    (max-angle-offset              float                        :offset-assert 2272)
    (max-angle-curr                float                        :offset-assert 2276)
-   (options                       camera-slave-options         :offset-assert 2280)
+   (options                       uint32                       :offset-assert 2280)
    (cam-entity                    entity                       :offset-assert 2284)
    (butt-timer                    uint64                       :offset-assert 2288)
    (butt-seek                     basic                        :offset-assert 2296)
@@ -345,7 +370,7 @@
    (spline-follow-dist            float                        :offset-assert 2596)
    (enter-has-run                 symbol                       :offset-assert 2600)
    (blend-from-type               uint64                       :offset-assert 2608)
-   (blend-to-type                 uint64                       :offset-assert 2616)
+   (blend-to-type                 camera-blend-to-type         :offset-assert 2616)
    (have-phony-joystick           basic                        :offset-assert 2624)
    (phony-joystick-x              float                        :offset-assert 2628)
    (phony-joystick-y              float                        :offset-assert 2632)
@@ -359,13 +384,34 @@
   :method-count-assert 14
   :size-assert         #xa94
   :flag-assert         #xe0a200a94
-  )
+  (:states
+    cam-really-fixed
+    cam-fixed
+    cam-fixed-read-entity
+    cam-pov
+    cam-pov180
+    cam-pov-track
+    cam-standoff
+    cam-standoff-read-entity
+    cam-eye
+    cam-spline
+    cam-decel
+    cam-endlessfall
+    cam-circular
+    cam-lookat
+    cam-string
+    cam-stick
+    cam-bike
+    cam-robotboss ;; TODO - state docstrings "A holdout from jak 1?"
+    cam-point-watch
+    cam-free-floating))
+
 
 (deftype camera-master (process)
   ((master-options      uint32                           :offset-assert 128)
    (settings            cam-setting-data                 :offset-assert 132)
    (slave               (pointer camera-slave)           :offset-assert 136)
-   (decel               uint32                           :offset-assert 140)
+   (decel               (pointer camera-slave)           :offset-assert 140)
    (slave-options       uint32                           :offset-assert 144)
    (view-off-param-save float                            :offset-assert 148)
    (changer             uint32                           :offset-assert 152)
@@ -407,8 +453,15 @@
   :size-assert         #x924
   :flag-assert         #x1108b00924
   (:methods
-    (camera-master-method-14 () none 14)
-    (camera-master-method-15 () none 15)
-    (camera-master-method-16 () none 16)
+    (camera-master-method-14 (_type_ vector) vector 14)
+    (camera-master-method-15 (_type_ vector) vector 15)
+    (camera-master-method-16 (_type_ symbol) none 16)
     )
   )
+
+
+0
+
+
+
+

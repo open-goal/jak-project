@@ -1225,7 +1225,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
   auto& name = env.func->guessed_name;
   if (name.kind == FunctionName::FunctionKind::METHOD && name.method_id == 7 &&
       env.func->type.arg_count() == 3) {
-    if (env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) && (arg1_i || arg1_u)) {
+    if ((env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) ||
+         arg0_type.typespec().base_type() == "inline-array") &&
+        (arg1_i || arg1_u)) {
       auto new_form = pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(0), args.at(1));
       result->push_back(new_form);

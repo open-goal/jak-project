@@ -88,9 +88,11 @@ tasks:
       - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --config-override '{\"allowed_objects\": [\"{{.FILE}}\"]}'"
   decomp-clean:
     cmds:
-      - rm ./decompiler_out/**/*.asm
-      - rm ./decompiler_out/**/*disasm.gc
-  update-gsrc: # TODO - make this use git to update all files changed in _REF
+      - python ./scripts/tasks/clean-decomp.py --game "{{.GAME}}"
+  update-gsrc:
+    cmds:
+      - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}}
+  update-gsrc-file:
     cmds:
       - task: decomp-file
       - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file {{.FILE}}
