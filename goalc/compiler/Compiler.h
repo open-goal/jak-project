@@ -74,6 +74,9 @@ class Compiler {
   void add_ignored_define_extern_symbol(const std::string& name) {
     m_allow_inconsistent_definition_symbols.insert(name);
   }
+  void add_ignored_type_definition(const std::string& type_name) {
+    m_ts.add_type_to_allowed_redefinition_list(type_name);
+  }
   Debugger& get_debugger() { return m_debugger; }
   listener::Listener& listener() { return m_listener; }
   void poke_target() { m_listener.send_poke(); }
